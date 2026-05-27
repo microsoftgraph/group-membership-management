@@ -377,6 +377,7 @@ export async function registerMockApiRoutes(page: Page): Promise<void> {
     const jobChangesMatch = path.match(/\/api\/v1\/jobDetails\/history\/configuration\/([^\/]+)$/);
     const searchUserMatch = path.match(/\/api\/v1\/jobDetails\/history\/sync\/([^\/]+)\/search-user\/([^\/]+)$/);
     const syncHistoryMatch = path.match(/\/api\/v1\/jobDetails\/history\/sync\/([^\/]+)$/);
+    const syncExplanationMatch = path.match(/\/api\/v1\/jobDetails\/history\/sync\/([^\/]+)\/runs\/([^\/]+)\/explain-user\/([^\/]+)$/);
     const removeGmmMatch = path.match(/\/api\/v1\/jobDetails\/([^\/]+)\/removeGmm$/);
     const groupSearchMatch = path.match(/\/api\/v1\/destinations\/searchGroups\/([^\/]+)$/);
     const teamChannelSearchMatch = path.match(/\/api\/v1\/destinations\/teams\/([^\/]+)\/searchChannels\/([^\/]+)$/);
@@ -629,6 +630,13 @@ export async function registerMockApiRoutes(page: Page): Promise<void> {
         runMembershipChanges: [],
         userInCurrentGroup: false,
         checkedCurrentGroupMembership: true,
+      });
+      return;
+    }
+
+    if (method === 'GET' && syncExplanationMatch) {
+      await fulfillJson(route, {
+        explanation: 'This user was added because their Building property now matches the filter criteria following a recent HR data update.',
       });
       return;
     }

@@ -37,7 +37,7 @@ import { useStrings } from '../../store/hooks';
 import { useDispatch, useSelector } from 'react-redux';
 import { AppDispatch } from '../../store';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { downloadMembershipChanges, fetchJobChanges, fetchSyncJobHistory, fetchThresholdNotification, resolveNotification, searchSyncHistoryByUser } from '../../store/jobDetails.api';
+import { downloadMembershipChanges, fetchJobChanges, fetchSyncJobHistory, fetchThresholdNotification, resolveNotification, searchSyncHistoryByUser, fetchSyncExplanation } from '../../store/jobDetails.api';
 import { selectSelectedJobChanges, selectSelectedJobDetails, setSelectedJobEnabled } from '../../store/jobs.slice';
 import { SyncJobChange } from '../../models/SyncJobChange';
 import { SyncJobChangeReason } from '../../models/SyncJobChangeReason';
@@ -139,6 +139,10 @@ export const JobHistoryPanelBase: React.FunctionComponent<IJobHistoryPanelProps>
     const isSignalRProgressDisabledRef = useRef(false);
     const userPickerRef = useRef<any>(null);
     const ignoreNextEmptyUserInputRef = useRef(false);
+
+    const [aiExplanationCache, setAiExplanationCache] = useState<Map<string, string>>(new Map());
+    const [aiExplanationLoading, setAiExplanationLoading] = useState<Set<string>>(new Set());
+    const [aiExplanationErrors, setAiExplanationErrors] = useState<Set<string>>(new Set());
 
     const getChangeReasonText = (changeReason: string | null): string => {
         switch (changeReason) {
@@ -1210,19 +1214,108 @@ export const JobHistoryPanelBase: React.FunctionComponent<IJobHistoryPanelProps>
         }
     };
 
+    const fetchExplanationForRun = (runId: string, userObjectId: string): void => {
+        const cacheKey = `${runId}-${userObjectId}`;
+        if (aiExplanationCache.has(cacheKey) || aiExplanationLoading.has(cacheKey)) {
+            return;
+        }
+
+        setAiExplanationLoading((prev) => new Set(prev).add(cacheKey));
+        setAiExplanationErrors((prev) => {
+            const next = new Set(prev);
+            next.delete(cacheKey);
+            return next;
+        });
+
+        dispatch(fetchSyncExplanation({ syncJobId: jobId, runId, userObjectId }))
+            .unwrap()
+            .then((result) => {
+                setAiExplanationCache((prev) => new Map(prev).set(cacheKey, result.explanation));
+            })
+            .catch(() => {
+                setAiExplanationErrors((prev) => new Set(prev).add(cacheKey));
+            })
+            .finally(() => {
+                setAiExplanationLoading((prev) => {
+                    const next = new Set(prev);
+                    next.delete(cacheKey);
+                    return next;
+                });
+            });
+    };
+
+    const renderAiExplanation = (runId: string): JSX.Element | null => {
+        const userObjectId = getSelectedUserObjectId();
+        if (!userObjectId || !matchingRunIds || !matchingRunIds.has(runId)) {
+            return null;
+        }
+
+        const cacheKey = `${runId}-${userObjectId}`;
+        const isLoading = aiExplanationLoading.has(cacheKey);
+        const hasError = aiExplanationErrors.has(cacheKey);
+        const explanation = aiExplanationCache.get(cacheKey);
+
+        if (!isLoading && !hasError && !explanation) {
+            fetchExplanationForRun(runId, userObjectId);
+            return (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                    <strong style={{ fontSize: '14px' }}>{strings.JobDetails.Panel.aiDescriptionLabel}</strong>
+                    <Spinner size={SpinnerSize.small} label={strings.JobDetails.Panel.aiDescriptionLoading} />
+                </div>
+            );
+        }
+
+        if (isLoading) {
+            return (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                    <strong style={{ fontSize: '14px' }}>{strings.JobDetails.Panel.aiDescriptionLabel}</strong>
+                    <Spinner size={SpinnerSize.small} label={strings.JobDetails.Panel.aiDescriptionLoading} />
+                </div>
+            );
+        }
+
+        if (hasError) {
+            return (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                    <strong style={{ fontSize: '14px' }}>{strings.JobDetails.Panel.aiDescriptionLabel}</strong>
+                    <span style={{ fontSize: '12px', color: theme.palette.redDark }}>{strings.JobDetails.Panel.aiDescriptionError}</span>
+                </div>
+            );
+        }
+
+        if (explanation) {
+            return (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                    <strong style={{ fontSize: '14px' }}>{strings.JobDetails.Panel.aiDescriptionLabel}</strong>
+                    <span style={{ fontSize: '12px' }}>{explanation}</span>
+                </div>
+            );
+        }
+
+        return null;
+    };
+
     const renderExpandedSyncContent = (item: CombinedHistoryListItem): JSX.Element | null => {
         if (item.eventType === 'sync' && item.syncHistory) {
             const downloadLink = renderDownloadLink(item);
+            const aiExplanation = renderAiExplanation(item.syncHistory.runId);
 
             return (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-                        <strong style={{ fontSize: '14px' }}>{strings.JobDetails.Panel.runIdColumnLabel}:</strong>
-                        <span style={{ fontSize: '12px' }}>{item.syncHistory.runId}</span>
+                <div style={{ display: 'flex', gap: '24px' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', flex: '0 0 auto' }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                            <strong style={{ fontSize: '14px' }}>{strings.JobDetails.Panel.runIdColumnLabel}:</strong>
+                            <span style={{ fontSize: '12px' }}>{item.syncHistory.runId}</span>
+                        </div>
+                        {downloadLink && (
+                            <div>
+                                {downloadLink}
+                            </div>
+                        )}
                     </div>
-                    {downloadLink && (
-                        <div>
-                            {downloadLink}
+                    {aiExplanation && (
+                        <div style={{ flex: '1 1 auto' }}>
+                            {aiExplanation}
                         </div>
                     )}
                 </div>

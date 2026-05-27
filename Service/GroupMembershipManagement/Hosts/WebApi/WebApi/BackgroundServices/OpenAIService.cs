@@ -94,5 +94,48 @@ namespace WebApi.BackgroundServices
                 throw new TimeoutException($"OpenAI API call timed out after {duration.TotalSeconds} seconds");
             }
         }
+
+        public async Task<string> GetCompletionAsync(string systemPrompt, string userPrompt)
+        {
+            var requestOptions = new ChatCompletionOptions()
+            {
+                Temperature = 0.2f,
+                TopP = 0.8f,
+                FrequencyPenalty = 0.0f,
+                PresencePenalty = 0.0f
+            };
+
+            List<ChatMessage> messages = new List<ChatMessage>()
+            {
+                new SystemChatMessage(systemPrompt),
+                new UserChatMessage(userPrompt),
+            };
+
+            var startTime = DateTime.UtcNow;
+            using var timeoutCts = new CancellationTokenSource(TimeSpan.FromSeconds(60));
+
+            try
+            {
+                var response = await _retryPolicy.ExecuteAsync(async () =>
+                {
+                    try
+                    {
+                        return await _chatClient.CompleteChatAsync(messages, requestOptions, timeoutCts.Token);
+                    }
+                    catch (Azure.RequestFailedException ex) when (ex.Status == 429)
+                    {
+                        throw new Exception($"OpenAI API rate limited (HTTP 429). Will retry with exponential backoff. Error: {ex.Message}");
+                    }
+                });
+
+                var duration = DateTime.UtcNow - startTime;
+                return response.Value.Content[0].Text;
+            }
+            catch (OperationCanceledException) when (timeoutCts.Token.IsCancellationRequested)
+            {
+                var duration = DateTime.UtcNow - startTime;
+                throw new TimeoutException($"OpenAI API call timed out after {duration.TotalSeconds} seconds");
+            }
+        }
     }
 }

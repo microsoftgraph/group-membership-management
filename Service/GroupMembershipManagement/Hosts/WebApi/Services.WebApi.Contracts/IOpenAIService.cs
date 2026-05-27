@@ -6,5 +6,6 @@ namespace Services.WebApi.Contracts
     public interface IOpenAIService
     {
         Task<string> GetTitleAsync(string prompt);
+        Task<string> GetCompletionAsync(string systemPrompt, string userPrompt);
     }
 }

@@ -422,6 +422,11 @@ export type IStrings = {
       userManuallyRemovedNote: string;
       userAddedInSyncAriaLabel: string;
       userRemovedInSyncAriaLabel: string;
+      userAddedPriorToHistoryMessage: string;
+      userNeverInGroupOrRemovedPriorToHistoryMessage: string;
+      aiDescriptionLabel: string;
+      aiDescriptionLoading: string;
+      aiDescriptionError: string;
     };
     notFound: string;
     notFoundWithoutPurgeDate: string;

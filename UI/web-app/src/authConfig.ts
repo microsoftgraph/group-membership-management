@@ -40,6 +40,7 @@ export const config = {
   getThresholdNotification: (syncJobId: string) => `${appServiceBaseUri}/api/v1/jobDetails/history/sync/${encodeURIComponent(syncJobId)}/threshold-notification`,
   searchSyncHistoryUser: (syncJobId: string, userObjectId: string) => `${appServiceBaseUri}/api/v1/jobDetails/history/sync/${syncJobId}/search-user/${userObjectId}`,
   downloadMembershipChanges: (syncJobId: string, runId: string) => `${appServiceBaseUri}/api/v1/jobDetails/history/sync/${syncJobId}/runs/${runId}/download`,
+  getSyncExplanation: (syncJobId: string, runId: string, userObjectId: string) => `${appServiceBaseUri}/api/v1/jobDetails/history/sync/${syncJobId}/runs/${runId}/explain-user/${userObjectId}`,
   getOrgLeaderDetails: `${appServiceBaseUri}/api/v1/orgLeaderDetails`,
   settings: `${appServiceBaseUri}/api/v1/settings`,
   patchSetting: `${appServiceBaseUri}/api/v1/settings`,

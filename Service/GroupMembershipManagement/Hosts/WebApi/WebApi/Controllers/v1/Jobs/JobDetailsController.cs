@@ -472,6 +472,21 @@ namespace WebApi.Controllers.v1.Jobs
             };
         }
 
+        [Authorize(Roles = Models.Roles.JOB_TENANT_READER + "," + Models.Roles.JOB_TENANT_WRITER)]
+        [HttpGet("history/sync/{syncJobId}/runs/{runId}/explain-user/{userObjectId}")]
+        public async Task<ActionResult<GetSyncExplanationResponse>> GetSyncExplanationAsync(Guid syncJobId, Guid runId, Guid userObjectId)
+        {
+            var handler = HttpContext.RequestServices.GetRequiredService<IRequestHandler<GetSyncExplanationRequest, GetSyncExplanationResponse>>();
+            var response = await handler.ExecuteAsync(new GetSyncExplanationRequest(syncJobId, runId, userObjectId));
+
+            return response.StatusCode switch
+            {
+                System.Net.HttpStatusCode.OK => Ok(response),
+                System.Net.HttpStatusCode.NotFound => NotFound(),
+                _ => Problem(statusCode: (int)System.Net.HttpStatusCode.InternalServerError)
+            };
+        }
+
         private (string titlesValue, bool hasTitlesOp) ExtractAndRemoveTitles(List<PatchOperation> patchOperations)
         {
             var titlesOp = patchOperations?.FirstOrDefault(op => op.Path == "/Titles");

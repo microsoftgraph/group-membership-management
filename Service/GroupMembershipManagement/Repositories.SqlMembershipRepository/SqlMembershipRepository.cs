@@ -662,5 +662,53 @@ namespace Repositories.SqlMembershipRepository
                              attempt => TimeSpan.FromSeconds(Math.Pow(2, attempt))
                          );
         }
+
+        public async Task<Dictionary<string, string>?> GetUserAttributesAsync(string azureObjectId, string tableName)
+        {
+            Dictionary<string, string>? attributes = null;
+            var retryPolicy = GetRetryPolicyAsync();
+
+            try
+            {
+                var selectQuery = $"SELECT * FROM [users].[{tableName}] WHERE AzureObjectId = @AzureObjectId";
+
+                await retryPolicy.ExecuteAsync(async () =>
+                {
+                    using (var conn = new SqlConnection(_sqlServerConnectionString))
+                    {
+                        await conn.OpenAsync();
+                        using (var cmd = new SqlCommand(selectQuery, conn))
+                        {
+                            cmd.Parameters.AddWithValue("@AzureObjectId", azureObjectId);
+
+                            using (var reader = await cmd.ExecuteReaderAsync(CommandBehavior.CloseConnection))
+                            {
+                                if (await reader.ReadAsync())
+                                {
+                                    attributes = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+                                    for (int i = 0; i < reader.FieldCount; i++)
+                                    {
+                                        var columnName = reader.GetName(i);
+                                        var value = reader.IsDBNull(i) ? null : reader.GetValue(i)?.ToString()?.Trim();
+                                        if (value != null)
+                                        {
+                                            attributes[columnName] = value;
+                                        }
+                                    }
+                                }
+                                await reader.CloseAsync();
+                            }
+                        }
+                        await conn.CloseAsync();
+                    }
+                });
+            }
+            catch (SqlException ex)
+            {
+                throw ex;
+            }
+
+            return attributes;
+        }
     }
 }
