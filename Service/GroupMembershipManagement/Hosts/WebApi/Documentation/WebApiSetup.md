@@ -86,6 +86,10 @@ The roles are:
 - Reset Administrator
     - Users with this role can **reset, stop** GMM from the Admin Center page.
 
+- AI Sync Job Viewer
+    - Users with this role can view **AI-generated sync explanations** for all destinations in the tenant.
+    - Group owners can always see AI explanations for their own groups without this role.
+
 ## Add a role to a group
 
 Login and follow these steps in the tenant that was set in "AppTenantId" to run the Set-WebApiAzureADApplication.ps1 script in the previous step.

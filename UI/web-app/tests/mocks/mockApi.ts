@@ -123,6 +123,7 @@ const mockRoles = {
   isCustomMembershipProviderAdministrator: true,
   isOperationsResetAdministrator: true,
   isGeneralSettingsAdministrator: true,
+  isAISyncJob: true,
   isFetchingRoles: false,
 };
 

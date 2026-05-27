@@ -183,6 +183,14 @@ function Set-AppRolesIfNeeded {
             Id                 = [Guid]::NewGuid().ToString()
             IsEnabled          = $True
             AllowedMemberTypes = @($memberTypes)
+        },
+        @{
+            DisplayName        = "AI Sync Job Viewer"
+            Description        = "Can view AI-generated sync explanations for all destinations."
+            Value              = "AI.SyncJob.All"
+            Id                 = [Guid]::NewGuid().ToString()
+            IsEnabled          = $True
+            AllowedMemberTypes = @($memberTypes)
         }
 
     )

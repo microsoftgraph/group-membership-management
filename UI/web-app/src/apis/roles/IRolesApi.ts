@@ -16,6 +16,7 @@ export interface Roles {
   isGeneralSettingsAdministrator: boolean;
   isAIOnboardingChat: boolean;
   isAISettingsAdministrator: boolean;
+  isAISyncJob: boolean;
   isFetchingRoles: boolean;
 }
 

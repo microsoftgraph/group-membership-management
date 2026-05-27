@@ -20,5 +20,6 @@ namespace WebApi.Models
         public const string GENERAL_SETTINGS_ADMINISTRATOR = "GeneralSettings.ReadWrite.All";
         public const string AI_ONBOARDING_CHAT = "AI.Onboarding.Chat";
         public const string AI_SETTINGS_ADMINISTRATOR = "AISettings.ReadWrite.All";
+        public const string AI_SYNC_JOB = "AI.SyncJob.All";
     }
 }

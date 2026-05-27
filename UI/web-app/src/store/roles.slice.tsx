@@ -21,6 +21,7 @@ export type Roles = {
   isGeneralSettingsAdministrator: boolean;
   isAIOnboardingChat: boolean;
   isAISettingsAdministrator: boolean;
+  isAISyncJob: boolean;
   isFetchingRoles: boolean;
 }
 
@@ -40,6 +41,7 @@ const initialState: Roles = {
   isGeneralSettingsAdministrator: false,
   isAIOnboardingChat: false,
   isAISettingsAdministrator: false,
+  isAISyncJob: false,
   isFetchingRoles: false,
 };
 
@@ -76,6 +78,7 @@ export const selectIsOperationsResetAdministrator = (state: RootState) => state.
 export const selectIsGeneralSettingsAdministrator = (state: RootState) => state.roles.isGeneralSettingsAdministrator;
 export const selectIsAIOnboardingChat = (state: RootState) => state.roles.isAIOnboardingChat;
 export const selectIsAISettingsAdministrator = (state: RootState) => state.roles.isAISettingsAdministrator;
+export const selectIsAISyncJob = (state: RootState) => state.roles.isAISyncJob;
 
 export const selectHasAccess = (state: RootState) => {
   return state.roles.isJobOwnerReader || state.roles.isJobOwnerWriter || state.roles.isJobTenantReader || state.roles.isJobTenantWriter;
