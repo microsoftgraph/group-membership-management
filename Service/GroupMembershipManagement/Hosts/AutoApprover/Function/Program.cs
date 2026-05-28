@@ -42,10 +42,7 @@ namespace Hosts.AutoApprover
 
                     services.ConfigureFunctionsApplicationInsights();
 
-                    if (CommonServices.GetBoolSettingBase(configuration, "AutoApprover:IsEnabled", false))
-                    {
-                        services.AddScoped<IAutoApproverService, AutoApproverService>();
-                    }
+                    services.AddScoped<IAutoApproverService, AutoApproverService>();
                 })
                 .Build();
 
