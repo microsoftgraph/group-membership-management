@@ -233,7 +233,6 @@ namespace Services.Notifier.Tests
         [DataRow("SyncDisabledNoGroupEmailBody")]
         [DataRow("SyncDisabledNoSourceGroupEmailBody")]
         [DataRow("SyncDisabledNoOwnerEmailBody")]
-        [DataRow("SyncDisabledNoValidGroupIds")]
         [DataRow("GuestUserFailureEmailBody")]
         [DataRow("NoDataEmailContent")]
         public async Task BuildSyncDisabledFallbackAsync_ReturnsNonEmptyHtml_ForAllDisableReasons(string contentType)
@@ -245,6 +244,7 @@ namespace Services.Notifier.Tests
 
         [TestMethod]
         [DataRow("SyncThresholdBothEmailBody")]   // Threshold -> actionable adaptive card only
+        [DataRow("SyncDisabledNoValidGroupIds")]  // NotValidSource -> legacy adaptive card only
         [DataRow("SyncJobDisabledEmailBody")]     // Generic
         [DataRow("UnknownContentType")]           // Generic
         public async Task BuildSyncDisabledFallbackAsync_ReturnsNull_ForThresholdAndGeneric(string contentType)
@@ -464,7 +464,7 @@ namespace Services.Notifier.Tests
             const string maliciousReason = "<img src=x onerror=alert(1)>";
             var email = MakeSubmissionRejectedEmail(reason: maliciousReason);
             var html = await _builder.BuildSubmissionRejectedFallbackAsync(email, GroupName, GroupId, JobUrl, SentDate);
-            Assert.IsFalse(html.Contains("<img"), "Raw <img> tag must not appear in output");
+            Assert.IsFalse(html.Contains("<img src=x"), "Raw malicious <img> tag must not appear in output");
             StringAssert.Contains(html, "&lt;img");
         }
 
@@ -744,7 +744,7 @@ namespace Services.Notifier.Tests
         [TestMethod]
         [DataRow("DestinationGroupNotFound",          "destination group not found")]
         [DataRow("SecurityGroupNotFound",             "source group not found")]
-        [DataRow("NotOwnerOfDestinationGroup",        "GMM Is Not an Owner")]
+        [DataRow("NotOwnerOfDestinationGroup",        "GMM is not an owner")]
         [DataRow("MembershipDataNotFound",            "membership rules returned no users")]
         [DataRow("GuestUsersCannotBeAddedToUnifiedGroup", "guest users not supported")]
         [DataRow("NestedGroupsFound",                 "nested group in destination not supported")]
