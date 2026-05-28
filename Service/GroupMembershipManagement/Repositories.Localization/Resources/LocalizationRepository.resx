@@ -1348,9 +1348,6 @@ If you intentionally require nested groups, GMM will not be able to manage this 
   <data name="SyncDisabledFallback.HeaderReason.NoSourceGroup" xml:space="preserve">
     <value>source group not found</value>
   </data>
-  <data name="SyncDisabledFallback.HeaderReason.NotValidSource" xml:space="preserve">
-    <value>Source Not Valid</value>
-  </data>
   <data name="SyncDisabledFallback.HeaderReason.NoOwner" xml:space="preserve">
     <value>GMM is not an owner</value>
   </data>
@@ -1368,9 +1365,6 @@ If you intentionally require nested groups, GMM will not be able to manage this 
   </data>
   <data name="SyncDisabledFallback.Description.NoSourceGroup" xml:space="preserve">
     <value>This sync is paused because GMM could **no longer find one of the source groups** referenced by this group's membership rules in GMM.</value>
-  </data>
-  <data name="SyncDisabledFallback.Description.NotValidSource" xml:space="preserve">
-    <value>GMM has paused this membership sync because one or more source group IDs are **not valid security groups**. The sync process cannot continue until the source configuration is corrected.</value>
   </data>
   <data name="SyncDisabledFallback.Description.NoOwner" xml:space="preserve">
     <value>This sync is paused because **GMM isn't an owner** of this group.</value>
@@ -1391,9 +1385,6 @@ If you intentionally require nested groups, GMM will not be able to manage this 
     <value>GMM is not changing this group's membership while the job is paused. The group remains fully usable, but membership updates must be managed outside of GMM.
 
 For paused jobs older than {0} days, the GMM affiliation will be removed. This does not delete the group, and the group will continue to function normally. You can onboard it to GMM again at any time. A warning notification will be sent before the GMM affiliation is removed.</value>
-  </data>
-  <data name="SyncDisabledFallback.CalloutBody.NotValidSource" xml:space="preserve">
-    <value>Group membership cannot be synced until the invalid source group IDs are replaced with valid security groups in the sync configuration.</value>
   </data>
   <data name="SyncDisabledFallback.CalloutBody.NoOwner" xml:space="preserve">
     <value>GMM is not altering this group's membership. If GMM is not added as an owner, GMM will eventually remove this group from management and you will receive a separate notification when that happens.</value>

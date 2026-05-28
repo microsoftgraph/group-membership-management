@@ -1185,7 +1185,6 @@ namespace Repositories.Mail
                 "SyncDisabledNoGroupEmailBody" => "NoDestinationGroup",
                 "SyncDisabledNoSourceGroupEmailBody" => "NoSourceGroup",
                 "SyncDisabledNoOwnerEmailBody" => "NoOwner",
-                "SyncDisabledNoValidGroupIds" => "NotValidSource",
                 "GuestUserFailureEmailBody" => "GuestUsers",
                 "NestedGroupsFoundEmailBody" => "NestedGroupsFound",
                 "SyncPurgedForInactivityEmailBody" => "PurgedForInactivity",
