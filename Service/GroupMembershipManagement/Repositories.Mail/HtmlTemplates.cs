@@ -125,8 +125,8 @@ namespace Repositories.Mail
                     <img src=""data:image/png;base64,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"" width=""24"" height=""24"" alt=""GMM"" style=""display:block;border:0;outline:none;text-decoration:none;-ms-interpolation-mode:bicubic;"" />
                   </td>
                   <td style=""padding-left:12px;vertical-align:middle;"">
-                    <div style=""color:#FFFFFF;opacity:0.85;font-size:10px;font-weight:700;letter-spacing:1.2px;text-transform:uppercase;line-height:1;font-family:'Segoe UI',Helvetica,Arial,sans-serif;"">GMM Notification</div>
-                    <div style=""color:#FFFFFF;font-size:15px;font-weight:600;line-height:1.3;margin-top:3px;font-family:'Segoe UI',Helvetica,Arial,sans-serif;"">Group Membership Management</div>
+                    <div style=""color:#FFFFFF;opacity:0.85;font-size:10px;font-weight:700;letter-spacing:1.2px;text-transform:uppercase;line-height:1;font-family:'Segoe UI',Helvetica,Arial,sans-serif;"">__BRAND_EYEBROW__</div>
+                    <div style=""color:#FFFFFF;font-size:15px;font-weight:600;line-height:1.3;margin-top:3px;font-family:'Segoe UI',Helvetica,Arial,sans-serif;"">__BRAND_WORDMARK__</div>
                   </td>
                 </tr></table>
               </td>
@@ -158,107 +158,91 @@ namespace Repositories.Mail
 
         // ── Per-template header HTML (unique icon + background + title text per type) ──
         private const string SyncStartedHeaderHtml = @"
-        <!-- Header bar -->
+        <!-- Quiet white status row - Awareness (blue) signal -->
         <tr>
-          <td bgcolor=""#0078d4"" style=""background:#0078d4;padding:14px 24px;"">
-            <table cellpadding=""0"" cellspacing=""0"" role=""presentation""><tr>
-              <td style=""padding-right:12px;vertical-align:middle;"">
-                <img src=""data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAJAAAACQCAYAAADnRuK4AAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAJcEhZcwAADsMAAA7DAcdvqGQAAArMSURBVHhe7V0trBZXEG3aNKQNoWleIA2BEBpCIC+8EAKpqqtCVeFQKFQdCoVDoVBVVShcFaquqqqqDlWFqquZbc7r2ZeP+fbbvbv3b+7unOQYePt755uZO3/7yScOh8PhcDgcjk2j67pPReTCFPF3+ljHBtB13WcUgksicqXrulsickdEvovgiYjc5vm+oYB9rq/taBAick5ELorIDRG5N7D4OXlfRG5SWL/Q9+YwCJqgIxG53nXd3YFFrUkIMAT5kmsoY6DZ+Ja/er1wVglhOtLP4igEmif4HdY0zVxC6KExv9TP6MgAOsHwLfRCrIF3uq77Wj+zIwG6rvuKux390tdI7Owu6nfgWAD8IhNstZskzDNCAx53WgBsfUXkWL/UjfIEGli/I8cAGOy7OvASN0/sND0EMAKaq9IBv9aIXdsl/e42DWgdphX0y3Ie5rFro/+F57xrncW8v2nfSEQuD7wU53xe1e921XCTlYXbMGnYnq8g/WCVMGnn9TtfDZDvaSzh2SIfrNIvYiriwcADO/NwPakQFnW58JTnZb0WzYHCox/MWY5X9Jo0AxceM2xPiNznMcd20h/cbbnw2KP9ElqWYfhW3SZtb/ERCfUgoXnCMthsM9pQyWnrRIGarSpHePoDN+o0ShSn6TWsBnZK7N2k0zzrR6vh93g9T7Os7w+539M80YtWxx9iH7q+IWd7LJ8zY/fEKk1X13U/isjTAe797UqI+FDZYjQRuTZwI63xkYi8EpGfReQPEfmrC4SIvBeRdzz+8cC5W+NNvcbZwFSFvoEmSO2CRX+vhSIGIvJBRN6KyDN9zVZYrC+/tVbjrut+EJGX0DJ64XNARP7m9b7X92KZbKXO61Cz+W/v4kaJBXwtIv/qRS4BaqVXFGB9byaJXny95knRkPb5CZpAL2oNiMg/8LMaEaR72bRQI9oHjvHvehEtgBrpycA9m2I2LdSA9vmllrmaA5pVfe+WmF4LGdc+8HXe6YWyDGpJsyYtuRayOlaOi/CnXqAWYNykpdNCVuM+jOkkjeeUBkwuHf695zPANNl6owOfEP39oBekRVCIzEWzMb9Ay8IiGMx5Yadl3lmeA2z1qVH1s1ZldI6M7Tl7J65IOMxNm61DYNzKlGMd7UxzovreiSvyV/3icwCOOROsu8yu9ZDQNZYCOdYyEQyWbFjq73qhX3gK7CRC4cw+HLjuGakhkDDF32fRhMzy7127IpdVLRprTU7u90CbJciew/lNrhUT3FdKLmuN5gdM9MlqMKnfQ/OUdNdDBziZIDGjH2LK8DcvM/tOt7VsBMFQhyky2tGgqXoxcP6UROVikvACC930+U9JgcH/45myp0bgzmj5GIWh4CF+YdELwmrDUttk+FHRtUc02fqece43vTmnNtXXT87ZxWb8fOPeiSowWvsw1ZFTxR9iCpP2G841ZCIZgIRvqK+bg9e0jIzCSO4rWvsgaRnoS+RitBAdyvWNmbgMvKNlZBRG/J/n+qXNAQvfawoPiOsnr0+qES8K9oM4omXvBBUY3CWhwSrAUup9iljoxc+iUSt3FjwaxkLtD30WBOuQI5oNY3EU8LG+x6UobLp2GTblzJAD3fP5zIKxU8fTIN/qG52LymY5zJHGR2AHDq7OnfacQaeyRw31HkhswRdp1B41C9CCyzta+I4Ft7VQ5brzwqr2AeGTjQr/GFjzrc9ZkidaVgZhsP5nivhVnvpLRrXPEwi2Fog5qGy6zjhZ5oo/0Ac5FxOOfHREGjA03GE8My8i5wYOcs4jNGLK5C+0q75GLV7QMvMRXICSEaYUCx8bSQ/NypfipAD5vMP0RKEaao9m1zMZMl09xzs1XICyEpoE5SRBqQ0KnT5HbU4KkI+tK0PEhBDTGkxx0PTVqCCY4vg4PGNlrFsh4kOI8ZzFtAw3G46XtyLfMXCQFT4y+qtMSfg80Ez6361wUoCsaiCofJRvIhONrgVrydKtsFkB2kum7rTjWIw+r5WTAmRxF/ZMC48GQ/2vB2qInWk5uQszJUD0eWYF49hFiibEtftLNTgpQFaqEXsuril2fyk9J6sSjaUynmqhWAr6SyhM09dwzuN4KoP98PqgGkTUVtf6LAK1kDvaCYh+QS0zezDSkfFGC8Ic0HzB/FlzqvHDgEAjpWEpSRrEoM4MjPTQBxYmCrAWgUVliOqOTtmoyLMJI72QG446a97TsjKIykMV8KtcXEtjOIfU82Duq4GYVtiQBSTMBg4uRUx0jwJ7x/V5LXAyngUYjmld17IyiIoZefz6ZtfMDMHaL5lacfamgDGt3ONbghg87q7iZI5B9b4EpaZWhDJBUX31H0TwhA4W1pcebQeVnRSGCrJiJ4xYaVU6p2XlIAp/TDf5+LoeFduAe2KHFfVsRrTPXS0jo0DWVZ8kIz9qfeFWHI7ww1jVD1Ssr0EKJUp4rGgf7My1jIyiYFIVDuIpuJX96Lta3InELkK/MysZuDt7rhhY0D7keBJVo5AfhGAfgmloXcF3TA8tcPTWHmBbcdatMYU/Koq+AxPahwz3f3oU8IOgFUKGXqbMi8E85jJpOO+s0pMxWNE+s/2fHoX9oCkGBeFCQXM5pvXmEL7O4qEJQzDg/J9xtv/Tw1ptUAqHWoOCBE0IAZ0TrDsb6KDPGQsGD/X1qnGyBmgMBhKrZ1wazZ0DBiCRjIUG+Ij0SbC4yYWmBwXaUiI4LIF6CNbafOgEJ/MzrMFgK3PYVLJDMPjBFTBZzswSLPk9PYMKyKZg8JNPYHSE1xKMVhCETSSbgsGPzvXM8vmn0uBuUD+bBY73wYeCQUWrY+9QKN+kJmIQ1Wqh/4Poz13uwuDo310iGbu4irEGGNCsNnE1gHHOs4ZxLQQiIBg9h7kEWHFoZYr+ENNqnx7GtVBPmIRscZoY0GRhp5Ui+p2TabVPD2ohCy0/U8QYmORR6xhwKlnWRG4qJtm6HwKkU1/QMPF9iqqCxEqDVtp2wJt6zZOCgUXLvtAehz7WlhtMiSA7b91c7RIB4/llG3NheIbQKClISIBmyacZbscJ5fjsn5QoUCuUm0iH4GO1i5OjNE84HlFky7uqEJ5MfsYgJVjqYS1HFkMIABKZqO3Zy8TvEP6MiUKvxByfupEDxgrOnAu5uGAsFlB5KHfUN+RsiveyBA1D0XXd+ZWZsk0xuNs0JxqJUDv3mSfivARGvjPvDOdx0V3XFBBgdH+oGSIdlT9gOBfuD7VBE37PIVj45rxzlOWizUvRaqpjA7TjNE/Bg4y2WC1YGAPM1NMP4izPrutumdpxzUHlia+bZ9PC08OFqA5XITw9ROSqfkBnPuJHuxrh6VF5/vSWGDbPuUX4Fj877cd5YsFW6abqqhsg0hNH+l2vFqhBWUFZrBXeQYWofsebgPtF0by2Omd5LpiEdZM2j/dNJ0VLg/1mLTUt1uSNqmWolkFtZGYuozGi9Wb5wMstgbMZW+jDL0HUWF3dvK8zF9ypwaxtuUgNpcLb3GGlwhYFiamIfFMytggKEuqMVmvamHi2V6+8JrCAH61EJ3oBWiSbEZBsdsEpDfbow8FsrSMEWvQ6dp36mRyVwG+coQrSqmZCsBQzt7eTs2oVMAfI/NOnqBXlhpaBwCAk4TuploEFZMsRnHAsKhK5KXd1OB+23Dj/ke+gNgKmUGD6LrDMBAIwSv5df4ynFBwOh8PhaA//AcTxqNye7dh6AAAAAElFTkSuQmCC"" width=""36"" height=""36"" alt=""Sync icon"" style=""display:block;border:0;"" />
+          <td bgcolor=""#FFFFFF"" style=""background:#FFFFFF;padding:14px 24px;border-bottom:1px solid #E5E5E5;"">
+            <table cellpadding=""0"" cellspacing=""0"" role=""presentation"" style=""border-collapse:separate;""><tr>
+              <td width=""26"" height=""26"" align=""center"" valign=""middle"" bgcolor=""#EFF6FC"" style=""background:#EFF6FC;width:26px;height:26px;border-radius:13px;line-height:0;font-size:0;mso-line-height-rule:exactly;"">
+                <img src=""data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAYAAACqaXHeAAADfElEQVR4nOyZbUhTURjH/+dmYC+UGRX0QgwKxW0JkUFQFBEIUZ/8Vn0QoRcrSku2lUlZSbqsSaIVFEEEQUFRH/rQ94jsm9tCKRLpBSIyK0QH6z49c6BuN+8mnHsRzvnBznbueeE+//PynPPMgOIYUBwtABRHCwDF0QJAcbQAUBwtABRHCwDF0QJAcbQAUJwCuE0ovhOgFfxrKQhFgPjF+e88FJ9wxffKtm1DnwftpQOQiIAbBPpWQiRr2dBDEGL5tPWIUsZ1I7HwDjo8wxlloVgTp0vQ6jsFiTi/BILxAzCSAyz1OVvjUwjh4c9VFI4MIhStmewjFuH0IhzA2SUQinXxsB7FzFnEatxlEapAxiAE1aYfkwnJOCdAKPqA0/22dQg9bNwofxfzyPutFcRuLp9SX0hfss4IEIzyiAmr8US84YlWUMFThEv7M8rO9JbCNA7zUqmDi8jfBEOxCk57rAV0A0nzLNrLR2zbB6KbeGd6wa+2zNoFrqPNdxoSkT8DiNqRPVNNqkLY/ySv9gIV/zU+XSZ9wOR6gcb+VfyW2zKekTift/Gh6BEWrxsuIncGJJN7MkaJEEebNz/3lTIe4qZtHQJBMpKXAC3Iynfl0wr18WJO+XRoNttXFK8hGblrKvB+NYyxdRP5RNEbRNaMYhbjzlF4FqOvw1AcHQ/AbOfC1/kY+7F5Im8WfkB4/WdIQr4AwVglX2C22FcyCAl0IuIdQi7Ghqp5r57iThP1nHRAEvIFEKjkpN62DnFgJOLLbXyaY1mN/0AiDtwFcpzYTVGDsPce8iEYPclp2ZS+E8DcR5CIEzNg+uMqcXAk7MvT+Nhe7it7qt/na7TUGSDfC0x7XufAJ+Et8iEYO8jGP89sTsMomNsMybjoBfiKa7AAwVgHB0RuWQIigb4SDpzuYktr2PiN1vZGNVpKvkAy7rvBVMRHJOv49tfLuZ98XZ7Hz9jNJScqWCC6zYGQZ3AAZwUgpNxXOdu01VooNqS/cvVBnWjzn4BDOHESTPdJuMyjdhwfvTs4cw0zZXzHxz4njU/hhAAmv3yQjW8azz0Wf9Hqb+Dw9nYezZQH+G3fnL5xcglzDA//CfIQDiP/Otz4bi1aygZt66T/Hivnz+LJhwa7NzPKYr2Ei+h4ABRHCwDF0QJAcbQAUBwtABRHCwDF0QJAcbQAUBwtABTnHwAAAP//J+f14QAAAAZJREFUAwAo3+1lgzmGxAAAAABJRU5ErkJggg=="" width=""18"" height=""18"" alt=""Sync icon"" style=""display:block;border:0;outline:none;-ms-interpolation-mode:bicubic;"" />
               </td>
-              <td style=""vertical-align:middle;"">
-                <span style=""color:#ffffff;font-size:16px;font-weight:600;"">Initial sync started</span><br />
-                <span style=""color:#ffffffcc;font-size:13px;"">Group Membership Management</span>
+              <td style=""padding-left:12px;vertical-align:middle;"">
+                <span style=""color:#201F1E;font-size:14px;font-weight:600;font-family:'Segoe UI',Helvetica,Arial,sans-serif;"">{1}</span>
               </td>
             </tr></table>
           </td>
         </tr>";
 
         private const string SyncCompletedHeaderHtml = @"
-        <!-- Header bar -->
+        <!-- Quiet white status row - Awareness (blue) signal -->
         <tr>
-          <td bgcolor=""#0078d4"" style=""background:#0078d4;padding:14px 24px;"">
-            <table cellpadding=""0"" cellspacing=""0"" role=""presentation""><tr>
-              <td style=""padding-right:12px;vertical-align:middle;"">
-                <img src=""data:image/png;base64,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"" width=""36"" height=""36"" alt=""Complete icon"" style=""display:block;border:0;"" />
+          <td bgcolor=""#FFFFFF"" style=""background:#FFFFFF;padding:14px 24px;border-bottom:1px solid #E5E5E5;"">
+            <table cellpadding=""0"" cellspacing=""0"" role=""presentation"" style=""border-collapse:separate;""><tr>
+              <td width=""26"" height=""26"" align=""center"" valign=""middle"" bgcolor=""#EFF6FC"" style=""background:#EFF6FC;width:26px;height:26px;border-radius:13px;line-height:0;font-size:0;mso-line-height-rule:exactly;"">
+                <img src=""data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAYAAACqaXHeAAAC2UlEQVR4nOyZT2gTQRTGv9lNtS2InryICCJUkxavUtRDDrG0okj1ZA8iqBcPRaXZ4CWX2EQL4sFbQW+KolKkWnvoQdSjYLMtUgTpQYVCBVFsLMk+30gsrlm0h9nNhplfyIOd2RnyfTt/3mwsaI4FzTEGQHOMAdAcYwA0xxgAzTEGQHOMAdAcYwA0xxgAzTEGQHO0NyCBloAERtzTEDgMISZQ7L4NRQi0Ao57i+OptWvCeZS6b0IB8Z8CTnkMf4qXCLoARcR7CmRdh+PFhnKyHkMR8TXAcc9yHA2o+QSyr0IR8VwDHHeQ4z00TtFlCLsXo3sWoIj4GeCUMxwn+af5RyfhK8cDvPi9gULiNQWy5V4WPoHG31VhB/pQ6lEqHoiTAVl3L8cp/rb7K6jK4SiLf4UQUGtAzk2ihgzarEcoJBfX3W7kbRdQneEJuclXTvyBdRKl1DRCQt0a4Mz1gegJ9yj7XOWuh1BM3f9vu8vzO1CrveT7twXUnuGsbxwhoi4RIq9QFy/ZwNd3OH09/s82l95tZfEzgeKJhsMWL1GYCYov/kthc8Z2l6fFkcDbh99vgV2R4nc21BGKPOdvIALUGWDzEyNa8ZVJEzx6yFvbMV95/mMnNn57yuMlFdDTOG91OUSEOgOu9MyyYt7D6buvXJogk5rfIyFPCVQ+T3L5voBeHqA9dQ4Roj4Ryrr7eeg/4647/RW8nXn2CVjeEF8MBrScZvEDyIsqIiScTDA7fxCoTfFT7ljX/YQXWN2cwfXtK4iYcI7DpeRzWNahhjUhCKLXoER/M8RLwj0LOHNpVsh5/d/Z3RoL9cPNMppEuC9Eiim5zQ3wEP8RULsIuy3dTPGS8N8ISROE6MevA00doiXAS6PQ9QFNJrrjcG52NzyL93cWX+u4hrFdS4gBrfFSNETMHyPQHGMANMcYAM0xBkBzjAHQHGMANMcYAM0xBkBzjAHQHGMANOcnAAAA///ILIosAAAABklEQVQDALCPs6EvQBdMAAAAAElFTkSuQmCC"" width=""18"" height=""18"" alt=""Completed"" style=""display:block;border:0;outline:none;-ms-interpolation-mode:bicubic;"" />
               </td>
-              <td style=""vertical-align:middle;"">
-                <span style=""color:#ffffff;font-size:16px;font-weight:600;"">Initial sync completed</span><br />
-                <span style=""color:#ffffffcc;font-size:13px;"">Group Membership Management</span>
+              <td style=""padding-left:12px;vertical-align:middle;"">
+                <span style=""color:#201F1E;font-size:14px;font-weight:600;font-family:'Segoe UI',Helvetica,Arial,sans-serif;"">{1}</span>
               </td>
             </tr></table>
           </td>
         </tr>";
-
         private const string SyncDisabledHeaderHtml = @"
-        <!-- Header bar - Soft amber (Action required) matching reference design -->
+        <!-- Quiet white status row - Action (orange) signal, paused state -->
         <tr>
-          <td bgcolor=""#FBE9C0"" style=""background:#FBE9C0;padding:14px 24px;border-bottom:1px solid #F2D9A8;"">
-            <table cellpadding=""0"" cellspacing=""0"" role=""presentation""><tr>
-              <td style=""padding-right:12px;vertical-align:middle;"">
-                <table cellpadding=""0"" cellspacing=""0"" role=""presentation"" style=""border-collapse:separate;""><tr>
-                  <td width=""36"" height=""36"" align=""center"" valign=""middle"" bgcolor=""#4A3100"" style=""background:#4A3100;width:36px;height:36px;border-radius:50%;line-height:0;font-size:0;mso-line-height-rule:exactly;"">
-                    <table cellpadding=""0"" cellspacing=""0"" role=""presentation"" style=""border-collapse:separate;""><tr>
-                      <td width=""4"" height=""14"" bgcolor=""#FFFFFF"" style=""background:#FFFFFF;width:4px;height:14px;border-radius:1px;line-height:0;font-size:0;"">&nbsp;</td>
-                      <td width=""4"" style=""width:4px;line-height:0;font-size:0;"">&nbsp;</td>
-                      <td width=""4"" height=""14"" bgcolor=""#FFFFFF"" style=""background:#FFFFFF;width:4px;height:14px;border-radius:1px;line-height:0;font-size:0;"">&nbsp;</td>
-                    </tr></table>
-                  </td>
-                </tr></table>
+          <td bgcolor=""#FFFFFF"" style=""background:#FFFFFF;padding:14px 24px;border-bottom:1px solid #E5E5E5;"">
+            <table cellpadding=""0"" cellspacing=""0"" role=""presentation"" style=""border-collapse:separate;""><tr>
+              <td width=""26"" height=""26"" align=""center"" valign=""middle"" bgcolor=""#FFE8D6"" style=""background:#FFE8D6;width:26px;height:26px;border-radius:13px;line-height:0;font-size:0;mso-line-height-rule:exactly;"">
+                <img src=""data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAYAAACqaXHeAAABUElEQVR4nOzZoU7DQADG8f9dEfM8AQkSAYYEFAKBQAwFDizPwUvwCoSQLAQJm8JgQCBJSHAINGRsPa4QzGhRO/V9v2Rp7nZr2n+6LWkj4iLiHABxDoA4B0CcAyDOARDnAIhzAMQ5AOLkAyxQ0GiLXm+RfRJLeTipaq7WBzz895nbPVZioN8cWwg81ZGLzXPeKaRogHzyp3lzSPgZTytO7vqsdUXI761OI/e/45RfoWY7b44opOxXILEzO5VP8KBr+aRqOdGWfcxT0Ssg+/wzk3jtWpwvlJeW6TEF+V8AcQ6AOAdAnAMgzgEQ5wCIcwDEOQDiHABxDoC4sgECN7NTVWLUtbyaMmzZx5CCit4VTpHjWHOdEst5OK4TlxsDHrvWN88LmucG+db57vexBZ4/3jijoIA4/wYgzgEQ5wCIcwDEOQDiHABxDoA4B0CcAyDuCwAA//9ViISwAAAABklEQVQDANbXOkUehMX4AAAAAElFTkSuQmCC"" width=""18"" height=""18"" alt=""Paused"" style=""display:block;border:0;outline:none;-ms-interpolation-mode:bicubic;"" />
               </td>
-              <td style=""vertical-align:middle;"">
-                <span style=""color:#6B4500;font-size:15px;font-weight:600;"">Sync paused &mdash; {1}</span><br />
-                <span style=""color:#4A3100;opacity:0.75;font-size:12.5px;"">Group Membership Management</span>
+              <td style=""padding-left:12px;vertical-align:middle;"">
+                <span style=""color:#201F1E;font-size:14px;font-weight:600;font-family:'Segoe UI',Helvetica,Arial,sans-serif;"">{1}</span>
               </td>
             </tr></table>
           </td>
         </tr>";
 
         private const string SubmissionRejectedHeaderHtml = @"
-        <!-- Header bar - Light amber to match callout palette -->
+        <!-- Quiet white status row - Action (orange) signal -->
         <tr>
-          <td style=""background:#fff4ce;padding:14px 24px;"">
-            <table cellpadding=""0"" cellspacing=""0"" role=""presentation""><tr>
-              <td style=""padding-right:12px;vertical-align:middle;"">
-                <span style=""display:inline-block;width:36px;height:36px;line-height:36px;text-align:center;background:#603900;color:#ffffff;border-radius:50%;font-size:20px;font-weight:700;"">&#x2715;</span>
+          <td bgcolor=""#FFFFFF"" style=""background:#FFFFFF;padding:14px 24px;border-bottom:1px solid #E5E5E5;"">
+            <table cellpadding=""0"" cellspacing=""0"" role=""presentation"" style=""border-collapse:separate;""><tr>
+              <td width=""26"" height=""26"" align=""center"" valign=""middle"" bgcolor=""#FFE8D6"" style=""background:#FFE8D6;width:26px;height:26px;border-radius:13px;line-height:0;font-size:0;mso-line-height-rule:exactly;"">
+                <img src=""data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAYAAACqaXHeAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAJcEhZcwAADsMAAA7DAcdvqGQAAAJYSURBVHhe7ZqxbhNBFEVvSUlJSQeVRZmCgh9ASWbsKA2izWfkD/IJlHwCHUbIu2MqCoQoUUThkpImItHYTvC8Hdu7s/NmZs070m289r57r0aaXWsAQRAEQRAEYT+1xkWtsDAat9GlcGM0zPQtHtG5xcAW3tXHYkvwmOXShyJL2DRZjXFuNF5FEi2gzBIcg8d4Sq+H4glfZglJClD4XmwJKQr4/Bojo/C1yBJSFGDvOz3G4yJLoEbp9VBI0F36Rn+bFK4Cao2/nrDbNKK/TwZXAUbh2hPUr4hzO8NppDrDief5oPmcEHluJ3IZyTW3QS4jueY24DZiNC7X29/V5pbHPbc1nEZqjXfO/Tf2fc65neAy4gnvlMA1tzMcRnaEfyiBY24QsY20CN9UhLnBxDQSFD7C3F7EMhIcXuN2NsYzer9kOGYCC+gTfq1P2d4KHSMBBUQIf688r8aOiY4FRAx/r/QlOAY6FMAQfqm5wns6ixXHQMsCuMI/qKWPKHQdzB2+1vhJZ7LiGNhTQIrw+zxExzGxY/hBhrc4RrYYSBD+17bZ7DhmPCa4wy91gpd0bjIcI6SAJOGtPMUno2FmrbnnMzZlLUDhT8NQauUswD55NQyl1Q/qKTmzCV7Q/+2rMd54zPZSrbEwp//OIMxPcUS9FIM9O0QD9FG2fT6UWmFKQ4RqcOG/TPCEhgjV4MJbYi3/QYa3xFj+gw0fY/kPNryl7/IfdHhLp+W/Ogp7OOG3LP/ftpT1i9FlpVaHHuz37cGnWsMcRHhLpfCchmxD0U90giAIgiAI/xN35JSGdk88UgoAAAAASUVORK5CYII="" width=""18"" height=""18"" alt=""Revision required"" style=""display:block;border:0;outline:none;-ms-interpolation-mode:bicubic;"" />
               </td>
-              <td style=""vertical-align:middle;"">
-                <span style=""color:#603900;font-size:16px;font-weight:600;"">{1}</span><br />
-                <span style=""color:#603900cc;font-size:13px;"">Group Membership Management</span>
+              <td style=""padding-left:12px;vertical-align:middle;"">
+                <span style=""color:#201F1E;font-size:14px;font-weight:600;font-family:'Segoe UI',Helvetica,Arial,sans-serif;"">{1}</span>
               </td>
             </tr></table>
           </td>
         </tr>";
 
         private const string JobPurgingWarningHeaderHtml = @"
-        <!-- Header bar - Light amber to match callout palette -->
+        <!-- Quiet white status row - Warning (amber) signal -->
         <tr>
-          <td style=""background:#fff4ce;padding:14px 24px;"">
-            <table cellpadding=""0"" cellspacing=""0"" role=""presentation""><tr>
-              <td style=""padding-right:12px;vertical-align:middle;"">
-                <span style=""display:inline-block;width:36px;height:36px;line-height:36px;text-align:center;background:#603900;color:#ffffff;border-radius:50%;font-size:22px;font-weight:700;"">&#x26A0;</span>
+          <td bgcolor=""#FFFFFF"" style=""background:#FFFFFF;padding:14px 24px;border-bottom:1px solid #E5E5E5;"">
+            <table cellpadding=""0"" cellspacing=""0"" role=""presentation"" style=""border-collapse:separate;""><tr>
+              <td width=""26"" height=""26"" align=""center"" valign=""middle"" bgcolor=""#FFEACC"" style=""background:#FFEACC;width:26px;height:26px;border-radius:13px;line-height:0;font-size:0;mso-line-height-rule:exactly;"">
+                <img src=""data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAYAAACqaXHeAAADC0lEQVR4nOyZXUtUQRjHf3PWdnuBRKzLqFBLorsuAnNdIwkigiD8BFFWeNFF4UsJmyF5VVn0+gW6jq6imw2l6BNkVGBeRFcJFZSru6dnjqmbmO7LOXOCmR+Is7MzZ3f+53me/8xZD8vxsBwnAJbjBMBynABYjhMAy3ECYDlOACzHCYDlWC9AghgZzHDs0A6aJ6b5QEzEFgHdIr4Pd1SCu90x3ojYBGjJcEFBs/5rSnOemFDEQH87Dcrjo1I06Ne+z0xqll3ZN3zDMLFEgCw+u7j44LW08ymGiQHjEdDfKWHvM6lW5L3Ug4KvaB3NmS2IxiNAFRlTqxQ93ecVuY1hjEZAfwdHPcXztcb4RTpvjPMSQxiLAG11kutjSx0+b5O/qE/maZT2e5a/0UOTtmhMgJYOzkm4tZZ0PdJVP/uar5L/jxc79ZjmDGcxhBEBsgfZKou8vqL7Z0n7+1/v+IzoORjAiADa4kptbz0CW9xIFgNELoC2PbG3XipENke9ei4RE7kA2tpUFUVNomCD53OTiIlUgIE0Galqx6meE8E1IiQyAQIrU9ynVhauEdl+JTIBmjL0SBjvo0b0Na6k6SEiIhFAW5jcsvUON5uWWn5JexWKiuGobLGOCNAWJgI0rjVGnOHkpTaeeEmScjg6tdZYiYLtsymGpHmZkAk9t/512qsVscU5b56WkVd8IkRCTwFZ/C0VwV5e26JfV3KWCOu6hIg86enyErwoZ6xsjSdljzBWkDT0vGCjtLececUCh0cnyBESodWA4LTnlX+H5LnAxZHxhaPxQDtT8nD0WVnzPO7Jv/0EGtZOaCmwJ82ZSmzPKyw/+Ul4vCt3nv6MwTSnCYlQcrXvAPWkeCr5tLncOWJtP7qmyXXKmuZ3SnVXtJc7V8a2HdnNg9wUeWoklAhIbGFoPdtbiYTyYD7D59kOvsiC+qiMbfkiVwmBMGqALqQzkpHXqIKgCleXzXN/ptdUC2L5XeB/wv06jOU4AbAcJwCW4wTAcpwAWI4TAMtxAmA5TgAsxwmA5VgvwG8AAAD///GEDXgAAAAGSURBVAMAMryXND+wtFgAAAAASUVORK5CYII="" width=""18"" height=""18"" alt=""Action needed"" style=""display:block;border:0;outline:none;-ms-interpolation-mode:bicubic;"" />
               </td>
-              <td style=""vertical-align:middle;"">
-                <span style=""color:#603900;font-size:16px;font-weight:600;"">{1}</span><br />
-                <span style=""color:#603900cc;font-size:13px;"">Group Membership Management</span>
+              <td style=""padding-left:12px;vertical-align:middle;"">
+                <span style=""color:#201F1E;font-size:14px;font-weight:600;font-family:'Segoe UI',Helvetica,Arial,sans-serif;"">{1}</span>
               </td>
             </tr></table>
           </td>
         </tr>";
 
-        // Final Notice - dark red header indicating GMM affiliation has been removed.
-        // The white stop / power-off glyph is rendered as a Unicode codepoint so the email
-        // does not depend on an external image asset (consistent with the warning header).
+        // Final Notice - quiet white status row with danger (red) tile.
+        // Title is supplied at format time via {1} from FinalNoticeFallback.HeaderTitle resx.
         private const string FinalNoticeHeaderHtml = @"
-        <!-- Header bar - Dark red (Final notice / affiliation removed) -->
+        <!-- Quiet white status row - Danger (red) signal -->
         <tr>
-          <td bgcolor=""#A4262C"" style=""background:#A4262C;padding:14px 24px;"">
-            <table cellpadding=""0"" cellspacing=""0"" role=""presentation""><tr>
-              <td style=""padding-right:12px;vertical-align:middle;"">
-                <span style=""display:inline-block;width:36px;height:36px;line-height:36px;text-align:center;background:#ffffff33;color:#ffffff;border:1px solid #ffffff66;border-radius:50%;font-size:20px;font-weight:700;"">&#x23FB;</span>
+          <td bgcolor=""#FFFFFF"" style=""background:#FFFFFF;padding:14px 24px;border-bottom:1px solid #E5E5E5;"">
+            <table cellpadding=""0"" cellspacing=""0"" role=""presentation"" style=""border-collapse:separate;""><tr>
+              <td width=""26"" height=""26"" align=""center"" valign=""middle"" bgcolor=""#FDE7E9"" style=""background:#FDE7E9;width:26px;height:26px;border-radius:13px;line-height:0;font-size:0;mso-line-height-rule:exactly;"">
+                <img src=""data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAYAAACqaXHeAAADw0lEQVR4nOyaSWgUQRSG/07igmBc4r5cTUxEIQpqQAxicnIBlehEEbyInrwqigQkbjcPegroQZ1RzIAio5BFFBEJUUlAUImJYIzEFUXck/Hv7mmpzGEmM/16JlD1QdP1aqZfV/39uupVzRRAcwqgOUYAaI4RAJpjBIDmGAGgOUYAaI4RAJpjBIDmFCFPRIBVcaDJAv7S3LcDeIg8kM8IOMjOV/C8zC4jT+QtAshsr8BImIU8YcYABEQYWMgQ30iFI3XAJ2RBFCj5DdTRxw36eIMACCQC2Pkqnl7wODsM3G/I4j4NvIadf8DiuSGg5yqwGgEgLsBloIxPPsZjYqJqcTmwAhlSylmCp0V22fZFIWORhC2JqAB8SoVs7BUWp3h1HOA6Gb4dyJAQnz6vfaJUTeURjjt6yCEqAJ/SfrZuqVLVNx7YhOzZwA6/VuxKqrsXgogJwNCfwdMxz2bDh+m8divwFlnCKBgoBGrijrb//TZeAqZBCDEB6Gg33DB1YCQ0MfR74BP6eE5f5xW/JRRlF4SQfAXWqwZH7lOQ40SSXQMhxARgaC5XzK6dQC+E4DrhJf0/VaoqIYSIADFgAkNzpmezsS2Qp03xP/eOUBInIsA3Zn1QpicW+iCM6pPlAqaW8yGAiAB83yerNhv4GcLwqX9MuqfITCAiAOeoL6rNxpaM4rIur0DButN9md+ZrtqFQiKLvEeTuNj5pdgUoCzdNVT+OIX7ye8WMVk6ifSUq8ZQUkRki1hayQXQoJVY17NT3SF3o0MMrgOewVkiOP77Q+644xvJPOCWV7DTYTZ4CYSIuNNeqeL/NoQQE8BKmvr4lA5BjsOp7uUHyVQ4yk4PejYbGYq4S1pf8NVaw9MWz+Y9Br5zgwRCiAnAnP0HO31UqbLY2Oaoj/2+xLXX1Dre48geDp4QQnQ5zFGqiadWz2Zj53F2uNvMzA0Zwr2FOdwRumeNFLB1O3ABgogK0OAugbex+MqrYwfK2JGORCiPCnZ+LafITigDH6Op1/ZtOUU5RHdXPCLuFNiOpOSFXGfrw0xi2vnKvFc/sMOdQq2Ds/bBZvUzXvOBR3X9yAWRCIEIYMOwX/AHuAn/+cCjcdxd9rOxkorAfhdgg/uLgZUsnlZ3dDKAyR4a2cCqoDpvE1gEqHC7rIIdOcNiNZw0PiV2x9uo2IF6N/sLlJwI4HERKGbva1mstNyZwf55zB7U3tnzO0V6zNemhftdX5EjcirAWMT8QQKaYwSA5hgBoDlGAGiOEQCaYwSA5hgBoDlGAGiO9gL8AwAA//+uzvrTAAAABklEQVQDAMDJve8/jwe7AAAAAElFTkSuQmCC"" width=""18"" height=""18"" alt=""Final notice"" style=""display:block;border:0;outline:none;-ms-interpolation-mode:bicubic;"" />
               </td>
-              <td style=""vertical-align:middle;"">
-                <span style=""color:#ffffff;font-size:16px;font-weight:600;"">{1}</span><br />
-                <span style=""color:#ffffffd9;font-size:13px;"">Group Membership Management</span>
+              <td style=""padding-left:12px;vertical-align:middle;"">
+                <span style=""color:#201F1E;font-size:14px;font-weight:600;font-family:'Segoe UI',Helvetica,Arial,sans-serif;"">{1}</span>
               </td>
             </tr></table>
           </td>
@@ -276,8 +260,9 @@ namespace Repositories.Mail
         public static string SyncCompletedTemplate =>
             BuildEmailBodyTemplate(SyncCompletedHeaderHtml, BlueBadgeStyle, GrayCalloutTableStyle, GrayCalloutTitleStyle, GrayCalloutBgColor, GrayCalloutBorderColor);
 
-        /// <summary>Body-only fragment. Same tokens as SyncStartedTemplate. Token {1}=headerText is rendered
-        /// in the header bar (e.g. "Sync paused - {1}") with the localized disable reason.</summary>
+        /// <summary>Body-only fragment. Same tokens as SyncStartedTemplate. Token {1}=headerText is the
+        /// full localized title built in MailFallbackBuilder from SyncDisabledFallback.HeaderTitle +
+        /// SyncDisabledFallback.HeaderReason.*.</summary>
         public static string SyncDisabledTemplate =>
             BuildEmailBodyTemplate(SyncDisabledHeaderHtml, OrangePillBadgeStyle, GrayCalloutTableStyle, GrayCalloutTitleStyle, GrayCalloutBgColor, GrayCalloutBorderColor);
 
@@ -419,7 +404,7 @@ namespace Repositories.Mail
                   </td>
                 </tr></table>
               </td>
-              <td valign=""middle"" style=""vertical-align:middle;font-size:12px;color:#605e5c;font-weight:600;"">Group Membership Management</td>
+              <td valign=""middle"" style=""vertical-align:middle;font-size:12px;color:#605e5c;font-weight:600;"">__BRAND_WORDMARK__</td>
               <td valign=""middle"" style=""vertical-align:middle;font-size:12px;color:#a19f9d;padding-left:8px;"">&nbsp;&middot;&nbsp; Microsoft</td>
             </tr></table>
           </td>

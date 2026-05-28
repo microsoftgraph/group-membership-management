@@ -1298,6 +1298,9 @@ If you intentionally require nested groups, GMM will not be able to manage this 
   <data name="SyncStartedFallback.Badge" xml:space="preserve">
     <value>AWARENESS</value>
   </data>
+  <data name="SyncStartedFallback.HeaderTitle" xml:space="preserve">
+    <value>Initial sync started</value>
+  </data>
   <data name="SyncStartedFallback.Description" xml:space="preserve">
     <value>GMM has begun the first scheduled membership sync for this group based on the rules configured by **{0}**. No action is required from you.</value>
   </data>
@@ -1312,6 +1315,9 @@ If you intentionally require nested groups, GMM will not be able to manage this 
   </data>
   <data name="SyncCompletedFallback.Badge" xml:space="preserve">
     <value>AWARENESS</value>
+  </data>
+  <data name="SyncCompletedFallback.HeaderTitle" xml:space="preserve">
+    <value>Initial sync completed</value>
   </data>
   <data name="SyncCompletedFallback.Description" xml:space="preserve">
     <value>The initial sync for this group is complete. This group is now managed by GMM, and no action is required from you.</value>
@@ -1330,6 +1336,9 @@ If you intentionally require nested groups, GMM will not be able to manage this 
   <data name="SyncDisabledFallback.Badge" xml:space="preserve">
     <value>ACTION REQUIRED</value>
   </data>
+  <data name="SyncDisabledFallback.HeaderTitle" xml:space="preserve">
+    <value>Sync paused &#8212; {0}</value>
+  </data>
   <data name="SyncDisabledFallback.PreviouslyNamedPrefix" xml:space="preserve">
     <value>Previously named: </value>
   </data>
@@ -1343,7 +1352,7 @@ If you intentionally require nested groups, GMM will not be able to manage this 
     <value>Source Not Valid</value>
   </data>
   <data name="SyncDisabledFallback.HeaderReason.NoOwner" xml:space="preserve">
-    <value>GMM Is Not an Owner</value>
+    <value>GMM is not an owner</value>
   </data>
   <data name="SyncDisabledFallback.HeaderReason.GuestUsers" xml:space="preserve">
     <value>guest users not supported</value>
@@ -1355,7 +1364,7 @@ If you intentionally require nested groups, GMM will not be able to manage this 
     <value>nested group in destination not supported</value>
   </data>
   <data name="SyncDisabledFallback.Description.NoDestinationGroup" xml:space="preserve">
-    <value>This sync is paused because GMM could **no longer find the destination group**. The group may have been deleted.</value>
+    <value>This sync is paused because GMM could **no longer find the destination group**. The group may have been deleted. The name and email shown are from GMM&#8217;s last known record.</value>
   </data>
   <data name="SyncDisabledFallback.Description.NoSourceGroup" xml:space="preserve">
     <value>This sync is paused because GMM could **no longer find one of the source groups** referenced by this group's membership rules in GMM.</value>
@@ -1498,6 +1507,12 @@ For paused jobs older than {0} days, the GMM affiliation will be removed. This d
   </data>
   <data name="FallbackUnknownGroupName" xml:space="preserve">
     <value>N/A</value>
+  </data>
+  <data name="Fallback.BrandHeader.Eyebrow" xml:space="preserve">
+    <value>GMM NOTIFICATION</value>
+  </data>
+  <data name="Fallback.BrandHeader.Wordmark" xml:space="preserve">
+    <value>Group Membership Management</value>
   </data>
   <!-- Shared footer/recipient-note used by every fallback email template. Single source of truth.
        Token: {0} = group display name. The reference HTML uses identical wording across all variants. -->

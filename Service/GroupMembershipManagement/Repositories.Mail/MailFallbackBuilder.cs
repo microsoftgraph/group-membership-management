@@ -143,7 +143,7 @@ namespace Repositories.Mail
                 HtmlTemplates.SyncStartedTemplate,
                 prefix: "SyncStartedFallback",
                 groupName: destinationGroupName,
-                headerText: destinationGroupName ?? string.Empty,
+                headerText: _localizationRepository.TranslateSetting("SyncStartedFallback.HeaderTitle"),
                 description: _localizationRepository.TranslateSetting("SyncStartedFallback.Description", requestor),
                 calloutBody: _localizationRepository.TranslateSetting("SyncStartedFallback.CalloutBody"),
                 rows: rows,
@@ -165,7 +165,7 @@ namespace Repositories.Mail
                 HtmlTemplates.SyncCompletedTemplate,
                 prefix: "SyncCompletedFallback",
                 groupName: destinationGroupName,
-                headerText: destinationGroupName ?? string.Empty,
+                headerText: _localizationRepository.TranslateSetting("SyncCompletedFallback.HeaderTitle"),
                 description: _localizationRepository.TranslateSetting("SyncCompletedFallback.Description"),
                 calloutBody: _localizationRepository.TranslateSetting("SyncCompletedFallback.CalloutBody", addedCount, removedCount),
                 rows: rows,
@@ -230,7 +230,9 @@ namespace Repositories.Mail
                 HtmlTemplates.SyncDisabledTemplate,
                 prefix: "SyncDisabledFallback",
                 groupName: syncDisabledGroupName,
-                headerText: _localizationRepository.TranslateSetting($"SyncDisabledFallback.HeaderReason.{disableReason}"),
+                headerText: _localizationRepository.TranslateSetting(
+                    "SyncDisabledFallback.HeaderTitle",
+                    _localizationRepository.TranslateSetting($"SyncDisabledFallback.HeaderReason.{disableReason}")),
                 description: description,
                 // Compact-detail reasons share the PausedShared callout body to avoid duplication.
                 calloutBody: _localizationRepository.TranslateSetting(
@@ -811,7 +813,8 @@ namespace Repositories.Mail
                     $"SyncDisabledFallback.HeaderReason.{syncDisabledReason}");
                 if (!string.IsNullOrWhiteSpace(reasonFragment))
                 {
-                    return "Sync paused \u2014 " + reasonFragment;
+                    return _localizationRepository.TranslateSetting(
+                        "SyncDisabledFallback.HeaderTitle", reasonFragment);
                 }
             }
 
@@ -837,7 +840,7 @@ namespace Repositories.Mail
             string extraCalloutHtml = "")
         {
             var name = string.IsNullOrWhiteSpace(groupName) ? "N/A" : groupName;
-            return string.Format(
+            var result = string.Format(
                 template,
                 _localizationRepository.TranslateSetting($"{prefix}.Badge"),             // {0} badge
                 System.Net.WebUtility.HtmlEncode(headerText),                                // {1} header text (varies)
@@ -853,6 +856,12 @@ namespace Repositories.Mail
                 actionChecklistHtml ?? string.Empty,                                      // {11} optional action checklist row
                 extraCalloutHtml ?? string.Empty                                          // {12} optional extra gray callout (e.g. nested groups)
             );
+
+            return result
+                .Replace("__BRAND_EYEBROW__",
+                    System.Net.WebUtility.HtmlEncode(_localizationRepository.TranslateSetting("Fallback.BrandHeader.Eyebrow")))
+                .Replace("__BRAND_WORDMARK__",
+                    System.Net.WebUtility.HtmlEncode(_localizationRepository.TranslateSetting("Fallback.BrandHeader.Wordmark")));
         }
 
         // Builds the gray "Nested groups detected · N total" callout that sits between the
