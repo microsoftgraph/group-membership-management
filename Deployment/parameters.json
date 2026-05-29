@@ -101,7 +101,7 @@
       }
     },
     "skipMailNotifications": {
-      "value": false,
+      "value": true,
       "metadata": {
         "description": "If you don't want to send email notifications set this to true. When this is true, 'senderUsername','senderPassword','supportEmailAddresses' should be set to 'not-set'.",
         "required": false
@@ -115,14 +115,14 @@
       }
     },
     "senderUsername": {
-      "value": "",
+      "value": "not-set",
       "metadata": {
         "description": "The email address of the user that will be used to send emails.",
         "required": false
       }
     },
     "senderPassword": {
-      "value": "",
+      "value": "not-set",
       "metadata": {
         "description": "The password of the user that will be used to send emails.",
         "required": false
