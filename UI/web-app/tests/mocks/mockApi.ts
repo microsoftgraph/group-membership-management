@@ -124,6 +124,8 @@ const mockRoles = {
   isOperationsResetAdministrator: true,
   isGeneralSettingsAdministrator: true,
   isAISyncJob: true,
+  isAIOnboardingChat: true,
+  isAISettingsAdministrator: true,
   isFetchingRoles: false,
 };
 
@@ -756,6 +758,25 @@ export async function registerMockApiRoutes(page: Page): Promise<void> {
 
     if (method === 'PATCH' && path.endsWith('/api/v1/sqlMembershipSources/defaultAttributes')) {
       await fulfillJson(route, {});
+      return;
+    }
+
+    if (
+      method === 'POST' &&
+      (path.endsWith('/api/v1/copilot') || path.endsWith('/api/v1/Copilot/chat'))
+    ) {
+      await fulfillJson(route, {
+        message: 'Here is a filter for FTEs in your department.',
+        sourceParts: [
+          {
+            partId: 'copilot-part-1',
+            filter: "EmployeeType_Code = 'FTE'",
+            title: 'FTEs',
+            isExclusion: false,
+            useOrgStructure: false,
+          },
+        ],
+      });
       return;
     }
 
