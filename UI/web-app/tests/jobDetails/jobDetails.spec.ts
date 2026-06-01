@@ -293,52 +293,55 @@ test.describe('Job Details Tests', () => {
     console.log('✅ Render textfield if query has unsupported operator test completed successfully.');
   });
 
-  test('Verify inclusionary logic correctly updates the query', { tag: '@main' }, async ({ page }) => {
+  test('Verify inclusionary logic correctly updates the query', { tag: '@main', timeout: 60000 }, async ({ page }) => {
     const AUTHORIZED_SENDERS_LABEL = 'Authorized Senders';
     const url = DOMAIN.startsWith('http://') || DOMAIN.startsWith('https://') ? DOMAIN : `https://${DOMAIN}`;
     await page.goto(url);
-    await page.waitForTimeout(10000);
+
+    // Wait for the page to be interactive rather than using a hard timeout
+    await page.locator('#manage-membership-button').waitFor({ state: 'visible', timeout: 15000 });
 
     // Click the Add button to navigate to ManageMembership
     await page.locator('#manage-membership-button').click();
+    await page.getByText('Create a new group').waitFor({ state: 'visible', timeout: 10000 });
     await page.getByText('Create a new group').click();
-    await page.getByPlaceholder('Enter the name of the group').click();
+
+    const groupNameInput = page.getByPlaceholder('Enter the name of the group');
+    await groupNameInput.waitFor({ state: 'visible', timeout: 10000 });
+    await groupNameInput.click();
 
     const groupName = `pw-test-${uuidv4().replace(/-/g, '').slice(0, 10)}`;
 
     // Fill group name
-    await page.getByPlaceholder('Enter the name of the group').fill(groupName);
+    await groupNameInput.fill(groupName);
 
-    // Select authorized senders
-    const pickerInputInclusionary = page.locator('.ms-BasePicker-input').first();
+    // Select authorized senders — scope the picker to the form area to avoid
+    // picking up unrelated inputs (e.g. Copilot panel or other pickers)
+    const formArea = page.locator('form, [data-testid="manage-membership"], .ms-Stack').filter({ has: groupNameInput });
+    const pickerInputInclusionary = (await formArea.count() > 0)
+      ? formArea.locator('.ms-BasePicker-input').first()
+      : page.locator('.ms-BasePicker-input').first();
     await pickerInputInclusionary.click();
     await typeIntoPicker(page, pickerInputInclusionary, 'adele');
+    await page.getByRole('option', { name: 'Adele Vance' }).waitFor({ state: 'visible', timeout: 5000 });
     await page.getByRole('option', { name: 'Adele Vance' }).click();
-    await page.waitForTimeout(1000);
+    // Wait for the pill to appear before typing the next person
+    await page.locator('.ms-BasePicker-text .ms-TagItem').first().waitFor({ state: 'visible', timeout: 5000 });
     await typeIntoPicker(page, pickerInputInclusionary, 'alex');
+    await page.getByRole('option', { name: 'Alex Wilber' }).first().waitFor({ state: 'visible', timeout: 5000 });
     await page.getByRole('option', { name: 'Alex Wilber' }).first().click();
 
     // Create group
     await page.getByRole('button', { name: 'Create group' }).click();
-    await page.waitForSelector('button:has-text("Next")'); // Wait for the "Next" button to appear
 
-    // Wait for the "Next" button to become enabled (up to 30 seconds)
-    await page.waitForFunction(
-      () => {
-        const nextButton = Array.from(document.querySelectorAll('button')).find(
-          (button) => button.textContent?.trim() === 'Next'
-        );
-        return nextButton && !nextButton.disabled;
-      },
-      { timeout: 30000 }
-    );
-
-    // Alternatively, using expect with locator
+    // Wait for the "Next" button to become enabled
     const nextButton = page.getByRole('button', { name: 'Next' });
+    await nextButton.waitFor({ state: 'visible', timeout: 30000 });
     await expect(nextButton).toBeEnabled({ timeout: 30000 });
 
     // Navigate through steps
-    await page.getByRole('button', { name: 'Next' }).click();
+    await nextButton.click();
+    await page.getByRole('button', { name: 'Next' }).waitFor({ state: 'visible', timeout: 10000 });
     await page.getByRole('button', { name: 'Next' }).click();
 
     if (isMockMode) {

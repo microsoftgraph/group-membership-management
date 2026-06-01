@@ -88,7 +88,11 @@ async function navigateToMembershipConfiguration(page: Page) {
   const nextButton = page.getByRole('button', { name: 'Next' });
   await expect(nextButton).toBeEnabled({ timeout: 30000 });
   await nextButton.click();
-  await nextButton.click();
+
+  // Wait for the wizard to advance and the next step to render before clicking Next again
+  await page.getByRole('button', { name: 'Next' }).waitFor({ state: 'visible', timeout: 10000 });
+  await expect(page.getByRole('button', { name: 'Next' })).toBeEnabled({ timeout: 10000 });
+  await page.getByRole('button', { name: 'Next' }).click();
 
   await expect(page.getByRole('button', { name: /GMM Copilot/i })).toBeVisible();
 }
