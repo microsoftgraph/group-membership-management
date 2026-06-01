@@ -325,8 +325,8 @@ test.describe('Job Details Tests', () => {
     await typeIntoPicker(page, pickerInputInclusionary, 'adele');
     await page.getByRole('option', { name: 'Adele Vance' }).waitFor({ state: 'visible', timeout: 5000 });
     await page.getByRole('option', { name: 'Adele Vance' }).click();
-    // Wait for the pill to appear before typing the next person
-    await page.locator('.ms-BasePicker-text .ms-TagItem').first().waitFor({ state: 'visible', timeout: 5000 });
+    // Wait for the suggestion dropdown to close before typing the next person
+    await page.getByRole('option', { name: 'Adele Vance' }).waitFor({ state: 'hidden', timeout: 5000 });
     await typeIntoPicker(page, pickerInputInclusionary, 'alex');
     await page.getByRole('option', { name: 'Alex Wilber' }).first().waitFor({ state: 'visible', timeout: 5000 });
     await page.getByRole('option', { name: 'Alex Wilber' }).first().click();
