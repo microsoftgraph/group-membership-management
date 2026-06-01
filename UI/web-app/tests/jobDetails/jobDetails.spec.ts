@@ -315,20 +315,13 @@ test.describe('Job Details Tests', () => {
     // Fill group name
     await groupNameInput.fill(groupName);
 
-    // Select authorized senders — scope the picker to the form area to avoid
-    // picking up unrelated inputs (e.g. Copilot panel or other pickers)
-    const formArea = page.locator('form, [data-testid="manage-membership"], .ms-Stack').filter({ has: groupNameInput });
-    const pickerInputInclusionary = (await formArea.count() > 0)
-      ? formArea.locator('.ms-BasePicker-input').first()
-      : page.locator('.ms-BasePicker-input').first();
+    // Select authorized senders
+    const pickerInputInclusionary = page.locator('.ms-BasePicker-input').first();
     await pickerInputInclusionary.click();
     await typeIntoPicker(page, pickerInputInclusionary, 'adele');
-    await page.getByRole('option', { name: 'Adele Vance' }).waitFor({ state: 'visible', timeout: 5000 });
     await page.getByRole('option', { name: 'Adele Vance' }).click();
-    // Wait for the suggestion dropdown to close before typing the next person
-    await page.getByRole('option', { name: 'Adele Vance' }).waitFor({ state: 'hidden', timeout: 5000 });
+    await page.waitForTimeout(1000);
     await typeIntoPicker(page, pickerInputInclusionary, 'alex');
-    await page.getByRole('option', { name: 'Alex Wilber' }).first().waitFor({ state: 'visible', timeout: 5000 });
     await page.getByRole('option', { name: 'Alex Wilber' }).first().click();
 
     // Create group
