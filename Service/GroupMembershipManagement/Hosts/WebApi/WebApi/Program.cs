@@ -19,7 +19,6 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using Microsoft.Graph;
 using Microsoft.Identity.Web;
-using Microsoft.IdentityModel.Logging;
 using Microsoft.IdentityModel.Protocols;
 using Microsoft.IdentityModel.Protocols.OpenIdConnect;
 using Microsoft.IdentityModel.Tokens;
@@ -69,6 +68,9 @@ namespace WebApi
             {
                 options.InputFormatters.Insert(0, JsonPatchFormatter.GetJsonPatchInputFormatter());
             });
+
+            builder.Services.AddProblemDetails();
+            builder.Services.AddExceptionHandler<WebApi.ExceptionHandling.GmmExceptionHandler>();
 
             var azureAdConfigSection = builder.Configuration.GetSection("AzureAd");
             var azureAdTenantId = azureAdConfigSection.GetValue<string>("TenantId");
@@ -586,7 +588,9 @@ namespace WebApi
             if (app.Environment.IsDevelopment())
             {
                 // Configure the HTTP request pipeline.
-                IdentityModelEventSource.ShowPII = true;
+                // Note: IdentityModelEventSource.ShowPII = true; can be enabled here
+                // TEMPORARILY for local token-validation debugging. Leave OFF by
+                // default — it emits identity claims and token contents into logs.
                 app.UseDeveloperExceptionPage();
 
                 // Configure SwaggerUI
@@ -615,6 +619,10 @@ namespace WebApi
                         swagger.Servers = new List<OpenApiServer> { new OpenApiServer { Url = $"{httpReq.Scheme}://{httpReq.Host.Value}" } };
                     });
                 });
+            }
+            else
+            {
+                app.UseExceptionHandler();
             }
 
             using (var scope = app.Services.CreateScope())
