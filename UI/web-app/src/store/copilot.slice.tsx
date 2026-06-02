@@ -2,6 +2,7 @@
 // Licensed under the MIT license.
 
 import { createSlice, PayloadAction } from '@reduxjs/toolkit';
+import { v4 as uuidv4 } from 'uuid';
 import { RootState } from './store';
 import { IChatMessage } from '../components/CopilotPanel/CopilotPanel.types';
 import { ISourcePart } from '../models/ISourcePart';
@@ -9,6 +10,7 @@ import { sendCopilotMessage } from './copilot.api';
 
 export interface CopilotState {
     messages: IChatMessage[];
+    conversationId: string;
     isLoading: boolean;
     error: string | null;
     isPanelOpen: boolean;
@@ -18,6 +20,7 @@ export interface CopilotState {
 
 const initialState: CopilotState = {
     messages: [],
+    conversationId: uuidv4(),
     isLoading: false,
     error: null,
     isPanelOpen: false,
@@ -35,6 +38,7 @@ const copilotSlice = createSlice({
         },
         clearMessages: (state) => {
             state.messages = [];
+            state.conversationId = uuidv4();
             state.error = null;
             state.lastSourceParts = [];
             state.useOrgStructure = false;

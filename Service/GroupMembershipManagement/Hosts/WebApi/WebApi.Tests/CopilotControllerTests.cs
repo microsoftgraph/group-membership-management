@@ -324,6 +324,88 @@ namespace WebApi.Tests
         }
 
         [TestMethod]
+        public async Task ChatAsync_WithValidConversationId_PassesItThrough()
+        {
+            // Arrange
+            var validGuid = "a0d376c9-721f-439a-8952-8a965cb9d2e5";
+            _mockHandler
+                .Setup(x => x.ExecuteAsync(It.IsAny<CopilotChatRequest>()))
+                .ReturnsAsync(new CopilotChatResponse
+                {
+                    StatusCode = HttpStatusCode.OK,
+                    ResponseMessage = "OK"
+                });
+
+            var request = new CopilotChatRequestDto
+            {
+                Message = "Include employees",
+                ConversationId = validGuid
+            };
+
+            // Act
+            await _controller.ChatAsync(request);
+
+            // Assert
+            _mockHandler.Verify(x => x.ExecuteAsync(
+                It.Is<CopilotChatRequest>(r => r.ConversationId == validGuid)),
+                Times.Once);
+        }
+
+        [TestMethod]
+        public async Task ChatAsync_WithInvalidConversationId_SanitizesToNull()
+        {
+            // Arrange
+            _mockHandler
+                .Setup(x => x.ExecuteAsync(It.IsAny<CopilotChatRequest>()))
+                .ReturnsAsync(new CopilotChatResponse
+                {
+                    StatusCode = HttpStatusCode.OK,
+                    ResponseMessage = "OK"
+                });
+
+            var request = new CopilotChatRequestDto
+            {
+                Message = "Include employees",
+                ConversationId = "not-a-guid-at-all"
+            };
+
+            // Act
+            await _controller.ChatAsync(request);
+
+            // Assert
+            _mockHandler.Verify(x => x.ExecuteAsync(
+                It.Is<CopilotChatRequest>(r => r.ConversationId == null)),
+                Times.Once);
+        }
+
+        [TestMethod]
+        public async Task ChatAsync_WithNullConversationId_PassesNull()
+        {
+            // Arrange
+            _mockHandler
+                .Setup(x => x.ExecuteAsync(It.IsAny<CopilotChatRequest>()))
+                .ReturnsAsync(new CopilotChatResponse
+                {
+                    StatusCode = HttpStatusCode.OK,
+                    ResponseMessage = "OK"
+                });
+
+            var request = new CopilotChatRequestDto
+            {
+                Message = "Include employees",
+                ConversationId = null
+            };
+
+            // Act
+            await _controller.ChatAsync(request);
+
+            // Assert
+            _mockHandler.Verify(x => x.ExecuteAsync(
+                It.Is<CopilotChatRequest>(r => r.ConversationId == null)),
+                Times.Once);
+        }
+
+        [TestMethod]
         public void Constructor_WithNullHandler_ThrowsArgumentNullException()
         {
             Assert.ThrowsException<ArgumentNullException>(

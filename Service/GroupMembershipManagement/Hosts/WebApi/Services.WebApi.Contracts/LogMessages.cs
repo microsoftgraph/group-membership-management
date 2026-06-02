@@ -249,6 +249,10 @@ namespace Hosts.WebApi
             Message = "Failed to get ADF run ID")]
         public static partial void CopilotAdfRunIdFetchFailed(this ILogger logger, Exception exception);
 
+        [LoggerMessage(EventId = 93112, Level = LogLevel.Information,
+            Message = "CopilotChat token usage: InputTokens={InputTokens}, OutputTokens={OutputTokens}, ApiCalls={ApiCalls}, ConversationId={ConversationId}")]
+        public static partial void CopilotChatTokenUsage(this ILogger logger, int inputTokens, int outputTokens, int apiCalls, string conversationId);
+
         // ── OperationsBackgroundService (92000-92099) ──
 
         [LoggerMessage(EventId = 92000, Level = LogLevel.Information,

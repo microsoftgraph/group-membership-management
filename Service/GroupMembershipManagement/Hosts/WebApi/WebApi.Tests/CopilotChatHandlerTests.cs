@@ -39,6 +39,7 @@ namespace WebApi.Tests
                     It.IsAny<string>(),
                     It.IsAny<List<CopilotChatMessage>>(),
                     It.IsAny<CopilotUserContext?>(),
+                    It.IsAny<string?>(),
                     It.IsAny<string?>()))
                 .ReturnsAsync(expectedResult);
 
@@ -78,6 +79,7 @@ namespace WebApi.Tests
                     It.IsAny<string>(),
                     It.IsAny<List<CopilotChatMessage>>(),
                     It.IsAny<CopilotUserContext?>(),
+                    It.IsAny<string?>(),
                     It.IsAny<string?>()))
                 .ReturnsAsync(expectedResult);
 
@@ -122,6 +124,7 @@ namespace WebApi.Tests
                     It.IsAny<string>(),
                     It.IsAny<List<CopilotChatMessage>>(),
                     It.IsAny<CopilotUserContext?>(),
+                    It.IsAny<string?>(),
                     It.IsAny<string?>()))
                 .ReturnsAsync(expectedResult);
 
@@ -152,7 +155,7 @@ namespace WebApi.Tests
             Assert.AreEqual(HttpStatusCode.BadRequest, response.StatusCode);
             Assert.AreEqual("InvalidRequest", response.ErrorCode);
             _mockCopilotService.Verify(
-                x => x.GetChatResponseAsync(It.IsAny<string>(), It.IsAny<List<CopilotChatMessage>>(), It.IsAny<CopilotUserContext?>(), It.IsAny<string?>()),
+                x => x.GetChatResponseAsync(It.IsAny<string>(), It.IsAny<List<CopilotChatMessage>>(), It.IsAny<CopilotUserContext?>(), It.IsAny<string?>(), It.IsAny<string?>()),
                 Times.Never);
         }
 
@@ -179,6 +182,7 @@ namespace WebApi.Tests
                     It.IsAny<string>(),
                     It.IsAny<List<CopilotChatMessage>>(),
                     It.IsAny<CopilotUserContext?>(),
+                    It.IsAny<string?>(),
                     It.IsAny<string?>()))
                 .ThrowsAsync(new TimeoutException("OpenAI API call timed out"));
 
@@ -202,6 +206,7 @@ namespace WebApi.Tests
                     It.IsAny<string>(),
                     It.IsAny<List<CopilotChatMessage>>(),
                     It.IsAny<CopilotUserContext?>(),
+                    It.IsAny<string?>(),
                     It.IsAny<string?>()))
                 .ThrowsAsync(new InvalidOperationException("Exceeded maximum tool calls"));
 
@@ -230,6 +235,7 @@ namespace WebApi.Tests
                     "Company-wide",
                     It.Is<List<CopilotChatMessage>>(h => h.Count == 2),
                     It.IsAny<CopilotUserContext?>(),
+                    It.IsAny<string?>(),
                     It.IsAny<string?>()))
                 .ReturnsAsync(new CopilotChatResult { ResponseMessage = "Done" });
 
@@ -243,6 +249,7 @@ namespace WebApi.Tests
                 x => x.GetChatResponseAsync(
                     "Company-wide",
                     It.Is<List<CopilotChatMessage>>(h => h.Count == 2 && h[0].Role == "user"),
+                    null,
                     null,
                     null),
                 Times.Once);
@@ -263,6 +270,7 @@ namespace WebApi.Tests
                     It.IsAny<string>(),
                     It.IsAny<List<CopilotChatMessage>>(),
                     It.IsAny<CopilotUserContext?>(),
+                    It.IsAny<string?>(),
                     It.IsAny<string?>()))
                 .ReturnsAsync(new CopilotChatResult { ResponseMessage = "Got it" });
 
@@ -277,7 +285,8 @@ namespace WebApi.Tests
                     "Include my team",
                     It.IsAny<List<CopilotChatMessage>>(),
                     It.Is<CopilotUserContext>(uc => uc.ManagerName == "Jane Smith" && uc.ManagerEmail == "jsmith@contoso.com"),
-                    "category_code = 'value1'"),
+                    "category_code = 'value1'",
+                    null),
                 Times.Once);
         }
 
@@ -316,6 +325,7 @@ namespace WebApi.Tests
                     It.IsAny<string>(),
                     It.IsAny<List<CopilotChatMessage>>(),
                     It.IsAny<CopilotUserContext?>(),
+                    It.IsAny<string?>(),
                     It.IsAny<string?>()))
                 .ReturnsAsync(expectedResult);
 

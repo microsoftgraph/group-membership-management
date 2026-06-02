@@ -44,7 +44,8 @@ namespace Services.WebApi
                     request.UserMessage, 
                     request.ConversationHistory, 
                     request.UserContext,
-                    request.CurrentFilter);
+                    request.CurrentFilter,
+                    request.ConversationId);
 
                 response.StatusCode = HttpStatusCode.OK;
                 response.ResponseMessage = result.ResponseMessage;

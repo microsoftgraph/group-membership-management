@@ -10,7 +10,8 @@ namespace Services.WebApi.Contracts
             string userMessage, 
             List<CopilotChatMessage> conversationHistory, 
             CopilotUserContext? userContext = null,
-            string? currentFilter = null);
+            string? currentFilter = null,
+            string? conversationId = null);
     }
 
 

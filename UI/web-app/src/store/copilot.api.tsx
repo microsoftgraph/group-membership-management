@@ -124,6 +124,7 @@ export const sendCopilotMessage = createAsyncThunk<CopilotResponse, SendMessageP
             userContext,
             hrAttributes,
             currentFilter,
+            conversationId: state.copilot.conversationId,
         };
 
         const options = {

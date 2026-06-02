@@ -8,12 +8,13 @@ namespace Services.Messages.Requests
 {
     public class CopilotChatRequest : RequestBase
     {
-        public CopilotChatRequest(string userMessage, List<CopilotChatMessage> conversationHistory, CopilotUserContext? userContext = null, string? currentFilter = null)
+        public CopilotChatRequest(string userMessage, List<CopilotChatMessage> conversationHistory, CopilotUserContext? userContext = null, string? currentFilter = null, string? conversationId = null)
         {
             UserMessage = userMessage;
             ConversationHistory = conversationHistory ?? new List<CopilotChatMessage>();
             UserContext = userContext;
             CurrentFilter = currentFilter;
+            ConversationId = conversationId;
         }
 
         public string UserMessage { get; private set; }
@@ -23,5 +24,7 @@ namespace Services.Messages.Requests
         public CopilotUserContext? UserContext { get; private set; }
 
         public string? CurrentFilter { get; private set; }
+
+        public string? ConversationId { get; private set; }
     }
 }

@@ -188,7 +188,8 @@ namespace Services.WebApi
             string userMessage,
             List<CopilotChatMessage> conversationHistory,
             CopilotUserContext? userContext = null,
-            string? currentFilter = null)
+            string? currentFilter = null,
+            string? conversationId = null)
         {
             // Check kill switch
             var aiSettings = await GetCachedAISettingsAsync();
@@ -276,11 +277,14 @@ namespace Services.WebApi
 
             using var timeoutCts = new CancellationTokenSource(TimeSpan.FromSeconds(180));
 
+            int toolCallCount = 0;
+            int totalInputTokens = 0;
+            int totalOutputTokens = 0;
+
             try
             {
                 // Tool calling loop - keep going until we get a final response
                 const int maxToolCalls = 8; // Allow complex multi-part queries (org leader + groups + attributes)
-                int toolCallCount = 0;
 
                 // Allow up to 'maxToolCalls' tool-call iterations, plus one final LLM call to produce the response
                 while (toolCallCount <= maxToolCalls)
@@ -291,6 +295,8 @@ namespace Services.WebApi
                     });
 
                     var chatCompletion = response.Value;
+                    totalInputTokens += chatCompletion.Usage?.InputTokenCount ?? 0;
+                    totalOutputTokens += chatCompletion.Usage?.OutputTokenCount ?? 0;
 
                     // Check if LLM wants to call a tool
                     if (chatCompletion.FinishReason == ChatFinishReason.ToolCalls)
@@ -362,6 +368,7 @@ namespace Services.WebApi
                         }
 
                         _logger.CopilotChatLoopCompleted(toolCallCount, sourceParts.Count);
+                        _logger.CopilotChatTokenUsage(totalInputTokens, totalOutputTokens, toolCallCount + 1, conversationId ?? "unknown");
 
                         return new CopilotChatResult
                         {
@@ -371,11 +378,13 @@ namespace Services.WebApi
                     }
                 }
 
-                // Too many tool calls - return error
+                // Too many tool calls - log consumed tokens before failing
+                _logger.CopilotChatTokenUsage(totalInputTokens, totalOutputTokens, toolCallCount, conversationId ?? "unknown");
                 throw new InvalidOperationException($"Exceeded maximum tool call iterations ({maxToolCalls})");
             }
             catch (OperationCanceledException)
             {
+                _logger.CopilotChatTokenUsage(totalInputTokens, totalOutputTokens, toolCallCount, conversationId ?? "unknown");
                 throw new TimeoutException("OpenAI API call timed out after 180 seconds");
             }
         }

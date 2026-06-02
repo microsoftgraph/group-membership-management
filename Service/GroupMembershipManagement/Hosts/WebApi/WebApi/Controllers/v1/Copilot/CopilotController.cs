@@ -55,7 +55,10 @@ namespace WebApi.Controllers.v1.Copilot
                 }
                 : null;
 
-            var chatRequest = new CopilotChatRequest(request.Message, conversationHistory, userContext, request.CurrentFilter);
+            var conversationId = Guid.TryParse(request.ConversationId?.Trim(), out var parsedConversationId)
+                ? parsedConversationId.ToString("D")
+                : null;
+            var chatRequest = new CopilotChatRequest(request.Message, conversationHistory, userContext, request.CurrentFilter, conversationId);
             var response = await _copilotChatHandler.ExecuteAsync(chatRequest);
 
             if (response.StatusCode == HttpStatusCode.OK)
@@ -103,6 +106,7 @@ namespace WebApi.Controllers.v1.Copilot
         public List<ChatMessageDto>? ConversationHistory { get; set; }
         public UserContextDto? UserContext { get; set; }
         public string? CurrentFilter { get; set; }
+        public string? ConversationId { get; set; }
     }
 
     public class ChatMessageDto

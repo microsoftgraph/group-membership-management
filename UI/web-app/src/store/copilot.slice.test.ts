@@ -30,6 +30,7 @@ const initialState: CopilotState = {
   isPanelOpen: false,
   lastSourceParts: [],
   useOrgStructure: false,
+  conversationId: 'test-conversation-id',
 };
 
 const mockMessage: IChatMessage = {
@@ -58,7 +59,15 @@ const mockSourcePart: ISourcePart = {
 describe('copilot.slice', () => {
   describe('reducers', () => {
     it('should return the initial state', () => {
-      expect(copilotReducer(undefined, { type: 'unknown' })).toEqual(initialState);
+      const state = copilotReducer(undefined, { type: 'unknown' });
+      expect(state.messages).toEqual([]);
+      expect(state.isLoading).toBe(false);
+      expect(state.error).toBeNull();
+      expect(state.isPanelOpen).toBe(false);
+      expect(state.lastSourceParts).toEqual([]);
+      expect(state.useOrgStructure).toBe(false);
+      expect(state.conversationId).toBeDefined();
+      expect(state.conversationId.length).toBeGreaterThan(0);
     });
 
     it('addMessage should add a message and clear error', () => {
