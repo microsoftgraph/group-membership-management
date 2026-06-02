@@ -85,7 +85,7 @@ namespace WebApi.Controllers.v1.Destination
             }
             catch (ArgumentException ex)
             {
-                _logger.LogError(ex, "Unhandled exception in {Action}", nameof(GetGroupOwnersAsync));
+                _logger.LogWarning(ex, "Invalid group ID provided to {Action}", nameof(GetGroupOwnersAsync));
                 return BadRequest("Invalid group ID.");
             }
             catch (UnauthorizedAccessException)
@@ -94,6 +94,7 @@ namespace WebApi.Controllers.v1.Destination
             }
             catch (Exception ex)
             {
+                _logger.LogError(ex, "Unhandled exception in {Action}", nameof(GetGroupOwnersAsync));
                 return Problem(statusCode: (int)System.Net.HttpStatusCode.InternalServerError,
                                detail: "An error occurred while retrieving group owners");
             }
@@ -207,15 +208,16 @@ namespace WebApi.Controllers.v1.Destination
             }
             catch (ArgumentException ex)
             {
-                _logger.LogError(ex, "Unhandled exception in {Action}", nameof(GetGroupMembersAsync));
+                _logger.LogWarning(ex, "Invalid group ID provided to {Action}", nameof(GetGroupMembersAsync));
                 return BadRequest("Invalid group ID.");
             }
             catch (UnauthorizedAccessException)
             {
                 return Forbid();
             }
-            catch (Exception)
+            catch (Exception ex)
             {
+                _logger.LogError(ex, "Unhandled exception in {Action}", nameof(GetGroupMembersAsync));
                 return Problem(statusCode: (int)System.Net.HttpStatusCode.InternalServerError, detail: "An error occurred while retrieving group-type members");
             }
         }

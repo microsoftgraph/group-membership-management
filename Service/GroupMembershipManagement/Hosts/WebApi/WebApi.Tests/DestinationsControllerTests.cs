@@ -762,7 +762,7 @@ namespace Services.Tests
         }
 
         [TestMethod]
-        public async Task GetGroupOwnersAsync_SanitizesUnexpectedException()
+        public async Task GetGroupOwnersAsync_SanitizesArgumentException_LogsAsWarning()
         {
             var thrown = new ArgumentException("sensitive parser detail must not leak (GetGroupOwners)");
             var handler = new Mock<IRequestHandler<GetGroupOwnersRequest, GetGroupOwnersResponse>>();
@@ -777,6 +777,46 @@ namespace Services.Tests
             Assert.IsNotNull(result);
             Assert.AreEqual(400, result.StatusCode);
             AssertNoExceptionLeak.Assert(result.Value as string ?? string.Empty, thrown);
+            VerifyLoggedOnce(loggerMock, thrown, LogLevel.Warning);
+        }
+
+        [TestMethod]
+        public async Task GetGroupOwnersAsync_SanitizesGenericUnexpectedException()
+        {
+            // Covers the generic Exception catch (DestinationController L95-100) that returns
+            // a sanitized ProblemDetails 500 and now logs the full exception via LogError.
+            var thrown = new InvalidOperationException("sensitive internal detail must not leak (GetGroupOwners-Generic)");
+            var handler = new Mock<IRequestHandler<GetGroupOwnersRequest, GetGroupOwnersResponse>>();
+            handler.Setup(h => h.ExecuteAsync(It.IsAny<GetGroupOwnersRequest>())).ThrowsAsync(thrown);
+            var loggerMock = new Mock<ILogger<DestinationController>>();
+
+            // ControllerBase.Problem(...) resolves ProblemDetailsFactory from HttpContext.RequestServices.
+            var mockProblemDetailsFactory = new Mock<ProblemDetailsFactory>();
+            mockProblemDetailsFactory.Setup(x => x.CreateProblemDetails(
+                It.IsAny<HttpContext>(),
+                It.IsAny<int?>(),
+                It.IsAny<string>(),
+                It.IsAny<string>(),
+                It.IsAny<string>(),
+                It.IsAny<string>()))
+                .Returns<HttpContext, int?, string, string, string, string>((_, status, _, _, detail, _) =>
+                    new ProblemDetails { Status = status, Detail = detail });
+
+            var mockServiceProvider = new Mock<IServiceProvider>();
+            mockServiceProvider.Setup(x => x.GetService(typeof(ProblemDetailsFactory)))
+                               .Returns(mockProblemDetailsFactory.Object);
+            var httpContext = new DefaultHttpContext { RequestServices = mockServiceProvider.Object };
+
+            var controller = BuildControllerWithLogger(loggerMock, getGroupOwnersOverride: handler.Object, httpContext: httpContext);
+
+            var response = await controller.GetGroupOwnersAsync(Guid.NewGuid());
+
+            var result = response.Result as ObjectResult;
+            Assert.IsNotNull(result);
+            Assert.AreEqual(500, result.StatusCode);
+            var problem = result.Value as ProblemDetails;
+            Assert.IsNotNull(problem);
+            AssertNoExceptionLeak.Assert(problem.Detail ?? string.Empty, thrown);
             VerifyLoggedOnce(loggerMock, thrown);
         }
 
@@ -845,7 +885,7 @@ namespace Services.Tests
         }
 
         [TestMethod]
-        public async Task GetGroupMembersAsync_SanitizesUnexpectedException()
+        public async Task GetGroupMembersAsync_SanitizesArgumentException_LogsAsWarning()
         {
             // GetGroupMembersAsync resolves its handler at runtime via
             // HttpContext.RequestServices.GetRequiredService<>(), so we mock the
@@ -867,6 +907,50 @@ namespace Services.Tests
             Assert.IsNotNull(result);
             Assert.AreEqual(400, result.StatusCode);
             AssertNoExceptionLeak.Assert(result.Value as string ?? string.Empty, thrown);
+            VerifyLoggedOnce(loggerMock, thrown, LogLevel.Warning);
+        }
+
+        [TestMethod]
+        public async Task GetGroupMembersAsync_SanitizesGenericUnexpectedException()
+        {
+            // Arrange: throw a generic Exception so the L218 catch (Exception ex) path fires
+            // (the ArgumentException variant is covered by GetGroupMembersAsync_SanitizesUnexpectedException).
+            var thrown = new InvalidOperationException("sensitive internal detail must not leak (GetGroupMembers-Generic)");
+            var mockHandler = new Mock<IRequestHandler<GetGroupMembersRequest, GetGroupMembersResponse>>();
+            mockHandler.Setup(x => x.ExecuteAsync(It.IsAny<GetGroupMembersRequest>())).ThrowsAsync(thrown);
+
+            // ControllerBase.Problem(...) resolves ProblemDetailsFactory from HttpContext.RequestServices.
+            var mockProblemDetailsFactory = new Mock<ProblemDetailsFactory>();
+            mockProblemDetailsFactory.Setup(x => x.CreateProblemDetails(
+                It.IsAny<HttpContext>(),
+                It.IsAny<int?>(),
+                It.IsAny<string>(),
+                It.IsAny<string>(),
+                It.IsAny<string>(),
+                It.IsAny<string>()))
+                .Returns<HttpContext, int?, string, string, string, string>((_, status, _, _, detail, _) =>
+                    new ProblemDetails { Status = status, Detail = detail });
+
+            var mockServiceProvider = new Mock<IServiceProvider>();
+            mockServiceProvider.Setup(x => x.GetService(typeof(IRequestHandler<GetGroupMembersRequest, GetGroupMembersResponse>)))
+                               .Returns(mockHandler.Object);
+            mockServiceProvider.Setup(x => x.GetService(typeof(ProblemDetailsFactory)))
+                               .Returns(mockProblemDetailsFactory.Object);
+            var httpContext = new DefaultHttpContext { RequestServices = mockServiceProvider.Object };
+            var loggerMock = new Mock<ILogger<DestinationController>>();
+
+            var controller = BuildControllerWithLogger(loggerMock, httpContext: httpContext);
+
+            // Act
+            var response = await controller.GetGroupMembersAsync(Guid.NewGuid());
+
+            // Assert
+            var result = response.Result as ObjectResult;
+            Assert.IsNotNull(result);
+            Assert.AreEqual(500, result.StatusCode);
+            var problem = result.Value as ProblemDetails;
+            Assert.IsNotNull(problem);
+            AssertNoExceptionLeak.Assert(problem.Detail ?? string.Empty, thrown);
             VerifyLoggedOnce(loggerMock, thrown);
         }
 
@@ -903,17 +987,17 @@ namespace Services.Tests
             return controller;
         }
 
-        private static void VerifyLoggedOnce(Mock<ILogger<DestinationController>> loggerMock, Exception thrown)
+        private static void VerifyLoggedOnce(Mock<ILogger<DestinationController>> loggerMock, Exception thrown, LogLevel level = LogLevel.Error)
         {
             loggerMock.Verify(
                 l => l.Log(
-                    LogLevel.Error,
+                    level,
                     It.IsAny<EventId>(),
                     It.IsAny<It.IsAnyType>(),
                     thrown,
                     It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
                 Times.Once,
-                "The full exception must be logged on the server side.");
+                $"The full exception must be logged on the server side at {level}.");
         }
 
         private ControllerContext CreateControllerContext(HttpContext httpContext)

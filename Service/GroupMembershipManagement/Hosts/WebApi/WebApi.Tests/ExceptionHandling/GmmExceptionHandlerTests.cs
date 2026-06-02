@@ -3,6 +3,7 @@
 
 using System.Diagnostics;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Http.Features;
 using Microsoft.Extensions.Logging;
 using Moq;
 using WebApi.ExceptionHandling;
@@ -135,6 +136,85 @@ namespace WebApi.Tests.ExceptionHandling
                 "GmmExceptionHandler must prefer Activity.Current.Id over HttpContext.TraceIdentifier when both are present.");
             Assert.AreNotEqual(_context.TraceIdentifier, emittedTraceId,
                 "Sanity check: the emitted traceId came from Activity, not the HttpContext fallback.");
+        }
+
+        [TestMethod]
+        public async Task TryHandleAsync_WritesSanitizedFallbackBody_WhenProblemDetailsServiceReturnsFalse()
+        {
+            // Arrange: simulate no IProblemDetailsWriter being able to handle the response
+            // (e.g. content-negotiation produced no match for the client's Accept header).
+            _problemDetailsService
+                .Setup(p => p.TryWriteAsync(It.IsAny<ProblemDetailsContext>()))
+                .ReturnsAsync(false);
+
+            using var responseBody = new MemoryStream();
+            _context.Response.Body = responseBody;
+
+            var ex = new Exception("sensitive internal detail that must not leak");
+
+            // Act
+            var handled = await _handler.TryHandleAsync(_context, ex, CancellationToken.None);
+
+            // Assert
+            Assert.IsTrue(handled, "TryHandleAsync must still return true so the framework does not re-throw.");
+            Assert.AreEqual(StatusCodes.Status500InternalServerError, _context.Response.StatusCode);
+            Assert.AreEqual("application/problem+json", _context.Response.ContentType);
+
+            responseBody.Position = 0;
+            var body = new StreamReader(responseBody).ReadToEnd();
+            Assert.IsFalse(string.IsNullOrEmpty(body), "Fallback body must not be empty.");
+            Assert.IsTrue(body.Contains("\"detail\":\"An unexpected error occurred.\"", StringComparison.Ordinal),
+                "Fallback body must contain the canonical sanitized detail.");
+            Assert.IsTrue(body.Contains("\"traceId\":", StringComparison.Ordinal),
+                "Fallback body must contain the traceId extension.");
+            Assert.IsFalse(body.Contains("sensitive", StringComparison.Ordinal),
+                "Fallback body must not contain any substring of the original exception message.");
+        }
+
+        [TestMethod]
+        public async Task TryHandleAsync_DoesNotWriteFallback_WhenResponseHasAlreadyStarted()
+        {
+            // Arrange: simulate the response having already started (e.g. another middleware
+            // partially wrote the response before throwing). Writing again would throw at
+            // runtime; we assert here that no bytes are written to the response body when
+            // HasStarted is true, even if TryWriteAsync also reports false.
+            _problemDetailsService
+                .Setup(p => p.TryWriteAsync(It.IsAny<ProblemDetailsContext>()))
+                .ReturnsAsync(false);
+
+            // Make HttpResponse.HasStarted observe 'true' via a fake IHttpResponseFeature.
+            var responseFeature = new FakeStartedResponseFeature();
+            _context.Features.Set<IHttpResponseFeature>(responseFeature);
+
+            // Capture any bytes that would be written so we can assert the guard short-circuits.
+            using var responseBody = new MemoryStream();
+            _context.Response.Body = responseBody;
+            var initialContentType = _context.Response.ContentType;
+
+            var ex = new Exception("boom");
+
+            // Act
+            var handled = await _handler.TryHandleAsync(_context, ex, CancellationToken.None);
+
+            // Assert: handler still claims responsibility but does NOT touch the body or
+            // content-type because the response has already started. Removing the
+            // !HasStarted guard from GmmExceptionHandler would make this test fail.
+            Assert.IsTrue(handled, "TryHandleAsync must still return true so the framework does not re-throw.");
+            Assert.AreEqual(0, responseBody.Length,
+                "No fallback bytes must be written to the response body once HasStarted is true.");
+            Assert.AreEqual(initialContentType, _context.Response.ContentType,
+                "Response.ContentType must not be mutated once HasStarted is true.");
+        }
+
+        private sealed class FakeStartedResponseFeature : IHttpResponseFeature
+        {
+            public int StatusCode { get; set; } = StatusCodes.Status500InternalServerError;
+            public string? ReasonPhrase { get; set; }
+            public IHeaderDictionary Headers { get; set; } = new HeaderDictionary();
+            public Stream Body { get; set; } = Stream.Null;
+            public bool HasStarted => true;
+            public void OnStarting(Func<object, Task> callback, object state) { }
+            public void OnCompleted(Func<object, Task> callback, object state) { }
         }
     }
 }

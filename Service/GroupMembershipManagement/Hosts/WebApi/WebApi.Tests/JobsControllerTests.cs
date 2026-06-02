@@ -834,19 +834,50 @@ namespace Services.Tests
         }
 
         [TestMethod]
-        public async Task BulkApproveExceptionTestAsync()
+        public async Task BulkApproveJobsAsync_SanitizesUnexpectedException()
         {
-            _databaseSyncJobsRepository.Setup(x => x.BulkApproveSyncJobsAsync(It.IsAny<List<string>>(), It.IsAny<int?>()))
-                                        .ThrowsAsync(new Exception());
+            // Arrange: throw from the underlying repository to escape into the controller's
+            // top-level catch (Exception ex). The handler now logs the full exception via
+            // LogError and returns a sanitized ProblemDetails 500 (previously: empty 500).
+            var thrown = new InvalidOperationException("sensitive internal detail must not leak (BulkApprove)");
+            _databaseSyncJobsRepository
+                .Setup(x => x.BulkApproveSyncJobsAsync(It.IsAny<List<string>>(), It.IsAny<int?>()))
+                .ThrowsAsync(thrown);
 
-            var response = await _jobsController.BulkApproveJobsAsync(_syncJobIds.ToArray());
+            var loggerMock = new Mock<ILogger<JobsController>>();
 
-            Assert.IsInstanceOfType(response, typeof(ActionResult<int>));
+            // Reuse the controller's wired-up _patchJobsHandler (constructed in test setup) so
+            // the repo exception propagates through PatchJobsHandler into the controller catch.
+            var controller = new JobsController(
+                _getJobsHandler,
+                _patchJobsHandler,
+                _postJobHandler,
+                _getJobDetailsHandler,
+                _postResetRequestHandler,
+                loggerMock.Object);
+            controller.ControllerContext = new ControllerContext { HttpContext = _context };
 
-            var statusCodeResult = response.Result as StatusCodeResult;
+            // Act
+            var response = await controller.BulkApproveJobsAsync(_syncJobIds.ToArray());
 
-            Assert.IsNotNull(statusCodeResult);
-            Assert.AreEqual((int)HttpStatusCode.InternalServerError, statusCodeResult.StatusCode);
+            // Assert
+            var result = response.Result as ObjectResult;
+            Assert.IsNotNull(result, "BulkApproveJobsAsync must now return an ObjectResult (Problem), not an empty StatusCodeResult.");
+            Assert.AreEqual((int)HttpStatusCode.InternalServerError, result.StatusCode);
+
+            var problem = result.Value as ProblemDetails;
+            Assert.IsNotNull(problem, "Response body must be a ProblemDetails.");
+            AssertNoExceptionLeak.Assert(problem.Detail ?? string.Empty, thrown);
+
+            loggerMock.Verify(
+                l => l.Log(
+                    LogLevel.Error,
+                    It.IsAny<EventId>(),
+                    It.IsAny<It.IsAnyType>(),
+                    thrown,
+                    It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
+                Times.Once,
+                "The full exception must be logged on the server side.");
         }
 
         [TestMethod]

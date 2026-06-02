@@ -104,9 +104,10 @@ namespace WebApi.Controllers.v1.Jobs
 
                 return Ok(response);
             }
-            catch (Exception)
+            catch (Exception ex)
             {
-                return StatusCode(500);
+                _logger.LogError(ex, "Unhandled exception in {Action}", nameof(BulkApproveJobsAsync));
+                return Problem(statusCode: (int)System.Net.HttpStatusCode.InternalServerError, detail: "An unexpected error occurred.");
             }
         }
 

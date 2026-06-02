@@ -53,12 +53,22 @@ namespace WebApi.ExceptionHandling
             };
             problemDetails.Extensions["traceId"] = traceId;
 
-            await _problemDetailsService.TryWriteAsync(new ProblemDetailsContext
+            var written = await _problemDetailsService.TryWriteAsync(new ProblemDetailsContext
             {
                 HttpContext = httpContext,
                 ProblemDetails = problemDetails,
                 Exception = exception,
             });
+
+            // Defensive fallback: if no IProblemDetailsWriter handled the request,
+            // write a sanitized JSON body ourselves so the client never receives an empty 500.
+            // Returning false here would re-throw and could expose unsanitized details.
+            if (!written && !httpContext.Response.HasStarted)
+            {
+                httpContext.Response.ContentType = "application/problem+json";
+                var json = System.Text.Json.JsonSerializer.Serialize(problemDetails);
+                await httpContext.Response.WriteAsync(json, cancellationToken);
+            }
 
             return true;
         }
