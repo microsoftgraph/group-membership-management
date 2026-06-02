@@ -2,6 +2,7 @@
 // Licensed under the MIT license.
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Logging;
 using Services.Contracts;
 using Services.Messages.Requests;
 using Services.Messages.Responses;
@@ -17,13 +18,16 @@ namespace WebApi.Controllers.v1.Operations
     {
         private readonly IRequestHandler<PostOperationRequest, PostOperationResponse> _postResetRequestHandler;
         private readonly IRequestHandler<GetServiceStatusRequest, GetServiceStatusResponse> _getServiceStatusRequestHandler;
+        private readonly ILogger<OperationsController> _logger;
 
 
         public OperationsController(IRequestHandler<PostOperationRequest, PostOperationResponse> postResetRequestHandler,
-                                    IRequestHandler<GetServiceStatusRequest, GetServiceStatusResponse> getServiceStatusRequestHandler)
+                                    IRequestHandler<GetServiceStatusRequest, GetServiceStatusResponse> getServiceStatusRequestHandler,
+                                    ILogger<OperationsController> logger)
         {
             _postResetRequestHandler = postResetRequestHandler ?? throw new ArgumentNullException(nameof(postResetRequestHandler));
             _getServiceStatusRequestHandler = getServiceStatusRequestHandler ?? throw new ArgumentNullException(nameof(getServiceStatusRequestHandler));
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
 
         [Authorize(Roles = Models.Roles.RESET_ADMINISTRATOR)]
@@ -43,7 +47,8 @@ namespace WebApi.Controllers.v1.Operations
             }
             catch (Exception ex)
             {
-                return Problem(statusCode: (int)System.Net.HttpStatusCode.InternalServerError, detail: $"An error occurred: ${ex}");
+                _logger.LogError(ex, "Unhandled exception in {Action}", nameof(ProcessOperationAsync));
+                return Problem(statusCode: (int)System.Net.HttpStatusCode.InternalServerError, detail: "An unexpected error occurred.");
             }
         }
 
@@ -62,7 +67,8 @@ namespace WebApi.Controllers.v1.Operations
             }
             catch (Exception ex)
             {
-                return Problem(statusCode: (int)System.Net.HttpStatusCode.InternalServerError, detail: $"An error occurred: ${ex}");
+                _logger.LogError(ex, "Unhandled exception in {Action}", nameof(GetCurrentStatusAsync));
+                return Problem(statusCode: (int)System.Net.HttpStatusCode.InternalServerError, detail: "An unexpected error occurred.");
             }
         }
     }
