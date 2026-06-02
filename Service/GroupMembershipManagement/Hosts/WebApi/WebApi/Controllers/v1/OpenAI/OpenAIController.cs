@@ -131,18 +131,18 @@ namespace WebApi.Controllers.v1.OpenAI
                 catch (JsonException ex)
                 {
                     _logger.OpenAIResponseJsonParseFailed(result, ex);
-                    return StatusCode(500, new { error = "Failed to parse OpenAI response as valid JSON.", details = ex.Message });
+                    return StatusCode(500, new { error = "Failed to parse OpenAI response as valid JSON." });
                 }
             }
             catch (ArgumentException ex)
             {
                 _logger.GenerateTitlesArgumentException(ex);
-                return BadRequest(new { error = "Invalid request parameters.", details = ex.Message });
+                return BadRequest(new { error = "Invalid request parameters." });
             }
             catch (InvalidOperationException ex)
             {
                 _logger.GenerateTitlesInvalidOperation(ex);
-                return StatusCode(500, new { error = "OpenAI service is not properly configured.", details = ex.Message });
+                return StatusCode(500, new { error = "OpenAI service is not properly configured." });
             }
             catch (Azure.RequestFailedException ex) when (ex.Status == 429)
             {
@@ -156,7 +156,7 @@ namespace WebApi.Controllers.v1.OpenAI
             catch (Azure.RequestFailedException ex)
             {
                 _logger.OpenAIRequestFailed(ex.Status, ex);
-                return StatusCode(500, new { error = "OpenAI service request failed.", details = ex.Message });
+                return StatusCode(500, new { error = "OpenAI service request failed." });
             }
             catch (Exception ex)
             {

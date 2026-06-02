@@ -2,6 +2,7 @@
 // Licensed under the MIT license.
 
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
 using WebApi.Controllers.v1.OpenAI;
@@ -11,6 +12,7 @@ using Models;
 using Microsoft.AspNetCore.Mvc;
 using Azure;
 using Services.WebApi.Contracts;
+using WebApi.Tests.ExceptionHandling;
 
 namespace WebApi.Tests
 {
@@ -1014,6 +1016,158 @@ namespace WebApi.Tests
             var inputJson = JsonSerializer.Serialize(parts);
             Assert.IsTrue(capturedPrompt.Contains(inputJson), "Prompt should contain the serialized parts JSON");
             Assert.IsTrue(capturedPrompt.Contains("Generate short, clear titles"));
+        }
+
+        // ── Error-body sanitization tests ────────────────────────────────────────────
+        // Each anonymous-body catch site in GenerateTitles must:
+        //   1. Drop the `details = ex.Message` property entirely (no exception text in body)
+        //   2. Preserve the generic `error` string unchanged
+        //   3. Keep its existing HTTP status code
+        //   4. Still log the exception via the existing partial-class LoggerMessage method,
+        //      verified through the underlying `ILogger.Log<TState>(...)` call.
+
+        private const string OpenAiTitlesJsonParseErrorMessage = "Failed to parse OpenAI response as valid JSON.";
+        private const string OpenAiTitlesArgumentErrorMessage = "Invalid request parameters.";
+        private const string OpenAiTitlesInvalidOperationErrorMessage = "OpenAI service is not properly configured.";
+        private const string OpenAiTitlesRequestFailedErrorMessage = "OpenAI service request failed.";
+
+        private static OpenAIController BuildControllerWithLogger(
+            Mock<IOpenAIService> serviceMock,
+            Mock<ILogger<OpenAIController>> loggerMock)
+        {
+            loggerMock.Setup(l => l.IsEnabled(It.IsAny<LogLevel>())).Returns(true);
+            return new OpenAIController(serviceMock.Object, loggerMock.Object);
+        }
+
+        private static void VerifyLoggedOnce(
+            Mock<ILogger<OpenAIController>> loggerMock,
+            LogLevel expectedLevel,
+            int expectedEventId,
+            Exception expectedException)
+        {
+            loggerMock.Verify(
+                l => l.Log(
+                    expectedLevel,
+                    It.Is<EventId>(e => e.Id == expectedEventId),
+                    It.IsAny<It.IsAnyType>(),
+                    expectedException,
+                    It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
+                Times.Once,
+                $"Expected exactly one Log call with EventId {expectedEventId} carrying the thrown exception.");
+        }
+
+        [TestMethod]
+        public async Task GenerateTitles_JsonException_SanitizesResponseBody()
+        {
+            // Mock service returns malformed JSON so JsonSerializer.Deserialize<List<Part>> throws.
+            var parts = new List<Part> { new Part(Guid.NewGuid(), "column_name = 'value'") };
+            var loggerMock = new Mock<ILogger<OpenAIController>>();
+            var serviceMock = new Mock<IOpenAIService>();
+            const string malformedJson = "{this-is-not-valid-json:::";
+            serviceMock.Setup(x => x.GetTitleAsync(It.IsAny<string>())).ReturnsAsync(malformedJson);
+            var controller = BuildControllerWithLogger(serviceMock, loggerMock);
+
+            var result = await controller.GenerateTitles(parts);
+
+            var objectResult = result.Result as ObjectResult;
+            Assert.IsNotNull(objectResult, "Expected ObjectResult for JsonException site.");
+            Assert.AreEqual(500, objectResult!.StatusCode);
+
+            var bodyJson = JsonSerializer.Serialize(objectResult.Value);
+            StringAssert.Contains(bodyJson, OpenAiTitlesJsonParseErrorMessage,
+                "Generic `error` constant must be preserved unchanged.");
+            Assert.IsFalse(bodyJson.Contains("\"details\"", StringComparison.OrdinalIgnoreCase),
+                $"Response body must not contain a `details` property. Body was: {bodyJson}");
+            Assert.IsFalse(bodyJson.Contains(malformedJson),
+                $"Response body must not echo the upstream payload that caused the JsonException. Body was: {bodyJson}");
+
+            loggerMock.Verify(
+                l => l.Log(
+                    LogLevel.Error,
+                    It.Is<EventId>(e => e.Id == 91111),
+                    It.IsAny<It.IsAnyType>(),
+                    It.IsAny<JsonException>(),
+                    It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
+                Times.Once,
+                "Expected exactly one Error log at EventId 91111 carrying the JsonException.");
+        }
+
+        [TestMethod]
+        public async Task GenerateTitles_ArgumentException_SanitizesResponseBody()
+        {
+            var parts = new List<Part> { new Part(Guid.NewGuid(), "column_name = 'value'") };
+            var loggerMock = new Mock<ILogger<OpenAIController>>();
+            var serviceMock = new Mock<IOpenAIService>();
+            var thrown = new ArgumentException("test exception message");
+            serviceMock.Setup(x => x.GetTitleAsync(It.IsAny<string>())).ThrowsAsync(thrown);
+            var controller = BuildControllerWithLogger(serviceMock, loggerMock);
+
+            var result = await controller.GenerateTitles(parts);
+
+            var badRequest = result.Result as BadRequestObjectResult;
+            Assert.IsNotNull(badRequest, "Expected BadRequestObjectResult for ArgumentException site.");
+            Assert.AreEqual(400, badRequest!.StatusCode);
+
+            var bodyJson = JsonSerializer.Serialize(badRequest.Value);
+            StringAssert.Contains(bodyJson, OpenAiTitlesArgumentErrorMessage,
+                "Generic `error` constant must be preserved unchanged.");
+            Assert.IsFalse(bodyJson.Contains("\"details\"", StringComparison.OrdinalIgnoreCase),
+                $"Response body must not contain a `details` property. Body was: {bodyJson}");
+            AssertNoExceptionLeak.Assert(bodyJson, thrown);
+
+            VerifyLoggedOnce(loggerMock, LogLevel.Warning, 91112, thrown);
+        }
+
+        [TestMethod]
+        public async Task GenerateTitles_InvalidOperationException_SanitizesResponseBody()
+        {
+            var parts = new List<Part> { new Part(Guid.NewGuid(), "column_name = 'value'") };
+            var loggerMock = new Mock<ILogger<OpenAIController>>();
+            var serviceMock = new Mock<IOpenAIService>();
+            var thrown = new InvalidOperationException("test exception message");
+            serviceMock.Setup(x => x.GetTitleAsync(It.IsAny<string>())).ThrowsAsync(thrown);
+            var controller = BuildControllerWithLogger(serviceMock, loggerMock);
+
+            var result = await controller.GenerateTitles(parts);
+
+            var objectResult = result.Result as ObjectResult;
+            Assert.IsNotNull(objectResult, "Expected ObjectResult for InvalidOperationException site.");
+            Assert.AreEqual(500, objectResult!.StatusCode);
+
+            var bodyJson = JsonSerializer.Serialize(objectResult.Value);
+            StringAssert.Contains(bodyJson, OpenAiTitlesInvalidOperationErrorMessage,
+                "Generic `error` constant must be preserved unchanged.");
+            Assert.IsFalse(bodyJson.Contains("\"details\"", StringComparison.OrdinalIgnoreCase),
+                $"Response body must not contain a `details` property. Body was: {bodyJson}");
+            AssertNoExceptionLeak.Assert(bodyJson, thrown);
+
+            VerifyLoggedOnce(loggerMock, LogLevel.Error, 91113, thrown);
+        }
+
+        [TestMethod]
+        public async Task GenerateTitles_RequestFailedExceptionNon429_SanitizesResponseBody()
+        {
+            var parts = new List<Part> { new Part(Guid.NewGuid(), "column_name = 'value'") };
+            var loggerMock = new Mock<ILogger<OpenAIController>>();
+            var serviceMock = new Mock<IOpenAIService>();
+            var thrown = new RequestFailedException(500, "test exception message", "InternalError", null);
+            serviceMock.Setup(x => x.GetTitleAsync(It.IsAny<string>())).ThrowsAsync(thrown);
+            var controller = BuildControllerWithLogger(serviceMock, loggerMock);
+
+            var result = await controller.GenerateTitles(parts);
+
+            var objectResult = result.Result as ObjectResult;
+            Assert.IsNotNull(objectResult, "Expected ObjectResult for non-429 RequestFailedException site.");
+            Assert.AreEqual(500, objectResult!.StatusCode);
+
+            var bodyJson = JsonSerializer.Serialize(objectResult.Value);
+            StringAssert.Contains(bodyJson, OpenAiTitlesRequestFailedErrorMessage,
+                "Generic `error` constant must be preserved unchanged.");
+            Assert.IsFalse(bodyJson.Contains("\"details\"", StringComparison.OrdinalIgnoreCase),
+                $"Response body must not contain a `details` property. Body was: {bodyJson}");
+            AssertNoExceptionLeak.Assert(bodyJson, thrown);
+
+            VerifyLoggedOnce(loggerMock, LogLevel.Error, 91115, thrown);
         }
     }
 }
