@@ -2,6 +2,7 @@
 // Licensed under the MIT license.
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Logging;
 using Services.Contracts;
 using Services.Messages.Requests;
 using Services.Messages.Responses;
@@ -23,6 +24,8 @@ namespace WebApi.Controllers.v1.Destination
         private readonly IRequestHandler<GetGroupOnboardingStatusRequest, GetOnboardingStatusResponse> _getGroupOnboardingStatusHandler;
         private readonly IRequestHandler<GetChannelOnboardingStatusRequest, GetOnboardingStatusResponse> _getChannelOnboardingStatusHandler;
         private readonly IRequestHandler<PostGroupRequest, PostGroupResponse> _postGroupHandler;
+        private readonly ILogger<DestinationController> _logger;
+
         public DestinationController
             (IRequestHandler<SearchGroupsRequest, SearchGroupsResponse> searchGroupsRequestHandler,
             IRequestHandler<SearchChannelsRequest, SearchChannelsResponse> searchChannelsRequestHandler,
@@ -30,7 +33,8 @@ namespace WebApi.Controllers.v1.Destination
             IRequestHandler<GetGroupOwnersRequest, GetGroupOwnersResponse> getGroupOwnersRequestHandler,
             IRequestHandler<GetGroupOnboardingStatusRequest, GetOnboardingStatusResponse> getGroupOnboardingStatusHandler,
             IRequestHandler<GetChannelOnboardingStatusRequest, GetOnboardingStatusResponse> getChannelOnboardingStatusHandler,
-            IRequestHandler<PostGroupRequest, PostGroupResponse> postGroupHandler)
+            IRequestHandler<PostGroupRequest, PostGroupResponse> postGroupHandler,
+            ILogger<DestinationController> logger)
         {
             _searchGroupsRequestHandler = searchGroupsRequestHandler ?? throw new ArgumentNullException(nameof(searchGroupsRequestHandler));
             _searchChannelsRequestHandler = searchChannelsRequestHandler ?? throw new ArgumentNullException(nameof(searchChannelsRequestHandler));
@@ -39,6 +43,7 @@ namespace WebApi.Controllers.v1.Destination
             _getGroupOnboardingStatusHandler = getGroupOnboardingStatusHandler ?? throw new ArgumentNullException(nameof(getGroupOnboardingStatusHandler));
             _getChannelOnboardingStatusHandler = getChannelOnboardingStatusHandler ?? throw new ArgumentNullException(nameof(getChannelOnboardingStatusHandler));
             _postGroupHandler = postGroupHandler ?? throw new ArgumentNullException(nameof(postGroupHandler));
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
 
         [Authorize()]
@@ -80,7 +85,8 @@ namespace WebApi.Controllers.v1.Destination
             }
             catch (ArgumentException ex)
             {
-                return BadRequest($"Invalid group ID: {ex.Message}");
+                _logger.LogError(ex, "Unhandled exception in {Action}", nameof(GetGroupOwnersAsync));
+                return BadRequest("Invalid group ID.");
             }
             catch (UnauthorizedAccessException)
             {
@@ -88,7 +94,7 @@ namespace WebApi.Controllers.v1.Destination
             }
             catch (Exception ex)
             {
-                return Problem(statusCode: (int)System.Net.HttpStatusCode.InternalServerError, 
+                return Problem(statusCode: (int)System.Net.HttpStatusCode.InternalServerError,
                                detail: "An error occurred while retrieving group owners");
             }
         }
@@ -115,7 +121,8 @@ namespace WebApi.Controllers.v1.Destination
             }
             catch (Exception ex)
             {
-                return Problem(statusCode: (int)System.Net.HttpStatusCode.InternalServerError, detail: $"An error occurred: ${ex}");
+                _logger.LogError(ex, "Unhandled exception in {Action}", nameof(GetGroupOnboardingStatusAsync));
+                return Problem(statusCode: (int)System.Net.HttpStatusCode.InternalServerError, detail: "An unexpected error occurred.");
             }
         }
 
@@ -141,7 +148,8 @@ namespace WebApi.Controllers.v1.Destination
             }
             catch (Exception ex)
             {
-                return Problem(statusCode: (int)System.Net.HttpStatusCode.InternalServerError, detail: $"An error occurred: ${ex}");
+                _logger.LogError(ex, "Unhandled exception in {Action}", nameof(GetChannelOnboardingStatusAsync));
+                return Problem(statusCode: (int)System.Net.HttpStatusCode.InternalServerError, detail: "An unexpected error occurred.");
             }
         }
 
@@ -161,7 +169,7 @@ namespace WebApi.Controllers.v1.Destination
                 }
 
                 var response = await _postGroupHandler.ExecuteAsync(new PostGroupRequest (new Guid(userId), newGroupDTO.GroupName, newGroupDTO.GroupAlias));
-                
+
                 if (response.StatusCode == HttpStatusCode.OK)
                 {
                     return Ok(response);
@@ -182,7 +190,8 @@ namespace WebApi.Controllers.v1.Destination
             }
             catch (Exception ex)
             {
-                return Problem(statusCode: (int)System.Net.HttpStatusCode.InternalServerError, detail: $"An error occurred: {ex.Message}");
+                _logger.LogError(ex, "Unhandled exception in {Action}", nameof(CreateGroupAsync));
+                return Problem(statusCode: (int)System.Net.HttpStatusCode.InternalServerError, detail: "An unexpected error occurred.");
             }
         }
 
@@ -198,7 +207,8 @@ namespace WebApi.Controllers.v1.Destination
             }
             catch (ArgumentException ex)
             {
-                return BadRequest(ex.Message);
+                _logger.LogError(ex, "Unhandled exception in {Action}", nameof(GetGroupMembersAsync));
+                return BadRequest("Invalid group ID.");
             }
             catch (UnauthorizedAccessException)
             {

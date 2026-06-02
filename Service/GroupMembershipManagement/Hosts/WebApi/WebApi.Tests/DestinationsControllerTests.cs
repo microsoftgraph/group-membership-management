@@ -19,7 +19,10 @@ using Services.Messages.Responses;
 using Models.Entities;
 using Services.Messages.Requests;
 using Microsoft.AspNetCore.Mvc.Infrastructure;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
+using Services.Contracts;
+using WebApi.Tests.ExceptionHandling;
 
 namespace Services.Tests
 {
@@ -98,7 +101,7 @@ namespace Services.Tests
                 _getGroupOwnersHandler,
                 _getGroupOnboardingStatusHandler,
                 _getChannelOnboardingStatusHandler,
-                _postGroupHandler)
+                _postGroupHandler, NullLogger<DestinationController>.Instance)
             {
                 ControllerContext = CreateControllerContext(new List<Claim>
                 {
@@ -267,7 +270,7 @@ namespace Services.Tests
         [TestMethod]
         public async Task GetGroupUserNotOwnerStatusAsync()
         {
-            _destinationController = new DestinationController(_searchGroupsHandler, _searchChannelsHandler, _getGroupEndpointsHandler, _getGroupOwnersHandler, _getGroupOnboardingStatusHandler, _getChannelOnboardingStatusHandler, _postGroupHandler)
+            _destinationController = new DestinationController(_searchGroupsHandler, _searchChannelsHandler, _getGroupEndpointsHandler, _getGroupOwnersHandler, _getGroupOnboardingStatusHandler, _getChannelOnboardingStatusHandler, _postGroupHandler, NullLogger<DestinationController>.Instance)
             {
                 ControllerContext = CreateControllerContext(new List<Claim>
                 {
@@ -299,7 +302,7 @@ namespace Services.Tests
         [TestMethod]
         public async Task GetGroupOnboardingStatusWhenClaimIsNotFoundAsync()
         {
-            _destinationController = new DestinationController(_searchGroupsHandler, _searchChannelsHandler, _getGroupEndpointsHandler, _getGroupOwnersHandler, _getGroupOnboardingStatusHandler, _getChannelOnboardingStatusHandler, _postGroupHandler)
+            _destinationController = new DestinationController(_searchGroupsHandler, _searchChannelsHandler, _getGroupEndpointsHandler, _getGroupOwnersHandler, _getGroupOnboardingStatusHandler, _getChannelOnboardingStatusHandler, _postGroupHandler, NullLogger<DestinationController>.Instance)
             {
                 ControllerContext = CreateControllerContext(new List<Claim>
                 {
@@ -323,7 +326,7 @@ namespace Services.Tests
         [TestMethod]
         public async Task GetGroupOnboardingStatusThrowsExceptionAsync()
         {
-            _destinationController = new DestinationController(_searchGroupsHandler, _searchChannelsHandler, _getGroupEndpointsHandler, _getGroupOwnersHandler, _getGroupOnboardingStatusHandler, _getChannelOnboardingStatusHandler, _postGroupHandler)
+            _destinationController = new DestinationController(_searchGroupsHandler, _searchChannelsHandler, _getGroupEndpointsHandler, _getGroupOwnersHandler, _getGroupOnboardingStatusHandler, _getChannelOnboardingStatusHandler, _postGroupHandler, NullLogger<DestinationController>.Instance)
             {
                 ControllerContext = CreateControllerContext(new List<Claim>
                 {
@@ -420,7 +423,7 @@ namespace Services.Tests
                                             _getGroupOwnersHandler,
                                             _getGroupOnboardingStatusHandler,
                                             _getChannelOnboardingStatusHandler,
-                                            _postGroupHandler)
+                                            _postGroupHandler, NullLogger<DestinationController>.Instance)
             {
                 ControllerContext = CreateControllerContext(new List<Claim>
                 {
@@ -460,7 +463,7 @@ namespace Services.Tests
                 _getGroupOwnersHandler,
                 _getGroupOnboardingStatusHandler,
                 _getChannelOnboardingStatusHandler,
-                _postGroupHandler)
+                _postGroupHandler, NullLogger<DestinationController>.Instance)
             {
                 ControllerContext = CreateControllerContext(new List<Claim>
                 {
@@ -490,7 +493,7 @@ namespace Services.Tests
         [TestMethod]
         public async Task GetChannelOnboardingStatusWhenClaimIsNotFoundAsync()
         {
-            _destinationController = new DestinationController(_searchGroupsHandler, _searchChannelsHandler, _getGroupEndpointsHandler, _getGroupOwnersHandler, _getGroupOnboardingStatusHandler, _getChannelOnboardingStatusHandler, _postGroupHandler)
+            _destinationController = new DestinationController(_searchGroupsHandler, _searchChannelsHandler, _getGroupEndpointsHandler, _getGroupOwnersHandler, _getGroupOnboardingStatusHandler, _getChannelOnboardingStatusHandler, _postGroupHandler, NullLogger<DestinationController>.Instance)
             {
                 ControllerContext = CreateControllerContext(new List<Claim>
                 {
@@ -513,7 +516,7 @@ namespace Services.Tests
         [TestMethod]
         public async Task GetChannelOnboardingStatusThrowsExceptionAsync()
         {
-            _destinationController = new DestinationController(_searchGroupsHandler, _searchChannelsHandler, _getGroupEndpointsHandler, _getGroupOwnersHandler, _getGroupOnboardingStatusHandler, _getChannelOnboardingStatusHandler, _postGroupHandler)
+            _destinationController = new DestinationController(_searchGroupsHandler, _searchChannelsHandler, _getGroupEndpointsHandler, _getGroupOwnersHandler, _getGroupOnboardingStatusHandler, _getChannelOnboardingStatusHandler, _postGroupHandler, NullLogger<DestinationController>.Instance)
             {
                 ControllerContext = CreateControllerContext(new List<Claim>
                 {
@@ -537,7 +540,7 @@ namespace Services.Tests
         [TestMethod]
         public async Task CreateGroupSucceedsAsync()
         {
-            _destinationController = new DestinationController(_searchGroupsHandler, _searchChannelsHandler, _getGroupEndpointsHandler, _getGroupOwnersHandler, _getGroupOnboardingStatusHandler, _getChannelOnboardingStatusHandler, _postGroupHandler)
+            _destinationController = new DestinationController(_searchGroupsHandler, _searchChannelsHandler, _getGroupEndpointsHandler, _getGroupOwnersHandler, _getGroupOnboardingStatusHandler, _getChannelOnboardingStatusHandler, _postGroupHandler, NullLogger<DestinationController>.Instance)
             {
                 ControllerContext = CreateControllerContext(new List<Claim>
                 {
@@ -558,7 +561,7 @@ namespace Services.Tests
         [TestMethod]
         public async Task CreateGroupThrowsExceptionAsync()
         {
-            _destinationController = new DestinationController(_searchGroupsHandler, _searchChannelsHandler, _getGroupEndpointsHandler, _getGroupOwnersHandler, _getGroupOnboardingStatusHandler, _getChannelOnboardingStatusHandler, _postGroupHandler)
+            _destinationController = new DestinationController(_searchGroupsHandler, _searchChannelsHandler, _getGroupEndpointsHandler, _getGroupOwnersHandler, _getGroupOnboardingStatusHandler, _getChannelOnboardingStatusHandler, _postGroupHandler, NullLogger<DestinationController>.Instance)
             {
                 ControllerContext = CreateControllerContext(new List<Claim>
                 {
@@ -578,7 +581,7 @@ namespace Services.Tests
         [TestMethod]
         public async Task GetGroupOwnersSucceedsAsync()
         {
-            _destinationController = new DestinationController(_searchGroupsHandler, _searchChannelsHandler, _getGroupEndpointsHandler, _getGroupOwnersHandler, _getGroupOnboardingStatusHandler, _getChannelOnboardingStatusHandler, _postGroupHandler)
+            _destinationController = new DestinationController(_searchGroupsHandler, _searchChannelsHandler, _getGroupEndpointsHandler, _getGroupOwnersHandler, _getGroupOnboardingStatusHandler, _getChannelOnboardingStatusHandler, _postGroupHandler, NullLogger<DestinationController>.Instance)
             {
                 ControllerContext = CreateControllerContext(new List<Claim>
                 {
@@ -607,7 +610,7 @@ namespace Services.Tests
         [TestMethod]
         public async Task GetGroupOwnersThrowsExceptionAsync()
         {
-            _destinationController = new DestinationController(_searchGroupsHandler, _searchChannelsHandler, _getGroupEndpointsHandler, _getGroupOwnersHandler, _getGroupOnboardingStatusHandler, _getChannelOnboardingStatusHandler, _postGroupHandler)
+            _destinationController = new DestinationController(_searchGroupsHandler, _searchChannelsHandler, _getGroupEndpointsHandler, _getGroupOwnersHandler, _getGroupOnboardingStatusHandler, _getChannelOnboardingStatusHandler, _postGroupHandler, NullLogger<DestinationController>.Instance)
             {
                 ControllerContext = CreateControllerContext(new List<Claim>
                 {
@@ -648,7 +651,7 @@ namespace Services.Tests
             var httpContext = new DefaultHttpContext();
             httpContext.RequestServices = mockServiceProvider.Object;
 
-            _destinationController = new DestinationController(_searchGroupsHandler, _searchChannelsHandler, _getGroupEndpointsHandler, _getGroupOwnersHandler, _getGroupOnboardingStatusHandler, _getChannelOnboardingStatusHandler, _postGroupHandler)
+            _destinationController = new DestinationController(_searchGroupsHandler, _searchChannelsHandler, _getGroupEndpointsHandler, _getGroupOwnersHandler, _getGroupOnboardingStatusHandler, _getChannelOnboardingStatusHandler, _postGroupHandler, NullLogger<DestinationController>.Instance)
             {
                 ControllerContext = CreateControllerContext(httpContext)
             };
@@ -679,7 +682,7 @@ namespace Services.Tests
             var httpContext = new DefaultHttpContext();
             httpContext.RequestServices = mockServiceProvider.Object;
 
-            _destinationController = new DestinationController(_searchGroupsHandler, _searchChannelsHandler, _getGroupEndpointsHandler, _getGroupOwnersHandler, _getGroupOnboardingStatusHandler, _getChannelOnboardingStatusHandler, _postGroupHandler)
+            _destinationController = new DestinationController(_searchGroupsHandler, _searchChannelsHandler, _getGroupEndpointsHandler, _getGroupOwnersHandler, _getGroupOnboardingStatusHandler, _getChannelOnboardingStatusHandler, _postGroupHandler, NullLogger<DestinationController>.Instance)
             {
                 ControllerContext = CreateControllerContext(httpContext)
             };
@@ -707,7 +710,7 @@ namespace Services.Tests
             var httpContext = new DefaultHttpContext();
             httpContext.RequestServices = mockServiceProvider.Object;
 
-            _destinationController = new DestinationController(_searchGroupsHandler, _searchChannelsHandler, _getGroupEndpointsHandler, _getGroupOwnersHandler, _getGroupOnboardingStatusHandler, _getChannelOnboardingStatusHandler, _postGroupHandler)
+            _destinationController = new DestinationController(_searchGroupsHandler, _searchChannelsHandler, _getGroupEndpointsHandler, _getGroupOwnersHandler, _getGroupOnboardingStatusHandler, _getChannelOnboardingStatusHandler, _postGroupHandler, NullLogger<DestinationController>.Instance)
             {
                 ControllerContext = CreateControllerContext(httpContext)
             };
@@ -746,7 +749,7 @@ namespace Services.Tests
             var httpContext = new DefaultHttpContext();
             httpContext.RequestServices = mockServiceProvider.Object;
 
-            _destinationController = new DestinationController(_searchGroupsHandler, _searchChannelsHandler, _getGroupEndpointsHandler, _getGroupOwnersHandler, _getGroupOnboardingStatusHandler, _getChannelOnboardingStatusHandler, _postGroupHandler)
+            _destinationController = new DestinationController(_searchGroupsHandler, _searchChannelsHandler, _getGroupEndpointsHandler, _getGroupOwnersHandler, _getGroupOnboardingStatusHandler, _getChannelOnboardingStatusHandler, _postGroupHandler, NullLogger<DestinationController>.Instance)
             {
                 ControllerContext = CreateControllerContext(httpContext)
             };
@@ -756,6 +759,161 @@ namespace Services.Tests
 
             Assert.IsNotNull(result);
             Assert.AreEqual(500, result?.StatusCode);
+        }
+
+        [TestMethod]
+        public async Task GetGroupOwnersAsync_SanitizesUnexpectedException()
+        {
+            var thrown = new ArgumentException("sensitive parser detail must not leak (GetGroupOwners)");
+            var handler = new Mock<IRequestHandler<GetGroupOwnersRequest, GetGroupOwnersResponse>>();
+            handler.Setup(h => h.ExecuteAsync(It.IsAny<GetGroupOwnersRequest>())).ThrowsAsync(thrown);
+            var loggerMock = new Mock<ILogger<DestinationController>>();
+
+            var controller = BuildControllerWithLogger(loggerMock, getGroupOwnersOverride: handler.Object);
+
+            var response = await controller.GetGroupOwnersAsync(Guid.NewGuid());
+
+            var result = response.Result as BadRequestObjectResult;
+            Assert.IsNotNull(result);
+            Assert.AreEqual(400, result.StatusCode);
+            AssertNoExceptionLeak.Assert(result.Value as string ?? string.Empty, thrown);
+            VerifyLoggedOnce(loggerMock, thrown);
+        }
+
+        [TestMethod]
+        public async Task GetGroupOnboardingStatusAsync_SanitizesUnexpectedException()
+        {
+            var thrown = new InvalidOperationException("sensitive internal detail (GetGroupOnboardingStatus)");
+            var handler = new Mock<IRequestHandler<GetGroupOnboardingStatusRequest, GetOnboardingStatusResponse>>();
+            handler.Setup(h => h.ExecuteAsync(It.IsAny<GetGroupOnboardingStatusRequest>())).ThrowsAsync(thrown);
+            var loggerMock = new Mock<ILogger<DestinationController>>();
+
+            var controller = BuildControllerWithLogger(loggerMock, getGroupOnboardingStatusOverride: handler.Object);
+
+            var response = await controller.GetGroupOnboardingStatusAsync(Guid.NewGuid());
+
+            var result = response.Result as ObjectResult;
+            Assert.IsNotNull(result);
+            Assert.AreEqual(500, result.StatusCode);
+            var problem = result.Value as ProblemDetails;
+            Assert.IsNotNull(problem);
+            AssertNoExceptionLeak.Assert(problem.Detail ?? string.Empty, thrown);
+            VerifyLoggedOnce(loggerMock, thrown);
+        }
+
+        [TestMethod]
+        public async Task GetChannelOnboardingStatusAsync_SanitizesUnexpectedException()
+        {
+            var thrown = new InvalidOperationException("sensitive internal detail (GetChannelOnboardingStatus)");
+            var handler = new Mock<IRequestHandler<GetChannelOnboardingStatusRequest, GetOnboardingStatusResponse>>();
+            handler.Setup(h => h.ExecuteAsync(It.IsAny<GetChannelOnboardingStatusRequest>())).ThrowsAsync(thrown);
+            var loggerMock = new Mock<ILogger<DestinationController>>();
+
+            var controller = BuildControllerWithLogger(loggerMock, getChannelOnboardingStatusOverride: handler.Object);
+
+            var response = await controller.GetChannelOnboardingStatusAsync(Guid.NewGuid(), "test-channel-id");
+
+            var result = response.Result as ObjectResult;
+            Assert.IsNotNull(result);
+            Assert.AreEqual(500, result.StatusCode);
+            var problem = result.Value as ProblemDetails;
+            Assert.IsNotNull(problem);
+            AssertNoExceptionLeak.Assert(problem.Detail ?? string.Empty, thrown);
+            VerifyLoggedOnce(loggerMock, thrown);
+        }
+
+        [TestMethod]
+        public async Task CreateGroupAsync_SanitizesUnexpectedException()
+        {
+            var thrown = new InvalidOperationException("sensitive internal detail (CreateGroup)");
+            var handler = new Mock<IRequestHandler<PostGroupRequest, PostGroupResponse>>();
+            handler.Setup(h => h.ExecuteAsync(It.IsAny<PostGroupRequest>())).ThrowsAsync(thrown);
+            var loggerMock = new Mock<ILogger<DestinationController>>();
+
+            var controller = BuildControllerWithLogger(loggerMock, postGroupOverride: handler.Object);
+
+            var newGroup = new NewGroupDTO { UserIdentity = Guid.NewGuid(), GroupAlias = "", GroupName = "" };
+            var response = await controller.CreateGroupAsync(newGroup);
+
+            var result = response.Result as ObjectResult;
+            Assert.IsNotNull(result);
+            Assert.AreEqual(500, result.StatusCode);
+            var problem = result.Value as ProblemDetails;
+            Assert.IsNotNull(problem);
+            AssertNoExceptionLeak.Assert(problem.Detail ?? string.Empty, thrown);
+            VerifyLoggedOnce(loggerMock, thrown);
+        }
+
+        [TestMethod]
+        public async Task GetGroupMembersAsync_SanitizesUnexpectedException()
+        {
+            // GetGroupMembersAsync resolves its handler at runtime via
+            // HttpContext.RequestServices.GetRequiredService<>(), so we mock the
+            // service provider rather than constructor-inject the throwing handler.
+            var thrown = new ArgumentException("sensitive validation detail must not leak (GetGroupMembers)");
+            var mockHandler = new Mock<IRequestHandler<GetGroupMembersRequest, GetGroupMembersResponse>>();
+            mockHandler.Setup(x => x.ExecuteAsync(It.IsAny<GetGroupMembersRequest>())).ThrowsAsync(thrown);
+            var mockServiceProvider = new Mock<IServiceProvider>();
+            mockServiceProvider.Setup(x => x.GetService(typeof(IRequestHandler<GetGroupMembersRequest, GetGroupMembersResponse>)))
+                               .Returns(mockHandler.Object);
+            var httpContext = new DefaultHttpContext { RequestServices = mockServiceProvider.Object };
+            var loggerMock = new Mock<ILogger<DestinationController>>();
+
+            var controller = BuildControllerWithLogger(loggerMock, httpContext: httpContext);
+
+            var response = await controller.GetGroupMembersAsync(Guid.NewGuid());
+
+            var result = response.Result as BadRequestObjectResult;
+            Assert.IsNotNull(result);
+            Assert.AreEqual(400, result.StatusCode);
+            AssertNoExceptionLeak.Assert(result.Value as string ?? string.Empty, thrown);
+            VerifyLoggedOnce(loggerMock, thrown);
+        }
+
+        private DestinationController BuildControllerWithLogger(
+            Mock<ILogger<DestinationController>> loggerMock,
+            IRequestHandler<SearchGroupsRequest, SearchGroupsResponse>? searchGroupsOverride = null,
+            IRequestHandler<SearchChannelsRequest, SearchChannelsResponse>? searchChannelsOverride = null,
+            IRequestHandler<GetGroupEndpointsRequest, GetGroupEndpointsResponse>? getGroupEndpointsOverride = null,
+            IRequestHandler<GetGroupOwnersRequest, GetGroupOwnersResponse>? getGroupOwnersOverride = null,
+            IRequestHandler<GetGroupOnboardingStatusRequest, GetOnboardingStatusResponse>? getGroupOnboardingStatusOverride = null,
+            IRequestHandler<GetChannelOnboardingStatusRequest, GetOnboardingStatusResponse>? getChannelOnboardingStatusOverride = null,
+            IRequestHandler<PostGroupRequest, PostGroupResponse>? postGroupOverride = null,
+            string role = Roles.JOB_TENANT_WRITER,
+            HttpContext? httpContext = null)
+        {
+            var controller = new DestinationController(
+                searchGroupsOverride ?? new Mock<IRequestHandler<SearchGroupsRequest, SearchGroupsResponse>>().Object,
+                searchChannelsOverride ?? new Mock<IRequestHandler<SearchChannelsRequest, SearchChannelsResponse>>().Object,
+                getGroupEndpointsOverride ?? new Mock<IRequestHandler<GetGroupEndpointsRequest, GetGroupEndpointsResponse>>().Object,
+                getGroupOwnersOverride ?? new Mock<IRequestHandler<GetGroupOwnersRequest, GetGroupOwnersResponse>>().Object,
+                getGroupOnboardingStatusOverride ?? new Mock<IRequestHandler<GetGroupOnboardingStatusRequest, GetOnboardingStatusResponse>>().Object,
+                getChannelOnboardingStatusOverride ?? new Mock<IRequestHandler<GetChannelOnboardingStatusRequest, GetOnboardingStatusResponse>>().Object,
+                postGroupOverride ?? new Mock<IRequestHandler<PostGroupRequest, PostGroupResponse>>().Object,
+                loggerMock.Object);
+
+            var httpCtx = httpContext ?? CreateHttpContext(new List<Claim>
+            {
+                new Claim(ClaimTypes.Name, "user@domain.com"),
+                new Claim(ClaimTypes.Role, role),
+                new Claim("http://schemas.microsoft.com/identity/claims/objectidentifier", Guid.NewGuid().ToString())
+            });
+
+            controller.ControllerContext = new ControllerContext { HttpContext = httpCtx };
+            return controller;
+        }
+
+        private static void VerifyLoggedOnce(Mock<ILogger<DestinationController>> loggerMock, Exception thrown)
+        {
+            loggerMock.Verify(
+                l => l.Log(
+                    LogLevel.Error,
+                    It.IsAny<EventId>(),
+                    It.IsAny<It.IsAnyType>(),
+                    thrown,
+                    It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
+                Times.Once,
+                "The full exception must be logged on the server side.");
         }
 
         private ControllerContext CreateControllerContext(HttpContext httpContext)
