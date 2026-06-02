@@ -472,17 +472,30 @@ namespace WebApi.Controllers.v1.Jobs
             };
         }
 
-        [Authorize(Roles = Models.Roles.JOB_TENANT_READER + "," + Models.Roles.JOB_TENANT_WRITER)]
+        [Authorize(Roles = $"{Models.Roles.JOB_OWNER_READER},{Models.Roles.JOB_OWNER_WRITER},{Models.Roles.JOB_TENANT_READER},{Models.Roles.JOB_TENANT_WRITER},{Models.Roles.AI_SYNC_JOB}")]
         [HttpGet("history/sync/{syncJobId}/runs/{runId}/explain-user/{userObjectId}")]
         public async Task<ActionResult<GetSyncExplanationResponse>> GetSyncExplanationAsync(Guid syncJobId, Guid runId, Guid userObjectId)
         {
+            var claimsIdentity = User.Identity as ClaimsIdentity;
+            var userId = claimsIdentity?.Claims.FirstOrDefault(c => c.Type == "http://schemas.microsoft.com/identity/claims/objectidentifier")?.Value;
+
+            if (string.IsNullOrEmpty(userId))
+            {
+                return new ForbidResult();
+            }
+
+            var hasAiSyncJobRole = User.IsInRole(Models.Roles.AI_SYNC_JOB)
+                                   || User.IsInRole(Models.Roles.JOB_TENANT_READER)
+                                   || User.IsInRole(Models.Roles.JOB_TENANT_WRITER);
+
             var handler = HttpContext.RequestServices.GetRequiredService<IRequestHandler<GetSyncExplanationRequest, GetSyncExplanationResponse>>();
-            var response = await handler.ExecuteAsync(new GetSyncExplanationRequest(syncJobId, runId, userObjectId));
+            var response = await handler.ExecuteAsync(new GetSyncExplanationRequest(syncJobId, runId, userObjectId, userId, hasAiSyncJobRole));
 
             return response.StatusCode switch
             {
                 System.Net.HttpStatusCode.OK => Ok(response),
                 System.Net.HttpStatusCode.NotFound => NotFound(),
+                System.Net.HttpStatusCode.Forbidden => Forbid(),
                 _ => Problem(statusCode: (int)System.Net.HttpStatusCode.InternalServerError)
             };
         }

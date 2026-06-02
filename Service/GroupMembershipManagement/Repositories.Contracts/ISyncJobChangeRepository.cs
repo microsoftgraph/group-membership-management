@@ -58,5 +58,12 @@ namespace Repositories.Contracts
         /// Used for enforcing the per-user rate limit on Sync Now operations.
         /// </summary>
         Task<int> GetScheduleNowCountByUserAsync(Guid userObjectId, DateTime since);
+
+        /// <summary>
+        /// Retrieves the most recent configuration changes (Onboarding/Update) for a sync job
+        /// that occurred at or before the specified time. Used to build a before/after diff
+        /// of filter configurations for sync explanations.
+        /// </summary>
+        Task<List<SyncJobChange>> GetRecentConfigChangesBySyncJobIdAsync(Guid syncJobId, DateTime asOf, int count = 2);
     }
 }

@@ -166,6 +166,25 @@ namespace Repositories.EntityFramework
                     && s.ChangeTime >= since);
         }
 
+        public async Task<List<SyncJobChange>> GetRecentConfigChangesBySyncJobIdAsync(Guid syncJobId, DateTime asOf, int count = 2)
+        {
+            var onboarding = SyncJobChangeReason.Onboarding.ToString();
+            var onboardingAutoApproved = SyncJobChangeReason.OnboardingAutoApproved.ToString();
+            var update = SyncJobChangeReason.Update.ToString();
+
+            var entities = await _readContext.SyncJobChanges
+                .Where(s => s.SyncJobId == syncJobId
+                    && s.ChangeTime <= asOf
+                    && (s.ChangeReason == onboarding
+                        || s.ChangeReason == onboardingAutoApproved
+                        || s.ChangeReason == update))
+                .OrderByDescending(s => s.ChangeTime)
+                .Take(count)
+                .ToListAsync();
+
+            return entities.Select(MapEntityToModel).ToList();
+        }
+
         // TODO: Add 'override' keyword to the following methods once the RepositoryBase is added.
         private static SyncJobChange MapEntityToModel(Entities.SyncJobChange entity)
         {
