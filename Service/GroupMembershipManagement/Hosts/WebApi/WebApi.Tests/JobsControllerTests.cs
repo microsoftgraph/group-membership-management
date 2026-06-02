@@ -16,7 +16,6 @@ using Models.SyncJobChange;
 using Moq;
 using Repositories.Contracts;
 using Repositories.Contracts.InjectConfig;
-using Repositories.TeamsChannel;
 using Services.Messages.Requests;
 using Services.Messages.Responses;
 using Services.WebApi;
@@ -26,8 +25,10 @@ using System.Net;
 using System.Security.Claims;
 using WebApi.Controllers.v1.Jobs;
 using WebApi.Models;
-using WebApi.Models.Responses;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
+using Services.Contracts;
+using WebApi.Tests.ExceptionHandling;
 using NewTitle = WebApi.Models.DTOs.NewTitle;
 using NewSyncJobDTO = WebApi.Models.DTOs.NewSyncJob;
 using PagedResponseDTO = WebApi.Models.DTOs.PagedResponse<WebApi.Models.DTOs.SyncJob>;
@@ -264,7 +265,7 @@ namespace Services.Tests
                                                 _httpContextAccessor.Object,
                                                 _handleInactiveJobsConfig.Object);
 
-            _jobsController = new JobsController(_getJobsHandler, _patchJobsHandler, _postJobHandler, _getJobDetailsHandler, _postResetRequestHandler);
+            _jobsController = new JobsController(_getJobsHandler, _patchJobsHandler, _postJobHandler, _getJobDetailsHandler, _postResetRequestHandler, NullLogger<JobsController>.Instance);
             _jobsController.ControllerContext = new ControllerContext
             {
                 HttpContext = _context
@@ -347,7 +348,7 @@ namespace Services.Tests
                                      _httpContextAccessor.Object,
                                      _syncJobChangeRepository.Object);
 
-            _jobsController = new JobsController(_getJobsHandler, _patchJobsHandler,_postJobHandler, _getJobDetailsHandler, _postResetRequestHandler);
+            _jobsController = new JobsController(_getJobsHandler, _patchJobsHandler, _postJobHandler, _getJobDetailsHandler, _postResetRequestHandler, NullLogger<JobsController>.Instance);
             _jobsController.ControllerContext = new ControllerContext
             {
                 HttpContext = _context
@@ -411,7 +412,7 @@ namespace Services.Tests
                                                  _pendingConfigurationConfig.Object,
                                                  _serviceBusQueueRepository.Object);
 
-            _jobsController = new JobsController(_getJobsHandler, _patchJobsHandler, _postJobHandler, _getJobDetailsHandler, _postResetRequestHandler);
+            _jobsController = new JobsController(_getJobsHandler, _patchJobsHandler, _postJobHandler, _getJobDetailsHandler, _postResetRequestHandler, NullLogger<JobsController>.Instance);
             _jobsController.ControllerContext = new ControllerContext
             {
                 HttpContext = _context
@@ -457,7 +458,7 @@ namespace Services.Tests
                                                  _pendingConfigurationConfig.Object,
                                                  _serviceBusQueueRepository.Object);
 
-            _jobsController = new JobsController(_getJobsHandler, _patchJobsHandler, _postJobHandler, _getJobDetailsHandler, _postResetRequestHandler);
+            _jobsController = new JobsController(_getJobsHandler, _patchJobsHandler, _postJobHandler, _getJobDetailsHandler, _postResetRequestHandler, NullLogger<JobsController>.Instance);
             _jobsController.ControllerContext = new ControllerContext
             {
                 HttpContext = _context
@@ -520,7 +521,7 @@ namespace Services.Tests
                                                  _pendingConfigurationConfig.Object,
                                                  _serviceBusQueueRepository.Object);
 
-            _jobsController = new JobsController(_getJobsHandler, _patchJobsHandler, _postJobHandler, _getJobDetailsHandler, _postResetRequestHandler);
+            _jobsController = new JobsController(_getJobsHandler, _patchJobsHandler, _postJobHandler, _getJobDetailsHandler, _postResetRequestHandler, NullLogger<JobsController>.Instance);
             _jobsController.ControllerContext = new ControllerContext
             {
                 HttpContext = _context
@@ -567,7 +568,7 @@ namespace Services.Tests
                                                  _pendingConfigurationConfig.Object,
                                                  _serviceBusQueueRepository.Object);
 
-            _jobsController = new JobsController(_getJobsHandler, _patchJobsHandler, _postJobHandler, _getJobDetailsHandler, _postResetRequestHandler);
+            _jobsController = new JobsController(_getJobsHandler, _patchJobsHandler, _postJobHandler, _getJobDetailsHandler, _postResetRequestHandler, NullLogger<JobsController>.Instance);
             _jobsController.ControllerContext = new ControllerContext
             {
                 HttpContext = _context
@@ -607,7 +608,7 @@ namespace Services.Tests
                                                  _pendingConfigurationConfig.Object,
                                                  _serviceBusQueueRepository.Object);
 
-            _jobsController = new JobsController(_getJobsHandler, _patchJobsHandler, _postJobHandler, _getJobDetailsHandler, _postResetRequestHandler);
+            _jobsController = new JobsController(_getJobsHandler, _patchJobsHandler, _postJobHandler, _getJobDetailsHandler, _postResetRequestHandler, NullLogger<JobsController>.Instance);
             _jobsController.ControllerContext = new ControllerContext
             {
                 HttpContext = _context
@@ -644,7 +645,7 @@ namespace Services.Tests
                                                  _pendingConfigurationConfig.Object,
                                                  _serviceBusQueueRepository.Object);
 
-            _jobsController = new JobsController(_getJobsHandler, _patchJobsHandler, _postJobHandler, _getJobDetailsHandler, _postResetRequestHandler);
+            _jobsController = new JobsController(_getJobsHandler, _patchJobsHandler, _postJobHandler, _getJobDetailsHandler, _postResetRequestHandler, NullLogger<JobsController>.Instance);
             _jobsController.ControllerContext = new ControllerContext
             {
                 HttpContext = _context
@@ -684,7 +685,7 @@ namespace Services.Tests
                                                  _pendingConfigurationConfig.Object,
                                                  _serviceBusQueueRepository.Object);
 
-            _jobsController = new JobsController(_getJobsHandler, _patchJobsHandler, _postJobHandler, _getJobDetailsHandler, _postResetRequestHandler);
+            _jobsController = new JobsController(_getJobsHandler, _patchJobsHandler, _postJobHandler, _getJobDetailsHandler, _postResetRequestHandler, NullLogger<JobsController>.Instance);
             _jobsController.ControllerContext = new ControllerContext
             {
                 HttpContext = _context
@@ -727,7 +728,7 @@ namespace Services.Tests
                                                  _pendingConfigurationConfig.Object,
                                                  _serviceBusQueueRepository.Object);
 
-            _jobsController = new JobsController(_getJobsHandler, _patchJobsHandler, _postJobHandler, _getJobDetailsHandler, _postResetRequestHandler);
+            _jobsController = new JobsController(_getJobsHandler, _patchJobsHandler, _postJobHandler, _getJobDetailsHandler, _postResetRequestHandler, NullLogger<JobsController>.Instance);
             _jobsController.ControllerContext = new ControllerContext
             {
                 HttpContext = _context
@@ -743,6 +744,53 @@ namespace Services.Tests
             var result = response as ObjectResult;
             Assert.IsNotNull(result);
             Assert.AreEqual(StatusCodes.Status500InternalServerError, result.StatusCode);
+        }
+
+        [TestMethod]
+        public async Task PostJobAsync_SanitizesUnexpectedException()
+        {
+            var thrown = new InvalidOperationException("sensitive internal detail that must not leak (PostJob)");
+            var postJobHandlerMock = new Mock<IRequestHandler<PostJobRequest, PostJobResponse>>();
+            postJobHandlerMock.Setup(h => h.ExecuteAsync(It.IsAny<PostJobRequest>())).ThrowsAsync(thrown);
+            var loggerMock = new Mock<ILogger<JobsController>>();
+
+            _context = CreateHttpContext(new List<Claim>
+            {
+                new Claim(ClaimTypes.Name, "user@domain.com"),
+                new Claim(ClaimTypes.Role, Roles.JOB_TENANT_WRITER),
+                new Claim("http://schemas.microsoft.com/identity/claims/objectidentifier", Guid.NewGuid().ToString())
+            });
+
+            _httpContextAccessor.Setup(x => x.HttpContext).Returns(_context);
+
+            var controller = new JobsController(
+                _getJobsHandler,
+                _patchJobsHandler,
+                postJobHandlerMock.Object,
+                _getJobDetailsHandler,
+                _postResetRequestHandler,
+                loggerMock.Object);
+            controller.ControllerContext = new ControllerContext { HttpContext = _context };
+
+            var response = await controller.PostJobAsync(_newSyncJob);
+
+            var result = response as ObjectResult;
+            Assert.IsNotNull(result);
+            Assert.AreEqual((int)HttpStatusCode.InternalServerError, result.StatusCode);
+
+            var problem = result.Value as ProblemDetails;
+            Assert.IsNotNull(problem);
+            AssertNoExceptionLeak.Assert(problem.Detail ?? string.Empty, thrown);
+
+            loggerMock.Verify(
+                l => l.Log(
+                    LogLevel.Error,
+                    It.IsAny<EventId>(),
+                    It.IsAny<It.IsAnyType>(),
+                    thrown,
+                    It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
+                Times.Once,
+                "The full exception must be logged on the server side.");
         }
 
         [TestMethod]
@@ -768,7 +816,7 @@ namespace Services.Tests
                                                  _syncJobChangeRepository.Object,
                                                  _thresholdConfig.Object);
 
-            _jobsController = new JobsController(_getJobsHandler, _patchJobsHandler, _postJobHandler, _getJobDetailsHandler, _postResetRequestHandler);
+            _jobsController = new JobsController(_getJobsHandler, _patchJobsHandler, _postJobHandler, _getJobDetailsHandler, _postResetRequestHandler, NullLogger<JobsController>.Instance);
             _jobsController.ControllerContext = new ControllerContext
             {
                 HttpContext = _context
@@ -833,7 +881,7 @@ namespace Services.Tests
                                                  _syncJobChangeRepository.Object,
                                                  _thresholdConfig.Object);
 
-            _jobsController = new JobsController(_getJobsHandler, _patchJobsHandler, _postJobHandler, _getJobDetailsHandler, _postResetRequestHandler);
+            _jobsController = new JobsController(_getJobsHandler, _patchJobsHandler, _postJobHandler, _getJobDetailsHandler, _postResetRequestHandler, NullLogger<JobsController>.Instance);
             _jobsController.ControllerContext = new ControllerContext
             {
                 HttpContext = _context
@@ -1463,7 +1511,7 @@ namespace Services.Tests
                                                  _pendingConfigurationConfig.Object,
                                                  _serviceBusQueueRepository.Object);
 
-            _jobsController = new JobsController(_getJobsHandler, _patchJobsHandler, _postJobHandler, _getJobDetailsHandler, _postResetRequestHandler);
+            _jobsController = new JobsController(_getJobsHandler, _patchJobsHandler, _postJobHandler, _getJobDetailsHandler, _postResetRequestHandler, NullLogger<JobsController>.Instance);
             _jobsController.ControllerContext = new ControllerContext
             {
                 HttpContext = _context
@@ -1521,7 +1569,7 @@ namespace Services.Tests
                                                  _pendingConfigurationConfig.Object,
                                                  _serviceBusQueueRepository.Object);
 
-            _jobsController = new JobsController(_getJobsHandler, _patchJobsHandler, _postJobHandler, _getJobDetailsHandler, _postResetRequestHandler);
+            _jobsController = new JobsController(_getJobsHandler, _patchJobsHandler, _postJobHandler, _getJobDetailsHandler, _postResetRequestHandler, NullLogger<JobsController>.Instance);
             _jobsController.ControllerContext = new ControllerContext
             {
                 HttpContext = _context
@@ -1579,7 +1627,7 @@ namespace Services.Tests
                                                  _pendingConfigurationConfig.Object,
                                                  _serviceBusQueueRepository.Object);
 
-            _jobsController = new JobsController(_getJobsHandler, _patchJobsHandler, _postJobHandler, _getJobDetailsHandler, _postResetRequestHandler);
+            _jobsController = new JobsController(_getJobsHandler, _patchJobsHandler, _postJobHandler, _getJobDetailsHandler, _postResetRequestHandler, NullLogger<JobsController>.Instance);
             _jobsController.ControllerContext = new ControllerContext
             {
                 HttpContext = _context
@@ -1629,7 +1677,7 @@ namespace Services.Tests
                                                  _pendingConfigurationConfig.Object,
                                                  _serviceBusQueueRepository.Object);
 
-            _jobsController = new JobsController(_getJobsHandler, _patchJobsHandler, _postJobHandler, _getJobDetailsHandler, _postResetRequestHandler);
+            _jobsController = new JobsController(_getJobsHandler, _patchJobsHandler, _postJobHandler, _getJobDetailsHandler, _postResetRequestHandler, NullLogger<JobsController>.Instance);
             _jobsController.ControllerContext = new ControllerContext
             {
                 HttpContext = _context
@@ -1694,7 +1742,7 @@ namespace Services.Tests
                                                  _pendingConfigurationConfig.Object,
                                                  _serviceBusQueueRepository.Object);
 
-            _jobsController = new JobsController(_getJobsHandler, _patchJobsHandler, _postJobHandler, _getJobDetailsHandler, _postResetRequestHandler);
+            _jobsController = new JobsController(_getJobsHandler, _patchJobsHandler, _postJobHandler, _getJobDetailsHandler, _postResetRequestHandler, NullLogger<JobsController>.Instance);
             _jobsController.ControllerContext = new ControllerContext
             {
                 HttpContext = _context
@@ -1754,7 +1802,7 @@ namespace Services.Tests
                                                  _pendingConfigurationConfig.Object,
                                                  _serviceBusQueueRepository.Object);
 
-            _jobsController = new JobsController(_getJobsHandler, _patchJobsHandler, _postJobHandler, _getJobDetailsHandler, _postResetRequestHandler);
+            _jobsController = new JobsController(_getJobsHandler, _patchJobsHandler, _postJobHandler, _getJobDetailsHandler, _postResetRequestHandler, NullLogger<JobsController>.Instance);
             _jobsController.ControllerContext = new ControllerContext
             {
                 HttpContext = _context
@@ -1813,7 +1861,7 @@ namespace Services.Tests
                                                  _pendingConfigurationConfig.Object,
                                                  _serviceBusQueueRepository.Object);
 
-            _jobsController = new JobsController(_getJobsHandler, _patchJobsHandler, _postJobHandler, _getJobDetailsHandler, _postResetRequestHandler);
+            _jobsController = new JobsController(_getJobsHandler, _patchJobsHandler, _postJobHandler, _getJobDetailsHandler, _postResetRequestHandler, NullLogger<JobsController>.Instance);
             _jobsController.ControllerContext = new ControllerContext
             {
                 HttpContext = _context
@@ -1872,7 +1920,7 @@ namespace Services.Tests
                                                  _pendingConfigurationConfig.Object,
                                                  _serviceBusQueueRepository.Object);
 
-            _jobsController = new JobsController(_getJobsHandler, _patchJobsHandler, _postJobHandler, _getJobDetailsHandler, _postResetRequestHandler);
+            _jobsController = new JobsController(_getJobsHandler, _patchJobsHandler, _postJobHandler, _getJobDetailsHandler, _postResetRequestHandler, NullLogger<JobsController>.Instance);
             _jobsController.ControllerContext = new ControllerContext
             {
                 HttpContext = _context
@@ -1932,7 +1980,7 @@ namespace Services.Tests
                                                  _pendingConfigurationConfig.Object,
                                                  _serviceBusQueueRepository.Object);
 
-            _jobsController = new JobsController(_getJobsHandler, _patchJobsHandler, _postJobHandler, _getJobDetailsHandler, _postResetRequestHandler);
+            _jobsController = new JobsController(_getJobsHandler, _patchJobsHandler, _postJobHandler, _getJobDetailsHandler, _postResetRequestHandler, NullLogger<JobsController>.Instance);
             _jobsController.ControllerContext = new ControllerContext
             {
                 HttpContext = _context
@@ -1991,7 +2039,7 @@ namespace Services.Tests
                                                  _pendingConfigurationConfig.Object,
                                                  _serviceBusQueueRepository.Object);
 
-            _jobsController = new JobsController(_getJobsHandler, _patchJobsHandler, _postJobHandler, _getJobDetailsHandler, _postResetRequestHandler);
+            _jobsController = new JobsController(_getJobsHandler, _patchJobsHandler, _postJobHandler, _getJobDetailsHandler, _postResetRequestHandler, NullLogger<JobsController>.Instance);
             _jobsController.ControllerContext = new ControllerContext
             {
                 HttpContext = _context
@@ -2060,7 +2108,7 @@ namespace Services.Tests
                                                  _pendingConfigurationConfig.Object,
                                                  _serviceBusQueueRepository.Object);
 
-            _jobsController = new JobsController(_getJobsHandler, _patchJobsHandler, _postJobHandler, _getJobDetailsHandler, _postResetRequestHandler);
+            _jobsController = new JobsController(_getJobsHandler, _patchJobsHandler, _postJobHandler, _getJobDetailsHandler, _postResetRequestHandler, NullLogger<JobsController>.Instance);
             _jobsController.ControllerContext = new ControllerContext
             {
                 HttpContext = _context
@@ -2121,7 +2169,7 @@ namespace Services.Tests
                                                  _pendingConfigurationConfig.Object,
                                                  _serviceBusQueueRepository.Object);
 
-            _jobsController = new JobsController(_getJobsHandler, _patchJobsHandler, _postJobHandler, _getJobDetailsHandler, _postResetRequestHandler);
+            _jobsController = new JobsController(_getJobsHandler, _patchJobsHandler, _postJobHandler, _getJobDetailsHandler, _postResetRequestHandler, NullLogger<JobsController>.Instance);
             _jobsController.ControllerContext = new ControllerContext
             {
                 HttpContext = _context
@@ -2174,7 +2222,7 @@ namespace Services.Tests
                                                  _pendingConfigurationConfig.Object,
                                                  _serviceBusQueueRepository.Object);
 
-            _jobsController = new JobsController(_getJobsHandler, _patchJobsHandler, _postJobHandler, _getJobDetailsHandler, _postResetRequestHandler);
+            _jobsController = new JobsController(_getJobsHandler, _patchJobsHandler, _postJobHandler, _getJobDetailsHandler, _postResetRequestHandler, NullLogger<JobsController>.Instance);
             _jobsController.ControllerContext = new ControllerContext
             {
                 HttpContext = _context
@@ -2231,7 +2279,7 @@ namespace Services.Tests
                                                  _pendingConfigurationConfig.Object,
                                                  _serviceBusQueueRepository.Object);
 
-            _jobsController = new JobsController(_getJobsHandler, _patchJobsHandler, _postJobHandler, _getJobDetailsHandler, _postResetRequestHandler);
+            _jobsController = new JobsController(_getJobsHandler, _patchJobsHandler, _postJobHandler, _getJobDetailsHandler, _postResetRequestHandler, NullLogger<JobsController>.Instance);
             _jobsController.ControllerContext = new ControllerContext
             {
                 HttpContext = _context
@@ -2304,7 +2352,7 @@ namespace Services.Tests
                                                  _pendingConfigurationConfig.Object,
                                                  _serviceBusQueueRepository.Object);
 
-            _jobsController = new JobsController(_getJobsHandler, _patchJobsHandler, _postJobHandler, _getJobDetailsHandler, _postResetRequestHandler);
+            _jobsController = new JobsController(_getJobsHandler, _patchJobsHandler, _postJobHandler, _getJobDetailsHandler, _postResetRequestHandler, NullLogger<JobsController>.Instance);
             _jobsController.ControllerContext = new ControllerContext
             {
                 HttpContext = _context
@@ -2376,7 +2424,7 @@ namespace Services.Tests
                                                  _pendingConfigurationConfig.Object,
                                                  _serviceBusQueueRepository.Object);
 
-            _jobsController = new JobsController(_getJobsHandler, _patchJobsHandler, _postJobHandler, _getJobDetailsHandler, _postResetRequestHandler);
+            _jobsController = new JobsController(_getJobsHandler, _patchJobsHandler, _postJobHandler, _getJobDetailsHandler, _postResetRequestHandler, NullLogger<JobsController>.Instance);
             _jobsController.ControllerContext = new ControllerContext
             {
                 HttpContext = _context
@@ -2438,7 +2486,7 @@ namespace Services.Tests
                                                  _pendingConfigurationConfig.Object,
                                                  _serviceBusQueueRepository.Object);
 
-            _jobsController = new JobsController(_getJobsHandler, _patchJobsHandler, _postJobHandler, _getJobDetailsHandler, _postResetRequestHandler);
+            _jobsController = new JobsController(_getJobsHandler, _patchJobsHandler, _postJobHandler, _getJobDetailsHandler, _postResetRequestHandler, NullLogger<JobsController>.Instance);
             _jobsController.ControllerContext = new ControllerContext
             {
                 HttpContext = _context
@@ -2497,7 +2545,7 @@ namespace Services.Tests
                                                  _pendingConfigurationConfig.Object,
                                                  _serviceBusQueueRepository.Object);
 
-            _jobsController = new JobsController(_getJobsHandler, _patchJobsHandler, _postJobHandler, _getJobDetailsHandler, _postResetRequestHandler);
+            _jobsController = new JobsController(_getJobsHandler, _patchJobsHandler, _postJobHandler, _getJobDetailsHandler, _postResetRequestHandler, NullLogger<JobsController>.Instance);
             _jobsController.ControllerContext = new ControllerContext
             {
                 HttpContext = _context
@@ -2550,7 +2598,7 @@ namespace Services.Tests
                                                  _pendingConfigurationConfig.Object,
                                                  _serviceBusQueueRepository.Object);
 
-            _jobsController = new JobsController(_getJobsHandler, _patchJobsHandler, _postJobHandler, _getJobDetailsHandler, _postResetRequestHandler);
+            _jobsController = new JobsController(_getJobsHandler, _patchJobsHandler, _postJobHandler, _getJobDetailsHandler, _postResetRequestHandler, NullLogger<JobsController>.Instance);
             _jobsController.ControllerContext = new ControllerContext
             {
                 HttpContext = _context
@@ -2602,7 +2650,7 @@ namespace Services.Tests
                                                  _pendingConfigurationConfig.Object,
                                                  _serviceBusQueueRepository.Object);
 
-            _jobsController = new JobsController(_getJobsHandler, _patchJobsHandler, _postJobHandler, _getJobDetailsHandler, _postResetRequestHandler);
+            _jobsController = new JobsController(_getJobsHandler, _patchJobsHandler, _postJobHandler, _getJobDetailsHandler, _postResetRequestHandler, NullLogger<JobsController>.Instance);
             _jobsController.ControllerContext = new ControllerContext
             {
                 HttpContext = _context
@@ -2660,7 +2708,7 @@ namespace Services.Tests
                                                  _pendingConfigurationConfig.Object,
                                                  _serviceBusQueueRepository.Object);
 
-            _jobsController = new JobsController(_getJobsHandler, _patchJobsHandler, _postJobHandler, _getJobDetailsHandler, _postResetRequestHandler);
+            _jobsController = new JobsController(_getJobsHandler, _patchJobsHandler, _postJobHandler, _getJobDetailsHandler, _postResetRequestHandler, NullLogger<JobsController>.Instance);
             _jobsController.ControllerContext = new ControllerContext
             {
                 HttpContext = _context
