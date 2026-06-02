@@ -665,6 +665,7 @@ namespace Repositories.SqlMembershipRepository
 
         public async Task<Dictionary<string, string>?> GetUserAttributesAsync(string azureObjectId, string tableName)
         {
+            ValidateTableName(tableName);
             Dictionary<string, string>? attributes = null;
             var retryPolicy = GetRetryPolicyAsync();
 

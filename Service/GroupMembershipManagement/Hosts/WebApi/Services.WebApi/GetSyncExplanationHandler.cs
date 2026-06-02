@@ -175,6 +175,11 @@ Use only the provided data. If you cannot determine the reason with reasonable c
             }
         }
 
+        /// <summary>
+        /// Scans the SourceMembers array using a forward-only Utf8JsonReader
+        /// to find the target user. This avoids allocating a full JsonDocument
+        /// DOM for the entire blob and exits as soon as the user is found.
+        /// </summary>
         private static MembershipChangeType? ParseMembershipChange(string json, Guid userObjectId)
         {
             if (string.IsNullOrWhiteSpace(json))
@@ -182,23 +187,100 @@ Use only the provided data. If you cannot determine the reason with reasonable c
 
             try
             {
-                using var document = JsonDocument.Parse(json);
-                if (document.RootElement.ValueKind != JsonValueKind.Object)
-                    return null;
-
-                if (!TryGetPropertyCaseInsensitive(document.RootElement, "SourceMembers", out var sourceMembers)
-                    || sourceMembers.ValueKind != JsonValueKind.Array)
-                    return null;
-
-                foreach (var member in sourceMembers.EnumerateArray())
+                var bytes = Encoding.UTF8.GetBytes(json);
+                var reader = new Utf8JsonReader(bytes, new JsonReaderOptions
                 {
-                    if (!TryReadObjectId(member, out var memberObjectId) || memberObjectId != userObjectId)
-                        continue;
+                    AllowTrailingCommas = true,
+                    CommentHandling = JsonCommentHandling.Skip
+                });
 
-                    if (TryReadMembershipAction(member, out var action))
+                // Read past root StartObject
+                if (!reader.Read() || reader.TokenType != JsonTokenType.StartObject)
+                    return null;
+
+                // Scan root-level properties for "SourceMembers"
+                while (reader.Read())
+                {
+                    if (reader.TokenType == JsonTokenType.EndObject)
+                        return null;
+
+                    if (reader.TokenType == JsonTokenType.PropertyName &&
+                        (reader.ValueTextEquals("SourceMembers"u8) || reader.ValueTextEquals("sourceMembers"u8)))
                     {
-                        if (action == MembershipAction.Add) return MembershipChangeType.Added;
-                        if (action == MembershipAction.Remove) return MembershipChangeType.Removed;
+                        break;
+                    }
+
+                    // Skip the value of non-matching properties
+                    if (reader.TokenType == JsonTokenType.PropertyName)
+                    {
+                        reader.Read();
+                        reader.TrySkip();
+                    }
+                }
+
+                // Expect array start
+                if (!reader.Read() || reader.TokenType != JsonTokenType.StartArray)
+                    return null;
+
+                // Scan each member object in the array
+                while (reader.Read())
+                {
+                    if (reader.TokenType == JsonTokenType.EndArray)
+                        break;
+
+                    if (reader.TokenType != JsonTokenType.StartObject)
+                    {
+                        reader.TrySkip();
+                        continue;
+                    }
+
+                    Guid? objectId = null;
+                    MembershipAction? membershipAction = null;
+
+                    while (reader.Read() && reader.TokenType != JsonTokenType.EndObject)
+                    {
+                        if (reader.TokenType == JsonTokenType.PropertyName)
+                        {
+                            if (reader.ValueTextEquals("ObjectId"u8) ||
+                                reader.ValueTextEquals("objectId"u8))
+                            {
+                                if (reader.Read() && reader.TokenType == JsonTokenType.String &&
+                                    Guid.TryParse(reader.GetString(), out var id))
+                                {
+                                    objectId = id;
+                                }
+                            }
+                            else if (reader.ValueTextEquals("MembershipAction"u8) ||
+                                     reader.ValueTextEquals("membershipAction"u8))
+                            {
+                                if (reader.Read())
+                                {
+                                    if (reader.TokenType == JsonTokenType.Number &&
+                                        reader.TryGetInt32(out var actionInt) &&
+                                        Enum.IsDefined(typeof(MembershipAction), actionInt))
+                                    {
+                                        membershipAction = (MembershipAction)actionInt;
+                                    }
+                                    else if (reader.TokenType == JsonTokenType.String &&
+                                             Enum.TryParse<MembershipAction>(reader.GetString(), true, out var actionEnum))
+                                    {
+                                        membershipAction = actionEnum;
+                                    }
+                                }
+                            }
+                            else
+                            {
+                                reader.Read();
+                                reader.TrySkip();
+                            }
+                        }
+                    }
+
+                    // Early exit: return as soon as we find the target user
+                    if (objectId == userObjectId && membershipAction.HasValue)
+                    {
+                        if (membershipAction.Value == MembershipAction.Add) return MembershipChangeType.Added;
+                        if (membershipAction.Value == MembershipAction.Remove) return MembershipChangeType.Removed;
                     }
                 }
 
@@ -648,52 +730,5 @@ Recent configuration changes (near this run):
 {configChanges}";
         }
 
-        private static bool TryGetPropertyCaseInsensitive(JsonElement element, string propertyName, out JsonElement value)
-        {
-            foreach (var property in element.EnumerateObject())
-            {
-                if (string.Equals(property.Name, propertyName, StringComparison.OrdinalIgnoreCase))
-                {
-                    value = property.Value;
-                    return true;
-                }
-            }
-            value = default;
-            return false;
-        }
-
-        private static bool TryReadObjectId(JsonElement member, out Guid objectId)
-        {
-            objectId = Guid.Empty;
-            if (!TryGetPropertyCaseInsensitive(member, "ObjectId", out var objectIdElement)
-                || objectIdElement.ValueKind != JsonValueKind.String)
-                return false;
-            return Guid.TryParse(objectIdElement.GetString(), out objectId);
-        }
-
-        private static bool TryReadMembershipAction(JsonElement member, out MembershipAction action)
-        {
-            action = MembershipAction.None;
-            if (!TryGetPropertyCaseInsensitive(member, "MembershipAction", out var actionElement))
-                return false;
-
-            if (actionElement.ValueKind == JsonValueKind.Number)
-            {
-                if (actionElement.TryGetInt32(out var actionInt) && Enum.IsDefined(typeof(MembershipAction), actionInt))
-                {
-                    action = (MembershipAction)actionInt;
-                    return true;
-                }
-                return false;
-            }
-
-            if (actionElement.ValueKind == JsonValueKind.String)
-            {
-                var actionString = actionElement.GetString();
-                return Enum.TryParse(actionString, true, out action);
-            }
-
-            return false;
-        }
     }
 }
