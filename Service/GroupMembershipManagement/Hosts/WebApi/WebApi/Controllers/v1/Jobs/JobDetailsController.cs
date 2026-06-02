@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.JsonPatch;
 using Microsoft.AspNetCore.JsonPatch.Operations;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Logging;
 using Models.SyncJobChange;
 using Models.SyncJobHistory;
 using Services.Contracts;
@@ -31,6 +32,7 @@ namespace WebApi.Controllers.v1.Jobs
         private readonly IRequestHandler<GetMembershipDownloadRequest, GetMembershipDownloadResponse> _getMembershipDownloadRequestHandler;
         private readonly IRequestHandler<GetThresholdNotificationRequest, GetThresholdNotificationResponse> _getThresholdNotificationRequestHandler;
         private readonly ISyncJobChangeRepository _syncJobChangeRepository;
+        private readonly ILogger<JobDetailsController> _logger;
 
         private const int ScheduleNowLimit = 3;
         private static readonly TimeSpan ScheduleNowWindow = TimeSpan.FromHours(24);
@@ -44,7 +46,8 @@ namespace WebApi.Controllers.v1.Jobs
                                     IRequestHandler<GetSyncJobHistoryRequest, GetSyncJobHistoryResponse> getSyncJobHistoryRequestHandler,
                                     IRequestHandler<GetMembershipDownloadRequest, GetMembershipDownloadResponse> getMembershipDownloadRequestHandler,
                                     IRequestHandler<GetThresholdNotificationRequest, GetThresholdNotificationResponse> getThresholdNotificationRequestHandler,
-                                    ISyncJobChangeRepository syncJobChangeRepository)
+                                    ISyncJobChangeRepository syncJobChangeRepository,
+                                    ILogger<JobDetailsController> logger)
         {
             _getJobDetailsRequestHandler = getJobsRequestHandler ?? throw new ArgumentNullException(nameof(getJobsRequestHandler));
             _removeGMMRequestHandler = removeGMMRequestHandler ?? throw new ArgumentNullException(nameof(removeGMMRequestHandler));
@@ -56,6 +59,7 @@ namespace WebApi.Controllers.v1.Jobs
             _getMembershipDownloadRequestHandler = getMembershipDownloadRequestHandler ?? throw new ArgumentNullException(nameof(getMembershipDownloadRequestHandler));
             _getThresholdNotificationRequestHandler = getThresholdNotificationRequestHandler ?? throw new ArgumentNullException(nameof(getThresholdNotificationRequestHandler));
             _syncJobChangeRepository = syncJobChangeRepository ?? throw new ArgumentNullException(nameof(syncJobChangeRepository));
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
 
         [Authorize(Roles = Models.Roles.JOB_OWNER_READER + "," + Models.Roles.JOB_OWNER_WRITER + "," + Models.Roles.JOB_TENANT_READER + "," + Models.Roles.JOB_TENANT_WRITER)]
@@ -152,7 +156,8 @@ namespace WebApi.Controllers.v1.Jobs
             }
             catch (Exception ex)
             {
-                return Problem(statusCode: (int)System.Net.HttpStatusCode.InternalServerError, detail: $"An error occurred: {ex.Message}");
+                _logger.LogError(ex, "Unhandled exception in {Action}", nameof(ReviewJobAsync));
+                return Problem(statusCode: (int)System.Net.HttpStatusCode.InternalServerError, detail: "An unexpected error occurred.");
             }
         }
 
@@ -204,7 +209,8 @@ namespace WebApi.Controllers.v1.Jobs
             }
             catch (Exception ex)
             {
-                return Problem(statusCode: (int)System.Net.HttpStatusCode.InternalServerError, detail: $"An error occurred: {ex.Message}");
+                _logger.LogError(ex, "Unhandled exception in {Action}", nameof(EnableJobAsync));
+                return Problem(statusCode: (int)System.Net.HttpStatusCode.InternalServerError, detail: "An unexpected error occurred.");
             }
         }
 
@@ -234,7 +240,7 @@ namespace WebApi.Controllers.v1.Jobs
 
                 var (titlesValue, hasTitlesOp) = ExtractAndRemoveTitles(requestDTO.PatchOperation);
                 var patchDocument = ConvertToPatchDocument(requestDTO.PatchOperation);
-                
+
                 // This is a double check right now, keeping this in place for future use when the api call is open up to all users
                 var isAllowed = User.IsInRole(Models.Roles.JOB_TENANT_WRITER) || User.IsInRole(Models.Roles.SUBMISSION_REVIEWER);
 
@@ -259,7 +265,8 @@ namespace WebApi.Controllers.v1.Jobs
             }
             catch (Exception ex)
             {
-                return Problem(statusCode: (int)System.Net.HttpStatusCode.InternalServerError, detail: $"An error occurred: {ex.Message}");
+                _logger.LogError(ex, "Unhandled exception in {Action}", nameof(UpdateJobAsync));
+                return Problem(statusCode: (int)System.Net.HttpStatusCode.InternalServerError, detail: "An unexpected error occurred.");
             }
         }
 
@@ -293,7 +300,8 @@ namespace WebApi.Controllers.v1.Jobs
             }
             catch (Exception ex)
             {
-                return Problem(statusCode: (int)System.Net.HttpStatusCode.InternalServerError, detail: $"An error occurred: ${ex}");
+                _logger.LogError(ex, "Unhandled exception in {Action}", nameof(RemoveGMMAsync));
+                return Problem(statusCode: (int)System.Net.HttpStatusCode.InternalServerError, detail: "An unexpected error occurred.");
             }
         }
 
@@ -358,7 +366,8 @@ namespace WebApi.Controllers.v1.Jobs
             }
             catch (Exception ex)
             {
-                return Problem(statusCode: (int)System.Net.HttpStatusCode.InternalServerError, detail: $"An error occurred: {ex.Message}");
+                _logger.LogError(ex, "Unhandled exception in {Action}", nameof(ScheduleNowAsync));
+                return Problem(statusCode: (int)System.Net.HttpStatusCode.InternalServerError, detail: "An unexpected error occurred.");
             }
         }
 
@@ -383,7 +392,8 @@ namespace WebApi.Controllers.v1.Jobs
             }
             catch (Exception ex)
             {
-                return Problem(statusCode: (int)System.Net.HttpStatusCode.InternalServerError, detail: $"An error occurred: {ex.Message}");
+                _logger.LogError(ex, "Unhandled exception in {Action}", nameof(GetScheduleNowUsageAsync));
+                return Problem(statusCode: (int)System.Net.HttpStatusCode.InternalServerError, detail: "An unexpected error occurred.");
             }
         }
 
@@ -503,7 +513,7 @@ namespace WebApi.Controllers.v1.Jobs
         private JsonPatchDocument<SyncJobPatch> ConvertToPatchDocument(List<PatchOperation> operations)
         {
             var patchDoc = new JsonPatchDocument<SyncJobPatch>();
-            
+
             if (operations == null || operations.Count == 0)
             {
                 return patchDoc;
@@ -513,12 +523,12 @@ namespace WebApi.Controllers.v1.Jobs
             {
                 // Handle the actual value type
                 object actualValue = op.Value;
-                
+
                 // If the value is a JsonElement, extract its actual value
                 if (op.Value != null && op.Value.GetType().Name == "JsonElement")
                 {
                     var jsonElement = (System.Text.Json.JsonElement)op.Value;
-                    
+
                     if (jsonElement.ValueKind == System.Text.Json.JsonValueKind.String)
                     {
                         actualValue = jsonElement.GetString();
@@ -551,12 +561,12 @@ namespace WebApi.Controllers.v1.Jobs
                         actualValue = jsonElement.GetRawText();
                     }
                 }
-                
+
                 // Check if this is an empty Titles operation
                 bool isTitlesPath = op.Path?.Equals("/Titles", StringComparison.OrdinalIgnoreCase) == true;
                 bool isReplace = op.Op?.ToLower() == "replace";
                 bool isValueEmpty = actualValue == null || (actualValue is string str && string.IsNullOrEmpty(str));
-                
+
                 if (isTitlesPath && isReplace && isValueEmpty)
                 {
                     // Skip empty Titles operation - it will be handled separately in the handler

@@ -2,11 +2,8 @@
 // Licensed under the MIT license.
 
 using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.JsonPatch;
-using Microsoft.AspNetCore.JsonPatch.Operations;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Graph.Models;
 using MockQueryable.Moq;
 using Models;
 using Models.Entities;
@@ -15,7 +12,6 @@ using Models.SyncJobHistory;
 using Moq;
 using Repositories.Contracts;
 using Repositories.Contracts.InjectConfig;
-using Repositories.EntityFramework;
 using Services.Contracts;
 using Services.Messages.Responses;
 using Services.Messages.Requests;
@@ -26,9 +22,10 @@ using System.Net;
 using System.Security.Claims;
 using System.Text.Json;
 using WebApi.Controllers.v1.Jobs;
-using WebApi.Models;
 using WebApi.Models.DTOs;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
+using WebApi.Tests.ExceptionHandling;
 using Channel = Models.Channel;
 using Roles = WebApi.Models.Roles;
 using SyncJob = Models.SyncJob;
@@ -326,7 +323,7 @@ namespace Services.Tests
                 .Setup(x => x.GetScheduleNowCountByUserAsync(It.IsAny<Guid>(), It.IsAny<DateTime>()))
                 .ReturnsAsync(0);
 
-            _jobDetailsController = new JobDetailsController(_getJobDetailsHandler, _removeGMMHandler, _patchJobHandler, _getGroupHandler, _getChannelHandler, _getJobChangesHandler, _getSyncJobHistoryHandler, _getMembershipDownloadHandler, _getThresholdNotificationHandlerMock.Object, _syncJobChangeRepository.Object);
+            _jobDetailsController = new JobDetailsController(_getJobDetailsHandler, _removeGMMHandler, _patchJobHandler, _getGroupHandler, _getChannelHandler, _getJobChangesHandler, _getSyncJobHistoryHandler, _getMembershipDownloadHandler, _getThresholdNotificationHandlerMock.Object, _syncJobChangeRepository.Object, NullLogger<JobDetailsController>.Instance);
         }
 
         [TestMethod]
@@ -577,7 +574,7 @@ namespace Services.Tests
                                      _httpContextAccessor.Object,
                                      _handleInactiveJobsConfig.Object);
 
-            _jobDetailsController = new JobDetailsController(_getJobDetailsHandler, _removeGMMHandler, _patchJobHandler, _getGroupHandler, _getChannelHandler, _getJobChangesHandler, _getSyncJobHistoryHandler, _getMembershipDownloadHandler, _getThresholdNotificationHandlerMock.Object, _syncJobChangeRepository.Object);
+            _jobDetailsController = new JobDetailsController(_getJobDetailsHandler, _removeGMMHandler, _patchJobHandler, _getGroupHandler, _getChannelHandler, _getJobChangesHandler, _getSyncJobHistoryHandler, _getMembershipDownloadHandler, _getThresholdNotificationHandlerMock.Object, _syncJobChangeRepository.Object, NullLogger<JobDetailsController>.Instance);
 
             var response = await _jobDetailsController.GetJobDetailsAsync(_jobEntity.Id);
             var result = response.Result as OkObjectResult;
@@ -626,7 +623,7 @@ namespace Services.Tests
 
             _httpContextAccessor.Setup(x => x.HttpContext).Returns(context);
 
-            _jobDetailsController = new JobDetailsController(_getJobDetailsHandler, _removeGMMHandler, _patchJobHandler, _getGroupHandler, _getChannelHandler, _getJobChangesHandler, _getSyncJobHistoryHandler, _getMembershipDownloadHandler, _getThresholdNotificationHandlerMock.Object, _syncJobChangeRepository.Object)
+            _jobDetailsController = new JobDetailsController(_getJobDetailsHandler, _removeGMMHandler, _patchJobHandler, _getGroupHandler, _getChannelHandler, _getJobChangesHandler, _getSyncJobHistoryHandler, _getMembershipDownloadHandler, _getThresholdNotificationHandlerMock.Object, _syncJobChangeRepository.Object, NullLogger<JobDetailsController>.Instance)
             {
                 ControllerContext = CreateControllerContext(context)
             };
@@ -671,7 +668,7 @@ namespace Services.Tests
                                      _httpContextAccessor.Object,
                                      _handleInactiveJobsConfig.Object);
 
-            _jobDetailsController = new JobDetailsController(_getJobDetailsHandler, _removeGMMHandler, _patchJobHandler, _getGroupHandler, _getChannelHandler, _getJobChangesHandler, _getSyncJobHistoryHandler, _getMembershipDownloadHandler, _getThresholdNotificationHandlerMock.Object, _syncJobChangeRepository.Object);
+            _jobDetailsController = new JobDetailsController(_getJobDetailsHandler, _removeGMMHandler, _patchJobHandler, _getGroupHandler, _getChannelHandler, _getJobChangesHandler, _getSyncJobHistoryHandler, _getMembershipDownloadHandler, _getThresholdNotificationHandlerMock.Object, _syncJobChangeRepository.Object, NullLogger<JobDetailsController>.Instance);
 
             var response = await _jobDetailsController.GetGroupDetailsAsync(Guid.NewGuid());
             var result = response.Result as OkObjectResult;
@@ -714,7 +711,7 @@ namespace Services.Tests
                                      _httpContextAccessor.Object,
                                      _handleInactiveJobsConfig.Object);
 
-            _jobDetailsController = new JobDetailsController(_getJobDetailsHandler, _removeGMMHandler, _patchJobHandler, _getGroupHandler, _getChannelHandler, _getJobChangesHandler, _getSyncJobHistoryHandler, _getMembershipDownloadHandler, _getThresholdNotificationHandlerMock.Object, _syncJobChangeRepository.Object);
+            _jobDetailsController = new JobDetailsController(_getJobDetailsHandler, _removeGMMHandler, _patchJobHandler, _getGroupHandler, _getChannelHandler, _getJobChangesHandler, _getSyncJobHistoryHandler, _getMembershipDownloadHandler, _getThresholdNotificationHandlerMock.Object, _syncJobChangeRepository.Object, NullLogger<JobDetailsController>.Instance);
 
             var response = await _jobDetailsController.GetChannelDetailsAsync(Guid.NewGuid(), string.Empty);
             var result = response.Result as OkObjectResult;
@@ -735,7 +732,7 @@ namespace Services.Tests
         [DataRow(Roles.JOB_TENANT_WRITER)]
         public async Task EnableJobSuccessAsync(string role)
         {
-            _jobDetailsController = new JobDetailsController(_getJobDetailsHandler, _removeGMMHandler, _patchJobHandler, _getGroupHandler, _getChannelHandler, _getJobChangesHandler, _getSyncJobHistoryHandler, _getMembershipDownloadHandler, _getThresholdNotificationHandlerMock.Object, _syncJobChangeRepository.Object)
+            _jobDetailsController = new JobDetailsController(_getJobDetailsHandler, _removeGMMHandler, _patchJobHandler, _getGroupHandler, _getChannelHandler, _getJobChangesHandler, _getSyncJobHistoryHandler, _getMembershipDownloadHandler, _getThresholdNotificationHandlerMock.Object, _syncJobChangeRepository.Object, NullLogger<JobDetailsController>.Instance)
             {
                 ControllerContext = CreateControllerContext(new List<Claim> {
                     new Claim(ClaimTypes.Name, "user@domain.com"),
@@ -772,7 +769,7 @@ namespace Services.Tests
 
             _jobEntity.Status = SyncStatus.Idle.ToString();
 
-            _jobDetailsController = new JobDetailsController(_getJobDetailsHandler, _removeGMMHandler, _patchJobHandler, _getGroupHandler, _getChannelHandler, _getJobChangesHandler, _getSyncJobHistoryHandler, _getMembershipDownloadHandler, _getThresholdNotificationHandlerMock.Object, _syncJobChangeRepository.Object)
+            _jobDetailsController = new JobDetailsController(_getJobDetailsHandler, _removeGMMHandler, _patchJobHandler, _getGroupHandler, _getChannelHandler, _getJobChangesHandler, _getSyncJobHistoryHandler, _getMembershipDownloadHandler, _getThresholdNotificationHandlerMock.Object, _syncJobChangeRepository.Object, NullLogger<JobDetailsController>.Instance)
             {
                 ControllerContext = CreateControllerContext(new List<Claim> {
                     new Claim(ClaimTypes.Name, "user@domain.com"),
@@ -834,7 +831,7 @@ namespace Services.Tests
                                     .ReturnsAsync(new Setting { SettingKey = SettingKey.IsAITitleEnabled, SettingValue = "false" });
 
 
-            _jobDetailsController = new JobDetailsController(_getJobDetailsHandler, _removeGMMHandler, _patchJobHandler, _getGroupHandler, _getChannelHandler, _getJobChangesHandler, _getSyncJobHistoryHandler, _getMembershipDownloadHandler, _getThresholdNotificationHandlerMock.Object, _syncJobChangeRepository.Object)
+            _jobDetailsController = new JobDetailsController(_getJobDetailsHandler, _removeGMMHandler, _patchJobHandler, _getGroupHandler, _getChannelHandler, _getJobChangesHandler, _getSyncJobHistoryHandler, _getMembershipDownloadHandler, _getThresholdNotificationHandlerMock.Object, _syncJobChangeRepository.Object, NullLogger<JobDetailsController>.Instance)
             {
                 ControllerContext = CreateControllerContext(new List<Claim> {
                     new Claim(ClaimTypes.Name, "user@domain.com"),
@@ -866,7 +863,7 @@ namespace Services.Tests
         [DataRow(Roles.JOB_TENANT_WRITER)]
         public async Task EnableJobToBadStatusAsync(string role)
         {
-            _jobDetailsController = new JobDetailsController(_getJobDetailsHandler, _removeGMMHandler, _patchJobHandler, _getGroupHandler, _getChannelHandler, _getJobChangesHandler, _getSyncJobHistoryHandler, _getMembershipDownloadHandler, _getThresholdNotificationHandlerMock.Object, _syncJobChangeRepository.Object)
+            _jobDetailsController = new JobDetailsController(_getJobDetailsHandler, _removeGMMHandler, _patchJobHandler, _getGroupHandler, _getChannelHandler, _getJobChangesHandler, _getSyncJobHistoryHandler, _getMembershipDownloadHandler, _getThresholdNotificationHandlerMock.Object, _syncJobChangeRepository.Object, NullLogger<JobDetailsController>.Instance)
             {
                 ControllerContext = CreateControllerContext(new List<Claim> {
                     new Claim(ClaimTypes.Name, "user@domain.com"),
@@ -904,7 +901,7 @@ namespace Services.Tests
         public async Task EnablePendingReviewJobFailedAsync(string role)
         {
             _jobEntity.Status = SyncStatus.PendingReview.ToString();
-            _jobDetailsController = new JobDetailsController(_getJobDetailsHandler, _removeGMMHandler, _patchJobHandler, _getGroupHandler, _getChannelHandler, _getJobChangesHandler, _getSyncJobHistoryHandler, _getMembershipDownloadHandler, _getThresholdNotificationHandlerMock.Object, _syncJobChangeRepository.Object)
+            _jobDetailsController = new JobDetailsController(_getJobDetailsHandler, _removeGMMHandler, _patchJobHandler, _getGroupHandler, _getChannelHandler, _getJobChangesHandler, _getSyncJobHistoryHandler, _getMembershipDownloadHandler, _getThresholdNotificationHandlerMock.Object, _syncJobChangeRepository.Object, NullLogger<JobDetailsController>.Instance)
             {
                 ControllerContext = CreateControllerContext(new List<Claim> {
                     new Claim(ClaimTypes.Name, "user@domain.com"),
@@ -954,7 +951,7 @@ namespace Services.Tests
                     };
                 });
             _jobEntity.Status = SyncStatus.PendingReview.ToString();
-            _jobDetailsController = new JobDetailsController(_getJobDetailsHandler, _removeGMMHandler, _patchJobHandler, _getGroupHandler, _getChannelHandler, _getJobChangesHandler, _getSyncJobHistoryHandler, _getMembershipDownloadHandler, _getThresholdNotificationHandlerMock.Object, _syncJobChangeRepository.Object)
+            _jobDetailsController = new JobDetailsController(_getJobDetailsHandler, _removeGMMHandler, _patchJobHandler, _getGroupHandler, _getChannelHandler, _getJobChangesHandler, _getSyncJobHistoryHandler, _getMembershipDownloadHandler, _getThresholdNotificationHandlerMock.Object, _syncJobChangeRepository.Object, NullLogger<JobDetailsController>.Instance)
             {
                 ControllerContext = CreateControllerContext(new List<Claim> {
                     new Claim(ClaimTypes.Name, "user@domain.com"),
@@ -1003,7 +1000,7 @@ namespace Services.Tests
             _jobEntity.Status = SyncStatus.PendingReview.ToString();
             _jobEntity.LastRunTime = DateTime.UtcNow.AddHours(-1);
             _jobEntity.ThresholdViolations = 0;
-            _jobDetailsController = new JobDetailsController(_getJobDetailsHandler, _removeGMMHandler, _patchJobHandler, _getGroupHandler, _getChannelHandler, _getJobChangesHandler, _getSyncJobHistoryHandler, _getMembershipDownloadHandler, _getThresholdNotificationHandlerMock.Object, _syncJobChangeRepository.Object)
+            _jobDetailsController = new JobDetailsController(_getJobDetailsHandler, _removeGMMHandler, _patchJobHandler, _getGroupHandler, _getChannelHandler, _getJobChangesHandler, _getSyncJobHistoryHandler, _getMembershipDownloadHandler, _getThresholdNotificationHandlerMock.Object, _syncJobChangeRepository.Object, NullLogger<JobDetailsController>.Instance)
             {
                 ControllerContext = CreateControllerContext(new List<Claim>
                 {
@@ -1055,7 +1052,7 @@ namespace Services.Tests
                     };
                 });
             _jobEntity.Status = SyncStatus.PendingReview.ToString();
-            _jobDetailsController = new JobDetailsController(_getJobDetailsHandler, _removeGMMHandler, _patchJobHandler, _getGroupHandler, _getChannelHandler, _getJobChangesHandler, _getSyncJobHistoryHandler, _getMembershipDownloadHandler, _getThresholdNotificationHandlerMock.Object, _syncJobChangeRepository.Object)
+            _jobDetailsController = new JobDetailsController(_getJobDetailsHandler, _removeGMMHandler, _patchJobHandler, _getGroupHandler, _getChannelHandler, _getJobChangesHandler, _getSyncJobHistoryHandler, _getMembershipDownloadHandler, _getThresholdNotificationHandlerMock.Object, _syncJobChangeRepository.Object, NullLogger<JobDetailsController>.Instance)
             {
                 ControllerContext = CreateControllerContext(new List<Claim> {
                     new Claim(ClaimTypes.Name, "user@domain.com"),
@@ -1102,7 +1099,7 @@ namespace Services.Tests
                     };
                 });
             _jobEntity.Status = SyncStatus.PendingReview.ToString();
-            _jobDetailsController = new JobDetailsController(_getJobDetailsHandler, _removeGMMHandler, _patchJobHandler, _getGroupHandler, _getChannelHandler, _getJobChangesHandler, _getSyncJobHistoryHandler, _getMembershipDownloadHandler, _getThresholdNotificationHandlerMock.Object, _syncJobChangeRepository.Object)
+            _jobDetailsController = new JobDetailsController(_getJobDetailsHandler, _removeGMMHandler, _patchJobHandler, _getGroupHandler, _getChannelHandler, _getJobChangesHandler, _getSyncJobHistoryHandler, _getMembershipDownloadHandler, _getThresholdNotificationHandlerMock.Object, _syncJobChangeRepository.Object, NullLogger<JobDetailsController>.Instance)
             {
                 ControllerContext = CreateControllerContext(new List<Claim> {
                     new Claim(ClaimTypes.Name, "user@domain.com"),
@@ -1154,7 +1151,7 @@ namespace Services.Tests
             _settingsRepository.Setup(x => x.GetSettingByKeyAsync(SettingKey.CanReviewOwnSubmissions))
                 .ReturnsAsync(() => new Setting { SettingKey = SettingKey.CanReviewOwnSubmissions, SettingValue = "false" });
 
-            _jobDetailsController = new JobDetailsController(_getJobDetailsHandler, _removeGMMHandler, _patchJobHandler, _getGroupHandler, _getChannelHandler, _getJobChangesHandler, _getSyncJobHistoryHandler, _getMembershipDownloadHandler, _getThresholdNotificationHandlerMock.Object, _syncJobChangeRepository.Object)
+            _jobDetailsController = new JobDetailsController(_getJobDetailsHandler, _removeGMMHandler, _patchJobHandler, _getGroupHandler, _getChannelHandler, _getJobChangesHandler, _getSyncJobHistoryHandler, _getMembershipDownloadHandler, _getThresholdNotificationHandlerMock.Object, _syncJobChangeRepository.Object, NullLogger<JobDetailsController>.Instance)
             {
                 ControllerContext = CreateControllerContext(new List<Claim> {
                     new Claim(ClaimTypes.Name, "user@domain.com"),
@@ -1203,7 +1200,7 @@ namespace Services.Tests
             _graphGroupRepository.Setup(x => x.GetDestinationOwnersAsync(It.IsAny<List<Guid>>()))
                 .ReturnsAsync((List<Guid> objectIds) => null);
             _jobEntity.Status = SyncStatus.PendingReview.ToString();
-            _jobDetailsController = new JobDetailsController(_getJobDetailsHandler, _removeGMMHandler, _patchJobHandler, _getGroupHandler, _getChannelHandler, _getJobChangesHandler, _getSyncJobHistoryHandler, _getMembershipDownloadHandler, _getThresholdNotificationHandlerMock.Object, _syncJobChangeRepository.Object)
+            _jobDetailsController = new JobDetailsController(_getJobDetailsHandler, _removeGMMHandler, _patchJobHandler, _getGroupHandler, _getChannelHandler, _getJobChangesHandler, _getSyncJobHistoryHandler, _getMembershipDownloadHandler, _getThresholdNotificationHandlerMock.Object, _syncJobChangeRepository.Object, NullLogger<JobDetailsController>.Instance)
             {
                 ControllerContext = CreateControllerContext(new List<Claim> {
                     new Claim(ClaimTypes.Name, "user@domain.com"),
@@ -1252,7 +1249,7 @@ namespace Services.Tests
                     };
                 });
             _jobEntity.Status = SyncStatus.PendingReview.ToString();
-            _jobDetailsController = new JobDetailsController(_getJobDetailsHandler, _removeGMMHandler, _patchJobHandler, _getGroupHandler, _getChannelHandler, _getJobChangesHandler, _getSyncJobHistoryHandler, _getMembershipDownloadHandler, _getThresholdNotificationHandlerMock.Object, _syncJobChangeRepository.Object)
+            _jobDetailsController = new JobDetailsController(_getJobDetailsHandler, _removeGMMHandler, _patchJobHandler, _getGroupHandler, _getChannelHandler, _getJobChangesHandler, _getSyncJobHistoryHandler, _getMembershipDownloadHandler, _getThresholdNotificationHandlerMock.Object, _syncJobChangeRepository.Object, NullLogger<JobDetailsController>.Instance)
             {
                 ControllerContext = CreateControllerContext(new List<Claim> {
                     new Claim(ClaimTypes.Name, "user@domain.com"),
@@ -1285,7 +1282,7 @@ namespace Services.Tests
         public async Task UpdateJobSuccessAsync(string role)
         {
             _jobEntity.Status = SyncStatus.Idle.ToString();
-            _jobDetailsController = new JobDetailsController(_getJobDetailsHandler, _removeGMMHandler, _patchJobHandler, _getGroupHandler, _getChannelHandler, _getJobChangesHandler, _getSyncJobHistoryHandler, _getMembershipDownloadHandler, _getThresholdNotificationHandlerMock.Object, _syncJobChangeRepository.Object)
+            _jobDetailsController = new JobDetailsController(_getJobDetailsHandler, _removeGMMHandler, _patchJobHandler, _getGroupHandler, _getChannelHandler, _getJobChangesHandler, _getSyncJobHistoryHandler, _getMembershipDownloadHandler, _getThresholdNotificationHandlerMock.Object, _syncJobChangeRepository.Object, NullLogger<JobDetailsController>.Instance)
             {
                 ControllerContext = CreateControllerContext(new List<Claim> {
                     new Claim(ClaimTypes.Name, "user@domain.com"),
@@ -1317,7 +1314,7 @@ namespace Services.Tests
         public async Task UpdatePendingReviewJobFailureAsync(string role)
         {
             _jobEntity.Status = SyncStatus.PendingReview.ToString();
-            _jobDetailsController = new JobDetailsController(_getJobDetailsHandler, _removeGMMHandler, _patchJobHandler, _getGroupHandler, _getChannelHandler, _getJobChangesHandler, _getSyncJobHistoryHandler, _getMembershipDownloadHandler, _getThresholdNotificationHandlerMock.Object, _syncJobChangeRepository.Object)
+            _jobDetailsController = new JobDetailsController(_getJobDetailsHandler, _removeGMMHandler, _patchJobHandler, _getGroupHandler, _getChannelHandler, _getJobChangesHandler, _getSyncJobHistoryHandler, _getMembershipDownloadHandler, _getThresholdNotificationHandlerMock.Object, _syncJobChangeRepository.Object, NullLogger<JobDetailsController>.Instance)
             {
                 ControllerContext = CreateControllerContext(new List<Claim> {
                     new Claim(ClaimTypes.Name, "user@domain.com"),
@@ -1348,7 +1345,7 @@ namespace Services.Tests
         [DataRow(Roles.JOB_OWNER_WRITER)]
         public async Task PatchJobWhenChangeReasonIsEmpty(string role)
         {
-            _jobDetailsController = new JobDetailsController(_getJobDetailsHandler, _removeGMMHandler, _patchJobHandler, _getGroupHandler, _getChannelHandler, _getJobChangesHandler, _getSyncJobHistoryHandler, _getMembershipDownloadHandler, _getThresholdNotificationHandlerMock.Object, _syncJobChangeRepository.Object)
+            _jobDetailsController = new JobDetailsController(_getJobDetailsHandler, _removeGMMHandler, _patchJobHandler, _getGroupHandler, _getChannelHandler, _getJobChangesHandler, _getSyncJobHistoryHandler, _getMembershipDownloadHandler, _getThresholdNotificationHandlerMock.Object, _syncJobChangeRepository.Object, NullLogger<JobDetailsController>.Instance)
             {
                 ControllerContext = CreateControllerContext(new List<Claim> {
                     new Claim(ClaimTypes.Name, "user@domain.com"),
@@ -1378,7 +1375,7 @@ namespace Services.Tests
         [DataRow(Roles.JOB_OWNER_WRITER)]
         public async Task PatchJobWhenSyncJobDoesNotExist(string role)
         {
-            _jobDetailsController = new JobDetailsController(_getJobDetailsHandler, _removeGMMHandler, _patchJobHandler, _getGroupHandler, _getChannelHandler, _getJobChangesHandler, _getSyncJobHistoryHandler, _getMembershipDownloadHandler, _getThresholdNotificationHandlerMock.Object, _syncJobChangeRepository.Object)
+            _jobDetailsController = new JobDetailsController(_getJobDetailsHandler, _removeGMMHandler, _patchJobHandler, _getGroupHandler, _getChannelHandler, _getJobChangesHandler, _getSyncJobHistoryHandler, _getMembershipDownloadHandler, _getThresholdNotificationHandlerMock.Object, _syncJobChangeRepository.Object, NullLogger<JobDetailsController>.Instance)
             {
                 ControllerContext = CreateControllerContext(new List<Claim> {
                     new Claim(ClaimTypes.Name, "user@domain.com"),
@@ -1411,7 +1408,7 @@ namespace Services.Tests
         [DataRow(Roles.JOB_OWNER_WRITER)]
         public async Task PatchJobWhenGroupIdNull(string role)
         {
-            _jobDetailsController = new JobDetailsController(_getJobDetailsHandler, _removeGMMHandler, _patchJobHandler, _getGroupHandler, _getChannelHandler, _getJobChangesHandler, _getSyncJobHistoryHandler, _getMembershipDownloadHandler, _getThresholdNotificationHandlerMock.Object, _syncJobChangeRepository.Object)
+            _jobDetailsController = new JobDetailsController(_getJobDetailsHandler, _removeGMMHandler, _patchJobHandler, _getGroupHandler, _getChannelHandler, _getJobChangesHandler, _getSyncJobHistoryHandler, _getMembershipDownloadHandler, _getThresholdNotificationHandlerMock.Object, _syncJobChangeRepository.Object, NullLogger<JobDetailsController>.Instance)
             {
                 ControllerContext = CreateControllerContext(new List<Claim> {
                     new Claim(ClaimTypes.Name, "user@domain.com"),
@@ -1443,7 +1440,7 @@ namespace Services.Tests
         [DataRow(Roles.JOB_OWNER_WRITER)]
         public async Task PatchJobWhenNotGroupOwner(string role)
         {
-            _jobDetailsController = new JobDetailsController(_getJobDetailsHandler, _removeGMMHandler, _patchJobHandler, _getGroupHandler, _getChannelHandler, _getJobChangesHandler, _getSyncJobHistoryHandler, _getMembershipDownloadHandler, _getThresholdNotificationHandlerMock.Object, _syncJobChangeRepository.Object)
+            _jobDetailsController = new JobDetailsController(_getJobDetailsHandler, _removeGMMHandler, _patchJobHandler, _getGroupHandler, _getChannelHandler, _getJobChangesHandler, _getSyncJobHistoryHandler, _getMembershipDownloadHandler, _getThresholdNotificationHandlerMock.Object, _syncJobChangeRepository.Object, NullLogger<JobDetailsController>.Instance)
             {
                 ControllerContext = CreateControllerContext(new List<Claim> {
                     new Claim(ClaimTypes.Name, "user@domain.com"),
@@ -1473,7 +1470,7 @@ namespace Services.Tests
         [DataRow(Roles.JOB_OWNER_WRITER)]
         public async Task PatchJobWhileJobInProgress(string role)
         {
-            _jobDetailsController = new JobDetailsController(_getJobDetailsHandler, _removeGMMHandler, _patchJobHandler, _getGroupHandler, _getChannelHandler, _getJobChangesHandler, _getSyncJobHistoryHandler, _getMembershipDownloadHandler, _getThresholdNotificationHandlerMock.Object, _syncJobChangeRepository.Object)
+            _jobDetailsController = new JobDetailsController(_getJobDetailsHandler, _removeGMMHandler, _patchJobHandler, _getGroupHandler, _getChannelHandler, _getJobChangesHandler, _getSyncJobHistoryHandler, _getMembershipDownloadHandler, _getThresholdNotificationHandlerMock.Object, _syncJobChangeRepository.Object, NullLogger<JobDetailsController>.Instance)
             {
                 ControllerContext = CreateControllerContext(new List<Claim> {
                     new Claim(ClaimTypes.Name, "user@domain.com"),
@@ -1510,7 +1507,7 @@ namespace Services.Tests
                     new Claim("http://schemas.microsoft.com/identity/claims/objectidentifier", Guid.NewGuid().ToString())});
 
 
-            _jobDetailsController = new JobDetailsController(_getJobDetailsHandler, _removeGMMHandler, _patchJobHandler, _getGroupHandler, _getChannelHandler, _getJobChangesHandler, _getSyncJobHistoryHandler, _getMembershipDownloadHandler, _getThresholdNotificationHandlerMock.Object, _syncJobChangeRepository.Object)
+            _jobDetailsController = new JobDetailsController(_getJobDetailsHandler, _removeGMMHandler, _patchJobHandler, _getGroupHandler, _getChannelHandler, _getJobChangesHandler, _getSyncJobHistoryHandler, _getMembershipDownloadHandler, _getThresholdNotificationHandlerMock.Object, _syncJobChangeRepository.Object, NullLogger<JobDetailsController>.Instance)
             {
                 ControllerContext = CreateControllerContext(context)
             };
@@ -1533,7 +1530,7 @@ namespace Services.Tests
                     new Claim("http://schemas.microsoft.com/identity/claims/objectidentifier", userId)});
 
 
-            _jobDetailsController = new JobDetailsController(_getJobDetailsHandler, _removeGMMHandler, _patchJobHandler, _getGroupHandler, _getChannelHandler, _getJobChangesHandler, _getSyncJobHistoryHandler, _getMembershipDownloadHandler, _getThresholdNotificationHandlerMock.Object, _syncJobChangeRepository.Object)
+            _jobDetailsController = new JobDetailsController(_getJobDetailsHandler, _removeGMMHandler, _patchJobHandler, _getGroupHandler, _getChannelHandler, _getJobChangesHandler, _getSyncJobHistoryHandler, _getMembershipDownloadHandler, _getThresholdNotificationHandlerMock.Object, _syncJobChangeRepository.Object, NullLogger<JobDetailsController>.Instance)
             {
                 ControllerContext = CreateControllerContext(context)
             };
@@ -1559,7 +1556,7 @@ namespace Services.Tests
                     new Claim("http://schemas.microsoft.com/identity/claims/objectidentifier", Guid.NewGuid().ToString())});
 
 
-            _jobDetailsController = new JobDetailsController(_getJobDetailsHandler, _removeGMMHandler, _patchJobHandler, _getGroupHandler, _getChannelHandler, _getJobChangesHandler, _getSyncJobHistoryHandler, _getMembershipDownloadHandler, _getThresholdNotificationHandlerMock.Object, _syncJobChangeRepository.Object)
+            _jobDetailsController = new JobDetailsController(_getJobDetailsHandler, _removeGMMHandler, _patchJobHandler, _getGroupHandler, _getChannelHandler, _getJobChangesHandler, _getSyncJobHistoryHandler, _getMembershipDownloadHandler, _getThresholdNotificationHandlerMock.Object, _syncJobChangeRepository.Object, NullLogger<JobDetailsController>.Instance)
             {
                 ControllerContext = CreateControllerContext(context)
             };
@@ -1585,7 +1582,7 @@ namespace Services.Tests
                         new Claim(ClaimTypes.Role, role)
                     });
 
-            _jobDetailsController = new JobDetailsController(_getJobDetailsHandler, _removeGMMHandler, _patchJobHandler, _getGroupHandler, _getChannelHandler, _getJobChangesHandler, _getSyncJobHistoryHandler, _getMembershipDownloadHandler, _getThresholdNotificationHandlerMock.Object, _syncJobChangeRepository.Object)
+            _jobDetailsController = new JobDetailsController(_getJobDetailsHandler, _removeGMMHandler, _patchJobHandler, _getGroupHandler, _getChannelHandler, _getJobChangesHandler, _getSyncJobHistoryHandler, _getMembershipDownloadHandler, _getThresholdNotificationHandlerMock.Object, _syncJobChangeRepository.Object, NullLogger<JobDetailsController>.Instance)
             {
                 ControllerContext = CreateControllerContext(context)
             };
@@ -1615,7 +1612,7 @@ namespace Services.Tests
             _httpContextAccessor.Setup(x => x.HttpContext).Returns(context);
 
             _removeGMMHandler = new RemoveGMMHandler(NullLogger<RemoveGMMHandler>.Instance, _graphGroupRepository.Object, _syncJobRepository.Object);
-            _jobDetailsController = new JobDetailsController(_getJobDetailsHandler, _removeGMMHandler, _patchJobHandler, _getGroupHandler, _getChannelHandler, _getJobChangesHandler, _getSyncJobHistoryHandler, _getMembershipDownloadHandler, _getThresholdNotificationHandlerMock.Object, _syncJobChangeRepository.Object);
+            _jobDetailsController = new JobDetailsController(_getJobDetailsHandler, _removeGMMHandler, _patchJobHandler, _getGroupHandler, _getChannelHandler, _getJobChangesHandler, _getSyncJobHistoryHandler, _getMembershipDownloadHandler, _getThresholdNotificationHandlerMock.Object, _syncJobChangeRepository.Object, NullLogger<JobDetailsController>.Instance);
 
             _syncJobRepository.Setup(x => x.DeleteSyncJobAsync(It.IsAny<SyncJob>())).ThrowsAsync(new Exception());
             var response = await _jobDetailsController.RemoveGMMAsync(Guid.NewGuid());
@@ -1907,7 +1904,7 @@ namespace Services.Tests
         {
             _jobEntity.Status = SyncStatus.Idle.ToString();
 
-            _jobDetailsController = new JobDetailsController(_getJobDetailsHandler, _removeGMMHandler, _patchJobHandler, _getGroupHandler, _getChannelHandler, _getJobChangesHandler, _getSyncJobHistoryHandler, _getMembershipDownloadHandler, _getThresholdNotificationHandlerMock.Object, _syncJobChangeRepository.Object)
+            _jobDetailsController = new JobDetailsController(_getJobDetailsHandler, _removeGMMHandler, _patchJobHandler, _getGroupHandler, _getChannelHandler, _getJobChangesHandler, _getSyncJobHistoryHandler, _getMembershipDownloadHandler, _getThresholdNotificationHandlerMock.Object, _syncJobChangeRepository.Object, NullLogger<JobDetailsController>.Instance)
             {
                 ControllerContext = CreateControllerContext(new List<Claim> {
                     new Claim(ClaimTypes.Name, "user@domain.com"),
@@ -1936,7 +1933,7 @@ namespace Services.Tests
         {
             _jobEntity.Status = SyncStatus.Idle.ToString();
 
-            _jobDetailsController = new JobDetailsController(_getJobDetailsHandler, _removeGMMHandler, _patchJobHandler, _getGroupHandler, _getChannelHandler, _getJobChangesHandler, _getSyncJobHistoryHandler, _getMembershipDownloadHandler, _getThresholdNotificationHandlerMock.Object, _syncJobChangeRepository.Object)
+            _jobDetailsController = new JobDetailsController(_getJobDetailsHandler, _removeGMMHandler, _patchJobHandler, _getGroupHandler, _getChannelHandler, _getJobChangesHandler, _getSyncJobHistoryHandler, _getMembershipDownloadHandler, _getThresholdNotificationHandlerMock.Object, _syncJobChangeRepository.Object, NullLogger<JobDetailsController>.Instance)
             {
                 ControllerContext = CreateControllerContext(new List<Claim> {
                     new Claim(ClaimTypes.Name, "user@domain.com"),
@@ -1967,7 +1964,7 @@ namespace Services.Tests
         [DataRow(Roles.JOB_TENANT_WRITER)]
         public async Task ScheduleNowUnauthorizedAsync(string role)
         {
-            _jobDetailsController = new JobDetailsController(_getJobDetailsHandler, _removeGMMHandler, _patchJobHandler, _getGroupHandler, _getChannelHandler, _getJobChangesHandler, _getSyncJobHistoryHandler, _getMembershipDownloadHandler, _getThresholdNotificationHandlerMock.Object, _syncJobChangeRepository.Object)
+            _jobDetailsController = new JobDetailsController(_getJobDetailsHandler, _removeGMMHandler, _patchJobHandler, _getGroupHandler, _getChannelHandler, _getJobChangesHandler, _getSyncJobHistoryHandler, _getMembershipDownloadHandler, _getThresholdNotificationHandlerMock.Object, _syncJobChangeRepository.Object, NullLogger<JobDetailsController>.Instance)
             {
                 ControllerContext = CreateControllerContext(new List<Claim> {
                     new Claim(ClaimTypes.Name, "user@domain.com"),
@@ -1997,7 +1994,7 @@ namespace Services.Tests
                 .Setup(x => x.GetScheduleNowCountByUserAsync(It.IsAny<Guid>(), It.IsAny<DateTime>()))
                 .ReturnsAsync(3);
 
-            _jobDetailsController = new JobDetailsController(_getJobDetailsHandler, _removeGMMHandler, _patchJobHandler, _getGroupHandler, _getChannelHandler, _getJobChangesHandler, _getSyncJobHistoryHandler, _getMembershipDownloadHandler, _getThresholdNotificationHandlerMock.Object, _syncJobChangeRepository.Object)
+            _jobDetailsController = new JobDetailsController(_getJobDetailsHandler, _removeGMMHandler, _patchJobHandler, _getGroupHandler, _getChannelHandler, _getJobChangesHandler, _getSyncJobHistoryHandler, _getMembershipDownloadHandler, _getThresholdNotificationHandlerMock.Object, _syncJobChangeRepository.Object, NullLogger<JobDetailsController>.Instance)
             {
                 ControllerContext = CreateControllerContext(new List<Claim> {
                     new Claim(ClaimTypes.Name, "user@domain.com"),
@@ -2028,7 +2025,7 @@ namespace Services.Tests
                 .Setup(x => x.GetScheduleNowCountByUserAsync(userId, It.IsAny<DateTime>()))
                 .ReturnsAsync(2);
 
-            _jobDetailsController = new JobDetailsController(_getJobDetailsHandler, _removeGMMHandler, _patchJobHandler, _getGroupHandler, _getChannelHandler, _getJobChangesHandler, _getSyncJobHistoryHandler, _getMembershipDownloadHandler, _getThresholdNotificationHandlerMock.Object, _syncJobChangeRepository.Object)
+            _jobDetailsController = new JobDetailsController(_getJobDetailsHandler, _removeGMMHandler, _patchJobHandler, _getGroupHandler, _getChannelHandler, _getJobChangesHandler, _getSyncJobHistoryHandler, _getMembershipDownloadHandler, _getThresholdNotificationHandlerMock.Object, _syncJobChangeRepository.Object, NullLogger<JobDetailsController>.Instance)
             {
                 ControllerContext = CreateControllerContext(new List<Claim> {
                     new Claim(ClaimTypes.Name, "user@domain.com"),
@@ -2041,6 +2038,173 @@ namespace Services.Tests
 
             Assert.IsNotNull(result);
             Assert.AreEqual(200, result.StatusCode);
+        }
+
+        private JobDetailsController BuildControllerWithLogger(
+            Mock<ILogger<JobDetailsController>> loggerMock,
+            IRequestHandler<RemoveGMMRequest, RemoveGMMResponse>? removeGMMOverride = null,
+            IRequestHandler<PatchJobRequest, PatchJobResponse>? patchJobOverride = null,
+            string role = Roles.JOB_TENANT_WRITER)
+        {
+            return new JobDetailsController(
+                _getJobDetailsHandler,
+                removeGMMOverride ?? _removeGMMHandler,
+                patchJobOverride ?? _patchJobHandler,
+                _getGroupHandler,
+                _getChannelHandler,
+                _getJobChangesHandler,
+                _getSyncJobHistoryHandler,
+                _getMembershipDownloadHandler,
+                _getThresholdNotificationHandlerMock.Object,
+                _syncJobChangeRepository.Object,
+                loggerMock.Object)
+            {
+                ControllerContext = CreateControllerContext(new List<Claim>
+                {
+                    new Claim(ClaimTypes.Name, "user@domain.com"),
+                    new Claim(ClaimTypes.Role, role),
+                    new Claim("http://schemas.microsoft.com/identity/claims/objectidentifier", Guid.NewGuid().ToString())
+                })
+            };
+        }
+
+        private static void VerifyLoggedOnce(Mock<ILogger<JobDetailsController>> loggerMock, Exception thrown)
+        {
+            loggerMock.Verify(
+                l => l.Log(
+                    LogLevel.Error,
+                    It.IsAny<EventId>(),
+                    It.IsAny<It.IsAnyType>(),
+                    thrown,
+                    It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
+                Times.Once,
+                "The full exception must be logged on the server side.");
+        }
+
+        [TestMethod]
+        public async Task ReviewJobAsync_SanitizesUnexpectedException()
+        {
+            var thrown = new InvalidOperationException("sensitive internal detail that must not leak (ReviewJob)");
+            var patchHandlerMock = new Mock<IRequestHandler<PatchJobRequest, PatchJobResponse>>();
+            patchHandlerMock.Setup(h => h.ExecuteAsync(It.IsAny<PatchJobRequest>())).ThrowsAsync(thrown);
+            var loggerMock = new Mock<ILogger<JobDetailsController>>();
+
+            var controller = BuildControllerWithLogger(loggerMock, patchJobOverride: patchHandlerMock.Object, role: Roles.SUBMISSION_REVIEWER);
+            var requestDTO = CreatePatchJobRequestDTO(new List<PatchOperation>(), SyncJobChangeReason.SubmissionApproved.ToString(), "justification");
+
+            var response = await controller.ReviewJobAsync(Guid.NewGuid(), requestDTO);
+            var result = response as ObjectResult;
+            Assert.IsNotNull(result);
+            Assert.AreEqual(StatusCodes.Status500InternalServerError, result.StatusCode);
+            var problem = result.Value as ProblemDetails;
+            Assert.IsNotNull(problem);
+            AssertNoExceptionLeak.Assert(problem.Detail ?? string.Empty, thrown);
+            VerifyLoggedOnce(loggerMock, thrown);
+        }
+
+        [TestMethod]
+        public async Task EnableJobAsync_SanitizesUnexpectedException()
+        {
+            var thrown = new InvalidOperationException("sensitive internal detail that must not leak (EnableJob)");
+            var patchHandlerMock = new Mock<IRequestHandler<PatchJobRequest, PatchJobResponse>>();
+            patchHandlerMock.Setup(h => h.ExecuteAsync(It.IsAny<PatchJobRequest>())).ThrowsAsync(thrown);
+            var loggerMock = new Mock<ILogger<JobDetailsController>>();
+
+            var controller = BuildControllerWithLogger(loggerMock, patchJobOverride: patchHandlerMock.Object, role: Roles.JOB_TENANT_WRITER);
+            var requestDTO = CreatePatchJobRequestDTO(new List<PatchOperation>(), SyncJobChangeReason.StatusUpdate.ToString(), "justification");
+
+            var response = await controller.EnableJobAsync(Guid.NewGuid(), requestDTO);
+            var result = response as ObjectResult;
+            Assert.IsNotNull(result);
+            Assert.AreEqual(StatusCodes.Status500InternalServerError, result.StatusCode);
+            var problem = result.Value as ProblemDetails;
+            Assert.IsNotNull(problem);
+            AssertNoExceptionLeak.Assert(problem.Detail ?? string.Empty, thrown);
+            VerifyLoggedOnce(loggerMock, thrown);
+        }
+
+        [TestMethod]
+        public async Task UpdateJobAsync_SanitizesUnexpectedException()
+        {
+            var thrown = new InvalidOperationException("sensitive internal detail that must not leak (UpdateJob)");
+            var patchHandlerMock = new Mock<IRequestHandler<PatchJobRequest, PatchJobResponse>>();
+            patchHandlerMock.Setup(h => h.ExecuteAsync(It.IsAny<PatchJobRequest>())).ThrowsAsync(thrown);
+            var loggerMock = new Mock<ILogger<JobDetailsController>>();
+
+            var controller = BuildControllerWithLogger(loggerMock, patchJobOverride: patchHandlerMock.Object, role: Roles.JOB_TENANT_WRITER);
+            var requestDTO = CreatePatchJobRequestDTO(new List<PatchOperation>(), SyncJobChangeReason.Update.ToString(), "justification");
+
+            var response = await controller.UpdateJobAsync(Guid.NewGuid(), requestDTO);
+            var result = response as ObjectResult;
+            Assert.IsNotNull(result);
+            Assert.AreEqual(StatusCodes.Status500InternalServerError, result.StatusCode);
+            var problem = result.Value as ProblemDetails;
+            Assert.IsNotNull(problem);
+            AssertNoExceptionLeak.Assert(problem.Detail ?? string.Empty, thrown);
+            VerifyLoggedOnce(loggerMock, thrown);
+        }
+
+        [TestMethod]
+        public async Task RemoveGMMAsync_SanitizesUnexpectedException()
+        {
+            var thrown = new InvalidOperationException("sensitive internal detail that must not leak (RemoveGMM)");
+            var removeHandlerMock = new Mock<IRequestHandler<RemoveGMMRequest, RemoveGMMResponse>>();
+            removeHandlerMock.Setup(h => h.ExecuteAsync(It.IsAny<RemoveGMMRequest>())).ThrowsAsync(thrown);
+            var loggerMock = new Mock<ILogger<JobDetailsController>>();
+
+            var controller = BuildControllerWithLogger(loggerMock, removeGMMOverride: removeHandlerMock.Object, role: Roles.JOB_TENANT_WRITER);
+
+            var response = await controller.RemoveGMMAsync(Guid.NewGuid());
+            var result = response as ObjectResult;
+            Assert.IsNotNull(result);
+            Assert.AreEqual(StatusCodes.Status500InternalServerError, result.StatusCode);
+            var problem = result.Value as ProblemDetails;
+            Assert.IsNotNull(problem);
+            AssertNoExceptionLeak.Assert(problem.Detail ?? string.Empty, thrown);
+            VerifyLoggedOnce(loggerMock, thrown);
+        }
+
+        [TestMethod]
+        public async Task ScheduleNowAsync_SanitizesUnexpectedException()
+        {
+            var thrown = new InvalidOperationException("sensitive internal detail that must not leak (ScheduleNow)");
+            _syncJobChangeRepository
+                .Setup(x => x.GetScheduleNowCountByUserAsync(It.IsAny<Guid>(), It.IsAny<DateTime>()))
+                .ThrowsAsync(thrown);
+            var loggerMock = new Mock<ILogger<JobDetailsController>>();
+
+            var controller = BuildControllerWithLogger(loggerMock, role: Roles.SUBMISSION_REVIEWER);
+            var requestDTO = CreatePatchJobRequestDTO(new List<PatchOperation>(), SyncJobChangeReason.ScheduledNow.ToString(), "justification");
+
+            var response = await controller.ScheduleNowAsync(Guid.NewGuid(), requestDTO);
+            var result = response as ObjectResult;
+            Assert.IsNotNull(result);
+            Assert.AreEqual(StatusCodes.Status500InternalServerError, result.StatusCode);
+            var problem = result.Value as ProblemDetails;
+            Assert.IsNotNull(problem);
+            AssertNoExceptionLeak.Assert(problem.Detail ?? string.Empty, thrown);
+            VerifyLoggedOnce(loggerMock, thrown);
+        }
+
+        [TestMethod]
+        public async Task GetScheduleNowUsageAsync_SanitizesUnexpectedException()
+        {
+            var thrown = new InvalidOperationException("sensitive internal detail that must not leak (GetScheduleNowUsage)");
+            _syncJobChangeRepository
+                .Setup(x => x.GetScheduleNowCountByUserAsync(It.IsAny<Guid>(), It.IsAny<DateTime>()))
+                .ThrowsAsync(thrown);
+            var loggerMock = new Mock<ILogger<JobDetailsController>>();
+
+            var controller = BuildControllerWithLogger(loggerMock, role: Roles.SUBMISSION_REVIEWER);
+
+            var response = await controller.GetScheduleNowUsageAsync();
+            var result = response as ObjectResult;
+            Assert.IsNotNull(result);
+            Assert.AreEqual(StatusCodes.Status500InternalServerError, result.StatusCode);
+            var problem = result.Value as ProblemDetails;
+            Assert.IsNotNull(problem);
+            AssertNoExceptionLeak.Assert(problem.Detail ?? string.Empty, thrown);
+            VerifyLoggedOnce(loggerMock, thrown);
         }
 
         private ControllerContext CreateControllerContext(HttpContext httpContext)
