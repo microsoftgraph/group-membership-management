@@ -26,6 +26,16 @@ export type AdminConfigStyles = {
   valuesDropdownTitle: IStyle;
   valuesDropdownSpinner: IStyle;
   descriptionTextField: IStyle;
+  aiSettingsIntro: IStyle;
+  aiSettingsInstructionsSection: IStyle;
+  aiSettingsSectionTitle: IStyle;
+  aiSettingsSectionDescription: IStyle;
+  aiSettingsLeaveEmptyNote: IStyle;
+  aiSettingsDefaultInstructionsContainer: IStyle;
+  aiSettingsDefaultInstructionsToggle: IStyle;
+  aiSettingsDefaultInstructionsToggleIcon: IStyle;
+  aiSettingsDefaultInstructionsContent: IStyle;
+  aiSettingsSliderSection: IStyle;
 };
 
 export type AdminConfigStyleProps = {
@@ -112,4 +122,3 @@ export type AttributeValuesCellProps = {
   strings: IStrings['AdminConfig'];
   onDropdownClick: MouseEventHandler<HTMLDivElement> | undefined;
 };
-

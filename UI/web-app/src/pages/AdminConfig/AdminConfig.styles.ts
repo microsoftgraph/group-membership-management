@@ -104,8 +104,60 @@ export const getStyles = (props: AdminConfigStyleProps): AdminConfigStyles => {
             border: '1px solid',
             borderColor: theme.palette.neutralQuaternary,
             background: theme.palette.white,
-        }
+        },
+        aiSettingsIntro: {
+            marginBottom: 16,
+        },
+        aiSettingsInstructionsSection: {
+            marginTop: 20,
+            marginBottom: 20,
+        },
+        aiSettingsSectionTitle: {
+            fontWeight: 600,
+        },
+        aiSettingsSectionDescription: {
+            marginBottom: 8,
+        },
+        aiSettingsLeaveEmptyNote: {
+            marginBottom: 12,
+            fontStyle: 'italic',
+            color: theme.palette.neutralSecondary,
+        },
+        aiSettingsDefaultInstructionsContainer: {
+            marginBottom: 12,
+            border: `1px solid ${theme.palette.neutralLighter}`,
+            borderRadius: 4,
+            overflow: 'hidden',
+        },
+        aiSettingsDefaultInstructionsToggle: {
+            width: '100%',
+            padding: '10px 14px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 8,
+            background: theme.palette.neutralLighterAlt,
+            border: 'none',
+            cursor: 'pointer',
+            fontSize: 13,
+            fontWeight: 600,
+            color: theme.palette.neutralPrimary,
+        },
+        aiSettingsDefaultInstructionsToggleIcon: {
+            fontSize: 12,
+        },
+        aiSettingsDefaultInstructionsContent: {
+            padding: '12px 14px',
+            backgroundColor: theme.palette.neutralLighter,
+            whiteSpace: 'pre-wrap',
+            fontSize: 12,
+            fontFamily: 'Consolas, monospace',
+            color: theme.palette.neutralPrimary,
+            maxHeight: 300,
+            overflowY: 'auto',
+        },
+        aiSettingsSliderSection: {
+            marginTop: 20,
+        },
     };
 };
-
 

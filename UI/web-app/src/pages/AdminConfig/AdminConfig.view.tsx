@@ -612,7 +612,7 @@ const AttributeValuesCell = React.memo((props: AttributeValuesCellProps) => {
 });
 
 const AISettings: React.FunctionComponent<AISettingsProps> = (props: AISettingsProps) => {
-  const { strings, settings, setSettings, defaultAIPrompt } = props;
+  const { classNames, strings, settings, setSettings, defaultAIPrompt } = props;
   const [showDefaults, setShowDefaults] = useState(false);
 
   const handleSettingChange = (settingKey: SettingKey) => (newValue: string) => {
@@ -621,7 +621,7 @@ const AISettings: React.FunctionComponent<AISettingsProps> = (props: AISettingsP
 
   return (
     <div>
-      <div style={{ marginBottom: '16px' }}>
+      <div className={classNames.aiSettingsIntro}>
         <Text variant="medium">{strings.AISettings.labels.description}</Text>
       </div>
       <GeneralSetting
@@ -638,49 +638,23 @@ const AISettings: React.FunctionComponent<AISettingsProps> = (props: AISettingsP
         onGeneralSettingChange={handleSettingChange(SettingKey.IsAICopilotEnabled)}
         generalSettingValue={settings[SettingKey.IsAICopilotEnabled]}
       />
-      <div style={{ marginTop: '20px', marginBottom: '20px' }}>
-        <Text variant="mediumPlus" style={{ fontWeight: 600 }}>{strings.AISettings.labels.copilotInstructionsPromptTitle}</Text>
-        <Text variant="small" block style={{ marginBottom: '8px' }}>{strings.AISettings.labels.copilotInstructionsPromptDescription}</Text>
-        <Text variant="small" block style={{ marginBottom: '12px', fontStyle: 'italic', color: '#605e5c' }}>
+      <div className={classNames.aiSettingsInstructionsSection}>
+        <Text variant="mediumPlus" className={classNames.aiSettingsSectionTitle}>{strings.AISettings.labels.copilotInstructionsPromptTitle}</Text>
+        <Text variant="small" block className={classNames.aiSettingsSectionDescription}>{strings.AISettings.labels.copilotInstructionsPromptDescription}</Text>
+        <Text variant="small" block className={classNames.aiSettingsLeaveEmptyNote}>
           {strings.AISettings.labels.leaveEmptyNote}
         </Text>
         {defaultAIPrompt && (
-          <div style={{
-            marginBottom: '12px',
-            border: '1px solid #edebe9',
-            borderRadius: '4px',
-            overflow: 'hidden',
-          }}>
+          <div className={classNames.aiSettingsDefaultInstructionsContainer}>
             <button
               onClick={() => setShowDefaults(!showDefaults)}
-              style={{
-                width: '100%',
-                padding: '10px 14px',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px',
-                background: '#faf9f8',
-                border: 'none',
-                cursor: 'pointer',
-                fontSize: '13px',
-                fontWeight: 600,
-                color: '#323130',
-              }}
+              className={classNames.aiSettingsDefaultInstructionsToggle}
             >
-              <Icon iconName={showDefaults ? 'ChevronDown' : 'ChevronRight'} style={{ fontSize: '12px' }} />
+              <Icon iconName={showDefaults ? 'ChevronDown' : 'ChevronRight'} className={classNames.aiSettingsDefaultInstructionsToggleIcon} />
               {strings.AISettings.labels.currentDefaultInstructions}
             </button>
             {showDefaults && (
-              <div style={{
-                padding: '12px 14px',
-                backgroundColor: '#f3f2f1',
-                whiteSpace: 'pre-wrap',
-                fontSize: '12px',
-                fontFamily: 'Consolas, monospace',
-                color: '#323130',
-                maxHeight: '300px',
-                overflowY: 'auto',
-              }}>
+              <div className={classNames.aiSettingsDefaultInstructionsContent}>
                 {defaultAIPrompt}
               </div>
             )}
@@ -694,9 +668,9 @@ const AISettings: React.FunctionComponent<AISettingsProps> = (props: AISettingsP
           onChange={(_, newValue) => handleSettingChange(SettingKey.CopilotInstructions)(newValue ?? '')}
         />
       </div>
-      <div style={{ marginTop: '20px' }}>
-        <Text variant="mediumPlus" style={{ fontWeight: 600 }}>{strings.AISettings.labels.copilotTemperatureTitle}</Text>
-        <Text variant="small" block style={{ marginBottom: '8px' }}>{strings.AISettings.labels.copilotTemperatureDescription}</Text>
+      <div className={classNames.aiSettingsSliderSection}>
+        <Text variant="mediumPlus" className={classNames.aiSettingsSectionTitle}>{strings.AISettings.labels.copilotTemperatureTitle}</Text>
+        <Text variant="small" block className={classNames.aiSettingsSectionDescription}>{strings.AISettings.labels.copilotTemperatureDescription}</Text>
         <Slider
           min={0}
           max={1}
@@ -706,9 +680,9 @@ const AISettings: React.FunctionComponent<AISettingsProps> = (props: AISettingsP
           onChange={(value) => handleSettingChange(SettingKey.CopilotTemperature)(value.toString())}
         />
       </div>
-      <div style={{ marginTop: '20px' }}>
-        <Text variant="mediumPlus" style={{ fontWeight: 600 }}>{strings.AISettings.labels.copilotTopPTitle}</Text>
-        <Text variant="small" block style={{ marginBottom: '8px' }}>{strings.AISettings.labels.copilotTopPDescription}</Text>
+      <div className={classNames.aiSettingsSliderSection}>
+        <Text variant="mediumPlus" className={classNames.aiSettingsSectionTitle}>{strings.AISettings.labels.copilotTopPTitle}</Text>
+        <Text variant="small" block className={classNames.aiSettingsSectionDescription}>{strings.AISettings.labels.copilotTopPDescription}</Text>
         <Slider
           min={0}
           max={1}
