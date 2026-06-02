@@ -40,9 +40,10 @@ namespace Services
             }
             catch (Exception ex)
             {
+                Logger.LogError(ex, "Group creation failed for {GroupName}", request.GroupName);
                 response.StatusCode = HttpStatusCode.InternalServerError;
                 response.ErrorCode = "GroupCreationException";
-                response.ResponseData = new List<string> { ex.Message };
+                response.ResponseData = new List<string> { "Group creation failed." };
             }
 
             return response;

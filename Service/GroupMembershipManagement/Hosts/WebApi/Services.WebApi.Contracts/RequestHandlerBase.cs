@@ -13,6 +13,8 @@ namespace Services.Contracts
     {
         private readonly ILogger _logger;
 
+        protected ILogger Logger => _logger;
+
         public RequestHandlerBase(ILogger logger)
         {
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
