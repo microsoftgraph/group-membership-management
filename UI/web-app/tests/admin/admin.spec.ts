@@ -212,4 +212,26 @@ test.describe('Admin Tests', () => {
       console.log('Group creation reset to disabled state.');
     }
   });
+
+  test('AI settings default instructions can be expanded in mock mode', async ({ page }) => {
+    const url = DOMAIN.startsWith('http://') || DOMAIN.startsWith('https://') ? DOMAIN : `https://${DOMAIN}`;
+
+    await page.goto(`${url}/Admin`);
+    await page.locator('text="AI Settings"').click();
+
+    await expect(page.getByText('Copilot Instructions Prompt')).toBeVisible({ timeout: 10000 });
+
+    const toggle = page.getByRole('button', { name: 'View current default instructions' });
+    await expect(toggle).toBeVisible({ timeout: 10000 });
+
+    await toggle.click();
+    await expect(page.getByText('You are a concise assistant. Ask clarifying questions when needed.')).toBeVisible({
+      timeout: 10000,
+    });
+
+    await toggle.click();
+    await expect(page.getByText('You are a concise assistant. Ask clarifying questions when needed.')).toBeHidden({
+      timeout: 10000,
+    });
+  });
 });

@@ -24,9 +24,14 @@ const defaultSettings: SettingRecord[] = [
   { settingKey: 8, settingValue: 'false' },
   { settingKey: 9, settingValue: 'false' },
   { settingKey: 10, settingValue: 'true' },
+  { settingKey: 11, settingValue: 'true' },
+  { settingKey: 12, settingValue: '0.7' },
+  { settingKey: 13, settingValue: '0.9' },
+  { settingKey: 14, settingValue: '' },
 ];
 
 const mockSupportEmail = 'gmm-support@contoso.com';
+const mockDefaultAIPrompt = 'You are a concise assistant. Ask clarifying questions when needed.';
 
 const settingKeyByName: Record<string, number> = {
   DashboardUrl: 0,
@@ -40,6 +45,10 @@ const settingKeyByName: Record<string, number> = {
   IsAutoApprovalForGroupBasedSyncsEnabled: 8,
   IsAutoApprovalForRequestorIsOrgLeaderSyncsEnabled: 9,
   IsAITitleEnabled: 10,
+  IsAICopilotEnabled: 11,
+  CopilotTemperature: 12,
+  CopilotTopP: 13,
+  CopilotInstructions: 14,
 };
 
 function resolveSettingKey(rawKey: string): number {
@@ -410,6 +419,15 @@ export async function registerMockApiRoutes(page: Page): Promise<void> {
         status: 200,
         contentType: 'text/plain',
         body: mockSupportEmail,
+      });
+      return;
+    }
+
+    if (method === 'GET' && path.endsWith('/api/v1/settings/aiPrompt/defaults')) {
+      await route.fulfill({
+        status: 200,
+        contentType: 'text/plain',
+        body: mockDefaultAIPrompt,
       });
       return;
     }
