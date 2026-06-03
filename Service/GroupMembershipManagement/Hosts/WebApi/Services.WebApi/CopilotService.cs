@@ -431,69 +431,44 @@ namespace Services.WebApi
 
                 var selectFields = new[] { "displayName", "mail", "id", "userPrincipalName", "userType", "accountEnabled" };
 
-                // Lookup user by displayName, mailNickname (alias), or UPN/mail
+                // Single call: exact match by displayName, mailNickname (alias), mail, or UPN
                 List<Microsoft.Graph.Models.User> allUsers = new();
-                var isEmail = searchQuery.Contains('@');
 
-                if (isEmail)
+                try
                 {
-                    // Search by mail or userPrincipalName in a single call
-                    try
+                    var exactResponse = await graphClient.Users.GetAsync(config =>
                     {
-                        var emailResponse = await graphClient.Users.GetAsync(config =>
-                        {
-                            config.Headers.Add("ConsistencyLevel", "eventual");
-                            config.QueryParameters.Filter = $"mail eq '{searchSafe}' or userPrincipalName eq '{searchSafe}'";
-                            config.QueryParameters.Select = selectFields;
-                            config.QueryParameters.Count = true;
-                            config.QueryParameters.Top = 10;
-                        });
-                        allUsers = emailResponse?.Value ?? new();
-                    }
-                    catch (Exception ex)
-                    {
-                        _logger.LogWarning(ex, "Graph email/UPN search failed for '{SearchQuery}'", searchQuery);
-                    }
+                        config.Headers.Add("ConsistencyLevel", "eventual");
+                        config.QueryParameters.Filter = $"displayName eq '{searchSafe}' or mailNickname eq '{searchSafe}' or mail eq '{searchSafe}' or userPrincipalName eq '{searchSafe}'";
+                        config.QueryParameters.Select = selectFields;
+                        config.QueryParameters.Count = true;
+                        config.QueryParameters.Top = 10;
+                    });
+                    allUsers = exactResponse?.Value ?? new();
                 }
-                else
+                catch (Exception ex)
                 {
-                    // Single call: exact match by displayName OR mailNickname (alias)
+                    _logger.LogWarning(ex, "Graph user search failed for '{SearchQuery}'", searchQuery);
+                }
+
+                // Fallback: startswith on displayName if exact match found nothing (only useful for partial names)
+                if (allUsers.Count == 0 && !searchQuery.Contains('@'))
+                {
                     try
                     {
-                        var exactResponse = await graphClient.Users.GetAsync(config =>
+                        var startsWithResponse = await graphClient.Users.GetAsync(config =>
                         {
                             config.Headers.Add("ConsistencyLevel", "eventual");
-                            config.QueryParameters.Filter = $"displayName eq '{searchSafe}' or mailNickname eq '{searchSafe}'";
+                            config.QueryParameters.Filter = $"startswith(displayName,'{searchSafe}')";
                             config.QueryParameters.Select = selectFields;
                             config.QueryParameters.Count = true;
                             config.QueryParameters.Top = 10;
                         });
-                        allUsers = exactResponse?.Value ?? new();
+                        allUsers = startsWithResponse?.Value ?? new();
                     }
                     catch (Exception ex)
                     {
-                        _logger.LogWarning(ex, "Graph displayName/mailNickname search failed for '{SearchQuery}'", searchQuery);
-                    }
-
-                    // Fallback: startswith on displayName if exact match found nothing
-                    if (allUsers.Count == 0)
-                    {
-                        try
-                        {
-                            var startsWithResponse = await graphClient.Users.GetAsync(config =>
-                            {
-                                config.Headers.Add("ConsistencyLevel", "eventual");
-                                config.QueryParameters.Filter = $"startswith(displayName,'{searchSafe}')";
-                                config.QueryParameters.Select = selectFields;
-                                config.QueryParameters.Count = true;
-                                config.QueryParameters.Top = 10;
-                            });
-                            allUsers = startsWithResponse?.Value ?? new();
-                        }
-                        catch (Exception ex)
-                        {
-                            _logger.LogWarning(ex, "Graph startsWith search failed for '{SearchQuery}'", searchQuery);
-                        }
+                        _logger.LogWarning(ex, "Graph startsWith search failed for '{SearchQuery}'", searchQuery);
                     }
                 }
 
