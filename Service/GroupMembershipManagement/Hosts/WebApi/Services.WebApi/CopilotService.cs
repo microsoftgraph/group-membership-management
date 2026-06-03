@@ -274,15 +274,16 @@ namespace Services.WebApi
 
             messages.Add(new UserChatMessage(userMessage));
 
-            using var timeoutCts = new CancellationTokenSource(TimeSpan.FromSeconds(120));
+            using var timeoutCts = new CancellationTokenSource(TimeSpan.FromSeconds(180));
 
             try
             {
                 // Tool calling loop - keep going until we get a final response
-                const int maxToolCalls = 5; // Prevent infinite loops
+                const int maxToolCalls = 8; // Allow complex multi-part queries (org leader + groups + attributes)
                 int toolCallCount = 0;
 
-                while (toolCallCount < maxToolCalls)
+                // Allow up to 'maxToolCalls' tool-call iterations, plus one final LLM call to produce the response
+                while (toolCallCount <= maxToolCalls)
                 {
                     var response = await _retryPolicy.ExecuteAsync(async () =>
                     {
@@ -371,11 +372,11 @@ namespace Services.WebApi
                 }
 
                 // Too many tool calls - return error
-                throw new InvalidOperationException($"Exceeded maximum tool calls ({maxToolCalls})");
+                throw new InvalidOperationException($"Exceeded maximum tool call iterations ({maxToolCalls})");
             }
             catch (OperationCanceledException)
             {
-                throw new TimeoutException("OpenAI API call timed out after 120 seconds");
+                throw new TimeoutException("OpenAI API call timed out after 180 seconds");
             }
         }
 
