@@ -239,57 +239,6 @@ namespace WebApi.Tests
         }
 
         [TestMethod]
-        public async Task ExecuteAsync_FiltersSensitiveAttributes()
-        {
-            SetupBlobWithUser(MembershipAction.Add);
-            SetupAdfData(new Dictionary<string, string>
-            {
-                { "Building", "B40" },
-                { "PayStockLevel", "67" }
-            });
-
-            _mockSyncJobRepository
-                .Setup(x => x.GetSyncJobAsync(_syncJobId))
-                .ReturnsAsync(new SyncJob
-                {
-                    Id = _syncJobId,
-                    TargetOfficeGroupId = _targetGroupId,
-                    Query = "[{\"type\":\"SqlMembership\",\"filter\":\"Building = 'B40' AND PayStockLevel = '67'\"}]"
-                });
-
-            _mockSqlMembershipSourcesRepository
-                .Setup(x => x.GetDefaultSourceAttributesAsync())
-                .ReturnsAsync(new List<SqlMembershipAttribute>
-                {
-                    new SqlMembershipAttribute { Name = "PayStockLevel", Sensitive = true }
-                });
-
-            string? capturedUserPrompt = null;
-            _mockOpenAIService
-                .Setup(x => x.GetCompletionAsync(It.IsAny<string>(), It.IsAny<string>()))
-                .Callback<string, string>((sys, user) => capturedUserPrompt = user)
-                .ReturnsAsync("The user was added.");
-
-            var response = await _handler.ExecuteAsync(
-                new GetSyncExplanationRequest(_syncJobId, _runId, _userObjectId, TestUserIdentity, hasAiSyncJobRole: true));
-
-            Assert.AreEqual(HttpStatusCode.OK, response.StatusCode);
-            Assert.IsNotNull(capturedUserPrompt);
-            Assert.IsTrue(capturedUserPrompt!.Contains("[PROTECTED - value hidden]"),
-                "Sensitive attribute should be marked as protected in prompt");
-            // Verify the attribute line doesn't expose the raw value.
-            // The query itself may contain the value, so check the attributes section specifically.
-            var attrSectionStart = capturedUserPrompt.IndexOf("HR attributes");
-            var attrSectionEnd = capturedUserPrompt.IndexOf("Recent configuration changes");
-            if (attrSectionStart >= 0 && attrSectionEnd > attrSectionStart)
-            {
-                var attrSection = capturedUserPrompt.Substring(attrSectionStart, attrSectionEnd - attrSectionStart);
-                Assert.IsTrue(attrSection.Contains("PayStockLevel: [PROTECTED - value hidden]"),
-                    "PayStockLevel should show as PROTECTED in attributes section");
-            }
-        }
-
-        [TestMethod]
         public async Task ExecuteAsync_ReturnsFallback_WhenOpenAIReturnsEmpty()
         {
             SetupBlobWithUser(MembershipAction.Add);

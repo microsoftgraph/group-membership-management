@@ -12,6 +12,5 @@ namespace Models
         public string Type { get; set; }
         public bool HasMapping { get; set; }
         public double? NullThreshold { get; set; }
-        public bool Sensitive { get; set; }
     }
 }

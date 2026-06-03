@@ -25,9 +25,12 @@ namespace Services
         private static readonly string SystemPrompt = @"You are a sync analysis assistant for Group Membership Management (GMM).
 Given context about a sync run and a specific user, explain in 1-2 sentences why the user was added to or removed from the group during this sync.
 
-GMM syncs membership from source parts (groups or HR/SQL filters) into a destination group. A sync job's configuration (its ""query"") is a list of source parts, each of which can be:
+GMM syncs membership from source parts into a destination group. A sync job's configuration (its ""query"") is a list of source parts, each of which can be:
 - A **GroupMembership** source: includes or excludes members of another Entra ID group.
 - A **SqlMembership** source: includes or excludes employees matching an HR data filter (e.g., Building, Department).
+- A **PlaceMembership** source: includes or excludes users returned by a Microsoft Graph query with applied filters (e.g., users associated with a specific place or location).
+- A **GroupOwnership** source: includes or excludes owners of a specified Entra ID group.
+- A **TeamsChannelMembership** source: includes or excludes members of a Microsoft Teams channel.
 
 Each source part may be **inclusionary** (members are added) or **exclusionary** (members are removed from the final result).
 
@@ -351,7 +354,6 @@ Use only the provided data. If you cannot determine the reason with reasonable c
                 if (userAttributes == null || userAttributes.Count == 0)
                     return "User not found in HR data.";
 
-                var sensitiveAttributes = await GetSensitiveAttributeNamesAsync();
                 var filterAttributeNames = ExtractFilterAttributeNames(query);
 
                 if (!filterAttributeNames.Any())
@@ -360,12 +362,6 @@ Use only the provided data. If you cannot determine the reason with reasonable c
                 var sb = new StringBuilder();
                 foreach (var attrName in filterAttributeNames)
                 {
-                    if (sensitiveAttributes.Contains(attrName))
-                    {
-                        sb.AppendLine($"{attrName}: [PROTECTED - value hidden]");
-                        continue;
-                    }
-
                     // Check both the attribute name and the _Code variant
                     var codeName = $"{attrName}_Code";
                     if (userAttributes.TryGetValue(attrName, out var value))
@@ -542,18 +538,13 @@ Use only the provided data. If you cannot determine the reason with reasonable c
                 {
                     var part = new QueryPartInfo { Index = index++ };
 
-                    if (element.TryGetProperty("type", out var typeEl))
-                        part.Type = typeEl.GetString() ?? "Unknown";
+                    part.Type = GetStringProperty(element, "type") ?? "Unknown";
+                    part.Source = GetStringProperty(element, "source");
+                    part.Filter = GetStringProperty(element, "filter");
 
-                    if (element.TryGetProperty("source", out var sourceEl))
-                        part.Source = sourceEl.GetString();
-
-                    if (element.TryGetProperty("filter", out var filterEl) ||
-                        element.TryGetProperty("Filter", out filterEl))
-                        part.Filter = filterEl.GetString();
-
-                    if (element.TryGetProperty("exclusionary", out var exclEl))
-                        part.Exclusionary = exclEl.ValueKind == JsonValueKind.True;
+                    var exclEl = GetProperty(element, "exclusionary");
+                    if (exclEl.HasValue)
+                        part.Exclusionary = exclEl.Value.ValueKind == JsonValueKind.True;
 
                     parts.Add(part);
                 }
@@ -581,6 +572,26 @@ Use only the provided data. If you cannot determine the reason with reasonable c
                 : $"{Type}|{Index}";
         }
 
+        /// <summary>
+        /// Gets a property from a JsonElement, trying camelCase first then PascalCase.
+        /// </summary>
+        private static JsonElement? GetProperty(JsonElement element, string camelCaseName)
+        {
+            if (element.TryGetProperty(camelCaseName, out var value))
+                return value;
+
+            var pascalCaseName = char.ToUpperInvariant(camelCaseName[0]) + camelCaseName.Substring(1);
+            if (element.TryGetProperty(pascalCaseName, out value))
+                return value;
+
+            return null;
+        }
+
+        private static string? GetStringProperty(JsonElement element, string camelCaseName)
+        {
+            return GetProperty(element, camelCaseName)?.GetString();
+        }
+
         private static string? ExtractQueryFromChangeDetails(string? changeDetails)
         {
             if (string.IsNullOrWhiteSpace(changeDetails))
@@ -589,11 +600,9 @@ Use only the provided data. If you cannot determine the reason with reasonable c
             try
             {
                 using var document = JsonDocument.Parse(changeDetails);
-                if (document.RootElement.TryGetProperty("Query", out var queryElement)
-                    || document.RootElement.TryGetProperty("query", out queryElement))
-                {
-                    return queryElement.GetString();
-                }
+                var queryString = GetStringProperty(document.RootElement, "query");
+                if (queryString != null)
+                    return queryString;
             }
             catch (JsonException) { }
             return null;
@@ -604,25 +613,6 @@ Use only the provided data. If you cannot determine the reason with reasonable c
             if (string.IsNullOrWhiteSpace(query))
                 return null;
             return query.Trim();
-        }
-
-        private async Task<HashSet<string>> GetSensitiveAttributeNamesAsync()
-        {
-            try
-            {
-                var attributes = await _databaseSqlMembershipSourcesRepository.GetDefaultSourceAttributesAsync();
-                if (attributes == null)
-                    return new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-
-                return attributes
-                    .Where(a => a.Sensitive)
-                    .Select(a => a.Name)
-                    .ToHashSet(StringComparer.OrdinalIgnoreCase);
-            }
-            catch
-            {
-                return new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-            }
         }
 
         private static HashSet<string> ExtractFilterAttributeNames(string query)
@@ -637,14 +627,10 @@ Use only the provided data. If you cannot determine the reason with reasonable c
 
                 foreach (var part in parts)
                 {
-                    if (part.TryGetProperty("filter", out var filterElement) ||
-                        part.TryGetProperty("Filter", out filterElement))
+                    var filter = GetStringProperty(part, "filter");
+                    if (!string.IsNullOrWhiteSpace(filter))
                     {
-                        var filter = filterElement.GetString();
-                        if (!string.IsNullOrWhiteSpace(filter))
-                        {
-                            ExtractAttributeNamesFromSqlFilter(filter, attributeNames);
-                        }
+                        ExtractAttributeNamesFromSqlFilter(filter, attributeNames);
                     }
                 }
             }

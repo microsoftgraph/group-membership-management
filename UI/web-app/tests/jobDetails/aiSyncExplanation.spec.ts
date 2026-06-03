@@ -87,23 +87,26 @@ test.describe('AI Sync Explanation', () => {
       });
     });
 
-    // Navigate to the app and open a job
+    // Navigate to the app
     await page.goto(url);
-    await page.waitForTimeout(3000);
 
-    // Click on the first job row to open job details
-    const firstJobRow = page.locator('[data-automationid="DetailsRow"]').first();
-    await expect(firstJobRow).toBeVisible({ timeout: 10000 });
-    await firstJobRow.click();
-    await page.waitForTimeout(2000);
+    // Click on a specific job row (use testid for reliability)
+    const jobRow = page.getByTestId('job-row-mockjob002');
+    await expect(jobRow).toBeVisible({ timeout: 15000 });
+    await jobRow.click();
+
+    // Wait for job details page to load
+    await expect(page.getByText('Membership Details')).toBeVisible({ timeout: 15000 });
 
     // Open the history panel
     const historyButton = page.locator('#job-history-button');
-    await expect(historyButton).toBeVisible({ timeout: 10000 });
+    await expect(historyButton).toBeVisible({ timeout: 15000 });
     await historyButton.click();
-    await page.waitForTimeout(2000);
 
     // Switch to the Sync tab
+    const panel = page.locator('.ms-Panel').first();
+    await expect(panel).toBeVisible({ timeout: 10000 });
+
     const syncTab = page.getByRole('tab', { name: /sync/i });
     if (await syncTab.isVisible({ timeout: 5000 }).catch(() => false)) {
       await syncTab.click();
@@ -111,8 +114,6 @@ test.describe('AI Sync Explanation', () => {
     }
 
     // Find the people picker input in the history panel
-    const panel = page.locator('.ms-Panel');
-    await expect(panel).toBeVisible({ timeout: 5000 });
 
     const pickerInput = panel.locator('.ms-BasePicker-input').first();
     if (await pickerInput.isVisible({ timeout: 5000 }).catch(() => false)) {
