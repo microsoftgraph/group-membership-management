@@ -451,24 +451,24 @@ namespace Services.WebApi
                     _logger.LogWarning(ex, "Graph user search failed for '{SearchQuery}'", searchQuery);
                 }
 
-                // Fallback: startswith on displayName if exact match found nothing (only useful for partial names)
-                if (allUsers.Count == 0 && !searchQuery.Contains('@'))
+                // Fallback: broad $search across multiple fields if exact match found nothing (mirrors Entra ID portal user lookup)
+                if (allUsers.Count == 0)
                 {
                     try
                     {
-                        var startsWithResponse = await graphClient.Users.GetAsync(config =>
+                        var searchResponse = await graphClient.Users.GetAsync(config =>
                         {
                             config.Headers.Add("ConsistencyLevel", "eventual");
-                            config.QueryParameters.Filter = $"startswith(displayName,'{searchSafe}')";
+                            config.QueryParameters.Search = $"\"displayName:{searchSafe}\" OR \"mail:{searchSafe}\" OR \"userPrincipalName:{searchSafe}\" OR \"givenName:{searchSafe}\" OR \"surName:{searchSafe}\"";
                             config.QueryParameters.Select = selectFields;
                             config.QueryParameters.Count = true;
                             config.QueryParameters.Top = 10;
                         });
-                        allUsers = startsWithResponse?.Value ?? new();
+                        allUsers = searchResponse?.Value ?? new();
                     }
                     catch (Exception ex)
                     {
-                        _logger.LogWarning(ex, "Graph startsWith search failed for '{SearchQuery}'", searchQuery);
+                        _logger.LogWarning(ex, "Graph $search failed for '{SearchQuery}'", searchQuery);
                     }
                 }
 
