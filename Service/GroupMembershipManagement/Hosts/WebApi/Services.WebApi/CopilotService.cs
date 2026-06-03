@@ -431,13 +431,13 @@ namespace Services.WebApi
 
                 var selectFields = new[] { "displayName", "mail", "id", "userPrincipalName", "userType", "accountEnabled" };
 
-                // Exact match by displayName
+                // Lookup user by displayName, mailNickname (alias), or UPN/mail
                 List<Microsoft.Graph.Models.User> allUsers = new();
                 var isEmail = searchQuery.Contains('@');
 
                 if (isEmail)
                 {
-                    // Search by mail or userPrincipalName
+                    // Search by mail or userPrincipalName in a single call
                     try
                     {
                         var emailResponse = await graphClient.Users.GetAsync(config =>
@@ -452,18 +452,18 @@ namespace Services.WebApi
                     }
                     catch (Exception ex)
                     {
-                        _logger.LogWarning(ex, "Graph email search failed for '{SearchQuery}'", searchQuery);
+                        _logger.LogWarning(ex, "Graph email/UPN search failed for '{SearchQuery}'", searchQuery);
                     }
                 }
                 else
                 {
-                    // Exact match by displayName
+                    // Single call: exact match by displayName OR mailNickname (alias)
                     try
                     {
                         var exactResponse = await graphClient.Users.GetAsync(config =>
                         {
                             config.Headers.Add("ConsistencyLevel", "eventual");
-                            config.QueryParameters.Filter = $"displayName eq '{searchSafe}'";
+                            config.QueryParameters.Filter = $"displayName eq '{searchSafe}' or mailNickname eq '{searchSafe}'";
                             config.QueryParameters.Select = selectFields;
                             config.QueryParameters.Count = true;
                             config.QueryParameters.Top = 10;
@@ -472,10 +472,10 @@ namespace Services.WebApi
                     }
                     catch (Exception ex)
                     {
-                        _logger.LogWarning(ex, "Graph exact displayName search failed for '{SearchQuery}'", searchQuery);
+                        _logger.LogWarning(ex, "Graph displayName/mailNickname search failed for '{SearchQuery}'", searchQuery);
                     }
 
-                    // If exact match found nothing, try startswith
+                    // Fallback: startswith on displayName if exact match found nothing
                     if (allUsers.Count == 0)
                     {
                         try
@@ -493,27 +493,6 @@ namespace Services.WebApi
                         catch (Exception ex)
                         {
                             _logger.LogWarning(ex, "Graph startsWith search failed for '{SearchQuery}'", searchQuery);
-                        }
-                    }
-
-                    // If still nothing, try mailNickname (alias) lookup
-                    if (allUsers.Count == 0)
-                    {
-                        try
-                        {
-                            var aliasResponse = await graphClient.Users.GetAsync(config =>
-                            {
-                                config.Headers.Add("ConsistencyLevel", "eventual");
-                                config.QueryParameters.Filter = $"mailNickname eq '{searchSafe}'";
-                                config.QueryParameters.Select = selectFields;
-                                config.QueryParameters.Count = true;
-                                config.QueryParameters.Top = 10;
-                            });
-                            allUsers = aliasResponse?.Value ?? new();
-                        }
-                        catch (Exception ex)
-                        {
-                            _logger.LogWarning(ex, "Graph mailNickname search failed for '{SearchQuery}'", searchQuery);
                         }
                     }
                 }
