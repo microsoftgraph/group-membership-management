@@ -9,6 +9,35 @@ import { getStyles } from './AdminConfig.styles';
 import { SettingKey } from '../../models';
 import { defaultStrings } from '../../services/localization';
 
+vi.mock('../../components/PageHeader', () => ({
+  PageHeader: () => <div data-testid="page-header" />,
+}));
+
+vi.mock('../../components/Page', () => ({
+  Page: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+}));
+
+vi.mock('../../components/PageSection', () => ({
+  PageSection: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+}));
+
+vi.mock('../../components/GeneralSetting', () => ({
+  GeneralSetting: ({ title, description }: { title: string; description: string }) => (
+    <div>
+      <div>{title}</div>
+      <div>{description}</div>
+    </div>
+  ),
+}));
+
+vi.mock('../../components/HyperlinkSetting', () => ({
+  HyperlinkSetting: () => <div />,
+}));
+
+vi.mock('../../components/Operation', () => ({
+  Operation: () => <div />,
+}));
+
 const createSettings = (): { readonly [key in SettingKey]: string } => ({
   [SettingKey.DashboardUrl]: 'https://contoso.example/dashboard',
   [SettingKey.OutlookWarningUrl]: 'https://contoso.example/outlook-warning',
