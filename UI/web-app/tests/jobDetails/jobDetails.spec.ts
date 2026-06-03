@@ -180,7 +180,6 @@ test.describe('Job Details Tests', () => {
 
     // Navigate through steps
     await page.getByRole('button', { name: 'Next' }).click();
-    await page.getByRole('button', { name: 'Next' }).click();
 
     if (isMockMode) {
       await expect(page.getByRole('button', { name: 'Add Source Part' })).toBeVisible();
@@ -204,6 +203,7 @@ test.describe('Job Details Tests', () => {
     await page.getByLabel('Search group name').click();
     await page.getByLabel('Search group name').fill(GROUP_NAME);
     await page.getByRole('option', { name: GROUP_NAME }).first().click();
+    await page.getByRole('button', { name: 'Next' }).click();
     await page.getByRole('button', { name: 'Next' }).click();
 
     // Verify authorized sender
@@ -267,7 +267,6 @@ test.describe('Job Details Tests', () => {
     await expect(nextButton).toBeEnabled({ timeout: 30000 });
 
     // Navigate through steps
-    await page.getByRole('button', { name: 'Next' }).click();
     await page.getByRole('button', { name: 'Next' }).click();
 
     // Fill in the advanced view textfield with unsupported IS operator
@@ -334,8 +333,6 @@ test.describe('Job Details Tests', () => {
 
     // Navigate through steps
     await nextButton.click();
-    await page.getByRole('button', { name: 'Next' }).waitFor({ state: 'visible', timeout: 10000 });
-    await page.getByRole('button', { name: 'Next' }).click();
 
     if (isMockMode) {
       await page.getByLabel('Advanced View').click();
@@ -405,7 +402,6 @@ test.describe('Job Details Tests', () => {
     await expect(nextButton).toBeEnabled({ timeout: 30000 });
     // Navigate through steps
     await page.getByRole('button', { name: 'Next' }).click();
-    await page.getByRole('button', { name: 'Next' }).click();
 
     if (isMockMode) {
       await expect(page.getByRole('button', { name: 'Add Source Part' })).toBeVisible();
@@ -445,6 +441,7 @@ test.describe('Job Details Tests', () => {
     await expect(page.locator('#filterTextField')).toHaveCount(0);
 
     // Validate query in confirmation step
+    await page.getByRole('button', { name: 'Next' }).click();
     await page.getByRole('button', { name: 'Next' }).click();
 
     // Read the displayed JSON query from the read-only textarea in the "Source Parts" section

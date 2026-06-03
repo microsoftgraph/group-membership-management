@@ -264,6 +264,36 @@ export const ConfirmationBase: React.FunctionComponent<IConfirmationProps> = (pr
 
           <div>
             <div className={classNames.cardHeader}>
+                <div className={classNames.cardTitle}>
+                {strings.ManageMembership.labels.sourceParts}
+                </div>
+                <ActionButton
+                  iconProps={{ iconName: 'Edit' }}
+                  styles={{ root: { fontSize: 12, height: 14 }, icon: { fontSize: 10 }}}
+                  onClick={() => onEditButtonClick(OnboardingSteps.MembershipConfiguration)}>
+                  {strings.edit}
+                </ActionButton>
+              </div>
+              <Separator />
+              <Stack enableScopedSelectors tokens={{ childrenGap: 30 }}>
+                <Stack.Item align="stretch" grow>
+                  <TextField
+                    label={strings.ManageMembership.labels.query}
+                    value={displayQuery}
+                    readOnly
+                    multiline
+                    resizable={true}
+                    autoAdjustHeight={true}
+                    styles={{
+                      field: { fontFamily: "monospace" },
+                    }}
+                  />
+                </Stack.Item>
+              </Stack>
+            </div>
+
+          <div>
+            <div className={classNames.cardHeader}>
               <div className={classNames.cardTitle}>
                 {strings.JobDetails.labels.configuration}
               </div>
@@ -310,36 +340,6 @@ export const ConfirmationBase: React.FunctionComponent<IConfirmationProps> = (pr
               </Stack.Item>
             </Stack>
           </div>
-
-          <div>
-            <div className={classNames.cardHeader}>
-                <div className={classNames.cardTitle}>
-                {strings.ManageMembership.labels.sourceParts}
-                </div>
-                <ActionButton
-                  iconProps={{ iconName: 'Edit' }}
-                  styles={{ root: { fontSize: 12, height: 14 }, icon: { fontSize: 10 }}}
-                  onClick={() => onEditButtonClick(OnboardingSteps.MembershipConfiguration)}>
-                  {strings.edit}
-                </ActionButton>
-              </div>
-              <Separator />
-              <Stack enableScopedSelectors tokens={{ childrenGap: 30 }}>
-                <Stack.Item align="stretch" grow>
-                  <TextField
-                    label={strings.ManageMembership.labels.query}
-                    value={displayQuery}
-                    readOnly
-                    multiline
-                    resizable={true}
-                    autoAdjustHeight={true}
-                    styles={{
-                      field: { fontFamily: "monospace" },
-                    }}
-                  />
-                </Stack.Item>
-              </Stack>
-            </div>
 
             <div>
               <div className={classNames.cardHeader}>

@@ -346,21 +346,6 @@ export const JobDetailsBase: React.FunctionComponent<IJobDetailsProps> = (
                 children={<MembershipDestination job={job} classNames={classNames} />}
               />
               <ContentContainer
-                title={strings.JobDetails.labels.configuration}
-                children={<RunConfiguration job={job} classNames={classNames} />}
-                actionButtons={
-                  canEditJob
-                  ? [{
-                      text: strings.JobDetails.editButton,
-                      icon: { iconName: 'Edit' },
-                      onClick: openRunConfiguration,
-                      disabled: isJobInProgress,
-                      disabledReason: isJobInProgress ? strings.JobDetails.editDisabledInProgress : undefined
-                    }]
-                  : []
-                }
-              />
-              <ContentContainer
                 title={strings.JobDetails.labels.sourceParts}
                 actionButtons={
                   canEditJob
@@ -377,6 +362,21 @@ export const JobDetailsBase: React.FunctionComponent<IJobDetailsProps> = (
                   <MembershipConfiguration
                     isEditable={false}
                   />}
+              />
+              <ContentContainer
+                title={strings.JobDetails.labels.configuration}
+                children={<RunConfiguration job={job} classNames={classNames} />}
+                actionButtons={
+                  canEditJob
+                  ? [{
+                      text: strings.JobDetails.editButton,
+                      icon: { iconName: 'Edit' },
+                      onClick: openRunConfiguration,
+                      disabled: isJobInProgress,
+                      disabledReason: isJobInProgress ? strings.JobDetails.editDisabledInProgress : undefined
+                    }]
+                  : []
+                }
               />
             </div>
           )}

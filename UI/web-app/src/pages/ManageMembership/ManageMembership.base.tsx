@@ -613,20 +613,9 @@ export const ManageMembershipBase: React.FunctionComponent<IManageMembershipProp
                 onGroupCreated={handleGroupCreated}
               />}
           />}
-          {currentStep === OnboardingSteps.RunConfiguration && <OnboardingStep
+          {currentStep === OnboardingSteps.MembershipConfiguration && <OnboardingStep
             stepTitle={strings.ManageMembership.labels.step2title}
             stepDescription={strings.ManageMembership.labels.step2description}
-            destinationType={selectedDestination?.type}
-            destinationName={selectedDestination?.name}
-            children={
-              <RunConfiguration
-                thresholdExceededForAdditions={locationState?.thresholdExceededForAdditions}
-                thresholdExceededForRemovals={locationState?.thresholdExceededForRemovals}
-              />}
-          />}
-          {currentStep === OnboardingSteps.MembershipConfiguration && <OnboardingStep
-            stepTitle={strings.ManageMembership.labels.step3title}
-            stepDescription={strings.ManageMembership.labels.step3description}
             destinationType={selectedDestination?.type}
             destinationName={selectedDestination?.name}
             headerAction={
@@ -635,6 +624,17 @@ export const ManageMembershipBase: React.FunctionComponent<IManageMembershipProp
             children={
               <MembershipConfiguration isEditable={true} />
             }
+          />}
+          {currentStep === OnboardingSteps.RunConfiguration && <OnboardingStep
+            stepTitle={strings.ManageMembership.labels.step3title}
+            stepDescription={strings.ManageMembership.labels.step3description}
+            destinationType={selectedDestination?.type}
+            destinationName={selectedDestination?.name}
+            children={
+              <RunConfiguration
+                thresholdExceededForAdditions={locationState?.thresholdExceededForAdditions}
+                thresholdExceededForRemovals={locationState?.thresholdExceededForRemovals}
+              />}
           />}
           {currentStep === OnboardingSteps.Confirmation && <OnboardingStep
             stepTitle={strings.ManageMembership.labels.step4title}
@@ -649,7 +649,7 @@ export const ManageMembershipBase: React.FunctionComponent<IManageMembershipProp
           />}
           <div className={classNames.bottomContainer}>
             {currentStep !== OnboardingSteps.SelectDestination && <div className={classNames.backButtonContainer}>
-              {!(isEditingExistingJob && currentStep === OnboardingSteps.RunConfiguration) &&
+              {!(isEditingExistingJob && currentStep === OnboardingSteps.MembershipConfiguration) &&
                 <DefaultButton
                   text={strings.back}
                   onClick={onBackStepClick}
