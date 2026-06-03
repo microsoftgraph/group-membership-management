@@ -63,13 +63,13 @@ namespace Services.WebApi
 
         private static readonly ChatTool LookupPersonTool = ChatTool.CreateFunctionTool(
             functionName: "lookup_person",
-            functionDescription: "Search for a person by name or email in Microsoft Graph. ALWAYS call this when the user mentions a specific person's name as org leader (not 'my org' or 'my manager'). Returns matching people with their email so you can confirm the right person.",
+            functionDescription: "Search for a person by name, alias, or email in Microsoft Graph. ALWAYS call this when the user mentions a specific person's name or alias as org leader (not 'my org' or 'my manager'). Returns matching people with their email so you can confirm the right person.",
             functionParameters: BinaryData.FromString(@"{
                 ""type"": ""object"",
                 ""properties"": {
                     ""searchQuery"": {
                         ""type"": ""string"",
-                        ""description"": ""The person's name or email to search for (e.g., 'John Smith' or 'john.smith@company.com')""
+                        ""description"": ""The person's name, alias, or email to search for (e.g., 'John Smith', 'jsmith', or 'john.smith@company.com')""
                     }
                 },
                 ""required"": [""searchQuery""]
@@ -493,6 +493,27 @@ namespace Services.WebApi
                         catch (Exception ex)
                         {
                             _logger.LogWarning(ex, "Graph startsWith search failed for '{SearchQuery}'", searchQuery);
+                        }
+                    }
+
+                    // If still nothing, try mailNickname (alias) lookup
+                    if (allUsers.Count == 0)
+                    {
+                        try
+                        {
+                            var aliasResponse = await graphClient.Users.GetAsync(config =>
+                            {
+                                config.Headers.Add("ConsistencyLevel", "eventual");
+                                config.QueryParameters.Filter = $"mailNickname eq '{searchSafe}'";
+                                config.QueryParameters.Select = selectFields;
+                                config.QueryParameters.Count = true;
+                                config.QueryParameters.Top = 10;
+                            });
+                            allUsers = aliasResponse?.Value ?? new();
+                        }
+                        catch (Exception ex)
+                        {
+                            _logger.LogWarning(ex, "Graph mailNickname search failed for '{SearchQuery}'", searchQuery);
                         }
                     }
                 }
