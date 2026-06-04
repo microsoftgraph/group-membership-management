@@ -49,9 +49,5 @@ export const { clearProfile } = userProfileSlice.actions;
 // Selectors
 export const selectUserProfile = (state: RootState) => state.userProfile.profile;
 export const selectUserProfileLoading = (state: RootState) => state.userProfile.isLoading;
-export const selectUserDepartment = (state: RootState) => state.userProfile.profile?.department;
-export const selectUserCompany = (state: RootState) => state.userProfile.profile?.companyName;
-export const selectUserManager = (state: RootState) => state.userProfile.profile?.manager;
-export const selectUserJobTitle = (state: RootState) => state.userProfile.profile?.jobTitle;
 
 export default userProfileSlice.reducer;

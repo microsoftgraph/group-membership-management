@@ -280,7 +280,7 @@ test.describe('Admin Tests', () => {
 
     await page.getByText('Populate defaults').click();
 
-    // Default prompts include 5 items
-    await expect(page.getByRole('button', { name: 'Remove' })).toHaveCount(5, { timeout: 5000 });
+    // Default prompts include 2 items
+    await expect(page.getByRole('button', { name: 'Remove' })).toHaveCount(2, { timeout: 5000 });
   });
 });

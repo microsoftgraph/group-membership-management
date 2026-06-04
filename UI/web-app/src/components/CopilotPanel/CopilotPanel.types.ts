@@ -8,7 +8,6 @@ import {
 } from '@fluentui/react';
 import type React from 'react';
 import { ISourcePart } from '../../models/ISourcePart';
-import { UserProfile } from '../../models/UserProfile';
 
 /**
  * HR attribute info passed to Copilot (subset of SqlMembershipAttribute)
@@ -99,10 +98,6 @@ export interface ICopilotPanelProps extends React.AllHTMLAttributes<HTMLElement>
      * ID of the source part this Copilot session is for (used to track session per source part)
      */
     sourcePartId?: string;
-    /**
-     * User profile containing department, manager, etc. for personalized context
-     */
-    userProfile?: UserProfile | null;
     /**
      * HR attributes available for filtering
      */

@@ -45,7 +45,6 @@ import { HRPart } from '../../models/HRPart';
 import { selectGeneratedGroupParts, selectGeneratedHRParts, selectTitles } from '../../store/title.slice';
 import { selectIsAITitleEnabled } from '../../store/settings.slice';
 import { useTitleProcessing } from '../../hooks/useTitleProcessing';
-import { selectUserProfile } from '../../store/userProfile.slice';
 
 const getClassNames = classNamesFunction<MembershipConfigurationStyleProps, MembershipConfigurationStyles>();
 
@@ -76,7 +75,6 @@ export const MembershipConfigurationBase: React.FunctionComponent<MembershipConf
   const generatedHRParts = useSelector(selectGeneratedHRParts);
   const generatedGroupParts = useSelector(selectGeneratedGroupParts);
   const hrAttributes = useSelector(selectAttributes);
-  const userProfile = useSelector(selectUserProfile);
 
   const getAllSourcePartsExpanded = useCallback(() => {
     return sourceParts.every(part => part.isExpanded);
@@ -514,7 +512,6 @@ export const MembershipConfigurationBase: React.FunctionComponent<MembershipConf
           description: attr.description
         }))}
         sourcePartId={activeSourcePartId || undefined}
-        userProfile={userProfile}
       />
     </div>
   );

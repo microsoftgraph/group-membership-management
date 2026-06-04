@@ -86,9 +86,6 @@ function transformSourcePart(apiPart: ApiSourcePart): ISourcePart {
 }
 
 export interface UserContext {
-    department?: string;
-    companyName?: string;
-    jobTitle?: string;
     managerName?: string;
     managerEmail?: string;
     managerAlias?: string;

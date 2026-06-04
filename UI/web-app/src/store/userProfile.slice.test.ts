@@ -6,10 +6,6 @@ import userProfileReducer, {
   clearProfile,
   selectUserProfile,
   selectUserProfileLoading,
-  selectUserDepartment,
-  selectUserCompany,
-  selectUserManager,
-  selectUserJobTitle,
   UserProfileState,
 } from './userProfile.slice';
 import { fetchMyProfile } from './userProfile.api';
@@ -25,15 +21,6 @@ const initialState: UserProfileState = {
 const mockProfile: UserProfile = {
   id: 'user-1',
   displayName: 'Pulkit Bhagat',
-  department: 'Engineering',
-  companyName: 'Contoso',
-  jobTitle: 'Software Engineer',
-  manager: {
-    id: 'mgr-1',
-    displayName: 'Jane Smith',
-    mail: 'jsmith@contoso.com',
-    mailNickname: 'jsmith',
-  },
 };
 
 describe('userProfile.slice', () => {
@@ -118,32 +105,12 @@ describe('userProfile.slice', () => {
       expect(selectUserProfileLoading(mockRootState)).toBe(false);
     });
 
-    it('selectUserDepartment returns department', () => {
-      expect(selectUserDepartment(mockRootState)).toBe('Engineering');
-    });
-
-    it('selectUserCompany returns company name', () => {
-      expect(selectUserCompany(mockRootState)).toBe('Contoso');
-    });
-
-    it('selectUserManager returns manager object', () => {
-      expect(selectUserManager(mockRootState)).toEqual(mockProfile.manager);
-    });
-
-    it('selectUserJobTitle returns job title', () => {
-      expect(selectUserJobTitle(mockRootState)).toBe('Software Engineer');
-    });
-
     it('selectors handle null profile gracefully', () => {
       const nullProfileState = {
         userProfile: { profile: null, isLoading: false, error: null },
       } as unknown as RootState;
 
       expect(selectUserProfile(nullProfileState)).toBeNull();
-      expect(selectUserDepartment(nullProfileState)).toBeUndefined();
-      expect(selectUserCompany(nullProfileState)).toBeUndefined();
-      expect(selectUserManager(nullProfileState)).toBeUndefined();
-      expect(selectUserJobTitle(nullProfileState)).toBeUndefined();
     });
   });
 });

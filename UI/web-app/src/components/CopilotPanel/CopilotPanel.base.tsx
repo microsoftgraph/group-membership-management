@@ -35,7 +35,7 @@ import {
     clearMessages,
     clearLastSourcePart,
 } from '../../store/copilot.slice';
-import { sendCopilotMessage } from '../../store/copilot.api';
+import { sendCopilotMessage, UserContext } from '../../store/copilot.api';
 import { selectCopilotSuggestedPrompts } from '../../store/settings.slice';
 import { selectOrgLeaderDetails } from '../../store/orgLeaderDetails.slice';
 import { getSourcePartsFromState } from '../../store/manageMembership.slice';
@@ -50,7 +50,7 @@ const getClassNames = classNamesFunction<
 export const CopilotPanelBase: React.FunctionComponent<ICopilotPanelProps> = (
     props: ICopilotPanelProps
 ) => {
-    const { className, styles, isOpen, dismissPanel, onSourcePartsGenerated, sourcePartId, userProfile, hrAttributes } = props;
+    const { className, styles, isOpen, dismissPanel, onSourcePartsGenerated, sourcePartId, hrAttributes } = props;
     const strings = useStrings();
     const theme = useTheme();
     const dispatch = useDispatch<AppDispatch>();
@@ -165,13 +165,11 @@ export const CopilotPanelBase: React.FunctionComponent<ICopilotPanelProps> = (
         dispatch(addMessage(userMessage));
         setInputValue('');
 
-        const userContext = userProfile ? {
-            department: userProfile.department,
-            companyName: userProfile.companyName,
-            jobTitle: userProfile.jobTitle,
-            managerName: userProfile.manager?.displayName,
-            managerEmail: userProfile.manager?.mail
-        } : undefined;
+        const userContext: UserContext = {
+            managerName: undefined,
+            managerEmail: undefined,
+            managerAlias: undefined,
+        };
 
         try {
             await dispatch(sendCopilotMessage({ 
@@ -183,7 +181,7 @@ export const CopilotPanelBase: React.FunctionComponent<ICopilotPanelProps> = (
         } catch (err) {
             // Error is handled by the slice
         }
-    }, [dispatch, isLoading, userProfile, hrAttributes, currentMembershipContext]);
+    }, [dispatch, isLoading, hrAttributes, currentMembershipContext]);
 
     const handleAcceptAndApply = useCallback(() => {
         if (lastSourceParts.length === 0 || !onSourcePartsGenerated) return;

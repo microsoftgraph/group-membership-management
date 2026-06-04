@@ -8,13 +8,4 @@
 export interface UserProfile {
   id: string;
   displayName: string;
-  department?: string;
-  companyName?: string;
-  jobTitle?: string;
-  manager?: {
-    id: string;
-    displayName: string;
-    mail?: string;
-    mailNickname?: string;
-  };
 }
