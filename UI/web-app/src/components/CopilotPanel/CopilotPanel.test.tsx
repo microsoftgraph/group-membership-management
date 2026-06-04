@@ -262,4 +262,178 @@ describe('CopilotPanel', () => {
     expect(store.getState().copilot.lastSourceParts).toEqual([]);
     expect(store.getState().copilot.useOrgStructure).toBe(false);
   });
+
+  describe('suggested prompts', () => {
+    const validPromptsJson = JSON.stringify([
+      { label: 'Include reports', prompt: 'Include all reports who roll up to an employee' },
+      { label: 'Include group members', prompt: 'Include all members of a specific group' },
+    ]);
+
+    it('renders suggested prompt buttons when settings contain prompts', async () => {
+      await renderCopilotPanel({
+        preloadedState: {
+          settings: {
+            settings: [
+              { settingKey: 15, settingValue: validPromptsJson },
+            ],
+          },
+        },
+      });
+
+      expect(screen.getByText('Include reports')).toBeInTheDocument();
+      expect(screen.getByText('Include group members')).toBeInTheDocument();
+    });
+
+    it('renders localized header when suggested prompts are present', async () => {
+      const { defaultStrings } = await loadModules();
+      await renderCopilotPanel({
+        preloadedState: {
+          settings: {
+            settings: [
+              { settingKey: 15, settingValue: validPromptsJson },
+            ],
+          },
+        },
+      });
+
+      expect(
+        screen.getByText(defaultStrings.Copilot.tryOneOfTheseToGetStarted)
+      ).toBeInTheDocument();
+    });
+
+    it('does not render suggested prompts when setting is empty', async () => {
+      const { defaultStrings } = await loadModules();
+      await renderCopilotPanel({
+        preloadedState: {
+          settings: {
+            settings: [
+              { settingKey: 15, settingValue: '' },
+            ],
+          },
+        },
+      });
+
+      expect(screen.queryByText(defaultStrings.Copilot.tryOneOfTheseToGetStarted)).not.toBeInTheDocument();
+      expect(screen.queryAllByRole('button', { name: /Include/i })).toHaveLength(0);
+    });
+
+    it('does not render suggested prompts when setting is missing', async () => {
+      const { defaultStrings } = await loadModules();
+      await renderCopilotPanel();
+
+      expect(screen.queryByText(defaultStrings.Copilot.tryOneOfTheseToGetStarted)).not.toBeInTheDocument();
+      expect(screen.queryAllByRole('button', { name: /Include/i })).toHaveLength(0);
+    });
+
+    it('handles malformed JSON gracefully', async () => {
+      const { defaultStrings } = await loadModules();
+      await renderCopilotPanel({
+        preloadedState: {
+          settings: {
+            settings: [
+              { settingKey: 15, settingValue: 'not valid json{{{' },
+            ],
+          },
+        },
+      });
+
+      expect(screen.queryByText(defaultStrings.Copilot.tryOneOfTheseToGetStarted)).not.toBeInTheDocument();
+    });
+
+    it('does not render suggested prompts for empty JSON array', async () => {
+      const { defaultStrings } = await loadModules();
+      await renderCopilotPanel({
+        preloadedState: {
+          settings: {
+            settings: [
+              { settingKey: 15, settingValue: '[]' },
+            ],
+          },
+        },
+      });
+
+      expect(screen.queryByText(defaultStrings.Copilot.tryOneOfTheseToGetStarted)).not.toBeInTheDocument();
+      expect(screen.queryAllByRole('button', { name: /Include/i })).toHaveLength(0);
+    });
+
+    it('filters out prompts with non-string label or prompt values', async () => {
+      const mixedJson = JSON.stringify([
+        { label: 'Valid prompt', prompt: 'Valid prompt text' },
+        { label: 42, prompt: 'Number label' },
+        { label: 'Missing prompt', prompt: null },
+        { label: '', prompt: 'Empty label' },
+      ]);
+
+      await renderCopilotPanel({
+        preloadedState: {
+          settings: {
+            settings: [
+              { settingKey: 15, settingValue: mixedJson },
+            ],
+          },
+        },
+      });
+
+      expect(screen.getByText('Valid prompt')).toBeInTheDocument();
+      expect(screen.queryByText('Number label')).not.toBeInTheDocument();
+      expect(screen.queryByText('Missing prompt')).not.toBeInTheDocument();
+      expect(screen.queryByText('Empty label')).not.toBeInTheDocument();
+    });
+
+    it('filters out non-object entries from JSON array', async () => {
+      const badJson = JSON.stringify([
+        'just a string',
+        null,
+        42,
+        { label: 'Real prompt', prompt: 'Real prompt text' },
+      ]);
+
+      await renderCopilotPanel({
+        preloadedState: {
+          settings: {
+            settings: [
+              { settingKey: 15, settingValue: badJson },
+            ],
+          },
+        },
+      });
+
+      expect(screen.getByText('Real prompt')).toBeInTheDocument();
+    });
+
+    it('does not render prompts when JSON is a non-array value', async () => {
+      const { defaultStrings } = await loadModules();
+      await renderCopilotPanel({
+        preloadedState: {
+          settings: {
+            settings: [
+              { settingKey: 15, settingValue: JSON.stringify({ label: 'Not array', prompt: 'Not array' }) },
+            ],
+          },
+        },
+      });
+
+      expect(screen.queryByText(defaultStrings.Copilot.tryOneOfTheseToGetStarted)).not.toBeInTheDocument();
+      expect(screen.queryByText('Not array')).not.toBeInTheDocument();
+    });
+
+    it('disables prompt buttons when loading', async () => {
+      await renderCopilotPanel({
+        preloadedState: {
+          copilot: { isLoading: true },
+          settings: {
+            settings: [
+              { settingKey: 15, settingValue: validPromptsJson },
+            ],
+          },
+        },
+      });
+
+      const buttons = screen.getAllByRole('button', { name: /Include/i });
+      expect(buttons).toHaveLength(2);
+      for (const button of buttons) {
+        expect(button).toBeDisabled();
+      }
+    });
+  });
 });

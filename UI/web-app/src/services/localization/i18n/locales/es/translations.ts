@@ -234,8 +234,8 @@ export const strings: IStrings = {
         suggestedPromptPromptField: "Indicación completa",
         suggestedPromptAdd: "Agregar indicación",
         suggestedPromptPopulateDefaults: "Rellenar valores predeterminados",
-        suggestedPromptLabelPlaceholder: "ej., Incluir empleados y pasantes",
-        suggestedPromptPromptPlaceholder: "ej., Incluir todos los empleados y pasantes",
+        suggestedPromptLabelPlaceholder: "ej., Incluir todos los reportes",
+        suggestedPromptPromptPlaceholder: "ej., Incluir todos los reportes que dependen de un empleado",
       }
     }
   },
@@ -717,6 +717,7 @@ export const strings: IStrings = {
     leaderPrompt: '¡Entendido! ¿De la organización de quién debo obtener {0}? Proporciona el alias o nombre del líder.',
     leaderInputPlaceholder: 'Escribe un alias o nombre',
     leaderSubmit: 'Continuar',
+    tryOneOfTheseToGetStarted: 'PRUEBA UNA DE ESTAS PARA COMENZAR',
   },
   excludePrefix: 'Excluir',
   copy: 'Copiar',

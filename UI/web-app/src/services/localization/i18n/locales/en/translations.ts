@@ -233,8 +233,8 @@ export const strings: IStrings = {
         suggestedPromptPromptField: "Full prompt",
         suggestedPromptAdd: "Add prompt",
         suggestedPromptPopulateDefaults: "Populate defaults",
-        suggestedPromptLabelPlaceholder: "e.g., Include FTEs and interns",
-        suggestedPromptPromptPlaceholder: "e.g., Include all FTEs and interns",
+        suggestedPromptLabelPlaceholder: "e.g., Include all reports",
+        suggestedPromptPromptPlaceholder: "e.g., Include all reports who roll up to an employee",
       }
     }
   },
@@ -715,6 +715,7 @@ export const strings: IStrings = {
     leaderPrompt: "Got it! Whose org should I pull {0} from? Please provide the leader's alias or name.",
     leaderInputPlaceholder: 'Type an alias or name',
     leaderSubmit: 'Continue',
+    tryOneOfTheseToGetStarted: 'TRY ONE OF THESE TO GET STARTED',
   },
   excludePrefix: 'Exclude',
   copy: 'Copy',

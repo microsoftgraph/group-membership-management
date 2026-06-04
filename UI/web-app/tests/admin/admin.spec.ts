@@ -234,4 +234,53 @@ test.describe('Admin Tests', () => {
       timeout: 10000,
     });
   });
+
+  test('Suggested prompts editor shows configured prompts in mock mode', async ({ page }) => {
+    const url = DOMAIN.startsWith('http://') || DOMAIN.startsWith('https://') ? DOMAIN : `https://${DOMAIN}`;
+
+    await page.goto(`${url}/Admin`);
+    await page.locator('text="AI Settings"').click();
+
+    await expect(page.getByText('Suggested Prompts')).toBeVisible({ timeout: 10000 });
+
+    // The mock API seeds 2 prompts
+    await expect(page.locator('input[placeholder="e.g., Include all reports"]').first()).toBeVisible({
+      timeout: 10000,
+    });
+  });
+
+  test('Suggested prompts editor can add and remove prompts', async ({ page }) => {
+    const url = DOMAIN.startsWith('http://') || DOMAIN.startsWith('https://') ? DOMAIN : `https://${DOMAIN}`;
+
+    await page.goto(`${url}/Admin`);
+    await page.locator('text="AI Settings"').click();
+
+    await expect(page.getByText('Suggested Prompts')).toBeVisible({ timeout: 10000 });
+
+    // Count initial delete buttons (2 from mock data)
+    const initialDeleteButtons = page.getByRole('button', { name: 'Remove' });
+    const initialCount = await initialDeleteButtons.count();
+
+    // Add a new prompt
+    await page.getByText('Add prompt').click();
+    await expect(page.getByRole('button', { name: 'Remove' })).toHaveCount(initialCount + 1, { timeout: 5000 });
+
+    // Remove the first prompt
+    await page.getByRole('button', { name: 'Remove' }).first().click();
+    await expect(page.getByRole('button', { name: 'Remove' })).toHaveCount(initialCount, { timeout: 5000 });
+  });
+
+  test('Populate defaults button fills suggested prompts', async ({ page }) => {
+    const url = DOMAIN.startsWith('http://') || DOMAIN.startsWith('https://') ? DOMAIN : `https://${DOMAIN}`;
+
+    await page.goto(`${url}/Admin`);
+    await page.locator('text="AI Settings"').click();
+
+    await expect(page.getByText('Suggested Prompts')).toBeVisible({ timeout: 10000 });
+
+    await page.getByText('Populate defaults').click();
+
+    // Default prompts include 5 items
+    await expect(page.getByRole('button', { name: 'Remove' })).toHaveCount(5, { timeout: 5000 });
+  });
 });

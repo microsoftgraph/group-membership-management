@@ -1,7 +1,7 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { classNamesFunction, Toggle, IProcessedStyleSet, Pivot, PivotItem, PrimaryButton, TextField, Text, IColumn, SelectionMode, ShimmeredDetailsList, Dropdown, Spinner, IRenderFunction, ISelectableDroppableTextProps, IDropdown, Slider, Icon, IconButton, ActionButton } from '@fluentui/react';
 import { useTheme } from '@fluentui/react/lib/Theme';
 import {
@@ -699,11 +699,8 @@ const AISettings: React.FunctionComponent<AISettingsProps> = (props: AISettingsP
 }
 
 const DEFAULT_SUGGESTED_PROMPTS = [
-  { label: 'Include FTEs and interns', prompt: 'Include all FTEs and interns' },
-  { label: 'Include People managers', prompt: 'Include all People managers' },
-  { label: 'Include employees who are L65+ or People managers', prompt: 'Include all employees who are level 65 or above, or who are People managers' },
-  { label: 'Include U.S. based employees', prompt: 'Include all U.S. based employees' },
-  { label: 'Include members of a group', prompt: 'Include all members of a specific Entra ID group' },
+  { label: 'Include all reports who roll up to an employee', prompt: 'Include all reports who roll up to an employee' },
+  { label: 'Include members of a group', prompt: 'Include all members of a specific group' },
 ];
 
 const SuggestedPromptsEditor: React.FunctionComponent<{
@@ -712,71 +709,99 @@ const SuggestedPromptsEditor: React.FunctionComponent<{
   setSettings: React.Dispatch<React.SetStateAction<{ readonly [key in SettingKey]: string }>>;
 }> = ({ strings, settings, setSettings }) => {
 
-  const prompts: Array<{ label: string; prompt: string }> = useMemo(() => {
+  type PromptWithId = { id: number; label: string; prompt: string };
+  const nextId = useRef(0);
+
+  const assignIds = (items: Array<{ label: string; prompt: string }>): PromptWithId[] =>
+    items.map((item) => ({ ...item, id: nextId.current++ }));
+
+  const [prompts, setPrompts] = useState<PromptWithId[]>(() => {
     const json = settings[SettingKey.CopilotSuggestedPrompts];
     if (!json) return [];
     try {
       const parsed = JSON.parse(json);
       if (Array.isArray(parsed)) {
-        return parsed
-          .filter((item: any) => typeof item === 'object' && item !== null)
-          .map((item: any) => ({
-            label: typeof item.label === 'string' ? item.label : '',
-            prompt: typeof item.prompt === 'string' ? item.prompt : '',
-          }));
+        return assignIds(
+          parsed
+            .filter((item: any) => typeof item === 'object' && item !== null)
+            .map((item: any) => ({
+              label: typeof item.label === 'string' ? item.label : '',
+              prompt: typeof item.prompt === 'string' ? item.prompt : '',
+            }))
+        );
       }
     } catch { /* invalid JSON */ }
     return [];
+  });
+
+  useEffect(() => {
+    const json = settings[SettingKey.CopilotSuggestedPrompts];
+    if (!json) { setPrompts([]); return; }
+    try {
+      const parsed = JSON.parse(json);
+      if (Array.isArray(parsed)) {
+        setPrompts(assignIds(
+          parsed
+            .filter((item: any) => typeof item === 'object' && item !== null)
+            .map((item: any) => ({
+              label: typeof item.label === 'string' ? item.label : '',
+              prompt: typeof item.prompt === 'string' ? item.prompt : '',
+            }))
+        ));
+      }
+    } catch { /* invalid JSON */ }
   }, [settings[SettingKey.CopilotSuggestedPrompts]]);
 
-  const updatePrompts = (newPrompts: Array<{ label: string; prompt: string }>) => {
+  const syncToSettings = (updated: PromptWithId[]) => {
+    setPrompts(updated);
     setSettings((prev) => ({
       ...prev,
-      [SettingKey.CopilotSuggestedPrompts]: JSON.stringify(newPrompts),
+      [SettingKey.CopilotSuggestedPrompts]: JSON.stringify(
+        updated.map(({ label, prompt }) => ({ label, prompt }))
+      ),
     }));
   };
 
-  const handleFieldChange = (index: number, field: 'label' | 'prompt', value: string) => {
-    const updated = [...prompts];
-    updated[index] = { ...updated[index], [field]: value };
-    updatePrompts(updated);
+  const handleFieldChange = (id: number, field: 'label' | 'prompt', value: string) => {
+    const updated = prompts.map((p) => (p.id === id ? { ...p, [field]: value } : p));
+    syncToSettings(updated);
   };
 
-  const handleRemove = (index: number) => {
-    const updated = prompts.filter((_, i) => i !== index);
-    updatePrompts(updated);
+  const handleRemove = (id: number) => {
+    const updated = prompts.filter((p) => p.id !== id);
+    syncToSettings(updated);
   };
 
   const handleAdd = () => {
-    updatePrompts([...prompts, { label: '', prompt: '' }]);
+    syncToSettings([...prompts, { id: nextId.current++, label: '', prompt: '' }]);
   };
 
   const handlePopulateDefaults = () => {
-    updatePrompts(DEFAULT_SUGGESTED_PROMPTS);
+    syncToSettings(assignIds(DEFAULT_SUGGESTED_PROMPTS));
   };
 
   return (
     <div style={{ marginTop: '20px' }}>
       <Text variant="mediumPlus" style={{ fontWeight: 600 }}>{strings.AISettings.labels.suggestedPromptsTitle}</Text>
       <Text variant="small" block style={{ marginBottom: '12px' }}>{strings.AISettings.labels.suggestedPromptsDescription}</Text>
-      {prompts.map((p, index) => (
-        <div key={index} style={{ display: 'flex', gap: '8px', alignItems: 'flex-start', marginBottom: '8px' }}>
+      {prompts.map((p) => (
+        <div key={p.id} style={{ display: 'flex', gap: '8px', alignItems: 'flex-start', marginBottom: '8px' }}>
           <TextField
             style={{ flex: 1 }}
             placeholder={strings.AISettings.labels.suggestedPromptLabelPlaceholder}
             value={p.label}
-            onChange={(_, val) => handleFieldChange(index, 'label', val ?? '')}
+            onChange={(_, val) => handleFieldChange(p.id, 'label', val ?? '')}
           />
           <TextField
             style={{ flex: 2 }}
             placeholder={strings.AISettings.labels.suggestedPromptPromptPlaceholder}
             value={p.prompt}
-            onChange={(_, val) => handleFieldChange(index, 'prompt', val ?? '')}
+            onChange={(_, val) => handleFieldChange(p.id, 'prompt', val ?? '')}
           />
           <IconButton
             iconProps={{ iconName: 'Delete' }}
             title="Remove"
-            onClick={() => handleRemove(index)}
+            onClick={() => handleRemove(p.id)}
             styles={{ root: { marginTop: '2px' } }}
           />
         </div>

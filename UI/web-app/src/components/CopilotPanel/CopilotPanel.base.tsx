@@ -129,8 +129,8 @@ export const CopilotPanelBase: React.FunctionComponent<ICopilotPanelProps> = (
                     .filter((p: any) => typeof p === 'object' && p !== null)
                     .map((p: any, i: number) => ({
                         id: String(i + 1),
-                        label: p.label || '',
-                        prompt: p.prompt || '',
+                        label: typeof p.label === 'string' ? p.label : '',
+                        prompt: typeof p.prompt === 'string' ? p.prompt : '',
                     })).filter((p: ISuggestedPrompt) => p.label && p.prompt);
             }
         } catch { /* invalid JSON, show no prompts */ }
@@ -323,7 +323,7 @@ export const CopilotPanelBase: React.FunctionComponent<ICopilotPanelProps> = (
                     {suggestedPrompts.length > 0 && (
                     <div className={classNames.suggestedPromptsContainer}>
                         <div className={classNames.suggestedPromptsHeader}>
-                            {'TRY ONE OF THESE TO GET STARTED'}
+                            {strings.Copilot?.tryOneOfTheseToGetStarted || 'TRY ONE OF THESE TO GET STARTED'}
                         </div>
                         {suggestedPrompts.map((prompt) => (
                             <button

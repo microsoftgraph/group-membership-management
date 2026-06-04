@@ -20,7 +20,8 @@ namespace WebApi.Controllers.v1.Settings
             SettingKey.IsAICopilotEnabled,
             SettingKey.CopilotTemperature,
             SettingKey.CopilotTopP,
-            SettingKey.CopilotInstructions
+            SettingKey.CopilotInstructions,
+            SettingKey.CopilotSuggestedPrompts
         };
 
         private readonly IRequestHandler<GetSettingRequest, GetSettingResponse> _getSettingRequestHandler;

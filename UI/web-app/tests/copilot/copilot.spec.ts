@@ -132,3 +132,24 @@ test('panel can be closed with the close button', async ({ page }) => {
 
   await expect(page.getByText(welcomeMessage)).toHaveCount(0);
 });
+
+test('suggested prompt buttons are visible when configured', async ({ page }) => {
+  await page.getByRole('button', { name: /GMM Copilot/i }).click();
+  await expect(page.getByText(welcomeMessage)).toBeVisible();
+
+  await expect(page.getByText('TRY ONE OF THESE TO GET STARTED')).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Include all reports who roll up to an employee' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Include members of a group' })).toBeVisible();
+});
+
+test('clicking a suggested prompt sends it as a message', async ({ page }) => {
+  await page.getByRole('button', { name: /GMM Copilot/i }).click();
+  await expect(page.getByText(welcomeMessage)).toBeVisible();
+
+  await page.getByRole('button', { name: 'Include all reports who roll up to an employee' }).click();
+
+  // Verify the prompt label appears as the user message bubble
+  await expect(page.getByText('Include all reports who roll up to an employee').last()).toBeVisible();
+  // Verify the assistant responded
+  await expect(page.getByText(assistantResponse)).toBeVisible();
+});

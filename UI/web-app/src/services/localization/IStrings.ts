@@ -736,5 +736,6 @@ export type IStrings = {
       leaderPrompt: string;
       leaderInputPlaceholder: string;
       leaderSubmit: string;
+      tryOneOfTheseToGetStarted: string;
   };
 };

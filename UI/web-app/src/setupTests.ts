@@ -5,6 +5,22 @@
 import '@testing-library/jest-dom';
 import { vi } from 'vitest';
 
+// Ensure localStorage is available in all test environments
+if (typeof globalThis.localStorage === 'undefined' || typeof globalThis.localStorage.getItem !== 'function') {
+  const storage: Record<string, string> = {};
+  Object.defineProperty(globalThis, 'localStorage', {
+    value: {
+      getItem: (key: string) => storage[key] ?? null,
+      setItem: (key: string, value: string) => { storage[key] = value; },
+      removeItem: (key: string) => { delete storage[key]; },
+      clear: () => { for (const k of Object.keys(storage)) delete storage[k]; },
+      key: (_i: number) => null,
+      length: 0,
+    },
+    configurable: true,
+  });
+}
+
 const jestCompat = {
 	...vi,
 	requireActual: (modulePath: string) => {

@@ -15,6 +15,7 @@ import settingsReducer, {
   selectIsAutoApprovalForGroupBasedSyncsEnabled,
   selectIsAutoApprovalForRequestorIsOrgLeaderSyncsEnabled,
   selectIsAITitleEnabled,
+  selectCopilotSuggestedPrompts,
   SettingsState,
 } from './settings.slice';
 import { fetchSettings, fetchSettingByKey, patchSetting, getSupportEmailAddress } from './settings.api';
@@ -190,5 +191,24 @@ describe('settings.slice — selectors', () => {
 
   it('selectIsAITitleEnabled returns undefined when not set', () => {
     expect(selectIsAITitleEnabled(buildRoot())).toBeUndefined();
+  });
+
+  it('selectCopilotSuggestedPrompts returns the JSON string when set', () => {
+    const json = JSON.stringify([{ label: 'Test', prompt: 'Test prompt' }]);
+    const root = buildRoot([makeSetting(SettingKey.CopilotSuggestedPrompts, json)]);
+    expect(selectCopilotSuggestedPrompts(root)).toBe(json);
+  });
+
+  it('selectCopilotSuggestedPrompts returns undefined when not set', () => {
+    expect(selectCopilotSuggestedPrompts(buildRoot())).toBeUndefined();
+  });
+
+  it('selectCopilotSuggestedPrompts returns undefined when settings array is undefined', () => {
+    expect(selectCopilotSuggestedPrompts(buildRoot(undefined))).toBeUndefined();
+  });
+
+  it('selectCopilotSuggestedPrompts returns empty string when stored as empty', () => {
+    const root = buildRoot([makeSetting(SettingKey.CopilotSuggestedPrompts, '')]);
+    expect(selectCopilotSuggestedPrompts(root)).toBe('');
   });
 });

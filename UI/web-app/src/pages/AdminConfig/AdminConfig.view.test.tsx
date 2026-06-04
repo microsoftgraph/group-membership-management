@@ -2,12 +2,15 @@
 // Licensed under the MIT license.
 
 import React from 'react';
-import { fireEvent, render, screen } from '@testing-library/react';
-import { vi } from 'vitest';
+import { fireEvent, screen, within } from '@testing-library/react';
+import { vi, beforeAll } from 'vitest';
+import { initializeIcons } from '@fluentui/react';
+import { MemoryRouter } from 'react-router-dom';
 import { AdminConfigView } from './AdminConfig.view';
 import { getStyles } from './AdminConfig.styles';
 import { SettingKey } from '../../models';
 import { defaultStrings } from '../../services/localization';
+import { renderWithProviders } from '../../testing/renderWithProviders';
 
 vi.mock('../../components/PageHeader', () => ({
   PageHeader: () => <div data-testid="page-header" />,
@@ -38,7 +41,11 @@ vi.mock('../../components/Operation', () => ({
   Operation: () => <div />,
 }));
 
-const createSettings = (): { readonly [key in SettingKey]: string } => ({
+beforeAll(() => {
+  initializeIcons(undefined, { disableWarnings: true });
+});
+
+const createSettings = (overrides?: Partial<Record<SettingKey, string>>): { readonly [key in SettingKey]: string } => ({
   [SettingKey.DashboardUrl]: 'https://contoso.example/dashboard',
   [SettingKey.OutlookWarningUrl]: 'https://contoso.example/outlook-warning',
   [SettingKey.PrivacyPolicyUrl]: 'https://contoso.example/privacy',
@@ -54,26 +61,30 @@ const createSettings = (): { readonly [key in SettingKey]: string } => ({
   [SettingKey.CopilotTemperature]: '0.7',
   [SettingKey.CopilotTopP]: '0.9',
   [SettingKey.CopilotInstructions]: '',
+  [SettingKey.CopilotSuggestedPrompts]: '',
+  ...overrides,
 });
 
-const renderAdminConfigView = (defaultAIPrompt: string) =>
-  render(
-    <AdminConfigView
-      isSaving={false}
-      onSave={vi.fn()}
-      handleGetValues={vi.fn()}
-      settings={createSettings()}
-      sqlMembershipSource={undefined}
-      sqlMembershipSourceAttributes={undefined}
-      strings={defaultStrings.AdminConfig}
-      styles={getStyles}
-      isHyperlinkAdmin={false}
-      isCustomMembershipProviderAdmin={false}
-      isOperationsResetAdministrator={false}
-      isGeneralSettingsAdministrator={false}
-      isAISettingsAdministrator={true}
-      defaultAIPrompt={defaultAIPrompt}
-    />
+const renderAdminConfigView = (defaultAIPrompt: string, settingsOverrides?: Partial<Record<SettingKey, string>>) =>
+  renderWithProviders(
+    <MemoryRouter>
+      <AdminConfigView
+        isSaving={false}
+        onSave={vi.fn()}
+        handleGetValues={vi.fn()}
+        settings={createSettings(settingsOverrides)}
+        sqlMembershipSource={undefined}
+        sqlMembershipSourceAttributes={undefined}
+        strings={defaultStrings.AdminConfig}
+        styles={getStyles}
+        isHyperlinkAdmin={false}
+        isCustomMembershipProviderAdmin={false}
+        isOperationsResetAdministrator={false}
+        isGeneralSettingsAdministrator={false}
+        isAISettingsAdministrator={true}
+        defaultAIPrompt={defaultAIPrompt}
+      />
+    </MemoryRouter>
   );
 
 describe('AdminConfigView AI settings', () => {
@@ -103,5 +114,119 @@ describe('AdminConfigView AI settings', () => {
         name: defaultStrings.AdminConfig.AISettings.labels.currentDefaultInstructions,
       })
     ).not.toBeInTheDocument();
+  });
+});
+
+describe('SuggestedPromptsEditor', () => {
+  const twoPrompts = JSON.stringify([
+    { label: 'Include reports', prompt: 'Include all reports' },
+    { label: 'Include group members', prompt: 'Include all group members' },
+  ]);
+
+  test('renders existing prompts from settings', () => {
+    renderAdminConfigView('', {
+      [SettingKey.CopilotSuggestedPrompts]: twoPrompts,
+    });
+
+    expect(screen.getByText(defaultStrings.AdminConfig.AISettings.labels.suggestedPromptsTitle)).toBeInTheDocument();
+    expect(screen.getByDisplayValue('Include reports')).toBeInTheDocument();
+    expect(screen.getByDisplayValue('Include all reports')).toBeInTheDocument();
+    expect(screen.getByDisplayValue('Include group members')).toBeInTheDocument();
+  });
+
+  test('renders empty state when no prompts configured', () => {
+    renderAdminConfigView('');
+
+    expect(screen.getByText(defaultStrings.AdminConfig.AISettings.labels.suggestedPromptsTitle)).toBeInTheDocument();
+    expect(screen.queryByDisplayValue('Include reports')).not.toBeInTheDocument();
+  });
+
+  test('add prompt button creates a new empty row', () => {
+    renderAdminConfigView('');
+
+    const addButton = screen.getByText(defaultStrings.AdminConfig.AISettings.labels.suggestedPromptAdd);
+    fireEvent.click(addButton);
+
+    const labelPlaceholder = defaultStrings.AdminConfig.AISettings.labels.suggestedPromptLabelPlaceholder;
+    expect(screen.getByPlaceholderText(labelPlaceholder)).toBeInTheDocument();
+  });
+
+  test('populate defaults button fills in default prompts', () => {
+    renderAdminConfigView('');
+
+    const populateButton = screen.getByText(defaultStrings.AdminConfig.AISettings.labels.suggestedPromptPopulateDefaults);
+    fireEvent.click(populateButton);
+
+    expect(screen.getAllByDisplayValue('Include all reports who roll up to an employee')).toHaveLength(2);
+    expect(screen.getByDisplayValue('Include members of a group')).toBeInTheDocument();
+  });
+
+  test('delete button removes a prompt row', () => {
+    renderAdminConfigView('', {
+      [SettingKey.CopilotSuggestedPrompts]: twoPrompts,
+    });
+
+    expect(screen.getByDisplayValue('Include reports')).toBeInTheDocument();
+
+    const deleteButtons = screen.getAllByRole('button', { name: 'Remove' });
+    fireEvent.click(deleteButtons[0]);
+
+    expect(screen.queryByDisplayValue('Include reports')).not.toBeInTheDocument();
+    expect(screen.getByDisplayValue('Include group members')).toBeInTheDocument();
+  });
+
+  test('editing a prompt label updates the field value', () => {
+    renderAdminConfigView('', {
+      [SettingKey.CopilotSuggestedPrompts]: twoPrompts,
+    });
+
+    const labelInput = screen.getByDisplayValue('Include reports');
+    fireEvent.change(labelInput, { target: { value: 'Updated label' } });
+
+    expect(screen.getByDisplayValue('Updated label')).toBeInTheDocument();
+  });
+
+  test('handles malformed JSON gracefully with no prompts shown', () => {
+    renderAdminConfigView('', {
+      [SettingKey.CopilotSuggestedPrompts]: 'not valid json',
+    });
+
+    expect(screen.getByText(defaultStrings.AdminConfig.AISettings.labels.suggestedPromptsTitle)).toBeInTheDocument();
+    const deleteButtons = screen.queryAllByRole('button', { name: 'Remove' });
+    expect(deleteButtons).toHaveLength(0);
+  });
+
+  test('coerces non-string fields to empty strings and keeps rows editable', () => {
+    const mixedJson = JSON.stringify([
+      { label: 'Valid', prompt: 'Valid prompt' },
+      { label: 123, prompt: 'Number label' },
+    ]);
+
+    renderAdminConfigView('', {
+      [SettingKey.CopilotSuggestedPrompts]: mixedJson,
+    });
+
+    expect(screen.getByDisplayValue('Valid')).toBeInTheDocument();
+    expect(screen.getByDisplayValue('Valid prompt')).toBeInTheDocument();
+    // Non-string label coerced to empty string — row kept so admin can fix it
+    const deleteButtons = screen.getAllByRole('button', { name: 'Remove' });
+    expect(deleteButtons).toHaveLength(2);
+  });
+
+  test('renders empty state for empty JSON array', () => {
+    renderAdminConfigView('', {
+      [SettingKey.CopilotSuggestedPrompts]: '[]',
+    });
+
+    expect(screen.getByText(defaultStrings.AdminConfig.AISettings.labels.suggestedPromptsTitle)).toBeInTheDocument();
+    expect(screen.queryAllByRole('button', { name: 'Remove' })).toHaveLength(0);
+  });
+
+  test('populate defaults creates exactly 2 default prompts', () => {
+    renderAdminConfigView('');
+
+    fireEvent.click(screen.getByText(defaultStrings.AdminConfig.AISettings.labels.suggestedPromptPopulateDefaults));
+
+    expect(screen.getAllByRole('button', { name: 'Remove' })).toHaveLength(2);
   });
 });

@@ -28,6 +28,10 @@ const defaultSettings: SettingRecord[] = [
   { settingKey: 12, settingValue: '0.7' },
   { settingKey: 13, settingValue: '0.9' },
   { settingKey: 14, settingValue: '' },
+  { settingKey: 15, settingValue: JSON.stringify([
+    { label: 'Include all reports who roll up to an employee', prompt: 'Include all reports who roll up to an employee' },
+    { label: 'Include members of a group', prompt: 'Include all members of a specific group' },
+  ]) },
 ];
 
 const mockSupportEmail = 'gmm-support@contoso.com';
@@ -49,6 +53,7 @@ const settingKeyByName: Record<string, number> = {
   CopilotTemperature: 12,
   CopilotTopP: 13,
   CopilotInstructions: 14,
+  CopilotSuggestedPrompts: 15,
 };
 
 function resolveSettingKey(rawKey: string): number {
