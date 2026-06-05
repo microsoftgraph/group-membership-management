@@ -236,6 +236,10 @@ export const strings: IStrings = {
         suggestedPromptPopulateDefaults: "Rellenar valores predeterminados",
         suggestedPromptLabelPlaceholder: "ej., Incluir todos los reportes",
         suggestedPromptPromptPlaceholder: "ej., Incluir todos los reportes que dependen de un empleado",
+        suggestedPromptDefault1Label: "Incluir todos los reportes que dependen de un empleado",
+        suggestedPromptDefault1Prompt: "Incluir todos los reportes que dependen de un empleado",
+        suggestedPromptDefault2Label: "Incluir miembros de un grupo",
+        suggestedPromptDefault2Prompt: "Incluir todos los miembros de un grupo específico",
       }
     }
   },

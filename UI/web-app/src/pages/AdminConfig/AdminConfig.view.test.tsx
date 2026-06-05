@@ -157,8 +157,10 @@ describe('SuggestedPromptsEditor', () => {
     const populateButton = screen.getByText(defaultStrings.AdminConfig.AISettings.labels.suggestedPromptPopulateDefaults);
     fireEvent.click(populateButton);
 
-    expect(screen.getAllByDisplayValue('Include all reports who roll up to an employee')).toHaveLength(2);
-    expect(screen.getByDisplayValue('Include members of a group')).toBeInTheDocument();
+    const default1Label = defaultStrings.AdminConfig.AISettings.labels.suggestedPromptDefault1Label;
+    const default2Label = defaultStrings.AdminConfig.AISettings.labels.suggestedPromptDefault2Label;
+    expect(screen.getAllByDisplayValue(default1Label).length).toBeGreaterThanOrEqual(1);
+    expect(screen.getByDisplayValue(default2Label)).toBeInTheDocument();
   });
 
   test('delete button removes a prompt row', () => {

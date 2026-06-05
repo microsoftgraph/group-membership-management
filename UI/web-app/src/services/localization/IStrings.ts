@@ -232,6 +232,10 @@ export type IStrings = {
         suggestedPromptPopulateDefaults: string;
         suggestedPromptLabelPlaceholder: string;
         suggestedPromptPromptPlaceholder: string;
+        suggestedPromptDefault1Label: string;
+        suggestedPromptDefault1Prompt: string;
+        suggestedPromptDefault2Label: string;
+        suggestedPromptDefault2Prompt: string;
       }
     }
   },

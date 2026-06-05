@@ -235,6 +235,10 @@ export const strings: IStrings = {
         suggestedPromptPopulateDefaults: "Populate defaults",
         suggestedPromptLabelPlaceholder: "e.g., Include all reports",
         suggestedPromptPromptPlaceholder: "e.g., Include all reports who roll up to an employee",
+        suggestedPromptDefault1Label: "Include all reports who roll up to an employee",
+        suggestedPromptDefault1Prompt: "Include all reports who roll up to an employee",
+        suggestedPromptDefault2Label: "Include members of a group",
+        suggestedPromptDefault2Prompt: "Include all members of a specific group",
       }
     }
   },

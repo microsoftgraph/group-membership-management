@@ -709,48 +709,36 @@ const SuggestedPromptsEditor: React.FunctionComponent<{
   setSettings: React.Dispatch<React.SetStateAction<{ readonly [key in SettingKey]: string }>>;
 }> = ({ strings, settings, setSettings }) => {
 
+  const defaultSuggestedPrompts = useMemo(() => [
+    { label: strings.AISettings.labels.suggestedPromptDefault1Label, prompt: strings.AISettings.labels.suggestedPromptDefault1Prompt },
+    { label: strings.AISettings.labels.suggestedPromptDefault2Label, prompt: strings.AISettings.labels.suggestedPromptDefault2Prompt },
+  ], [strings]);
+
   type PromptWithId = { id: number; label: string; prompt: string };
   const nextId = useRef(0);
 
   const assignIds = (items: Array<{ label: string; prompt: string }>): PromptWithId[] =>
     items.map((item) => ({ ...item, id: nextId.current++ }));
 
-  const [prompts, setPrompts] = useState<PromptWithId[]>(() => {
-    const json = settings[SettingKey.CopilotSuggestedPrompts];
+  const parsePrompts = (json: string): Array<{ label: string; prompt: string }> => {
     if (!json) return [];
     try {
       const parsed = JSON.parse(json);
       if (Array.isArray(parsed)) {
-        return assignIds(
-          parsed
-            .filter((item: any) => typeof item === 'object' && item !== null)
-            .map((item: any) => ({
-              label: typeof item.label === 'string' ? item.label : '',
-              prompt: typeof item.prompt === 'string' ? item.prompt : '',
-            }))
-        );
+        return parsed
+          .filter((item: any) => typeof item === 'object' && item !== null)
+          .map((item: any) => ({
+            label: typeof item.label === 'string' ? item.label : '',
+            prompt: typeof item.prompt === 'string' ? item.prompt : '',
+          }));
       }
     } catch { /* invalid JSON */ }
     return [];
-  });
+  };
 
-  useEffect(() => {
-    const json = settings[SettingKey.CopilotSuggestedPrompts];
-    if (!json) { setPrompts([]); return; }
-    try {
-      const parsed = JSON.parse(json);
-      if (Array.isArray(parsed)) {
-        setPrompts(assignIds(
-          parsed
-            .filter((item: any) => typeof item === 'object' && item !== null)
-            .map((item: any) => ({
-              label: typeof item.label === 'string' ? item.label : '',
-              prompt: typeof item.prompt === 'string' ? item.prompt : '',
-            }))
-        ));
-      }
-    } catch { /* invalid JSON */ }
-  }, [settings[SettingKey.CopilotSuggestedPrompts]]);
+  const [prompts, setPrompts] = useState<PromptWithId[]>(() =>
+    assignIds(parsePrompts(settings[SettingKey.CopilotSuggestedPrompts]))
+  );
 
   const syncToSettings = (updated: PromptWithId[]) => {
     setPrompts(updated);
@@ -777,7 +765,7 @@ const SuggestedPromptsEditor: React.FunctionComponent<{
   };
 
   const handlePopulateDefaults = () => {
-    syncToSettings(assignIds(DEFAULT_SUGGESTED_PROMPTS));
+    syncToSettings(assignIds(defaultSuggestedPrompts));
   };
 
   return (
