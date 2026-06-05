@@ -4121,7 +4121,7 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
           }
           '45': {
             position: {
-              x: 1
+              x: 13
               y: 48
               colSpan: 6
               rowSpan: 4
@@ -5491,6 +5491,130 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
               }
               partHeader: {
                 title: 'HTTPWriteRequests per 5 min'
+                subtitle: ''
+              }
+            }
+          }
+          '59': {
+            position: {
+              x: 1
+              y: 48
+              colSpan: 6
+              rowSpan: 4
+            }
+            metadata: {
+              inputs: [
+                {
+                  name: 'resourceTypeMode'
+                  isOptional: true
+                }
+                {
+                  name: 'ComponentId'
+                  isOptional: true
+                }
+                {
+                  name: 'Scope'
+                  value: {
+                    resourceIds: [
+                      '/subscriptions/${subscriptionId}/resourceGroups/${resourceGroup}/providers/microsoft.insights/components/${resourceGroup}'
+                    ]
+                  }
+                  isOptional: true
+                }
+                {
+                  name: 'PartId'
+                  value: '5e5f1234-0001-4b5e-a5e5-b1c2d3e4f059'
+                  isOptional: true
+                }
+                {
+                  name: 'Version'
+                  value: '2.0'
+                  isOptional: true
+                }
+                {
+                  name: 'TimeRange'
+                  isOptional: true
+                }
+                {
+                  name: 'DashboardId'
+                  isOptional: true
+                }
+                {
+                  name: 'DraftRequestParameters'
+                  isOptional: true
+                }
+                {
+                  name: 'Query'
+                  value: 'let bin_t = 20s;\nlet bins = customMetrics\n| where name == "ResourceUnitsUsed"\n| extend OperationType = tostring(customDimensions["OperationType"])\n| extend customMetric_valueSum = iif(itemType == \'customMetric\', valueSum, todouble(\'\'))\n| summarize [\'customMetrics/ResourceUnitsUsed_sum\'] = sum(customMetric_valueSum) by bin(timestamp, bin_t), OperationType;\nunion\n(bins),\n(bins | summarize [\'customMetrics/ResourceUnitsUsed_sum\'] = sum([\'customMetrics/ResourceUnitsUsed_sum\']) by timestamp | extend OperationType = "Total"),\n(bins | distinct timestamp | extend [\'customMetrics/ResourceUnitsUsed_sum\'] = 150000.0, OperationType = "Quota (150K/20s)")\n| project timestamp, [\'customMetrics/ResourceUnitsUsed_sum\'], OperationType\n'
+                  isOptional: true
+                }
+                {
+                  name: 'ControlType'
+                  value: 'AnalyticsGrid'
+                  isOptional: true
+                }
+                {
+                  name: 'SpecificChart'
+                  isOptional: true
+                }
+                {
+                  name: 'PartTitle'
+                  value: 'Analytics'
+                  isOptional: true
+                }
+                {
+                  name: 'PartSubTitle'
+                  value: resourceGroup
+                  isOptional: true
+                }
+                {
+                  name: 'Dimensions'
+                  isOptional: true
+                }
+                {
+                  name: 'LegendOptions'
+                  isOptional: true
+                }
+                {
+                  name: 'IsQueryContainTimeRange'
+                  value: false
+                  isOptional: true
+                }
+              ]
+              type: 'Extension/Microsoft_OperationsManagementSuite_Workspace/PartType/LogsDashboardPart'
+              settings: {
+                content: {
+                  Query: 'let bin_t = 20s;\nlet bins = customMetrics\n| where name == "ResourceUnitsUsed"\n| extend OperationType = tostring(customDimensions["OperationType"])\n| extend customMetric_valueSum = iif(itemType == \'customMetric\', valueSum, todouble(\'\'))\n| summarize [\'customMetrics/ResourceUnitsUsed_sum\'] = sum(customMetric_valueSum) by bin(timestamp, bin_t), OperationType;\nunion\n(bins),\n(bins | summarize [\'customMetrics/ResourceUnitsUsed_sum\'] = sum([\'customMetrics/ResourceUnitsUsed_sum\']) by timestamp | extend OperationType = "Total"),\n(bins | distinct timestamp | extend [\'customMetrics/ResourceUnitsUsed_sum\'] = 150000.0, OperationType = "Quota (150K/20s)")\n| project timestamp, [\'customMetrics/ResourceUnitsUsed_sum\'], OperationType\n'
+                  ControlType: 'FrameControlChart'
+                  SpecificChart: 'Line'
+                  PartTitle: 'Entra RUUs per 20s vs 150K quota'
+                  Dimensions: {
+                    xAxis: {
+                      name: 'timestamp'
+                      type: 'datetime'
+                    }
+                    yAxis: [
+                      {
+                        name: 'customMetrics/ResourceUnitsUsed_sum'
+                        type: 'real'
+                      }
+                    ]
+                    splitBy: [
+                      {
+                        name: 'OperationType'
+                        type: 'string'
+                      }
+                    ]
+                    aggregation: 'Sum'
+                  }
+                  LegendOptions: {
+                    isEnabled: true
+                    position: 'Bottom'
+                  }
+                }
+              }
+              partHeader: {
+                title: 'Entra RUUs per 20s vs 150K quota'
                 subtitle: ''
               }
             }
