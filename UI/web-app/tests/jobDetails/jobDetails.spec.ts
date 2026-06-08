@@ -615,7 +615,6 @@ test.describe('Job Details Tests', () => {
     const nextButton = page.getByRole('button', { name: 'Next' });
     await expect(nextButton).toBeEnabled({ timeout: 30000 });
     await nextButton.click();
-    await nextButton.click();
 
     if (isMockMode) {
       await expect(page.getByRole('button', { name: 'Add Source Part' })).toBeVisible();
