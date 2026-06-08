@@ -13,6 +13,11 @@ import {
     SpinnerSize,
     useTheme,
     Icon,
+    Dialog,
+    DialogType,
+    DialogFooter,
+    PrimaryButton,
+    DefaultButton,
 } from '@fluentui/react';
 import { v4 as uuidv4 } from 'uuid';
 import {
@@ -102,9 +107,23 @@ export const CopilotPanelBase: React.FunctionComponent<ICopilotPanelProps> = (
     }, [sourcePartId, sourceParts, orgLeaderDetails]);
 
     const [inputValue, setInputValue] = useState('');
+    const [showResumeDialog, setShowResumeDialog] = useState(false);
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const inputRef = useRef<HTMLDivElement>(null);
     const wasLoadingRef = useRef(false);
+    const wasOpenRef = useRef(false);
+
+    // When the panel transitions from closed -> open and there are existing messages,
+    // ask the user whether to continue the previous conversation or start over.
+    useEffect(() => {
+        if (isOpen && !wasOpenRef.current && messages.length > 0) {
+            setShowResumeDialog(true);
+        }
+        if (!isOpen) {
+            setShowResumeDialog(false);
+        }
+        wasOpenRef.current = isOpen;
+    }, [isOpen, messages.length]);
 
     // Re-focus input after AI response completes
     useEffect(() => {
@@ -208,6 +227,16 @@ export const CopilotPanelBase: React.FunctionComponent<ICopilotPanelProps> = (
         dispatch(clearMessages());
         setInputValue('');
     }, [dispatch]);
+
+    const handleResumeStartOver = useCallback(() => {
+        dispatch(clearMessages());
+        setInputValue('');
+        setShowResumeDialog(false);
+    }, [dispatch]);
+
+    const handleResumeContinue = useCallback(() => {
+        setShowResumeDialog(false);
+    }, []);
 
     const renderBotAvatar = () => (
         <div className={classNames.botAvatar} style={{ position: 'relative' }}>
@@ -478,6 +507,27 @@ export const CopilotPanelBase: React.FunctionComponent<ICopilotPanelProps> = (
                 header: { padding: 0 },
             }}
         >
+            <Dialog
+                hidden={!showResumeDialog}
+                onDismiss={handleResumeContinue}
+                dialogContentProps={{
+                    type: DialogType.normal,
+                    title: strings.Copilot?.resumeDialogTitle,
+                    subText: strings.Copilot?.resumeDialogDescription,
+                }}
+                modalProps={{ isBlocking: true }}
+            >
+                <DialogFooter>
+                    <DefaultButton
+                        onClick={handleResumeStartOver}
+                        text={strings.Copilot?.resumeDialogStartOver}
+                    />
+                    <PrimaryButton
+                        onClick={handleResumeContinue}
+                        text={strings.Copilot?.resumeDialogContinue}
+                    />
+                </DialogFooter>
+            </Dialog>
             <div className={classNames.root}>
                 <div className={classNames.chatContainer}>
                     <div className={classNames.messagesContainer}>

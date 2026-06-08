@@ -737,6 +737,10 @@ export type IStrings = {
       generateFilterHint: string;
       acceptAndApply: string;
       newConversation: string;
+      resumeDialogTitle: string;
+      resumeDialogDescription: string;
+      resumeDialogStartOver: string;
+      resumeDialogContinue: string;
       leaderPrompt: string;
       leaderInputPlaceholder: string;
       leaderSubmit: string;
