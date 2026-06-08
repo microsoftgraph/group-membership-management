@@ -242,7 +242,7 @@ export const CopilotPanelBase: React.FunctionComponent<ICopilotPanelProps> = (
                     <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
                         {messages.length > 0 && (
                             <IconButton
-                                iconProps={{ iconName: 'Refresh' }}
+                                iconProps={{ iconName: 'EditNote' }}
                                 title={strings.Copilot?.newConversation || 'New conversation'}
                                 ariaLabel={strings.Copilot?.newConversation || 'New conversation'}
                                 onClick={handleNewConversation}
