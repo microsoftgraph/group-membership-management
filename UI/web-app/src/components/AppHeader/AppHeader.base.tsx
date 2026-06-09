@@ -1,6 +1,7 @@
 // Copyright (c) Microsoft Corporation.
-// Licensed under the MIT license.import React from 'react';
+// Licensed under the MIT license.
 
+import { useEffect, useState } from 'react';
 import { classNamesFunction, IButtonStyles, IconButton, IPersonaSharedProps, IProcessedStyleSet, IStyle, Persona, PersonaSize, useTheme } from '@fluentui/react';
 import { useNavigate } from 'react-router-dom';
 import {
@@ -10,7 +11,6 @@ import {
 } from './AppHeader.types';
 import { useDispatch, useSelector } from 'react-redux';
 import { AppDispatch } from '../../store';
-import { useEffect, useState } from 'react';
 import { selectProfilePhoto } from '../../store/profile.slice';
 import { getProfilePhoto } from '../../store/profile.api';
 import logo from '../../logo.svg';

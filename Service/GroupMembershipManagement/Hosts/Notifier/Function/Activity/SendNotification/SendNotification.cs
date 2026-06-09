@@ -3,7 +3,9 @@
 
 using Models;
 using Microsoft.Azure.Functions.Worker;
-using Repositories.Contracts;
+using Microsoft.Extensions.Logging;
+using Repositories.Contracts.Helpers;
+using Services.Notifier;
 using System;
 using System.Threading.Tasks;
 using Services.Notifier.Contracts;
@@ -12,21 +14,27 @@ namespace Hosts.Notifier
 {
     public class SendNotification
     {
-        private readonly ILoggingRepository _loggingRepository = null;
-        private readonly INotifierService _notifierService = null;
+        private readonly ILogger<SendNotification> _logger;
+        private readonly INotifierService _notifierService;
 
-        public SendNotification(ILoggingRepository loggingRepository, INotifierService notifierService)
+        public SendNotification(ILogger<SendNotification> logger, INotifierService notifierService)
         {
-            _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _notifierService = notifierService ?? throw new ArgumentNullException(nameof(notifierService));
         }
 
         [Function(nameof(SendNotification))]
         public async Task SendNotificationAsync([ActivityTrigger] OrchestratorRequest message)
         {
-            await _loggingRepository.LogMessageAsync(new LogMessage { RunId = message.RunId, Message = $"{nameof(SendNotification)} function started at: {DateTime.UtcNow}" });
-            await _notifierService.SendEmailAsync(message.MessageType, message.MessageBody, message.MessageTitle, message.SubjectTemplate, message.ContentTemplate);
-            await _loggingRepository.LogMessageAsync(new LogMessage { RunId = message.RunId, Message = $"{nameof(SendNotification)} function completed at: {DateTime.UtcNow}" });
+            var messageContent = NotificationMessageContentParser.ParseMessageBody(message.MessageBody);
+            var job = NotificationMessageContentParser.GetRequiredValue<SyncJob>(messageContent, "SyncJob");
+
+            using (_logger.BeginSyncJobScope(job))
+            {
+                _logger.FunctionStarted(nameof(SendNotification));
+                await _notifierService.SendEmailAsync(message.MessageType, message.MessageBody, message.MessageTitle, message.SubjectTemplate, message.ContentTemplate);
+                _logger.FunctionCompleted(nameof(SendNotification));
+            }
         }
     }
 }

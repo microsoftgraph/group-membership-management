@@ -96,7 +96,7 @@ var appSettings = {
   AzureWebJobsStorage__credential: 'managedidentity'
   AzureFunctionsJobHost__extensions__durableTask__hubName: '${solutionAbbreviation}compute${environmentAbbreviation}SyncJobUpdater'
   AzureFunctionsWebHost__hostid: 'SyncJobUpdater'
-  AzureFunctionsJobHost__extensions__durableTask__extendedSessionsEnabled: toLower(environmentAbbreviation) == 'prodv2' ? 'True' : 'False'
+  AzureFunctionsJobHost__extensions__durableTask__extendedSessionsEnabled: 'True'
   APPINSIGHTS_INSTRUMENTATIONKEY: '@Microsoft.KeyVault(SecretUri=${reference(appInsightsInstrumentationKey, '2019-09-01').secretUriWithVersion})'
   serviceBusSyncJobTopic: '@Microsoft.KeyVault(SecretUri=${reference(serviceBusSyncJobTopic, '2019-09-01').secretUriWithVersion})'
   gmmServiceBus__fullyQualifiedNamespace: '@Microsoft.KeyVault(SecretUri=${reference(serviceBusFQN, '2019-09-01').secretUriWithVersion})'
@@ -140,22 +140,15 @@ module userAssignedManagedIdentityNameReader 'keyVaultReader.bicep' = {
 module storageAccountNameReader 'keyVaultReader.bicep' = {
   name: 'storageAccountNameReader-SyncJobUpdater'
   params: {
-    value: dataKeyVault.getSecret('syncJobUpdaterStorageAccountProd')
+    value: dataKeyVault.getSecret('functionsStorageAccountName')
   }
   dependsOn: [
     dataKeyVault
   ]
 }
 
-module appPackageContainerNameReader 'keyVaultReader.bicep' = {
-  name: 'appPackageContainerNameReader-SyncJobUpdater'
-  params: {
-    value: dataKeyVault.getSecret('syncJobUpdaterAppPackageContainerProd')
-  }
-  dependsOn: [
-    dataKeyVault
-  ]
-}
+var appPackageContainerName = 'syncjobupdater-app-package'
+
 
 resource graphUAMI 'Microsoft.ManagedIdentity/userAssignedIdentities@2023-07-31-preview' existing = {
   name: userAssignedManagedIdentityNameReader.outputs.value
@@ -180,7 +173,7 @@ module functionAppTemplate_SyncJobUpdater 'functionApp.bicep' = {
     location: location
     servicePlanName: servicePlanName
     appSettings: appSettings
-    appPackageContainerName: appPackageContainerNameReader.outputs.value
+    appPackageContainerName: appPackageContainerName
     functionAuthAppClientId: functionAuthAppClientId
     userManagedIdentities:{
       '${graphUAMI.id}' : {}

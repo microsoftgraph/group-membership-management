@@ -70,6 +70,9 @@ resource defenderForAISettings 'Microsoft.CognitiveServices/accounts/defenderFor
 resource openAIContentFilterPolicy 'Microsoft.CognitiveServices/accounts/raiPolicies@2025-06-01' = {
   parent: openAI
   name: openAIContentFilterName
+  dependsOn: [
+    defenderForAISettings
+  ]
   properties: {
     basePolicyName: openAIContentFilterBasePolicyName
     mode: 'Blocking'
@@ -187,7 +190,7 @@ resource gpt4oDeployment 'Microsoft.CognitiveServices/accounts/deployments@2023-
     capacity: 1
   }
   dependsOn: [
-    defenderForAISettings
+    openAIContentFilterPolicy
   ]
 }
 

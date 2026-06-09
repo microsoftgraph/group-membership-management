@@ -10,5 +10,6 @@ namespace Services.Contracts
     public interface INonProdService
     {
         MembershipDifference GetMembershipDifference(List<AzureADUser> currentMembership, List<AzureADUser> targetMembership);
+        Task<GroupOwnershipResult> EnsureGroupOwnershipAsync(List<Guid> managedGroupIds, Guid ownerAppId, Guid runId);
     }
 }

@@ -1,9 +1,9 @@
 // Copyright(c) Microsoft Corporation.
 // Licensed under the MIT license.
 using Microsoft.Azure.Functions.Worker;
-
+using Microsoft.Extensions.Logging;
 using Models;
-using Repositories.Contracts;
+using Repositories.Contracts.Helpers;
 using System;
 using System.Threading.Tasks;
 using NJsonSchema;
@@ -12,57 +12,50 @@ namespace Hosts.PlaceMembershipObtainer
 {
     public class SchemaValidatorFunction
     {
-        private readonly ILoggingRepository _loggingRepository = null;
-        private readonly SchemaProvider _schemaProvider = null;
+        private readonly ILogger<SchemaValidatorFunction> _logger;
+        private readonly SchemaProvider _schemaProvider;
 
-        public SchemaValidatorFunction(ILoggingRepository loggingRepository, SchemaProvider schemaProvider)
+        public SchemaValidatorFunction(ILogger<SchemaValidatorFunction> logger, SchemaProvider schemaProvider)
         {
-            _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _schemaProvider = schemaProvider ?? throw new ArgumentNullException(nameof(schemaProvider));
         }
 
         [Function(nameof(SchemaValidatorFunction))]
         public async Task<bool> ValidateSchemasAsync([ActivityTrigger] SchemaValidatorRequest request)
         {
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(SchemaValidatorFunction)} function started", RunId = request.RunId }, VerbosityLevel.DEBUG);
-
-            var isValidJson = true;
-
-            if (_schemaProvider.Schemas.Count == 0)
+            using (_logger.BeginRunIdScope(request.RunId))
             {
-                await _loggingRepository.LogMessageAsync(new LogMessage
-                {
-                    RunId = request.RunId,
-                    Message = $"No json schemas have been loaded. Skipping schema validation."
-                });
+                _logger.FunctionStarted(nameof(SchemaValidatorFunction));
 
-                return isValidJson;
-            }
+                var isValidJson = true;
 
-            if (_schemaProvider.Schemas.TryGetValue(Schema.PlaceMembershipSchema, out string value))
-            {
-                var schema = await JsonSchema.FromJsonAsync(value);
-                var errors = schema.Validate(request.Query);
-                if (errors.Count > 0)
+                if (_schemaProvider.Schemas.Count == 0)
                 {
-                    await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Query not valid: {errors}", RunId = request.RunId }, VerbosityLevel.DEBUG);
-                    isValidJson = false;
+                    _logger.NoJsonSchemasLoaded();
+                    return isValidJson;
                 }
-            }
 
-            else
-            {
-                await _loggingRepository.LogMessageAsync(new LogMessage
+                if (_schemaProvider.Schemas.TryGetValue(Schema.PlaceMembershipSchema, out string value))
                 {
-                    RunId = request.RunId,
-                    Message = $"No PlaceMembership schema has been loaded. Skipping schema validation."
-                });
+                    var schema = await JsonSchema.FromJsonAsync(value);
+                    var errors = schema.Validate(request.Query);
+                    if (errors.Count > 0)
+                    {
+                        _logger.QueryNotValid(errors.ToString());
+                        isValidJson = false;
+                    }
+                }
 
+                else
+                {
+                    _logger.NoPlaceMembershipSchemaLoaded();
+                    return isValidJson;
+                }
+
+                _logger.FunctionCompleted(nameof(SchemaValidatorFunction));
                 return isValidJson;
             }
-
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(SchemaValidatorFunction)} function completed", RunId = request.RunId }, VerbosityLevel.DEBUG);
-            return isValidJson;
         }
     }
 }

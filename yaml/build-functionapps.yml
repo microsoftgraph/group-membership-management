@@ -66,7 +66,7 @@ stages:
                         /p:thresholdType=line
                         /p:thresholdStat=total
                         /p:CoverletOutput=$(Build.SourcesDirectory)\TestResults\Coverage\${{ app.function.name }}\
-                        /p:Exclude=[Repositories.*]*%2c[Entities]*%2c[*.Entities]*%2c[Models]*%2c[*.Models]*%2c[*.Tests]*%2c[*.Mocks]*%2c[Common.DependencyInjection]*%2c[Hosts.FunctionBase]*%2c[DIConcreteTypes]*%2c[*.Services.Contracts]*%2c[*]*.*.Startup*%2c[*]*.*.Program
+                        /p:Exclude=[Repositories.*]*%2c[Entities]*%2c[*.Entities]*%2c[Models]*%2c[*.Models]*%2c[*.Tests]*%2c[*.Mocks]*%2c[Common.DependencyInjection]*%2c[Hosts.FunctionBase]*%2c[DIConcreteTypes]*%2c[Services.Contracts]*%2c[*.Services.Contracts]*%2c[*]*.*.Startup*%2c[*]*.*.Program
                         /p:ExcludeByAttribute=Obsolete%2cGeneratedCodeAttribute%2cCompilerGeneratedAttribute'          
           condition: and(succeeded(), eq(variables['BuildConfiguration'], 'debug'))
 
@@ -77,6 +77,79 @@ stages:
             summaryFileLocation: $(Build.SourcesDirectory)/TestResults/Coverage/${{ app.function.name }}/coverage.cobertura.xml
             reportDirectory: $(Build.SourcesDirectory)/TestResults/Coverage/${{ app.function.name }}/Reports
             failIfCoverageEmpty: false
+          condition: and(succeeded(), eq(variables['BuildConfiguration'], 'debug'))
+
+        - task: PowerShell@2
+          displayName: 'Run dotnet package audit for ${{ app.function.name }}'
+          retryCountOnTaskFailure: 3
+          inputs:
+            targetType: inline
+            workingDirectory: 'Service/GroupMembershipManagement'
+            script: |
+              $projectPatterns = @(
+                "Hosts/${{ app.function.name }}/Function/*.csproj"
+                "Hosts/${{ app.function.name }}/Services.Tests/*.csproj"
+              )
+
+              $hasVulnerabilities = $false
+
+              foreach ($projectPattern in $projectPatterns) {
+                $projects = Get-ChildItem -Path $projectPattern -File -ErrorAction SilentlyContinue
+
+                if (-not $projects) {
+                  Write-Host "No projects found for pattern '$projectPattern', skipping."
+                  continue
+                }
+
+                foreach ($project in $projects) {
+                  Write-Host "Auditing vulnerable packages for $($project.FullName)"
+
+                  $auditOutput = dotnet list $project.FullName package --vulnerable --include-transitive --format json 2>&1 | Out-String
+                  $dotnetExitCode = $LASTEXITCODE
+
+                  try {
+                    $auditResult = $auditOutput | ConvertFrom-Json -Depth 100
+                  } catch {
+                    throw "dotnet package audit failed for '$($project.FullName)' (exit code $dotnetExitCode). Raw output:`n$auditOutput"
+                  }
+
+                  foreach ($projectResult in @($auditResult.projects)) {
+                    foreach ($framework in @($projectResult.frameworks)) {
+                      $packages = @()
+
+                      if ($framework.topLevelPackages) {
+                        $packages += @($framework.topLevelPackages)
+                      }
+
+                      if ($framework.transitivePackages) {
+                        $packages += @($framework.transitivePackages)
+                      }
+
+                      $vulnerablePackages = @($packages | Where-Object {
+                        $_ -and $_.vulnerabilities -and @($_.vulnerabilities).Count -gt 0
+                      })
+
+                      foreach ($package in $vulnerablePackages) {
+                        foreach ($vulnerability in @($package.vulnerabilities)) {
+                          $severity = if ($vulnerability.severity) { $vulnerability.severity } else { 'unknown' }
+                          $advisoryUrl = if ($vulnerability.advisoryUrl) { $vulnerability.advisoryUrl } else { 'n/a' }
+
+                          Write-Host "##vso[task.logissue type=error]$($projectResult.path) [$($framework.framework)] package '$($package.id)' version '$($package.resolvedVersion)' has a '$severity' severity vulnerability: $advisoryUrl"
+                          $hasVulnerabilities = $true
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+
+              if ($hasVulnerabilities) {
+                throw 'Vulnerable NuGet packages were found. See errors above for details.'
+              }
+
+              Write-Host 'No vulnerable NuGet packages found.'
+              exit 0
+            pwsh: true
           condition: and(succeeded(), eq(variables['BuildConfiguration'], 'debug'))
 
         - task: DotNetCoreCLI@2

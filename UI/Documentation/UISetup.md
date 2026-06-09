@@ -61,7 +61,7 @@ Add the following variables to `.env`:
 - REACT_APP_APPINSIGHTS_CONNECTIONSTRING (Set value as the application insights connection string)
 - REACT_APP_SHAREPOINTDOMAIN (Set value as the SharePoint domain for your tenant, i.e. m365x1234567.sharepoint.com )
 - REACT_APP_DOMAINNAME (Set value as the domain name for your tenant, i.e. m365x1234567.onmicrosoft.com)
-- REACT_APP_VERSION_NUMBER (Optional: this value is pulled from the build pipeline)
+- REACT_APP_VERSION_NUMBER (Optional: app version value used by the UI)
 - REACT_APP_MANAGE_MEMBERSHIP_FLAG (Optional: this value sets the state of the Manage Membership feature flag (true or false))
 - REACT_APP_ENVIRONMENT_ABBREVIATION: (Set value with `<environmentAbbreviation>`)
 

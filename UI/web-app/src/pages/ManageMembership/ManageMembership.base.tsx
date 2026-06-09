@@ -64,6 +64,8 @@ import { getGroupEndpoints, getGroupOnboardingStatus, getChannelOnboardingStatus
 import { clearGroupMembers } from '../../store/manageMembership.slice';
 import { NewJob } from '../../models/NewJob';
 import { fetchJobs, postJob } from '../../store/jobs.api';
+import { selectTitles, selectGeneratedHRParts } from '../../store/title.slice';
+import { allSourcePartsHaveFreshTitles } from '../../utils/titleFreshness';
 import { RunConfiguration } from '../../components/RunConfiguration';
 import { Confirmation } from '../../components/Confirmation';
 import { selectAccountUsername } from '../../store/account.slice';
@@ -106,7 +108,7 @@ export const ManageMembershipBase: React.FunctionComponent<IManageMembershipProp
   const navigate = useNavigate();
   const location = useLocation();
   const { jobId: urlJobId } = useParams<{ jobId: string }>();
-  const locationState = location.state as { currentStep?: number, jobId?: string };
+  const locationState = location.state as { currentStep?: number, jobId?: string, thresholdExceededForAdditions?: boolean, thresholdExceededForRemovals?: boolean };
   const jobId = locationState?.jobId ?? urlJobId;
   const orgLeaderDataReturned = useSelector(selectOrgLeaderDataReturned);
 
@@ -118,6 +120,8 @@ export const ManageMembershipBase: React.FunctionComponent<IManageMembershipProp
   const [showLeaveManageMembershipDialog, setShowLeaveManageMembershipDialog] = useState(false);
   const [isPostingJob, setIsPostingJob] = useState(false);
   const [isEditingJob, setIsEditingJob] = useState(false);
+  const [showEditErrorDialog, setShowEditErrorDialog] = useState(false);
+  const [editErrorMessage, setEditErrorMessage] = useState('');
   const currentStep = useSelector(manageMembershipCurrentStep);
   const [isStep1ConditionsMet, setIsStep1ConditionsMet] = useState(false);
   const hasChanges = useSelector(manageMembershipHasChanges);
@@ -191,6 +195,8 @@ export const ManageMembershipBase: React.FunctionComponent<IManageMembershipProp
   const businessJustification: string = useSelector(manageMembershipBusinessJustification) ?? '';
   const isBusinessJustificationProvided = businessJustification !== '';
   const sourceParts = useSelector(getSourcePartsFromState);
+  const aiGeneratedTitles = useSelector(selectTitles);
+  const generatedHRParts = useSelector(selectGeneratedHRParts);
 
   const finalQuery: SyncJobQuery = useMemo(() => {
     // If we have source parts (regular view derived query), prefer that.
@@ -333,9 +339,7 @@ export const ManageMembershipBase: React.FunctionComponent<IManageMembershipProp
   };
 
   const handleSaveButtonClick = async () => {
-    const allHaveTitles = sourceParts.every(
-      part => part.title && part.title.trim() !== ""
-    );
+    const allHaveTitles = allSourcePartsHaveFreshTitles(sourceParts, aiGeneratedTitles, generatedHRParts);
     if (jobId !== undefined) {
       const patchOperation = [];
       patchOperation.push({
@@ -400,12 +404,24 @@ export const ManageMembershipBase: React.FunctionComponent<IManageMembershipProp
       };
 
       try {
-        await dispatch(patchJobDetails(patchRequest));
+        const result = await dispatch(patchJobDetails(patchRequest)).unwrap();
+        if (!result.ok) {
+          setIsEditingJob(false);
+          const message = result.errorCode === 'JobInProgress'
+            ? strings.ManageMembership.labels.jobInProgressDialogMessage
+            : strings.ManageMembership.labels.editErrorDialogMessage;
+          setEditErrorMessage(message);
+          setShowEditErrorDialog(true);
+          return;
+        }
         dispatch(resetManageMembership());
         dispatch(clearSourceParts());
         navigate('/');
         setIsEditingJob(false);
       } catch (error) {
+        setIsEditingJob(false);
+        setEditErrorMessage(strings.ManageMembership.labels.editErrorDialogMessage);
+        setShowEditErrorDialog(true);
         console.error("Error editing job:", error);
       }
 
@@ -496,7 +512,10 @@ export const ManageMembershipBase: React.FunctionComponent<IManageMembershipProp
             destinationType={selectedDestination?.type}
             destinationName={selectedDestination?.name}
             children={
-              <RunConfiguration />}
+              <RunConfiguration
+                thresholdExceededForAdditions={locationState?.thresholdExceededForAdditions}
+                thresholdExceededForRemovals={locationState?.thresholdExceededForRemovals}
+              />}
           />}
           {currentStep === OnboardingSteps.MembershipConfiguration && <OnboardingStep
             stepTitle={strings.ManageMembership.labels.step3title}
@@ -559,6 +578,23 @@ export const ManageMembershipBase: React.FunctionComponent<IManageMembershipProp
         <DialogFooter>
           <PrimaryButton onClick={onConfirmExit} text={strings.ManageMembership.labels.confirmAbandon} />
           <DefaultButton onClick={onDialogClose} text={strings.cancel} />
+        </DialogFooter>
+      </Dialog>
+      <Dialog
+        hidden={!showEditErrorDialog}
+        onDismiss={() => setShowEditErrorDialog(false)}
+        dialogContentProps={{
+          type: DialogType.normal,
+          title: strings.ManageMembership.labels.editErrorDialogTitle,
+          subText: editErrorMessage
+        }}
+        modalProps={{
+          isBlocking: true,
+          styles: { main: { maxWidth: 450 } },
+        }}
+      >
+        <DialogFooter>
+          <PrimaryButton onClick={() => setShowEditErrorDialog(false)} text={strings.close} />
         </DialogFooter>
       </Dialog>
       {(isPostingJob || isEditingJob) && (

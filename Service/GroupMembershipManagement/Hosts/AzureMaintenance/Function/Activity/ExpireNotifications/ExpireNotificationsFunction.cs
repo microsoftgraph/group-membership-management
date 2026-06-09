@@ -1,8 +1,8 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 using Microsoft.Azure.Functions.Worker;
+using Microsoft.Extensions.Logging;
 using Models;
-using Repositories.Contracts;
 using Services.Contracts;
 using System;
 using System.Collections.Generic;
@@ -12,20 +12,21 @@ namespace Hosts.AzureMaintenance
 {
     public class ExpireNotificationsFunction
     {
-        private readonly ILoggingRepository _loggingRepository = null;
-        private readonly IAzureMaintenanceService _azureMaintenanceService = null;
-        public ExpireNotificationsFunction(ILoggingRepository loggingRepository, IAzureMaintenanceService azureMaintenanceService)
+        private readonly ILogger<ExpireNotificationsFunction> _logger;
+        private readonly IAzureMaintenanceService _azureMaintenanceService;
+
+        public ExpireNotificationsFunction(ILogger<ExpireNotificationsFunction> logger, IAzureMaintenanceService azureMaintenanceService)
         {
-            _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _azureMaintenanceService = azureMaintenanceService ?? throw new ArgumentNullException(nameof(azureMaintenanceService));
         }
 
         [Function(nameof(ExpireNotificationsFunction))]
         public async Task ExpireNotificationsAsync([ActivityTrigger] List<SyncJob> syncJobs)
         {
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(ExpireNotificationsFunction)} function started" }, VerbosityLevel.DEBUG);
+            _logger.FunctionStarted(nameof(ExpireNotificationsFunction));
             await _azureMaintenanceService.ExpireNotificationsAsync(syncJobs);
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(ExpireNotificationsFunction)} function completed" }, VerbosityLevel.DEBUG);
+            _logger.FunctionCompleted(nameof(ExpireNotificationsFunction));
         }
     }
 }

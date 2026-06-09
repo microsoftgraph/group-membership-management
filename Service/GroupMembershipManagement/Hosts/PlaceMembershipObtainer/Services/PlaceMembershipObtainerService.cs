@@ -35,17 +35,6 @@ namespace Services
             _isPlaceMembershipObtainerDryRunEnabled = dryRun.DryRunEnabled;
         }
 
-        private Guid _runId;
-        public Guid RunId
-        {
-            get { return _runId; }
-            set
-            {
-                _runId = value;
-                _graphGroupRepository.RunId = value;
-            }
-        }
-
         public async Task<PlaceInformation> GetRoomsAsync(string url, int top, int skip)
         {
             var response = await _graphGroupRepository.GetRoomsPageAsync(url, top, skip);

@@ -1,35 +1,34 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
-using Models;
 using Microsoft.Azure.Functions.Worker;
 using Microsoft.DurableTask;
-using Repositories.Contracts;
-using Services.Contracts;
+using Microsoft.Extensions.Logging;
+using Repositories.Contracts.Helpers;
+using Services.TeamsChannelUpdater.Contracts;
 using System;
 using System.Threading.Tasks;
-using Services.TeamsChannelUpdater.Contracts;
 
 namespace Hosts.TeamsChannelUpdater
 {
     public class EmailSenderFunction
     {
-        private readonly ILoggingRepository _loggingRepository;
+        private readonly ILogger<EmailSenderFunction> _logger;
         private readonly ITeamsChannelUpdaterService _teamsChannelUpdaterService;
 
-        public EmailSenderFunction(ILoggingRepository loggingRepository, ITeamsChannelUpdaterService teamsChannelUpdaterService)
+        public EmailSenderFunction(ILogger<EmailSenderFunction> logger, ITeamsChannelUpdaterService teamsChannelUpdaterService)
         {
-            _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
-            _teamsChannelUpdaterService = teamsChannelUpdaterService ?? throw new ArgumentNullException(nameof(teamsChannelUpdaterService)); ;
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+            _teamsChannelUpdaterService = teamsChannelUpdaterService ?? throw new ArgumentNullException(nameof(teamsChannelUpdaterService));
         }
 
         [Function(nameof(EmailSenderFunction))]
         public async Task SendEmailAsync([ActivityTrigger] EmailSenderRequest request)
         {
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(EmailSenderFunction)} function started", RunId = request.SyncJob.RunId }, VerbosityLevel.DEBUG);
+            using var scope = _logger.BeginSyncJobScope(request.SyncJob);
 
+            _logger.FunctionStarted(nameof(EmailSenderFunction));
             await _teamsChannelUpdaterService.SendEmailAsync(request.SyncJob, request.NotificationType, request.AdditionalContentParams);
-            
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(EmailSenderFunction)} function completed", RunId = request.SyncJob.RunId }, VerbosityLevel.DEBUG);
+            _logger.FunctionCompleted(nameof(EmailSenderFunction));
         }
     }
 }

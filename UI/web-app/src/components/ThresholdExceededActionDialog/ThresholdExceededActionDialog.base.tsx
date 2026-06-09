@@ -7,7 +7,10 @@ import {
     Dialog,
     DialogType,
     DefaultButton,
+    Icon,
     IProcessedStyleSet,
+    MessageBar,
+    MessageBarType,
     Spinner,
     SpinnerSize,
 } from '@fluentui/react';
@@ -34,12 +37,20 @@ export const ThresholdExceededActionDialogBase: React.FunctionComponent<IThresho
         groupName,
         usersToAdd,
         increasePercentage,
-        thresholdPercentage,
+        thresholdPercentageForAdditions,
+        usersToRemove,
+        decreasePercentage,
+        thresholdPercentageForRemovals,
         onApplyChanges,
         onEditRules,
         onEditThreshold,
         onPauseSync,
+        isApplyChangesEnabled = false,
+        isEditRulesEnabled = false,
+        isEditThresholdEnabled = false,
         isPauseSyncEnabled = false,
+        errorMessage,
+        purgeDate,
     } = props;
 
     const theme = useTheme();
@@ -53,26 +64,34 @@ export const ThresholdExceededActionDialogBase: React.FunctionComponent<IThresho
 
     const actions = [
         {
+            icon: 'Completed',
             title: modal.applyChanges,
-            description: modal.applyChangesDescription,
+            description: modal.applyChangesDescription as React.ReactNode,
             onClick: onApplyChanges,
-            enabled: false,
+            enabled: isApplyChangesEnabled,
         },
         {
+            icon: 'Edit',
             title: modal.editRules,
-            description: modal.editRulesDescription,
+            description: modal.editRulesDescription as React.ReactNode,
             onClick: onEditRules,
-            enabled: false,
+            enabled: isEditRulesEnabled,
         },
         {
+            icon: 'Edit',
             title: modal.editThreshold,
-            description: modal.editThresholdDescription,
+            description: format(
+                modal.editThresholdDescription,
+                <strong>{thresholdPercentageForAdditions}%</strong>,
+                <strong>{thresholdPercentageForRemovals}%</strong>
+            ) as React.ReactNode,
             onClick: onEditThreshold,
-            enabled: false,
+            enabled: isEditThresholdEnabled,
         },
         {
+            icon: 'Pause',
             title: modal.pauseSync,
-            description: modal.pauseSyncDescription,
+            description: modal.pauseSyncDescription as React.ReactNode,
             onClick: onPauseSync,
             enabled: isPauseSyncEnabled,
         },
@@ -92,6 +111,11 @@ export const ThresholdExceededActionDialogBase: React.FunctionComponent<IThresho
             minWidth={540}
         >
             <div className={classNames.root}>
+                {errorMessage && (
+                    <MessageBar messageBarType={MessageBarType.error}>
+                        {errorMessage}
+                    </MessageBar>
+                )}
                 {isLoading ? (
                     <Spinner size={SpinnerSize.medium} />
                 ) : (
@@ -99,14 +123,31 @@ export const ThresholdExceededActionDialogBase: React.FunctionComponent<IThresho
                         <p className={classNames.warningText}>
                             {format(modal.warningText, <strong>{groupName}</strong>)}
                         </p>
-                        <p className={classNames.detailsText}>
-                            {format(
-                                modal.detailsText,
-                                <strong>{usersToAdd}</strong>,
-                                <strong>{increasePercentage.toFixed(2)}</strong>,
-                                <strong>{thresholdPercentage}</strong>
-                            )}
-                        </p>
+                        {(usersToAdd > 0 || increasePercentage > thresholdPercentageForAdditions) && (
+                            <p className={classNames.detailsText}>
+                                {format(
+                                    modal.additionsDetailsText,
+                                    <strong>{usersToAdd}</strong>,
+                                    <strong>{increasePercentage.toFixed(2)}</strong>,
+                                    <strong>{thresholdPercentageForAdditions}</strong>
+                                )}
+                            </p>
+                        )}
+                        {(usersToRemove > 0 || decreasePercentage > thresholdPercentageForRemovals) && (
+                            <p className={classNames.detailsText}>
+                                {format(
+                                    modal.removalsDetailsText,
+                                    <strong>{usersToRemove}</strong>,
+                                    <strong>{decreasePercentage.toFixed(2)}</strong>,
+                                    <strong>{thresholdPercentageForRemovals}</strong>
+                                )}
+                            </p>
+                        )}
+                        {purgeDate && (
+                            <p className={classNames.detailsText}>
+                                {format(modal.purgeDateText, <strong>{new Date(purgeDate).toLocaleDateString()}</strong>)}
+                            </p>
+                        )}
                         <div className={classNames.actionsGrid}>
                             {actions.map((action) => (
                                 <div
@@ -125,7 +166,10 @@ export const ThresholdExceededActionDialogBase: React.FunctionComponent<IThresho
                                         }
                                     } : undefined}
                                 >
-                                    <div className={classNames.actionCardTitle}>{action.title}</div>
+                                    <div className={classNames.actionCardTitleContainer}>
+                                        <Icon iconName={action.icon} className={classNames.actionCardIcon} />
+                                        <div className={classNames.actionCardTitle}>{action.title}</div>
+                                    </div>
                                     <div className={classNames.actionCardDescription}>{action.description}</div>
                                 </div>
                             ))}

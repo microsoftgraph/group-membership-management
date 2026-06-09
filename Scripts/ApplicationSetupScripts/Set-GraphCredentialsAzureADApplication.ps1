@@ -61,7 +61,7 @@ function Set-GraphCredentialsAzureADApplication {
 		[Parameter(Mandatory=$True)]
 		[Guid] $AppTenantId,
 		[Parameter(Mandatory=$False)]
-		[Guid] $KeyVaultTenantId,
+		[string] $KeyVaultTenantId,
 		[Parameter(Mandatory=$False)]
 		[string] $CertificateName,
 		[Parameter(Mandatory=$False)]

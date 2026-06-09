@@ -224,6 +224,18 @@ namespace Hosts.GroupMembershipObtainer
             Message = "{FunctionName} No cache file path provided for group {GroupId}.")]
         public static partial void NoCacheFilePath(this ILogger logger, string functionName, Guid groupId);
 
+        [LoggerMessage(EventId = 150148, Level = LogLevel.Information,
+            Message = "Cache write race condition for group {GroupId}: another concurrent writer already committed the cache blob. " +
+                      "Both writers produce identical content for the same source group, so the committed cache is valid. Skipping.")]
+        public static partial void CacheWriteRaceConditionSkipped(this ILogger logger, Guid groupId);
+
+        // ── CacheUploaderFunction (150160-150169) ──
+
+        [LoggerMessage(EventId = 150160, Level = LogLevel.Information,
+            Message = "Cache upload race condition for group {GroupId}: another concurrent writer already committed the cache blob. " +
+                      "Both writers produce identical content for the same source group, so the committed cache is valid. Skipping.")]
+        public static partial void CacheUploadRaceConditionSkipped(this ILogger logger, Guid groupId);
+
         // ── SGMembershipCalculator (150200-150219) ──
 
         [LoggerMessage(EventId = 150200, Level = LogLevel.Warning,

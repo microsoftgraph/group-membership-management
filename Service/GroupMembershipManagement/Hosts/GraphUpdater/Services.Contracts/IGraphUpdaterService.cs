@@ -11,8 +11,7 @@ namespace Services.Contracts
 {
     public interface IGraphUpdaterService
 	{
-		public Guid RunId { get; set; }
-		public Task<bool> GroupExistsAsync(Guid groupId, Guid runId);
+		public Task<bool> GroupExistsAsync(Guid groupId);
 		public Task SendEmailAsync(SyncJob job, NotificationMessageType notificationType, string[] additionalContentParameters);
 		public Task<SyncJob> GetSyncJobAsync(Guid syncJobId);
 		public Task UpdateSyncJobStatusAsync(SyncJob job, SyncStatus status, bool isDryRun, Guid runId, int? usersAdded, int? usersRemoved);

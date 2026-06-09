@@ -3,8 +3,10 @@
 
 using Microsoft.Azure.Functions.Worker;
 using Microsoft.DurableTask;
+using Microsoft.Extensions.Logging;
 using Models;
 using Repositories.Contracts;
+using Repositories.Contracts.Helpers;
 using Repositories.Contracts.InjectConfig;
 using System;
 using System.Collections.Generic;
@@ -25,15 +27,12 @@ namespace Hosts.JobScheduler
         public async Task RunOrchestratorAsync(
             [OrchestrationTrigger] TaskOrchestrationContext context)
         {
+            var logger = context.CreateReplaySafeLogger("JobScheduler.OrchestratorFunction");
             var runId = context.NewGuid();
 
-            await context.CallActivityAsync(nameof(LoggerFunction),
-                new LoggerRequest
-                {
-                    RunId = runId,
-                    Message = $"{nameof(OrchestratorFunction)} function started at: {context.CurrentUtcDateTime}",
-                    Verbosity = VerbosityLevel.DEBUG
-                });
+            using var scope = logger.BeginRunIdScope(runId);
+
+            logger.OrchestratorStarted(nameof(OrchestratorFunction), context.CurrentUtcDateTime);
 
             var orchestratorRequest = context.GetInput<OrchestratorRequest>();
             var prioritizeThresholdJobs = false;
@@ -45,14 +44,7 @@ namespace Hosts.JobScheduler
 
             if(!_jobSchedulerConfig.ResetJobs && !_jobSchedulerConfig.DistributeJobs)
             {
-
-                await context.CallActivityAsync(nameof(LoggerFunction),
-                    new LoggerRequest
-                    {
-                        RunId = runId,
-                        Message = $"{nameof(OrchestratorFunction)} function completed immediately at: {context.CurrentUtcDateTime} due to Reset and Distribute set to false"
-                    });
-
+                logger.OrchestratorCompletedImmediately(nameof(OrchestratorFunction), context.CurrentUtcDateTime);
                 return;
             }
 
@@ -69,12 +61,7 @@ namespace Hosts.JobScheduler
                         DaysToAddForReset = _jobSchedulerConfig.DaysToAddForReset
                     });
 
-                await context.CallActivityAsync(nameof(LoggerFunction),
-                    new LoggerRequest
-                    {
-                        RunId = runId,
-                        Message = $"Successfully reset jobs to update."
-                    });
+                logger.JobsResetSuccessfully();
             }
 
             else if (_jobSchedulerConfig.DistributeJobs)
@@ -88,12 +75,7 @@ namespace Hosts.JobScheduler
                         PrioritizeThresholdJobs = prioritizeThresholdJobs
                     });
 
-                await context.CallActivityAsync(nameof(LoggerFunction),
-                    new LoggerRequest
-                    {
-                        RunId = runId,
-                        Message = $"Successfully distributed jobs to update."
-                    });
+                logger.JobsDistributedSuccessfully();
             }
 
             if (jobsWithUpdates != null && jobsWithUpdates.Count > 0)
@@ -104,21 +86,10 @@ namespace Hosts.JobScheduler
                         JobsToUpdate = jobsWithUpdates
                     });
 
-                await context.CallActivityAsync(nameof(LoggerFunction),
-                    new LoggerRequest
-                    {
-                        RunId = runId,
-                        Message = $"Successfully updated all jobs accordingly."
-                    });
+                logger.JobsUpdatedSuccessfully();
             }
 
-            await context.CallActivityAsync(nameof(LoggerFunction),
-                new LoggerRequest
-                {
-                    RunId = runId,
-                    Message = $"{nameof(OrchestratorFunction)} function completed at: {context.CurrentUtcDateTime}",
-                    Verbosity = VerbosityLevel.DEBUG
-                });
+            logger.OrchestratorCompleted(nameof(OrchestratorFunction), context.CurrentUtcDateTime);
         }
     }
 }

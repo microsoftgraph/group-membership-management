@@ -1,9 +1,8 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 using Microsoft.Azure.Functions.Worker;
-using Models;
+using Microsoft.Extensions.Logging;
 using Models.Notifications;
-using Repositories.Contracts;
 using Repositories.Contracts.InjectConfig;
 using Services.Contracts;
 using System;
@@ -14,13 +13,13 @@ namespace Hosts.GraphUpdater
     public class GroupValidatorFunction
     {
         private const int NumberOfGraphRetries = 5;
-        private readonly ILoggingRepository _loggingRepository;
+        private readonly ILogger<GroupValidatorFunction> _logger;
         private readonly IGraphUpdaterService _graphUpdaterService;
         private readonly IEmailSenderRecipient _emailSenderAndRecipients;
 
-        public GroupValidatorFunction(ILoggingRepository loggingRepository, IGraphUpdaterService graphUpdaterService, IEmailSenderRecipient emailSenderAndRecipients)
+        public GroupValidatorFunction(ILogger<GroupValidatorFunction> logger, IGraphUpdaterService graphUpdaterService, IEmailSenderRecipient emailSenderAndRecipients)
         {
-            _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _graphUpdaterService = graphUpdaterService ?? throw new ArgumentNullException(nameof(graphUpdaterService));
             _emailSenderAndRecipients = emailSenderAndRecipients ?? throw new ArgumentNullException(nameof(emailSenderAndRecipients));
         }
@@ -28,20 +27,19 @@ namespace Hosts.GraphUpdater
         [Function(nameof(GroupValidatorFunction))]
         public async Task<bool> ValidateGroupAsync([ActivityTrigger] GroupValidatorRequest request)
         {
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(GroupValidatorFunction)} function started", RunId = request.RunId }, VerbosityLevel.DEBUG);
-            _graphUpdaterService.RunId = request.RunId;
+            using var scope = _logger.BeginGraphUpdaterScope(request);
+            _logger.FunctionStarted(nameof(GroupValidatorFunction));
 
-
-            var groupExistsResult = await _graphUpdaterService.GroupExistsAsync(request.GroupId, request.RunId);
+            var groupExistsResult = await _graphUpdaterService.GroupExistsAsync(request.GroupId);
 
             if (groupExistsResult)
             {
-                await _loggingRepository.LogMessageAsync(new LogMessage { RunId = request.RunId, Message = $"Group with ID {request.GroupId} exists." });
+                _logger.GroupExists(request.GroupId);
             }
             else
             {
-                await _loggingRepository.LogMessageAsync(new LogMessage { RunId = request.RunId, Message = $"Group with ID {request.GroupId} doesn't exist." });
-                var syncJob = await _graphUpdaterService.GetSyncJobAsync(request.JobId);
+                _logger.GroupNotExists(request.GroupId);
+                var syncJob = await _graphUpdaterService.GetSyncJobAsync(request.SyncJob.Id);
                 if (syncJob != null)
                     await _graphUpdaterService.SendEmailAsync(
                         syncJob,
@@ -50,7 +48,7 @@ namespace Hosts.GraphUpdater
                         );
             }
 
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(GroupValidatorFunction)} function completed", RunId = request.RunId }, VerbosityLevel.DEBUG);
+            _logger.FunctionCompleted(nameof(GroupValidatorFunction));
             return groupExistsResult;
         }
     }

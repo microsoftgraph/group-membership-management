@@ -1,7 +1,8 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-using Microsoft.Graph.Models;
+using Hosts.AzureMaintenance;
+using Microsoft.Extensions.Logging;
 using Models;
 using Models.AzureMaintenance;
 using Models.Notifications;
@@ -16,6 +17,7 @@ using System.Linq;
 using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks;
+
 
 namespace Services
 {
@@ -47,7 +49,7 @@ namespace Services
         private readonly IHandleInactiveJobsConfig _handleInactiveJobsConfig = null;
         private readonly INotificationRepository _notificationRepository = null;
         private readonly IServiceBusQueueRepository _notificationsQueueRepository;
-        private readonly ILoggingRepository _loggingRepository;
+        private readonly ILogger<AzureMaintenanceService> _logger;
         private readonly ISyncJobHistoryRepository _syncJobHistoryRepository;
 
         public AzureMaintenanceService(
@@ -59,7 +61,7 @@ namespace Services
 			IHandleInactiveJobsConfig handleInactiveJobsConfig,
             INotificationRepository notificationRepository,
             IServiceBusQueueRepository notificationQueueRepository,
-            ILoggingRepository loggingRepository,
+            ILogger<AzureMaintenanceService> logger,
             ISyncJobHistoryRepository syncJobHistoryRepository)
         {
             _syncJobRepository = syncJobRepository ?? throw new ArgumentNullException(nameof(syncJobRepository));
@@ -70,7 +72,7 @@ namespace Services
             _handleInactiveJobsConfig = handleInactiveJobsConfig ?? throw new ArgumentNullException(nameof(handleInactiveJobsConfig));
 			_notificationRepository = notificationRepository ?? throw new ArgumentNullException(nameof(notificationRepository));
             _notificationsQueueRepository = notificationQueueRepository ?? throw new ArgumentNullException(nameof(notificationQueueRepository));
-            _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _syncJobHistoryRepository = syncJobHistoryRepository ?? throw new ArgumentNullException(nameof(syncJobHistoryRepository));
         }
 
@@ -80,10 +82,7 @@ namespace Services
 
             var jobsToBePurged = ApplyPurgingFilters(jobs).ToList();
 
-            await _loggingRepository.LogMessageAsync(new LogMessage
-            {
-                Message = $"Number of jobs to be purged: {jobsToBePurged.Count}"
-            });
+            _logger.JobsToBePurged(jobsToBePurged.Count);
 
             return jobsToBePurged;
         }
@@ -166,11 +165,7 @@ namespace Services
             };
             message.ApplicationProperties.Add("MessageType", notificationType.ToString());
             await _notificationsQueueRepository.SendMessageAsync(message);
-            await _loggingRepository.LogMessageAsync(new LogMessage
-            {
-                RunId = runId,
-                Message = $"Sent message {message.MessageId} to service bus notifications queue "
-            });
+            _logger.SentNotificationMessage(message.MessageId);
         }
         private async Task<Guid> GetGroupIdAsync(SyncJob syncJob)
         {
@@ -194,10 +189,7 @@ namespace Services
 
             var purgedJobs = await MapSyncJobsToPurgedSyncJobsAsync(syncJobs);
 
-            await _loggingRepository.LogMessageAsync(new LogMessage
-            {
-                Message = $"Number of purged jobs: {purgedJobs.Count}"
-            });
+            _logger.PurgedJobs(purgedJobs.Count);
 
             await _purgedSyncJobRepository.InsertPurgedSyncJobsAsync(purgedJobs);
 
@@ -212,10 +204,7 @@ namespace Services
             {
                 var purgedJob = await MapSyncJobToPurgedSyncJobAsync(job);
                 var groupName = await GetGroupNameAsync(purgedJob.TargetOfficeGroupId);
-                await _loggingRepository.LogMessageAsync(new LogMessage
-                {
-                    Message = $"Purging Job with GroupId: {purgedJob.TargetOfficeGroupId}, GroupName: {groupName} and Status: {purgedJob.Status}"
-                });
+                _logger.PurgingJob(purgedJob.TargetOfficeGroupId, groupName, purgedJob.Status);
                 purgedSyncJobs.Add(purgedJob);
             }
 
@@ -260,20 +249,14 @@ namespace Services
             var cutOffDate = DateTime.UtcNow.AddDays(-_handleInactiveJobsConfig.NumberOfDaysBeforeDeletion);
             var jobs = await _purgedSyncJobRepository.GetPurgedSyncJobsAsync(cutOffDate);
             if (jobs.ToList().Count <= 0) return 0;
-            await _loggingRepository.LogMessageAsync(new LogMessage
-            {
-                Message = $"Number of jobs to be deleted from PurgedSyncJobs table: {jobs.Count()}"
-            });
+            _logger.JobsToBeDeleted(jobs.Count());
             return await _purgedSyncJobRepository.DeletePurgedSyncJobsAsync(jobs);
         }
 
         public async Task RemoveInactiveJobsAsync(IEnumerable<SyncJob> jobs)
         {
             await _syncJobRepository.DeleteSyncJobsAsync(jobs);
-            await _loggingRepository.LogMessageAsync(new LogMessage
-            {
-                Message = $"Number of jobs deleted from SyncJobs table: {jobs.Count()}"
-            });
+            _logger.JobsDeleted(jobs.Count());
         }
 
 		public async Task ExpireNotificationsAsync(IEnumerable<SyncJob> jobs)
@@ -306,10 +289,7 @@ namespace Services
                 })
                 .ToList();
 
-            await _loggingRepository.LogMessageAsync(new LogMessage
-            {
-                Message = $"Jobs needing warning as of {warningTargetDate}: {jobsNeedingWarning.Count}"
-            });
+            _logger.JobsNeedingWarning(warningTargetDate, jobsNeedingWarning.Count);
 
             return jobsNeedingWarning;
         }
@@ -322,17 +302,11 @@ namespace Services
 
             var cutoffDate = DateTime.UtcNow.AddDays(-retentionDays);
 
-            await _loggingRepository.LogMessageAsync(new LogMessage
-            {
-                Message = $"Starting to purge job history older than {cutoffDate:yyyy-MM-dd}"
-            });
+            _logger.StartingHistoryPurge(cutoffDate);
 
             var deletedCount = await _syncJobHistoryRepository.DeleteOlderThanAsync(cutoffDate);
 
-            await _loggingRepository.LogMessageAsync(new LogMessage
-            {
-                Message = $"Purged {deletedCount} job history records older than {retentionDays} days"
-            });
+            _logger.HistoryPurged(deletedCount, retentionDays);
 
             return deletedCount;
         }

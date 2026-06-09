@@ -2,7 +2,8 @@
 // Licensed under the MIT license.
 using Microsoft.Azure.Functions.Worker;
 using Microsoft.DurableTask;
-using Repositories.Contracts;
+using Microsoft.Extensions.Logging;
+using Repositories.Contracts.Helpers;
 using Services.Contracts;
 using Services.Entities;
 using System;
@@ -20,19 +21,21 @@ namespace Hosts.NonProdService
         public async Task RunOrchestratorAsync([OrchestrationTrigger] TaskOrchestrationContext context)
         {
             var runId = context.NewGuid();
+            var logger = context.CreateReplaySafeLogger("Hosts.NonProdService.OrchestratorFunction");
+            using var scope = logger.BeginRunIdScope(runId);
 
-            await context.CallActivityAsync(nameof(LoggerFunction), new LoggerRequest { Message = $"{nameof(OrchestratorFunction)} function started", RunId = runId, Verbosity = VerbosityLevel.DEBUG });
+            logger.FunctionStarted(nameof(OrchestratorFunction));
 
             var tenantUserCount = await context.CallActivityAsync<int?>(
                 nameof(TenantUserCountFunction),
-                new TenantUserReaderRequest
+                new TenantUserCountRequest
                 {
                     RunId = runId
                 });
 
             if (tenantUserCount == null)
             {
-                await context.CallActivityAsync(nameof(LoggerFunction), new LoggerRequest { Message = $"Error with {nameof(TenantUserCountFunction)}, check exception" });
+                logger.ErrorWithFunction(nameof(TenantUserCountFunction));
                 throw new Exception($"Error occurred in the {nameof(TenantUserCountFunction)}, when attempting to get a count of the number of users in the tenant.");
             }
 
@@ -53,7 +56,7 @@ namespace Hosts.NonProdService
                 }
                 );
 
-            await context.CallActivityAsync(nameof(LoggerFunction), new LoggerRequest { Message = $"{nameof(OrchestratorFunction)} function completed", RunId = runId, Verbosity = VerbosityLevel.DEBUG });
+            logger.FunctionCompleted(nameof(OrchestratorFunction));
         }
     }
 }

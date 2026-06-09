@@ -35,7 +35,7 @@ import { selectOrgLeaderDataReturned } from '../../store/orgLeaderDetails.slice'
 import { InfoWord } from '../InfoWord';
 import { OrgLeader } from '../OrgLeader';
 import { jsxFormat } from '../../utils/stringUtils';
-import { selectIsGeneratingTitle } from '../../store/title.slice';
+import { selectIsGeneratingTitle, upsertGeneratedTitle } from '../../store/title.slice';
 import { fetchOrgLeaderDetailsAndGenerateHRTitle, getTitle } from '../../store/title.api';
 import { setIsMissingAndOrOperator } from '../../store/manageMembership.slice';
 import { HRQueryItemColumn } from './components';
@@ -662,6 +662,9 @@ const getOptions = (
           strings }))).payload as any)?.title || '' : '';
 
     const aiTitle = source.filter ? (await dispatch(getTitle(source.filter))).payload as string : '';
+    if (source.filter) {
+      dispatch(upsertGeneratedTitle({ partId, filter: source.filter, title: aiTitle }));
+    }
     const newTitle = combineHRTitleWithAICriteria(hrTitle, aiTitle, !!source.manager?.id, strings.HROnboarding.withSummarizedCriteria, props.exclusionary, strings.excludePrefix);
 
     onEnableEdit(true);

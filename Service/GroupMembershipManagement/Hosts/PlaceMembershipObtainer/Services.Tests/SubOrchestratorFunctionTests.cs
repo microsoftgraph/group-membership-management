@@ -3,6 +3,7 @@
 using Hosts.PlaceMembershipObtainer;
 using Microsoft.ApplicationInsights;
 using Microsoft.ApplicationInsights.Extensibility;
+using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.DurableTask;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Models;
@@ -26,7 +27,6 @@ namespace Tests.Services
     {
         private Mock<IDryRunValue> _dryRunValue;
         private Mock<IMailRepository> _mailRepository;
-        private Mock<ILoggingRepository> _loggingRepository;
         private Mock<ISyncJobStatusService> _syncJobStatusService;
         private Mock<IDatabaseGroupsRepository> _groupsRepository;
         private Mock<IDatabaseChannelsRepository> _channelsRepository;
@@ -48,7 +48,6 @@ namespace Tests.Services
         {
             _dryRunValue = new Mock<IDryRunValue>();
             _mailRepository = new Mock<IMailRepository>();
-            _loggingRepository = new Mock<ILoggingRepository>();
             _syncJobStatusService = new Mock<ISyncJobStatusService>();
             _groupsRepository = new Mock<IDatabaseGroupsRepository>();
             _channelsRepository = new Mock<IDatabaseChannelsRepository>();
@@ -88,6 +87,7 @@ namespace Tests.Services
                                             _dryRunValue.Object
                                             );
 
+            _durableOrchestrationContext.Setup(x => x.CreateReplaySafeLogger(It.IsAny<string>())).Returns(NullLogger.Instance);
             _durableOrchestrationContext.Setup(x => x.GetInput<SubOrchestratorRequest>()).Returns(() => _subOrchestratorRequest);
 
             _durableOrchestrationContext.Setup(x => x.CallActivityAsync<PlaceInformation>(It.IsAny<TaskName>(), It.IsAny<RoomsReaderRequest>(), It.IsAny<TaskOptions>()))
@@ -174,24 +174,10 @@ namespace Tests.Services
                                  });
 
             var telemetryClient = new TelemetryClient(TelemetryConfiguration.CreateDefault());
-            var subOrchestratorFunction = new SubOrchestratorFunction(_loggingRepository.Object, telemetryClient);
+            var subOrchestratorFunction = new SubOrchestratorFunction(telemetryClient);
             var subOrchestratorResponse = await subOrchestratorFunction.RunSubOrchestratorAsync(_durableOrchestrationContext.Object);
 
-            _loggingRepository.Verify(x => x.LogMessageAsync(
-                                    It.Is<LogMessage>(m => m.Message == $"{nameof(SubOrchestratorFunction)} function started"),
-                                    It.IsAny<VerbosityLevel>(),
-                                    It.IsAny<string>(),
-                                    It.IsAny<string>()
-                                ), Times.Once);
-
             _graphGroupRepository.Verify(x => x.GetRoomsPageAsync(It.IsAny<string>(), It.IsAny<int>(), It.IsAny<int>()), Times.Once);
-
-            _loggingRepository.Verify(x => x.LogMessageAsync(
-                        It.Is<LogMessage>(m => m.Message == $"{nameof(SubOrchestratorFunction)} function completed"),
-                        It.IsAny<VerbosityLevel>(),
-                        It.IsAny<string>(),
-                        It.IsAny<string>()
-                    ), Times.Once);
 
             Assert.IsNotNull(subOrchestratorResponse.Users);
             Assert.AreEqual(_userCount, subOrchestratorResponse.Users.Count);
@@ -251,24 +237,10 @@ namespace Tests.Services
                                  });
 
             var telemetryClient = new TelemetryClient(TelemetryConfiguration.CreateDefault());
-            var subOrchestratorFunction = new SubOrchestratorFunction(_loggingRepository.Object, telemetryClient);
+            var subOrchestratorFunction = new SubOrchestratorFunction(telemetryClient);
             var subOrchestratorResponse = await subOrchestratorFunction.RunSubOrchestratorAsync(_durableOrchestrationContext.Object);
 
-            _loggingRepository.Verify(x => x.LogMessageAsync(
-                                    It.Is<LogMessage>(m => m.Message == $"{nameof(SubOrchestratorFunction)} function started"),
-                                    It.IsAny<VerbosityLevel>(),
-                                    It.IsAny<string>(),
-                                    It.IsAny<string>()
-                                ), Times.Once);
-
             _graphGroupRepository.Verify(x => x.GetWorkSpacesPageAsync(It.IsAny<string>(), It.IsAny<int>(), It.IsAny<int>()), Times.Once);
-
-            _loggingRepository.Verify(x => x.LogMessageAsync(
-                        It.Is<LogMessage>(m => m.Message == $"{nameof(SubOrchestratorFunction)} function completed"),
-                        It.IsAny<VerbosityLevel>(),
-                        It.IsAny<string>(),
-                        It.IsAny<string>()
-                    ), Times.Once);
 
             Assert.IsNotNull(subOrchestratorResponse.Users);
             Assert.AreEqual(_userCount, subOrchestratorResponse.Users.Count);
@@ -327,24 +299,10 @@ namespace Tests.Services
                                   });
 
             var telemetryClient = new TelemetryClient(TelemetryConfiguration.CreateDefault());
-            var subOrchestratorFunction = new SubOrchestratorFunction(_loggingRepository.Object, telemetryClient);
+            var subOrchestratorFunction = new SubOrchestratorFunction(telemetryClient);
             var subOrchestratorResponse = await subOrchestratorFunction.RunSubOrchestratorAsync(_durableOrchestrationContext.Object);
 
-            _loggingRepository.Verify(x => x.LogMessageAsync(
-                                    It.Is<LogMessage>(m => m.Message == $"{nameof(SubOrchestratorFunction)} function started"),
-                                    It.IsAny<VerbosityLevel>(),
-                                    It.IsAny<string>(),
-                                    It.IsAny<string>()
-                                ), Times.Once);
-
             _graphGroupRepository.Verify(x => x.GetFirstMembersPageAsync(It.IsAny<string>()), Times.Once);
-
-            _loggingRepository.Verify(x => x.LogMessageAsync(
-                        It.Is<LogMessage>(m => m.Message == $"{nameof(SubOrchestratorFunction)} function completed"),
-                        It.IsAny<VerbosityLevel>(),
-                        It.IsAny<string>(),
-                        It.IsAny<string>()
-                    ), Times.Once);
 
             Assert.IsNotNull(subOrchestratorResponse.Users);
             Assert.AreEqual(_userCount, subOrchestratorResponse.Users.Count);
@@ -414,25 +372,11 @@ namespace Tests.Services
                                  });
 
             var telemetryClient = new TelemetryClient(TelemetryConfiguration.CreateDefault());
-            var subOrchestratorFunction = new SubOrchestratorFunction(_loggingRepository.Object, telemetryClient);
+            var subOrchestratorFunction = new SubOrchestratorFunction(telemetryClient);
             var subOrchestratorResponse = await subOrchestratorFunction.RunSubOrchestratorAsync(_durableOrchestrationContext.Object);
-
-            _loggingRepository.Verify(x => x.LogMessageAsync(
-                                    It.Is<LogMessage>(m => m.Message == $"{nameof(SubOrchestratorFunction)} function started"),
-                                    It.IsAny<VerbosityLevel>(),
-                                    It.IsAny<string>(),
-                                    It.IsAny<string>()
-                                ), Times.Once);
 
             _graphGroupRepository.Verify(x => x.GetFirstMembersPageAsync(It.IsAny<string>()), Times.Once);
             _graphGroupRepository.Verify(x => x.GetNextMembersPageAsync(It.IsAny<string>()), Times.Once);
-
-            _loggingRepository.Verify(x => x.LogMessageAsync(
-                        It.Is<LogMessage>(m => m.Message == $"{nameof(SubOrchestratorFunction)} function completed"),
-                        It.IsAny<VerbosityLevel>(),
-                        It.IsAny<string>(),
-                        It.IsAny<string>()
-                    ), Times.Once);
 
             Assert.IsNotNull(subOrchestratorResponse.Users);
             Assert.AreEqual(_userCount, subOrchestratorResponse.Users.Count);
@@ -441,25 +385,25 @@ namespace Tests.Services
 
         private async Task<PlaceInformation> CallRoomsReaderFunctionAsync(RoomsReaderRequest request)
         {
-            var function = new RoomsReaderFunction(_loggingRepository.Object, _service);
+            var function = new RoomsReaderFunction(NullLogger<RoomsReaderFunction>.Instance, _service);
             return await function.GetRoomsAsync(request);
         }
 
         private async Task<PlaceInformation> CallWorkSpacesReaderFunctionAsync(WorkSpacesReaderRequest request)
         {
-            var function = new WorkSpacesReaderFunction(_loggingRepository.Object, _service);
+            var function = new WorkSpacesReaderFunction(NullLogger<WorkSpacesReaderFunction>.Instance, _service);
             return await function.GetWorkSpacesAsync(request);
         }
 
         private async Task<UserInformation> CallUsersReaderFunctionAsync(UsersReaderRequest request)
         {
-            var function = new UsersReaderFunction(_loggingRepository.Object, _service);
+            var function = new UsersReaderFunction(NullLogger<UsersReaderFunction>.Instance, _service);
             return await function.GetUsersAsync(request);
         }
 
         private async Task<UserInformation> CallSubsequentUsersReaderFunctionAsync(SubsequentUsersReaderRequest request)
         {
-            var function = new SubsequentUsersReaderFunction(_loggingRepository.Object, _service);
+            var function = new SubsequentUsersReaderFunction(NullLogger<SubsequentUsersReaderFunction>.Instance, _service);
             return await function.GetUsersAsync(request);
         }
     }

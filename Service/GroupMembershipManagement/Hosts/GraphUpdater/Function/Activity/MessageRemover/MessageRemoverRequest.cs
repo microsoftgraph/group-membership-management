@@ -1,13 +1,11 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
-
-using System;
+using Services.Entities;
 
 namespace Hosts.GraphUpdater
 {
-    public class MessageRemoverRequest
+    public class MessageRemoverRequest : GraphUpdaterRequestBase
     {
-        public Guid RunId { get; set; }
         public string TopicName { get; set; }
         public string SubscriptionName { get; set; }
     }

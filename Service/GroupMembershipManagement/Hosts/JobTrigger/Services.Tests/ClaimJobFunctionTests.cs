@@ -1,5 +1,6 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
+
 using Hosts.JobTrigger;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
@@ -27,7 +28,7 @@ namespace Services.Tests
         }
 
         [TestMethod]
-        public async Task ClaimJobAsync_NullSyncJob_ReturnsFalse()
+        public async Task ClaimJobAsync_NullSyncJob_ReturnsNull()
         {
             var request = new ClaimJobRequest
             {
@@ -37,14 +38,14 @@ namespace Services.Tests
 
             var result = await _claimJobFunction.ClaimJobAsync(request);
 
-            Assert.IsFalse(result);
+            Assert.IsNull(result);
             _jobTriggerService.Verify(
                 s => s.TryClaimAndUpdateJobAsync(It.IsAny<SyncStatus>(), It.IsAny<SyncJob>()),
                 Times.Never);
         }
 
         [TestMethod]
-        public async Task ClaimJobAsync_ClaimSucceeds_ReturnsTrue()
+        public async Task ClaimJobAsync_ClaimSucceeds_ReturnsClaimedJob()
         {
             var syncJob = new SyncJob
             {
@@ -53,9 +54,16 @@ namespace Services.Tests
                 Status = SyncStatus.Idle.ToString()
             };
 
+            var claimedJob = new SyncJob
+            {
+                Id = syncJob.Id,
+                RunId = syncJob.RunId,
+                Status = SyncStatus.InProgress.ToString()
+            };
+
             _jobTriggerService
                 .Setup(s => s.TryClaimAndUpdateJobAsync(SyncStatus.InProgress, syncJob))
-                .ReturnsAsync(true);
+                .ReturnsAsync(claimedJob);
 
             var request = new ClaimJobRequest
             {
@@ -65,14 +73,15 @@ namespace Services.Tests
 
             var result = await _claimJobFunction.ClaimJobAsync(request);
 
-            Assert.IsTrue(result);
+            Assert.IsNotNull(result);
+            Assert.AreEqual(SyncStatus.InProgress.ToString(), result.Status);
             _jobTriggerService.Verify(
                 s => s.TryClaimAndUpdateJobAsync(SyncStatus.InProgress, syncJob),
                 Times.Once);
         }
 
         [TestMethod]
-        public async Task ClaimJobAsync_ClaimFails_ReturnsFalse()
+        public async Task ClaimJobAsync_ClaimFails_ReturnsNull()
         {
             var syncJob = new SyncJob
             {
@@ -83,7 +92,7 @@ namespace Services.Tests
 
             _jobTriggerService
                 .Setup(s => s.TryClaimAndUpdateJobAsync(SyncStatus.InProgress, syncJob))
-                .ReturnsAsync(false);
+                .ReturnsAsync((SyncJob)null);
 
             var request = new ClaimJobRequest
             {
@@ -93,7 +102,7 @@ namespace Services.Tests
 
             var result = await _claimJobFunction.ClaimJobAsync(request);
 
-            Assert.IsFalse(result);
+            Assert.IsNull(result);
             _jobTriggerService.Verify(
                 s => s.TryClaimAndUpdateJobAsync(SyncStatus.InProgress, syncJob),
                 Times.Once);
@@ -109,9 +118,16 @@ namespace Services.Tests
                 Status = SyncStatus.InProgress.ToString()
             };
 
+            var claimedJob = new SyncJob
+            {
+                Id = syncJob.Id,
+                RunId = syncJob.RunId,
+                Status = SyncStatus.StuckInProgress.ToString()
+            };
+
             _jobTriggerService
                 .Setup(s => s.TryClaimAndUpdateJobAsync(SyncStatus.StuckInProgress, syncJob))
-                .ReturnsAsync(true);
+                .ReturnsAsync(claimedJob);
 
             var request = new ClaimJobRequest
             {
@@ -121,7 +137,7 @@ namespace Services.Tests
 
             var result = await _claimJobFunction.ClaimJobAsync(request);
 
-            Assert.IsTrue(result);
+            Assert.IsNotNull(result);
             _jobTriggerService.Verify(
                 s => s.TryClaimAndUpdateJobAsync(SyncStatus.StuckInProgress, syncJob),
                 Times.Once);

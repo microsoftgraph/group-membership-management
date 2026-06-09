@@ -3,29 +3,30 @@
 
 using Models;
 using Microsoft.Azure.Functions.Worker;
+using Microsoft.Extensions.Logging;
 using System;
 using System.Threading.Tasks;
 using Services.Contracts;
-using Repositories.Contracts;
 
 namespace Hosts.JobScheduler
 {
     public class BatchUpdateJobsFunction
     {
-        private readonly IJobSchedulingService _jobSchedulingService = null;
-        private readonly ILoggingRepository _loggingRepository = null;
-        public BatchUpdateJobsFunction(IJobSchedulingService jobSchedulingService, ILoggingRepository loggingRepository)
+        private readonly IJobSchedulingService _jobSchedulingService;
+        private readonly ILogger<BatchUpdateJobsFunction> _logger;
+
+        public BatchUpdateJobsFunction(IJobSchedulingService jobSchedulingService, ILogger<BatchUpdateJobsFunction> logger)
         {
-            _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _jobSchedulingService = jobSchedulingService ?? throw new ArgumentNullException(nameof(jobSchedulingService));
         }
 
         [Function(nameof(BatchUpdateJobsFunction))]
         public async Task BatchUpdateJobsAsync([ActivityTrigger] BatchUpdateJobsRequest request)
         {
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(BatchUpdateJobsFunction)} function started at: {DateTime.UtcNow}" }, VerbosityLevel.DEBUG);
+            _logger.FunctionStarted(nameof(BatchUpdateJobsFunction));
             await _jobSchedulingService.BatchUpdateSyncJobsAsync(request.SyncJobBatch);
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(BatchUpdateJobsFunction)} function completed at: {DateTime.UtcNow}" }, VerbosityLevel.DEBUG);
+            _logger.FunctionCompleted(nameof(BatchUpdateJobsFunction));
         }
     }
 }

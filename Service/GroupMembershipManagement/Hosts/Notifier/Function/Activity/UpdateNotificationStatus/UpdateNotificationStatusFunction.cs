@@ -2,7 +2,7 @@
 // Licensed under the MIT license.
 
 using Microsoft.Azure.Functions.Worker;
-using Repositories.Contracts;
+using Microsoft.Extensions.Logging;
 using System;
 using System.Threading.Tasks;
 using Services.Notifier.Contracts;
@@ -12,21 +12,21 @@ namespace Hosts.Notifier
 {
     public class UpdateNotificationStatusFunction
     {
-        private readonly ILoggingRepository _loggingRepository = null;
-        private readonly INotifierService _notifierService = null;
+        private readonly ILogger<UpdateNotificationStatusFunction> _logger;
+        private readonly INotifierService _notifierService;
 
-        public UpdateNotificationStatusFunction(ILoggingRepository loggingRepository, INotifierService notifierService)
+        public UpdateNotificationStatusFunction(ILogger<UpdateNotificationStatusFunction> logger, INotifierService notifierService)
         {
-            _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _notifierService = notifierService ?? throw new ArgumentNullException(nameof(notifierService));
         }
 
         [Function(nameof(UpdateNotificationStatusFunction))]
         public async Task UpdateNotificationStatusAsync([ActivityTrigger] UpdateNotificationStatusRequest request)
         {
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(UpdateNotificationStatusFunction)} function started at: {DateTime.UtcNow}" });
+            _logger.FunctionStarted(nameof(UpdateNotificationStatusFunction));
             await _notifierService.UpdateNotificationStatusAsync(request.Notification, request.Status);
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(UpdateNotificationStatusFunction)} function completed at: {DateTime.UtcNow}" });
+            _logger.FunctionCompleted(nameof(UpdateNotificationStatusFunction));
         }
     }
 }

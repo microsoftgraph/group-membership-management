@@ -2,8 +2,8 @@
 // Licensed under the MIT license.
 using Microsoft.Azure.Functions.Worker;
 using Microsoft.DurableTask;
-using Models;
-using Repositories.Contracts;
+using Microsoft.Extensions.Logging;
+using Repositories.Contracts.Helpers;
 using Services.Contracts;
 using System;
 using System.Collections.Generic;
@@ -14,23 +14,28 @@ namespace Hosts.GroupOwnershipObtainer
 {
     public class JobsFilterFunction
     {
-        private readonly ILoggingRepository _loggingRepository;
+        private readonly ILogger<JobsFilterFunction> _logger;
         private readonly IGroupOwnershipObtainerService _groupOwnershipObtainerService;
 
-        public JobsFilterFunction(ILoggingRepository loggingRepository, IGroupOwnershipObtainerService groupOwnershipObtainerService)
+        public JobsFilterFunction(ILogger<JobsFilterFunction> logger, IGroupOwnershipObtainerService groupOwnershipObtainerService)
         {
-            _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _groupOwnershipObtainerService = groupOwnershipObtainerService ?? throw new ArgumentNullException(nameof(groupOwnershipObtainerService));
         }
 
         [Function(nameof(JobsFilterFunction))]
-        public async Task<List<Guid>> GetJobsAsync([ActivityTrigger] JobsFilterRequest request)
+        public Task<List<Guid>> GetJobsAsync([ActivityTrigger] JobsFilterRequest request)
         {
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(GetGroupOwnersFunction)} function started at: {DateTime.UtcNow}", RunId = request.RunId }, VerbosityLevel.DEBUG);
+            using var scope = _logger.BeginSyncJobScope(request.SyncJob, new Dictionary<string, object>
+            {
+                ["CurrentPart"] = request.CurrentPart,
+                ["TotalParts"] = request.TotalParts
+            });
+            _logger.FunctionStarted(nameof(JobsFilterFunction));
             var filteredJobs = _groupOwnershipObtainerService.FilterSyncJobsBySourceTypes(request.RequestedSources, request.SyncJobs);
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(GetGroupOwnersFunction)} function completed at: {DateTime.UtcNow}", RunId = request.RunId }, VerbosityLevel.DEBUG);
+            _logger.FunctionCompleted(nameof(JobsFilterFunction));
 
-            return filteredJobs.ToList();
+            return Task.FromResult(filteredJobs.ToList());
         }
     }
 }

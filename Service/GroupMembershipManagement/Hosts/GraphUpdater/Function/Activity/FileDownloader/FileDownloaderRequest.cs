@@ -1,12 +1,11 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
-using Models;
+using Services.Entities;
 
 namespace Hosts.GraphUpdater
 {
-    public class FileDownloaderRequest
+    public class FileDownloaderRequest : GraphUpdaterRequestBase
     {
         public string FilePath { get; set; }
-        public SyncJob SyncJob { get; set; }
     }
 }

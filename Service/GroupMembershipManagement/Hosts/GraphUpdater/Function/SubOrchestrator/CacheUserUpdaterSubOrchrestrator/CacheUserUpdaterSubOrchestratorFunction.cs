@@ -1,41 +1,26 @@
 // Copyright(c) Microsoft Corporation.
 // Licensed under the MIT license.
-using Microsoft.ApplicationInsights;
 using Microsoft.Azure.Functions.Worker;
 using Microsoft.DurableTask;
+using Microsoft.Extensions.Logging;
 using Models;
 using Models.Helpers;
-using Repositories.Contracts;
 using System;
 using System.IO;
 using System.Threading.Tasks;
-
 
 namespace Hosts.GraphUpdater
 {
     public class CacheUserUpdaterSubOrchestratorFunction
     {
-        private readonly ILoggingRepository _loggingRepository = null;
-        private readonly TelemetryClient _telemetryClient = null;
-
-        public CacheUserUpdaterSubOrchestratorFunction(ILoggingRepository loggingRepository, TelemetryClient telemetryClient)
-        {
-            _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
-            _telemetryClient = telemetryClient ?? throw new ArgumentNullException(nameof(telemetryClient));
-        }
-
         [Function(nameof(CacheUserUpdaterSubOrchestratorFunction))]
         public async Task RunSubOrchestratorAsync([OrchestrationTrigger] TaskOrchestrationContext context)
         {
-
+            var logger = context.CreateReplaySafeLogger("GraphUpdater.CacheUserUpdaterSubOrchestratorFunction");
             var request = context.GetInput<CacheUserUpdaterRequest>();
+            using var scope = logger.BeginGraphUpdaterScope(request);
 
-            await context.CallActivityAsync(nameof(LoggerFunction),
-                                                     new LoggerRequest
-                                                     {
-                                                         Message = $"{nameof(CacheUserUpdaterSubOrchestratorFunction)} function started",
-                                                         SyncJob = request.SyncJob
-                                                     });
+            logger.FunctionStarted(nameof(CacheUserUpdaterSubOrchestratorFunction));
             try
             {
                 if (request == null || request.GroupId.ToString() == null)
@@ -47,7 +32,7 @@ namespace Hosts.GraphUpdater
                 var cacheChecker = await context.CallActivityAsync<BlobResult>(nameof(BlobCheckerFunction), new BlobCheckerRequest
                 {
                     Prefix = filePrefixPath,
-                    RunId = request.SyncJob.RunId.Value
+                    SyncJob = request.SyncJob
                 });
 
                 if (cacheChecker.BlobStatus == BlobStatus.Found)
@@ -55,56 +40,38 @@ namespace Hosts.GraphUpdater
                     await context.CallActivityAsync(nameof(CacheUpdaterFunction), new CacheUpdaterRequest
                     {
                         CacheFilePath = cacheChecker.Path,
-                        RunId = request.SyncJob.RunId,
+                        SyncJob = request.SyncJob,
                         UserIds = request.UserIds,
                         GroupId = request.GroupId,
                         Timestamp = request.SyncJob.LastSuccessfulStartTime
                     });
                 }
 
-                await context.CallActivityAsync(nameof(LoggerFunction),
-                                                     new LoggerRequest
-                                                     {
-                                                         Message = $"{nameof(CacheUserUpdaterSubOrchestratorFunction)} function completed",
-                                                         SyncJob = request.SyncJob
-                                                     });
+                logger.FunctionCompleted(nameof(CacheUserUpdaterSubOrchestratorFunction));
             }
-
             catch (FileNotFoundException fe)
             {
-                await context.CallActivityAsync(nameof(LoggerFunction),
-                                                     new LoggerRequest
-                                                     {
-                                                         Message = fe.Message,
-                                                         SyncJob = request.SyncJob
-                                                     });
+                logger.CacheUpdaterFileNotFound(fe.Message);
 
                 await context.CallActivityAsync(nameof(JobStatusUpdaterFunction),
                                                 new JobStatusUpdaterRequest
                                                 {
-                                                    Status = SyncStatus.FileNotFound
+                                                    Status = SyncStatus.FileNotFound,
+                                                    SyncJob = request.SyncJob
                                                 });
-                await context.CallActivityAsync(nameof(TelemetryTrackerFunction), new TelemetryTrackerRequest { JobStatus = SyncStatus.FileNotFound, ResultStatus = ResultStatus.Failure, RunId = request.RunId });
+                await context.CallActivityAsync(nameof(TelemetryTrackerFunction), new TelemetryTrackerRequest { JobStatus = SyncStatus.FileNotFound, ResultStatus = ResultStatus.Failure, SyncJob = request.SyncJob });
 
                 throw;
             }
-
-
             catch (Exception ex)
             {
-
-                await context.CallActivityAsync(nameof(LoggerFunction),
-                    new LoggerRequest
-                    {
-                        Message = $"Unexpected exception. {ex}",
-                        SyncJob = request.SyncJob
-                    });
+                logger.CacheUpdaterUnexpectedException(ex, ex.Message);
 
                 await context.CallActivityAsync(nameof(JobStatusUpdaterFunction),
                                                 new JobStatusUpdaterRequest
                                                 {
                                                     Status = SyncStatus.Error,
-                                                    RunId = (Guid)request.SyncJob.RunId
+                                                    SyncJob = request.SyncJob
                                                 });
 
                 throw;

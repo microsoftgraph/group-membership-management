@@ -4,27 +4,27 @@
 using Azure.Messaging.ServiceBus;
 using Microsoft.Azure.Functions.Worker;
 using Microsoft.DurableTask.Client;
+using Microsoft.Extensions.Logging;
 using Models;
-using Repositories.Contracts;
+using Repositories.Contracts.Helpers;
 using Repositories.Contracts.InjectConfig;
+using Services.Notifier;
 using System;
-using System.Collections.Generic;
 using System.Text;
-using System.Text.Json;
 using System.Threading.Tasks;
 namespace Hosts.Notifier
 {
     public class StarterFunction
     {
+        private readonly ILogger<StarterFunction> _logger;
         private readonly IMailConfig _mailConfig;
-        private readonly ILoggingRepository _loggingRepository = null;
         private readonly IThresholdNotificationConfig _thresholdNotificationConfig;
 
-        public StarterFunction(ILoggingRepository loggingRepository, IThresholdNotificationConfig thresholdNotificationConfig, IMailConfig mailConfig)
+        public StarterFunction(ILogger<StarterFunction> logger, IThresholdNotificationConfig thresholdNotificationConfig, IMailConfig mailConfig)
         {
-            _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _thresholdNotificationConfig = thresholdNotificationConfig ?? throw new ArgumentNullException(nameof(thresholdNotificationConfig));
-            _mailConfig = mailConfig ?? throw new ArgumentNullException(nameof(mailConfig)); ;
+            _mailConfig = mailConfig ?? throw new ArgumentNullException(nameof(mailConfig));
         }
 
         [Function(nameof(StarterFunction))]
@@ -32,7 +32,6 @@ namespace Hosts.Notifier
             [ServiceBusTrigger("%serviceBusNotificationsQueue%", Connection = "gmmServiceBus")] ServiceBusReceivedMessage message,
             [DurableClient] DurableTaskClient starter)
         {
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(StarterFunction)} function started" }, VerbosityLevel.DEBUG);
             string messageBody = Encoding.UTF8.GetString(message.Body.ToArray());
             string messageType = message.ApplicationProperties.ContainsKey("MessageType")
                                     ? message.ApplicationProperties["MessageType"].ToString()
@@ -43,28 +42,23 @@ namespace Hosts.Notifier
                 MessageBody = messageBody,
                 MessageType = messageType
             };
-            var messageContent = JsonSerializer.Deserialize<Dictionary<string, Object>>(messageBody);
-            SyncJob job = ((JsonElement)messageContent["SyncJob"]).Deserialize<SyncJob>();
-            Guid runId = job.RunId ?? Guid.Empty;
-            _loggingRepository.SetSyncJobProperties(runId, job.ToDictionary());
+            var messageContent = NotificationMessageContentParser.ParseMessageBody(messageBody);
+            var job = NotificationMessageContentParser.GetRequiredValue<SyncJob>(messageContent, "SyncJob");
+
+            using var scope = _logger.BeginSyncJobScope(job);
+
+            _logger.FunctionStarted(nameof(StarterFunction));
 
             if (_mailConfig.SkipEmailNotifications)
             {
-                await _loggingRepository.LogMessageAsync(new LogMessage
-                {
-                    RunId = runId,
-                    Message = "Email notifications are disabled."
-                });
-
+                _logger.EmailNotificationsDisabled();
             }
             else
             {
                 var instanceId = await starter.ScheduleNewOrchestrationInstanceAsync(nameof(OrchestratorFunction), orchestratorRequest);
             }
 
-
-
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(StarterFunction)} function completed" }, VerbosityLevel.DEBUG);
+            _logger.FunctionCompleted(nameof(StarterFunction));
         }
     }
 }

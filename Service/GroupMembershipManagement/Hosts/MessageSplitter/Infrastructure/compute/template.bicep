@@ -139,22 +139,14 @@ module userAssignedManagedIdentityNameReader 'keyVaultReader.bicep' = {
 module storageAccountNameReader 'keyVaultReader.bicep' = {
   name: 'storageAccountNameReader-MessageSplitter${instanceIdentifier}'
   params: {
-    value: dataKeyVault.getSecret('messageSplitter${instanceIdentifier}StorageAccountProd')
+    value: dataKeyVault.getSecret('functionsStorageAccountName')
   }
   dependsOn: [
     dataKeyVault
   ]
 }
 
-module appPackageContainerNameReader 'keyVaultReader.bicep' = {
-  name: 'appPackageContainerNameReader-MessageSplitter${instanceIdentifier}'
-  params: {
-    value: dataKeyVault.getSecret('messageSplitter${instanceIdentifier}AppPackageContainerProd')
-  }
-  dependsOn: [
-    dataKeyVault
-  ]
-}
+var appPackageContainerName= 'messagesplitter-app-package-${instanceIdentifier}'
 
 resource graphUAMI 'Microsoft.ManagedIdentity/userAssignedIdentities@2023-07-31-preview' existing = {
   name: userAssignedManagedIdentityNameReader.outputs.value
@@ -190,7 +182,7 @@ module functionAppTemplate_MessageSplitter 'functionApp.bicep' = {
     dataKeyVaultResourceGroup: dataKeyVaultResourceGroup
     setRBACPermissions: setRBACPermissions
     storageAccountName: storageAccountNameReader.outputs.value
-    appPackageContainerName: appPackageContainerNameReader.outputs.value
+    appPackageContainerName: appPackageContainerName
     instanceMemoryMB: 4096
     instanceIdentifier: instanceIdentifier
   }

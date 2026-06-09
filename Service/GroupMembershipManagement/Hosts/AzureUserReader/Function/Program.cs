@@ -5,6 +5,8 @@ using Azure.Identity;
 using Common.DependencyInjection;
 using DIConcreteTypes;
 using Hosts.FunctionBase;
+using Microsoft.Azure.Functions.Worker;
+using Microsoft.Azure.Functions.Worker.ApplicationInsights;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -41,8 +43,9 @@ namespace Hosts.AzureUserReader
                     var functionName = "AzureUserReader";
                     var dryRunSettingName = string.Empty;
                     var rootPath = context.HostingEnvironment.ContentRootPath;
-                    
+
                     CommonServices.ConfigureCommonServices(services, configuration, functionName, dryRunSettingName, rootPath);
+                    services.ConfigureFunctionsApplicationInsights();
 
                     services.AddGraphAPIClient();
 
@@ -54,7 +57,7 @@ namespace Hosts.AzureUserReader
                     services.AddScoped<IAzureUserReaderService, AzureUserReaderService>();
                 })
                 .Build();
-            
+
             host.Run();
         }
     }

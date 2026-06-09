@@ -32,6 +32,7 @@ resource storageAccount 'Microsoft.Storage/storageAccounts@2019-04-01' = {
     allowBlobPublicAccess: false
     minimumTlsVersion: 'TLS1_2'
     allowSharedKeyAccess: false
+    publicNetworkAccess: 'Enabled'
   }
   identity: {
     type: 'SystemAssigned'

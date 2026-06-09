@@ -30,7 +30,7 @@ namespace Repositories.Contracts
         Task<int> GetThresholdViolationsBySyncJobIdAsync(Guid syncJobId);
         Task<int> BulkApproveSyncJobsAsync(List<string> syncJobIds, int? thresholdViolationsToSet = null);
         Task<int> BulkResetJobStatusAsync(SyncStatus fromStatus, SyncStatus toStatus, CancellationToken cancellationToken = default);
-        Task<int> ClaimSyncJobAsync(Guid jobId, Guid? runId, int period, string targetStatus);
+        Task<SyncJob?> ClaimSyncJobAsync(Guid jobId, Guid? runId, int period, string targetStatus);
         Task UpdateSyncJobDestinationAsync(Guid jobId, string destination);
     }
 }

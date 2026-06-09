@@ -6,6 +6,8 @@ using Microsoft.ApplicationInsights.Extensibility;
 using Microsoft.Azure.Functions.Worker;
 using Microsoft.DurableTask;
 using Microsoft.DurableTask.Client;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Models;
 using Models.ServiceBus;
@@ -25,7 +27,6 @@ namespace Services.Tests
     public class SubOrchestratorFunctionTests
     {
         private Mock<IDryRunValue> _dryRunValue;
-        private Mock<ILoggingRepository> _loggingRepository;
         private Mock<IGraphGroupRepository> _graphGroupRepository;
         private Mock<IBlobStorageRepository> _blobStorageRepository;
         private Mock<TaskOrchestrationContext> _durableOrchestrationContext;
@@ -39,10 +40,10 @@ namespace Services.Tests
         public void Setup()
         {
             _dryRunValue = new Mock<IDryRunValue>();
-            _loggingRepository = new Mock<ILoggingRepository>();
             _graphGroupRepository = new Mock<IGraphGroupRepository>();
             _blobStorageRepository = new Mock<IBlobStorageRepository>();
             _durableOrchestrationContext = new Mock<TaskOrchestrationContext>();
+            _durableOrchestrationContext.Setup(x => x.CreateReplaySafeLogger(It.IsAny<string>())).Returns(NullLogger.Instance);
 
             _userCount = 10;
 
@@ -88,7 +89,6 @@ namespace Services.Tests
 
             _cacheUserUpdaterRequest = new CacheUserUpdaterRequest
             {
-                RunId = Guid.NewGuid(),
                 UserIds = userIds,
                 SyncJob = syncJob,
                 GroupId = Guid.NewGuid()
@@ -117,12 +117,6 @@ namespace Services.Tests
                                 await CallCacheUpdaterFunctionAsync(request as CacheUpdaterRequest);
                             });
 
-            _durableOrchestrationContext.Setup(x => x.CallActivityAsync(It.Is<TaskName>(x => x.Name == nameof(LoggerFunction)), It.IsAny<LoggerRequest>(), It.IsAny<TaskOptions>()))
-                            .Callback<TaskName, object, TaskOptions>(async (name, request, options) =>
-                            {
-                                await CallLoggerFunctionAsync(request as LoggerRequest);
-                            });
-
             var cacheBlobResult = new BlobResult
             {
                 BlobStatus = BlobStatus.Found,
@@ -133,42 +127,25 @@ namespace Services.Tests
                             .ReturnsAsync(() => cacheBlobResult);
 
             var telemetryClient = new TelemetryClient(TelemetryConfiguration.CreateDefault());
-            var subOrchestratorFunction = new CacheUserUpdaterSubOrchestratorFunction(_loggingRepository.Object, telemetryClient);
+            var subOrchestratorFunction = new CacheUserUpdaterSubOrchestratorFunction();
             await subOrchestratorFunction.RunSubOrchestratorAsync(_durableOrchestrationContext.Object);
-            _loggingRepository.Verify(x => x.LogMessageAsync(
-                                    It.Is<LogMessage>(m => m.Message == $"{nameof(CacheUserUpdaterSubOrchestratorFunction)} function started"),
-                                    It.IsAny<VerbosityLevel>(),
-                                    It.IsAny<string>(),
-                                    It.IsAny<string>()
-                                ), Times.Once);
 
             _blobStorageRepository.Verify(x => x.ReadValuesFromBlobAsync(It.IsAny<string>(), It.IsAny<Func<string, Guid>>()), Times.Exactly(1));
             _blobStorageRepository.Verify(x => x.UploadCacheFromGuidsAsync(It.IsAny<string>(), It.IsAny<IEnumerable<Guid>>(), It.IsAny<Dictionary<string, string>>()), Times.Exactly(1));
-            _loggingRepository.Verify(x => x.LogMessageAsync(
-                        It.Is<LogMessage>(m => m.Message == $"{nameof(CacheUserUpdaterSubOrchestratorFunction)} function completed"),
-                        It.IsAny<VerbosityLevel>(),
-                        It.IsAny<string>(),
-                        It.IsAny<string>()
-                    ), Times.Once);
 
         }
 
         private async Task<string> CallFileDownloaderFunctionAsync(FileDownloaderRequest request)
         {
-            var function = new FileDownloaderFunction(_loggingRepository.Object, _blobStorageRepository.Object);
+            var function = new FileDownloaderFunction(NullLogger<FileDownloaderFunction>.Instance, _blobStorageRepository.Object);
             return await function.DownloadFileAsync(request);
         }
 
         private async Task CallCacheUpdaterFunctionAsync(CacheUpdaterRequest request)
         {
-            var function = new CacheUpdaterFunction(_loggingRepository.Object, _blobStorageRepository.Object);
+            var function = new CacheUpdaterFunction(NullLogger<CacheUpdaterFunction>.Instance, _blobStorageRepository.Object);
             await function.UpdateCacheAsync(request);
         }
 
-        private async Task CallLoggerFunctionAsync(LoggerRequest request)
-        {
-            var function = new LoggerFunction(_loggingRepository.Object);
-            await function.LogMessageAsync(request);
-        }
     }
 }

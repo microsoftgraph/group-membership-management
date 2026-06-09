@@ -2,10 +2,10 @@
 // Licensed under the MIT license.
 using Entities;
 using Microsoft.Azure.Functions.Worker;
-
+using Microsoft.Extensions.Logging;
 using Microsoft.Graph;
 using Models;
-using Repositories.Contracts;
+using Repositories.Contracts.Helpers;
 using Services;
 using System;
 using System.Collections.Generic;
@@ -15,22 +15,25 @@ namespace Hosts.PlaceMembershipObtainer
 {
 	public class UsersReaderFunction
 	{
-		private readonly ILoggingRepository _log;
+		private readonly ILogger<UsersReaderFunction> _logger;
 		private readonly PlaceMembershipObtainerService _membershipProviderService;
 
-		public UsersReaderFunction(ILoggingRepository loggingRepository, PlaceMembershipObtainerService membershipProviderService)
+		public UsersReaderFunction(ILogger<UsersReaderFunction> logger, PlaceMembershipObtainerService membershipProviderService)
 		{
-			_log = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
+			_logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _membershipProviderService = membershipProviderService ?? throw new ArgumentNullException(nameof(membershipProviderService));
 		}
 
 		[Function(nameof(UsersReaderFunction))]
 		public async Task<UserInformation> GetUsersAsync([ActivityTrigger] UsersReaderRequest request)
 		{
-			await _log.LogMessageAsync(new LogMessage { Message = $"{nameof(UsersReaderFunction)} function started", RunId = request.RunId }, VerbosityLevel.DEBUG);
-			var response = await _membershipProviderService.GetUsersAsync(request.Url);
-			await _log.LogMessageAsync(new LogMessage { Message = $"{nameof(UsersReaderFunction)} function completed", RunId = request.RunId }, VerbosityLevel.DEBUG);
-			return response;
+			using (_logger.BeginRunIdScope(request.RunId))
+			{
+				_logger.FunctionStarted(nameof(UsersReaderFunction));
+				var response = await _membershipProviderService.GetUsersAsync(request.Url);
+				_logger.FunctionCompleted(nameof(UsersReaderFunction));
+				return response;
+			}
 		}
 	}
 }

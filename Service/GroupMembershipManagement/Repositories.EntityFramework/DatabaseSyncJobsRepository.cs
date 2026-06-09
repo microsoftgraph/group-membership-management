@@ -252,7 +252,7 @@ namespace Repositories.EntityFramework
                     cancellationToken);
         }
 
-        public async Task<int> ClaimSyncJobAsync(Guid jobId, Guid? runId, int period, string targetStatus)
+        public async Task<SyncJob?> ClaimSyncJobAsync(Guid jobId, Guid? runId, int period, string targetStatus)
         {
             var idleStatus = SyncStatus.Idle.ToString();
             var inProgressStatus = SyncStatus.InProgress.ToString();
@@ -260,7 +260,7 @@ namespace Repositories.EntityFramework
             var transientStatus = SyncStatus.TransientError.ToString();
             var cutoffTime = DateTime.UtcNow.AddHours(-period);
 
-            return await _writeContext.SyncJobs
+            var rows = await _writeContext.SyncJobs
                 .Where(j => j.Id == jobId &&
                     (j.Status == idleStatus
                      || j.Status == transientStatus
@@ -270,6 +270,15 @@ namespace Repositories.EntityFramework
                     .SetProperty(j => j.RunId, runId)
                     .SetProperty(j => j.LastSuccessfulStartTime, DateTime.UtcNow)
                     .SetProperty(j => j.LastRunTime, j => targetStatus == stuckStatus ? DateTime.UtcNow : j.LastRunTime));
+
+            if (rows == 0)
+                return null;
+
+            return await _writeContext.SyncJobs
+                .Include(j => j.Group)
+                .Include(j => j.Channel)
+                .AsNoTracking()
+                .FirstOrDefaultAsync(j => j.Id == jobId);
         }
 
         public async Task UpdateSyncJobDestinationAsync(Guid jobId, string destination)

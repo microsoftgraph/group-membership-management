@@ -21,6 +21,7 @@ resource configurationStore 'Microsoft.AppConfiguration/configurationStores@2023
   }
   properties: {
     disableLocalAuth: true
+    publicNetworkAccess: 'Enabled'
     dataPlaneProxy:{
       authenticationMode: 'Pass-through'
     }

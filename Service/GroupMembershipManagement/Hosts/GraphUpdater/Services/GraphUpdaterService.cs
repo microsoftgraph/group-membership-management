@@ -1,6 +1,8 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
+using Hosts.GraphUpdater;
 using Microsoft.ApplicationInsights;
+using Microsoft.Extensions.Logging;
 using Models;
 using Models.ServiceBus;
 using Models.Notifications;
@@ -22,7 +24,7 @@ namespace Services
     {
         private const int NumberOfGraphRetries = 5;
         private const string EmailSubject = "EmailSubject";
-        private readonly ILoggingRepository _loggingRepository;
+        private readonly ILogger<GraphUpdaterService> _logger;
         private readonly TelemetryClient _telemetryClient;
         private readonly IGraphGroupRepository _graphGroupRepository;
         private readonly IMailRepository _mailRepository;
@@ -34,19 +36,9 @@ namespace Services
         private readonly IServiceBusQueueRepository _serviceBusQueueRepository;
         private readonly ISyncJobStatusService _syncJobStatusService;
         private readonly ISyncJobHistoryRepository _syncJobHistoryRepository;
-        private Guid _runId;
-        public Guid RunId
-        {
-            get { return _runId; }
-            set
-            {
-                _runId = value;
-                _graphGroupRepository.RunId = value;
-            }
-        }
 
         public GraphUpdaterService(
-                ILoggingRepository loggingRepository,
+                ILogger<GraphUpdaterService> logger,
                 TelemetryClient telemetryClient,
                 IGraphGroupRepository graphGroupRepository,
                 IMailRepository mailRepository,
@@ -59,7 +51,7 @@ namespace Services
             ISyncJobStatusService syncJobStatusService,
             ISyncJobHistoryRepository syncJobHistoryRepository)
         {
-            _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _telemetryClient = telemetryClient ?? throw new ArgumentNullException(nameof(telemetryClient));
             _graphGroupRepository = graphGroupRepository ?? throw new ArgumentNullException(nameof(graphGroupRepository));
             _mailRepository = mailRepository ?? throw new ArgumentNullException(nameof(mailRepository));
@@ -73,7 +65,7 @@ namespace Services
             _syncJobHistoryRepository = syncJobHistoryRepository ?? throw new ArgumentNullException(nameof(syncJobHistoryRepository));
         }
 
-        public async Task<bool> GroupExistsAsync(Guid groupId, Guid runId)
+        public async Task<bool> GroupExistsAsync(Guid groupId)
         {
             return await _graphGroupRepository.GroupExists(groupId);
         }
@@ -103,16 +95,11 @@ namespace Services
             };
             message.ApplicationProperties.Add("MessageType", notificationType.ToString());
             await _serviceBusQueueRepository.SendMessageAsync(message);
-            await _loggingRepository.LogMessageAsync(new LogMessage
-            {
-                RunId = job.RunId,
-                Message = $"Sent message {message.MessageId} to service bus notifications queue "
-
-            });
+            _logger.SentNotificationQueueMessage(message.MessageId);
         }
         public async Task UpdateSyncJobStatusAsync(SyncJob job, SyncStatus status, bool isDryRun, Guid runId, int? usersAdded, int? usersRemoved)
         {
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Set job status to {status}.", RunId = runId });
+            _logger.JobStatusUpdated(status.ToString());
 
             var isDryRunSync = job.IsDryRunEnabled || isDryRun;
 
@@ -133,7 +120,7 @@ namespace Services
             job.RunId = runId;
 
             // Calculate AfterSyncUserCount only when sync completes successfully
-            var afterSyncUserCount = status == SyncStatus.Idle 
+            var afterSyncUserCount = status == SyncStatus.Idle
                 ? await CalculateAfterSyncUserCountAsync(runId, usersAdded, usersRemoved)
                 : null;
 
@@ -146,7 +133,7 @@ namespace Services
                 ThresholdViolations = job.ThresholdViolations,
                 UsersAdded = usersAdded,
                 UsersRemoved = usersRemoved,
-                EndTime = status != SyncStatus.InProgress ? currentDate : null,              
+                EndTime = status != SyncStatus.InProgress ? currentDate : null,
                 UpdatedAt = currentDate,
                 AfterSyncUserCount = afterSyncUserCount
             };
@@ -154,14 +141,13 @@ namespace Services
             job.Status = status.ToString();
 
             await _syncJobStatusService.UpdateJobStatusAsync(job, status, history, functionName: "GraphUpdater");
-            
+
             var groupId = await GetGroupIdAsync(job);
 
-            string message = isDryRunSync
-                                ? $"Dry Run of a sync to {groupId} is complete. Membership will not be updated."
-                                : $"Syncing to {groupId} done.";
-
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = message, RunId = runId });
+            if (isDryRunSync)
+                _logger.DryRunComplete(groupId);
+            else
+                _logger.SyncComplete(groupId);
         }
 
         private async Task<int?> CalculateAfterSyncUserCountAsync(Guid runId, int? usersAdded, int? usersRemoved)
@@ -210,12 +196,7 @@ namespace Services
             else
                 _telemetryClient.TrackMetric(nameof(Metric.MembersAdded), graphResponse.SuccessCount);
 
-            await _loggingRepository.LogMessageAsync(new LogMessage
-            {
-                Message = $"Adding {members.Count} users to group {targetGroupId} complete in {stopwatch.Elapsed.TotalSeconds} seconds. " +
-                $"{members.Count / stopwatch.Elapsed.TotalSeconds} users added per second. ",
-                RunId = runId,
-            }, VerbosityLevel.DEBUG);
+            _logger.UsersAddedToGroup(members.Count, targetGroupId, stopwatch.Elapsed.TotalSeconds, members.Count / stopwatch.Elapsed.TotalSeconds);
             _telemetryClient.TrackMetric(nameof(Metric.GraphAddRatePerSecond), members.Count / stopwatch.Elapsed.TotalSeconds);
 
             var status = graphResponse.ResponseCode == ResponseCode.GuestError ?
@@ -237,12 +218,7 @@ namespace Services
             else
                 _telemetryClient.TrackMetric(nameof(Metric.MembersRemoved), graphResponse.SuccessCount);
 
-            await _loggingRepository.LogMessageAsync(new LogMessage
-            {
-                Message = $"Removing {members.Count} users from group {targetGroupId} complete in {stopwatch.Elapsed.TotalSeconds} seconds. " +
-                $"{members.Count / stopwatch.Elapsed.TotalSeconds} users removed per second.",
-                RunId = runId
-            });
+            _logger.UsersRemovedFromGroup(members.Count, targetGroupId, stopwatch.Elapsed.TotalSeconds, members.Count / stopwatch.Elapsed.TotalSeconds);
             _telemetryClient.TrackMetric(nameof(Metric.GraphRemoveRatePerSecond), members.Count / stopwatch.Elapsed.TotalSeconds);
 
             var status = graphResponse.ResponseCode == ResponseCode.Error ? GraphUpdaterStatus.Error : GraphUpdaterStatus.Ok;

@@ -36,6 +36,15 @@ export default defineConfig(({ mode }) => {
       setupFiles: ['./src/setupTests.ts'],
       include: ['src/**/*.{test,spec}.{ts,tsx}'],
       exclude: ['tests/**'],
+      coverage: {
+        provider: 'v8',
+        thresholds: {
+          branches: 24,
+          functions: 28,
+          lines: 44,
+          statements: 42,
+        },
+      },
     },
   };
 });

@@ -20,6 +20,9 @@ param repositoryUrl string
 @description('customDomainName')
 param customDomainName string = ''
 
+@description('The name of the Azure Static Web App resource.')
+param staticWebAppName string = '${solutionAbbreviation}-ui'
+
 @description('The URI of the api app service.')
 param apiServiceBaseUri string
 
@@ -46,7 +49,7 @@ var hiddenLinkTags = {
 }
 
 module staticSiteModule 'staticSite.bicep' = {
-  name: '${solutionAbbreviation}-ui'
+  name: staticWebAppName
   scope: resourceGroup(computeResourceGroupName)
   params: {
     solutionAbbreviation: solutionAbbreviation
@@ -54,6 +57,7 @@ module staticSiteModule 'staticSite.bicep' = {
     branch: branch
     repositoryUrl: repositoryUrl
     customDomainName: customDomainName
+    staticWebAppName: staticWebAppName
     tags: hiddenLinkTags
     provider: provider
   }

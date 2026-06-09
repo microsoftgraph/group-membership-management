@@ -32,7 +32,7 @@ import {
 } from '@fluentui/react/lib/Stack';
 import React, { useEffect, useState } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
-import { useNavigate, useLocation, useParams } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { InfoLabel } from '../../components/InfoLabel';
 import { PageHeader } from '../../components/PageHeader';
 import { type Job } from '../../models/Job';
@@ -50,7 +50,10 @@ import {
   selectSelectedJobChanges,
   setGeneratedTitlesYet,
   setJobId,
-  selectJobIdSet
+  selectJobIdSet,
+  setSelectedJobEnabled,
+  setSelectedJobStatus,
+  removeJobFromList
 } from '../../store/jobs.slice';
 
 import { ContentContainer } from '../../components/ContentContainer/ContentContainer'
@@ -99,8 +102,14 @@ export const JobDetailsBase: React.FunctionComponent<IJobDetailsProps> = (
       theme: useTheme(),
     }
   );
-  const location = useLocation();
-  const job: Job = useSelector(selectSelectedJobDetails) ?? location.state?.item ?? {};
+  // Source of truth for the displayed job is Redux. Do NOT fall back to
+  // `location.state?.item` from React Router — that is the row payload from
+  // the JobsList click and goes stale on rapid renavigation, which produced
+  // the reviewer-flow bug where Approve/Reject acted on the wrong job. The
+  // reducer-level requestId guard in jobs.slice ensures `selectedJob` only
+  // ever reflects the most recently dispatched detail fetch.
+  const selectedJob = useSelector(selectSelectedJobDetails);
+  const job: Job = selectedJob ?? ({} as Job);
   const navigate = useNavigate();
 
   const { jobId } = useParams<{ jobId: string }>();
@@ -108,7 +117,6 @@ export const JobDetailsBase: React.FunctionComponent<IJobDetailsProps> = (
   const { channelId } = useParams<{ channelId: string }>();
   const dispatch = useDispatch<AppDispatch>();
   const error = useSelector(selectGetJobDetailsError);
-  const selectedJob = useSelector(selectSelectedJobDetails);
   const [showRemoveGMMDialog, setShowRemoveGMMDialog] = useState(false);
   const [showRemoveGMMError, setShowRemoveGMMError] = useState(false);
   const removeGMMError = useSelector(selectRemoveGMMError);
@@ -118,7 +126,7 @@ export const JobDetailsBase: React.FunctionComponent<IJobDetailsProps> = (
   const jobIdSet = useSelector(selectJobIdSet);
   const isJobOwnerDeleter: boolean = useSelector(selectIsJobOwnerDeleter);
   const canDeleteJob: boolean = isJobWriter || isJobOwnerDeleter;
-  const isDestinationGroupNotFound = job.status === SyncStatus.DestinationGroupNotFound;
+  const isDestinationGroupNotFound = !job.targetGroupName
   const showLoader: boolean = jobLoading || removeGMMPending;
 
   const [isJobHistoryPanelOpen, setIsJobHistoryPanelOpen] = useState(false);
@@ -146,9 +154,16 @@ export const JobDetailsBase: React.FunctionComponent<IJobDetailsProps> = (
     window.open(url, '_blank', 'noopener,noreferrer');
   };
 
-  const openRunConfiguration = (): void => {
+  const openRunConfiguration = (thresholdExceeded?: { additionsExceeded: boolean; removalsExceeded: boolean }): void => {
     dispatch(setIsEditingExistingJob(true));
-    navigate(`/ManageMembership/${jobId ?? job.syncJobId}`, { state: { currentStep: OnboardingSteps.RunConfiguration, jobId: job?.syncJobId } });
+    navigate(`/ManageMembership/${jobId ?? job.syncJobId}`, {
+      state: {
+        currentStep: OnboardingSteps.RunConfiguration,
+        jobId: job?.syncJobId,
+        thresholdExceededForAdditions: thresholdExceeded?.additionsExceeded ?? false,
+        thresholdExceededForRemovals: thresholdExceeded?.removalsExceeded ?? false,
+      }
+    });
   };
 
   const openMembershipConfiguration = (): void => {
@@ -193,6 +208,7 @@ export const JobDetailsBase: React.FunctionComponent<IJobDetailsProps> = (
   };
 
   const [canEditJob, setCanEditJob] = useState<boolean>(false);
+  const isJobInProgress = job?.status === SyncStatus.InProgress;
 
   useEffect(() => {
     setCanEditJob(isJobWriter && job?.status !== SyncStatus.PendingReview && job?.status !== SyncStatus.PendingConfiguration);
@@ -211,11 +227,17 @@ export const JobDetailsBase: React.FunctionComponent<IJobDetailsProps> = (
         dispatch(clearGeneratedGroupParts());
       }
     }
-    if (groupId && channelId === undefined) {
-      dispatch(getGroupDetails(groupId));
-    }
-    if (groupId && channelId) {
-      dispatch(getChannelDetails({ groupId, channelId }));
+    if (groupId) {
+      dispatch(clearSourceParts());
+      dispatch(setGeneratedTitlesYet(false));
+      dispatch(clearTitles());
+      dispatch(clearGeneratedHRParts());
+      dispatch(clearGeneratedGroupParts());
+      if (channelId === undefined) {
+        dispatch(getGroupDetails(groupId));
+      } else {
+        dispatch(getChannelDetails({ groupId, channelId }));
+      }
     }
   }, [dispatch, jobId, groupId, channelId]);
 
@@ -287,12 +309,15 @@ export const JobDetailsBase: React.FunctionComponent<IJobDetailsProps> = (
           {isDestinationGroupNotFound ? (
             <div className={classNames.root}>
               <div className={classNames.notFound}>
-                {format(
-                  strings.JobDetails.notFound,
-                  job.targetGroupId,
-                  job.lastSuccessfulRunTime ? new Date(job.lastSuccessfulRunTime).toLocaleDateString() : 'Unknown',
-                  job.estimatedPurgeDate ? new Date(job.estimatedPurgeDate).toLocaleDateString() : 'Unknown'
-                )}
+                {!job.estimatedPurgeDate
+                  ? format(strings.JobDetails.notFoundWithoutPurgeDate, job.targetGroupId)
+                  : format(
+                      strings.JobDetails.notFound,
+                      job.targetGroupId,
+                      job.lastSuccessfulRunTime ? new Date(job.lastSuccessfulRunTime).toLocaleDateString() : 'Unknown',
+                      job.estimatedPurgeDate ? new Date(job.estimatedPurgeDate).toLocaleDateString() : 'Unknown'
+                    )
+                }
               </div>
             </div>
           ) : ( <>
@@ -324,7 +349,13 @@ export const JobDetailsBase: React.FunctionComponent<IJobDetailsProps> = (
                 children={<RunConfiguration job={job} classNames={classNames} />}
                 actionButtons={
                   canEditJob
-                  ? [{ text: strings.JobDetails.editButton, icon: { iconName: 'Edit' }, onClick: openRunConfiguration }]
+                  ? [{
+                      text: strings.JobDetails.editButton,
+                      icon: { iconName: 'Edit' },
+                      onClick: openRunConfiguration,
+                      disabled: isJobInProgress,
+                      disabledReason: isJobInProgress ? strings.JobDetails.editDisabledInProgress : undefined
+                    }]
                   : []
                 }
               />
@@ -332,7 +363,13 @@ export const JobDetailsBase: React.FunctionComponent<IJobDetailsProps> = (
                 title={strings.JobDetails.labels.sourceParts}
                 actionButtons={
                   canEditJob
-                  ? [{ text: strings.JobDetails.editButton, icon: { iconName: 'Edit' }, onClick: openMembershipConfiguration }]
+                  ? [{
+                      text: strings.JobDetails.editButton,
+                      icon: { iconName: 'Edit' },
+                      onClick: openMembershipConfiguration,
+                      disabled: isJobInProgress,
+                      disabledReason: isJobInProgress ? strings.JobDetails.editDisabledInProgress : undefined
+                    }]
                   : []
                 }
                 children={
@@ -347,6 +384,8 @@ export const JobDetailsBase: React.FunctionComponent<IJobDetailsProps> = (
               isOpen={isJobHistoryPanelOpen}
               dismissPanel={() => setIsJobHistoryPanelOpen(false)}
               jobId={jobId}
+              onEditRules={openMembershipConfiguration}
+              onEditThreshold={openRunConfiguration}
             />
           )}
         </>
@@ -427,9 +466,13 @@ const MembershipStatusContent: React.FunctionComponent<IStatusContentProps> = (
   const isSubmissionRejector = useSelector(selectIsSubmissionRejector);
   const patchError = useSelector(selectPatchJobDetailsError);
   const patchResponse = useSelector(selectPatchJobDetailsResponse);
-  const [jobStatus, setJobStatus] = useState(job.status);
+  // Status & enabled are derived directly from the Redux-backed `job` prop;
+  // mirroring them into local useState caused stale UI when the parent
+  // refetched after an approve/reject (the local copy lagged a render behind
+  // and reflected the previous job's status during rapid renavigation).
+  const jobStatus = job?.status ?? '';
+  const isJobEnabled = job?.enabledOrNot ?? false;
   const jobDetails = useSelector(selectSelectedJobDetails);
-  const [isJobEnabled, setIsJobEnabled] = useState(job.enabledOrNot);
   const isJobEnabler = useSelector(selectIsJobOwnerEnabler);
   const isJobWriter = useSelector(selectIsJobWriter);
   const canEnableJob = isJobEnabler || isJobWriter;
@@ -451,17 +494,24 @@ const MembershipStatusContent: React.FunctionComponent<IStatusContentProps> = (
   const [showRejectionDialog, setShowRejectionDialog] = useState(false);
   const [rejectionFeedback, setRejectionFeedback] = useState('');
   const [isSubmittingRejection, setIsSubmittingRejection] = useState(false);
+  // Double-click guard for Approve.
+  const [isSubmittingApproval, setIsSubmittingApproval] = useState(false);
   const [rejectionError, setRejectionError] = useState<string | null>(null);
 
+  // Re-fetch the job-changes feed whenever the route's jobId (or the loaded
+  // selectedJob's syncJobId) changes. We deliberately depend on the *id*, not
+  // on the whole `job` object — `job` is recreated on every Redux update,
+  // which previously caused this effect to re-run on every render.
   useEffect(() => {
-    setJobStatus(job?.status ?? '');
-    setIsJobEnabled(job?.enabledOrNot ?? false);
+    const targetSyncJobId = jobId ?? job?.syncJobId;
+    if (!targetSyncJobId) return;
+    setLoadingJobChanges(true);
     const fetchChanges = async () => {
-      await dispatch(fetchJobChanges({ syncJobId: jobId ?? job.syncJobId }));
+      await dispatch(fetchJobChanges({ syncJobId: targetSyncJobId }));
       setLoadingJobChanges(false);
     };
     fetchChanges();
-  }, [job, dispatch, jobId]);
+  }, [dispatch, jobId, job?.syncJobId]);
 
   useEffect(() => {
     if (jobDetails && jobDetails.lastModifiedByObjectId) {
@@ -472,7 +522,12 @@ const MembershipStatusContent: React.FunctionComponent<IStatusContentProps> = (
     }
   }, [dispatch, jobDetails]);
 
-  const updateJobStatus = async (newStatus: string, changeReason: SyncJobChangeReason, rejectionBusinessJustification?: string) => {
+  const updateJobStatus = async (
+    newStatus: string,
+    changeReason: SyncJobChangeReason,
+    rejectionBusinessJustification?: string,
+    options?: { refetch?: boolean }
+  ) => {
     if (jobId === undefined && job.syncJobId === undefined) {
       throw new Error('Job ID is not defined');
     }
@@ -493,14 +548,18 @@ const MembershipStatusContent: React.FunctionComponent<IStatusContentProps> = (
     try {
       const response = await dispatch(patchJobDetails(patchRequest)).unwrap();
       if (response.ok) {
-        setJobStatus(newStatus);
-        setIsJobEnabled(newStatus === SyncStatus.Idle);
+        // Optimistic status so consumers see the change before refetch.
+        dispatch(setSelectedJobStatus(newStatus));
+        dispatch(setSelectedJobEnabled(newStatus === SyncStatus.Idle));
       } else if (response.responseData && response.responseData[0] === "SubmitterNotOwner") {
-        setJobStatus(SyncStatus.SubmissionRejected);
-        setIsJobEnabled(false);
+        dispatch(setSelectedJobStatus(SyncStatus.SubmissionRejected));
+        dispatch(setSelectedJobEnabled(false));
       }
 
-      await dispatch(fetchJobDetails({ syncJobId: jobId ?? job.syncJobId }));
+      // Skip refetch when the caller is about to navigate away (Approve/Reject).
+      if (options?.refetch !== false) {
+        await dispatch(fetchJobDetails({ syncJobId: jobId ?? job.syncJobId }));
+      }
     } catch (error) {
       throw new Error('Failed to update job status');
     }
@@ -511,12 +570,25 @@ const MembershipStatusContent: React.FunctionComponent<IStatusContentProps> = (
     updateJobStatus(newStatus, SyncJobChangeReason.StatusUpdate);
   };
 
-  const handleApproveSubmission = (approved: boolean) => {
-    if (approved) {
-      updateJobStatus(SyncStatus.Idle, SyncJobChangeReason.SubmissionApproved);
-      resolveReview();
-    } else {
+  const handleApproveSubmission = async (approved: boolean) => {
+    if (!approved) {
       setShowRejectionDialog(true);
+      return;
+    }
+    if (isSubmittingApproval) return;
+    setIsSubmittingApproval(true);
+    try {
+      // Await PATCH so post-nav fetchJobs sees committed state.
+      await updateJobStatus(SyncStatus.Idle, SyncJobChangeReason.SubmissionApproved, undefined, { refetch: false });
+      const targetJobId = jobId ?? job.syncJobId;
+      if (targetJobId) {
+        dispatch(removeJobFromList(targetJobId));
+      }
+      resolveReview();
+    } catch {
+      // Error surfaced via patchResponse.
+    } finally {
+      setIsSubmittingApproval(false);
     }
   };
 
@@ -531,7 +603,11 @@ const MembershipStatusContent: React.FunctionComponent<IStatusContentProps> = (
     setIsSubmittingRejection(true);
     setRejectionError(null);
     try {
-      await updateJobStatus(SyncStatus.SubmissionRejected, SyncJobChangeReason.SubmissionRejected, rejectionFeedback);
+      await updateJobStatus(SyncStatus.SubmissionRejected, SyncJobChangeReason.SubmissionRejected, rejectionFeedback, { refetch: false });
+      const targetJobId = jobId ?? job.syncJobId;
+      if (targetJobId) {
+        dispatch(removeJobFromList(targetJobId));
+      }
       resolveReview();
       setShowRejectionDialog(false);
       setRejectionFeedback('');
@@ -625,8 +701,15 @@ const MembershipStatusContent: React.FunctionComponent<IStatusContentProps> = (
               : strings.JobDetails.labels.pendingReviewDescription}</Text>
             {(isSubmissionReviewer || isSubmissionRejector) && jobStatus === SyncStatus.PendingReview && (
               <div className={classNames.membershipStatusActionButtons}>
-                {isSubmissionReviewer && (<DefaultButton onClick={() => handleApproveSubmission(true)} text={strings.JobDetails.labels.approve} />)}
-                <PrimaryButton onClick={() => handleApproveSubmission(false)} text={strings.JobDetails.labels.reject} />
+                {isSubmissionReviewer && (
+                  <DefaultButton onClick={() => handleApproveSubmission(true)} disabled={isSubmittingApproval}>
+                    {isSubmittingApproval && (
+                      <Spinner size={SpinnerSize.xSmall} style={{ marginRight: 8 }} />
+                    )}
+                    {strings.JobDetails.labels.approve}
+                  </DefaultButton>
+                )}
+                <PrimaryButton onClick={() => handleApproveSubmission(false)} text={strings.JobDetails.labels.reject} disabled={isSubmittingApproval} />
               </div>
             )}
           </Stack>
@@ -845,6 +928,7 @@ const MembershipDestination: React.FunctionComponent<IContentProps> = (
         <EndpointsList
           endpoints={job.endpoints}
           groupName={job.targetGroupName}
+          vivaEngageUrl={job.vivaEngageUrl}
         />
     </Stack>
   )

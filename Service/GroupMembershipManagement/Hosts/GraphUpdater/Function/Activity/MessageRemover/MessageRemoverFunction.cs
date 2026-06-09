@@ -2,8 +2,7 @@
 // Licensed under the MIT license.
 using Azure.Messaging.ServiceBus;
 using Microsoft.Azure.Functions.Worker;
-using Models;
-using Repositories.Contracts;
+using Microsoft.Extensions.Logging;
 using System;
 using System.Threading.Tasks;
 
@@ -11,24 +10,25 @@ namespace Hosts.GraphUpdater
 {
     public class MessageRemoverFunction
     {
-        private readonly ILoggingRepository _loggingRepository;
+        private readonly ILogger<MessageRemoverFunction> _logger;
         private readonly ServiceBusClient _serviceBusClient;
 
-        public MessageRemoverFunction(ILoggingRepository loggingRepository, ServiceBusClient serviceBusClient)
+        public MessageRemoverFunction(ILogger<MessageRemoverFunction> logger, ServiceBusClient serviceBusClient)
         {
-            _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _serviceBusClient = serviceBusClient ?? throw new ArgumentNullException(nameof(serviceBusClient));
         }
 
         [Function(nameof(MessageRemoverFunction))]
         public async Task RemoveMessagesAsync([ActivityTrigger] MessageRemoverRequest request)
         {
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(MessageRemoverFunction)} function started", RunId = request.RunId }, VerbosityLevel.DEBUG);
+            using var scope = _logger.BeginGraphUpdaterScope(request);
+            _logger.FunctionStarted(nameof(MessageRemoverFunction));
 
-            if (request.RunId != Guid.Empty)
+            if (request.SyncJob.RunId.GetValueOrDefault() != Guid.Empty)
                 await DeleteJobMessagesAsync(request);
 
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(MessageRemoverFunction)} function completed", RunId = request.RunId }, VerbosityLevel.DEBUG);
+            _logger.FunctionCompleted(nameof(MessageRemoverFunction));
         }
 
         private async Task DeleteJobMessagesAsync(MessageRemoverRequest request)
@@ -43,7 +43,7 @@ namespace Hosts.GraphUpdater
                 if (message == null)
                     break;
 
-                if (message.MessageId.Contains(request.RunId.ToString(), StringComparison.InvariantCultureIgnoreCase))
+                if (message.MessageId.Contains(request.SyncJob.RunId.GetValueOrDefault().ToString(), StringComparison.InvariantCultureIgnoreCase))
                 {
                     await receiver.CompleteMessageAsync(message);
                 }

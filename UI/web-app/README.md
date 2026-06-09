@@ -68,6 +68,41 @@ Launches the unit test runner in watch mode using Vitest.\
 
 Runs unit tests once (non-watch mode) using Vitest.
 
+#### Unit test commands (Vitest)
+
+From `UI/web-app`, use these commands:
+
+- Run tests in watch mode (local development):
+
+    ```bash
+    pnpm test
+    ```
+
+- Run all tests once (non-interactive / CI-friendly):
+
+    ```bash
+    pnpm run test:run
+    ```
+
+- Run a single test file:
+
+    ```bash
+    pnpm run test:run src/components/Page/Page.test.tsx
+    ```
+
+- Run tests with coverage output:
+
+    ```bash
+    pnpm run test:run --coverage
+    ```
+
+Vitest is configured in `vite.config.ts`. Test files are discovered with:
+
+- `src/**/__tests__/**/*.{js,jsx,ts,tsx}`
+- `src/**/*.{spec,test}.{js,jsx,ts,tsx}`
+
+Coverage thresholds are also enforced through `vite.config.ts` when running with `--coverage`.
+
 ### `pnpm run build`
 
 Builds the app for production to the `build` folder.\

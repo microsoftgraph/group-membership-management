@@ -21,6 +21,7 @@ namespace Repositories.Contracts
         Task<Dictionary<Guid, string>> GetGroupEmailsAsync(List<Guid> objectIds);
 
         Task<List<string>> GetGroupEndpointsAsync(Guid groupId);
+        Task<string?> GetGroupVivaEngageUrlAsync(Guid groupId);
         Task<bool> IsAppIDOwnerOfGroup(string appId, Guid groupObjectId, bool validateGroupExists = true);
         Task<bool> IsServiceAccountOwnerOfGroupAsync(Guid serviceAccountObjectId, Guid groupObjectId);
         Task<bool> IsEmailRecipientOwnerOfGroupAsync(string userIdentifier, Guid groupObjectId, bool validateGroupExists = true);
@@ -31,7 +32,9 @@ namespace Repositories.Contracts
         Task<bool> GroupExists(string groupName);
         Task<bool> IsGroupSyncedOnPremisesAsync(Guid groupId);
         Task<AzureADGroup> GetGroup(string groupName);
-        Task CreateGroup(string newGroupName, TestGroupType testGroupType, List<Guid> groupOwnerIds);
+        Task<AzureADGroup> CreateGroup(string newGroupName, TestGroupType testGroupType);
+        Task AddGroupOwners(string groupId, List<Guid> ownerIds);
+        Task<List<Guid>> GetGroupIdsOwnedByServicePrincipalAsync(Guid servicePrincipalObjectId);
         Task<AzureADGroup> CreateGroupFromUI(string newGroupName, Guid groupOwnerId, string newGroupAlias);
         Task<List<AzureADUser>> GetTenantUsers(int userCount);
         Task<List<AzureADUser>> GetUsersInGroupTransitively(Guid objectId);
@@ -54,7 +57,7 @@ namespace Repositories.Contracts
         Task<List<AzureADGroup>> GetGroupsAsync(List<Guid> groupIds);
         Task<List<AzureADGroup>> SearchDestinationsAsync(string query);
         Task<List<AzureADGroup>> GetGroupsByFilterAsync(string query);
-        Task<List<string>> GetAllGroupNamesAsync();
+        Task<Dictionary<Guid, string>> GetAllGroupNamesAsync();
         Task<Guid> GetObjectIdFromAppIdAsync(Guid userIdentifier, Guid? runId);
         Task<List<AzureADGroup>> GetDirectGroupTypeMembersAsync(Guid groupObjectId);
     }

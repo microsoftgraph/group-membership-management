@@ -2,13 +2,16 @@
 // Licensed under the MIT license.
 using Microsoft.Azure.Functions.Worker;
 using Microsoft.DurableTask;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Models;
 using NonProdService.LoadTestingPrepSubOrchestrator;
-using Repositories.Contracts;
+using Repositories.Contracts.Helpers;
+using Services.Contracts;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace Hosts.NonProdService
@@ -30,10 +33,13 @@ namespace Hosts.NonProdService
             var options = _options.Value;
             var destinationGroupOwnerId = options.DestinationGroupOwnerId;
 
-            await context.CallActivityAsync(nameof(LoggerFunction), new LoggerRequest { Message = $"{nameof(LoadTestingPrepSubOrchestratorFunction)} function started", RunId = runId, Verbosity = VerbosityLevel.DEBUG });
+            var logger = context.CreateReplaySafeLogger("Hosts.NonProdService.LoadTestingPrepSubOrchestratorFunction");
+            using var scope = logger.BeginRunIdScope(runId);
+
+            logger.FunctionStarted(nameof(LoadTestingPrepSubOrchestratorFunction));
 
             var allGroupNames = await context.CallActivityAsync<GetAllGroupNamesResponse>(nameof(GetAllGroupNamesFunction), new GetAllGroupNamesRequest { RunId = runId });
-            
+
             // Determine how many groups of each size are needed
             var calcResponse = await context.CallActivityAsync<LoadTestingGroupCalculatorResponse>(
                 nameof(LoadTestingGroupCalculatorFunction),
@@ -42,40 +48,95 @@ namespace Hosts.NonProdService
                     NumberOfGroups = options.GroupCount,
                     NumberOfUsers = tenantUserCount,
                     RunId = runId,
-                    ExistingGroupNames = allGroupNames.GroupNames
+                    ExistingGroupNames = allGroupNames.Groups.Values.ToList()
                 });
 
             var groupsToCreate = calcResponse.GroupSizesAndCounts;
-            
-            int batchSize = 200; 
-            foreach (var groupSize in groupsToCreate.Keys)
-            {
-                // this section needs to be updated once we transition this function to isolated-worker model. 
-                // In Isolated, we no longer need to batch these calls and we can just send the entire group count at once.
-                var totalGroupCount = groupsToCreate[groupSize];
-                var groupIds = new List<Guid>();
-                var cumulativeCreatedCount = 0; //We will not need this variable once we transition to isolated-worker model.
 
-                for (int i = 0; i < totalGroupCount; i += batchSize)
+            // Phase 1: Create groups in batches of 5,000 to survive host recycling (~75 min cycles)
+            const int groupCreationBatchSize = 5000;
+            var allBatchResponses = new List<GroupCreatorAndRetrieverBatchResponse>();
+            var existingNames = allGroupNames.Groups.Values.Where(v => v != null).ToList();
+
+            foreach (var groupSize in groupsToCreate.Keys.OrderBy(k => k))
+            {
+                var totalCount = groupsToCreate[groupSize];
+
+                for (int offset = 0; offset < totalCount; offset += groupCreationBatchSize)
                 {
-                    int currentBatchSize = Math.Min(batchSize, totalGroupCount - i);
+                    var chunkCount = Math.Min(groupCreationBatchSize, totalCount - offset);
+
+                    logger.CreatingGroupsBatch(groupSize, offset, chunkCount, totalCount);
 
                     var batchResponse = await context.CallActivityAsync<List<GroupCreatorAndRetrieverBatchResponse>>(
                         nameof(GroupCreatorAndRetrieverBatchFunction),
                         new GroupCreatorAndRetrieverBatchRequest
                         {
                             BaseGroupName = $"LoadTesting_DestinationGroup_{groupSize}",
-                            GroupCount = currentBatchSize,
-                            GroupOwnersIds = new List<Guid> { destinationGroupOwnerId },
+                            GroupCount = chunkCount,
                             RetrieveMembers = false,
                             RunId = runId,
-                            ExistingGroupNames = allGroupNames.GroupNames,
-                            StartingIndex = cumulativeCreatedCount // We will not need this parameter once we transition to isolated-worker model.
+                            ExistingGroupNames = existingNames,
+                            StartingIndex = offset
                         });
 
-                    groupIds.AddRange(batchResponse.Select(response => response.TargetGroup.ObjectId));
-                    cumulativeCreatedCount += currentBatchSize; // We will not need this variable once we transition to isolated-worker model.
+                    allBatchResponses.AddRange(batchResponse);
                 }
+            }
+
+            var allCreatedGroupIds = allBatchResponses
+                .Where(r => r.TargetGroup != null)
+                .Select(r => r.TargetGroup.ObjectId)
+                .ToList();
+
+            // Phase 2: Wait for Graph API replication before ownership assignment
+            if (allCreatedGroupIds.Count > 0)
+            {
+                logger.WaitingForGraphReplication(allCreatedGroupIds.Count);
+                await context.CreateTimer(context.CurrentUtcDateTime.AddSeconds(30), CancellationToken.None);
+            }
+
+            // Phase 3: Ensure ownership of all managed groups in batches
+            var managedGroupIds = allGroupNames.Groups
+                .Where(kvp => kvp.Value != null && kvp.Value.StartsWith("LoadTesting_DestinationGroup_", StringComparison.OrdinalIgnoreCase))
+                .Select(kvp => kvp.Key)
+                .ToList();
+            managedGroupIds.AddRange(allCreatedGroupIds);
+            managedGroupIds = managedGroupIds.Distinct().ToList();
+
+            if (managedGroupIds.Count > 0)
+            {
+                const int ownershipBatchSize = 5000;
+                var ownershipBatches = managedGroupIds.Chunk(ownershipBatchSize).ToList();
+                var aggregatedOwnership = new GroupOwnershipResult
+                {
+                    TotalManagedGroups = managedGroupIds.Count,
+                    FailedGroupIds = new List<Guid>()
+                };
+
+                for (int batchIndex = 0; batchIndex < ownershipBatches.Count; batchIndex++)
+                {
+                    var batch = ownershipBatches[batchIndex];
+
+                    logger.EnsuringOwnershipBatch(batchIndex + 1, ownershipBatches.Count, batch.Length);
+
+                    var ownershipResult = await context.CallActivityAsync<GroupOwnershipResult>(
+                        nameof(EnsureGroupOwnershipFunction),
+                        new EnsureGroupOwnershipRequest
+                        {
+                            ManagedGroupIds = batch.ToList(),
+                            OwnerAppId = destinationGroupOwnerId,
+                            RunId = runId
+                        });
+
+                    aggregatedOwnership.GroupsAlreadyOwned += ownershipResult.GroupsAlreadyOwned;
+                    aggregatedOwnership.GroupsNewlyOwned += ownershipResult.GroupsNewlyOwned;
+                    aggregatedOwnership.GroupsFailed += ownershipResult.GroupsFailed;
+                    if (ownershipResult.FailedGroupIds != null)
+                        aggregatedOwnership.FailedGroupIds.AddRange(ownershipResult.FailedGroupIds);
+                }
+
+                logger.OwnershipEnsured(aggregatedOwnership.GroupsAlreadyOwned, aggregatedOwnership.GroupsNewlyOwned, aggregatedOwnership.GroupsFailed);
             }
 
             // Retrieve existing SyncJobs
@@ -99,49 +160,21 @@ namespace Hosts.NonProdService
 
             if (groupSizesAndIds.Count == 0)
             {
-                await context.CallActivityAsync(nameof(LoggerFunction),
-                                                new LoggerRequest { Message = "No groups to create sync jobs for", RunId = runId, Verbosity = VerbosityLevel.DEBUG });
+                logger.NoGroupsToCreateSyncJobsFor();
             }
             else
             {
-                // When we transition to isolated-worker model, we can remove this batching logic and just send the entire dictionary at once.  
-                batchSize = 500;
-
-                foreach (var batch in BatchGroupSizesAndIds(groupSizesAndIds, batchSize))
-                {
-                    await context.CallActivityAsync(
-                        nameof(LoadTestingSyncJobCreatorFunction),
-                        new LoadTestingSyncJobCreatorRequest
-                        {
-                            GroupSizesAndIds = batch,
-                            TargetGroupIds = targetGroupIds,
-                            RunId = runId
-                        });
-                }
+                await context.CallActivityAsync(
+                    nameof(LoadTestingSyncJobCreatorFunction),
+                    new LoadTestingSyncJobCreatorRequest
+                    {
+                        GroupSizesAndIds = groupSizesAndIds,
+                        TargetGroupIds = targetGroupIds,
+                        RunId = runId
+                    });
             }
 
-            await context.CallActivityAsync(nameof(LoggerFunction), new LoggerRequest { Message = $"{nameof(LoadTestingPrepSubOrchestratorFunction)} function completed", RunId = runId, Verbosity = VerbosityLevel.DEBUG });
-        }
-
-        public static IEnumerable<Dictionary<int, List<Guid>>> BatchGroupSizesAndIds(Dictionary<int, List<Guid>> fullDict, int batchSize)
-        {
-            var allEntries = fullDict.SelectMany(kvp => kvp.Value.Select(id => new { kvp.Key, Id = id })).ToList();
-
-            for (int i = 0; i < allEntries.Count; i += batchSize)
-            {
-                var batch = allEntries.Skip(i).Take(batchSize);
-
-                var dict = new Dictionary<int, List<Guid>>();
-                foreach (var item in batch)
-                {
-                    if (!dict.ContainsKey(item.Key))
-                        dict[item.Key] = new List<Guid>();
-
-                    dict[item.Key].Add(item.Id);
-                }
-
-                yield return dict;
-            }
+            logger.FunctionCompleted(nameof(LoadTestingPrepSubOrchestratorFunction));
         }
     }
 }

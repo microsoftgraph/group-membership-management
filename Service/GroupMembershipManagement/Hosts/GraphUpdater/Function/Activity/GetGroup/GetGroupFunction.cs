@@ -1,8 +1,7 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 using Microsoft.Azure.Functions.Worker;
-using Models;
-using Repositories.Contracts;
+using Microsoft.Extensions.Logging;
 using Services.Contracts;
 using System;
 using System.Threading.Tasks;
@@ -11,22 +10,22 @@ namespace Hosts.GraphUpdater
 {
     public class GetGroupFunction
     {
-        private readonly ILoggingRepository _loggingRepository;
+        private readonly ILogger<GetGroupFunction> _logger;
         private readonly IGraphUpdaterService _graphUpdaterService;
 
-        public GetGroupFunction(ILoggingRepository loggingRepository, IGraphUpdaterService graphUpdaterService)
+        public GetGroupFunction(ILogger<GetGroupFunction> logger, IGraphUpdaterService graphUpdaterService)
         {
-            _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _graphUpdaterService = graphUpdaterService ?? throw new ArgumentNullException(nameof(graphUpdaterService));
         }
 
         [Function(nameof(GetGroupFunction))]
-        public async Task<Guid> GetGroupNameAsync([ActivityTrigger] SyncJob syncJob)
+        public async Task<Guid> GetGroupNameAsync([ActivityTrigger] GetGroupRequest request)
         {
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(GetGroupFunction)} function started", RunId = syncJob.RunId }, VerbosityLevel.DEBUG);
-            _graphUpdaterService.RunId = syncJob.RunId ?? Guid.Empty;
-            var groupId = await _graphUpdaterService.GetGroupIdAsync(syncJob);
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(GetGroupFunction)} function completed", RunId = syncJob.RunId }, VerbosityLevel.DEBUG);
+            using var scope = _logger.BeginGraphUpdaterScope(request);
+            _logger.FunctionStarted(nameof(GetGroupFunction));
+            var groupId = await _graphUpdaterService.GetGroupIdAsync(request.SyncJob);
+            _logger.FunctionCompleted(nameof(GetGroupFunction));
             return groupId;
         }
     }

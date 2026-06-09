@@ -5,9 +5,12 @@ using Azure.Messaging.ServiceBus;
 using Common.DependencyInjection;
 using DIConcreteTypes;
 using Hosts.FunctionBase;
+using Microsoft.Azure.Functions.Worker;
+using Microsoft.Azure.Functions.Worker.ApplicationInsights;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Repositories.Contracts;
 using Repositories.Contracts.InjectConfig;
@@ -18,6 +21,8 @@ using Repositories.ServiceBusQueue;
 using Services;
 using Services.Contracts;
 using System;
+
+
 
 namespace Hosts.AzureMaintenance
 {
@@ -45,6 +50,8 @@ namespace Hosts.AzureMaintenance
                     var dryRunSettingName = string.Empty;
                     var rootPath = context.HostingEnvironment.ContentRootPath;
                     CommonServices.ConfigureCommonServices(services, configuration, functionName, dryRunSettingName, rootPath);
+
+                    services.ConfigureFunctionsApplicationInsights();
 
                     services.AddScoped<IDatabasePurgedSyncJobsRepository, DatabasePurgedSyncJobsRepository>();
 
@@ -99,7 +106,7 @@ namespace Hosts.AzureMaintenance
                             services.GetService<IHandleInactiveJobsConfig>(),
                             services.GetService<INotificationRepository>(),
                             notificationsQueueRepository,
-                            services.GetService<ILoggingRepository>(),
+                            services.GetService<ILogger<AzureMaintenanceService>>(),
                             services.GetService<ISyncJobHistoryRepository>());
                     });
                 }).Build();

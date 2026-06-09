@@ -1,12 +1,11 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
-using System;
+using Services.Entities;
 
 namespace Hosts.GraphUpdater
 {
-    public class BlobCheckerRequest
+    public class BlobCheckerRequest : GraphUpdaterRequestBase
     {
-        public Guid RunId { get; set; }
         public string Prefix { get; set; }
     }
 }

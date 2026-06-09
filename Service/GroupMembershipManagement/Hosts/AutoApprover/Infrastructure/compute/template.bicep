@@ -130,22 +130,15 @@ module userAssignedManagedIdentityNameReader 'keyVaultReader.bicep' = {
 module storageAccountNameReader 'keyVaultReader.bicep' = {
   name: 'storageAccountNameReader-AutoApprover'
   params: {
-    value: dataKeyVault.getSecret('autoApproverStorageAccountProd')
+    value: dataKeyVault.getSecret('functionsStorageAccountName')
   }
   dependsOn: [
     dataKeyVault
   ]
 }
 
-module appPackageContainerNameReader 'keyVaultReader.bicep' = {
-  name: 'appPackageContainerNameReader-AutoApprover'
-  params: {
-    value: dataKeyVault.getSecret('autoApproverAppPackageContainerProd')
-  }
-  dependsOn: [
-    dataKeyVault
-  ]
-}
+var appPackageContainerName = 'autoapprover-app-package'
+
 
 resource graphUAMI 'Microsoft.ManagedIdentity/userAssignedIdentities@2023-07-31-preview' existing = {
   name: userAssignedManagedIdentityNameReader.outputs.value
@@ -170,7 +163,7 @@ module functionAppTemplate_AutoApprover 'functionApp.bicep' = {
     location: location
     servicePlanName: servicePlanName
     appSettings: appSettings
-    appPackageContainerName: appPackageContainerNameReader.outputs.value
+    appPackageContainerName: appPackageContainerName
     functionAuthAppClientId: functionAuthAppClientId
     userManagedIdentities:{
       '${graphUAMI.id}' : {}

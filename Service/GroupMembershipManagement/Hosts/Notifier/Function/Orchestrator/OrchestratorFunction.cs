@@ -3,15 +3,14 @@
 
 using Microsoft.Azure.Functions.Worker;
 using Microsoft.DurableTask;
-using Repositories.Contracts;
+using Microsoft.Extensions.Logging;
 using System.Threading.Tasks;
 using Models.ThresholdNotifications;
 using Models.Notifications;
 using Services.Contracts;
 using Models;
-using System.Text.Json;
-using System.Collections.Generic;
-using System;
+using Repositories.Contracts.Helpers;
+using Services.Notifier;
 
 namespace Hosts.Notifier
 {
@@ -24,19 +23,14 @@ namespace Hosts.Notifier
         [Function(nameof(OrchestratorFunction))]
         public async Task RunOrchestratorAsync([OrchestrationTrigger] TaskOrchestrationContext context)
         {
+            var logger = context.CreateReplaySafeLogger("Notifier.OrchestratorFunction");
             var message = context.GetInput<OrchestratorRequest>();
-            var messageContent = JsonSerializer.Deserialize<Dictionary<string, Object>>(message.MessageBody);
-            SyncJob job = ((JsonElement)messageContent["SyncJob"]).Deserialize<SyncJob>();
-            Guid runId = job.RunId ?? Guid.Empty;
+            var messageContent = NotificationMessageContentParser.ParseMessageBody(message.MessageBody);
+            var job = NotificationMessageContentParser.GetRequiredValue<SyncJob>(messageContent, "SyncJob");
 
-            message.RunId = runId;
-            await context.CallActivityAsync(nameof(LoggerFunction),
-                new LoggerRequest
-                {
-                    RunId = runId,
-                    Message = $"{nameof(OrchestratorFunction)} function started at: {context.CurrentUtcDateTime}",
-                    Verbosity = VerbosityLevel.DEBUG
-                });
+            using var scope = logger.BeginSyncJobScope(job);
+
+            logger.FunctionStarted(nameof(OrchestratorFunction));
 
             switch (message.MessageType)
             {
@@ -135,23 +129,11 @@ namespace Hosts.Notifier
                     break;
 
                 default:
-                    await context.CallActivityAsync(nameof(LoggerFunction),
-                    new LoggerRequest
-                    {
-                        RunId = runId,
-                        Message = $"{message.MessageType} is not a valid message type",
-                        Verbosity = VerbosityLevel.DEBUG
-                    });
+                    logger.InvalidMessageType(message.MessageType);
                     break;
             }
 
-            await context.CallActivityAsync(nameof(LoggerFunction),
-                new LoggerRequest
-                {
-                    RunId = runId,
-                    Message = $"{nameof(OrchestratorFunction)} function completed at: {context.CurrentUtcDateTime}",
-                    Verbosity = VerbosityLevel.DEBUG
-                });
+            logger.FunctionCompleted(nameof(OrchestratorFunction));
         }
     }
 }

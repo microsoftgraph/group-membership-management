@@ -1,6 +1,7 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
+using Hosts.Notifier;
 using Models;
 using Models.Notifications;
 using System.Collections.Generic;
@@ -19,18 +20,19 @@ using Models.Entities;
 using System.Net.Http;
 using System.Net;
 using Models.ServiceBus;
+using Microsoft.Extensions.Logging;
 
 namespace Services.Notifier
 {
     public class NotifierService : INotifierService
     {
-        private readonly ILoggingRepository _loggingRepository = null;
-        private readonly IMailRepository _mailRepository = null;
-        private readonly IEmailSenderRecipient _emailSenderAndRecipients = null;
-        private readonly ILocalizationRepository _localizationRepository = null;
+        private readonly ILogger<NotifierService> _logger;
+        private readonly IMailRepository _mailRepository;
+        private readonly IEmailSenderRecipient _emailSenderAndRecipients;
+        private readonly ILocalizationRepository _localizationRepository;
         private readonly IThresholdNotificationService _thresholdNotificationService;
-        private readonly INotificationRepository _notificationRepository = null;
-        private readonly IGraphGroupRepository _graphGroupRepository = null;
+        private readonly INotificationRepository _notificationRepository;
+        private readonly IGraphGroupRepository _graphGroupRepository;
         private readonly TelemetryClient _telemetryClient;
         private readonly INotificationTypesRepository _notificationTypesRepository;
         private readonly IJobNotificationsRepository _jobNotificationRepository;
@@ -41,7 +43,7 @@ namespace Services.Notifier
         private readonly IDatabaseChannelsRepository _databaseChannelsRepository;
 
         public NotifierService(
-            ILoggingRepository loggingRepository,
+            ILogger<NotifierService> logger,
             IMailRepository mailRepository,
             IEmailSenderRecipient emailSenderAndRecipients,
             ILocalizationRepository localizationRepository,
@@ -57,7 +59,7 @@ namespace Services.Notifier
             IDatabaseChannelsRepository databaseChannelsRepository,
             TelemetryClient telemetryClient)
         {
-            _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _mailRepository = mailRepository ?? throw new ArgumentNullException(nameof(mailRepository));
             _emailSenderAndRecipients = emailSenderAndRecipients ?? throw new ArgumentNullException(nameof(emailSenderAndRecipients));
             _localizationRepository = localizationRepository ?? throw new ArgumentNullException(nameof(localizationRepository));
@@ -105,14 +107,10 @@ namespace Services.Notifier
 
             if (isNotificationDisabled)
             {
-                await _loggingRepository.LogMessageAsync(new LogMessage
-                {
-                    RunId = notification.SyncJobId,
-                    Message = $"Notification '{NotificationMessageType.ThresholdNotification}' is disabled for job {notification.Id} with destination group {notification.TargetOfficeGroupId}."
-                });
+                _logger.NotificationDisabled(NotificationMessageType.ThresholdNotification.ToString(), notification.Id, notification.TargetOfficeGroupId);
                 return;
             }
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Sending email to recipient addresses." });
+            _logger.SendingEmail();
 
             var groupName = await _graphGroupRepository.GetGroupNameAsync(notification.TargetOfficeGroupId);
             var owners = await _graphGroupRepository.GetGroupOwnersAsync(notification.TargetOfficeGroupId);
@@ -161,7 +159,7 @@ namespace Services.Notifier
 
             var response = await _mailRepository.SendMailAsync(message, null);
             TrackSentNotificationEvent(notification.TargetOfficeGroupId);
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Sent email to recipient addresses." });
+            _logger.SentEmail();
 
             if (response != null && response.StatusCode != HttpStatusCode.Accepted)
             {
@@ -211,28 +209,18 @@ namespace Services.Notifier
 
         public async Task<Models.ThresholdNotifications.ThresholdNotification> CreateActionableNotificationFromContentAsync(string messageBody)
         {
-            var messageContent = JsonSerializer.Deserialize<Dictionary<string, Object>>(messageBody);
-            SyncJob job = ((JsonElement)messageContent["SyncJob"]).Deserialize<SyncJob>();
-            ThresholdResult threshold = ((JsonElement)messageContent["ThresholdResult"]).Deserialize<ThresholdResult>();
-            bool sendDisableJobNotification = ((JsonElement)messageContent["SendDisableJobNotification"]).Deserialize<bool>();
+            var messageContent = NotificationMessageContentParser.ParseMessageBody(messageBody);
+            var job = NotificationMessageContentParser.GetRequiredValue<SyncJob>(messageContent, "SyncJob");
+            var threshold = NotificationMessageContentParser.GetRequiredValue<ThresholdResult>(messageContent, "ThresholdResult");
+            var sendDisableJobNotification = NotificationMessageContentParser.GetRequiredValue<bool>(messageContent, "SendDisableJobNotification");
             var notification = await CreateActionableNotification(threshold, job, sendDisableJobNotification);
             return notification;
         }
         private (SyncJob job, string[] additionalContentParameters) ParseMessageContentAsync(string messageBody)
         {
-            var messageContent = JsonSerializer.Deserialize<Dictionary<string, object>>(messageBody);
-
-            SyncJob job = ((JsonElement)messageContent["SyncJob"]).Deserialize<SyncJob>();
-
-            string[] additionalContentParameters = Array.Empty<string>();
-            if (messageContent.ContainsKey("AdditionalContentParameters"))
-            {
-                var additionalContentJsonElement = (JsonElement)messageContent["AdditionalContentParameters"];
-                if (additionalContentJsonElement.ValueKind == JsonValueKind.Array)
-                {
-                    additionalContentParameters = additionalContentJsonElement.Deserialize<string[]>();
-                }
-            }
+            var messageContent = NotificationMessageContentParser.ParseMessageBody(messageBody);
+            var job = NotificationMessageContentParser.GetRequiredValue<SyncJob>(messageContent, "SyncJob");
+            var additionalContentParameters = NotificationMessageContentParser.GetOptionalStringArray(messageContent, "AdditionalContentParameters");
 
             return (job, additionalContentParameters);
         }
@@ -243,22 +231,14 @@ namespace Services.Notifier
 
             if (!Enum.TryParse<NotificationMessageType>(messageType, true, out var messageTypeEnum))
             {
-                await _loggingRepository.LogMessageAsync(new LogMessage
-                {
-                    RunId = job.RunId,
-                    Message = $"Notification type '{messageType}' do not exist."
-                });
+                _logger.NotificationTypeNotExist(messageType);
                 return;
             }
             bool isNotificationDisabled = await IsNotificationDisabledAsync(job.Id, messageTypeEnum);
 
             if (isNotificationDisabled)
             {
-                await _loggingRepository.LogMessageAsync(new LogMessage
-                {
-                    RunId = job.RunId,
-                    Message = $"Notification '{messageType}' is disabled for job {job.Id} with destination group {groupId}."
-                });
+                _logger.NotificationDisabled(messageType, job.Id, groupId);
                 return;
             }
             string ownerEmails = null;
@@ -313,21 +293,13 @@ namespace Services.Notifier
 
             if (notificationType == null)
             {
-                await _loggingRepository.LogMessageAsync(new LogMessage
-                {
-                    RunId = jobId,
-                    Message = $"No notification type ID found for notification type name '{messageType}'."
-                });
+                _logger.NoNotificationTypeIdFound(messageType.ToString());
                 return false;
             }
 
             if (notificationType.Disabled)
             {
-                await _loggingRepository.LogMessageAsync(new LogMessage
-                {
-                    RunId = jobId,
-                    Message = $"Notifications of type '{messageType}' have been globally disabled."
-                });
+                _logger.NotificationsGloballyDisabled(messageType.ToString());
                 return true;
             }
 
@@ -408,11 +380,11 @@ namespace Services.Notifier
         }
         private (SyncJob job, ThresholdResult threshold, bool sendDisableJobNotification, string groupName) ParseNormalThresholdMessageContent(string messageBody)
         {
-            var messageContent = JsonSerializer.Deserialize<Dictionary<string, Object>>(messageBody);
-            SyncJob job = ((JsonElement)messageContent["SyncJob"]).Deserialize<SyncJob>();
-            ThresholdResult threshold = ((JsonElement)messageContent["ThresholdResult"]).Deserialize<ThresholdResult>();
-            bool sendDisableJobNotification = ((JsonElement)messageContent["SendDisableJobNotification"]).Deserialize<bool>();
-            string groupName = ((JsonElement)messageContent["GroupName"]).GetString();
+            var messageContent = NotificationMessageContentParser.ParseMessageBody(messageBody);
+            var job = NotificationMessageContentParser.GetRequiredValue<SyncJob>(messageContent, "SyncJob");
+            var threshold = NotificationMessageContentParser.GetRequiredValue<ThresholdResult>(messageContent, "ThresholdResult");
+            var sendDisableJobNotification = NotificationMessageContentParser.GetRequiredValue<bool>(messageContent, "SendDisableJobNotification");
+            var groupName = NotificationMessageContentParser.GetRequiredString(messageContent, "GroupName");
             return (job, threshold, sendDisableJobNotification, groupName);
         }
 
@@ -424,11 +396,7 @@ namespace Services.Notifier
 
             if (isNotificationDisabled)
             {
-                await _loggingRepository.LogMessageAsync(new LogMessage
-                {
-                    RunId = job.RunId,
-                    Message = $"Notification '{NotificationMessageType.NormalThresholdNotification}' is disabled for job {job.Id} with destination group {groupId}."
-                });
+                _logger.NotificationDisabled(NotificationMessageType.NormalThresholdNotification.ToString(), job.Id, groupId);
                 return;
             }
             var emailSubject = NotificationConstants.SyncThresholdEmailSubject;

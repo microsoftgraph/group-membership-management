@@ -2,7 +2,6 @@
 // Licensed under the MIT license.
 using Models;
 using System;
-using System.Collections.Generic;
 
 namespace Hosts.NonProdService
 {
@@ -10,7 +9,6 @@ namespace Hosts.NonProdService
     {
         public string GroupName { get; set; }
         public TestGroupType TestGroupType { get; set; }
-        public List<Guid> GroupOwnersIds { get; set; }
         public bool RetrieveMembers { get; set; }
         public Guid RunId { get; set; }
     }

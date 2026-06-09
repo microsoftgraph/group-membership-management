@@ -15,6 +15,7 @@ namespace Services.Messages.Responses
         public int ChangeQuantityForRemovals { get; set; }
         public double ChangePercentageForRemovals { get; set; }
         public int ThresholdPercentageForRemovals { get; set; }
+        public DateTime? PurgeDate { get; set; }
         public HttpStatusCode StatusCode { get; set; }
     }
 }

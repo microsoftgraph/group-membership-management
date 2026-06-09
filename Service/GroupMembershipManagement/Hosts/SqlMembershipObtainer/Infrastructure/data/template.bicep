@@ -8,42 +8,21 @@ param environmentAbbreviation string
 @maxLength(3)
 param solutionAbbreviation string = 'gmm'
 
-@description('Resource location.')
-param location string
+var functionsStorageAccountName = take('fn${solutionAbbreviation}${environmentAbbreviation}${uniqueString(resourceGroup().id)}', 24)
 
-@description('Classify the types of resources in prereqs resource group.')
-param prereqsResourceGroupClassification string = 'prereqs'
-
-@description('SqlMembershipObtainer function internal storage account sku.')
-param storageAccountSku string = 'Standard_LRS'
-
-/* This creates the internal storage accounts used by SqlMemberhipObtainer function */
-
-var dataKeyVaultName = '${solutionAbbreviation}-data-${environmentAbbreviation}'
-var prodStorageAccountName = substring('smo${solutionAbbreviation}${environmentAbbreviation}prod${uniqueString(resourceGroup().id)}',0,23)
-
-module smoStorageAccountProd 'storageAccount.bicep' = {
-  name: 'smoProdstorageAccountTemplate'
-  params: {
-    name: prodStorageAccountName
-    sku: storageAccountSku
-    keyVaultName: dataKeyVaultName
-    location: location
-    storageAccountSettingName: 'sqlMembershipObtainerStorageAccountProd'
-    appPackageContainerSettingName: 'sqlMembershipObtainerAppPackageContainerProd'
-    appPackageContainerName: 'app-package'
-  }
+resource functionsStorageAccount 'Microsoft.Storage/storageAccounts@2022-05-01' existing = {
+  name: functionsStorageAccountName
 }
 
-var nspName = '${solutionAbbreviation}-nsp-${environmentAbbreviation}'
-var prereqsResourceGroupName = '${solutionAbbreviation}-${prereqsResourceGroupClassification}-${environmentAbbreviation}'
+resource blobServices 'Microsoft.Storage/storageAccounts/blobServices@2022-05-01' existing = {
+  parent: functionsStorageAccount
+  name: 'default'
+}
 
-module smoStorageAccountAssociationTemplate 'networkSecurityPerimeterResourceAssociation.bicep' = {
-  name: 'smoStorageAccountAssociationTemplate'
-  scope: resourceGroup(prereqsResourceGroupName)
-  params: {
-    nspName: nspName
-    profileName: 'storageaccount'
-    resourceId: smoStorageAccountProd.outputs.storageAccountId
+resource appPackageContainer 'Microsoft.Storage/storageAccounts/blobServices/containers@2022-05-01' = {
+  parent: blobServices
+  name: 'sqlmembershipobtainer-app-package'
+  properties: {
+    publicAccess: 'None'
   }
 }

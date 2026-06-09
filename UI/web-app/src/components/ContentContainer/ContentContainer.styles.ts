@@ -35,6 +35,10 @@ export const getStyles = (props: IContentContainerStyleProps): IContentContainer
             i: {
                 paddingLeft: 5
             }
+        },
+        disabledReasonText: {
+            color: theme.semanticColors.disabledText,
+            marginTop: -6
         }
     };
 };

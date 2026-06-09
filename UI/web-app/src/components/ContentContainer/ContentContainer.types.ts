@@ -15,6 +15,7 @@ import {
     cardHeader: IStyle;
     title: IStyle;
     linkButton: IStyle;
+    disabledReasonText: IStyle;
   }
 
   export interface IContentContainerStyleProps {
@@ -46,4 +47,6 @@ import {
     text: string;
     icon?: IIconProps;
     onClick: () => void;
+    disabled?: boolean;
+    disabledReason?: string;
   };

@@ -16,6 +16,8 @@ using Models.ServiceBus;
 using Moq;
 using Repositories.Contracts;
 using Repositories.Mocks;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using Services.Contracts;
 using Services.Tests.Mocks;
 using System;
@@ -44,7 +46,6 @@ namespace Services.Tests
         [TestMethod]
         public async Task TestMsalTransientExceptionAsync()
         {
-            MockLoggingRepository mockLoggingRepo;
             TelemetryClient mockTelemetryClient;
             Mock<IServiceBusQueueRepository> mockServiceBusQueueRepository;
             MockGraphUpdaterService mockGraphUpdaterService;
@@ -59,7 +60,6 @@ namespace Services.Tests
 
             mockDeltaCachingConfig = new MockDeltaCachingConfig();
             blobStorageRepository = new MockBlobStorageRepository();
-            mockLoggingRepo = new MockLoggingRepository();
             mockTelemetryClient = new TelemetryClient(TelemetryConfiguration.CreateDefault());
             mockServiceBusQueueRepository = new Mock<IServiceBusQueueRepository>();
             mockGraphUpdaterService = new MockGraphUpdaterService(mockServiceBusQueueRepository.Object);
@@ -91,7 +91,6 @@ namespace Services.Tests
                 }
             };
 
-            mockLoggingRepo.SetSyncJobProperties(syncJob.RunId.Value, syncJob.ToDictionary());
 
             var input = new MembershipHttpRequest
             {
@@ -112,13 +111,12 @@ namespace Services.Tests
             blobStorageRepository.Files.Add(input.FilePath, JsonSerializer.Serialize(groupMembership));
 
             var context = new Mock<TaskOrchestrationContext>();
+            context.Setup(x => x.CreateReplaySafeLogger(It.IsAny<string>())).Returns(NullLogger.Instance);
             context.Setup(x => x.GetInput<MembershipHttpRequest>()).Returns(input);
-            context.Setup(x => x.CallActivityAsync<Guid>(It.Is<TaskName>(x => x.Name == nameof(GetGroupFunction)), It.IsAny<SyncJob>(), It.IsAny<TaskOptions>())).ReturnsAsync(syncJob.Group.GroupId);
+            context.Setup(x => x.CallActivityAsync<Guid>(It.Is<TaskName>(x => x.Name == nameof(GetGroupFunction)), It.IsAny<GetGroupRequest>(), It.IsAny<TaskOptions>())).ReturnsAsync(syncJob.Group.GroupId);
             context.Setup(x => x.CallActivityAsync<SyncJob>(It.IsAny<TaskName>(), It.IsAny<JobReaderRequest>(), It.IsAny<TaskOptions>())).ReturnsAsync(syncJob);
             context.Setup(x => x.CallActivityAsync<string>(It.IsAny<TaskName>(), It.IsAny<FileDownloaderRequest>(), It.IsAny<TaskOptions>()))
-                    .ReturnsAsync(await DownloadFileAsync(fileDownloaderRequest, mockLoggingRepo, blobStorageRepository));
-            context.Setup(x => x.CallActivityAsync(It.IsAny<TaskName>(), It.IsAny<LoggerRequest>(), It.IsAny<TaskOptions>()))
-                    .Callback<TaskName, object, TaskOptions>(async (name, request, options) => await CallLogMessageFunctionAsync((LoggerRequest)request, mockLoggingRepo));
+                    .ReturnsAsync(await DownloadFileAsync(fileDownloaderRequest, blobStorageRepository));
             context.Setup(x => x.CallActivityAsync<bool>(It.IsAny<TaskName>(), It.IsAny<GroupValidatorRequest>(), It.IsAny<TaskOptions>()))
                     .ThrowsAsync(new MsalClientException("MULTIPLE_MATCHING_TOKENS_DETECTED", "MULTIPLE_MATCHING_TOKENS_DETECTED"));
 
@@ -129,24 +127,15 @@ namespace Services.Tests
                         updateJobRequest = request as JobStatusUpdaterRequest;
                     });
 
-            var orchestrator = new OrchestratorFunction(mockTelemetryClient, mockGraphUpdaterService, mailSenders, _gmmResources, mockLoggingRepo, mockDeltaCachingConfig);
+            var orchestrator = new OrchestratorFunction(mockTelemetryClient, mockGraphUpdaterService, mailSenders, _gmmResources, mockDeltaCachingConfig);
             await Assert.ThrowsExceptionAsync<MsalClientException>(async () => await orchestrator.RunOrchestratorAsync(context.Object));
 
-            Assert.IsFalse(mockLoggingRepo.MessagesLogged.Any(x => x.Message == nameof(OrchestratorFunction) + " function completed"));
-            Assert.IsTrue(mockLoggingRepo.MessagesLogged.Any(x => x.Message.Contains("Caught MsalClientException, marking sync job status as transient error.")));
             Assert.AreEqual(SyncStatus.TransientError, updateJobRequest.Status);
-
-            var logProperties = mockLoggingRepo.SyncJobPropertiesHistory[syncJob.RunId.Value].Properties;
-
-            Assert.IsNotNull(mockLoggingRepo.SyncJobProperties);
-            Assert.AreEqual(logProperties["RunId"], syncJob.RunId.ToString());
-            Assert.AreEqual(logProperties["Id"], syncJob.Id.ToString());
         }
 
         [TestMethod]
         public async Task RunOrchestratorValidSyncTest()
         {
-            MockLoggingRepository mockLoggingRepo;
             TelemetryClient mockTelemetryClient;
             MockDeltaCachingConfig mockDeltaCachingConfig;
             Mock<IServiceBusQueueRepository> mockServiceBusQueueRepository;
@@ -160,7 +149,6 @@ namespace Services.Tests
             MockBlobStorageRepository blobStorageRepository;
 
             mockDeltaCachingConfig = new MockDeltaCachingConfig();
-            mockLoggingRepo = new MockLoggingRepository();
             mockTelemetryClient = new TelemetryClient(TelemetryConfiguration.CreateDefault());
             mockServiceBusQueueRepository = new Mock<IServiceBusQueueRepository>();
             mockGraphUpdaterService = new MockGraphUpdaterService(mockServiceBusQueueRepository.Object);
@@ -192,7 +180,6 @@ namespace Services.Tests
                 }
             };
 
-            mockLoggingRepo.SetSyncJobProperties(syncJob.RunId.Value, syncJob.ToDictionary());
 
             var input = new MembershipHttpRequest
             {
@@ -212,8 +199,7 @@ namespace Services.Tests
 
             var jobReaderRequest = new JobReaderRequest
             {
-                JobId = syncJob.Id,
-                RunId = syncJob.RunId.Value
+                SyncJob = syncJob
             };
 
             _telemetryClient = new TelemetryClient(TelemetryConfiguration.CreateDefault());
@@ -223,42 +209,35 @@ namespace Services.Tests
             blobStorageRepository.Files.Add(input.FilePath, JsonSerializer.Serialize(groupMembership));
 
             var context = new Mock<TaskOrchestrationContext>();
+            context.Setup(x => x.CreateReplaySafeLogger(It.IsAny<string>())).Returns(NullLogger.Instance);
             context.Setup(x => x.GetInput<MembershipHttpRequest>()).Returns(input);
             context.Setup(x => x.CallActivityAsync(It.Is<TaskName>(x => x.Name == nameof(TelemetryTrackerFunction)), It.IsAny<TelemetryTrackerRequest>(), It.IsAny<TaskOptions>()))
                     .Callback<TaskName, object, TaskOptions>(async (name, request, options) =>
                     {
                         var telemetryRequest = request as TelemetryTrackerRequest;
-                        await CallTelemetryTrackerFunctionAsync(telemetryRequest, mockLoggingRepo);
+                        await CallTelemetryTrackerFunctionAsync(telemetryRequest);
                     });
             context.Setup(x => x.CallActivityAsync<SyncJob>(It.IsAny<TaskName>(), It.IsAny<JobReaderRequest>(), It.IsAny<TaskOptions>()))
-                    .Returns(async () => await RunJobReaderFunctionAsync(mockLoggingRepo, mockGraphUpdaterService, jobReaderRequest));
-            context.Setup(x => x.CallActivityAsync<Guid>(It.Is<TaskName>(x => x.Name == nameof(GetGroupFunction)), It.IsAny<SyncJob>(), It.IsAny<TaskOptions>())).ReturnsAsync(syncJob.Group.GroupId);
+                    .Returns(async () => await RunJobReaderFunctionAsync(mockGraphUpdaterService, jobReaderRequest));
+            context.Setup(x => x.CallActivityAsync<Guid>(It.Is<TaskName>(x => x.Name == nameof(GetGroupFunction)), It.IsAny<GetGroupRequest>(), It.IsAny<TaskOptions>())).ReturnsAsync(syncJob.Group.GroupId);
             context.Setup(x => x.CallActivityAsync<string>(It.IsAny<TaskName>(), It.IsAny<FileDownloaderRequest>(), It.IsAny<TaskOptions>()))
-                    .ReturnsAsync(await DownloadFileAsync(fileDownloaderRequest, mockLoggingRepo, blobStorageRepository));
-            context.Setup(x => x.CallActivityAsync(It.IsAny<TaskName>(), It.IsAny<LoggerRequest>(), It.IsAny<TaskOptions>()))
-                    .Callback<TaskName, object, TaskOptions>(async (name, request, options) => await CallLogMessageFunctionAsync((LoggerRequest)request, mockLoggingRepo));
+                    .ReturnsAsync(await DownloadFileAsync(fileDownloaderRequest, blobStorageRepository));
             context.Setup(x => x.CallActivityAsync<bool>(It.IsAny<TaskName>(), It.IsAny<GroupValidatorRequest>(), It.IsAny<TaskOptions>()))
-                    .Returns(async () => await CheckIfGroupExistsAsync(groupMembership, mockLoggingRepo, mockGraphUpdaterService, mailSenders));
+                    .Returns(async () => await CheckIfGroupExistsAsync(groupMembership, mockGraphUpdaterService, mailSenders));
             context.Setup(x => x.CallSubOrchestratorAsync<GroupUpdaterSubOrchestratorResponse>(It.IsAny<TaskName>(), It.IsAny<GroupUpdaterRequest>(), It.IsAny<TaskOptions>()))
                 .Returns(() => Task.FromResult(new GroupUpdaterSubOrchestratorResponse() { SuccessCount = 1, UsersNotFound = new List<AzureADUser>(), UsersAlreadyExist = new List<AzureADUser>() }));
             context.Setup(x => x.CallActivityAsync(It.Is<TaskName>(x => x.Name == nameof(JobStatusUpdaterFunction)), It.IsAny<JobStatusUpdaterRequest>(), It.IsAny<TaskOptions>()))
                    .Callback<TaskName, object, TaskOptions>(async (name, request, options) =>
                    {
-                       await CallJobStatusUpdaterFunctionAsync(mockLoggingRepo, mockGraphUpdaterService, request as JobStatusUpdaterRequest);
+                       await CallJobStatusUpdaterFunctionAsync(mockGraphUpdaterService, request as JobStatusUpdaterRequest);
                    });
 
-            var orchestrator = new OrchestratorFunction(mockTelemetryClient, mockGraphUpdaterService, mailSenders, _gmmResources, mockLoggingRepo, mockDeltaCachingConfig);
+            var orchestrator = new OrchestratorFunction(mockTelemetryClient, mockGraphUpdaterService, mailSenders, _gmmResources, mockDeltaCachingConfig);
             var response = await orchestrator.RunOrchestratorAsync(context.Object);
 
             Assert.IsTrue(response == OrchestrationRuntimeStatus.Completed);
-            Assert.IsTrue(mockLoggingRepo.MessagesLogged.Any(x => x.Message == nameof(OrchestratorFunction) + " function completed"));
 
             context.Verify(x => x.CallSubOrchestratorAsync<GroupUpdaterSubOrchestratorResponse>(It.IsAny<TaskName>(), It.IsAny<GroupUpdaterRequest>(), It.IsAny<TaskOptions>()), Times.Exactly(2));
-
-            var logProperties = mockLoggingRepo.SyncJobPropertiesHistory[syncJob.RunId.Value].Properties;
-
-            Assert.IsNotNull(mockLoggingRepo.SyncJobProperties);
-            Assert.AreEqual(logProperties["RunId"], syncJob.RunId.ToString());
             Assert.AreEqual(SyncStatus.Idle.ToString(), mockGraphUpdaterService.Jobs[0].Status);
         }
 
@@ -266,7 +245,6 @@ namespace Services.Tests
         public async Task RunOrchestratorInitialSyncTest()
         {
             MockDeltaCachingConfig mockDeltaCachingConfig;
-            MockLoggingRepository mockLoggingRepo;
             TelemetryClient mockTelemetryClient;
             Mock<IServiceBusQueueRepository> mockServiceBusQueueRepository;
             MockGraphUpdaterService mockGraphUpdaterService;
@@ -278,7 +256,6 @@ namespace Services.Tests
             MockLocalizationRepository localizationRepository;
 
             mockDeltaCachingConfig = new MockDeltaCachingConfig();
-            mockLoggingRepo = new MockLoggingRepository();
             mockTelemetryClient = new TelemetryClient(TelemetryConfiguration.CreateDefault());
             mockServiceBusQueueRepository = new Mock<IServiceBusQueueRepository>();
             mockGraphUpdaterService = new MockGraphUpdaterService(mockServiceBusQueueRepository.Object);
@@ -310,7 +287,6 @@ namespace Services.Tests
                 RunId = Guid.NewGuid()
             };
 
-            mockLoggingRepo.SetSyncJobProperties(syncJob.RunId.Value, syncJob.ToDictionary());
 
             var input = new MembershipHttpRequest
             {
@@ -350,39 +326,31 @@ namespace Services.Tests
             graphUpdaterService.Setup(x => x.GetGroupOwnersAsync(It.IsAny<Guid>(), It.IsAny<int>())).ReturnsAsync(owners);
 
             var context = new Mock<TaskOrchestrationContext>();
+            context.Setup(x => x.CreateReplaySafeLogger(It.IsAny<string>())).Returns(NullLogger.Instance);
                         context.Setup(x => x.GetInput<MembershipHttpRequest>()).Returns(input);
             context.Setup(x => x.CallActivityAsync<SyncJob>(It.IsAny<TaskName>(), It.IsAny<JobReaderRequest>(), It.IsAny<TaskOptions>())).ReturnsAsync(syncJob);
-            context.Setup(x => x.CallActivityAsync<Guid>(It.Is<TaskName>(x => x.Name == nameof(GetGroupFunction)), It.IsAny<SyncJob>(), It.IsAny<TaskOptions>())).ReturnsAsync(syncJob.Group.GroupId);
+            context.Setup(x => x.CallActivityAsync<Guid>(It.Is<TaskName>(x => x.Name == nameof(GetGroupFunction)), It.IsAny<GetGroupRequest>(), It.IsAny<TaskOptions>())).ReturnsAsync(syncJob.Group.GroupId);
             context.Setup(x => x.CallActivityAsync<string>(It.IsAny<TaskName>(), It.IsAny<FileDownloaderRequest>(), It.IsAny<TaskOptions>())).ReturnsAsync(JsonSerializer.Serialize(groupMembership));
-            context.Setup(x => x.CallActivityAsync(It.IsAny<TaskName>(), It.IsAny<LoggerRequest>(), It.IsAny<TaskOptions>()))
-                    .Callback<TaskName, object, TaskOptions>(async (name, request, options) => await CallLogMessageFunctionAsync((LoggerRequest)request, mockLoggingRepo));
             context.Setup(x => x.CallActivityAsync<bool>(It.IsAny<TaskName>(), It.IsAny<GroupValidatorRequest>(), It.IsAny<TaskOptions>()))
-                    .Returns(async () => await CheckIfGroupExistsAsync(groupMembership, mockLoggingRepo, mockGraphUpdaterService, mailSenders));
+                    .Returns(async () => await CheckIfGroupExistsAsync(groupMembership, mockGraphUpdaterService, mailSenders));
             context.Setup(x => x.CallActivityAsync<string>(It.IsAny<TaskName>(), It.IsAny<GroupNameReaderRequest>(), It.IsAny<TaskOptions>()))
-                    .Returns(async () => await CallGroupNameReaderFunctionAsync(mockLoggingRepo, mockGraphUpdaterService, groupNameReaderRequest));
+                    .Returns(async () => await CallGroupNameReaderFunctionAsync(mockGraphUpdaterService, groupNameReaderRequest));
             context.Setup(x => x.CallActivityAsync<List<AzureADUser>>(It.IsAny<TaskName>(), It.IsAny<GroupOwnersReaderRequest>(), It.IsAny<TaskOptions>()))
-                    .Returns(async () => await CallGroupOwnersReaderFunctionAsync(mockLoggingRepo, graphUpdaterService.Object, groupOwnersReaderRequest));
+                    .Returns(async () => await CallGroupOwnersReaderFunctionAsync(graphUpdaterService.Object, groupOwnersReaderRequest));
             context.Setup(x => x.CallSubOrchestratorAsync<GroupUpdaterSubOrchestratorResponse>(It.IsAny<TaskName>(), It.IsAny<GroupUpdaterRequest>(), It.IsAny<TaskOptions>()))
                     .Returns(() => Task.FromResult(new GroupUpdaterSubOrchestratorResponse() { SuccessCount = 1, UsersNotFound = new List<AzureADUser>(), UsersAlreadyExist = new List<AzureADUser>() }));
 
             context.Setup(x => x.CallActivityAsync(It.IsAny<TaskName>(), It.IsAny<EmailSenderRequest>(), It.IsAny<TaskOptions>()))
                     .Callback<TaskName, object, TaskOptions>(async (name, request, options) =>
                     {
-                        var emailSenderFunction = new EmailSenderFunction(mockLoggingRepo, mockGraphUpdaterService);
+                        var emailSenderFunction = new EmailSenderFunction(NullLogger<EmailSenderFunction>.Instance, mockGraphUpdaterService);
                         await emailSenderFunction.SendEmailAsync((EmailSenderRequest)request);
                     });
 
-            var orchestrator = new OrchestratorFunction(mockTelemetryClient, mockGraphUpdaterService, mailSenders, _gmmResources, mockLoggingRepo, mockDeltaCachingConfig);
+            var orchestrator = new OrchestratorFunction(mockTelemetryClient, mockGraphUpdaterService, mailSenders, _gmmResources, mockDeltaCachingConfig);
             var response = await orchestrator.RunOrchestratorAsync(context.Object);
 
             Assert.IsTrue(response == OrchestrationRuntimeStatus.Completed);
-            Assert.IsTrue(mockLoggingRepo.MessagesLogged.Any(x => x.Message == nameof(OrchestratorFunction) + " function completed"));
-
-            var logProperties = mockLoggingRepo.SyncJobPropertiesHistory[syncJob.RunId.Value].Properties;
-
-            Assert.IsNotNull(mockLoggingRepo.SyncJobProperties);
-            Assert.AreEqual(logProperties["RunId"], syncJob.RunId.ToString());
-            Assert.AreEqual(logProperties["Id"], syncJob.Id.ToString());
 
             mockServiceBusQueueRepository.Verify(x => x.SendMessageAsync(It.Is<ServiceBusMessage>(msg =>
                    msg.ApplicationProperties.ContainsKey("MessageType") &&
@@ -395,7 +363,6 @@ namespace Services.Tests
         [TestMethod]
         public async Task TestHttpTransientExceptionAsync()
         {
-            MockLoggingRepository mockLoggingRepo;
             TelemetryClient mockTelemetryClient;
             Mock<IServiceBusQueueRepository> mockServiceBusQueueRepository;
             MockGraphUpdaterService mockGraphUpdaterService;
@@ -410,7 +377,6 @@ namespace Services.Tests
 
             mockDeltaCachingConfig = new MockDeltaCachingConfig();
             blobStorageRepository = new MockBlobStorageRepository();
-            mockLoggingRepo = new MockLoggingRepository();
             mockTelemetryClient = new TelemetryClient(TelemetryConfiguration.CreateDefault());
             mockServiceBusQueueRepository = new Mock<IServiceBusQueueRepository>();
             mockGraphUpdaterService = new MockGraphUpdaterService(mockServiceBusQueueRepository.Object);
@@ -442,7 +408,6 @@ namespace Services.Tests
                 RunId = Guid.NewGuid()
             };
 
-            mockLoggingRepo.SetSyncJobProperties(syncJob.RunId.Value, syncJob.ToDictionary());
 
             var input = new MembershipHttpRequest
             {
@@ -463,13 +428,12 @@ namespace Services.Tests
             blobStorageRepository.Files.Add(input.FilePath, JsonSerializer.Serialize(groupMembership));
 
             var context = new Mock<TaskOrchestrationContext>();
+            context.Setup(x => x.CreateReplaySafeLogger(It.IsAny<string>())).Returns(NullLogger.Instance);
                         context.Setup(x => x.GetInput<MembershipHttpRequest>()).Returns(input);
             context.Setup(x => x.CallActivityAsync<SyncJob>(It.IsAny<TaskName>(), It.IsAny<JobReaderRequest>(), It.IsAny<TaskOptions>())).ReturnsAsync(syncJob);
-            context.Setup(x => x.CallActivityAsync<Guid>(It.Is<TaskName>(x => x.Name == nameof(GetGroupFunction)), It.IsAny<SyncJob>(), It.IsAny<TaskOptions>())).ReturnsAsync(syncJob.Group.GroupId);
+            context.Setup(x => x.CallActivityAsync<Guid>(It.Is<TaskName>(x => x.Name == nameof(GetGroupFunction)), It.IsAny<GetGroupRequest>(), It.IsAny<TaskOptions>())).ReturnsAsync(syncJob.Group.GroupId);
             context.Setup(x => x.CallActivityAsync<string>(It.IsAny<TaskName>(), It.IsAny<FileDownloaderRequest>(), It.IsAny<TaskOptions>()))
-                    .ReturnsAsync(await DownloadFileAsync(fileDownloaderRequest, mockLoggingRepo, blobStorageRepository));
-            context.Setup(x => x.CallActivityAsync(It.IsAny<TaskName>(), It.IsAny<LoggerRequest>(), It.IsAny<TaskOptions>()))
-                    .Callback<TaskName, object, TaskOptions>(async (name, request, options) => await CallLogMessageFunctionAsync((LoggerRequest)request, mockLoggingRepo));
+                    .ReturnsAsync(await DownloadFileAsync(fileDownloaderRequest, blobStorageRepository));
             context.Setup(x => x.CallActivityAsync<bool>(It.IsAny<TaskName>(), It.IsAny<GroupValidatorRequest>(), It.IsAny<TaskOptions>()))
                     .ReturnsAsync(true);
 
@@ -483,24 +447,15 @@ namespace Services.Tests
             context.Setup(x => x.CallSubOrchestratorAsync<GroupUpdaterSubOrchestratorResponse>(It.IsAny<TaskName>(), It.IsAny<GroupUpdaterRequest>(), It.IsAny<TaskOptions>()))
                .Throws<HttpRequestException>();
 
-            var orchestrator = new OrchestratorFunction(mockTelemetryClient, mockGraphUpdaterService, mailSenders, _gmmResources, mockLoggingRepo, mockDeltaCachingConfig);
+            var orchestrator = new OrchestratorFunction(mockTelemetryClient, mockGraphUpdaterService, mailSenders, _gmmResources, mockDeltaCachingConfig);
             await Assert.ThrowsExceptionAsync<HttpRequestException>(async () => await orchestrator.RunOrchestratorAsync(context.Object));
 
-            Assert.IsFalse(mockLoggingRepo.MessagesLogged.Any(x => x.Message == nameof(OrchestratorFunction) + " function completed"));
-            Assert.IsTrue(mockLoggingRepo.MessagesLogged.Any(x => x.Message.Contains("Caught HttpRequestException, marking sync job status as transient error.")));
             Assert.AreEqual(SyncStatus.TransientError, updateJobRequest.Status);
-
-            var logProperties = mockLoggingRepo.SyncJobPropertiesHistory[syncJob.RunId.Value].Properties;
-
-            Assert.IsNotNull(mockLoggingRepo.SyncJobProperties);
-            Assert.AreEqual(logProperties["RunId"], syncJob.RunId.ToString());
-            Assert.AreEqual(logProperties["Id"], syncJob.Id.ToString());
         }
 
         [TestMethod]
         public async Task RunOrchestratorExceptionTest()
         {
-            MockLoggingRepository mockLoggingRepo;
             TelemetryClient mockTelemetryClient;
             Mock<IServiceBusQueueRepository> mockServiceBusQueueRepository;
             MockGraphUpdaterService mockGraphUpdaterService;
@@ -515,7 +470,6 @@ namespace Services.Tests
 
             mockDeltaCachingConfig = new MockDeltaCachingConfig();
             blobStorageRepository = new MockBlobStorageRepository();
-            mockLoggingRepo = new MockLoggingRepository();
             mockTelemetryClient = new TelemetryClient(TelemetryConfiguration.CreateDefault());
             mockServiceBusQueueRepository = new Mock<IServiceBusQueueRepository>();
             mockGraphUpdaterService = new MockGraphUpdaterService(mockServiceBusQueueRepository.Object);
@@ -547,7 +501,6 @@ namespace Services.Tests
                 RunId = Guid.NewGuid()
             };
 
-            mockLoggingRepo.SetSyncJobProperties(syncJob.RunId.Value, syncJob.ToDictionary());
 
             var input = new MembershipHttpRequest
             {
@@ -568,11 +521,10 @@ namespace Services.Tests
             blobStorageRepository.Files.Add(input.FilePath, JsonSerializer.Serialize(groupMembership));
 
             var context = new Mock<TaskOrchestrationContext>();
+            context.Setup(x => x.CreateReplaySafeLogger(It.IsAny<string>())).Returns(NullLogger.Instance);
                         context.Setup(x => x.GetInput<MembershipHttpRequest>()).Returns(input);
             context.Setup(x => x.CallActivityAsync<SyncJob>(It.IsAny<TaskName>(), It.IsAny<JobReaderRequest>(), It.IsAny<TaskOptions>())).ReturnsAsync(syncJob);
-            context.Setup(x => x.CallActivityAsync<Guid>(It.Is<TaskName>(x => x.Name == nameof(GetGroupFunction)), It.IsAny<SyncJob>(), It.IsAny<TaskOptions>())).ReturnsAsync(syncJob.Group.GroupId);
-            context.Setup(x => x.CallActivityAsync(It.IsAny<TaskName>(), It.IsAny<LoggerRequest>(), It.IsAny<TaskOptions>()))
-                    .Callback<TaskName, object, TaskOptions>(async (name, request, options) => await CallLogMessageFunctionAsync((LoggerRequest)request, mockLoggingRepo));
+            context.Setup(x => x.CallActivityAsync<Guid>(It.Is<TaskName>(x => x.Name == nameof(GetGroupFunction)), It.IsAny<GetGroupRequest>(), It.IsAny<TaskOptions>())).ReturnsAsync(syncJob.Group.GroupId);
 
             JobStatusUpdaterRequest updateJobRequest = null;
             context.Setup(x => x.CallActivityAsync(It.IsAny<TaskName>(), It.IsAny<JobStatusUpdaterRequest>(), It.IsAny<TaskOptions>()))
@@ -581,23 +533,14 @@ namespace Services.Tests
                         updateJobRequest = request as JobStatusUpdaterRequest;
                     });
 
-            var orchestrator = new OrchestratorFunction(mockTelemetryClient, mockGraphUpdaterService, mailSenders, _gmmResources, mockLoggingRepo, mockDeltaCachingConfig);
+            var orchestrator = new OrchestratorFunction(mockTelemetryClient, mockGraphUpdaterService, mailSenders, _gmmResources, mockDeltaCachingConfig);
             await Assert.ThrowsExceptionAsync<ArgumentNullException>(async () => await orchestrator.RunOrchestratorAsync(context.Object));
 
-            Assert.IsFalse(mockLoggingRepo.MessagesLogged.Any(x => x.Message == nameof(OrchestratorFunction) + " function completed"));
-            Assert.IsTrue(mockLoggingRepo.MessagesLogged.Any(x => x.Message.Contains("Caught unexpected exception, marking sync job as errored.")));
-
-            var logProperties = mockLoggingRepo.SyncJobPropertiesHistory[syncJob.RunId.Value].Properties;
-
-            Assert.IsNotNull(mockLoggingRepo.SyncJobProperties);
-            Assert.AreEqual(logProperties["RunId"], syncJob.RunId.ToString());
-            Assert.AreEqual(logProperties["Id"], syncJob.Id.ToString());
         }
 
         [TestMethod]
         public async Task RunSyncJobNotFoundTest()
         {
-            MockLoggingRepository mockLoggingRepo;
             TelemetryClient mockTelemetryClient;
             Mock<IServiceBusQueueRepository> mockServiceBusQueueRepository;
             MockGraphUpdaterService mockGraphUpdaterService;
@@ -612,7 +555,6 @@ namespace Services.Tests
 
             mockDeltaCachingConfig = new MockDeltaCachingConfig();
             blobStorageRepository = new MockBlobStorageRepository();
-            mockLoggingRepo = new MockLoggingRepository();
             mockTelemetryClient = new TelemetryClient(TelemetryConfiguration.CreateDefault());
             mockServiceBusQueueRepository = new Mock<IServiceBusQueueRepository>();
             mockGraphUpdaterService = new MockGraphUpdaterService(mockServiceBusQueueRepository.Object);
@@ -642,23 +584,18 @@ namespace Services.Tests
             blobStorageRepository.Files.Add(input.FilePath, JsonSerializer.Serialize(groupMembership));
 
             var context = new Mock<TaskOrchestrationContext>();
+            context.Setup(x => x.CreateReplaySafeLogger(It.IsAny<string>())).Returns(NullLogger.Instance);
                         context.Setup(x => x.GetInput<MembershipHttpRequest>()).Returns(input);
             context.Setup(x => x.CallActivityAsync<SyncJob>(It.IsAny<TaskName>(), It.IsAny<JobReaderRequest>(), It.IsAny<TaskOptions>())).ReturnsAsync(syncJob);
-            context.Setup(x => x.CallActivityAsync(It.IsAny<TaskName>(), It.IsAny<LoggerRequest>(), It.IsAny<TaskOptions>()))
-                    .Callback<TaskName, object, TaskOptions>(async (name, request, options) => await CallLogMessageFunctionAsync((LoggerRequest)request, mockLoggingRepo));
 
-            var orchestrator = new OrchestratorFunction(mockTelemetryClient, mockGraphUpdaterService, mailSenders, _gmmResources, mockLoggingRepo, mockDeltaCachingConfig);
+            var orchestrator = new OrchestratorFunction(mockTelemetryClient, mockGraphUpdaterService, mailSenders, _gmmResources, mockDeltaCachingConfig);
             await orchestrator.RunOrchestratorAsync(context.Object);
 
-            Assert.IsFalse(mockLoggingRepo.MessagesLogged.Any(x => x.Message == nameof(OrchestratorFunction) + " function completed"));
-            Assert.IsTrue(mockLoggingRepo.MessagesLogged.Any(x => x.Message.Contains("Caught unexpected exception, marking sync job as errored.")));
-            Assert.IsTrue(mockLoggingRepo.MessagesLogged.Any(x => x.Message.Contains("SyncJob is null")));
         }
 
         [TestMethod]
         public async Task RunOrchestratorFileNotFoundExceptionTest()
         {
-            MockLoggingRepository mockLoggingRepo;
             TelemetryClient mockTelemetryClient;
             Mock<IServiceBusQueueRepository> mockServiceBusQueueRepository;
             MockGraphUpdaterService mockGraphUpdaterService;
@@ -674,7 +611,6 @@ namespace Services.Tests
             MockDeltaCachingConfig mockDeltaCachingConfig;
 
             mockDeltaCachingConfig = new MockDeltaCachingConfig();
-            mockLoggingRepo = new MockLoggingRepository();
             mockTelemetryClient = new TelemetryClient(TelemetryConfiguration.CreateDefault());
             mockServiceBusQueueRepository = new Mock<IServiceBusQueueRepository>();
             mockGraphUpdaterService = new MockGraphUpdaterService(mockServiceBusQueueRepository.Object);
@@ -726,27 +662,25 @@ namespace Services.Tests
             blobStorageRepository.Files.Add(input.FilePath, JsonSerializer.Serialize(groupMembership));
 
             var context = new Mock<TaskOrchestrationContext>();
+            context.Setup(x => x.CreateReplaySafeLogger(It.IsAny<string>())).Returns(NullLogger.Instance);
                         context.Setup(x => x.GetInput<MembershipHttpRequest>()).Returns(input);
             context.Setup(x => x.CallActivityAsync<SyncJob>(It.IsAny<TaskName>(), It.IsAny<JobReaderRequest>(), It.IsAny<TaskOptions>())).ReturnsAsync(syncJob);
-            context.Setup(x => x.CallActivityAsync<Guid>(It.Is<TaskName>(x => x.Name == nameof(GetGroupFunction)), It.IsAny<SyncJob>(), It.IsAny<TaskOptions>())).ReturnsAsync(syncJob.Group.GroupId);
+            context.Setup(x => x.CallActivityAsync<Guid>(It.Is<TaskName>(x => x.Name == nameof(GetGroupFunction)), It.IsAny<GetGroupRequest>(), It.IsAny<TaskOptions>())).ReturnsAsync(syncJob.Group.GroupId);
             context.Setup(x => x.CallActivityAsync<string>(It.IsAny<TaskName>(), It.IsAny<FileDownloaderRequest>(), It.IsAny<TaskOptions>()))
-                    .Returns(async () => await DownloadFileAsync(fileDownloaderRequest, mockLoggingRepo, blobStorageRepository));
-            context.Setup(x => x.CallActivityAsync(It.IsAny<TaskName>(), It.IsAny<LoggerRequest>(), It.IsAny<TaskOptions>()))
-                    .Callback<TaskName, object, TaskOptions>(async (name, request, options) => await CallLogMessageFunctionAsync((LoggerRequest)request, mockLoggingRepo));
+                    .Returns(async () => await DownloadFileAsync(fileDownloaderRequest, blobStorageRepository));
             context.Setup(x => x.CallActivityAsync<bool>(It.IsAny<TaskName>(), It.IsAny<GroupValidatorRequest>(), It.IsAny<TaskOptions>()))
-                    .Returns(async () => await CheckIfGroupExistsAsync(groupMembership, mockLoggingRepo, mockGraphUpdaterService, mailSenders));
+                    .Returns(async () => await CheckIfGroupExistsAsync(groupMembership, mockGraphUpdaterService, mailSenders));
 
             mockGraphUpdaterService.Groups.Add(groupMembership.Destination.ObjectId, new Group { Id = groupMembership.Destination.ObjectId.ToString() });
             mockSyncJobRepo.Jobs.Add(syncJob);
 
-            var orchestrator = new OrchestratorFunction(mockTelemetryClient, mockGraphUpdaterService, mailSenders, _gmmResources, mockLoggingRepo, mockDeltaCachingConfig);
+            var orchestrator = new OrchestratorFunction(mockTelemetryClient, mockGraphUpdaterService, mailSenders, _gmmResources, mockDeltaCachingConfig);
             await Assert.ThrowsExceptionAsync<FileNotFoundException>(async () => await orchestrator.RunOrchestratorAsync(context.Object));
         }
 
         [TestMethod]
         public async Task RunOrchestratorMissingGroupTest()
         {
-            MockLoggingRepository mockLoggingRepo;
             TelemetryClient mockTelemetryClient;
             Mock<IServiceBusQueueRepository> mockServiceBusQueueRepository;
             MockGraphUpdaterService mockGraphUpdaterService;
@@ -761,7 +695,6 @@ namespace Services.Tests
             MockDeltaCachingConfig mockDeltaCachingConfig;
 
             mockDeltaCachingConfig = new MockDeltaCachingConfig();
-            mockLoggingRepo = new MockLoggingRepository();
             mockTelemetryClient = new TelemetryClient(TelemetryConfiguration.CreateDefault());
             mockServiceBusQueueRepository = new Mock<IServiceBusQueueRepository>();
             mockGraphUpdaterService = new MockGraphUpdaterService(mockServiceBusQueueRepository.Object);
@@ -792,7 +725,7 @@ namespace Services.Tests
                 RunId = Guid.NewGuid()
             };
 
-            mockLoggingRepo.SetSyncJobProperties(syncJob.RunId.Value, syncJob.ToDictionary());
+            groupMembership.SyncJob = syncJob;
 
             var input = new MembershipHttpRequest
             {
@@ -805,14 +738,13 @@ namespace Services.Tests
             };
 
             var context = new Mock<TaskOrchestrationContext>();
+            context.Setup(x => x.CreateReplaySafeLogger(It.IsAny<string>())).Returns(NullLogger.Instance);
                         context.Setup(x => x.GetInput<MembershipHttpRequest>()).Returns(input);
             context.Setup(x => x.CallActivityAsync<SyncJob>(It.IsAny<TaskName>(), It.IsAny<JobReaderRequest>(), It.IsAny<TaskOptions>())).ReturnsAsync(syncJob);
-            context.Setup(x => x.CallActivityAsync<Guid>(It.Is<TaskName>(x => x.Name == nameof(GetGroupFunction)), It.IsAny<SyncJob>(), It.IsAny<TaskOptions>())).ReturnsAsync(syncJob.Group.GroupId);
+            context.Setup(x => x.CallActivityAsync<Guid>(It.Is<TaskName>(x => x.Name == nameof(GetGroupFunction)), It.IsAny<GetGroupRequest>(), It.IsAny<TaskOptions>())).ReturnsAsync(syncJob.Group.GroupId);
             context.Setup(x => x.CallActivityAsync<string>(It.IsAny<TaskName>(), It.IsAny<FileDownloaderRequest>(), It.IsAny<TaskOptions>())).ReturnsAsync(JsonSerializer.Serialize(groupMembership));
-            context.Setup(x => x.CallActivityAsync(It.IsAny<TaskName>(), It.IsAny<LoggerRequest>(), It.IsAny<TaskOptions>()))
-                    .Callback<TaskName, object, TaskOptions>(async (name, request, options) => await CallLogMessageFunctionAsync((LoggerRequest)request, mockLoggingRepo));
             context.Setup(x => x.CallActivityAsync<bool>(It.IsAny<TaskName>(), It.IsAny<GroupValidatorRequest>(), It.IsAny<TaskOptions>()))
-                    .Returns(async () => await CheckIfGroupExistsAsync(groupMembership, mockLoggingRepo, mockGraphUpdaterService, mailSenders));
+                    .Returns(async () => await CheckIfGroupExistsAsync(groupMembership, mockGraphUpdaterService, mailSenders));
 
             JobStatusUpdaterRequest updateJobRequest = null;
             context.Setup(x => x.CallActivityAsync(It.IsAny<TaskName>(), It.IsAny<JobStatusUpdaterRequest>(), It.IsAny<TaskOptions>()))
@@ -821,26 +753,17 @@ namespace Services.Tests
                         updateJobRequest = request as JobStatusUpdaterRequest;
                     });
 
-            var orchestrator = new OrchestratorFunction(mockTelemetryClient, mockGraphUpdaterService, mailSenders, _gmmResources, mockLoggingRepo, mockDeltaCachingConfig);
+            var orchestrator = new OrchestratorFunction(mockTelemetryClient, mockGraphUpdaterService, mailSenders, _gmmResources, mockDeltaCachingConfig);
             var response = await orchestrator.RunOrchestratorAsync(context.Object);
 
             Assert.AreEqual(SyncStatus.DestinationGroupNotFound, updateJobRequest.Status);
             Assert.IsTrue(response == OrchestrationRuntimeStatus.Completed);
-            Assert.IsTrue(mockLoggingRepo.MessagesLogged.Any(x => x.Message.Contains($"Group with ID {groupMembership.Destination.ObjectId} doesn't exist.")));
-            Assert.IsTrue(mockLoggingRepo.MessagesLogged.Any(x => x.Message == nameof(OrchestratorFunction) + " function did not complete"));
-
-            var logProperties = mockLoggingRepo.SyncJobPropertiesHistory[syncJob.RunId.Value].Properties;
-
-            Assert.IsNotNull(mockLoggingRepo.SyncJobProperties);
-            Assert.AreEqual(logProperties["RunId"], syncJob.RunId.ToString());
-            Assert.AreEqual(logProperties["Id"], syncJob.Id.ToString());
         }
 
         [TestMethod]
         public async Task RunOrchestratorGuestUserErrorTest()
         {
             MockDeltaCachingConfig mockDeltaCachingConfig;
-            MockLoggingRepository mockLoggingRepo;
             TelemetryClient mockTelemetryClient;
             Mock<IServiceBusQueueRepository> mockServiceBusQueueRepository;
             MockGraphUpdaterService mockGraphUpdaterService;
@@ -852,7 +775,6 @@ namespace Services.Tests
             MockLocalizationRepository localizationRepository;
 
             mockDeltaCachingConfig = new MockDeltaCachingConfig();
-            mockLoggingRepo = new MockLoggingRepository();
             mockTelemetryClient = new TelemetryClient(TelemetryConfiguration.CreateDefault());
             mockServiceBusQueueRepository = new Mock<IServiceBusQueueRepository>();
             mockGraphUpdaterService = new MockGraphUpdaterService(mockServiceBusQueueRepository.Object);
@@ -884,7 +806,6 @@ namespace Services.Tests
                 RunId = Guid.NewGuid()
             };
 
-            mockLoggingRepo.SetSyncJobProperties(syncJob.RunId.Value, syncJob.ToDictionary());
 
             var input = new MembershipHttpRequest
             {
@@ -925,38 +846,30 @@ namespace Services.Tests
             graphUpdaterService.Setup(x => x.GetSyncJobAsync(It.IsAny<Guid>())).ReturnsAsync(new SyncJob());
 
             var context = new Mock<TaskOrchestrationContext>();
+            context.Setup(x => x.CreateReplaySafeLogger(It.IsAny<string>())).Returns(NullLogger.Instance);
                         context.Setup(x => x.GetInput<MembershipHttpRequest>()).Returns(input);
             context.Setup(x => x.CallActivityAsync<SyncJob>(It.IsAny<TaskName>(), It.IsAny<JobReaderRequest>(), It.IsAny<TaskOptions>())).ReturnsAsync(syncJob);
-            context.Setup(x => x.CallActivityAsync<Guid>(It.Is<TaskName>(x => x.Name == nameof(GetGroupFunction)), It.IsAny<SyncJob>(), It.IsAny<TaskOptions>())).ReturnsAsync(syncJob.Group.GroupId);
+            context.Setup(x => x.CallActivityAsync<Guid>(It.Is<TaskName>(x => x.Name == nameof(GetGroupFunction)), It.IsAny<GetGroupRequest>(), It.IsAny<TaskOptions>())).ReturnsAsync(syncJob.Group.GroupId);
             context.Setup(x => x.CallActivityAsync<string>(It.IsAny<TaskName>(), It.IsAny<FileDownloaderRequest>(), It.IsAny<TaskOptions>())).ReturnsAsync(JsonSerializer.Serialize(groupMembership));
-            context.Setup(x => x.CallActivityAsync(It.IsAny<TaskName>(), It.IsAny<LoggerRequest>(), It.IsAny<TaskOptions>()))
-                    .Callback<TaskName, object, TaskOptions>(async (name, request, options) => await CallLogMessageFunctionAsync((LoggerRequest)request, mockLoggingRepo));
             context.Setup(x => x.CallActivityAsync<bool>(It.IsAny<TaskName>(), It.IsAny<GroupValidatorRequest>(), It.IsAny<TaskOptions>()))
-                    .Returns(async () => await CheckIfGroupExistsAsync(groupMembership, mockLoggingRepo, mockGraphUpdaterService, mailSenders));
+                    .Returns(async () => await CheckIfGroupExistsAsync(groupMembership, mockGraphUpdaterService, mailSenders));
             context.Setup(x => x.CallActivityAsync<string>(It.IsAny<TaskName>(), It.IsAny<GroupNameReaderRequest>(), It.IsAny<TaskOptions>()))
-                    .Returns(async () => await CallGroupNameReaderFunctionAsync(mockLoggingRepo, mockGraphUpdaterService, groupNameReaderRequest));
+                    .Returns(async () => await CallGroupNameReaderFunctionAsync(mockGraphUpdaterService, groupNameReaderRequest));
             context.Setup(x => x.CallActivityAsync<List<AzureADUser>>(It.IsAny<TaskName>(), It.IsAny<GroupOwnersReaderRequest>(), It.IsAny<TaskOptions>()))
-                    .Returns(async () => await CallGroupOwnersReaderFunctionAsync(mockLoggingRepo, graphUpdaterService.Object, groupOwnersReaderRequest));
+                    .Returns(async () => await CallGroupOwnersReaderFunctionAsync(graphUpdaterService.Object, groupOwnersReaderRequest));
             context.Setup(x => x.CallSubOrchestratorAsync<GroupUpdaterSubOrchestratorResponse>(It.IsAny<TaskName>(), It.IsAny<GroupUpdaterRequest>(), It.IsAny<TaskOptions>()))
                     .Returns(() => Task.FromResult(new GroupUpdaterSubOrchestratorResponse() { Status = Entities.GraphUpdaterStatus.GuestError, SuccessCount = 1, UsersNotFound = new List<AzureADUser>(), UsersAlreadyExist = new List<AzureADUser>() }));
 
             context.Setup(x => x.CallActivityAsync(It.Is<TaskName>(x => x.Name == nameof(JobStatusUpdaterFunction)), It.IsAny<JobStatusUpdaterRequest>(), It.IsAny<TaskOptions>()))
                    .Callback<TaskName, object, TaskOptions>(async (name, request, options) =>
                    {
-                       await CallJobStatusUpdaterFunctionAsync(mockLoggingRepo, graphUpdaterService.Object, request as JobStatusUpdaterRequest);
+                       await CallJobStatusUpdaterFunctionAsync(graphUpdaterService.Object, request as JobStatusUpdaterRequest);
                    });
 
-            var orchestrator = new OrchestratorFunction(mockTelemetryClient, mockGraphUpdaterService, mailSenders, _gmmResources, mockLoggingRepo, mockDeltaCachingConfig);
+            var orchestrator = new OrchestratorFunction(mockTelemetryClient, mockGraphUpdaterService, mailSenders, _gmmResources, mockDeltaCachingConfig);
             var response = await orchestrator.RunOrchestratorAsync(context.Object);
 
             Assert.IsTrue(response == OrchestrationRuntimeStatus.Completed);
-            Assert.IsTrue(mockLoggingRepo.MessagesLogged.Any(x => x.Message == nameof(OrchestratorFunction) + " function completed"));
-
-            var logProperties = mockLoggingRepo.SyncJobPropertiesHistory[syncJob.RunId.Value].Properties;
-
-            Assert.IsNotNull(mockLoggingRepo.SyncJobProperties);
-            Assert.AreEqual(logProperties["RunId"], syncJob.RunId.ToString());
-            Assert.AreEqual(logProperties["Id"], syncJob.Id.ToString());
 
             graphUpdaterService.Verify(x => x.UpdateSyncJobStatusAsync(It.IsAny<SyncJob>(), SyncStatus.GuestUsersCannotBeAddedToUnifiedGroup, false, It.IsAny<Guid>(), It.IsAny<int?>(), It.IsAny<int?>()));
             context.Verify(x => x.CallSubOrchestratorAsync<GroupUpdaterSubOrchestratorResponse>(It.IsAny<TaskName>(), It.IsAny<GroupUpdaterRequest>(), It.IsAny<TaskOptions>()), Times.Exactly(2));
@@ -965,7 +878,6 @@ namespace Services.Tests
         [TestMethod]
         public async Task RunCacheUserUpdaterSubOrchestratorFunctionTest()
         {
-            MockLoggingRepository mockLoggingRepo;
             TelemetryClient mockTelemetryClient;
             Mock<IServiceBusQueueRepository> mockServiceBusQueueRepository;
             MockGraphUpdaterService mockGraphUpdaterService;
@@ -979,7 +891,6 @@ namespace Services.Tests
             MockDeltaCachingConfig mockDeltaCachingConfig;
 
             mockDeltaCachingConfig = new MockDeltaCachingConfig();
-            mockLoggingRepo = new MockLoggingRepository();
             mockTelemetryClient = new TelemetryClient(TelemetryConfiguration.CreateDefault());
             mockServiceBusQueueRepository = new Mock<IServiceBusQueueRepository>();
             mockGraphUpdaterService = new MockGraphUpdaterService(mockServiceBusQueueRepository.Object);
@@ -1028,7 +939,6 @@ namespace Services.Tests
                 RunId = Guid.NewGuid()
             };
 
-            mockLoggingRepo.SetSyncJobProperties(syncJob.RunId.Value, syncJob.ToDictionary());
 
             var input = new MembershipHttpRequest
             {
@@ -1048,8 +958,7 @@ namespace Services.Tests
 
             var jobReaderRequest = new JobReaderRequest
             {
-                JobId = syncJob.Id,
-                RunId = syncJob.RunId.Value
+                SyncJob = syncJob
             };
 
             mockGraphUpdaterService.Jobs.Add(syncJob);
@@ -1057,16 +966,15 @@ namespace Services.Tests
             blobStorageRepository.Files.Add(input.FilePath, JsonSerializer.Serialize(groupMembership));
 
             var context = new Mock<TaskOrchestrationContext>();
+            context.Setup(x => x.CreateReplaySafeLogger(It.IsAny<string>())).Returns(NullLogger.Instance);
                         context.Setup(x => x.GetInput<MembershipHttpRequest>()).Returns(input);
-            context.Setup(x => x.CallActivityAsync<Guid>(It.Is<TaskName>(x => x.Name == nameof(GetGroupFunction)), It.IsAny<SyncJob>(), It.IsAny<TaskOptions>())).ReturnsAsync(syncJob.Group.GroupId);
+            context.Setup(x => x.CallActivityAsync<Guid>(It.Is<TaskName>(x => x.Name == nameof(GetGroupFunction)), It.IsAny<GetGroupRequest>(), It.IsAny<TaskOptions>())).ReturnsAsync(syncJob.Group.GroupId);
             context.Setup(x => x.CallActivityAsync<SyncJob>(It.IsAny<TaskName>(), It.IsAny<JobReaderRequest>(), It.IsAny<TaskOptions>()))
-                    .Returns(async () => await RunJobReaderFunctionAsync(mockLoggingRepo, mockGraphUpdaterService, jobReaderRequest));
+                    .Returns(async () => await RunJobReaderFunctionAsync(mockGraphUpdaterService, jobReaderRequest));
             context.Setup(x => x.CallActivityAsync<string>(It.IsAny<TaskName>(), It.IsAny<FileDownloaderRequest>(), It.IsAny<TaskOptions>()))
-                    .ReturnsAsync(await DownloadFileAsync(fileDownloaderRequest, mockLoggingRepo, blobStorageRepository));
-            context.Setup(x => x.CallActivityAsync(It.IsAny<TaskName>(), It.IsAny<LoggerRequest>(), It.IsAny<TaskOptions>()))
-                    .Callback<TaskName, object, TaskOptions>(async (name, request, options) => await CallLogMessageFunctionAsync((LoggerRequest)request, mockLoggingRepo));
+                    .ReturnsAsync(await DownloadFileAsync(fileDownloaderRequest, blobStorageRepository));
             context.Setup(x => x.CallActivityAsync<bool>(It.IsAny<TaskName>(), It.IsAny<GroupValidatorRequest>(), It.IsAny<TaskOptions>()))
-                    .Returns(async () => await CheckIfGroupExistsAsync(groupMembership, mockLoggingRepo, mockGraphUpdaterService, mailSenders));
+                    .Returns(async () => await CheckIfGroupExistsAsync(groupMembership, mockGraphUpdaterService, mailSenders));
 
             var usersAlreadyExist = new List<AzureADUser>();
 
@@ -1083,45 +991,43 @@ namespace Services.Tests
                                                                                  UsersAlreadyExist = usersAlreadyExist
                                                                              });
 
-            var orchestrator = new OrchestratorFunction(mockTelemetryClient, mockGraphUpdaterService, mailSenders, _gmmResources, mockLoggingRepo, mockDeltaCachingConfig);
+            var orchestrator = new OrchestratorFunction(mockTelemetryClient, mockGraphUpdaterService, mailSenders, _gmmResources, mockDeltaCachingConfig);
             await orchestrator.RunOrchestratorAsync(context.Object);
 
             context.Verify(x => x.CallSubOrchestratorAsync(It.Is<TaskName>(n => n.Name == nameof(CacheUserUpdaterSubOrchestratorFunction)), It.IsAny<CacheUserUpdaterRequest>(), It.IsAny<TaskOptions>()), Times.Exactly(3));
         }
 
-        private async Task<SyncJob> RunJobReaderFunctionAsync(MockLoggingRepository loggingRepository, MockGraphUpdaterService graphUpdaterService, JobReaderRequest request)
+        private async Task<SyncJob> RunJobReaderFunctionAsync(MockGraphUpdaterService graphUpdaterService, JobReaderRequest request)
         {
-            var jobReaderFunction = new JobReaderFunction(loggingRepository, graphUpdaterService);
+            var jobReaderFunction = new JobReaderFunction(NullLogger<JobReaderFunction>.Instance, graphUpdaterService);
             var syncJob = await jobReaderFunction.GetSyncJobAsync(request);
             return syncJob;
         }
 
-        private async Task RunJobStatusUpdaterFunctionAsync(MockLoggingRepository loggingRepository, MockGraphUpdaterService graphUpdaterService, JobStatusUpdaterRequest request)
+        private async Task RunJobStatusUpdaterFunctionAsync(MockGraphUpdaterService graphUpdaterService, JobStatusUpdaterRequest request)
         {
-            var jobStatusUpdaterFunction = new JobStatusUpdaterFunction(loggingRepository, graphUpdaterService);
+            var jobStatusUpdaterFunction = new JobStatusUpdaterFunction(NullLogger<JobStatusUpdaterFunction>.Instance, graphUpdaterService);
             await jobStatusUpdaterFunction.UpdateJobStatusAsync(request);
         }
 
         private async Task<bool> CheckIfGroupExistsAsync(
                 GroupMembership groupMembership,
-                MockLoggingRepository mockLoggingRepo,
                 MockGraphUpdaterService mockGraphUpdaterService,
                 EmailSenderRecipient mailSenders)
         {
             var request = new GroupValidatorRequest
             {
-                RunId = groupMembership.RunId,
-                GroupId = groupMembership.Destination.ObjectId,
-                JobId = groupMembership.SyncJobId
+                SyncJob = groupMembership.SyncJob,
+                GroupId = groupMembership.Destination.ObjectId
             };
-            var groupValidatorFunction = new GroupValidatorFunction(mockLoggingRepo, mockGraphUpdaterService, mailSenders);
+            var groupValidatorFunction = new GroupValidatorFunction(NullLogger<GroupValidatorFunction>.Instance, mockGraphUpdaterService, mailSenders);
 
             return await groupValidatorFunction.ValidateGroupAsync(request);
         }
 
-        private async Task<string> DownloadFileAsync(FileDownloaderRequest request, MockLoggingRepository mockLoggingRepo, MockBlobStorageRepository blobStorageRepository)
+        private async Task<string> DownloadFileAsync(FileDownloaderRequest request, MockBlobStorageRepository blobStorageRepository)
         {
-            var function = new FileDownloaderFunction(mockLoggingRepo, blobStorageRepository);
+            var function = new FileDownloaderFunction(NullLogger<FileDownloaderFunction>.Instance, blobStorageRepository);
             var fileContent = await function.DownloadFileAsync(request);
             return fileContent;
         }
@@ -1148,42 +1054,33 @@ namespace Services.Tests
             return groupMembership;
         }
 
-        private async Task CallTelemetryTrackerFunctionAsync(TelemetryTrackerRequest request, MockLoggingRepository mockLoggingRepository)
+        private async Task CallTelemetryTrackerFunctionAsync(TelemetryTrackerRequest request)
         {
-            var telemetryTrackerFunction = new TelemetryTrackerFunction(mockLoggingRepository, _telemetryClient);
+            var telemetryTrackerFunction = new TelemetryTrackerFunction(NullLogger<TelemetryTrackerFunction>.Instance, _telemetryClient);
             await telemetryTrackerFunction.TrackEventAsync(request);
         }
 
-        private async Task CallLogMessageFunctionAsync(LoggerRequest loggerRequest, MockLoggingRepository mockLoggingRepository)
-        {
-            var function = new LoggerFunction(mockLoggingRepository);
-            await function.LogMessageAsync(loggerRequest);
-        }
-
         private async Task<string> CallGroupNameReaderFunctionAsync(
-            MockLoggingRepository mockLoggingRepository,
             MockGraphUpdaterService mockGraphUpdaterService,
             GroupNameReaderRequest request)
         {
-            var function = new GroupNameReaderFunction(mockLoggingRepository, mockGraphUpdaterService);
+            var function = new GroupNameReaderFunction(NullLogger<GroupNameReaderFunction>.Instance, mockGraphUpdaterService);
             return await function.GetGroupNameAsync(request);
         }
 
         private async Task<List<AzureADUser>> CallGroupOwnersReaderFunctionAsync(
-            MockLoggingRepository mockLoggingRepository,
             IGraphUpdaterService graphUpdaterService,
             GroupOwnersReaderRequest request)
         {
-            var function = new GroupOwnersReaderFunction(mockLoggingRepository, graphUpdaterService);
+            var function = new GroupOwnersReaderFunction(NullLogger<GroupOwnersReaderFunction>.Instance, graphUpdaterService);
             return await function.GetGroupOwnersAsync(request);
         }
 
         private async Task CallJobStatusUpdaterFunctionAsync(
-            MockLoggingRepository mockLoggingRepository,
             IGraphUpdaterService graphUpdaterService,
             JobStatusUpdaterRequest request)
         {
-            var function = new JobStatusUpdaterFunction(mockLoggingRepository, graphUpdaterService);
+            var function = new JobStatusUpdaterFunction(NullLogger<JobStatusUpdaterFunction>.Instance, graphUpdaterService);
             await function.UpdateJobStatusAsync(request);
         }
     }

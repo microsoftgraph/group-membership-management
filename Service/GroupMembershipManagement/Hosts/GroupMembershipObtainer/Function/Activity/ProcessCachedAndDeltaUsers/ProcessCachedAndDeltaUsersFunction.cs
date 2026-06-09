@@ -1,5 +1,6 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
+using Azure;
 using Microsoft.Azure.Functions.Worker;
 using Microsoft.Extensions.Logging;
 using Models;
@@ -98,7 +99,14 @@ namespace Hosts.GroupMembershipObtainer
                             { "RunId", runId.ToString() },
                             { "NumberOfUsers", cachedUsers.Count.ToString() }
                         };
-                        await _blobStorageRepository.UploadCacheFromGuidsAsync(fileName, cachedUsers, metadata);
+                        try
+                        {
+                            await _blobStorageRepository.UploadCacheFromGuidsAsync(fileName, cachedUsers, metadata);
+                        }
+                        catch (RequestFailedException ex) when (ex.ErrorCode == "InvalidBlockList")
+                        {
+                            _logger.CacheWriteRaceConditionSkipped(request.SourceGroupId);
+                        }
 
                         // Update delta link and upload
                         var deltaLinkFile = $"/cache/delta_{request.SourceGroupId}_{timeStamp}.json";

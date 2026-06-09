@@ -8,11 +8,6 @@ param environmentAbbreviation string
 @maxLength(3)
 param solutionAbbreviation string = 'gmm'
 
-param storageAccountSku string = 'Standard_LRS'
-
-@description('Resource location.')
-param location string
-
 @description('Instance identifier')
 @allowed([
   ''
@@ -20,36 +15,23 @@ param location string
   'large'
 ])
 param instanceIdentifier string = ''
-var instanceSuffix = empty(instanceIdentifier) ? '' : '${instanceIdentifier}'
 
-@description('Classify the types of resources in prereqs resource group.')
-param prereqsResourceGroupClassification string = 'prereqs'
+var instanceSuffix = empty(instanceIdentifier) ? '' : '-${instanceIdentifier}'
+var functionsStorageAccountName = take('fn${solutionAbbreviation}${environmentAbbreviation}${uniqueString(resourceGroup().id)}', 24)
 
-var keyVaultName = '${solutionAbbreviation}-data-${environmentAbbreviation}'
-var prodStorageAccountName = substring('gu${solutionAbbreviation}${environmentAbbreviation}prod${instanceSuffix}${uniqueString(resourceGroup().id)}',0,23)
-
-module graphUpdaterStorageAccountProd 'storageAccount.bicep' = {
-  name: 'gu${instanceSuffix}ProdstorageAccountTemplate'
-  params: {
-    name: prodStorageAccountName
-    sku: storageAccountSku
-    keyVaultName: keyVaultName
-    location: location
-    storageAccountSettingName: 'graphUpdater${instanceSuffix}StorageAccountProd'
-    appPackageContainerSettingName: 'graphUpdater${instanceSuffix}AppPackageContainerProd'
-    appPackageContainerName: 'app-package'
-  }
+resource functionsStorageAccount 'Microsoft.Storage/storageAccounts@2022-05-01' existing = {
+  name: functionsStorageAccountName
 }
 
-var nspName = '${solutionAbbreviation}-nsp-${environmentAbbreviation}'
-var prereqsResourceGroupName = '${solutionAbbreviation}-${prereqsResourceGroupClassification}-${environmentAbbreviation}'
+resource blobServices 'Microsoft.Storage/storageAccounts/blobServices@2022-05-01' existing = {
+  parent: functionsStorageAccount
+  name: 'default'
+}
 
-module guStorageAccountAssociationTemplate 'networkSecurityPerimeterResourceAssociation.bicep' = {
-  name: 'gu${instanceSuffix}StorageAccountAssociationTemplate'
-  scope: resourceGroup(prereqsResourceGroupName)
-  params: {
-    nspName: nspName
-    profileName: 'storageaccount'
-    resourceId: graphUpdaterStorageAccountProd.outputs.storageAccountId
+resource appPackageContainer 'Microsoft.Storage/storageAccounts/blobServices/containers@2022-05-01' = {
+  parent: blobServices
+  name: 'graphupdater-app-package${instanceSuffix}'
+  properties: {
+    publicAccess: 'None'
   }
 }

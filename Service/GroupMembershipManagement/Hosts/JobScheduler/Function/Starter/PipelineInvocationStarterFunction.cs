@@ -4,8 +4,8 @@
 using Microsoft.Azure.Functions.Worker;
 using Microsoft.Azure.Functions.Worker.Http;
 using Microsoft.DurableTask.Client;
+using Microsoft.Extensions.Logging;
 using Models;
-using Repositories.Contracts;
 using Repositories.Contracts.InjectConfig;
 using System;
 using System.IO;
@@ -18,12 +18,12 @@ namespace Hosts.JobScheduler
     public class PipelineInvocationStarterFunction
     {
         private IJobSchedulerConfig _jobSchedulerConfig;
-        private readonly ILoggingRepository _loggingRepository = null;
+        private readonly ILogger<PipelineInvocationStarterFunction> _logger;
 
-        public PipelineInvocationStarterFunction(IJobSchedulerConfig jobSchedulerConfig, ILoggingRepository loggingRepository)
+        public PipelineInvocationStarterFunction(IJobSchedulerConfig jobSchedulerConfig, ILogger<PipelineInvocationStarterFunction> logger)
         {
             _jobSchedulerConfig = jobSchedulerConfig;
-            _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
 
         [Function(nameof(PipelineInvocationStarterFunction))]
@@ -31,7 +31,7 @@ namespace Hosts.JobScheduler
             [HttpTrigger(AuthorizationLevel.Function, "post")] HttpRequestData req,
             [DurableClient] DurableTaskClient starter)
         {
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(PipelineInvocationStarterFunction)} function started" }, VerbosityLevel.DEBUG);
+            _logger.FunctionStarted(nameof(PipelineInvocationStarterFunction));
 
             var requestContent = await new StreamReader(req.Body).ReadToEndAsync();
             var requestBody = JsonSerializer.Deserialize<JsonElement>(requestContent);
@@ -61,7 +61,7 @@ namespace Hosts.JobScheduler
             if (req.Headers.Contains("PlanUrl"))
                 await starter.ScheduleNewOrchestrationInstanceAsync(nameof(StatusCallbackOrchestratorFunction), GetCallbackRequest(req, statusQueryGetUri));
 
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(PipelineInvocationStarterFunction)} function completed" }, VerbosityLevel.DEBUG);
+            _logger.FunctionCompleted(nameof(PipelineInvocationStarterFunction));
 
             return response;
         }

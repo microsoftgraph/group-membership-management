@@ -9,6 +9,6 @@ namespace Hosts.TeamsChannelUpdater
     {
         public SyncStatus JobStatus { get; set; }
         public ResultStatus ResultStatus { get; set; }
-        public Guid? RunId { get; set; }
+        public SyncJob SyncJob { get; set; }
     }
 }

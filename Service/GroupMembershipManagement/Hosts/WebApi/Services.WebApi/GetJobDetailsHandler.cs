@@ -77,6 +77,20 @@ namespace Services
                 });
             }
 
+            string? vivaEngageUrl = null;
+            try
+            {
+                vivaEngageUrl = await _graphGroupRepository.GetGroupVivaEngageUrlAsync(groupId);
+            }
+            catch (Exception ex)
+            {
+                await _loggingRepository.LogMessageAsync(new LogMessage
+                {
+                    Message = $"Unable to retrieve Viva Engage URL\n{ex.GetBaseException()}"
+                });
+            }
+
+
             var titles = await _titlesRepository.GetTitlesAsync(request.SyncJobId);
             var targetGroupName = await _graphGroupRepository.GetGroupNameAsync(groupId);
 
@@ -131,10 +145,27 @@ namespace Services
             }
 
             // Calculate estimated purge date for inactive jobs
-            DateTime? estimatedPurgeDate = null;
-            if (job.Status == SyncStatus.DestinationGroupNotFound.ToString())
+            // Matches the purge-eligible statuses in AzureMaintenanceService._purgeEligibleStatuses.
+            // Uses the same anchor logic: LastRunTime if real, otherwise InitialOnboardingDate.
+            var minRealDate = new DateTime(1900, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+            var purgeEligibleStatuses = new HashSet<string>
             {
-                estimatedPurgeDate = job.LastRunTime.AddDays(_handleInactiveJobsConfig.NumberOfDaysBeforePurging);
+                SyncStatus.CustomerPaused.ToString(),
+                SyncStatus.DestinationGroupNotFound.ToString(),
+                SyncStatus.MembershipDataNotFound.ToString(),
+                SyncStatus.NotOwnerOfDestinationGroup.ToString(),
+                SyncStatus.SecurityGroupNotFound.ToString(),
+                SyncStatus.ThresholdExceeded.ToString(),
+                SyncStatus.SubmissionRejected.ToString(),
+                SyncStatus.GuestUsersCannotBeAddedToUnifiedGroup.ToString(),
+                SyncStatus.NestedGroupsFound.ToString()
+            };
+            DateTime? estimatedPurgeDate = null;
+            if (purgeEligibleStatuses.Contains(job.Status))
+            {
+                var inactivitySince = job.LastRunTime > minRealDate ? job.LastRunTime : job.InitialOnboardingDate;
+                if (inactivitySince > minRealDate)
+                    estimatedPurgeDate = inactivitySince.AddDays(_handleInactiveJobsConfig.NumberOfDaysBeforePurging);
             }
 
             var dto = new SyncJobDetailsDTO
@@ -167,7 +198,8 @@ namespace Services
                 LastModifiedOnBehalfOfObjectId = lastModifiedOnBehalfOfObjectId,
                 GroupSettings = groupSettings,
                 HiddenMembershipSourceIds = hiddenMembershipSourceIds,
-                HasHiddenMembershipSources = hiddenMembershipSourceIds.Count > 0
+                HasHiddenMembershipSources = hiddenMembershipSourceIds.Count > 0,
+                VivaEngageUrl = vivaEngageUrl
             };
 
             response.Model = dto;

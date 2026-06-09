@@ -2,8 +2,9 @@
 // Licensed under the MIT license.
 using Azure;
 using Azure.Core;
+using Hosts.JobScheduler;
+using Microsoft.Extensions.Logging;
 using Models;
-using Repositories.Contracts;
 using Repositories.Contracts.InjectConfig;
 using Services.Contracts;
 using System;
@@ -18,13 +19,13 @@ namespace Services
     {
         private readonly IJobSchedulingService _jobSchedulingService;
         private readonly IJobSchedulerConfig _jobSchedulerConfig;
-        private readonly ILoggingRepository _loggingRepository;
+        private readonly ILogger<ApplicationService> _logger;
 
-        public ApplicationService(IJobSchedulingService jobSchedulingService, IJobSchedulerConfig jobSchedulerConfig, ILoggingRepository loggingRepository)
+        public ApplicationService(IJobSchedulingService jobSchedulingService, IJobSchedulerConfig jobSchedulerConfig, ILogger<ApplicationService> logger)
         {
             _jobSchedulingService = jobSchedulingService;
             _jobSchedulerConfig = jobSchedulerConfig;
-            _loggingRepository = loggingRepository;
+            _logger = logger;
         }
 
 
@@ -32,7 +33,7 @@ namespace Services
         {
             if (!_jobSchedulerConfig.ResetJobs && !_jobSchedulerConfig.DistributeJobs)
             {
-                await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Configuration set to not reset or update so doing nothing." });
+                _logger.ConfigurationSetToDoNothing();
 
                 return;
             }
@@ -43,20 +44,20 @@ namespace Services
             if (_jobSchedulerConfig.ResetJobs)
             {
                 var newStartTime = DateTime.UtcNow.AddDays(_jobSchedulerConfig.DaysToAddForReset);
-                await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Resetting {jobsToUpdate.Count} jobs to have ScheduledDate of {newStartTime}" });
+                _logger.ResettingJobs(jobsToUpdate.Count, newStartTime);
 
                 jobsWithUpdates = await _jobSchedulingService.ResetJobsAsync(jobsToUpdate, _jobSchedulerConfig.DaysToAddForReset);
 
-                await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Reset {jobsToUpdate.Count} jobs to have ScheduledDate of {newStartTime}" });
+                _logger.ResetJobs(jobsToUpdate.Count, newStartTime);
             }
 
             else if (_jobSchedulerConfig.DistributeJobs)
             {
-                await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Distributing {jobsToUpdate.Count} jobs" });
+                _logger.DistributingJobsInApplicationService(jobsToUpdate.Count);
 
                 jobsWithUpdates = await _jobSchedulingService.DistributeJobsAsync(jobsToUpdate, _jobSchedulerConfig.StartTimeDelayMinutes, _jobSchedulerConfig.DelayBetweenSyncsSeconds);
 
-                await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Distributed {jobsToUpdate.Count} jobs" });
+                _logger.DistributedJobsInApplicationService(jobsToUpdate.Count);
             }
 
             if (jobsWithUpdates != null && jobsWithUpdates.Count > 0)

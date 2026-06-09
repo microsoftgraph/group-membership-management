@@ -8,5 +8,7 @@ namespace Hosts.GroupOwnershipObtainer
     {
         public SyncStatus Status { get; set; }
         public SyncJob SyncJob { get; set; }
+        public int CurrentPart { get; set; }
+        public int TotalParts { get; set; }
     }
 }

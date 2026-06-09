@@ -4,8 +4,8 @@
 using Azure.Messaging.ServiceBus;
 using Microsoft.Azure.Functions.Worker;
 using Microsoft.Extensions.DependencyInjection;
-using Models;
-using Repositories.Contracts;
+using Microsoft.Extensions.Logging;
+using Repositories.Contracts.Helpers;
 using System;
 using System.Text.Json;
 using System.Threading.Tasks;
@@ -14,20 +14,21 @@ namespace Hosts.GraphUpdater
 {
     public class MessageSplitterCompletionSenderFunction
     {
-        private readonly ILoggingRepository _loggingRepository;
+        private readonly ILogger<MessageSplitterCompletionSenderFunction> _logger;
         private readonly ServiceBusSender _messageSplitterTopicSender;
 
 
-        public MessageSplitterCompletionSenderFunction([FromKeyedServices("messageSplitterTopicSender")] ServiceBusSender messageSplitterTopicSender, ILoggingRepository loggingRepository)
+        public MessageSplitterCompletionSenderFunction([FromKeyedServices("messageSplitterTopicSender")] ServiceBusSender messageSplitterTopicSender, ILogger<MessageSplitterCompletionSenderFunction> logger)
         {
             _messageSplitterTopicSender = messageSplitterTopicSender ?? throw new ArgumentNullException(nameof(messageSplitterTopicSender));
-            _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
 
         [Function(nameof(MessageSplitterCompletionSenderFunction))]
         public async Task SendCompletionAsync([ActivityTrigger] Models.ServiceBus.MessageSplitterCompletionSignal request)
         {
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(MessageSplitterCompletionSenderFunction)} function started", RunId = request.RunId }, VerbosityLevel.DEBUG);
+            using var scope = _logger.BeginRunIdScope(request.RunId);
+            _logger.FunctionStarted(nameof(MessageSplitterCompletionSenderFunction));
 
             var body = JsonSerializer.SerializeToUtf8Bytes(request);
             var message = new ServiceBusMessage(new BinaryData(body))
@@ -39,8 +40,8 @@ namespace Hosts.GraphUpdater
             message.ApplicationProperties["RunId"] = request.RunId.ToString();
 
             await _messageSplitterTopicSender.SendMessageAsync(message);
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Completion message for RunId {request.RunId} has been sent.", RunId = request.RunId }, VerbosityLevel.INFO);
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(MessageSplitterCompletionSenderFunction)} function completed", RunId = request.RunId }, VerbosityLevel.DEBUG);
+            _logger.CompletionMessageSent(request.RunId);
+            _logger.FunctionCompleted(nameof(MessageSplitterCompletionSenderFunction));
         }
     }
 }

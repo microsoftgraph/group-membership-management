@@ -28,6 +28,9 @@ param environmentAbbreviation string
 @description('Whether or not this environment is a production environment that needs to have authorization locks.')
 param isProduction bool = false
 
+@description('When true, networking resources (private endpoints, DCR, DCR association) are skipped.')
+param skipNetworkingDeployment bool = true
+
 @description('Subscription Id for the environment')
 param subscriptionId string = subscription().subscriptionId
 
@@ -224,11 +227,6 @@ param availableMembershipUpdaters array = [
   }
 ]
 
-@description('Enter storage account name.')
-@minLength(1)
-@maxLength(24)
-param storageAccountName string = '${solutionAbbreviation}${environmentAbbreviation}${uniqueString(resourceGroup().id)}'
-
 @description('Enter storage account sku. Setting applied to storageAccount and jobsStorageAccount')
 @allowed([
   'Standard_LRS'
@@ -241,6 +239,9 @@ param storageAccountSku string = 'Standard_LRS'
 @description('Enter storage account name.')
 @minLength(1)
 param jobsStorageAccountName string = 'jobs${environmentAbbreviation}${uniqueString(resourceGroup().id)}'
+
+@description('Shared storage account for function apps (deployment packages and AzureWebJobsStorage).')
+param functionsStorageAccountName string = take('fn${solutionAbbreviation}${environmentAbbreviation}${uniqueString(resourceGroup().id)}', 24)
 
 @description('Enter membership container name.')
 @minLength(1)
@@ -266,6 +267,7 @@ param logAnalyticsSku string = 'PerGB2018'
 param authenticationType string = 'ClientSecret'
 param skipMailNotifications bool = false
 param isMailApplicationPermissionGranted bool = false
+param enableStyledFallbackEmails bool = false
 param isTeamsChannelApplicationPermissionGranted bool = false
 
 @description('Enter app configuration name.')
@@ -510,6 +512,14 @@ param appConfigurationKeyData array = [
     }
   }
   {
+    key: 'Mail:EnableStyledFallbackEmails'
+    value: string(enableStyledFallbackEmails)
+    contentType: 'boolean'
+    tag: {
+      tag1: 'Mail'
+    }
+  }
+  {
     key: 'TeamsChannel:IsChannelReadWriteApplicationPermissionGranted'
     value: isTeamsChannelApplicationPermissionGranted
     contentType: 'boolean'
@@ -667,6 +677,7 @@ param featureFlags object = {
 }
 
 var syncJobsTopicName = 'syncJobs'
+var dcrName = '${solutionAbbreviation}-${resourceGroupClassification}-${environmentAbbreviation}-vm-dcr'
 
 module sqlServer 'sqlServer.bicep' = {
   name: 'sqlServerTemplate'
@@ -860,19 +871,6 @@ module autoApproverQueue 'serviceBusQueue.bicep' = {
   ]
 }
 
-module storageAccountTemplate 'storageAccount.bicep' = {
-  name: 'storageAccountTemplate'
-  params: {
-    name: storageAccountName
-    sku: storageAccountSku
-    keyVaultName: keyVaultName
-    location: location
-  }
-  dependsOn: [
-    dataKeyVaultTemplate
-  ]
-}
-
 module jobsStorageAccountTemplate 'storageAccount.bicep' = {
   name: 'jobsStorageAccountTemplate'
   params: {
@@ -881,6 +879,20 @@ module jobsStorageAccountTemplate 'storageAccount.bicep' = {
     keyVaultName: keyVaultName
     addJobsStorageAccountPolicies: true
     location: location
+  }
+  dependsOn: [
+    dataKeyVaultTemplate
+  ]
+}
+
+module functionsStorageAccountTemplate 'functionsStorageAccount.bicep' = {
+  name: 'functionsStorageAccountTemplate'
+  params: {
+    name: functionsStorageAccountName
+    sku: storageAccountSku
+    keyVaultName: keyVaultName
+    location: location
+    storageAccountSecretName: 'functionsStorageAccountName'
   }
   dependsOn: [
     dataKeyVaultTemplate
@@ -897,6 +909,49 @@ module logAnalyticsTemplate 'logAnalytics.bicep' = {
   }
   dependsOn: [
     dataKeyVaultTemplate
+  ]
+}
+
+// -----------------------------------------------
+// Data Collection Rule + Association (VM compliance monitoring)
+// -----------------------------------------------
+
+resource dataCollectionRule 'Microsoft.Insights/dataCollectionRules@2022-06-01' = if (!skipNetworkingDeployment) {
+  name: dcrName
+  location: location
+  kind: 'Windows'
+  properties: {
+    dataSources: {
+      windowsEventLogs: [
+        {
+          name: 'eventLogsDataSource'
+          streams: ['Microsoft-Event']
+          xPathQueries: [
+            'Application!*[System[(Level=1 or Level=2 or Level=3)]]'
+            'Security!*[System[(band(Keywords,13510798882111488))]]'
+            'System!*[System[(Level=1 or Level=2 or Level=3)]]'
+          ]
+        }
+      ]
+    }
+    destinations: {
+      logAnalytics: [
+        {
+          workspaceResourceId: logAnalyticsTemplate.outputs.resourceId
+          name: 'LogAnalyticsDestination'
+        }
+      ]
+    }
+    dataFlows: [
+      {
+        streams: ['Microsoft-Event']
+        destinations: ['LogAnalyticsDestination']
+        transformKql: 'source'
+      }
+    ]
+  }
+  dependsOn: [
+    logAnalyticsTemplate
   ]
 }
 
@@ -972,10 +1027,6 @@ module actionGroupTemplate 'actionGroup.bicep' = {
 
 
 var baseSecrets = [
-  {
-    name: 'storageAccountName'
-    value: storageAccountName
-  }
   {
     name: 'jobsStorageAccountName'
     value: jobsStorageAccountName
@@ -1075,8 +1126,8 @@ module secretsTemplate 'keyVaultSecrets.bicep' = {
   }
   dependsOn: [
     dataKeyVaultTemplate
-    storageAccountTemplate
     jobsStorageAccountTemplate
+    functionsStorageAccountTemplate
     serviceBusTemplate
     logAnalyticsTemplate
     appInsightsTemplate
@@ -1198,19 +1249,6 @@ module nspReplicaSqlServerAssociationTemplate 'networkSecurityPerimeterResourceA
   ]
 }
 
-module nspStorageAccountAssociationTemplate 'networkSecurityPerimeterResourceAssociation.bicep' = {
-  name: 'nspStorageAccountAssociationTemplate'
-  scope: resourceGroup(prereqsResourceGroupName)
-  params: {
-    nspName: nspName
-    profileName: 'storageaccount'
-    resourceId: storageAccountTemplate.outputs.storageAccountId
-  }
-  dependsOn: [
-    prereqsNetworkSecurityPerimeterProfilesTemplate
-  ]
-}
-
 module nspJobsStorageAccountAssociationTemplate 'networkSecurityPerimeterResourceAssociation.bicep' = {
   name: 'nspJobsStorageAccountAssociationTemplate'
   scope: resourceGroup(prereqsResourceGroupName)
@@ -1224,7 +1262,19 @@ module nspJobsStorageAccountAssociationTemplate 'networkSecurityPerimeterResourc
   ]
 }
 
-output storageAccountName string = storageAccountName
+module nspFunctionsStorageAccountAssociationTemplate 'networkSecurityPerimeterResourceAssociation.bicep' = {
+  name: 'nspFnStorageAccountAssociation'
+  scope: resourceGroup(prereqsResourceGroupName)
+  params: {
+    nspName: nspName
+    profileName: 'storageaccount'
+    resourceId: functionsStorageAccountTemplate.outputs.storageAccountId
+  }
+  dependsOn: [
+    prereqsNetworkSecurityPerimeterProfilesTemplate
+  ]
+}
+
 output serviceBusName string = serviceBusName
 output serviceBusTopicName string = syncJobsTopicName
 output isDataKVPresent bool = isDataKVPresent

@@ -67,6 +67,13 @@ import {
         borderColor: theme.palette.neutralQuaternary,
         background: theme.palette.white,
       },
+      dropdownTitleError: {
+        borderRadius: 4,
+        borderStyle: 'solid',
+        borderWidth: 1,
+        borderColor: theme.palette.redDark,
+        background: theme.palette.white,
+      },
       textFieldFieldGroup: {
         borderRadius: 4,
         border: '1px solid',
@@ -78,6 +85,11 @@ import {
         width: 'fit-content',
         display: 'flex',
         alignItems: 'center'
+      },
+      thresholdSectionWrapper: {
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 8,
       },
       labelContainer: {
         display: 'flex',

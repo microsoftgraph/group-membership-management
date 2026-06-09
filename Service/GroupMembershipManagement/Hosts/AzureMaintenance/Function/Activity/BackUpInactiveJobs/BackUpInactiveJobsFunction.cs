@@ -1,8 +1,9 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 using Microsoft.Azure.Functions.Worker;
+using Microsoft.Extensions.Logging;
 using Models;
-using Repositories.Contracts;
+using Models.AzureMaintenance;
 using Services.Contracts;
 using System;
 using System.Collections.Generic;
@@ -12,20 +13,21 @@ namespace Hosts.AzureMaintenance
 {
     public class BackUpInactiveJobsFunction
     {
-        private readonly ILoggingRepository _loggingRepository = null;
-        private readonly IAzureMaintenanceService _azureMaintenanceService = null;
-        public BackUpInactiveJobsFunction(ILoggingRepository loggingRepository, IAzureMaintenanceService azureMaintenanceService)
+        private readonly ILogger<BackUpInactiveJobsFunction> _logger;
+        private readonly IAzureMaintenanceService _azureMaintenanceService;
+
+        public BackUpInactiveJobsFunction(ILogger<BackUpInactiveJobsFunction> logger, IAzureMaintenanceService azureMaintenanceService)
         {
-            _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _azureMaintenanceService = azureMaintenanceService ?? throw new ArgumentNullException(nameof(azureMaintenanceService));
         }
 
         [Function(nameof(BackUpInactiveJobsFunction))]
         public async Task<List<PurgedSyncJob>> BackupInactiveJobsAsync([ActivityTrigger] List<SyncJob> syncJobs)
         {
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(BackUpInactiveJobsFunction)} function started" }, VerbosityLevel.DEBUG);
+            _logger.FunctionStarted(nameof(BackUpInactiveJobsFunction));
             var backUpJobs = await _azureMaintenanceService.BackupInactiveJobsAsync(syncJobs);
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(BackUpInactiveJobsFunction)} function completed" }, VerbosityLevel.DEBUG);
+            _logger.FunctionCompleted(nameof(BackUpInactiveJobsFunction));
             return backUpJobs;
         }
     }

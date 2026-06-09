@@ -1,6 +1,8 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
+using Hosts.GroupOwnershipObtainer;
+using Microsoft.Extensions.Logging;
 using Models;
 using Models.ServiceBus;
 using Repositories.Contracts;
@@ -18,18 +20,16 @@ namespace Services
     {
         private const int JobsBatchSize = 20;
         private readonly IDryRunValue _dryRunSettings;
-        private readonly ILoggingRepository _loggingRepository;
+        private readonly ILogger<GroupOwnershipObtainerService> _logger;
         private readonly IDatabaseSyncJobsRepository _databaseSyncJobsRepository;
         private readonly IDatabaseGroupsRepository _databaseGroupsRepository;
         private readonly IDatabaseChannelsRepository _databaseChannelsRepository;
         private readonly IGraphGroupRepository _graphGroupRepository;
         private readonly IBlobStorageRepository _blobStorageRepository;
 
-        public Guid RunId { get; set; }
-
         public GroupOwnershipObtainerService(
             IDryRunValue dryRunSettings,
-            ILoggingRepository loggingRepository,
+            ILogger<GroupOwnershipObtainerService> logger,
             IDatabaseSyncJobsRepository databaseSyncJobsRepository,
             IDatabaseGroupsRepository databaseGroupsRepository,
             IDatabaseChannelsRepository databaseChannelsRepository,
@@ -37,7 +37,7 @@ namespace Services
             IBlobStorageRepository blobStorageRepository)
         {
             _dryRunSettings = dryRunSettings ?? throw new ArgumentNullException(nameof(dryRunSettings));
-            _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _databaseSyncJobsRepository = databaseSyncJobsRepository ?? throw new ArgumentNullException(nameof(databaseSyncJobsRepository));
             _databaseGroupsRepository = databaseGroupsRepository ?? throw new ArgumentNullException(nameof(databaseGroupsRepository));
             _databaseChannelsRepository = databaseChannelsRepository ?? throw new ArgumentNullException(nameof(databaseChannelsRepository));
@@ -71,7 +71,7 @@ namespace Services
             var groupExists = await _graphGroupRepository.GroupExists(groupId);
             if (!groupExists)
             {
-                await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Group {groupId} does not exist" });
+                _logger.GroupDoesNotExist(groupId);
                 return new List<Guid>();
             }
 
@@ -103,7 +103,7 @@ namespace Services
         public List<Guid> FilterSyncJobsBySourceTypes(HashSet<string> requestedSourceTypes, List<JobsFilterSyncJob> syncJobs)
         {
             var filteredJobs = new ConcurrentBag<Guid>();
-            Parallel.ForEach(syncJobs, async job =>
+            Parallel.ForEach(syncJobs, job =>
             {
                 try
                 {
@@ -125,8 +125,7 @@ namespace Services
                 }
                 catch (Exception ex)
                 {
-                    await _loggingRepository.LogMessageAsync(
-                        new LogMessage { Message = $"Unable to determine job type for group {job.TargetOfficeGroupId}\n{ex}" });
+                    _logger.UnableToDetermineJobType(ex, job.TargetOfficeGroupId);
                 }
             });
 

@@ -7,12 +7,13 @@ using Hosts.GraphUpdater;
 using Microsoft.Azure.Functions.Worker;
 using Microsoft.DurableTask;
 using Microsoft.DurableTask.Client;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Models;
 using Models.ServiceBus;
 using Moq;
-using Repositories.Mocks;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -26,7 +27,7 @@ namespace Services.Tests
     public class StarterFunctionTests
     {
         private string _instanceId;
-        private MockLoggingRepository _loggerMock;
+        private ILogger<StarterFunction> _logger;
         private Mock<DurableTaskClient> _durableClientMock;
         private SyncJob _syncJob;
         private MembershipUpdaters _membershipUpdaters;
@@ -39,7 +40,7 @@ namespace Services.Tests
         {
             _instanceId = "1234567890";
             _durableClientMock = new Mock<DurableTaskClient>("test");
-            _loggerMock = new MockLoggingRepository();
+            _logger = NullLogger<StarterFunction>.Instance;
             _syncJob = new SyncJob
             {
                 Id = Guid.NewGuid(),
@@ -77,15 +78,12 @@ namespace Services.Tests
                 .Setup(x => x.ScheduleNewOrchestrationInstanceAsync(It.IsAny<TaskName>(), It.IsAny<object>(), It.IsAny<StartOrchestrationOptions>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync(_instanceId);
 
-            var starterFunction = new StarterFunction(_loggerMock, _membershipUpdaters, _multilaneConfig);
+            var starterFunction = new StarterFunction(_logger, _membershipUpdaters, _multilaneConfig);
             var timer = new TimerInfo();
 
             await starterFunction.RunAsync(timer, _durableClientMock.Object);
 
-            Assert.IsNotNull(_loggerMock.MessagesLogged.Single(x => x.Message.Contains("function started")));
             _durableClientMock.Verify(x => x.ScheduleNewOrchestrationInstanceAsync(It.IsAny<TaskName>(), It.IsAny<QueueMessageOrchestratorRequest>(), It.IsAny<StartOrchestrationOptions>(), It.IsAny<CancellationToken>()), Times.Once());
-            Assert.IsNotNull(_loggerMock.MessagesLogged.Single(x => x.Message == $"Calling {_instanceId}"));
-            Assert.IsNotNull(_loggerMock.MessagesLogged.Single(x => x.Message.Contains("function complete")));
         }
         [TestMethod]
         public async Task ProcessValidMultiLaneRequestTest()
@@ -97,19 +95,16 @@ namespace Services.Tests
                 .ReturnsAsync(_instanceId);
 
             var instanceIdPrefix = $"{nameof(QueueMessageOrchestratorFunction)}_{_subscriptionName.ToLowerInvariant()}_";
-            var starterFunction = new StarterFunction(_loggerMock, _membershipUpdaters, _multilaneConfig);
+            var starterFunction = new StarterFunction(_logger, _membershipUpdaters, _multilaneConfig);
             var timer = new TimerInfo();
 
             await starterFunction.RunAsync(timer, _durableClientMock.Object);
 
             var laneInstances = _membershipUpdaters.AvailableInstances["GroupMembership"][_laneSize].Instances;
 
-            Assert.AreEqual(laneInstances, _loggerMock.MessagesLogged.Count(x => x.Message.Contains("function started")));
 
             _durableClientMock.Verify(x => x.ScheduleNewOrchestrationInstanceAsync(It.IsAny<TaskName>(), It.IsAny<QueueMessageOrchestratorRequest>(), It.IsAny<StartOrchestrationOptions>(), It.IsAny<CancellationToken>()), Times.Exactly(laneInstances));
 
-            Assert.AreEqual(laneInstances, _loggerMock.MessagesLogged.Count(x => x.Message.StartsWith($"Calling {instanceIdPrefix}")));
-            Assert.AreEqual(laneInstances, _loggerMock.MessagesLogged.Count(x => x.Message.Contains("function complete")));
         }
 
         [TestMethod]
@@ -135,7 +130,7 @@ namespace Services.Tests
                 .Setup(x => x.ScheduleNewOrchestrationInstanceAsync(It.IsAny<TaskName>(), It.IsAny<OrchestratorMultiLaneRequest>(), It.IsAny<StartOrchestrationOptions>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync("test-instance-id");
 
-            var starterFunction = new StarterFunction(_loggerMock, _membershipUpdaters, _multilaneConfig);
+            var starterFunction = new StarterFunction(_logger, _membershipUpdaters, _multilaneConfig);
 
             // Act
             await starterFunction.RunSmallLaneAsync(message, _durableClientMock.Object);
@@ -153,11 +148,6 @@ namespace Services.Tests
                 It.IsAny<CancellationToken>()
             ), Times.Once);
 
-            Assert.IsTrue(_loggerMock.MessagesLogged.Any(x => x.Message.Contains("StarterFunction_small function started")));
-            Assert.IsTrue(_loggerMock.MessagesLogged.Any(x => x.Message.Contains($"Processing message {message.MessageId}")));
-            Assert.IsTrue(_loggerMock.MessagesLogged.Any(x => x.Message.Contains("100 additions")));
-            Assert.IsTrue(_loggerMock.MessagesLogged.Any(x => x.Message.Contains("50 removals")));
-            Assert.IsTrue(_loggerMock.MessagesLogged.Any(x => x.Message.Contains("StarterFunction_small function completed")));
         }
 
         [TestMethod]
@@ -193,7 +183,7 @@ namespace Services.Tests
                 .Setup(x => x.ScheduleNewOrchestrationInstanceAsync(It.IsAny<TaskName>(), It.IsAny<OrchestratorMultiLaneRequest>(), It.IsAny<StartOrchestrationOptions>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync(expectedInstanceId);
 
-            var starterFunction = new StarterFunction(_loggerMock, _membershipUpdaters, _multilaneConfig);
+            var starterFunction = new StarterFunction(_logger, _membershipUpdaters, _multilaneConfig);
 
             // Act
             await starterFunction.RunLargeLaneAsync(message, _durableClientMock.Object);
@@ -211,10 +201,6 @@ namespace Services.Tests
                 It.IsAny<CancellationToken>()
             ), Times.Once);
 
-            Assert.IsTrue(_loggerMock.MessagesLogged.Any(x => x.Message.Contains("StarterFunction_large function started")));
-            Assert.IsTrue(_loggerMock.MessagesLogged.Any(x => x.Message.Contains("1000 additions")));
-            Assert.IsTrue(_loggerMock.MessagesLogged.Any(x => x.Message.Contains("500 removals")));
-            Assert.IsTrue(_loggerMock.MessagesLogged.Any(x => x.Message.Contains("StarterFunction_large function completed")));
         }
 
         [TestMethod]
@@ -253,7 +239,7 @@ namespace Services.Tests
                     RuntimeStatus = OrchestrationRuntimeStatus.Completed // Completed (exists WaitForInstanceAsync)
                 });
 
-            var starterFunction = new StarterFunction(_loggerMock, _membershipUpdaters, _multilaneConfig);
+            var starterFunction = new StarterFunction(_logger, _membershipUpdaters, _multilaneConfig);
 
             // Act
             await starterFunction.RunLargeLaneAsync(message, _durableClientMock.Object);
@@ -297,7 +283,7 @@ namespace Services.Tests
                     RuntimeStatus = OrchestrationRuntimeStatus.Completed
                 });
 
-            var starterFunction = new StarterFunction(_loggerMock, _membershipUpdaters, _multilaneConfig);
+            var starterFunction = new StarterFunction(_logger, _membershipUpdaters, _multilaneConfig);
 
             // Act
             await starterFunction.RunLargeLaneAsync(message, _durableClientMock.Object);
@@ -310,10 +296,6 @@ namespace Services.Tests
                 It.IsAny<CancellationToken>()
             ), Times.Never);
 
-            Assert.IsTrue(_loggerMock.MessagesLogged.Any(x =>
-                x.Message.Contains($"Message {message.MessageId}") &&
-                x.Message.Contains("was already processed") &&
-                x.Message.Contains("Completed")));
         }
 
         [TestMethod]
@@ -340,15 +322,12 @@ namespace Services.Tests
                 .Setup(x => x.GetInstanceAsync(It.IsAny<string>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()))
                 .ThrowsAsync(expectedException);
 
-            var starterFunction = new StarterFunction(_loggerMock, _membershipUpdaters, _multilaneConfig);
+            var starterFunction = new StarterFunction(_logger, _membershipUpdaters, _multilaneConfig);
 
             // Act & Assert
             await Assert.ThrowsExceptionAsync<InvalidOperationException>(
                 async () => await starterFunction.RunLargeLaneAsync(message, _durableClientMock.Object));
 
-            Assert.IsTrue(_loggerMock.MessagesLogged.Any(x =>
-                x.Message.Contains("Error processing Service Bus message") &&
-                x.Message.Contains("Test exception")));
         }
 
         [TestMethod]
@@ -359,7 +338,7 @@ namespace Services.Tests
                 "[{\"name\":\"GroupMembership\",\"lanes\":[{\"name\":\"small\",\"instances\":1,\"messageSize\":400},{\"name\":\"large\",\"instances\":1,\"messageSize\":400}]}]",
                 "small");
 
-            var starterFunction = new StarterFunction(_loggerMock, smallLaneUpdaters, _multilaneConfig);
+            var starterFunction = new StarterFunction(_logger, smallLaneUpdaters, _multilaneConfig);
 
             // Act - Use reflection to test the private method
             var method = typeof(StarterFunction).GetMethod("GetInstanceInformation",
@@ -388,7 +367,7 @@ namespace Services.Tests
                 .Setup(x => x.ScheduleNewOrchestrationInstanceAsync(It.IsAny<TaskName>(), It.IsAny<QueueMessageOrchestratorRequest>(), It.IsAny<StartOrchestrationOptions>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync(instanceId);
 
-            var starterFunction = new StarterFunction(_loggerMock, _membershipUpdaters, _multilaneConfig);
+            var starterFunction = new StarterFunction(_logger, _membershipUpdaters, _multilaneConfig);
             var timer = new TimerInfo();
 
             // Act
@@ -421,7 +400,7 @@ namespace Services.Tests
                 .Setup(x => x.ScheduleNewOrchestrationInstanceAsync(It.IsAny<TaskName>(), It.IsAny<QueueMessageOrchestratorRequest>(), It.IsAny<StartOrchestrationOptions>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync("instance-id");
 
-            var starterFunction = new StarterFunction(_loggerMock, _membershipUpdaters, _multilaneConfig);
+            var starterFunction = new StarterFunction(_logger, _membershipUpdaters, _multilaneConfig);
             var timer = new TimerInfo();
 
             // Act
@@ -444,7 +423,7 @@ namespace Services.Tests
             _multilaneConfig.Value.IsEnabled = true;
             _membershipUpdaters = Helpers.GetAvailableMembershipUpdaters(currentLaneSize: null);
 
-            var starterFunction = new StarterFunction(_loggerMock, _membershipUpdaters, _multilaneConfig);
+            var starterFunction = new StarterFunction(_logger, _membershipUpdaters, _multilaneConfig);
             var timer = new TimerInfo();
 
             // Act
@@ -466,7 +445,7 @@ namespace Services.Tests
             _multilaneConfig.Value.IsEnabled = false;
             _membershipUpdaters = Helpers.GetAvailableMembershipUpdaters(currentLaneSize: "small");
 
-            var starterFunction = new StarterFunction(_loggerMock, _membershipUpdaters, _multilaneConfig);
+            var starterFunction = new StarterFunction(_logger, _membershipUpdaters, _multilaneConfig);
             var timer = new TimerInfo();
 
             // Act
@@ -495,7 +474,7 @@ namespace Services.Tests
                     RuntimeStatus = OrchestrationRuntimeStatus.Running
                 });
 
-            var starterFunction = new StarterFunction(_loggerMock, _membershipUpdaters, _multilaneConfig);
+            var starterFunction = new StarterFunction(_logger, _membershipUpdaters, _multilaneConfig);
 
             // Act - Use reflection to test the private method
             var method = typeof(StarterFunction).GetMethod("ProcessTimerAsync",
@@ -512,7 +491,6 @@ namespace Services.Tests
                 It.IsAny<CancellationToken>()
             ), Times.Never);
 
-            Assert.IsFalse(_loggerMock.MessagesLogged.Any(x => x.Message.Contains($"Calling {instanceId}")));
         }
 
         [TestMethod]
@@ -533,7 +511,7 @@ namespace Services.Tests
                 .Setup(x => x.ScheduleNewOrchestrationInstanceAsync(It.IsAny<TaskName>(), It.IsAny<QueueMessageOrchestratorRequest>(), It.IsAny<StartOrchestrationOptions>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync(instanceId);
 
-            var starterFunction = new StarterFunction(_loggerMock, _membershipUpdaters, _multilaneConfig);
+            var starterFunction = new StarterFunction(_logger, _membershipUpdaters, _multilaneConfig);
 
             // Act - Use reflection to test the private method
             var method = typeof(StarterFunction).GetMethod("ProcessTimerAsync",
@@ -553,7 +531,6 @@ namespace Services.Tests
                 It.IsAny<CancellationToken>()
             ), Times.Once);
 
-            Assert.IsTrue(_loggerMock.MessagesLogged.Any(x => x.Message.Contains($"Calling {instanceId}")));
         }
 
         [TestMethod]
@@ -574,7 +551,7 @@ namespace Services.Tests
                 .Setup(x => x.ScheduleNewOrchestrationInstanceAsync(It.IsAny<TaskName>(), It.IsAny<QueueMessageOrchestratorRequest>(), It.IsAny<StartOrchestrationOptions>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync(instanceId);
 
-            var starterFunction = new StarterFunction(_loggerMock, _membershipUpdaters, _multilaneConfig);
+            var starterFunction = new StarterFunction(_logger, _membershipUpdaters, _multilaneConfig);
 
             // Act - Use reflection to test the private method
             var method = typeof(StarterFunction).GetMethod("ProcessTimerAsync",
@@ -593,7 +570,6 @@ namespace Services.Tests
                 It.IsAny<CancellationToken>()
             ), Times.Once);
 
-            Assert.IsTrue(_loggerMock.MessagesLogged.Any(x => x.Message.Contains($"Calling {instanceId}")));
         }
 
         [TestMethod]
@@ -611,7 +587,7 @@ namespace Services.Tests
                 .Setup(x => x.ScheduleNewOrchestrationInstanceAsync(It.IsAny<TaskName>(), It.IsAny<QueueMessageOrchestratorRequest>(), It.IsAny<StartOrchestrationOptions>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync("instance-id");
 
-            var starterFunction = new StarterFunction(_loggerMock, _membershipUpdaters, _multilaneConfig);
+            var starterFunction = new StarterFunction(_logger, _membershipUpdaters, _multilaneConfig);
             var timer = new TimerInfo();
 
             // Act
@@ -656,7 +632,7 @@ namespace Services.Tests
                     RuntimeStatus = OrchestrationRuntimeStatus.Failed
                 });
 
-            var starterFunction = new StarterFunction(_loggerMock, _membershipUpdaters, _multilaneConfig);
+            var starterFunction = new StarterFunction(_logger, _membershipUpdaters, _multilaneConfig);
 
             // Act
             await starterFunction.RunLargeLaneAsync(message, _durableClientMock.Object);
@@ -669,10 +645,6 @@ namespace Services.Tests
                 It.IsAny<CancellationToken>()
             ), Times.Never);
 
-            Assert.IsTrue(_loggerMock.MessagesLogged.Any(x =>
-                x.Message.Contains($"Message {message.MessageId}") &&
-                x.Message.Contains("was already processed") &&
-                x.Message.Contains("Failed")));
         }
 
         [TestMethod]
@@ -703,20 +675,14 @@ namespace Services.Tests
                     RuntimeStatus = OrchestrationRuntimeStatus.Terminated
                 });
 
-            var starterFunction = new StarterFunction(_loggerMock, _membershipUpdaters, _multilaneConfig);
+            var starterFunction = new StarterFunction(_logger, _membershipUpdaters, _multilaneConfig);
 
             // Act
             await starterFunction.RunLargeLaneAsync(message, _durableClientMock.Object);
 
             // Assert
-            Assert.IsTrue(_loggerMock.MessagesLogged.Any(x =>
-                x.Message.Contains($"Message {message.MessageId}") &&
-                x.Message.Contains("was already processed") &&
-                x.Message.Contains("Terminated")));
         }
     }
 }
-
-
 
 

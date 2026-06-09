@@ -13,7 +13,7 @@ import vivaEngageLogo from '../../assets/vivaengagelogo.png';
 const getClassNames = classNamesFunction<IEndpointsListStyleProps, IEndpointsListStyles>();
 
 export const EndpointsListBase: React.FunctionComponent<IEndpointsListProps> = (props) => {
-  const { className, styles, endpoints, groupName, showOutlookWarning } = props;
+  const { className, styles, endpoints, groupName, showOutlookWarning, vivaEngageUrl } = props;
   const classNames: IProcessedStyleSet<IEndpointsListStyles> = getClassNames(styles, {
     className,
   });
@@ -48,6 +48,12 @@ export const EndpointsListBase: React.FunctionComponent<IEndpointsListProps> = (
   const openTeamsLink = (): void => {
     const url = `https://teams.microsoft.com/l/team/${domainName}/${groupNameClean}`;
     window.open(url, '_blank', 'noopener,noreferrer');
+  };
+
+  const openVivaEngageLink = (): void => {
+    if (vivaEngageUrl) {
+      window.open(vivaEngageUrl, '_blank', 'noopener,noreferrer');
+    }
   };
 
   const vivaEngageLabelClass = mergeStyles({
@@ -101,21 +107,9 @@ export const EndpointsListBase: React.FunctionComponent<IEndpointsListProps> = (
             </ActionButton>
           )}
           {endpoints?.includes('Yammer') && (
-            <div className={classNames.yammerContainer}>
-              <Stack horizontal verticalAlign="center">
-                <div
-                  className={mergeStyles({
-                    backgroundImage: `url(${vivaEngageLogo})`,
-                    backgroundSize: 'contain',
-                    backgroundRepeat: 'no-repeat',
-                    width: '24px',
-                    height: '24px',
-                  })}
-                  aria-hidden="true"
-                ></div>
-                <Text className={vivaEngageLabelClass}>Viva Engage</Text>
-              </Stack>
-            </div>
+            <ActionButton iconProps={{ iconName: 'YammerLogo' }} onClick={() => openVivaEngageLink()}>
+              Viva Engage
+            </ActionButton>
           )}
         </div>
       </Text>

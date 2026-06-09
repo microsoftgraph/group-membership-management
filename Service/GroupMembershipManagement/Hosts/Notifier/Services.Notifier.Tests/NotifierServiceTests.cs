@@ -45,8 +45,6 @@ namespace Services.Notifier.Tests
         private Mock<IGraphGroupRepository> _graphGroupRepository;
         private Mock<IJobNotificationsRepository> _jobNotificationRepository;
         private ILocalizationRepository _localizationRepository;
-
-        private Mock<ILoggingRepository> _loggerMock;
         private Mock<IEmailSenderRecipient> _mailAddresses;
         private Mock<IMailRepository> _mailRepository;
         private ThresholdNotification _notification;
@@ -103,6 +101,24 @@ namespace Services.Notifier.Tests
             Assert.IsNotNull(result);
             _notificationRepository.Verify(x => x.SaveNotificationAsync(It.IsAny<ThresholdNotification>()), Times.Once);
         }
+
+        [TestMethod]
+        public async Task CreateActionableNotificationFromContentAsync_MissingSyncJob_ThrowsJsonException()
+        {
+            var messageContent = new
+            {
+                ThresholdResult = new ThresholdResult(),
+                SendDisableJobNotification = true
+            };
+
+            var serializedMessageContent = JsonSerializer.Serialize(messageContent);
+
+            var exception = await Assert.ThrowsExceptionAsync<JsonException>(() =>
+                _notifierService.CreateActionableNotificationFromContentAsync(serializedMessageContent));
+
+            StringAssert.Contains(exception.Message, "SyncJob");
+        }
+
         [TestMethod]
         public async Task SendNormalThresholdEmailAsync_SendsEmail_WithExpectedParameters()
         {
@@ -117,7 +133,6 @@ namespace Services.Notifier.Tests
             _graphGroupRepository = new Mock<IGraphGroupRepository>();
             _mailRepository = new Mock<IMailRepository>();
             _notificationRepository = new Mock<INotificationRepository>();
-            _loggerMock = new Mock<ILoggingRepository>();
             _mailAddresses = new Mock<IEmailSenderRecipient>();
             _thresholdNotificationService = new Mock<IThresholdNotificationService>();
             _users = new List<AzureADUser>();
@@ -148,7 +163,6 @@ namespace Services.Notifier.Tests
                 GroupId = Guid.NewGuid(),
                 SyncJobId = Guid.NewGuid()
             };
-            _loggerMock.Setup(x => x.LogMessageAsync(It.IsAny<LogMessage>(), VerbosityLevel.INFO, It.IsAny<string>(), It.IsAny<string>()));
             _telemetryClient = new TelemetryClient(new TelemetryConfiguration());
 
             for (int i = 0; i < 2; i++)
@@ -169,7 +183,7 @@ namespace Services.Notifier.Tests
             var localizer = new StringLocalizer<LocalizationRepository>(factory);
             _localizationRepository = new LocalizationRepository(localizer);
 
-            _notifierService = new NotifierService(_loggerMock.Object,
+            _notifierService = new NotifierService(NullLogger<NotifierService>.Instance,
                                                 _mailRepository.Object,
                                                 _mailAddresses.Object,
                                                 _localizationRepository,
@@ -416,7 +430,7 @@ namespace Services.Notifier.Tests
             var graphServiceClient = new Mock<GraphServiceClient>(requestAdapter.Object, "https://graph.microsoft.com/v1.0");
             var retryRepo = new RetryPolicyProvider(NullLogger<RetryPolicyProvider>.Instance, new GraphServiceAttemptsValue { MaxExceptionHandlingAttempts = 2, MaxRetryAfterAttempts = 4 });
 
-            var mailConfig = new MailConfig(true, false, "not-set", true);
+            var mailConfig = new MailConfig(true, false, "not-set", true, true);
             var mailRepository = new MailRepository(graphServiceClient.Object,
                                                     mailConfig,
                                                     _localizationRepository,
@@ -425,9 +439,10 @@ namespace Services.Notifier.Tests
                                                     _graphGroupRepository.Object,
                                                     new Mock<IDatabaseSettingsRepository>().Object,
                                                     retryRepo,
-                                                    _telemetryClient);
+                                                    _telemetryClient,
+                                                    new Mock<IMailFallbackBuilder>().Object);
 
-            _notifierService = new NotifierService(_loggerMock.Object,
+            _notifierService = new NotifierService(NullLogger<NotifierService>.Instance,
                                     mailRepository,
                                     _mailAddresses.Object,
                                     _localizationRepository,
@@ -471,10 +486,6 @@ namespace Services.Notifier.Tests
             };
 
             await _notifierService.SendEmailAsync(request.MessageType, request.MessageBody, request.MessageTitle, request.SubjectTemplate, request.ContentTemplate);
-            _loggerMock.Verify(x => x.LogMessageAsync(It.Is<LogMessage>(m => m.Message.Equals("Email notifications are disabled.")), 
-                                                        VerbosityLevel.INFO, 
-                                                        It.IsAny<string>(), 
-                                                        It.IsAny<string>()), Times.Once());
         }
     }
 }

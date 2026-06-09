@@ -77,6 +77,8 @@
     "@types/testing-library__jest-dom": "5.14.5",
     "@typescript-eslint/eslint-plugin": "^5.62.0",
     "@typescript-eslint/parser": "^5.62.0",
+    "@vitest/coverage-v8": "4.1.3",
+    "dotenv": "^16.4.7",
     "env-cmd": "^10.1.0",
     "eslint": "^8.57.1",
     "eslint-plugin-react": "^7.37.5",
@@ -114,5 +116,15 @@
       "vite": ">=6.4.2",
       "ws": ">=8.20.1"
     }
+  },
+  "jest": {
+    "transformIgnorePatterns": [
+      "node_modules[/\\](?!@fluentui[/\\])",
+      "\\.pnp\\.[^\\/]+$"
+    ],
+    "testMatch": [
+      "<rootDir>/src/**/__tests__/**/*.{js,jsx,ts,tsx}",
+      "<rootDir>/src/**/*.{spec,test}.{js,jsx,ts,tsx}"
+    ]
   }
 }

@@ -1,14 +1,14 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-using Models;
 using Microsoft.Azure.Functions.Worker;
 using Microsoft.DurableTask;
-using Repositories.Contracts;
-using System;
-using System.Threading.Tasks;
+using Microsoft.Extensions.Logging;
+using Repositories.Contracts.Helpers;
 using Services.TeamsChannelUpdater.Contracts;
+using System;
 using System.Collections.Generic;
+using System.Threading.Tasks;
 using Models.Entities;
 
 namespace Hosts.TeamsChannelUpdater
@@ -16,22 +16,22 @@ namespace Hosts.TeamsChannelUpdater
     public class TeamsUpdaterFunction
     {
         private readonly ITeamsChannelUpdaterService _teamsChannelUpdaterService;
-        private readonly ILoggingRepository _loggingRepository;
+        private readonly ILogger<TeamsUpdaterFunction> _logger;
 
         public TeamsUpdaterFunction(
             ITeamsChannelUpdaterService teamsChannelUpdaterService,
-            ILoggingRepository loggingRepository)
+            ILogger<TeamsUpdaterFunction> logger)
         {
             _teamsChannelUpdaterService = teamsChannelUpdaterService ?? throw new ArgumentNullException(nameof(teamsChannelUpdaterService));
-            _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
 
         [Function(nameof(TeamsUpdaterFunction))]
         public async Task<TeamsUpdaterResponse> RunAsync([ActivityTrigger] TeamsUpdaterRequest request)
         {
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(TeamsUpdaterFunction)} function started", RunId = request.RunId }, VerbosityLevel.DEBUG);
+            using var scope = _logger.BeginSyncJobScope(request.SyncJob);
 
-            _teamsChannelUpdaterService.RunId = request.RunId;
+            _logger.FunctionStarted(nameof(TeamsUpdaterFunction));
 
             var successCount = 0;
             var usersToRetry = new List<AzureADTeamsUser>();
@@ -54,7 +54,7 @@ namespace Hosts.TeamsChannelUpdater
                 usersNotFound = removeUsersFromChannel.UserRemovesFailed;
             }
 
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(TeamsUpdaterFunction)} function completed", RunId = request.RunId }, VerbosityLevel.DEBUG);
+            _logger.FunctionCompleted(nameof(TeamsUpdaterFunction));
 
             return new TeamsUpdaterResponse()
             {

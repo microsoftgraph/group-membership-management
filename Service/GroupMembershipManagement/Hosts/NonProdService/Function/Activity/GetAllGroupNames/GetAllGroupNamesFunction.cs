@@ -1,8 +1,9 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 using Microsoft.Azure.Functions.Worker;
-using Models;
+using Microsoft.Extensions.Logging;
 using Repositories.Contracts;
+using Repositories.Contracts.Helpers;
 using System;
 using System.Threading.Tasks;
 
@@ -10,30 +11,33 @@ namespace Hosts.NonProdService
 {
     public class GetAllGroupNamesFunction
     {
-        private readonly ILoggingRepository _loggingRepository;
+        private readonly ILogger<GetAllGroupNamesFunction> _logger;
         private readonly IGraphGroupRepository _graphGroupRepository = null;
 
         public GetAllGroupNamesFunction(
-            ILoggingRepository loggingRepository,
+            ILogger<GetAllGroupNamesFunction> logger,
             IGraphGroupRepository graphGroupRepository)
         {
-            _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _graphGroupRepository = graphGroupRepository ?? throw new ArgumentNullException(nameof(graphGroupRepository));
         }
 
         [Function(nameof(GetAllGroupNamesFunction))]
         public async Task<GetAllGroupNamesResponse> GetAllGroupNamesAsync([ActivityTrigger] GetAllGroupNamesRequest request)
         {
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(GetAllGroupNamesFunction)} function started", RunId = request.RunId }, VerbosityLevel.DEBUG);
-
-            var groupNames = await _graphGroupRepository.GetAllGroupNamesAsync();
-
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(GetAllGroupNamesFunction)} function completed", RunId = request.RunId }, VerbosityLevel.DEBUG);
-
-            return new GetAllGroupNamesResponse
+            using (_logger.BeginRunIdScope(request.RunId))
             {
-                GroupNames = groupNames
-            };
+                _logger.FunctionStarted(nameof(GetAllGroupNamesFunction));
+
+                var groups = await _graphGroupRepository.GetAllGroupNamesAsync();
+
+                _logger.FunctionCompleted(nameof(GetAllGroupNamesFunction));
+
+                return new GetAllGroupNamesResponse
+                {
+                    Groups = groups
+                };
+            }
         }
     }
 }

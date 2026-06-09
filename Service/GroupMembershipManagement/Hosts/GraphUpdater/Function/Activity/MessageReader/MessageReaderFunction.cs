@@ -2,26 +2,25 @@
 // Licensed under the MIT license.
 using Azure.Messaging.ServiceBus;
 using Microsoft.Azure.Functions.Worker;
-using Models;
-using Repositories.Contracts;
+using Microsoft.Extensions.Logging;
 using System;
 using System.Text;
 using System.Threading.Tasks;
 using System.Text.Json;
 using GraphUpdater.QueueMessageOrchestrator;
-using System.Collections.Generic;
+using Models;
 using Models.ServiceBus;
 
 namespace Hosts.GraphUpdater
 {
     public class MessageReaderFunction
     {
-        private readonly ILoggingRepository _loggingRepository;
+        private readonly ILogger<MessageReaderFunction> _logger;
         private readonly ServiceBusClient _serviceBusClient;
 
-        public MessageReaderFunction(ILoggingRepository loggingRepository, ServiceBusClient serviceBusClient)
+        public MessageReaderFunction(ILogger<MessageReaderFunction> logger, ServiceBusClient serviceBusClient)
         {
-            _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _serviceBusClient = serviceBusClient ?? throw new ArgumentNullException(nameof(serviceBusClient));
         }
 
@@ -48,12 +47,7 @@ namespace Hosts.GraphUpdater
 
         private async Task<T> ProcessRequestAsync<T>(QueueMessageOrchestratorRequest input) where T : class
         {
-            var additionalProperties = new Dictionary<string, string> { { "Instance", input.SubscriptionName } };
-            await _loggingRepository.LogMessageAsync(new LogMessage
-            {
-                Message = $"{nameof(MessageReaderFunction)} function started",
-                DynamicProperties = additionalProperties
-            }, VerbosityLevel.DEBUG);
+            _logger.FunctionStarted(nameof(MessageReaderFunction));
 
             T request = null;
             var message = await GetServiceBusMessageAsync(input);
@@ -62,11 +56,7 @@ namespace Hosts.GraphUpdater
                 request = JsonSerializer.Deserialize<T>(Encoding.UTF8.GetString(message.Body));
             }
 
-            await _loggingRepository.LogMessageAsync(new LogMessage
-            {
-                Message = $"{nameof(MessageReaderFunction)} function started",
-                DynamicProperties = additionalProperties
-            }, VerbosityLevel.DEBUG);
+            _logger.FunctionCompleted(nameof(MessageReaderFunction));
 
             return request;
         }

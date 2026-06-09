@@ -2,7 +2,9 @@
 // Licensed under the MIT license.
 using Models;
 using Microsoft.Azure.Functions.Worker;
+using Microsoft.Extensions.Logging;
 using Repositories.Contracts;
+using Repositories.Contracts.Helpers;
 using System;
 using System.Threading.Tasks;
 
@@ -10,40 +12,43 @@ namespace Hosts.NonProdService
 {
     public class GroupUpdaterFunction
     {
-        private readonly ILoggingRepository _loggingRepository;
+        private readonly ILogger<GroupUpdaterFunction> _logger;
         private readonly IGraphGroupRepository _graphGroupRepository = null;
 
         public GroupUpdaterFunction(
-            ILoggingRepository loggingRepository,
+            ILogger<GroupUpdaterFunction> logger,
             IGraphGroupRepository graphGroupRepository)
         {
-            _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _graphGroupRepository = graphGroupRepository ?? throw new ArgumentNullException(nameof(graphGroupRepository));
         }
 
         [Function(nameof(GroupUpdaterFunction))]
         public async Task<int> UpdateGroupAsync([ActivityTrigger] GroupUpdaterRequest request)
         {
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(GroupUpdaterFunction)} function started", RunId = request.RunId }, VerbosityLevel.DEBUG);
-
-            var successCount = 0;
-
-            if (request.Type == RequestType.Add)
+            using (_logger.BeginRunIdScope(request.RunId))
             {
-                var addUsersToGraphResponse = await _graphGroupRepository.AddUsersToGroup(request.Members, request.TargetGroup);
+                _logger.FunctionStarted(nameof(GroupUpdaterFunction));
 
-                successCount = addUsersToGraphResponse.SuccessCount;
+                var successCount = 0;
+
+                if (request.Type == RequestType.Add)
+                {
+                    var addUsersToGraphResponse = await _graphGroupRepository.AddUsersToGroup(request.Members, request.TargetGroup);
+
+                    successCount = addUsersToGraphResponse.SuccessCount;
+                }
+                else
+                {
+                    var removeUsersFromGraphResponse = await _graphGroupRepository.RemoveUsersFromGroup(request.Members, request.TargetGroup);
+
+                    successCount = removeUsersFromGraphResponse.SuccessCount;
+                }
+
+                _logger.FunctionCompleted(nameof(GroupUpdaterFunction));
+
+                return successCount;
             }
-            else
-            {
-                var removeUsersFromGraphResponse = await _graphGroupRepository.RemoveUsersFromGroup(request.Members, request.TargetGroup);
-
-                successCount = removeUsersFromGraphResponse.SuccessCount;
-            }
-
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(GroupUpdaterFunction)} function completed", RunId = request.RunId }, VerbosityLevel.DEBUG);
-
-            return successCount;
         }
     }
 }

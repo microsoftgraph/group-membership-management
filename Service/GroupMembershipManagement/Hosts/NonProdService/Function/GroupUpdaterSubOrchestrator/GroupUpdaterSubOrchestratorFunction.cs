@@ -2,12 +2,12 @@
 // Licensed under the MIT license.
 using Microsoft.Azure.Functions.Worker;
 using Microsoft.DurableTask;
+using Microsoft.Extensions.Logging;
+using Repositories.Contracts.Helpers;
 using System.Threading.Tasks;
 using System.Linq;
 using System.Collections.Generic;
 using System;
-using Microsoft.ApplicationInsights;
-using Repositories.Contracts;
 using Models;
 
 namespace Hosts.NonProdService
@@ -31,8 +31,10 @@ namespace Hosts.NonProdService
                 return;
             }
 
-            await context.CallActivityAsync(nameof(LoggerFunction),
-                                                new LoggerRequest { Message = $"{nameof(GroupUpdaterSubOrchestratorFunction)} function started", RunId = request.RunId, Verbosity = VerbosityLevel.DEBUG });
+            var logger = context.CreateReplaySafeLogger("Hosts.NonProdService.GroupUpdaterSubOrchestratorFunction");
+            using var scope = logger.BeginRunIdScope(request.RunId);
+
+            logger.FunctionStarted(nameof(GroupUpdaterSubOrchestratorFunction));
 
             var batch = request.Members?.Skip(skip).Take(batchSize).ToList() ?? new List<AzureADUser>();
 
@@ -47,32 +49,17 @@ namespace Hosts.NonProdService
                                                RunId = request.RunId
                                            });
 
-                await context.CallActivityAsync(nameof(LoggerFunction),
-                                                new LoggerRequest
-                                                {
-                                                    Message = $"{(request.Type == RequestType.Add ? "Added" : "Removed")} {totalSuccessCount}/{request.Members.Count} users so far.",
-                                                    RunId = request.RunId
-                                                });
-
+                var actionType = request.Type == RequestType.Add ? "Added" : "Removed";
+                logger.GroupUpdaterProgress(actionType, totalSuccessCount, request.Members.Count);
 
                 skip += batchSize;
                 batch = request.Members.Skip(skip).Take(batchSize).ToList();
             }
 
-            await context.CallActivityAsync(nameof(LoggerFunction),
-                                                     new LoggerRequest
-                                                     {
-                                                         Message = $"{(request.Type == RequestType.Add ? "Added" : "Removed")} {totalSuccessCount} users.",
-                                                         RunId = request.RunId
-                                                     });
+            var finalActionType = request.Type == RequestType.Add ? "Added" : "Removed";
+            logger.GroupUpdaterCompleted(finalActionType, totalSuccessCount);
 
-            await context.CallActivityAsync(nameof(LoggerFunction),
-                                                      new LoggerRequest
-                                                      {
-                                                          Message = $"{nameof(GroupUpdaterSubOrchestratorFunction)} function completed",
-                                                          RunId = request.RunId,
-                                                          Verbosity = VerbosityLevel.DEBUG
-                                                      });
+            logger.FunctionCompleted(nameof(GroupUpdaterSubOrchestratorFunction));
         }
     }
 }

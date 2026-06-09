@@ -56,10 +56,22 @@ export const getStyles = (props: IThresholdExceededActionDialogStyleProps): IThr
             },
         },
 
+        actionCardTitleContainer: {
+            display: 'flex',
+            alignItems: 'center',
+            gap: 8,
+            marginBottom: 4,
+        },
+
+        actionCardIcon: {
+            fontSize: 16,
+            color: theme.palette.themePrimary,
+            flexShrink: 0,
+        },
+
         actionCardTitle: {
             fontWeight: 600,
             fontSize: 14,
-            marginBottom: 4,
             color: theme.palette.neutralPrimary,
         },
 

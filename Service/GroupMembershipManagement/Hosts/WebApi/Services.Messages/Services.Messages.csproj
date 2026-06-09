@@ -13,6 +13,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Services.Messages.Contracts\Services.Messages.Contracts.csproj" />
+    <ProjectReference Include="..\Services.WebApi.Contracts\Services.WebApi.Contracts.csproj" />
     <ProjectReference Include="..\WebApi.Models\WebApi.Models.csproj" />
   </ItemGroup>
 

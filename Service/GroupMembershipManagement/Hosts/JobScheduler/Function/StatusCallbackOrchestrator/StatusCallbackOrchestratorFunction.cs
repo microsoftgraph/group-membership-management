@@ -3,9 +3,9 @@
 
 using Microsoft.Azure.Functions.Worker;
 using Microsoft.DurableTask;
+using Microsoft.Extensions.Logging;
 using System;
 using System.Threading.Tasks;
-using Repositories.Contracts;
 using System.Threading;
 
 namespace Hosts.JobScheduler
@@ -22,12 +22,9 @@ namespace Hosts.JobScheduler
         [Function(nameof(StatusCallbackOrchestratorFunction))]
         public async Task RunStatusCallbackOrchestratorAsync([OrchestrationTrigger] TaskOrchestrationContext context)
         {
-            await context.CallActivityAsync(nameof(LoggerFunction),
-                new LoggerRequest
-                {
-                    Message = $"{nameof(StatusCallbackOrchestratorFunction)} function started",
-                    Verbosity = VerbosityLevel.DEBUG
-                });
+            var logger = context.CreateReplaySafeLogger($"JobScheduler.{nameof(StatusCallbackOrchestratorFunction)}");
+
+            logger.FunctionStarted(nameof(StatusCallbackOrchestratorFunction));
 
             var request = context.GetInput<StatusCallbackOrchestratorRequest>();
 
@@ -57,12 +54,8 @@ namespace Hosts.JobScheduler
                     CallbackUrl = request.CallbackUrl
                 });
 
-            await context.CallActivityAsync(nameof(LoggerFunction),
-                            new LoggerRequest
-                            {
-                                Message = $"{nameof(StatusCallbackOrchestratorFunction)} function completed",
-                                Verbosity = VerbosityLevel.DEBUG
-                            });
+            logger.FunctionCompleted(nameof(StatusCallbackOrchestratorFunction));
         }
     }
 }
+

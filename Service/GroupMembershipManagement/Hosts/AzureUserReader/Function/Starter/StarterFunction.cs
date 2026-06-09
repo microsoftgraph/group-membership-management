@@ -4,8 +4,7 @@
 using Microsoft.Azure.Functions.Worker;
 using Microsoft.Azure.Functions.Worker.Http;
 using Microsoft.DurableTask.Client;
-using Models;
-using Repositories.Contracts;
+using Microsoft.Extensions.Logging;
 using System;
 using System.Net;
 using System.Text.Json;
@@ -15,11 +14,11 @@ namespace Hosts.AzureUserReader
 {
     public class StarterFunction
     {
-        private readonly ILoggingRepository _loggingRepository;
+        private readonly ILogger<StarterFunction> _logger;
 
-        public StarterFunction(ILoggingRepository loggingRepository)
+        public StarterFunction(ILogger<StarterFunction> logger)
         {
-            _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
 
         [Function(nameof(StarterFunction))]
@@ -27,7 +26,7 @@ namespace Hosts.AzureUserReader
             [HttpTrigger(AuthorizationLevel.Function, "post")] HttpRequestData req,
             [DurableClient] DurableTaskClient starter)
         {
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(StarterFunction)} function started" }, VerbosityLevel.DEBUG);
+            _logger.FunctionStarted(nameof(StarterFunction));
 
             HttpResponseData response;
             var result = await ValidateRequestAsync(req);
@@ -42,7 +41,7 @@ namespace Hosts.AzureUserReader
                 response = req.CreateResponse(result.StatusCode);
             }
 
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(StarterFunction)} function completed" }, VerbosityLevel.DEBUG);
+            _logger.FunctionCompleted(nameof(StarterFunction));
 
             return response;
         }
@@ -57,7 +56,7 @@ namespace Hosts.AzureUserReader
 
                 if (string.IsNullOrWhiteSpace(content))
                 {
-                    await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Request body was not provided." });
+                    _logger.RequestBodyNotProvided();
                     return (HttpStatusCode.BadRequest, null);
                 }
 
@@ -65,7 +64,7 @@ namespace Hosts.AzureUserReader
 
                 if (string.IsNullOrWhiteSpace(userReaderRequest.ContainerName) || string.IsNullOrWhiteSpace(userReaderRequest.BlobPath))
                 {
-                    await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Request body is not valid." });
+                    _logger.RequestBodyNotValid();
                     return (HttpStatusCode.BadRequest, null);
                 }
 
@@ -77,19 +76,19 @@ namespace Hosts.AzureUserReader
                         string.IsNullOrWhiteSpace(userReaderRequest.TenantInformation.CountryCode)
                         )
                     {
-                        await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Request body is not valid. TenantInformation is missing." });
+                        _logger.TenantInformationMissing();
                         return (HttpStatusCode.BadRequest, null);
                     }
                 }
             }
             catch (JsonException)
             {
-                await _loggingRepository.LogMessageAsync(new LogMessage { Message = "Request body is not valid." });
+                _logger.RequestBodyNotValid();
                 return (HttpStatusCode.BadRequest, null);
             }
             catch (Exception ex)
             {
-                await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Unexpected error occured when processing the request.\n{ex}" });
+                _logger.UnexpectedRequestError(ex);
                 return (HttpStatusCode.InternalServerError, null);
             }
 

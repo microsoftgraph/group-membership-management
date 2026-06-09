@@ -1,10 +1,12 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-using Models;
 using Microsoft.Azure.Functions.Worker;
-using Repositories.Contracts;
+using Microsoft.Extensions.Logging;
+using Models;
+using Repositories.Contracts.Helpers;
 using System;
+using System.Collections.Generic;
 using System.Threading.Tasks;
 using TeamsChannelMembershipObtainer.Service.Contracts;
 using Models.Entities;
@@ -13,25 +15,27 @@ namespace Hosts.TeamsChannelMembershipObtainer
 {
     public class ChannelValidatorFunction
     {
+        private readonly ILogger<ChannelValidatorFunction> _logger;
         private readonly ITeamsChannelService _teamsChannelService;
-        private readonly ILoggingRepository _loggingRepository;
 
-        public ChannelValidatorFunction(ILoggingRepository loggingRepository, ITeamsChannelService teamsChannelService)
+        public ChannelValidatorFunction(ILogger<ChannelValidatorFunction> logger, ITeamsChannelService teamsChannelService)
         {
-            _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _teamsChannelService = teamsChannelService ?? throw new ArgumentNullException(nameof(teamsChannelService));
         }
 
         [Function(nameof(ChannelValidatorFunction))]
         public async Task<ValidateChannelResponse> ValidateChannelAsync([ActivityTrigger] ChannelSyncInfo channelSyncInfo)
         {
-            var runId = channelSyncInfo.SyncJob.RunId.GetValueOrDefault(Guid.Empty);
+            using var scope = _logger.BeginSyncJobScope(channelSyncInfo.SyncJob, new Dictionary<string, object>
+            {
+                ["CurrentPart"] = channelSyncInfo.CurrentPart,
+                ["TotalParts"] = channelSyncInfo.TotalParts
+            });
 
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(ChannelValidatorFunction)} function started", RunId = runId }, VerbosityLevel.DEBUG);
-
+            _logger.FunctionStarted(nameof(ChannelValidatorFunction));
             var validated = await _teamsChannelService.VerifyChannelAsync(channelSyncInfo);
-
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(ChannelValidatorFunction)} function completed", RunId = runId }, VerbosityLevel.DEBUG);
+            _logger.FunctionCompleted(nameof(ChannelValidatorFunction));
 
             return validated;
         }

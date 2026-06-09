@@ -21,11 +21,21 @@ namespace DIConcreteTypes
             "Hosts.",
             "SqlMembershipObtainer.",
             "JobTrigger.",
+            "JobScheduler.",
             "MembershipAggregator.",
             "GroupMembershipObtainer.",
+            "GroupOwnershipObtainer.",
             "SyncJobUpdater.",
             "DestinationAttributesUpdater.",
-            "MessageSplitter."
+            "MessageSplitter.",
+            "AzureUserReader.",
+            "GraphUpdater.",
+            "Notifier.",
+            "AzureMaintenance.",
+            "TeamsChannelMembershipObtainer.",
+            "TeamsChannelUpdater.",
+            "NonProdService.",
+            "PlaceMembershipObtainer."
         });
 
         /// <summary>
@@ -34,3 +44,4 @@ namespace DIConcreteTypes
         public List<string> AdditionalAllowedPrefixes { get; set; } = [];
     }
 }
+

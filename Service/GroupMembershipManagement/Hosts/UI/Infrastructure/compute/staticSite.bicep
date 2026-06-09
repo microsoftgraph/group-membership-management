@@ -15,6 +15,9 @@ param repositoryUrl string
 @description('customDomainName')
 param customDomainName string
 
+@description('The name of the Azure Static Web App resource.')
+param staticWebAppName string = '${solutionAbbreviation}-ui'
+
 @description('The tags for the resource.')
 param tags object
 
@@ -22,7 +25,7 @@ param tags object
 param provider string = 'DevOps'
 
 resource staticWebApp 'Microsoft.Web/staticSites@2022-03-01' = {
-  name: '${solutionAbbreviation}-ui'
+  name: staticWebAppName
   location: location
   sku: {
     name: 'Free'

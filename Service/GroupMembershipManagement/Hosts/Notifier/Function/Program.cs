@@ -6,6 +6,8 @@ using Azure.Messaging.ServiceBus;
 using Common.DependencyInjection;
 using DIConcreteTypes;
 using Hosts.FunctionBase;
+using Microsoft.Azure.Functions.Worker;
+using Microsoft.Azure.Functions.Worker.ApplicationInsights;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -52,6 +54,8 @@ namespace Hosts.Notifier
                         functionName,
                         dryRunSettingName: string.Empty,
                         rootPath);
+
+                    services.ConfigureFunctionsApplicationInsights();
 
                     services.AddOptions<HandleInactiveJobsConfig>().Configure<IConfiguration>((settings, config) =>
                     {

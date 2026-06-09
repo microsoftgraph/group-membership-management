@@ -10,7 +10,6 @@ namespace Hosts.NonProdService
     {
         public string BaseGroupName { get; set; }
         public TestGroupType TestGroupType { get; set; }
-        public List<Guid> GroupOwnersIds { get; set; }
         public int GroupCount { get; set; }
         public bool RetrieveMembers { get; set; }
         public Guid RunId { get; set; }

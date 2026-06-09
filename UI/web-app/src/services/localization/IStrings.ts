@@ -330,11 +330,15 @@ export type IStrings = {
       businessJustification: string;
       groupSettings: string;
       takeAction: string;
+      changesAppliedSuccess: string;
       syncPausedSuccess: string;
+      resolveError: string;
       ThresholdExceededActionDialog: {
         title: string;
         warningText: string;
-        detailsText: string;
+        purgeDateText: string;
+        additionsDetailsText: string;
+        removalsDetailsText: string;
         applyChanges: string;
         applyChangesDescription: string;
         editRules: string;
@@ -371,10 +375,12 @@ export type IStrings = {
       userNeverInGroupOrRemovedPriorToHistoryMessage: string;
     };
     notFound: string;
+    notFoundWithoutPurgeDate: string;
     openInAzure: string;
     openInTeams: string;
     viewDetails: string;
     editButton: string;
+    editDisabledInProgress: string;
   };
   JobsList: {
     listOfMemberships: string;
@@ -542,6 +548,8 @@ export type IStrings = {
       preventAutomaticSync: string;
       preventAutomaticSyncInfo: string;
       preventAutomaticSyncWarning: string;
+      increaseThresholdExceededWarning: string;
+      decreaseThresholdExceededWarning: string;
       increase: string;
       decrease: string;
       step4title: string;
@@ -553,6 +561,10 @@ export type IStrings = {
       noThresholdSet: string;
       savingSyncJob: string;
       updatingSyncJob: string;
+      jobInProgressDialogTitle: string;
+      jobInProgressDialogMessage: string;
+      editErrorDialogTitle: string;
+      editErrorDialogMessage: string;
       group: string;
       destinationPickerSuggestionsHeaderText: string;
       expand: string;

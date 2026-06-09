@@ -1,9 +1,8 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-using Models;
 using Microsoft.Azure.Functions.Worker;
-using Repositories.Contracts;
+using Microsoft.Extensions.Logging;
 using Services.Contracts;
 using System;
 using System.Collections.Generic;
@@ -13,23 +12,23 @@ namespace Hosts.AzureUserReader
 {
     public class PersonnelNumberReaderFunction
     {
-        private readonly IAzureUserReaderService _azureUserReaderService = null;
-        private readonly ILoggingRepository _loggingRepository = null;
+        private readonly IAzureUserReaderService _azureUserReaderService;
+        private readonly ILogger<PersonnelNumberReaderFunction> _logger;
 
-        public PersonnelNumberReaderFunction(IAzureUserReaderService azureUserReaderService, ILoggingRepository loggingRepository)
+        public PersonnelNumberReaderFunction(IAzureUserReaderService azureUserReaderService, ILogger<PersonnelNumberReaderFunction> logger)
         {
             _azureUserReaderService = azureUserReaderService ?? throw new ArgumentNullException(nameof(azureUserReaderService));
-            _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
 
         [Function(nameof(PersonnelNumberReaderFunction))]
         public async Task<IList<string>> GetPersonnelNumbersAsync([ActivityTrigger] AzureUserReaderRequest request)
         {
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(PersonnelNumberReaderFunction)} function started" }, VerbosityLevel.DEBUG);
+            _logger.FunctionStarted(nameof(PersonnelNumberReaderFunction));
 
             var personnelNumbers = await _azureUserReaderService.GetPersonnelNumbersAsync(request.ContainerName, request.BlobPath);
 
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(PersonnelNumberReaderFunction)} function completed" }, VerbosityLevel.DEBUG);
+            _logger.FunctionCompleted(nameof(PersonnelNumberReaderFunction));
 
             return personnelNumbers;
         }

@@ -76,6 +76,7 @@ GMM uses Azure Functions for its microservices architecture. Functions are organ
 | **GroupOwnershipObtainer** | Obtains owners of destination groups managed by GMM |
 | **AzureUserReader** | Reads user information from Entra ID |
 | **NonProdService** | Creates groups and jobs for non-production load testing |
+| **SqlDataChecker** | Validates SQL data integrity by comparing two recent successful ADF pipeline runs for table structure and row count changes |
 
 ---
 

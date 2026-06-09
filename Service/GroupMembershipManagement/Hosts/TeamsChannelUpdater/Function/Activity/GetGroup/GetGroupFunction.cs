@@ -1,34 +1,35 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 using Models;
-using Repositories.Contracts;
-using Services.Contracts;
-using System;
-using System.Threading.Tasks;
 using Microsoft.Azure.Functions.Worker;
 using Microsoft.DurableTask;
+using Microsoft.Extensions.Logging;
+using Repositories.Contracts.Helpers;
 using Services.TeamsChannelUpdater.Contracts;
+using System;
+using System.Threading.Tasks;
 
 namespace Hosts.TeamsChannelUpdater
 {
     public class GetGroupFunction
     {
-        private readonly ILoggingRepository _loggingRepository;
+        private readonly ILogger<GetGroupFunction> _logger;
         private readonly ITeamsChannelUpdaterService _teamsChannelUpdaterService;
 
-        public GetGroupFunction(ILoggingRepository loggingRepository, ITeamsChannelUpdaterService teamsChannelUpdaterService)
+        public GetGroupFunction(ILogger<GetGroupFunction> logger, ITeamsChannelUpdaterService teamsChannelUpdaterService)
         {
-            _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _teamsChannelUpdaterService = teamsChannelUpdaterService ?? throw new ArgumentNullException(nameof(teamsChannelUpdaterService));
         }
 
         [Function(nameof(GetGroupFunction))]
         public async Task<Guid> GetGroupNameAsync([ActivityTrigger] SyncJob syncJob)
         {
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(GetGroupFunction)} function started", RunId = syncJob.RunId }, VerbosityLevel.DEBUG);
-            _teamsChannelUpdaterService.RunId = syncJob.RunId ?? Guid.Empty;
+            using var scope = _logger.BeginSyncJobScope(syncJob);
+
+            _logger.FunctionStarted(nameof(GetGroupFunction));
             var groupId = await _teamsChannelUpdaterService.GetGroupIdAsync(syncJob);
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(GetGroupFunction)} function completed", RunId = syncJob.RunId }, VerbosityLevel.DEBUG);
+            _logger.FunctionCompleted(nameof(GetGroupFunction));
             return groupId;
         }
     }

@@ -2,37 +2,39 @@
 // Licensed under the MIT license.
 using Microsoft.Azure.Functions.Worker;
 using Microsoft.DurableTask;
+using Microsoft.Extensions.Logging;
 using Models;
 using Models.SyncJobHistory;
-using Repositories.Contracts;
+using Repositories.Contracts.Helpers;
 using Services.Contracts;
 using System;
+using System.Collections.Generic;
 using System.Threading.Tasks;
 
 namespace Hosts.GroupOwnershipObtainer
 {
     public class JobStatusUpdaterFunction
     {
-        private readonly ILoggingRepository _loggingRepository;
+        private readonly ILogger<JobStatusUpdaterFunction> _logger;
         private readonly ISyncJobStatusService _syncJobStatusService;
 
         public JobStatusUpdaterFunction(
-                        ILoggingRepository loggingRepository,
+                        ILogger<JobStatusUpdaterFunction> logger,
                         ISyncJobStatusService syncJobStatusService)
         {
-            _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _syncJobStatusService = syncJobStatusService ?? throw new ArgumentNullException(nameof(syncJobStatusService));
         }
 
         [Function(nameof(JobStatusUpdaterFunction))]
         public async Task UpdateJobStatusAsync([ActivityTrigger] JobStatusUpdaterRequest request)
         {
-            await _loggingRepository.LogMessageAsync(
-                new LogMessage
-                {
-                    Message = $"{nameof(JobStatusUpdaterFunction)} function started",
-                    RunId = request.SyncJob.RunId
-                }, VerbosityLevel.DEBUG);
+            using var scope = _logger.BeginSyncJobScope(request.SyncJob, new Dictionary<string, object>
+            {
+                ["CurrentPart"] = request.CurrentPart,
+                ["TotalParts"] = request.TotalParts
+            });
+            _logger.FunctionStarted(nameof(JobStatusUpdaterFunction));
 
             var now = DateTime.UtcNow;
             var updatedBy = nameof(Hosts.GroupOwnershipObtainer);
@@ -50,12 +52,7 @@ namespace Hosts.GroupOwnershipObtainer
 
             await _syncJobStatusService.UpdateJobStatusAsync(request.SyncJob, request.Status, history, functionName: updatedBy);
 
-            await _loggingRepository.LogMessageAsync(
-                new LogMessage
-                {
-                    Message = $"{nameof(JobStatusUpdaterFunction)} function completed",
-                    RunId = request.SyncJob.RunId
-                }, VerbosityLevel.DEBUG);
+            _logger.FunctionCompleted(nameof(JobStatusUpdaterFunction));
         }
     }
 }

@@ -2,6 +2,7 @@
 // Licensed under the MIT license.
 
 using Microsoft.Azure.Functions.Worker;
+using Microsoft.Extensions.Logging;
 using Models;
 using Repositories.Contracts;
 using System;
@@ -12,23 +13,23 @@ namespace Hosts.AzureUserReader
 {
     public class AzureUserReaderFunction
     {
-        private readonly IGraphUserRepository _graphUserRepository = null;
-        private readonly ILoggingRepository _loggingRepository = null;
+        private readonly IGraphUserRepository _graphUserRepository;
+        private readonly ILogger<AzureUserReaderFunction> _logger;
 
-        public AzureUserReaderFunction(IGraphUserRepository graphUserRepository, ILoggingRepository loggingRepository)
+        public AzureUserReaderFunction(IGraphUserRepository graphUserRepository, ILogger<AzureUserReaderFunction> logger)
         {
             _graphUserRepository = graphUserRepository ?? throw new ArgumentNullException(nameof(graphUserRepository));
-            _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
 
         [Function(nameof(AzureUserReaderFunction))]
         public async Task<IList<GraphProfileInformation>> GetUsersAsync([ActivityTrigger] List<string> personnelNumbers)
         {
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(AzureUserReaderFunction)} function started" }, VerbosityLevel.DEBUG);
+            _logger.FunctionStarted(nameof(AzureUserReaderFunction));
 
             var users = await _graphUserRepository.GetAzureADObjectIdsAsync(personnelNumbers, null);
 
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(AzureUserReaderFunction)} function completed" }, VerbosityLevel.DEBUG);
+            _logger.FunctionCompleted(nameof(AzureUserReaderFunction));
 
             return users;
         }

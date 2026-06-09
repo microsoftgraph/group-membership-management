@@ -3,7 +3,7 @@
 
 using Models;
 using Microsoft.Azure.Functions.Worker;
-using Repositories.Contracts;
+using Microsoft.Extensions.Logging;
 using System;
 using System.Threading.Tasks;
 using Services.Notifier.Contracts;
@@ -13,21 +13,21 @@ namespace Hosts.Notifier
 {
     public class SendThresholdNotification
     {
-        private readonly ILoggingRepository _loggingRepository = null;
-        private readonly INotifierService _notifierService = null;
+        private readonly ILogger<SendThresholdNotification> _logger;
+        private readonly INotifierService _notifierService;
 
-        public SendThresholdNotification(ILoggingRepository loggingRepository, INotifierService notifierService)
+        public SendThresholdNotification(ILogger<SendThresholdNotification> logger, INotifierService notifierService)
         {
-            _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _notifierService = notifierService ?? throw new ArgumentNullException(nameof(notifierService));
         }
 
         [Function(nameof(SendThresholdNotification))]
         public async Task SendThresholdNotificationAsync([ActivityTrigger] ThresholdNotification notification)
         {
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(SendThresholdNotification)} function started at: {DateTime.UtcNow}" });
+            _logger.FunctionStarted(nameof(SendThresholdNotification));
             await _notifierService.SendThresholdEmailAsync(notification);
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(SendThresholdNotification)} function completed at: {DateTime.UtcNow}" });
+            _logger.FunctionCompleted(nameof(SendThresholdNotification));
         }
     }
 }

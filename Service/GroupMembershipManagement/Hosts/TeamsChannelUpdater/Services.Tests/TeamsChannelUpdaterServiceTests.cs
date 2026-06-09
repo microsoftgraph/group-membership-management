@@ -4,8 +4,9 @@ using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Models;
 using Models.Entities;
 using Moq;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using Repositories.Contracts;
-using Repositories.Contracts.InjectConfig;
 using Services.Contracts;
 using Services.TeamsChannelUpdater.Contracts;
 using Services.TeamsChannelUpdater;
@@ -24,7 +25,6 @@ namespace Services.Tests
         private Mock<IDatabaseSyncJobsRepository> _mockSyncJobRepository = null!;
         private Mock<IDatabaseGroupsRepository> _mockGroupsRepository = null!;
         private Mock<IDatabaseChannelsRepository> _mockChannelsRepository = null!;
-        private Mock<ILoggingRepository> _mockLoggingRepository = null!;
         private Mock<IServiceBusQueueRepository> _mockServiceBusQueueRepository = null!;
         private Mock<ISyncJobStatusService> _mockSyncJobStatusService = null!;
 
@@ -85,7 +85,6 @@ namespace Services.Tests
                 .ReturnsAsync(_syncInfo.SyncJob);
 
 
-            _mockLoggingRepository = new Mock<ILoggingRepository>();
             _mockServiceBusQueueRepository = new Mock<IServiceBusQueueRepository>();
             _mockSyncJobStatusService = new Mock<ISyncJobStatusService>();
             _mockSyncJobStatusService
@@ -95,9 +94,10 @@ namespace Services.Tests
                     job.Status = status?.ToString();
                 });
 
-            _teamsChannelUpdaterService = new TeamsChannelUpdaterService(_mockTeamsChannelRepository.Object, _mockSyncJobRepository.Object,
+            _teamsChannelUpdaterService = new TeamsChannelUpdaterService(NullLogger<TeamsChannelUpdaterService>.Instance,
+                _mockTeamsChannelRepository.Object, _mockSyncJobRepository.Object,
                 _mockGroupsRepository.Object, _mockChannelsRepository.Object,
-                _mockLoggingRepository.Object, _mockServiceBusQueueRepository.Object,
+                _mockServiceBusQueueRepository.Object,
                 _mockSyncJobStatusService.Object);
 
         }

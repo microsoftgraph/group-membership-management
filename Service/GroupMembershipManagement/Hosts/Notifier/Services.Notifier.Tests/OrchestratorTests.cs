@@ -9,13 +9,12 @@ using System.Collections.Generic;
 using System.Threading.Tasks;
 using Models.Notifications;
 using Models.ThresholdNotifications;
-using Repositories.Contracts;
 using Hosts.Notifier;
 using System.Text.Json;
-using Models.ServiceBus;
 using Services.Tests;
 using System.Linq;
 using Microsoft.DurableTask;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace Services.Notifier.Tests
 {
@@ -23,7 +22,6 @@ namespace Services.Notifier.Tests
     public class OrchestratorFunctionTests
     {
         private Mock<TaskOrchestrationContext> _durableContext;
-        private Mock<ILoggingRepository> _loggerFunction;
         private OrchestratorFunction _orchestratorFunction;
         private const string GroupMembership = "GroupMembership";
 
@@ -31,7 +29,7 @@ namespace Services.Notifier.Tests
         public void SetupTest()
         {
             _durableContext = new Mock<TaskOrchestrationContext>();
-            _loggerFunction = new Mock<ILoggingRepository>();
+            _durableContext.Setup(x => x.CreateReplaySafeLogger(It.IsAny<string>())).Returns(NullLogger.Instance);
             _orchestratorFunction = new OrchestratorFunction();
         }
 
@@ -78,13 +76,9 @@ namespace Services.Notifier.Tests
                     It.IsAny<TaskOptions>()))
                 .Returns(Task.CompletedTask);
 
-            _durableContext.Setup(x => x.CallActivityAsync(
-                    nameof(LoggerFunction),
-                    It.IsAny<LoggerRequest>(),
-                    It.IsAny<TaskOptions>()))
-                .Returns(Task.CompletedTask);
-
             await _orchestratorFunction.RunOrchestratorAsync(_durableContext.Object);
+
+            _durableContext.Verify(x => x.CreateReplaySafeLogger("Notifier.OrchestratorFunction"), Times.Once);
 
             _durableContext.Verify(x => x.CallActivityAsync<ThresholdNotification>(
                 nameof(CreateThresholdNotificationFunction),
@@ -100,11 +94,6 @@ namespace Services.Notifier.Tests
                 nameof(UpdateNotificationStatusFunction),
                 It.IsAny<UpdateNotificationStatusRequest>(),
                 It.IsAny<TaskOptions>()), Times.Once);
-
-            _durableContext.Verify(x => x.CallActivityAsync(
-                nameof(LoggerFunction),
-                It.IsAny<LoggerRequest>(),
-                It.IsAny<TaskOptions>()), Times.AtLeastOnce);
         }
     }
 }

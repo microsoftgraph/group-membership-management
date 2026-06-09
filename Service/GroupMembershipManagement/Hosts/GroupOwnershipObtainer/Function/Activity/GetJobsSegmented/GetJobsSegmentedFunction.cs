@@ -2,8 +2,9 @@
 // Licensed under the MIT license.
 using Microsoft.Azure.Functions.Worker;
 using Microsoft.DurableTask;
+using Microsoft.Extensions.Logging;
 using Models;
-using Repositories.Contracts;
+using Repositories.Contracts.Helpers;
 using Services.Contracts;
 using System;
 using System.Collections.Generic;
@@ -13,22 +14,27 @@ namespace Hosts.GroupOwnershipObtainer
 {
     public class GetJobsSegmentedFunction
     {
-        private readonly ILoggingRepository _loggingRepository = null;
-        private readonly IGroupOwnershipObtainerService _groupOwnershipObtainerService = null;
+        private readonly ILogger<GetJobsSegmentedFunction> _logger;
+        private readonly IGroupOwnershipObtainerService _groupOwnershipObtainerService;
 
-        public GetJobsSegmentedFunction(ILoggingRepository loggingRepository, IGroupOwnershipObtainerService groupOwnershipObtainerService)
+        public GetJobsSegmentedFunction(ILogger<GetJobsSegmentedFunction> logger, IGroupOwnershipObtainerService groupOwnershipObtainerService)
         {
-            _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _groupOwnershipObtainerService = groupOwnershipObtainerService ?? throw new ArgumentNullException(nameof(groupOwnershipObtainerService));
         }
 
         [Function(nameof(GetJobsSegmentedFunction))]
         public async Task<List<SyncJob>> GetJobsAsync([ActivityTrigger] GetJobsSegmentedRequest request)
         {
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(GetJobsSegmentedFunction)} function started at: {DateTime.UtcNow}", RunId = request.RunId }, VerbosityLevel.DEBUG);
+            using var scope = _logger.BeginSyncJobScope(request.SyncJob, new Dictionary<string, object>
+            {
+                ["CurrentPart"] = request.CurrentPart,
+                ["TotalParts"] = request.TotalParts
+            });
+            _logger.FunctionStarted(nameof(GetJobsSegmentedFunction));
             var responsePage = await _groupOwnershipObtainerService.GetSyncJobsSegmentAsync();
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(GetJobsSegmentedFunction)} function completed at: {DateTime.UtcNow}", RunId = request.RunId }, VerbosityLevel.DEBUG);
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(GetJobsSegmentedFunction)} number of jobs about to be returned: {responsePage.Count}", RunId = request.RunId }, VerbosityLevel.DEBUG);
+            _logger.FunctionCompleted(nameof(GetJobsSegmentedFunction));
+            _logger.SegmentedJobsCount(nameof(GetJobsSegmentedFunction), responsePage.Count);
 
             return responsePage;
         }

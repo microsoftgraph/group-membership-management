@@ -2,8 +2,10 @@
 // Licensed under the MIT license.
 using Microsoft.Azure.Functions.Worker;
 using Microsoft.DurableTask;
+using Microsoft.Extensions.Logging;
 using Models;
-using Repositories.Contracts;
+using Repositories.Contracts.Helpers;
+using Services.TeamsChannelUpdater.Contracts;
 using System;
 using System.Threading.Tasks;
 
@@ -11,44 +13,27 @@ namespace Hosts.TeamsChannelUpdater
 {
     public class QueueMessageOrchestratorFunction
     {
-        private readonly ILoggingRepository _loggingRepository = null;
-
-        public QueueMessageOrchestratorFunction(ILoggingRepository loggingRepository)
+        public QueueMessageOrchestratorFunction()
         {
-            _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
         }
 
         [Function(nameof(QueueMessageOrchestratorFunction))]
         public async Task RunOrchestratorAsync([OrchestrationTrigger] TaskOrchestrationContext context)
         {
+            var logger = context.CreateReplaySafeLogger("TeamsChannelUpdater.QueueMessageOrchestratorFunction");
+
             try
             {
                 var request = await context.CallActivityAsync<MembershipHttpRequest>(nameof(MessageReaderFunction), null);
                 if (request == null)
                 {
-                    await context.CallActivityAsync(nameof(LoggerFunction),
-                                                    new LoggerRequest
-                                                    {
-                                                        Message = $"There are no more messages to process at this time.",
-                                                        Verbosity = VerbosityLevel.INFO
-                                                    });
-
+                    logger.NoMoreMessages();
                     return;
                 }
-                
-                var runId = request.SyncJob.RunId.GetValueOrDefault(Guid.Empty);
-                if (!context.IsReplaying)
-                {
-                    _loggingRepository.SetSyncJobProperties(runId, request.SyncJob.ToDictionary());
-                }
 
-                await context.CallActivityAsync(nameof(LoggerFunction),
-                                                   new LoggerRequest
-                                                   {
-                                                       Message = $"Processing message for group {request.GroupId}",
-                                                       RunId = runId,
-                                                       Verbosity = VerbosityLevel.INFO,
-                                                   });
+                using var scope = logger.BeginSyncJobScope(request.SyncJob);
+
+                logger.ProcessingMessage(request.GroupId);
 
                 await context.CallSubOrchestratorAsync(nameof(OrchestratorFunction), request);
             }
@@ -59,7 +44,7 @@ namespace Hosts.TeamsChannelUpdater
                 // we catch it here so we can get the next message from the queue.
             }
 
-            context.ContinueAsNew(null);
+            context.ContinueAsNew((object)null);
         }
     }
 }

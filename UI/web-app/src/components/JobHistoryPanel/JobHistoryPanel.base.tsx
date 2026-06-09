@@ -37,7 +37,7 @@ import { useDispatch, useSelector } from 'react-redux';
 import { AppDispatch } from '../../store';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { downloadMembershipChanges, fetchJobChanges, fetchSyncJobHistory, fetchThresholdNotification, resolveNotification, searchSyncHistoryByUser } from '../../store/jobDetails.api';
-import { selectSelectedJobChanges, selectSelectedJobDetails } from '../../store/jobs.slice';
+import { selectSelectedJobChanges, selectSelectedJobDetails, setSelectedJobEnabled } from '../../store/jobs.slice';
 import { SyncJobChange } from '../../models/SyncJobChange';
 import { SyncJobChangeReason } from '../../models/SyncJobChangeReason';
 import { SyncJobHistory } from '../../models/SyncJobHistory';
@@ -88,7 +88,7 @@ const syncPageSizeOptions: IDropdownOption[] = [10, 20, 30, 40, 50].map((value) 
 export const JobHistoryPanelBase: React.FunctionComponent<IJobHistoryPanelProps> = (
     props: IJobHistoryPanelProps
 ) => {
-    const { className, styles, isOpen, dismissPanel, jobId } = props;
+    const { className, styles, isOpen, dismissPanel, jobId, onEditThreshold, onEditRules } = props;
     const strings = useStrings();
     const theme = useTheme();
     const dispatch = useDispatch<AppDispatch>();
@@ -117,6 +117,9 @@ export const JobHistoryPanelBase: React.FunctionComponent<IJobHistoryPanelProps>
     const [thresholdData, setThresholdData] = useState<ThresholdNotificationData | null>(null);
     const [isThresholdDataLoading, setIsThresholdDataLoading] = useState(false);
     const [syncPaused, setSyncPaused] = useState(false);
+    const [changesApplied, setChangesApplied] = useState(false);
+    const [resolveError, setResolveError] = useState<string | null>(null);
+    const [resolvedRunIds, setResolvedRunIds] = useState<Set<string>>(new Set());
     const [selectedUser, setSelectedUser] = useState<IPersonaProps[]>([]);
     const [matchingRunIds, setMatchingRunIds] = useState<Set<string> | null>(null);
     const [isUserSearchLoading, setIsUserSearchLoading] = useState(false);
@@ -533,6 +536,7 @@ export const JobHistoryPanelBase: React.FunctionComponent<IJobHistoryPanelProps>
             setShowProgressUnavailableMessage(false);
             setSearchProgressText(null);
             setUserPickerSuggestions([]);
+            setResolvedRunIds(new Set());
             activeSearchRequestIdRef.current = null;
             isSignalRProgressDisabledRef.current = false;
             ignoreNextEmptyUserInputRef.current = false;
@@ -598,7 +602,7 @@ export const JobHistoryPanelBase: React.FunctionComponent<IJobHistoryPanelProps>
     };
 
     const extractQueryFromChangeDetails = (changeDetails: string): string | null => {
-        if (!changeDetails.trim()) {
+        if (!changeDetails?.trim()) {
             return null;
         }
 
@@ -750,6 +754,31 @@ export const JobHistoryPanelBase: React.FunctionComponent<IJobHistoryPanelProps>
         }
     ];
 
+    const mostRecentThresholdRunId = useMemo<string | null>(() => {
+        return syncHistoryItems
+            .filter((item) => item.status === RunHistoryStatus.ThresholdExceeded)
+            .reduce((latest, item) => {
+                const itemTime = getUtcTimestampMillis(item.endTime ?? item.startTime);
+                return itemTime > latest.time ? { runId: item.runId, time: itemTime } : latest;
+            }, { runId: null as string | null, time: 0 }).runId;
+    }, [syncHistoryItems]);
+
+    const isThresholdResolved = useMemo<boolean>(() => {
+        if (!mostRecentThresholdRunId) return false;
+
+        const thresholdItem = syncHistoryItems.find((item) => item.runId === mostRecentThresholdRunId);
+        if (!thresholdItem) return false;
+
+        const thresholdTime = getUtcTimestampMillis(thresholdItem.endTime ?? thresholdItem.startTime);
+
+        return jobChanges.some(
+            (change) =>
+                (change.changeReason === SyncJobChangeReason.StatusUpdate ||
+                    change.changeReason === SyncJobChangeReason.IgnoreThresholdOnce) &&
+                getUtcTimestampMillis(change.changeTime) > thresholdTime
+        );
+    }, [mostRecentThresholdRunId, syncHistoryItems, jobChanges]);
+
     const combinedSyncItems = useMemo<CombinedHistoryListItem[]>(() => {
         const configurationItems = jobChanges.map((item, index) => ({
             id: `configuration-${index}-${item.changeTime}`,
@@ -895,6 +924,10 @@ export const JobHistoryPanelBase: React.FunctionComponent<IJobHistoryPanelProps>
                 <span className={isThresholdExceeded ? classNames.statusCellThresholdExceeded : undefined}>
                     {item.statusText}
                 </span>
+                
+                {isThresholdExceeded && item.syncHistory && item.syncHistory.runId === mostRecentThresholdRunId && !resolvedRunIds.has(item.syncHistory.runId) && !isThresholdResolved && (
+                    <Link onClick={() => handleTakeAction(item.syncHistory!)}>{strings.JobDetails.Panel.takeAction}</Link>
+                )}
             </div>
         );
     };
@@ -1027,18 +1060,45 @@ export const JobHistoryPanelBase: React.FunctionComponent<IJobHistoryPanelProps>
         setTakeActionItem(null);
         setThresholdData(null);
         setIsThresholdDataLoading(false);
+        setResolveError(null);
+    };
+
+    const handleApplyChanges = async (): Promise<void> => {
+        if (!thresholdData?.notificationId) {
+            return;
+        }
+        setResolveError(null);
+        try {
+            await dispatch(resolveNotification({ notificationId: thresholdData.notificationId, resolution: 'IgnoreOnce' })).unwrap();
+            setChangesApplied(true);
+            const applyRunId = takeActionItem?.runId;
+            if (applyRunId) {
+                setResolvedRunIds((prev) => new Set(prev).add(applyRunId));
+            }
+            dispatch(setSelectedJobEnabled(true));
+            dispatch(fetchJobChanges({ syncJobId: jobId }));
+            handleCloseTakeAction();
+        } catch {
+            setResolveError(strings.JobDetails.Panel.resolveError);
+        }
     };
 
     const handlePauseSync = async (): Promise<void> => {
         if (!thresholdData?.notificationId) {
             return;
         }
-
+        setResolveError(null);
         try {
             await dispatch(resolveNotification({ notificationId: thresholdData.notificationId, resolution: 'Paused' })).unwrap();
             setSyncPaused(true);
-        } finally {
+            const pauseRunId = takeActionItem?.runId;
+            if (pauseRunId) {
+                setResolvedRunIds((prev) => new Set(prev).add(pauseRunId));
+            }
+            dispatch(fetchJobChanges({ syncJobId: jobId }));
             handleCloseTakeAction();
+        } catch {
+            setResolveError(strings.JobDetails.Panel.resolveError);
         }
     };
 
@@ -1126,6 +1186,14 @@ export const JobHistoryPanelBase: React.FunctionComponent<IJobHistoryPanelProps>
                 scrollableContent: { overflow: 'visible' },
             }}
         >
+            {changesApplied && (
+                <MessageBar
+                    messageBarType={MessageBarType.success}
+                    onDismiss={() => setChangesApplied(false)}
+                >
+                    {strings.JobDetails.Panel.changesAppliedSuccess}
+                </MessageBar>
+            )}
             {syncPaused && (
                 <MessageBar
                     messageBarType={MessageBarType.success}
@@ -1328,12 +1396,30 @@ export const JobHistoryPanelBase: React.FunctionComponent<IJobHistoryPanelProps>
                 groupName={selectedJob?.targetGroupName ?? ''}
                 usersToAdd={thresholdData?.changeQuantityForAdditions ?? 0}
                 increasePercentage={thresholdData?.changePercentageForAdditions ?? 0}
-                thresholdPercentage={thresholdData?.thresholdPercentageForAdditions ?? 0}
-                onApplyChanges={() => {}}
-                onEditRules={() => {}}
-                onEditThreshold={() => {}}
+                thresholdPercentageForAdditions={thresholdData?.thresholdPercentageForAdditions ?? 0}
+                usersToRemove={thresholdData?.changeQuantityForRemovals ?? 0}
+                decreasePercentage={thresholdData?.changePercentageForRemovals ?? 0}
+                thresholdPercentageForRemovals={thresholdData?.thresholdPercentageForRemovals ?? 0}
+                onApplyChanges={handleApplyChanges}
+                onEditRules={onEditRules ? () => {
+                    handleCloseTakeAction();
+                    dismissPanel();
+                    onEditRules();
+                } : () => {}}
+                isEditRulesEnabled={!!onEditRules}
+                onEditThreshold={onEditThreshold ? () => {
+                    const additionsExceeded = !!thresholdData && thresholdData.changePercentageForAdditions > thresholdData.thresholdPercentageForAdditions;
+                    const removalsExceeded = !!thresholdData && thresholdData.changePercentageForRemovals > thresholdData.thresholdPercentageForRemovals;
+                    handleCloseTakeAction();
+                    dismissPanel();
+                    onEditThreshold({ additionsExceeded, removalsExceeded });
+                } : () => {}}
                 onPauseSync={handlePauseSync}
+                isApplyChangesEnabled={!!thresholdData?.notificationId}
+                isEditThresholdEnabled={!!onEditThreshold}
                 isPauseSyncEnabled={!!thresholdData?.notificationId}
+                errorMessage={resolveError ?? undefined}
+                purgeDate={thresholdData?.purgeDate}
             />
         </Panel>
     )

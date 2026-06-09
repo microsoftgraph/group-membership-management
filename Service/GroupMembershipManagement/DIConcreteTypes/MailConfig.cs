@@ -11,13 +11,15 @@ namespace DIConcreteTypes
         public bool GMMHasSendMailApplicationPermissions { get; set; }
         public string SenderAddress { get; set; }
         public bool SkipEmailNotifications { get; set; }
+        public bool EnableStyledFallbackEmails { get; set; }
 
-        public MailConfig(bool isAdaptiveCardEnabled, bool gmmHasSendMailApplicationPermissions, string senderAddress, bool skipEmailNotifications)
+        public MailConfig(bool isAdaptiveCardEnabled, bool gmmHasSendMailApplicationPermissions, string senderAddress, bool skipEmailNotifications, bool enableStyledFallbackEmails = true)
         {
             IsAdaptiveCardEnabled = isAdaptiveCardEnabled;
             GMMHasSendMailApplicationPermissions = gmmHasSendMailApplicationPermissions;
             SenderAddress = senderAddress;
             SkipEmailNotifications = skipEmailNotifications;
+            EnableStyledFallbackEmails = enableStyledFallbackEmails;
         }
 
         public MailConfig()

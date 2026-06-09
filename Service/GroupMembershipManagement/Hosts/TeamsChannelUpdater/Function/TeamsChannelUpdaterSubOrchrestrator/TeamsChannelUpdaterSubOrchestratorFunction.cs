@@ -2,13 +2,15 @@
 // Licensed under the MIT license.
 using Microsoft.Azure.Functions.Worker;
 using Microsoft.DurableTask;
+using Microsoft.Extensions.Logging;
 using System.Threading.Tasks;
 using System.Linq;
 using System.Collections.Generic;
 using System;
 using Microsoft.ApplicationInsights;
-using Repositories.Contracts;
 using Models.Entities;
+using Repositories.Contracts.Helpers;
+using Services.TeamsChannelUpdater.Contracts;
 
 namespace Hosts.TeamsChannelUpdater
 {
@@ -35,8 +37,10 @@ namespace Hosts.TeamsChannelUpdater
                 return new TeamsChannelUpdaterSubOrchestratorResponse();
             }
 
-            await context.CallActivityAsync(nameof(LoggerFunction),
-                new LoggerRequest { Message = $"{nameof(TeamsChannelUpdaterSubOrchestratorFunction)} function started with batch size {_batchSize}", RunId = request.RunId, Verbosity = VerbosityLevel.INFO });
+            var logger = context.CreateReplaySafeLogger("TeamsChannelUpdater.TeamsChannelUpdaterSubOrchestratorFunction");
+            using var scope = logger.BeginSyncJobScope(request.SyncJob);
+
+            logger.SubOrchestratorStarted(nameof(TeamsChannelUpdaterSubOrchestratorFunction), _batchSize);
 
             var batch = request.Members?.Skip(skip).Take(_batchSize).ToList() ?? new List<AzureADTeamsUser>();
 
@@ -51,17 +55,11 @@ namespace Hosts.TeamsChannelUpdater
                                                Type = request.Type,
                                                Members = batch,
                                                TeamsChannelInfo = request.TeamsChannelInfo,
-                                               RunId = request.RunId
+                                               SyncJob = request.SyncJob
                                            });
                 totalSuccessCount += response.SuccessCount;
 
-                await context.CallActivityAsync(nameof(LoggerFunction),
-                                                new LoggerRequest
-                                                {
-                                                    Message = $"{(request.Type == RequestType.Add ? "Added" : "Removed")} {totalSuccessCount}/{request.Members.Count} users so far.",
-                                                    RunId = request.RunId
-                                                });
-
+                logger.BatchProgress(request.Type == RequestType.Add ? "Added" : "Removed", totalSuccessCount, request.Members.Count);
 
                 skip += batch.Count;
 
@@ -76,12 +74,7 @@ namespace Hosts.TeamsChannelUpdater
 
             if (retryBatch.Count > 0)
             {
-                await context.CallActivityAsync(nameof(LoggerFunction),
-                    new LoggerRequest
-                    {
-                        Message = $"Retrying {retryBatch.Count} users",
-                        RunId = request.RunId
-                    });
+                logger.RetryingUsers(retryBatch.Count);
 
                 while (retryBatch.Count > 0)
                 {
@@ -91,17 +84,11 @@ namespace Hosts.TeamsChannelUpdater
                                                    Type = request.Type,
                                                    Members = batch,
                                                    TeamsChannelInfo = request.TeamsChannelInfo,
-                                                   RunId = request.RunId
+                                                   SyncJob = request.SyncJob
                                                });
                     totalSuccessCount += response.SuccessCount;
 
-                    await context.CallActivityAsync(nameof(LoggerFunction),
-                        new LoggerRequest
-                        {
-                            Message = $"{(request.Type == RequestType.Add ? "Added" : "Removed")} {totalSuccessCount}/{request.Members.Count} users so far.",
-                            RunId = request.RunId
-                        });
-
+                    logger.BatchProgress(request.Type == RequestType.Add ? "Added" : "Removed", totalSuccessCount, request.Members.Count);
 
                     skip += retryBatch.Count;
 
@@ -111,13 +98,7 @@ namespace Hosts.TeamsChannelUpdater
                 }
             }
 
-            await context.CallActivityAsync(nameof(LoggerFunction),
-                new LoggerRequest
-                {
-                    Message = $"{(request.Type == RequestType.Add ? "Added" : "Removed")} {totalSuccessCount} users in total, " +
-                    $"{allUsersNotFound.Count} users not found, {userFailures.Count} users failed.",
-                    RunId = request.RunId
-                });
+            logger.SubOrchestratorSummary(request.Type == RequestType.Add ? "Added" : "Removed", totalSuccessCount, allUsersNotFound.Count, userFailures.Count);
 
             if (!context.IsReplaying)
             {
@@ -139,13 +120,7 @@ namespace Hosts.TeamsChannelUpdater
                 }
             }
 
-            await context.CallActivityAsync(nameof(LoggerFunction),
-                                                      new LoggerRequest
-                                                      {
-                                                          Message = $"{nameof(TeamsChannelUpdaterSubOrchestratorFunction)} function completed",
-                                                          RunId = request.RunId,
-                                                          Verbosity = VerbosityLevel.DEBUG
-                                                      });
+            logger.FunctionCompleted(nameof(TeamsChannelUpdaterSubOrchestratorFunction));
 
             return new TeamsChannelUpdaterSubOrchestratorResponse()
             {

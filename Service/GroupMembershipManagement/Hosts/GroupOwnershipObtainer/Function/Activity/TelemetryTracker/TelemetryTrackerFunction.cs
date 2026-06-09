@@ -3,8 +3,8 @@
 using Microsoft.ApplicationInsights;
 using Microsoft.Azure.Functions.Worker;
 using Microsoft.DurableTask;
-using Models;
-using Repositories.Contracts;
+using Microsoft.Extensions.Logging;
+using Repositories.Contracts.Helpers;
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
@@ -13,40 +13,36 @@ namespace Hosts.GroupOwnershipObtainer
 {
     public class TelemetryTrackerFunction
     {
-        private readonly ILoggingRepository _loggingRepository;
+        private readonly ILogger<TelemetryTrackerFunction> _logger;
         private readonly TelemetryClient _telemetryClient;
 
-        public TelemetryTrackerFunction(ILoggingRepository loggingRepository, TelemetryClient telemetryClient)
+        public TelemetryTrackerFunction(ILogger<TelemetryTrackerFunction> logger, TelemetryClient telemetryClient)
         {
-            _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _telemetryClient = telemetryClient ?? throw new ArgumentNullException(nameof(telemetryClient));
         }
 
         [Function(nameof(TelemetryTrackerFunction))]
-        public async Task TrackEventAsync([ActivityTrigger] TelemetryTrackerRequest request)
+        public Task TrackEventAsync([ActivityTrigger] TelemetryTrackerRequest request)
         {
-            await _loggingRepository.LogMessageAsync(
-                new LogMessage
-                {
-                    Message = $"{nameof(TelemetryTrackerFunction)} function started",
-                    RunId = request.RunId
-                }, VerbosityLevel.DEBUG);
+            using var scope = _logger.BeginSyncJobScope(request.SyncJob, new Dictionary<string, object>
+            {
+                ["CurrentPart"] = request.CurrentPart,
+                ["TotalParts"] = request.TotalParts
+            });
+            _logger.FunctionStarted(nameof(TelemetryTrackerFunction));
 
             var jobsCompletedEvent = new Dictionary<string, string>
             {
                 { "Status", request.JobStatus.ToString() },
                 { "ResultStatus", request.ResultStatus.ToString() },
-                { "RunId", request.RunId.ToString() }
+                { "RunId", request.SyncJob?.RunId?.ToString() ?? string.Empty }
             };
 
             _telemetryClient.TrackEvent("NumberOfJobsCompleted", jobsCompletedEvent);
 
-            await _loggingRepository.LogMessageAsync(
-                new LogMessage
-                {
-                    Message = $"{nameof(TelemetryTrackerFunction)} function completed",
-                    RunId = request.RunId
-                }, VerbosityLevel.DEBUG);
+            _logger.FunctionCompleted(nameof(TelemetryTrackerFunction));
+            return Task.CompletedTask;
         }
     }
 }

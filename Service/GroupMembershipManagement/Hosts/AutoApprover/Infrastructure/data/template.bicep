@@ -8,40 +8,21 @@ param environmentAbbreviation string
 @maxLength(3)
 param solutionAbbreviation string = 'gmm'
 
-param storageAccountSku string = 'Standard_LRS'
+var functionsStorageAccountName = take('fn${solutionAbbreviation}${environmentAbbreviation}${uniqueString(resourceGroup().id)}', 24)
 
-@description('Resource location.')
-param location string
-
-@description('Classify the types of resources in prereqs resource group.')
-param prereqsResourceGroupClassification string = 'prereqs'
-
-var keyVaultName = '${solutionAbbreviation}-data-${environmentAbbreviation}'
-var prodStorageAccountName = substring('aa${solutionAbbreviation}${environmentAbbreviation}prod${uniqueString(resourceGroup().id)}',0,23)
-var appPackageContainerName = 'app-package'
-
-module autoApproverStorageAccountProd 'storageAccount.bicep' = {
-  name: 'autoApproverProdstorageAccountTemplate'
-  params: {
-    name: prodStorageAccountName
-    sku: storageAccountSku
-    keyVaultName: keyVaultName
-    location: location
-    storageAccountSettingName: 'autoApproverStorageAccountProd'
-    appPackageContainerSettingName: 'autoApproverAppPackageContainerProd'
-    appPackageContainerName: appPackageContainerName
-  }
+resource functionsStorageAccount 'Microsoft.Storage/storageAccounts@2022-05-01' existing = {
+  name: functionsStorageAccountName
 }
 
-var nspName = '${solutionAbbreviation}-nsp-${environmentAbbreviation}'
-var prereqsResourceGroupName = '${solutionAbbreviation}-${prereqsResourceGroupClassification}-${environmentAbbreviation}'
+resource blobServices 'Microsoft.Storage/storageAccounts/blobServices@2022-05-01' existing = {
+  parent: functionsStorageAccount
+  name: 'default'
+}
 
-module autoApproverStorageAccountAssociationTemplate 'networkSecurityPerimeterResourceAssociation.bicep' = {
-  name: 'autoApproverStorageAccountAssociationTemplate'
-  scope: resourceGroup(prereqsResourceGroupName)
-  params: {
-    nspName: nspName
-    profileName: 'storageaccount'
-    resourceId: autoApproverStorageAccountProd.outputs.storageAccountId
+resource appPackageContainer 'Microsoft.Storage/storageAccounts/blobServices/containers@2022-05-01' = {
+  parent: blobServices
+  name: 'autoapprover-app-package'
+  properties: {
+    publicAccess: 'None'
   }
 }

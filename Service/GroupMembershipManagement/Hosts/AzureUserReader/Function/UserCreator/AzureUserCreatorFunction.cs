@@ -2,6 +2,7 @@
 // Licensed under the MIT license.
 
 using Microsoft.Azure.Functions.Worker;
+using Microsoft.Extensions.Logging;
 using Models;
 using Repositories.Contracts;
 using System;
@@ -13,23 +14,23 @@ namespace Hosts.AzureUserReader
 {
     public class AzureUserCreatorFunction
     {
-        private readonly IGraphUserRepository _graphUserRepository = null;
-        private readonly ILoggingRepository _loggingRepository = null;
+        private readonly IGraphUserRepository _graphUserRepository;
+        private readonly ILogger<AzureUserCreatorFunction> _logger;
 
-        public AzureUserCreatorFunction(IGraphUserRepository graphUserRepository, ILoggingRepository loggingRepository)
+        public AzureUserCreatorFunction(IGraphUserRepository graphUserRepository, ILogger<AzureUserCreatorFunction> logger)
         {
             _graphUserRepository = graphUserRepository ?? throw new ArgumentNullException(nameof(graphUserRepository));
-            _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
 
         [Function(nameof(AzureUserCreatorFunction))]
         public async Task<List<GraphProfileInformation>> AddUsersAsync([ActivityTrigger] AzureUserCreatorRequest request)
         {
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(AzureUserCreatorFunction)} function started" }, VerbosityLevel.DEBUG);
+            _logger.FunctionStarted(nameof(AzureUserCreatorFunction));
 
             if (request == null || request.TenantInformation == null)
             {
-                await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(AzureUserCreatorFunction)} exception, request or TenantInformation is null" }, VerbosityLevel.DEBUG);
+                _logger.RequestOrTenantInfoNull(nameof(AzureUserCreatorFunction));
                 throw new ArgumentNullException(request == null ? nameof(request) : nameof(request.TenantInformation));
             }
 
@@ -49,7 +50,7 @@ namespace Hosts.AzureUserReader
 
             var newProfiles = await _graphUserRepository.AddUsersAsync(newUsers, null);
 
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(AzureUserCreatorFunction)} function completed" }, VerbosityLevel.DEBUG);
+            _logger.FunctionCompleted(nameof(AzureUserCreatorFunction));
 
             return newProfiles;
         }

@@ -3,20 +3,19 @@
 
 using System;
 using System.Threading.Tasks;
-using Models;
 using Microsoft.Azure.Functions.Worker;
 using Microsoft.DurableTask.Client;
-using Repositories.Contracts;
+using Microsoft.Extensions.Logging;
 
 namespace Hosts.JobScheduler
 {
     public class StarterFunction
     {
-        private readonly ILoggingRepository _loggingRepository = null;
+        private readonly ILogger<StarterFunction> _logger;
 
-        public StarterFunction(ILoggingRepository loggingRepository)
+        public StarterFunction(ILogger<StarterFunction> logger)
         {
-            _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
 
         [Function(nameof(StarterFunction))]
@@ -24,9 +23,9 @@ namespace Hosts.JobScheduler
             [TimerTrigger("%jobSchedulerSchedule%")] TimerInfo myTimer,
             [DurableClient] DurableTaskClient starter)
         {
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(StarterFunction)} function started" }, VerbosityLevel.DEBUG);
+            _logger.FunctionStarted(nameof(StarterFunction));
             await starter.ScheduleNewOrchestrationInstanceAsync(nameof(OrchestratorFunction), null);
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(StarterFunction)} function completed" }, VerbosityLevel.DEBUG);
+            _logger.FunctionCompleted(nameof(StarterFunction));
         }
     }
 }

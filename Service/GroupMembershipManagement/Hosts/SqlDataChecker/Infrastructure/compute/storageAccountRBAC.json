@@ -1,0 +1,70 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "metadata": {
+    "_generator": {
+      "name": "bicep",
+      "version": "0.34.44.8038",
+      "templateHash": "6972760417516445582"
+    }
+  },
+  "parameters": {
+    "storageAccountName": {
+      "type": "string",
+      "metadata": {
+        "description": "Specifies the name of the storage account."
+      }
+    },
+    "principalId": {
+      "type": "string",
+      "metadata": {
+        "description": "Specifies the object ID of a user, service principal or security group in the Azure Active Directory tenant for the vault. The object ID must be unique for the list of access policies. Get it by using Get-AzADUser or Get-AzADServicePrincipal cmdlets."
+      }
+    },
+    "principaltype": {
+      "type": "string",
+      "defaultValue": "ServicePrincipal",
+      "allowedValues": [
+        "Device",
+        "ForeignGroup",
+        "Group",
+        "ServicePrincipal",
+        "User"
+      ],
+      "metadata": {
+        "description": "Principal Type"
+      }
+    },
+    "roleName": {
+      "type": "string",
+      "allowedValues": [
+        "Storage Queue Data Contributor",
+        "Storage Table Data Contributor",
+        "Storage Blob Data Contributor"
+      ],
+      "metadata": {
+        "description": "Specifies the role name to assign."
+      }
+    }
+  },
+  "variables": {
+    "roleIdMapping": {
+      "Storage Queue Data Contributor": "974c5e8b-45b9-4653-ba55-5f855dd0fb88",
+      "Storage Table Data Contributor": "0a9a7e1f-b9d0-4cc4-a60d-0319b160aaa3",
+      "Storage Blob Data Contributor": "ba92f5b4-2d11-453d-a403-e96b0029c9fe"
+    }
+  },
+  "resources": [
+    {
+      "type": "Microsoft.Authorization/roleAssignments",
+      "apiVersion": "2022-04-01",
+      "scope": "[format('Microsoft.Storage/storageAccounts/{0}', parameters('storageAccountName'))]",
+      "name": "[guid(variables('roleIdMapping')[parameters('roleName')], parameters('principalId'), resourceId('Microsoft.Storage/storageAccounts', parameters('storageAccountName')))]",
+      "properties": {
+        "roleDefinitionId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', variables('roleIdMapping')[parameters('roleName')])]",
+        "principalId": "[parameters('principalId')]",
+        "principalType": "[parameters('principaltype')]"
+      }
+    }
+  ]
+}

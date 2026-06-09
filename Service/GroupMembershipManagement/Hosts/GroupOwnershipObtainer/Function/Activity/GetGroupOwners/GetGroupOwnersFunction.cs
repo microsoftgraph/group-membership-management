@@ -2,8 +2,8 @@
 // Licensed under the MIT license.
 using Microsoft.Azure.Functions.Worker;
 using Microsoft.DurableTask;
-using Models;
-using Repositories.Contracts;
+using Microsoft.Extensions.Logging;
+using Repositories.Contracts.Helpers;
 using Services.Contracts;
 using System;
 using System.Collections.Generic;
@@ -13,21 +13,26 @@ namespace Hosts.GroupOwnershipObtainer
 {
     public class GetGroupOwnersFunction
     {
-        private readonly ILoggingRepository _loggingRepository;
+        private readonly ILogger<GetGroupOwnersFunction> _logger;
         private readonly IGroupOwnershipObtainerService _groupOwnershipObtainerService;
 
-        public GetGroupOwnersFunction(ILoggingRepository loggingRepository, IGroupOwnershipObtainerService groupOwnershipObtainerService)
+        public GetGroupOwnersFunction(ILogger<GetGroupOwnersFunction> logger, IGroupOwnershipObtainerService groupOwnershipObtainerService)
         {
-            _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _groupOwnershipObtainerService = groupOwnershipObtainerService ?? throw new ArgumentNullException(nameof(groupOwnershipObtainerService));
         }
 
         [Function(nameof(GetGroupOwnersFunction))]
         public async Task<List<Guid>> GetGroupOwnersAsync([ActivityTrigger] GetGroupOwnersRequest request)
         {
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(GetGroupOwnersFunction)} function started at: {DateTime.UtcNow}", RunId = request.SyncJob.RunId }, VerbosityLevel.DEBUG);
+            using var scope = _logger.BeginSyncJobScope(request.SyncJob, new Dictionary<string, object>
+            {
+                ["CurrentPart"] = request.CurrentPart,
+                ["TotalParts"] = request.TotalParts
+            });
+            _logger.FunctionStarted(nameof(GetGroupOwnersFunction));
             var ids = await _groupOwnershipObtainerService.GetGroupOwnersAsync(request.GroupId);
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(GetGroupOwnersFunction)} function completed at: {DateTime.UtcNow}", RunId = request.SyncJob.RunId }, VerbosityLevel.DEBUG);
+            _logger.FunctionCompleted(nameof(GetGroupOwnersFunction));
 
             return ids;
         }

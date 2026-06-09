@@ -139,7 +139,7 @@ function Set-Subscription {
 }
 
 function Set-ResourceProviders {
-    foreach ($namespace in @("Microsoft.ServiceBus", "Microsoft.Insights", "Microsoft.OperationalInsights", "Microsoft.AlertsManagement", "Microsoft.Storage", "Microsoft.AppConfiguration", "Microsoft.Sql", "Microsoft.Web", "Microsoft.DataFactory", "Microsoft.SignalRService")) {
+    foreach ($namespace in @("Microsoft.ServiceBus", "Microsoft.Insights", "Microsoft.OperationalInsights", "Microsoft.AlertsManagement", "Microsoft.Storage", "Microsoft.AppConfiguration", "Microsoft.Sql", "Microsoft.Web", "Microsoft.DataFactory", "Microsoft.SignalRService", "Microsoft.DevTestLab")) {
         Write-Host "Checking if the resource provider $namespace is registered..."
         $provider = Invoke-WithRetry `
             -Operation { Get-AzResourceProvider -ProviderNamespace $namespace } `
@@ -526,6 +526,101 @@ function Set-PrereqResources {
     }
 }
 
+function Set-NetworkingResources {
+    param (
+        [Parameter(Mandatory = $true)]
+        [string]$SolutionAbbreviation,
+        [Parameter(Mandatory = $true)]
+        [string]$EnvironmentAbbreviation,
+        [Parameter(Mandatory = $true)]
+        [string]$SubscriptionId,
+        [Parameter(Mandatory = $true)]
+        [string]$NetworkingTemplateDirectoryPath,
+        [Parameter(Mandatory = $true)]
+        [Hashtable]$ParameterHashtable,
+        [Parameter(Mandatory = $false)]
+        [Hashtable]$AdditionalParameters = @{ parameters = @{} }
+    )
+
+    $dataResourceGroup = "$SolutionAbbreviation-data-$EnvironmentAbbreviation"
+    $networkingResourceGroup = "$SolutionAbbreviation-networking-$EnvironmentAbbreviation"
+
+    # Ensure VM admin secrets exist in the data Key Vault.
+    # Generate values in script when missing, then let Bicep set them.
+    $vmAdminUsernameSecretName = "vmAdminUsername"
+    $vmAdminPasswordSecretName = "vmAdminPassword"
+
+    $networkingAdditionalParameters = @{
+        parameters = @{}
+    }
+    $AdditionalParameters.parameters.Keys | ForEach-Object {
+        $networkingAdditionalParameters.parameters[$_] = $AdditionalParameters.parameters[$_]
+    }
+
+    Write-Host "Checking VM admin secret presence in Key Vault '$dataResourceGroup'..."
+    $usernameExists = Check-IfKeyVaultSecretExists -VaultName $dataResourceGroup -SecretName $vmAdminUsernameSecretName
+    $passwordExists = Check-IfKeyVaultSecretExists -VaultName $dataResourceGroup -SecretName $vmAdminPasswordSecretName
+    Write-Host ("VM admin secret status: vmAdminUsername={0}, vmAdminPassword={1}" -f $(if ($usernameExists) { 'found' } else { 'missing' }), $(if ($passwordExists) { 'found' } else { 'missing' }))
+    $setVmAdminSecrets = (-not $usernameExists) -or (-not $passwordExists)
+
+    if ($setVmAdminSecrets) {
+        Write-Host "One or more VM admin secrets are missing in '$dataResourceGroup'. Generating values for deployment..."
+
+        # Generate cryptographically random values for password.
+        $upper = -join ((65..90) | Get-Random -Count 4 | ForEach-Object { [char]$_ })
+        $lower = -join ((97..122) | Get-Random -Count 4 | ForEach-Object { [char]$_ })
+        $digits = -join ((48..57) | Get-Random -Count 4 | ForEach-Object { [char]$_ })
+        $special = -join (('!@#$%^&*()-_=+[]{}|;:,.<>?'.ToCharArray()) | Get-Random -Count 4)
+        $allPasswordChars = ($upper + $lower + $digits + $special).ToCharArray() | Sort-Object { Get-Random }
+        
+        $networkingAdditionalParameters.parameters["setVmAdminSecrets"] = @{ value = $setVmAdminSecrets }
+        $networkingAdditionalParameters.parameters["vmAdminUsername"] = @{ value = "gmmadmin" }
+        $networkingAdditionalParameters.parameters["vmAdminPassword"] = @{ value = -join $allPasswordChars }
+    }
+    else {
+        Write-Host "VM admin secrets already exist in '$dataResourceGroup'. Reusing existing values."
+    }
+
+    # Start the jumpbox VM if it exists and is stopped/deallocated.
+    # Auto-shutdown may have turned it off; extensions cannot deploy to a non-running VM.
+    $vmName = "$SolutionAbbreviation-networking-$EnvironmentAbbreviation-management-vm"
+    $vm = Get-AzVM -ResourceGroupName $networkingResourceGroup -Name $vmName -Status -ErrorAction SilentlyContinue
+    if ($null -ne $vm) {
+        $powerState = ($vm.Statuses | Where-Object { $_.Code -like 'PowerState/*' }).Code
+        if ($powerState -in @('PowerState/deallocated', 'PowerState/stopped')) {
+            Write-Host "Jumpbox VM '$vmName' is $($powerState -replace 'PowerState/'). Starting it before networking deployment..."
+            Start-AzVM -ResourceGroupName $networkingResourceGroup -Name $vmName
+            Write-Host "Jumpbox VM '$vmName' started successfully."
+        }
+        else {
+            Write-Host "Jumpbox VM '$vmName' is in state '$($powerState -replace 'PowerState/')'. No action needed."
+        }
+    }
+    else {
+        Write-Host "Jumpbox VM '$vmName' not found (first deployment). Skipping VM start."
+    }
+
+    Write-Host "`nCreating networking resources"
+    $templateFilePath = "$NetworkingTemplateDirectoryPath/networkingResources.json"
+    Invoke-WithRetry `
+        -Operation {
+            Start-ResourceDeployment `
+                -ResourceGroupName $networkingResourceGroup `
+                -SubscriptionId $SubscriptionId `
+                -TemplateFilePath $templateFilePath `
+                -ParameterHashtable $ParameterHashtable `
+                -AdditionalParameters $networkingAdditionalParameters
+        } `
+        -OperationName "Create networking resources" `
+        -MaxAttempts $maxRetriesForDeploymentOperations `
+        -BaseDelaySeconds 2
+
+    # Clear plaintext VM admin password from memory 
+    if ($networkingAdditionalParameters.parameters.ContainsKey("vmAdminPassword")) {
+        $networkingAdditionalParameters.parameters["vmAdminPassword"] = $null
+    }
+}
+
 function Set-DataResources {
     param (
         [Parameter(Mandatory = $true)]
@@ -737,6 +832,7 @@ function Get-CommonParameters {
     $commonParametersObject.parameters["prereqsResourceGroupName"] = @{"value" = $prereqsResourceGroup }
     $commonParametersObject.parameters["dataResourceGroupName"] = @{"value" = $dataResourceGroup }
     $commonParametersObject.parameters["computeResourceGroupName"] = @{"value" = $computeResourceGroup }
+    $commonParametersObject.parameters["networkingResourceGroupName"] = @{"value" = "$SolutionAbbreviation-networking-$EnvironmentAbbreviation" }
     $commonParametersObject.parameters["prereqsKeyVaultName"] = @{"value" = $prereqsResourceGroup }
     $commonParametersObject.parameters["dataKeyVaultName"] = @{"value" = $dataResourceGroup }
     $commonParametersObject.parameters["computeKeyVaultName"] = @{"value" = $computeResourceGroup }
@@ -812,7 +908,7 @@ function Set-FunctionAuthenticationAllowedIdentities {
     }
 
     # Define function apps that need ADF access
-    $adfFunctionAppNames = @("AzureUserReader", "NonProdService")
+    $adfFunctionAppNames = @("AzureUserReader", "NonProdService", "SqlDataChecker")
     $adfFunctionAppNames += $AdditionalAdfFunctionAppNames
 
     # Define function apps that need WebAPI access
@@ -1027,6 +1123,9 @@ function Set-GMMResources {
         -ScriptsDirectory $ScriptsDirectory `
         -Region $Location
 
+    # determine networking deployment behavior
+    $skipNetworkingDeployment = Get-Default -Value $ParameterHashtable['skipNetworkingDeployment'].value -Default $false
+
     # Store the app registration secrets
     if ($ParameterHashtable.skipAppRegistrationSecretStorage.value -ne $true) {
         $isClientSecretAuth = if ($ParameterHashtable.authenticationType.value -eq "ClientSecret") { $true } else { $false }
@@ -1063,6 +1162,23 @@ function Set-GMMResources {
         -ipAddresses $ipAddressesToWhiteList `
         -ScriptsDirectory $ScriptsDirectory `
         -Region $Location
+
+    # deploy networking resources after data resources so networking can provision
+    # private endpoints that target data resources (SQL primary/replica, data KV).
+    if ($skipNetworkingDeployment -eq $false) {
+        Set-NetworkingResources `
+            -SolutionAbbreviation           $SolutionAbbreviation `
+            -EnvironmentAbbreviation        $EnvironmentAbbreviation `
+            -SubscriptionId                 $SubscriptionId `
+            -NetworkingTemplateDirectoryPath $TemplateFilesDirectory `
+            -ParameterHashtable             $ParameterHashtable `
+            -AdditionalParameters           $commonParametersObject
+
+        Start-Sleep -Seconds 10
+    }
+    else {
+        Write-Host "`nSkipping networking deployment as per configuration [skipNetworkingDeployment = $skipNetworkingDeployment]." -ForegroundColor Yellow
+    }
     
     # deploy compute resources
     Set-ComputeResources `
@@ -1224,7 +1340,7 @@ function Set-SQLServerPermissions {
         -Operation { Get-AzDataFactoryV2 -ResourceGroupName $dataResourceGroup -Name $dataFactoryName -ErrorAction SilentlyContinue } `
         -OperationName "Get Data Factory" `
         -MaxAttempts 3 -BaseDelaySeconds 2
-    $functionAppsADF = $functionApps | Where-Object { $_.Name -match "-webapi" -or $_.Name -match "-SqlMembershipObtainer" }
+    $functionAppsADF = $functionApps | Where-Object { $_.Name -match "-webapi" -or $_.Name -match "-SqlMembershipObtainer" -or $_.Name -match "-SqlDataChecker" }
 
     if ($null -ne $dataFactory) {
 
@@ -1301,7 +1417,11 @@ function Set-RBACPermissions {
         [Parameter(Mandatory = $false)]
         [bool] $SetUserAssignedManagedIdentityPermissions = $false,
         [Parameter(Mandatory = $false)]
-        [boolean] $SkipPrivilegedDirectoryActions = $false
+        [boolean] $SkipPrivilegedDirectoryActions = $false,
+        [Parameter(Mandatory = $false)]
+        [bool] $SkipNetworkingDeployment = $false,
+        [Parameter(Mandatory = $false)]
+        [string] $BastionVnetAddressPrefix = '10.0.0.0/24'
     )
 
     # grant permissions to resources
@@ -1313,7 +1433,9 @@ function Set-RBACPermissions {
         -EnvironmentAbbreviation $EnvironmentAbbreviation `
         -TenantId $TenantId `
         -SetUserAssignedManagedIdentityPermissions $SetUserAssignedManagedIdentityPermissions `
-        -SkipPrivilegedDirectoryActions $SkipPrivilegedDirectoryActions
+        -SkipPrivilegedDirectoryActions $SkipPrivilegedDirectoryActions `
+        -SkipNetworkingDeployment $SkipNetworkingDeployment `
+        -BastionVnetAddressPrefix $BastionVnetAddressPrefix
 
 }
 
@@ -2320,6 +2442,10 @@ function Set-ConfigureWebApps {
         [AllowNull()]
         [AllowEmptyString()]
         [string]$UIAppRegistrationId,
+        [Parameter(Mandatory = $false)]
+        [AllowNull()]
+        [AllowEmptyString()]
+        [string]$StaticWebAppName,
         [Parameter(Mandatory = $true)]
         [boolean]$SkipPrivilegedDirectoryActions        
     )
@@ -2328,7 +2454,7 @@ function Set-ConfigureWebApps {
 
     $computeResourceGroup = "$SolutionAbbreviation-compute-$EnvironmentAbbreviation"
     $webApiName = "$SolutionAbbreviation-compute-$EnvironmentAbbreviation-webapi"
-    $uiWebAppName = "$SolutionAbbreviation-ui"
+    $uiWebAppName = if ([string]::IsNullOrWhiteSpace($StaticWebAppName)) { "$SolutionAbbreviation-ui" } else { $StaticWebAppName }
 
     # Set CORS for web apps
     $allowedOrigins = @()
@@ -2489,10 +2615,16 @@ function Set-PublishUICode {
         [Parameter(Mandatory = $true)]
         [string]$SharepointDomain,
         [Parameter(Mandatory = $true)]
-        [string]$SubscriptionId
+        [string]$SubscriptionId,
+        [Parameter(Mandatory = $false)]
+        [AllowNull()]
+        [AllowEmptyString()]
+        [string]$StaticWebAppName
     )
 
-    Write-Host "Publishing UI code to Azure Static Web App..." -ForegroundColor Yellow
+    $resolvedStaticWebAppName = if ([string]::IsNullOrWhiteSpace($StaticWebAppName)) { "$SolutionAbbreviation-ui" } else { $StaticWebAppName }
+
+    Write-Host "Publishing UI code to Azure Static Web App '$resolvedStaticWebAppName'..." -ForegroundColor Yellow
 
     $dataResourceGroup = "$SolutionAbbreviation-data-$EnvironmentAbbreviation"
     $computeResourceGroup = "$SolutionAbbreviation-compute-$EnvironmentAbbreviation"
@@ -2522,10 +2654,11 @@ function Set-PublishUICode {
         -MaxAttempts 3 -BaseDelaySeconds 2
     $appInsightsConnectionString = $appInsights.ConnectionString
 
-    $buildVersionFilePath = "$WebAppDirectory/buildVersion.txt"
-    if (Test-Path -Path $buildVersionFilePath) {
-        $buildVersion = Get-Content -Path $buildVersionFilePath
-        Write-Host "Build version: $buildVersion"
+    $appVersionFilePath = "$WebAppDirectory/appVersion.txt"
+    $appVersion = ''
+    if (Test-Path -Path $appVersionFilePath) {
+        $appVersion = Get-Content -Path $appVersionFilePath
+        Write-Host "App version (from appVersion.txt): $appVersion"
     }
 
     $envContent = "REACT_APP_AAD_UI_APP_CLIENT_ID=$UIAppClientId`n"
@@ -2538,7 +2671,7 @@ function Set-PublishUICode {
     $envContent += "REACT_APP_DOMAINNAME=$TenantDomain`n"
     $envContent += "AZURE_SUBSCRIPTION_ID=$SubscriptionId`n"
     $envContent += "AZURE_TENANT_ID=$MainTenantId`n"
-    $envContent += "REACT_APP_VERSION_NUMBER=$buildVersion`n"
+    $envContent += "REACT_APP_VERSION_NUMBER=$appVersion`n"
     $envContent += "DISABLE_ESLINT_PLUGIN=true`n"
 
     Set-Content -Path "$WebAppDirectory/.env" -Value $envContent -Force
@@ -2546,18 +2679,82 @@ function Set-PublishUICode {
 
     Set-Location -Path $WebAppDirectory
 
-    # Get the web app deployment token
-    $webAppName = "$SolutionAbbreviation-ui"
-    $webAppSecrets = Invoke-WithRetry `
-        -Operation { (Get-AzStaticWebAppSecret -name $webAppName -ResourceGroupName $computeResourceGroup).Property | ConvertFrom-Json } `
-        -OperationName "Get static web app secrets" `
-        -MaxAttempts 3 -BaseDelaySeconds 2
-    $webAppDeploymentToken = $webAppSecrets.apiKey
+    try {
+        # Get the web app deployment token
+        $webAppName = $resolvedStaticWebAppName
+        $webAppSecrets = Invoke-WithRetry `
+            -Operation { (Get-AzStaticWebAppSecret -name $webAppName -ResourceGroupName $computeResourceGroup).Property | ConvertFrom-Json } `
+            -OperationName "Get static web app secrets" `
+            -MaxAttempts 3 -BaseDelaySeconds 2
+        $webAppDeploymentToken = $webAppSecrets.apiKey
 
-    swa build
-    swa deploy "build" --env "Production" -n $webAppName -R $computeResourceGroup --deployment-token $webAppDeploymentToken
+        # Build UI if not already built (source-based deploys)
+        if (-not (Test-Path "build")) {
+            Write-Host "Build directory not found. Restoring dependencies and building UI from source..." -ForegroundColor Yellow
+            pnpm install --frozen-lockfile
+            pnpm build
+        }
 
-    Set-Location -Path $currentLocation
+        swa deploy "build" --env "Production" -n $webAppName -R $computeResourceGroup --deployment-token $webAppDeploymentToken
+
+        # Verify deployment actually landed
+        Write-Host "🔍 Verifying UI deployment..." -ForegroundColor Yellow
+        $buildAssetsDir = "$WebAppDirectory/build/assets"
+        $expectedJsFile = if (Test-Path $buildAssetsDir) {
+            Get-ChildItem -Path $buildAssetsDir -Filter "index-*.js" | Select-Object -First 1
+        }
+
+        if (-not $expectedJsFile) {
+            Write-Host "⚠ Could not find index-*.js in build/assets — skipping deployment verification." -ForegroundColor Yellow
+        } else {
+            Write-Host "   Expected asset: $($expectedJsFile.Name)" -ForegroundColor Yellow
+
+            $staticWebApp = Invoke-WithRetry `
+                -Operation { Get-AzStaticWebApp -Name $webAppName -ResourceGroupName $computeResourceGroup } `
+                -OperationName "Get static web app for verification" `
+                -MaxAttempts 3 -BaseDelaySeconds 2
+            $swaUrl = "https://$($staticWebApp.DefaultHostname)"
+
+            # Retry verification to allow CDN propagation time
+            $maxVerifyAttempts = 5
+            $verifyDelaySeconds = 15
+            $verified = $false
+
+            for ($attempt = 1; $attempt -le $maxVerifyAttempts; $attempt++) {
+                if ($attempt -gt 1) {
+                    Write-Host "   Waiting ${verifyDelaySeconds}s for CDN propagation (attempt $attempt/$maxVerifyAttempts)..." -ForegroundColor Yellow
+                    Start-Sleep -Seconds $verifyDelaySeconds
+                }
+
+                Write-Host "   Checking $swaUrl ..." -ForegroundColor Yellow
+
+                try {
+                    $response = Invoke-WebRequest -Uri $swaUrl -UseBasicParsing -TimeoutSec 30 -MaximumRedirection 5 -SkipHttpErrorCheck -Headers @{ "Cache-Control" = "no-cache" }
+                    if ($response.StatusCode -ne 200) {
+                        Write-Host "⚠ Site returned HTTP $($response.StatusCode) — cannot verify deployment." -ForegroundColor Yellow
+                        $verified = $true
+                        break
+                    } elseif ($response.Content -match [regex]::Escape($expectedJsFile.Name)) {
+                        Write-Host "✅ Deployed site references $($expectedJsFile.Name) — deployment verified!" -ForegroundColor Green
+                        $verified = $true
+                        break
+                    } else {
+                        Write-Host "⚠ Deployed site does not yet reference $($expectedJsFile.Name) (attempt $attempt/$maxVerifyAttempts)" -ForegroundColor Yellow
+                    }
+                } catch {
+                    Write-Host "⚠ Could not reach $swaUrl to verify deployment (attempt $attempt/$maxVerifyAttempts): $_" -ForegroundColor Yellow
+                }
+            }
+
+            if (-not $verified) {
+                Write-Host "❌ Deployed site does NOT reference $($expectedJsFile.Name) after $maxVerifyAttempts attempts!" -ForegroundColor Red
+                Write-Host "   The SWA CLI reported success but the upload may not have landed." -ForegroundColor Red
+                throw "Deployment verification FAILED — asset hash mismatch. The UI was NOT deployed successfully."
+            }
+        }
+    } finally {
+        Set-Location -Path $currentLocation
+    }
 
     Write-Host "✅ UI code published successfully!" -ForegroundColor Green
 }
@@ -2570,16 +2767,14 @@ function Test-ScriptDependencies {
 
     # PowerShell Core
     if ($PSVersionTable.PSEdition -ne "Core") {
-        Write-Error "❌ This script requires PowerShell Core (pwsh). Current edition: $($PSVersionTable.PSEdition)"
-        exit 1
+        throw "This script requires PowerShell Core (pwsh). Current edition: $($PSVersionTable.PSEdition)"
     } else {
         Write-Host "✅ Running on PowerShell Core version $($PSVersionTable.PSVersion)" -ForegroundColor Green
     }
 
     # 64-bit
     if (-not [Environment]::Is64BitProcess) {
-        Write-Error "❌ This script must be run in a 64-bit PowerShell session."
-        exit 1
+        throw "This script must be run in a 64-bit PowerShell session."
     } else {
         Write-Host "✅ Running in a 64-bit PowerShell session." -ForegroundColor Green
     }
@@ -2606,8 +2801,7 @@ function Test-ScriptDependencies {
         npm install -g pnpm
 
         if ($LASTEXITCODE -ne 0) {
-            Write-Error "❌ pnpm installation failed."
-            exit 1
+            throw "pnpm installation failed."
         }
 
         Write-Host "✅ pnpm installed successfully." -ForegroundColor Green
@@ -2643,8 +2837,7 @@ function Test-ScriptDependencies {
     if ($installedVersion -eq $desiredVersion) {
         Write-Host "✅ swa version $desiredVersion installed successfully." -ForegroundColor Green
     } else {
-        Write-Error "❌ Failed to install swa version $desiredVersion."
-        exit 1
+        throw "Failed to install swa version $desiredVersion."
     }
 
     # Required paths and files
@@ -2667,8 +2860,7 @@ function Test-ScriptDependencies {
     }
 
     if (-not $dependenciesPresent) {
-        Write-Error "❌ One or more dependencies are missing. Please resolve them before continuing."
-        exit 1
+        throw "One or more dependencies are missing. Please resolve them before continuing."
     }
 
     Write-Host "🎉 All dependencies verified successfully!" -ForegroundColor Green
@@ -2764,7 +2956,9 @@ function Initialize-ScriptDependencies {
         [Parameter(Mandatory = $true)]
         [bool]$SkipPrivilegedDirectoryActions,
         [Parameter(Mandatory = $false)]
-        [bool]$AssertUserPermissions = $true
+        [bool]$AssertUserPermissions = $true,
+        [Parameter(Mandatory = $false)]
+        [bool]$SkipAuthentication = $false
     )
 
     Test-ScriptDependencies
@@ -2791,38 +2985,43 @@ function Initialize-ScriptDependencies {
         )
     }
 
-    Write-Host "Disconnecting any existing Microsoft Graph sessions..."
-    Disconnect-MgGraph -ErrorAction SilentlyContinue | Out-Null
-
-    # Connect to Microsoft Graph and Azure
-    if ($UseDeviceAuthentication -eq $true) {
-        Write-Host "Connecting to Microsoft Graph using device code authentication..."
-        Connect-MgGraph -Scopes $requiredScopes -NoWelcome -UseDeviceCode
-
-        Write-Host "Connecting to Azure using device code authentication..."
-        Connect-AzAccount -UseDeviceAuthentication
+    if ($SkipAuthentication -eq $true) {
+        Write-Host "Skipped authentication as per configuration [SkipAuthentication = $($SkipAuthentication)]." -ForegroundColor Yellow
     }
     else {
-        Write-Host "Connecting to Microsoft Graph using interactive authentication..."
-        Connect-MgGraph -Scopes $requiredScopes -NoWelcome
-        Write-Host "Connecting to Azure using interactive authentication..."
-        Connect-AzAccount
-    }
+        Write-Host "Disconnecting any existing Microsoft Graph sessions..."
+        Disconnect-MgGraph -ErrorAction SilentlyContinue | Out-Null
 
-    Set-Subscription `
-            -ScriptsDirectory $ScriptsDirectory `
-            -SubscriptionId $SubscriptionId
+        # Connect to Microsoft Graph and Azure
+        if ($UseDeviceAuthentication -eq $true) {
+            Write-Host "Connecting to Microsoft Graph using device code authentication..."
+            Connect-MgGraph -Scopes $requiredScopes -NoWelcome -UseDeviceCode
 
-    if ($AssertUserPermissions -eq $true) {
-        if (-not $SkipPrivilegedDirectoryActions) {
-            . ($ScriptsDirectory + '/Assert-MicrosoftGraphPermissions.ps1')
-            Assert-MicrosoftGraphPermissions
+            Write-Host "Connecting to Azure using device code authentication..."
+            Connect-AzAccount -UseDeviceAuthentication
+        }
+        else {
+            Write-Host "Connecting to Microsoft Graph using interactive authentication..."
+            Connect-MgGraph -Scopes $requiredScopes -NoWelcome
+            Write-Host "Connecting to Azure using interactive authentication..."
+            Connect-AzAccount
         }
 
-        . ($ScriptsDirectory + '/Assert-RbacPermissionsForDeployment.ps1')
-        Assert-RbacPermissionsForDeployment `
-            -SolutionAbbreviation $SolutionAbbreviation `
-            -EnvironmentAbbreviation $EnvironmentAbbreviation
+        Set-Subscription `
+                -ScriptsDirectory $ScriptsDirectory `
+                -SubscriptionId $SubscriptionId
+
+        if ($AssertUserPermissions -eq $true) {
+            if (-not $SkipPrivilegedDirectoryActions) {
+                . ($ScriptsDirectory + '/Assert-MicrosoftGraphPermissions.ps1')
+                Assert-MicrosoftGraphPermissions
+            }
+
+            . ($ScriptsDirectory + '/Assert-RbacPermissionsForDeployment.ps1')
+            Assert-RbacPermissionsForDeployment `
+                -SolutionAbbreviation $SolutionAbbreviation `
+                -EnvironmentAbbreviation $EnvironmentAbbreviation
+        }
     }
 }
 
@@ -2894,6 +3093,23 @@ function Deploy-Resources {
         [string]$ParameterFileName = "parameters.json"
     )
 
+    # --- Transcript logging ---
+    $transcriptStarted = $false
+    try {
+        $logsDir = Join-Path $PSScriptRoot 'logs'
+        if (-not (Test-Path $logsDir)) {
+            New-Item -ItemType Directory -Path $logsDir -Force | Out-Null
+        }
+        $logTimestamp = Get-Date -Format 'yyyyMMdd-HHmmss'
+        $logPath = Join-Path $logsDir "deploy-$logTimestamp.log"
+        Start-Transcript -Path $logPath -NoClobber
+        $transcriptStarted = $true
+    } catch {
+        Write-Warning "Could not start transcript logging: $_"
+    }
+
+    try {
+
     $global:SkipModuleInstall = $true
     $global:SkipMSGraphLogin = $true
     $global:SkipAzLogin = $true
@@ -2918,6 +3134,8 @@ function Deploy-Resources {
     $resetGMMType                                   = $parameterHashtable.resetGMMType.value
     $useDeviceAuthentication                        = $parameterHashtable.useDeviceAuthentication.value
     $skipModuleInstallation                         = $parameterHashtable.skipModuleInstallation.value
+    $skipNetworkingDeployment                       = Get-Default -Value $ParameterHashtable['skipNetworkingDeployment'].value -Default $true
+    $skipAuthentication                             = Get-Default -Value $ParameterHashtable['skipAuthentication'].value -Default $false
 
     $setRBACPermissions             = Get-Default -Value $ParameterHashtable['setRBACPermissions'].value      -Default $false
     $skipSqlServerPermissionSetup   = Get-Default -Value $ParameterHashtable['skipSqlServerPermissionSetup'].value -Default $false
@@ -2938,7 +3156,8 @@ function Deploy-Resources {
         -UseDeviceAuthentication $useDeviceAuthentication `
         -SkipModuleInstallation $skipModuleInstallation `
         -SkipPrivilegedDirectoryActions $skipPrivilegedDirectoryActions `
-        -AssertUserPermissions $assertUserPermissions
+        -AssertUserPermissions $assertUserPermissions `
+        -SkipAuthentication $skipAuthentication
 
     if (!$skipResourceProvidersCheck) {
         Set-ResourceProviders
@@ -3038,13 +3257,16 @@ function Deploy-Resources {
 
     if ($true -eq $setRBACPermissions) {
         $isUserAssignedManagedIdentityAuth = if ($parameterHashtable.authenticationType.value -eq "UserAssignedManagedIdentity") { $true } else { $false }
+        $bastionVnetAddressPrefix = Get-Default -Value $parameterHashtable['bastionVnetAddressPrefix'].value -Default '10.0.0.0/24'
         Set-RBACPermissions `
         -SolutionAbbreviation $solutionAbbreviation `
         -EnvironmentAbbreviation $environmentAbbreviation `
         -TenantId $parameterHashtable.tenantId.value `
         -ScriptsDirectory "$scriptsDirectory/PostDeploymentRoleAssignments" `
         -SetUserAssignedManagedIdentityPermissions $isUserAssignedManagedIdentityAuth `
-        -SkipPrivilegedDirectoryActions $skipPrivilegedDirectoryActions
+        -SkipPrivilegedDirectoryActions $skipPrivilegedDirectoryActions `
+        -SkipNetworkingDeployment $skipNetworkingDeployment `
+        -BastionVnetAddressPrefix $bastionVnetAddressPrefix
     }
 
     Set-FunctionAppCode `
@@ -3130,5 +3352,11 @@ function Deploy-Resources {
         -MaxAttempts 3 -BaseDelaySeconds 2
     if ($null -ne $staticWebApp) {
         Write-Host "`nhttps://$($staticWebApp.DefaultHostname)`n" -ForegroundColor Cyan
+    }
+
+    } finally {
+        if ($transcriptStarted) {
+            Stop-Transcript
+        }
     }
 }

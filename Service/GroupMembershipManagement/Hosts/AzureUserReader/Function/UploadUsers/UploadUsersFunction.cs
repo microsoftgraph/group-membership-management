@@ -1,9 +1,8 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-using Models;
 using Microsoft.Azure.Functions.Worker;
-using Repositories.Contracts;
+using Microsoft.Extensions.Logging;
 using Services.Contracts;
 using Services.Entities;
 using System;
@@ -14,19 +13,19 @@ namespace Hosts.AzureUserReader
 {
     public class UploadUsersFunction
     {
-        private readonly IAzureUserReaderService _azureUserReaderService = null;
-        private readonly ILoggingRepository _loggingRepository = null;
+        private readonly IAzureUserReaderService _azureUserReaderService;
+        private readonly ILogger<UploadUsersFunction> _logger;
 
-        public UploadUsersFunction(IAzureUserReaderService azureUserReaderService, ILoggingRepository loggingRepository)
+        public UploadUsersFunction(IAzureUserReaderService azureUserReaderService, ILogger<UploadUsersFunction> logger)
         {
             _azureUserReaderService = azureUserReaderService ?? throw new ArgumentNullException(nameof(azureUserReaderService));
-            _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
 
         [Function(nameof(UploadUsersFunction))]
         public async Task UploadUsersMemberIdAsync([ActivityTrigger] UploadUsersRequest request)
         {
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(UploadUsersFunction)} function started" }, VerbosityLevel.DEBUG);
+            _logger.FunctionStarted(nameof(UploadUsersFunction));
 
             var serviceRequest = new UploadRequest
             {
@@ -37,7 +36,7 @@ namespace Hosts.AzureUserReader
 
             await _azureUserReaderService.UploadUsersMemberIdAsync(serviceRequest);
 
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(UploadUsersFunction)} function completed" }, VerbosityLevel.DEBUG);
+            _logger.FunctionCompleted(nameof(UploadUsersFunction));
         }
     }
 }

@@ -4,6 +4,7 @@ using Microsoft.Azure.Functions.Worker;
 using Microsoft.Extensions.Logging;
 using Models;
 using Repositories.Contracts;
+using Repositories.Contracts.Helpers;
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
@@ -12,30 +13,33 @@ namespace Hosts.NonProdService
 {
     public class TenantUserReaderFunction
     {
-        private readonly ILoggingRepository _loggingRepository;
+        private readonly ILogger<TenantUserReaderFunction> _logger;
         private readonly IGraphGroupRepository _graphGroupRepository = null;
 
-        public TenantUserReaderFunction(ILoggingRepository loggingRepository, IGraphGroupRepository graphGroupRepository)
+        public TenantUserReaderFunction(ILogger<TenantUserReaderFunction> logger, IGraphGroupRepository graphGroupRepository)
         {
-            _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _graphGroupRepository = graphGroupRepository ?? throw new ArgumentNullException(nameof(graphGroupRepository));
         }
 
         [Function(nameof(TenantUserReaderFunction))]
-        public async Task<List<AzureADUser>> GetTenantUsersAsync([ActivityTrigger] TenantUserReaderRequest request, ILogger log)
+        public async Task<List<AzureADUser>> GetTenantUsersAsync([ActivityTrigger] TenantUserReaderRequest request)
         {
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(TenantUserReaderFunction)} function started", RunId = request.RunId }, VerbosityLevel.DEBUG);
-
-            var users = await _graphGroupRepository.GetTenantUsers(request.MinimunTenantUserCount);
-
-            if(users.Count< request.MinimunTenantUserCount)
+            using (_logger.BeginRunIdScope(request.RunId))
             {
-                return null;
+                _logger.FunctionStarted(nameof(TenantUserReaderFunction));
+
+                var users = await _graphGroupRepository.GetTenantUsers(request.MinimunTenantUserCount);
+
+                if(users.Count< request.MinimunTenantUserCount)
+                {
+                    return null;
+                }
+
+                _logger.FunctionCompleted(nameof(TenantUserReaderFunction));
+
+                return users;
             }
-
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(TenantUserReaderFunction)} function completed", RunId = request.RunId }, VerbosityLevel.DEBUG);
-
-            return users;
         }
     }
 }

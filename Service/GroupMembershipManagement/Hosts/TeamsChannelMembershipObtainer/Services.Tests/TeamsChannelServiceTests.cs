@@ -1,7 +1,7 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 using Microsoft.Extensions.Configuration.AzureAppConfiguration;
-using Microsoft.FeatureManagement;
+using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Models;
 using Models.Entities;
@@ -29,7 +29,6 @@ namespace Services.Tests
         private Mock<IHttpClientFactory> _mockHttpClientFactory = null!;
         private Mock<IServiceBusQueueRepository> _serviceBusQueueRepository = null!;
         private Mock<IConfigurationRefresherProvider> _configurationRefresherProvider = null!;
-        private Mock<ILoggingRepository> _loggingRepository = null!;
         private Mock<ISyncJobStatusService> _syncJobStatusService = null!;
         private Mock<HttpMessageHandler> _messageHandler = null!;
         private HttpStatusCode _responseStatusCode = HttpStatusCode.NoContent;
@@ -62,7 +61,6 @@ namespace Services.Tests
             _syncJobRepository = new Mock<IDatabaseSyncJobsRepository>();
 
             _mockHttpClientFactory = new Mock<IHttpClientFactory>();
-            _loggingRepository = new Mock<ILoggingRepository>();
             _serviceBusQueueRepository = new Mock<IServiceBusQueueRepository>();
             _configurationRefresherProvider = new Mock<IConfigurationRefresherProvider>();
             _syncJobStatusService = new Mock<ISyncJobStatusService>();
@@ -93,7 +91,7 @@ namespace Services.Tests
                                                 _mockHttpClientFactory.Object,
                                                 _syncJobRepository.Object,
                                                 _channelsRepository.Object,
-                                                _loggingRepository.Object,
+                                                NullLogger<TeamsChannelMembershipObtainerService>.Instance,
                                                 _configurationRefresherProvider.Object,
                                                 _serviceBusQueueRepository.Object,
                                                 _syncJobStatusService.Object);
