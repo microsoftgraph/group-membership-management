@@ -140,7 +140,7 @@ export const JobHistoryPanelBase: React.FunctionComponent<IJobHistoryPanelProps>
     const userPickerRef = useRef<any>(null);
     const ignoreNextEmptyUserInputRef = useRef(false);
 
-    const getChangeReasonText = (changeReason: string): string => {
+    const getChangeReasonText = (changeReason: string | null): string => {
         switch (changeReason) {
             case SyncJobChangeReason.Onboarding:
                 return strings.JobDetails.Panel.onboardingRequest;
@@ -159,7 +159,7 @@ export const JobHistoryPanelBase: React.FunctionComponent<IJobHistoryPanelProps>
             case SyncJobChangeReason.IgnoreThresholdOnce:
                 return strings.JobDetails.Panel.ignoreThresholdOnce;
             default:
-                return changeReason;
+                return changeReason ?? '';
         }
     };
 
@@ -677,10 +677,10 @@ export const JobHistoryPanelBase: React.FunctionComponent<IJobHistoryPanelProps>
             });
     }, [dispatch, isOpen, jobId, showSyncTab]);
 
-    const handleViewDetails = (details: string) => {
+    const handleViewDetails = (details: string | null) => {
         setModalTitle(strings.JobDetails.Panel.changeDetailsColumnLabel);
         setModalViewMode('details');
-        setModalContent(details);
+        setModalContent(details ?? '');
         setIsModalOpen(true);
     };
 
@@ -709,7 +709,7 @@ export const JobHistoryPanelBase: React.FunctionComponent<IJobHistoryPanelProps>
         return null;
     };
 
-    const extractQueryFromChangeDetails = (changeDetails: string): string | null => {
+    const extractQueryFromChangeDetails = (changeDetails: string | null): string | null => {
         if (!changeDetails?.trim()) {
             return null;
         }
@@ -730,7 +730,7 @@ export const JobHistoryPanelBase: React.FunctionComponent<IJobHistoryPanelProps>
         }
     };
 
-    const handleOpenQuery = (changeDetails: string) => {
+    const handleOpenQuery = (changeDetails: string | null) => {
         const query = extractQueryFromChangeDetails(changeDetails);
         if (!query) {
             return;
@@ -825,6 +825,7 @@ export const JobHistoryPanelBase: React.FunctionComponent<IJobHistoryPanelProps>
             maxWidth: 200,
             isResizable: true,
             isMultiline: true,
+            onRender: (item: SyncJobChange) => <span>{item.changedByDisplayName ?? ''}</span>,
         },
         {
             key: 'changeReason',

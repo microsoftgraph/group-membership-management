@@ -3,13 +3,13 @@
 
 export interface SyncJobChange {
     changeTime: string;
-    changedByDisplayName: string;
-    changedByObjectId: string;
-    changedOnBehalfOfDisplayName: string;
-    changedOnBehalfOfObjectId: string;
-    changeReason: string;
-    changeSource: string;
-    changeDetails: string;
-    businessJustification: string;
+    changedByDisplayName: string | null;
+    changedByObjectId: string | null;
+    changedOnBehalfOfDisplayName: string | null;
+    changedOnBehalfOfObjectId: string | null;
+    changeReason: string | null;
+    changeSource: string | null;
+    changeDetails: string | null;
+    businessJustification: string | null;
   };
 
