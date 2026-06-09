@@ -1,35 +1,34 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-using Models;
+using Hosts.SqlDataChecker;
 using Microsoft.Azure.Functions.Worker;
-using Repositories.Contracts;
+using Microsoft.Extensions.Logging;
 using Services;
 using Services.Entities;
-using System;
 using System.Threading.Tasks;
 
 namespace SqlDataChecker
 {
     public class TableNameReaderFunction
     {
-        private readonly SqlDataCheckerValidatorService _sqlDataCheckerValidator = null;
-        private readonly ILoggingRepository _loggingRepository = null;
+        private readonly SqlDataCheckerValidatorService _sqlDataCheckerValidator;
+        private readonly ILogger<TableNameReaderFunction> _logger;
 
-        public TableNameReaderFunction(SqlDataCheckerValidatorService sqlDataCheckerValidator, ILoggingRepository loggingRepository)
+        public TableNameReaderFunction(SqlDataCheckerValidatorService sqlDataCheckerValidator, ILogger<TableNameReaderFunction> logger)
         {
-            _sqlDataCheckerValidator = sqlDataCheckerValidator ?? throw new ArgumentNullException(nameof(sqlDataCheckerValidator));
-            _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
+            _sqlDataCheckerValidator = sqlDataCheckerValidator;
+            _logger = logger;
         }
 
         [Function(nameof(TableNameReaderFunction))]
         public async Task<TableName> GetSqlDataCheckerTableName([ActivityTrigger] object obj)
         {
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(TableNameReaderFunction)} function started" }, VerbosityLevel.DEBUG);
+            _logger.FunctionStarted(nameof(TableNameReaderFunction));
 
             var tableNames = await _sqlDataCheckerValidator.GetTableNamesAsync();
 
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(TableNameReaderFunction)} function completed" }, VerbosityLevel.DEBUG);
+            _logger.FunctionCompleted(nameof(TableNameReaderFunction));
 
             return tableNames;
         }

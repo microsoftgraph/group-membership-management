@@ -36,7 +36,8 @@ namespace DIConcreteTypes
             "TeamsChannelMembershipObtainer.",
             "TeamsChannelUpdater.",
             "NonProdService.",
-            "PlaceMembershipObtainer."
+            "PlaceMembershipObtainer.",
+            "SqlDataChecker."
         });
 
         /// <summary>

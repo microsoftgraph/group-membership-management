@@ -3,12 +3,13 @@
 
 using Azure.Core;
 using Azure.Identity;
+using Hosts.SqlDataChecker;
 using Microsoft.ApplicationInsights;
 using Microsoft.Data.SqlClient;
+using Microsoft.Extensions.Logging;
 using Models;
 using Polly;
 using Polly.Retry;
-using Repositories.Contracts;
 using Repositories.Contracts.InjectConfig;
 using Services.Entities;
 using System.Data;
@@ -20,18 +21,18 @@ namespace Services
 {
     public class SqlDataCheckerValidatorService
     {
-        private readonly ILoggingRepository _loggingRepository;
+        private readonly ILogger<SqlDataCheckerValidatorService> _logger;
         private readonly TelemetryClient _telemetryClient;
         private readonly string _sqlServerConnectionString;
         private readonly IDataFactoryRepository _dataFactoryRepository;
         private static readonly Regex _safeIdentifierRegex = new(@"^[a-zA-Z0-9_]+$", RegexOptions.Compiled);
 
-        public SqlDataCheckerValidatorService(ILoggingRepository loggingRepository,
+        public SqlDataCheckerValidatorService(ILogger<SqlDataCheckerValidatorService> logger,
                                     TelemetryClient telemetryClient,
                                     IKeyVaultSecret<SqlDataCheckerValidatorService> sqlServerConnectionString,
                                     IDataFactoryRepository dataFactoryRepository)
         {
-            _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _telemetryClient = telemetryClient ?? throw new ArgumentNullException(nameof(telemetryClient));
             _sqlServerConnectionString = sqlServerConnectionString?.Secret ?? throw new ArgumentNullException(nameof(sqlServerConnectionString));
             _dataFactoryRepository = dataFactoryRepository ?? throw new ArgumentNullException(nameof(dataFactoryRepository));
@@ -44,8 +45,17 @@ namespace Services
             var previousTableName = adfRunId.previous.Replace("-", "");
             var latestTableExists = CheckIfTableExists(latestTableName);
             var previousTableExists = CheckIfTableExists(previousTableName);
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = latestTableExists ? $"{latestTableName} exists" : $"{latestTableName} does not exist" });
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = previousTableExists ? $"{previousTableName} exists" : $"{previousTableName} does not exist" });
+
+            if (latestTableExists)
+                _logger.TableExists(latestTableName);
+            else
+                _logger.TableDoesNotExist(latestTableName);
+
+            if (previousTableExists)
+                _logger.TableExists(previousTableName);
+            else
+                _logger.TableDoesNotExist(previousTableName);
+
             return new TableName
             {
                 Latest = latestTableExists ? latestTableName : "",
@@ -65,9 +75,8 @@ namespace Services
 
             if (string.IsNullOrWhiteSpace(pipelineRunIds.current) || string.IsNullOrWhiteSpace(pipelineRunIds.previousSucceeded))
             {
-                var message = $"Missing SqlDataChecker pipeline run(s)";
-                await _loggingRepository.LogMessageAsync(new LogMessage { Message = message });
-                throw new ArgumentException(message);
+                _logger.MissingPipelineRuns();
+                throw new ArgumentException("Missing SqlDataChecker pipeline run(s)");
             }
 
             return (pipelineRunIds.current, pipelineRunIds.previousSucceeded);
@@ -302,7 +311,7 @@ namespace Services
                                             var clampedThreshold = Math.Max(0.0, Math.Min(1.0, attr.NullThreshold.Value));
                                             if (clampedThreshold != attr.NullThreshold.Value)
                                             {
-                                                _loggingRepository.LogMessageAsync(new LogMessage { Message = $"NullThreshold for '{attr.Name}' was out of range ({attr.NullThreshold.Value}), clamped to {clampedThreshold}." }, VerbosityLevel.INFO).GetAwaiter().GetResult();
+                                                _logger.ThresholdClamped(attr.Name, attr.NullThreshold.Value, clampedThreshold);
                                             }
                                             var columnName = attr.HasMapping ? attr.Name + "_Code" : attr.Name;
                                             thresholds[columnName] = clampedThreshold;

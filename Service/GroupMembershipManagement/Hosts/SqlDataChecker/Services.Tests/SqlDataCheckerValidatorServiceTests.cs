@@ -3,6 +3,8 @@
 
 using Microsoft.ApplicationInsights;
 using Microsoft.ApplicationInsights.Extensibility;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Moq;
 using Repositories.Contracts;
@@ -260,7 +262,6 @@ namespace SqlDataChecker.Tests
         /// </summary>
         private async Task InvokeValidateColumn(DifferenceCheckerRequest request)
         {
-            var mockLogging = new Mock<ILoggingRepository>();
             var telemetryClient = new TelemetryClient(new TelemetryConfiguration { DisableTelemetry = true });
 
             var mockKvSecret = new Mock<Repositories.Contracts.InjectConfig.IKeyVaultSecret<SqlDataCheckerValidatorService>>();
@@ -268,14 +269,14 @@ namespace SqlDataChecker.Tests
             var mockDataFactory = new Mock<Repositories.Contracts.IDataFactoryRepository>();
 
             var validatorService = new SqlDataCheckerValidatorService(
-                mockLogging.Object,
+                NullLogger<SqlDataCheckerValidatorService>.Instance,
                 telemetryClient,
                 mockKvSecret.Object,
                 mockDataFactory.Object);
 
             var function = new DifferenceCheckerFunction(
                 validatorService,
-                mockLogging.Object,
+                NullLogger<DifferenceCheckerFunction>.Instance,
                 telemetryClient);
 
             await function.ValidateColumn(request);

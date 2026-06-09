@@ -1,31 +1,24 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
+using Hosts.SqlDataChecker;
 using Microsoft.Azure.Functions.Worker;
 using Microsoft.DurableTask;
 using System.Collections.Generic;
 using System.Threading.Tasks;
-using Microsoft.Extensions.Configuration;
-using Repositories.Contracts;
 using Services.Entities;
 
 namespace SqlDataChecker
 {
     public class OrchestratorFunction
     {
-        private readonly IConfiguration _configuration;
-        private readonly ILoggingRepository _loggingRepository;
-        public OrchestratorFunction(IConfiguration configuration, ILoggingRepository loggingRepository)
-        {
-            _configuration = configuration;
-            _loggingRepository = loggingRepository;
-        }
-
         [Function(nameof(OrchestratorFunction))]
         public async Task RunOrchestratorAsync(
             [OrchestrationTrigger] TaskOrchestrationContext context)
         {
-            await context.CallActivityAsync(nameof(LoggerFunction), new LoggerRequest { Message = $"{nameof(OrchestratorFunction)} function started", Verbosity = VerbosityLevel.DEBUG });
+            var logger = context.CreateReplaySafeLogger($"SqlDataChecker.{nameof(OrchestratorFunction)}");
+
+            logger.FunctionStarted(nameof(OrchestratorFunction));
 
             var tableNames = await context.CallActivityAsync<TableName>(nameof(TableNameReaderFunction), null);
 
@@ -44,7 +37,8 @@ namespace SqlDataChecker
 
                 await context.CallActivityAsync(nameof(DifferenceCheckerFunction), new DifferenceCheckerRequest { LatestNullColumns = nullLatestColumns, PreviousNullColumns = nullPreviousColumns, LatestNumberOfRows = numberOfLatestRows, PreviousNumberOfRows = numberOfPrevioustRows, ColumnThresholds = columnThresholds });
             }
-            await context.CallActivityAsync(nameof(LoggerFunction), new LoggerRequest { Message = $"{nameof(OrchestratorFunction)} function completed", Verbosity = VerbosityLevel.DEBUG });
+
+            logger.FunctionCompleted(nameof(OrchestratorFunction));
         }
     }
 }

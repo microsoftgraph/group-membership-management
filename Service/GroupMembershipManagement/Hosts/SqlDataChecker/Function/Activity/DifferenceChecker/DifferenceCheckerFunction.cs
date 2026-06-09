@@ -1,10 +1,10 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-using Models;
+using Hosts.SqlDataChecker;
 using Microsoft.ApplicationInsights;
 using Microsoft.Azure.Functions.Worker;
-using Repositories.Contracts;
+using Microsoft.Extensions.Logging;
 using Services;
 using System;
 using System.Collections.Generic;
@@ -14,23 +14,23 @@ namespace SqlDataChecker
 {
     public class DifferenceCheckerFunction
     {
-        private readonly SqlDataCheckerValidatorService _sqlDataCheckerValidator = null;
-        private readonly ILoggingRepository _loggingRepository = null;
-        private readonly TelemetryClient _telemetryClient = null;
+        private readonly SqlDataCheckerValidatorService _sqlDataCheckerValidator;
+        private readonly ILogger<DifferenceCheckerFunction> _logger;
+        private readonly TelemetryClient _telemetryClient;
 
-        public DifferenceCheckerFunction(SqlDataCheckerValidatorService sqlDataCheckerValidator, ILoggingRepository loggingRepository, TelemetryClient telemetryClient)
+        public DifferenceCheckerFunction(SqlDataCheckerValidatorService sqlDataCheckerValidator, ILogger<DifferenceCheckerFunction> logger, TelemetryClient telemetryClient)
         {
-            _sqlDataCheckerValidator = sqlDataCheckerValidator ?? throw new ArgumentNullException(nameof(sqlDataCheckerValidator));
-            _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
-            _telemetryClient = telemetryClient ?? throw new ArgumentNullException(nameof(telemetryClient));
+            _sqlDataCheckerValidator = sqlDataCheckerValidator;
+            _logger = logger;
+            _telemetryClient = telemetryClient;
         }
 
         private const double NullThresholdPercentage = 0.50;
 
         [Function(nameof(DifferenceCheckerFunction))]
-        public async Task ValidateColumn([ActivityTrigger] DifferenceCheckerRequest request)
+        public Task ValidateColumn([ActivityTrigger] DifferenceCheckerRequest request)
         {
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(DifferenceCheckerFunction)} function started" }, VerbosityLevel.DEBUG);
+            _logger.FunctionStarted(nameof(DifferenceCheckerFunction));
 
             var latestColumns = request.LatestNullColumns;
             var previousColumns = request.PreviousNullColumns;
@@ -47,7 +47,11 @@ namespace SqlDataChecker
                     var previousNullPct = previousNumberOfRows > 0 ? Math.Round((double)previousValue / previousNumberOfRows * 100, 2) : 0;
                     var pctDifference = Math.Round(currentNullPct - previousNullPct, 2);
                     TrackNullColumnsEvent(item.Key, item.Value, previousValue, latestNumberOfRows, previousNumberOfRows);
-                    await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Column: {item.Key} | Current NULLs: {item.Value}/{latestNumberOfRows} ({currentNullPct}%) | Previous NULLs: {previousValue}/{previousNumberOfRows} ({previousNullPct}%) | Diff: {(difference >= 0 ? "+" : "")}{difference} ({(pctDifference >= 0 ? "+" : "")}{pctDifference}%)" }, VerbosityLevel.INFO);
+                    _logger.ColumnNullComparison(
+                        item.Key, item.Value, latestNumberOfRows, currentNullPct,
+                        previousValue, previousNumberOfRows, previousNullPct,
+                        $"{(difference >= 0 ? "+" : "")}{difference}",
+                        $"{(pctDifference >= 0 ? "+" : "")}{pctDifference}");
                 }
             }
 
@@ -72,13 +76,13 @@ namespace SqlDataChecker
             }
             else if (latestColumns == null || latestNumberOfRows == 0)
             {
-                await _loggingRepository.LogMessageAsync(new LogMessage { Message = "Latest table has no data or columns — skipping null threshold check." }, VerbosityLevel.INFO);
+                _logger.SkippingNullThresholdCheck();
             }
 
             if (columnsExceedingThreshold.Count > 0)
             {
                 var message = $"SqlDataChecker FAILED: {columnsExceedingThreshold.Count} column(s) exceeded their null threshold: {string.Join(", ", columnsExceedingThreshold)}";
-                await _loggingRepository.LogMessageAsync(new LogMessage { Message = message }, VerbosityLevel.INFO);
+                _logger.NullThresholdExceeded(columnsExceedingThreshold.Count, string.Join(", ", columnsExceedingThreshold));
                 _telemetryClient.TrackEvent("SqlDataCheckerNullThresholdExceeded", new Dictionary<string, string>
                 {
                     { "ColumnsExceeded", string.Join(", ", columnsExceedingThreshold) },
@@ -88,7 +92,8 @@ namespace SqlDataChecker
                 throw new InvalidOperationException(message);
             }
 
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(DifferenceCheckerFunction)} function completed" }, VerbosityLevel.DEBUG);
+            _logger.FunctionCompleted(nameof(DifferenceCheckerFunction));
+            return Task.CompletedTask;
         }
 
         private void TrackNullColumnsEvent(string columnName, int currentValue, int previousValue, int currentRows, int previousRows)

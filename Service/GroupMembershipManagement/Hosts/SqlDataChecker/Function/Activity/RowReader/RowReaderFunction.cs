@@ -1,37 +1,35 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-using Models;
+using Hosts.SqlDataChecker;
 using Microsoft.Azure.Functions.Worker;
-using Repositories.Contracts;
+using Microsoft.Extensions.Logging;
 using Services;
-using System;
-using System.Collections.Generic;
 using System.Threading.Tasks;
 
 namespace SqlDataChecker
 {
     public class RowReaderFunction
     {
-        private readonly SqlDataCheckerValidatorService _sqlDataCheckerValidator = null;
-        private readonly ILoggingRepository _loggingRepository = null;
+        private readonly SqlDataCheckerValidatorService _sqlDataCheckerValidator;
+        private readonly ILogger<RowReaderFunction> _logger;
 
-        public RowReaderFunction(SqlDataCheckerValidatorService sqlDataCheckerValidator, ILoggingRepository loggingRepository)
+        public RowReaderFunction(SqlDataCheckerValidatorService sqlDataCheckerValidator, ILogger<RowReaderFunction> logger)
         {
-            _sqlDataCheckerValidator = sqlDataCheckerValidator ?? throw new ArgumentNullException(nameof(sqlDataCheckerValidator));
-            _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
+            _sqlDataCheckerValidator = sqlDataCheckerValidator;
+            _logger = logger;
         }
 
         [Function(nameof(RowReaderFunction))]
-        public async Task<int> GetRows([ActivityTrigger] string tableName)
+        public Task<int> GetRows([ActivityTrigger] string tableName)
         {
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(RowReaderFunction)} function started" }, VerbosityLevel.DEBUG);
+            _logger.FunctionStarted(nameof(RowReaderFunction));
 
             var numberOfRows = _sqlDataCheckerValidator.GetRows(tableName);
 
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(RowReaderFunction)} function completed" }, VerbosityLevel.DEBUG);
+            _logger.FunctionCompleted(nameof(RowReaderFunction));
 
-            return numberOfRows;
+            return Task.FromResult(numberOfRows);
         }
     }
 }
