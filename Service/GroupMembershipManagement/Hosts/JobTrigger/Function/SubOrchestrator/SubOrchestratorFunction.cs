@@ -42,9 +42,12 @@ namespace Hosts.JobTrigger
             var logger = context.CreateReplaySafeLogger($"JobTrigger.{nameof(SubOrchestratorFunction)}");
             using var scope = logger.BeginSyncJobScope(syncJob);
 
+            // Capture the job's status at entry.
+            var originalStatus = syncJob.Status;
+
             try
             {
-                if (!string.IsNullOrEmpty(syncJob.Status) && syncJob.Status == SyncStatus.StuckInProgress.ToString())
+                if (!string.IsNullOrEmpty(originalStatus) && originalStatus == SyncStatus.StuckInProgress.ToString())
                 {
                     logger.JobStuckInProgress();
 
@@ -53,19 +56,24 @@ namespace Hosts.JobTrigger
                 }
 
                 // Atomic claim — prevent duplicate processing
-                var statusValue = syncJob.Status == SyncStatus.Idle.ToString() ? SyncStatus.InProgress : SyncStatus.StuckInProgress;
-                var claimed = await context.CallActivityAsync<bool>(nameof(ClaimJobFunction), new ClaimJobRequest { Status = statusValue, SyncJob = syncJob });
-                if (!claimed)
+                var statusValue = originalStatus == SyncStatus.Idle.ToString() ? SyncStatus.InProgress : SyncStatus.StuckInProgress;
+                var claimedJob = await context.CallActivityAsync<SyncJob?>(nameof(ClaimJobFunction), new ClaimJobRequest { Status = statusValue, SyncJob = syncJob });
+                if (claimedJob == null)
                 {
                     logger.SubOrchestratorJobAlreadyClaimed(syncJob.Id);
                     return;
                 }
 
-                if (!context.IsReplaying) { TrackJobsStartedEvent(syncJob.RunId); }
+                // Compute frequency using the pre-claim SyncJob. The claim updates Status and
+                // LastSuccessfulStartTime, which would otherwise cause JobTrackerFunction to
+                // return 0 and corrupt IdleJobsTracker / InProgressJobsTracker telemetry.
+                var frequency = await context.CallActivityAsync<int>(nameof(JobTrackerFunction), syncJob);
+
+                syncJob = claimedJob;
+
+                if(!context.IsReplaying) { TrackJobsStartedEvent(syncJob.RunId); }
 
                 logger.FunctionStarted(nameof(SubOrchestratorFunction));
-
-                var frequency = await context.CallActivityAsync<int>(nameof(JobTrackerFunction), syncJob);
 
                 var groupId = Guid.Empty;
                 var channelId = "";
@@ -129,11 +137,11 @@ namespace Hosts.JobTrigger
 
                 if (!context.IsReplaying)
                 {
-                    if (syncJob.Status == SyncStatus.Idle.ToString())
+                    if (originalStatus == SyncStatus.Idle.ToString())
                     {
                         TrackIdleJobsEvent(frequency, groupId);
                     }
-                    else if (syncJob.Status == SyncStatus.InProgress.ToString())
+                    else if (originalStatus == SyncStatus.InProgress.ToString())
                     {
                         TrackInProgressJobsEvent(frequency, groupId, syncJob.RunId);
                     }
@@ -252,7 +260,7 @@ namespace Hosts.JobTrigger
 
                                                     });
 
-                var latestSyncJob = await context.CallActivityAsync<SyncJob>(nameof(GetSyncJobFunction), syncJob.Id);
+                var latestSyncJob = await context.CallActivityAsync<SyncJob>(nameof(GetSyncJobFunction), syncJob);
                 if (latestSyncJob != null)
                 {
                     latestSyncJob.RunId = syncJob.RunId;

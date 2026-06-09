@@ -7,7 +7,6 @@ using Microsoft.DurableTask.Entities;
 using Microsoft.Extensions.Logging;
 using Models;
 using System;
-using System.Collections.Generic;
 using System.Threading.Tasks;
 
 namespace Hosts.MessageSplitter
@@ -28,187 +27,144 @@ namespace Hosts.MessageSplitter
             var lane = (input?.LaneSize ?? string.Empty).ToLowerInvariant();
             if (string.IsNullOrWhiteSpace(lane))
             {
-                // Nothing to do.
                 return;
             }
 
             var logger = context.CreateReplaySafeLogger("MessageSplitter.DeferredPendingDrainOrchestrator");
 
-            logger.DrainStarted(lane);
-
             var indexEntityId = new EntityInstanceId(nameof(DeferredPendingIndexEntity), lane);
-
+            var limiterEntityId = new EntityInstanceId(nameof(RunLimiter), lane);
             var utcNow = new DateTimeOffset(context.CurrentUtcDateTime, TimeSpan.Zero);
 
-            // Acquire a short-lived drain lock to reduce redundant drains.
-            var lockAcquired = false;
-            lockAcquired = await context.Entities.CallEntityAsync<bool>(
+            // Take a single item instead of a batch. This eliminates the class of bugs
+            // caused by batch-take with early termination (lock leaks on remaining items,
+            // capacity slot waste, cascading sweep prunes).
+            var item = await context.Entities.CallEntityAsync<DeferredPendingItem>(
                 indexEntityId,
-                nameof(DeferredPendingIndexEntity.TryAcquireDrainLock),
-                new TryAcquireDrainLockRequest(utcNow, 60));
+                nameof(DeferredPendingIndexEntity.TakeNext),
+                new TakeNextRequest(utcNow, 60));
 
-            if (!lockAcquired)
+            if (item == null)
             {
-                logger.DrainLockNotAcquired(lane);
+                logger.DrainNoItems(lane);
                 return;
             }
 
+            logger.DrainStarted(lane, item.SequenceNumber);
+
+            var leaseAcquiredForDispatch = false;
+            var madeProgress = false;
+
             try
             {
-                var maxItems = GetMaxDrainBatch(lane);
-
-                var processed = 0;
-                var removed = 0;
-                var staleRemoved = 0;
-                var newlyDispatched = 0;
-                var messageNotFound = 0;
-                var capacityDenied = 0;
-
-                List<DeferredPendingItem> batch;
-                batch = await context.Entities.CallEntityAsync<List<DeferredPendingItem>>(
-                    indexEntityId,
-                    nameof(DeferredPendingIndexEntity.TakeNextBatch),
-                    new TakeNextBatchRequest(utcNow, maxItems, 120));
-
-                if (batch == null || batch.Count == 0)
+                if (!item.Dispatched)
                 {
-                    logger.DrainNoItems(lane);
-                    return;
-                }
+                    var lease = await context.Entities.CallEntityAsync<AcquireLeaseResponse>(
+                        limiterEntityId,
+                        nameof(RunLimiter.Acquire),
+                        new AcquireLeaseRequest(item.RunId, _runLimiterSettings.MaxInFlightMessages, _runLimiterSettings.LeaseTimeoutMinutes, utcNow));
 
-                var limiterEntityId = new EntityInstanceId(nameof(RunLimiter), lane);
-
-                foreach (var item in batch)
-                {
-                    processed++;
-                    var leaseAcquiredForDispatch = false;
-                    if (!item.Dispatched)
+                    if (!lease.Acquired)
                     {
-                        AcquireLeaseResponse lease;
-                        lease = await context.Entities.CallEntityAsync<AcquireLeaseResponse>(
-                            limiterEntityId,
-                            nameof(RunLimiter.Acquire),
-                            new AcquireLeaseRequest(item.RunId, _runLimiterSettings.MaxInFlightMessages, _runLimiterSettings.LeaseTimeoutMinutes, utcNow));
+                        var shouldLog = !item.LastCapacityDeniedAtUtc.HasValue ||
+                                        (utcNow - item.LastCapacityDeniedAtUtc.Value).TotalSeconds > 60;
 
-                        if (!lease.Acquired)
+                        if (shouldLog)
                         {
-                            capacityDenied++;
-
-                            // Only log if this item wasn't denied capacity recently (within 60 seconds)
-                            // to reduce log noise when the same item is repeatedly attempted
-                            var shouldLog = !item.LastCapacityDeniedAtUtc.HasValue ||
-                                            (utcNow - item.LastCapacityDeniedAtUtc.Value).TotalSeconds > 60;
-
-                            if (shouldLog)
-                            {
-                                logger.DrainNoCapacity(lane, lease.InFlightCount, item.RunId, item.SequenceNumber);
-                            }
-
-                            // Mark capacity denied and release in-progress marker
-                            await context.Entities.CallEntityAsync<bool>(
-                                indexEntityId,
-                                nameof(DeferredPendingIndexEntity.MarkCapacityDeniedAndRelease),
-                                new MarkCapacityDeniedRequest(item.SequenceNumber, utcNow));
-
-                            return;
+                            logger.DrainNoCapacity(lane, lease.InFlightCount, item.RunId, item.SequenceNumber);
                         }
 
-                        leaseAcquiredForDispatch = true;
-                    }
-
-                    ReceiveDeferredPendingResponse received;
-                    try
-                    {
-                        received = await context.CallActivityAsync<ReceiveDeferredPendingResponse>(
-                            nameof(ReceiveDeferredPendingFunction),
-                            new ReceiveDeferredPendingRequest(item.SequenceNumber, item.RunId, item.Dispatched, item.OrchestrationInstanceId));
-                    }
-                    catch (Exception ex)
-                    {
-                        logger.DrainReceiveFailed(ex, lane, item.RunId, item.SequenceNumber);
-                        if (leaseAcquiredForDispatch)
-                        {
-                            // No work was dispatched: release the lease.
-                            await context.Entities.CallEntityAsync<bool>(limiterEntityId, nameof(RunLimiter.Release), item.RunId);
-                        }
-
-                        // Activity failed: release in-progress marker and let the deferred message unlock naturally.
                         await context.Entities.CallEntityAsync<bool>(
                             indexEntityId,
-                            nameof(DeferredPendingIndexEntity.ReleaseInProgress),
-                            item.SequenceNumber);
+                            nameof(DeferredPendingIndexEntity.MarkCapacityDeniedAndRelease),
+                            new MarkCapacityDeniedRequest(item.SequenceNumber, utcNow));
 
-                        throw;
+                        // Don't continue — wait for CompletionListener to trigger the next drain
+                        // when a GU job finishes and capacity frees up.
+                        return;
                     }
 
-                    if (received.MessageNotFound)
-                    {
-                        messageNotFound++;
-                    }
-
-                    if (received.Dispatched && !item.Dispatched)
-                    {
-                        newlyDispatched++;
-                        await context.Entities.CallEntityAsync<bool>(
-                            indexEntityId,
-                            nameof(DeferredPendingIndexEntity.MarkDispatched),
-                            new MarkDeferredPendingDispatchedRequest(item.SequenceNumber, received.OrchestrationInstanceId));
-                    }
-
-                    // If no work was dispatched, release the lease (including MessageNotFound).
-                    if (!received.Dispatched && leaseAcquiredForDispatch)
-                    {
-                        await context.Entities.CallEntityAsync<bool>(limiterEntityId, nameof(RunLimiter.Release), item.RunId);
-                    }
-
-                    var shouldRemove = received.ShouldRemoveFromIndex;
-
-                    // Stale entry detection: if the message is not found in Service Bus and
-                    // the item was enqueued more than 5 minutes ago, the message is permanently
-                    // gone — not a transient race between enqueue and defer (which takes milliseconds).
-                    if (!shouldRemove && received.MessageNotFound
-                        && (utcNow - item.EnqueuedAtUtc).TotalMinutes > 5)
-                    {
-                        shouldRemove = true;
-                        staleRemoved++;
-                        logger.DrainRemovingStaleEntry(
-                            $"{(utcNow - item.EnqueuedAtUtc).TotalMinutes:F1}",
-                            item.SequenceNumber,
-                            item.JobId,
-                            lane);
-                    }
-
-                    if (shouldRemove)
-                    {
-                        removed++;
-                        await context.Entities.CallEntityAsync<bool>(
-                            indexEntityId,
-                            nameof(DeferredPendingIndexEntity.Remove),
-                            item.SequenceNumber);
-                    }
-                    else
-                    {
-                        // Keep it for retry.
-                        await context.Entities.CallEntityAsync<bool>(
-                            indexEntityId,
-                            nameof(DeferredPendingIndexEntity.ReleaseInProgress),
-                            item.SequenceNumber);
-                    }
-
+                    leaseAcquiredForDispatch = true;
                 }
 
-                logger.DrainCompleted(lane, processed, newlyDispatched, removed, staleRemoved, messageNotFound, capacityDenied);
+                ReceiveDeferredPendingResponse received;
+                received = await context.CallActivityAsync<ReceiveDeferredPendingResponse>(
+                    nameof(ReceiveDeferredPendingFunction),
+                    new ReceiveDeferredPendingRequest(item.SequenceNumber, item.RunId, item.Dispatched, item.OrchestrationInstanceId));
+
+                if (received.Dispatched && !item.Dispatched)
+                {
+                    await context.Entities.CallEntityAsync<bool>(
+                        indexEntityId,
+                        nameof(DeferredPendingIndexEntity.MarkDispatched),
+                        new MarkDeferredPendingDispatchedRequest(item.SequenceNumber, received.OrchestrationInstanceId));
+                    madeProgress = true;
+                }
+
+                if (!received.Dispatched && leaseAcquiredForDispatch)
+                {
+                    await context.Entities.CallEntityAsync<bool>(limiterEntityId, nameof(RunLimiter.Release), item.RunId);
+                }
+
+                var shouldRemove = received.ShouldRemoveFromIndex;
+
+                if (!shouldRemove && received.MessageNotFound
+                    && (utcNow - item.EnqueuedAtUtc).TotalMinutes > 5)
+                {
+                    shouldRemove = true;
+                    logger.DrainRemovingStaleEntry(
+                        $"{(utcNow - item.EnqueuedAtUtc).TotalMinutes:F1}",
+                        item.SequenceNumber,
+                        item.JobId,
+                        lane);
+                }
+
+                if (shouldRemove)
+                {
+                    await context.Entities.CallEntityAsync<bool>(
+                        indexEntityId,
+                        nameof(DeferredPendingIndexEntity.Remove),
+                        item.SequenceNumber);
+                    madeProgress = true;
+                }
+                else
+                {
+                    // Item stays in the index. ReleaseInProgress moves it to the tail
+                    // so the next TakeNext picks a different item, preventing head-of-line blocking.
+                    await context.Entities.CallEntityAsync<bool>(
+                        indexEntityId,
+                        nameof(DeferredPendingIndexEntity.ReleaseInProgress),
+                        item.SequenceNumber);
+                }
+
+                var result = shouldRemove ? "removed" : received.Dispatched ? "dispatched" : "kept";
+                logger.DrainItemProcessed(lane, item.SequenceNumber, result, received.MessageNotFound);
+
+                // Only continue draining when forward progress was made (item removed or
+                // newly dispatched). If the item was kept (e.g., message not found < 5 min,
+                // already-dispatched but still running), stop and let the next natural trigger
+                // (CompletionListener, Enqueue, Sweep) resume the drain. This prevents hot-looping
+                // on retryable items while still efficiently draining pending work.
+                if (madeProgress)
+                {
+                    context.ContinueAsNew(input);
+                }
             }
-            finally
+            catch (Exception ex)
             {
-                await context.Entities.CallEntityAsync(indexEntityId, nameof(DeferredPendingIndexEntity.ReleaseDrainLock));
-            }
-        }
+                if (leaseAcquiredForDispatch)
+                {
+                    await context.Entities.CallEntityAsync<bool>(limiterEntityId, nameof(RunLimiter.Release), item.RunId);
+                }
 
-        private static int GetMaxDrainBatch(string lane)
-        {
-            // Policy: Small=16, Large=3
-            return lane.Equals("large", StringComparison.OrdinalIgnoreCase) ? 3 : 16;
+                await context.Entities.CallEntityAsync<bool>(
+                    indexEntityId,
+                    nameof(DeferredPendingIndexEntity.ReleaseInProgress),
+                    item.SequenceNumber);
+
+                logger.DrainReceiveFailed(ex, lane, item.RunId, item.SequenceNumber);
+                throw;
+            }
         }
     }
 }

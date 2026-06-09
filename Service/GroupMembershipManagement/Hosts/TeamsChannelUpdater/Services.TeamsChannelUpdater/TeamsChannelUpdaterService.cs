@@ -1,11 +1,13 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
+using Microsoft.Extensions.Logging;
 using Models;
 using Models.Entities;
 using Models.SyncJobHistory;
 using Repositories.Contracts;
 using Services.Contracts;
 using Services.TeamsChannelUpdater.Contracts;
+using Hosts.TeamsChannelUpdater;
 using Models.Notifications;
 using Models.ServiceBus;
 using System.Text.Json;
@@ -18,38 +20,27 @@ namespace Services.TeamsChannelUpdater
         private const int NumberOfGraphRetries = 5;
         private const string EmailSubject = "EmailSubject";
 
+        private readonly ILogger<TeamsChannelUpdaterService> _logger;
         private readonly ITeamsChannelRepository _teamsChannelRepository;
         private readonly IDatabaseSyncJobsRepository _syncJobRepository;
         private readonly IDatabaseGroupsRepository _databaseGroupsRepository;
         private readonly IDatabaseChannelsRepository _databaseChannelsRepository;
-        private readonly ILoggingRepository _loggingRepository;
         private readonly IServiceBusQueueRepository _serviceBusQueueRepository;
         private readonly ISyncJobStatusService _syncJobStatusService;
 
-        private Guid _runId;
-        public Guid RunId
-        {
-            get { return _runId; }
-            set
-            {
-                _runId = value;
-                _teamsChannelRepository.RunId = value;
-            }
-        }
-
-        public TeamsChannelUpdaterService(ITeamsChannelRepository teamsChannelRepository,
+        public TeamsChannelUpdaterService(ILogger<TeamsChannelUpdaterService> logger,
+            ITeamsChannelRepository teamsChannelRepository,
             IDatabaseSyncJobsRepository syncJobRepository, 
             IDatabaseGroupsRepository databaseGroupsRepository,
             IDatabaseChannelsRepository databaseChannelsRepository,
-            ILoggingRepository loggingRepository,
             IServiceBusQueueRepository serviceBusQueueRepository,
             ISyncJobStatusService syncJobStatusService)
         {
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _teamsChannelRepository = teamsChannelRepository ?? throw new ArgumentNullException(nameof(teamsChannelRepository));
             _syncJobRepository = syncJobRepository ?? throw new ArgumentNullException(nameof(syncJobRepository));
             _databaseGroupsRepository = databaseGroupsRepository ?? throw new ArgumentNullException(nameof(databaseGroupsRepository));
             _databaseChannelsRepository = databaseChannelsRepository ?? throw new ArgumentNullException(nameof(databaseChannelsRepository));
-            _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
             _serviceBusQueueRepository = serviceBusQueueRepository ?? throw new ArgumentNullException(nameof(serviceBusQueueRepository));
             _syncJobStatusService = syncJobStatusService ?? throw new ArgumentNullException(nameof(syncJobStatusService));
         }
@@ -88,7 +79,7 @@ namespace Services.TeamsChannelUpdater
 
         public async Task UpdateSyncJobStatusAsync(SyncJob job, SyncStatus status, bool isDryRun, Guid runId)
         {
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Set job status to {status}.", RunId = runId });
+            _logger.SettingJobStatus(status.ToString());
 
             var isDryRunSync = job.IsDryRunEnabled || isDryRun;
 
@@ -129,7 +120,7 @@ namespace Services.TeamsChannelUpdater
                                 ? $"Dry Run of a sync to {groupId} is complete. Membership will not be updated."
                                 : $"Syncing to {groupId} done.";
 
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = message, RunId = runId });
+            _logger.SyncStatusMessage(message);
         }
 
         public async Task MarkSyncJobAsErroredAsync(SyncJob syncJob)
@@ -167,7 +158,7 @@ namespace Services.TeamsChannelUpdater
         {
             return await _teamsChannelRepository.GetGroupNameAsync(groupId, runId);
         }
-        
+
         public async Task<List<AzureADUser>> GetGroupOwnersAsync(Guid groupObjectId, Guid runId, int top = 0)
         {
             return await _teamsChannelRepository.GetGroupOwnersAsync(groupObjectId, runId, top);
@@ -190,11 +181,7 @@ namespace Services.TeamsChannelUpdater
             message.ApplicationProperties.Add("MessageType", notificationType.ToString());
 
             await _serviceBusQueueRepository.SendMessageAsync(message);
-            await _loggingRepository.LogMessageAsync(new LogMessage
-            {
-                RunId = job.RunId,
-                Message = $"Sent message {message.MessageId} to service bus notifications queue "
-            });
+            _logger.SentNotificationMessage(message.MessageId);
         }
 
     }

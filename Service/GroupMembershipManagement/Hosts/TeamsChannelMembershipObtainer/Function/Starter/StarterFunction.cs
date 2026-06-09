@@ -3,10 +3,11 @@
 using Azure.Messaging.ServiceBus;
 using Microsoft.Azure.Functions.Worker;
 using Microsoft.DurableTask.Client;
+using Microsoft.Extensions.Logging;
 using Models;
-using Repositories.Contracts;
-using Repositories.Contracts.InjectConfig;
+using Repositories.Contracts.Helpers;
 using System;
+using System.Collections.Generic;
 using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks;
@@ -16,15 +17,11 @@ namespace Hosts.TeamsChannelMembershipObtainer
 {
     public class StarterFunction
     {
-        private readonly ILoggingRepository _loggingRepository;
-        private readonly IDatabaseSyncJobsRepository _syncJobRepository;
-        private readonly bool _isGroupMembershipDryRunEnabled;
+        private readonly ILogger<StarterFunction> _logger;
 
-        public StarterFunction(ILoggingRepository loggingRepository, IDatabaseSyncJobsRepository syncJobRepository, IDryRunValue dryRun)
+        public StarterFunction(ILogger<StarterFunction> logger)
         {
-            _loggingRepository = loggingRepository;
-            _syncJobRepository = syncJobRepository;
-            _isGroupMembershipDryRunEnabled = dryRun.DryRunEnabled;
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
 
         [Function(nameof(StarterFunction))]
@@ -32,7 +29,6 @@ namespace Hosts.TeamsChannelMembershipObtainer
             [ServiceBusTrigger("%serviceBusSyncJobTopic%", "TeamsChannelMembership", Connection = "gmmServiceBus")] ServiceBusReceivedMessage message,
             [DurableClient] DurableTaskClient starter)
         {
-
             var channelSyncInfo = new ChannelSyncInfo
             {
                 SyncJob = JsonSerializer.Deserialize<SyncJob>(Encoding.UTF8.GetString(message.Body)),
@@ -42,17 +38,19 @@ namespace Hosts.TeamsChannelMembershipObtainer
                 IsDestinationPart = message.ApplicationProperties.ContainsKey("IsDestinationPart") ? Convert.ToBoolean(message.ApplicationProperties["IsDestinationPart"]) : false,
             };
 
-            var runId = channelSyncInfo.SyncJob.RunId.GetValueOrDefault(Guid.Empty);
+            using var scope = _logger.BeginSyncJobScope(channelSyncInfo.SyncJob, new Dictionary<string, object>
+            {
+                ["CurrentPart"] = channelSyncInfo.CurrentPart,
+                ["TotalParts"] = channelSyncInfo.TotalParts
+            });
 
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"TeamsChannelMembershipObtainer recieved a message. Query: {channelSyncInfo.SyncJob.Query}.", RunId = runId });
-
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(StarterFunction)} function started", RunId = runId }, VerbosityLevel.DEBUG);
+            _logger.MessageReceived(channelSyncInfo.SyncJob.Query);
+            _logger.FunctionStarted(nameof(StarterFunction));
 
             var instanceId = await starter.ScheduleNewOrchestrationInstanceAsync(nameof(OrchestratorFunction), channelSyncInfo);
 
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"InstanceId: {instanceId} for job RowKey: {channelSyncInfo.SyncJob.RowKey} ", RunId = runId });
-
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(StarterFunction)} function completed", RunId = runId }, VerbosityLevel.DEBUG);
+            _logger.OrchestratorInstanceStarted(instanceId, channelSyncInfo.SyncJob.RowKey);
+            _logger.FunctionCompleted(nameof(StarterFunction));
         }
     }
 }

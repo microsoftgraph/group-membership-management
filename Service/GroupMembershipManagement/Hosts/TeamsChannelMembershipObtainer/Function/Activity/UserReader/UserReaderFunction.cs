@@ -1,9 +1,9 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-using Models;
 using Microsoft.Azure.Functions.Worker;
-using Repositories.Contracts;
+using Microsoft.Extensions.Logging;
+using Repositories.Contracts.Helpers;
 using System;
 using System.Threading.Tasks;
 using TeamsChannelMembershipObtainer.Service.Contracts;
@@ -14,26 +14,30 @@ namespace Hosts.TeamsChannelMembershipObtainer
 {
     public class UserReaderFunction
     {
+        private readonly ILogger<UserReaderFunction> _logger;
         private readonly ITeamsChannelService _teamsChannelService;
-        private readonly ILoggingRepository _loggingRepository;
 
-        public UserReaderFunction(ILoggingRepository loggingRepository, ITeamsChannelService teamsChannelService)
+        public UserReaderFunction(ILogger<UserReaderFunction> logger, ITeamsChannelService teamsChannelService)
         {
-            _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _teamsChannelService = teamsChannelService ?? throw new ArgumentNullException(nameof(teamsChannelService));
         }
 
         [Function(nameof(UserReaderFunction))]
         public async Task<List<AzureADTeamsUser>> ReadUsersAsync([ActivityTrigger] UserReaderRequest request)
         {
-            var runId = request.RunId;
+            using var scope = _logger.BeginSyncJobScope(request.ChannelSyncInfo.SyncJob, new Dictionary<string, object>
+            {
+                ["CurrentPart"] = request.ChannelSyncInfo.CurrentPart,
+                ["TotalParts"] = request.ChannelSyncInfo.TotalParts
+            });
 
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(UserReaderFunction)} function started", RunId = runId }, VerbosityLevel.DEBUG);
+            _logger.FunctionStarted(nameof(UserReaderFunction));
 
-            var users = await _teamsChannelService.GetUsersFromTeamAsync(request.Channel, runId);
+            var users = await _teamsChannelService.GetUsersFromTeamAsync(request.Channel, request.RunId);
 
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Read {users.Count} users from Group: {request.Channel.ObjectId} with Channel Id: {request.Channel.ChannelId}.", RunId = runId });
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(UserReaderFunction)} function completed", RunId = runId }, VerbosityLevel.DEBUG);
+            _logger.UsersRead(users.Count, request.Channel.ObjectId, request.Channel.ChannelId);
+            _logger.FunctionCompleted(nameof(UserReaderFunction));
 
             return users;
         }

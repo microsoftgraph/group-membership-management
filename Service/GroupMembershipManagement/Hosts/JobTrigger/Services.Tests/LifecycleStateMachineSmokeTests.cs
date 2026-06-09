@@ -157,7 +157,7 @@ namespace Services.Tests
 
             _context.Setup(x => x.CallActivityAsync<SyncJob>(
                     It.Is<TaskName>(x => x == nameof(GetSyncJobFunction)),
-                    It.IsAny<Guid>(), It.IsAny<TaskOptions>()))
+                    It.IsAny<SyncJob>(), It.IsAny<TaskOptions>()))
                 .ReturnsAsync((TaskName name, object syncJobId, TaskOptions options) =>
                 {
                     var refreshedJob = _syncJob;
@@ -183,7 +183,7 @@ namespace Services.Tests
                 })
                 .ReturnsAsync(() => _jsonValidationResult);
 
-            _context.Setup(x => x.CallActivityAsync<bool>(
+            _context.Setup(x => x.CallActivityAsync<SyncJob?>(
                     It.Is<TaskName>(x => x == nameof(ClaimJobFunction)),
                     It.IsAny<ClaimJobRequest>(),
                     It.IsAny<TaskOptions>()))
@@ -192,8 +192,12 @@ namespace Services.Tests
                     var claimRequest = request as ClaimJobRequest;
                     _claimStatuses.Add(claimRequest.Status);
                     _statusTransitions.Add(claimRequest.Status);
+                    // Simulate DB claim behavior
+                    _syncJob.LastSuccessfulStartTime = DateTime.UtcNow;
+                    if (claimRequest.Status == SyncStatus.StuckInProgress)
+                        _syncJob.LastRunTime = DateTime.UtcNow;
                 })
-                .ReturnsAsync(true);
+                .ReturnsAsync(() => _syncJob);
 
             _jsonSchemaProvider = SchemaProviderFactory.CreateJsonSchemaProvider();
         }
@@ -223,7 +227,7 @@ namespace Services.Tests
                 "TopicMessageSenderFunction should be called exactly once for a successful job");
 
             // Verify via context mock
-            _context.Verify(x => x.CallActivityAsync<bool>(
+            _context.Verify(x => x.CallActivityAsync<SyncJob?>(
                 It.Is<TaskName>(t => t == nameof(ClaimJobFunction)),
                 It.Is<ClaimJobRequest>(r => r.Status == SyncStatus.InProgress),
                 It.IsAny<TaskOptions>()), Times.Once());
@@ -259,7 +263,7 @@ namespace Services.Tests
             Assert.AreEqual(1, _topicMessageSenderCallCount,
                 "TopicMessageSenderFunction should be called for stuck-in-progress job restart");
 
-            _context.Verify(x => x.CallActivityAsync<bool>(
+            _context.Verify(x => x.CallActivityAsync<SyncJob?>(
                 It.Is<TaskName>(t => t == nameof(ClaimJobFunction)),
                 It.Is<ClaimJobRequest>(r => r.Status == SyncStatus.StuckInProgress),
                 It.IsAny<TaskOptions>()), Times.Once());
@@ -315,14 +319,19 @@ namespace Services.Tests
             var claimCallCount = 0;
 
             // Override ClaimJobFunction: first call returns true, second returns false
-            _context.Setup(x => x.CallActivityAsync<bool>(
+            _context.Setup(x => x.CallActivityAsync<SyncJob?>(
                     It.Is<TaskName>(t => t == nameof(ClaimJobFunction)),
                     It.IsAny<ClaimJobRequest>(),
                     It.IsAny<TaskOptions>()))
                 .ReturnsAsync(() =>
                 {
                     claimCallCount++;
-                    return claimCallCount <= 1;
+                    if (claimCallCount <= 1)
+                    {
+                        _syncJob.LastSuccessfulStartTime = DateTime.UtcNow;
+                        return _syncJob;
+                    }
+                    return (SyncJob?)null;
                 });
 
             // --- First run ---
@@ -391,7 +400,7 @@ namespace Services.Tests
             Assert.AreEqual(1, _topicMessageSenderCallCount,
                 "TransientError job should still proceed to send topic message");
 
-            _context.Verify(x => x.CallActivityAsync<bool>(
+            _context.Verify(x => x.CallActivityAsync<SyncJob?>(
                 It.Is<TaskName>(t => t == nameof(ClaimJobFunction)),
                 It.Is<ClaimJobRequest>(r => r.Status == SyncStatus.StuckInProgress),
                 It.IsAny<TaskOptions>()), Times.Once());

@@ -17,10 +17,15 @@ param isProduction bool = false
 param notificationAlertThreshold int = 10
 param skipMailNotifications bool = false
 param isMailApplicationPermissionGranted bool = false
+param enableStyledFallbackEmails bool = false
 param isTeamsChannelApplicationPermissionGranted bool = false
 param featureFlags object = {
   enableOpenAI: false
 }
+
+@description('When true, networking resources (private endpoints, DCR, DCR association) are skipped.')
+param skipNetworkingDeployment bool = true
+
 param emailReceivers array = [
   {
     name: 'Example name'
@@ -359,6 +364,14 @@ var defaultAppConfigurationKeyData = [
     }
   }
   {
+    key: 'Mail:EnableStyledFallbackEmails'
+    value: string(enableStyledFallbackEmails)
+    contentType: 'boolean'
+    tag: {
+      tag1: 'Mail'
+    }
+  }
+  {
     key: 'TeamsChannel:IsChannelReadWriteApplicationPermissionGranted'
     value: isTeamsChannelApplicationPermissionGranted
     contentType: 'boolean'
@@ -448,5 +461,6 @@ module dataInfrastructureTemplate '../Infrastructure/data/template.bicep' = {
     availableMembershipUpdaters: availableMembershipUpdaters
     aiLocation: aiLocation
     featureFlags: featureFlags
+    skipNetworkingDeployment: skipNetworkingDeployment
   }
 }

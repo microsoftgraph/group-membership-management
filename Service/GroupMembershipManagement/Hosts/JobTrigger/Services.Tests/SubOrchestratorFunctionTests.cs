@@ -1,10 +1,13 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
+
 using Azure.Messaging.ServiceBus;
 using Hosts.JobTrigger;
 using JobTrigger.Activity.EmailSender;
 using JobTrigger.Activity.SchemaValidator;
 using Microsoft.ApplicationInsights;
+using Microsoft.ApplicationInsights.Channel;
+using Microsoft.ApplicationInsights.DataContracts;
 using Microsoft.ApplicationInsights.Extensibility;
 using Microsoft.DurableTask;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -47,6 +50,7 @@ namespace Services.Tests
         int _frequency;
         JsonSchemaProvider _jsonSchemaProvider;
         bool _jsonValidationResult;
+        CapturingTelemetryChannel _telemetryChannel;
 
         [TestInitialize]
         public void Setup()
@@ -58,7 +62,8 @@ namespace Services.Tests
             _context = new Mock<TaskOrchestrationContext>();
             _context.Setup(x => x.CreateReplaySafeLogger(It.IsAny<string>())).Returns(NullLogger.Instance);
             _emailSenderAndRecipients = new Mock<IEmailSenderRecipient>();
-            _telemetryClient = new TelemetryClient(TelemetryConfiguration.CreateDefault());
+            _telemetryChannel = new CapturingTelemetryChannel();
+            _telemetryClient = new TelemetryClient(new TelemetryConfiguration { TelemetryChannel = _telemetryChannel });
             _endpoints = new List<string> { "Yammer", "Teams" };
             _frequency = 0;
             _jsonSchemaProvider = new JsonSchemaProvider();
@@ -146,7 +151,7 @@ namespace Services.Tests
                          await CallEmailSenderFunctionAsync(request as EmailSenderRequest);
                      });
 
-            _context.Setup(x => x.CallActivityAsync<SyncJob>(It.Is<TaskName>(x => x == nameof(GetSyncJobFunction)), It.IsAny<Guid>(), It.IsAny<TaskOptions>()))
+            _context.Setup(x => x.CallActivityAsync<SyncJob>(It.Is<TaskName>(x => x == nameof(GetSyncJobFunction)), It.IsAny<SyncJob>(), It.IsAny<TaskOptions>()))
                     .ReturnsAsync((TaskName name, object syncJobId, TaskOptions options) =>
                     {
                         var refreshedJob = _syncJob;
@@ -166,11 +171,19 @@ namespace Services.Tests
                         _jsonValidationResult = await CallSchemaValidatorFunctionAsync(request as SyncJob);
                     }).ReturnsAsync(() => _jsonValidationResult);
 
-            _context.Setup(x => x.CallActivityAsync<bool>(
+            _context.Setup(x => x.CallActivityAsync<SyncJob?>(
                         It.Is<TaskName>(x => x == nameof(ClaimJobFunction)),
                         It.IsAny<ClaimJobRequest>(),
                         It.IsAny<TaskOptions>()))
-                    .ReturnsAsync(true);
+                    .Returns((TaskName name, object input, TaskOptions options) =>
+                    {
+                        var request = (ClaimJobRequest)input;
+                        // Simulate what the DB claim actually does
+                        _syncJob.LastSuccessfulStartTime = DateTime.UtcNow;
+                        if (request.Status == SyncStatus.StuckInProgress)
+                            _syncJob.LastRunTime = DateTime.UtcNow;
+                        return Task.FromResult<SyncJob?>(_syncJob);
+                    });
 
             _jsonSchemaProvider = SchemaProviderFactory.CreateJsonSchemaProvider();
         }
@@ -383,7 +396,7 @@ namespace Services.Tests
             _jobTriggerService.Verify(x => x.SendEmailAsync(It.IsAny<SyncJob>(), It.IsAny<NotificationMessageType>(), It.IsAny<string[]>()), Times.Once());
             _jobTriggerService.Verify(x => x.SendMessageAsync(It.IsAny<SyncJob>()), Times.Once());
 
-            _context.Verify(x => x.CallActivityAsync<bool>(
+            _context.Verify(x => x.CallActivityAsync<SyncJob?>(
                 It.Is<TaskName>(t => t == nameof(ClaimJobFunction)),
                 It.Is<ClaimJobRequest>(r => r.Status == SyncStatus.InProgress),
                 It.IsAny<TaskOptions>()), Times.Once());
@@ -454,7 +467,7 @@ namespace Services.Tests
             _jobTriggerService.Verify(x => x.GetDestinationNameAsync(It.IsAny<SyncJob>()), Times.Once());
             _jobTriggerService.Verify(x => x.SendEmailAsync(It.IsAny<SyncJob>(), It.IsAny<NotificationMessageType>(), It.IsAny<string[]>()), Times.Once());
 
-            _context.Verify(x => x.CallActivityAsync<bool>(
+            _context.Verify(x => x.CallActivityAsync<SyncJob?>(
                 It.Is<TaskName>(t => t == nameof(ClaimJobFunction)),
                 It.Is<ClaimJobRequest>(r => r.Status == SyncStatus.InProgress),
                 It.IsAny<TaskOptions>()), Times.Once());
@@ -532,13 +545,15 @@ namespace Services.Tests
 
             _context.Verify(x => x.CallActivityAsync<int>(It.Is<TaskName>(x => x == nameof(JobTrackerFunction)), It.IsAny<SyncJob>(), It.IsAny<TaskOptions>()), Times.Once());
             _context.Verify(x => x.CallActivityAsync<string>(It.Is<TaskName>(x => x == nameof(DestinationNameReaderFunction)), It.IsAny<SyncJob>(), It.IsAny<TaskOptions>()), Times.Once());
-            _context.Verify(x => x.CallActivityAsync(It.Is<TaskName>(x => x == nameof(EmailSenderFunction)), It.IsAny<EmailSenderRequest>(), It.IsAny<TaskOptions>()), Times.Once());
+            // A re-claimed StuckInProgress job has LastRunTime updated by the claim,
+            // so the first-run SyncStartedNotification email should NOT be sent.
+            _context.Verify(x => x.CallActivityAsync(It.Is<TaskName>(x => x == nameof(EmailSenderFunction)), It.IsAny<EmailSenderRequest>(), It.IsAny<TaskOptions>()), Times.Never());
             _context.Verify(x => x.CallActivityAsync(It.Is<TaskName>(x => x == nameof(TopicMessageSenderFunction)), It.IsAny<SyncJob>(), It.IsAny<TaskOptions>()), Times.Once());
 
             _jobTriggerService.Verify(x => x.GetDestinationNameAsync(It.IsAny<SyncJob>()), Times.Once());
-            _jobTriggerService.Verify(x => x.SendEmailAsync(It.IsAny<SyncJob>(), It.IsAny<NotificationMessageType>(), It.IsAny<string[]>()), Times.Once());
+            _jobTriggerService.Verify(x => x.SendEmailAsync(It.IsAny<SyncJob>(), It.IsAny<NotificationMessageType>(), It.IsAny<string[]>()), Times.Never());
 
-            _context.Verify(x => x.CallActivityAsync<bool>(
+            _context.Verify(x => x.CallActivityAsync<SyncJob?>(
                 It.Is<TaskName>(t => t == nameof(ClaimJobFunction)),
                 It.Is<ClaimJobRequest>(r => r.Status == SyncStatus.StuckInProgress),
                 It.IsAny<TaskOptions>()), Times.Once());
@@ -641,15 +656,15 @@ namespace Services.Tests
         }
 
         [TestMethod]
-        public async Task ClaimJob_ReturnsFalse_SubOrchestratorBailsOut()
+        public async Task ClaimJob_ReturnsNull_SubOrchestratorBailsOut()
         {
             _context.Setup(x => x.GetInput<SyncJob>()).Returns(_syncJob);
 
-            _context.Setup(x => x.CallActivityAsync<bool>(
+            _context.Setup(x => x.CallActivityAsync<SyncJob?>(
                         It.Is<TaskName>(t => t == nameof(ClaimJobFunction)),
                         It.IsAny<ClaimJobRequest>(),
                         It.IsAny<TaskOptions>()))
-                    .ReturnsAsync(false);
+                    .ReturnsAsync((SyncJob?)null);
 
             var suborchestrator = new SubOrchestratorFunction(
                 _telemetryClient, _emailSenderAndRecipients.Object, _gmmResources.Object);
@@ -667,7 +682,7 @@ namespace Services.Tests
         }
 
         [TestMethod]
-        public async Task ClaimJob_ReturnsTrue_SubOrchestratorProceeds()
+        public async Task ClaimJob_ReturnsJob_SubOrchestratorProceeds()
         {
             _context.Setup(x => x.GetInput<SyncJob>()).Returns(_syncJob);
 
@@ -675,7 +690,7 @@ namespace Services.Tests
                 _telemetryClient, _emailSenderAndRecipients.Object, _gmmResources.Object);
             await suborchestrator.RunSubOrchestratorAsync(_context.Object);
 
-            _context.Verify(x => x.CallActivityAsync<bool>(
+            _context.Verify(x => x.CallActivityAsync<SyncJob?>(
                 It.Is<TaskName>(t => t == nameof(ClaimJobFunction)),
                 It.Is<ClaimJobRequest>(r => r.Status == SyncStatus.InProgress),
                 It.IsAny<TaskOptions>()), Times.Once());
@@ -694,7 +709,7 @@ namespace Services.Tests
                 _telemetryClient, _emailSenderAndRecipients.Object, _gmmResources.Object);
             await suborchestrator.RunSubOrchestratorAsync(_context.Object);
 
-            _context.Verify(x => x.CallActivityAsync<bool>(
+            _context.Verify(x => x.CallActivityAsync<SyncJob?>(
                 It.Is<TaskName>(t => t == nameof(ClaimJobFunction)),
                 It.Is<ClaimJobRequest>(r => r.Status == SyncStatus.InProgress),
                 It.IsAny<TaskOptions>()), Times.Once());
@@ -710,7 +725,7 @@ namespace Services.Tests
                 _telemetryClient, _emailSenderAndRecipients.Object, _gmmResources.Object);
             await suborchestrator.RunSubOrchestratorAsync(_context.Object);
 
-            _context.Verify(x => x.CallActivityAsync<bool>(
+            _context.Verify(x => x.CallActivityAsync<SyncJob?>(
                 It.Is<TaskName>(t => t == nameof(ClaimJobFunction)),
                 It.Is<ClaimJobRequest>(r => r.Status == SyncStatus.StuckInProgress),
                 It.IsAny<TaskOptions>()), Times.Once());
@@ -786,10 +801,11 @@ namespace Services.Tests
             var topicMessageSenderCalled = false;
             var getSyncJobCalledFirst = false;
 
-            _context.Setup(x => x.CallActivityAsync<SyncJob>(It.Is<TaskName>(x => x == nameof(GetSyncJobFunction)), It.IsAny<Guid>(), It.IsAny<TaskOptions>()))
+            SyncJob capturedGetSyncJobInput = null;
+            _context.Setup(x => x.CallActivityAsync<SyncJob>(It.Is<TaskName>(x => x == nameof(GetSyncJobFunction)), It.IsAny<SyncJob>(), It.IsAny<TaskOptions>()))
                     .Callback<TaskName, object, TaskOptions>((name, input, options) =>
                     {
-                        var syncJobId = (Guid)input; // Cast object to Guid
+                        capturedGetSyncJobInput = (SyncJob)input;
                         getSyncJobCalled = true;
                         if (!topicMessageSenderCalled)
                             getSyncJobCalledFirst = true;
@@ -814,7 +830,10 @@ namespace Services.Tests
             Assert.IsTrue(getSyncJobCalled, "GetSyncJobFunction should be called");
             Assert.IsTrue(topicMessageSenderCalled, "TopicMessageSenderFunction should be called");
             Assert.IsTrue(getSyncJobCalledFirst, "GetSyncJobFunction should be called before TopicMessageSenderFunction");
-            _context.Verify(x => x.CallActivityAsync<SyncJob>(It.Is<TaskName>(x => x == nameof(GetSyncJobFunction)), It.IsAny<Guid>(), It.IsAny<TaskOptions>()), Times.Once());
+            Assert.IsNotNull(capturedGetSyncJobInput, "GetSyncJobFunction should receive a SyncJob input (so its log scope carries RunId)");
+            Assert.AreEqual(_syncJob.Id, capturedGetSyncJobInput.Id, "GetSyncJobFunction input must contain the SyncJob Id");
+            Assert.AreEqual(_syncJob.RunId, capturedGetSyncJobInput.RunId, "GetSyncJobFunction input must carry RunId so logs include it");
+            _context.Verify(x => x.CallActivityAsync<SyncJob>(It.Is<TaskName>(x => x == nameof(GetSyncJobFunction)), It.IsAny<SyncJob>(), It.IsAny<TaskOptions>()), Times.Once());
         }
 
         [TestMethod]
@@ -830,7 +849,7 @@ namespace Services.Tests
             refreshedJob.Status = SyncStatus.InProgress.ToString();
             refreshedJob.RunId = null; // Simulating database fetch without RunId
 
-            _context.Setup(x => x.CallActivityAsync<SyncJob>(It.Is<TaskName>(x => x == nameof(GetSyncJobFunction)), It.IsAny<Guid>(), It.IsAny<TaskOptions>()))
+            _context.Setup(x => x.CallActivityAsync<SyncJob>(It.Is<TaskName>(x => x == nameof(GetSyncJobFunction)), It.IsAny<SyncJob>(), It.IsAny<TaskOptions>()))
                     .ReturnsAsync(refreshedJob);
 
             _context.Setup(x => x.CallActivityAsync(It.Is<TaskName>(x => x == nameof(TopicMessageSenderFunction)), It.IsAny<SyncJob>(), It.IsAny<TaskOptions>()))
@@ -860,8 +879,8 @@ namespace Services.Tests
             _context.Setup(x => x.GetInput<SyncJob>()).Returns(_syncJob);
             SyncJob jobSentToTopicMessageSender = null;
 
-            _context.Setup(x => x.CallActivityAsync<SyncJob>(It.Is<TaskName>(x => x == nameof(GetSyncJobFunction)), It.IsAny<Guid>(), It.IsAny<TaskOptions>()))
-                    .ReturnsAsync((SyncJob)null);
+            _context.Setup(x => x.CallActivityAsync<SyncJob>(It.Is<TaskName>(x => x == nameof(GetSyncJobFunction)), It.IsAny<SyncJob>(), It.IsAny<TaskOptions>()))
+                    .ReturnsAsync((SyncJob?)null);
 
             _context.Setup(x => x.CallActivityAsync(It.Is<TaskName>(x => x == nameof(TopicMessageSenderFunction)), It.IsAny<SyncJob>(), It.IsAny<TaskOptions>()))
                     .Callback<TaskName, object, TaskOptions>(async (name, request, options) =>
@@ -880,6 +899,208 @@ namespace Services.Tests
             // Assert
             Assert.IsNotNull(jobSentToTopicMessageSender, "Job should still be sent to TopicMessageSenderFunction");
             Assert.AreEqual(_syncJob.Id, jobSentToTopicMessageSender.Id, "Should use in-memory job as fallback");
+        }
+
+        [TestMethod]
+        public async Task IdleJobsTracker_FiresWhenJobEntersAsIdle()
+        {
+            // Arrange
+            _syncJob.Status = SyncStatus.Idle.ToString();
+            _context.Setup(x => x.GetInput<SyncJob>()).Returns(_syncJob);
+            _context.Setup(x => x.CallActivityAsync<int>(nameof(JobTrackerFunction), It.IsAny<SyncJob>(), It.IsAny<TaskOptions>())).ReturnsAsync(2);
+
+            // Act
+            var suborchestrator = new SubOrchestratorFunction(
+                _telemetryClient, _emailSenderAndRecipients.Object, _gmmResources.Object);
+            await suborchestrator.RunSubOrchestratorAsync(_context.Object);
+
+            // Assert
+            var idleEvents = _telemetryChannel.GetEvents("IdleJobsTracker");
+            Assert.AreEqual(1, idleEvents.Count, "IdleJobsTracker should fire exactly once for an Idle job");
+            Assert.AreEqual(0, _telemetryChannel.GetEvents("InProgressJobsTracker").Count, "InProgressJobsTracker should not fire for an Idle job");
+
+            var idleEvent = idleEvents[0];
+            Assert.AreEqual("2", idleEvent.Properties["Frequency"]);
+            Assert.AreEqual("1", idleEvent.Properties["JobStarted"]);
+        }
+
+        [TestMethod]
+        public async Task InProgressJobsTracker_FiresWhenJobEntersAsInProgress()
+        {
+            // Arrange
+            _syncJob.Status = SyncStatus.InProgress.ToString();
+            _context.Setup(x => x.GetInput<SyncJob>()).Returns(_syncJob);
+            _context.Setup(x => x.CallActivityAsync<int>(nameof(JobTrackerFunction), It.IsAny<SyncJob>(), It.IsAny<TaskOptions>())).ReturnsAsync(3);
+
+            // Act
+            var suborchestrator = new SubOrchestratorFunction(
+                _telemetryClient, _emailSenderAndRecipients.Object, _gmmResources.Object);
+            await suborchestrator.RunSubOrchestratorAsync(_context.Object);
+
+            // Assert
+            var inProgressEvents = _telemetryChannel.GetEvents("InProgressJobsTracker");
+            Assert.AreEqual(1, inProgressEvents.Count, "InProgressJobsTracker should fire exactly once for an InProgress job");
+            Assert.AreEqual(0, _telemetryChannel.GetEvents("IdleJobsTracker").Count, "IdleJobsTracker should not fire for an InProgress job");
+
+            Assert.AreEqual("3", inProgressEvents[0].Properties["Frequency"]);
+        }
+
+        [TestMethod]
+        public async Task IdleJobsTracker_StillFiresWhenClaimReassignsSyncJobToInProgress()
+        {
+            // Arrange: ClaimJobFunction returns a SyncJob whose Status has already been flipped
+            // from Idle to InProgress (this matches the real DB claim behavior — the claim
+            // updates the row to InProgress and returns the refreshed entity). The
+            // SubOrchestrator then reassigns syncJob = claimedJob, so syncJob.Status is now
+            // InProgress. The tracker branch must still fire IdleJobsTracker because it should
+            // decide based on the job's status at entry, not the post-claim status.
+            _syncJob.Status = SyncStatus.Idle.ToString();
+            _context.Setup(x => x.GetInput<SyncJob>()).Returns(_syncJob);
+            _context.Setup(x => x.CallActivityAsync<int>(nameof(JobTrackerFunction), It.IsAny<SyncJob>(), It.IsAny<TaskOptions>())).ReturnsAsync(1);
+
+            _context.Setup(x => x.CallActivityAsync<SyncJob?>(
+                        It.Is<TaskName>(t => t == nameof(ClaimJobFunction)),
+                        It.IsAny<ClaimJobRequest>(),
+                        It.IsAny<TaskOptions>()))
+                    .Returns((TaskName name, object input, TaskOptions opts) =>
+                    {
+                        var claimed = _syncJob;
+                        claimed.Status = SyncStatus.InProgress.ToString();
+                        return Task.FromResult<SyncJob?>(claimed);
+                    });
+
+            // Act
+            var suborchestrator = new SubOrchestratorFunction(
+                _telemetryClient, _emailSenderAndRecipients.Object, _gmmResources.Object);
+            await suborchestrator.RunSubOrchestratorAsync(_context.Object);
+
+            // Assert — originalStatus was captured before the claim flipped SyncJob.Status
+            Assert.AreEqual(1, _telemetryChannel.GetEvents("IdleJobsTracker").Count,
+                "IdleJobsTracker must fire based on the pre-claim status, not the post-claim status");
+            Assert.AreEqual(0, _telemetryChannel.GetEvents("InProgressJobsTracker").Count,
+                "InProgressJobsTracker must not fire for a job that entered as Idle");
+        }
+
+        [TestMethod]
+        public async Task NeitherTracker_FiresForStuckInProgressJob()
+        {
+            // Arrange
+            _syncJob.Status = SyncStatus.StuckInProgress.ToString();
+            _context.Setup(x => x.GetInput<SyncJob>()).Returns(_syncJob);
+
+            // Act
+            var suborchestrator = new SubOrchestratorFunction(
+                _telemetryClient, _emailSenderAndRecipients.Object, _gmmResources.Object);
+            await suborchestrator.RunSubOrchestratorAsync(_context.Object);
+
+            // Assert
+            Assert.AreEqual(0, _telemetryChannel.GetEvents("IdleJobsTracker").Count);
+            Assert.AreEqual(0, _telemetryChannel.GetEvents("InProgressJobsTracker").Count);
+        }
+
+        [TestMethod]
+        public async Task JobTrackerFunction_ReceivesPreClaimSyncJob_SoFrequencyIsNotZero()
+        {
+            // Regression for IdleJobsTracker emitting Frequency=0 on ar2.
+            //
+            // JobTrackerFunction computes frequency from syncJob.Status and
+            // LastSuccessfulRunTime/LastSuccessfulStartTime. The atomic claim updates both
+            // (Idle -> InProgress, LastSuccessfulStartTime -> now). If JobTrackerFunction
+            // is called AFTER syncJob is reassigned to the claimed instance, the InProgress
+            // branch runs with timeDifference == 0 and frequency == 0. IdleJobsTracker then
+            // emits Frequency=0 for every job, which makes the ReliabilityPercentage KQL
+            // return NaN (0/0).
+            //
+            // This test simulates real DB behavior (claim returns a new instance with
+            // mutated Status/LastSuccessfulStartTime) and asserts the emitted Frequency is
+            // the value computed against the pre-claim state.
+
+            var now = DateTime.UtcNow;
+            _syncJob.Status = SyncStatus.Idle.ToString();
+            _syncJob.Period = 1;
+            _syncJob.LastSuccessfulRunTime = now.AddHours(-5);
+            _syncJob.LastSuccessfulStartTime = now.AddHours(-5);
+            _context.Setup(x => x.GetInput<SyncJob>()).Returns(_syncJob);
+
+            // Override the default ClaimJobFunction mock: return a NEW SyncJob instance
+            // with Status=InProgress and LastSuccessfulStartTime=now, matching what the DB
+            // would return after an atomic claim.
+            _context.Setup(x => x.CallActivityAsync<SyncJob?>(
+                        It.Is<TaskName>(t => t == nameof(ClaimJobFunction)),
+                        It.IsAny<ClaimJobRequest>(),
+                        It.IsAny<TaskOptions>()))
+                    .Returns((TaskName name, object input, TaskOptions opts) =>
+                    {
+                        var claimed = new SyncJob
+                        {
+                            Id = _syncJob.Id,
+                            RunId = _syncJob.RunId,
+                            Status = SyncStatus.InProgress.ToString(),
+                            Period = _syncJob.Period,
+                            LastSuccessfulRunTime = _syncJob.LastSuccessfulRunTime,
+                            LastSuccessfulStartTime = now,
+                            Query = _syncJob.Query,
+                            Destination = _syncJob.Destination,
+                            MembershipType = _syncJob.MembershipType,
+                            TargetOfficeGroupId = _syncJob.TargetOfficeGroupId
+                        };
+                        return Task.FromResult<SyncJob?>(claimed);
+                    });
+
+            // Override the default JobTrackerFunction mock: run the real function against
+            // whatever syncJob the SubOrchestrator actually passes in (without mutating
+            // LastSuccessfulRunTime as the default setup does).
+            _context.Setup(x => x.CallActivityAsync<int>(
+                        It.Is<TaskName>(t => t == nameof(JobTrackerFunction)),
+                        It.IsAny<SyncJob>(),
+                        It.IsAny<TaskOptions>()))
+                    .Returns((TaskName name, object input, TaskOptions opts) =>
+                    {
+                        var tracker = new JobTrackerFunction(NullLogger<JobTrackerFunction>.Instance);
+                        return tracker.TrackJobFrequencyAsync((SyncJob)input);
+                    });
+
+            // Act
+            var suborchestrator = new SubOrchestratorFunction(
+                _telemetryClient, _emailSenderAndRecipients.Object, _gmmResources.Object);
+            await suborchestrator.RunSubOrchestratorAsync(_context.Object);
+
+            // Assert
+            var idleEvents = _telemetryChannel.GetEvents("IdleJobsTracker");
+            Assert.AreEqual(1, idleEvents.Count, "IdleJobsTracker should fire for a job that entered as Idle");
+
+            // Pre-claim: Status=Idle, LastSuccessfulRunTime=5h ago, Period=1 -> frequency=5
+            // Post-claim: Status=InProgress, LastSuccessfulStartTime=now, Period=1 -> frequency=0
+            // This assertion proves JobTrackerFunction was called with the pre-claim instance.
+            Assert.AreEqual("5", idleEvents[0].Properties["Frequency"],
+                "Frequency must be computed from the pre-claim SyncJob; Frequency=0 means JobTrackerFunction received the post-claim (mutated) instance.");
+            Assert.AreEqual("1", idleEvents[0].Properties["JobStarted"]);
+        }
+
+        /// <summary>
+        /// Minimal ITelemetryChannel that captures EventTelemetry items in memory so tests
+        /// can assert which Track* events fired during a SubOrchestrator run.
+        /// </summary>
+        private sealed class CapturingTelemetryChannel : ITelemetryChannel
+        {
+            private readonly List<EventTelemetry> _events = new();
+
+            public bool? DeveloperMode { get; set; }
+            public string EndpointAddress { get; set; }
+
+            public void Send(ITelemetry item)
+            {
+                if (item is EventTelemetry eventTelemetry)
+                {
+                    _events.Add(eventTelemetry);
+                }
+            }
+
+            public IReadOnlyList<EventTelemetry> GetEvents(string name) =>
+                _events.Where(e => e.Name == name).ToList();
+
+            public void Flush() { }
+            public void Dispose() { }
         }
     }
 }

@@ -52,12 +52,32 @@ namespace Hosts.MessageSplitter
                 {
                     logger.OrchestratorUnexpectedException(ex);
 
-                    await context.CallActivityAsync(nameof(JobStatusUpdaterFunction),
-                    new JobStatusUpdaterRequest
+                    // Release RunLimiter lease immediately — no completion signal will arrive
+                    // because the work was never sent to GU (or TopicMessageSender failed).
+                    var runId = request.MembershipRequest?.SyncJob?.RunId;
+                    if (runId.HasValue && runId.Value != Guid.Empty)
                     {
-                        Status = SyncStatus.Error,
-                        SyncJob = request.MembershipRequest.SyncJob
-                    });
+                        var limiterEntityId = new EntityInstanceId(nameof(RunLimiter), request.CurrentLaneSize);
+                        await context.Entities.CallEntityAsync<bool>(
+                            limiterEntityId, nameof(RunLimiter.Release), runId.Value);
+                        logger.OrchestratorReleasedLease(runId.Value, request.CurrentLaneSize);
+                    }
+
+                    // Best-effort status update — wrap in try-catch to prevent infinite replay
+                    // if the DB is also down (JobStatusUpdater failure would re-enter this catch).
+                    try
+                    {
+                        await context.CallActivityAsync(nameof(JobStatusUpdaterFunction),
+                            new JobStatusUpdaterRequest
+                            {
+                                Status = SyncStatus.Error,
+                                SyncJob = request.MembershipRequest.SyncJob
+                            });
+                    }
+                    catch (Exception statusEx)
+                    {
+                        logger.OrchestratorStatusUpdateFailed(statusEx);
+                    }
 
                     throw;
                 }

@@ -43,6 +43,7 @@ using Services.Entities;
 using Services.Notifications;
 using Services.WebApi;
 using Services.WebApi.Contracts;
+using Services.WebApi;
 using WebApi.BackgroundServices;
 using WebApi.Configuration;
 using WebApi.Models;
@@ -465,6 +466,7 @@ namespace WebApi
                 settings.FunctionAuthAppClientId = functionAuthAppClientId;
                 settings.DataResourceGroupName = rmsc.Value.DataResourceGroup;
                 settings.ComputeResourceGroupName = rmsc.Value.ComputeResourceGroup;
+                settings.FunctionsStorageAccountName = configuration.GetValue<string>("Settings:FunctionsStorageAccountName");
             });
 
             builder.Services.AddOptions<PendingConfigurationConfig>().Configure<IConfiguration>((settings, configuration) =>
@@ -519,7 +521,10 @@ namespace WebApi
             var openAIEndpoint = builder.Configuration["Settings:OpenAIEndpoint"];
             if (!string.IsNullOrWhiteSpace(openAIEndpoint))
             {
+                // OpenAI service for title generation
                 builder.Services.AddSingleton<IOpenAIService, OpenAIService>();
+                // Copilot service for GMM Copilot chat and filter resolution
+                builder.Services.AddScoped<ICopilotService, CopilotService>();
             }
 
             builder.Services.AddSignalR().AddAzureSignalR(builder.Configuration["Settings:AzureSignalRConnectionString"]);

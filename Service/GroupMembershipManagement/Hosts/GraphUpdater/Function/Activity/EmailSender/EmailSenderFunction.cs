@@ -1,8 +1,7 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 using Microsoft.Azure.Functions.Worker;
-using Models;
-using Repositories.Contracts;
+using Microsoft.Extensions.Logging;
 using Services.Contracts;
 using System;
 using System.Threading.Tasks;
@@ -11,21 +10,22 @@ namespace Hosts.GraphUpdater
 {
     public class EmailSenderFunction
     {
-        private readonly ILoggingRepository _loggingRepository;
+        private readonly ILogger<EmailSenderFunction> _logger;
         private readonly IGraphUpdaterService _graphUpdaterService;
 
-        public EmailSenderFunction(ILoggingRepository loggingRepository, IGraphUpdaterService graphUpdaterService)
+        public EmailSenderFunction(ILogger<EmailSenderFunction> logger, IGraphUpdaterService graphUpdaterService)
         {
-            _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
-            _graphUpdaterService = graphUpdaterService ?? throw new ArgumentNullException(nameof(graphUpdaterService)); ;
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+            _graphUpdaterService = graphUpdaterService ?? throw new ArgumentNullException(nameof(graphUpdaterService));
         }
 
         [Function(nameof(EmailSenderFunction))]
         public async Task SendEmailAsync([ActivityTrigger] EmailSenderRequest request)
         {
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(EmailSenderFunction)} function started", RunId = request.SyncJob.RunId }, VerbosityLevel.DEBUG);
+            using var scope = _logger.BeginGraphUpdaterScope(request);
+            _logger.FunctionStarted(nameof(EmailSenderFunction));
             await _graphUpdaterService.SendEmailAsync(request.SyncJob, request.NotificationType, request.AdditionalContentParams);
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(EmailSenderFunction)} function completed", RunId = request.SyncJob.RunId }, VerbosityLevel.DEBUG);
+            _logger.FunctionCompleted(nameof(EmailSenderFunction));
         }
     }
 }

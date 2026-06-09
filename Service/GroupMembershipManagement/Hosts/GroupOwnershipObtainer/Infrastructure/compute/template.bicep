@@ -144,22 +144,15 @@ module userAssignedManagedIdentityNameReader 'keyVaultReader.bicep' = {
 module storageAccountNameReader 'keyVaultReader.bicep' = {
   name: 'storageAccountNameReader-GroupOwnershipObtainer'
   params: {
-    value: dataKeyVault.getSecret('groupOwnershipObtainerStorageAccountProd')
+    value: dataKeyVault.getSecret('functionsStorageAccountName')
   }
   dependsOn: [
     dataKeyVault
   ]
 }
 
-module appPackageContainerNameReader 'keyVaultReader.bicep' = {
-  name: 'appPackageContainerNameReader-GroupOwnershipObtainer'
-  params: {
-    value: dataKeyVault.getSecret('groupOwnershipObtainerAppPackageContainerProd')
-  }
-  dependsOn: [
-    dataKeyVault
-  ]
-}
+var appPackageContainerName = 'groupownershipobtainer-app-package'
+
 
 resource graphUAMI 'Microsoft.ManagedIdentity/userAssignedIdentities@2023-07-31-preview' existing = {
   name: userAssignedManagedIdentityNameReader.outputs.value
@@ -195,7 +188,7 @@ module functionAppTemplate_GroupOwnershipObtainer 'functionApp.bicep' = {
     dataKeyVaultResourceGroup: dataKeyVaultResourceGroup
     setRBACPermissions: setRBACPermissions
     storageAccountName: storageAccountNameReader.outputs.value
-    appPackageContainerName: appPackageContainerNameReader.outputs.value
+    appPackageContainerName: appPackageContainerName
     maxInstanceCount: maxInstanceCount
     instanceMemoryMB: instanceMemoryMB
   }

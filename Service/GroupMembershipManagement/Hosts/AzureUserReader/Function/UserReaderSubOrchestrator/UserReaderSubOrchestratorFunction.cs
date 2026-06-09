@@ -4,7 +4,6 @@
 using Microsoft.Azure.Functions.Worker;
 using Microsoft.DurableTask;
 using Models;
-using Repositories.Contracts;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -14,19 +13,12 @@ namespace Hosts.AzureUserReader
 {
     public class UserReaderSubOrchestratorFunction
     {
-        private readonly ILoggingRepository _loggingRepository = null;
-
-        public UserReaderSubOrchestratorFunction(ILoggingRepository loggingRepository)
-        {
-            _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
-        }
-
         [Function(nameof(UserReaderSubOrchestratorFunction))]
         public async Task<List<GraphProfileInformation>> RunOrchestrator(
             [OrchestrationTrigger] TaskOrchestrationContext context)
         {
-            if (!context.IsReplaying)
-                _ = _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(UserReaderSubOrchestratorFunction)} function started" }, VerbosityLevel.DEBUG);
+            var logger = context.CreateReplaySafeLogger("AzureUserReader.UserReaderSubOrchestratorFunction");
+            logger.FunctionStarted(nameof(UserReaderSubOrchestratorFunction));
 
             var users = new List<GraphProfileInformation>();
 
@@ -49,24 +41,21 @@ namespace Hosts.AzureUserReader
                         users.AddRange(results.SelectMany(x => x));
                         readerTasks.Clear();
 
-                        if (!context.IsReplaying)
-                            _ = _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Retrieved {users.Count} users so far!" });
+                        logger.UsersRetrievedSoFar(users.Count);
                     }
 
                     skip += take;
                     leftToProcess -= take;
                 }
 
-                if (!context.IsReplaying)
-                    _ = _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Retrieved a total of {users.Count} users" });
+                logger.TotalUsersRetrieved(users.Count);
             }
             catch (Exception ex)
             {
-                _ = _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(UserReaderSubOrchestratorFunction)} failed with exception:\n{ex}" });
+                logger.FunctionFailed(nameof(UserReaderSubOrchestratorFunction), ex);
             }
 
-            if (!context.IsReplaying)
-                _ = _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(UserReaderSubOrchestratorFunction)} function completed" }, VerbosityLevel.DEBUG);
+            logger.FunctionCompleted(nameof(UserReaderSubOrchestratorFunction));
 
             return users;
         }

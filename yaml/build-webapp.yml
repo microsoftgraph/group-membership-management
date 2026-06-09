@@ -5,6 +5,9 @@ parameters:
   type: string
 - name: buildRelease
   type: boolean
+- name: runUITests
+  type: boolean
+  default: true
 
 stages:
 
@@ -36,18 +39,45 @@ stages:
         version: '23.1.0'
 
     - task: PowerShell@2
-      displayName: 'Run pnpm audit'
+      displayName: 'Run pnpm audit (osv-scanner)'
       inputs:
         targetType: inline
         workingDirectory: 'UI/web-app'
         script: |
-          npm install -g corepack@latest
-          corepack enable
-          corepack prepare pnpm@9.15.4 --activate
-          pnpm --version
-          pnpm audit --audit-level=moderate
+          # osv-scanner replaces pnpm audit while npm's legacy audit endpoint is retired (pnpm/pnpm#11265)
+          $osvVersion = "2.3.5"
+          $osvUrl = "https://github.com/google/osv-scanner/releases/download/v${osvVersion}/osv-scanner_windows_amd64.exe"
+          $osvPath = Join-Path $env:TEMP "osv-scanner.exe"
+          Write-Host "Downloading osv-scanner v${osvVersion}..."
+          Invoke-WebRequest -Uri $osvUrl -OutFile $osvPath
+          Write-Host "Scanning pnpm-lock.yaml for vulnerabilities..."
+          & $osvPath --lockfile=pnpm-lock.yaml
         pwsh: true
       condition: and(succeeded(), eq(variables['BuildConfiguration'], 'debug'))
+
+    - ${{ if parameters.runUITests }}:
+      - task: PowerShell@2
+        displayName: 'Run UI unit tests with coverage'
+        inputs:
+          targetType: inline
+          workingDirectory: 'UI/web-app'
+          script: |
+            npx pnpm@9.15.4 install --frozen-lockfile
+            npx pnpm@9.15.4 run test:run --coverage
+            if ($LASTEXITCODE -ne 0) {
+              Write-Error "UI unit tests failed or coverage threshold not met."
+              exit 1
+            }
+          pwsh: true
+
+      - task: PowerShell@2
+        displayName: 'Clean node_modules after tests'
+        inputs:
+          targetType: inline
+          workingDirectory: 'UI/web-app'
+          script: |
+            Remove-Item -Path node_modules -Recurse -Force -ErrorAction SilentlyContinue
+          pwsh: true
 
     - task: CopyFiles@2
       displayName: 'Copy GmmUI webapp package'
@@ -57,14 +87,14 @@ stages:
         TargetFolder: '$(build.artifactstagingdirectory)/webapp_package/'
 
     - task: PowerShell@2
-      displayName: 'Write build version to file'
+      displayName: 'Write app version to file'
       inputs:
         targetType: inline
         workingDirectory: '$(build.artifactstagingdirectory)/webapp_package/web-app'
         script: |
-          $versionFileName = "buildVersion.txt"
-          $buildVersion = "$(Build.BuildNumber)"
-          Set-Content -Path $versionFileName -Value $buildVersion
+          $versionFileName = "appVersion.txt"
+          $appVersion = "$(Build.BuildNumber)"
+          Set-Content -Path $versionFileName -Value $appVersion
         pwsh: true
 
     - task: CopyFiles@2

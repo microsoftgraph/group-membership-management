@@ -61,7 +61,6 @@ module jobTriggerDataResources '../Service/GroupMembershipManagement/Hosts/JobTr
   name: 'jobTriggerDataResourcesTemplate'
   scope: resourceGroup(dataResourceGroupName)
   params: {
-    location: location
     environmentAbbreviation: environmentAbbreviation
     solutionAbbreviation: solutionAbbreviation
   }
@@ -91,7 +90,6 @@ module destinationAttributesUpdaterDataResources '../Service/GroupMembershipMana
   name: 'destinationAttributesUpdaterDataResourcesTemplate'
   scope: resourceGroup(dataResourceGroupName)
   params: {
-    location: location
     environmentAbbreviation: environmentAbbreviation
     solutionAbbreviation: solutionAbbreviation
   }
@@ -121,7 +119,6 @@ module groupMembershipObtainerDataResources '../Service/GroupMembershipManagemen
   name: 'groupMembershipObtainerDataResourcesTemplate'
   scope: resourceGroup(dataResourceGroupName)
   params: {
-    location: location
     environmentAbbreviation: environmentAbbreviation
     solutionAbbreviation: solutionAbbreviation
   }
@@ -150,7 +147,6 @@ module sqlMembershipObtainerDataResources '../Service/GroupMembershipManagement/
   name: 'sqlMembershipObtainerDataResourcesTemplate'
   scope: resourceGroup(dataResourceGroupName)
   params: {
-    location: location
     environmentAbbreviation: environmentAbbreviation
     solutionAbbreviation: solutionAbbreviation
   }
@@ -173,7 +169,7 @@ module sqlMembershipObtainerComputeResources '../Service/GroupMembershipManageme
     setRBACPermissions: setRBACPermissions
   }
   dependsOn: [
-    groupMembershipObtainerDataResources
+    sqlMembershipObtainerDataResources
   ]
 }
 
@@ -182,7 +178,6 @@ module groupOwnershipObtainerDataResources '../Service/GroupMembershipManagement
   name: 'groupOwnershipObtainerDataResourcesTemplate'
   scope: resourceGroup(dataResourceGroupName)
   params: {
-    location: location
     environmentAbbreviation: environmentAbbreviation
     solutionAbbreviation: solutionAbbreviation
   }
@@ -211,7 +206,6 @@ module placeMembershipObtainerDataResources '../Service/GroupMembershipManagemen
   name: 'placeMembershipObtainerDataResourcesTemplate'
   scope: resourceGroup(dataResourceGroupName)
   params: {
-    location: location
     environmentAbbreviation: environmentAbbreviation
     solutionAbbreviation: solutionAbbreviation
   }
@@ -240,7 +234,6 @@ module teamsChannelMembershipObtainerDataResources '../Service/GroupMembershipMa
   name: 'teamsChannelMembershipObtainerDataResourcesTemplate'
   scope: resourceGroup(dataResourceGroupName)
   params: {
-    location: location
     environmentAbbreviation: environmentAbbreviation
     solutionAbbreviation: solutionAbbreviation
   }
@@ -269,7 +262,6 @@ module membershipAggregatorDataResources '../Service/GroupMembershipManagement/H
   name: 'membershipAggregatorDataResourcesTemplate'
   scope: resourceGroup(dataResourceGroupName)
   params: {
-    location: location
     environmentAbbreviation: environmentAbbreviation
     solutionAbbreviation: solutionAbbreviation
   }
@@ -305,13 +297,11 @@ module graphUpdaterDataResources '../Service/GroupMembershipManagement/Hosts/Gra
   name: instance == '' ? 'graphUpdaterDataResourcesTemplate' : 'graphUpdater${instance}DataResourcesTemplate'
   scope: resourceGroup(dataResourceGroupName)
   params: {
-    location: location
     environmentAbbreviation: environmentAbbreviation
     solutionAbbreviation: solutionAbbreviation
     instanceIdentifier: instance
   }
-}
-]
+}]
 
 module graphUpdaterComputeResources '../Service/GroupMembershipManagement/Hosts/GraphUpdater/Infrastructure/compute/template.bicep' = [for instance in guinstanceIds: {
   name: instance == '' ? 'graphUpdaterComputeResourcesTemplate' : 'graphUpdater${instance}ComputeResourcesTemplate'
@@ -341,7 +331,6 @@ module teamsChannelUpdaterDataResources '../Service/GroupMembershipManagement/Ho
   name: 'teamsChannelUpdaterDataResourcesTemplate'
   scope: resourceGroup(dataResourceGroupName)
   params: {
-    location: location
     environmentAbbreviation: environmentAbbreviation
     solutionAbbreviation: solutionAbbreviation
   }
@@ -370,7 +359,6 @@ module nonProdServiceDataResources '../Service/GroupMembershipManagement/Hosts/N
   name: 'nonProdServiceDataResourcesTemplate'
   scope: resourceGroup(dataResourceGroupName)
   params: {
-    location: location
     environmentAbbreviation: environmentAbbreviation
     solutionAbbreviation: solutionAbbreviation
   }
@@ -401,7 +389,6 @@ module azureUserReaderDataResources '../Service/GroupMembershipManagement/Hosts/
   name: 'azureUserReaderDataResourcesTemplate'
   scope: resourceGroup(dataResourceGroupName)
   params: {
-    location: location
     environmentAbbreviation: environmentAbbreviation
     solutionAbbreviation: solutionAbbreviation
   }
@@ -432,7 +419,6 @@ module notifierDataResources '../Service/GroupMembershipManagement/Hosts/Notifie
   name: 'notifierDataResourcesTemplate'
   scope: resourceGroup(dataResourceGroupName)
   params: {
-    location: location
     environmentAbbreviation: environmentAbbreviation
     solutionAbbreviation: solutionAbbreviation
   }
@@ -463,7 +449,6 @@ module autoApproverDataResources '../Service/GroupMembershipManagement/Hosts/Aut
   name: 'autoApproverDataResourcesTemplate'
   scope: resourceGroup(dataResourceGroupName)
   params: {
-    location: location
     environmentAbbreviation: environmentAbbreviation
     solutionAbbreviation: solutionAbbreviation
   }
@@ -492,7 +477,6 @@ module jobSchedulerDataResources '../Service/GroupMembershipManagement/Hosts/Job
   name: 'jobSchedulerDataResourcesTemplate'
   scope: resourceGroup(dataResourceGroupName)
   params: {
-    location: location
     environmentAbbreviation: environmentAbbreviation
     solutionAbbreviation: solutionAbbreviation
   }
@@ -522,7 +506,6 @@ module syncJobUpdaterDataResources '../Service/GroupMembershipManagement/Hosts/S
   name: 'syncJobUpdaterDataResourcesTemplate'
   scope: resourceGroup(dataResourceGroupName)
   params: {
-    location: location
     environmentAbbreviation: environmentAbbreviation
     solutionAbbreviation: solutionAbbreviation
   }
@@ -553,16 +536,14 @@ var instanceIds = [
 ]
 
 module messageSplitterDataResources '../Service/GroupMembershipManagement/Hosts/MessageSplitter/Infrastructure/data/template.bicep' = [for instance in instanceIds: {
-    name: 'messageSplitter${instance}DataResources'
-    scope: resourceGroup(dataResourceGroupName)
-    params: {
-      location: location
-      environmentAbbreviation: environmentAbbreviation
-      solutionAbbreviation: solutionAbbreviation
-      instanceIdentifier: instance
-    }
+  name: 'messageSplitter${instance}DataResources'
+  scope: resourceGroup(dataResourceGroupName)
+  params: {
+    environmentAbbreviation: environmentAbbreviation
+    solutionAbbreviation: solutionAbbreviation
+    instanceIdentifier: instance
   }
-]
+}]
 
 module messageSplitterComputeResources '../Service/GroupMembershipManagement/Hosts/MessageSplitter/Infrastructure/compute/template.bicep' = [for instance in instanceIds: {
   name: 'messageSplitter${instance}ComputeResources'
@@ -589,7 +570,6 @@ module azureMaintenanceDataResources '../Service/GroupMembershipManagement/Hosts
   name: 'azureMaintenanceDataResourcesTemplate'
   scope: resourceGroup(dataResourceGroupName)
   params: {
-    location: location
     environmentAbbreviation: environmentAbbreviation
     solutionAbbreviation: solutionAbbreviation
   }
@@ -608,6 +588,38 @@ module azureMaintenanceComputeResources '../Service/GroupMembershipManagement/Ho
   }
   dependsOn: [
     azureMaintenanceDataResources
+  ]
+}
+
+// ----------------- SqlDataChecker
+module sqlDataCheckerDataResources '../Service/GroupMembershipManagement/Hosts/SqlDataChecker/Infrastructure/data/template.bicep' = {
+  name: 'sqlDataCheckerDataResourcesTemplate'
+  scope: resourceGroup(dataResourceGroupName)
+  params: {
+    environmentAbbreviation: environmentAbbreviation
+    solutionAbbreviation: solutionAbbreviation
+  }
+}
+
+module sqlDataCheckerComputeResources '../Service/GroupMembershipManagement/Hosts/SqlDataChecker/Infrastructure/compute/template.bicep' = {
+  name: 'sqlDataCheckerComputeResourcesTemplate'
+  scope: resourceGroup(computeResourceGroupName)
+  params: {
+    location: location
+    environmentAbbreviation: environmentAbbreviation
+    solutionAbbreviation: solutionAbbreviation
+    tenantId: tenantId
+    authority: 'https://login.windows.net/${tenantId}'
+    subscriptionId: subscription().subscriptionId
+    pipeline: pipeline
+    prereqsKeyVaultResourceGroup: prereqsResourceGroupName
+    dataKeyVaultResourceGroup: dataResourceGroupName
+    setRBACPermissions: setRBACPermissions
+    featureFlags: featureFlags
+    functionAuthAppClientId: functionAuthAppClientId
+  }
+  dependsOn: [
+    sqlDataCheckerDataResources
   ]
 }
 
@@ -679,6 +691,19 @@ module notifierPostCompute '../Service/GroupMembershipManagement/Hosts/Notifier/
   dependsOn:[
     notifierComputeResources
     messageSplitterComputeResources
+  ]
+}
+
+module sqlDataCheckerPostCompute '../Service/GroupMembershipManagement/Hosts/SqlDataChecker/Infrastructure/compute/postCompute.bicep' = {
+  name: 'sqlDataCheckerPostCompute'
+  params: {
+    dataKeyVaultName: '${solutionAbbreviation}-data-${environmentAbbreviation}'
+    dataKeyVaultResourceGroup: dataResourceGroupName
+    environmentAbbreviation: environmentAbbreviation
+    solutionAbbreviation: solutionAbbreviation
+  }
+  dependsOn:[
+    sqlDataCheckerComputeResources
   ]
 }
 

@@ -2,10 +2,10 @@
 // Licensed under the MIT license.
 using Entities;
 using Microsoft.Azure.Functions.Worker;
-
+using Microsoft.Extensions.Logging;
 using Microsoft.Graph;
 using Models;
-using Repositories.Contracts;
+using Repositories.Contracts.Helpers;
 using Services;
 using System;
 using System.Collections.Generic;
@@ -15,22 +15,25 @@ namespace Hosts.PlaceMembershipObtainer
 {
 	public class WorkSpacesReaderFunction
 	{
-		private readonly ILoggingRepository _log;
+		private readonly ILogger<WorkSpacesReaderFunction> _logger;
 		private readonly PlaceMembershipObtainerService _membershipProviderService;
 
-		public WorkSpacesReaderFunction(ILoggingRepository loggingRepository, PlaceMembershipObtainerService membershipProviderService)
+		public WorkSpacesReaderFunction(ILogger<WorkSpacesReaderFunction> logger, PlaceMembershipObtainerService membershipProviderService)
 		{
-			_log = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
+			_logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _membershipProviderService = membershipProviderService ?? throw new ArgumentNullException(nameof(membershipProviderService));
 		}
 
 		[Function(nameof(WorkSpacesReaderFunction))]
 		public async Task<PlaceInformation> GetWorkSpacesAsync([ActivityTrigger] WorkSpacesReaderRequest request)
 		{
-			await _log.LogMessageAsync(new LogMessage { Message = $"{nameof(WorkSpacesReaderFunction)} function started", RunId = request.RunId }, VerbosityLevel.DEBUG);
-			var response = await _membershipProviderService.GetWorkSpacesAsync(request.Url, request.Top, request.Skip);
-			await _log.LogMessageAsync(new LogMessage { Message = $"{nameof(WorkSpacesReaderFunction)} function completed", RunId = request.RunId }, VerbosityLevel.DEBUG);
-			return response;
+			using (_logger.BeginRunIdScope(request.RunId))
+			{
+				_logger.FunctionStarted(nameof(WorkSpacesReaderFunction));
+				var response = await _membershipProviderService.GetWorkSpacesAsync(request.Url, request.Top, request.Skip);
+				_logger.FunctionCompleted(nameof(WorkSpacesReaderFunction));
+				return response;
+			}
 		}
 	}
 }

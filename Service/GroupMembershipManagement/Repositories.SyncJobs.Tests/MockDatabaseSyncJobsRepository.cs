@@ -140,11 +140,11 @@ namespace Repositories.SyncJobs.Tests
             throw new NotImplementedException();
         }
 
-                public Task<int> ClaimSyncJobAsync(Guid jobId, Guid? runId, int period, string targetStatus)
+                public Task<SyncJob?> ClaimSyncJobAsync(Guid jobId, Guid? runId, int period, string targetStatus)
         {
             var job = Jobs.FirstOrDefault(x => x.Id == jobId);
             if (job == null)
-                return Task.FromResult(0);
+                return Task.FromResult<SyncJob>(null);
 
             var idleStatus = SyncStatus.Idle.ToString();
             var inProgressStatus = SyncStatus.InProgress.ToString();
@@ -157,14 +157,14 @@ namespace Repositories.SyncJobs.Tests
                 || (job.Status == inProgressStatus && job.LastSuccessfulStartTime < cutoffTime);
 
             if (!eligible)
-                return Task.FromResult(0);
+                return Task.FromResult<SyncJob>(null);
 
             job.Status = targetStatus;
             job.RunId = runId;
             job.LastSuccessfulStartTime = DateTime.UtcNow;
             if (targetStatus == stuckStatus)
                 job.LastRunTime = DateTime.UtcNow;
-            return Task.FromResult(1);
+            return Task.FromResult(job);
         }
 
         public Task UpdateSyncJobDestinationAsync(Guid jobId, string destination)

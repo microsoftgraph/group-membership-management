@@ -16,6 +16,7 @@ namespace Services.Entities
         public string DataResourceGroupName { get; set; }
         public string ComputeResourceGroupName { get; set; }
         public string FunctionAuthAppClientId { get; set; }
+        public string FunctionsStorageAccountName { get; set; }
 
     }
 }

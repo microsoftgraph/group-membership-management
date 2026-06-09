@@ -19,8 +19,10 @@ import {
     checkboxPairsContainer: IStyle;
     thresholdDropdown: IStyle;
     dropdownTitle: IStyle;
+    dropdownTitleError?: IStyle;
     textFieldFieldGroup: IStyle;
     thresholdWarning: IStyle;
+    thresholdSectionWrapper?: IStyle;
     labelContainer: IStyle;
     textField: IStyle;
     textFieldGroup: IStyle;
@@ -43,5 +45,8 @@ import {
      * Call to provide customized styling that will layer on top of the variant rules.
      */
     styles?: IStyleFunctionOrObject<IRunConfigurationStyleProps, IRunConfigurationStyles>;
+
+    thresholdExceededForAdditions?: boolean;
+    thresholdExceededForRemovals?: boolean;
   };
 

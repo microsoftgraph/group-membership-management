@@ -4,11 +4,12 @@ using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Models;
 using Models.Entities;
 using Moq;
-using Repositories.Contracts;
 using Services.TeamsChannelUpdater.Contracts;
 using Microsoft.DurableTask;
 using Microsoft.ApplicationInsights;
 using Microsoft.ApplicationInsights.Extensibility;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using Hosts.TeamsChannelUpdater;
 using Models.ServiceBus;
 using System.Text.Json;
@@ -20,7 +21,6 @@ namespace Services.Tests
     {
         private Mock<TaskOrchestrationContext> _mockDurableOrchestrationContext = null!;
         private TelemetryClient _mockTelemetryClient = null!;
-        private Mock<ILoggingRepository> _mockLoggingRepository = null!;
         private Mock<ITeamsChannelUpdaterService> _mockTeamsChannelUpdaterService = null!;
         private SyncJob _syncJob = null!;
         private Channel _channel = null!;
@@ -63,18 +63,14 @@ namespace Services.Tests
             {
                 Type = RequestType.Add,
                 Members = sourceMembers,
-                RunId = _syncJob.RunId.GetValueOrDefault(Guid.Empty),
+                SyncJob = _syncJob,
                 TeamsChannelInfo = _teamsChannelInfo
             };
 
             _mockDurableOrchestrationContext = new Mock<TaskOrchestrationContext>();
+            _mockDurableOrchestrationContext.Setup(x => x.CreateReplaySafeLogger(It.IsAny<string>())).Returns(NullLogger.Instance);
             _mockDurableOrchestrationContext.Setup(x => x.GetInput<TeamsChannelUpdaterSubOrchestratorRequest>())
                 .Returns(_input);
-            _mockDurableOrchestrationContext.Setup(x => x.CallActivityAsync(nameof(LoggerFunction), It.IsAny<LoggerRequest>(), It.IsAny<TaskOptions>()))
-                .Callback<TaskName, object, TaskOptions>(async (name, request, options) =>
-                {
-                    await CallLoggerFunctionAsync(request as LoggerRequest);
-                });
             TeamsUpdaterResponse response = new TeamsUpdaterResponse();
             _mockDurableOrchestrationContext.Setup(x => x.CallActivityAsync<TeamsUpdaterResponse>(nameof(TeamsUpdaterFunction), It.IsAny<TeamsUpdaterRequest>(), It.IsAny<TaskOptions>()))
                 .Callback<TaskName, object, TaskOptions>(async (name, request, options) =>
@@ -84,7 +80,6 @@ namespace Services.Tests
                 .ReturnsAsync(() => response);
 
             _mockTelemetryClient = new TelemetryClient(new TelemetryConfiguration());
-            _mockLoggingRepository = new Mock<ILoggingRepository>();
             _mockTeamsChannelUpdaterService = new Mock<ITeamsChannelUpdaterService>();
         }
 
@@ -108,19 +103,6 @@ namespace Services.Tests
             var subOrchestratorFunction = new TeamsChannelUpdaterSubOrchestratorFunction(_mockTelemetryClient);
             var response = await subOrchestratorFunction.RunSubOrchestratorAsync(_mockDurableOrchestrationContext.Object);
 
-            _mockLoggingRepository.Verify(x => x.LogMessageAsync(
-                                                It.Is<LogMessage>(m => m.Message.Contains("TeamsChannelUpdaterSubOrchestratorFunction function started")),
-                                                It.IsAny<VerbosityLevel>(),
-                                                It.IsAny<string>(),
-                                                It.IsAny<string>()
-                                            ), Times.Once);
-            _mockLoggingRepository.Verify(x => x.LogMessageAsync(
-                                                It.Is<LogMessage>(m => m.Message.Contains("TeamsChannelUpdaterSubOrchestratorFunction function completed")),
-                                                It.IsAny<VerbosityLevel>(),
-                                                It.IsAny<string>(),
-                                                It.IsAny<string>()
-                                            ), Times.Once);
-
             Assert.AreEqual(response.SuccessCount, 1);
         }
 
@@ -133,19 +115,6 @@ namespace Services.Tests
 
             var subOrchestratorFunction = new TeamsChannelUpdaterSubOrchestratorFunction(_mockTelemetryClient);
             var response = await subOrchestratorFunction.RunSubOrchestratorAsync(_mockDurableOrchestrationContext.Object);
-
-            _mockLoggingRepository.Verify(x => x.LogMessageAsync(
-                                                It.Is<LogMessage>(m => m.Message.Contains("TeamsChannelUpdaterSubOrchestratorFunction function started")),
-                                                It.IsAny<VerbosityLevel>(),
-                                                It.IsAny<string>(),
-                                                It.IsAny<string>()
-                                            ), Times.Once);
-            _mockLoggingRepository.Verify(x => x.LogMessageAsync(
-                                                It.Is<LogMessage>(m => m.Message.Contains("TeamsChannelUpdaterSubOrchestratorFunction function completed")),
-                                                It.IsAny<VerbosityLevel>(),
-                                                It.IsAny<string>(),
-                                                It.IsAny<string>()
-                                            ), Times.Once);
 
             _mockDurableOrchestrationContext.Verify(x => x.CallActivityAsync<TeamsUpdaterResponse>(nameof(TeamsUpdaterFunction), It.IsAny<TeamsUpdaterRequest>(), It.IsAny<TaskOptions>()),
                 Times.Exactly(2));
@@ -161,7 +130,7 @@ namespace Services.Tests
     ""SourceMembers"": [
         {
             ""ObjectId"": ""a93204af-4044-e972-fd02-9b7129521231"",
-			""MembershipAction"": 1
+""MembershipAction"": 1
         }
     ],
     ""RunId"": ""5814efbd-f987-5144-a204-ab8f36b2fb70"",
@@ -182,15 +151,9 @@ namespace Services.Tests
             return groupMembership;
         }
 
-        private async Task CallLoggerFunctionAsync(LoggerRequest request)
-        {
-            var loggerFunction = new LoggerFunction(_mockLoggingRepository.Object);
-            await loggerFunction.LogMessageAsync(request);
-        }
-
         private async Task<TeamsUpdaterResponse> CallTeamsUpdaterFunctionAsync(TeamsUpdaterRequest request)
         {
-            var teamsUpdaterFunction = new TeamsUpdaterFunction(_mockTeamsChannelUpdaterService.Object, _mockLoggingRepository.Object);
+            var teamsUpdaterFunction = new TeamsUpdaterFunction(_mockTeamsChannelUpdaterService.Object, NullLogger<TeamsUpdaterFunction>.Instance);
             return await teamsUpdaterFunction.RunAsync(request);
         }
     }

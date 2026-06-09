@@ -2,8 +2,8 @@
 // Licensed under the MIT license.
 using Microsoft.Azure.Functions.Worker;
 using Microsoft.Extensions.Logging;
-using Models;
 using Repositories.Contracts;
+using Repositories.Contracts.Helpers;
 using System;
 using System.Threading.Tasks;
 
@@ -12,25 +12,28 @@ namespace Hosts.NonProdService
 {
     public class TenantUserCountFunction
     {
-        private readonly ILoggingRepository _loggingRepository;
+        private readonly ILogger<TenantUserCountFunction> _logger;
         private readonly IGraphUserRepository _graphUserRepository = null;
 
-        public TenantUserCountFunction(ILoggingRepository loggingRepository, IGraphUserRepository graphUserRepository)
+        public TenantUserCountFunction(ILogger<TenantUserCountFunction> logger, IGraphUserRepository graphUserRepository)
         {
-            _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _graphUserRepository = graphUserRepository ?? throw new ArgumentNullException(nameof(graphUserRepository));
         }
 
         [Function(nameof(TenantUserCountFunction))]
-        public async Task<int?> GetTenantUsersAsync([ActivityTrigger] TenantUserCountRequest request, ILogger log)
+        public async Task<int?> GetTenantUsersAsync([ActivityTrigger] TenantUserCountRequest request)
         {
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(TenantUserCountFunction)} function started", RunId = request.RunId }, VerbosityLevel.DEBUG);
+            using (_logger.BeginRunIdScope(request.RunId))
+            {
+                _logger.FunctionStarted(nameof(TenantUserCountFunction));
 
-            var userCount = await _graphUserRepository.GetUsersCountAsync(request.RunId);
+                var userCount = await _graphUserRepository.GetUsersCountAsync(request.RunId);
 
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(TenantUserCountFunction)} function completed", RunId = request.RunId }, VerbosityLevel.DEBUG);
+                _logger.FunctionCompleted(nameof(TenantUserCountFunction));
 
-            return userCount;
+                return userCount;
+            }
         }
     }
 }

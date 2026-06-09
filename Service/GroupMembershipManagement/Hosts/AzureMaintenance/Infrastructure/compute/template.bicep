@@ -137,22 +137,15 @@ module userAssignedManagedIdentityNameReader 'keyVaultReader.bicep' = {
 module storageAccountNameReader 'keyVaultReader.bicep' = {
   name: 'storageAccountNameReader-AzureMaintenance'
   params: {
-    value: dataKeyVault.getSecret('azureMaintenanceStorageAccountProd')
+    value: dataKeyVault.getSecret('functionsStorageAccountName')
   }
   dependsOn: [
     dataKeyVault
   ]
 }
 
-module appPackageContainerNameReader 'keyVaultReader.bicep' = {
-  name: 'appPackageContainerNameReader-AzureMaintenance'
-  params: {
-    value: dataKeyVault.getSecret('azureMaintenanceAppPackageContainerProd')
-  }
-  dependsOn: [
-    dataKeyVault
-  ]
-}
+var appPackageContainerName = 'azuremaintenance-app-package'
+
 
 resource graphUAMI 'Microsoft.ManagedIdentity/userAssignedIdentities@2023-07-31-preview' existing = {
   name: userAssignedManagedIdentityNameReader.outputs.value
@@ -188,7 +181,7 @@ module functionAppTemplate_AzureMaintenance 'functionApp.bicep' = {
     dataKeyVaultResourceGroup: dataKeyVaultResourceGroup
     setRBACPermissions: setRBACPermissions
     storageAccountName: storageAccountNameReader.outputs.value
-    appPackageContainerName: appPackageContainerNameReader.outputs.value
+    appPackageContainerName: appPackageContainerName
     maxInstanceCount: maxInstanceCount
     instanceMemoryMB: instanceMemoryMB
   }

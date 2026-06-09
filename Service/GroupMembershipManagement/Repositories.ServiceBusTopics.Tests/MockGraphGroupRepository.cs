@@ -142,7 +142,17 @@ namespace Repositories.ServiceBusTopics.Tests
             throw new NotImplementedException();
         }
 
-        public Task CreateGroup(string newGroupName, TestGroupType testGroupType, List<Guid> ownerIds)
+        public Task<AzureADGroup> CreateGroup(string newGroupName, TestGroupType testGroupType)
+        {
+            throw new NotImplementedException();
+        }
+
+        public Task AddGroupOwners(string groupId, List<Guid> ownerIds)
+        {
+            throw new NotImplementedException();
+        }
+
+        public Task<List<Guid>> GetGroupIdsOwnedByServicePrincipalAsync(Guid servicePrincipalObjectId)
         {
             throw new NotImplementedException();
         }
@@ -161,6 +171,12 @@ namespace Repositories.ServiceBusTopics.Tests
         {
             throw new NotImplementedException();
         }
+
+        public Task<string?> GetGroupVivaEngageUrlAsync(Guid groupId)
+        {
+            throw new NotImplementedException();
+        }
+
 
         public Task<List<AzureADGroup>> GetGroupsAsync(List<Guid> groupIds)
         {
@@ -210,7 +226,7 @@ namespace Repositories.ServiceBusTopics.Tests
             throw new NotImplementedException();
         }
 
-        public Task<List<string>> GetAllGroupNamesAsync()
+        public Task<Dictionary<Guid, string>> GetAllGroupNamesAsync()
         {
             throw new NotImplementedException();
         }

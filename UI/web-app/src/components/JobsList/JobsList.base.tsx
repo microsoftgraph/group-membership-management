@@ -362,15 +362,7 @@ export const JobsListBase: React.FunctionComponent<IJobsListProps> = (
       ) {
         return;
       }
-      if (item?.targetGroupName === null) {
-        if (item.targetGroupName === null && item.status === SyncStatus.DestinationGroupNotFound) {
-          console.log('item?.targetDestinationType', item?.targetDestinationType);
-          navigate(`/JobDetails/${item.syncJobId}`);
-        }
-        else {
-          navigate('/NotFound', { replace: true, state: { item: item} });
-        }
-      } else if (item?.syncJobId) {
+      if (item?.syncJobId) {
         navigate(`/JobDetails/${item.syncJobId}`);
       }
     };

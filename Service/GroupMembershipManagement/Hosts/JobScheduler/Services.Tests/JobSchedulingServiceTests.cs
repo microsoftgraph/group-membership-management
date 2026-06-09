@@ -5,12 +5,12 @@ using Azure;
 using Azure.Core;
 using Azure.Monitor.Query;
 using Azure.Monitor.Query.Models;
+using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Models;
 using Moq;
 using Repositories.Contracts.InjectConfig;
 using Services.Contracts;
-using Services.Tests.Mocks;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
@@ -35,7 +35,6 @@ namespace Services.Tests
         private MockDatabaseSyncJobRepository _mockDatabaseSyncJobRepository = null;
         private DefaultRuntimeRetrievalService _defaultRuntimeRetrievalService = null;
         private LogsRuntimeRetrievalService _logsRuntimeRetrievalService = null;
-        private MockLoggingRepository _mockLoggingRepository = null;
         private Mock<IJobSchedulerConfig> _jobSchedulerConfig = new Mock<IJobSchedulerConfig>();
         private Mock<LogsQueryClient> _logsQueryClient = new Mock<LogsQueryClient>();
 
@@ -46,12 +45,11 @@ namespace Services.Tests
             _mockDatabaseSyncJobRepository = new MockDatabaseSyncJobRepository();
             _defaultRuntimeRetrievalService = new DefaultRuntimeRetrievalService(_jobSchedulerConfig.Object.DefaultRuntimeSeconds);
             _logsRuntimeRetrievalService = new LogsRuntimeRetrievalService(_jobSchedulerConfig.Object, _logsQueryClient.Object);
-            _mockLoggingRepository = new MockLoggingRepository();
 
             _jobSchedulingService = new JobSchedulingService(
                 _mockDatabaseSyncJobRepository,
                 _defaultRuntimeRetrievalService,
-                _mockLoggingRepository
+                NullLogger<JobSchedulingService>.Instance
             );
         }
 
@@ -134,7 +132,7 @@ namespace Services.Tests
             JobSchedulingService jobSchedulingService = new JobSchedulingService(
                 _mockDatabaseSyncJobRepository,
                 longerDefaultRuntimeService,
-                _mockLoggingRepository
+                NullLogger<JobSchedulingService>.Instance
             );
 
             DateTime dateTimeNow = DateTime.UtcNow.Date;
@@ -314,7 +312,7 @@ namespace Services.Tests
             _jobSchedulingService = new JobSchedulingService(
                                         _mockDatabaseSyncJobRepository,
                                         _logsRuntimeRetrievalService,
-                                        _mockLoggingRepository);
+                                        NullLogger<JobSchedulingService>.Instance);
 
             var numberOfJobs = 5;
             var periodInHours = 1;
@@ -340,7 +338,8 @@ namespace Services.Tests
             DateTime dateTimeNow = DateTime.UtcNow;
             List<DistributionSyncJob> updatedJobs = await _jobSchedulingService.DistributeJobStartTimesAsync(jobs, START_TIME_DELAY_MINUTES, BUFFER_SECONDS);
 
-            double totalTimeInSeconds = groupRuntimes.Select(x => x.Max).Sum() + (jobs.Count - groupRuntimes.Count) * DEFAULT_RUNTIME_SECONDS;
+            double totalTimeInSeconds = groupRuntimes.Select(x => x.Max).Sum() + (jobs.Count - groupRuntimes.Count) * DEFAULT_RUNTIME_SECONDS
+                                      + jobs.Count * BUFFER_SECONDS;
             int concurrencyNumber = (int)Math.Ceiling(totalTimeInSeconds / (periodInHours * 3600));
 
             Assert.AreEqual(concurrencyNumber, 1);

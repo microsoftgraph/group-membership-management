@@ -1,9 +1,9 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 using Microsoft.Azure.Functions.Worker;
-using Models;
-using Repositories.Contracts;
-using Repositories.Contracts.InjectConfig;
+using Microsoft.Extensions.Logging;
+using Models.AzureMaintenance;
+using Repositories.Contracts.Helpers;
 using Services.Contracts;
 using System;
 using System.Threading.Tasks;
@@ -12,12 +12,13 @@ namespace Hosts.AzureMaintenance
 {
     public class PurgingEmailSenderFunction
     {
-        private readonly ILoggingRepository _loggingRepository = null;
-        private readonly IAzureMaintenanceService _azureMaintenanceService = null;
-        public PurgingEmailSenderFunction(ILoggingRepository loggingRepository,
+        private readonly ILogger<PurgingEmailSenderFunction> _logger;
+        private readonly IAzureMaintenanceService _azureMaintenanceService;
+
+        public PurgingEmailSenderFunction(ILogger<PurgingEmailSenderFunction> logger,
             IAzureMaintenanceService azureMaintenanceService)
         {
-            _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _azureMaintenanceService = azureMaintenanceService ?? throw new ArgumentNullException(nameof(azureMaintenanceService));
         }
 
@@ -26,11 +27,14 @@ namespace Hosts.AzureMaintenance
         {
             if (request.SyncJob != null)
             {
-                await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(PurgingEmailSenderFunction)} function started", RunId = request.RunId }, VerbosityLevel.DEBUG);
-                
-                await _azureMaintenanceService.SendPurgingEmailAsync(request.SyncJob, request.NotificationType);
-                
-                await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(PurgingEmailSenderFunction)} function completed", RunId = request.RunId }, VerbosityLevel.DEBUG);
+                using (_logger.BeginRunIdScope(request.RunId))
+                {
+                    _logger.FunctionStarted(nameof(PurgingEmailSenderFunction));
+                    
+                    await _azureMaintenanceService.SendPurgingEmailAsync(request.SyncJob, request.NotificationType);
+                    
+                    _logger.FunctionCompleted(nameof(PurgingEmailSenderFunction));
+                }
             }
         }
     }

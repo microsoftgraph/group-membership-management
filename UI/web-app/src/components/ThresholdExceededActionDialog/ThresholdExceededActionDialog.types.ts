@@ -15,6 +15,8 @@ export interface IThresholdExceededActionDialogStyles {
     actionsGrid: IStyle;
     actionCard: IStyle;
     actionCardEnabled: IStyle;
+    actionCardTitleContainer: IStyle;
+    actionCardIcon: IStyle;
     actionCardTitle: IStyle;
     actionCardDescription: IStyle;
     footer: IStyle;
@@ -34,10 +36,18 @@ export interface IThresholdExceededActionDialogProps extends React.AllHTMLAttrib
     groupName: string;
     usersToAdd: number;
     increasePercentage: number;
-    thresholdPercentage: number;
+    thresholdPercentageForAdditions: number;
+    usersToRemove: number;
+    decreasePercentage: number;
+    thresholdPercentageForRemovals: number;
     onApplyChanges: () => void;
     onEditRules: () => void;
     onEditThreshold: () => void;
     onPauseSync: () => void;
+    isApplyChangesEnabled?: boolean;
+    isEditRulesEnabled?: boolean;
+    isEditThresholdEnabled?: boolean;
     isPauseSyncEnabled?: boolean;
+    errorMessage?: string;
+    purgeDate?: string;
 }

@@ -64,67 +64,72 @@ namespace Hosts.MessageSplitter
                 return new ReceiveDeferredPendingResponse(Dispatched: request.AlreadyDispatched, ShouldRemoveFromIndex: shouldRemoveFromIndex, OrchestrationInstanceId: request.OrchestrationInstanceId, MessageNotFound: true);
             }
 
-            try
+            // Step 1: Deserialize the payload. Payload errors are permanent — dead-letter and remove.
+            // Infrastructure errors (gRPC, storage) must propagate so the drain retries the item.
+            string instanceId = request.OrchestrationInstanceId;
+            var dispatched = request.AlreadyDispatched;
+
+            if (!dispatched)
             {
-                string instanceId = request.OrchestrationInstanceId;
-                var dispatched = request.AlreadyDispatched;
-
-                if (!dispatched)
-                {
-                    var workItem = JsonSerializer.Deserialize<OrchestratorRequest>(Encoding.UTF8.GetString(message.Body));
-                    if (workItem == null)
-                    {
-                        await _pendingReceiver.DeadLetterMessageAsync(message, deadLetterReason: "InvalidPendingMessage", deadLetterErrorDescription: "Deserialized work item was null.");
-                        _logger.DeferredDeadLetteredNullBody(request.SequenceNumber);
-                        return new ReceiveDeferredPendingResponse(Dispatched: false, ShouldRemoveFromIndex: true, OrchestrationInstanceId: null, MessageNotFound: false);
-                    }
-
-                    // Deterministic instance id helps eliminate duplicates if this activity is retried.
-                    instanceId = $"deferredpending_{request.RunId}_{request.SequenceNumber}";
-
-                    var existing = await durableClient.GetInstanceAsync(instanceId);
-                    if (existing == null)
-                    {
-                        await durableClient.ScheduleNewOrchestrationInstanceAsync(
-                            nameof(OrchestratorFunction),
-                            workItem,
-                            new StartOrchestrationOptions { InstanceId = instanceId });
-
-                        _logger.DeferredDispatched(instanceId, request.SequenceNumber);
-                    }
-
-                    dispatched = true;
-                }
-
+                OrchestratorRequest workItem;
                 try
                 {
-                    await _pendingReceiver.CompleteMessageAsync(message);
-                    _logger.DeferredCompleted(request.SequenceNumber);
-                    return new ReceiveDeferredPendingResponse(Dispatched: dispatched, ShouldRemoveFromIndex: true, OrchestrationInstanceId: instanceId, MessageNotFound: false);
+                    workItem = JsonSerializer.Deserialize<OrchestratorRequest>(Encoding.UTF8.GetString(message.Body));
                 }
-                catch (Exception ex)
+                catch (Exception ex) when (ex is JsonException or NotSupportedException or DecoderFallbackException)
                 {
-                    // Orchestration is dispatched, but message settle failed. Keep index entry for retry.
-                    _logger.DeferredCompleteFailed(request.SequenceNumber, ex.Message);
+                    // Permanent payload error — dead-letter so we don't spin forever.
+                    try
+                    {
+                        await _pendingReceiver.DeadLetterMessageAsync(message, deadLetterReason: "InvalidPendingMessage", deadLetterErrorDescription: ex.Message);
+                        _logger.DeferredDeadLetteredInvalidPayload(ex, request.SequenceNumber, ex.Message);
+                    }
+                    catch
+                    {
+                        return new ReceiveDeferredPendingResponse(Dispatched: false, ShouldRemoveFromIndex: false, OrchestrationInstanceId: null, MessageNotFound: false);
+                    }
 
-                    return new ReceiveDeferredPendingResponse(Dispatched: dispatched, ShouldRemoveFromIndex: false, OrchestrationInstanceId: instanceId, MessageNotFound: false);
+                    return new ReceiveDeferredPendingResponse(Dispatched: false, ShouldRemoveFromIndex: true, OrchestrationInstanceId: null, MessageNotFound: false);
                 }
+
+                if (workItem == null)
+                {
+                    await _pendingReceiver.DeadLetterMessageAsync(message, deadLetterReason: "InvalidPendingMessage", deadLetterErrorDescription: "Deserialized work item was null.");
+                    _logger.DeferredDeadLetteredNullBody(request.SequenceNumber);
+                    return new ReceiveDeferredPendingResponse(Dispatched: false, ShouldRemoveFromIndex: true, OrchestrationInstanceId: null, MessageNotFound: false);
+                }
+
+                // Deterministic instance id helps eliminate duplicates if this activity is retried.
+                instanceId = $"deferredpending_{request.RunId}_{request.SequenceNumber}";
+
+                // Infrastructure errors from GetInstanceAsync / ScheduleNewOrchestrationInstanceAsync
+                // propagate to the drain's catch block, which releases the lease + InProgress and throws.
+                // The item stays in the index for retry by the next drain cycle.
+                var existing = await durableClient.GetInstanceAsync(instanceId);
+                if (existing == null)
+                {
+                    await durableClient.ScheduleNewOrchestrationInstanceAsync(
+                        nameof(OrchestratorFunction),
+                        workItem,
+                        new StartOrchestrationOptions { InstanceId = instanceId });
+
+                    _logger.DeferredDispatched(instanceId, request.SequenceNumber);
+                }
+
+                dispatched = true;
+            }
+
+            // Step 2: Complete the SB message. Failure here is transient — keep index entry for retry.
+            try
+            {
+                await _pendingReceiver.CompleteMessageAsync(message);
+                _logger.DeferredCompleted(request.SequenceNumber);
+                return new ReceiveDeferredPendingResponse(Dispatched: dispatched, ShouldRemoveFromIndex: true, OrchestrationInstanceId: instanceId, MessageNotFound: false);
             }
             catch (Exception ex)
             {
-                // If the payload is invalid, dead-letter it so we don't spin forever.
-                try
-                {
-                    await _pendingReceiver.DeadLetterMessageAsync(message, deadLetterReason: "InvalidPendingMessage", deadLetterErrorDescription: ex.Message);
-                    _logger.DeferredDeadLetteredInvalidPayload(ex, request.SequenceNumber, ex.Message);
-                }
-                catch
-                {
-                    // If dead-letter fails, let the lock expire and retry later.
-                    return new ReceiveDeferredPendingResponse(Dispatched: false, ShouldRemoveFromIndex: false, OrchestrationInstanceId: null, MessageNotFound: false);
-                }
-
-                return new ReceiveDeferredPendingResponse(Dispatched: false, ShouldRemoveFromIndex: true, OrchestrationInstanceId: null, MessageNotFound: false);
+                _logger.DeferredCompleteFailed(request.SequenceNumber, ex.Message);
+                return new ReceiveDeferredPendingResponse(Dispatched: dispatched, ShouldRemoveFromIndex: false, OrchestrationInstanceId: instanceId, MessageNotFound: false);
             }
         }
     }

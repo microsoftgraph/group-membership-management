@@ -30,4 +30,5 @@ export interface IEndpointsListProps extends React.AllHTMLAttributes<HTMLDivElem
   endpoints: string[];
   groupName?: string;
   showOutlookWarning?: boolean;
+  vivaEngageUrl?: string;
 };

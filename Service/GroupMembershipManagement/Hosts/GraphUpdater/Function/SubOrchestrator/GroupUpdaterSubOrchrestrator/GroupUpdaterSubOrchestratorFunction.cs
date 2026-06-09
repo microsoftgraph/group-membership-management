@@ -7,9 +7,9 @@ using System.Linq;
 using System.Collections.Generic;
 using System;
 using Microsoft.ApplicationInsights;
+using Microsoft.Extensions.Logging;
 using GraphUpdater.Entities;
 using Models;
-using Repositories.Contracts;
 using Services.Entities;
 
 namespace Hosts.GraphUpdater
@@ -28,8 +28,10 @@ namespace Hosts.GraphUpdater
         [Function(nameof(GroupUpdaterSubOrchestratorFunction))]
         public async Task<GroupUpdaterSubOrchestratorResponse> RunSubOrchestratorAsync([OrchestrationTrigger] TaskOrchestrationContext context)
         {
+            var logger = context.CreateReplaySafeLogger("GraphUpdater.GroupUpdaterSubOrchestratorFunction");
             var skip = 0;
             var request = context.GetInput<GroupUpdaterRequest>();
+            using var scope = logger.BeginGraphUpdaterScope(request);
             var totalSuccessCount = 0;
             var allUsersNotFound = new List<AzureADUser>();
             var allUsersAlreadyExist = new List<AzureADUser>();
@@ -40,8 +42,7 @@ namespace Hosts.GraphUpdater
                 return new GroupUpdaterSubOrchestratorResponse();
             }
 
-            await context.CallActivityAsync(nameof(LoggerFunction),
-                                                new LoggerRequest { Message = $"{nameof(GroupUpdaterSubOrchestratorFunction)} function started with batch size {_batchSize}", SyncJob = request.SyncJob, Verbosity = VerbosityLevel.INFO });
+            logger.SubOrchestratorStartedWithBatchSize(nameof(GroupUpdaterSubOrchestratorFunction), _batchSize);
 
             var batch = request.Members?.Skip(skip).Take(_batchSize).ToList() ?? new List<AzureADUser>();
 
@@ -59,12 +60,10 @@ namespace Hosts.GraphUpdater
                 allUsersNotFound.AddRange(response.UsersNotFound);
                 allUsersAlreadyExist.AddRange(response.UsersAlreadyExist);
 
-                await context.CallActivityAsync(nameof(LoggerFunction),
-                                                new LoggerRequest
-                                                {
-                                                    Message = $"{(request.Type == RequestType.Add ? "Added" : "Removed")} {totalSuccessCount}/{request.Members.Count} users so far.",
-                                                    SyncJob = request.SyncJob
-                                                });
+                logger.GroupUpdateProgress(
+                    request.Type == RequestType.Add ? "Added" : "Removed",
+                    totalSuccessCount,
+                    request.Members.Count);
 
                 if(response.Status != GraphUpdaterStatus.Ok)
                 {
@@ -75,20 +74,11 @@ namespace Hosts.GraphUpdater
             }
             _telemetryClient.TrackMetric(nameof(Services.Entities.Metric.MembersNotFound), request.Members.Count - totalSuccessCount);
 
-            await context.CallActivityAsync(nameof(LoggerFunction),
-                                                     new LoggerRequest
-                                                     {
-                                                         Message = $"{(request.Type == RequestType.Add ? "Added" : "Removed")} {totalSuccessCount} users.",
-                                                         SyncJob = request.SyncJob
-                                                     });
+            logger.GroupUpdateComplete(
+                request.Type == RequestType.Add ? "Added" : "Removed",
+                totalSuccessCount);
 
-            await context.CallActivityAsync(nameof(LoggerFunction),
-                                                      new LoggerRequest
-                                                      {
-                                                          Message = $"{nameof(GroupUpdaterSubOrchestratorFunction)} function completed",
-                                                          SyncJob = request.SyncJob,
-                                                          Verbosity = VerbosityLevel.DEBUG
-                                                      });
+            logger.FunctionCompleted(nameof(GroupUpdaterSubOrchestratorFunction));
 
             return new GroupUpdaterSubOrchestratorResponse()
             {

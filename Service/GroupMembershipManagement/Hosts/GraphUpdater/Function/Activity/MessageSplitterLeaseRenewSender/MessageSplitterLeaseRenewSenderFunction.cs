@@ -4,9 +4,9 @@
 using Azure.Messaging.ServiceBus;
 using Microsoft.Azure.Functions.Worker;
 using Microsoft.Extensions.DependencyInjection;
-using Models;
+using Microsoft.Extensions.Logging;
 using Models.ServiceBus;
-using Repositories.Contracts;
+using Repositories.Contracts.Helpers;
 using System;
 using System.Text.Json;
 using System.Threading.Tasks;
@@ -16,24 +16,21 @@ namespace Hosts.GraphUpdater
     public class MessageSplitterLeaseRenewSenderFunction
     {
         private readonly ServiceBusSender _messageSplitterTopicSender;
-        private readonly ILoggingRepository _loggingRepository;
+        private readonly ILogger<MessageSplitterLeaseRenewSenderFunction> _logger;
 
         public MessageSplitterLeaseRenewSenderFunction(
             [FromKeyedServices("messageSplitterTopicSender")] ServiceBusSender messageSplitterTopicSender,
-            ILoggingRepository loggingRepository)
+            ILogger<MessageSplitterLeaseRenewSenderFunction> logger)
         {
             _messageSplitterTopicSender = messageSplitterTopicSender ?? throw new ArgumentNullException(nameof(messageSplitterTopicSender));
-            _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
 
         [Function(nameof(MessageSplitterLeaseRenewSenderFunction))]
         public async Task RunAsync([ActivityTrigger] MessageSplitterLeaseRenewSignal request)
         {
-            await _loggingRepository.LogMessageAsync(new LogMessage
-            {
-                Message = $"{nameof(MessageSplitterLeaseRenewSenderFunction)} sending lease renew",
-                RunId = request.RunId
-            }, VerbosityLevel.DEBUG);
+            using var scope = _logger.BeginRunIdScope(request.RunId);
+            _logger.SendingLeaseRenew();
 
             var message = new Azure.Messaging.ServiceBus.ServiceBusMessage(BinaryData.FromString(JsonSerializer.Serialize(request)))
             {

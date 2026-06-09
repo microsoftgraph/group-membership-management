@@ -115,18 +115,19 @@ namespace Services.Tests
             var now = DateTimeOffset.UtcNow;
 
             entity.Add(new AddDeferredPendingRequest(100, Guid.NewGuid(), now, Guid.NewGuid()));
-            entity.TakeNextBatch(new TakeNextBatchRequest(now, MaxItems: 1, InProgressSeconds: 60));
+            entity.TakeNext(new TakeNextRequest(now, InProgressSeconds: 60));
 
-            // Item is in-progress, second batch should be empty
-            var batch1 = entity.TakeNextBatch(new TakeNextBatchRequest(now, MaxItems: 1, InProgressSeconds: 60));
-            Assert.AreEqual(0, batch1.Count);
+            // Item is in-progress, second take should return null
+            var second = entity.TakeNext(new TakeNextRequest(now, InProgressSeconds: 60));
+            Assert.IsNull(second);
 
             // Release the in-progress marker
             entity.ReleaseInProgress(100);
 
             // Item should now be available
-            var batch2 = entity.TakeNextBatch(new TakeNextBatchRequest(now, MaxItems: 1, InProgressSeconds: 60));
-            Assert.AreEqual(1, batch2.Count);
+            var third = entity.TakeNext(new TakeNextRequest(now, InProgressSeconds: 60));
+            Assert.IsNotNull(third);
+            Assert.AreEqual(100, third.SequenceNumber);
         }
 
         [TestMethod]
@@ -167,6 +168,53 @@ namespace Services.Tests
 
             Assert.AreEqual(0, pruned.Count);
             Assert.AreEqual(2, entity.GetState().Items.Count);
+        }
+
+        [TestMethod]
+        public void PruneOlderThanMinutes_CapacityDeniedItems_NeverPruned()
+        {
+            var entity = new DeferredPendingIndexEntity();
+            var t0 = DateTimeOffset.UtcNow;
+
+            // Item 100: 600 min old, capacity-denied — should NEVER be pruned
+            entity.Add(new AddDeferredPendingRequest(100, Guid.NewGuid(), t0.AddMinutes(-600), Guid.NewGuid()));
+            entity.TakeNextBatch(new TakeNextBatchRequest(t0.AddMinutes(-599), MaxItems: 1, InProgressSeconds: 60));
+            entity.MarkCapacityDeniedAndRelease(new MarkCapacityDeniedRequest(100, t0.AddMinutes(-599)));
+
+            // Item 200: 600 min old, no capacity denial — should be pruned
+            entity.Add(new AddDeferredPendingRequest(200, Guid.NewGuid(), t0.AddMinutes(-600), Guid.NewGuid()));
+
+            var pruned = entity.PruneOlderThanMinutes(new PruneOlderThanMinutesRequest(t0, 120));
+
+            Assert.AreEqual(1, pruned.Count);
+            Assert.AreEqual(200, pruned[0].SequenceNumber);
+            Assert.AreEqual(1, entity.GetState().Items.Count);
+            Assert.AreEqual(100, entity.GetState().Items[0].SequenceNumber);
+        }
+
+        [TestMethod]
+        public void PruneOlderThanMinutes_DispatchedItems_NeverPruned()
+        {
+            var entity = new DeferredPendingIndexEntity();
+            var t0 = DateTimeOffset.UtcNow;
+
+            // Item 100: 600 min old, dispatched — should NEVER be pruned
+            entity.Add(new AddDeferredPendingRequest(100, Guid.NewGuid(), t0.AddMinutes(-600), Guid.NewGuid()));
+            entity.MarkDispatched(new MarkDeferredPendingDispatchedRequest(100, "instance-abc"));
+
+            // Item 200: 600 min old, not dispatched, not capacity-denied — should be pruned
+            entity.Add(new AddDeferredPendingRequest(200, Guid.NewGuid(), t0.AddMinutes(-600), Guid.NewGuid()));
+
+            // Item 300: 10 min old, not dispatched — should NOT be pruned (too young)
+            entity.Add(new AddDeferredPendingRequest(300, Guid.NewGuid(), t0.AddMinutes(-10), Guid.NewGuid()));
+
+            var pruned = entity.PruneOlderThanMinutes(new PruneOlderThanMinutesRequest(t0, 120));
+
+            Assert.AreEqual(1, pruned.Count);
+            Assert.AreEqual(200, pruned[0].SequenceNumber);
+            Assert.AreEqual(2, entity.GetState().Items.Count);
+            Assert.IsTrue(entity.GetState().Items.Any(i => i.SequenceNumber == 100));
+            Assert.IsTrue(entity.GetState().Items.Any(i => i.SequenceNumber == 300));
         }
 
         [TestMethod]
@@ -265,11 +313,11 @@ namespace Services.Tests
             entity.Add(new AddDeferredPendingRequest(100, Guid.NewGuid(), now, Guid.NewGuid()));
 
             // Take the item to mark it in-progress
-            entity.TakeNextBatch(new TakeNextBatchRequest(now, MaxItems: 1, InProgressSeconds: 60));
+            entity.TakeNext(new TakeNextRequest(now, InProgressSeconds: 60));
 
             // Item should be in-progress
-            var emptyBatch = entity.TakeNextBatch(new TakeNextBatchRequest(now, MaxItems: 1, InProgressSeconds: 60));
-            Assert.AreEqual(0, emptyBatch.Count);
+            var second = entity.TakeNext(new TakeNextRequest(now, InProgressSeconds: 60));
+            Assert.IsNull(second);
 
             // Mark capacity denied
             var deniedAt = now.AddSeconds(5);
@@ -277,13 +325,15 @@ namespace Services.Tests
 
             Assert.IsTrue(result);
 
+            // Item should be at the tail (only item, so still index 0)
             var state = entity.GetState();
             Assert.AreEqual(deniedAt, state.Items[0].LastCapacityDeniedAtUtc);
             Assert.IsNull(state.Items[0].InProgressUntilUtc);
 
             // Item should be available again
-            var batch = entity.TakeNextBatch(new TakeNextBatchRequest(now, MaxItems: 1, InProgressSeconds: 60));
-            Assert.AreEqual(1, batch.Count);
+            var third = entity.TakeNext(new TakeNextRequest(now, InProgressSeconds: 60));
+            Assert.IsNotNull(third);
+            Assert.AreEqual(100, third.SequenceNumber);
         }
 
         [TestMethod]
@@ -295,6 +345,130 @@ namespace Services.Tests
 
             Assert.IsFalse(result);
             Assert.AreEqual(0, entity.GetState().Items.Count);
+        }
+
+        // ── TakeNext tests ──
+
+        [TestMethod]
+        public void TakeNext_ReturnsSingleItem()
+        {
+            var entity = new DeferredPendingIndexEntity();
+            var now = DateTimeOffset.UtcNow;
+
+            entity.Add(new AddDeferredPendingRequest(100, Guid.NewGuid(), now, Guid.NewGuid()));
+            entity.Add(new AddDeferredPendingRequest(200, Guid.NewGuid(), now, Guid.NewGuid()));
+
+            var item = entity.TakeNext(new TakeNextRequest(now, InProgressSeconds: 60));
+
+            Assert.IsNotNull(item);
+            Assert.AreEqual(100, item.SequenceNumber);
+            Assert.IsNotNull(item.InProgressUntilUtc);
+        }
+
+        [TestMethod]
+        public void TakeNext_ReturnsNull_WhenEmpty()
+        {
+            var entity = new DeferredPendingIndexEntity();
+            var now = DateTimeOffset.UtcNow;
+
+            var item = entity.TakeNext(new TakeNextRequest(now, InProgressSeconds: 60));
+
+            Assert.IsNull(item);
+        }
+
+        [TestMethod]
+        public void TakeNext_SkipsInProgressItems()
+        {
+            var entity = new DeferredPendingIndexEntity();
+            var now = DateTimeOffset.UtcNow;
+
+            entity.Add(new AddDeferredPendingRequest(100, Guid.NewGuid(), now, Guid.NewGuid()));
+            entity.Add(new AddDeferredPendingRequest(200, Guid.NewGuid(), now, Guid.NewGuid()));
+
+            // Take first item
+            var first = entity.TakeNext(new TakeNextRequest(now, InProgressSeconds: 60));
+            Assert.AreEqual(100, first.SequenceNumber);
+
+            // Second take should skip item 100 (in-progress) and pick 200
+            var second = entity.TakeNext(new TakeNextRequest(now, InProgressSeconds: 60));
+            Assert.AreEqual(200, second.SequenceNumber);
+
+            // Third take should return null (both in-progress)
+            var third = entity.TakeNext(new TakeNextRequest(now, InProgressSeconds: 60));
+            Assert.IsNull(third);
+        }
+
+        [TestMethod]
+        public void TakeNext_ClearsExpiredInProgressMarkers()
+        {
+            var entity = new DeferredPendingIndexEntity();
+            var now = DateTimeOffset.UtcNow;
+
+            entity.Add(new AddDeferredPendingRequest(100, Guid.NewGuid(), now, Guid.NewGuid()));
+
+            // Lock it with a 60s timeout
+            entity.TakeNext(new TakeNextRequest(now, InProgressSeconds: 60));
+
+            // Should be locked
+            Assert.IsNull(entity.TakeNext(new TakeNextRequest(now.AddSeconds(30), InProgressSeconds: 60)));
+
+            // After expiry, should be available again
+            var after = entity.TakeNext(new TakeNextRequest(now.AddSeconds(61), InProgressSeconds: 60));
+            Assert.IsNotNull(after);
+            Assert.AreEqual(100, after.SequenceNumber);
+        }
+
+        // ── Move-to-tail tests ──
+
+        [TestMethod]
+        public void ReleaseInProgress_MovesItemToTail()
+        {
+            var entity = new DeferredPendingIndexEntity();
+            var now = DateTimeOffset.UtcNow;
+
+            entity.Add(new AddDeferredPendingRequest(100, Guid.NewGuid(), now, Guid.NewGuid()));
+            entity.Add(new AddDeferredPendingRequest(200, Guid.NewGuid(), now, Guid.NewGuid()));
+            entity.Add(new AddDeferredPendingRequest(300, Guid.NewGuid(), now, Guid.NewGuid()));
+
+            // Take item 100
+            entity.TakeNext(new TakeNextRequest(now, InProgressSeconds: 60));
+
+            // Release it — should move to tail
+            entity.ReleaseInProgress(100);
+
+            // Next TakeNext should pick item 200 (not 100, which is now at tail)
+            var next = entity.TakeNext(new TakeNextRequest(now, InProgressSeconds: 60));
+            Assert.AreEqual(200, next.SequenceNumber);
+
+            // Verify order: 200, 300, 100
+            var state = entity.GetState();
+            Assert.AreEqual(200, state.Items[0].SequenceNumber);
+            Assert.AreEqual(300, state.Items[1].SequenceNumber);
+            Assert.AreEqual(100, state.Items[2].SequenceNumber);
+        }
+
+        [TestMethod]
+        public void MarkCapacityDeniedAndRelease_MovesItemToTail()
+        {
+            var entity = new DeferredPendingIndexEntity();
+            var now = DateTimeOffset.UtcNow;
+
+            entity.Add(new AddDeferredPendingRequest(100, Guid.NewGuid(), now, Guid.NewGuid()));
+            entity.Add(new AddDeferredPendingRequest(200, Guid.NewGuid(), now, Guid.NewGuid()));
+
+            // Take item 100
+            entity.TakeNext(new TakeNextRequest(now, InProgressSeconds: 60));
+
+            // Mark capacity denied — should move to tail
+            entity.MarkCapacityDeniedAndRelease(new MarkCapacityDeniedRequest(100, now));
+
+            // Next TakeNext should pick item 200 (100 is at tail)
+            var next = entity.TakeNext(new TakeNextRequest(now, InProgressSeconds: 60));
+            Assert.AreEqual(200, next.SequenceNumber);
+
+            var state = entity.GetState();
+            Assert.AreEqual(200, state.Items[0].SequenceNumber);
+            Assert.AreEqual(100, state.Items[1].SequenceNumber);
         }
     }
 }

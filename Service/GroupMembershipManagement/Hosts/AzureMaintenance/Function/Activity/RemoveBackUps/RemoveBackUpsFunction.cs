@@ -1,8 +1,7 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 using Microsoft.Azure.Functions.Worker;
-using Models;
-using Repositories.Contracts;
+using Microsoft.Extensions.Logging;
 using Services.Contracts;
 using System;
 using System.Threading.Tasks;
@@ -11,20 +10,21 @@ namespace Hosts.AzureMaintenance
 {
     public class RemoveBackUpsFunction
     {
-        private readonly ILoggingRepository _loggingRepository = null;
-        private readonly IAzureMaintenanceService _azureMaintenanceService = null;
-        public RemoveBackUpsFunction(ILoggingRepository loggingRepository, IAzureMaintenanceService azureMaintenanceService)
+        private readonly ILogger<RemoveBackUpsFunction> _logger;
+        private readonly IAzureMaintenanceService _azureMaintenanceService;
+
+        public RemoveBackUpsFunction(ILogger<RemoveBackUpsFunction> logger, IAzureMaintenanceService azureMaintenanceService)
         {
-            _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _azureMaintenanceService = azureMaintenanceService ?? throw new ArgumentNullException(nameof(azureMaintenanceService));
         }
 
         [Function(nameof(RemoveBackUpsFunction))]
         public async Task<int> RemoveBackUpsAsync([ActivityTrigger] object obj)
         {
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(RemoveBackUpsFunction)} function started" }, VerbosityLevel.DEBUG);
-            int countOfRemovedJobs =  await _azureMaintenanceService.RemoveBackupsAsync();
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(RemoveBackUpsFunction)} function completed" }, VerbosityLevel.DEBUG);
+            _logger.FunctionStarted(nameof(RemoveBackUpsFunction));
+            int countOfRemovedJobs = await _azureMaintenanceService.RemoveBackupsAsync();
+            _logger.FunctionCompleted(nameof(RemoveBackUpsFunction));
             return countOfRemovedJobs;
         }
     }

@@ -101,22 +101,15 @@ resource dataKeyVault 'Microsoft.KeyVault/vaults@2023-07-01' existing = {
 module storageAccountNameReader 'keyVaultReader.bicep' = {
   name: 'storageAccountNameReader-JobScheduler'
   params: {
-    value: dataKeyVault.getSecret('jobSchedulerStorageAccountProd')
+    value: dataKeyVault.getSecret('functionsStorageAccountName')
   }
   dependsOn: [
     dataKeyVault
   ]
 }
 
-module appPackageContainerNameReader 'keyVaultReader.bicep' = {
-  name: 'appPackageContainerNameReader-JobScheduler'
-  params: {
-    value: dataKeyVault.getSecret('jobSchedulerAppPackageContainerProd')
-  }
-  dependsOn: [
-    dataKeyVault
-  ]
-}
+var appPackageContainerName = 'jobscheduler-app-package'
+
 
 module existingLogAnalyticsWorkspace 'logAnalyticsWorkspace.bicep' = {
   name: 'existingLogAnalyticsWorkspace-js'
@@ -144,7 +137,7 @@ module functionAppTemplate_JobScheduler 'functionApp.bicep' = {
     dataKeyVaultResourceGroup: dataKeyVaultResourceGroup
     setRBACPermissions: setRBACPermissions
     storageAccountName: storageAccountNameReader.outputs.value
-    appPackageContainerName: appPackageContainerNameReader.outputs.value
+    appPackageContainerName: appPackageContainerName
     instanceMemoryMB: 4096
     featureFlags: featureFlags
     functionAuthAppClientId: functionAuthAppClientId

@@ -4,6 +4,8 @@ using BusinessLogic.SyncJobUpdater;
 using DIConcreteTypes;
 using Microsoft.ApplicationInsights;
 using Microsoft.ApplicationInsights.Extensibility;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Models;
 using Moq;
@@ -25,7 +27,6 @@ namespace Services.Tests
         [TestMethod]
         public async Task AddUsersToGroupInNormalMode()
         {
-            var mockLogs = new MockLoggingRepository();
             var telemetryClient = new TelemetryClient(TelemetryConfiguration.CreateDefault());
             var mockGraphGroup = new MockGraphGroupRepository();
             var mockMail = new MockMailRepository();
@@ -38,7 +39,7 @@ namespace Services.Tests
             var mockSyncJobStatusService = new Mock<ISyncJobStatusService>();
             var mockSyncJobHistoryRepository = new Mock<ISyncJobHistoryRepository>();
 
-            var graphUpdaterService = new GraphUpdaterService(mockLogs, telemetryClient, mockGraphGroup, mockMail, mailSenders, mockSyncJobs, mockGroups, mockNotificationType, mockJobNotification, mockServiceBusQueueRepository.Object, mockSyncJobStatusService.Object, mockSyncJobHistoryRepository.Object);
+            var graphUpdaterService = new GraphUpdaterService(NullLogger<GraphUpdaterService>.Instance, telemetryClient, mockGraphGroup, mockMail, mailSenders, mockSyncJobs, mockGroups, mockNotificationType, mockJobNotification, mockServiceBusQueueRepository.Object, mockSyncJobStatusService.Object, mockSyncJobHistoryRepository.Object);
             var runId = Guid.NewGuid();
             var groupId = Guid.NewGuid();
             mockGraphGroup.GroupsToUsers.Add(groupId, new List<AzureADUser>());
@@ -61,7 +62,6 @@ namespace Services.Tests
         [TestMethod]
         public async Task RemoveUsersToGroupInNormalMode()
         {
-            var mockLogs = new MockLoggingRepository();
             var telemetryClient = new TelemetryClient(TelemetryConfiguration.CreateDefault());
             var mockGraphGroup = new MockGraphGroupRepository();
             var mockMail = new MockMailRepository();
@@ -74,7 +74,7 @@ namespace Services.Tests
             var mockSyncJobStatusService = new Mock<ISyncJobStatusService>();
             var mockSyncJobHistoryRepository = new Mock<ISyncJobHistoryRepository>();
 
-            var graphUpdaterService = new GraphUpdaterService(mockLogs, telemetryClient, mockGraphGroup, mockMail, mailSenders, mockSyncJobs, mockGroups, mockNotificationType, mockJobNotification, mockServiceBusQueueRepository.Object, mockSyncJobStatusService.Object, mockSyncJobHistoryRepository.Object);
+            var graphUpdaterService = new GraphUpdaterService(NullLogger<GraphUpdaterService>.Instance, telemetryClient, mockGraphGroup, mockMail, mailSenders, mockSyncJobs, mockGroups, mockNotificationType, mockJobNotification, mockServiceBusQueueRepository.Object, mockSyncJobStatusService.Object, mockSyncJobHistoryRepository.Object);
             var runId = Guid.NewGuid();
             var groupId = Guid.NewGuid();
             bool isInitialSync = false;

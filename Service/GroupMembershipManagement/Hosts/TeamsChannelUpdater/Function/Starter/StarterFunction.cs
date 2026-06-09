@@ -4,22 +4,20 @@ using Azure.Messaging.ServiceBus;
 using Microsoft.Azure.Functions.Worker;
 using Microsoft.DurableTask;
 using Microsoft.DurableTask.Client;
-using Models;
-using Repositories.Contracts;
-using System;
+using Microsoft.Extensions.Logging;
 using System.Threading.Tasks;
 
 namespace Hosts.TeamsChannelUpdater
 {
     public class StarterFunction
     {
-        private readonly ILoggingRepository _loggingRepository = null;
+        private readonly ILogger<StarterFunction> _logger;
         private readonly ServiceBusReceiver _serviceBusReceiver = null;
 
-        public StarterFunction(ILoggingRepository loggingRepository, ServiceBusReceiver serviceBusReceiver)
+        public StarterFunction(ILogger<StarterFunction> logger, ServiceBusReceiver serviceBusReceiver)
         {
-            _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
-            _serviceBusReceiver = serviceBusReceiver ?? throw new ArgumentNullException(nameof(serviceBusReceiver));
+            _logger = logger ?? throw new System.ArgumentNullException(nameof(logger));
+            _serviceBusReceiver = serviceBusReceiver ?? throw new System.ArgumentNullException(nameof(serviceBusReceiver));
         }
 
         [Function(nameof(StarterFunction))]
@@ -27,7 +25,7 @@ namespace Hosts.TeamsChannelUpdater
          [TimerTrigger("%triggerSchedule%")] TimerInfo myTimer,
          [DurableClient] DurableTaskClient starter)
         {
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(StarterFunction)} function started" }, VerbosityLevel.DEBUG);
+            _logger.FunctionStarted(nameof(StarterFunction));
 
             var instanceId = nameof(QueueMessageOrchestratorFunction);
             var orchestratorStatus = await starter.GetInstanceAsync(instanceId);
@@ -38,11 +36,11 @@ namespace Hosts.TeamsChannelUpdater
 
             if (!isRunning)
             {
-                await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Calling {instanceId}" }, VerbosityLevel.INFO);
+                _logger.CallingOrchestrator(instanceId);
                 await starter.ScheduleNewOrchestrationInstanceAsync(instanceId, (object)null, new StartOrchestrationOptions { InstanceId = instanceId });
             }
 
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(StarterFunction)} function completed" }, VerbosityLevel.DEBUG);
+            _logger.FunctionCompleted(nameof(StarterFunction));
         }
     }
 }

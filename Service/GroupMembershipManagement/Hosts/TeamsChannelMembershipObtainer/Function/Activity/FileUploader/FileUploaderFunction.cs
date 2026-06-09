@@ -1,10 +1,11 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-using Models;
 using Microsoft.Azure.Functions.Worker;
-using Repositories.Contracts;
+using Microsoft.Extensions.Logging;
+using Repositories.Contracts.Helpers;
 using System;
+using System.Collections.Generic;
 using System.Threading.Tasks;
 using TeamsChannelMembershipObtainer.Service.Contracts;
 
@@ -12,27 +13,31 @@ namespace Hosts.TeamsChannelMembershipObtainer
 {
     public class FileUploaderFunction
     {
+        private readonly ILogger<FileUploaderFunction> _logger;
         private readonly ITeamsChannelService _teamsChannelService;
-        private readonly ILoggingRepository _loggingRepository;
 
-        public FileUploaderFunction(ILoggingRepository loggingRepository, ITeamsChannelService teamsChannelService)
+        public FileUploaderFunction(ILogger<FileUploaderFunction> logger, ITeamsChannelService teamsChannelService)
         {
-            _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _teamsChannelService = teamsChannelService ?? throw new ArgumentNullException(nameof(teamsChannelService));
         }
 
         [Function(nameof(FileUploaderFunction))]
         public async Task<string> UploadFileAsync([ActivityTrigger] FileUploaderRequest request)
         {
-            var runId = request.ChannelSyncInfo.SyncJob.RunId.GetValueOrDefault(Guid.Empty);
+            using var scope = _logger.BeginSyncJobScope(request.ChannelSyncInfo.SyncJob, new Dictionary<string, object>
+            {
+                ["CurrentPart"] = request.ChannelSyncInfo.CurrentPart,
+                ["TotalParts"] = request.ChannelSyncInfo.TotalParts
+            });
 
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(FileUploaderFunction)} function started", RunId = runId }, VerbosityLevel.DEBUG);
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Uploading {request.Users.Count} users from Group: {request.Channel.ObjectId} with Channel Id: {request.Channel.ChannelId} to blob storage.", RunId = runId });
+            _logger.FunctionStarted(nameof(FileUploaderFunction));
+            _logger.UploadingUsers(request.Users.Count, request.Channel.ObjectId, request.Channel.ChannelId);
 
             var filePath = await _teamsChannelService.UploadMembershipAsync(request.Users, request.ChannelSyncInfo, request.IsDryRunEnabled, request.Channel.ObjectId);
 
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Uploaded {request.Users.Count} users from Group: {request.Channel.ObjectId} with Channel Id: {request.Channel.ChannelId} to blob storage at {filePath}.", RunId = runId });
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(FileUploaderFunction)} function completed", RunId = runId }, VerbosityLevel.DEBUG);
+            _logger.UploadedUsers(request.Users.Count, request.Channel.ObjectId, request.Channel.ChannelId, filePath);
+            _logger.FunctionCompleted(nameof(FileUploaderFunction));
 
             return filePath;
         }

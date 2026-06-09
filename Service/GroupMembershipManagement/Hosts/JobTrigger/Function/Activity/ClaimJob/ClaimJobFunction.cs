@@ -2,6 +2,7 @@
 // Licensed under the MIT license.
 using Microsoft.Azure.Functions.Worker;
 using Microsoft.Extensions.Logging;
+using Models;
 using Repositories.Contracts.Helpers;
 using Services.Contracts;
 using System;
@@ -21,17 +22,17 @@ namespace Hosts.JobTrigger
         }
 
         [Function(nameof(ClaimJobFunction))]
-        public async Task<bool> ClaimJobAsync([ActivityTrigger] ClaimJobRequest request)
+        public async Task<SyncJob?> ClaimJobAsync([ActivityTrigger] ClaimJobRequest request)
         {
             if (request.SyncJob is null)
-                return false;
+                return null;
 
             using (_logger.BeginSyncJobScope(request.SyncJob))
             {
                 _logger.FunctionStarted(nameof(ClaimJobFunction));
-                var claimed = await _jobTriggerService.TryClaimAndUpdateJobAsync(request.Status, request.SyncJob);
+                var claimedJob = await _jobTriggerService.TryClaimAndUpdateJobAsync(request.Status, request.SyncJob);
                 _logger.FunctionCompleted(nameof(ClaimJobFunction));
-                return claimed;
+                return claimedJob;
             }
         }
     }

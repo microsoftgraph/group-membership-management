@@ -233,6 +233,13 @@
         "required": true
       }
     },
+    "skipAuthentication": {
+      "value": false,
+      "metadata": {
+        "description": "Flag to skip Azure and Microsoft Graph authentication. Use when already authenticated in the current session.",
+        "required": false
+      }
+    },
     "setRBACPermissions": {
       "value": true,
       "metadata": {
@@ -272,6 +279,34 @@
       "value": false,
       "metadata": {
         "description": "Flag to skip the deployment of Azure Data Factory resources.",
+        "required": false
+      }
+    },
+    "skipNetworkingDeployment": {
+      "value": true,
+      "metadata": {
+        "description": "Flag to skip the deployment of networking resources (VNets, Bastion, jumpbox VM, Private DNS Zones).",
+        "required": false
+      }
+    },
+    "deployBastion": {
+      "value": true,
+      "metadata": {
+        "description": "When true, deploys a new Bastion VNet and Bastion Host. When false, peers to an existing Bastion VNet specified by existingBastionVnetId.",
+        "required": false
+      }
+    },
+    "existingBastionVnetId": {
+      "value": "",
+      "metadata": {
+        "description": "Resource ID of an existing Bastion VNet to peer with. Required when deployBastion is false.",
+        "required": false
+      }
+    },
+    "existingBastionVnetName": {
+      "value": "",
+      "metadata": {
+        "description": "Name of the existing Bastion VNet. Required when deployBastion is false.",
         "required": false
       }
     },

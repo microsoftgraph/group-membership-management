@@ -12,6 +12,8 @@ using Models.SyncJobHistory;
 using Moq;
 using Repositories.Contracts;
 using Repositories.Mocks;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using Services.Contracts;
 using Services.Tests.Mocks;
 using System;
@@ -26,7 +28,6 @@ namespace Services.Tests
         [TestMethod]
         public async Task GroupExistsTest()
         {
-            var mockLogs = new MockLoggingRepository();
             var telemetryClient = new TelemetryClient(TelemetryConfiguration.CreateDefault());
             var mockGraphGroup = new MockGraphGroupRepository();
             var mockMail = new MockMailRepository();
@@ -39,14 +40,13 @@ namespace Services.Tests
             var mockSyncJobStatusService = new Mock<ISyncJobStatusService>();
             var mockSyncJobHistoryRepository = new Mock<ISyncJobHistoryRepository>();
 
-            var graphUpdaterService = new GraphUpdaterService(mockLogs, telemetryClient, mockGraphGroup, mockMail, mailSenders, mockSyncJobs, mockGroups, mockNotificationType, mockJobNotification, mockServiceBusQueueRepository.Object, mockSyncJobStatusService.Object,mockSyncJobHistoryRepository.Object);
+            var graphUpdaterService = new GraphUpdaterService(NullLogger<GraphUpdaterService>.Instance, telemetryClient, mockGraphGroup, mockMail, mailSenders, mockSyncJobs, mockGroups, mockNotificationType, mockJobNotification, mockServiceBusQueueRepository.Object, mockSyncJobStatusService.Object,mockSyncJobHistoryRepository.Object);
 
             var groupId = Guid.NewGuid();
-            var runId = Guid.NewGuid();
 
             mockGraphGroup.GroupsToUsers.Add(groupId, new List<AzureADUser>());
 
-            var response = await graphUpdaterService.GroupExistsAsync(groupId, runId);
+            var response = await graphUpdaterService.GroupExistsAsync(groupId);
 
             Assert.IsTrue(response);
         }
@@ -54,7 +54,6 @@ namespace Services.Tests
         [TestMethod]
         public async Task SendEmailTest()
         {
-            var mockLogs = new MockLoggingRepository();
             var telemetryClient = new TelemetryClient(TelemetryConfiguration.CreateDefault());
             var mockGraphGroup = new MockGraphGroupRepository();
             var mockMail = new MockMailRepository();
@@ -67,7 +66,7 @@ namespace Services.Tests
             var mockSyncJobStatusService = new Mock<ISyncJobStatusService>();
             var mockSyncJobHistoryRepository = new Mock<ISyncJobHistoryRepository>();
 
-            var graphUpdaterService = new GraphUpdaterService(mockLogs, telemetryClient, mockGraphGroup, mockMail, mailSenders, mockSyncJobs, mockGroups, mockNotificationType, mockJobNotification, mockServiceBusQueueRepository.Object, mockSyncJobStatusService.Object, mockSyncJobHistoryRepository.Object);
+            var graphUpdaterService = new GraphUpdaterService(NullLogger<GraphUpdaterService>.Instance, telemetryClient, mockGraphGroup, mockMail, mailSenders, mockSyncJobs, mockGroups, mockNotificationType, mockJobNotification, mockServiceBusQueueRepository.Object, mockSyncJobStatusService.Object, mockSyncJobHistoryRepository.Object);
             var lastRunTime = DateTime.UtcNow.AddDays(-1);
 
 			var job = new SyncJob { Id = Guid.NewGuid(), Status = SyncStatus.Idle.ToString(), LastRunTime = lastRunTime };
@@ -85,7 +84,6 @@ namespace Services.Tests
 		[TestMethod]
 		public async Task VerifyEmailNotSentIfDisabled()
 		{
-			var mockLogs = new MockLoggingRepository();
 			var telemetryClient = new TelemetryClient(TelemetryConfiguration.CreateDefault());
 			var mailSenders = new EmailSenderRecipient("sender@domain.com", "fake_pass", "recipient@domain.com");
 			var mockSyncJobs = new MockDatabaseSyncJobRepository();
@@ -114,7 +112,7 @@ namespace Services.Tests
             var mockSyncJobStatusService = new Mock<ISyncJobStatusService>();
             var mockSyncJobHistoryRepository = new Mock<ISyncJobHistoryRepository>();
 
-            var graphUpdaterService = new GraphUpdaterService(mockLogs, telemetryClient, mockGraphGroup, mockMail, mailSenders, mockSyncJobs, mockGroups, mockNotificationType, mockJobNotification, mockServiceBusQueueRepository.Object, mockSyncJobStatusService.Object, mockSyncJobHistoryRepository.Object);
+            var graphUpdaterService = new GraphUpdaterService(NullLogger<GraphUpdaterService>.Instance, telemetryClient, mockGraphGroup, mockMail, mailSenders, mockSyncJobs, mockGroups, mockNotificationType, mockJobNotification, mockServiceBusQueueRepository.Object, mockSyncJobStatusService.Object, mockSyncJobHistoryRepository.Object);
             await graphUpdaterService.SendEmailAsync(job, notificationMessageType, new string[0] { });
             Assert.AreEqual(0, mockMail.SentEmails.Count);
 		}
@@ -122,12 +120,10 @@ namespace Services.Tests
 		[TestMethod]
 		public async Task VerifyEmailNotSentIfGloballyDisabled()
 		{
-			var mockLogs = new MockLoggingRepository();
 			var telemetryClient = new TelemetryClient(TelemetryConfiguration.CreateDefault());
 			var mailSenders = new EmailSenderRecipient("sender@domain.com", "fake_pass", "recipient@domain.com");
 			var mockSyncJobs = new MockDatabaseSyncJobRepository();
             var mockGroups = new MockDatabaseGroupsRepository();
-            var runId = Guid.NewGuid();
 			var lastRunTime = DateTime.UtcNow.AddDays(-1);
 			var job = new SyncJob { Id = Guid.NewGuid(), Status = SyncStatus.Idle.ToString(), LastRunTime = lastRunTime };
 			await mockSyncJobs.AddSyncJobAsync(job);
@@ -147,13 +143,12 @@ namespace Services.Tests
             var mockSyncJobStatusService = new Mock<ISyncJobStatusService>();
             var mockSyncJobHistoryRepository = new Mock<ISyncJobHistoryRepository>();
 
-            var graphUpdaterService = new GraphUpdaterService(mockLogs, telemetryClient, mockGraphGroup, mockMail, mailSenders, mockSyncJobs, mockGroups, mockNotificationType, mockJobNotification, mockServiceBusQueueRepository.Object, mockSyncJobStatusService.Object, mockSyncJobHistoryRepository.Object); await graphUpdaterService.SendEmailAsync(job, notificationMessageType, new string[0] { });
+            var graphUpdaterService = new GraphUpdaterService(NullLogger<GraphUpdaterService>.Instance, telemetryClient, mockGraphGroup, mockMail, mailSenders, mockSyncJobs, mockGroups, mockNotificationType, mockJobNotification, mockServiceBusQueueRepository.Object, mockSyncJobStatusService.Object, mockSyncJobHistoryRepository.Object); await graphUpdaterService.SendEmailAsync(job, notificationMessageType, new string[0] { });
             Assert.AreEqual(0, mockMail.SentEmails.Count);
 		}
 		[TestMethod]
         public async Task UpdateSyncJobStatusTest()
         {
-            var mockLogs = new MockLoggingRepository();
             var telemetryClient = new TelemetryClient(TelemetryConfiguration.CreateDefault());
             var mockGraphGroup = new MockGraphGroupRepository();
             var mockMail = new MockMailRepository();
@@ -167,7 +162,7 @@ namespace Services.Tests
             var mockSyncJobStatusService = new Mock<ISyncJobStatusService>();
             var mockSyncJobHistoryRepository = new Mock<ISyncJobHistoryRepository>();
 
-            var graphUpdaterService = new GraphUpdaterService(mockLogs, telemetryClient, mockGraphGroup, mockMail, mailSenders, mockSyncJobs, mockGroups, mockNotificationType, mockJobNotification, mockServiceBusQueueRepository.Object, mockSyncJobStatusService.Object, mockSyncJobHistoryRepository.Object);
+            var graphUpdaterService = new GraphUpdaterService(NullLogger<GraphUpdaterService>.Instance, telemetryClient, mockGraphGroup, mockMail, mailSenders, mockSyncJobs, mockGroups, mockNotificationType, mockJobNotification, mockServiceBusQueueRepository.Object, mockSyncJobStatusService.Object, mockSyncJobHistoryRepository.Object);
             var runId = Guid.NewGuid();
             var lastRunTime = DateTime.UtcNow.AddDays(-1);
             var lastSuccessfulStartTime = DateTime.UtcNow.AddMinutes(-30);
@@ -196,7 +191,6 @@ namespace Services.Tests
         [TestMethod]
         public async Task UpdateSyncJobStatusDryRunModeTest()
         {
-            var mockLogs = new MockLoggingRepository();
             var telemetryClient = new TelemetryClient(TelemetryConfiguration.CreateDefault());
             var mockGraphGroup = new MockGraphGroupRepository();
             var mockMail = new MockMailRepository();
@@ -209,7 +203,7 @@ namespace Services.Tests
             var mockSyncJobStatusService = new Mock<ISyncJobStatusService>();
             var mockSyncJobHistoryRepository = new Mock<ISyncJobHistoryRepository>();
 
-            var graphUpdaterService = new GraphUpdaterService(mockLogs, telemetryClient, mockGraphGroup,mockMail, mailSenders, mockSyncJobs, mockGroups, mockNotificationType, mockJobNotification, mockServiceBusQueueRepository.Object, mockSyncJobStatusService.Object, mockSyncJobHistoryRepository.Object);
+            var graphUpdaterService = new GraphUpdaterService(NullLogger<GraphUpdaterService>.Instance, telemetryClient, mockGraphGroup,mockMail, mailSenders, mockSyncJobs, mockGroups, mockNotificationType, mockJobNotification, mockServiceBusQueueRepository.Object, mockSyncJobStatusService.Object, mockSyncJobHistoryRepository.Object);
             var runId = Guid.NewGuid();
             var lastRunTime = DateTime.UtcNow.AddDays(-1);
             var lastSuccessfulStartTime = DateTime.UtcNow.AddMinutes(-30);
@@ -238,7 +232,6 @@ namespace Services.Tests
         [TestMethod]
         public async Task GetSyncJobStatusTest()
         {
-            var mockLogs = new MockLoggingRepository();
             var telemetryClient = new TelemetryClient(TelemetryConfiguration.CreateDefault());
             var mockGraphGroup = new MockGraphGroupRepository();
             var mockMail = new MockMailRepository();
@@ -251,7 +244,7 @@ namespace Services.Tests
             var mockSyncJobStatusService = new Mock<ISyncJobStatusService>();
             var mockSyncJobHistoryRepository = new Mock<ISyncJobHistoryRepository>();
 
-            var graphUpdaterService = new GraphUpdaterService(mockLogs, telemetryClient, mockGraphGroup, mockMail, mailSenders, mockSyncJobs, mockGroups, mockNotificationType, mockJobNotification, mockServiceBusQueueRepository.Object, mockSyncJobStatusService.Object, mockSyncJobHistoryRepository.Object); var lastRunTime = DateTime.UtcNow.AddDays(-1);
+            var graphUpdaterService = new GraphUpdaterService(NullLogger<GraphUpdaterService>.Instance, telemetryClient, mockGraphGroup, mockMail, mailSenders, mockSyncJobs, mockGroups, mockNotificationType, mockJobNotification, mockServiceBusQueueRepository.Object, mockSyncJobStatusService.Object, mockSyncJobHistoryRepository.Object); var lastRunTime = DateTime.UtcNow.AddDays(-1);
             var job = new SyncJob { Id = Guid.NewGuid(), Status = SyncStatus.InProgress.ToString(), LastRunTime = lastRunTime };
 
             await mockSyncJobs.AddSyncJobAsync(job);
@@ -266,7 +259,6 @@ namespace Services.Tests
         [TestMethod]
         public async Task GetGroupNameTest()
         {
-            var mockLogs = new MockLoggingRepository();
             var telemetryClient = new TelemetryClient(TelemetryConfiguration.CreateDefault());
             var mockGraphGroup = new Mock<IGraphGroupRepository>();
             var mockMail = new MockMailRepository();
@@ -279,7 +271,7 @@ namespace Services.Tests
             var mockSyncJobStatusService = new Mock<ISyncJobStatusService>();
             var mockSyncJobHistoryRepository = new Mock<ISyncJobHistoryRepository>();
 
-            var graphUpdaterService = new GraphUpdaterService(mockLogs, telemetryClient, mockGraphGroup.Object, mockMail, mailSenders, mockSyncJobs, mockGroups, mockNotificationType, mockJobNotification, mockServiceBusQueueRepository.Object, mockSyncJobStatusService.Object, mockSyncJobHistoryRepository.Object);
+            var graphUpdaterService = new GraphUpdaterService(NullLogger<GraphUpdaterService>.Instance, telemetryClient, mockGraphGroup.Object, mockMail, mailSenders, mockSyncJobs, mockGroups, mockNotificationType, mockJobNotification, mockServiceBusQueueRepository.Object, mockSyncJobStatusService.Object, mockSyncJobHistoryRepository.Object);
             var groupName = "MyTestGroup";
             mockGraphGroup.Setup(x => x.GetGroupNameAsync(It.IsAny<Guid>())).ReturnsAsync(groupName);
 
@@ -313,7 +305,6 @@ namespace Services.Tests
         [TestMethod]
         public async Task IsEmailRecipientOwnerOfGroupAsync_ShouldReturnTrue_WhenRecipientIsOwner()
         {
-            var mockLogs = new MockLoggingRepository();
             var telemetryClient = new TelemetryClient(TelemetryConfiguration.CreateDefault());
             var mockGraphGroup = new Mock<IGraphGroupRepository>();
             var mockMail = new MockMailRepository();
@@ -326,7 +317,7 @@ namespace Services.Tests
             var mockSyncJobStatusService = new Mock<ISyncJobStatusService>();
             var mockSyncJobHistoryRepository = new Mock<ISyncJobHistoryRepository>();
 
-            var graphUpdaterService = new GraphUpdaterService(mockLogs, telemetryClient, mockGraphGroup.Object, mockMail, mailSenders, mockSyncJobs, mockGroups, mockNotificationType, mockJobNotification, mockServiceBusQueueRepository.Object, mockSyncJobStatusService.Object, mockSyncJobHistoryRepository.Object);
+            var graphUpdaterService = new GraphUpdaterService(NullLogger<GraphUpdaterService>.Instance, telemetryClient, mockGraphGroup.Object, mockMail, mailSenders, mockSyncJobs, mockGroups, mockNotificationType, mockJobNotification, mockServiceBusQueueRepository.Object, mockSyncJobStatusService.Object, mockSyncJobHistoryRepository.Object);
             var groupOwner = "owner@test.com";
             mockGraphGroup.Setup(x => x.IsEmailRecipientOwnerOfGroupAsync(It.IsAny<String>(), It.IsAny<Guid>(), It.IsAny<bool>())).ReturnsAsync(true);
 
@@ -338,7 +329,6 @@ namespace Services.Tests
         [TestMethod]
         public async Task IsEmailRecipientOwnerOfGroupAsync_ShouldReturnFalse_WhenRecipientIsNotOwner()
         {
-            var mockLogs = new MockLoggingRepository();
             var telemetryClient = new TelemetryClient(TelemetryConfiguration.CreateDefault());
             var mockGraphGroup = new Mock<IGraphGroupRepository>();
             var mockMail = new MockMailRepository();
@@ -351,7 +341,7 @@ namespace Services.Tests
             var mockSyncJobStatusService = new Mock<ISyncJobStatusService>();
             var mockSyncJobHistoryRepository = new Mock<ISyncJobHistoryRepository>();
 
-            var graphUpdaterService = new GraphUpdaterService(mockLogs, telemetryClient, mockGraphGroup.Object, mockMail, mailSenders, mockSyncJobs, mockGroups, mockNotificationType, mockJobNotification, mockServiceBusQueueRepository.Object, mockSyncJobStatusService.Object, mockSyncJobHistoryRepository.Object);
+            var graphUpdaterService = new GraphUpdaterService(NullLogger<GraphUpdaterService>.Instance, telemetryClient, mockGraphGroup.Object, mockMail, mailSenders, mockSyncJobs, mockGroups, mockNotificationType, mockJobNotification, mockServiceBusQueueRepository.Object, mockSyncJobStatusService.Object, mockSyncJobHistoryRepository.Object);
             var groupOwner = "nonowner@test.com";
             mockGraphGroup.Setup(x => x.IsEmailRecipientOwnerOfGroupAsync(It.IsAny<String>(), It.IsAny<Guid>(), It.IsAny<bool>())).ReturnsAsync(false);
 
@@ -364,7 +354,6 @@ namespace Services.Tests
         public async Task UpdateSyncJobStatusAsync_ShouldCalculateAfterSyncUserCount_WhenStatusIsIdleWithChanges()
         {
             // Arrange
-            var mockLogs = new MockLoggingRepository();
             var telemetryClient = new TelemetryClient(TelemetryConfiguration.CreateDefault());
             var mockGraphGroup = new MockGraphGroupRepository();
             var mockMail = new MockMailRepository();
@@ -392,7 +381,7 @@ namespace Services.Tests
 
             await mockSyncJobs.AddSyncJobAsync(job);
 
-            var graphUpdaterService = new GraphUpdaterService(mockLogs, telemetryClient, mockGraphGroup, mockMail, mailSenders, 
+            var graphUpdaterService = new GraphUpdaterService(NullLogger<GraphUpdaterService>.Instance, telemetryClient, mockGraphGroup, mockMail, mailSenders, 
                 mockSyncJobs, mockGroups, mockNotificationType, mockJobNotification, mockServiceBusQueueRepository.Object, 
                 mockSyncJobStatusService.Object, mockSyncJobHistoryRepository.Object);
 
@@ -415,7 +404,6 @@ namespace Services.Tests
         public async Task UpdateSyncJobStatusAsync_ShouldNotCalculateAfterSyncUserCount_WhenStatusIsNotIdle()
         {
             // Arrange
-            var mockLogs = new MockLoggingRepository();
             var telemetryClient = new TelemetryClient(TelemetryConfiguration.CreateDefault());
             var mockGraphGroup = new MockGraphGroupRepository();
             var mockMail = new MockMailRepository();
@@ -433,7 +421,7 @@ namespace Services.Tests
 
             await mockSyncJobs.AddSyncJobAsync(job);
 
-            var graphUpdaterService = new GraphUpdaterService(mockLogs, telemetryClient, mockGraphGroup, mockMail, mailSenders, 
+            var graphUpdaterService = new GraphUpdaterService(NullLogger<GraphUpdaterService>.Instance, telemetryClient, mockGraphGroup, mockMail, mailSenders, 
                 mockSyncJobs, mockGroups, mockNotificationType, mockJobNotification, mockServiceBusQueueRepository.Object, 
                 mockSyncJobStatusService.Object, mockSyncJobHistoryRepository.Object);
 
@@ -456,7 +444,6 @@ namespace Services.Tests
         public async Task UpdateSyncJobStatusAsync_ShouldReturnNullAfterSyncUserCount_WhenBeforeSyncUserCountIsNull()
         {
             // Arrange
-            var mockLogs = new MockLoggingRepository();
             var telemetryClient = new TelemetryClient(TelemetryConfiguration.CreateDefault());
             var mockGraphGroup = new MockGraphGroupRepository();
             var mockMail = new MockMailRepository();
@@ -484,7 +471,7 @@ namespace Services.Tests
 
             await mockSyncJobs.AddSyncJobAsync(job);
 
-            var graphUpdaterService = new GraphUpdaterService(mockLogs, telemetryClient, mockGraphGroup, mockMail, mailSenders, 
+            var graphUpdaterService = new GraphUpdaterService(NullLogger<GraphUpdaterService>.Instance, telemetryClient, mockGraphGroup, mockMail, mailSenders, 
                 mockSyncJobs, mockGroups, mockNotificationType, mockJobNotification, mockServiceBusQueueRepository.Object, 
                 mockSyncJobStatusService.Object, mockSyncJobHistoryRepository.Object);
 
@@ -504,7 +491,6 @@ namespace Services.Tests
         public async Task UpdateSyncJobStatusAsync_ShouldKeepSameCount_WhenNoChangesOccur()
         {
             // Arrange
-            var mockLogs = new MockLoggingRepository();
             var telemetryClient = new TelemetryClient(TelemetryConfiguration.CreateDefault());
             var mockGraphGroup = new MockGraphGroupRepository();
             var mockMail = new MockMailRepository();
@@ -532,7 +518,7 @@ namespace Services.Tests
 
             await mockSyncJobs.AddSyncJobAsync(job);
 
-            var graphUpdaterService = new GraphUpdaterService(mockLogs, telemetryClient, mockGraphGroup, mockMail, mailSenders, 
+            var graphUpdaterService = new GraphUpdaterService(NullLogger<GraphUpdaterService>.Instance, telemetryClient, mockGraphGroup, mockMail, mailSenders, 
                 mockSyncJobs, mockGroups, mockNotificationType, mockJobNotification, mockServiceBusQueueRepository.Object, 
                 mockSyncJobStatusService.Object, mockSyncJobHistoryRepository.Object);
 
@@ -555,7 +541,6 @@ namespace Services.Tests
         public async Task UpdateSyncJobStatusAsync_ShouldCalculateCorrectly_WithOnlyAdds()
         {
             // Arrange
-            var mockLogs = new MockLoggingRepository();
             var telemetryClient = new TelemetryClient(TelemetryConfiguration.CreateDefault());
             var mockGraphGroup = new MockGraphGroupRepository();
             var mockMail = new MockMailRepository();
@@ -582,7 +567,7 @@ namespace Services.Tests
 
             await mockSyncJobs.AddSyncJobAsync(job);
 
-            var graphUpdaterService = new GraphUpdaterService(mockLogs, telemetryClient, mockGraphGroup, mockMail, mailSenders, 
+            var graphUpdaterService = new GraphUpdaterService(NullLogger<GraphUpdaterService>.Instance, telemetryClient, mockGraphGroup, mockMail, mailSenders, 
                 mockSyncJobs, mockGroups, mockNotificationType, mockJobNotification, mockServiceBusQueueRepository.Object, 
                 mockSyncJobStatusService.Object, mockSyncJobHistoryRepository.Object);
 
@@ -605,7 +590,6 @@ namespace Services.Tests
         public async Task UpdateSyncJobStatusAsync_ShouldCalculateCorrectly_WithOnlyRemoves()
         {
             // Arrange
-            var mockLogs = new MockLoggingRepository();
             var telemetryClient = new TelemetryClient(TelemetryConfiguration.CreateDefault());
             var mockGraphGroup = new MockGraphGroupRepository();
             var mockMail = new MockMailRepository();
@@ -632,7 +616,7 @@ namespace Services.Tests
 
             await mockSyncJobs.AddSyncJobAsync(job);
 
-            var graphUpdaterService = new GraphUpdaterService(mockLogs, telemetryClient, mockGraphGroup, mockMail, mailSenders, 
+            var graphUpdaterService = new GraphUpdaterService(NullLogger<GraphUpdaterService>.Instance, telemetryClient, mockGraphGroup, mockMail, mailSenders, 
                 mockSyncJobs, mockGroups, mockNotificationType, mockJobNotification, mockServiceBusQueueRepository.Object, 
                 mockSyncJobStatusService.Object, mockSyncJobHistoryRepository.Object);
 

@@ -3,7 +3,8 @@
 using Entities;
 using Microsoft.Azure.Functions.Worker;
 using Microsoft.DurableTask;
-using Repositories.Contracts;
+using Microsoft.Extensions.Logging;
+using Repositories.Contracts.Helpers;
 using System.Threading.Tasks;
 using System.Collections.Generic;
 using System.Linq;
@@ -15,63 +16,66 @@ namespace Hosts.PlaceMembershipObtainer
 {
     public class SubOrchestratorFunction
     {
-        private readonly ILoggingRepository _log;
         private readonly TelemetryClient _telemetryClient;
 
-        public SubOrchestratorFunction(ILoggingRepository loggingRepository, TelemetryClient telemetryClient)
+        public SubOrchestratorFunction(TelemetryClient telemetryClient)
         {
-            _log = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
             _telemetryClient = telemetryClient ?? throw new ArgumentNullException(nameof(telemetryClient));
         }
 
         [Function(nameof(SubOrchestratorFunction))]
         public async Task<SubOrchestratorResponse> RunSubOrchestratorAsync([OrchestrationTrigger] TaskOrchestrationContext context)
         {
+            var logger = context.CreateReplaySafeLogger($"PlaceMembershipObtainer.{nameof(SubOrchestratorFunction)}");
             var request = context.GetInput<SubOrchestratorRequest>();
             var allUsers = new List<AzureADUser>();
             var allNonUserGraphObjects = new Dictionary<string, int>();
 
             if (request != null)
             {
-                _ = _log.LogMessageAsync(new LogMessage { Message = $"{nameof(SubOrchestratorFunction)} function started", RunId = request.RunId }, VerbosityLevel.DEBUG);
+                using (logger.BeginRunIdScope(request.RunId))
+                {
+                    logger.FunctionStarted(nameof(SubOrchestratorFunction));
 
-                if (request.Url.Contains("places") && request.Url.Contains("room"))
-                {
-                    var response = await context.CallActivityAsync<PlaceInformation>(nameof(RoomsReaderFunction), new RoomsReaderRequest { Url = request.Url, Top = 100, Skip = 0, RunId = request.RunId });
-                    allUsers.AddRange(response.Users);
-                }
-                else if (request.Url.Contains("places") && request.Url.Contains("workspace"))
-                {
-                    var response = await context.CallActivityAsync<PlaceInformation>(nameof(WorkSpacesReaderFunction), new WorkSpacesReaderRequest { Url = request.Url, Top = 100, Skip = 0, RunId = request.RunId });
-                    allUsers.AddRange(response.Users);
-                }
-                else if (request.Url.Contains("users"))
-                {
-                    var userResponse = await context.CallActivityAsync<UserInformation>(nameof(UsersReaderFunction), new UsersReaderRequest { Url = request.Url, RunId = request.RunId });
-                    allUsers.AddRange(userResponse.Users);
-                    userResponse.NonUserGraphObjects.ToList().ForEach(x => allNonUserGraphObjects.Add(x.Key, x.Value));
-                    while (!string.IsNullOrEmpty(userResponse.NextPageUrl))
+                    if (request.Url.Contains("places") && request.Url.Contains("room"))
                     {
-                        _ = _log.LogMessageAsync(new LogMessage { RunId = request.RunId, Message = $"Getting results from next page for url: {request.Url}" });
-                        userResponse = await context.CallActivityAsync<UserInformation>(nameof(SubsequentUsersReaderFunction), new SubsequentUsersReaderRequest { RunId = request.RunId, NextPageUrl = userResponse.NextPageUrl });
-                        allUsers.AddRange(userResponse.Users);
-                        userResponse.NonUserGraphObjects.ToList().ForEach(x =>
-                        {
-                            if (allNonUserGraphObjects.ContainsKey(x.Key))
-                                allNonUserGraphObjects[x.Key] += x.Value;
-                            else
-                                allNonUserGraphObjects[x.Key] = x.Value;
-                        });
+                        var response = await context.CallActivityAsync<PlaceInformation>(nameof(RoomsReaderFunction), new RoomsReaderRequest { Url = request.Url, Top = 100, Skip = 0, RunId = request.RunId });
+                        allUsers.AddRange(response.Users);
                     }
+                    else if (request.Url.Contains("places") && request.Url.Contains("workspace"))
+                    {
+                        var response = await context.CallActivityAsync<PlaceInformation>(nameof(WorkSpacesReaderFunction), new WorkSpacesReaderRequest { Url = request.Url, Top = 100, Skip = 0, RunId = request.RunId });
+                        allUsers.AddRange(response.Users);
+                    }
+                    else if (request.Url.Contains("users"))
+                    {
+                        var userResponse = await context.CallActivityAsync<UserInformation>(nameof(UsersReaderFunction), new UsersReaderRequest { Url = request.Url, RunId = request.RunId });
+                        allUsers.AddRange(userResponse.Users);
+                        userResponse.NonUserGraphObjects.ToList().ForEach(x => allNonUserGraphObjects.Add(x.Key, x.Value));
+                        while (!string.IsNullOrEmpty(userResponse.NextPageUrl))
+                        {
+                            logger.GettingResultsFromNextPage(userResponse.NextPageUrl);
+                            userResponse = await context.CallActivityAsync<UserInformation>(nameof(SubsequentUsersReaderFunction), new SubsequentUsersReaderRequest { RunId = request.RunId, NextPageUrl = userResponse.NextPageUrl });
+                            allUsers.AddRange(userResponse.Users);
+                            userResponse.NonUserGraphObjects.ToList().ForEach(x =>
+                            {
+                                if (allNonUserGraphObjects.ContainsKey(x.Key))
+                                    allNonUserGraphObjects[x.Key] += x.Value;
+                                else
+                                    allNonUserGraphObjects[x.Key] = x.Value;
+                            });
+                        }
+                    }
+                    else
+                    {
+                        logger.UrlNotSupported(request.Url);
+                        return (new SubOrchestratorResponse { Users = allUsers, Status = SyncStatus.Error });
+                    }
+                    logger.ReadUsersCount(allUsers.Count);
+
+                    logger.FunctionCompleted(nameof(SubOrchestratorFunction));
                 }
-                else
-                {
-                    _ = _log.LogMessageAsync(new LogMessage { RunId = request.RunId, Message = $"Url {request.Url} not supported" });
-                    return ( new SubOrchestratorResponse { Users = allUsers, Status = SyncStatus.Error });
-                }
-                _ = _log.LogMessageAsync(new LogMessage { RunId = request.RunId, Message = $"Read {allUsers.Count} users" });
             }
-            _ = _log.LogMessageAsync(new LogMessage { Message = $"{nameof(SubOrchestratorFunction)} function completed", RunId = request.RunId }, VerbosityLevel.DEBUG);
             return (new SubOrchestratorResponse { Users = allUsers, Status = SyncStatus.InProgress });
         }
     }

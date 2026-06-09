@@ -52,7 +52,7 @@ namespace Repositories.Mocks
             return await Task.FromResult(job);
         }
 
-        public async Task<bool> GroupExistsAsync(Guid groupId, Guid runId)
+        public async Task<bool> GroupExistsAsync(Guid groupId)
         {
             var groupExists = Groups.ContainsKey(groupId);
             return await Task.FromResult(groupExists);

@@ -1,6 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk.Worker">
   <PropertyGroup>
     <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
     <AzureFunctionsVersion>v4</AzureFunctionsVersion>
 	<UserSecretsId>41fcfc96-9608-4426-9cd8-181202f026a4</UserSecretsId>
     <OutputType>Exe</OutputType>

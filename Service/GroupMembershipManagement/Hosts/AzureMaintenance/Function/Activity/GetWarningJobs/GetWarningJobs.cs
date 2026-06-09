@@ -1,8 +1,8 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 using Microsoft.Azure.Functions.Worker;
+using Microsoft.Extensions.Logging;
 using Models;
-using Repositories.Contracts;
 using Services.Contracts;
 using System;
 using System.Collections.Generic;
@@ -12,24 +12,24 @@ namespace Hosts.AzureMaintenance
 {
     public class GetWarningJobs
     {
-        private readonly ILoggingRepository _loggingRepository = null;
-        private readonly IAzureMaintenanceService _azureMaintenanceService = null;
+        private readonly ILogger<GetWarningJobs> _logger;
+        private readonly IAzureMaintenanceService _azureMaintenanceService;
 
-        public GetWarningJobs(ILoggingRepository loggingRepository,
+        public GetWarningJobs(ILogger<GetWarningJobs> logger,
             IAzureMaintenanceService azureMaintenanceService)
         {
-            _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _azureMaintenanceService = azureMaintenanceService ?? throw new ArgumentNullException(nameof(azureMaintenanceService));
         }
 
         [Function(nameof(GetWarningJobs))]
         public async Task<List<SyncJob>> GetJobsApproachingDeletionAsync([ActivityTrigger] object input = null)
         {
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(GetWarningJobs)} function started" }, VerbosityLevel.DEBUG);
+            _logger.FunctionStarted(nameof(GetWarningJobs));
             
             var jobsApproachingDeletion = await _azureMaintenanceService.GetJobsApproachingPurgingAsync();
             
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(GetWarningJobs)} function completed" }, VerbosityLevel.DEBUG);
+            _logger.FunctionCompleted(nameof(GetWarningJobs));
             
             return jobsApproachingDeletion;
         }

@@ -18,6 +18,7 @@ namespace Services
     {
         private readonly IDatabaseSyncJobsRepository _databaseSyncJobsRepository;
         private readonly IDatabaseChannelsRepository _databaseChannelsRepository;
+        private readonly IDatabaseTitlesRepository _titlesRepository;
         private readonly ITeamsChannelRepository _teamsChannelRepository;
         private readonly IGraphGroupRepository _graphGroupRepository;
         private readonly ILoggingRepository _loggingRepository;
@@ -26,12 +27,14 @@ namespace Services
         public GetChannelHandler(ILoggingRepository loggingRepository,
                               IDatabaseSyncJobsRepository databaseSyncJobsRepository,
                               IDatabaseChannelsRepository databaseChannelsRepository,
+                              IDatabaseTitlesRepository titlesRepository,
                               ITeamsChannelRepository teamsChannelRepository,
                               IGraphGroupRepository graphGroupRepository,
                               IHttpContextAccessor httpContextAccessor) : base(loggingRepository)
         {
             _databaseSyncJobsRepository = databaseSyncJobsRepository ?? throw new ArgumentNullException(nameof(databaseSyncJobsRepository));
             _databaseChannelsRepository = databaseChannelsRepository ?? throw new ArgumentNullException(nameof(databaseChannelsRepository));
+            _titlesRepository = titlesRepository ?? throw new ArgumentNullException(nameof(titlesRepository));
             _teamsChannelRepository = teamsChannelRepository ?? throw new ArgumentNullException(nameof(teamsChannelRepository));
             _graphGroupRepository = graphGroupRepository ?? throw new ArgumentNullException(nameof(graphGroupRepository));
             _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
@@ -95,6 +98,7 @@ namespace Services
                 });
             }
 
+            var titles = await _titlesRepository.GetTitlesAsync(job.Id);
             var currentTime = DateTime.UtcNow;
             var jobStartsInFuture = currentTime < job.StartDate;
             var jobScheduledForFuture = currentTime < job.ScheduledDate;
@@ -138,7 +142,8 @@ namespace Services
                 TargetDestinationType = type,
                 LastSuccessfulRunTime = job.LastSuccessfulRunTime,
                 EstimatedNextRunTime = estimatedNextRunTime,
-                Status = job.Status
+                Status = job.Status,
+                Titles = titles
             };
 
             response.Model = dto;

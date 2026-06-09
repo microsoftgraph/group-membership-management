@@ -3,7 +3,7 @@
 
 using Microsoft.Azure.Functions.Worker;
 using Microsoft.DurableTask;
-using Repositories.Contracts;
+using Microsoft.Extensions.Logging;
 using System.Threading.Tasks;
 using Models;
 using System;
@@ -14,6 +14,7 @@ using System.Linq;
 using Models.ServiceBus;
 using TeamsChannelUpdater.Helpers;
 using Repositories.Contracts.InjectConfig;
+using Repositories.Contracts.Helpers;
 using Models.Entities;
 using System.Text.Json;
 using Services.TeamsChannelUpdater.Contracts;
@@ -25,7 +26,6 @@ namespace Hosts.TeamsChannelUpdater
     public class OrchestratorFunction
     {
         private const string SyncCompletedEmailBody = "SyncCompletedEmailBody";
-        private readonly ILoggingRepository _loggingRepository = null;
         private readonly TelemetryClient _telemetryClient;
         private readonly IEmailSenderRecipient _emailSenderAndRecipients = null;
         private readonly IGMMResources _gmmResources = null;
@@ -35,12 +35,10 @@ namespace Hosts.TeamsChannelUpdater
             SyncJobTimeElapsedSeconds
         }
 
-        public OrchestratorFunction(ILoggingRepository loggingRepository,
-            TelemetryClient telemetryClient,
+        public OrchestratorFunction(TelemetryClient telemetryClient,
             IEmailSenderRecipient emailSenderAndRecipients,
             IGMMResources gmmResources)
         {
-            _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
             _telemetryClient = telemetryClient ?? throw new ArgumentNullException(nameof(telemetryClient));
             _emailSenderAndRecipients = emailSenderAndRecipients ?? throw new ArgumentNullException(nameof(emailSenderAndRecipients));
             _gmmResources = gmmResources ?? throw new ArgumentNullException(nameof(gmmResources));
@@ -57,6 +55,8 @@ namespace Hosts.TeamsChannelUpdater
 
             graphRequest = context.GetInput<MembershipHttpRequest>();
 
+            var logger = context.CreateReplaySafeLogger("TeamsChannelUpdater.OrchestratorFunction");
+            using var scope = logger.BeginSyncJobScope(graphRequest.SyncJob);
 
             try
             {
@@ -64,8 +64,10 @@ namespace Hosts.TeamsChannelUpdater
                                                        new JobReaderRequest
                                                        {
                                                            JobId = graphRequest.SyncJob.Id,
-                                                           RunId = graphRequest.SyncJob.RunId.GetValueOrDefault()
+                                                           SyncJob = graphRequest.SyncJob
                                                        });
+
+                logger.FunctionStarted(nameof(OrchestratorFunction));
 
                 var groupId = await context.CallActivityAsync<Guid>(nameof(GetGroupFunction), syncJob);
                 var channelId = await context.CallActivityAsync<string>(nameof(GetChannelFunction), syncJob);
@@ -98,13 +100,7 @@ namespace Hosts.TeamsChannelUpdater
                     throw new InvalidOperationException("Deserialized group membership is null.");
                 }
 
-                await context.CallActivityAsync(nameof(LoggerFunction), new LoggerRequest { Message = $"{nameof(OrchestratorFunction)} function started", RunId = syncJob.RunId.GetValueOrDefault(Guid.Empty), Verbosity = VerbosityLevel.DEBUG });
-                await context.CallActivityAsync(nameof(LoggerFunction), new LoggerRequest
-                {
-                    Message = $"Received membership from StarterFunction and will sync the obtained " +
-                                                                                              $"{groupMembership.SourceMembers.Distinct().Count()} distinct members",
-                    RunId = syncJob.RunId.GetValueOrDefault(Guid.Empty)
-                });
+                logger.ReceivedMembership(groupMembership.SourceMembers.Distinct().Count());
 
                 var isInitialSync = syncJob.LastRunTime == DateTime.FromFileTimeUtc(0);
                 syncCompleteEvent.IsInitialSync = isInitialSync.ToString();
@@ -116,7 +112,7 @@ namespace Hosts.TeamsChannelUpdater
 
                 var membersAddedResponse = await context.CallSubOrchestratorAsync<TeamsChannelUpdaterSubOrchestratorResponse>(nameof(TeamsChannelUpdaterSubOrchestratorFunction),
                                 CreateTeamsGroupUpdaterRequest(isInitialSync,
-                                syncJob.RunId.GetValueOrDefault(Guid.Empty),
+                                syncJob,
                                 membersToAdd,
                                 destination,
                                 RequestType.Add));
@@ -125,7 +121,7 @@ namespace Hosts.TeamsChannelUpdater
 
                 var membersRemovedResponse = await context.CallSubOrchestratorAsync<TeamsChannelUpdaterSubOrchestratorResponse>(nameof(TeamsChannelUpdaterSubOrchestratorFunction),
                                 CreateTeamsGroupUpdaterRequest(isInitialSync,
-                                syncJob.RunId.GetValueOrDefault(Guid.Empty),
+                                syncJob,
                                 membersToRemove,
                                 destination,
                                 RequestType.Remove));
@@ -135,7 +131,7 @@ namespace Hosts.TeamsChannelUpdater
                 if (isInitialSync)
                 {
                     var groupName = await context.CallActivityAsync<string>(nameof(GroupNameReaderFunction),
-                                                    new GroupNameReaderRequest { RunId = groupMembership.RunId, GroupId = groupMembership.Destination.ObjectId });
+                                                    new GroupNameReaderRequest { SyncJob = syncJob, GroupId = groupMembership.Destination.ObjectId });
 
                     var additionalContent = new[]
                     {
@@ -158,23 +154,22 @@ namespace Hosts.TeamsChannelUpdater
                 }
 
 
-                var message = GetUsersDataMessage(groupMembership.Destination.ObjectId, membersToAdd.Count, membersToRemove.Count);
-                await context.CallActivityAsync(nameof(LoggerFunction), new LoggerRequest { Message = message, RunId = syncJob.RunId.GetValueOrDefault(Guid.Empty) });
+                logger.SyncComplete(groupMembership.Destination.ObjectId, membersToAdd.Count, membersToRemove.Count);
 
                 if (membersAddedResponse.UsersFailed.Count > 0)
                 {
                     await context.CallActivityAsync(nameof(JobStatusUpdaterFunction),
                                         CreateJobStatusUpdaterRequest(groupMembership.SyncJobId,
-                                                                        SyncStatus.TeamsChannelError, 0, groupMembership.RunId));
+                                                                        SyncStatus.TeamsChannelError, 0, syncJob));
                 }
                 else
                 {
                     await context.CallActivityAsync(nameof(JobStatusUpdaterFunction),
                                         CreateJobStatusUpdaterRequest(groupMembership.SyncJobId,
-                                                                        SyncStatus.Idle, 0, groupMembership.RunId));
+                                                                        SyncStatus.Idle, 0, syncJob));
                 }
 
-                await context.CallActivityAsync(nameof(TelemetryTrackerFunction), new TelemetryTrackerRequest { JobStatus = SyncStatus.Idle, ResultStatus = ResultStatus.Success, RunId = syncJob.RunId });
+                await context.CallActivityAsync(nameof(TelemetryTrackerFunction), new TelemetryTrackerRequest { JobStatus = SyncStatus.Idle, ResultStatus = ResultStatus.Success, SyncJob = syncJob });
                 if (!context.IsReplaying)
                 {
                     if (membersAddedResponse.SuccessCount + membersAddedResponse.UsersNotFound.Count == membersToAdd.Count &&
@@ -188,46 +183,30 @@ namespace Hosts.TeamsChannelUpdater
                     }
                 }
 
-                await context.CallActivityAsync(nameof(LoggerFunction),
-                    new LoggerRequest
-                    {
-                        RunId = syncJob.RunId.GetValueOrDefault(Guid.Empty),
-                        Message = $"{nameof(OrchestratorFunction)} function completed at: {context.CurrentUtcDateTime}",
-                        Verbosity = VerbosityLevel.DEBUG
-                    });
-
+                logger.OrchestratorCompleted(nameof(OrchestratorFunction), context.CurrentUtcDateTime);
             }
 
             catch (Exception ex)
             {
                 if (syncJob == null)
                 {
-                    await context.CallActivityAsync(nameof(LoggerFunction), new LoggerRequest { Message = "SyncJob is null. Removing the message from the queue..." });
+                    logger.SyncJobIsNull();
                     return;
                 }
 
-                if (syncJob != null)
+                logger.UnexpectedExceptionCaught(ex);
+
+                await context.CallActivityAsync(nameof(JobStatusUpdaterFunction),
+                                CreateJobStatusUpdaterRequest(syncJob.Id,
+                                                                SyncStatus.Error, syncJob.ThresholdViolations, syncJob));
+                await context.CallActivityAsync(nameof(TelemetryTrackerFunction), new TelemetryTrackerRequest { JobStatus = SyncStatus.Error, ResultStatus = ResultStatus.Failure, SyncJob = syncJob });
+
+                if (!context.IsReplaying)
                 {
-                    await context.CallActivityAsync(nameof(LoggerFunction), new LoggerRequest
-                    {
-                        Message = $"Caught unexpected exception, marking sync job as errored. Exception:\n{ex}",
-                        RunId = syncJob.RunId.GetValueOrDefault(Guid.Empty)
-                    });
-
-                    await context.CallActivityAsync(nameof(JobStatusUpdaterFunction),
-                                    CreateJobStatusUpdaterRequest(syncJob.Id,
-                                                                    SyncStatus.Error, syncJob.ThresholdViolations, syncJob.RunId.GetValueOrDefault(new Guid())));
-                    await context.CallActivityAsync(nameof(TelemetryTrackerFunction), new TelemetryTrackerRequest { JobStatus = SyncStatus.Error, ResultStatus = ResultStatus.Failure, RunId = syncJob.RunId });
-
                     TrackSyncCompleteEvent(context, syncJob, syncCompleteEvent, "Failure");
                 }
 
                 throw;
-            }
-            finally
-            {
-                if (syncJob?.RunId.HasValue ?? false)
-                    _loggingRepository.RemoveSyncJobProperties(syncJob.RunId.Value);
             }
         }
 
@@ -246,7 +225,7 @@ namespace Hosts.TeamsChannelUpdater
             _telemetryClient.TrackEvent(nameof(Metric.SyncComplete), syncCompleteDict);
         }
 
-        private TeamsChannelUpdaterSubOrchestratorRequest CreateTeamsGroupUpdaterRequest(bool isInitialSync, Guid runId, ICollection<AzureADTeamsUser> members, AzureADTeamsChannel teamsChannelInfo, RequestType type)
+        private TeamsChannelUpdaterSubOrchestratorRequest CreateTeamsGroupUpdaterRequest(bool isInitialSync, SyncJob syncJob, ICollection<AzureADTeamsUser> members, AzureADTeamsChannel teamsChannelInfo, RequestType type)
         {
             return new TeamsChannelUpdaterSubOrchestratorRequest
             {
@@ -254,26 +233,19 @@ namespace Hosts.TeamsChannelUpdater
                 Type = type,
                 Members = members,
                 TeamsChannelInfo = teamsChannelInfo,
-                RunId = runId
+                SyncJob = syncJob
             };
         }
 
-        private JobStatusUpdaterRequest CreateJobStatusUpdaterRequest(Guid syncJobId, SyncStatus syncStatus, int thresholdViolations, Guid runId)
+        private JobStatusUpdaterRequest CreateJobStatusUpdaterRequest(Guid syncJobId, SyncStatus syncStatus, int thresholdViolations, SyncJob syncJob)
         {
             return new JobStatusUpdaterRequest
             {
-                RunId = runId,
+                SyncJob = syncJob,
                 JobId = syncJobId,
                 Status = syncStatus,
                 ThresholdViolations = thresholdViolations
             };
-        }
-
-        private string GetUsersDataMessage(Guid targetGroupId, int membersToAdd, int membersToRemove)
-        {
-            return $"Synchronization for {targetGroupId} is now complete. " +
-                   $"{membersToAdd} users have been added. " +
-                   $"{membersToRemove} users have been removed.";
         }
 
         private static string TryDecompress(string content)

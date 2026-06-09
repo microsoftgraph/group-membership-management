@@ -1,5 +1,6 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
+
 using DIConcreteTypes;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Models;
@@ -752,7 +753,7 @@ namespace Services.Tests
 
             var result = await _jobTriggerService.TryClaimAndUpdateJobAsync(SyncStatus.InProgress, job);
 
-            Assert.IsTrue(result);
+            Assert.IsNotNull(result);
             var updatedJob = _syncJobRepository.Jobs.First(j => j.Id == job.Id);
             Assert.AreEqual(SyncStatus.InProgress.ToString(), updatedJob.Status);
             Assert.AreEqual(job.RunId, updatedJob.RunId);
@@ -769,7 +770,7 @@ namespace Services.Tests
 
             var result = await _jobTriggerService.TryClaimAndUpdateJobAsync(SyncStatus.InProgress, job);
 
-            Assert.IsTrue(result);
+            Assert.IsNotNull(result);
             Assert.AreEqual(SyncStatus.InProgress.ToString(), _syncJobRepository.Jobs.First().Status);
         }
 
@@ -785,7 +786,7 @@ namespace Services.Tests
 
             var result = await _jobTriggerService.TryClaimAndUpdateJobAsync(SyncStatus.StuckInProgress, job);
 
-            Assert.IsTrue(result);
+            Assert.IsNotNull(result);
             var updatedJob = _syncJobRepository.Jobs.First();
             Assert.AreEqual(SyncStatus.StuckInProgress.ToString(), updatedJob.Status);
         }
@@ -804,7 +805,7 @@ namespace Services.Tests
             var beforeClaim = DateTime.UtcNow;
             var result = await _jobTriggerService.TryClaimAndUpdateJobAsync(SyncStatus.StuckInProgress, job);
 
-            Assert.IsTrue(result);
+            Assert.IsNotNull(result);
             var updatedJob = _syncJobRepository.Jobs.First();
             Assert.IsTrue(updatedJob.LastRunTime >= beforeClaim);
         }
@@ -837,7 +838,7 @@ namespace Services.Tests
 
             var result = await _jobTriggerService.TryClaimAndUpdateJobAsync(SyncStatus.InProgress, job);
 
-            Assert.IsFalse(result);
+            Assert.IsNull(result);
             Assert.AreEqual(SyncStatus.InProgress.ToString(), _syncJobRepository.Jobs.First().Status);
         }
 
@@ -852,7 +853,7 @@ namespace Services.Tests
 
             var result = await _jobTriggerService.TryClaimAndUpdateJobAsync(SyncStatus.InProgress, job);
 
-            Assert.IsFalse(result);
+            Assert.IsNull(result);
             Assert.AreEqual(SyncStatus.StuckInProgress.ToString(), _syncJobRepository.Jobs.First().Status);
         }
 
@@ -867,7 +868,7 @@ namespace Services.Tests
 
             var result = await _jobTriggerService.TryClaimAndUpdateJobAsync(SyncStatus.InProgress, job);
 
-            Assert.IsFalse(result);
+            Assert.IsNull(result);
             Assert.AreEqual(SyncStatus.Error.ToString(), _syncJobRepository.Jobs.First().Status);
         }
 
@@ -883,8 +884,8 @@ namespace Services.Tests
             var firstClaim = await _jobTriggerService.TryClaimAndUpdateJobAsync(SyncStatus.InProgress, job);
             var secondClaim = await _jobTriggerService.TryClaimAndUpdateJobAsync(SyncStatus.InProgress, job);
 
-            Assert.IsTrue(firstClaim);
-            Assert.IsFalse(secondClaim);
+            Assert.IsNotNull(firstClaim);
+            Assert.IsNull(secondClaim);
         }
 
         [TestMethod]
@@ -900,12 +901,12 @@ namespace Services.Tests
             var firstClaim = await _jobTriggerService.TryClaimAndUpdateJobAsync(SyncStatus.StuckInProgress, job);
             var secondClaim = await _jobTriggerService.TryClaimAndUpdateJobAsync(SyncStatus.StuckInProgress, job);
 
-            Assert.IsTrue(firstClaim);
-            Assert.IsFalse(secondClaim);
+            Assert.IsNotNull(firstClaim);
+            Assert.IsNull(secondClaim);
         }
 
         [TestMethod]
-        public async Task ClaimJob_NonexistentJob_ReturnsFalse()
+        public async Task ClaimJob_NonexistentJob_ReturnsNull()
         {
             var job = SampleDataHelper.CreateSampleSyncJobs(1, Organization).First();
             job.Status = SyncStatus.Idle.ToString();
@@ -915,7 +916,7 @@ namespace Services.Tests
 
             var result = await _jobTriggerService.TryClaimAndUpdateJobAsync(SyncStatus.InProgress, job);
 
-            Assert.IsFalse(result);
+            Assert.IsNull(result);
         }
 
         [TestMethod]
@@ -930,7 +931,7 @@ namespace Services.Tests
 
             var result = await _jobTriggerService.TryClaimAndUpdateJobAsync(SyncStatus.StuckInProgress, job);
 
-            Assert.IsFalse(result);
+            Assert.IsNull(result);
         }
 
         [TestMethod]

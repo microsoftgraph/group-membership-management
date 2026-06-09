@@ -3,6 +3,7 @@
 using Azure.Messaging.ServiceBus;
 using Hosts.PlaceMembershipObtainer;
 using Microsoft.DurableTask;
+using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Models;
 using Moq;
@@ -22,7 +23,6 @@ namespace Tests.Services
     public class StarterTests
     {
         private Mock<IDryRunValue> _dryRunValue;
-        private Mock<ILoggingRepository> _loggingRepository;
         private Mock<IDatabaseSyncJobsRepository> _syncJobRepository;
         private Mock<MockDurableTaskClient> _durableOrchestrationClient;
         private SyncJob _syncJob;
@@ -31,7 +31,6 @@ namespace Tests.Services
         public void Setup()
         {
             _dryRunValue = new Mock<IDryRunValue>();
-            _loggingRepository = new Mock<ILoggingRepository>();
             _syncJobRepository = new Mock<IDatabaseSyncJobsRepository>();
             _durableOrchestrationClient = new Mock<MockDurableTaskClient>();
 
@@ -62,7 +61,7 @@ namespace Tests.Services
             };
 
             var message = ServiceBusModelFactory.ServiceBusReceivedMessage(new BinaryData(syncJobBytes), properties: properties);
-            var starterFunction = new StarterFunction(_loggingRepository.Object, _syncJobRepository.Object, _dryRunValue.Object);
+            var starterFunction = new StarterFunction(NullLogger<StarterFunction>.Instance, _syncJobRepository.Object, _dryRunValue.Object);
             await starterFunction.RunAsync(message, _durableOrchestrationClient.Object);
 
             _durableOrchestrationClient.Verify(x => x.ScheduleNewOrchestrationInstanceAsync(
@@ -70,20 +69,6 @@ namespace Tests.Services
                                                         It.Is<OrchestratorRequest>(r => r.CurrentPart == 1 && r.TotalParts == 3),
                                                         null,
                                                         It.IsAny<CancellationToken>()
-                                                ), Times.Once);
-
-            _loggingRepository.Verify(x => x.LogMessageAsync(
-                                                    It.Is<LogMessage>(m => m.Message.StartsWith("InstanceId")),
-                                                    It.IsAny<VerbosityLevel>(),
-                                                    It.IsAny<string>(),
-                                                    It.IsAny<string>()
-                                                ), Times.Once);
-
-            _loggingRepository.Verify(x => x.LogMessageAsync(
-                                                    It.Is<LogMessage>(m => m.Message.Contains("function completed")),
-                                                    It.IsAny<VerbosityLevel>(),
-                                                    It.IsAny<string>(),
-                                                    It.IsAny<string>()
                                                 ), Times.Once);
         }
 
@@ -102,32 +87,11 @@ namespace Tests.Services
 
             var message = ServiceBusModelFactory.ServiceBusReceivedMessage(new BinaryData(syncJobBytes), properties: properties);
 
-            var starterFunction = new StarterFunction(_loggingRepository.Object, _syncJobRepository.Object, _dryRunValue.Object);
+            var starterFunction = new StarterFunction(NullLogger<StarterFunction>.Instance, _syncJobRepository.Object, _dryRunValue.Object);
             await starterFunction.RunAsync(message, _durableOrchestrationClient.Object);
 
             _durableOrchestrationClient.Verify(x => x.ScheduleNewOrchestrationInstanceAsync(It.IsAny<TaskName>(), It.IsAny<OrchestratorRequest>(), null, It.IsAny<CancellationToken>()), Times.Never);
             _syncJobRepository.Verify(x => x.UpdateSyncJobStatusAsync(It.IsAny<IEnumerable<SyncJob>>(), It.Is<SyncStatus>(s => s == SyncStatus.Idle)), Times.Once);
-
-            _loggingRepository.Verify(x => x.LogMessageAsync(
-                                                It.Is<LogMessage>(m => m.Message.StartsWith("Setting the status of the sync back to Idle")),
-                                                It.IsAny<VerbosityLevel>(),
-                                                It.IsAny<string>(),
-                                                It.IsAny<string>()
-                                                ), Times.Once);
-
-            _loggingRepository.Verify(x => x.LogMessageAsync(
-                                                It.Is<LogMessage>(m => m.Message.StartsWith("InstanceId")),
-                                                It.IsAny<VerbosityLevel>(),
-                                                It.IsAny<string>(),
-                                                It.IsAny<string>()
-                                                ), Times.Never);
-
-            _loggingRepository.Verify(x => x.LogMessageAsync(
-                                                It.Is<LogMessage>(m => m.Message.Contains("function completed")),
-                                                It.IsAny<VerbosityLevel>(),
-                                                It.IsAny<string>(),
-                                                It.IsAny<string>()
-                                                ), Times.Once);
         }
     }
 }

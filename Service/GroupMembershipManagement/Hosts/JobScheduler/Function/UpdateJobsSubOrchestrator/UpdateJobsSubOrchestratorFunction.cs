@@ -3,7 +3,7 @@
 
 using Microsoft.Azure.Functions.Worker;
 using Microsoft.DurableTask;
-using Repositories.Contracts;
+using Microsoft.Extensions.Logging;
 using System.Threading.Tasks;
 
 namespace Hosts.JobScheduler
@@ -17,12 +17,9 @@ namespace Hosts.JobScheduler
         [Function(nameof(UpdateJobsSubOrchestratorFunction))]
         public async Task RunSubOrchestratorAsync([OrchestrationTrigger] TaskOrchestrationContext context)
         {
-            await context.CallActivityAsync(nameof(LoggerFunction),
-                                                      new LoggerRequest
-                                                      {
-                                                          Message = $"{nameof(UpdateJobsSubOrchestratorFunction)} function started",
-                                                          Verbosity = VerbosityLevel.DEBUG
-                                                      });
+            var logger = context.CreateReplaySafeLogger($"JobScheduler.{nameof(UpdateJobsSubOrchestratorFunction)}");
+
+            logger.FunctionStarted(nameof(UpdateJobsSubOrchestratorFunction));
 
             var request = context.GetInput<UpdateJobsSubOrchestratorRequest>();
             var jobsToUpdate = request.JobsToUpdate;
@@ -33,24 +30,11 @@ namespace Hosts.JobScheduler
                             SyncJobBatch = jobsToUpdate
                         });
 
-            await context.CallActivityAsync(nameof(LoggerFunction),
-                new LoggerRequest
-                {
-                    Message = $"Updating {jobsToUpdate.Count} total jobs..."
-                });
+            logger.UpdatingTotalJobs(jobsToUpdate.Count);
 
-            await context.CallActivityAsync(nameof(LoggerFunction),
-                new LoggerRequest
-                {
-                    Message = $"Updated {jobsToUpdate.Count} total jobs."
-                });
+            logger.UpdatedTotalJobs(jobsToUpdate.Count);
 
-            await context.CallActivityAsync(nameof(LoggerFunction),
-                                                      new LoggerRequest
-                                                      {
-                                                          Message = $"{nameof(UpdateJobsSubOrchestratorFunction)} function completed",
-                                                          Verbosity = VerbosityLevel.DEBUG
-                                                      });
+            logger.FunctionCompleted(nameof(UpdateJobsSubOrchestratorFunction));
         }
     }
 }

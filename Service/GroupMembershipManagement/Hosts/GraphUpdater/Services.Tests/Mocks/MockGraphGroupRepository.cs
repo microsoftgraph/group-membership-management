@@ -91,7 +91,17 @@ namespace Services.Tests.Mocks
             throw new NotImplementedException();
         }
 
-        public Task CreateGroup(string newGroupName, TestGroupType testGroupType, List<Guid> ownerIds)
+        public Task<AzureADGroup> CreateGroup(string newGroupName, TestGroupType testGroupType)
+        {
+            throw new NotImplementedException();
+        }
+
+        public Task AddGroupOwners(string groupId, List<Guid> ownerIds)
+        {
+            throw new NotImplementedException();
+        }
+
+        public Task<List<Guid>> GetGroupIdsOwnedByServicePrincipalAsync(Guid servicePrincipalObjectId)
         {
             throw new NotImplementedException();
         }
@@ -152,6 +162,12 @@ namespace Services.Tests.Mocks
             throw new NotImplementedException();
         }
 
+        public Task<string?> GetGroupVivaEngageUrlAsync(Guid groupId)
+        {
+            throw new NotImplementedException();
+        }
+
+
         public Task<List<AzureADGroup>> GetGroupsAsync(List<Guid> groupIds)
         {
             throw new NotImplementedException();
@@ -204,7 +220,7 @@ namespace Services.Tests.Mocks
             throw new NotImplementedException();
         }
 
-        Task<List<string>> IGraphGroupRepository.GetAllGroupNamesAsync()
+        Task<Dictionary<Guid, string>> IGraphGroupRepository.GetAllGroupNamesAsync()
         {
             throw new NotImplementedException();
         }

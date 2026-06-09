@@ -6,6 +6,8 @@ using Azure.Identity;
 using Azure.Messaging.ServiceBus;
 using Common.DependencyInjection;
 using Hosts.FunctionBase;
+using Microsoft.Azure.Functions.Worker;
+using Microsoft.Azure.Functions.Worker.ApplicationInsights;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -49,6 +51,8 @@ namespace Hosts.TeamsChannelUpdater
                     var dryRunSettingName = "TeamsChannel:IsTeamsChannelDryRunEnabled";
                     var rootPath = context.HostingEnvironment.ContentRootPath;
                     CommonServices.ConfigureCommonServices(services, configuration, functionName, dryRunSettingName, rootPath);
+
+                    services.ConfigureFunctionsApplicationInsights();
 
                     services.AddSingleton((serviceProvider) =>
                     {
@@ -96,7 +100,7 @@ namespace Hosts.TeamsChannelUpdater
                         var sender = client.CreateSender(notificationsQueue);
                         return new ServiceBusQueueRepository(sender);
                     })
-                    .AddTransient<ITeamsChannelUpdaterService, TeamsChannelUpdaterService>()
+                    .AddScoped<ITeamsChannelUpdaterService, TeamsChannelUpdaterService>()
                     .AddScoped<ISyncJobStatusService, SyncJobStatusService>();
                 })
                 .Build();

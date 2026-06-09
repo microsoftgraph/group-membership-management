@@ -671,19 +671,30 @@ namespace WebApi.BackgroundServices
                 Message = "Clearing function's internal tables and queues..."
             });
 
-            var storageAccounts = await _resourceManagerService.GetWebSitesStorageAccountsAsync(cancellationToken);
-            foreach (var storageAccount in storageAccounts)
+            if (string.IsNullOrWhiteSpace(_operationsSettings.FunctionsStorageAccountName))
             {
-                await ClearInternalQueuesAsync(storageAccount.Value, storageAccount.Key);
-                await DeleteInternalTablesAsync(storageAccount.Value, storageAccount.Key);
+                await _loggingRepository.LogMessageAsync(new LogMessage
+                {
+                    Message = "Settings:functionsStorageAccountName is not configured; internal tables/queues cannot be cleared."
+                });
+
+                throw new InvalidOperationException("Missing required setting: Settings:functionsStorageAccountName");
             }
+
+            await ClearInternalQueuesAsync(_operationsSettings.FunctionsStorageAccountName);
+            await DeleteInternalTablesAsync(_operationsSettings.FunctionsStorageAccountName);
 
             // Deleting a table takes at least 40 seconds, so we need to wait a bit before restarting the functions
             // reference: https://learn.microsoft.com/en-us/rest/api/storageservices/delete-table#remarks
             await Task.Delay(TimeSpan.FromSeconds(60), cancellationToken);
+
+            await _loggingRepository.LogMessageAsync(new LogMessage
+            {
+                Message = "Clearing function's internal tables and queues completed."
+            });
         }
 
-        private async Task DeleteInternalTablesAsync(string storageAccountName, string functionName)
+        private async Task DeleteInternalTablesAsync(string storageAccountName)
         {
             DefaultAzureCredential credential = new(DefaultAzureCredential.DefaultEnvironmentVariableName);
 
@@ -702,20 +713,20 @@ namespace WebApi.BackgroundServices
 
                     await _loggingRepository.LogMessageAsync(new LogMessage
                     {
-                        Message = $"Deleted table {table.Name} from account {storageAccountName} used by {functionName}"
+                        Message = $"Deleted table {table.Name} from account {storageAccountName} used by SharedFunctionsStorageAccount"
                     });
                 }
                 catch (Exception ex)
                 {
                     await _loggingRepository.LogMessageAsync(new LogMessage
                     {
-                        Message = $"Failed to delete table {table.Name} from account {storageAccountName} used by {functionName}.\n{ex}"
+                        Message = $"Failed to delete table {table.Name} from account {storageAccountName} used by SharedFunctionsStorageAccount.\n{ex}"
                     });
                 }
             }
         }
 
-        private async Task ClearInternalQueuesAsync(string storageAccountName, string functionName)
+        private async Task ClearInternalQueuesAsync(string storageAccountName)
         {
             DefaultAzureCredential credential = new(DefaultAzureCredential.DefaultEnvironmentVariableName);
 
@@ -734,7 +745,7 @@ namespace WebApi.BackgroundServices
 
                     await _loggingRepository.LogMessageAsync(new LogMessage
                     {
-                        Message = $"Cleared queue {queue.Name} from account {storageAccountName} used by {functionName}"
+                        Message = $"Cleared queue {queue.Name} from account {storageAccountName} used by SharedFunctionsStorageAccount"
                     });
 
                 }
@@ -742,7 +753,7 @@ namespace WebApi.BackgroundServices
                 {
                     await _loggingRepository.LogMessageAsync(new LogMessage
                     {
-                        Message = $"Failed to clear queue {queue.Name} from account {storageAccountName} used by {functionName}.\n{ex}"
+                        Message = $"Failed to clear queue {queue.Name} from account {storageAccountName} used by SharedFunctionsStorageAccount.\n{ex}"
                     });
                 }
             }

@@ -1,8 +1,8 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 using Microsoft.Azure.Functions.Worker;
+using Microsoft.Extensions.Logging;
 using Models;
-using Repositories.Contracts;
 using Services.Contracts;
 using System;
 using System.Collections.Generic;
@@ -12,22 +12,22 @@ namespace Hosts.GraphUpdater
 {
     public class GroupOwnersReaderFunction
     {
-        private readonly ILoggingRepository _loggingRepository;
+        private readonly ILogger<GroupOwnersReaderFunction> _logger;
         private readonly IGraphUpdaterService _graphUpdaterService;
 
-        public GroupOwnersReaderFunction(ILoggingRepository loggingRepository, IGraphUpdaterService graphUpdaterService)
+        public GroupOwnersReaderFunction(ILogger<GroupOwnersReaderFunction> logger, IGraphUpdaterService graphUpdaterService)
         {
-            _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _graphUpdaterService = graphUpdaterService ?? throw new ArgumentNullException(nameof(graphUpdaterService));
         }
 
         [Function(nameof(GroupOwnersReaderFunction))]
         public async Task<List<AzureADUser>> GetGroupOwnersAsync([ActivityTrigger] GroupOwnersReaderRequest request)
         {
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(GroupOwnersReaderFunction)} function started", RunId = request.RunId }, VerbosityLevel.DEBUG);
-            _graphUpdaterService.RunId = request.RunId;
+            using var scope = _logger.BeginGraphUpdaterScope(request);
+            _logger.FunctionStarted(nameof(GroupOwnersReaderFunction));
             var owners = await _graphUpdaterService.GetGroupOwnersAsync(request.GroupId);
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(GroupOwnersReaderFunction)} function completed", RunId = request.RunId }, VerbosityLevel.DEBUG);
+            _logger.FunctionCompleted(nameof(GroupOwnersReaderFunction));
 
             return owners;
         }

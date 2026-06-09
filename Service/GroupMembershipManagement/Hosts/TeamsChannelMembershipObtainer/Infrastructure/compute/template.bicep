@@ -103,7 +103,8 @@ var appSettings = {
   AzureWebJobsStorage__credential: 'managedidentity'
   AzureFunctionsJobHost__extensions__durableTask__hubName: '${solutionAbbreviation}compute${environmentAbbreviation}TeamsChannelMO'
   AzureFunctionsWebHost__hostid: 'TeamsChannelMO'
-  AzureFunctionsJobHost__extensions__durableTask__extendedSessionsEnabled: toLower(environmentAbbreviation) == 'prodv2' ? 'True' : 'False'
+  AzureFunctionsJobHost__extensions__durableTask__extendedSessionsEnabled: 'True'
+  AzureFunctionsJobHost__extensions__durableTask__useAppLease: 'False'
   APPINSIGHTS_INSTRUMENTATIONKEY: '@Microsoft.KeyVault(SecretUri=${reference(appInsightsInstrumentationKey, '2019-09-01').secretUriWithVersion})'
   serviceBusSyncJobTopic: '@Microsoft.KeyVault(SecretUri=${reference(serviceBusSyncJobTopic, '2019-09-01').secretUriWithVersion})'
   gmmServiceBus__fullyQualifiedNamespace: '@Microsoft.KeyVault(SecretUri=${reference(serviceBusFQN, '2019-09-01').secretUriWithVersion})'
@@ -147,22 +148,15 @@ module userAssignedManagedIdentityNameReader 'keyVaultReader.bicep' = {
 module storageAccountNameReader 'keyVaultReader.bicep' = {
   name: 'storageAccountNameReader-TeamsChannelMembershipObtainer'
   params: {
-    value: dataKeyVault.getSecret('teamsChannelMembershipObtainerStorageAccountProd')
+    value: dataKeyVault.getSecret('functionsStorageAccountName')
   }
   dependsOn: [
     dataKeyVault
   ]
 }
 
-module appPackageContainerNameReader 'keyVaultReader.bicep' = {
-  name: 'appPackageContainerNameReader-TeamsChannelUpdater'
-  params: {
-    value: dataKeyVault.getSecret('teamsChannelUpdaterAppPackageContainerProd')
-  }
-  dependsOn: [
-    dataKeyVault
-  ]
-}
+var appPackageContainerName = 'teamschannelmembershipobtainer-app-package'
+
 
 resource graphUAMI 'Microsoft.ManagedIdentity/userAssignedIdentities@2023-07-31-preview' existing = {
   name: userAssignedManagedIdentityNameReader.outputs.value
@@ -198,7 +192,7 @@ module functionAppTemplate_TeamsChannelMembershipObtainer 'functionApp.bicep' = 
     dataKeyVaultResourceGroup: dataKeyVaultResourceGroup
     setRBACPermissions: setRBACPermissions
     storageAccountName: storageAccountNameReader.outputs.value
-    appPackageContainerName: appPackageContainerNameReader.outputs.value
+    appPackageContainerName: appPackageContainerName
     maxInstanceCount: maxInstanceCount
     instanceMemoryMB: instanceMemoryMB
   }

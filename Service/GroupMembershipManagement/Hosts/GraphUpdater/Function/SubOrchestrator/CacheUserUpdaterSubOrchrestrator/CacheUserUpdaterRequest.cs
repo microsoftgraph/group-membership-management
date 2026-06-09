@@ -1,16 +1,14 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
-using Models;
+using Services.Entities;
 using System;
 using System.Collections.Generic;
 
 namespace Hosts.GraphUpdater
 {
-    public class CacheUserUpdaterRequest
+    public class CacheUserUpdaterRequest : GraphUpdaterRequestBase
     {
         public Guid GroupId { get; set; }
         public HashSet<Guid> UserIds { get; set; }
-        public Guid? RunId { get; set; }
-        public SyncJob SyncJob { get; set; }
     }
 }

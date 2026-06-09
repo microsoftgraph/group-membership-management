@@ -2,7 +2,7 @@
 // Licensed under the MIT license.
 
 using Microsoft.Azure.Functions.Worker;
-using Repositories.Contracts;
+using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
@@ -13,21 +13,21 @@ namespace Hosts.Notifier
 {
     public class RetrieveNotificationsFunction
     {
-        private readonly ILoggingRepository _loggingRepository = null;
-        private readonly INotifierService _notifierService = null;
+        private readonly ILogger<RetrieveNotificationsFunction> _logger;
+        private readonly INotifierService _notifierService;
 
-        public RetrieveNotificationsFunction(ILoggingRepository loggingRepository, INotifierService notifierService)
+        public RetrieveNotificationsFunction(ILogger<RetrieveNotificationsFunction> logger, INotifierService notifierService)
         {
-            _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _notifierService = notifierService ?? throw new ArgumentNullException(nameof(notifierService));
         }
 
         [Function(nameof(RetrieveNotificationsFunction))]
         public async Task<List<Models.ThresholdNotifications.ThresholdNotification>> RetrieveNotificationsAsync([ActivityTrigger] object obj)
         {
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(RetrieveNotificationsFunction)} function started at: {DateTime.UtcNow}" });
+            _logger.FunctionStarted(nameof(RetrieveNotificationsFunction));
             var notifications = await _notifierService.RetrieveQueuedNotificationsAsync();
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(RetrieveNotificationsFunction)} function completed at: {DateTime.UtcNow}" });
+            _logger.FunctionCompleted(nameof(RetrieveNotificationsFunction));
             return notifications;
         }
     }

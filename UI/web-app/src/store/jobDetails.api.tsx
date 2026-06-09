@@ -63,10 +63,11 @@ export const getGroupDetails = createAsyncThunk<Job, string, ThunkConfig>(
     };
 
     try {
-      const response = await fetch(`${config.getGroupDetails(groupId)}`, options).then(
-        async (response) => await response.json()
-      );
-      const job: Job = response;
+      const response = await fetch(`${config.getGroupDetails(groupId)}`, options);
+      if (!response.ok) {
+        throw new Error('Failed to fetch job details data!');
+      }
+      const job: Job = await response.json();
       return processJob(job);
     } catch (error) {
       throw new Error('Failed to fetch job details data!');
@@ -89,10 +90,11 @@ export const getChannelDetails = createAsyncThunk<Job, GetChannelRequest, ThunkC
     };
 
     try {
-      const response = await fetch(`${config.getChannelDetails(request.groupId, request.channelId)}`, options).then(
-        async (response) => await response.json()
-      );
-      const job: Job = response;
+      const response = await fetch(`${config.getChannelDetails(request.groupId, request.channelId)}`, options);
+      if (!response.ok) {
+        throw new Error('Failed to fetch job details data!');
+      }
+      const job: Job = await response.json();
       return processJob(job);
     } catch (error) {
       throw new Error('Failed to fetch job details data!');

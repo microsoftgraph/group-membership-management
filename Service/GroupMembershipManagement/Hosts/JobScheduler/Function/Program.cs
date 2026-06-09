@@ -5,6 +5,7 @@ using Hosts.FunctionBase;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Repositories.Contracts;
 using Repositories.Contracts.InjectConfig;
@@ -73,7 +74,7 @@ namespace Hosts.JobScheduler
                         return new JobSchedulingService(
                                 services.GetService<IDatabaseSyncJobsRepository>(),
                                 services.GetService<IRuntimeRetrievalService>(),
-                                services.GetService<ILoggingRepository>()
+                                services.GetService<ILogger<JobSchedulingService>>()
                             );
                     });
 

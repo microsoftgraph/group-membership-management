@@ -1,6 +1,7 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 using Microsoft.Azure.Functions.Worker;
+using Microsoft.Extensions.Logging;
 using Models;
 using Repositories.Contracts;
 using System;
@@ -10,21 +11,22 @@ namespace Hosts.GraphUpdater
 {
     public class BlobCheckerFunction
     {
-        private readonly ILoggingRepository _loggingRepository;
+        private readonly ILogger<BlobCheckerFunction> _logger;
         private readonly IBlobStorageRepository _blobStorageRepository;
 
-        public BlobCheckerFunction(ILoggingRepository loggingRepository, IBlobStorageRepository blobStorageRepository)
+        public BlobCheckerFunction(ILogger<BlobCheckerFunction> logger, IBlobStorageRepository blobStorageRepository)
         {
-            _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _blobStorageRepository = blobStorageRepository ?? throw new ArgumentNullException(nameof(blobStorageRepository));
         }
 
         [Function(nameof(BlobCheckerFunction))]
         public async Task<BlobResult> CheckBlobAsync([ActivityTrigger] BlobCheckerRequest request)
         {
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(BlobCheckerFunction)} function started", RunId = request.RunId }, VerbosityLevel.DEBUG);
+            using var scope = _logger.BeginGraphUpdaterScope(request);
+            _logger.FunctionStarted(nameof(BlobCheckerFunction));
             var result = await _blobStorageRepository.FindLatestFileAsync(request.Prefix);
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(BlobCheckerFunction)} function completed", RunId = request.RunId }, VerbosityLevel.DEBUG);
+            _logger.FunctionCompleted(nameof(BlobCheckerFunction));
             return result;
         }
     }

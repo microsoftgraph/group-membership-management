@@ -3,8 +3,8 @@
 
 using Microsoft.Azure.Functions.Worker;
 using Microsoft.DurableTask;
+using Microsoft.Extensions.Logging;
 using Models;
-using Repositories.Contracts;
 using Repositories.Contracts.InjectConfig;
 using System.Collections.Generic;
 using System.Threading.Tasks;
@@ -23,18 +23,11 @@ namespace Hosts.JobScheduler
         [Function(nameof(GetJobsSubOrchestratorFunction))]
         public async Task<List<DistributionSyncJob>> RunSubOrchestratorAsync([OrchestrationTrigger] TaskOrchestrationContext context)
         {
-            await context.CallActivityAsync(nameof(LoggerFunction),
-                new LoggerRequest
-                {
-                    Message = $"{nameof(GetJobsSubOrchestratorFunction)} function started",
-                    Verbosity = VerbosityLevel.DEBUG
-                });
+            var logger = context.CreateReplaySafeLogger($"JobScheduler.{nameof(GetJobsSubOrchestratorFunction)}");
 
-            await context.CallActivityAsync(nameof(LoggerFunction),
-                new LoggerRequest
-                {
-                    Message = "Retrieving enabled sync jobs"
-                });
+            logger.FunctionStarted(nameof(GetJobsSubOrchestratorFunction));
+
+            logger.RetrievingEnabledSyncJobs();
 
             var jobs = new List<DistributionSyncJob>();
 
@@ -42,18 +35,9 @@ namespace Hosts.JobScheduler
 
             jobs = segmentResponse.JobsSegment;
 
-            await context.CallActivityAsync(nameof(LoggerFunction),
-                new LoggerRequest
-                {
-                    Message = $"Retrieved {jobs.Count} enabled sync jobs"
-                });
+            logger.RetrievedEnabledSyncJobs(jobs.Count);
 
-            await context.CallActivityAsync(nameof(LoggerFunction),
-                new LoggerRequest
-                {
-                    Message = $"{nameof(GetJobsSubOrchestratorFunction)} function completed",
-                    Verbosity = VerbosityLevel.DEBUG
-                });
+            logger.FunctionCompleted(nameof(GetJobsSubOrchestratorFunction));
 
             return jobs;
         }

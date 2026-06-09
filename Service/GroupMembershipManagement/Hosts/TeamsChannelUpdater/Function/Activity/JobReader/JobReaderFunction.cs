@@ -2,8 +2,9 @@
 // Licensed under the MIT license.
 using Microsoft.Azure.Functions.Worker;
 using Microsoft.DurableTask;
+using Microsoft.Extensions.Logging;
 using Models;
-using Repositories.Contracts;
+using Repositories.Contracts.Helpers;
 using Services.TeamsChannelUpdater.Contracts;
 using System;
 using System.Threading.Tasks;
@@ -12,21 +13,23 @@ namespace Hosts.TeamsChannelUpdater
 {
     public class JobReaderFunction
     {
-        private readonly ILoggingRepository _loggingRepository;
+        private readonly ILogger<JobReaderFunction> _logger;
         private readonly ITeamsChannelUpdaterService _teamsChannelUpdaterService;
 
-        public JobReaderFunction(ILoggingRepository loggingRepository, ITeamsChannelUpdaterService teamsChannelUpdaterService)
+        public JobReaderFunction(ILogger<JobReaderFunction> logger, ITeamsChannelUpdaterService teamsChannelUpdaterService)
         {
-            _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _teamsChannelUpdaterService = teamsChannelUpdaterService ?? throw new ArgumentNullException(nameof(teamsChannelUpdaterService));
         }
 
         [Function(nameof(JobReaderFunction))]
         public async Task<SyncJob> GetSyncJobAsync([ActivityTrigger] JobReaderRequest request)
         {
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(JobReaderFunction)} function started", RunId = request.RunId }, VerbosityLevel.DEBUG);
+            using var scope = _logger.BeginSyncJobScope(request.SyncJob);
+
+            _logger.FunctionStarted(nameof(JobReaderFunction));
             var syncJob = await _teamsChannelUpdaterService.GetSyncJobAsync(request.JobId);
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(JobReaderFunction)} function completed", RunId = request.RunId }, VerbosityLevel.DEBUG);
+            _logger.FunctionCompleted(nameof(JobReaderFunction));
             return syncJob;
         }
     }

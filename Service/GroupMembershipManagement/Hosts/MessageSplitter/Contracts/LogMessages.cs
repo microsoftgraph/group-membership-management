@@ -114,12 +114,8 @@ namespace Hosts.MessageSplitter
         // ── DeferredPendingDrainOrchestrator (120070-120079) ──
 
         [LoggerMessage(EventId = 120070, Level = LogLevel.Information,
-            Message = "DeferredPendingDrain: start lane={LaneSize}")]
-        public static partial void DrainStarted(this ILogger logger, string laneSize);
-
-        [LoggerMessage(EventId = 120071, Level = LogLevel.Information,
-            Message = "DeferredPendingDrain: drain lock not acquired lane={LaneSize} (another drain in progress)")]
-        public static partial void DrainLockNotAcquired(this ILogger logger, string laneSize);
+            Message = "DeferredPendingDrain: start lane={LaneSize} seq={SequenceNumber}")]
+        public static partial void DrainStarted(this ILogger logger, string laneSize, long sequenceNumber);
 
         [LoggerMessage(EventId = 120072, Level = LogLevel.Information,
             Message = "DeferredPendingDrain: no items to process lane={LaneSize}")]
@@ -138,8 +134,8 @@ namespace Hosts.MessageSplitter
         public static partial void DrainRemovingStaleEntry(this ILogger logger, string ageMinutes, long sequenceNumber, Guid jobId, string laneSize);
 
         [LoggerMessage(EventId = 120076, Level = LogLevel.Information,
-            Message = "DeferredPendingDrain: completed lane={LaneSize} processed={Processed} newlyDispatched={NewlyDispatched} removed={Removed} staleRemoved={StaleRemoved} messageNotFound={MessageNotFound} capacityDenied={CapacityDenied}")]
-        public static partial void DrainCompleted(this ILogger logger, string laneSize, int processed, int newlyDispatched, int removed, int staleRemoved, int messageNotFound, int capacityDenied);
+            Message = "DeferredPendingDrain: item processed lane={LaneSize} seq={SequenceNumber} result={Result} messageNotFound={MessageNotFound}")]
+        public static partial void DrainItemProcessed(this ILogger logger, string laneSize, long sequenceNumber, string result, bool messageNotFound);
 
         // ── DeferredPendingEnqueueOrchestrator (120080-120089) ──
 
@@ -164,6 +160,10 @@ namespace Hosts.MessageSplitter
         [LoggerMessage(EventId = 120093, Level = LogLevel.Information,
             Message = "DeferredPendingSweep: prunedExpiredLeases={PrunedLeases} prunedOldIndexItems={PrunedItems} lane={LaneSize}")]
         public static partial void SweepCompleted(this ILogger logger, int prunedLeases, int prunedItems, string laneSize);
+
+        [LoggerMessage(EventId = 120094, Level = LogLevel.Information,
+            Message = "DeferredPendingSweep: skipped pruning — downstream at capacity; activeLeases={ActiveLeases} maxInFlight={MaxInFlight} lane={LaneSize}")]
+        public static partial void SweepSkippedAtCapacity(this ILogger logger, string laneSize, int activeLeases, int maxInFlight);
 
         // ── ReceiveDeferredPendingFunction (120100-120109) ──
 
@@ -198,5 +198,25 @@ namespace Hosts.MessageSplitter
         [LoggerMessage(EventId = 120107, Level = LogLevel.Warning,
             Message = "Dead-lettered deferred pending message due to invalid payload; seq={SequenceNumber} err={ErrorMessage}")]
         public static partial void DeferredDeadLetteredInvalidPayload(this ILogger logger, Exception exception, long sequenceNumber, string errorMessage);
+
+        // ── OrchestratorFunction Reliability (120110-120119) ──
+
+        [LoggerMessage(EventId = 120110, Level = LogLevel.Warning,
+            Message = "OrchestratorFunction released RunLimiter lease after failure; runId={RunId} lane={LaneSize}")]
+        public static partial void OrchestratorReleasedLease(this ILogger logger, Guid runId, string laneSize);
+
+        [LoggerMessage(EventId = 120111, Level = LogLevel.Error,
+            Message = "OrchestratorFunction failed to update job status to Error after TopicMessageSender failure")]
+        public static partial void OrchestratorStatusUpdateFailed(this ILogger logger, Exception exception);
+
+        // ── DeferredPendingSweep Reliability (120095-120099) ──
+
+        [LoggerMessage(EventId = 120095, Level = LogLevel.Warning,
+            Message = "DeferredPendingSweep: failed to set Error status for pruned item; seq={SequenceNumber} jobId={JobId} lane={LaneSize} err={ErrorMessage}")]
+        public static partial void SweepJobStatusUpdateFailed(this ILogger logger, long sequenceNumber, Guid jobId, string laneSize, string errorMessage);
+
+        [LoggerMessage(EventId = 120096, Level = LogLevel.Warning,
+            Message = "DeferredPendingSweep: {FailedCount}/{TotalCount} job status updates failed; lane={LaneSize}")]
+        public static partial void SweepStatusUpdateFailures(this ILogger logger, int failedCount, int totalCount, string laneSize);
     }
 }

@@ -8,10 +8,11 @@ using Microsoft.Azure.Functions.Worker.Http;
 using Microsoft.DurableTask;
 using Microsoft.DurableTask.Client;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Moq;
-using Repositories.Contracts;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -29,7 +30,6 @@ namespace Services.Tests
     public class StarterFunctionTests
     {
         private string _instanceId;
-        private Mock<ILoggingRepository> _loggerMock;
         private Mock<DurableTaskClient> _durableClientMock;
         private Mock<FunctionContext> _functionContextMock;
 
@@ -38,7 +38,6 @@ namespace Services.Tests
         {
             _instanceId = "1234567890";
             _durableClientMock = new Mock<DurableTaskClient>("test");
-            _loggerMock = new Mock<ILoggingRepository>();
             _functionContextMock = new Mock<FunctionContext>();
         }
 
@@ -63,7 +62,7 @@ namespace Services.Tests
                                                   new Uri("http://localhost/api/StarterFunction"),
                                                   new MemoryStream(Encoding.UTF8.GetBytes(content)));
 
-            var starterFunction = new StarterFunction(_loggerMock.Object);
+            var starterFunction = new StarterFunction(NullLogger<StarterFunction>.Instance);
             var result = await starterFunction.HttpStart(
                 request,
                 _durableClientMock.Object
@@ -85,7 +84,7 @@ namespace Services.Tests
                                                   new Uri("http://localhost/api/StarterFunction"),
                                                   new MemoryStream(Encoding.UTF8.GetBytes("{ \"ContainerName\":\"myContainer\",\"BlobPath\":\"folder1/folder2/myfile.csv\"}")));
 
-            var starterFunction = new StarterFunction(_loggerMock.Object);
+            var starterFunction = new StarterFunction(NullLogger<StarterFunction>.Instance);
             var result = await starterFunction.HttpStart(
                 request,
                 durableClient

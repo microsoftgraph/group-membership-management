@@ -53,8 +53,15 @@ namespace Common.DependencyInjection
                 return new MailConfig(configuration.GetValue<bool>("Mail:IsAdaptiveCardEnabled"),
                     configuration.GetValue("Mail:IsMailApplicationPermissionGranted", false),
                     configuration.GetValue<string>("senderAddress"),
-                    configuration.GetValue("Mail:SkipMailNotifications", false));
+                    configuration.GetValue("Mail:SkipMailNotifications", false),
+                    configuration.GetValue("Mail:EnableStyledFallbackEmails", false));
             });
+
+            services.AddScoped<IMailFallbackBuilder>(provider => new MailFallbackBuilder(
+                provider.GetService<IGraphGroupRepository>(),
+                provider.GetService<ILocalizationRepository>(),
+                provider.GetRequiredService<ILogger<MailFallbackBuilder>>()
+            ));
 
             services.AddScoped<IMailRepository>(provider =>
             {
@@ -84,7 +91,8 @@ namespace Common.DependencyInjection
                         provider.GetService<IGraphGroupRepository>(),
                         provider.GetService<IDatabaseSettingsRepository>(),
                         provider.GetService<IRetryPolicyProvider>(),
-                        provider.GetRequiredService<TelemetryClient>()
+                        provider.GetRequiredService<TelemetryClient>(),
+                        provider.GetService<IMailFallbackBuilder>()
                         );
             });
 

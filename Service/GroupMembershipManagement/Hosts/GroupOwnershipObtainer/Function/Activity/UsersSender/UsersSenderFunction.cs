@@ -2,36 +2,38 @@
 // Licensed under the MIT license.
 using Microsoft.Azure.Functions.Worker;
 using Microsoft.DurableTask;
-using Models;
-using Repositories.Contracts;
+using Microsoft.Extensions.Logging;
+using Repositories.Contracts.Helpers;
 using Services.Contracts;
 using System;
+using System.Collections.Generic;
 using System.Threading.Tasks;
 
 namespace Hosts.GroupOwnershipObtainer
 {
     public class UsersSenderFunction
     {
-        private readonly ILoggingRepository _loggingRepository;
+        private readonly ILogger<UsersSenderFunction> _logger;
         private readonly IGroupOwnershipObtainerService _groupOwnershipObtainerService;
 
-        public UsersSenderFunction(ILoggingRepository loggingRepository, IGroupOwnershipObtainerService groupOwnershipObtainerService)
+        public UsersSenderFunction(ILogger<UsersSenderFunction> logger, IGroupOwnershipObtainerService groupOwnershipObtainerService)
         {
-            _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _groupOwnershipObtainerService = groupOwnershipObtainerService ?? throw new ArgumentNullException(nameof(groupOwnershipObtainerService));
         }
 
         [Function(nameof(UsersSenderFunction))]
         public async Task<string> SendUsersAsync([ActivityTrigger] UsersSenderRequest request)
         {
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(UsersSenderFunction)} function started", RunId = request.RunId }, VerbosityLevel.DEBUG);
-            var filePath = await _groupOwnershipObtainerService.SendMembershipAsync(request.SyncJob, request.GroupId, request.Users, request.CurrentPart, request.Exclusionary);
-            await _loggingRepository.LogMessageAsync(new LogMessage
+            using var scope = _logger.BeginSyncJobScope(request.SyncJob, new Dictionary<string, object>
             {
-                RunId = request.RunId,
-                Message = $"Successfully uploaded {request.Users.Count} users from source groups {request.SyncJob.Query} to blob storage to be put into the destination group {request.GroupId}."
+                ["CurrentPart"] = request.CurrentPart,
+                ["TotalParts"] = request.TotalParts
             });
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(UsersSenderFunction)} function completed", RunId = request.RunId }, VerbosityLevel.DEBUG);
+            _logger.FunctionStarted(nameof(UsersSenderFunction));
+            var filePath = await _groupOwnershipObtainerService.SendMembershipAsync(request.SyncJob, request.GroupId, request.Users, request.CurrentPart, request.Exclusionary);
+            _logger.UsersUploaded(request.Users.Count, request.SyncJob.Query, request.GroupId);
+            _logger.FunctionCompleted(nameof(UsersSenderFunction));
             return filePath;
         }
     }

@@ -3,8 +3,9 @@
 using Microsoft.Azure.Functions.Worker;
 using Microsoft.DurableTask;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
 using Models;
-using Repositories.Contracts;
+using Repositories.Contracts.Helpers;
 using Services.Entities;
 using System;
 using System.Collections.Generic;
@@ -31,22 +32,23 @@ namespace Hosts.GroupOwnershipObtainer
             var mainRequest = context.GetInput<OrchestratorRequest>();
             var syncJob = mainRequest.SyncJob;
 
-            await context.CallActivityAsync(nameof(LoggerFunction),
-                new LoggerRequest { Message = $"{nameof(OrchestratorFunction)} function started", SyncJob = syncJob, Verbosity = VerbosityLevel.DEBUG });
+            var logger = context.CreateReplaySafeLogger("GroupOwnershipObtainer.OrchestratorFunction");
+            using var scope = logger.BeginSyncJobScope(syncJob, new Dictionary<string, object>
+            {
+                ["CurrentPart"] = mainRequest.CurrentPart,
+                ["TotalParts"] = mainRequest.TotalParts
+            });
+
+            logger.FunctionStarted(nameof(OrchestratorFunction));
 
             try
             {
                 if (mainRequest.CurrentPart <= 0 || mainRequest.TotalParts <= 0)
                 {
-                    await context.CallActivityAsync(nameof(LoggerFunction),
-                                                new LoggerRequest
-                                                {
-                                                    SyncJob = syncJob,
-                                                    Message = $"Found invalid value for CurrentPart or TotalParts"
-                                                });
+                    logger.InvalidCurrentOrTotalPart();
 
-                    await context.CallActivityAsync(nameof(JobStatusUpdaterFunction), new JobStatusUpdaterRequest { SyncJob = syncJob, Status = SyncStatus.Error });
-                    await context.CallActivityAsync(nameof(TelemetryTrackerFunction), new TelemetryTrackerRequest { JobStatus = SyncStatus.Error, ResultStatus = ResultStatus.Failure, RunId = mainRequest.SyncJob.RunId });
+                    await context.CallActivityAsync(nameof(JobStatusUpdaterFunction), new JobStatusUpdaterRequest { SyncJob = syncJob, Status = SyncStatus.Error, CurrentPart = mainRequest.CurrentPart, TotalParts = mainRequest.TotalParts });
+                    await context.CallActivityAsync(nameof(TelemetryTrackerFunction), new TelemetryTrackerRequest { SyncJob = syncJob, CurrentPart = mainRequest.CurrentPart, TotalParts = mainRequest.TotalParts, JobStatus = SyncStatus.Error, ResultStatus = ResultStatus.Failure });
                     return;
                 }
 
@@ -56,29 +58,27 @@ namespace Hosts.GroupOwnershipObtainer
 
                 if (!sources.Any())
                 {
-                    await context.CallActivityAsync(
-                           nameof(LoggerFunction),
-                           new LoggerRequest
-                           {
-                               SyncJob = syncJob,
-                               Message = $"The job RowKey:{syncJob.RowKey} Part#{mainRequest.CurrentPart} does not have a valid query!",
-                           });
+                    logger.JobQueryNotValid(syncJob.Id, mainRequest.CurrentPart);
 
                     await context.CallActivityAsync(
                                nameof(JobStatusUpdaterFunction),
                                new JobStatusUpdaterRequest
                                {
                                    SyncJob = syncJob,
-                                   Status = SyncStatus.QueryNotValid
+                                   Status = SyncStatus.QueryNotValid,
+                                   CurrentPart = mainRequest.CurrentPart,
+                                   TotalParts = mainRequest.TotalParts
                                });
 
                     await context.CallActivityAsync(
                         nameof(TelemetryTrackerFunction),
                         new TelemetryTrackerRequest
                         {
+                            SyncJob = syncJob,
+                            CurrentPart = mainRequest.CurrentPart,
+                            TotalParts = mainRequest.TotalParts,
                             JobStatus = SyncStatus.QueryNotValid,
-                            ResultStatus = ResultStatus.Failure,
-                            RunId = syncJob.RunId
+                            ResultStatus = ResultStatus.Failure
                         });
 
                     return;
@@ -88,42 +88,39 @@ namespace Hosts.GroupOwnershipObtainer
                 {
                     try
                     {
-                        var hasValidJson = await context.CallActivityAsync<bool>(nameof(SchemaValidatorFunction), new SchemaValidatorRequest { Query = currentPart.ToString(), RunId = syncJob.RunId });
+                        var hasValidJson = await context.CallActivityAsync<bool>(nameof(SchemaValidatorFunction), new SchemaValidatorRequest { SyncJob = syncJob, CurrentPart = mainRequest.CurrentPart, TotalParts = mainRequest.TotalParts, Query = currentPart.ToString() });
                         if (!hasValidJson)
                         {
-                            await context.CallActivityAsync(nameof(JobStatusUpdaterFunction), new JobStatusUpdaterRequest { Status = SyncStatus.SchemaError, SyncJob = syncJob });
+                            await context.CallActivityAsync(nameof(JobStatusUpdaterFunction), new JobStatusUpdaterRequest { Status = SyncStatus.SchemaError, SyncJob = syncJob, CurrentPart = mainRequest.CurrentPart, TotalParts = mainRequest.TotalParts });
                             return;
                         }
                     }
                     catch (JsonException)
                     {
-                        await context.CallActivityAsync(nameof(LoggerFunction),
-                                new LoggerRequest
-                                {
-                                    SyncJob = syncJob,
-                                    Message = $"Source query is not valid for job:{syncJob.Id}"
-                                });
+                        logger.SourceQueryNotValid(syncJob.Id);
 
-                        await context.CallActivityAsync(nameof(JobStatusUpdaterFunction), new JobStatusUpdaterRequest { Status = SyncStatus.QueryNotValid, SyncJob = syncJob });
+                        await context.CallActivityAsync(nameof(JobStatusUpdaterFunction), new JobStatusUpdaterRequest { Status = SyncStatus.QueryNotValid, SyncJob = syncJob, CurrentPart = mainRequest.CurrentPart, TotalParts = mainRequest.TotalParts });
                         return;
                     }
                 }
-                var groupId = await context.CallActivityAsync<Guid>(nameof(GetGroupFunction), syncJob);
+                var groupId = await context.CallActivityAsync<Guid>(nameof(GetGroupFunction), new GetGroupRequest { SyncJob = syncJob, CurrentPart = mainRequest.CurrentPart, TotalParts = mainRequest.TotalParts });
                 if (groupId.Equals(Guid.Empty))
                 {
-                    await context.CallActivityAsync(nameof(LoggerFunction), new LoggerRequest { SyncJob = syncJob, Message = $"Unable to get group id for job:{syncJob.Id}" });
-                    await context.CallActivityAsync(nameof(JobStatusUpdaterFunction), new JobStatusUpdaterRequest { Status = SyncStatus.Error, SyncJob = syncJob });
+                    logger.UnableToGetGroupId(syncJob.Id);
+                    await context.CallActivityAsync(nameof(JobStatusUpdaterFunction), new JobStatusUpdaterRequest { Status = SyncStatus.Error, SyncJob = syncJob, CurrentPart = mainRequest.CurrentPart, TotalParts = mainRequest.TotalParts });
                     return;
                 }
-                await context.CallActivityAsync(nameof(LoggerFunction), new LoggerRequest { SyncJob = syncJob, Message = $"Group Id for job:{syncJob.Id} is {groupId}" });
-                var segmentResponse = await context.CallActivityAsync<List<SyncJob>>(nameof(GetJobsSegmentedFunction), new GetJobsSegmentedRequest { RunId = syncJob.RunId });
+                logger.GroupIdRetrieved(syncJob.Id, groupId);
+                var segmentResponse = await context.CallActivityAsync<List<SyncJob>>(nameof(GetJobsSegmentedFunction), new GetJobsSegmentedRequest { SyncJob = syncJob, CurrentPart = mainRequest.CurrentPart, TotalParts = mainRequest.TotalParts });
 
                 var groupDestinationSyncJobs = segmentResponse.Where(x => x.MembershipType == MembershipTypes.GroupMembership.ToString()).ToList();
 
                 var filteredJobs = await context.CallActivityAsync<List<Guid>>(nameof(JobsFilterFunction),
                                                                                new JobsFilterRequest
                                                                                {
-                                                                                   RunId = syncJob.RunId,
+                                                                                   SyncJob = syncJob,
+                                                                                   CurrentPart = mainRequest.CurrentPart,
+                                                                                   TotalParts = mainRequest.TotalParts,
                                                                                    RequestedSources = sources,
                                                                                    SyncJobs = groupDestinationSyncJobs.Select(x => new JobsFilterSyncJob
                                                                                    {
@@ -134,31 +131,19 @@ namespace Hosts.GroupOwnershipObtainer
 
                 if (!filteredJobs.Any())
                 {
-                    await context.CallActivityAsync(nameof(LoggerFunction),
-                                                   new LoggerRequest
-                                                   {
-                                                       SyncJob = syncJob,
-                                                       Message = $"There are no jobs matching the requested sources {string.Join(",", sources)}",
-                                                       Verbosity = VerbosityLevel.DEBUG
-                                                   });
+                    logger.NoJobsMatchingRequestedSources(string.Join(",", sources));
 
-                    await context.CallActivityAsync(nameof(JobStatusUpdaterFunction), new JobStatusUpdaterRequest { SyncJob = syncJob, Status = SyncStatus.MembershipDataNotFound });
-                    await context.CallActivityAsync(nameof(TelemetryTrackerFunction), new TelemetryTrackerRequest { JobStatus = SyncStatus.MembershipDataNotFound, ResultStatus = ResultStatus.Failure, RunId = syncJob.RunId });
+                    await context.CallActivityAsync(nameof(JobStatusUpdaterFunction), new JobStatusUpdaterRequest { SyncJob = syncJob, Status = SyncStatus.MembershipDataNotFound, CurrentPart = mainRequest.CurrentPart, TotalParts = mainRequest.TotalParts });
+                    await context.CallActivityAsync(nameof(TelemetryTrackerFunction), new TelemetryTrackerRequest { SyncJob = syncJob, CurrentPart = mainRequest.CurrentPart, TotalParts = mainRequest.TotalParts, JobStatus = SyncStatus.MembershipDataNotFound, ResultStatus = ResultStatus.Failure });
                     return;
                 }
 
-                await context.CallActivityAsync(nameof(LoggerFunction),
-                                                new LoggerRequest
-                                                {
-                                                    SyncJob = syncJob,
-                                                    Message = $"{nameof(OrchestratorFunction)} number of jobs in the syncJobs List: {filteredJobs.Count}",
-                                                    Verbosity = VerbosityLevel.DEBUG
-                                                });
+                logger.OrchestratorJobCount(nameof(OrchestratorFunction), filteredJobs.Count);
 
                 var owners = new List<Guid>();
                 foreach (var idChunck in filteredJobs.Chunk(5))
                 {
-                    var ownerRetrievalTasks = GenerateOwnerRetrievalTasks(context, idChunck, syncJob);
+                    var ownerRetrievalTasks = GenerateOwnerRetrievalTasks(context, idChunck, syncJob, mainRequest);
                     var ownerResults = await Task.WhenAll(ownerRetrievalTasks);
                     owners.AddRange(ownerResults.SelectMany(x => x));
                 }
@@ -170,6 +155,7 @@ namespace Hosts.GroupOwnershipObtainer
                                                                            GroupId = groupId,
                                                                            Users = owners,
                                                                            CurrentPart = mainRequest.CurrentPart,
+                                                                           TotalParts = mainRequest.TotalParts,
                                                                            Exclusionary = mainRequest.Exclusionary
                                                                        });
 
@@ -187,35 +173,37 @@ namespace Hosts.GroupOwnershipObtainer
             }
             catch (Exception ex)
             {
-                var message = $"Caught unexpected exception in Part# {mainRequest.CurrentPart}, marking sync job as errored. Exception:\n{ex}";
                 var status = SyncStatus.Error;
+                var isTimeout = ex.Message != null && ex.Message.Contains("The request timed out");
+                var isJsonException = ex.GetType() == typeof(JsonException) || ex.GetType().Name == "JsonReaderException";
 
-                if (ex.GetType() == typeof(JsonException) || ex.GetType().Name == "JsonReaderException")
-                {
-                    message = $"The job RowKey:{syncJob.RowKey} Part#{mainRequest.CurrentPart} does not have a valid query!";
-                    status = SyncStatus.QueryNotValid;
-                }
-
-                if (ex.Message != null && ex.Message.Contains("The request timed out"))
+                if (isTimeout)
                 {
                     syncJob.StartDate = context.CurrentUtcDateTime.AddMinutes(30);
-                    message = $"Rescheduling job at {syncJob.StartDate} due to Graph API timeout at Part#{mainRequest.CurrentPart}.";
+                    logger.ReschedulingJobDueToTimeout(syncJob.StartDate, mainRequest.CurrentPart);
                     status = SyncStatus.Idle;
                 }
+                else if (isJsonException)
+                {
+                    logger.JobQueryNotValid(syncJob.Id, mainRequest.CurrentPart);
+                    status = SyncStatus.QueryNotValid;
+                }
+                else
+                {
+                    logger.OrchestratorException(ex, mainRequest.CurrentPart);
+                }
 
-                await context.CallActivityAsync(nameof(LoggerFunction), new LoggerRequest { SyncJob = syncJob, Message = message });
-                await context.CallActivityAsync(nameof(JobStatusUpdaterFunction), new JobStatusUpdaterRequest { SyncJob = syncJob, Status = status });
+                await context.CallActivityAsync(nameof(JobStatusUpdaterFunction), new JobStatusUpdaterRequest { SyncJob = syncJob, Status = status, CurrentPart = mainRequest.CurrentPart, TotalParts = mainRequest.TotalParts });
 
                 if (status != SyncStatus.Idle)
                     await context.CallActivityAsync(nameof(TelemetryTrackerFunction),
-                                                    new TelemetryTrackerRequest { JobStatus = SyncStatus.Error, ResultStatus = ResultStatus.Failure, RunId = syncJob.RunId });
+                                                    new TelemetryTrackerRequest { SyncJob = syncJob, CurrentPart = mainRequest.CurrentPart, TotalParts = mainRequest.TotalParts, JobStatus = status, ResultStatus = ResultStatus.Failure });
             }
 
-            await context.CallActivityAsync(nameof(LoggerFunction),
-                new LoggerRequest { Message = $"{nameof(OrchestratorFunction)} function completed", SyncJob = syncJob, Verbosity = VerbosityLevel.DEBUG });
+            logger.FunctionCompleted(nameof(OrchestratorFunction));
         }
 
-        private List<Task<List<Guid>>> GenerateOwnerRetrievalTasks(TaskOrchestrationContext context, Guid[] groupIds, SyncJob syncJob)
+        private List<Task<List<Guid>>> GenerateOwnerRetrievalTasks(TaskOrchestrationContext context, Guid[] groupIds, SyncJob syncJob, OrchestratorRequest mainRequest)
         {
             var tasks = new List<Task<List<Guid>>>();
             foreach (var groupId in groupIds)
@@ -224,7 +212,9 @@ namespace Hosts.GroupOwnershipObtainer
                                        new GetGroupOwnersRequest
                                        {
                                            GroupId = groupId,
-                                           SyncJob = syncJob
+                                           SyncJob = syncJob,
+                                           CurrentPart = mainRequest.CurrentPart,
+                                           TotalParts = mainRequest.TotalParts
                                        });
 
                 tasks.Add(task);

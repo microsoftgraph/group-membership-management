@@ -1,9 +1,9 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-using Models;
 using Microsoft.Azure.Functions.Worker;
-using Repositories.Contracts;
+using Microsoft.Extensions.Logging;
+using Repositories.Contracts.Helpers;
 using System;
 using System.Threading.Tasks;
 using TeamsChannelMembershipObtainer.Service.Contracts;
@@ -12,25 +12,23 @@ namespace Hosts.TeamsChannelMembershipObtainer
 {
     public class JobStatusUpdaterFunction
     {
+        private readonly ILogger<JobStatusUpdaterFunction> _logger;
         private readonly ITeamsChannelService _teamsChannelService;
-        private readonly ILoggingRepository _loggingRepository;
 
-        public JobStatusUpdaterFunction(ILoggingRepository loggingRepository, ITeamsChannelService teamsChannelService)
+        public JobStatusUpdaterFunction(ILogger<JobStatusUpdaterFunction> logger, ITeamsChannelService teamsChannelService)
         {
-            _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _teamsChannelService = teamsChannelService ?? throw new ArgumentNullException(nameof(teamsChannelService));
         }
 
         [Function(nameof(JobStatusUpdaterFunction))]
         public async Task UpdateJobStatusAsync([ActivityTrigger] JobStatusUpdaterRequest request)
         {
-            var runId = request.SyncJob.RunId.GetValueOrDefault(Guid.Empty);
+            using var scope = _logger.BeginSyncJobScope(request.SyncJob);
 
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(JobStatusUpdaterFunction)} function started", RunId = runId }, VerbosityLevel.DEBUG);
-
+            _logger.FunctionStarted(nameof(JobStatusUpdaterFunction));
             await _teamsChannelService.UpdateSyncJobStatusAsync(request.SyncJob, request.Status);
-
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(JobStatusUpdaterFunction)} function completed", RunId = runId }, VerbosityLevel.DEBUG);
+            _logger.FunctionCompleted(nameof(JobStatusUpdaterFunction));
         }
     }
 }

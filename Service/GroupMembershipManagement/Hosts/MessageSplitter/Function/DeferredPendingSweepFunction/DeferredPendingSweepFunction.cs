@@ -48,6 +48,13 @@ namespace Hosts.MessageSplitter
 
     public class DeferredPendingSweepOrchestratorFunction
     {
+        private readonly RunLimiterSettings _runLimiterSettings;
+
+        public DeferredPendingSweepOrchestratorFunction(RunLimiterSettings runLimiterSettings)
+        {
+            _runLimiterSettings = runLimiterSettings ?? throw new ArgumentNullException(nameof(runLimiterSettings));
+        }
+
         [Function(nameof(DeferredPendingSweepOrchestratorFunction))]
         public async Task RunAsync([OrchestrationTrigger] TaskOrchestrationContext context)
         {
@@ -67,29 +74,66 @@ namespace Hosts.MessageSplitter
             var limiterEntityId = new EntityInstanceId(nameof(RunLimiter), lane);
             var prunedLeases = await context.Entities.CallEntityAsync<int>(limiterEntityId, nameof(RunLimiter.Prune), utcNow);
 
-            // Prune old index entries
-            var indexEntityId = new EntityInstanceId(nameof(DeferredPendingIndexEntity), lane);
-            const int maxIndexAgeMinutes = 60;
-            var prunedItems = await context.Entities.CallEntityAsync<List<DeferredPendingItem>>(
-                indexEntityId,
-                nameof(DeferredPendingIndexEntity.PruneOlderThanMinutes),
-                new PruneOlderThanMinutesRequest(utcNow, maxIndexAgeMinutes));
+            // Check current capacity after pruning expired leases.
+            // If all slots are occupied, the downstream updater is actively processing —
+            // do not prune deferred items; they will drain naturally when capacity frees.
+            var limiterState = await context.Entities.CallEntityAsync<RunLimiterState>(limiterEntityId, nameof(RunLimiter.GetState));
+            var activeLeases = limiterState?.Leases?.Count ?? 0;
+            var maxInFlight = _runLimiterSettings.MaxInFlightMessages;
 
-            // Set pruned jobs to Error status.
-            foreach (var item in prunedItems)
+            var prunedItemCount = 0;
+            if (activeLeases >= maxInFlight)
             {
-                await context.CallActivityAsync(
-                    nameof(JobStatusUpdaterFunction),
-                    new JobStatusUpdaterRequest
-                    {
-                        SyncJob = new SyncJob { Id = item.JobId, RunId = item.RunId },
-                        Status = SyncStatus.Error
-                    });
+                logger.SweepSkippedAtCapacity(lane, activeLeases, maxInFlight);
+            }
+            else
+            {
+                // Capacity is available but items are still waiting — they may be stuck.
+                // Prune entries older than the configured age threshold.
+                var maxAgeMinutes = _runLimiterSettings.MaxPendingAgeMinutes > 0
+                    ? _runLimiterSettings.MaxPendingAgeMinutes
+                    : 60;
 
-                logger.SweepPrunedStaleEntry(item.SequenceNumber, item.JobId, lane);
+                var indexEntityId = new EntityInstanceId(nameof(DeferredPendingIndexEntity), lane);
+                var prunedItems = await context.Entities.CallEntityAsync<List<DeferredPendingItem>>(
+                    indexEntityId,
+                    nameof(DeferredPendingIndexEntity.PruneOlderThanMinutes),
+                    new PruneOlderThanMinutesRequest(utcNow, maxAgeMinutes));
+
+                // Set pruned jobs to Error status.
+                var statusUpdateFailures = 0;
+                foreach (var item in prunedItems)
+                {
+                    try
+                    {
+                        await context.CallActivityAsync(
+                            nameof(JobStatusUpdaterFunction),
+                            new JobStatusUpdaterRequest
+                            {
+                                SyncJob = new SyncJob { Id = item.JobId, RunId = item.RunId },
+                                Status = SyncStatus.Error
+                            });
+                    }
+                    catch (Exception ex)
+                    {
+                        statusUpdateFailures++;
+                        logger.SweepJobStatusUpdateFailed(item.SequenceNumber, item.JobId, lane, ex.Message);
+                        // Continue — items are already removed from the index;
+                        // failing one status update should not abort the rest.
+                    }
+
+                    logger.SweepPrunedStaleEntry(item.SequenceNumber, item.JobId, lane);
+                }
+
+                if (statusUpdateFailures > 0)
+                {
+                    logger.SweepStatusUpdateFailures(statusUpdateFailures, prunedItems.Count, lane);
+                }
+
+                prunedItemCount = prunedItems.Count;
             }
 
-            logger.SweepCompleted(prunedLeases, prunedItems.Count, lane);
+            logger.SweepCompleted(prunedLeases, prunedItemCount, lane);
 
             // Kick drain.
             await context.CallSubOrchestratorAsync(nameof(DeferredPendingDrainOrchestrator), new DeferredPendingDrainRequest(lane));

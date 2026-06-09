@@ -3,9 +3,10 @@
 
 using Microsoft.Azure.Functions.Worker;
 using Microsoft.DurableTask;
+using Microsoft.Extensions.Logging;
 using Models;
 using Models.Entities;
-using Repositories.Contracts;
+using Repositories.Contracts.Helpers;
 using Repositories.Contracts.InjectConfig;
 using System;
 using System.Collections.Generic;
@@ -16,76 +17,57 @@ namespace Hosts.TeamsChannelMembershipObtainer
 {
     public class OrchestratorFunction
     {
-        private readonly ILoggingRepository _loggingRepository;
-        private readonly ITeamsChannelService _teamsChannelService;
         private readonly bool _isTeamsChannelDryRunEnabled;
 
-        public OrchestratorFunction(ILoggingRepository loggingRepository, ITeamsChannelService teamsChannelService, IDryRunValue dryRun)
+        public OrchestratorFunction(IDryRunValue dryRun)
         {
-            _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
-            _teamsChannelService = teamsChannelService ?? throw new ArgumentNullException(nameof(teamsChannelService));
             _isTeamsChannelDryRunEnabled = dryRun?.DryRunEnabled ?? throw new ArgumentNullException(nameof(dryRun));
         }
 
         [Function(nameof(OrchestratorFunction))]
         public async Task RunOrchestratorAsync([OrchestrationTrigger] TaskOrchestrationContext context)
         {
-
             var channelSyncInfo = context.GetInput<ChannelSyncInfo>();
+            if (channelSyncInfo == null)
+                throw new ArgumentNullException(nameof(channelSyncInfo), "ChannelSyncInfo cannot be null.");
+
+            var logger = context.CreateReplaySafeLogger("TeamsChannelMembershipObtainer.OrchestratorFunction");
             var runId = channelSyncInfo.SyncJob.RunId.GetValueOrDefault(Guid.Empty);
 
-            _loggingRepository.SetSyncJobProperties(runId, channelSyncInfo.SyncJob.ToDictionary());
-          
+            using var scope = logger.BeginSyncJobScope(channelSyncInfo.SyncJob, new Dictionary<string, object>
+            {
+                ["CurrentPart"] = channelSyncInfo.CurrentPart,
+                ["TotalParts"] = channelSyncInfo.TotalParts
+            });
+
             try
             {
                 if (channelSyncInfo.CurrentPart <= 0 || channelSyncInfo.TotalParts <= 0)
                 {
-                    await context.CallActivityAsync(nameof(LoggerFunction),
-                       new LoggerRequest
-                       {
-                           RunId = runId,
-                           Message = $"Found invalid value for CurrentPart or TotalParts. Marked as Error.",
-                           Verbosity = VerbosityLevel.DEBUG
-                       });
-
+                    logger.InvalidPartValues();
                     await context.CallActivityAsync(nameof(JobStatusUpdaterFunction), new JobStatusUpdaterRequest { SyncJob = channelSyncInfo.SyncJob, Status = SyncStatus.Error });
                     await context.CallActivityAsync(nameof(TelemetryTrackerFunction), new TelemetryTrackerRequest { JobStatus = SyncStatus.Error, ResultStatus = ResultStatus.Failure, RunId = runId });
                     return;
                 }
 
-                await context.CallActivityAsync(nameof(LoggerFunction),
-                new LoggerRequest
-                {
-                    RunId = runId,
-                    Message = $"{nameof(OrchestratorFunction)} function started at: {context.CurrentUtcDateTime}",
-                    Verbosity = VerbosityLevel.DEBUG
-                });
+                logger.OrchestratorStarted(nameof(OrchestratorFunction), context.CurrentUtcDateTime);
 
                 var parsedAndValidated = await context.CallActivityAsync<ValidateChannelResponse>(nameof(ChannelValidatorFunction), channelSyncInfo);
 
                 if (!parsedAndValidated.IsValid)
                 {
-                    await context.CallActivityAsync(nameof(LoggerFunction),
-                       new LoggerRequest
-                       {
-                           RunId = runId,
-                           Message = $"Teams Channel Destination did not validate. Marked as {channelSyncInfo.SyncJob.Status}.",
-                           Verbosity = VerbosityLevel.DEBUG
-                       });
-
+                    logger.ChannelValidationFailed(channelSyncInfo.SyncJob.Status);
                     await context.CallActivityAsync(nameof(TelemetryTrackerFunction), new TelemetryTrackerRequest { JobStatus = SyncStatus.Error, ResultStatus = ResultStatus.Failure, RunId = runId });
                     return;
                 }
 
-
-                var users = await context.CallActivityAsync<List<AzureADTeamsUser>>(nameof(UserReaderFunction), 
+                var users = await context.CallActivityAsync<List<AzureADTeamsUser>>(nameof(UserReaderFunction),
                     new UserReaderRequest
                     {
                         Channel = parsedAndValidated.ParsedChannel,
                         RunId = runId,
                         ChannelSyncInfo = channelSyncInfo
                     });
-
 
                 var filePath = await context.CallActivityAsync<string>(nameof(FileUploaderFunction),
                      new FileUploaderRequest
@@ -96,44 +78,23 @@ namespace Hosts.TeamsChannelMembershipObtainer
                          Channel = parsedAndValidated.ParsedChannel
                      });
 
-
                 await context.CallActivityAsync(nameof(QueueMessageSenderFunction),
                      new QueueMessageSenderRequest
                      {
                          ChannelSyncInfo = channelSyncInfo,
                          FilePath = filePath
                      });
-
             }
             catch (Exception ex)
             {
-                await context.CallActivityAsync(nameof(LoggerFunction),
-                new LoggerRequest
-                {
-                    RunId = runId,
-                    Message = $"Caught unexpected exception: {ex}. Marking job as errored.",
-                    Verbosity = VerbosityLevel.DEBUG
-                });
-
-                await context.CallActivityAsync(nameof(JobStatusUpdaterFunction), new JobStatusUpdaterRequest { SyncJob = channelSyncInfo.SyncJob, Status = SyncStatus.Error });
-                await context.CallActivityAsync(nameof(TelemetryTrackerFunction), new TelemetryTrackerRequest { JobStatus = SyncStatus.Error, ResultStatus = ResultStatus.Failure, RunId = runId });
-
-                // rethrow caught exception so App Insights can get it.
+                logger.UnexpectedExceptionCaught(ex);
+                var syncJob = channelSyncInfo?.SyncJob;
+                await context.CallActivityAsync(nameof(JobStatusUpdaterFunction), new JobStatusUpdaterRequest { SyncJob = syncJob, Status = SyncStatus.Error });
+                await context.CallActivityAsync(nameof(TelemetryTrackerFunction), new TelemetryTrackerRequest { JobStatus = SyncStatus.Error, ResultStatus = ResultStatus.Failure, RunId = syncJob?.RunId ?? Guid.Empty });
                 throw;
             }
-            finally
-            {
-                _loggingRepository.RemoveSyncJobProperties(runId);
-            }
 
-
-            await context.CallActivityAsync(nameof(LoggerFunction),
-                new LoggerRequest
-                {
-                    RunId = runId,
-                    Message = $"{nameof(OrchestratorFunction)} function finished at: {context.CurrentUtcDateTime}",
-                    Verbosity = VerbosityLevel.DEBUG
-                });
+            logger.OrchestratorCompleted(nameof(OrchestratorFunction), context.CurrentUtcDateTime);
         }
     }
 }

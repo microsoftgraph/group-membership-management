@@ -1097,9 +1097,8 @@ Please reach out to support to update the source definition and re-enable the me
 
 Your group's affiliation with GMM has been removed for inactivity due to one of the following reasons:
 
-* Source and/or destination group(s) no longer exist.
-*	Group owner did not take action on a drastic membership change alert.
-*	Membership syncs were paused by owner for more than 30 days.
+*	Membership syncs were paused for more than 30 days — either by the group owner or due to unresolved required actions.
+*	Membership configuration was returned for revisions and was not resubmitted in time.
 
 Please reach out to the **CC'ed alias** for inquiries about re-onboarding or any questions you may have.
 You can click on the "Go to GMM UI" option below to check the status of other groups you own and currently manage through GMM.</value>
@@ -1295,5 +1294,68 @@ To continue using GMM to manage this group:
 Once the nested groups are removed and group sync re-enabled, GMM will resume managing membership based on your configured rules.
 
 If you intentionally require nested groups, GMM will not be able to manage this group, and you should keep manual or alternative management.</value>
+  </data>
+  <data name="SyncStartedFallback.Badge" xml:space="preserve">
+    <value>AWARENESS</value>
+  </data>
+  <data name="SyncStartedFallback.Description" xml:space="preserve">
+    <value>GMM has begun the first scheduled membership sync for this group based on the rules configured by **{0}**. No action is required from you.</value>
+  </data>
+  <data name="SyncStartedFallback.CalloutTitle" xml:space="preserve">
+    <value>WHAT HAPPENS NEXT</value>
+  </data>
+  <data name="SyncStartedFallback.CalloutBody" xml:space="preserve">
+    <value>GMM is working on populating members based on the rules you set up. You'll receive a follow-up notification once the sync is completed.</value>
+  </data>
+  <data name="SyncStartedFallback.CtaLabel" xml:space="preserve">
+    <value>View group in GMM UI</value>
+  </data>
+  <data name="SyncStartedFallback.FooterExplanation" xml:space="preserve">
+    <value>**Why am I getting this?** You're listed as an owner of **{0}**. Owners receive GMM notifications for awareness and to act when needed.</value>
+  </data>
+  <data name="SyncCompletedFallback.Badge" xml:space="preserve">
+    <value>AWARENESS</value>
+  </data>
+  <data name="SyncCompletedFallback.Description" xml:space="preserve">
+    <value>GMM has finished synchronizing the membership for this group. The changes below have been applied.</value>
+  </data>
+  <data name="SyncCompletedFallback.CalloutTitle" xml:space="preserve">
+    <value>SYNC SUMMARY</value>
+  </data>
+  <data name="SyncCompletedFallback.CalloutBody" xml:space="preserve">
+    <value>**{0}** users were added and **{1}** users were removed from **{2}**. Review the updated membership in the GMM portal.</value>
+  </data>
+  <data name="SyncCompletedFallback.CtaLabel" xml:space="preserve">
+    <value>View group in GMM UI</value>
+  </data>
+  <data name="SyncCompletedFallback.FooterExplanation" xml:space="preserve">
+    <value>**Why am I getting this?** You're listed as an owner of **{0}**. Owners receive GMM notifications for awareness and to act when needed.</value>
+  </data>
+  <data name="FallbackGroupType.M365Group" xml:space="preserve">
+    <value>M365 Group</value>
+  </data>
+  <data name="FallbackGroupType.M365GroupVivaEngage" xml:space="preserve">
+    <value>M365 Group &#8212; Viva Engage</value>
+  </data>
+  <data name="FallbackGroupType.SecurityGroup" xml:space="preserve">
+    <value>Security Group</value>
+  </data>
+  <data name="FallbackDetailsRow.GroupAlias" xml:space="preserve">
+    <value>GROUP ALIAS</value>
+  </data>
+  <data name="FallbackDetailsRow.GroupType" xml:space="preserve">
+    <value>GROUP TYPE</value>
+  </data>
+  <data name="FallbackDetailsRow.ObjectId" xml:space="preserve">
+    <value>OBJECT ID</value>
+  </data>
+  <data name="FallbackDetailsRow.RequestedBy" xml:space="preserve">
+    <value>REQUESTED BY</value>
+  </data>
+  <data name="FallbackDetailsRow.MembersAdded" xml:space="preserve">
+    <value>MEMBERS ADDED</value>
+  </data>
+  <data name="FallbackDetailsRow.MembersRemoved" xml:space="preserve">
+    <value>MEMBERS REMOVED</value>
   </data>
 </root>

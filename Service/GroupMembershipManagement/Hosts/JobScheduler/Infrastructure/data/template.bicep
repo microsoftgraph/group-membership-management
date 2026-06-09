@@ -8,39 +8,21 @@ param environmentAbbreviation string
 @maxLength(3)
 param solutionAbbreviation string = 'gmm'
 
-param storageAccountSku string = 'Standard_LRS'
+var functionsStorageAccountName = take('fn${solutionAbbreviation}${environmentAbbreviation}${uniqueString(resourceGroup().id)}', 24)
 
-@description('Resource location.')
-param location string
-
-@description('Classify the types of resources in prereqs resource group.')
-param prereqsResourceGroupClassification string = 'prereqs'
-
-var keyVaultName = '${solutionAbbreviation}-data-${environmentAbbreviation}'
-var prodStorageAccountName = substring('js${solutionAbbreviation}${environmentAbbreviation}prod${uniqueString(resourceGroup().id)}',0,23)
-
-module jobSchedulerStorageAccountProd 'storageAccount.bicep' = {
-  name: 'jsProdstorageAccountTemplate'
-  params: {
-    name: prodStorageAccountName
-    sku: storageAccountSku
-    keyVaultName: keyVaultName
-    location: location
-    storageAccountSettingName: 'jobSchedulerStorageAccountProd'
-    appPackageContainerSettingName: 'jobSchedulerAppPackageContainerProd'
-    appPackageContainerName: 'app-package'
-  }
+resource functionsStorageAccount 'Microsoft.Storage/storageAccounts@2022-05-01' existing = {
+  name: functionsStorageAccountName
 }
 
-var nspName = '${solutionAbbreviation}-nsp-${environmentAbbreviation}'
-var prereqsResourceGroupName = '${solutionAbbreviation}-${prereqsResourceGroupClassification}-${environmentAbbreviation}'
+resource blobServices 'Microsoft.Storage/storageAccounts/blobServices@2022-05-01' existing = {
+  parent: functionsStorageAccount
+  name: 'default'
+}
 
-module jsStorageAccountAssociationTemplate 'networkSecurityPerimeterResourceAssociation.bicep' = {
-  name: 'jsStorageAccountAssociationTemplate'
-  scope: resourceGroup(prereqsResourceGroupName)
-  params: {
-    nspName: nspName
-    profileName: 'storageaccount'
-    resourceId: jobSchedulerStorageAccountProd.outputs.storageAccountId
+resource appPackageContainer 'Microsoft.Storage/storageAccounts/blobServices/containers@2022-05-01' = {
+  parent: blobServices
+  name: 'jobscheduler-app-package'
+  properties: {
+    publicAccess: 'None'
   }
 }

@@ -1,14 +1,13 @@
 // Copyright(c) Microsoft Corporation.
 // Licensed under the MIT license.
 using Models;
-using System;
+using Services.Entities;
 
 namespace Hosts.GraphUpdater
 {
-    public class TelemetryTrackerRequest
+    public class TelemetryTrackerRequest : GraphUpdaterRequestBase
     {
         public SyncStatus JobStatus { get; set; }
         public ResultStatus ResultStatus { get; set; }
-        public Guid? RunId { get; set; }
     }
 }

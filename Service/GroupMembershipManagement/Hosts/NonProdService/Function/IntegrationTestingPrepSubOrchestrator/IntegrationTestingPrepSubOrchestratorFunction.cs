@@ -2,8 +2,9 @@
 // Licensed under the MIT license.
 using Microsoft.Azure.Functions.Worker;
 using Microsoft.DurableTask;
+using Microsoft.Extensions.Logging;
 using Models;
-using Repositories.Contracts;
+using Repositories.Contracts.Helpers;
 using Services.Contracts;
 using Services.Entities;
 using System;
@@ -48,12 +49,15 @@ namespace Hosts.NonProdService
             var runId = request.RunId;
             var tenantUserCount = request.TenantUserCount;
 
-            await context.CallActivityAsync(nameof(LoggerFunction), new LoggerRequest { Message = $"{nameof(IntegrationTestingPrepSubOrchestratorFunction)} function started", RunId = runId, Verbosity = VerbosityLevel.DEBUG });
+            var logger = context.CreateReplaySafeLogger("Hosts.NonProdService.IntegrationTestingPrepSubOrchestratorFunction");
+            using var scope = logger.BeginRunIdScope(runId);
+
+            logger.FunctionStarted(nameof(IntegrationTestingPrepSubOrchestratorFunction));
 
             var tenantUsersRequired = GetMinimumUsersRequiredForTenant();
             if (tenantUserCount < tenantUsersRequired)
             {
-                await context.CallActivityAsync(nameof(LoggerFunction), new LoggerRequest { Message = $"Insufficient users in tenant. {tenantUserCount} is less than the minimum requirement of {tenantUsersRequired} users." });
+                logger.InsufficientUsersInTenant(tenantUserCount, tenantUsersRequired);
                 throw new Exception($"Error occurred in the {nameof(IntegrationTestingPrepSubOrchestratorFunction)}, because {tenantUserCount} is less than the minimum requirement of {tenantUsersRequired} users.");
             }
 
@@ -67,14 +71,14 @@ namespace Hosts.NonProdService
 
             if (tenantUsers == null)
             {
-                await context.CallActivityAsync(nameof(LoggerFunction), new LoggerRequest { Message = $"Error with {nameof(TenantUserReaderFunction)}, check exception" });
+                logger.ErrorWithFunction(nameof(TenantUserReaderFunction));
                 throw new Exception($"Error occurred in the {nameof(TenantUserReaderFunction)}.");
             }
 
             // Create and populate each group
             foreach (var groupName in _groupSizes.Keys)
             {
-                await context.CallActivityAsync(nameof(LoggerFunction), new LoggerRequest { Message = $"Creating, if nonexistent, and populating, if not properly populated, group with name {groupName}", RunId = runId });
+                logger.CreatingAndPopulatingGroup(groupName.ToString());
 
                 var groupUserCount = (int)_groupSizes[groupName];
                 var desiredMembership = tenantUsers.Take(groupUserCount).ToList();
@@ -91,18 +95,14 @@ namespace Hosts.NonProdService
 
                 if (groupResponse == null)
                 {
-                    await context.CallActivityAsync(nameof(LoggerFunction), new LoggerRequest { Message = $"Error with {nameof(GroupCreatorAndRetrieverFunction)}, check exception" });
+                    logger.ErrorWithFunction(nameof(GroupCreatorAndRetrieverFunction));
 
                     throw new Exception($"Error occurred in the  {nameof(GroupCreatorAndRetrieverFunction)}, possibly due to not enough users existing in the tenant not getting retrieved");
                 }
 
                 var membershipDifference = _nonProdService.GetMembershipDifference(groupResponse.Members, desiredMembership);
 
-                await context.CallActivityAsync(nameof(LoggerFunction), new LoggerRequest
-                {
-                    Message = $"Calculated membership difference for {groupName}: Must add {membershipDifference.UsersToAdd.Count} users and remove {membershipDifference.UsersToRemove.Count} users.",
-                    RunId = runId
-                });
+                logger.CalculatedMembershipDifference(groupName.ToString(), membershipDifference.UsersToAdd.Count, membershipDifference.UsersToRemove.Count);
 
                 if (membershipDifference.UsersToAdd.Count > 0)
                     await context.CallSubOrchestratorAsync<GraphUpdaterStatus>(
@@ -127,7 +127,7 @@ namespace Hosts.NonProdService
                         });
             }
 
-            await context.CallActivityAsync(nameof(LoggerFunction), new LoggerRequest { Message = $"{nameof(IntegrationTestingPrepSubOrchestratorFunction)} function completed", RunId = runId, Verbosity = VerbosityLevel.DEBUG });
+            logger.FunctionCompleted(nameof(IntegrationTestingPrepSubOrchestratorFunction));
         }
 
         private int GetMinimumUsersRequiredForTenant()

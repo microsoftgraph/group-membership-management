@@ -35,6 +35,7 @@ namespace Repositories.Mail
         private readonly IDatabaseSettingsRepository _settingsRepository;
         private readonly IRetryPolicyProvider _retryPolicyProvider;
         private readonly TelemetryClient _telemetryClient;
+        private readonly IMailFallbackBuilder _mailFallbackBuilder;
 
         public MailRepository(
             GraphServiceClient graphClient, 
@@ -45,7 +46,8 @@ namespace Repositories.Mail
             IGraphGroupRepository graphGroupRepository,
             IDatabaseSettingsRepository settingsRepository,
             IRetryPolicyProvider retryPolicyProvider,
-            TelemetryClient telemetryClient
+            TelemetryClient telemetryClient,
+            IMailFallbackBuilder mailFallbackBuilder
             )
         {
             _graphClient = graphClient ?? throw new ArgumentNullException(nameof(graphClient));
@@ -57,6 +59,7 @@ namespace Repositories.Mail
             _settingsRepository = settingsRepository ?? throw new ArgumentNullException(nameof(settingsRepository));
             _retryPolicyProvider = retryPolicyProvider ?? throw new ArgumentNullException(nameof(retryPolicyProvider));
             _telemetryClient = telemetryClient ?? throw new ArgumentNullException(nameof(telemetryClient));
+            _mailFallbackBuilder = mailFallbackBuilder ?? throw new ArgumentNullException(nameof(mailFallbackBuilder));
         }
 
         public async Task<HttpResponseMessage> SendMailAsync(EmailMessage emailMessage, Guid? runId)
@@ -220,10 +223,55 @@ namespace Repositories.Mail
             var template = new AdaptiveCardTemplate(adaptiveCardJson);
             var adaptiveCard = template.Expand(cardData);
 
-            var simpleMessage = GetSimpleMessage(emailMessage);
-            var fallbackHTMLContent = simpleMessage.Body.Content;
+            var sentDate = DateTime.UtcNow.ToString("MMM dd, yyyy");
+            string htmlContent;
 
-            var htmlTemplate = @"<html>
+            if (_mailConfig.EnableStyledFallbackEmails)
+            {
+                if (string.Equals(emailMessage?.Content, "SyncStartedEmailBody", StringComparison.OrdinalIgnoreCase))
+                {
+                    var styledFallback = await _mailFallbackBuilder.BuildSyncStartedFallbackAsync(emailMessage, destinationGroupName, groupId, jobUrl, sentDate);
+                    htmlContent = $@"<!DOCTYPE html>
+<html lang=""en"">
+<head>
+  <meta http-equiv=""Content-Type"" content=""text/html; charset=utf-8"">
+  <meta name=""viewport"" content=""width=device-width, initial-scale=1.0"">
+  <title>{System.Net.WebUtility.HtmlEncode(destinationGroupName)}</title>
+  <script type=""application/adaptivecard+json"">
+{adaptiveCard}
+  </script>
+</head>
+<body style=""margin:0;padding:0;background-color:#f3f2f1;-webkit-font-smoothing:antialiased;"">
+{styledFallback}
+</body>
+</html>";
+                }
+                else if (string.Equals(emailMessage?.Content, "SyncCompletedEmailBody", StringComparison.OrdinalIgnoreCase))
+                {
+                    var styledFallback = await _mailFallbackBuilder.BuildSyncCompletedFallbackAsync(emailMessage, destinationGroupName, groupId, jobUrl, sentDate);
+                    htmlContent = $@"<!DOCTYPE html>
+<html lang=""en"">
+<head>
+  <meta http-equiv=""Content-Type"" content=""text/html; charset=utf-8"">
+  <meta name=""viewport"" content=""width=device-width, initial-scale=1.0"">
+  <title>{System.Net.WebUtility.HtmlEncode(destinationGroupName)}</title>
+  <script type=""application/adaptivecard+json"">
+{adaptiveCard}
+  </script>
+</head>
+<body style=""margin:0;padding:0;background-color:#f3f2f1;-webkit-font-smoothing:antialiased;"">
+{styledFallback}
+</body>
+</html>";
+                }
+                else
+                {
+                    // Legacy adaptive-card + plain-text fallback for notification types
+                    // that have not yet been migrated to a styled HTML template.
+                    var simpleMessage = GetSimpleMessage(emailMessage);
+                    var fallbackHTMLContent = simpleMessage.Body.Content;
+
+                    var legacyHtmlTemplate = @"<html>
                 <head
                   <meta http-equiv=""Content-Type"" content=""text/html; charset=utf-8"">
                   <script type=""application/adaptivecard+json"">
@@ -237,7 +285,31 @@ namespace Repositories.Mail
                 </body>
                 </html>";
 
-            var htmlContent = string.Format(htmlTemplate, adaptiveCard, fallbackHTMLContent);
+                    htmlContent = string.Format(legacyHtmlTemplate, adaptiveCard, fallbackHTMLContent);
+                }
+            }
+            else
+            {
+                // Feature disabled: use legacy adaptive-card + plain-text fallback for all notification types.
+                var simpleMessage = GetSimpleMessage(emailMessage);
+                var fallbackHTMLContent = simpleMessage.Body.Content;
+
+                var legacyHtmlTemplate = @"<html>
+                <head
+                  <meta http-equiv=""Content-Type"" content=""text/html; charset=utf-8"">
+                  <script type=""application/adaptivecard+json"">
+                 {0}
+                  </script>
+                </head>
+                <body>
+                <p style=""color: red;"">Warning: Group Membership Management (GMM) notifications are powered by Outlook Actionable Messages. The following is a fallback message that you will see if the Actionable Message fails to render.</p>
+                <h1>Original Message</h1>
+                <pre>{1}</pre>
+                </body>
+                </html>";
+
+                htmlContent = string.Format(legacyHtmlTemplate, adaptiveCard, fallbackHTMLContent);
+            }
 
             var message = new Message
             {

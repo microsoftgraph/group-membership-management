@@ -3,6 +3,7 @@
 
 using Models;
 using Repositories.Contracts;
+using Repositories.Contracts.InjectConfig;
 using Services.Contracts;
 using Services.Messages.Requests;
 using Services.Messages.Responses;
@@ -14,12 +15,15 @@ namespace Services
     {
         private readonly INotificationRepository _notificationRepository;
         private readonly ILoggingRepository _loggingRepository;
+        private readonly IHandleInactiveJobsConfig _handleInactiveJobsConfig;
 
         public GetThresholdNotificationHandler(ILoggingRepository loggingRepository,
-                                               INotificationRepository notificationRepository) : base(loggingRepository)
+                                               INotificationRepository notificationRepository,
+                                               IHandleInactiveJobsConfig handleInactiveJobsConfig) : base(loggingRepository)
         {
             _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
             _notificationRepository = notificationRepository ?? throw new ArgumentNullException(nameof(notificationRepository));
+            _handleInactiveJobsConfig = handleInactiveJobsConfig ?? throw new ArgumentNullException(nameof(handleInactiveJobsConfig));
         }
 
         protected override async Task<GetThresholdNotificationResponse> ExecuteCoreAsync(GetThresholdNotificationRequest request)
@@ -43,6 +47,7 @@ namespace Services
                 response.ChangeQuantityForRemovals = notification.ChangeQuantityForRemovals;
                 response.ChangePercentageForRemovals = notification.ChangePercentageForRemovals;
                 response.ThresholdPercentageForRemovals = notification.ThresholdPercentageForRemovals;
+                response.PurgeDate = notification.LastUpdatedTime.AddDays(_handleInactiveJobsConfig.NumberOfDaysBeforePurging);
                 response.StatusCode = HttpStatusCode.OK;
             }
             catch (Exception ex)

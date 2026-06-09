@@ -2,7 +2,9 @@
 // Licensed under the MIT license.
 
 using Microsoft.Azure.Functions.Worker;
-using Repositories.Contracts;
+using Microsoft.Extensions.Logging;
+using Repositories.Contracts.Helpers;
+using Services.Notifier;
 using System;
 using System.Threading.Tasks;
 using Services.Notifier.Contracts;
@@ -12,22 +14,28 @@ namespace Hosts.Notifier
 {
     public class CreateThresholdNotificationFunction
     {
-        private readonly ILoggingRepository _loggingRepository = null;
-        private readonly INotifierService _notifierService = null;
+        private readonly ILogger<CreateThresholdNotificationFunction> _logger;
+        private readonly INotifierService _notifierService;
 
-        public CreateThresholdNotificationFunction(ILoggingRepository loggingRepository, INotifierService notifierService)
+        public CreateThresholdNotificationFunction(ILogger<CreateThresholdNotificationFunction> logger, INotifierService notifierService)
         {
-            _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _notifierService = notifierService ?? throw new ArgumentNullException(nameof(notifierService));
         }
 
         [Function(nameof(CreateThresholdNotificationFunction))]
         public async Task<Models.ThresholdNotifications.ThresholdNotification> CreateActionableNotificationFromContentAsync([ActivityTrigger] OrchestratorRequest message)
         {
-            await _loggingRepository.LogMessageAsync(new LogMessage { RunId = message.RunId, Message = $"{nameof(CreateThresholdNotificationFunction)} function started at: {DateTime.UtcNow}" });
-            var notification = await _notifierService.CreateActionableNotificationFromContentAsync(message.MessageBody);
-            await _loggingRepository.LogMessageAsync(new LogMessage { RunId = message.RunId, Message = $"{nameof(CreateThresholdNotificationFunction)} function completed at: {DateTime.UtcNow}" });
-            return notification;
+            var messageContent = NotificationMessageContentParser.ParseMessageBody(message.MessageBody);
+            var job = NotificationMessageContentParser.GetRequiredValue<SyncJob>(messageContent, "SyncJob");
+
+            using (_logger.BeginSyncJobScope(job))
+            {
+                _logger.FunctionStarted(nameof(CreateThresholdNotificationFunction));
+                var notification = await _notifierService.CreateActionableNotificationFromContentAsync(message.MessageBody);
+                _logger.FunctionCompleted(nameof(CreateThresholdNotificationFunction));
+                return notification;
+            }
         }
     }
 }

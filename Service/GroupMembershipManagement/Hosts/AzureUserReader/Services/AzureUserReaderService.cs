@@ -3,8 +3,9 @@
 
 using Azure;
 using Azure.Storage.Blobs.Models;
+using Hosts.AzureUserReader;
 using Models;
-using Repositories.Contracts;
+using Microsoft.Extensions.Logging;
 using Repositories.Contracts.InjectConfig;
 using Services.Contracts;
 using Services.Entities;
@@ -21,17 +22,17 @@ namespace Services
     {
         private const string MemberIdsFileName = "memberids.csv";
 
-        private readonly IBlobClientFactory _blobClientFactory = null;
-        private readonly ILoggingRepository _loggingRepository = null;
-        private readonly IStorageAccountSecret _storageAccountSecret = null;
+        private readonly IBlobClientFactory _blobClientFactory;
+        private readonly ILogger<AzureUserReaderService> _logger;
+        private readonly IStorageAccountSecret _storageAccountSecret;
 
         public AzureUserReaderService(
             IStorageAccountSecret storageAccountSecret,
-            ILoggingRepository loggingRepository,
+            ILogger<AzureUserReaderService> logger,
             IBlobClientFactory blobClientFactory)
         {
             _storageAccountSecret = storageAccountSecret ?? throw new ArgumentNullException(nameof(storageAccountSecret));
-            _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _blobClientFactory = blobClientFactory ?? throw new ArgumentNullException(nameof(blobClientFactory));
         }
 
@@ -41,7 +42,7 @@ namespace Services
             var blob = await DownloadFileAsync(uri);
             var personnelNumbers = ExtractPersonnelNumbers(blob).Where(x => !string.IsNullOrWhiteSpace(x)).ToList();
 
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Retrieved {personnelNumbers.Count} personnel numbers." });
+            _logger.PersonnelNumbersRetrieved(personnelNumbers.Count);
 
             return personnelNumbers;
         }
@@ -54,7 +55,7 @@ namespace Services
             var uri = new Uri($"https://{_storageAccountSecret.AccountName}.blob.core.windows.net/{request.ContainerName}/{blobPath}");
             await UploadFileAsync(uri, usersRetrieved);
 
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Uploaded {usersRetrieved.Count} user ids." });
+            _logger.UserIdsUploaded(usersRetrieved.Count);
         }
 
         private async Task<Stream> DownloadFileAsync(Uri blobPath)
@@ -70,9 +71,8 @@ namespace Services
             }
             else
             {
-                var message = $"File not found {blobPath}.";
-                await _loggingRepository.LogMessageAsync(new LogMessage { Message = message });
-                throw new FileNotFoundException(message);
+                _logger.FileNotFound(blobPath);
+                throw new FileNotFoundException($"File not found {blobPath}.");
             }
 
             if (status >= 200 && status <= 299)
@@ -82,9 +82,8 @@ namespace Services
             else
             {
                 var rawResponse = response.GetRawResponse();
-                var message = $"An error occurred while downloading the file.\nStatusCode:{rawResponse.Status}\n{rawResponse.ReasonPhrase}";
-                await _loggingRepository.LogMessageAsync(new LogMessage { Message = message });
-                throw new DownloadFileException(message);
+                _logger.FileDownloadError(rawResponse.Status, rawResponse.ReasonPhrase);
+                throw new DownloadFileException($"An error occurred while downloading the file.\nStatusCode:{rawResponse.Status}\n{rawResponse.ReasonPhrase}");
             }
         }
 

@@ -9,5 +9,6 @@ namespace Models
         public int MaxInFlightMessages { get; set; }
         public int LeaseTimeoutMinutes { get; set; }
         public int HeartbeatIntervalMinutes { get; set; }
+        public int MaxPendingAgeMinutes { get; set; }
     }
 }

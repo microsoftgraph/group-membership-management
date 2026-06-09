@@ -1,13 +1,12 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
-using Models;
 using Models.Notifications;
+using Services.Entities;
 
 namespace Hosts.GraphUpdater
 {
-    public class EmailSenderRequest
+    public class EmailSenderRequest : GraphUpdaterRequestBase
     {
-        public SyncJob SyncJob { get; set; }
         public NotificationMessageType NotificationType { get; set; }
         public string[] AdditionalContentParams { get; set; }
     }

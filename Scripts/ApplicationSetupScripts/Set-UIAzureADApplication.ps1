@@ -70,7 +70,7 @@ function Set-UIAzureADApplication {
         [Parameter(Mandatory = $True)]
         [Guid] $AppTenantId,
         [Parameter(Mandatory = $False)]
-        [Guid] $KeyVaultTenantId,
+        [string] $KeyVaultTenantId,
 		[Parameter(Mandatory = $False)]
         [string] $SubscriptionName,
         [Parameter(Mandatory = $False)]

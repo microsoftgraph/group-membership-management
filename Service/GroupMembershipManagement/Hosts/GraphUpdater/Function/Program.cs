@@ -8,6 +8,8 @@ using Common.DependencyInjection;
 using DIConcreteTypes;
 using GraphUpdater.Entities;
 using Hosts.FunctionBase;
+using Microsoft.Azure.Functions.Worker;
+using Microsoft.Azure.Functions.Worker.ApplicationInsights;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -56,6 +58,7 @@ namespace Hosts.GraphUpdater
                     var rootPath = context.HostingEnvironment.ContentRootPath;
 
                     CommonServices.ConfigureCommonServices(services, configuration, functionName, dryRunSettingName, rootPath);
+                    services.ConfigureFunctionsApplicationInsights();
 
                     services.AddOptions<DeltaCachingConfig>().Configure<IConfiguration>((settings, configuration) =>
                     {

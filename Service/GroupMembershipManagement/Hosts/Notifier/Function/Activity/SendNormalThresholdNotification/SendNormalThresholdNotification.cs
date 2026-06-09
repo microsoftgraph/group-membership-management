@@ -2,34 +2,39 @@
 // Licensed under the MIT license.
 
 using Microsoft.Azure.Functions.Worker;
+using Microsoft.Extensions.Logging;
 using Models;
-using Repositories.Contracts;
+using Repositories.Contracts.Helpers;
+using Services.Notifier;
 using Services.Notifier.Contracts;
 using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
 using System.Threading.Tasks;
 
 namespace Hosts.Notifier
 {
     public class SendNormalThresholdNotification
     {
-        private readonly ILoggingRepository _loggingRepository = null;
-        private readonly INotifierService _notifierService = null;
+        private readonly ILogger<SendNormalThresholdNotification> _logger;
+        private readonly INotifierService _notifierService;
 
-        public SendNormalThresholdNotification(ILoggingRepository loggingRepository, INotifierService notifierService)
+        public SendNormalThresholdNotification(ILogger<SendNormalThresholdNotification> logger, INotifierService notifierService)
         {
-            _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _notifierService = notifierService ?? throw new ArgumentNullException(nameof(notifierService));
         }
 
         [Function(nameof(SendNormalThresholdNotification))]
         public async Task SendNormalThresholdNotificationAsync([ActivityTrigger] OrchestratorRequest message)
         {
-            await _loggingRepository.LogMessageAsync(new LogMessage { RunId = message.RunId, Message = $"{nameof(SendNormalThresholdNotification)} function started at: {DateTime.UtcNow}" });
-            await _notifierService.SendNormalThresholdEmailAsync(message.MessageBody);
-            await _loggingRepository.LogMessageAsync(new LogMessage { RunId = message.RunId, Message = $"{nameof(SendNotification)} function completed at: {DateTime.UtcNow}" });
+            var messageContent = NotificationMessageContentParser.ParseMessageBody(message.MessageBody);
+            var job = NotificationMessageContentParser.GetRequiredValue<SyncJob>(messageContent, "SyncJob");
+
+            using (_logger.BeginSyncJobScope(job))
+            {
+                _logger.FunctionStarted(nameof(SendNormalThresholdNotification));
+                await _notifierService.SendNormalThresholdEmailAsync(message.MessageBody);
+                _logger.FunctionCompleted(nameof(SendNormalThresholdNotification));
+            }
         }
     }
 }

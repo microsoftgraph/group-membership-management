@@ -1,20 +1,22 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
+using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
+using Models;
 using Moq;
 using Repositories.Contracts;
 using Repositories.Contracts.InjectConfig;
+using Services;
 using Services.Entities;
 using System.Text.Json.Nodes;
 
-namespace Services.Tests
+namespace Tests.Services
 {
     [TestClass]
     public class GroupOwnershipObtainerServiceTests
     {
         private Mock<IDryRunValue> _dryRunSettings = null!;
-        private Mock<ILoggingRepository> _loggingRepository = null!;
         private Mock<IDatabaseSyncJobsRepository> _syncJobRepository = null!;
         private Mock<IDatabaseGroupsRepository> _groupsRepository = null!;
         private Mock<IDatabaseChannelsRepository> _channelsRepository = null!;
@@ -26,7 +28,6 @@ namespace Services.Tests
         public void Setup()
         {
             _dryRunSettings = new Mock<IDryRunValue>();
-            _loggingRepository = new Mock<ILoggingRepository>();
             _syncJobRepository = new Mock<IDatabaseSyncJobsRepository>();
             _groupsRepository = new Mock<IDatabaseGroupsRepository>();
             _channelsRepository = new Mock<IDatabaseChannelsRepository>();
@@ -35,7 +36,7 @@ namespace Services.Tests
 
             _groupOwnershipObtainerService = new GroupOwnershipObtainerService(
                 _dryRunSettings.Object,
-                _loggingRepository.Object,
+                NullLogger<GroupOwnershipObtainerService>.Instance,
                 _syncJobRepository.Object,
                 _groupsRepository.Object,
                 _channelsRepository.Object,
@@ -157,6 +158,143 @@ namespace Services.Tests
             Assert.AreEqual(0, groupIds.Count);
         }
 
+        [TestMethod]
+        public async Task GetGroupIdAsync_GroupMembership_ReturnsGroupId()
+        {
+            var expectedGroupId = Guid.NewGuid();
+            var syncJob = new SyncJob
+            {
+                Id = Guid.NewGuid(),
+                MembershipType = MembershipTypes.GroupMembership.ToString()
+            };
+
+            _groupsRepository
+                .Setup(x => x.GetGroupUsingSyncJobIdAsync(syncJob.Id))
+                .ReturnsAsync(new Group { GroupId = expectedGroupId });
+
+            var result = await _groupOwnershipObtainerService.GetGroupIdAsync(syncJob);
+
+            Assert.AreEqual(expectedGroupId, result);
+            _groupsRepository.Verify(x => x.GetGroupUsingSyncJobIdAsync(syncJob.Id), Times.Once);
+        }
+
+        [TestMethod]
+        public async Task GetGroupIdAsync_TeamsChannel_ReturnsChannelGroupId()
+        {
+            var expectedGroupId = Guid.NewGuid();
+            var syncJob = new SyncJob
+            {
+                Id = Guid.NewGuid(),
+                MembershipType = MembershipTypes.TeamsChannelMembership.ToString()
+            };
+
+            _channelsRepository
+                .Setup(x => x.GetChannelUsingSyncJobIdAsync(syncJob.Id))
+                .ReturnsAsync(new Channel { GroupId = expectedGroupId });
+
+            var result = await _groupOwnershipObtainerService.GetGroupIdAsync(syncJob);
+
+            Assert.AreEqual(expectedGroupId, result);
+        }
+
+        [TestMethod]
+        public async Task GetSyncJobsSegmentAsync_ReturnsJobsList()
+        {
+            var jobs = new List<SyncJob>
+            {
+                new SyncJob { Id = Guid.NewGuid() },
+                new SyncJob { Id = Guid.NewGuid() }
+            };
+            _syncJobRepository
+                .Setup(x => x.GetSyncJobsAsync(true, SyncStatus.All))
+                .ReturnsAsync(jobs);
+
+            var result = await _groupOwnershipObtainerService.GetSyncJobsSegmentAsync();
+
+            Assert.AreEqual(2, result.Count);
+        }
+
+        [TestMethod]
+        public async Task GetGroupOwnersAsync_GroupExists_ReturnsOwnerIds()
+        {
+            var groupId = Guid.NewGuid();
+            var ownerA = Guid.NewGuid();
+            var ownerB = Guid.NewGuid();
+
+            _graphGroupRepository.Setup(x => x.GroupExists(groupId)).ReturnsAsync(true);
+            _graphGroupRepository
+                .Setup(x => x.GetGroupOwnersAsync(groupId, 100))
+                .ReturnsAsync(new List<AzureADUser>
+                {
+                    new AzureADUser { ObjectId = ownerA },
+                    new AzureADUser { ObjectId = ownerB }
+                });
+
+            var result = await _groupOwnershipObtainerService.GetGroupOwnersAsync(groupId);
+
+            Assert.AreEqual(2, result.Count);
+            CollectionAssert.Contains(result, ownerA);
+            CollectionAssert.Contains(result, ownerB);
+        }
+
+        [TestMethod]
+        public async Task GetGroupOwnersAsync_GroupDoesNotExist_ReturnsEmptyList()
+        {
+            var groupId = Guid.NewGuid();
+            _graphGroupRepository.Setup(x => x.GroupExists(groupId)).ReturnsAsync(false);
+
+            var result = await _groupOwnershipObtainerService.GetGroupOwnersAsync(groupId);
+
+            Assert.AreEqual(0, result.Count);
+            _graphGroupRepository.Verify(x => x.GetGroupOwnersAsync(It.IsAny<Guid>(), It.IsAny<int>()), Times.Never);
+        }
+
+        [TestMethod]
+        public async Task SendMembershipAsync_UploadsFile_ReturnsFileName()
+        {
+            var groupId = Guid.NewGuid();
+            var syncJob = new SyncJob
+            {
+                Id = Guid.NewGuid(),
+                RunId = Guid.NewGuid(),
+                Query = "[]"
+            };
+            var users = new List<Guid> { Guid.NewGuid(), Guid.NewGuid() };
+            _dryRunSettings.SetupGet(x => x.DryRunEnabled).Returns(false);
+            _blobStorageRepository
+                .Setup(x => x.UploadFileAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<Dictionary<string, string>>()))
+                .Returns(Task.CompletedTask);
+
+            var fileName = await _groupOwnershipObtainerService.SendMembershipAsync(syncJob, groupId, users, 1, false);
+
+            Assert.IsTrue(fileName.Contains(groupId.ToString()));
+            Assert.IsTrue(fileName.EndsWith("_GroupOwnershipObtainer_1.json"));
+            _blobStorageRepository.Verify(x => x.UploadFileAsync(
+                It.Is<string>(s => s == fileName),
+                It.IsAny<string>(),
+                It.IsAny<Dictionary<string, string>>()), Times.Once);
+        }
+
+        [TestMethod]
+        public async Task SendMembershipAsync_NullUsers_UsesEmptyList()
+        {
+            var groupId = Guid.NewGuid();
+            var syncJob = new SyncJob
+            {
+                Id = Guid.NewGuid(),
+                RunId = Guid.NewGuid(),
+                Query = "[]"
+            };
+            _dryRunSettings.SetupGet(x => x.DryRunEnabled).Returns(true);
+            _blobStorageRepository
+                .Setup(x => x.UploadFileAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<Dictionary<string, string>>()))
+                .Returns(Task.CompletedTask);
+
+            var fileName = await _groupOwnershipObtainerService.SendMembershipAsync(syncJob, groupId, null, 2, true);
+
+            Assert.IsTrue(fileName.EndsWith("_GroupOwnershipObtainer_2.json"));
+        }
+
         private List<JobsFilterSyncJob> GenerateSampleJobs(IEnumerable<string> sourceTypes)
         {
             var jobs = new List<JobsFilterSyncJob>();
@@ -201,4 +339,3 @@ namespace Services.Tests
         }
     }
 }
-

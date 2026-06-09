@@ -503,9 +503,9 @@ namespace Repositories.GraphGroups
                         .SendAsync<EndpointCollectionResponse>(getRequestInformation,
                         EndpointCollectionResponse.CreateFromDiscriminatorValue);
 
-                var endpointResponse = nativeResponseHandler.Value as HttpResponseMessage;
+                using var endpointResponse = nativeResponseHandler.Value as HttpResponseMessage;
 
-                if (endpointResponse != null)
+                if (endpointResponse is not null)
                 {
                     var endpointHeaders = endpointResponse.Headers.ToImmutableDictionary(x => x.Key, x => x.Value);
                     await _graphGroupMetricTracker.TrackMetricsAsync(endpointHeaders, QueryType.Other, runId);
@@ -524,17 +524,76 @@ namespace Repositories.GraphGroups
             {
                 _graphGroupInformationRepositoryLogger.LogErrorWithRunId(runId, ex.GetBaseException().ToString(), ex);
             }
+            catch (ApiException ex)
+            {
+                _graphGroupInformationRepositoryLogger.LogErrorWithRunId(runId, ex.GetBaseException().ToString(), ex);
+            }
 
             return endpoints;
         }
 
-        public async Task CreateGroupAsync(string newGroupName, TestGroupType testGroupType, List<Guid> groupOwnerIds, Guid? runId)
+        public async Task<string?> GetGroupVivaEngageUrlAsync(Guid groupId, Guid? runId)
         {
             try
             {
-                if (await GroupExistsAsync(newGroupName, runId))
+                var baseUrl = "https://graph.microsoft.com/beta";
+                var endpointsUrl = $"{baseUrl}/groups/{groupId}/endpoints";
+                var getRequestInformation = _graphServiceClient.Groups.ToGetRequestInformation();
+                getRequestInformation.URI = new Uri(endpointsUrl);
+                getRequestInformation.PathParameters["baseurl"] = baseUrl;
+
+                var nativeResponseHandler = new NativeResponseHandler();
+
+                getRequestInformation.AddRequestOptions(new IRequestOption[] { new ResponseHandlerOption { ResponseHandler = nativeResponseHandler } });
+
+                await _graphServiceClient
+                        .RequestAdapter
+                        .SendAsync<EndpointCollectionResponse>(getRequestInformation,
+                        EndpointCollectionResponse.CreateFromDiscriminatorValue);
+
+                using var endpointResponse = nativeResponseHandler.Value as HttpResponseMessage;
+
+                if (endpointResponse is not null)
                 {
-                    return;
+                    var endpointHeaders = endpointResponse.Headers.ToImmutableDictionary(x => x.Key, x => x.Value);
+                    await _graphGroupMetricTracker.TrackMetricsAsync(endpointHeaders, QueryType.Other, runId);
+
+                    if (endpointResponse.IsSuccessStatusCode)
+                    {
+                        var endpointCollectionResponse = await DeserializeResponseAsync(endpointResponse, EndpointCollectionResponse.CreateFromDiscriminatorValue);
+
+                        if (endpointCollectionResponse?.Value?.Any() ?? false)
+                        {
+                            var yammerEndpoint = endpointCollectionResponse.Value
+                                .FirstOrDefault(x => x.ProviderName == "Yammer" && x.Capability == "Conversations");
+                            
+                            return yammerEndpoint?.Uri;
+                        }
+                    }
+                }
+            }
+            catch (ODataError ex)
+            {
+                _graphGroupInformationRepositoryLogger.LogErrorWithRunId(runId, ex.GetBaseException().ToString(), ex);
+            }
+            catch (ApiException ex)
+            {
+                _graphGroupInformationRepositoryLogger.LogErrorWithRunId(runId, ex.GetBaseException().ToString(), ex);
+            }
+
+            return null;
+        }
+
+
+        public async Task<AzureADGroup> CreateGroupAsync(string newGroupName, TestGroupType testGroupType, Guid? runId)
+        {
+            try
+            {
+                var exactMatchFilter = $"displayName eq '{newGroupName}'";
+                var existingGroups = await GetGroupsByFilterAsync(exactMatchFilter);
+                if (existingGroups.Any())
+                {
+                    return existingGroups.First();
                 }
 
                 var groupDefinition = new Group
@@ -558,19 +617,12 @@ namespace Repositories.GraphGroups
 
                 var group = await _graphServiceClient.Groups.PostAsync(groupDefinition);
 
-                if (group != null && groupOwnerIds != null && groupOwnerIds.Any())
+                if (group == null)
                 {
-                    foreach (var ownerId in groupOwnerIds)
-                    {
-                        await _graphServiceClient.Groups[group.Id]
-                            .Owners
-                            .Ref
-                            .PostAsync(new ReferenceCreate
-                            {
-                                OdataId = $"https://graph.microsoft.com/v1.0/directoryObjects/{ownerId}"
-                            });
-                    }
+                    return null;
                 }
+
+                return new AzureADGroup { ObjectId = new Guid(group.Id) };
             }
             catch (ODataError ex)
             {
@@ -581,7 +633,61 @@ namespace Repositories.GraphGroups
             catch (Exception e)
             {
                 _graphGroupInformationRepositoryLogger.LogErrorWithRunId(runId, $"Error creating group: {e}", e);
+                return null;
             }
+        }
+
+        public async Task AddGroupOwnersAsync(string groupId, List<Guid> ownerIds, Guid? runId)
+        {
+            if (ownerIds == null || !ownerIds.Any())
+                return;
+
+            _graphGroupInformationRepositoryLogger.LogDebugWithRunId(runId, $"Adding {ownerIds.Count} owner(s) to group {groupId}.");
+
+            int maxRetries = 10;
+            foreach (var ownerId in ownerIds)
+            {
+                for (int attempt = 1; attempt <= maxRetries; attempt++)
+                {
+                    try
+                    {
+                        await _graphServiceClient.Groups[groupId].Owners.Ref.PostAsync(new ReferenceCreate
+                        {
+                            OdataId = $"https://graph.microsoft.com/v1.0/directoryObjects/{ownerId}"
+                        });
+                        break;
+                    }
+                    catch (ODataError odataEx) when (odataEx.ResponseStatusCode == (int)HttpStatusCode.NotFound && attempt < maxRetries)
+                    {
+                        var delay = Math.Min(5, (int)Math.Pow(2, attempt - 1));
+                        _graphGroupInformationRepositoryLogger.LogWarningWithRunId(runId,
+                            $"Group {groupId} not found (attempt {attempt}/{maxRetries}). Retrying in {delay}s...");
+                        await Task.Delay(TimeSpan.FromSeconds(delay));
+                    }
+                    catch (ODataError odataEx) when (odataEx.ResponseStatusCode == (int)HttpStatusCode.NotFound && attempt == maxRetries)
+                    {
+                        _graphGroupInformationRepositoryLogger.LogErrorWithRunId(runId,
+                            $"Group {groupId} not found after {maxRetries} retries. Giving up.", odataEx);
+                        throw;
+                    }
+                    catch (ODataError odataEx) when (odataEx.ResponseStatusCode == (int)HttpStatusCode.BadRequest
+                        && odataEx.Message != null
+                        && odataEx.Message.Contains("object references already exist", StringComparison.OrdinalIgnoreCase))
+                    {
+                        _graphGroupInformationRepositoryLogger.LogWarningWithRunId(runId,
+                            $"Owner {ownerId} is already an owner of group {groupId}. Skipping.");
+                        break;
+                    }
+                    catch (ODataError odataEx)
+                    {
+                        _graphGroupInformationRepositoryLogger.LogErrorWithRunId(runId,
+                            $"Unexpected ODataError adding owner {ownerId} to group {groupId} (HTTP {odataEx.ResponseStatusCode}): {odataEx.Message}", odataEx);
+                        throw;
+                    }
+                }
+            }
+
+            _graphGroupInformationRepositoryLogger.LogDebugWithRunId(runId, $"Finished adding owners to group {groupId}.");
         }
 
         public async Task<AzureADGroup> CreateGroupFromUIAsync(string newGroupName, Guid groupOwnerId, string newGroupAlias, Guid? runId)
@@ -873,15 +979,21 @@ namespace Repositories.GraphGroups
             }
         }
 
-        public async Task<List<string>> GetAllGroupNamesAsync()
+        public async Task<Dictionary<Guid, string>> GetAllGroupNamesAsync()
         {
-            var groupNames = new List<string>();
+            var groups = new Dictionary<Guid, string>();
             var page = await _graphServiceClient.Groups
-                .GetAsync(config => config.QueryParameters.Select = new[] { "displayName" });
+                .GetAsync(config => config.QueryParameters.Select = new[] { "id", "displayName" });
 
             while (page != null && page.Value != null)
             {
-                groupNames.AddRange(page.Value.Select(g => g.DisplayName));
+                foreach (var g in page.Value)
+                {
+                    if (Guid.TryParse(g.Id, out var groupId))
+                    {
+                        groups[groupId] = g.DisplayName;
+                    }
+                }
 
                 if (page.OdataNextLink != null)
                 {
@@ -893,9 +1005,9 @@ namespace Repositories.GraphGroups
                 }
             }
 
-            _graphGroupInformationRepositoryLogger.LogInformationWithRunId(null, $"Fetched {groupNames.Count} group names.");
+            _graphGroupInformationRepositoryLogger.LogInformationWithRunId(null, $"Fetched {groups.Count} group names.");
 
-            return groupNames;
+            return groups;
         }
     }
 }

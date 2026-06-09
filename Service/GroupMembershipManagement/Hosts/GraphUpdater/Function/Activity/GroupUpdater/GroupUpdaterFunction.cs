@@ -2,8 +2,8 @@
 // Licensed under the MIT license.
 using GraphUpdater.Helpers;
 using Microsoft.Azure.Functions.Worker;
+using Microsoft.Extensions.Logging;
 using Models;
-using Repositories.Contracts;
 using Services.Contracts;
 using Services.Entities;
 using System;
@@ -14,23 +14,22 @@ namespace Hosts.GraphUpdater
 {
     public class GroupUpdaterFunction
     {
-        private readonly ILoggingRepository _loggingRepository;
+        private readonly ILogger<GroupUpdaterFunction> _logger;
         private readonly IGraphUpdaterService _graphUpdaterService;
 
         public GroupUpdaterFunction(
-            ILoggingRepository loggingRepository,
+            ILogger<GroupUpdaterFunction> logger,
             IGraphUpdaterService graphUpdaterService)
         {
-            _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _graphUpdaterService = graphUpdaterService ?? throw new ArgumentNullException(nameof(graphUpdaterService));
         }
 
         [Function(nameof(GroupUpdaterFunction))]
         public async Task<GroupUpdaterResponse> UpdateGroupAsync([ActivityTrigger] GroupUpdaterRequest request)
         {
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(GroupUpdaterFunction)} function started", RunId = request.SyncJob.RunId }, VerbosityLevel.DEBUG);
-
-            _graphUpdaterService.RunId = request.SyncJob.RunId.GetValueOrDefault(Guid.Empty);
+            using var scope = _logger.BeginGraphUpdaterScope(request);
+            _logger.FunctionStarted(nameof(GroupUpdaterFunction));
 
             GraphUpdaterStatus responseStatus;
             var successCount = 0;
@@ -58,7 +57,7 @@ namespace Hosts.GraphUpdater
                 usersNotFound = removeUsersFromGraphResponse.UsersNotFound;
             }
 
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(GroupUpdaterFunction)} function completed", RunId = request.SyncJob.RunId }, VerbosityLevel.DEBUG);
+            _logger.FunctionCompleted(nameof(GroupUpdaterFunction));
 
             return new GroupUpdaterResponse()
                 {

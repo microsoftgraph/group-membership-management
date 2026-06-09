@@ -3,8 +3,8 @@
 using Azure.Messaging.ServiceBus;
 using Microsoft.Azure.Functions.Worker;
 using Microsoft.DurableTask;
+using Microsoft.Extensions.Logging;
 using Models;
-using Repositories.Contracts;
 using System;
 using System.Text;
 using System.Text.Json;
@@ -14,19 +14,19 @@ namespace Hosts.TeamsChannelUpdater
 {
     public class MessageReaderFunction
     {
-        private readonly ILoggingRepository _loggingRepository;
+        private readonly ILogger<MessageReaderFunction> _logger;
         private readonly ServiceBusReceiver _serviceBusReceiver;
 
-        public MessageReaderFunction(ILoggingRepository loggingRepository, ServiceBusReceiver serviceBusReceiver)
+        public MessageReaderFunction(ILogger<MessageReaderFunction> logger, ServiceBusReceiver serviceBusReceiver)
         {
-            _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _serviceBusReceiver = serviceBusReceiver ?? throw new ArgumentNullException(nameof(serviceBusReceiver));
         }
 
         [Function(nameof(MessageReaderFunction))]
         public async Task<MembershipHttpRequest> GetSyncJobAsync([ActivityTrigger] object input)
         {
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(MessageReaderFunction)} function started" }, VerbosityLevel.DEBUG);
+            _logger.FunctionStarted(nameof(MessageReaderFunction));
 
             MembershipHttpRequest request = null;
             var message = await _serviceBusReceiver.ReceiveMessageAsync(TimeSpan.FromSeconds(5));
@@ -37,7 +37,7 @@ namespace Hosts.TeamsChannelUpdater
                 request = JsonSerializer.Deserialize<MembershipHttpRequest>(Encoding.UTF8.GetString(message.Body));
             }
 
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(MessageReaderFunction)} function completed" }, VerbosityLevel.DEBUG);
+            _logger.FunctionCompleted(nameof(MessageReaderFunction));
             return request;
         }
     }

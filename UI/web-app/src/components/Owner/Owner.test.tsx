@@ -1,90 +1,101 @@
-import { render, fireEvent } from '@testing-library/react';
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT license.
+
 import React from 'react';
-import { Provider, useSelector } from 'react-redux';
-import configureStore from 'redux-mock-store';
+import { fireEvent, screen, waitFor } from '@testing-library/react';
 
+import { renderWithProviders } from '../../testing/renderWithProviders';
+import { defaultStrings } from '../../services/localization';
 import { OwnerBase } from './Owner.base';
-import { type RootState } from '../../store';
-import { addOwner } from '../../store/owner.api';
-import { type OwnerState, selectOwner } from '../../store/owner.slice';
+import { OwnerState } from '../../store/owner.slice';
 
-const mockStore = configureStore([]);
-const initialState = { owner: { status: '' } };
-const store = mockStore(initialState);
+const createAuthenticationServiceMock = () => ({
+  loginAsync: jest.fn().mockResolvedValue(undefined),
+  getActiveAccount: jest.fn().mockReturnValue({
+    id: 'test-account-id',
+    name: 'Test User',
+    username: 'test.user@example.com',
+  }),
+  getTokenAsync: jest.fn().mockResolvedValue('test-token'),
+});
 
-describe('OwnerBase component', () => {
-  it('renders without errors', () => {
-    const { getByText } = render(
-      <Provider store={store}>
-        <OwnerBase />
-      </Provider>
-    );
-    expect(getByText('groupIdHeader')).toBeInTheDocument();
+const renderComponent = (ownerOverrides?: Partial<OwnerState>) => {
+  const authenticationServiceMock = createAuthenticationServiceMock();
+
+  return {
+    authenticationServiceMock,
+    ...renderWithProviders(<OwnerBase />, {
+      preloadedState: {
+        localization: {
+          language: 'en',
+          strings: defaultStrings,
+        },
+        owner: {
+          loading: false,
+          status: '',
+          ...ownerOverrides,
+        },
+      },
+      serviceMocks: {
+        authenticationService: authenticationServiceMock,
+      },
+    }),
+  };
+};
+
+describe('OwnerBase', () => {
+  let fetchMock: jest.Mock;
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    fetchMock = jest.fn().mockResolvedValue({
+      ok: true,
+      status: 204,
+      statusText: 'No Content',
+    });
+    global.fetch = fetchMock as unknown as typeof fetch;
   });
 
-  it('dispatches addOwner action when button is clicked', () => {
-    const { getByLabelText, getByText } = render(
-      <Provider store={store}>
-        <OwnerBase />
-      </Provider>
-    );
+  it('renders localized header and input', () => {
+    renderComponent();
 
-    const input = getByLabelText('groupIdPlaceHolder');
-    const button = getByText('okButton');
-    fireEvent.change(input, { target: { value: 'test' } });
-    fireEvent.click(button);
-    const expectedAction = addOwner('test');
-    expect(store.getActions()).toContainEqual(expectedAction);
+    expect(
+      screen.getByText(defaultStrings.groupIdHeader)
+    ).toBeInTheDocument();
+    expect(
+      screen.getByPlaceholderText(defaultStrings.groupIdPlaceHolder)
+    ).toBeInTheDocument();
   });
 
-  it('displays error message when add owner status is 403', () => {
-    const { getByText } = render(
-      <Provider store={store}>
-        <OwnerBase />
-      </Provider>
-    );
+  it('dispatches addOwner when the submit button is clicked', async () => {
+    const { authenticationServiceMock } = renderComponent();
 
-    const selectOwner = (state: { owner: OwnerState }) => state.owner;
-    const owner = useSelector((state: RootState) => selectOwner(state));
-    const action = {
-      type: owner.status,
-      payload: { status: 'false 403 Forbidden' },
-    };
-    store.dispatch(action);
-    expect(getByText('addOwner403Message')).toBeInTheDocument();
+    fireEvent.change(
+      screen.getByLabelText(defaultStrings.groupIdPlaceHolder),
+      { target: { value: 'test-group' } }
+    );
+    fireEvent.click(screen.getByText(defaultStrings.okButton));
+
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+
+    expect(authenticationServiceMock.getTokenAsync).toHaveBeenCalled();
+    expect(fetchMock).toHaveBeenCalledWith(
+      'https://graph.microsoft.com/v1.0/groups/test-group/owners/$ref/',
+      expect.objectContaining({ method: 'POST' })
+    );
+    expect(
+      screen.getByText(defaultStrings.addOwner204Message)
+    ).toBeInTheDocument();
   });
 
-  it('displays error message when add owner status is 400', () => {
-    const { getByText } = render(
-      <Provider store={store}>
-        <OwnerBase />
-      </Provider>
-    );
+  it.each([
+    ['false 403 Forbidden', defaultStrings.addOwner403Message],
+    ['false 400 Bad Request', defaultStrings.addOwner400Message],
+    ['true 204 No Content', defaultStrings.addOwner204Message],
+    ['unexpected', defaultStrings.addOwnerErrorMessage],
+  ])('renders status message for %s', (status, expectedMessage) => {
+    renderComponent({ status });
 
-    const selectOwner = (state: { owner: OwnerState }) => state.owner;
-    const owner = useSelector((state: RootState) => selectOwner(state));
-    const action = {
-      type: owner.status,
-      payload: { status: 'false 400 Bad Request' },
-    };
-    store.dispatch(action);
-    expect(getByText('addOwner400Message')).toBeInTheDocument();
-  });
-
-  it('displays error message when add owner status is 204', () => {
-    const { getByText } = render(
-      <Provider store={store}>
-        <OwnerBase />
-      </Provider>
-    );
-
-    const selectOwner = (state: { owner: OwnerState }) => state.owner;
-    const owner = useSelector((state: RootState) => selectOwner(state));
-    const action = {
-      type: owner.status,
-      payload: { status: 'true 204 No Content' },
-    };
-    store.dispatch(action);
-    expect(getByText('addOwner204Message')).toBeInTheDocument();
+    expect(screen.getByText(expectedMessage)).toBeInTheDocument();
   });
 });

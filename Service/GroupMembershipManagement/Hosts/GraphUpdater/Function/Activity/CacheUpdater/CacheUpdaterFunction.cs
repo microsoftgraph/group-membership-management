@@ -1,7 +1,7 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 using Microsoft.Azure.Functions.Worker;
-using Models;
+using Microsoft.Extensions.Logging;
 using Models.Helpers;
 using Models.ServiceBus;
 using Repositories.Contracts;
@@ -13,12 +13,12 @@ namespace Hosts.GraphUpdater
 {
     public class CacheUpdaterFunction
     {
-        private readonly ILoggingRepository _loggingRepository;
+        private readonly ILogger<CacheUpdaterFunction> _logger;
         private readonly IBlobStorageRepository _blobStorageRepository;
 
-        public CacheUpdaterFunction(ILoggingRepository loggingRepository, IBlobStorageRepository blobStorageRepository)
+        public CacheUpdaterFunction(ILogger<CacheUpdaterFunction> logger, IBlobStorageRepository blobStorageRepository)
         {
-            _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _blobStorageRepository = blobStorageRepository ?? throw new ArgumentNullException(nameof(blobStorageRepository));
         }
 
@@ -26,14 +26,14 @@ namespace Hosts.GraphUpdater
         public async Task UpdateCacheAsync
             ([ActivityTrigger] CacheUpdaterRequest request)
         {
-
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(CacheUpdaterFunction)} function started", RunId = request.RunId }, VerbosityLevel.DEBUG);
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(CacheUpdaterFunction)} {request.UserIds.Count} users to remove from cache/{request.GroupId}", RunId = request.RunId }, VerbosityLevel.DEBUG);
+            using var scope = _logger.BeginGraphUpdaterScope(request);
+            _logger.FunctionStarted(nameof(CacheUpdaterFunction));
+            _logger.CacheUpdaterRemovingUsers(request.UserIds.Count, request.GroupId);
 
             var newUsers = await GetUsersFromCacheAsync(request);
             await UploadCacheFileAsync(request, newUsers);
 
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(CacheUpdaterFunction)} function completed", RunId = request.RunId }, VerbosityLevel.DEBUG);
+            _logger.FunctionCompleted(nameof(CacheUpdaterFunction));
         }
 
         private async Task<HashSet<Guid>> GetUsersFromCacheAsync(CacheUpdaterRequest request)
@@ -42,24 +42,12 @@ namespace Hosts.GraphUpdater
 
             HashSet<Guid> cacheMembers = await _blobStorageRepository.ReadValuesFromBlobAsync(request.CacheFilePath, parser);
 
-            await _loggingRepository.LogMessageAsync(
-            new LogMessage
-            {
-                Message = $"{nameof(CacheUpdaterFunction)} Earlier count in cache/{request.GroupId}: {cacheMembers.Count}",
-                RunId = request.RunId
-            },
-            VerbosityLevel.DEBUG);
+            _logger.CacheUpdaterEarlierCount(request.GroupId, cacheMembers.Count);
 
             // updates the cache members set in place
             cacheMembers.ExceptWith(request.UserIds);
 
-            await _loggingRepository.LogMessageAsync(
-            new LogMessage
-            {
-                Message = $"{nameof(CacheUpdaterFunction)} {cacheMembers.Count} newUsers to add to cache/{request.GroupId}",
-                RunId = request.RunId
-            },
-            VerbosityLevel.DEBUG);
+            _logger.CacheUpdaterAddingUsers(cacheMembers.Count, request.GroupId);
 
             return cacheMembers;
         }
@@ -69,7 +57,7 @@ namespace Hosts.GraphUpdater
             var fileName = CacheFileNaming.BuildCacheFileName(request.GroupId, request.Timestamp);
             var metadata = new Dictionary<string, string>
             {
-                { "RunId", request.RunId.ToString() },
+                { "RunId", request.SyncJob.RunId.GetValueOrDefault().ToString() },
                 { "NumberOfUsers", newUsers.Count.ToString() }
             };
             await _blobStorageRepository.UploadCacheFromGuidsAsync(fileName, newUsers, metadata);
@@ -78,11 +66,7 @@ namespace Hosts.GraphUpdater
             var cachePrefix = CacheFileNaming.BuildCacheFileNamePrefix(request.GroupId);
             await _blobStorageRepository.DeleteFilesByPrefixAsync(cachePrefix, excludeLatest: true);
 
-            await _loggingRepository.LogMessageAsync(new LogMessage
-            {
-                RunId = request.RunId,
-                Message = $"Successfully uploaded {newUsers.Count} users from group {request.GroupId} to cache {fileName}."
-            });
+            _logger.CacheUploadSuccess(newUsers.Count, request.GroupId, fileName);
         }
     }
 }

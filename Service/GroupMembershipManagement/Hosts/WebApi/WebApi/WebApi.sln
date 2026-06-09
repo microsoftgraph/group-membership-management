@@ -1,7 +1,7 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 18
-VisualStudioVersion = 18.0.10827.20 main
+VisualStudioVersion = 18.0.10827.20
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "WebApi", "WebApi.csproj", "{B2BF5D0B-7DC5-4769-9DD0-5E773E5D4FFE}"
 EndProject
@@ -58,6 +58,8 @@ EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Repositories.Mail", "..\..\..\Repositories.Mail\Repositories.Mail.csproj", "{356618A3-9E70-00D1-49B3-6830FAEBDB8D}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Repositories.ServiceBusQueue", "..\..\..\Repositories.ServiceBusQueue\Repositories.ServiceBusQueue.csproj", "{CF56E234-0A7F-8977-85A1-398285DF029F}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Repositories.BlobStorage", "..\..\..\Repositories.BlobStorage\Repositories.BlobStorage.csproj", "{C6680C67-E1AC-0718-B5F5-3586A8E42ECE}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -177,6 +179,10 @@ Global
 		{CF56E234-0A7F-8977-85A1-398285DF029F}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{CF56E234-0A7F-8977-85A1-398285DF029F}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{CF56E234-0A7F-8977-85A1-398285DF029F}.Release|Any CPU.Build.0 = Release|Any CPU
+		{C6680C67-E1AC-0718-B5F5-3586A8E42ECE}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{C6680C67-E1AC-0718-B5F5-3586A8E42ECE}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{C6680C67-E1AC-0718-B5F5-3586A8E42ECE}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{C6680C67-E1AC-0718-B5F5-3586A8E42ECE}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

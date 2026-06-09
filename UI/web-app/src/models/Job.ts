@@ -27,6 +27,7 @@ export type Job = {
   thresholdPercentageForAdditions: number;
   thresholdPercentageForRemovals: number;
   endpoints: string[];
+  vivaEngageUrl?: string;
   requestor: string;
   lastModifiedByDisplayName?: string;
   lastModifiedByObjectId?: string;

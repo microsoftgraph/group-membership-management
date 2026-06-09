@@ -18,6 +18,14 @@ export interface JobsState {
   totalNumberOfPages?: number;
   selectedJob?: Job;
   selectedJobLoading: boolean;
+  /**
+   * Request ID of the most recently dispatched thunk that targets `selectedJob`
+   * (fetchJobDetails / getGroupDetails / getChannelDetails). Used to discard
+   * late-arriving fulfilled/rejected actions from earlier dispatches when the
+   * user navigates between jobs/groups/channels rapidly. Shared because all
+   * three thunks write the same `selectedJob` slot.
+   */
+  selectedJobRequestId?: string;
   getJobsError: string | undefined;
   getJobDetailsError: string | undefined;
   patchJobDetailsResponse: PatchJobResponse | undefined;
@@ -36,6 +44,8 @@ export interface JobsState {
   removeGMMResponse: RemoveGMMResponse | undefined;
   removeGMMError: string | undefined;
   selectedJobChanges: SyncJobChange[] | undefined;
+  /** Request ID guard for fetchJobChanges; mirrors selectedJobRequestId but for the changes feed. */
+  selectedJobChangesRequestId?: string;
   selectedJobChangesLoading: boolean;
   selectedJobChangesError: string | undefined;
   selectedJobWithNoTitles: boolean;
@@ -109,6 +119,22 @@ export const jobsSlice = createSlice({
     setJobId: (state, action: PayloadAction<string>) => {
       state.jobIdSet = action.payload;
     },
+    setSelectedJobEnabled: (state, action: PayloadAction<boolean>) => {
+      if (state.selectedJob) {
+        state.selectedJob.enabledOrNot = action.payload;
+      }
+    },
+    setSelectedJobStatus: (state, action: PayloadAction<string>) => {
+      if (state.selectedJob) {
+        state.selectedJob.status = action.payload;
+      }
+    },
+    // Optimistically remove a job from the cached list after approve/reject.
+    removeJobFromList: (state, action: PayloadAction<string>) => {
+      if (state.jobs) {
+        state.jobs = state.jobs.filter(j => j.syncJobId !== action.payload);
+      }
+    },
     setTitles: (state, action: PayloadAction<Title[]>) => {
       if (state.selectedJob) {
         state.selectedJob.titles = action.payload;
@@ -131,45 +157,60 @@ export const jobsSlice = createSlice({
       state.getJobsError = action.error.message;
     });
 
-    // fetchJobDetails
-    builder.addCase(fetchJobDetails.pending, (state) => {
+    // selectedJobRequestId guards: drop responses whose requestId no longer
+    // matches the latest pending so rapid nav can't land stale data.
+    builder.addCase(fetchJobDetails.pending, (state, action) => {
       state.selectedJobLoading = true;
       state.selectedJob = undefined;
+      state.getJobDetailsError = undefined;
+      state.selectedJobRequestId = action.meta.requestId;
     });
     builder.addCase(fetchJobDetails.fulfilled, (state, action) => {
+      if (action.meta.requestId !== state.selectedJobRequestId) return;
       state.selectedJobLoading = false;
       state.selectedJob = action.payload;
       state.selectedJobWithNoTitles = !action.payload.titles || action.payload.titles.length === 0;
     });
     builder.addCase(fetchJobDetails.rejected, (state, action) => {
+      if (action.meta.requestId !== state.selectedJobRequestId) return;
       state.selectedJobLoading = false;
       state.getJobDetailsError = action.error.message;
     });
 
     // getGroupDetails
-    builder.addCase(getGroupDetails.pending, (state) => {
+    builder.addCase(getGroupDetails.pending, (state, action) => {
       state.selectedJobLoading = true;
       state.selectedJob = undefined;
+      state.getJobDetailsError = undefined;
+      state.selectedJobRequestId = action.meta.requestId;
     });
     builder.addCase(getGroupDetails.fulfilled, (state, action) => {
+      if (action.meta.requestId !== state.selectedJobRequestId) return;
       state.selectedJobLoading = false;
       state.selectedJob = action.payload;
+      state.selectedJobWithNoTitles = !action.payload.titles || action.payload.titles.length === 0;
     });
     builder.addCase(getGroupDetails.rejected, (state, action) => {
+      if (action.meta.requestId !== state.selectedJobRequestId) return;
       state.selectedJobLoading = false;
       state.getJobDetailsError = action.error.message;
     });
 
     // getChannelDetails
-    builder.addCase(getChannelDetails.pending, (state) => {
+    builder.addCase(getChannelDetails.pending, (state, action) => {
       state.selectedJobLoading = true;
       state.selectedJob = undefined;
+      state.getJobDetailsError = undefined;
+      state.selectedJobRequestId = action.meta.requestId;
     });
     builder.addCase(getChannelDetails.fulfilled, (state, action) => {
+      if (action.meta.requestId !== state.selectedJobRequestId) return;
       state.selectedJobLoading = false;
       state.selectedJob = action.payload;
+      state.selectedJobWithNoTitles = !action.payload.titles || action.payload.titles.length === 0;
     });
     builder.addCase(getChannelDetails.rejected, (state, action) => {
+      if (action.meta.requestId !== state.selectedJobRequestId) return;
       state.selectedJobLoading = false;
       state.getJobDetailsError = action.error.message;
     });
@@ -249,23 +290,28 @@ export const jobsSlice = createSlice({
       state.removeGMMError = action.error.message;
     });
 
-    // fetchJobChanges
-    builder.addCase(fetchJobChanges.pending, (state) => {
+    // fetchJobChanges – requestId-guarded against rapid job nav.
+    builder.addCase(fetchJobChanges.pending, (state, action) => {
       state.selectedJobChangesLoading = true;
       state.selectedJobChanges = undefined;
+      state.selectedJobChangesError = undefined;
+      state.selectedJobChangesRequestId = action.meta.requestId;
     });
     builder.addCase(fetchJobChanges.fulfilled, (state, action) => {
+      if (action.meta.requestId !== state.selectedJobChangesRequestId) return;
       state.selectedJobChangesLoading = false;
       state.selectedJobChanges = action.payload;
     });
     builder.addCase(fetchJobChanges.rejected, (state, action) => {
+      if (action.meta.requestId !== state.selectedJobChangesRequestId) return;
+      state.selectedJobChangesLoading = false;
       state.selectedJobChangesError = action.error.message;
     });
   }
 });
 
 
-export const { setJobs, setGetJobsError, setGetJobDetailsError, clearJob, clearJobsToDownload, updateJobOwnerFilterSuggestions, setApproveJobsLoading, setApproveJobsResponse, setTitles, setGeneratedTitlesYet, setJobId } =
+export const { setJobs, setGetJobsError, setGetJobDetailsError, clearJob, clearJobsToDownload, updateJobOwnerFilterSuggestions, setApproveJobsLoading, setApproveJobsResponse, setTitles, setGeneratedTitlesYet, setJobId, setSelectedJobEnabled, setSelectedJobStatus, removeJobFromList } =
   jobsSlice.actions;
 
 export const selectAllJobs = (state: RootState) => state.jobs.jobs;

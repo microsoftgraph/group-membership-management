@@ -6,9 +6,11 @@ using Azure.Identity;
 using Azure.Messaging.ServiceBus;
 using Common.DependencyInjection;
 using Hosts.FunctionBase;
+using Microsoft.Azure.Functions.Worker;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Microsoft.Graph;
 using Repositories.BlobStorage;
@@ -49,6 +51,8 @@ namespace Hosts.TeamsChannelMembershipObtainer
                     var rootPath = context.HostingEnvironment.ContentRootPath;
                     CommonServices.ConfigureCommonServices(services, configuration, functionName, dryRunSettingName, rootPath);
 
+                    services.ConfigureFunctionsApplicationInsights();
+
                     services.AddScoped<ISyncJobStatusService, SyncJobStatusService>();
 
                     services.AddSingleton((services) =>
@@ -80,7 +84,7 @@ namespace Hosts.TeamsChannelMembershipObtainer
 
                         return new BlobStorageRepository($"https://{storageAccountName}.blob.core.windows.net/{containerName}");
                     })
-                    .AddTransient<ITeamsChannelService, TeamsChannelMembershipObtainerService>()
+                    .AddScoped<ITeamsChannelService, TeamsChannelMembershipObtainerService>()
                     .AddTransient<ITeamsChannelRepository, TeamsChannelRepository>()
                     .AddScoped<IServiceBusQueueRepository, ServiceBusQueueRepository>(services =>
                     {

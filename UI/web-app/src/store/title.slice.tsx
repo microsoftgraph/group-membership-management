@@ -1,7 +1,7 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-import { createSlice } from '@reduxjs/toolkit';
+import { createSlice, PayloadAction } from '@reduxjs/toolkit';
 import { fetchGroupDetailsAndGenerateTitle, fetchOrgLeaderDetailsAndGenerateHRTitle, generateTitles, getTitle } from './title.api';
 import { RootState } from './store';
 import { HRPart } from '../models/HRPart';
@@ -37,6 +37,14 @@ const titleSlice = createSlice({
   reducers: {
     clearTitles: (state) => {
       state.titles = [];
+    },
+    upsertGeneratedTitle: (state, action: PayloadAction<HRPart>) => {
+      const existingIndex = state.titles.findIndex(t => t.partId === action.payload.partId);
+      if (existingIndex >= 0) {
+        state.titles[existingIndex] = action.payload;
+      } else {
+        state.titles.push(action.payload);
+      }
     },
     clearGeneratedHRParts: (state) => {
       state.generatedHRParts = [];
@@ -103,7 +111,7 @@ const titleSlice = createSlice({
   }
 });
 
-export const { clearTitles, clearGeneratedHRParts, clearGeneratedGroupParts } = titleSlice.actions;
+export const { clearTitles, upsertGeneratedTitle, clearGeneratedHRParts, clearGeneratedGroupParts } = titleSlice.actions;
 
 export const selectIsGeneratingTitle = (state: RootState) => state.title.isGeneratingTitle;
 export const selectTitle = (state: RootState) => state.title.title;

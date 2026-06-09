@@ -9,4 +9,5 @@ export interface ThresholdNotificationData {
   changeQuantityForRemovals: number;
   changePercentageForRemovals: number;
   thresholdPercentageForRemovals: number;
+  purgeDate?: string;
 }

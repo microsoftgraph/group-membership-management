@@ -3,31 +3,37 @@
 
 using Microsoft.Azure.Functions.Worker;
 using Microsoft.DurableTask;
-using Models;
-using Repositories.Contracts;
+using Microsoft.Extensions.Logging;
+using Repositories.Contracts.Helpers;
 using Services.Contracts;
 using System;
+using System.Collections.Generic;
 using System.Threading.Tasks;
 
 namespace Hosts.GroupOwnershipObtainer
 {
     public class GetGroupFunction
     {
-        private readonly ILoggingRepository _loggingRepository = null;
-        private readonly IGroupOwnershipObtainerService _groupOwnershipObtainerService = null;
+        private readonly ILogger<GetGroupFunction> _logger;
+        private readonly IGroupOwnershipObtainerService _groupOwnershipObtainerService;
 
-        public GetGroupFunction(ILoggingRepository loggingRepository, IGroupOwnershipObtainerService groupOwnershipObtainerService)
+        public GetGroupFunction(ILogger<GetGroupFunction> logger, IGroupOwnershipObtainerService groupOwnershipObtainerService)
         {
-            _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _groupOwnershipObtainerService = groupOwnershipObtainerService ?? throw new ArgumentNullException(nameof(groupOwnershipObtainerService));
         }
 
         [Function(nameof(GetGroupFunction))]
-        public async Task<Guid> GetGroupAsync([ActivityTrigger] SyncJob syncJob)
+        public async Task<Guid> GetGroupAsync([ActivityTrigger] GetGroupRequest request)
         {
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(GetGroupFunction)} function started", RunId = syncJob.RunId }, VerbosityLevel.DEBUG);
-            var groupId = await _groupOwnershipObtainerService.GetGroupIdAsync(syncJob);
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(GetGroupFunction)} function completed", RunId = syncJob.RunId }, VerbosityLevel.DEBUG);
+            using var scope = _logger.BeginSyncJobScope(request.SyncJob, new Dictionary<string, object>
+            {
+                ["CurrentPart"] = request.CurrentPart,
+                ["TotalParts"] = request.TotalParts
+            });
+            _logger.FunctionStarted(nameof(GetGroupFunction));
+            var groupId = await _groupOwnershipObtainerService.GetGroupIdAsync(request.SyncJob);
+            _logger.FunctionCompleted(nameof(GetGroupFunction));
             return groupId;
         }
     }

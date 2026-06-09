@@ -6,10 +6,11 @@ using GraphUpdater.QueueMessageOrchestrator;
 using Microsoft.Azure.Functions.Worker;
 using Microsoft.DurableTask;
 using Microsoft.DurableTask.Client;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Models;
 using Models.ServiceBus;
-using Repositories.Contracts;
+using Repositories.Contracts.Helpers;
 using System;
 using System.Collections.Generic;
 using System.Text;
@@ -20,7 +21,7 @@ namespace Hosts.GraphUpdater
 {
     public class StarterFunction
     {
-        private readonly ILoggingRepository _loggingRepository = null;
+        private readonly ILogger<StarterFunction> _logger;
         private readonly MembershipUpdaters _membershipUpdaters = null;
         private readonly MultiLaneConfig _multilaneConfig = null;
         private const string SUBSCRIPTION_PREFIX = "GraphUpdater";
@@ -29,11 +30,11 @@ namespace Hosts.GraphUpdater
         private const string LARGE_SUBSCRIPTION_NAME = "GraphUpdater_large_1";
         private const string LARGE_FUNCTION_NAME = $"{nameof(StarterFunction)}_large";
 
-        public StarterFunction(ILoggingRepository loggingRepository,
+        public StarterFunction(ILogger<StarterFunction> logger,
             MembershipUpdaters membershipUpdaters,
             IOptions<MultiLaneConfig> multilaneConfig)
         {
-            _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _membershipUpdaters = membershipUpdaters ?? throw new ArgumentNullException(nameof(membershipUpdaters));
             _multilaneConfig = multilaneConfig?.Value ?? throw new ArgumentNullException(nameof(multilaneConfig));
         }
@@ -45,24 +46,16 @@ namespace Hosts.GraphUpdater
            [DurableClient] DurableTaskClient client)
         {
             var groupMembership = JsonSerializer.Deserialize<GroupMembership>(Encoding.UTF8.GetString(message.Body));
-            var dynamicProperties = groupMembership.SyncJob.ToDictionary();
-            dynamicProperties.Add("Instance", SMALL_SUBSCRIPTION_NAME);
-            dynamicProperties.Add("MessageIndex", groupMembership.MessageIndex.ToString());
-            _loggingRepository.SetSyncJobProperties(groupMembership.RunId, dynamicProperties);
-
-            await _loggingRepository.LogMessageAsync(new LogMessage
+            var additionalProperties = new Dictionary<string, object>
             {
-                Message = $"{SMALL_FUNCTION_NAME} function started.",
-                RunId = groupMembership.RunId,
-            });
+                ["Instance"] = SMALL_SUBSCRIPTION_NAME,
+                ["MessageIndex"] = groupMembership.MessageIndex,
+                ["TotalMessageCount"] = groupMembership.TotalMessageCount
+            };
+            using var scope = _logger.BeginSyncJobScope(groupMembership.SyncJob, additionalProperties);
 
-            await _loggingRepository.LogMessageAsync(new LogMessage
-            {
-                Message = $"Processing message {message.MessageId} " +
-                          $"with {groupMembership.TotalMembersToAdd ?? 0} additions " +
-                          $"and {groupMembership.TotalMembersToRemove ?? 0} removals.",
-                RunId = groupMembership.RunId,
-            });
+            _logger.FunctionStarted(SMALL_FUNCTION_NAME);
+            _logger.ProcessingMessage(message.MessageId, groupMembership.TotalMembersToAdd ?? 0, groupMembership.TotalMembersToRemove ?? 0);
 
             var request = new OrchestratorMultiLaneRequest
             {
@@ -74,11 +67,7 @@ namespace Hosts.GraphUpdater
 
             await client.ScheduleNewOrchestrationInstanceAsync(nameof(OrchestratorMultiLaneFunction), request);
 
-            await _loggingRepository.LogMessageAsync(new LogMessage
-            {
-                Message = $"{SMALL_FUNCTION_NAME} function completed.",
-                RunId = groupMembership.RunId,
-            });
+            _logger.FunctionCompleted(SMALL_FUNCTION_NAME);
         }
 
         [Function(LARGE_FUNCTION_NAME)]
@@ -88,24 +77,16 @@ namespace Hosts.GraphUpdater
             [DurableClient] DurableTaskClient client)
         {
             var groupMembership = JsonSerializer.Deserialize<GroupMembership>(Encoding.UTF8.GetString(message.Body));
-            var dynamicProperties = groupMembership.SyncJob.ToDictionary();
-            dynamicProperties.Add("Instance", LARGE_SUBSCRIPTION_NAME);
-            dynamicProperties.Add("MessageIndex", groupMembership.MessageIndex.ToString());
-            _loggingRepository.SetSyncJobProperties(groupMembership.RunId, dynamicProperties);
-
-            await _loggingRepository.LogMessageAsync(new LogMessage
+            var additionalProperties = new Dictionary<string, object>
             {
-                Message = $"{LARGE_FUNCTION_NAME} function started.",
-                RunId = groupMembership.RunId,
-            });
+                ["Instance"] = LARGE_SUBSCRIPTION_NAME,
+                ["MessageIndex"] = groupMembership.MessageIndex,
+                ["TotalMessageCount"] = groupMembership.TotalMessageCount
+            };
+            using var scope = _logger.BeginSyncJobScope(groupMembership.SyncJob, additionalProperties);
 
-            await _loggingRepository.LogMessageAsync(new LogMessage
-            {
-                Message = $"Processing message {message.MessageId} " +
-                          $"with {groupMembership.TotalMembersToAdd ?? 0} additions " +
-                          $"and {groupMembership.TotalMembersToRemove ?? 0} removals.",
-                RunId = groupMembership.RunId,
-            });
+            _logger.FunctionStarted(LARGE_FUNCTION_NAME);
+            _logger.ProcessingMessage(message.MessageId, groupMembership.TotalMembersToAdd ?? 0, groupMembership.TotalMembersToRemove ?? 0);
 
             try
             {
@@ -136,27 +117,16 @@ namespace Hosts.GraphUpdater
                         || orchestratorStatus.RuntimeStatus == OrchestrationRuntimeStatus.Failed)
 
                 {
-                    await _loggingRepository.LogMessageAsync(new LogMessage
-                    {
-                        Message = $"Message {message.MessageId} ({message.SequenceNumber}) was already processed ended as {orchestratorStatus.RuntimeStatus}"
-                    });
+                    _logger.MessageAlreadyProcessed(message.MessageId, message.SequenceNumber, orchestratorStatus.RuntimeStatus.ToString());
                 }
             }
             catch (Exception ex)
             {
-                await _loggingRepository.LogMessageAsync(new LogMessage
-                {
-                    Message = $"Error processing Service Bus message: {ex.Message}"
-                });
-
+                _logger.StarterServiceBusError(ex, ex.Message);
                 throw;
             }
 
-            await _loggingRepository.LogMessageAsync(new LogMessage
-            {
-                Message = $"{LARGE_FUNCTION_NAME} function completed.",
-                RunId = groupMembership.RunId,
-            });
+            _logger.FunctionCompleted(LARGE_FUNCTION_NAME);
         }
 
         [Function(nameof(StarterFunction))]
@@ -213,12 +183,7 @@ namespace Hosts.GraphUpdater
 
         private async Task ProcessTimerAsync(DurableTaskClient client, string subscriptionName)
         {
-            var additionalProperties = new Dictionary<string, string> { { "Instance", subscriptionName } };
-            await _loggingRepository.LogMessageAsync(new LogMessage
-            {
-                Message = $"{nameof(StarterFunction)} function started",
-                DynamicProperties = additionalProperties
-            }, VerbosityLevel.DEBUG);
+            _logger.FunctionStarted(nameof(StarterFunction));
 
             var orchestrator = nameof(QueueMessageOrchestratorFunction);
             var instanceId = $"{nameof(QueueMessageOrchestratorFunction)}_{subscriptionName.ToLowerInvariant()}";
@@ -230,11 +195,7 @@ namespace Hosts.GraphUpdater
 
             if (!isRunning)
             {
-                await _loggingRepository.LogMessageAsync(new LogMessage
-                {
-                    Message = $"Calling {instanceId}",
-                    DynamicProperties = additionalProperties
-                }, VerbosityLevel.INFO);
+                _logger.CallingOrchestrator(instanceId);
 
                 await client.ScheduleNewOrchestrationInstanceAsync(orchestrator, new QueueMessageOrchestratorRequest
                 {
@@ -245,11 +206,7 @@ namespace Hosts.GraphUpdater
                 }, new StartOrchestrationOptions { InstanceId = instanceId });
             }
 
-            await _loggingRepository.LogMessageAsync(new LogMessage
-            {
-                Message = $"{nameof(StarterFunction)} function completed",
-                DynamicProperties = additionalProperties
-            }, VerbosityLevel.DEBUG);
+            _logger.FunctionCompleted(nameof(StarterFunction));
         }
 
         private async Task WaitForInstanceAsync(DurableTaskClient client, string instanceId)

@@ -2,34 +2,41 @@
 // Licensed under the MIT license.
 using Microsoft.Azure.Functions.Worker;
 using Microsoft.DurableTask;
-using Models;
+using Microsoft.Extensions.Logging;
 using Repositories.Contracts;
+using Repositories.Contracts.Helpers;
 using System;
+using System.Collections.Generic;
 using System.Threading.Tasks;
 
 namespace Hosts.GroupOwnershipObtainer
 {
     public class FeatureFlagFunction
     {
-        private readonly ILoggingRepository _loggingRepository;
+        private readonly ILogger<FeatureFlagFunction> _logger;
         private readonly IFeatureFlagRepository _featureFlagRepository;
 
         public FeatureFlagFunction(
-            ILoggingRepository loggingRepository,
+            ILogger<FeatureFlagFunction> logger,
             IFeatureFlagRepository featureFlagRepository)
         {
-            _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _featureFlagRepository = featureFlagRepository ?? throw new ArgumentNullException(nameof(featureFlagRepository));
         }
 
         [Function(nameof(FeatureFlagFunction))]
         public async Task<bool> CheckFeatureFlagStateAsync([ActivityTrigger] FeatureFlagRequest request)
         {
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(FeatureFlagFunction)} function started", RunId = request.RunId }, VerbosityLevel.DEBUG);
+            using var scope = _logger.BeginSyncJobScope(request.SyncJob, new Dictionary<string, object>
+            {
+                ["CurrentPart"] = request.CurrentPart,
+                ["TotalParts"] = request.TotalParts
+            });
+            _logger.FunctionStarted(nameof(FeatureFlagFunction));
 
-            var isFlagEnabled = await _featureFlagRepository.IsFeatureFlagEnabledAsync(request.FeatureFlagName, request.RefreshAppConfigurationValues, request.RunId);
+            var isFlagEnabled = await _featureFlagRepository.IsFeatureFlagEnabledAsync(request.FeatureFlagName, request.RefreshAppConfigurationValues, request.SyncJob?.RunId);
 
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(FeatureFlagFunction)} function completed", RunId = request.RunId }, VerbosityLevel.DEBUG);
+            _logger.FunctionCompleted(nameof(FeatureFlagFunction));
             return isFlagEnabled;
         }
     }

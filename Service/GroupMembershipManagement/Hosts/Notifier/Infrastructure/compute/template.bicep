@@ -145,22 +145,15 @@ module userAssignedManagedIdentityNameReader 'keyVaultReader.bicep' = {
 module storageAccountNameReader 'keyVaultReader.bicep' = {
   name: 'storageAccountNameReader-Notifier'
   params: {
-    value: dataKeyVault.getSecret('notifierStorageAccountProd')
+    value: dataKeyVault.getSecret('functionsStorageAccountName')
   }
   dependsOn: [
     dataKeyVault
   ]
 }
 
-module appPackageContainerNameReader 'keyVaultReader.bicep' = {
-  name: 'appPackageContainerNameReader-Notifier'
-  params: {
-    value: dataKeyVault.getSecret('notifierAppPackageContainerProd')
-  }
-  dependsOn: [
-    dataKeyVault
-  ]
-}
+var appPackageContainerName = 'notifier-app-package'
+
 
 resource graphUAMI 'Microsoft.ManagedIdentity/userAssignedIdentities@2023-07-31-preview' existing = {
   name: userAssignedManagedIdentityNameReader.outputs.value
@@ -187,7 +180,7 @@ module functionAppTemplate_Notifier 'functionApp.bicep' = {
     dataKeyVaultName: dataKeyVaultName
     dataKeyVaultResourceGroup: dataResourceGroup
     appSettings: appSettings
-    appPackageContainerName: appPackageContainerNameReader.outputs.value
+    appPackageContainerName: appPackageContainerName
     functionAuthAppClientId: functionAuthAppClientId
     userManagedIdentities:{
       '${graphUAMI.id}' : {}

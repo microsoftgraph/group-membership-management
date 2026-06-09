@@ -1,12 +1,12 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
+using Services.Entities;
 using System;
 
 namespace Hosts.GraphUpdater
 {
-    public class GroupOwnersReaderRequest
+    public class GroupOwnersReaderRequest : GraphUpdaterRequestBase
     {
-        public Guid RunId { get; set; }
         public Guid GroupId { get; set; }
     }
 }

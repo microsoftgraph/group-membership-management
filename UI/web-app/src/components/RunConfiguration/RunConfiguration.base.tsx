@@ -44,7 +44,7 @@ const getClassNames = classNamesFunction<
 >();
 
 export const RunConfigurationBase: React.FunctionComponent<IRunConfigurationProps> = (props) => {
-  const { className, styles } = props;
+  const { className, styles, thresholdExceededForAdditions = false, thresholdExceededForRemovals = false } = props;
   const strings = useStrings();
   const classNames: IProcessedStyleSet<IRunConfigurationStyles> = getClassNames(
     styles,
@@ -164,6 +164,17 @@ export const RunConfigurationBase: React.FunctionComponent<IRunConfigurationProp
       )}
       </div>
       {useThresholdLimits === 'Yes' && (
+        <div className={classNames.thresholdSectionWrapper}>
+          {thresholdExceededForAdditions && (
+            <MessageBar messageBarType={MessageBarType.error} isMultiline={false}>
+              {strings.ManageMembership.labels.increaseThresholdExceededWarning}
+            </MessageBar>
+          )}
+          {thresholdExceededForRemovals && (
+            <MessageBar messageBarType={MessageBarType.error} isMultiline={false}>
+              {strings.ManageMembership.labels.decreaseThresholdExceededWarning}
+            </MessageBar>
+          )}
         <div className={classNames.checkboxPairsContainer}>
           <div className={classNames.checkboxDropdownPair}>
             <Checkbox
@@ -181,7 +192,7 @@ export const RunConfigurationBase: React.FunctionComponent<IRunConfigurationProp
             />
             <Dropdown
               title={strings.ManageMembership.labels.increase}
-              styles={{ title: classNames.dropdownTitle, root: showIncreaseDropdown ? {} : { visibility: 'hidden' } }}
+              styles={{ title: thresholdExceededForAdditions ? classNames.dropdownTitleError : classNames.dropdownTitle, root: showIncreaseDropdown ? {} : { visibility: 'hidden' } }}
               className={classNames.thresholdDropdown}
               options={increaseOptions}
               selectedKey={thresholdPercentageForAdditions >= 0 ? thresholdPercentageForAdditions.toString() : undefined}
@@ -210,7 +221,7 @@ export const RunConfigurationBase: React.FunctionComponent<IRunConfigurationProp
             />
             <Dropdown
               title={strings.ManageMembership.labels.decrease}
-              styles={{ title: classNames.dropdownTitle, root: showDecreaseDropdown ? {} : { visibility: 'hidden' } }}
+              styles={{ title: thresholdExceededForRemovals ? classNames.dropdownTitleError : classNames.dropdownTitle, root: showDecreaseDropdown ? {} : { visibility: 'hidden' } }}
               className={classNames.thresholdDropdown}
               options={decreaseOptions}
               selectedKey={thresholdPercentageForRemovals >= 0 ? thresholdPercentageForRemovals.toString() : undefined}
@@ -221,6 +232,7 @@ export const RunConfigurationBase: React.FunctionComponent<IRunConfigurationProp
               }}
               disabled={!isJobWriter}
             /></div>
+        </div>
         </div>
       )}
     </div>

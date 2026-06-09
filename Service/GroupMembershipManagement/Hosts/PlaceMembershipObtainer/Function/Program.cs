@@ -4,6 +4,8 @@ using Azure.Identity;
 using Azure.Messaging.ServiceBus;
 using Common.DependencyInjection;
 using Hosts.FunctionBase;
+using Microsoft.Azure.Functions.Worker;
+using Microsoft.Azure.Functions.Worker.ApplicationInsights;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -43,6 +45,7 @@ namespace Hosts.PlaceMembershipObtainer
                     var dryRunSettingName = "PlaceMembershipObtainer:IsPlaceMembershipObtainerDryRunEnabled";
                     var rootPath = context.HostingEnvironment.ContentRootPath;
                     CommonServices.ConfigureCommonServices(services, configuration, functionName, dryRunSettingName, rootPath);
+                    services.ConfigureFunctionsApplicationInsights();
 
                     services.AddGraphAPIClient()
                         .AddScoped<IGraphGroupRepository, GraphGroupRepository>()

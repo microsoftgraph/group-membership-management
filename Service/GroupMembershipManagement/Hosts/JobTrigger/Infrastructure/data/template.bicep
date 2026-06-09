@@ -8,39 +8,21 @@ param environmentAbbreviation string
 @maxLength(3)
 param solutionAbbreviation string = 'gmm'
 
-param storageAccountSku string = 'Standard_LRS'
+var functionsStorageAccountName = take('fn${solutionAbbreviation}${environmentAbbreviation}${uniqueString(resourceGroup().id)}', 24)
 
-@description('Resource location.')
-param location string
-
-@description('Classify the types of resources in prereqs resource group.')
-param prereqsResourceGroupClassification string = 'prereqs'
-
-var keyVaultName = '${solutionAbbreviation}-data-${environmentAbbreviation}'
-var prodStorageAccountName = substring('jt${solutionAbbreviation}${environmentAbbreviation}prod${uniqueString(resourceGroup().id)}',0,23)
-
-module jobTriggerStorageAccountProd 'storageAccount.bicep' = {
-  name: 'jtProdstorageAccountTemplate'
-  params: {
-    name: prodStorageAccountName
-    sku: storageAccountSku
-    keyVaultName: keyVaultName
-    location: location
-    storageAccountSettingName: 'jobTriggerStorageAccountProd'
-    appPackageContainerSettingName: 'jobTriggerAppPackageContainerProd'
-    appPackageContainerName: 'app-package'
-  }
+resource functionsStorageAccount 'Microsoft.Storage/storageAccounts@2022-05-01' existing = {
+  name: functionsStorageAccountName
 }
 
-var nspName = '${solutionAbbreviation}-nsp-${environmentAbbreviation}'
-var prereqsResourceGroupName = '${solutionAbbreviation}-${prereqsResourceGroupClassification}-${environmentAbbreviation}'
+resource blobServices 'Microsoft.Storage/storageAccounts/blobServices@2022-05-01' existing = {
+  parent: functionsStorageAccount
+  name: 'default'
+}
 
-module jtStorageAccountAssociationTemplate 'networkSecurityPerimeterResourceAssociation.bicep' = {
-  name: 'jtStorageAccountAssociationTemplate'
-  scope: resourceGroup(prereqsResourceGroupName)
-  params: {
-    nspName: nspName
-    profileName: 'storageaccount'
-    resourceId: jobTriggerStorageAccountProd.outputs.storageAccountId
+resource appPackageContainer 'Microsoft.Storage/storageAccounts/blobServices/containers@2022-05-01' = {
+  parent: blobServices
+  name: 'jobtrigger-app-package'
+  properties: {
+    publicAccess: 'None'
   }
 }

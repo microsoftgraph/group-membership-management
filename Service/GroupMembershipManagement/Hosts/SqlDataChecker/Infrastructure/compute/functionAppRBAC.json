@@ -1,0 +1,550 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "metadata": {
+    "_generator": {
+      "name": "bicep",
+      "version": "0.34.44.8038",
+      "templateHash": "7310329597672052418"
+    }
+  },
+  "parameters": {
+    "prereqsKeyVaultName": {
+      "type": "string",
+      "metadata": {
+        "description": "Name of the resource group where the 'prereqs' key vault is located."
+      }
+    },
+    "prereqsKeyVaultResourceGroup": {
+      "type": "string",
+      "metadata": {
+        "description": "Name of the resource group where the 'prereqs' key vault is located."
+      }
+    },
+    "dataKeyVaultName": {
+      "type": "string",
+      "metadata": {
+        "description": "Name of the 'data' key vault."
+      }
+    },
+    "dataKeyVaultResourceGroup": {
+      "type": "string",
+      "metadata": {
+        "description": "Name of the resource group where the 'data' key vault is located."
+      }
+    },
+    "setRBACPermissions": {
+      "type": "bool",
+      "metadata": {
+        "description": "Flag to indicate if the deployment should set RBAC permissions."
+      }
+    },
+    "productionSlotPrincipalId": {
+      "type": "string",
+      "metadata": {
+        "description": "The principalId of the function app for the production slot."
+      }
+    },
+    "storageAccountName": {
+      "type": "string",
+      "metadata": {
+        "description": "Storage account name."
+      }
+    },
+    "functionName": {
+      "type": "string"
+    }
+  },
+  "resources": [
+    {
+      "condition": "[parameters('setRBACPermissions')]",
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2022-09-01",
+      "name": "[format('prereqsKV-rbac-{0}', parameters('functionName'))]",
+      "resourceGroup": "[parameters('prereqsKeyVaultResourceGroup')]",
+      "properties": {
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "mode": "Incremental",
+        "parameters": {
+          "keyVaultName": {
+            "value": "[parameters('prereqsKeyVaultName')]"
+          },
+          "principalId": {
+            "value": "[parameters('productionSlotPrincipalId')]"
+          },
+          "roleName": {
+            "value": "Key Vault Secrets User"
+          }
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "metadata": {
+            "_generator": {
+              "name": "bicep",
+              "version": "0.34.44.8038",
+              "templateHash": "3655062372326644505"
+            }
+          },
+          "parameters": {
+            "keyVaultName": {
+              "type": "string",
+              "metadata": {
+                "description": "Specifies the name of the key vault."
+              }
+            },
+            "principalId": {
+              "type": "string",
+              "metadata": {
+                "description": "Specifies the object ID of a user, service principal or security group in the Azure Active Directory tenant for the vault. The object ID must be unique for the list of access policies. Get it by using Get-AzADUser or Get-AzADServicePrincipal cmdlets."
+              }
+            },
+            "principaltype": {
+              "type": "string",
+              "defaultValue": "ServicePrincipal",
+              "allowedValues": [
+                "Device",
+                "ForeignGroup",
+                "Group",
+                "ServicePrincipal",
+                "User"
+              ],
+              "metadata": {
+                "description": "Principal Type"
+              }
+            },
+            "roleName": {
+              "type": "string",
+              "allowedValues": [
+                "Key Vault Administrator",
+                "Key Vault Certificates Officer",
+                "Key Vault Crypto Officer",
+                "Key Vault Crypto Service Encryption User",
+                "Key Vault Crypto User",
+                "Key Vault Reader",
+                "Key Vault Secrets Officer",
+                "Key Vault Secrets User"
+              ],
+              "metadata": {
+                "description": "Specifies the role the user will get with the secret in the vault. Valid values are: Key Vault Administrator, Key Vault Certificates Officer, Key Vault Crypto Officer, Key Vault Crypto Service Encryption User, Key Vault Crypto User, Key Vault Reader, Key Vault Secrets Officer, Key Vault Secrets User."
+              }
+            }
+          },
+          "variables": {
+            "roleIdMapping": {
+              "Key Vault Administrator": "00482a5a-887f-4fb3-b363-3b7fe8e74483",
+              "Key Vault Certificates Officer": "a4417e6f-fecd-4de8-b567-7b0420556985",
+              "Key Vault Crypto Officer": "14b46e9e-c2b7-41b4-b07b-48a6ebf60603",
+              "Key Vault Crypto Service Encryption User": "e147488a-f6f5-4113-8e2d-b22465e65bf6",
+              "Key Vault Crypto User": "12338af0-0e69-4776-bea7-57ae8d297424",
+              "Key Vault Reader": "21090545-7ca7-4776-b22c-e363652d74d2",
+              "Key Vault Secrets Officer": "b86a8fe4-44ce-4948-aee5-eccb2c155cd7",
+              "Key Vault Secrets User": "4633458b-17de-408a-b874-0445c86b69e6"
+            }
+          },
+          "resources": [
+            {
+              "type": "Microsoft.Authorization/roleAssignments",
+              "apiVersion": "2022-04-01",
+              "scope": "[format('Microsoft.KeyVault/vaults/{0}', parameters('keyVaultName'))]",
+              "name": "[guid(variables('roleIdMapping')[parameters('roleName')], parameters('principalId'), resourceId('Microsoft.KeyVault/vaults', parameters('keyVaultName')))]",
+              "properties": {
+                "roleDefinitionId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', variables('roleIdMapping')[parameters('roleName')])]",
+                "principalId": "[parameters('principalId')]",
+                "principalType": "[parameters('principaltype')]"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "condition": "[parameters('setRBACPermissions')]",
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2022-09-01",
+      "name": "[format('dataKV-rbac-{0}', parameters('functionName'))]",
+      "resourceGroup": "[parameters('dataKeyVaultResourceGroup')]",
+      "properties": {
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "mode": "Incremental",
+        "parameters": {
+          "keyVaultName": {
+            "value": "[parameters('dataKeyVaultName')]"
+          },
+          "principalId": {
+            "value": "[parameters('productionSlotPrincipalId')]"
+          },
+          "roleName": {
+            "value": "Key Vault Secrets User"
+          }
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "metadata": {
+            "_generator": {
+              "name": "bicep",
+              "version": "0.34.44.8038",
+              "templateHash": "3655062372326644505"
+            }
+          },
+          "parameters": {
+            "keyVaultName": {
+              "type": "string",
+              "metadata": {
+                "description": "Specifies the name of the key vault."
+              }
+            },
+            "principalId": {
+              "type": "string",
+              "metadata": {
+                "description": "Specifies the object ID of a user, service principal or security group in the Azure Active Directory tenant for the vault. The object ID must be unique for the list of access policies. Get it by using Get-AzADUser or Get-AzADServicePrincipal cmdlets."
+              }
+            },
+            "principaltype": {
+              "type": "string",
+              "defaultValue": "ServicePrincipal",
+              "allowedValues": [
+                "Device",
+                "ForeignGroup",
+                "Group",
+                "ServicePrincipal",
+                "User"
+              ],
+              "metadata": {
+                "description": "Principal Type"
+              }
+            },
+            "roleName": {
+              "type": "string",
+              "allowedValues": [
+                "Key Vault Administrator",
+                "Key Vault Certificates Officer",
+                "Key Vault Crypto Officer",
+                "Key Vault Crypto Service Encryption User",
+                "Key Vault Crypto User",
+                "Key Vault Reader",
+                "Key Vault Secrets Officer",
+                "Key Vault Secrets User"
+              ],
+              "metadata": {
+                "description": "Specifies the role the user will get with the secret in the vault. Valid values are: Key Vault Administrator, Key Vault Certificates Officer, Key Vault Crypto Officer, Key Vault Crypto Service Encryption User, Key Vault Crypto User, Key Vault Reader, Key Vault Secrets Officer, Key Vault Secrets User."
+              }
+            }
+          },
+          "variables": {
+            "roleIdMapping": {
+              "Key Vault Administrator": "00482a5a-887f-4fb3-b363-3b7fe8e74483",
+              "Key Vault Certificates Officer": "a4417e6f-fecd-4de8-b567-7b0420556985",
+              "Key Vault Crypto Officer": "14b46e9e-c2b7-41b4-b07b-48a6ebf60603",
+              "Key Vault Crypto Service Encryption User": "e147488a-f6f5-4113-8e2d-b22465e65bf6",
+              "Key Vault Crypto User": "12338af0-0e69-4776-bea7-57ae8d297424",
+              "Key Vault Reader": "21090545-7ca7-4776-b22c-e363652d74d2",
+              "Key Vault Secrets Officer": "b86a8fe4-44ce-4948-aee5-eccb2c155cd7",
+              "Key Vault Secrets User": "4633458b-17de-408a-b874-0445c86b69e6"
+            }
+          },
+          "resources": [
+            {
+              "type": "Microsoft.Authorization/roleAssignments",
+              "apiVersion": "2022-04-01",
+              "scope": "[format('Microsoft.KeyVault/vaults/{0}', parameters('keyVaultName'))]",
+              "name": "[guid(variables('roleIdMapping')[parameters('roleName')], parameters('principalId'), resourceId('Microsoft.KeyVault/vaults', parameters('keyVaultName')))]",
+              "properties": {
+                "roleDefinitionId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', variables('roleIdMapping')[parameters('roleName')])]",
+                "principalId": "[parameters('principalId')]",
+                "principalType": "[parameters('principaltype')]"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "condition": "[parameters('setRBACPermissions')]",
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2022-09-01",
+      "name": "[format('storageAccount-sbdc-{0}', parameters('functionName'))]",
+      "resourceGroup": "[parameters('dataKeyVaultResourceGroup')]",
+      "properties": {
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "mode": "Incremental",
+        "parameters": {
+          "storageAccountName": {
+            "value": "[parameters('storageAccountName')]"
+          },
+          "principalId": {
+            "value": "[parameters('productionSlotPrincipalId')]"
+          },
+          "roleName": {
+            "value": "Storage Blob Data Contributor"
+          }
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "metadata": {
+            "_generator": {
+              "name": "bicep",
+              "version": "0.34.44.8038",
+              "templateHash": "6972760417516445582"
+            }
+          },
+          "parameters": {
+            "storageAccountName": {
+              "type": "string",
+              "metadata": {
+                "description": "Specifies the name of the storage account."
+              }
+            },
+            "principalId": {
+              "type": "string",
+              "metadata": {
+                "description": "Specifies the object ID of a user, service principal or security group in the Azure Active Directory tenant for the vault. The object ID must be unique for the list of access policies. Get it by using Get-AzADUser or Get-AzADServicePrincipal cmdlets."
+              }
+            },
+            "principaltype": {
+              "type": "string",
+              "defaultValue": "ServicePrincipal",
+              "allowedValues": [
+                "Device",
+                "ForeignGroup",
+                "Group",
+                "ServicePrincipal",
+                "User"
+              ],
+              "metadata": {
+                "description": "Principal Type"
+              }
+            },
+            "roleName": {
+              "type": "string",
+              "allowedValues": [
+                "Storage Queue Data Contributor",
+                "Storage Table Data Contributor",
+                "Storage Blob Data Contributor"
+              ],
+              "metadata": {
+                "description": "Specifies the role name to assign."
+              }
+            }
+          },
+          "variables": {
+            "roleIdMapping": {
+              "Storage Queue Data Contributor": "974c5e8b-45b9-4653-ba55-5f855dd0fb88",
+              "Storage Table Data Contributor": "0a9a7e1f-b9d0-4cc4-a60d-0319b160aaa3",
+              "Storage Blob Data Contributor": "ba92f5b4-2d11-453d-a403-e96b0029c9fe"
+            }
+          },
+          "resources": [
+            {
+              "type": "Microsoft.Authorization/roleAssignments",
+              "apiVersion": "2022-04-01",
+              "scope": "[format('Microsoft.Storage/storageAccounts/{0}', parameters('storageAccountName'))]",
+              "name": "[guid(variables('roleIdMapping')[parameters('roleName')], parameters('principalId'), resourceId('Microsoft.Storage/storageAccounts', parameters('storageAccountName')))]",
+              "properties": {
+                "roleDefinitionId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', variables('roleIdMapping')[parameters('roleName')])]",
+                "principalId": "[parameters('principalId')]",
+                "principalType": "[parameters('principaltype')]"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "condition": "[parameters('setRBACPermissions')]",
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2022-09-01",
+      "name": "[format('storageAccount-stdc-{0}', parameters('functionName'))]",
+      "resourceGroup": "[parameters('dataKeyVaultResourceGroup')]",
+      "properties": {
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "mode": "Incremental",
+        "parameters": {
+          "storageAccountName": {
+            "value": "[parameters('storageAccountName')]"
+          },
+          "principalId": {
+            "value": "[parameters('productionSlotPrincipalId')]"
+          },
+          "roleName": {
+            "value": "Storage Table Data Contributor"
+          }
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "metadata": {
+            "_generator": {
+              "name": "bicep",
+              "version": "0.34.44.8038",
+              "templateHash": "6972760417516445582"
+            }
+          },
+          "parameters": {
+            "storageAccountName": {
+              "type": "string",
+              "metadata": {
+                "description": "Specifies the name of the storage account."
+              }
+            },
+            "principalId": {
+              "type": "string",
+              "metadata": {
+                "description": "Specifies the object ID of a user, service principal or security group in the Azure Active Directory tenant for the vault. The object ID must be unique for the list of access policies. Get it by using Get-AzADUser or Get-AzADServicePrincipal cmdlets."
+              }
+            },
+            "principaltype": {
+              "type": "string",
+              "defaultValue": "ServicePrincipal",
+              "allowedValues": [
+                "Device",
+                "ForeignGroup",
+                "Group",
+                "ServicePrincipal",
+                "User"
+              ],
+              "metadata": {
+                "description": "Principal Type"
+              }
+            },
+            "roleName": {
+              "type": "string",
+              "allowedValues": [
+                "Storage Queue Data Contributor",
+                "Storage Table Data Contributor",
+                "Storage Blob Data Contributor"
+              ],
+              "metadata": {
+                "description": "Specifies the role name to assign."
+              }
+            }
+          },
+          "variables": {
+            "roleIdMapping": {
+              "Storage Queue Data Contributor": "974c5e8b-45b9-4653-ba55-5f855dd0fb88",
+              "Storage Table Data Contributor": "0a9a7e1f-b9d0-4cc4-a60d-0319b160aaa3",
+              "Storage Blob Data Contributor": "ba92f5b4-2d11-453d-a403-e96b0029c9fe"
+            }
+          },
+          "resources": [
+            {
+              "type": "Microsoft.Authorization/roleAssignments",
+              "apiVersion": "2022-04-01",
+              "scope": "[format('Microsoft.Storage/storageAccounts/{0}', parameters('storageAccountName'))]",
+              "name": "[guid(variables('roleIdMapping')[parameters('roleName')], parameters('principalId'), resourceId('Microsoft.Storage/storageAccounts', parameters('storageAccountName')))]",
+              "properties": {
+                "roleDefinitionId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', variables('roleIdMapping')[parameters('roleName')])]",
+                "principalId": "[parameters('principalId')]",
+                "principalType": "[parameters('principaltype')]"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "condition": "[parameters('setRBACPermissions')]",
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2022-09-01",
+      "name": "[format('storageAccount-sqdc-{0}', parameters('functionName'))]",
+      "resourceGroup": "[parameters('dataKeyVaultResourceGroup')]",
+      "properties": {
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "mode": "Incremental",
+        "parameters": {
+          "storageAccountName": {
+            "value": "[parameters('storageAccountName')]"
+          },
+          "principalId": {
+            "value": "[parameters('productionSlotPrincipalId')]"
+          },
+          "roleName": {
+            "value": "Storage Queue Data Contributor"
+          }
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "metadata": {
+            "_generator": {
+              "name": "bicep",
+              "version": "0.34.44.8038",
+              "templateHash": "6972760417516445582"
+            }
+          },
+          "parameters": {
+            "storageAccountName": {
+              "type": "string",
+              "metadata": {
+                "description": "Specifies the name of the storage account."
+              }
+            },
+            "principalId": {
+              "type": "string",
+              "metadata": {
+                "description": "Specifies the object ID of a user, service principal or security group in the Azure Active Directory tenant for the vault. The object ID must be unique for the list of access policies. Get it by using Get-AzADUser or Get-AzADServicePrincipal cmdlets."
+              }
+            },
+            "principaltype": {
+              "type": "string",
+              "defaultValue": "ServicePrincipal",
+              "allowedValues": [
+                "Device",
+                "ForeignGroup",
+                "Group",
+                "ServicePrincipal",
+                "User"
+              ],
+              "metadata": {
+                "description": "Principal Type"
+              }
+            },
+            "roleName": {
+              "type": "string",
+              "allowedValues": [
+                "Storage Queue Data Contributor",
+                "Storage Table Data Contributor",
+                "Storage Blob Data Contributor"
+              ],
+              "metadata": {
+                "description": "Specifies the role name to assign."
+              }
+            }
+          },
+          "variables": {
+            "roleIdMapping": {
+              "Storage Queue Data Contributor": "974c5e8b-45b9-4653-ba55-5f855dd0fb88",
+              "Storage Table Data Contributor": "0a9a7e1f-b9d0-4cc4-a60d-0319b160aaa3",
+              "Storage Blob Data Contributor": "ba92f5b4-2d11-453d-a403-e96b0029c9fe"
+            }
+          },
+          "resources": [
+            {
+              "type": "Microsoft.Authorization/roleAssignments",
+              "apiVersion": "2022-04-01",
+              "scope": "[format('Microsoft.Storage/storageAccounts/{0}', parameters('storageAccountName'))]",
+              "name": "[guid(variables('roleIdMapping')[parameters('roleName')], parameters('principalId'), resourceId('Microsoft.Storage/storageAccounts', parameters('storageAccountName')))]",
+              "properties": {
+                "roleDefinitionId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', variables('roleIdMapping')[parameters('roleName')])]",
+                "principalId": "[parameters('principalId')]",
+                "principalType": "[parameters('principaltype')]"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ]
+}

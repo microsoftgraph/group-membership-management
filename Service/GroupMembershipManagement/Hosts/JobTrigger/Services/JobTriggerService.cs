@@ -220,12 +220,12 @@ namespace Services
             await _syncJobStatusService.UpdateJobStatusAsync(job, status, history, functionName: "JobTrigger");
         }
 
-        public async Task<bool> TryClaimAndUpdateJobAsync(SyncStatus status, SyncJob job)
+        public async Task<SyncJob?> TryClaimAndUpdateJobAsync(SyncStatus status, SyncJob job)
         {
-            var claimedCount = await _databaseSyncJobsRepository.ClaimSyncJobAsync(
+            var claimedJob = await _databaseSyncJobsRepository.ClaimSyncJobAsync(
                 job.Id, job.RunId, job.Period, status.ToString());
-            if (claimedCount == 0)
-                return false;
+            if (claimedJob == null)
+                return null;
 
             using (_logger.BeginSyncJobScope(job))
             {
@@ -235,7 +235,7 @@ namespace Services
                     _logger.RestartingStuckJob();
             }
 
-            return true;
+            return claimedJob;
         }
         public async Task SendMessageAsync(SyncJob job)
         {

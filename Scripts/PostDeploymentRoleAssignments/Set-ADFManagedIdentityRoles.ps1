@@ -35,7 +35,7 @@ function Set-ADFManagedIdentityRoles
 	. ($scriptsDirectory + '/ReusableModules/Get-KeyVaultSecretWithFirewallRetry.ps1')
 	. ($scriptsDirectory + '/ReusableModules/Invoke-WithRetry.ps1')
 
-	$functionApps = @("SqlMembershipObtainer")
+	$functionApps = @("SqlMembershipObtainer", "SqlDataChecker")
     $appServices = @("webapi")
     $azureDataFactoryName = "$SolutionAbbreviation-data-$EnvironmentAbbreviation-adf"
     $servicePrincipals = @()

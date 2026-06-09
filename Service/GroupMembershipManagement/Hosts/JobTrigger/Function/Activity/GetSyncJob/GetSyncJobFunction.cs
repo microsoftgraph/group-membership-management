@@ -22,12 +22,15 @@ namespace Hosts.JobTrigger
         }
 
         [Function(nameof(GetSyncJobFunction))]
-        public async Task<SyncJob> GetSyncJobByIdAsync([ActivityTrigger] Guid syncJobId)
+        public async Task<SyncJob> GetSyncJobByIdAsync([ActivityTrigger] SyncJob syncJob)
         {
-            _logger.FunctionStarted(nameof(GetSyncJobFunction));
-            var syncJob = await _jobTriggerService.GetSyncJobByIdAsync(syncJobId);
-            _logger.FunctionCompleted(nameof(GetSyncJobFunction));
-            return syncJob;
+            using (_logger.BeginSyncJobScope(syncJob))
+            {
+                _logger.FunctionStarted(nameof(GetSyncJobFunction));
+                var latestSyncJob = await _jobTriggerService.GetSyncJobByIdAsync(syncJob.Id);
+                _logger.FunctionCompleted(nameof(GetSyncJobFunction));
+                return latestSyncJob;
+            }
         }
     }
 }

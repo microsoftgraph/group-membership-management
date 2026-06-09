@@ -238,5 +238,104 @@ namespace Repositories.GraphGroups
             }
         }
 
+        public async Task<List<Guid>> GetGroupIdsOwnedByServicePrincipalAsync(Guid servicePrincipalObjectId, Guid? runId)
+        {
+            var groupIds = new List<Guid>();
+
+            try
+            {
+                var nativeResponseHandler = new NativeResponseHandler();
+                var ownedObjectsResponse = new DirectoryObjectCollectionResponse();
+
+                await _graphServiceClient.ServicePrincipals[servicePrincipalObjectId.ToString()]
+                    .OwnedObjects.GetAsync(requestConfiguration =>
+                    {
+                        requestConfiguration.QueryParameters.Select = new[] { "id" };
+                        requestConfiguration.QueryParameters.Top = 999;
+                        requestConfiguration.Options.Add(new ResponseHandlerOption { ResponseHandler = nativeResponseHandler });
+                    });
+
+                var nativeResponse = nativeResponseHandler.Value as HttpResponseMessage;
+
+                if (nativeResponse.IsSuccessStatusCode)
+                {
+                    ownedObjectsResponse = await DeserializeResponseAsync(nativeResponse,
+                                                                          DirectoryObjectCollectionResponse.CreateFromDiscriminatorValue);
+
+                    var headers = nativeResponse.Headers.ToImmutableDictionary(x => x.Key, x => x.Value);
+                    await _graphGroupMetricTracker.TrackMetricsAsync(headers, QueryType.Other, runId);
+
+                    foreach (var obj in ownedObjectsResponse.Value)
+                    {
+                        if (obj.OdataType != null && obj.OdataType.Contains("#microsoft.graph.group", StringComparison.OrdinalIgnoreCase))
+                        {
+                            if (Guid.TryParse(obj.Id, out var groupId))
+                            {
+                                groupIds.Add(groupId);
+                            }
+                        }
+                    }
+
+                    // Handle pagination
+                    var nextLink = ownedObjectsResponse.OdataNextLink;
+                    while (!string.IsNullOrEmpty(nextLink))
+                    {
+                        var nextNativeResponseHandler = new NativeResponseHandler();
+
+                        await _graphServiceClient.ServicePrincipals[servicePrincipalObjectId.ToString()]
+                            .OwnedObjects.WithUrl(nextLink).GetAsync(requestConfiguration =>
+                            {
+                                requestConfiguration.Options.Add(new ResponseHandlerOption { ResponseHandler = nextNativeResponseHandler });
+                            });
+
+                        var nextNativeResponse = nextNativeResponseHandler.Value as HttpResponseMessage;
+
+                        if (nextNativeResponse.IsSuccessStatusCode)
+                        {
+                            var nextPage = await DeserializeResponseAsync(nextNativeResponse,
+                                                                          DirectoryObjectCollectionResponse.CreateFromDiscriminatorValue);
+
+                            var nextHeaders = nextNativeResponse.Headers.ToImmutableDictionary(x => x.Key, x => x.Value);
+                            await _graphGroupMetricTracker.TrackMetricsAsync(nextHeaders, QueryType.Other, runId);
+
+                            foreach (var obj in nextPage.Value)
+                            {
+                                if (obj.OdataType != null && obj.OdataType.Contains("#microsoft.graph.group", StringComparison.OrdinalIgnoreCase))
+                                {
+                                    if (Guid.TryParse(obj.Id, out var groupId))
+                                    {
+                                        groupIds.Add(groupId);
+                                    }
+                                }
+                            }
+
+                            nextLink = nextPage.OdataNextLink;
+                        }
+                        else
+                        {
+                            _graphGroupOwnerReaderLogger.LogWarningWithRunId(runId,
+                                $"Failed to retrieve next page of owned objects for service principal {servicePrincipalObjectId}. StatusCode {nextNativeResponse.StatusCode}");
+                            break;
+                        }
+                    }
+                }
+                else
+                {
+                    _graphGroupOwnerReaderLogger.LogWarningWithRunId(runId,
+                        $"Failed to retrieve owned objects for service principal {servicePrincipalObjectId}. StatusCode {nativeResponse.StatusCode}");
+                }
+            }
+            catch (ODataError ex)
+            {
+                _graphGroupOwnerReaderLogger.LogErrorWithRunId(runId, ex.GetBaseException().ToString(), ex);
+                throw;
+            }
+
+            _graphGroupOwnerReaderLogger.LogInformationWithRunId(runId,
+                $"Service principal {servicePrincipalObjectId} owns {groupIds.Count} group(s).");
+
+            return groupIds;
+        }
+
     }
 }

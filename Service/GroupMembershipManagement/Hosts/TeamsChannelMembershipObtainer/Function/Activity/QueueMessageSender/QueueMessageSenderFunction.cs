@@ -2,9 +2,10 @@
 // Licensed under the MIT license.
 
 using Microsoft.Azure.Functions.Worker;
-using Models;
-using Repositories.Contracts;
+using Microsoft.Extensions.Logging;
+using Repositories.Contracts.Helpers;
 using System;
+using System.Collections.Generic;
 using System.Threading.Tasks;
 using TeamsChannelMembershipObtainer.Service.Contracts;
 
@@ -12,32 +13,27 @@ namespace Hosts.TeamsChannelMembershipObtainer
 {
     public class QueueMessageSenderFunction
     {
-        private readonly ILoggingRepository _loggingRepository = null;
+        private readonly ILogger<QueueMessageSenderFunction> _logger;
         private readonly ITeamsChannelService _teamsChannelService;
-        public QueueMessageSenderFunction(ILoggingRepository loggingRepository, ITeamsChannelService teamsChannelService)
+
+        public QueueMessageSenderFunction(ILogger<QueueMessageSenderFunction> logger, ITeamsChannelService teamsChannelService)
         {
-            _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _teamsChannelService = teamsChannelService ?? throw new ArgumentNullException(nameof(teamsChannelService));
         }
 
         [Function(nameof(QueueMessageSenderFunction))]
         public async Task SendMessageAsync([ActivityTrigger] QueueMessageSenderRequest request)
         {
-            var syncJob = request.ChannelSyncInfo.SyncJob;
-
-            await _loggingRepository.LogMessageAsync(new LogMessage
+            using var scope = _logger.BeginSyncJobScope(request.ChannelSyncInfo.SyncJob, new Dictionary<string, object>
             {
-                Message = $"{nameof(QueueMessageSenderFunction)} function started",
-                RunId = syncJob.RunId
-            }, VerbosityLevel.DEBUG);
+                ["CurrentPart"] = request.ChannelSyncInfo.CurrentPart,
+                ["TotalParts"] = request.ChannelSyncInfo.TotalParts
+            });
 
+            _logger.FunctionStarted(nameof(QueueMessageSenderFunction));
             await _teamsChannelService.MakeMembershipAggregatorRequestAsync(request.ChannelSyncInfo, request.FilePath);
-
-            await _loggingRepository.LogMessageAsync(new LogMessage
-            {
-                Message = $"{nameof(QueueMessageSenderFunction)} function completed",
-                RunId = syncJob.RunId
-            }, VerbosityLevel.DEBUG);
+            _logger.FunctionCompleted(nameof(QueueMessageSenderFunction));
         }
     }
 }

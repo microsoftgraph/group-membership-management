@@ -4,8 +4,10 @@ using GraphUpdater.QueueMessageOrchestrator;
 using Microsoft.Azure.Functions.Worker;
 using Microsoft.DurableTask;
 using Microsoft.DurableTask.Client;
+using Microsoft.Extensions.Logging;
 using Models;
-using Repositories.Contracts;
+using Repositories.Contracts.Helpers;
+using Services.Entities;
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
@@ -14,18 +16,10 @@ namespace Hosts.GraphUpdater
 {
     public class QueueMessageOrchestratorFunction
     {
-        private readonly ILoggingRepository _loggingRepository = null;
-
-        public QueueMessageOrchestratorFunction(ILoggingRepository loggingRepository)
-        {
-            _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
-        }
-
         [Function(nameof(QueueMessageOrchestratorFunction))]
         public async Task RunOrchestratorAsync([OrchestrationTrigger] TaskOrchestrationContext context)
         {
-            Guid runId = Guid.Empty;
-            SyncJob syncJob = null;
+            var logger = context.CreateReplaySafeLogger("GraphUpdater.QueueMessageOrchestratorFunction");
             var orchestratorRequest = context.GetInput<QueueMessageOrchestratorRequest>();
 
             try
@@ -34,34 +28,21 @@ namespace Hosts.GraphUpdater
 
                 if (request == null)
                 {
-                    await context.CallActivityAsync(nameof(LoggerFunction),
-                                                    new LoggerRequest
-                                                    {
-                                                        Message = $"There are no more messages to process at this time.",
-                                                        Verbosity = VerbosityLevel.INFO,
-                                                        AdditionalProperties = new Dictionary<string, string>
-                                                        {
-                                                            { "Instance", orchestratorRequest.SubscriptionName }
-                                                        }
-                                                    });
-
+                    logger.NoMoreMessages();
                     return;
                 }
 
-                runId = orchestratorRequest.IsMultiLaneEnabled ? request.GroupMembership.RunId : request.MembershipHttpRequest.SyncJob.RunId.GetValueOrDefault();
-                syncJob = orchestratorRequest.IsMultiLaneEnabled ? request.GroupMembership.SyncJob : request.MembershipHttpRequest.SyncJob;
-                var groupId = await context.CallActivityAsync<Guid>(nameof(GetGroupFunction), syncJob);
-                var syncJobProperties = syncJob.ToDictionary();
-                syncJobProperties.Add("Instance", orchestratorRequest.SubscriptionName);
-                _loggingRepository.SetSyncJobProperties(runId, syncJobProperties);
+                var runId = orchestratorRequest.IsMultiLaneEnabled ? request.GroupMembership.RunId : request.MembershipHttpRequest.SyncJob.RunId.GetValueOrDefault();
+                var syncJob = orchestratorRequest.IsMultiLaneEnabled ? request.GroupMembership.SyncJob : request.MembershipHttpRequest.SyncJob;
+                var additionalProperties = new Dictionary<string, object>
+                {
+                    ["Instance"] = orchestratorRequest.SubscriptionName ?? string.Empty
+                };
+                using var scope = logger.BeginSyncJobScope(syncJob, additionalProperties);
 
-                await context.CallActivityAsync(nameof(LoggerFunction),
-                                                   new LoggerRequest
-                                                   {
-                                                       Message = $"Processing message for group {groupId}",
-                                                       SyncJob = syncJob,
-                                                       Verbosity = VerbosityLevel.INFO
-                                                   });
+                var groupId = await context.CallActivityAsync<Guid>(nameof(GetGroupFunction), new GetGroupRequest { SyncJob = syncJob });
+
+                logger.ProcessingMessageForGroup(groupId);
 
                 if (orchestratorRequest.IsMultiLaneEnabled)
                     await context.CallSubOrchestratorAsync<OrchestrationRuntimeStatus>(nameof(OrchestratorMultiLaneFunction), new OrchestratorMultiLaneRequest
@@ -77,21 +58,7 @@ namespace Hosts.GraphUpdater
             }
             catch (Exception ex)
             {
-                await context.CallActivityAsync(nameof(LoggerFunction),
-                                                   new LoggerRequest
-                                                   {
-                                                       Message = $"Unexpected exception: {ex.Message}",
-                                                       SyncJob = syncJob,
-                                                       Verbosity = VerbosityLevel.INFO,
-                                                       AdditionalProperties = new Dictionary<string, string>
-                                                       {
-                                                           { "Instance", orchestratorRequest.SubscriptionName }
-                                                       }
-                                                   });
-            }
-            finally
-            {
-                _loggingRepository.RemoveSyncJobProperties(runId);
+                logger.QueueOrchestratorException(ex, ex.Message);
             }
 
             // Not needed for multi-lane, as the time interval will determine when the next message is processed.

@@ -40,7 +40,11 @@ function Set-PostDeploymentRoles {
         [Parameter(Mandatory = $False)]
 		[bool] $SetUserAssignedManagedIdentityPermissions = $false,
         [Parameter(Mandatory = $False)]
-		[boolean] $SkipPrivilegedDirectoryActions = $false
+		[boolean] $SkipPrivilegedDirectoryActions = $false,
+        [Parameter(Mandatory = $False)]
+        [bool] $SkipNetworkingDeployment = $false,
+        [Parameter(Mandatory = $False)]
+        [string] $BastionVnetAddressPrefix = '10.0.0.0/24'
     )
 
     $scriptsDirectory = Split-Path $PSScriptRoot -Parent
@@ -96,5 +100,21 @@ function Set-PostDeploymentRoles {
                                             -TenantId $TenantId `
                                             -SkipPrivilegedDirectoryActions $SkipPrivilegedDirectoryActions `
                                             -Verbose
+    }
+
+    if (-not $SkipNetworkingDeployment) {
+        . ($scriptsDirectory + '/PostDeploymentRoleAssignments/Set-JitNetworkAccessPolicy.ps1')
+        Set-JitNetworkAccessPolicy -SolutionAbbreviation $SolutionAbbreviation `
+                                   -EnvironmentAbbreviation $EnvironmentAbbreviation `
+                                   -AllowedSourceAddressPrefix $BastionVnetAddressPrefix `
+                                   -Verbose
+
+        . ($scriptsDirectory + '/PostDeploymentRoleAssignments/Set-CloudSecurityBenchmarkPolicy.ps1')
+        Set-CloudSecurityBenchmarkPolicy -SolutionAbbreviation $SolutionAbbreviation `
+                                         -EnvironmentAbbreviation $EnvironmentAbbreviation `
+                                         -Verbose
+    }
+    else {
+        Write-Host "Skipping JIT and Security Benchmark policy scripts (networking deployment is disabled)." -ForegroundColor Yellow
     }
 }

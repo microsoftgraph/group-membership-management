@@ -10,7 +10,6 @@ namespace Services.Contracts
 {
     public interface IGroupOwnershipObtainerService
     {
-        public Guid RunId { get; set; }
         Task<Guid> GetGroupIdAsync(SyncJob syncJob);
         Task<List<SyncJob>> GetSyncJobsSegmentAsync();
         public Task<List<Guid>> GetGroupOwnersAsync(Guid groupId);

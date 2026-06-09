@@ -226,9 +226,6 @@ export const JobsListFilterBase: React.FunctionComponent<IJobsListFilterProps> =
   };
 
   const handleOwnersInputChanged = (input: string): string => {
-    if (input.trim()) {
-      dispatch(getPeoplePickerSuggestions(input))
-    }
     return input;
   }
 
@@ -256,7 +253,12 @@ export const JobsListFilterBase: React.FunctionComponent<IJobsListFilterProps> =
   const getPickerSuggestions = async (
     filterText: string
   ): Promise<IPersonaProps[]> => {
-    return filterText && ownerPickerSuggestions ? ownerPickerSuggestions : [];
+    if (!filterText) return [];
+    const action = await dispatch(getPeoplePickerSuggestions(filterText));
+    if (getPeoplePickerSuggestions.rejected.match(action)) {
+      return ownerPickerSuggestions ?? [];
+    }
+    return (action.payload as IPersonaProps[]) ?? [];
   };
 
   return (

@@ -1,5 +1,6 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
+using Azure;
 using Microsoft.Azure.Functions.Worker;
 using Microsoft.Extensions.Logging;
 using Models;
@@ -27,7 +28,16 @@ namespace Hosts.GroupMembershipObtainer
             using (_logger.BeginSyncJobScope(request.SyncJob, new Dictionary<string, object> { ["CurrentPart"] = request.CurrentPart, ["TotalParts"] = request.TotalParts }))
             {
                 _logger.FunctionStarted(nameof(CacheUploaderFunction));
-                await _calculator.UploadCacheAsync(request.ObjectId, request.SyncJob.RunId.GetValueOrDefault(), request.MembershipFileResult);
+
+                try
+                {
+                    await _calculator.UploadCacheAsync(request.ObjectId, request.SyncJob.RunId.GetValueOrDefault(), request.MembershipFileResult);
+                }
+                catch (RequestFailedException ex) when (ex.ErrorCode == "InvalidBlockList")
+                {
+                    _logger.CacheUploadRaceConditionSkipped(request.ObjectId);
+                }
+
                 _logger.FunctionCompleted(nameof(CacheUploaderFunction));
             }
         }

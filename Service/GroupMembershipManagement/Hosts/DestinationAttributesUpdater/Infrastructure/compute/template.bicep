@@ -158,22 +158,15 @@ module userAssignedManagedIdentityNameReader 'keyVaultReader.bicep' = {
 module storageAccountNameReader 'keyVaultReader.bicep' = {
   name: 'storageAccountNameReader-DestinationAttributesUpdater'
   params: {
-    value: dataKeyVault.getSecret('destinationAttributesUpdaterStorageAccountProd')
+    value: dataKeyVault.getSecret('functionsStorageAccountName')
   }
   dependsOn: [
     dataKeyVault
   ]
 }
 
-module appPackageContainerNameReader 'keyVaultReader.bicep' = {
-  name: 'appPackageContainerNameReader-DestinationAttributesUpdater'
-  params: {
-    value: dataKeyVault.getSecret('destinationAttributesUpdaterAppPackageContainerProd')
-  }
-  dependsOn: [
-    dataKeyVault
-  ]
-}
+var appPackageContainerName = 'destinationattributesupdater-app-package'
+
 
 resource graphUAMI 'Microsoft.ManagedIdentity/userAssignedIdentities@2023-07-31-preview' existing = {
   name: userAssignedManagedIdentityNameReader.outputs.value
@@ -209,7 +202,7 @@ module functionAppTemplate_DestinationAttributesUpdater 'functionApp.bicep' = {
     dataKeyVaultResourceGroup: dataKeyVaultResourceGroup
     setRBACPermissions: setRBACPermissions
     storageAccountName: storageAccountNameReader.outputs.value
-    appPackageContainerName: appPackageContainerNameReader.outputs.value
+    appPackageContainerName: appPackageContainerName
     maxInstanceCount: maxInstanceCount
     instanceMemoryMB: instanceMemoryMB
   }

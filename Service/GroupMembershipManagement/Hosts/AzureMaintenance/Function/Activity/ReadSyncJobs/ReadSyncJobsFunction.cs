@@ -1,8 +1,8 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 using Microsoft.Azure.Functions.Worker;
+using Microsoft.Extensions.Logging;
 using Models;
-using Repositories.Contracts;
 using Services.Contracts;
 using System;
 using System.Collections.Generic;
@@ -12,20 +12,21 @@ namespace Hosts.AzureMaintenance
 {
     public class ReadSyncJobsFunction
     {
-        private readonly ILoggingRepository _loggingRepository = null;
-        private readonly IAzureMaintenanceService _azureMaintenanceService = null;
-        public ReadSyncJobsFunction(ILoggingRepository loggingRepository, IAzureMaintenanceService azureMaintenanceService)
+        private readonly ILogger<ReadSyncJobsFunction> _logger;
+        private readonly IAzureMaintenanceService _azureMaintenanceService;
+
+        public ReadSyncJobsFunction(ILogger<ReadSyncJobsFunction> logger, IAzureMaintenanceService azureMaintenanceService)
         {
-            _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _azureMaintenanceService = azureMaintenanceService ?? throw new ArgumentNullException(nameof(azureMaintenanceService));
         }
 
         [Function(nameof(ReadSyncJobsFunction))]
         public async Task<List<SyncJob>> GetSyncJobsAsync([ActivityTrigger] object obj)
         {
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(ReadSyncJobsFunction)} function started" }, VerbosityLevel.DEBUG);
+            _logger.FunctionStarted(nameof(ReadSyncJobsFunction));
             var jobs = await _azureMaintenanceService.GetSyncJobsAsync();
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(ReadSyncJobsFunction)} function completed" }, VerbosityLevel.DEBUG);
+            _logger.FunctionCompleted(nameof(ReadSyncJobsFunction));
             return jobs;
         }
     }

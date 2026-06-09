@@ -5,6 +5,7 @@ using Microsoft.ApplicationInsights;
 using Microsoft.ApplicationInsights.Extensibility;
 using Microsoft.DurableTask;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Models;
 using Tests.Services.Helpers;
@@ -26,9 +27,7 @@ namespace Tests.Services
     public class OrchestratorFunctionTests
     {
         private Mock<IConfiguration> _configuration;
-        private Mock<ILoggingRepository> _loggingRepository;
         private Mock<TaskOrchestrationContext> _context;
-        private SyncJob _syncJob;
         private QuerySample _querySample;
         private OrchestratorRequest _orchestratorRequest;
         private SyncStatus _subOrchestratorResponseStatus;
@@ -43,7 +42,6 @@ namespace Tests.Services
         public void Setup()
         {
             _configuration = new Mock<IConfiguration>();
-            _loggingRepository = new Mock<ILoggingRepository>();
             var mockGraphGroupRepository = new Mock<IGraphGroupRepository>();
             var mockBlobStorageRepository = new Mock<IBlobStorageRepository>();
             var mockSyncJobStatusService = new Mock<ISyncJobStatusService>();
@@ -84,6 +82,7 @@ namespace Tests.Services
             _context = new Mock<TaskOrchestrationContext>();
             _serviceBusQueueRepository = new Mock<IServiceBusQueueRepository>();
 
+            _context.Setup(x => x.CreateReplaySafeLogger(It.IsAny<string>())).Returns(NullLogger.Instance);
             _context.Setup(x => x.GetInput<OrchestratorRequest>())
                                        .Returns(() => _orchestratorRequest);
 
@@ -131,14 +130,8 @@ namespace Tests.Services
         [TestMethod]
         public async Task TestValidPlaceMembershipQueryAsync()
         {
-            var orchestratorFunction = new OrchestratorFunction(_loggingRepository.Object, _placeMembershipObtainerService, _configuration.Object);
+            var orchestratorFunction = new OrchestratorFunction(_placeMembershipObtainerService, _configuration.Object);
             await orchestratorFunction.RunOrchestratorAsync(_context.Object);
-            _loggingRepository.Verify(x => x.LogMessageAsync(
-                                                 It.Is<LogMessage>(m => m.Message == $"{nameof(OrchestratorFunction)} function completed"),
-                                                 It.IsAny<VerbosityLevel>(),
-                                                 It.IsAny<string>(),
-                                                 It.IsAny<string>()
-                                             ), Times.Once);
         }
 
 
@@ -166,7 +159,7 @@ namespace Tests.Services
                     })
                     .ReturnsAsync(() => false);
 
-            var orchestratorFunction = new OrchestratorFunction(_loggingRepository.Object, _placeMembershipObtainerService, _configuration.Object);
+            var orchestratorFunction = new OrchestratorFunction(_placeMembershipObtainerService, _configuration.Object);
             await orchestratorFunction.RunOrchestratorAsync(_context.Object);
             _context.Verify(x => x.CallActivityAsync(It.IsAny<TaskName>(),
                                                     It.Is<JobStatusUpdaterRequest>(x => x.Status == SyncStatus.SchemaError), It.IsAny<TaskOptions>()), Times.Once());
@@ -174,19 +167,19 @@ namespace Tests.Services
 
         private async Task<string> CallUsersSenderFunctionAsync(UsersSenderRequest request)
         {
-            var function = new UsersSenderFunction(_loggingRepository.Object, _placeMembershipObtainerService);
+            var function = new UsersSenderFunction(NullLogger<UsersSenderFunction>.Instance, _placeMembershipObtainerService);
             return await function.SendUsersAsync(request);
         }
 
         private async Task<bool> CallSchemaValidatorFunctionAsync(SchemaValidatorRequest request)
         {
-            var function = new SchemaValidatorFunction(_loggingRepository.Object, _schemaProvider);
+            var function = new SchemaValidatorFunction(NullLogger<SchemaValidatorFunction>.Instance, _schemaProvider);
             return await function.ValidateSchemasAsync(request);
         }
 
         private async Task CallQueueMessageSenderFunctionAsync(MembershipAggregatorHttpRequest request)
         {
-            var function = new QueueMessageSenderFunction(_loggingRepository.Object, _serviceBusQueueRepository.Object);
+            var function = new QueueMessageSenderFunction(NullLogger<QueueMessageSenderFunction>.Instance, _serviceBusQueueRepository.Object);
             await function.SendMessageAsync(request);
         }
     }

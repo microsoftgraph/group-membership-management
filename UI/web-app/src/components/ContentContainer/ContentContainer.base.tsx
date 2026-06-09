@@ -28,15 +28,29 @@ export const ContentContainerBase: React.FunctionComponent<IContentContainerProp
     <div className={classNames.card}>
       <div className={classNames.cardHeader}>
         <Text className={classNames.title}>{title}</Text>
-        {actionButtons?.map((button, index) => (
-          <ActionButton
-            iconProps={ button.icon }
-            title={button.text}
-            ariaLabel={button.text}
-            onClick={button.onClick}>
-            {button.text}
-        </ActionButton>
-        ))}
+        {actionButtons?.map((button, index) => {
+          const disabledReasonId = button.disabled && button.disabledReason
+            ? `disabled-reason-${index}`
+            : undefined;
+          return (
+          <div key={`${button.text}-${index}`} style={{ display: 'inline-flex', flexDirection: 'column', alignItems: 'center' }}>
+            <ActionButton
+              iconProps={ button.icon }
+              title={button.disabled ? undefined : button.text}
+              ariaLabel={button.text}
+              aria-describedby={disabledReasonId}
+              onClick={button.disabled ? undefined : button.onClick}
+              disabled={button.disabled}>
+              {button.text}
+            </ActionButton>
+            {disabledReasonId && (
+              <Text id={disabledReasonId} variant="tiny" className={classNames.disabledReasonText}>
+                {button.disabledReason}
+              </Text>
+            )}
+          </div>
+          );
+        })}
       </div>
       {hideSeparator === true ? <></> : <Separator />}
       {children}

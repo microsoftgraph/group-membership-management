@@ -1,9 +1,8 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-using Models;
 using Microsoft.Azure.Functions.Worker;
-using Repositories.Contracts;
+using Microsoft.Extensions.Logging;
 using System;
 using System.Net.Http;
 using System.Net.Http.Headers;
@@ -15,31 +14,27 @@ namespace Hosts.JobScheduler
     public class PostCallbackFunction
     {
         private readonly HttpClient _httpClient;
-        private readonly ILoggingRepository _loggingRepository;
+        private readonly ILogger<PostCallbackFunction> _logger;
 
-        public PostCallbackFunction(IHttpClientFactory httpClientFactory, ILoggingRepository loggingRepository)
+        public PostCallbackFunction(IHttpClientFactory httpClientFactory, ILogger<PostCallbackFunction> logger)
         {
             _httpClient = httpClientFactory.CreateClient();
-            _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
 
         [Function(nameof(PostCallbackFunction))]
         public async Task PostCallbackAsync([ActivityTrigger] PostCallbackRequest request)
         {
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(PostCallbackFunction)} function started at: {DateTime.UtcNow}" }, VerbosityLevel.DEBUG);
+            _logger.FunctionStarted(nameof(PostCallbackFunction));
 
             _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", request.AuthToken);
             var requestContent = new StringContent(request.SuccessBody, Encoding.UTF8, "application/json");
 
             await _httpClient.PostAsync(new Uri(request.CallbackUrl), requestContent);
 
-            await _loggingRepository.LogMessageAsync(new LogMessage
-                { 
-                    Message = $"Successfully posted to url '{request.CallbackUrl}' with following body: {request.SuccessBody}"  
-                }, VerbosityLevel.INFO);
-           
+            _logger.PostCallbackSuccessful(request.CallbackUrl, request.SuccessBody);
 
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(PostCallbackFunction)} function completed at: {DateTime.UtcNow}" }, VerbosityLevel.DEBUG);
+            _logger.FunctionCompleted(nameof(PostCallbackFunction));
         }
     }
 }

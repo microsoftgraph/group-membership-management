@@ -130,6 +130,12 @@ namespace Repositories.GraphGroups
             return _graphGroupInformationReader.GetGroupEndpointsAsync(groupId, ResolveRunId());
         }
 
+        public Task<string?> GetGroupVivaEngageUrlAsync(Guid groupId)
+        {
+            return _graphGroupInformationReader.GetGroupVivaEngageUrlAsync(groupId, RunId);
+        }
+
+
         public async Task<IEnumerable<IAzureADObject>> GetChildrenOfGroup(Guid groupId)
         {
             return await _graphGroupMembershipReader.GetChildrenOfGroup(groupId, ResolveRunId());
@@ -175,9 +181,19 @@ namespace Repositories.GraphGroups
             return await _graphGroupOwnerReader.GetGroupOwnersAsync(groupObjectId, ResolveRunId(), top);
         }
 
-        public async Task CreateGroup(string newGroupName, TestGroupType testGroupType, List<Guid> groupOwnerIds)
+        public async Task<AzureADGroup> CreateGroup(string newGroupName, TestGroupType testGroupType)
         {
-            await _graphGroupInformationReader.CreateGroupAsync(newGroupName, testGroupType, groupOwnerIds, ResolveRunId());
+            return await _graphGroupInformationReader.CreateGroupAsync(newGroupName, testGroupType, ResolveRunId());
+        }
+
+        public async Task AddGroupOwners(string groupId, List<Guid> ownerIds)
+        {
+            await _graphGroupInformationReader.AddGroupOwnersAsync(groupId, ownerIds, ResolveRunId());
+        }
+
+        public async Task<List<Guid>> GetGroupIdsOwnedByServicePrincipalAsync(Guid servicePrincipalObjectId)
+        {
+            return await _graphGroupOwnerReader.GetGroupIdsOwnedByServicePrincipalAsync(servicePrincipalObjectId, ResolveRunId());
         }
 
         public async Task<AzureADGroup> CreateGroupFromUI(string groupName, Guid groupOwnerId, string groupAlias)
@@ -302,7 +318,7 @@ namespace Repositories.GraphGroups
         {
             return await _graphGroupInformationReader.SearchGroupsAsync(query);
         }
-        public async Task<List<string>> GetAllGroupNamesAsync()
+        public async Task<Dictionary<Guid, string>> GetAllGroupNamesAsync()
         {
             return await _graphGroupInformationReader.GetAllGroupNamesAsync();
         }

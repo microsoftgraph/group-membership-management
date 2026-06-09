@@ -10,5 +10,7 @@ namespace Hosts.GroupOwnershipObtainer
     {
         public Guid GroupId { get; set; }
         public SyncJob SyncJob { get; set; }
+        public int CurrentPart { get; set; }
+        public int TotalParts { get; set; }
     }
 }
