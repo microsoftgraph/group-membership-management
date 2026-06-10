@@ -2,7 +2,7 @@
 // Reusable Private Endpoint Module
 // =====================================================================================
 // Creates a Private Endpoint and its associated Private DNS Zone Group so that
-// the PaaS resource is accessible via a private IP within the PrivateLink VNet.
+// the PaaS resource is accessible via a private IP within the Resources VNet.
 // =====================================================================================
 
 @description('Name of the Private Endpoint resource.')

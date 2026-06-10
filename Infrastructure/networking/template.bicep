@@ -1,17 +1,20 @@
 // =====================================================================================
 // GMM Networking Infrastructure - Main Orchestrator
 // =====================================================================================
-// Deploys three peered VNets (Bastion, Management, PrivateLink) with NSGs, a Bastion
-// Host, a jumpbox VM, and Private DNS Zones for PaaS private endpoints.
+// Deploys two peered VNets (Bastion, Resources) with NSGs, a Bastion Host, a jumpbox VM,
+// and Private DNS Zones for PaaS private endpoints. The Resources VNet hosts the
+// VmSubnet (jumpbox + NAT-attached) and the PrivateEndpointSubnet, and reserves
+// address space for future per-ASP function-integration subnets.
 //
 // Two deployment modalities controlled by the 'deployBastion' parameter:
 //   - deployBastion = true:  Full deployment including Bastion VNet, NSG, Public IP,
-//                            and Bastion Host alongside Management and PrivateLink resources.
-//   - deployBastion = false: Deploys only Management and PrivateLink resources and peers
-//                            them to an existing Bastion VNet specified by 'existingBastionVnetId'.
+//                            and Bastion Host alongside the Resources VNet.
+//   - deployBastion = false: Deploys only the Resources VNet and peers it to an
+//                            existing Bastion VNet specified by 'existingBastionVnetId'.
 //
-// NOTE: When deployBastion = false, this template creates peerings on BOTH the Management
-// VNet and the existing Bastion VNet. The deployer must have
+// NOTE: When deployBastion = false, this template creates peerings on BOTH the Resources
+// VNet and the existing Bastion VNet (cross-RG when 'existingBastionResourceGroupName'
+// is set). The deployer must have
 // 'Microsoft.Network/virtualNetworks/virtualNetworkPeerings/write' permission on the
 // existing Bastion VNet for this to succeed.
 // =====================================================================================
@@ -62,17 +65,8 @@ param bastionVnetAddressPrefix string = '10.0.0.0/24'
 @description('Address prefix for the AzureBastionSubnet.')
 param bastionSubnetAddressPrefix string = '10.0.0.0/26'
 
-@description('Address prefix for the Management VNet.')
-param managementVnetAddressPrefix string = '10.0.1.0/24'
-
-@description('Address prefix for the JumpboxSubnet.')
-param jumpboxSubnetAddressPrefix string = '10.0.1.0/24'
-
-@description('Address prefix for the PrivateLink VNet.')
-param privateLinkVnetAddressPrefix string = '10.1.0.0/16'
-
-@description('Address prefix for the PrivateEndpointSubnet.')
-param privateEndpointSubnetAddressPrefix string = '10.1.0.0/16'
+@description('Address prefix for the Resources VNet (hosts VmSubnet, PrivateEndpointSubnet, and reserved future function-integration address space).')
+param resourcesVnetAddressPrefix string = '10.1.0.0/16'
 
 // -----------------------------------------------
 // VM Parameters
@@ -145,14 +139,15 @@ var bastionVnetName = '${namePrefix}-bastion-vnet'
 var bastionHostName = '${namePrefix}-bastion'
 var bastionPipName = '${namePrefix}-bastion-pip'
 var managementNsgName = '${namePrefix}-management-nsg'
-var managementVnetName = '${namePrefix}-management-vnet'
 var managementVmName = '${namePrefix}-management-vm'
 var managementVmComputerName = take('${solutionAbbreviation}-${environmentAbbreviation}-vm', 15)
 var managementNicName = '${namePrefix}-management-nic'
 var natGatewayName = '${namePrefix}-nat'
 var natGatewayPipName = '${namePrefix}-nat-pip'
-var privateLinkNsgName = '${namePrefix}-privatelink-nsg'
-var privateLinkVnetName = '${namePrefix}-privatelink-vnet'
+var resourcesNsgName = '${namePrefix}-resources-nsg'
+var resourcesVnetName = '${namePrefix}-resources-vnet'
+var vmSubnetAddressPrefix = cidrSubnet(resourcesVnetAddressPrefix, 24, 0)
+var privateEndpointSubnetAddressPrefix = cidrSubnet(resourcesVnetAddressPrefix, 17, 1)
 
 // Reference the data Key Vault to retrieve VM admin credentials
 resource dataKeyVault 'Microsoft.KeyVault/vaults@2023-07-01' existing = {
@@ -354,11 +349,11 @@ module managementNsg 'networkSecurityGroup.bicep' = {
   }
 }
 
-// --- PrivateLink NSG ---
-module privateLinkNsg 'networkSecurityGroup.bicep' = {
-  name: 'deploy-${privateLinkNsgName}'
+// --- Resources NSG ---
+module resourcesNsg 'networkSecurityGroup.bicep' = {
+  name: 'deploy-${resourcesNsgName}'
   params: {
-    name: privateLinkNsgName
+    name: resourcesNsgName
     location: location
     securityRules: [
       {
@@ -413,37 +408,25 @@ module bastionVnet 'virtualNetwork.bicep' = if (deployBastion) {
   }
 }
 
-// --- Management VNet ---
-module managementVnet 'virtualNetwork.bicep' = {
-  name: 'deploy-${managementVnetName}'
+// --- Resources VNet ---
+module resourcesVnet 'virtualNetwork.bicep' = {
+  name: 'deploy-${resourcesVnetName}'
   params: {
-    name: managementVnetName
+    name: resourcesVnetName
     location: location
-    addressPrefix: managementVnetAddressPrefix
-    subnets: [
-      {
-        name: 'JumpboxSubnet'
-        addressPrefix: jumpboxSubnetAddressPrefix
-        nsgId: managementNsg.outputs.id
-        natGatewayId: natGateway.outputs.id
-      }
-    ]
-  }
-}
-
-// --- PrivateLink VNet ---
-module privateLinkVnet 'virtualNetwork.bicep' = {
-  name: 'deploy-${privateLinkVnetName}'
-  params: {
-    name: privateLinkVnetName
-    location: location
-    addressPrefix: privateLinkVnetAddressPrefix
+    addressPrefix: resourcesVnetAddressPrefix
     subnets: [
       {
         name: 'PrivateEndpointSubnet'
         addressPrefix: privateEndpointSubnetAddressPrefix
-        nsgId: privateLinkNsg.outputs.id
+        nsgId: resourcesNsg.outputs.id
         natGatewayId: null
+      }
+      {
+        name: 'VmSubnet'
+        addressPrefix: vmSubnetAddressPrefix
+        nsgId: managementNsg.outputs.id
+        natGatewayId: natGateway.outputs.id
       }
     ]
   }
@@ -453,59 +436,39 @@ module privateLinkVnet 'virtualNetwork.bicep' = {
 // VNet Peerings
 // =====================================================================================
 
-// --- Bastion <-> Management (Management side) ---
-module managementToBastionPeering 'vnetPeering.bicep' = {
-  name: 'deploy-${managementVnetName}-to-bastion-peering'
+// --- Bastion <-> Resources (Resources side) ---
+module resourcesToBastionPeering 'vnetPeering.bicep' = {
+  name: 'deploy-${resourcesVnetName}-to-bastion-peering'
   params: {
-    localVnetName: managementVnet.outputs.name
+    localVnetName: resourcesVnet.outputs.name
     remoteVnetId: resolvedBastionVnetId
     remoteVnetName: resolvedBastionVnetName
   }
 }
 
-// --- Bastion <-> Management (Bastion side - new Bastion) ---
-module bastionToManagementPeering 'vnetPeering.bicep' = if (deployBastion) {
-  name: 'deploy-${bastionVnetName}-to-management-peering'
+// --- Bastion <-> Resources (Bastion side - new Bastion) ---
+module bastionToResourcesPeering 'vnetPeering.bicep' = if (deployBastion) {
+  name: 'deploy-${bastionVnetName}-to-resources-peering'
   params: {
     localVnetName: bastionVnet.outputs.name
-    remoteVnetId: managementVnet.outputs.id
-    remoteVnetName: managementVnet.outputs.name
+    remoteVnetId: resourcesVnet.outputs.id
+    remoteVnetName: resourcesVnet.outputs.name
   }
 }
 
-// --- Bastion <-> Management (Bastion side - existing Bastion) ---
+// --- Bastion <-> Resources (Bastion side - existing Bastion) ---
 // NOTE: This creates a peering on the existing Bastion VNet. The deployer must have
 // 'Microsoft.Network/virtualNetworks/virtualNetworkPeerings/write' permission on the
 // existing Bastion VNet for this to succeed.
 // When 'existingBastionResourceGroupName' is set, the peering deploys into that RG
 // (cross-RG peering for shared bastion scenarios).
-module existingBastionToManagementPeering 'vnetPeering.bicep' = if (!deployBastion) {
-  name: 'deploy-existing-bastion-to-management-peering'
+module existingBastionToResourcesPeering 'vnetPeering.bicep' = if (!deployBastion) {
+  name: 'deploy-existing-bastion-to-resources-peering'
   scope: resourceGroup(bastionPeeringSubscriptionId, bastionPeeringResourceGroupName)
   params: {
     localVnetName: existingBastionVnetName
-    remoteVnetId: managementVnet.outputs.id
-    remoteVnetName: managementVnet.outputs.name
-  }
-}
-
-// --- Management <-> PrivateLink (Management side) ---
-module managementToPrivateLinkPeering 'vnetPeering.bicep' = {
-  name: 'deploy-${managementVnetName}-to-privatelink-peering'
-  params: {
-    localVnetName: managementVnet.outputs.name
-    remoteVnetId: privateLinkVnet.outputs.id
-    remoteVnetName: privateLinkVnet.outputs.name
-  }
-}
-
-// --- Management <-> PrivateLink (PrivateLink side) ---
-module privateLinkToManagementPeering 'vnetPeering.bicep' = {
-  name: 'deploy-${privateLinkVnetName}-to-management-peering'
-  params: {
-    localVnetName: privateLinkVnet.outputs.name
-    remoteVnetId: managementVnet.outputs.id
-    remoteVnetName: managementVnet.outputs.name
+    remoteVnetId: resourcesVnet.outputs.id
+    remoteVnetName: resourcesVnet.outputs.name
   }
 }
 
@@ -568,7 +531,7 @@ module managementNic 'networkInterface.bicep' = {
   params: {
     name: managementNicName
     location: location
-    subnetId: managementVnet.outputs.subnets[0].id
+    subnetId: first(filter(resourcesVnet.outputs.subnets, s => s.name == 'VmSubnet')).id
   }
 }
 
@@ -636,29 +599,14 @@ module dnsZones 'privateDnsZone.bicep' = [
   }
 ]
 
-// Link each DNS zone to the Management VNet
-module dnsZoneManagementLinks 'privateDnsZoneVnetLink.bicep' = [
-  for (zone, i) in privateDnsZoneNames: {
-    name: 'deploy-dnslink-${replace(zone, '.', '-')}-to-management'
-    params: {
-      dnsZoneName: zone
-      vnetId: managementVnet.outputs.id
-      vnetName: managementVnet.outputs.name
-    }
-    dependsOn: [
-      dnsZones[i]
-    ]
-  }
-]
-
-// Link each DNS zone to the PrivateLink VNet
+// Link each DNS zone to the Resources VNet (provides DNS resolution for both VmSubnet and PrivateEndpointSubnet)
 module dnsZonePrivateLinkLinks 'privateDnsZoneVnetLink.bicep' = [
   for (zone, i) in privateDnsZoneNames: {
-    name: 'deploy-dnslink-${replace(zone, '.', '-')}-to-privatelink'
+    name: 'deploy-dnslink-${replace(zone, '.', '-')}-to-resources'
     params: {
       dnsZoneName: zone
-      vnetId: privateLinkVnet.outputs.id
-      vnetName: privateLinkVnet.outputs.name
+      vnetId: resourcesVnet.outputs.id
+      vnetName: resourcesVnet.outputs.name
     }
     dependsOn: [
       dnsZones[i]
@@ -675,7 +623,7 @@ module prereqsKvPrivateEndpoint 'privateEndpoint.bicep' = {
   params: {
     name: '${namePrefix}-prereqs-kv-pe'
     location: location
-    subnetId: privateLinkVnet.outputs.subnets[0].id
+    subnetId: resourcesVnet.outputs.subnets[0].id
     privateLinkServiceId: prereqsKeyVault.id
     groupIds: ['vault']
     privateDnsZoneId: dnsZones[indexOf(privateDnsZoneNames, 'privatelink.vaultcore.azure.net')].outputs.id
@@ -690,7 +638,7 @@ module dataKvPrivateEndpoint 'privateEndpoint.bicep' = {
   params: {
     name: '${namePrefix}-data-kv-pe'
     location: location
-    subnetId: privateLinkVnet.outputs.subnets[0].id
+    subnetId: resourcesVnet.outputs.subnets[0].id
     privateLinkServiceId: dataKeyVault.id
     groupIds: ['vault']
     privateDnsZoneId: dnsZones[indexOf(privateDnsZoneNames, 'privatelink.vaultcore.azure.net')].outputs.id
@@ -709,7 +657,7 @@ module primarySqlPrivateEndpoint 'privateEndpoint.bicep' = {
   params: {
     name: '${namePrefix}-primary-sql-pe'
     location: location
-    subnetId: privateLinkVnet.outputs.subnets[0].id
+    subnetId: resourcesVnet.outputs.subnets[0].id
     privateLinkServiceId: resourceId(dataResourceGroupName, 'Microsoft.Sql/servers', sqlServerName)
     groupIds: ['sqlServer']
     privateDnsZoneId: dnsZones[indexOf(privateDnsZoneNames, 'privatelink.database.windows.net')].outputs.id
@@ -724,7 +672,7 @@ module replicaSqlPrivateEndpoint 'privateEndpoint.bicep' = {
   params: {
     name: '${namePrefix}-replica-sql-pe'
     location: location
-    subnetId: privateLinkVnet.outputs.subnets[0].id
+    subnetId: resourcesVnet.outputs.subnets[0].id
     privateLinkServiceId: resourceId(dataResourceGroupName, 'Microsoft.Sql/servers', replicaSqlServerName)
     groupIds: ['sqlServer']
     privateDnsZoneId: dnsZones[indexOf(privateDnsZoneNames, 'privatelink.database.windows.net')].outputs.id
@@ -743,7 +691,7 @@ module jobsStorageBlobPrivateEndpoint 'privateEndpoint.bicep' = {
   params: {
     name: '${namePrefix}-jobs-sa-blob-pe'
     location: location
-    subnetId: privateLinkVnet.outputs.subnets[0].id
+    subnetId: resourcesVnet.outputs.subnets[0].id
     privateLinkServiceId: resourceId(dataResourceGroupName, 'Microsoft.Storage/storageAccounts', jobsStorageAccountName)
     groupIds: ['blob']
     privateDnsZoneId: dnsZones[indexOf(privateDnsZoneNames, 'privatelink.blob.core.windows.net')].outputs.id
@@ -762,7 +710,7 @@ module functionsStorageBlobPrivateEndpoint 'privateEndpoint.bicep' = {
   params: {
     name: '${namePrefix}-fn-sa-blob-pe'
     location: location
-    subnetId: privateLinkVnet.outputs.subnets[0].id
+    subnetId: resourcesVnet.outputs.subnets[0].id
     privateLinkServiceId: resourceId(dataResourceGroupName, 'Microsoft.Storage/storageAccounts', functionsStorageAccountName)
     groupIds: ['blob']
     privateDnsZoneId: dnsZones[indexOf(privateDnsZoneNames, 'privatelink.blob.core.windows.net')].outputs.id
@@ -781,7 +729,7 @@ module functionsStorageTablePrivateEndpoint 'privateEndpoint.bicep' = {
   params: {
     name: '${namePrefix}-fn-sa-table-pe'
     location: location
-    subnetId: privateLinkVnet.outputs.subnets[0].id
+    subnetId: resourcesVnet.outputs.subnets[0].id
     privateLinkServiceId: resourceId(dataResourceGroupName, 'Microsoft.Storage/storageAccounts', functionsStorageAccountName)
     groupIds: ['table']
     privateDnsZoneId: dnsZones[indexOf(privateDnsZoneNames, 'privatelink.table.core.windows.net')].outputs.id
@@ -800,7 +748,7 @@ module functionsStorageQueuePrivateEndpoint 'privateEndpoint.bicep' = {
   params: {
     name: '${namePrefix}-fn-sa-queue-pe'
     location: location
-    subnetId: privateLinkVnet.outputs.subnets[0].id
+    subnetId: resourcesVnet.outputs.subnets[0].id
     privateLinkServiceId: resourceId(dataResourceGroupName, 'Microsoft.Storage/storageAccounts', functionsStorageAccountName)
     groupIds: ['queue']
     privateDnsZoneId: dnsZones[indexOf(privateDnsZoneNames, 'privatelink.queue.core.windows.net')].outputs.id
@@ -819,7 +767,7 @@ module appConfigPrivateEndpoint 'privateEndpoint.bicep' = {
   params: {
     name: '${namePrefix}-appconfig-pe'
     location: location
-    subnetId: privateLinkVnet.outputs.subnets[0].id
+    subnetId: resourcesVnet.outputs.subnets[0].id
     privateLinkServiceId: resourceId(dataResourceGroupName, 'Microsoft.AppConfiguration/configurationStores', appConfigurationName)
     groupIds: ['configurationStores']
     privateDnsZoneId: dnsZones[indexOf(privateDnsZoneNames, 'privatelink.azconfig.io')].outputs.id
@@ -834,9 +782,7 @@ module appConfigPrivateEndpoint 'privateEndpoint.bicep' = {
 // =====================================================================================
 
 output bastionVnetId string = deployBastion ? bastionVnet.outputs.id : existingBastionVnetId
-output managementVnetId string = managementVnet.outputs.id
-output managementVnetName string = managementVnet.outputs.name
-output privateLinkVnetId string = privateLinkVnet.outputs.id
-output privateLinkVnetName string = privateLinkVnet.outputs.name
-output managementSubnetId string = managementVnet.outputs.subnets[0].id
-output privateEndpointSubnetId string = privateLinkVnet.outputs.subnets[0].id
+output resourcesVnetId string = resourcesVnet.outputs.id
+output resourcesVnetName string = resourcesVnet.outputs.name
+output privateEndpointSubnetId string = resourcesVnet.outputs.subnets[0].id
+output vmSubnetId string = first(filter(resourcesVnet.outputs.subnets, s => s.name == 'VmSubnet')).id

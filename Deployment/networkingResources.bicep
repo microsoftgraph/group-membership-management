@@ -37,17 +37,8 @@ param bastionVnetAddressPrefix string = '10.0.0.0/24'
 @description('Address prefix for the AzureBastionSubnet.')
 param bastionSubnetAddressPrefix string = '10.0.0.0/26'
 
-@description('Address prefix for the Management VNet.')
-param managementVnetAddressPrefix string = '10.0.1.0/24'
-
-@description('Address prefix for the JumpboxSubnet.')
-param jumpboxSubnetAddressPrefix string = '10.0.1.0/24'
-
-@description('Address prefix for the PrivateLink VNet.')
-param privateLinkVnetAddressPrefix string = '10.1.0.0/16'
-
-@description('Address prefix for the PrivateEndpointSubnet.')
-param privateEndpointSubnetAddressPrefix string = '10.1.0.0/16'
+@description('Address prefix for the Resources VNet.')
+param resourcesVnetAddressPrefix string = '10.1.0.0/16'
 
 // -----------------------------------------------
 // VM Parameters
@@ -92,10 +83,7 @@ module networkingInfrastructureTemplate '../Infrastructure/networking/template.b
     existingBastionResourceGroupName: existingBastionResourceGroupName
     bastionVnetAddressPrefix: bastionVnetAddressPrefix
     bastionSubnetAddressPrefix: bastionSubnetAddressPrefix
-    managementVnetAddressPrefix: managementVnetAddressPrefix
-    jumpboxSubnetAddressPrefix: jumpboxSubnetAddressPrefix
-    privateLinkVnetAddressPrefix: privateLinkVnetAddressPrefix
-    privateEndpointSubnetAddressPrefix: privateEndpointSubnetAddressPrefix
+    resourcesVnetAddressPrefix: resourcesVnetAddressPrefix
     vmSize: vmSize
     vmDailyAutoShutdownTimeUTC: vmDailyAutoShutdownTimeUTC
     setVmAdminSecrets: setVmAdminSecrets

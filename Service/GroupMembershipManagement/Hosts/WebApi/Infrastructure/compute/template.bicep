@@ -371,7 +371,7 @@ resource signalR 'Microsoft.SignalRService/signalR@2023-08-01-preview' = {
 // =====================================================================================
 
 var networkingResourceGroup = '${solutionAbbreviation}-networking-${environmentAbbreviation}'
-var privateLinkVnetName = '${solutionAbbreviation}-networking-${environmentAbbreviation}-privatelink-vnet'
+var resourcesVnetName = '${solutionAbbreviation}-networking-${environmentAbbreviation}-resources-vnet'
 
 module signalRPrivateEndpoint 'privateEndpoint.bicep' = if (!skipNetworkingDeployment) {
   name: 'deploy-signalr-pe'
@@ -379,7 +379,7 @@ module signalRPrivateEndpoint 'privateEndpoint.bicep' = if (!skipNetworkingDeplo
   params: {
     name: '${solutionAbbreviation}-networking-${environmentAbbreviation}-signalr-pe'
     location: location
-    subnetId: resourceId(networkingResourceGroup, 'Microsoft.Network/virtualNetworks/subnets', privateLinkVnetName, 'PrivateEndpointSubnet')
+    subnetId: resourceId(networkingResourceGroup, 'Microsoft.Network/virtualNetworks/subnets', resourcesVnetName, 'PrivateEndpointSubnet')
     privateLinkServiceId: signalR.id
     groupIds: ['signalr']
     privateDnsZoneId: resourceId(networkingResourceGroup, 'Microsoft.Network/privateDnsZones', 'privatelink.service.signalr.net')
