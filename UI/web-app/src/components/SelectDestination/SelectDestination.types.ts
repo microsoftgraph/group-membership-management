@@ -29,6 +29,7 @@ export interface ISelectDestinationStyles {
   messageBarSection: IStyle;
   linkButton: IStyle;
   checkAgainButton: IStyle;
+  suggestionItem: IStyle;
 }
 
 export interface ISelectDestinationStyleProps {

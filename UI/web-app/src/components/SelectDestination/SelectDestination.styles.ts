@@ -1,6 +1,7 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
+import type { IStyle } from '@fluentui/react';
 import {
   type ISelectDestinationStyleProps,
   type ISelectDestinationStyles,
@@ -70,9 +71,15 @@ export const getStyles = (props: ISelectDestinationStyleProps): ISelectDestinati
     comboBoxOptionContainer: {
       paddingTop: 3,
       paddingBottom: 3,
+      whiteSpace: 'normal',
+      overflowWrap: 'anywhere',
+      wordBreak: 'break-word',
     },
     comboBoxOptionCodeText: {
       fontStyle: 'italic',
+      whiteSpace: 'normal',
+      overflowWrap: 'anywhere',
+      wordBreak: 'break-word',
     },
     textField: {
         fontWeight: 300,
@@ -111,6 +118,42 @@ export const getStyles = (props: ISelectDestinationStyleProps): ISelectDestinati
       label: {
         color: 'inherit',
       }
+    },
+    suggestionItem: {
+      selectors: {
+        '& .ms-Suggestions-itemButton': {
+          width: '100%',
+          height: 'auto',
+          minHeight: 40,
+          maxHeight: 'none',
+          padding: '4px 8px',
+          textAlign: 'left',
+        },
+        '& .ms-Persona': {
+          height: 'auto',
+          alignItems: 'flex-start',
+        },
+        '& .ms-Persona-details': {
+          height: 'auto',
+          display: 'flex',
+          flexDirection: 'column',
+          justifyContent: 'center',
+        },
+        '& .ms-Persona-textContent': {
+          height: 'auto',
+          display: 'flex',
+          flexDirection: 'column',
+        },
+        '& .ms-Persona-primaryText, & .ms-Persona-secondaryText, & .ms-Persona-tertiaryText, & .ms-Persona-optionalText': {
+          position: 'static !important',
+          whiteSpace: 'normal !important',
+          overflow: 'visible !important',
+          textOverflow: 'clip !important',
+          overflowWrap: 'anywhere',
+          wordBreak: 'break-word',
+          height: 'auto',
+        } as unknown as IStyle,
+      },
     }
   };
 };

@@ -12,6 +12,7 @@ import {
   NormalPeoplePicker,
   IPersonaProps,
   IComboBoxOption,
+  IComboBoxStyles,
   ISelectableOption,
   Text,
   ChoiceGroup,
@@ -21,6 +22,8 @@ import {
   IButtonStyles,
   MessageBar,
   MessageBarType,
+  Persona,
+  PersonaSize,
 } from '@fluentui/react';
 import {
   ISelectDestinationProps,
@@ -54,6 +57,22 @@ import { jsxFormat } from '../../utils/stringUtils';
 import { ChannelOnboardingStatusRequest } from '../../models/ChannelOnboardingStatusRequest';
 
 const getClassNames = classNamesFunction<ISelectDestinationStyleProps, ISelectDestinationStyles>();
+
+const destinationTypeComboBoxStyles: Partial<IComboBoxStyles> = {
+  optionsContainerWrapper: { width: 500 },
+  optionsContainer: {
+    selectors: {
+      '& .ms-ComboBox-option': {
+        height: 'auto',
+        minHeight: 36,
+        whiteSpace: 'normal',
+      },
+      '& .ms-ComboBox-option .ms-Button-flexContainer': {
+        whiteSpace: 'normal',
+      },
+    },
+  },
+};
 
 export const SelectDestinationBase: React.FunctionComponent<ISelectDestinationProps> = (props) => {
   const { className, styles, selectedDestination, onDestinationTypeChange, onSearchDestinationChange, onSearchChannelChange, onGroupCreated } = props;
@@ -291,13 +310,13 @@ export const SelectDestinationBase: React.FunctionComponent<ISelectDestinationPr
     index?: number,
     ev?: React.FocusEvent<HTMLElement>
   ): void => {
-    if (selectedDestination?.id) {
+    if (selectedDestination?.id && onboardingStatus?.status !== OnboardingStatus.SyncedOnPremises) {
       dispatch(getGroupMembers(selectedDestination.id));
     }
   };
 
   const hasNestedGroupsWarning =
-    groupMembers && groupMembers.groupMemberCount > 0 ? (
+    groupMembers && groupMembers.groupMemberCount > 0 && onboardingStatus?.status !== OnboardingStatus.SyncedOnPremises ? (
       <MessageBar
         messageBarType={MessageBarType.error}
         isMultiline={true}
@@ -324,6 +343,36 @@ export const SelectDestinationBase: React.FunctionComponent<ISelectDestinationPr
     ) : null;
 
   useEffect(() => {}, [dispatch, groupPickerSuggestions]);
+
+  const renderSuggestionItem = (persona: IPersonaProps): JSX.Element => {
+    return (
+      <Persona
+        {...persona}
+        size={PersonaSize.size40}
+        showSecondaryText={!!persona.secondaryText}
+        styles={{
+          root: { height: 'auto' },
+          details: { height: 'auto' },
+          primaryText: {
+            whiteSpace: 'normal',
+            overflow: 'visible',
+            textOverflow: 'clip',
+            overflowWrap: 'anywhere',
+            wordBreak: 'break-word',
+            lineHeight: '20px',
+          },
+          secondaryText: {
+            whiteSpace: 'normal',
+            overflow: 'visible',
+            textOverflow: 'clip',
+            overflowWrap: 'anywhere',
+            wordBreak: 'break-word',
+            lineHeight: '16px',
+          },
+        }}
+      />
+    );
+  };
 
   const getPickerSuggestions = async (
     text: string,
@@ -376,16 +425,21 @@ export const SelectDestinationBase: React.FunctionComponent<ISelectDestinationPr
                 selectedKey={selectedDestinationType}
                 onChange={onDestinationTypeChange}
                 onRenderOption={onRenderValueComboBoxOptions}
-                styles={{ root: classNames.peoplePicker }}
+                styles={{
+                  ...destinationTypeComboBoxStyles,
+                  root: classNames.peoplePicker,
+                }}
               />
               <div>
                 {selectedDestination?.type == DestinationType.TeamsChannelMembership ? strings.ManageMembership.labels.searchTeam: strings.ManageMembership.labels.searchGroup}
                 <NormalPeoplePicker
                   onResolveSuggestions={getPickerSuggestions}
+                  onRenderSuggestionsItem={renderSuggestionItem}
                   pickerSuggestionsProps={{
                     suggestionsHeaderText: strings.ManageMembership.labels.searchGroupSuggestedText,
                     noResultsFoundText: strings.JobsList.JobsListFilter.filters.ownerPeoplePicker.noResultsFoundText,
                     loadingText: strings.JobsList.JobsListFilter.filters.ownerPeoplePicker.loadingText,
+                    suggestionsItemClassName: classNames.suggestionItem,
                   }}
                   key={'normal'}
                   aria-label={strings.ManageMembership.labels.searchTeam}
@@ -399,7 +453,7 @@ export const SelectDestinationBase: React.FunctionComponent<ISelectDestinationPr
                   onInputChange={handleInputChange}
                   onChange={onSearchDestinationChange}
                   styles={{ text: classNames.peoplePicker }}
-                  pickerCalloutProps={{ calloutMinWidth: 500 }}
+                  pickerCalloutProps={{ calloutMinWidth: 500, calloutMaxWidth: 500 }}
                 />
               </div>
               {selectedDestination?.id != null && selectedDestinationType === DestinationType.TeamsChannelMembership && (
@@ -407,10 +461,12 @@ export const SelectDestinationBase: React.FunctionComponent<ISelectDestinationPr
                   {strings.ManageMembership.labels.searchChannel}
                   <NormalPeoplePicker
                     onResolveSuggestions={getChannelPickerSuggestions}
+                    onRenderSuggestionsItem={renderSuggestionItem}
                     pickerSuggestionsProps={{
                       suggestionsHeaderText: strings.ManageMembership.labels.searchChannelSuggestedText,
                       noResultsFoundText: strings.JobsList.JobsListFilter.filters.ownerPeoplePicker.noResultsFoundText,
                       loadingText: strings.JobsList.JobsListFilter.filters.ownerPeoplePicker.loadingText,
+                      suggestionsItemClassName: classNames.suggestionItem,
                     }}
                     key={'normal'}
                     aria-label={selectedDestination?.type == SourcePartType.TeamsChannelMembership ? strings.ManageMembership.labels.searchTeam: strings.ManageMembership.labels.searchGroup}
@@ -424,13 +480,13 @@ export const SelectDestinationBase: React.FunctionComponent<ISelectDestinationPr
                     onInputChange={handleChannelInputChange}
                     onChange={onSearchChannelChange}
                     styles={{ text: classNames.peoplePicker }}
-                    pickerCalloutProps={{ calloutMinWidth: 500 }}
+                    pickerCalloutProps={{ calloutMinWidth: 500, calloutMaxWidth: 500 }}
                   />
                 </div>
               )}
               <div className={classNames.resultsContainer}>
-                {!hasRequiredEndpoints() && (
-                  <div className={classNames.spinnerContainer}>{loadingSearchResults ? <Spinner /> : null}</div>
+                {!hasRequiredEndpoints() && loadingSearchResults && (
+                  <div className={classNames.spinnerContainer}><Spinner /></div>
                 )}
                 {selectedDestination && selectedDestinationEndpoints && 
                  onboardingStatus?.status !== OnboardingStatus.SyncedOnPremises && (
