@@ -50,13 +50,13 @@ namespace Hosts.AutoApprover
                 autoApprovalMessage = JsonSerializer.Deserialize<AutoApprovalQueueMessage>(messageBody);
                 if (autoApprovalMessage == null)
                 {
-                    _logger.LogDebug("AutoApprover message deserialized to null.");
+                    _logger.MessageDeserializedToNull();
                     return;
                 }
             }
             catch (JsonException ex)
             {
-                _logger.LogDebug("AutoApprover message deserialization failed: {Message}", ex.Message);
+                _logger.MessageDeserializationFailed(ex.Message);
                 return;
             }
 

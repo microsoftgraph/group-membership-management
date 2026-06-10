@@ -1,6 +1,7 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
+using Microsoft.Extensions.Logging;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Models;
 using Models.ServiceBus;
@@ -25,14 +26,14 @@ namespace Services.Tests
             var settingsRepository = new Mock<IDatabaseSettingsRepository>();
             var graphGroupRepository = new Mock<IGraphGroupRepository>();
             var syncJobChangeRepository = new Mock<ISyncJobChangeRepository>();
-            var loggingRepository = new Mock<ILoggingRepository>();
+            var logger = new Mock<ILogger<AutoApproverService>>();
 
             var service = new AutoApproverService(
                 syncJobsRepository.Object,
                 settingsRepository.Object,
                 graphGroupRepository.Object,
                 syncJobChangeRepository.Object,
-                loggingRepository.Object);
+                logger.Object);
             Assert.IsNotNull(service);
         }
 
@@ -56,7 +57,7 @@ namespace Services.Tests
             var settingsRepository = new Mock<IDatabaseSettingsRepository>();
             var graphGroupRepository = new Mock<IGraphGroupRepository>();
             var syncJobChangeRepository = new Mock<ISyncJobChangeRepository>();
-            var loggingRepository = new Mock<ILoggingRepository>();
+            var logger = new Mock<ILogger<AutoApproverService>>();
 
             syncJobsRepository.Setup(x => x.GetSyncJobAsync(syncJobId)).ReturnsAsync(syncJob);
             settingsRepository.Setup(x => x.GetSettingByKeyAsync(SettingKey.IsAutoApprovalForGroupBasedSyncsEnabled))
@@ -76,7 +77,7 @@ namespace Services.Tests
                 settingsRepository.Object,
                 graphGroupRepository.Object,
                 syncJobChangeRepository.Object,
-                loggingRepository.Object);
+                logger.Object);
 
             await service.ProcessAutoApprovalAsync(new AutoApprovalQueueMessage
             {
@@ -109,7 +110,7 @@ namespace Services.Tests
             var settingsRepository = new Mock<IDatabaseSettingsRepository>();
             var graphGroupRepository = new Mock<IGraphGroupRepository>();
             var syncJobChangeRepository = new Mock<ISyncJobChangeRepository>();
-            var loggingRepository = new Mock<ILoggingRepository>();
+            var logger = new Mock<ILogger<AutoApproverService>>();
 
             syncJobsRepository.Setup(x => x.GetSyncJobAsync(syncJobId)).ReturnsAsync(syncJob);
             settingsRepository.Setup(x => x.GetSettingByKeyAsync(SettingKey.IsAutoApprovalForGroupBasedSyncsEnabled))
@@ -126,7 +127,7 @@ namespace Services.Tests
                 settingsRepository.Object,
                 graphGroupRepository.Object,
                 syncJobChangeRepository.Object,
-                loggingRepository.Object);
+                logger.Object);
 
             await service.ProcessAutoApprovalAsync(new AutoApprovalQueueMessage
             {
@@ -157,7 +158,7 @@ namespace Services.Tests
             var settingsRepository = new Mock<IDatabaseSettingsRepository>();
             var graphGroupRepository = new Mock<IGraphGroupRepository>();
             var syncJobChangeRepository = new Mock<ISyncJobChangeRepository>();
-            var loggingRepository = new Mock<ILoggingRepository>();
+            var logger = new Mock<ILogger<AutoApproverService>>();
 
             syncJobsRepository.Setup(x => x.GetSyncJobAsync(syncJobId)).ReturnsAsync(syncJob);
             settingsRepository.Setup(x => x.GetSettingByKeyAsync(SettingKey.IsAutoApprovalForGroupBasedSyncsEnabled))
@@ -173,7 +174,7 @@ namespace Services.Tests
                 settingsRepository.Object,
                 graphGroupRepository.Object,
                 syncJobChangeRepository.Object,
-                loggingRepository.Object);
+                logger.Object);
 
             await service.ProcessAutoApprovalAsync(new AutoApprovalQueueMessage
             {
@@ -204,7 +205,7 @@ namespace Services.Tests
             var settingsRepository = new Mock<IDatabaseSettingsRepository>();
             var graphGroupRepository = new Mock<IGraphGroupRepository>();
             var syncJobChangeRepository = new Mock<ISyncJobChangeRepository>();
-            var loggingRepository = new Mock<ILoggingRepository>();
+            var logger = new Mock<ILogger<AutoApproverService>>();
 
             syncJobsRepository.Setup(x => x.GetSyncJobAsync(syncJobId)).ReturnsAsync(syncJob);
 
@@ -213,7 +214,7 @@ namespace Services.Tests
                 settingsRepository.Object,
                 graphGroupRepository.Object,
                 syncJobChangeRepository.Object,
-                loggingRepository.Object);
+                logger.Object);
 
             await service.ProcessAutoApprovalAsync(new AutoApprovalQueueMessage
             {

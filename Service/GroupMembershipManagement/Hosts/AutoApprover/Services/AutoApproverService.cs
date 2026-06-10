@@ -1,6 +1,8 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
+using Hosts.AutoApprover;
+using Microsoft.Extensions.Logging;
 using Models;
 using Models.ServiceBus;
 using Models.SyncJobChange;
@@ -19,20 +21,20 @@ namespace Services.AutoApprover
         private readonly IDatabaseSettingsRepository _databaseSettingsRepository;
         private readonly IGraphGroupRepository _graphGroupRepository;
         private readonly ISyncJobChangeRepository _syncJobChangeRepository;
-        private readonly ILoggingRepository _loggingRepository;
+        private readonly ILogger<AutoApproverService> _logger;
 
         public AutoApproverService(
             IDatabaseSyncJobsRepository syncJobRepository,
             IDatabaseSettingsRepository databaseSettingsRepository,
             IGraphGroupRepository graphGroupRepository,
             ISyncJobChangeRepository syncJobChangeRepository,
-            ILoggingRepository loggingRepository)
+            ILogger<AutoApproverService> logger)
         {
             _syncJobRepository = syncJobRepository ?? throw new ArgumentNullException(nameof(syncJobRepository));
             _databaseSettingsRepository = databaseSettingsRepository ?? throw new ArgumentNullException(nameof(databaseSettingsRepository));
             _graphGroupRepository = graphGroupRepository ?? throw new ArgumentNullException(nameof(graphGroupRepository));
             _syncJobChangeRepository = syncJobChangeRepository ?? throw new ArgumentNullException(nameof(syncJobChangeRepository));
-            _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
 
         public async Task ProcessAutoApprovalAsync(AutoApprovalQueueMessage message)
@@ -42,37 +44,25 @@ namespace Services.AutoApprover
             var syncJob = await _syncJobRepository.GetSyncJobAsync(message.SyncJobId);
             if (syncJob == null)
             {
-                await _loggingRepository.LogMessageAsync(new LogMessage
-                {
-                    Message = $"AutoApprover: Sync job {message.SyncJobId} not found."
-                });
+                _logger.SyncJobNotFound(message.SyncJobId);
                 return;
             }
 
             if (syncJob.Status == SyncStatus.PendingConfiguration.ToString())
             {
-                await _loggingRepository.LogMessageAsync(new LogMessage
-                {
-                    Message = $"AutoApprover: Sync job {message.SyncJobId} is pending configuration. Skipping auto-approval."
-                });
+                _logger.SyncJobPendingConfiguration(message.SyncJobId);
                 return;
             }
 
             if (!string.Equals(syncJob.Status, SyncStatus.PendingReview.ToString(), StringComparison.OrdinalIgnoreCase))
             {
-                await _loggingRepository.LogMessageAsync(new LogMessage
-                {
-                    Message = $"AutoApprover: Sync job {message.SyncJobId} status is {syncJob.Status}. Skipping auto-approval."
-                });
+                _logger.SyncJobStatusNotPendingReview(message.SyncJobId, syncJob.Status);
                 return;
             }
 
             if (!Guid.TryParse(message.RequestorObjectId, out var requestorObjectId))
             {
-                await _loggingRepository.LogMessageAsync(new LogMessage
-                {
-                    Message = $"AutoApprover: Invalid requestor object ID for sync job {message.SyncJobId}."
-                });
+                _logger.InvalidRequestorObjectId(message.SyncJobId);
                 return;
             }
 
@@ -82,10 +72,7 @@ namespace Services.AutoApprover
 
             if (!shouldAutoApprove)
             {
-                await _loggingRepository.LogMessageAsync(new LogMessage
-                {
-                    Message = $"AutoApprover: Auto-approval not granted for sync job {message.SyncJobId}."
-                });
+                _logger.AutoApprovalNotGranted(message.SyncJobId);
                 return;
             }
 
@@ -115,10 +102,7 @@ namespace Services.AutoApprover
                 ChangedOnBehalfOfObjectId = !string.IsNullOrEmpty(changedOnBehalfOfObjectId) && changedOnBehalfOfObjectId != message.RequestorObjectId ? new Guid(changedOnBehalfOfObjectId) : (Guid?)null
             });
 
-            await _loggingRepository.LogMessageAsync(new LogMessage
-            {
-                Message = $"AutoApprover: Sync job {message.SyncJobId} auto-approved."
-            });
+            _logger.SyncJobAutoApproved(message.SyncJobId);
         }
 
         private async Task<bool> ShouldAutoApproveJobAsync(string query, string userIdentity, bool isGroupBasedAutoApprovalEnabled, bool isOrgLeaderAutoApprovalEnabled)
@@ -143,10 +127,7 @@ namespace Services.AutoApprover
             }
             catch (Exception ex)
             {
-                await _loggingRepository.LogMessageAsync(new LogMessage
-                {
-                    Message = $"Error during auto-approval check: {ex.Message}"
-                });
+                _logger.AutoApprovalCheckError(ex);
                 return false;
             }
         }
@@ -170,19 +151,13 @@ namespace Services.AutoApprover
                     return false;
                 }
 
-                await _loggingRepository.LogMessageAsync(new LogMessage
-                {
-                    Message = $"Auto-approval granted: All {groupIds.Count} source groups have acceptable visibility."
-                });
+                _logger.GroupVisibilityApprovalGranted(groupIds.Count);
 
                 return true;
             }
             catch (Exception ex)
             {
-                await _loggingRepository.LogMessageAsync(new LogMessage
-                {
-                    Message = $"Error during GroupMembership auto-approval check: {ex.Message}"
-                });
+                _logger.GroupMembershipApprovalCheckError(ex);
                 return false;
             }
         }
@@ -201,19 +176,13 @@ namespace Services.AutoApprover
                 if (!JsonParser.IsSingleSqlMembershipQueryWithManagerId(query, userImmutableId))
                     return false;
 
-                await _loggingRepository.LogMessageAsync(new LogMessage
-                {
-                    Message = $"Auto-approval granted: Single SqlMembership query with manager ID matching requestor's onPremisesImmutableId."
-                });
+                _logger.SqlMembershipApprovalGranted();
 
                 return true;
             }
             catch (Exception ex)
             {
-                await _loggingRepository.LogMessageAsync(new LogMessage
-                {
-                    Message = $"Error during SqlMembership auto-approval check: {ex.Message}"
-                });
+                _logger.SqlMembershipApprovalCheckError(ex);
                 return false;
             }
         }
@@ -227,10 +196,7 @@ namespace Services.AutoApprover
             }
             catch (Exception ex)
             {
-                await _loggingRepository.LogMessageAsync(new LogMessage
-                {
-                    Message = $"Error retrieving user onPremisesImmutableId: {ex.Message}"
-                });
+                _logger.UserImmutableIdRetrievalError(ex);
                 return null;
             }
         }
@@ -244,10 +210,7 @@ namespace Services.AutoApprover
             }
             catch (Exception ex)
             {
-                await _loggingRepository.LogMessageAsync(new LogMessage
-                {
-                    Message = $"Error retrieving auto-approval setting: {ex.Message}"
-                });
+                _logger.AutoApprovalSettingRetrievalError(ex);
                 return false;
             }
         }
@@ -261,10 +224,7 @@ namespace Services.AutoApprover
             }
             catch (Exception ex)
             {
-                await _loggingRepository.LogMessageAsync(new LogMessage
-                {
-                    Message = $"Error retrieving org leader auto-approval setting: {ex.Message}"
-                });
+                _logger.OrgLeaderSettingRetrievalError(ex);
                 return false;
             }
         }
