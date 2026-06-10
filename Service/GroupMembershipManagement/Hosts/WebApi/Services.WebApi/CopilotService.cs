@@ -1174,7 +1174,14 @@ namespace Services.WebApi
                 }
             }
 
-            var result = JsonSerializer.Serialize(attributeValues, new JsonSerializerOptions { WriteIndented = false });
+            // Wrap in an object with a validation reminder for the LLM
+            var wrappedResult = new Dictionary<string, object>
+            {
+                ["attributes"] = attributeValues,
+                ["VALIDATION_RULE"] = "CRITICAL: For each attribute in a filter, the value MUST exist in that SAME attribute's values/allCodes above. If the user's requested value is NOT found for the specific attribute, you MUST stop, tell the user it was not found, and show alternatives. NEVER substitute a different value or use a value from another attribute."
+            };
+
+            var result = JsonSerializer.Serialize(wrappedResult, new JsonSerializerOptions { WriteIndented = false });
 
             // Store in request-scoped cache for reuse within this conversation
             _attributeValueCache.TryAdd(cacheKey, result);
