@@ -167,13 +167,6 @@ namespace Services
                                         ? emails[channelId] 
                                         : null;
 
-                    if (string.IsNullOrEmpty(channelEmail))
-                    {
-                        var mainChannel = await _teamsChannelRepository
-                            .GetMainChannelAsync(groupId);
-                        channelEmail = mainChannel?.Email;
-                    }
-
                     var teamChannelId = (destination.Value as TeamsChannelDestinationValue).ChannelId;
                     destinationAttributesList.Add(new DestinationAttributes
                     {

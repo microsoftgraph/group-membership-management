@@ -149,5 +149,40 @@ namespace Services.Tests
             Assert.IsNull(attributes.Email);
             Assert.IsNull(attributes.Owners);
         }
+
+        [TestMethod]
+        public async Task TestGetBulkDestinationAttributes_SharedChannelEmailNullDoesNotFallBackToGeneralChannel()
+        {
+            // Shared/private channels have no Graph email. The bulk emails dictionary won't contain the channelId.
+            // Verify the service stores null (not the parent team's General-channel email) and never calls GetMainChannelAsync.
+            var destination = new DestinationObject()
+            {
+                Type = TeamsChannelMembership,
+                Value = new TeamsChannelDestinationValue() { ObjectId = Guid.NewGuid(), ChannelId = "shared-channel-id" }
+            };
+
+            var options = new JsonSerializerOptions { Converters = { new DestinationValueConverter() } };
+            var serializedDestination = JsonSerializer.Serialize(destination, options);
+
+            Guid tableId = Guid.NewGuid();
+
+            _mockTeamsChannelRepository.Setup(x => x.GetTeamsChannelNamesAsync(It.IsAny<List<AzureADTeamsChannel>>()))
+                .ReturnsAsync(new Dictionary<string, string>() { { "shared-channel-id", "Shared Channel Test" } });
+            _mockTeamsChannelRepository.Setup(x => x.GetTeamsChannelEmailsAsync(It.IsAny<List<AzureADTeamsChannel>>()))
+                .ReturnsAsync(new Dictionary<string, string>());
+            _mockGraphGroupRepository.Setup(x => x.GetDestinationOwnersAsync(It.IsAny<List<Guid>>()))
+                .ReturnsAsync(new Dictionary<Guid, List<Guid>>());
+
+            var response = await _destinationAttributeUpdaterService.GetBulkDestinationAttributesAsync(
+                new List<DestinationInfo> { new DestinationInfo { Destination = serializedDestination, JobId = tableId } },
+                TeamsChannelMembership);
+
+            var attributes = response.First();
+            Assert.AreEqual(tableId, attributes.Id);
+            Assert.AreEqual("Shared Channel Test", attributes.Name);
+            Assert.IsNull(attributes.Email, "Shared/private channels must record null email; the General-channel fallback must not run.");
+            _mockTeamsChannelRepository.Verify(x => x.GetMainChannelAsync(It.IsAny<Guid>()), Times.Never,
+                "GetMainChannelAsync must not be called — substituting the parent team's General-channel email is incorrect for shared/private channels.");
+        }
     }
 }
