@@ -3,4 +3,4 @@
 
 export interface GetJobDetailsRequest {
   syncJobId: string;
-}
+};

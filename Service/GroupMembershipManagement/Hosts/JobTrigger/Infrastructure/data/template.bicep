@@ -8,20 +8,16 @@ param environmentAbbreviation string
 @maxLength(3)
 param solutionAbbreviation string = 'gmm'
 
-@description('Enter tenant Id.')
-param tenantId string
-
-@description('Enter storage account name.')
-param storageAccountName string
-
 param storageAccountSku string = 'Standard_LRS'
 
 @description('Resource location.')
 param location string
 
+@description('Classify the types of resources in prereqs resource group.')
+param prereqsResourceGroupClassification string = 'prereqs'
+
 var keyVaultName = '${solutionAbbreviation}-data-${environmentAbbreviation}'
 var prodStorageAccountName = substring('jt${solutionAbbreviation}${environmentAbbreviation}prod${uniqueString(resourceGroup().id)}',0,23)
-var stagingStorageAccountName = substring('jt${solutionAbbreviation}${environmentAbbreviation}staging${uniqueString(resourceGroup().id)}',0,23)
 
 module jobTriggerStorageAccountProd 'storageAccount.bicep' = {
   name: 'jtProdstorageAccountTemplate'
@@ -30,17 +26,21 @@ module jobTriggerStorageAccountProd 'storageAccount.bicep' = {
     sku: storageAccountSku
     keyVaultName: keyVaultName
     location: location
-    storageAccountConnectionStringSettingName: 'jobTriggerStorageAccountProd'
+    storageAccountSettingName: 'jobTriggerStorageAccountProd'
+    appPackageContainerSettingName: 'jobTriggerAppPackageContainerProd'
+    appPackageContainerName: 'app-package'
   }
 }
 
-module jobTriggerStorageAccountStaging 'storageAccount.bicep' = {
-  name: 'jtStagingstorageAccountTemplate'
+var nspName = '${solutionAbbreviation}-nsp-${environmentAbbreviation}'
+var prereqsResourceGroupName = '${solutionAbbreviation}-${prereqsResourceGroupClassification}-${environmentAbbreviation}'
+
+module jtStorageAccountAssociationTemplate 'networkSecurityPerimeterResourceAssociation.bicep' = {
+  name: 'jtStorageAccountAssociationTemplate'
+  scope: resourceGroup(prereqsResourceGroupName)
   params: {
-    name: stagingStorageAccountName
-    sku: storageAccountSku
-    keyVaultName: keyVaultName
-    location: location
-    storageAccountConnectionStringSettingName: 'jobTriggerStorageAccountStaging'
+    nspName: nspName
+    profileName: 'storageaccount'
+    resourceId: jobTriggerStorageAccountProd.outputs.storageAccountId
   }
 }

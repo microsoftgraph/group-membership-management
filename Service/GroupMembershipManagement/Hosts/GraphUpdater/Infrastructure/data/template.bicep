@@ -8,39 +8,48 @@ param environmentAbbreviation string
 @maxLength(3)
 param solutionAbbreviation string = 'gmm'
 
-@description('Enter tenant Id.')
-param tenantId string
-
-@description('Enter storage account name.')
-param storageAccountName string
-
 param storageAccountSku string = 'Standard_LRS'
 
 @description('Resource location.')
 param location string
 
+@description('Instance identifier')
+@allowed([
+  ''
+  'small'
+  'large'
+])
+param instanceIdentifier string = ''
+var instanceSuffix = empty(instanceIdentifier) ? '' : '${instanceIdentifier}'
+
+@description('Classify the types of resources in prereqs resource group.')
+param prereqsResourceGroupClassification string = 'prereqs'
+
 var keyVaultName = '${solutionAbbreviation}-data-${environmentAbbreviation}'
-var prodStorageAccountName = substring('gu${solutionAbbreviation}${environmentAbbreviation}prod${uniqueString(resourceGroup().id)}',0,23)
-var stagingStorageAccountName = substring('gu${solutionAbbreviation}${environmentAbbreviation}staging${uniqueString(resourceGroup().id)}',0,23)
+var prodStorageAccountName = substring('gu${solutionAbbreviation}${environmentAbbreviation}prod${instanceSuffix}${uniqueString(resourceGroup().id)}',0,23)
 
 module graphUpdaterStorageAccountProd 'storageAccount.bicep' = {
-  name: 'guProdstorageAccountTemplate'
+  name: 'gu${instanceSuffix}ProdstorageAccountTemplate'
   params: {
     name: prodStorageAccountName
     sku: storageAccountSku
     keyVaultName: keyVaultName
     location: location
-    storageAccountConnectionStringSettingName: 'graphUpdaterStorageAccountProd'
+    storageAccountSettingName: 'graphUpdater${instanceSuffix}StorageAccountProd'
+    appPackageContainerSettingName: 'graphUpdater${instanceSuffix}AppPackageContainerProd'
+    appPackageContainerName: 'app-package'
   }
 }
 
-module graphUpdaterStorageAccountStaging 'storageAccount.bicep' = {
-  name: 'guStagingstorageAccountTemplate'
+var nspName = '${solutionAbbreviation}-nsp-${environmentAbbreviation}'
+var prereqsResourceGroupName = '${solutionAbbreviation}-${prereqsResourceGroupClassification}-${environmentAbbreviation}'
+
+module guStorageAccountAssociationTemplate 'networkSecurityPerimeterResourceAssociation.bicep' = {
+  name: 'gu${instanceSuffix}StorageAccountAssociationTemplate'
+  scope: resourceGroup(prereqsResourceGroupName)
   params: {
-    name: stagingStorageAccountName
-    sku: storageAccountSku
-    keyVaultName: keyVaultName
-    location: location
-    storageAccountConnectionStringSettingName: 'graphUpdaterStorageAccountStaging'
+    nspName: nspName
+    profileName: 'storageaccount'
+    resourceId: graphUpdaterStorageAccountProd.outputs.storageAccountId
   }
 }

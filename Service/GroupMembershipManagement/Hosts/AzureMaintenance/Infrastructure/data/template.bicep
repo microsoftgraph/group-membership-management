@@ -8,19 +8,16 @@ param environmentAbbreviation string
 @maxLength(3)
 param solutionAbbreviation string = 'gmm'
 
-@description('Enter tenant Id.')
-param tenantId string
-
-@description('Enter storage account name.')
-param storageAccountName string
-
 param storageAccountSku string = 'Standard_LRS'
+
 @description('Resource location.')
 param location string
 
+@description('Classify the types of resources in prereqs resource group.')
+param prereqsResourceGroupClassification string = 'prereqs'
+
 var keyVaultName = '${solutionAbbreviation}-data-${environmentAbbreviation}'
 var prodStorageAccountName = substring('am${solutionAbbreviation}${environmentAbbreviation}prod${uniqueString(resourceGroup().id)}',0,23)
-var stagingStorageAccountName = substring('am${solutionAbbreviation}${environmentAbbreviation}staging${uniqueString(resourceGroup().id)}',0,23)
 
 module azureMaintenanceStorageAccountProd 'storageAccount.bicep' = {
   name: 'amProdstorageAccountTemplate'
@@ -29,16 +26,21 @@ module azureMaintenanceStorageAccountProd 'storageAccount.bicep' = {
     sku: storageAccountSku
     keyVaultName: keyVaultName
     location: location
-    storageAccountConnectionStringSettingName: 'azureMaintenanceStorageAccountProd'
+    storageAccountSettingName: 'azureMaintenanceStorageAccountProd'
+    appPackageContainerSettingName: 'azureMaintenanceAppPackageContainerProd'
+    appPackageContainerName: 'app-package'
   }
 }
-module azureMaintenanceStorageAccountStaging 'storageAccount.bicep' = {
-  name: 'amStagingstorageAccountTemplate'
+
+var nspName = '${solutionAbbreviation}-nsp-${environmentAbbreviation}'
+var prereqsResourceGroupName = '${solutionAbbreviation}-${prereqsResourceGroupClassification}-${environmentAbbreviation}'
+
+module amStorageAccountAssociationTemplate 'networkSecurityPerimeterResourceAssociation.bicep' = {
+  name: 'amStorageAccountAssociationTemplate'
+  scope: resourceGroup(prereqsResourceGroupName)
   params: {
-    name: stagingStorageAccountName
-    sku: storageAccountSku
-    keyVaultName: keyVaultName
-    location: location
-    storageAccountConnectionStringSettingName: 'azureMaintenanceStorageAccountStaging'
+    nspName: nspName
+    profileName: 'storageaccount'
+    resourceId: azureMaintenanceStorageAccountProd.outputs.storageAccountId
   }
 }

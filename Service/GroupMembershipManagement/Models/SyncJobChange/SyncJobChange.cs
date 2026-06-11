@@ -22,15 +22,23 @@ namespace Models.SyncJobChange
         /// <summary>
         /// Gets or sets the display name of service principal responsible for the change.
         /// </summary>
-        public string ChangedByDisplayName { get; set; }
+        public string? ChangedByDisplayName { get; set; }
         /// <summary>
         /// Gets or sets the object id of service principal responsible for the change.
         /// </summary>
-        public Guid ChangedByObjectId { get; set; }
+        public Guid? ChangedByObjectId { get; set; }
+        /// <summary>
+        /// Gets or sets the display name of the service principal on whose behalf the change was made.
+        /// </summary>
+        public string? ChangedOnBehalfOfDisplayName { get; set; }
+        /// <summary>
+        /// Gets or sets the object id of the service principal on whose behalf the change was made.
+        /// </summary>
+        public Guid? ChangedOnBehalfOfObjectId { get; set; }
         /// <summary>
         /// Gets or sets the location where the change originated.
         /// </summary>
-        public SyncJobChangeSource ChangeSource { get; set; }
+        public SyncJobChangeSource? ChangeSource { get; set; }
         /// <summary>
         /// Gets or sets the reason for the change.
         /// </summary>
@@ -43,6 +51,11 @@ namespace Models.SyncJobChange
         /// a <see cref="SyncJob"/> object, but depending on when the change
         /// occurred, the serialized data may not match the current schema.
         /// </remarks>
-        public string ChangeDetails { get; set; }
+        public string? ChangeDetails { get; set; }
+
+        /// <summary>
+        /// Gets or sets the business justification for the change.
+        /// </summary>
+        public string BusinessJustification { get; set; }
     }
 }

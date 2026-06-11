@@ -6,4 +6,6 @@ export type PagingOptions = {
   itemsToSkip?: number;
   filter?: string;
   orderBy?: string;
-}
+  customSortBy?: string;
+  isSortedDescending?: boolean;
+};

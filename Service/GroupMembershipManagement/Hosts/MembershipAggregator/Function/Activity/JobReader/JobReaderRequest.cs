@@ -1,13 +1,16 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
+using Models;
 using System;
 
 namespace Hosts.MembershipAggregator
 {
     public class JobReaderRequest
     {
-        public Guid JobId { get; set; }
-        public Guid RunId { get; set; }
+        public required SyncJob SyncJob { get; init; }
+        public required int CurrentPart { get; init; }
+        public required int TotalParts { get; init; }
+        public required Guid JobId { get; init; }
     }
 }

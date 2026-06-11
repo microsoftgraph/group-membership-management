@@ -2,30 +2,46 @@
 // Licensed under the MIT license.
 
 import { createSlice, type PayloadAction } from '@reduxjs/toolkit';
-
+import { v4 as uuidv4 } from 'uuid';
 import type { RootState } from './store';
 import { NewJob } from '../models/NewJob';
 import {
     getGroupOnboardingStatus,
+    getChannelOnboardingStatus,
     getGroupEndpoints,
-    searchDestinations
+    getGroupOwners,
+    getGroupMembers,
+    searchDestinations,
+    searchChannels
 } from './manageMembership.api';
-import { OnboardingStatus } from '../models/GroupOnboardingStatus';
+import { GroupOnboardingStatus, OnboardingStatus } from '../models/GroupOnboardingStatus';
 import { Destination } from '../models/Destination';
-import { DestinationPickerPersona, JobDetails } from '../models';
+import { DestinationPickerPersona, Job, GroupOwner } from '../models';
 import { SyncJobQuery } from '../models/SyncJobQuery';
 import { ISourcePart } from '../models/ISourcePart';
 import { SourcePartType } from '../models/SourcePartType';
 import { SourcePartQuery } from '../models/SourcePartQuery';
 import { isSourcePartValid, removeUnusedProperties } from '../utils/sourcePartUtils';
+import { createGroup } from './groups.api';
+import { GroupSettings } from '../models/GroupSettings';
+import { DestinationType } from '../models/DestinationType';
+import { GroupMember } from '../models/GroupMember';
 
 export interface ManageMembershipState {
     loadingSearchResults: boolean;
     searchResults?: DestinationPickerPersona[];
+    channelPickerSearchResults?: DestinationPickerPersona[];
     selectedDestination: Destination | undefined;
-    onboardingStatus: OnboardingStatus | null;
+    groupOwners?: GroupOwner[];
+    groupMembers?: {
+        groupId: string;
+        groupMemberCount: number;
+        groups: GroupMember[];
+    };
+    onboardingStatus: GroupOnboardingStatus | null;
     hasChanges: boolean;
     currentStep: number;
+    isMissingAndOrOperator: boolean;
     isAdvancedQueryValid: boolean;
     startDateOption: string;
     useThresholdLimits: string;
@@ -37,15 +53,25 @@ export interface ManageMembershipState {
     advancedViewQuery?: string;
     sourceParts: ISourcePart[];
     isEditingExistingJob: boolean;
+    createdGroupId?: string | undefined;
+    createdGroupName?: string | undefined;
+    groupSettings?: GroupSettings | undefined;
+    createGroupLoading: boolean;
+    createGroupErrorMessage?: string | undefined;
+    businessJustification?: string;
 }
 
 const initialState: ManageMembershipState = {
     loadingSearchResults: false,
     searchResults: [],
+    channelPickerSearchResults: [],
     selectedDestination: undefined,
+    groupOwners: [],
+    groupMembers: undefined,
     onboardingStatus: null,
     hasChanges: false,
     currentStep: 0,
+    isMissingAndOrOperator: false,
     isAdvancedQueryValid: false,
     startDateOption: 'ASAP',
     useThresholdLimits: 'Yes',
@@ -54,18 +80,28 @@ const initialState: ManageMembershipState = {
     newJob: {
         destination: '',
         requestor: '',
+        lastModifiedOnBehalfOfDisplayName: '',
+        lastModifiedOnBehalfOfObjectId: '',
         startDate: new Date().toISOString(),
         period: 24,
-        query: {} as SyncJobQuery,
+        query: [] as SyncJobQuery,
+        titles: [],
         thresholdPercentageForAdditions: 100,
         thresholdPercentageForRemovals: 20,
-        status: 'Idle'
+        status: 'Idle',
+        businessJustification: '',
     },
     isAdvancedView: false,
-    compositeQuery: {} as SyncJobQuery,
+    compositeQuery: [] as SyncJobQuery,
     advancedViewQuery: '',
     sourceParts: [],
-    isEditingExistingJob: false
+    isEditingExistingJob: false,
+    createdGroupId: undefined,
+    createdGroupName: undefined,
+    groupSettings: undefined,
+    createGroupLoading: false,
+    createGroupErrorMessage: undefined,
+    businessJustification: '',
 };
 
 const manageMembershipSlice = createSlice({
@@ -80,6 +116,9 @@ const manageMembershipSlice = createSlice({
         },
         setSelectedDestination: (state, action: PayloadAction<Destination | undefined>) => {
             state.selectedDestination = action.payload;
+            if (state.selectedDestination?.id === undefined) {
+                state.onboardingStatus = null;
+            }
         },
         setDestinationEndpoints: (state, action: PayloadAction<string[]>) => {
             if (state.selectedDestination) {
@@ -95,14 +134,20 @@ const manageMembershipSlice = createSlice({
         setNewJobRequestor: (state, action: PayloadAction<string>) => {
             state.newJob.requestor = action.payload;
         },
+        setNewJobLastModifiedOnBehalfOfDisplayName: (state, action: PayloadAction<string>) => {
+            state.newJob.lastModifiedOnBehalfOfDisplayName = action.payload;
+        },
+        setNewJobLastModifiedOnBehalfOfObjectId: (state, action: PayloadAction<string>) => {
+            state.newJob.lastModifiedOnBehalfOfObjectId = action.payload;
+        },
+        setIsMissingAndOrOperator: (state, action: PayloadAction<boolean>) => {
+            state.isMissingAndOrOperator = action.payload;
+        },
         setIsAdvancedQueryValid: (state, action: PayloadAction<boolean>) => {
             state.isAdvancedQueryValid = action.payload;
         },
         setNewJobStartDate: (state, action: PayloadAction<string>) => {
             state.newJob.startDate = action.payload;
-        },
-        setNewJobPeriod: (state, action: PayloadAction<number>) => {
-            state.newJob.period = action.payload;
         },
         setNewJobThresholdPercentageForAdditions: (state, action: PayloadAction<number>) => {
             state.newJob.thresholdPercentageForAdditions = action.payload;
@@ -132,8 +177,8 @@ const manageMembershipSlice = createSlice({
                 }
                 else{
                     const compositeQuery = buildCompositeQuery(state.sourceParts);
-                    const updatedSourceParts = state.sourceParts.map((part, index) => ({ 
-                        ...part, 
+                    const updatedSourceParts = state.sourceParts.map((part, index) => ({
+                        ...part,
                         query: compositeQuery[index],
                     }));
                     state.sourceParts = updatedSourceParts;
@@ -150,10 +195,16 @@ const manageMembershipSlice = createSlice({
                         if(isAdvancedQueryValid){
                             const parsedQuery: SyncJobQuery = JSON.parse(advancedViewQuery);
                             state.compositeQuery = parsedQuery;
-                            state.sourceParts = parsedQuery.map((query, index) => ({
-                                id: index + 1,
-                                query: query
-                            }));
+                            state.sourceParts = parsedQuery.map((query, index) => {
+                                const originalPart = state.sourceParts[index];
+                                return {
+                                    id: state.sourceParts[index].id ?? uuidv4(),
+                                    title: state.sourceParts[index].title ?? "",
+                                    query: query,
+                                    isNew: originalPart?.isNew ?? false,
+                                    isExpanded: originalPart?.isExpanded ?? false
+                                };
+                            });
                             state.newJob.query = parsedQuery;
                         }
                     } catch (error) {
@@ -163,16 +214,35 @@ const manageMembershipSlice = createSlice({
             }
             state.isAdvancedView = action.payload;
         },
-        setAdvancedViewQuery: (state, action: PayloadAction<string>) => {
-            if (!action.payload) return;
+        setAdvancedViewQueryRaw: (state, action: PayloadAction<string>) => {
+            state.advancedViewQuery = action.payload ?? '';
+        },
+        applyAdvancedViewQuery: (state, action: PayloadAction<string>) => {
+            if (action.payload == null) {
+                state.advancedViewQuery = '';
+                return;
+            }
             state.advancedViewQuery = action.payload;
-            const parsedQuery: SyncJobQuery = JSON.parse(action.payload);
-            state.newJob.query = parsedQuery;
-            state.sourceParts = parsedQuery.map((query, index) => ({
-              id: index + 1,
-              query: query,
-              isValid: true
-            }));
+            try {
+                const parsedQuery: SyncJobQuery = JSON.parse(action.payload);
+                if (!Array.isArray(parsedQuery)) {
+                    // Only arrays are valid top-level structures for SyncJobQuery. Ignore otherwise.
+                    return;
+                }
+                state.newJob.query = parsedQuery;
+                state.sourceParts = parsedQuery.map((query, index) => {
+                    const originalPart = state.sourceParts[index];
+                    return {
+                        id: originalPart?.id ?? uuidv4(),
+                        title: originalPart?.title ?? '',
+                        query,
+                        isNew: originalPart?.isNew ?? false,
+                        isExpanded: originalPart?.isExpanded ?? false
+                    };
+                });
+            } catch (error) {
+                console.debug('Ignored parse error in applyAdvancedViewQuery:', error);
+            }
         },
         setCompositeQuery: (state, action: PayloadAction<SyncJobQuery | undefined>) => {
             state.compositeQuery = action.payload;
@@ -183,7 +253,7 @@ const manageMembershipSlice = createSlice({
         addSourcePart: (state, action: PayloadAction<ISourcePart>) => {
             state.sourceParts.push(action.payload);
         },
-        updateSourcePartType: (state, action: PayloadAction<{ partId: number; type: SourcePartType}>) => {
+        updateSourcePartType: (state, action: PayloadAction<{ partId: string; type: SourcePartType}>) => {
             const { partId, type } = action.payload;
             const partIndex = state.sourceParts.findIndex(part => part.id === partId);
             const currentQuery = state.sourceParts[partIndex].query;
@@ -224,14 +294,17 @@ const manageMembershipSlice = createSlice({
             const compositeQuery = buildCompositeQuery(state.sourceParts);
             state.compositeQuery = compositeQuery;
             state.advancedViewQuery = JSON.stringify(compositeQuery);
-            
+
         },
         updateSourcePart: (state, action: PayloadAction<ISourcePart>) => {
             const index = state.sourceParts.findIndex(part => part.id === action.payload.id);
             if (index !== -1) {
+                if (state.sourceParts[index].title !== action.payload.title) {
+                    state.sourceParts[index].title = action.payload.title;
+                }
                 state.sourceParts[index] = {
                     ...state.sourceParts[index],
-                    query: action.payload.query
+                    ...action.payload,
                 };
             }
         },
@@ -240,29 +313,45 @@ const manageMembershipSlice = createSlice({
             state.sourceParts.push(action.payload);
         },
 
-        deleteSourcePart: (state, action: PayloadAction<number>) => {
+        deleteSourcePart: (state, action: PayloadAction<string>) => {
             state.sourceParts = state.sourceParts.filter(part => part.id !== action.payload);
+            state.newJob.titles = state.newJob.titles?.filter(title => title.partId !== action.payload);
             const compositeQuery = buildCompositeQuery(state.sourceParts);
             state.compositeQuery = compositeQuery;
         },
         clearSourceParts: (state) => {
             state.sourceParts = [];
         },
-        setJobDetailsForExistingJob: (state, action: PayloadAction<JobDetails>) => {
-            const { source, requestor, startDate, period, thresholdPercentageForAdditions, thresholdPercentageForRemovals } = action.payload;
-            state.advancedViewQuery = JSON.stringify(source);
-            state.compositeQuery = buildCompositeQuery(JSON.parse(source));
-            state.sourceParts = JSON.parse(source).map((query: SourcePartQuery, index: number) => ({
+        setJobDetailsForExistingJob: (state, action: PayloadAction<Job>) => {
+            const { query, titles, requestor, lastModifiedOnBehalfOfDisplayName, lastModifiedOnBehalfOfObjectId, startDate, period, thresholdPercentageForAdditions, thresholdPercentageForRemovals, targetGroupId, targetGroupName, targetDestinationType, targetChannelId, targetChannelName } = action.payload;
+            state.advancedViewQuery = JSON.stringify(query);
+            state.compositeQuery = buildCompositeQuery(JSON.parse(query));
+            state.sourceParts = JSON.parse(query).map((query: SourcePartQuery, index: number) => ({
                 ...query,
-                id: index + 1,
+                id: titles[index]?.partId || uuidv4(),
+                title: titles[index]?.name || '',
                 query: query,
                 isValid: true
             }));
+            state.newJob.titles = titles || state.newJob.titles;
             state.newJob.requestor = requestor || state.newJob.requestor;
+            state.newJob.lastModifiedOnBehalfOfDisplayName = lastModifiedOnBehalfOfDisplayName || state.newJob.lastModifiedOnBehalfOfDisplayName;
+            state.newJob.lastModifiedOnBehalfOfObjectId = lastModifiedOnBehalfOfObjectId || state.newJob.lastModifiedOnBehalfOfObjectId;
             state.newJob.startDate = startDate || state.newJob.startDate;
             state.newJob.period = period || state.newJob.period;
             state.newJob.thresholdPercentageForAdditions = thresholdPercentageForAdditions || state.newJob.thresholdPercentageForAdditions;
             state.newJob.thresholdPercentageForRemovals = thresholdPercentageForRemovals || state.newJob.thresholdPercentageForRemovals;
+
+            // Set the selected destination for existing jobs to enable group owner fetching
+            if (targetGroupId && targetGroupName) {
+                state.selectedDestination = {
+                    id: targetGroupId,
+                    name: targetGroupName,
+                    type: targetDestinationType || DestinationType.GroupMembership,
+                    channelId: targetChannelId,
+                    channelName: targetChannelName
+                };
+            }
         },
         setIsEditingExistingJob: (state, action: PayloadAction<boolean>) => {
             state.isEditingExistingJob = action.payload;
@@ -270,10 +359,34 @@ const manageMembershipSlice = createSlice({
                 Object.assign(state, initialState);
             }
         },
+        setCreatedGroupName: (state, action: PayloadAction<string | undefined>) => {
+            state.createdGroupName = action.payload;
+        },
+        setCreateGroupErrorMessage: (state, action: PayloadAction<string>) => {
+            state.createGroupErrorMessage = action.payload;
+        },
+        setBusinessJustification: (state, action: PayloadAction<string>) => {
+            state.businessJustification = action.payload;
+        },
+        setGroupSettings: (state, action: PayloadAction<GroupSettings | undefined>) => {
+            state.groupSettings = action.payload;
+        },
+        clearGroupMembers: (state) => {
+            state.groupMembers = undefined;
+        }
     },
     extraReducers: (builder) => {
         builder.addCase(getGroupOnboardingStatus.fulfilled, (state, action) => {
             state.onboardingStatus = action.payload;
+        });
+        builder.addCase(getGroupOnboardingStatus.pending, (state, action) => {
+            state.onboardingStatus = null;
+        });
+        builder.addCase(getChannelOnboardingStatus.fulfilled, (state, action) => {
+            state.onboardingStatus = action.payload;
+        });
+        builder.addCase(getChannelOnboardingStatus.pending, (state, action) => {
+            state.onboardingStatus = null;
         });
         builder.addCase(searchDestinations.fulfilled, (state, action) => {
             state.loadingSearchResults = false;
@@ -285,10 +398,55 @@ const manageMembershipSlice = createSlice({
         builder.addCase(searchDestinations.rejected, (state) => {
             state.loadingSearchResults = false;
         });
+        builder.addCase(searchChannels.fulfilled, (state, action) => {
+            state.loadingSearchResults = false;
+            state.channelPickerSearchResults = action.payload;
+        });
+        builder.addCase(searchChannels.pending, (state) => {
+            state.loadingSearchResults = true;
+        });
+        builder.addCase(searchChannels.rejected, (state) => {
+            state.loadingSearchResults = false;
+        });
         builder.addCase(getGroupEndpoints.fulfilled, (state, action) => {
             if (state.selectedDestination?.id === action.meta.arg) {
                 state.selectedDestination.endpoints = action.payload;
             }
+        });
+        builder.addCase(createGroup.pending, (state) => {
+            state.createGroupLoading = true;
+        });
+        builder.addCase(createGroup.fulfilled, (state, action) => {
+            state.createGroupLoading = false;
+            if (action.payload.groupId && state.createdGroupName) {
+                state.createdGroupId = action.payload.groupId;
+                state.selectedDestination = {
+                    ...state.selectedDestination,
+                    id: action.payload.groupId,
+                    name: state.createdGroupName,
+                    type: DestinationType.GroupMembership,
+                };
+                state.onboardingStatus = { status : OnboardingStatus.ReadyForOnboarding };
+            }
+            if (action.payload.responseData){
+                state.createGroupErrorMessage = action.payload.responseData;
+            }
+        });
+        builder.addCase(createGroup.rejected, (state, action) => {
+            state.createGroupLoading = false;
+            state.createGroupErrorMessage = action.error.message;
+        });
+        builder.addCase(getGroupOwners.fulfilled, (state, action) => {
+            state.groupOwners = action.payload;
+        });
+        builder.addCase(getGroupMembers.pending, (state) => {
+            state.groupMembers = undefined;
+        });
+        builder.addCase(getGroupMembers.fulfilled, (state, action) => {
+            state.groupMembers = action.payload;
+        });
+        builder.addCase(getGroupMembers.rejected, (state) => {
+            state.groupMembers = undefined;
         });
     },
 });
@@ -298,13 +456,16 @@ export const {
     setCurrentStep,
     setNewJobQuery,
     setNewJobRequestor,
+    setNewJobLastModifiedOnBehalfOfDisplayName,
+    setNewJobLastModifiedOnBehalfOfObjectId,
+    setIsMissingAndOrOperator,
     setIsAdvancedQueryValid,
     setSelectedDestination,
     setNewJobStartDate,
-    setNewJobPeriod,
     setNewJobThresholdPercentageForAdditions,
     setNewJobThresholdPercentageForRemovals,
-    setAdvancedViewQuery,
+    setAdvancedViewQueryRaw,
+    applyAdvancedViewQuery,
     setStartDateOption,
     setUseThresholdLimits,
     setShowIncreaseDropdown,
@@ -320,7 +481,12 @@ export const {
     deleteSourcePart,
     clearSourceParts,
     setJobDetailsForExistingJob,
-    setIsEditingExistingJob
+    setIsEditingExistingJob,
+    setCreatedGroupName,
+    setCreateGroupErrorMessage,
+    setBusinessJustification,
+    setGroupSettings,
+    clearGroupMembers
 } = manageMembershipSlice.actions;
 
 // General
@@ -341,35 +507,62 @@ export const manageMembershipRequestor = (state: RootState) => state.manageMembe
 
 // 1- Select Destination
 export const manageMembershipSearchResults = (state: RootState) => state.manageMembership.searchResults;
+export const manageMembershipChannelPickerSearchResults = (state: RootState) => state.manageMembership.channelPickerSearchResults;
 export const manageMembershipLoadingSearchResults = (state: RootState) => state.manageMembership.loadingSearchResults;
 export const manageMembershipSelectedDestinationEndpoints = (state: RootState) => state.manageMembership.selectedDestination?.endpoints;
 export const manageMembershipGroupOnboardingStatus = (state: RootState) => state.manageMembership.onboardingStatus;
+export const manageMembershipCreatedGroupId = (state: RootState) => state.manageMembership.createdGroupId;
+export const manageMembershipCreatedGroupName = (state: RootState) => state.manageMembership.createdGroupName;
+export const manageMembershipCreateGroupLoading = (state: RootState) => state.manageMembership.createGroupLoading;
+export const manageMembershipCreateGroupErrorMessage = (state: RootState) => state.manageMembership.createGroupErrorMessage;
 export const manageMembershipIsGroupReadyForOnboarding = (state: RootState): boolean => {
-    return state.manageMembership.onboardingStatus === OnboardingStatus.ReadyForOnboarding;
+    return state.manageMembership.onboardingStatus?.status === OnboardingStatus.ReadyForOnboarding;
 };
+export const manageMembershipGroupSettings = (state: RootState) => state.manageMembership.groupSettings;
 
 // 2- Membership Configuration
 export const manageMembershipIsAdvancedView = (state: RootState) => state.manageMembership.isAdvancedView;
+export const manageMembershipIsMissingAndOrOperator = (state: RootState) => state.manageMembership.isMissingAndOrOperator;
 export const manageMembershipisAdvancedQueryValid = (state: RootState) => state.manageMembership.isAdvancedQueryValid;
 export const manageMembershipCompositeQuery = (state: RootState) => state.manageMembership.compositeQuery;
 export const manageMembershipAdvancedViewQuery = (state: RootState) => state.manageMembership.advancedViewQuery;
 export const getSourcePartsFromState = (state: RootState) => state.manageMembership.sourceParts;
 export const areAllSourcePartsValid = (state: RootState): boolean => {
-    return state.manageMembership.sourceParts.every(isSourcePartValid);
+    const sourceParts = state.manageMembership.sourceParts;
+    // Return false if there are no source parts (empty array should not be considered valid)
+    if (sourceParts.length === 0) {
+        return false;
+    }
+    return sourceParts.every(isSourcePartValid);
 };
+
+// 4- Confirmation
+export const manageMembershipBusinessJustification = (state: RootState) => state.manageMembership.businessJustification;
+export const manageMembershipLastModifiedOnBehalfOfDisplayName = (state: RootState) => state.manageMembership.newJob.lastModifiedOnBehalfOfDisplayName;
+export const manageMembershipLastModifiedOnBehalfOfObjectId = (state: RootState) => state.manageMembership.newJob.lastModifiedOnBehalfOfObjectId;
+export const manageMembershipGroupOwners = (state: RootState) => state.manageMembership.groupOwners;
+export const manageMembershipGroupMembers = (state: RootState) => state.manageMembership.groupMembers;
 
 export const manageMembershipIsToggleEnabled = (state: RootState) => {
     const isAdvancedView = state.manageMembership.isAdvancedView;
     const isAdvancedViewQueryValid = state.manageMembership.isAdvancedQueryValid;
-    const areAllSourcePartsValid = state.manageMembership.sourceParts.every(isSourcePartValid);
-    if (isAdvancedView && isAdvancedViewQueryValid) {
-        return true;
-    }
-    else if (!isAdvancedView && areAllSourcePartsValid) {
-        return true;
-    }
-    else {
-        return false;
+    const sourceParts = state.manageMembership.sourceParts;
+    const advancedViewQuery = state.manageMembership.advancedViewQuery;
+
+    // Check if all source parts are valid (allow empty source parts for switching TO advanced view)
+    const areAllSourcePartsValid = sourceParts.every(isSourcePartValid);
+
+    if (isAdvancedView) {
+        // When in advanced view, allow toggle back to regular view only if:
+        // 1. The query is valid, OR
+        // 2. The query is empty (so it can be safely converted to empty source parts)
+        const isQueryEmpty = !advancedViewQuery || advancedViewQuery.trim() === '' ||
+                            advancedViewQuery.trim() === '[]' || advancedViewQuery.trim() === '{}';
+        return isAdvancedViewQueryValid || isQueryEmpty;
+    } else {
+        // When in regular view, allow toggle to advanced view if:
+        // 1. All existing source parts are valid (including empty array case)
+        return areAllSourcePartsValid;
     }
 };
 
@@ -382,6 +575,16 @@ export const manageMembershipShowDecreaseDropdown = (state: RootState) => state.
 export default manageMembershipSlice.reducer;
 
 export function buildCompositeQuery(sourceParts: ISourcePart[]): SyncJobQuery {
-    const compositeQuery: SyncJobQuery = sourceParts.map(part => part.query ? removeUnusedProperties(part.query) : part.query);
+    const compositeQuery: SyncJobQuery = sourceParts.map(part => {
+        if (!part.query) return part.query;
+        try {
+            return removeUnusedProperties(part.query);
+        } catch (err) {
+            // Swallow unexpected trim errors; return raw query so user can continue editing.
+            // eslint-disable-next-line no-console
+            console.debug('buildCompositeQuery: error trimming source part, returning raw query.', err);
+            return part.query;
+        }
+    });
     return compositeQuery;
-}
+};

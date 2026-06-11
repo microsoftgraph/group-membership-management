@@ -18,10 +18,15 @@ namespace Models.ServiceBus
         public bool MembershipObtainerDryRunEnabled { get; set; }
         public bool Exclusionary { get; set; }
         public string Query { get; set; }
+        public SyncJob SyncJob { get; set; }
+        public int? ProjectedMemberCount { get; set; }
+        public int? TotalMembersToAdd { get; set; }
+        public int? TotalMembersToRemove { get; set; }
 
         /// <summary>
         /// Don't worry about setting this yourself, this is for Split and the serializer to set.
         /// </summary>
+        public int MessageIndex { get; set; } = 1;
         public bool IsLastMessage { get; set; }
         public int TotalMessageCount { get; set; }
 
@@ -35,7 +40,7 @@ namespace Models.ServiceBus
             var chunkCount = chunks.ToList().Count;
 
             var toReturn = chunks.
-                Select(x => new GroupMembership
+                Select((x,i) => new GroupMembership
                 {
                     Destination = Destination,
                     SyncJobId = SyncJobId,
@@ -44,7 +49,8 @@ namespace Models.ServiceBus
                     MembershipObtainerDryRunEnabled = MembershipObtainerDryRunEnabled,
                     Exclusionary = Exclusionary,
                     IsLastMessage = false,
-                    TotalMessageCount = chunkCount
+                    TotalMessageCount = chunkCount,
+                    MessageIndex = (i + 1),
                 }).ToArray();
             toReturn.Last().IsLastMessage = true;
 

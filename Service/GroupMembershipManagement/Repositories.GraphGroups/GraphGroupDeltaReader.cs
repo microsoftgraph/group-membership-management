@@ -1,11 +1,14 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
+using Microsoft.Extensions.Logging;
 using Microsoft.Graph;
 using Microsoft.Graph.Models;
 using Microsoft.Kiota.Abstractions;
+using Microsoft.Kiota.Abstractions.Serialization;
 using Models;
 using Repositories.Contracts;
+using Repositories.Contracts.Helpers;
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
@@ -14,67 +17,141 @@ using System.Net.Http;
 using System.Text.Json.Nodes;
 using System.Threading.Tasks;
 using GraphAPIDeltaResponse = Microsoft.Graph.Groups.Delta.DeltaResponse;
+using Group = Microsoft.Graph.Models.Group;
 
 namespace Repositories.GraphGroups
 {
     internal class GraphGroupDeltaReader : GraphGroupRepositoryBase
     {
+        private readonly ILogger<GraphGroupDeltaReader> _graphGroupDeltaReaderLogger;
 
         public GraphGroupDeltaReader(GraphServiceClient graphServiceClient,
-                                    ILoggingRepository loggingRepository,
-                                    GraphGroupMetricTracker graphGroupMetricTracker)
-                                    : base(graphServiceClient, loggingRepository, graphGroupMetricTracker)
-        { }
-
-        public async Task<(List<AzureADUser> users, string nextPageUrl, string deltaUrl)> GetFirstUsersPageAsync(Guid groupId, Guid? runId)
+                                     GraphGroupMetricTracker graphGroupMetricTracker,
+                                     ILogger<GraphGroupDeltaReader> graphGroupDeltaReaderLogger)
+                                     : base(graphServiceClient, graphGroupDeltaReaderLogger, graphGroupMetricTracker)
         {
-            var deltaResponse = await GetGroupUsersPageByIdAsync(groupId.ToString());
-
-            await _graphGroupMetricTracker.TrackMetricsAsync(deltaResponse.Headers, QueryType.Delta, runId);
-            await _graphGroupMetricTracker.TrackRequestAsync(deltaResponse.Headers, runId);
-
-            var users = ExtractDeltaMembers(deltaResponse.Response.Value.FirstOrDefault());
-
-            await _loggingRepository.LogMessageAsync(new LogMessage
-            {
-                Message = $"Number of users from first page using delta - {users.Count}",
-                RunId = runId
-            });
-
-            return (users, deltaResponse.Response.OdataNextLink, deltaResponse.Response.OdataDeltaLink);
+            _graphGroupDeltaReaderLogger = graphGroupDeltaReaderLogger ?? throw new ArgumentNullException(nameof(graphGroupDeltaReaderLogger));
         }
 
-        public async Task<(List<AzureADUser> users, string nextPageUrl, string deltaUrl)> GetNextUsersPageAsync(string nextPageUrl, Guid? runId)
+        public async Task<(List<AzureADUser> users, string nextPageUrl, string deltaUrl)> GetFirstDeltaUsersPageAsync(Guid groupId, Guid? runId, int numberOfPages)
         {
-            var deltaResponse = await GetGroupUsersNextPageAsync(nextPageUrl);
+            var allUsers = new List<AzureADUser>();
+            string nextLink = null;
+            string deltaLink = null;
 
-            await _graphGroupMetricTracker.TrackMetricsAsync(deltaResponse.Headers, QueryType.Delta, runId);
-            await _graphGroupMetricTracker.TrackRequestAsync(deltaResponse.Headers, runId);
+            for (int i = 0; i < numberOfPages; i++)
+            {
+                var deltaResponse = string.IsNullOrEmpty(nextLink)
+                    ? await GetGroupUsersPageByIdAsync(groupId.ToString())
+                    : await GetGroupUsersNextPageAsync(nextLink);
 
-            var users = ExtractDeltaMembers(deltaResponse.Response.Value.FirstOrDefault());
+                await _graphGroupMetricTracker.TrackMetricsAsync(deltaResponse.Headers, QueryType.Delta, runId);
+                await _graphGroupMetricTracker.TrackRequestAsync(deltaResponse.Headers, groupId, QueryType.Delta, runId);
 
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Number of users from next page using delta - {users.Count}", RunId = runId });
+                var users = ExtractDeltaMembers(deltaResponse.Response.Value.FirstOrDefault());
 
-            return (users, deltaResponse.Response.OdataNextLink, deltaResponse.Response.OdataDeltaLink);
+                _graphGroupDeltaReaderLogger.LogInformationWithRunId(runId, $"Number of users from first page using delta - {users.Count}");
+
+                allUsers.AddRange(users);
+                nextLink = deltaResponse.Response.OdataNextLink;
+                deltaLink = deltaResponse.Response.OdataDeltaLink;
+
+                if (string.IsNullOrEmpty(nextLink))
+                {
+                    break;
+                }
+            }
+
+            return (allUsers, nextLink, deltaLink);
+        }
+
+        public async Task<(List<AzureADUser> users, string nextPageUrl, string deltaUrl)> GetNextDeltaUsersPagesAsync(Guid groupId, string nextPageUrl, Guid? runId, int numberOfPages)
+        {
+            var allUsers = new List<AzureADUser>();
+
+            var nextLink = nextPageUrl;
+            string deltaLink = null;
+
+            for (int i = 0; i < numberOfPages && deltaLink == null; i++) {
+
+                var deltaResponse = await GetGroupUsersNextPageAsync(nextLink);
+
+                await _graphGroupMetricTracker.TrackMetricsAsync(deltaResponse.Headers, QueryType.Delta, runId);
+                await _graphGroupMetricTracker.TrackRequestAsync(deltaResponse.Headers, groupId, QueryType.Delta, runId);
+
+                var users = ExtractDeltaMembers(deltaResponse.Response.Value.FirstOrDefault());
+
+                _graphGroupDeltaReaderLogger.LogInformationWithRunId(runId, $"Number of users from next page using delta - {users.Count}");
+
+                allUsers.AddRange(users);
+
+                nextLink = deltaResponse.Response.OdataNextLink;
+                deltaLink = deltaResponse.Response.OdataDeltaLink;
+            }
+
+            return (allUsers, nextLink, deltaLink);
         }
 
         public async Task<(List<AzureADUser> usersToAdd, List<AzureADUser> usersToRemove, string nextPageUrl, string deltaUrl)>
-            GetNextDeltaUsersPageAsync(string deltaLink, Guid? runId)
+            GetFirstDeltaLinkUsersPageAsync(Guid groupId, string deltaLink, Guid? runId, int numberOfPages)
         {
-            List<AzureADUser> usersToAdd;
-            List<AzureADUser> usersToRemove;
+            var usersToAdd = new List<AzureADUser>();
+            var usersToRemove = new List<AzureADUser>();
+            string nextLink = deltaLink;
+            string deltaUrl = null;
 
-            var deltaResponse = await GetGroupUsersNextPageAsync(deltaLink);
+            for (int i = 0; i < numberOfPages; i++)
+            {
+                var deltaLinkResponse = await GetGroupUsersNextPageAsync(nextLink);
 
-            await _graphGroupMetricTracker.TrackMetricsAsync(deltaResponse.Headers, QueryType.DeltaLink, runId);
-            await _graphGroupMetricTracker.TrackRequestAsync(deltaResponse.Headers, runId);
+                await _graphGroupMetricTracker.TrackMetricsAsync(deltaLinkResponse.Headers, QueryType.DeltaLink, runId);
+                await _graphGroupMetricTracker.TrackRequestAsync(deltaLinkResponse.Headers, groupId, QueryType.DeltaLink, runId);
 
-            var users = ExtractDeltaMembers(deltaResponse.Response.Value.FirstOrDefault(), includeMembersToRemove: true);
+                var users = ExtractDeltaMembers(deltaLinkResponse.Response.Value.FirstOrDefault(), includeMembersToRemove: true);
 
-            usersToAdd = users.Where(x => x.MembershipAction == MembershipAction.Add).ToList();
-            usersToRemove = users.Where(x => x.MembershipAction == MembershipAction.Remove).ToList();
+                usersToAdd.AddRange(users.Where(x => x.MembershipAction == MembershipAction.Add));
+                usersToRemove.AddRange(users.Where(x => x.MembershipAction == MembershipAction.Remove));
 
-            return (usersToAdd, usersToRemove, deltaResponse.Response.OdataNextLink, deltaResponse.Response.OdataDeltaLink);
+                nextLink = deltaLinkResponse.Response.OdataNextLink;
+                deltaUrl = deltaLinkResponse.Response.OdataDeltaLink;
+
+                if (string.IsNullOrEmpty(nextLink))
+                {
+                    break;
+                }
+            }
+
+            return (usersToAdd, usersToRemove, nextLink, deltaUrl);
+        }
+
+        public async Task<(List<AzureADUser> usersToAdd, List<AzureADUser> usersToRemove, string nextPageUrl, string deltaUrl)>
+            GetNextDeltaLinkUsersPagesAsync(Guid groupId, string nextPageUrl, Guid? runId, int numberOfPages)
+        {
+            var usersToAdd = new List<AzureADUser>();
+            var usersToRemove = new List<AzureADUser>();
+
+            var nextLink = nextPageUrl;
+            string deltaLink = null;
+
+            for (int i = 0; i < numberOfPages && deltaLink == null; i++)
+            {
+                var deltaLinkResponse = await GetGroupUsersNextPageAsync(nextLink);
+
+                await _graphGroupMetricTracker.TrackMetricsAsync(deltaLinkResponse.Headers, QueryType.DeltaLink, runId);
+                await _graphGroupMetricTracker.TrackRequestAsync(deltaLinkResponse.Headers, groupId, QueryType.DeltaLink, runId);
+
+                var users = ExtractDeltaMembers(deltaLinkResponse.Response.Value.FirstOrDefault(), includeMembersToRemove: true);
+
+                _graphGroupDeltaReaderLogger.LogInformationWithRunId(runId, $"Number of users from next page using deltaLink - {users.Count}");
+
+                usersToAdd.AddRange(users.Where(x => x.MembershipAction == MembershipAction.Add).ToList());
+                usersToRemove.AddRange(users.Where(x => x.MembershipAction == MembershipAction.Remove).ToList());
+
+                nextLink = deltaLinkResponse.Response.OdataNextLink;
+                deltaLink = deltaLinkResponse.Response.OdataDeltaLink;
+            }
+
+            return (usersToAdd, usersToRemove, nextLink, deltaLink);
         }
 
         private async Task<GraphObjectResponse<GraphAPIDeltaResponse>> GetGroupUsersPageByIdAsync(string groupId)
@@ -162,15 +239,24 @@ namespace Repositories.GraphGroups
 
             if (group != null && group.AdditionalData.TryGetValue("members@delta", out object membersJson))
             {
-                var memberArray = JsonArray.Parse(membersJson.ToString()).AsArray();
-                foreach (var member in memberArray)
+                var members = (membersJson as UntypedArray)?.GetValue();
+                if (members == null) return users;
+
+                foreach (UntypedObject memberObject in members)
                 {
-                    if (member["@odata.type"].ToString().Equals("#microsoft.graph.user", StringComparison.InvariantCultureIgnoreCase))
+                    var member = memberObject.GetValue();
+                    if (member == null) continue;
+
+                    var memberType = (member["@odata.type"] as UntypedString)?.GetValue();
+                    var memberId = (member["id"] as UntypedString)?.GetValue();
+                    if (memberType == null || memberId == null) continue;
+
+                    if (memberType.Equals("#microsoft.graph.user", StringComparison.InvariantCultureIgnoreCase))
                     {
-                        if (member["@removed"] == null)
-                            users.Add(new AzureADUser { ObjectId = Guid.Parse((string)member["id"]), MembershipAction = MembershipAction.Add });
+                        if (!member.ContainsKey("@removed"))
+                            users.Add(new AzureADUser { ObjectId = Guid.Parse(memberId), MembershipAction = MembershipAction.Add });
                         else if (includeMembersToRemove)
-                            users.Add(new AzureADUser { ObjectId = Guid.Parse((string)member["id"]), MembershipAction = MembershipAction.Remove });
+                            users.Add(new AzureADUser { ObjectId = Guid.Parse(memberId), MembershipAction = MembershipAction.Remove });
                     }
                 }
             }

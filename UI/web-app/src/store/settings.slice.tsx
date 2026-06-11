@@ -2,7 +2,7 @@
 // Licensed under the MIT license.
 
 import { createSlice, type PayloadAction } from '@reduxjs/toolkit';
-import { fetchSettingByKey, fetchSettings, patchSetting } from './settings.api';
+import { fetchSettingByKey, fetchSettings, patchSetting, getSupportEmailAddress } from './settings.api';
 import type { RootState } from './store';
 import { Setting } from '../models/Setting';
 import { SettingKey } from '../models/SettingKey';
@@ -16,6 +16,9 @@ export interface SettingsState {
   patchSettingResponse: any | undefined;
   patchSettingError: string | undefined;
   isSaving: boolean;
+  supportEmail: string;
+  supportEmailLoading: boolean;
+  supportEmailError: string | undefined;
 }
 
 const initialState: SettingsState = {
@@ -27,6 +30,9 @@ const initialState: SettingsState = {
   patchSettingResponse: undefined,
   patchSettingError: undefined,
   isSaving: false,
+  supportEmail: '',
+  supportEmailLoading: false,
+  supportEmailError: undefined,
 };
 
 const settingsSlice = createSlice({
@@ -80,6 +86,18 @@ const settingsSlice = createSlice({
       state.patchSettingResponse = action.payload;
       state.patchSettingError = action.error.message;
     });
+    builder.addCase(getSupportEmailAddress.pending, (state) => {
+      state.supportEmailLoading = true;
+      state.supportEmailError = undefined;
+    });
+    builder.addCase(getSupportEmailAddress.fulfilled, (state, action) => {
+      state.supportEmailLoading = false;
+      state.supportEmail = action.payload;
+    });
+    builder.addCase(getSupportEmailAddress.rejected, (state, action) => {
+      state.supportEmailLoading = false;
+      state.supportEmailError = action.error.message;
+    });
   },
 });
 
@@ -115,9 +133,84 @@ export const selectPrivacyPolicyUrl = (state: RootState) => {
   return privacyPolicySetting ? privacyPolicySetting.settingValue : undefined;
 };
 
+export const selectUIUrl = (state: RootState) => {
+  const settingsArray = state.settings.settings;
+  if (!settingsArray) {
+    return undefined;
+  }
+  const uiSetting = settingsArray.find((setting) => setting.settingKey === SettingKey.UIUrl);
+  return uiSetting ? uiSetting.settingValue : undefined;
+}
+
+export const selectCanReviewOwnSubmissions = (state: RootState) => {
+  const settingsArray = state.settings.settings;
+  if (!settingsArray) {
+    return undefined;
+  }
+  const canReviewOwnSubmissionSetting = settingsArray.find((setting) => setting.settingKey === SettingKey.CanReviewOwnSubmissions);
+  return canReviewOwnSubmissionSetting ? canReviewOwnSubmissionSetting.settingValue === 'true' : undefined;
+}
+
+export const selectCreateGroupFeatureEnabled = (state: RootState) => {
+  const settingsArray = state.settings.settings;
+  if (!settingsArray) {
+    return undefined;
+  }
+  const createGroupFeatureEnabledSetting = settingsArray.find((setting) => setting.settingKey === SettingKey.CreateGroupFeatureEnabled);
+  return createGroupFeatureEnabledSetting ? createGroupFeatureEnabledSetting.settingValue === 'true' : undefined;
+}
+
+export const selectIsBusinessJustificationRequired = (state: RootState) => {
+  const settingsArray = state.settings.settings;
+  if (!settingsArray) {
+    return undefined;
+  }
+  const isBusinessJustificationRequiredSetting = settingsArray.find((setting) => setting.settingKey === SettingKey.IsBusinessJustificationRequired);
+  return isBusinessJustificationRequiredSetting ? isBusinessJustificationRequiredSetting.settingValue === 'true' : undefined;
+}
+
+export const selectIsDisclaimerEnabled = (state: RootState) => {
+  const settingsArray = state.settings.settings;
+  if (!settingsArray) {
+    return undefined;
+  }
+  const isDisclaimerEnabledSetting = settingsArray.find((setting) => setting.settingKey === SettingKey.IsDisclaimerEnabled);
+  return isDisclaimerEnabledSetting ? isDisclaimerEnabledSetting.settingValue === 'true' : undefined;
+}
+
+export const selectIsAutoApprovalForGroupBasedSyncsEnabled = (state: RootState) => {
+  const settingsArray = state.settings.settings;
+  if (!settingsArray) {
+    return undefined;
+  }
+  const isAutoApprovalForGroupBasedSyncsEnabledSetting = settingsArray.find((setting) => setting.settingKey === SettingKey.IsAutoApprovalForGroupBasedSyncsEnabled);
+  return isAutoApprovalForGroupBasedSyncsEnabledSetting ? isAutoApprovalForGroupBasedSyncsEnabledSetting.settingValue === 'true' : undefined;
+}
+
+export const selectIsAutoApprovalForRequestorIsOrgLeaderSyncsEnabled = (state: RootState) => {
+  const settingsArray = state.settings.settings;
+  if (!settingsArray) {
+    return undefined;
+  }
+  const isAutoApprovalForRequestorIsOrgLeaderSyncsEnabledSetting = settingsArray.find((setting) => setting.settingKey === SettingKey.IsAutoApprovalForRequestorIsOrgLeaderSyncsEnabled);
+  return isAutoApprovalForRequestorIsOrgLeaderSyncsEnabledSetting ? isAutoApprovalForRequestorIsOrgLeaderSyncsEnabledSetting.settingValue === 'true' : undefined;
+}
+
+export const selectIsAITitleEnabled = (state: RootState) => {
+  const settingsArray = state.settings.settings;
+  if (!settingsArray) {
+    return undefined;
+  }
+  const isAITitleEnabledSetting = settingsArray.find((setting) => setting.settingKey === SettingKey.IsAITitleEnabled);
+  return isAITitleEnabledSetting ? isAITitleEnabledSetting.settingValue === 'true' : undefined;
+}
+
 export const selectPatchSettingResponse = (state: RootState) => state.settings.patchSettingResponse;
 export const selectPatchSettingError = (state: RootState) => state.settings.patchSettingError;
 
 export const selectIsSaving = (state: RootState) => state.settings.isSaving;
 
 export default settingsSlice.reducer;
+export const selectSupportEmail = (state: RootState) => state.settings.supportEmail;
+export const selectSupportEmailLoading = (state: RootState) => state.settings.supportEmailLoading;
+export const selectSupportEmailError = (state: RootState) => state.settings.supportEmailError;

@@ -39,6 +39,7 @@ namespace Models
         public Guid TargetOfficeGroupId { get; set; }
         public string Destination { get; set; }
         public bool AllowEmptyDestination { get; set; }
+        public string MembershipType { get; set; }
 
         [IgnoreLogging]
         public string Status { get; set; }
@@ -80,6 +81,12 @@ namespace Models
         /// </summary>
         [IgnoreLogging]
         public DateTime ScheduledDate { get; set; } = SqlDateTime.MinValue.Value;
+
+        /// <summary>
+        /// Date the sync job row was first created (UTC). Set once by the database
+        /// (DEFAULT GETUTCDATE()) and never updated.
+        /// </summary>
+        public DateTime InitialOnboardingDate { get; set; }
 
         /// <summary>
         /// Ignore threshold check if this is set to true
@@ -130,8 +137,14 @@ namespace Models
         /// </summary>
         [IgnoreLogging]
         public int ThresholdViolations { get; set; }
+        public Group Group { get; set; }
+        [IgnoreLogging]
+        public Channel Channel { get; set; }
         public DestinationName DestinationName { get; set; }
+        public DestinationEmail DestinationEmail { get; set; }
         public List<DestinationOwner> DestinationOwners { get; set; }
+        [IgnoreLogging]
+        public ICollection<Title> Titles { get; set; }
         [NotMapped]
         public DateTimeOffset? Timestamp { get; set; }
         [NotMapped]

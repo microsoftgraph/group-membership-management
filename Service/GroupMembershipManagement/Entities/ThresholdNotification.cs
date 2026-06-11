@@ -1,31 +1,17 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-using Azure;
-using Azure.Data.Tables;
-using Newtonsoft.Json;
 using System;
-using System.Diagnostics.CodeAnalysis;
+using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
 using Models.ThresholdNotifications;
-using System.Runtime.Serialization;
 
 namespace Entities
 {
-    [ExcludeFromCodeCoverage]
-    public class ThresholdNotification : ITableEntity
+    public class ThresholdNotification
     {
-        public ThresholdNotification()
-        {
-        }
-
-        public ThresholdNotification(string partitionKey, string rowKey)
-        {
-            PartitionKey = partitionKey;
-            RowKey = rowKey;
-        }
-        public string PartitionKey { get; set; }
-        public string RowKey { get; set; }
-        public Guid JobId { get; set; } = Guid.Empty;
+        [Key]
+        [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
 
         /// <summary>
         /// The threshold notification id.
@@ -38,11 +24,16 @@ namespace Entities
         public Guid TargetOfficeGroupId { get; set; }
 
         /// <summary>
+        /// The threshold notification sync job's Id.
+        /// </summary>
+        public Guid SyncJobId { get; set; }
+
+        /// <summary>
         /// Gets or sets the notification status name to persist in the azure table store.
         /// </summary>
         public string StatusName { get; set; }
 
-        [IgnoreDataMember]
+        [NotMapped]
         public ThresholdNotificationStatus? Status
         {
             get
@@ -75,12 +66,22 @@ namespace Entities
         /// <summary>
         /// The percentage of users to be added as a percentage of the current group size.
         /// </summary>
-        public int ChangePercentageForAdditions { get; set; } = 0;
+        public double ChangePercentageForAdditions { get; set; } = 0;
 
         /// <summary>
         /// The percentage of users to be removed as a percentage of the current group size.
         /// </summary>
-        public int ChangePercentageForRemovals { get; set; } = 0;
+        public double ChangePercentageForRemovals { get; set; } = 0;
+        
+        /// <summary>
+        /// The number of users to be added to the current group;
+        /// </summary>
+        public int ChangeQuantityForAdditions { get; set; } = 0;
+
+        /// <summary>
+        /// The number of users to be removed from the current group.
+        /// </summary>
+        public int ChangeQuantityForRemovals { get; set; } = 0;
 
         /// <summary>
         /// The time the notification was created.
@@ -95,14 +96,17 @@ namespace Entities
         /// <summary>
         /// The UPN of the person who resolved the notification.
         /// </summary>
-        public string ResolvedByUPN { get; set; } = string.Empty;
+        public string ResolvedBy { get; set; } = string.Empty;
+        
+        [DatabaseGenerated(DatabaseGeneratedOption.Computed)]
+        public DateTime LastUpdatedTime { get; set; }
 
         /// <summary>
         /// The action taken to resolve the notification.
         /// </summary>
         public string ResolutionName { get; set; }
 
-        [IgnoreDataMember]
+        [NotMapped]
         public ThresholdNotificationResolution? Resolution
         {
             get
@@ -114,12 +118,29 @@ namespace Entities
 
                 return (ThresholdNotificationResolution)Enum.Parse(typeof(ThresholdNotificationResolution), this.ResolutionName);
             }
+            set
+            {
+                this.ResolutionName = value.HasValue ? value.ToString() : null;
+            }
         }
+        public string CardStateName { get; set; }
 
-        [JsonIgnore]
-        public DateTimeOffset? Timestamp { get; set; }
+        [NotMapped]
+        public ThresholdNotificationCardState? CardState
+        {
+            get
+            {
+                if (string.IsNullOrEmpty(this.CardStateName))
+                {
+                    return null;
+                }
 
-        [JsonIgnore]
-        public ETag ETag { get; set; }
+                return (ThresholdNotificationCardState)Enum.Parse(typeof(ThresholdNotificationCardState), this.CardStateName);
+            }
+            set
+            {
+                this.CardStateName = value.HasValue ? value.ToString() : null;
+            }
+        }
     }
 }

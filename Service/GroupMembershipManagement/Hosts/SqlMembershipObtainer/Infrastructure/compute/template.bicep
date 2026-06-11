@@ -19,11 +19,14 @@ param environmentAbbreviation string
 @description('Tenant id.')
 param tenantId string
 
+@description('Function authentication app client id.')
+param functionAuthAppClientId string
+
 @description('Service plan name.')
 param servicePlanName string = '${solutionAbbreviation}-${resourceGroupClassification}-${environmentAbbreviation}-${substring(uniqueString(subscription().id,'SqlMembershipObtainer'),0,8)}'
 
 @description('Service plan sku')
-param servicePlanSku string = 'Y1'
+param servicePlanSku string = 'FC1'
 
 @description('Resource location.')
 param location string
@@ -36,23 +39,15 @@ param functionAppName string = '${solutionAbbreviation}-${resourceGroupClassific
   'functionapp'
   'linux'
   'container'
+  'functionapp,linux'
 ])
-param functionAppKind string = 'functionapp'
+param functionAppKind string = 'functionapp,linux'
 
-@description('Maximum elastic worker count.')
-param maximumElasticWorkerCount int = 1
+@description('Maximum instance count.')
+param maxInstanceCount int = 40
 
-@description('Enter application insights name.')
-param appInsightsName string = '${solutionAbbreviation}-data-${environmentAbbreviation}'
-
-@description('Resource group where Application Insights is located.')
-param appInsightsResourceGroup string = '${solutionAbbreviation}-data-${environmentAbbreviation}'
-
-@description('Enter storage account name.')
-param storageAccountName string
-
-@description('Resource group where storage account is located.')
-param storageAccountResourceGroup string = '${solutionAbbreviation}-data-${environmentAbbreviation}'
+@description('Instance memory in MB.')
+param instanceMemoryMB int = 4096
 
 @description('Name of the \'data\' key vault.')
 param dataKeyVaultName string = '${solutionAbbreviation}-data-${environmentAbbreviation}'
@@ -71,14 +66,6 @@ param subscriptionId string
 
 @description('Name of Azure Data Factory Pipeline.')
 param pipeline string
-
-@description('Name of storage account that stores SqlMembership data')
-@secure()
-param sqlMembershipStorageAccountName string
-
-@description('Connection string of storage account that stores SqlMembership data')
-@secure()
-param sqlMembershipStorageAccountConnectionString string
 
 @description('Name of the \'prereqs\' key vault.')
 param prereqsKeyVaultName string = '${solutionAbbreviation}-prereqs-${environmentAbbreviation}'
@@ -109,14 +96,11 @@ var graphAppTenantId = resourceId(subscription().subscriptionId, prereqsKeyVault
 var senderUsername = resourceId(subscription().subscriptionId, prereqsKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', prereqsKeyVaultName, 'senderUsername')
 var senderPassword = resourceId(subscription().subscriptionId, prereqsKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', prereqsKeyVaultName, 'senderPassword')
 var supportEmailAddresses = resourceId(subscription().subscriptionId, prereqsKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', prereqsKeyVaultName, 'supportEmailAddresses')
-var syncDisabledCCEmailAddresses = resourceId(subscription().subscriptionId, prereqsKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', prereqsKeyVaultName, 'syncDisabledCCEmailAddresses')
 var membershipStorageAccountName = resourceId(subscription().subscriptionId, dataKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'jobsStorageAccountName')
 var membershipContainerName = resourceId(subscription().subscriptionId, dataKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'membershipContainerName')
 var appInsightsInstrumentationKey = resourceId(subscription().subscriptionId, dataKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'appInsightsInstrumentationKey')
 var actionableEmailProviderId = resourceId(subscription().subscriptionId, dataKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'notifierProviderId')
 var jobsMSIConnectionString = resourceId(subscription().subscriptionId, dataKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'jobsMSIConnectionString')
-var sqlMembershipObtainerStorageAccountProd = resourceId(subscription().subscriptionId, dataKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'sqlMembershipObtainerStorageAccountProd')
-var sqlMembershipObtainerStorageAccountStaging = resourceId(subscription().subscriptionId, dataKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'sqlMembershipObtainerStorageAccountStaging')
 var graphUserAssignedManagedIdentityClientId = resourceId(subscription().subscriptionId, dataKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'graphUserAssignedManagedIdentityClientId')
 
 module servicePlanTemplate 'servicePlan.bicep' = {
@@ -125,39 +109,31 @@ module servicePlanTemplate 'servicePlan.bicep' = {
     name: servicePlanName
     sku: servicePlanSku
     location: location
-    maximumElasticWorkerCount: maximumElasticWorkerCount
   }
 }
 
-var commonSettings = {
-  WEBSITE_ADD_SITENAME_BINDINGS_IN_APPHOST_CONFIG: 1
-  WEBSITE_ENABLE_SYNC_UPDATE_SITE: 1
-  SCM_TOUCH_WEBCONFIG_AFTER_DEPLOYMENT: 0
-  FUNCTIONS_WORKER_RUNTIME: 'dotnet'
-  FUNCTIONS_EXTENSION_VERSION: '~4'
-}
-
 var appSettings = {
+  AZURE_TOKEN_CREDENTIALS: 'ManagedIdentityCredential'
+  AzureWebJobsStorage__accountName: storageAccountNameReader.outputs.value
+  AzureWebJobsStorage__credential: 'managedidentity'
+  AzureFunctionsJobHost__extensions__durableTask__hubName: '${solutionAbbreviation}compute${environmentAbbreviation}SqlMembershipObtainer'
+  AzureFunctionsWebHost__hostid: 'SqlMembershipObtainer'
   APPINSIGHTS_INSTRUMENTATIONKEY: '@Microsoft.KeyVault(SecretUri=${reference(appInsightsInstrumentationKey, '2019-09-01').secretUriWithVersion})'
-  WEBSITE_CONTENTAZUREFILECONNECTIONSTRING: '@Microsoft.KeyVault(SecretUri=${reference(sqlMembershipObtainerStorageAccountProd, '2019-09-01').secretUriWithVersion})'
-  WEBSITE_CONTENTSHARE: toLower('functionApp-SqlMembershipObtainer')
   logAnalyticsCustomerId: '@Microsoft.KeyVault(SecretUri=${reference(logAnalyticsCustomerId, '2019-09-01').secretUriWithVersion})'
   logAnalyticsPrimarySharedKey: '@Microsoft.KeyVault(SecretUri=${reference(logAnalyticsPrimarySharedKey, '2019-09-01').secretUriWithVersion})'
-  sqlMembershipStorageAccountConnectionString: sqlMembershipStorageAccountConnectionString
   tenantId: tenantId
   authority: authority
   dataFactoryName: dataFactoryName
   pipeline: pipeline
   subscriptionId: subscriptionId
   dataResourceGroup: dataKeyVaultResourceGroup
-  sqlMembershipStorageAccountName: sqlMembershipStorageAccountName
-  'graphCredentials:ClientId': '@Microsoft.KeyVault(SecretUri=${reference(graphAppClientId, '2019-09-01').secretUriWithVersion})'
-  'graphCredentials:ClientSecret': '@Microsoft.KeyVault(SecretUri=${reference(graphAppClientSecret, '2019-09-01').secretUriWithVersion})'
-  'graphCredentials:ClientCertificateName': '@Microsoft.KeyVault(SecretUri=${reference(graphAppCertificateName, '2019-09-01').secretUriWithVersion})'
-  'graphCredentials:TenantId': '@Microsoft.KeyVault(SecretUri=${reference(graphAppTenantId, '2019-09-01').secretUriWithVersion})'
-  'graphCredentials:KeyVaultName': prereqsKeyVaultName
-  'graphCredentials:KeyVaultTenantId': tenantId
-  'ConnectionStrings:JobsContext': '@Microsoft.KeyVault(SecretUri=${reference(jobsMSIConnectionString, '2019-09-01').secretUriWithVersion})'
+  graphCredentials__ClientId: '@Microsoft.KeyVault(SecretUri=${reference(graphAppClientId, '2019-09-01').secretUriWithVersion})'
+  graphCredentials__ClientSecret: '@Microsoft.KeyVault(SecretUri=${reference(graphAppClientSecret, '2019-09-01').secretUriWithVersion})'
+  graphCredentials__ClientCertificateName: '@Microsoft.KeyVault(SecretUri=${reference(graphAppCertificateName, '2019-09-01').secretUriWithVersion})'
+  graphCredentials__TenantId: '@Microsoft.KeyVault(SecretUri=${reference(graphAppTenantId, '2019-09-01').secretUriWithVersion})'
+  graphCredentials__KeyVaultName: prereqsKeyVaultName
+  graphCredentials__KeyVaultTenantId: tenantId
+  ConnectionStrings__JobsContext: '@Microsoft.KeyVault(SecretUri=${reference(jobsMSIConnectionString, '2019-09-01').secretUriWithVersion})'
   serviceBusNamespace: '@Microsoft.KeyVault(SecretUri=${reference(serviceBusNamespace, '2019-09-01').secretUriWithVersion})'
   gmmServiceBus__fullyQualifiedNamespace: '@Microsoft.KeyVault(SecretUri=${reference(serviceBusFQN, '2019-09-01').secretUriWithVersion})'
   serviceBusMembershipAggregatorQueue: '@Microsoft.KeyVault(SecretUri=${reference(serviceBusMembershipAggregatorQueue, '2019-09-01').secretUriWithVersion})'
@@ -168,36 +144,10 @@ var appSettings = {
   senderAddress: '@Microsoft.KeyVault(SecretUri=${reference(senderUsername, '2019-09-01').secretUriWithVersion})'
   senderPassword: '@Microsoft.KeyVault(SecretUri=${reference(senderPassword, '2019-09-01').secretUriWithVersion})'
   supportEmailAddresses: '@Microsoft.KeyVault(SecretUri=${reference(supportEmailAddresses, '2019-09-01').secretUriWithVersion})'
-  syncDisabledCCEmailAddresses: '@Microsoft.KeyVault(SecretUri=${reference(syncDisabledCCEmailAddresses, '2019-09-01').secretUriWithVersion})'
   membershipStorageAccountName: '@Microsoft.KeyVault(SecretUri=${reference(membershipStorageAccountName, '2019-09-01').secretUriWithVersion})'
   membershipContainerName: '@Microsoft.KeyVault(SecretUri=${reference(membershipContainerName, '2019-09-01').secretUriWithVersion})'
   actionableEmailProviderId: '@Microsoft.KeyVault(SecretUri=${reference(actionableEmailProviderId, '2019-09-01').secretUriWithVersion})'
-  'graphCredentials:UserAssignedManagedIdentityClientId': '@Microsoft.KeyVault(SecretUri=${reference(graphUserAssignedManagedIdentityClientId, '2019-09-01').secretUriWithVersion})'
-}
-
-var stagingSettings = {
-  AzureWebJobsStorage: '@Microsoft.KeyVault(SecretUri=${reference(sqlMembershipObtainerStorageAccountStaging, '2019-09-01').secretUriWithVersion})'
-  AzureFunctionsJobHost__extensions__durableTask__hubName: '${solutionAbbreviation}compute${environmentAbbreviation}SqlMembershipObtainerStaging'
-  'AzureWebJobs.StarterFunction.Disabled': 1
-  'AzureWebJobs.OrchestratorFunction.Disabled': 1
-  'AzureWebJobs.ManagerOrgProcessorFunction.Disabled': 1
-  'AzureWebJobs.OrganizationProcessorFunction.Disabled': 1
-  'AzureWebJobs.ChildEntitiesFilterFunction.Disabled': 1
-  'AzureWebJobs.GroupMembershipSenderFunction.Disabled': 1
-  'AzureWebJobs.JobStatusUpdaterFunction.Disabled': 1
-  'AzureWebJobs.LoggerFunction.Disabled': 1
-  'AzureWebJobs.ManagerOrgReaderFunction.Disabled': 1
-  'AzureWebJobs.TableNameReaderFunction.Disabled': 1
-  'AzureWebJobs.TelemetryTrackerFunction.Disabled': 1
-  'AzureWebJobs.FeatureFlagFunction.Disabled': 1
-  'AzureWebJobs.QueueMessageSenderFunction.Disabled': 1
-  AzureFunctionsWebHost__hostid: 'SqlMembershipObtainerStaging'
-}
-
-var productionSettings = {
-  AzureWebJobsStorage: '@Microsoft.KeyVault(SecretUri=${reference(sqlMembershipObtainerStorageAccountProd, '2019-09-01').secretUriWithVersion})'
-  AzureFunctionsJobHost__extensions__durableTask__hubName: '${solutionAbbreviation}compute${environmentAbbreviation}SqlMembershipObtainer'
-  AzureFunctionsWebHost__hostid: 'SqlMembershipObtainer'
+  graphCredentials__UserAssignedManagedIdentityClientId: '@Microsoft.KeyVault(SecretUri=${reference(graphUserAssignedManagedIdentityClientId, '2019-09-01').secretUriWithVersion})'
 }
 
 resource dataKeyVault 'Microsoft.KeyVault/vaults@2023-07-01' existing = {
@@ -215,13 +165,33 @@ module userAssignedManagedIdentityNameReader 'keyVaultReader.bicep' = {
   ]
 }
 
+module storageAccountNameReader 'keyVaultReader.bicep' = {
+  name: 'storageAccountNameReader-SqlMembershipObtainer'
+  params: {
+    value: dataKeyVault.getSecret('sqlMembershipObtainerStorageAccountProd')
+  }
+  dependsOn: [
+    dataKeyVault
+  ]
+}
+
+module appPackageContainerNameReader 'keyVaultReader.bicep' = {
+  name: 'appPackageContainerNameReader-SqlMembershipObtainer'
+  params: {
+    value: dataKeyVault.getSecret('sqlMembershipObtainerAppPackageContainerProd')
+  }
+  dependsOn: [
+    dataKeyVault
+  ]
+}
+
 resource graphUAMI 'Microsoft.ManagedIdentity/userAssignedIdentities@2023-07-31-preview' existing = {
   name: userAssignedManagedIdentityNameReader.outputs.value
   scope: resourceGroup(dataKeyVaultResourceGroup)
 }
 
 module existingLogAnalyticsWorkspace 'logAnalyticsWorkspace.bicep' = {
-  name: 'existingLogAnalyticsWorkspace'
+  name: 'existingLogAnalyticsWorkspace-smo'
   scope: resourceGroup('${solutionAbbreviation}-data-${environmentAbbreviation}')
   params: {
     environmentAbbreviation: environmentAbbreviation
@@ -237,70 +207,24 @@ module functionAppTemplate_SqlMembershipObtainer 'functionApp.bicep' = {
     kind: functionAppKind
     location: location
     servicePlanName: servicePlanName
-    secretSettings: commonSettings
+    appSettings: appSettings
+    functionAuthAppClientId: functionAuthAppClientId
     userManagedIdentities:{
       '${graphUAMI.id}' : {}
     }
     logAnalyticsWorkspaceId: existingLogAnalyticsWorkspace.outputs.workspaceId
-  }
-  dependsOn: [
-    servicePlanTemplate
-    graphUAMI
-    existingLogAnalyticsWorkspace
-  ]
-}
-
-module functionAppSlotTemplate_SqlMembershipObtainer 'functionAppSlot.bicep' = {
-  name: 'functionAppSlotTemplate-SqlMembershipObtainer'
-  params: {
-    name: '${functionAppName}-SqlMembershipObtainer/staging'
-    kind: functionAppKind
-    location: location
-    servicePlanName: servicePlanName
-    secretSettings: commonSettings
-    userManagedIdentities:{
-      '${graphUAMI.id}' : {}
-    }
-    logAnalyticsWorkspaceId: existingLogAnalyticsWorkspace.outputs.workspaceId
-  }
-  dependsOn: [
-    functionAppTemplate_SqlMembershipObtainer
-  ]
-}
-
-module functionAppRBAC 'functionAppRBAC.bicep' = {
-  name: 'functionAppsRBAC-SqlMembershipObtainer'
-  params: {
-    functionName: 'SqlMembershipObtainer'
     prereqsKeyVaultName: prereqsKeyVaultName
     prereqsKeyVaultResourceGroup: prereqsKeyVaultResourceGroup
     dataKeyVaultName: dataKeyVaultName
     dataKeyVaultResourceGroup: dataKeyVaultResourceGroup
     setRBACPermissions: setRBACPermissions
-    productionSlotPrincipalId: functionAppTemplate_SqlMembershipObtainer.outputs.msi
-    stagingSlotPrincipalId: functionAppSlotTemplate_SqlMembershipObtainer.outputs.msi
+    storageAccountName: storageAccountNameReader.outputs.value
+    appPackageContainerName: appPackageContainerNameReader.outputs.value
+    maxInstanceCount: maxInstanceCount
+    instanceMemoryMB: instanceMemoryMB
   }
   dependsOn: [
-    functionAppTemplate_SqlMembershipObtainer
-    functionAppSlotTemplate_SqlMembershipObtainer
-  ]
-}
-
-resource functionAppSettings 'Microsoft.Web/sites/config@2022-09-01' = {
-  name: '${functionAppName}-SqlMembershipObtainer/appsettings'
-  kind: 'string'
-  properties: union(commonSettings, appSettings, productionSettings)
-  dependsOn: [
-    functionAppRBAC
-  ]
-}
-
-resource functionAppStagingSettings 'Microsoft.Web/sites/slots/config@2022-09-01' = {
-  name: '${functionAppName}-SqlMembershipObtainer/staging/appsettings'
-  kind: 'string'
-  properties: union(commonSettings, appSettings, stagingSettings)
-  dependsOn: [
-    functionAppRBAC
-    functionAppSettings
+    servicePlanTemplate
+    graphUAMI
   ]
 }

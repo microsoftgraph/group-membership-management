@@ -1,5 +1,34 @@
-import { Group } from "../../models/Group";
-import { IFilterPart } from "../../models/IFilterPart";
+import { Group } from '../../models/Group';
+import { IFilterPart } from '../../models/IFilterPart';
+
+const SINGLE_QUOTE_LITERAL_PATTERN = /'(?:''|[^'])*'/g;
+const DOUBLE_QUOTE_LITERAL_PATTERN = /"(?:""|[^"])*"/g;
+
+export function stripQuotedContent(filter: string): string {
+  if (!filter) {
+    return filter;
+  }
+
+  return filter
+    .replace(SINGLE_QUOTE_LITERAL_PATTERN, (match) => ' '.repeat(match.length))
+    .replace(DOUBLE_QUOTE_LITERAL_PATTERN, (match) => ' '.repeat(match.length));
+}
+
+export function containsSqlExpression(filter: string): boolean {
+  const sqlExpressions = [' BETWEEN ', ' LIKE ', ' NOT LIKE ', ' IS ', ' IS NOT '];
+  const regex = new RegExp(`(${sqlExpressions.join('|').trim()})`, 'i');
+  return regex.test(filter);
+};
+
+export function countOccurrences(str: string, subStr: string): number {
+  let count = 0;
+  let pos = str.indexOf(subStr);
+  while (pos !== -1) {
+      count++;
+      pos = str.indexOf(subStr, pos + subStr.length);
+  }
+  return count;
+}
 
 export function stringifyGroup(group: Group, isChild?: boolean, childIndex?: number, childrenLength?: number): string {
 
@@ -35,8 +64,21 @@ export function stringifyGroup(group: Group, isChild?: boolean, childIndex?: num
       result += ` ${group.children[group.children.length-1].andOr} `;
     }
 
+    result = result.includes(" IN ") || result.includes(" NOT IN ") ? replaceBracketsWithParentheses(result) : result;
     return result;
 }
+
+function replaceBracketsWithParentheses(input: string): string {
+  return input.replace(/\[/g, '(').replace(/\]/g, ')');
+};
+
+function replaceInClause(input: string): string {
+  // Handle both quoted strings and numeric values in IN clauses
+  const regex = /(NOT\s+)?IN\s*\(\s*([^)]+)\s*\)/gi;
+  return input.replace(regex, (match) => {
+      return match.replace('(', '[').replace(')', ']');
+  });
+};
 
 export function stringifyGroups(groups: Group[]): string {
     let result = '';
@@ -52,15 +94,21 @@ export function stringifyGroups(groups: Group[]): string {
 }
 
 function parseFilterPart(part: string): IFilterPart {
-  const operators = ["<=", ">=", "<>", "=", ">", "<"];
+  const operators = ["NOT IN", "<=", ">=", "<>", "=", ">", "<", "IS", "IN"];
   let operatorFound = '';
   let operatorIndex = -1;
 
-  for (const operator of operators) {
-    const index = part.indexOf(operator);
-    if (index !== -1) {
+  // Sort operators by length (longest first) to match "NOT IN" before "IN"
+  const sortedOperators = [...operators].sort((a, b) => b.length - a.length);
+
+  let matchedString = "";
+  for (const operator of sortedOperators) {
+    const regex = new RegExp(`\\s+${operator.replace(/\s+/g, '\\s+')}\\s+`, 'i');
+    const match = part.match(regex);
+    if (match) {
       operatorFound = operator;
-      operatorIndex = index;
+      operatorIndex = match.index!;
+      matchedString = match[0];
       break;
     }
   }
@@ -74,14 +122,15 @@ function parseFilterPart(part: string): IFilterPart {
     };
   }
   const attribute = part.slice(0, operatorIndex).trim();
-  const value = part.slice(operatorIndex + operatorFound.length).trim();
+  const value = part.slice(operatorIndex + matchedString.length).trim();
 
-  return {
+  const result = {
     attribute,
     equalityOperator: operatorFound,
     value,
     andOr: ""
   };
+  return result;
 }
 
 function findPartsOfString(string: string, substringArray: { currentSegment: string, start: number; end: number }[]): { currentSegment: string, start: number; end: number, andOr: string }[] {
@@ -153,16 +202,14 @@ function appendAndOr(allParts: { currentSegment: string; start: number; end: num
 
     allParts[index].currentSegment = modifiedSegment;
 
-    if (modifiedSegment === '') {
-      allParts.splice(index, 1);
-    } else {
-      allParts[index].currentSegment = modifiedSegment;
-    }
+    allParts[index].currentSegment = modifiedSegment;
   });
-  return allParts;
+  // Filter out empty segments after processing
+  return allParts.filter(part => part.currentSegment.trim() !== '');
 }
 
-export function parseGroup(input: string): Group[] {
+export function parseGroup(input: string, hasInClause: boolean): Group[] {
+  input = hasInClause ? replaceInClause(input) : input;
   const groups: Group[] = [];
   let subStrings: { currentSegment: string, start: number; end: number}[] = [];
   let depth = 0;
@@ -191,20 +238,22 @@ export function parseGroup(input: string): Group[] {
         } else {
             currentSegment += char;
         }
-    } else if (depth === 0 && (input.substr(i, 3) === ' Or' || input.substr(i, 4) === ' And')) {
-        operators.push(input.substr(i, input.substr(i, 4) === ' And' ? 4 : 3).trim());
-        i += operators[operators.length - 1].length - 1;
+    } else if (depth === 0 && (input.substring(i, i + 4).toLowerCase() === ' and' || input.substring(i, i + 3).toLowerCase() === ' or')) {
+        const isAnd = input.substring(i, i + 4).toLowerCase() === ' and';
+        const operatorText = isAnd ? input.substring(i, i + 4) : input.substring(i, i + 3);
+        operators.push(operatorText.trim());
+        i += operatorText.length - 1;
     } else if (depth > 0) {
         currentSegment += char;
     }
   }
 
-  var allParts = findPartsOfString(input, subStrings);
-  var allPartsWithAndOr = appendAndOr(allParts);
+  const allParts = findPartsOfString(input, subStrings);
+  const allPartsWithAndOr = appendAndOr(allParts);
   let invalid = false;
 
   allPartsWithAndOr.forEach((currentSegment, i) => {
-    var result = parseSegment(currentSegment.currentSegment);
+    const result = parseSegment(currentSegment.currentSegment);
     if ((result.name === "invalid") || (result.children.length > 0 && result.children.some(childItem => childItem.name === "invalid"))) {
       invalid = true;
     }
@@ -226,16 +275,22 @@ function parseSegment(segment: string, groupOperator?: string): Group {
       const contentOutsideParentheses = segment.replace(/\s*\([^)]*\)\s*/g, '||').split('||');
         if (innerSegments) {
           innerSegments.forEach((innerSegment, index) => {
-            const childGroup = parseSegment(innerSegment, contentOutsideParentheses && contentOutsideParentheses.length >= 0 ? contentOutsideParentheses[index+1] : "");
+            const childGroup = parseSegment(innerSegment, contentOutsideParentheses && contentOutsideParentheses.length >= 0 ? contentOutsideParentheses[index+1].trim().split(/\s+/)[0] : "");
             children.push(childGroup);
           });
         }
-
-        let start = segment.indexOf('(');
-        let end = segment.lastIndexOf(')');
-        let remainingSegment = segment.substring(0, start) + segment.substring(end + 1);
-        var matchOperator  = remainingSegment.match(/^\s*(Or|And)|\s*(Or|And)\s*$/gi);
-        var operator = matchOperator ? matchOperator[0].trim() : null;
+        let remainingSegment = "";
+        contentOutsideParentheses.forEach((content) => {
+          const trimmedItem = content.trim();
+          if (trimmedItem !== "" && trimmedItem.toLowerCase() !== "or" && trimmedItem.toLowerCase() !== "and") {
+            if (trimmedItem.toLowerCase().trim().startsWith("or") || trimmedItem.toLowerCase().trim().startsWith("and")) {
+              remainingSegment = remainingSegment.toLowerCase().trim().endsWith("or") || remainingSegment.toLowerCase().trim().endsWith("and") ? remainingSegment.trim().replace(/(?:Or|And)$/i, '') : remainingSegment;
+            }
+            remainingSegment += trimmedItem + " ";
+          }
+        });
+        const matchOperator  = remainingSegment.match(/^\s*(Or|And)|\s*(Or|And)\s*$/gi);
+        const operator = matchOperator ? matchOperator[0].trim() : null;
         remainingSegment = remainingSegment.replace(/^\s*(Or|And)|\s*(Or|And)\s*$/gi, '').trim();
         if (remainingSegment) {
           return {
@@ -245,8 +300,15 @@ function parseSegment(segment: string, groupOperator?: string): Group {
               andOr: operator ?? ''
           };
       }
+      // Handle case where we only have children without remaining content
+      return {
+          name: '',
+          items: [],
+          children: children,
+          andOr: operator ?? ''
+      };
   }
-  const items = segment.split(/ And | Or /gi).map(parseFilterPart);
+  const items = segment.split(/\s+(?:and|or)\s+/gi).map(parseFilterPart);
   if (items.some(item => item.equalityOperator === "invalid")) {
     return {
       name: 'invalid',
@@ -256,17 +318,18 @@ function parseSegment(segment: string, groupOperator?: string): Group {
     };
   }
   else {
-    const operators = segment.match(/(?: And | Or )/gi) || [];
+    const operators = segment.match(/\s+(and|or)\s+/gi) || [];
     items.forEach((item, index) => {
         if (index < items.length - 1) {
             item.andOr = operators[index].trim();
         }
     });
-    return {
+    const result = {
         name: '',
         items,
         children: [],
         andOr: groupOperator ?? ''
     };
+    return result;
   }
-}
+};

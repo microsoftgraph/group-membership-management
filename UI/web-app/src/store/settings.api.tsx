@@ -43,3 +43,16 @@ export const patchSetting = createAsyncThunk<Setting, Setting, ThunkConfig>(
     }
   }
 );
+
+export const getSupportEmailAddress = createAsyncThunk<string, void, ThunkConfig>(
+  'settings/getSupportEmailAddress',
+  async (_, { extra }) => {
+    const { gmmApi } = extra.apis;
+
+    try {
+      return await gmmApi.settings.getSupportEmailAddress();
+    } catch (error) {
+      throw new Error('Failed to fetch settings data!');
+    }
+  }
+);

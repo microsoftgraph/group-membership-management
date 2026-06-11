@@ -6,11 +6,10 @@ using Models.Entities;
 using Moq;
 using Repositories.Contracts;
 using Services.TeamsChannelUpdater.Contracts;
-using Microsoft.Azure.WebJobs.Extensions.DurableTask;
+using Microsoft.DurableTask;
 using Microsoft.ApplicationInsights;
 using Microsoft.ApplicationInsights.Extensibility;
 using Hosts.TeamsChannelUpdater;
-using ExecutionContext = Microsoft.Azure.WebJobs.ExecutionContext;
 using Models.ServiceBus;
 using System.Text.Json;
 
@@ -19,12 +18,12 @@ namespace Services.Tests
     [TestClass]
     public class TeamsChannelUpdaterSubOrchestratorTests
     {
-        private Mock<IDurableOrchestrationContext> _mockDurableOrchestrationContext = null!;
-        private Mock<ExecutionContext> _mockExecutionContext = null!;
+        private Mock<TaskOrchestrationContext> _mockDurableOrchestrationContext = null!;
         private TelemetryClient _mockTelemetryClient = null!;
         private Mock<ILoggingRepository> _mockLoggingRepository = null!;
         private Mock<ITeamsChannelUpdaterService> _mockTeamsChannelUpdaterService = null!;
         private SyncJob _syncJob = null!;
+        private Channel _channel = null!;
         private TeamsChannelUpdaterSubOrchestratorRequest _input = null!;
         private AzureADTeamsChannel _teamsChannelInfo = null!;
 
@@ -37,14 +36,20 @@ namespace Services.Tests
             _syncJob = new SyncJob
             {
                 Id = groupMembership.SyncJobId,
-                TargetOfficeGroupId = groupMembership.Destination.ObjectId,
-                Destination = $"[{{\"value\":{{\"objectId\":\"e9c0ddc4-5379-42a8-bd35-e2f00b584733\",\"channelId\":\"19:O779DDojg816swmRBSbE23yixpmVyzsRV4QmMip_KBA1@thread.tacv2\"}},\"type\":\"TeamsChannelMembership\"}}]",
                 ThresholdPercentageForAdditions = -1,
                 ThresholdPercentageForRemovals = -1,
                 LastRunTime = DateTime.UtcNow.AddDays(-1),
                 Requestor = "user@domain.com",
                 Query = "[{ \"type\": \"GroupMembership\", \"sources\": [\"da144736-962b-4879-a304-acd9f5221e78\"]}]",
-                RunId = groupMembership.RunId
+                RunId = groupMembership.RunId,
+                MembershipType = "TeamsChannelMembership"
+            };
+
+            _channel = new Channel
+            {
+                GroupId = groupMembership.Destination.ObjectId,
+                SyncJobId = _syncJob.Id,
+                ChannelId = "19:O779DDojg816swmRBSbE23yixpmVyzsRV4QmMip_KBA1@thread.tacv2"
             };
 
             _teamsChannelInfo = new AzureADTeamsChannel
@@ -59,26 +64,25 @@ namespace Services.Tests
                 Type = RequestType.Add,
                 Members = sourceMembers,
                 RunId = _syncJob.RunId.GetValueOrDefault(Guid.Empty),
-                TeamsChannelInfo = _teamsChannelInfo 
+                TeamsChannelInfo = _teamsChannelInfo
             };
 
-            _mockDurableOrchestrationContext = new Mock<IDurableOrchestrationContext>();
+            _mockDurableOrchestrationContext = new Mock<TaskOrchestrationContext>();
             _mockDurableOrchestrationContext.Setup(x => x.GetInput<TeamsChannelUpdaterSubOrchestratorRequest>())
                 .Returns(_input);
-            _mockDurableOrchestrationContext.Setup(x => x.CallActivityAsync(nameof(LoggerFunction), It.IsAny<LoggerRequest>()))
-                .Callback<string, object>(async (name, request) =>
+            _mockDurableOrchestrationContext.Setup(x => x.CallActivityAsync(nameof(LoggerFunction), It.IsAny<LoggerRequest>(), It.IsAny<TaskOptions>()))
+                .Callback<TaskName, object, TaskOptions>(async (name, request, options) =>
                 {
                     await CallLoggerFunctionAsync(request as LoggerRequest);
                 });
             TeamsUpdaterResponse response = new TeamsUpdaterResponse();
-            _mockDurableOrchestrationContext.Setup(x => x.CallActivityAsync<TeamsUpdaterResponse>(nameof(TeamsUpdaterFunction), It.IsAny<TeamsUpdaterRequest>()))
-                .Callback<string, object>(async (name, request) =>
+            _mockDurableOrchestrationContext.Setup(x => x.CallActivityAsync<TeamsUpdaterResponse>(nameof(TeamsUpdaterFunction), It.IsAny<TeamsUpdaterRequest>(), It.IsAny<TaskOptions>()))
+                .Callback<TaskName, object, TaskOptions>(async (name, request, options) =>
                 {
                     response = await CallTeamsUpdaterFunctionAsync(request as TeamsUpdaterRequest);
                 })
                 .ReturnsAsync(() => response);
 
-            _mockExecutionContext = new Mock<ExecutionContext>();
             _mockTelemetryClient = new TelemetryClient(new TelemetryConfiguration());
             _mockLoggingRepository = new Mock<ILoggingRepository>();
             _mockTeamsChannelUpdaterService = new Mock<ITeamsChannelUpdaterService>();
@@ -143,7 +147,7 @@ namespace Services.Tests
                                                 It.IsAny<string>()
                                             ), Times.Once);
 
-            _mockDurableOrchestrationContext.Verify(x => x.CallActivityAsync<TeamsUpdaterResponse>(nameof(TeamsUpdaterFunction), It.IsAny<TeamsUpdaterRequest>()),
+            _mockDurableOrchestrationContext.Verify(x => x.CallActivityAsync<TeamsUpdaterResponse>(nameof(TeamsUpdaterFunction), It.IsAny<TeamsUpdaterRequest>(), It.IsAny<TaskOptions>()),
                 Times.Exactly(2));
 
             Assert.AreEqual(response.SuccessCount, 1);

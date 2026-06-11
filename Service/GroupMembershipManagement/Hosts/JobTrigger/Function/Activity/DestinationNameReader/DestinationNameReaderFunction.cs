@@ -1,10 +1,9 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
-
-using Microsoft.Azure.WebJobs;
-using Microsoft.Azure.WebJobs.Extensions.DurableTask;
+using Microsoft.Azure.Functions.Worker;
+using Microsoft.Extensions.Logging;
 using Models;
-using Repositories.Contracts;
+using Repositories.Contracts.Helpers;
 using Services.Contracts;
 using System;
 using System.Threading.Tasks;
@@ -13,27 +12,29 @@ namespace Hosts.JobTrigger
 {
     public class DestinationNameReaderFunction
     {
-        private readonly ILoggingRepository _loggingRepository = null;
-        private readonly IJobTriggerService _jobTriggerService = null;
-        public DestinationNameReaderFunction(ILoggingRepository loggingRepository, IJobTriggerService jobTriggerService)
+        private readonly ILogger<DestinationNameReaderFunction> _logger;
+        private readonly IJobTriggerService _jobTriggerService;
+
+        public DestinationNameReaderFunction(ILogger<DestinationNameReaderFunction> logger, IJobTriggerService jobTriggerService)
         {
-            _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
-            _jobTriggerService = jobTriggerService ?? throw new ArgumentNullException(nameof(jobTriggerService)); ;
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+            _jobTriggerService = jobTriggerService ?? throw new ArgumentNullException(nameof(jobTriggerService));
         }
 
-        [FunctionName(nameof(DestinationNameReaderFunction))]
+        [Function(nameof(DestinationNameReaderFunction))]
         public async Task<string> GetDestinationNameAsync([ActivityTrigger] SyncJob syncJob)
         {
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(DestinationNameReaderFunction)} function started", RunId = syncJob.RunId }, VerbosityLevel.DEBUG);
-
             if (syncJob == null)
                 return null;
-            
-            _jobTriggerService.RunId = syncJob.RunId ?? Guid.Empty;
-            var destinationName = await _jobTriggerService.GetDestinationNameAsync(syncJob);
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(DestinationNameReaderFunction)} function completed", RunId = syncJob.RunId }, VerbosityLevel.DEBUG);
 
-            return destinationName;
+            using (_logger.BeginSyncJobScope(syncJob))
+            {
+                _logger.FunctionStarted(nameof(DestinationNameReaderFunction));
+                var destinationName = await _jobTriggerService.GetDestinationNameAsync(syncJob);
+                _logger.FunctionCompleted(nameof(DestinationNameReaderFunction));
+
+                return destinationName;
+            }
         }
     }
 }

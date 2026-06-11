@@ -2,9 +2,11 @@
 // Licensed under the MIT license.
 
 using Microsoft.EntityFrameworkCore;
+using System.Data.SqlTypes;
 using Models;
 using Repositories.Contracts;
 using Repositories.EntityFramework.Contexts;
+using System.Text.Json;
 
 namespace Repositories.EntityFramework
 {
@@ -23,38 +25,74 @@ namespace Repositories.EntityFramework
         {
             var entry = await _writeContext.Set<SyncJob>().AddAsync(job);
             await _writeContext.SaveChangesAsync();
+
             return entry.Entity.Id;
         }
-        
+
         public async Task<SyncJob> GetSyncJobAsync(Guid syncJobId)
         {
-            return await _readContext.SyncJobs.SingleOrDefaultAsync(job => job.Id == syncJobId);
+            return await _readContext.SyncJobs
+                .Include(j => j.Group)
+                .Include(j => j.Channel)
+                .SingleOrDefaultAsync(job => job.Id == syncJobId);
         }
-
+        
+        public async Task<int> GetThresholdViolationsBySyncJobIdAsync(Guid syncJobId)
+        {
+            var syncJob = await _readContext.SyncJobs.SingleOrDefaultAsync(job => job.Id == syncJobId);
+            return syncJob.ThresholdViolations;
+        }
+        public async Task<int> GetPeriodBySyncJobIdAsync(Guid syncJobId)
+        {
+            var syncJob = await _readContext.SyncJobs.SingleOrDefaultAsync(job => job.Id == syncJobId);
+            return syncJob.Period;
+        }
         public async Task<List<SyncJob>> GetSyncJobsAsync()
         {
-            return await _readContext.SyncJobs.ToListAsync();
+            return await _readContext.SyncJobs
+                            .Include(j => j.Group)
+                            .Include(j => j.Channel)
+                            .ToListAsync();
         }
 
         public IQueryable<SyncJob> GetSyncJobs(bool asNoTracking = false)
         {
             return asNoTracking ?
-                    _readContext.SyncJobs.AsNoTracking()
-                    : _readContext.SyncJobs;
+                    _readContext.SyncJobs.Include(j => j.Group).Include(j => j.Channel).AsNoTracking()
+                    : _readContext.SyncJobs.Include(j => j.Group).Include(j => j.Channel);
         }
 
         public async Task<List<SyncJob>> GetSyncJobsByDestinationAsync(string destinationType)
         {
-            return await _readContext.SyncJobs.FromSqlRaw<SyncJob>(@"SELECT * FROM [dbo].[SyncJobs] WHERE JSON_VALUE(Destination, '$[0].type') = {0}", destinationType).ToListAsync();
+            return await _readContext.SyncJobs
+                           .Include(j => j.Group)
+                           .Include(j => j.Channel)
+                           .Where(job => job.MembershipType == destinationType)
+                           .ToListAsync();
         }
 
         public async Task<SyncJob> GetSyncJobByObjectIdAsync(Guid objectId)
         {
-            return await _readContext.SyncJobs.FromSqlRaw<SyncJob>(@"SELECT * FROM [dbo].[SyncJobs] WHERE JSON_VALUE(Destination, '$[0].value.objectId') = {0}", objectId.ToString()).FirstOrDefaultAsync();
+            var syncJob = await _readContext.SyncJobs.FromSqlRaw<SyncJob>(@"SELECT s.*
+                                FROM SyncJobs s
+                                LEFT JOIN Groups g
+                                    ON s.Id = g.SyncJobId
+                                    AND s.MembershipType = 'GroupMembership'
+                                    AND g.GroupId = {0}
+                                LEFT JOIN TeamsChannels c
+                                    ON s.Id = c.SyncJobId
+                                    AND s.MembershipType = 'TeamsChannelMembership'
+                                    AND c.GroupId = {0}
+                                WHERE (g.SyncJobId IS NOT NULL AND c.SyncJobId IS NULL)
+                                   OR (c.SyncJobId IS NOT NULL AND g.SyncJobId IS NULL)", objectId.ToString()).FirstOrDefaultAsync();
+            return syncJob;
         }
+
         public async Task<IEnumerable<SyncJob>> GetSyncJobsAsync(bool includeFutureScheduledJobs, params SyncStatus[] statusFilters)
         {
-            IQueryable<SyncJob> query = _readContext.SyncJobs;
+            IQueryable<SyncJob> query = _readContext.SyncJobs
+                                                    .Include(syncJob => syncJob.Group)
+                                                    .Include(syncJob => syncJob.Channel);
 
             DateTime currentUtcTime = DateTime.UtcNow;
             query = query.Where(job => job.StartDate <= currentUtcTime);
@@ -78,7 +116,7 @@ namespace Repositories.EntityFramework
             IQueryable<SyncJob> query = _readContext.SyncJobs;
 
             DateTime currentUtcTime = DateTime.UtcNow;
-            
+
             if (!statusFilters.Contains(SyncStatus.All))
             {
                 var statuses = statusFilters.Select(x => x.ToString()).ToList();
@@ -88,7 +126,7 @@ namespace Repositories.EntityFramework
             return await query.CountAsync();
         }
 
-		public async Task UpdateSyncJobStatusAsync(IEnumerable<SyncJob> jobs, SyncStatus? status)
+        public async Task UpdateSyncJobStatusAsync(IEnumerable<SyncJob> jobs, SyncStatus? status)
         {
             await UpdateSyncJobsAsync(jobs, status: status);
         }
@@ -101,6 +139,8 @@ namespace Repositories.EntityFramework
                 {
                     job.Status = status.ToString();
                 }
+                if (job.Group != null) _writeContext.Entry(job.Group).State = EntityState.Unchanged;
+                if (job.Channel != null) _writeContext.Entry(job.Channel).State = EntityState.Unchanged;
                 var entry = _writeContext.Set<SyncJob>().Add(job);
                 entry.State = EntityState.Modified;
             }
@@ -110,6 +150,8 @@ namespace Repositories.EntityFramework
 
         public async Task UpdateSyncJobFromNotificationAsync(SyncJob job, SyncStatus status)
         {
+            if (job.Group != null) _writeContext.Entry(job.Group).State = EntityState.Unchanged;
+            if (job.Channel != null) _writeContext.Entry(job.Channel).State = EntityState.Unchanged;
             var entry = _writeContext.Set<SyncJob>().Add(job);
             job.Status = status.ToString();
             entry.State = EntityState.Modified;
@@ -125,6 +167,8 @@ namespace Repositories.EntityFramework
                 .Include(p => p.DestinationOwners)
                     .ThenInclude(owner => owner.SyncJobs)
                 .SingleOrDefaultAsync(j => j.Id == job.Id);
+
+                if (jobWithOwners == null) continue;
 
                 foreach (var owner in jobWithOwners.DestinationOwners)
                 {
@@ -155,19 +199,85 @@ namespace Repositories.EntityFramework
             }
 
             _writeContext.SyncJobs.Remove(jobWithOwners);
-            
+
             await _writeContext.SaveChangesAsync();
         }
 
         public async Task BatchUpdateSyncJobsAsync(List<SyncJob> jobs)
         {
-            foreach (var job in jobs)
+            var existingJobs = await _writeContext.SyncJobs
+                                                .Where(job => jobs.Select(j => j.Id).Contains(job.Id))
+                                                .ToListAsync();
+            foreach (var job in existingJobs)
             {
-                _writeContext.Set<SyncJob>().Attach(job);
-                _writeContext.Entry(job).Property(x => x.ScheduledDate).IsModified = true;
+                var updatedJob = jobs.First(j => j.Id == job.Id);
+                job.ScheduledDate = updatedJob.ScheduledDate;
             }
 
             await _writeContext.SaveChangesAsync();
+        }
+
+        public async Task<int> BulkApproveSyncJobsAsync(List<string> syncJobIds, int? thresholdViolationsToSet = null)
+        {
+            var existingJobs = await _writeContext.SyncJobs
+                .Where(job => syncJobIds.Contains(job.Id.ToString()))
+                .ToListAsync();
+
+            int updatedToIdleCount = 0;
+
+            foreach (var job in existingJobs)
+            {
+                if (job.Status == SyncStatus.PendingReview.ToString())
+                {
+                    job.Status = SyncStatus.Idle.ToString();
+                    if (thresholdViolationsToSet.HasValue && job.LastRunTime != SqlDateTime.MinValue.Value)
+                    {
+                        job.ThresholdViolations = thresholdViolationsToSet.Value;
+                    }
+                    updatedToIdleCount++;
+                }
+            }
+
+            await _writeContext.SaveChangesAsync();
+
+            return updatedToIdleCount;
+        }
+
+        public async Task<int> BulkResetJobStatusAsync(SyncStatus fromStatus, SyncStatus toStatus, CancellationToken cancellationToken = default)
+        {
+            return await _writeContext.SyncJobs
+                .Where(j => j.Status == fromStatus.ToString())
+                .ExecuteUpdateAsync(
+                    s => s.SetProperty(j => j.Status, toStatus.ToString()),
+                    cancellationToken);
+        }
+
+        public async Task<int> ClaimSyncJobAsync(Guid jobId, Guid? runId, int period, string targetStatus)
+        {
+            var idleStatus = SyncStatus.Idle.ToString();
+            var inProgressStatus = SyncStatus.InProgress.ToString();
+            var stuckStatus = SyncStatus.StuckInProgress.ToString();
+            var transientStatus = SyncStatus.TransientError.ToString();
+            var cutoffTime = DateTime.UtcNow.AddHours(-period);
+
+            return await _writeContext.SyncJobs
+                .Where(j => j.Id == jobId &&
+                    (j.Status == idleStatus
+                     || j.Status == transientStatus
+                     || (j.Status == inProgressStatus && j.LastSuccessfulStartTime < cutoffTime)))
+                .ExecuteUpdateAsync(s => s
+                    .SetProperty(j => j.Status, targetStatus)
+                    .SetProperty(j => j.RunId, runId)
+                    .SetProperty(j => j.LastSuccessfulStartTime, DateTime.UtcNow)
+                    .SetProperty(j => j.LastRunTime, j => targetStatus == stuckStatus ? DateTime.UtcNow : j.LastRunTime));
+        }
+
+        public async Task UpdateSyncJobDestinationAsync(Guid jobId, string destination)
+        {
+            await _writeContext.SyncJobs
+                .Where(j => j.Id == jobId)
+                .ExecuteUpdateAsync(s => s
+                    .SetProperty(j => j.Destination, destination));
         }
     }
 }

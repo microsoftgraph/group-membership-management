@@ -2,6 +2,7 @@
 // Licensed under the MIT license.
 using Microsoft.ApplicationInsights;
 using Microsoft.ApplicationInsights.Extensibility;
+using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Graph;
 using Microsoft.Graph.Models;
 using Microsoft.Kiota.Abstractions;
@@ -10,7 +11,6 @@ using Microsoft.Kiota.Http.HttpClientLibrary.Middleware;
 using Microsoft.Kiota.Http.HttpClientLibrary.Middleware.Options;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Moq;
-using Newtonsoft.Json.Linq;
 using Repositories.Contracts;
 using Repositories.GraphGroups;
 using System;
@@ -20,6 +20,7 @@ using System.Net;
 using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Text;
+using System.Text.Json.Nodes;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -31,7 +32,6 @@ namespace Services.Tests
         private const string GRAPH_API_V1_BASE_URL = "https://graph.microsoft.com/v1.0";
 
         private TelemetryClient _telemetryClient = new TelemetryClient(new TelemetryConfiguration("instrumentationkey"));
-        private Mock<ILoggingRepository> _loggingRepository;
         private Mock<GraphServiceClient> _graphServiceClient;
         private GraphGroupRepository _graphGroupRepository;
         private Mock<IRequestAdapter> _requestAdapter;
@@ -40,8 +40,6 @@ namespace Services.Tests
         [TestInitialize]
         public void InitializeTest()
         {
-            _loggingRepository = new Mock<ILoggingRepository>();
-
             _requestAdapter = new Mock<IRequestAdapter>();
             _responseHandler = new Mock<IResponseHandler>();
 
@@ -59,7 +57,7 @@ namespace Services.Tests
                .ReturnsAsync(() => new HttpRequestMessage(HttpMethod.Get, requestUrl));
 
             _graphServiceClient = new Mock<GraphServiceClient>(_requestAdapter.Object, GRAPH_API_V1_BASE_URL);
-            _graphGroupRepository = new GraphGroupRepository(_graphServiceClient.Object, _telemetryClient, _loggingRepository.Object);
+            _graphGroupRepository = new GraphGroupRepository(_graphServiceClient.Object, _telemetryClient, NullLoggerFactory.Instance);
         }
 
         [TestMethod]
@@ -87,14 +85,14 @@ namespace Services.Tests
                         }
 
                         var stringContent = Encoding.UTF8.GetString(buffer);
-                        var root = JObject.Parse(stringContent);
+                        var root = JsonNode.Parse(stringContent);
                         var requestsNode = root["requests"].ToString();
-                        var batchRequest = JArray.Parse(requestsNode);
+                        var batchRequest = JsonNode.Parse(requestsNode).AsArray();
 
                         var requests = batchRequest.Select(jtoken => new
                         {
-                            id = jtoken["id"].Value<string>(),
-                            url = jtoken["url"].Value<string>(),
+                            id = jtoken["id"].GetValue<string>(),
+                            url = jtoken["url"].GetValue<string>(),
                         }).ToList();
 
                         var requestIds = new Dictionary<string, string>
@@ -108,13 +106,32 @@ namespace Services.Tests
 
                     });
 
-            _requestAdapter.Setup(x => x.SendAsync(
+            _requestAdapter.Setup(x => x.SendAsync<EndpointCollectionResponse>(
                                                     It.IsAny<RequestInformation>(),
                                                     It.IsAny<ParsableFactory<EndpointCollectionResponse>>(),
                                                     It.IsAny<Dictionary<string, ParsableFactory<IParsable>>>(),
                                                     It.IsAny<CancellationToken>()
                                                   )
                                  )
+                            .Callback<RequestInformation, ParsableFactory<EndpointCollectionResponse>, Dictionary<string, ParsableFactory<IParsable>>, CancellationToken>(
+                    (request, factory, errorMapping, cancellationToken) =>
+                    {
+                        var responseHandler = request?.RequestOptions?.FirstOrDefault(x => x.GetType() == typeof(ResponseHandlerOption)) as ResponseHandlerOption;
+                        
+                        if (responseHandler?.ResponseHandler is NativeResponseHandler nativeResponseHandler)
+                        {
+                            // Build the provider array JSON
+                            var providerArray = string.Join(",", providers.Select(p => $"{{\"providerName\":\"{p}\"}}"));
+                            var jsonContent = $"{{\"value\":[{providerArray}]}}";
+                            
+                            var httpResponse = new HttpResponseMessage(HttpStatusCode.OK)
+                            {
+                                Content = new StringContent(jsonContent, Encoding.UTF8, "application/json")
+                            };
+
+                            nativeResponseHandler.Value = httpResponse;
+                        }
+                    })
                             .ReturnsAsync(() =>
                             {
                                 var collectionReponse = new EndpointCollectionResponse() { Value = new List<Endpoint>() };
@@ -127,7 +144,7 @@ namespace Services.Tests
                             });
 
             _graphServiceClient = new Mock<GraphServiceClient>(_requestAdapter.Object, GRAPH_API_V1_BASE_URL);
-            _graphGroupRepository = new GraphGroupRepository(_graphServiceClient.Object, _telemetryClient, _loggingRepository.Object);
+            _graphGroupRepository = new GraphGroupRepository(_graphServiceClient.Object, _telemetryClient, NullLoggerFactory.Instance);
 
             var endPoints = await _graphGroupRepository.GetGroupEndpointsAsync(groupId);
 
@@ -154,7 +171,7 @@ namespace Services.Tests
                 }
             };
             var graphServiceClient = CreateCustomGraphServiceClient(chaosHandlerOption);
-            _graphGroupRepository = new GraphGroupRepository(graphServiceClient, _telemetryClient, _loggingRepository.Object);
+            _graphGroupRepository = new GraphGroupRepository(graphServiceClient, _telemetryClient, NullLoggerFactory.Instance);
             var groupExists = await _graphGroupRepository.GroupExists(Guid.NewGuid());
 
             Assert.IsTrue(groupExists);
@@ -193,7 +210,7 @@ namespace Services.Tests
                 }
             };
             var graphServiceClient = CreateCustomGraphServiceClient(chaosHandlerOption);
-            _graphGroupRepository = new GraphGroupRepository(graphServiceClient, _telemetryClient, _loggingRepository.Object);
+            _graphGroupRepository = new GraphGroupRepository(graphServiceClient, _telemetryClient, NullLoggerFactory.Instance);
             var groupExists = await _graphGroupRepository.GroupExists(Guid.NewGuid());
 
             Assert.IsTrue(groupExists);
@@ -212,8 +229,8 @@ namespace Services.Tests
                 }
             };
             var graphServiceClient = CreateCustomGraphServiceClient(chaosHandlerOption);
-            _graphGroupRepository = new GraphGroupRepository(graphServiceClient, _telemetryClient, _loggingRepository.Object);
-            var exception = await Assert.ThrowsExceptionAsync<InvalidOperationException>(() => _graphGroupRepository.GroupExists(Guid.NewGuid()));
+            _graphGroupRepository = new GraphGroupRepository(graphServiceClient, _telemetryClient, NullLoggerFactory.Instance);
+            var exception = await Assert.ThrowsExceptionAsync<AggregateException>(() => _graphGroupRepository.GroupExists(Guid.NewGuid()));
 
             Assert.IsTrue(exception.Message.Contains("Too many retries performed"));
         }
@@ -226,7 +243,7 @@ namespace Services.Tests
                 PlannedChaosFactory = (request) => new HttpResponseMessage(HttpStatusCode.NotFound)
             };
             var graphServiceClient = CreateCustomGraphServiceClient(chaosHandlerOption);
-            _graphGroupRepository = new GraphGroupRepository(graphServiceClient, _telemetryClient, _loggingRepository.Object);
+            _graphGroupRepository = new GraphGroupRepository(graphServiceClient, _telemetryClient, NullLoggerFactory.Instance);
             var groupExists = await _graphGroupRepository.GroupExists(Guid.NewGuid());
 
             Assert.IsFalse(groupExists);

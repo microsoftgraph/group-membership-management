@@ -1,13 +1,12 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-using Microsoft.Azure.WebJobs;
-using Microsoft.Azure.WebJobs.Extensions.DurableTask;
+using Microsoft.Azure.Functions.Worker;
+using Microsoft.DurableTask;
 using System;
 using System.Threading.Tasks;
 using Repositories.Contracts;
 using System.Threading;
-using Repositories.Contracts.InjectConfig;
 
 namespace Hosts.JobScheduler
 {
@@ -16,12 +15,12 @@ namespace Hosts.JobScheduler
         private int INITIAL_DELAY_SECONDS = 20;
         private int WAIT_TIME_BETWEEN_STATUSCHECK_MINUTES = 1;
 
-        public StatusCallbackOrchestratorFunction() 
-        { 
+        public StatusCallbackOrchestratorFunction()
+        {
         }
 
-        [FunctionName(nameof(StatusCallbackOrchestratorFunction))]
-        public async Task RunStatusCallbackOrchestratorAsync([OrchestrationTrigger] IDurableOrchestrationContext context)
+        [Function(nameof(StatusCallbackOrchestratorFunction))]
+        public async Task RunStatusCallbackOrchestratorAsync([OrchestrationTrigger] TaskOrchestrationContext context)
         {
             await context.CallActivityAsync(nameof(LoggerFunction),
                 new LoggerRequest
@@ -38,10 +37,10 @@ namespace Hosts.JobScheduler
                 StatusUrl = statusUrl
             };
 
-            
+
             await context.CreateTimer(context.CurrentUtcDateTime.AddSeconds(INITIAL_DELAY_SECONDS), CancellationToken.None);
 
-            var jobSchedulerCompleted = await context.CallActivityAsync<bool>(nameof(CheckJobSchedulerStatusFunction), statusRequest);   
+            var jobSchedulerCompleted = await context.CallActivityAsync<bool>(nameof(CheckJobSchedulerStatusFunction), statusRequest);
 
             while (!jobSchedulerCompleted)
             {

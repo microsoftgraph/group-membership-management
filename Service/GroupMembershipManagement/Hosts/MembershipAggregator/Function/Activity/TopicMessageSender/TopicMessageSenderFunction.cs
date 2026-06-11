@@ -1,63 +1,41 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
-using Microsoft.Azure.WebJobs;
-using Microsoft.Azure.WebJobs.Extensions.DurableTask;
-using Models;
-using Models.ServiceBus;
-using Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
-using Repositories.Contracts;
+using Microsoft.Azure.Functions.Worker;
+using Microsoft.Extensions.Logging;
+using Repositories.Contracts.Helpers;
+using Services.Contracts;
 using System;
-using System.Linq;
+using System.Collections.Generic;
 using System.Threading.Tasks;
 
 namespace Hosts.MembershipAggregator
 {
     public class TopicMessageSenderFunction
     {
-        private readonly ILoggingRepository _loggingRepository = null;
-        private readonly IServiceBusTopicsRepository _serviceBusTopicsRepository = null;
-        public TopicMessageSenderFunction(ILoggingRepository loggingRepository, IServiceBusTopicsRepository serviceBusTopicsRepository)
+        private readonly ILogger<TopicMessageSenderFunction> _logger;
+        private readonly ITopicMessageSenderService _topicMessageSenderRepository;
+
+        public TopicMessageSenderFunction(
+            ILogger<TopicMessageSenderFunction> logger,
+            ITopicMessageSenderService topicMessageSenderRepository)
         {
-            _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
-            _serviceBusTopicsRepository = serviceBusTopicsRepository ?? throw new ArgumentNullException(nameof(serviceBusTopicsRepository));
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+            _topicMessageSenderRepository = topicMessageSenderRepository ?? throw new ArgumentNullException(nameof(topicMessageSenderRepository));
         }
 
-        [FunctionName(nameof(TopicMessageSenderFunction))]
-        public async Task SendMessageAsync([ActivityTrigger] MembershipHttpRequest request)
+        [Function(nameof(TopicMessageSenderFunction))]
+        public async Task SendMessageAsync([ActivityTrigger] TopicMessageSenderRequest request)
         {
-
-            await _loggingRepository.LogMessageAsync(new LogMessage
+            using (_logger.BeginSyncJobScope(request.SyncJob, new Dictionary<string, object>
             {
-                Message = $"{nameof(TopicMessageSenderFunction)} function started",
-                RunId = request.SyncJob.RunId
-            }, VerbosityLevel.DEBUG);
-
-            var destinations = JArray.Parse(request.SyncJob.Destination);
-            var destinationType = destinations.SelectTokens("$..type").Select(x => x.Value<string>()).First();
-            var body = System.Text.Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(request));
-
-            var message = new ServiceBusMessage
+                ["CurrentPart"] = request.CurrentPart,
+                ["TotalParts"] = request.TotalParts
+            }))
             {
-                MessageId = $"{request.SyncJob.Id}_{request.SyncJob.RunId}_{destinationType}",
-                Body = body
-            };
-
-            message.ApplicationProperties.Add("Type", destinationType);
-
-            await _serviceBusTopicsRepository.AddMessageAsync(message);
-
-            await _loggingRepository.LogMessageAsync(new LogMessage
-            {
-                Message = $"Sent message to {destinationType} membership updater",
-                RunId = request.SyncJob.RunId
-            }, VerbosityLevel.INFO);
-
-            await _loggingRepository.LogMessageAsync(new LogMessage
-            {
-                Message = $"{nameof(TopicMessageSenderFunction)} function completed",
-                RunId = request.SyncJob.RunId
-            }, VerbosityLevel.DEBUG);
+                _logger.FunctionStarted(nameof(TopicMessageSenderFunction));
+                await _topicMessageSenderRepository.SendMessageAsync(request.MembershipHttpRequest);
+                _logger.FunctionCompleted(nameof(TopicMessageSenderFunction));
+            }
         }
     }
 }

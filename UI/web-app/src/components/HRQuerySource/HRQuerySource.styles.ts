@@ -68,6 +68,11 @@ export const getStyles = (props: HRQuerySourceStyleProps): HRQuerySourceStyles =
     detailsList: {
       minWidth: 1200
     },
+    detailsListColumnHeader:{
+      fontWeight: 600,
+      fontSize: 14,
+      paddingLeft: 24
+    },
     betweenGroupsDropdown: {
       width: 100,
       marginLeft: 0
@@ -84,13 +89,6 @@ export const getStyles = (props: HRQuerySourceStyleProps): HRQuerySourceStyles =
       maxWidth: 100,
       marginLeft: -50
     },
-    detailsListWithBorder: {
-      minWidth: 1200,
-      borderStyle: 'solid',
-      borderRadius: 15,
-      borderColor: theme.palette.themeLighter,
-      marginLeft: 50
-    },
     dropdownTitle: {
       borderRadius: 4,
       borderStyle: 'solid',
@@ -105,21 +103,15 @@ export const getStyles = (props: HRQuerySourceStyleProps): HRQuerySourceStyles =
     addAttribute: {
       marginLeft: 60
     },
-    spinButton: {
-      '&:after': {
-        borderColor: theme.palette.neutralQuaternary
-      },
-      selectors: {
-        [`@media (max-width: 600px)`]: {
-          width: 10
-        }
-      }
-    },
     removeButton: {
       color: theme.semanticColors.primaryButtonBackground,
       borderColor: theme.semanticColors.primaryButtonBackground,
       borderRadius: 4,
       border: 'none'
+    },
+    removeButtonDisabled: {
+      opacity: 0.5,
+      cursor: 'not-allowed'
     },
     error: {
       fontWeight: 400,
@@ -127,6 +119,38 @@ export const getStyles = (props: HRQuerySourceStyleProps): HRQuerySourceStyles =
       lineHeight: 16,
       fontFamily: 'Segoe UI',
       color: theme.semanticColors.errorText
-    }
+    },
+    comboBoxOptionCodeText: {
+      fontStyle: 'italic',
+    },
+    comboBoxOptionContainer: {
+      paddingTop: 3,
+      paddingBottom: 3,
+    },
+    comboBoxOptionList: {
+      maxHeight: 300,
+    },
+    errorMessageStyles: {
+      whiteSpace: 'normal',
+      wordWrap: 'break-word',
+      overflowWrap: 'break-word',
+    },
+    content: {
+      maxHeight: '400px',
+      overflowY: 'auto',
+      padding: '0 20px'
+    },
+    generateTitleHeader: {
+      display: 'flex',
+      marginBottom: '10px'
+    },
+    generateTitleButton: {
+      width: '150px',
+      fontWeight: 'bold'
+    },
+    generateTitleSpinner: {
+      marginLeft: '20px',
+      fontWeight: 'bold'
+    },
   };
 };

@@ -33,15 +33,30 @@ stages:
       - checkout: ${{ parameters.repoToCheckout }}
         path: ${{ parameters.checkoutPath }}
 
+    - task: UseDotNet@2
+      displayName: "Install .NET SDK"
+      inputs:
+        packageType: sdk
+        useGlobalJson: true
+
     - task: PowerShell@2
       displayName: 'Build json templates'
       inputs:
         targetType: inline
         workingDirectory: 'Deployment'
         script: |
-          $templateFiles = Get-ChildItem -Path . -Filter "*.bicep"
-          foreach ($templateFile in $templateFiles) {
-            az bicep build --file $templateFile.FullName
+          try {
+            $templateFiles = Get-ChildItem -Path . -Filter "*.bicep"
+            foreach ($templateFile in $templateFiles) {
+              az bicep build --file $templateFile.FullName
+              if ($LASTEXITCODE -ne 0) {
+                Write-Error "az bicep build failed with exit code $LASTEXITCODE"
+                exit $LASTEXITCODE
+              }
+            }
+          } catch {
+            Write-Error "An error occurred: $_"
+            exit 1
           }
         pwsh: true
 
@@ -52,50 +67,7 @@ stages:
         Contents: |
           **/*.json
           **/*.ps1
-        TargetFolder: '$(build.artifactstagingdirectory)/deployment'
-
-    - task: CopyFiles@2
-      displayName: 'Copy UI scripts'
-      inputs:
-        SourceFolder: 'UI/Scripts'
-        Contents: |
-          **/*.ps1
-        TargetFolder: '$(build.artifactstagingdirectory)/Scripts'
-        OverWrite: false
-
-    - task: CopyFiles@2
-      displayName: 'Copy WebAPI scripts'
-      inputs:
-        SourceFolder: 'Service/GroupMembershipManagement/Hosts/WebApi/Scripts'
-        Contents: |
-          **/*.ps1
-        TargetFolder: '$(build.artifactstagingdirectory)/Scripts'
-        OverWrite: false
-
-    - task: DotNetCoreCLI@2
-      displayName: 'Install EF Core tools'
-      retryCountOnTaskFailure: 3
-      inputs:
-        command: custom
-        custom: 'tool'
-        arguments: 'update --global dotnet-ef --version 6.0.22'
-
-    - task: PowerShell@2
-      displayName: 'Create migrations bundle'
-      inputs:
-        targetType: inline
-        workingDirectory: 'Service/GroupMembershipManagement/Repositories.EntityFramework.Contexts'
-        script: |
-          dotnet ef migrations bundle --context GMMContext --output $(System.DefaultWorkingDirectory)/efbundle.exe
-          ls
-        pwsh: true
-
-    - task: CopyFiles@2
-      displayName: 'copy migrations bundle to function packages'
-      inputs:
-        SourceFolder: $(System.DefaultWorkingDirectory)
-        Contents: efbundle.exe
-        TargetFolder: '$(build.artifactstagingdirectory)/function_packages/'
+        TargetFolder: '$(build.artifactstagingdirectory)/Deployment'
 
     - task: PublishBuildArtifacts@1
       displayName: 'Publish web app artifacts'

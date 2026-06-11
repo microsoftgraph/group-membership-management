@@ -1,11 +1,11 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 using Models;
-using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using System.Text.Json.Nodes;
 
 namespace MembershipAggregator.Helpers
 {
@@ -13,13 +13,13 @@ namespace MembershipAggregator.Helpers
     {
         internal static AzureADGroup GetDestination(string destinationJson)
         {
-            var destinations = JArray.Parse(destinationJson);
+            var destinations = JsonNode.Parse(destinationJson).AsArray();
             var destinationToken = destinations.First();
 
             var destination = new AzureADGroup
             {
                 Type = destinationToken["type"].ToString(),
-                ObjectId = Guid.Parse(destinationToken["value"]["objectId"].Value<string>())
+                ObjectId = Guid.Parse(destinationToken["value"]["objectId"].GetValue<string>())
             };
 
             return destination;
@@ -27,13 +27,15 @@ namespace MembershipAggregator.Helpers
 
         internal static string GetQueryTypes(string query)
         {
-            var queries = JArray.Parse(query);
+            var queries = JsonNode.Parse(query).AsArray();
             var queryTypeCounts = new Dictionary<string, int>();
+            var queryTypes = queries.Select(x => x["type"])
+                                       .OfType<JsonValue>()
+                                       .Select(x => x.GetValue<string>())
+                                       .ToList();
 
-            foreach (var token in queries.SelectTokens("$..type"))
+            foreach (var type in queryTypes)
             {
-                var type = token.Value<string>();
-
                 if (queryTypeCounts.ContainsKey(type))
                 {
                     queryTypeCounts[type]++;

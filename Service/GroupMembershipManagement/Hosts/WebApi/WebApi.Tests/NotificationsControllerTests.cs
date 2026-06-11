@@ -24,6 +24,7 @@ using Microsoft.ApplicationInsights.Extensibility;
 using Microsoft.O365.ActionableMessages.Utilities;
 using WebApi.Models;
 using WebApi.Configuration;
+using System;
 
 namespace Services.Tests
 {
@@ -45,6 +46,7 @@ namespace Services.Tests
         private Mock<IGraphGroupRepository> _graphGroupRepository = null!;
         private Mock<INotificationRepository> _notificationRepository = null!;
         private Mock<IDatabaseSyncJobsRepository> _syncJobRepository = null!;
+        private Mock<ISyncJobChangeRepository> _syncJobChangeRepository = null!;
         private ILocalizationRepository _localizationRepository = null!;
         private IThresholdNotificationService _thresholdNotificationService = null!;
         private IGMMEmailReceivers _gmmEmailReceivers = null!;
@@ -56,19 +58,12 @@ namespace Services.Tests
         private List<ThresholdNotification> _thresholdNotifications = null!;
         private ResolveNotification _resolveNotificationModel = null!;
         private TelemetryClient _telemetryClient = null!;
-        private Mock<IActionableMessageTokenValidator> _mockTokenValidator = null!;
-        private ActionableMessageTokenValidationResult _tokenValidationResult = null!;
-        private IOptions<WebApiSettings> _webApiSettings = null!;
+        private Mock<IThresholdConfig> _thresholdConfig = null!;
 
         [TestInitialize]
         public void Initialize()
         {
-
             _hostname = "api.test.gmm.microsoft.com";
-            _webApiSettings = Options.Create(new WebApiSettings
-            {
-                ApiHostname = _hostname
-            });
             _providerId = Guid.NewGuid();
             _userUPN = "testuser@contoso.net";
             _nonExistantNotificationId = Guid.Empty;
@@ -88,8 +83,8 @@ namespace Services.Tests
             _graphGroupRepository = new Mock<IGraphGroupRepository>();
             _notificationRepository = new Mock<INotificationRepository>();
             _syncJobRepository = new Mock<IDatabaseSyncJobsRepository>();
+            _syncJobChangeRepository = new Mock<ISyncJobChangeRepository>();
             _telemetryClient = new TelemetryClient(TelemetryConfiguration.CreateDefault());
-            _mockTokenValidator = new Mock<IActionableMessageTokenValidator>();
 
             _groupTypes = new List<string>
             {
@@ -116,7 +111,7 @@ namespace Services.Tests
                 var groupName = $"Test Group {index}";
 
                 _graphGroupRepository.Setup(x => x.IsEmailRecipientOwnerOfGroupAsync(
-                    It.Is<string>(s => s == _userUPN), It.Is<Guid>(groupId => groupId == group.ObjectId)))
+                    It.Is<string>(s => s == _userUPN), It.Is<Guid>(groupId => groupId == group.ObjectId), It.IsAny<bool>()))
                     .ReturnsAsync(true);
 
                 _graphGroupRepository.Setup(x => x.GetGroupNameAsync(It.Is<Guid>(g => g == group.ObjectId)))
@@ -124,15 +119,15 @@ namespace Services.Tests
 
                 var notification = new ThresholdNotification
                 {
-                    ChangePercentageForAdditions = Random.Shared.Next(51, 100),
-                    ChangePercentageForRemovals = Random.Shared.Next(51, 100),
+                    ChangePercentageForAdditions = Random.Shared.NextDouble() * (100 - 51) + 51,
+                    ChangePercentageForRemovals = Random.Shared.NextDouble() * (100 - 51) + 51,
                     ChangeQuantityForAdditions = Random.Shared.Next(50, 1000),
                     ChangeQuantityForRemovals = Random.Shared.Next(50, 1000),
                     CreatedTime = DateTime.UtcNow,
                     Resolution = ThresholdNotificationResolution.Unresolved,
                     Id = Guid.NewGuid(),
                     SyncJobId = Guid.NewGuid(),
-                    ResolvedByUPN = string.Empty,
+                    ResolvedBy = string.Empty,
                     ResolvedTime = DateTime.UtcNow,
                     Status = ThresholdNotificationStatus.AwaitingResponse,
                     TargetOfficeGroupId = group.ObjectId,
@@ -153,7 +148,7 @@ namespace Services.Tests
                 CreatedTime = DateTime.UtcNow,
                 Resolution = ThresholdNotificationResolution.Paused,
                 Id = Guid.NewGuid(),
-                ResolvedByUPN = _userUPN,
+                ResolvedBy = _userUPN,
                 ResolvedTime = DateTime.UtcNow,
                 Status = ThresholdNotificationStatus.AwaitingResponse
             };
@@ -164,9 +159,6 @@ namespace Services.Tests
             var syncJob = new SyncJob();
             _syncJobRepository.Setup(x => x.GetSyncJobAsync(It.IsAny<Guid>()))
                 .ReturnsAsync(() => syncJob);
-
-            _mockTokenValidator.Setup(x => x.ValidateTokenAsync(It.IsAny<string>(), It.IsAny<string>()
-                )).ReturnsAsync(() => _tokenValidationResult);
 
             // Items for testing
             _thresholdNotification = _thresholdNotifications[Random.Shared.Next(0, _notificationCount)];
@@ -184,13 +176,16 @@ namespace Services.Tests
                 HandleInactiveJobsEnabled = true,
                 NumberOfDaysBeforeDeletion = 30
             };
+            _thresholdConfig = new Mock<IThresholdConfig>();
+            _thresholdConfig.Setup(x => x.NumberOfThresholdViolationsToDisableJob).Returns(3);
 
-            _thresholdNotificationService = new ThresholdNotificationService(Options.Create(_thresholdNotificationServiceConfig), _graphGroupRepository.Object, _localizationRepository, _handleInactiveJobsConfig);
+            _thresholdNotificationService = new ThresholdNotificationService(Options.Create(_thresholdNotificationServiceConfig), _graphGroupRepository.Object, _localizationRepository, _handleInactiveJobsConfig, _thresholdConfig.Object, _syncJobRepository.Object);
             _gmmEmailReceivers = new GMMEmailReceivers(Guid.NewGuid());
 
             _resolveNotificationsHandler = new ResolveNotificationHandler(_loggingRepository.Object,
                 _notificationRepository.Object,
                 _syncJobRepository.Object,
+                _syncJobChangeRepository.Object,
                 _graphGroupRepository.Object,
                 _telemetryClient,
                 _thresholdNotificationService,
@@ -203,13 +198,11 @@ namespace Services.Tests
 
             var claims = new List<Claim>
             {
-                new Claim(ClaimTypes.Upn, _userUPN),
+                new Claim("upn", _userUPN),
             };
 
-            _notificationsController = new NotificationsController(_resolveNotificationsHandler, _notificationCardHandler, _mockTokenValidator.Object, _webApiSettings);
+            _notificationsController = new NotificationsController(_resolveNotificationsHandler, _notificationCardHandler);
             _notificationsController.ControllerContext = CreateControllerContext(claims, "mockBearerToken");
-            _tokenValidationResult = new ActionableMessageTokenValidationResult();
-            _tokenValidationResult.ActionPerformer = _userUPN;
         }
         /// <summary>
         /// /notifications/{id}/resolve - Resolve notification with Ignore Once
@@ -272,9 +265,9 @@ namespace Services.Tests
         {
             var claims = new List<Claim>
             {
-                new Claim(ClaimTypes.Upn, "notAnOwner@contoso.net")
+                new Claim("upn", "notAnOwner@contoso.net")
             };
-            _tokenValidationResult.ActionPerformer = "notAnOwner@contoso.net";
+            _notificationsController.ControllerContext = CreateControllerContext(claims, "mockBearerToken");
 
             var response = await _notificationsController.ResolveNotificationAsync(_thresholdNotification.Id, _resolveNotificationModel);
             var result = response.Result as ContentResult;
@@ -296,7 +289,7 @@ namespace Services.Tests
             var resolvedTime = DateTime.UtcNow.AddDays(Random.Shared.Next(-30, -1));
             _thresholdNotification.Status = ThresholdNotificationStatus.Resolved;
             _thresholdNotification.Resolution = ThresholdNotificationResolution.IgnoreOnce;
-            _thresholdNotification.ResolvedByUPN = _userUPN;
+            _thresholdNotification.ResolvedBy = _userUPN;
             _thresholdNotification.ResolvedTime = resolvedTime;
 
             var response = await _notificationsController.ResolveNotificationAsync(_thresholdNotification.Id, _resolveNotificationModel);
@@ -374,9 +367,8 @@ namespace Services.Tests
         {
             var claims = new List<Claim>
             {
-                new Claim(ClaimTypes.Upn, "notAnOwner@contoso.com"),
+                new Claim("upn", "notAnOwner@contoso.net"),
             };
-            _tokenValidationResult.ActionPerformer = "notAnOwner@contoso.net";
             _notificationsController.ControllerContext = CreateControllerContext(claims, "mockBearerToken");
 
             var response = await _notificationsController.GetCardAsync(_thresholdNotification.Id);
@@ -394,18 +386,17 @@ namespace Services.Tests
         [TestMethod]
         public async Task GetNotificationCard_HandleUserNotGroupOwnerButInViewerGroupTestAsync()
         {
-            var userObjectId = Guid.NewGuid().ToString();
+            var userObjectId = Guid.NewGuid();
 
-            _graphGroupRepository.Setup(x => x.IsEmailRecipientOwnerOfGroupAsync(
-                It.Is<string>(s => s == userObjectId), It.IsAny<Guid>()))
+            _graphGroupRepository.Setup(x => x.IsEmailRecipientMemberOfGroupAsync(
+                It.Is<string>(s => s == userObjectId.ToString()), It.IsAny<Guid>()))
                 .ReturnsAsync(true);
 
             var claims = new List<Claim>
             {
-                new Claim(ClaimTypes.Upn, userObjectId),
+                new Claim("oid", userObjectId.ToString()),
             };
 
-            _tokenValidationResult.ActionPerformer = userObjectId;
             _notificationsController.ControllerContext = CreateControllerContext(claims, "mockBearerToken");
 
             var response = await _notificationsController.GetCardAsync(_thresholdNotification.Id);
@@ -426,7 +417,7 @@ namespace Services.Tests
             var resolvedTime = DateTime.UtcNow.AddDays(Random.Shared.Next(-30, -1));
             _thresholdNotification.Status = ThresholdNotificationStatus.Resolved;
             _thresholdNotification.Resolution = ThresholdNotificationResolution.IgnoreOnce;
-            _thresholdNotification.ResolvedByUPN = _userUPN;
+            _thresholdNotification.ResolvedBy = _userUPN;
             _thresholdNotification.ResolvedTime = resolvedTime;
 
             var response = await _notificationsController.GetCardAsync(_thresholdNotification.Id);
@@ -458,8 +449,12 @@ namespace Services.Tests
         private void ValidateUnresolvedCard(string cardJson)
         {
             Assert.IsTrue(cardJson.Contains($"The most recent attempt to update the membership of your GMM managed group '**{_groupName}**"));
-            Assert.IsTrue(cardJson.Contains($"{_thresholdNotification.ChangeQuantityForAdditions} members will be **added**, which will increase the group size by **{_thresholdNotification.ChangePercentageForAdditions}%**."));
-            Assert.IsTrue(cardJson.Contains($"{_thresholdNotification.ChangeQuantityForRemovals} members will be **removed**, which will decrease the group size by **{_thresholdNotification.ChangePercentageForRemovals}%**."));
+            Assert.IsTrue(cardJson.Contains($"GMM has identified **{_thresholdNotification.ChangeQuantityForAdditions}** members to be added, increasing the group size by **"));
+            Assert.IsTrue(cardJson.Contains(Math.Round(_thresholdNotification.ChangePercentageForAdditions, 1).ToString()));
+            Assert.IsTrue(cardJson.Contains($"%**, which is more than the current additions threshold of **{_thresholdNotification.ThresholdPercentageForAdditions}%**."));
+            Assert.IsTrue(cardJson.Contains($"GMM has identified **{_thresholdNotification.ChangeQuantityForRemovals}** members to be removed, decreasing the group size by **"));
+            Assert.IsTrue(cardJson.Contains(Math.Round(_thresholdNotification.ChangePercentageForRemovals, 1).ToString()));
+            Assert.IsTrue(cardJson.Contains($"%**, which is more than the current removals threshold of **{_thresholdNotification.ThresholdPercentageForRemovals}%**."));
             Assert.IsTrue(cardJson.Contains($"https://{_hostname}/api/v1/notifications/{_thresholdNotification.Id}/resolve"));
             Assert.IsTrue(cardJson.Contains($"\\\"resolution\\\":\\\"{ThresholdNotificationResolution.Paused}\\\""));
             Assert.IsTrue(cardJson.Contains($"\\\"resolution\\\":\\\"{ThresholdNotificationResolution.IgnoreOnce}\\\""));
@@ -469,9 +464,12 @@ namespace Services.Tests
 
         private void ValidateDisabledCard(string cardJson)
         {
+            Console.WriteLine(cardJson);
             Assert.IsTrue(cardJson.Contains($"Synchronization of your GMM group **{_groupName}** has been disabled. If no action is taken, the sync will be deleted on "));
             Assert.IsTrue(cardJson.Contains("After this period, if you wish to reenable the sync, you will need to follow GMM's onboarding process again.")) ;
-            Assert.IsTrue(cardJson.Contains($"{_thresholdNotification.ChangeQuantityForAdditions} members will be **added**, which will increase the group size by **{_thresholdNotification.ChangePercentageForAdditions}%**."));
+            Assert.IsTrue(cardJson.Contains($"GMM has identified **{_thresholdNotification.ChangeQuantityForAdditions}** members to be added, increasing the group size by **"));
+            Assert.IsTrue(cardJson.Contains(Math.Round(_thresholdNotification.ChangePercentageForAdditions, 1).ToString()));
+            Assert.IsTrue(cardJson.Contains($"%**, which is more than the current additions threshold of **{_thresholdNotification.ThresholdPercentageForAdditions}%**."));
             Assert.IsTrue(cardJson.Contains($"{_thresholdNotification.Id}"));
             Assert.IsTrue(cardJson.Contains($"\"originator\":\"{_providerId}\""));
         }

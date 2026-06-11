@@ -1,12 +1,12 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
-using Microsoft.Azure.WebJobs;
-using Microsoft.Azure.WebJobs.Extensions.DurableTask;
+using Microsoft.Azure.Functions.Worker;
+
 using Models;
 using Models.ServiceBus;
-using Newtonsoft.Json;
 using Repositories.Contracts;
 using System;
+using System.Text.Json;
 using System.Threading.Tasks;
 
 namespace Hosts.PlaceMembershipObtainer
@@ -23,7 +23,7 @@ namespace Hosts.PlaceMembershipObtainer
             _serviceBusQueueRepository = serviceBusQueueRepository ?? throw new ArgumentNullException(nameof(serviceBusQueueRepository));
         }
 
-        [FunctionName(nameof(QueueMessageSenderFunction))]
+        [Function(nameof(QueueMessageSenderFunction))]
         public async Task SendMessageAsync([ActivityTrigger] MembershipAggregatorHttpRequest request)
         {
 
@@ -33,11 +33,11 @@ namespace Hosts.PlaceMembershipObtainer
                 RunId = request.SyncJob.RunId
             }, VerbosityLevel.DEBUG);
 
-            var body = System.Text.Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(request));
+            var body = System.Text.Encoding.UTF8.GetBytes(JsonSerializer.Serialize(request));
 
             var message = new ServiceBusMessage
             {
-                MessageId = $"{request.SyncJob.RowKey}_{request.SyncJob.RunId}_{Guid.NewGuid()}",
+                MessageId = $"{request.SyncJob.Id}_{request.SyncJob.RunId}_{Guid.NewGuid()}",
                 Body = body
             };
 

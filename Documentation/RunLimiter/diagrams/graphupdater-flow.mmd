@@ -1,0 +1,73 @@
+%%{init: {'flowchart': {'defaultRenderer': 'elk'}}}%%
+flowchart TD
+    subgraph RECEIVE["1. MESSAGE RECEPTION"]
+        A0["<b>GU.StarterFunction</b>"]:::header
+        A0 --> A1[Message from membershipupdaters topic]
+        A1 --> A2{Which lane?}
+        A2 -->|Small| A3[GU.StarterFunction_small<br/>Regular ServiceBus trigger]
+        A2 -->|Large| A4[GU.StarterFunction_large<br/>Session-enabled trigger<br/>SessionId = RunId]
+        A3 --> A5[Schedule orchestrator<br/>Return immediately]
+        A4 --> A6[Schedule orchestrator<br/>WaitForInstanceAsync blocks<br/>until completion]
+    end
+
+    subgraph SETUP["2. ORCHESTRATOR SETUP"]
+        B0["<b>GU.OrchestratorMultiLaneFunction</b>"]:::header
+        B0 --> B1[Parse GroupMembership from message]
+        B1 --> B2{Large lane AND<br/>RunLimiter enabled?}
+        B2 -->|Yes| B3[Start heartbeat task<br/>CancellationTokenSource created]
+        B2 -->|No| B4[No heartbeat needed]
+        B3 --> B5[Continue to processing]
+        B4 --> B5
+    end
+
+    subgraph HEARTBEAT["3. HEARTBEAT LOOP"]
+        H0["<b>Large Lane Only</b>"]:::header
+        H0 --> H1[Every HeartbeatIntervalMinutes<br/>Default: 3 minutes]
+        H1 --> H2[GU.MessageSplitterLeaseRenewSenderFunction<br/>sends signal to MessageSplitter topic]
+        H2 --> H3[MS.LeaseRenewListenerFunction receives]
+        H3 --> H4[MS.LeaseRenewOrchestratorFunction<br/>calls RunLimiter.Renew]
+        H4 --> H5[Lease expiry extended<br/>by LeaseTimeoutMinutes]
+        H5 -.-> H1
+    end
+
+    subgraph PROCESS["4. MEMBERSHIP PROCESSING"]
+        C0["<b>Graph API Operations</b>"]:::header
+        C0 --> C1[Call Graph API to<br/>add/remove members]
+        C1 --> C2[Handle throttling with<br/>retry and backoff]
+        C2 --> C3[Update GU.JobTrackerEntity<br/>Track: added, removed, errors]
+    end
+
+    subgraph MULTIPART["5. MULTI-MESSAGE JOBS"]
+        D0["<b>Large Lane Only</b>"]:::header
+        D0 --> D1{Is this the<br/>last message?}
+        D1 -->|No| D2[More messages coming<br/>for this RunId]
+        D2 --> D3[Session queue delivers<br/>next message sequentially]
+        D3 --> D4[Same orchestrator pattern<br/>continues processing]
+        D1 -->|Yes| D5[All messages processed<br/>Job complete]
+    end
+
+    subgraph COMPLETE["6. COMPLETION"]
+        E0["<b>Cleanup and Signal</b>"]:::header
+        E0 --> E1[Cancel heartbeat task<br/>if running]
+        E1 --> E2{RunLimiter enabled<br/>AND should emit?}
+        E2 -->|Yes| E3[Check GU.JobTrackerEntity<br/>CompletionSent flag]
+        E3 --> E4{Already sent?}
+        E4 -->|Yes| E5[Skip: Prevent duplicate]
+        E4 -->|No| E6[GU.MessageSplitterCompletionSenderFunction<br/>Send completion signal]
+        E6 --> E7[Set CompletionSent = true]
+        E2 -->|No| E8[Done without signal]
+    end
+
+    classDef header fill:#1976d2,color:#fff,font-weight:bold
+
+    A5 --> B1
+    A6 --> B1
+    B5 --> C1
+    B3 -.-> H1
+    C3 --> D1
+    D5 --> E1
+
+    style A6 fill:#e3f2fd
+    style E6 fill:#c8e6c9
+    style E5 fill:#fff3e0
+    style H5 fill:#c8e6c9

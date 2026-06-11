@@ -1,39 +1,45 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-using Microsoft.Azure.WebJobs;
-using Microsoft.Azure.WebJobs.Extensions.DurableTask;
-using Models;
-using Repositories.Contracts;
-using Services.Contracts;
+using Microsoft.Azure.Functions.Worker;
+using Microsoft.Extensions.Logging;
+using Repositories.Contracts.Helpers;
 using System;
+using System.Collections.Generic;
 using System.Threading.Tasks;
 
 namespace Hosts.GroupMembershipObtainer
 {
     public class DestinationNameReaderFunction
     {
-        private readonly ILoggingRepository _log;
+        private readonly ILogger<DestinationNameReaderFunction> _logger;
         private readonly SGMembershipCalculator _calculator = null;
-        public DestinationNameReaderFunction(ILoggingRepository loggingRepository, SGMembershipCalculator calculator)
+
+        public DestinationNameReaderFunction(ILogger<DestinationNameReaderFunction> logger, SGMembershipCalculator calculator)
         {
-            _log = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
-            _calculator = calculator ?? throw new ArgumentNullException(nameof(calculator)); ;
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+            _calculator = calculator ?? throw new ArgumentNullException(nameof(calculator));
         }
 
-        [FunctionName(nameof(DestinationNameReaderFunction))]
-        public async Task<string> GetDestinationNameAsync([ActivityTrigger] SyncJob syncJob)
+        [Function(nameof(DestinationNameReaderFunction))]
+        public async Task<string> GetDestinationNameAsync([ActivityTrigger] DestinationNameReaderRequest request)
         {
-            await _log.LogMessageAsync(new LogMessage { Message = $"{nameof(DestinationNameReaderFunction)} function started", RunId = syncJob.RunId }, VerbosityLevel.DEBUG);
+            using (_logger.BeginSyncJobScope(request.SyncJob, new Dictionary<string, object>
+            {
+                ["CurrentPart"] = request.CurrentPart,
+                ["TotalParts"] = request.TotalParts
+            }))
+            {
+                _logger.FunctionStarted(nameof(DestinationNameReaderFunction));
 
-            if (syncJob == null)
-                return null;
-            
-            _calculator.RunId = syncJob.RunId ?? Guid.Empty;
-            var destinationName = await _calculator.GetDestinationNameAsync(syncJob);
-            await _log.LogMessageAsync(new LogMessage { Message = $"{nameof(DestinationNameReaderFunction)} function completed", RunId = syncJob.RunId }, VerbosityLevel.DEBUG);
+                if (request.SyncJob == null)
+                    return null;
 
-            return destinationName;
+                var destinationName = await _calculator.GetDestinationNameAsync(request.SyncJob);
+                _logger.FunctionCompleted(nameof(DestinationNameReaderFunction));
+
+                return destinationName;
+            }
         }
     }
 }

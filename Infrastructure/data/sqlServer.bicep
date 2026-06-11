@@ -48,8 +48,8 @@ var sqlServerAdditionalSettings = 'MultipleActiveResultSets=False;Encrypt=True;T
 var jobsSqlDataBaseName = 'Initial Catalog=${solutionAbbreviation}-data-${environmentAbbreviation};'
 var replicaJobsSqlDataBaseName = 'Initial Catalog=${solutionAbbreviation}-data-${environmentAbbreviation}-R;'
 var replicaConnectionString = 'Server=tcp:${replicaSqlServerName}${environment().suffixes.sqlServerHostname},1433;Initial Catalog=${replicaSqlDatabaseName};${sqlServerAdditionalSettings}'
-var jobsMSIConnectionString = 'Server=tcp:${sqlServerName}${environment().suffixes.sqlServerHostname},1433;${jobsSqlDataBaseName}Authentication=Active Directory Default;'
-var replicaJobsMSIConnectionString = 'Server=tcp:${replicaSqlServerName}${environment().suffixes.sqlServerHostname},1433;${replicaJobsSqlDataBaseName}Authentication=Active Directory Default;'
+var jobsMSIConnectionString = 'Server=tcp:${sqlServerName}${environment().suffixes.sqlServerHostname},1433;${jobsSqlDataBaseName}Authentication=Active Directory Default;Connection Timeout=90;'
+var replicaJobsMSIConnectionString = 'Server=tcp:${replicaSqlServerName}${environment().suffixes.sqlServerHostname},1433;${replicaJobsSqlDataBaseName}Authentication=Active Directory Default;Connection Timeout=90;'
 
 // primary sql server resources
 resource sqlServer 'Microsoft.Sql/servers@2021-02-01-preview' = {
@@ -113,6 +113,12 @@ resource primaryDatabase 'Microsoft.Sql/servers/databases@2021-02-01-preview' = 
     family: sqlSkuFamily
     capacity: sqlSkuCapacity
   }
+  dependsOn: [
+    sqlServer::aadAuthentication
+    sqlServer::sqlServerFirewall
+    sqlServer::masterDataBase
+    sqlServer::auditingSettings
+  ]
 }
 
 resource longTermBackup 'Microsoft.Sql/servers/databases/backupLongTermRetentionPolicies@2022-05-01-preview' = {
@@ -206,6 +212,10 @@ resource readReplicaDb 'Microsoft.Sql/servers/databases@2021-11-01-preview' = {
     isLedgerOn: false
     sourceDatabaseId: primaryDatabase.id
   }
+  dependsOn: [
+    replicaSqlServer::aadAuthentication
+    replicaSqlServer::sqlServerFirewall
+  ]
 }
 
 // conditional resources
@@ -249,36 +259,8 @@ module secureKeyvaultSecrets 'keyVaultSecretsSecure.bicep' = {
           value: '${sqlServerUrl}${jobsSqlDataBaseName}${sqlServerAdditionalSettings}'
         }
         {
-          name: 'sqlServerConnectionString'
-          value: '${sqlServerUrl}${sqlServerDataBaseName}${sqlServerAdditionalSettings}'
-        }
-        {
-          name: 'sqlServerBasicConnectionString'
-          value: '${sqlServerUrl}${sqlServerDataBaseName}${sqlServerAdditionalSettings}'
-        }
-        {
-          name: 'sqlServerMSIConnectionString'
-          value: '${sqlServerUrl}${sqlServerDataBaseName}Authentication=Active Directory Default;TrustServerCertificate=True;Encrypt=True;'
-        }
-        {
-          name: 'replicaSqlServerMSIConnectionString'
-          value: '${sqlServerUrl}${sqlServerDataBaseName}Authentication=Active Directory Default;TrustServerCertificate=True;Encrypt=True;'
-        }
-        {
           name: 'sqlServerName'
           value: '${sqlServerName}${environment().suffixes.sqlServerHostname}'
-        }
-        {
-          name: 'sqlServerDataBaseName'
-          value: sqlServerName
-        }
-        {
-          name: 'replicaSqlServerName'
-          value: replicaSqlServerName
-        }
-        {
-          name: 'replicaSqlDataBaseName'
-          value: replicaSqlDatabaseName
         }
         {
           name: 'replicaSqlServerConnectionString'
@@ -296,3 +278,6 @@ module secureKeyvaultSecrets 'keyVaultSecretsSecure.bicep' = {
     }
   }
 }
+
+output sqlServerId string = sqlServer.id
+output replicaSqlServerId string = replicaSqlServer.id

@@ -29,4 +29,4 @@ export interface IAppProps extends React.AllHTMLAttributes<HTMLDivElement> {
    * Call to provide customized styling that will layer on top of the variant rules.
    */
   styles?: IStyleFunctionOrObject<IAppStyleProps, IAppStyles>;
-}
+};

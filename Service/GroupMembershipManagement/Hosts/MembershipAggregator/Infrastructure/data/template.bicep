@@ -8,19 +8,17 @@ param environmentAbbreviation string
 @maxLength(3)
 param solutionAbbreviation string = 'gmm'
 
-@description('Enter tenant Id.')
-param tenantId string
-
-@description('Enter storage account name.')
-param storageAccountName string
-
 param storageAccountSku string = 'Standard_LRS'
+
 @description('Resource location.')
 param location string
 
+@description('Classify the types of resources in prereqs resource group.')
+param prereqsResourceGroupClassification string = 'prereqs'
+
 var keyVaultName = '${solutionAbbreviation}-data-${environmentAbbreviation}'
 var prodStorageAccountName = substring('ma${solutionAbbreviation}${environmentAbbreviation}prod${uniqueString(resourceGroup().id)}',0,23)
-var stagingStorageAccountName = substring('ma${solutionAbbreviation}${environmentAbbreviation}staging${uniqueString(resourceGroup().id)}',0,23)
+
 module membershipAggregatorStorageAccountProd 'storageAccount.bicep' = {
   name: 'maProdstorageAccountTemplate'
   params: {
@@ -28,16 +26,21 @@ module membershipAggregatorStorageAccountProd 'storageAccount.bicep' = {
     sku: storageAccountSku
     keyVaultName: keyVaultName
     location: location
-    storageAccountConnectionStringSettingName: 'membershipAggregatorStorageAccountProd'
+    storageAccountSettingName: 'membershipAggregatorStorageAccountProd'
+    appPackageContainerSettingName: 'membershipAggregatorAppPackageContainerProd'
+    appPackageContainerName: 'app-package'
   }
 }
-module membershipAggregatorStorageAccountStaging 'storageAccount.bicep' = {
-  name: 'maStagingstorageAccountTemplate'
+
+var nspName = '${solutionAbbreviation}-nsp-${environmentAbbreviation}'
+var prereqsResourceGroupName = '${solutionAbbreviation}-${prereqsResourceGroupClassification}-${environmentAbbreviation}'
+
+module maStorageAccountAssociationTemplate 'networkSecurityPerimeterResourceAssociation.bicep' = {
+  name: 'maStorageAccountAssociationTemplate'
+  scope: resourceGroup(prereqsResourceGroupName)
   params: {
-    name: stagingStorageAccountName
-    sku: storageAccountSku
-    keyVaultName: keyVaultName
-    location: location
-    storageAccountConnectionStringSettingName: 'membershipAggregatorStorageAccountStaging'
+    nspName: nspName
+    profileName: 'storageaccount'
+    resourceId: membershipAggregatorStorageAccountProd.outputs.storageAccountId
   }
 }

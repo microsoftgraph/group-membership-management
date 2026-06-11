@@ -1,18 +1,22 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>net6.0</TargetFramework>
+    <TargetFramework>net8.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Microsoft.ApplicationInsights" Version="2.21.0" />
-    <PackageReference Include="Microsoft.AspNetCore.Http.Abstractions" Version="2.1.1" />
-    <PackageReference Include="Microsoft.AspNetCore.OData" Version="8.2.0" />
-    <PackageReference Include="Microsoft.Data.SqlClient" Version="5.2.0" />
-    <PackageReference Include="Microsoft.EntityFrameworkCore" Version="6.0.22" />
-    <PackageReference Include="Polly" Version="7.2.3" />
+    <PackageReference Include="Azure.ResourceManager.AppService" />
+    <PackageReference Include="Azure.ResourceManager.Storage" />
+    <PackageReference Include="Azure.Security.KeyVault.Secrets" />
+    <PackageReference Include="Microsoft.ApplicationInsights" />
+    <PackageReference Include="Microsoft.AspNetCore.Http.Abstractions" />
+    <PackageReference Include="Microsoft.AspNetCore.Mvc.NewtonsoftJson" />
+    <PackageReference Include="Microsoft.AspNetCore.OData" />
+    <PackageReference Include="Microsoft.Data.SqlClient" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore" />
+    <PackageReference Include="Polly" />
   </ItemGroup>
 
   <ItemGroup>
@@ -20,8 +24,9 @@
     <ProjectReference Include="..\..\..\Entities\Entities.csproj" />
     <ProjectReference Include="..\..\..\Repositories.DataFactory\Repositories.DataFactory.csproj" />
     <ProjectReference Include="..\..\..\Repositories.Localization\Repositories.Localization.csproj" />
-    <ProjectReference Include="..\..\..\Repositories.Notifications\Repositories.NotificationRepository.csproj" />
+    <ProjectReference Include="..\..\..\Repositories.ServiceBusQueue\Repositories.ServiceBusQueue.csproj" />
     <ProjectReference Include="..\..\..\Services.Contracts\Services.Contracts.csproj" />
+    <ProjectReference Include="..\..\GraphUpdater\Services.Entities\Services.Entities.csproj" />
     <ProjectReference Include="..\Services.Messages.Contracts\Services.Messages.Contracts.csproj" />
     <ProjectReference Include="..\Services.Messages\Services.Messages.csproj" />
     <ProjectReference Include="..\Services.WebApi.Contracts\Services.WebApi.Contracts.csproj" />

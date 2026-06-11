@@ -8,20 +8,17 @@ param environmentAbbreviation string
 @maxLength(3)
 param solutionAbbreviation string = 'gmm'
 
-@description('Enter tenant Id.')
-param tenantId string
-
-@description('Enter storage account name.')
-param storageAccountName string
-
 param storageAccountSku string = 'Standard_LRS'
 
 @description('Resource location.')
 param location string
 
+@description('Classify the types of resources in prereqs resource group.')
+param prereqsResourceGroupClassification string = 'prereqs'
+
 var keyVaultName = '${solutionAbbreviation}-data-${environmentAbbreviation}'
 var prodStorageAccountName = substring('goo${solutionAbbreviation}${environmentAbbreviation}prod${uniqueString(resourceGroup().id)}',0,23)
-var stagingStorageAccountName = substring('goo${solutionAbbreviation}${environmentAbbreviation}staging${uniqueString(resourceGroup().id)}',0,23)
+
 module groupOwnershipObtainerStorageAccountProd 'storageAccount.bicep' = {
   name: 'gooProdstorageAccountTemplate'
   params: {
@@ -29,16 +26,21 @@ module groupOwnershipObtainerStorageAccountProd 'storageAccount.bicep' = {
     sku: storageAccountSku
     keyVaultName: keyVaultName
     location: location
-    storageAccountConnectionStringSettingName: 'groupOwnershipObtainerStorageAccountProd'
+    storageAccountSettingName: 'groupOwnershipObtainerStorageAccountProd'
+    appPackageContainerSettingName: 'groupOwnershipObtainerAppPackageContainerProd'
+    appPackageContainerName: 'app-package'
   }
 }
-module groupOwnershipObtainerStorageAccountStaging 'storageAccount.bicep' = {
-  name: 'gooStagingstorageAccountTemplate'
+
+var nspName = '${solutionAbbreviation}-nsp-${environmentAbbreviation}'
+var prereqsResourceGroupName = '${solutionAbbreviation}-${prereqsResourceGroupClassification}-${environmentAbbreviation}'
+
+module gooStorageAccountAssociationTemplate 'networkSecurityPerimeterResourceAssociation.bicep' = {
+  name: 'gooStorageAccountAssociationTemplate'
+  scope: resourceGroup(prereqsResourceGroupName)
   params: {
-    name: stagingStorageAccountName
-    sku: storageAccountSku
-    keyVaultName: keyVaultName
-    location: location
-    storageAccountConnectionStringSettingName: 'groupOwnershipObtainerStorageAccountStaging'
+    nspName: nspName
+    profileName: 'storageaccount'
+    resourceId: groupOwnershipObtainerStorageAccountProd.outputs.storageAccountId
   }
 }

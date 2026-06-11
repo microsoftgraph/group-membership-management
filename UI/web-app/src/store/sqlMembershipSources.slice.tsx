@@ -2,9 +2,9 @@
 // Licensed under the MIT license.
 
 import { createSlice, type PayloadAction } from '@reduxjs/toolkit';
-import { fetchAttributeValues, fetchDefaultSqlMembershipSource, fetchDefaultSqlMembershipSourceAttributes, patchDefaultSqlMembershipSourceAttributes, patchDefaultSqlMembershipSourceCustomLabel } from './sqlMembershipSources.api';
+import { fetchAttributeMappings, fetchAttributeValues, fetchDefaultSqlMembershipSource, fetchDefaultSqlMembershipSourceAttributes, patchDefaultSqlMembershipSourceAttributes, patchDefaultSqlMembershipSourceCustomLabel } from './sqlMembershipSources.api';
 import type { RootState } from './store';
-import { SqlMembershipAttribute, SqlMembershipAttributeValue, SqlMembershipSource } from '../models';
+import { SqlMembershipAttribute, SqlMembershipAttributeMapping, SqlMembershipSource } from '../models';
 
 export interface SettingsState {
 
@@ -12,10 +12,10 @@ export interface SettingsState {
   attributes: SqlMembershipAttribute[] | undefined;
   isSourceLoading: boolean;
   areAttributesLoading: boolean;
-  areAttributeValuesLoading: boolean;
-  attributeValues: {
+  areAttributeMappingsLoading: boolean;
+  attributeMappings: {
     [attribute: string]: {
-      values: SqlMembershipAttributeValue[];
+      mappings: SqlMembershipAttributeMapping[];
       type: string | undefined;
     }
   };
@@ -29,10 +29,10 @@ export interface SettingsState {
 const initialState: SettingsState = {
   source: undefined,
   attributes: undefined,
-  attributeValues: {},
+  attributeMappings: {},
   isSourceLoading: false,
   areAttributesLoading: false,
-  areAttributeValuesLoading: false,
+  areAttributeMappingsLoading: false,
   isSourceSaving: false,
   areAttributesSaving: false,
   error: undefined,
@@ -50,10 +50,10 @@ const sqlMembershipSourcesSlice = createSlice({
     setAttributes: (state, action: PayloadAction<SqlMembershipAttribute[] | undefined>) => {
         state.attributes = action.payload;
     },
-    setAttributeValues: (state, action) => {
-      const { attribute, type, values} = action.payload;
-      state.attributeValues[attribute] = {
-        values: values,
+    setAttributeMappings: (state, action) => {
+      const { attribute, type, mappings} = action.payload;
+      state.attributeMappings[attribute] = {
+        mappings: mappings,
         type: type
       };
     }
@@ -84,20 +84,28 @@ const sqlMembershipSourcesSlice = createSlice({
       state.error = action.error.message;
     });
 
-    builder.addCase(fetchAttributeValues.pending, (state) => {
-      state.areAttributeValuesLoading = true;
+    builder.addCase(fetchAttributeMappings.pending, (state) => {
+      state.areAttributeMappingsLoading = true;
     });
-    builder.addCase(fetchAttributeValues.fulfilled, (state, action) => {
-      state.areAttributeValuesLoading = false;
-      const { attribute, type, values} = action.payload;
-      state.attributeValues[attribute] = {
-        values: values,
+    builder.addCase(fetchAttributeMappings.fulfilled, (state, action) => {
+      state.areAttributeMappingsLoading = false;
+      const { attribute, type, mappings} = action.payload;
+      state.attributeMappings[attribute] = {
+        mappings: mappings,
         type: type
       };
     });
-    builder.addCase(fetchAttributeValues.rejected, (state, action) => {
-      state.areAttributeValuesLoading = false;
+    builder.addCase(fetchAttributeMappings.rejected, (state, action) => {
+      state.areAttributeMappingsLoading = false;
       state.error = action.error.message;
+    });
+
+    builder.addCase(fetchAttributeValues.fulfilled, (state, action) => {
+      state.areAttributeMappingsLoading = false;
+      const { attribute, values} = action.payload;
+      state.attributes = state.attributes?.map(attr =>
+        attr.name === attribute ? { ...attr, values: values } : attr
+      );
     });
 
     builder.addCase(patchDefaultSqlMembershipSourceCustomLabel.pending, (state) => {
@@ -133,13 +141,13 @@ const sqlMembershipSourcesSlice = createSlice({
   },
 });
 
-export const { setSource, setAttributes, setAttributeValues } = sqlMembershipSourcesSlice.actions;
+export const { setSource, setAttributes, setAttributeMappings } = sqlMembershipSourcesSlice.actions;
 export const selectSource = (state: RootState) => state.sqlMembershipSources.source;
 export const selectAttributes = (state: RootState) => state.sqlMembershipSources.attributes;
-export const selectAttributeValues = (state: RootState) => state.sqlMembershipSources.attributeValues;
+export const selectAttributeMappings = (state: RootState) => state.sqlMembershipSources.attributeMappings;
 export const selectIsSourceLoading = (state: RootState) => state.sqlMembershipSources.isSourceLoading;
 export const selectAreAttributesLoading = (state: RootState) => state.sqlMembershipSources.areAttributesLoading;
-export const selectAreAttributeValuesLoading = (state: RootState) => state.sqlMembershipSources.areAttributeValuesLoading;
+export const selectAreAttributeMappingsLoading = (state: RootState) => state.sqlMembershipSources.areAttributeMappingsLoading;
 export const selectIsSourceSaving = (state: RootState) => state.sqlMembershipSources.isSourceSaving;
 export const selectAreAttributesSaving = (state: RootState) => state.sqlMembershipSources.areAttributesSaving;
 

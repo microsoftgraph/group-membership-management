@@ -6,8 +6,8 @@ using Azure.Core;
 using Azure.Monitor.Query;
 using Azure.Monitor.Query.Models;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using Moq;
 using Models;
+using Moq;
 using Repositories.Contracts.InjectConfig;
 using Services.Contracts;
 using Services.Tests.Mocks;
@@ -20,9 +20,7 @@ using System.Reflection;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
-using System.Xml.Linq;
 using MockDatabaseSyncJobRepository = Repositories.SyncJobs.Tests.MockDatabaseSyncJobRepository;
-using Newtonsoft.Json;
 
 namespace Services.Tests
 {
@@ -109,7 +107,7 @@ namespace Services.Tests
 
             for (int i = 0; i < jobs.Count; i++)
             {
-                Assert.AreEqual(jobs[i].TargetOfficeGroupId, updatedJobs[i].TargetOfficeGroupId);
+                Assert.AreEqual(jobs[i].Id, updatedJobs[i].Id);
                 Assert.IsTrue(jobs[i].ScheduledDate < dateTimeNow);
                 Assert.IsTrue(updatedJobs[i].ScheduledDate >= dateTimeNow.AddSeconds(60 * START_TIME_DELAY_MINUTES +
                     i * (DEFAULT_RUNTIME_SECONDS + BUFFER_SECONDS)));
@@ -155,7 +153,7 @@ namespace Services.Tests
             // 1  3  5  7
             for (int i = 0; i < jobs.Count; i++)
             {
-                Assert.AreEqual(jobs[i].TargetOfficeGroupId, updatedJobs[i].TargetOfficeGroupId);
+                Assert.AreEqual(jobs[i].Id, updatedJobs[i].Id);
                 Assert.IsTrue(jobs[i].ScheduledDate < dateTimeNow);
                 if (i < 8)
                 {
@@ -184,7 +182,7 @@ namespace Services.Tests
 
             for (int i = 0; i < jobs.Count; i++)
             {
-                Assert.AreEqual(jobs[i].TargetOfficeGroupId, updatedJobs[i].TargetOfficeGroupId);
+                Assert.AreEqual(jobs[i].Id, updatedJobs[i].Id);
                 Assert.IsTrue(jobs[i].ScheduledDate < dateTimeNow);
 
                 if (i < 3)
@@ -201,9 +199,118 @@ namespace Services.Tests
         }
 
         [TestMethod]
+        public async Task ScheduleJobsWithThresholdPrioritization()
+        {
+            // Create jobs with and without thresholds
+            DateTime dateTimeNow = DateTime.UtcNow;
+            var jobs = new List<DistributionSyncJob>();
+            
+            // Jobs without thresholds (-1 means no threshold)
+            for (int i = 0; i < 3; i++)
+            {
+                jobs.Add(new DistributionSyncJob
+                {
+                    Id = Guid.NewGuid(),
+                    Period = 1,
+                    ScheduledDate = dateTimeNow.AddDays(-1),
+                    Status = SyncStatus.Idle.ToString(),
+                    LastRunTime = dateTimeNow.AddDays(-1),
+                    ThresholdPercentageForAdditions = -1,
+                    ThresholdPercentageForRemovals = -1
+                });
+            }
+
+            // Jobs with thresholds
+            for (int i = 0; i < 2; i++)
+            {
+                jobs.Add(new DistributionSyncJob
+                {
+                    Id = Guid.NewGuid(),
+                    Period = 1,
+                    ScheduledDate = dateTimeNow.AddDays(-1),
+                    Status = SyncStatus.Idle.ToString(),
+                    LastRunTime = dateTimeNow.AddDays(-1),
+                    ThresholdPercentageForAdditions = 50,
+                    ThresholdPercentageForRemovals = 50
+                });
+            }
+
+            // Distribute jobs WITH prioritization enabled
+            List<DistributionSyncJob> updatedJobs = await _jobSchedulingService.DistributeJobStartTimesAsync(
+                jobs, START_TIME_DELAY_MINUTES, BUFFER_SECONDS, prioritizeThresholdJobs: true);
+
+            Assert.AreEqual(5, updatedJobs.Count);
+
+            // Sort by scheduled date to see the order
+            updatedJobs.Sort((a, b) => a.ScheduledDate.CompareTo(b.ScheduledDate));
+
+            // First 2 jobs should have thresholds (scheduled first)
+            Assert.IsTrue(updatedJobs[0].ThresholdPercentageForAdditions != -1 && updatedJobs[0].ThresholdPercentageForRemovals != -1);
+            Assert.IsTrue(updatedJobs[1].ThresholdPercentageForAdditions != -1 && updatedJobs[1].ThresholdPercentageForRemovals != -1);
+
+            // Last 3 jobs should NOT have thresholds (scheduled after)
+            Assert.IsTrue(updatedJobs[2].ThresholdPercentageForAdditions == -1 || updatedJobs[2].ThresholdPercentageForRemovals == -1);
+            Assert.IsTrue(updatedJobs[3].ThresholdPercentageForAdditions == -1 || updatedJobs[3].ThresholdPercentageForRemovals == -1);
+            Assert.IsTrue(updatedJobs[4].ThresholdPercentageForAdditions == -1 || updatedJobs[4].ThresholdPercentageForRemovals == -1);
+        }
+
+        [TestMethod]
+        public async Task ScheduleJobsWithoutThresholdPrioritization()
+        {
+            // Same jobs but WITHOUT prioritization - should use default sorting (Status, LastRunTime)
+            DateTime dateTimeNow = DateTime.UtcNow;
+            var jobs = new List<DistributionSyncJob>();
+
+            // Jobs without thresholds, but with earlier LastRunTime (should normally be scheduled first)
+            for (int i = 0; i < 2; i++)
+            {
+                jobs.Add(new DistributionSyncJob
+                {
+                    Id = Guid.NewGuid(),
+                    Period = 1,
+                    ScheduledDate = dateTimeNow.AddDays(-1),
+                    Status = SyncStatus.Idle.ToString(),
+                    LastRunTime = dateTimeNow.AddDays(-10 - i), // Earlier last run time
+                    ThresholdPercentageForAdditions = -1,
+                    ThresholdPercentageForRemovals = -1
+                });
+            }
+
+            // Jobs with thresholds, but with more recent LastRunTime
+            for (int i = 0; i < 2; i++)
+            {
+                jobs.Add(new DistributionSyncJob
+                {
+                    Id = Guid.NewGuid(),
+                    Period = 1,
+                    ScheduledDate = dateTimeNow.AddDays(-1),
+                    Status = SyncStatus.Idle.ToString(),
+                    LastRunTime = dateTimeNow.AddDays(-1 - i), // More recent last run time
+                    ThresholdPercentageForAdditions = 50,
+                    ThresholdPercentageForRemovals = 50
+                });
+            }
+
+            // Distribute jobs WITHOUT prioritization (default behavior)
+            List<DistributionSyncJob> updatedJobs = await _jobSchedulingService.DistributeJobStartTimesAsync(
+                jobs, START_TIME_DELAY_MINUTES, BUFFER_SECONDS, prioritizeThresholdJobs: false);
+
+            Assert.AreEqual(4, updatedJobs.Count);
+
+            // Sort by scheduled date to see the order
+            updatedJobs.Sort((a, b) => a.ScheduledDate.CompareTo(b.ScheduledDate));
+
+            // Jobs with earlier LastRunTime should be scheduled first (regardless of threshold)
+            // The first two jobs should be the ones without thresholds (earlier LastRunTime)
+            Assert.IsTrue(updatedJobs[0].LastRunTime < updatedJobs[2].LastRunTime);
+            Assert.IsTrue(updatedJobs[1].LastRunTime < updatedJobs[2].LastRunTime);
+        }
+
+        [TestMethod]
         public async Task ScheduleJobsOneFromLogs_MaxMetric()
         {
             _jobSchedulerConfig.Setup(x => x.GetRunTimeFromLogs).Returns(true);
+            _jobSchedulerConfig.Setup(x => x.RunTimeMetric).Returns("MaxProcessingTime");
             _jobSchedulingService = new JobSchedulingService(
                                         _mockDatabaseSyncJobRepository,
                                         _logsRuntimeRetrievalService,
@@ -212,12 +319,12 @@ namespace Services.Tests
             var numberOfJobs = 5;
             var periodInHours = 1;
             var jobs = CreateSampleSyncJobs(numberOfJobs, periodInHours);
-            var groupRuntimes = new List<(string Destination, double Median, double Average)>();
+            var groupRuntimes = new List<(string Id, double Max, double Average)>();
             var max = 100.0;
             var avg = 5.0;
             foreach (var job in jobs)
             {
-                groupRuntimes.Add((job.Destination, max++, avg++));
+                groupRuntimes.Add((job.Id.ToString(), max++, avg++));
             }
 
             var queryResult = CreateLogsQueryResult(groupRuntimes);
@@ -233,7 +340,7 @@ namespace Services.Tests
             DateTime dateTimeNow = DateTime.UtcNow;
             List<DistributionSyncJob> updatedJobs = await _jobSchedulingService.DistributeJobStartTimesAsync(jobs, START_TIME_DELAY_MINUTES, BUFFER_SECONDS);
 
-            double totalTimeInSeconds = groupRuntimes.Select(x => x.Median).Sum() + (jobs.Count - groupRuntimes.Count) * DEFAULT_RUNTIME_SECONDS;
+            double totalTimeInSeconds = groupRuntimes.Select(x => x.Max).Sum() + (jobs.Count - groupRuntimes.Count) * DEFAULT_RUNTIME_SECONDS;
             int concurrencyNumber = (int)Math.Ceiling(totalTimeInSeconds / (periodInHours * 3600));
 
             Assert.AreEqual(concurrencyNumber, 1);
@@ -246,8 +353,8 @@ namespace Services.Tests
             {
                 if (currentJobIndex > 0)
                 {
-                    var previousJobRunTime = groupRuntimes.First(x => x.Destination == updatedJobs[currentJobIndex - 1].Destination);
-                    baseStartDate = baseStartDate.AddSeconds(BUFFER_SECONDS + previousJobRunTime.Median);
+                    var previousJobRunTime = groupRuntimes.First(x => x.Id.ToString() == updatedJobs[currentJobIndex - 1].Id.ToString());
+                    baseStartDate = baseStartDate.AddSeconds(BUFFER_SECONDS + previousJobRunTime.Max);
                 }
 
                 Assert.AreEqual(updateJob.ScheduledDate, baseStartDate);
@@ -269,9 +376,7 @@ namespace Services.Tests
                     Period = period,
                     ScheduledDate = ScheduledDateBase.AddDays(-1 * i),
                     Status = SyncStatus.Idle.ToString(),
-                    TargetOfficeGroupId = Guid.NewGuid(),
-                    LastRunTime = LastRunTimeBase.AddDays(-1 * i),
-                    Destination = $"[{{\"type\":\"GroupMembership\",\"value\":{{\"objectId\":\"{Guid.NewGuid()}\"}}}}]"
+                    LastRunTime = LastRunTimeBase.AddDays(-1 * i)
                 };
 
                 jobs.Add(job);
@@ -283,7 +388,7 @@ namespace Services.Tests
         private Response<LogsQueryResult> CreateLogsQueryResult(List<(string Destination, double Max, double Avg)> groupRuntimes)
         {
             var columns = new List<LogsTableColumn>();
-            var columnNames = new[] { "Destination", "MedianProcessingTime", "AverageProcessingTime" };
+            var columnNames = new[] { "Destination", "MaxProcessingTime", "AvgProcessingTime" };
             var logsTableColumnConstructor = typeof(LogsTableColumn).GetConstructor(BindingFlags.Instance | BindingFlags.NonPublic,
                                                                                     new[] { typeof(string), typeof(LogsColumnType) });
 
@@ -296,7 +401,7 @@ namespace Services.Tests
             var rowsList = new List<string>();
             foreach (var group in groupRuntimes)
             {
-                var destinationJson = JsonConvert.ToString(group.Destination);
+                var destinationJson = JsonSerializer.Serialize(group.Destination);
                 rowsList.Add($"[{destinationJson},{group.Max},{group.Avg}]");
             }
 

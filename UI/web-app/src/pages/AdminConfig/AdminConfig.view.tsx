@@ -2,20 +2,35 @@
 // Licensed under the MIT license.
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { classNamesFunction, IProcessedStyleSet, Pivot, PivotItem, PrimaryButton, TextField, Text, IColumn, SelectionMode, ShimmeredDetailsList } from '@fluentui/react';
+import { classNamesFunction, Toggle, IProcessedStyleSet, Pivot, PivotItem, PrimaryButton, TextField, Text, IColumn, SelectionMode, ShimmeredDetailsList, Dropdown, Spinner, IRenderFunction, ISelectableDroppableTextProps, IDropdown } from '@fluentui/react';
 import { useTheme } from '@fluentui/react/lib/Theme';
-import { AdminConfigStyleProps, AdminConfigStyles, AdminConfigViewProps, CustomLabelCellProps, CustomSourceSettingsProps, HyperlinkSettingsProps } from './AdminConfig.types';
+import {
+  AdminConfigStyleProps,
+  AdminConfigStyles,
+  AdminConfigViewProps,
+  CustomLabelCellProps,
+  AttributeValuesCellProps,
+  CustomSourceSettingsProps,
+  HyperlinkSettingsProps,
+  OperationsProps,
+  GeneralSettingsProps } from './AdminConfig.types';
 import { PageSection } from '../../components/PageSection';
 import { HyperlinkSetting } from '../../components/HyperlinkSetting';
+import { Operation } from '../../components/Operation';
 import { Page } from '../../components/Page';
 import { PageHeader } from '../../components/PageHeader';
-import { SettingKey, SqlMembershipAttribute, SqlMembershipSource } from '../../models';
+import { SettingKey, SettingKeyMap, SqlMembershipAttribute, SqlMembershipSource } from '../../models';
+import { GeneralSetting } from '../../components/GeneralSetting';
 
 const getClassNames = classNamesFunction<AdminConfigStyleProps, AdminConfigStyles>();
 
 export const AdminConfigView: React.FunctionComponent<AdminConfigViewProps> = (props: AdminConfigViewProps) => {
   // extract props
-  const { className, isSaving, onSave, settings, sqlMembershipSource, sqlMembershipSourceAttributes, strings, styles, isHyperlinkAdmin, isCustomMembershipProviderAdmin } = props;
+  const { className, isSaving, onSave, handleGetValues, settings, sqlMembershipSource, sqlMembershipSourceAttributes, strings, styles,
+    isHyperlinkAdmin,
+    isCustomMembershipProviderAdmin,
+    isOperationsResetAdministrator,
+    isGeneralSettingsAdministrator } = props;
 
   // generate class names
   const classNames: IProcessedStyleSet<AdminConfigStyles> = getClassNames(styles, {
@@ -97,7 +112,36 @@ export const AdminConfigView: React.FunctionComponent<AdminConfigViewProps> = (p
                     sqlMembershipSourceAttributes={sqlMembershipSourceAttributes}
                     setNewAttributes={setNewAttributes}
                     setNewSource={setNewSource}
+                    handleGetValues={handleGetValues}
                     strings={strings} />
+                </PivotItem>
+              }
+              {isOperationsResetAdministrator &&
+                <PivotItem
+                  headerText={strings.Operations.labels.operations}
+                  headerButtonProps={{
+                    'data-order': 1,
+                    'data-title': strings.Operations.labels.operations,
+                  }}
+                >
+                  <Operations
+                    classNames={classNames}
+                    strings={strings} />
+                </PivotItem>
+              }
+              {isGeneralSettingsAdministrator &&
+                <PivotItem
+                  headerText={strings.GeneralSettings.labels.general}
+                  headerButtonProps={{
+                    'data-order': 1,
+                    'data-title': strings.GeneralSettings.labels.general,
+                  }}
+                >
+                  <GeneralSettings
+                    classNames={classNames}
+                    strings={strings}
+                    settings={newSettings}
+                    setSettings={setNewSettings} />
                 </PivotItem>
               }
             </Pivot>
@@ -115,6 +159,81 @@ export const AdminConfigView: React.FunctionComponent<AdminConfigViewProps> = (p
   );
 };
 
+const Operations: React.FunctionComponent<OperationsProps> = (props: OperationsProps) => {
+  const { classNames, strings} = props;
+  return (
+    <div>
+      <Operation
+          title={strings.Operations.labels.title}
+          description={strings.Operations.labels.description}
+          buttonText={strings.Operations.buttons}
+        ></Operation>
+      </div>
+  );
+}
+
+const GeneralSettings: React.FunctionComponent<GeneralSettingsProps> = (props: GeneralSettingsProps) => {
+  const { strings, settings, setSettings } = props;
+
+  const handleSettingChange = (settingKey: SettingKey) => (newValue: string) => {
+    setSettings((settings) => ({ ...settings, [settingKey]: newValue }));
+  };
+
+  return (
+    <div>
+      <GeneralSetting
+        id={SettingKeyMap[SettingKey.DashboardUrl]}
+        title={strings.GeneralSettings.labels.reviewOwnSubmissionTitle}
+        description={strings.GeneralSettings.labels.reviewOwnSubmissionDescription}
+        onGeneralSettingChange={handleSettingChange(SettingKey.CanReviewOwnSubmissions)}
+        generalSettingValue={settings[SettingKey.CanReviewOwnSubmissions]}
+      />
+      <GeneralSetting
+        id={SettingKeyMap[SettingKey.CreateGroupFeatureEnabled]}
+        title={strings.GeneralSettings.labels.createGroupTitle}
+        description={strings.GeneralSettings.labels.createGroupDescription}
+        onGeneralSettingChange={handleSettingChange(SettingKey.CreateGroupFeatureEnabled)}
+        generalSettingValue={settings[SettingKey.CreateGroupFeatureEnabled]}
+      />
+      <GeneralSetting
+        id={SettingKeyMap[SettingKey.IsBusinessJustificationRequired]}
+        title={strings.GeneralSettings.labels.businessJustificationTitle}
+        description={strings.GeneralSettings.labels.businessJustificationDescription}
+        onGeneralSettingChange={handleSettingChange(SettingKey.IsBusinessJustificationRequired)}
+        generalSettingValue={settings[SettingKey.IsBusinessJustificationRequired]}
+      />
+      <GeneralSetting
+        id={SettingKeyMap[SettingKey.IsDisclaimerEnabled]}
+        title={strings.GeneralSettings.labels.isDisclaimerEnabledTitle}
+        description={strings.GeneralSettings.labels.isDisclaimerEnabledDescription}
+        onGeneralSettingChange={handleSettingChange(SettingKey.IsDisclaimerEnabled)}
+        generalSettingValue={settings[SettingKey.IsDisclaimerEnabled]}
+      />
+      <GeneralSetting
+        id={SettingKeyMap[SettingKey.IsAutoApprovalForGroupBasedSyncsEnabled]}
+        title={strings.GeneralSettings.labels.isAutoApprovalForGroupBasedSyncsEnabledTitle}
+        description={strings.GeneralSettings.labels.isAutoApprovalForGroupBasedSyncsEnabledDescription}
+        onGeneralSettingChange={handleSettingChange(SettingKey.IsAutoApprovalForGroupBasedSyncsEnabled)}
+        generalSettingValue={settings[SettingKey.IsAutoApprovalForGroupBasedSyncsEnabled]}
+      />
+      <GeneralSetting
+        id={SettingKeyMap[SettingKey.IsAutoApprovalForRequestorIsOrgLeaderSyncsEnabled]}
+        title={strings.GeneralSettings.labels.isAutoApprovalForRequestorIsOrgLeaderSyncsEnabledTitle}
+        description={strings.GeneralSettings.labels.isAutoApprovalForRequestorIsOrgLeaderSyncsEnabledDescription}
+        onGeneralSettingChange={handleSettingChange(SettingKey.IsAutoApprovalForRequestorIsOrgLeaderSyncsEnabled)}
+        generalSettingValue={settings[SettingKey.IsAutoApprovalForRequestorIsOrgLeaderSyncsEnabled]}
+      />
+      <GeneralSetting
+        id={SettingKeyMap[SettingKey.IsAITitleEnabled]}
+        title={strings.GeneralSettings.labels.isAITitleEnabledTitle}
+        description={strings.GeneralSettings.labels.isAITitleEnabledDescription}
+        onGeneralSettingChange={handleSettingChange(SettingKey.IsAITitleEnabled)}
+        generalSettingValue={settings[SettingKey.IsAITitleEnabled]}
+      />
+    </div>
+  );
+}
+
 const HyperlinkSettings: React.FunctionComponent<HyperlinkSettingsProps> = (props: HyperlinkSettingsProps) => {
 
   const { classNames, strings, settings, setSettings, setHasValidationErrors } = props;
@@ -122,7 +241,15 @@ const HyperlinkSettings: React.FunctionComponent<HyperlinkSettingsProps> = (prop
   const [urlValidations, setUrlValidations] = useState<{ readonly [key in SettingKey]: boolean }>({
     [SettingKey.DashboardUrl]: true,
     [SettingKey.OutlookWarningUrl]: true,
-    [SettingKey.PrivacyPolicyUrl]: true
+    [SettingKey.PrivacyPolicyUrl]: true,
+    [SettingKey.UIUrl]: true,
+    [SettingKey.CanReviewOwnSubmissions]: true,
+    [SettingKey.CreateGroupFeatureEnabled]: true,
+    [SettingKey.IsBusinessJustificationRequired]: true,
+    [SettingKey.IsDisclaimerEnabled]: true,
+    [SettingKey.IsAutoApprovalForGroupBasedSyncsEnabled]: true,
+    [SettingKey.IsAutoApprovalForRequestorIsOrgLeaderSyncsEnabled]: true,
+    [SettingKey.IsAITitleEnabled]: true
   });
 
   useEffect(() => {
@@ -172,7 +299,7 @@ const HyperlinkSettings: React.FunctionComponent<HyperlinkSettingsProps> = (prop
 
 const CustomSourceSettings: React.FunctionComponent<CustomSourceSettingsProps> = (props: CustomSourceSettingsProps) => {
 
-  const { classNames, sqlMembershipSource, sqlMembershipSourceAttributes, setNewAttributes, setNewSource, strings } = props;
+  const { classNames, sqlMembershipSource, sqlMembershipSourceAttributes, setNewAttributes, setNewSource, handleGetValues, strings } = props;
 
   const [attributeMap, setAttributeMap] = useState<{ [key: string]: SqlMembershipAttribute } | undefined>(undefined);
   const [isSortedDescending, setIsSortedDescending] = useState(false);
@@ -191,7 +318,10 @@ const CustomSourceSettings: React.FunctionComponent<CustomSourceSettingsProps> =
   useEffect(() => {
     const newAttributeMap = attributes?.reduce((acc: { [key: string]: SqlMembershipAttribute }, currentItem: SqlMembershipAttribute) => {
       const { name } = currentItem;
-      acc[name] = { ...currentItem };
+      acc[name] = {
+          ...currentItem,
+          ...attributeMap?.[currentItem.name]
+       };
       return acc;
     }, {});
 
@@ -230,6 +360,15 @@ const CustomSourceSettings: React.FunctionComponent<CustomSourceSettingsProps> =
     [setAttributeMap]
   );
 
+  const handleDropdownClick = useCallback(
+    (attribute: SqlMembershipAttribute): any => {
+      if (attribute && !attribute.values) {
+        handleGetValues(attribute);
+      }
+    },
+    [attributeMap]
+  );
+
   const onRenderItemColumn = (item?: any, index?: number, column?: IColumn): JSX.Element => {
 
     if (!item || !column || !attributeMap) {
@@ -250,6 +389,37 @@ const CustomSourceSettings: React.FunctionComponent<CustomSourceSettingsProps> =
             className={classNames.customLabelTextField}
           />
         );
+      case 'attributeValues':
+        return (
+          <AttributeValuesCell
+            classNames={classNames}
+            values={attributeMap[item.name].values}
+            strings={strings}
+            onDropdownClick={() => {
+              handleDropdownClick(attributeMap[item.name]);
+            }}
+          />
+        );
+        case 'description':
+          return (
+            <TextField
+              value={fieldContent}
+              placeholder={strings.CustomSourceSettings.labels.descriptionPlaceHolder}
+              onChange={(e, newValue) => {
+                handleFieldChange(item.name, column.fieldName, newValue);
+              }}
+              multiline rows={3}
+              styles={{ fieldGroup: classNames.descriptionTextField }}
+            />
+          );
+        case 'enabled':
+          return (
+            <Toggle
+              title={strings.CustomSourceSettings.labels.enabledToggleTitle}
+              checked={fieldContent !== undefined ? Boolean(fieldContent) : true}
+              onChange={(e, checked) => handleFieldChange(item.name, column.fieldName, checked)}
+            />
+          );
       default:
         return (
           <div className={classNames.defaultColumnSpan}>
@@ -260,6 +430,17 @@ const CustomSourceSettings: React.FunctionComponent<CustomSourceSettingsProps> =
   };
 
   const columns = [
+    {
+      key: 'enabled',
+      name: strings.CustomSourceSettings.labels.enabledColumn,
+      fieldName: 'enabled',
+      minWidth: 100,
+      maxWidth: 120,
+      isResizable: true,
+      isSorted: sortKey === 'enabled',
+      isSortedDescending,
+      showSortIconWhenUnsorted: true,
+    },
     {
       key: 'name',
       name: strings.CustomSourceSettings.labels.attributeColumn,
@@ -279,6 +460,24 @@ const CustomSourceSettings: React.FunctionComponent<CustomSourceSettingsProps> =
       maxWidth: 170,
       isResizable: true,
       isSorted: sortKey === 'customLabel',
+      isSortedDescending,
+      showSortIconWhenUnsorted: true,
+    },
+    {
+      key: 'attributeValues',
+      name: strings.CustomSourceSettings.labels.valuesColumn,
+      fieldName: 'attributeValues',
+      minWidth: 160,
+      maxWidth: 170,
+    },
+    {
+      key: 'description',
+      name: strings.CustomSourceSettings.labels.descriptionColumn,
+      fieldName: 'description',
+      minWidth: 160,
+      maxWidth: 240,
+      isResizable: true,
+      isSorted: sortKey === 'description',
       isSortedDescending,
       showSortIconWhenUnsorted: true,
     }
@@ -346,6 +545,52 @@ const CustomLabelCell = React.memo((props: CustomLabelCellProps) => {
       styles={{ fieldGroup: className }}
       placeholder={placeholder}
       onChange={onChange}
+    />
+  );
+});
+
+const AttributeValuesCell = React.memo((props: AttributeValuesCellProps) => {
+  const { classNames, values, onDropdownClick, strings } = props;
+
+  const getDropdownOptions = (values : string[]) => {
+    if (!values) {
+      return [];
+    }
+
+    return values.map((value) => {
+      return {
+        key: value,
+        text: value,
+        disabled: true,
+        title: value
+      }
+    });
+  }
+
+  const onRenderList: IRenderFunction<ISelectableDroppableTextProps<IDropdown, HTMLDivElement>> = (props, defaultRender) => {
+
+    const isLoading = props?.options?.length === 0;
+
+    return (
+      <div >
+        {isLoading ? (
+                <Spinner styles={{ root: classNames.valuesDropdownSpinner }} label={strings.CustomSourceSettings.labels.valuesDropdownSpinnerLabel} />
+            ) : (
+                defaultRender!(props)
+            )}
+      </div>
+    );
+};
+
+  return (
+    <Dropdown
+      title={strings.CustomSourceSettings.labels.valuesDropdownTitle}
+      placeholder={strings.CustomSourceSettings.labels.valuesDropdownPlaceholder}
+      onRenderList={onRenderList}
+      onClick={onDropdownClick}
+      options={getDropdownOptions(values)}
+      dropdownWidth={'auto'}
+      styles={{ dropdown: classNames.valuesDropdown, title: classNames.valuesDropdownTitle }}
     />
   );
 });

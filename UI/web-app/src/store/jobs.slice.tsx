@@ -3,20 +3,20 @@
 
 import { createSlice, type PayloadAction } from '@reduxjs/toolkit';
 
-import { fetchJobDetails, patchJobDetails, removeGMM } from './jobDetails.api';
-import { fetchJobs, postJob, getJobOwnerFilterSuggestions } from './jobs.api';
+import { fetchJobChanges, fetchJobDetails, patchJobDetails, getGroupDetails, removeGMM, getChannelDetails } from './jobDetails.api';
+import { fetchJobs, postJob, getPeoplePickerSuggestions, downloadJobs, approveJobs } from './jobs.api';
 import type { RootState } from './store';
 import { type Job } from '../models/Job';
-import { type JobDetails } from '../models/JobDetails';
 import { PeoplePickerPersona } from '../models/PeoplePickerPersona';
-import { PatchJobResponse, RemoveGMMResponse } from '../models';
+import { PatchJobResponse, RemoveGMMResponse, SyncJobChange } from '../models';
+import { Title } from '../models/Title';
 
 // Define a type for the slice state
 export interface JobsState {
   jobsLoading: boolean;
   jobs?: Job[];
   totalNumberOfPages?: number;
-  selectedJob: JobDetails | undefined;
+  selectedJob?: Job;
   selectedJobLoading: boolean;
   getJobsError: string | undefined;
   getJobDetailsError: string | undefined;
@@ -24,10 +24,23 @@ export interface JobsState {
   patchJobDetailsError: string | undefined;
   postJobLoading: boolean;
   postJobError: string | undefined;
+  jobsToDownload?: Job[];
+  downloadJobsLoading: boolean;
+  downloadJobsError: string | undefined;
+  totalNumberOfApprovedJobs: number | undefined;
+  totalNumberOfJobs: number | undefined;
+  approveJobsLoading: boolean;
+  approveJobsError: string | undefined;
   jobOwnerFilterSuggestions?: PeoplePickerPersona[];
   removeGMMLoading: boolean;
   removeGMMResponse: RemoveGMMResponse | undefined;
   removeGMMError: string | undefined;
+  selectedJobChanges: SyncJobChange[] | undefined;
+  selectedJobChangesLoading: boolean;
+  selectedJobChangesError: string | undefined;
+  selectedJobWithNoTitles: boolean;
+  generatedTitlesYet: boolean;
+  jobIdSet: string;
 }
 
 // Define the initial state using that type
@@ -42,10 +55,23 @@ const initialState: JobsState = {
   patchJobDetailsError: undefined,
   postJobLoading: false,
   postJobError: undefined,
+  jobsToDownload: undefined,
+  downloadJobsLoading: false,
+  downloadJobsError: undefined,
+  totalNumberOfApprovedJobs: undefined,
+  totalNumberOfJobs: undefined,
+  approveJobsLoading: false,
+  approveJobsError: undefined,
   jobOwnerFilterSuggestions: [],
   removeGMMLoading: false,
   removeGMMResponse: undefined,
   removeGMMError: undefined,
+  selectedJobChanges: undefined,
+  selectedJobChangesLoading: false,
+  selectedJobChangesError: undefined,
+  selectedJobWithNoTitles: false,
+  generatedTitlesYet: false,
+  jobIdSet: ""
 };
 
 export const jobsSlice = createSlice({
@@ -61,6 +87,35 @@ export const jobsSlice = createSlice({
     setGetJobDetailsError: (state) => {
       state.getJobDetailsError = undefined;
     },
+    clearJob: (state) => {
+      state.selectedJob = undefined;
+    },
+    clearJobsToDownload: (state) => {
+      state.jobsToDownload = undefined;
+    },
+    updateJobOwnerFilterSuggestions: (state) => {
+      state.jobOwnerFilterSuggestions = [];
+    },
+    setApproveJobsLoading: (state) => {
+      state.approveJobsLoading = false;
+    },
+    setApproveJobsResponse: (state) => {
+      state.totalNumberOfApprovedJobs = undefined;
+      state.totalNumberOfJobs = undefined;
+    },
+    setGeneratedTitlesYet: (state, action: PayloadAction<boolean>) => {
+      state.generatedTitlesYet = action.payload;
+    },
+    setJobId: (state, action: PayloadAction<string>) => {
+      state.jobIdSet = action.payload;
+    },
+    setTitles: (state, action: PayloadAction<Title[]>) => {
+      if (state.selectedJob) {
+        state.selectedJob.titles = action.payload;
+        const hasActualTitles = action.payload.some(title => title.name && title.name.trim() !== '');
+        state.selectedJobWithNoTitles = !hasActualTitles;
+      }
+    }
   },
   extraReducers: (builder) => {
     builder.addCase(fetchJobs.pending, (state) => {
@@ -84,8 +139,38 @@ export const jobsSlice = createSlice({
     builder.addCase(fetchJobDetails.fulfilled, (state, action) => {
       state.selectedJobLoading = false;
       state.selectedJob = action.payload;
+      state.selectedJobWithNoTitles = !action.payload.titles || action.payload.titles.length === 0;
     });
     builder.addCase(fetchJobDetails.rejected, (state, action) => {
+      state.selectedJobLoading = false;
+      state.getJobDetailsError = action.error.message;
+    });
+
+    // getGroupDetails
+    builder.addCase(getGroupDetails.pending, (state) => {
+      state.selectedJobLoading = true;
+      state.selectedJob = undefined;
+    });
+    builder.addCase(getGroupDetails.fulfilled, (state, action) => {
+      state.selectedJobLoading = false;
+      state.selectedJob = action.payload;
+    });
+    builder.addCase(getGroupDetails.rejected, (state, action) => {
+      state.selectedJobLoading = false;
+      state.getJobDetailsError = action.error.message;
+    });
+
+    // getChannelDetails
+    builder.addCase(getChannelDetails.pending, (state) => {
+      state.selectedJobLoading = true;
+      state.selectedJob = undefined;
+    });
+    builder.addCase(getChannelDetails.fulfilled, (state, action) => {
+      state.selectedJobLoading = false;
+      state.selectedJob = action.payload;
+    });
+    builder.addCase(getChannelDetails.rejected, (state, action) => {
+      state.selectedJobLoading = false;
       state.getJobDetailsError = action.error.message;
     });
 
@@ -95,13 +180,14 @@ export const jobsSlice = createSlice({
       state.patchJobDetailsError = undefined;
     });
     builder.addCase(patchJobDetails.fulfilled, (state, action) => {
+      state.jobIdSet = "";
       state.patchJobDetailsResponse = action.payload;
     });
     builder.addCase(patchJobDetails.rejected, (state, action) => {
       state.patchJobDetailsError = action.error.message;
     });
 
-    // postJob 
+    // postJob
     builder.addCase(postJob.pending, (state) => {
       state.postJobLoading = true;
       state.postJobError = undefined;
@@ -114,8 +200,37 @@ export const jobsSlice = createSlice({
       state.postJobError = action.error.message;
     });
 
+    // downloadJobs
+    builder.addCase(downloadJobs.pending, (state) => {
+      state.downloadJobsLoading = true;
+      state.downloadJobsError = undefined;
+    });
+    builder.addCase(downloadJobs.fulfilled, (state, action) => {
+      state.downloadJobsLoading = false;
+      state.jobsToDownload = action.payload;
+    });
+    builder.addCase(downloadJobs.rejected, (state, action) => {
+      state.downloadJobsLoading = false;
+      state.downloadJobsError = action.error.message;
+    });
+
+    // approveJobs
+    builder.addCase(approveJobs.pending, (state) => {
+      state.approveJobsLoading = true;
+      state.approveJobsError = undefined;
+    });
+    builder.addCase(approveJobs.fulfilled, (state, action) => {
+      state.approveJobsLoading = false;
+      state.totalNumberOfApprovedJobs = action.payload.totalNumberOfApprovedJobs;
+      state.totalNumberOfJobs = action.payload.totalNumberOfJobs;
+    });
+    builder.addCase(approveJobs.rejected, (state, action) => {
+      state.approveJobsLoading = false;
+      state.approveJobsError = action.error.message;
+    });
+
     // jobOwnerFilterSuggestions
-    builder.addCase(getJobOwnerFilterSuggestions.fulfilled, (state, {payload}: PayloadAction<PeoplePickerPersona[]>) => {
+    builder.addCase(getPeoplePickerSuggestions.fulfilled, (state, {payload}: PayloadAction<PeoplePickerPersona[]>) => {
       state.jobOwnerFilterSuggestions = payload;
     });
 
@@ -133,11 +248,24 @@ export const jobsSlice = createSlice({
       state.removeGMMLoading = false;
       state.removeGMMError = action.error.message;
     });
+
+    // fetchJobChanges
+    builder.addCase(fetchJobChanges.pending, (state) => {
+      state.selectedJobChangesLoading = true;
+      state.selectedJobChanges = undefined;
+    });
+    builder.addCase(fetchJobChanges.fulfilled, (state, action) => {
+      state.selectedJobChangesLoading = false;
+      state.selectedJobChanges = action.payload;
+    });
+    builder.addCase(fetchJobChanges.rejected, (state, action) => {
+      state.selectedJobChangesError = action.error.message;
+    });
   }
 });
 
 
-export const { setJobs, setGetJobsError, setGetJobDetailsError } =
+export const { setJobs, setGetJobsError, setGetJobDetailsError, clearJob, clearJobsToDownload, updateJobOwnerFilterSuggestions, setApproveJobsLoading, setApproveJobsResponse, setTitles, setGeneratedTitlesYet, setJobId } =
   jobsSlice.actions;
 
 export const selectAllJobs = (state: RootState) => state.jobs.jobs;
@@ -145,6 +273,10 @@ export const selectJobsLoading = (state: RootState) => state.jobs.jobsLoading;
 
 export const selectSelectedJobDetails = (state: RootState) =>
   state.jobs.selectedJob;
+
+export const downloadJobsLoading = (state: RootState) => state.jobs.downloadJobsLoading;
+export const selectJobsToDownload = (state: RootState) => state.jobs.jobsToDownload;
+export const downloadJobsError = (state: RootState) => state.jobs.downloadJobsError;
 
 export const selectSelectedJobLoading = (state: RootState) =>
   state.jobs.selectedJobLoading;
@@ -154,6 +286,13 @@ export const selectGetJobsError = (state: RootState) => state.jobs.getJobsError;
 export const selectGetJobDetailsError = (state: RootState) =>
   state.jobs.getJobDetailsError;
 
+export const selectSelectedJobChanges = (state: RootState) =>
+  state.jobs.selectedJobChanges;
+export const selectSelectedJobChangesLoading = (state: RootState) =>
+  state.jobs.selectedJobChangesLoading;
+export const selectSelectedJobChangesError = (state: RootState) =>
+  state.jobs.selectedJobChangesError;
+
 export const getTotalNumberOfPages = (state: RootState) => state.jobs.totalNumberOfPages;
 
 export const selectPatchJobDetailsResponse = (state: RootState) => state.jobs.patchJobDetailsResponse;
@@ -161,10 +300,19 @@ export const selectPatchJobDetailsError = (state: RootState) => state.jobs.patch
 
 export const selectPostJobLoading = (state: RootState) => state.jobs.postJobLoading;
 export const selectPostJobError = (state: RootState) => state.jobs.postJobError;
-export const selectJobOwnerFilterSuggestions = (state: RootState) => state.jobs.jobOwnerFilterSuggestions;
+export const selectPeoplePickerSuggestions = (state: RootState) => state.jobs.jobOwnerFilterSuggestions;
 
 export const selectRemoveGMMLoading = (state: RootState) => state.jobs.removeGMMLoading;
 export const selectRemoveGMMResponse = (state: RootState) => state.jobs.removeGMMResponse;
 export const selectRemoveGMMError = (state: RootState) => state.jobs.removeGMMError;
+
+export const selectApproveJobsLoading = (state: RootState) => state.jobs.approveJobsLoading;
+export const selectNumberOfApprovedJobs = (state: RootState) => state.jobs.totalNumberOfApprovedJobs;
+export const selectNumberOfJobs = (state: RootState) => state.jobs.totalNumberOfJobs;
+export const selectApproveJobsError = (state: RootState) => state.jobs.approveJobsError;
+
+export const selectSelectedJobWithNoTitles = (state: RootState) => state.jobs.selectedJobWithNoTitles;
+export const selectGeneratedTitlesYet = (state: RootState) => state.jobs.generatedTitlesYet;
+export const selectJobIdSet = (state: RootState) => state.jobs.jobIdSet;
 
 export default jobsSlice.reducer;

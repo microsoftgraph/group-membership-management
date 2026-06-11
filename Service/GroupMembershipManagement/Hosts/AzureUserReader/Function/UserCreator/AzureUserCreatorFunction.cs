@@ -1,8 +1,7 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-using Microsoft.Azure.WebJobs;
-using Microsoft.Azure.WebJobs.Extensions.DurableTask;
+using Microsoft.Azure.Functions.Worker;
 using Models;
 using Repositories.Contracts;
 using System;
@@ -23,22 +22,30 @@ namespace Hosts.AzureUserReader
             _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
         }
 
-        [FunctionName(nameof(AzureUserCreatorFunction))]
+        [Function(nameof(AzureUserCreatorFunction))]
         public async Task<List<GraphProfileInformation>> AddUsersAsync([ActivityTrigger] AzureUserCreatorRequest request)
         {
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(AzureUserCreatorFunction)} function started" }, VerbosityLevel.DEBUG);
 
-            var newUsers = request.PersonnelNumbers.Select(x => new GraphUser
+            if (request == null || request.TenantInformation == null)
             {
-                DisplayName = $"{request.TenantInformation.EmailPrefix} {x}",
-                AccountEnabled = true,
-                Password = PasswordGenerator.GeneratePassword(),
-                MailNickname = $"{request.TenantInformation.EmailPrefix}{x}",
-                UsageLocation = request.TenantInformation.CountryCode,
-                UserPrincipalName = $"{request.TenantInformation.EmailPrefix}{x}@{request.TenantInformation.TenantDomain}",
-                OnPremisesImmutableId = x
-            })
-            .ToList();
+                await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(AzureUserCreatorFunction)} exception, request or TenantInformation is null" }, VerbosityLevel.DEBUG);
+                throw new ArgumentNullException(request == null ? nameof(request) : nameof(request.TenantInformation));
+            }
+
+            var newUsers = request.PersonnelNumbers
+                .Where(x => long.TryParse(x, out _))
+                .Select(x => new GraphUser
+                {
+                    DisplayName = $"{request.TenantInformation.EmailPrefix} {x}",
+                    AccountEnabled = true,
+                    Password = PasswordGenerator.GeneratePassword(),
+                    MailNickname = $"{request.TenantInformation.EmailPrefix}{x}",
+                    UsageLocation = request.TenantInformation.CountryCode,
+                    UserPrincipalName = $"{request.TenantInformation.EmailPrefix}{x}@{request.TenantInformation.TenantDomain}",
+                    OnPremisesImmutableId = x
+                })
+                .ToList();
 
             var newProfiles = await _graphUserRepository.AddUsersAsync(newUsers, null);
 

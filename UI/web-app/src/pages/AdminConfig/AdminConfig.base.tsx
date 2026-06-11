@@ -9,6 +9,14 @@ import {
   selectIsSaving,
   selectOutlookWarningUrl,
   selectPrivacyPolicyUrl,
+  selectUIUrl,
+  selectCanReviewOwnSubmissions,
+  selectCreateGroupFeatureEnabled,
+  selectIsBusinessJustificationRequired,
+  selectIsDisclaimerEnabled,
+  selectIsAutoApprovalForGroupBasedSyncsEnabled,
+  selectIsAutoApprovalForRequestorIsOrgLeaderSyncsEnabled,
+  selectIsAITitleEnabled
 } from '../../store/settings.slice';
 import { patchSetting } from '../../store/settings.api';
 import { AppDispatch } from '../../store';
@@ -18,9 +26,15 @@ import { SettingKey } from '../../models/SettingKey';
 import { setPagingBarVisible } from '../../store/pagingBar.slice';
 import { selectSource, selectAttributes, selectIsSourceSaving, selectAreAttributesSaving, setSource, setAttributes } from '../../store/sqlMembershipSources.slice';
 import { SqlMembershipAttribute, SqlMembershipSource } from '../../models';
-import { patchDefaultSqlMembershipSourceAttributes, patchDefaultSqlMembershipSourceCustomLabel } from '../../store/sqlMembershipSources.api';
-import { selectIsCustomMembershipProviderAdministrator, selectIsHyperlinkAdministrator } from '../../store/roles.slice';
-
+import { fetchAttributeValues, patchDefaultSqlMembershipSourceAttributes, patchDefaultSqlMembershipSourceCustomLabel } from '../../store/sqlMembershipSources.api';
+import {
+  selectIsCustomMembershipProviderAdministrator,
+  selectIsHyperlinkAdministrator,
+  selectIsOperationsResetAdministrator,
+  selectIsGeneralSettingsAdministrator,
+  selectHasAdminCenterPermissions,
+} from '../../store/roles.slice';
+import { MessageBar, MessageBarType } from '@fluentui/react';
 
 export const AdminConfigBase: React.FunctionComponent<AdminConfigProps> = (props: AdminConfigProps) => {
   // get the store's dispatch function
@@ -33,6 +47,14 @@ export const AdminConfigBase: React.FunctionComponent<AdminConfigProps> = (props
   const dashboardUrl = useSelector(selectDashboardUrl);
   const outlookWarningUrl = useSelector(selectOutlookWarningUrl);
   const privacyPolicyUrl = useSelector(selectPrivacyPolicyUrl);
+  const UIUrl = useSelector(selectUIUrl);
+  const canReviewOwnSubmissions = useSelector(selectCanReviewOwnSubmissions);
+  const createGroupFeatureEnabled = useSelector(selectCreateGroupFeatureEnabled);
+  const isBusinessJustificationRequired = useSelector(selectIsBusinessJustificationRequired);
+  const IsDisclaimerEnabled = useSelector(selectIsDisclaimerEnabled);
+  const IsAutoApprovalForGroupBasedSyncsEnabled = useSelector(selectIsAutoApprovalForGroupBasedSyncsEnabled);
+  const IsAutoApprovalForRequestorIsOrgLeaderSyncsEnabled = useSelector(selectIsAutoApprovalForRequestorIsOrgLeaderSyncsEnabled);
+  const isAITitleEnabled = useSelector(selectIsAITitleEnabled);
   const sqlMembershipSource = useSelector(selectSource);
   const sqlMembershipSourceAttributes = useSelector(selectAttributes);
   const isSourceSaving = useSelector(selectIsSourceSaving);
@@ -40,42 +62,106 @@ export const AdminConfigBase: React.FunctionComponent<AdminConfigProps> = (props
   const areSettingsSaving = useSelector(selectIsSaving);
   const isHyperlinkAdmin = useSelector(selectIsHyperlinkAdministrator);
   const isCustomMembershipProviderAdmin = useSelector(selectIsCustomMembershipProviderAdministrator);
+  const isOperationsResetAdministrator = useSelector(selectIsOperationsResetAdministrator);
+  const isGeneralSettingsAdministrator = useSelector(selectIsGeneralSettingsAdministrator);
+  const canViewSettings = useSelector(selectHasAdminCenterPermissions);
+
   const strings = useStrings().AdminConfig;
 
   const generateSettings = () => ({
     [SettingKey.DashboardUrl]: dashboardUrl ?? '',
     [SettingKey.OutlookWarningUrl]: outlookWarningUrl ?? '',
-    [SettingKey.PrivacyPolicyUrl]: privacyPolicyUrl ?? ''
+    [SettingKey.PrivacyPolicyUrl]: privacyPolicyUrl ?? '',
+    [SettingKey.UIUrl]: UIUrl ?? '',
+    [SettingKey.CanReviewOwnSubmissions]: canReviewOwnSubmissions ? 'true' : 'false',
+    [SettingKey.CreateGroupFeatureEnabled]: createGroupFeatureEnabled ? 'true' : 'false',
+    [SettingKey.IsBusinessJustificationRequired]: isBusinessJustificationRequired ? 'true' : 'false',
+    [SettingKey.IsDisclaimerEnabled]: IsDisclaimerEnabled ? 'true' : 'false',
+    [SettingKey.IsAutoApprovalForGroupBasedSyncsEnabled]: IsAutoApprovalForGroupBasedSyncsEnabled ? 'true' : 'false',
+    [SettingKey.IsAutoApprovalForRequestorIsOrgLeaderSyncsEnabled]: IsAutoApprovalForRequestorIsOrgLeaderSyncsEnabled ? 'true' : 'false',
+    [SettingKey.IsAITitleEnabled]: isAITitleEnabled ? 'true' : 'false'
   });
 
   const [settings, setSettings] = useState<{ readonly [key in SettingKey]: string }>(generateSettings());
 
-  useEffect(() => { 
+  useEffect(() => {
     setSettings(generateSettings())
-  }, [dashboardUrl, outlookWarningUrl, privacyPolicyUrl]);
+  }, [dashboardUrl, outlookWarningUrl, privacyPolicyUrl, canReviewOwnSubmissions, createGroupFeatureEnabled, isBusinessJustificationRequired, IsDisclaimerEnabled, IsAutoApprovalForGroupBasedSyncsEnabled, IsAutoApprovalForRequestorIsOrgLeaderSyncsEnabled, isAITitleEnabled]);
 
-  // Create an event handler that should be called when the user clicks the save button.
+  const handleGetValues = (attribute: SqlMembershipAttribute) => {
+    dispatch(fetchAttributeValues(attribute));
+  }
+
+  // Update boolean values to strings before dispatching patchSetting
   const handleSave = (newSettings: { readonly [key in SettingKey]: string }, newSqlMembershipSource: SqlMembershipSource | undefined, newSqlMembershipAttributes: SqlMembershipAttribute[] | undefined) => {
-   
-    // save new settings
-    if (JSON.stringify(newSettings) !== JSON.stringify(settings)) {
+    const formattedSettings = {
+      ...newSettings,
+      [SettingKey.CanReviewOwnSubmissions]: newSettings[SettingKey.CanReviewOwnSubmissions] === 'true' ? 'true' : 'false',
+      [SettingKey.CreateGroupFeatureEnabled]: newSettings[SettingKey.CreateGroupFeatureEnabled] === 'true' ? 'true' : 'false',
+      [SettingKey.IsBusinessJustificationRequired]: newSettings[SettingKey.IsBusinessJustificationRequired] === 'true' ? 'true' : 'false',
+      [SettingKey.IsDisclaimerEnabled]: newSettings[SettingKey.IsDisclaimerEnabled] === 'true' ? 'true' : 'false',
+      [SettingKey.IsAITitleEnabled]: newSettings[SettingKey.IsAITitleEnabled] === 'true' ? 'true' : 'false',
+    };
 
-      setSettings(newSettings);
+    if (JSON.stringify(formattedSettings) !== JSON.stringify(settings)) {
+      setSettings(formattedSettings);
 
       dispatch(
         patchSetting({
           settingKey: SettingKey.DashboardUrl,
-          settingValue: newSettings[SettingKey.DashboardUrl],
+          settingValue: formattedSettings[SettingKey.DashboardUrl],
         })
       );
       dispatch(patchSetting({
         settingKey: SettingKey.OutlookWarningUrl,
-        settingValue: newSettings[SettingKey.OutlookWarningUrl]
+        settingValue: formattedSettings[SettingKey.OutlookWarningUrl]
       }));
       dispatch(
         patchSetting({
           settingKey: SettingKey.PrivacyPolicyUrl,
-          settingValue: newSettings[SettingKey.PrivacyPolicyUrl],
+          settingValue: formattedSettings[SettingKey.PrivacyPolicyUrl],
+        })
+      );
+      dispatch(
+        patchSetting({
+          settingKey: SettingKey.CanReviewOwnSubmissions,
+          settingValue: formattedSettings[SettingKey.CanReviewOwnSubmissions],
+        })
+      );
+      dispatch(
+        patchSetting({
+          settingKey: SettingKey.CreateGroupFeatureEnabled,
+          settingValue: formattedSettings[SettingKey.CreateGroupFeatureEnabled],
+        })
+      );
+      dispatch(
+        patchSetting({
+          settingKey: SettingKey.IsBusinessJustificationRequired,
+          settingValue: formattedSettings[SettingKey.IsBusinessJustificationRequired],
+        })
+      );
+      dispatch(
+        patchSetting({
+          settingKey: SettingKey.IsDisclaimerEnabled,
+          settingValue: formattedSettings[SettingKey.IsDisclaimerEnabled],
+        })
+      );
+      dispatch(
+        patchSetting({
+          settingKey: SettingKey.IsAutoApprovalForGroupBasedSyncsEnabled,
+          settingValue: formattedSettings[SettingKey.IsAutoApprovalForGroupBasedSyncsEnabled],
+        })
+      );
+      dispatch(
+        patchSetting({
+          settingKey: SettingKey.IsAutoApprovalForRequestorIsOrgLeaderSyncsEnabled,
+          settingValue: formattedSettings[SettingKey.IsAutoApprovalForRequestorIsOrgLeaderSyncsEnabled],
+        })
+      );
+      dispatch(
+        patchSetting({
+          settingKey: SettingKey.IsAITitleEnabled,
+          settingValue: formattedSettings[SettingKey.IsAITitleEnabled]
         })
       );
     }
@@ -89,7 +175,7 @@ export const AdminConfigBase: React.FunctionComponent<AdminConfigProps> = (props
         setSource(newSqlMembershipSource)
       );
     }
-    
+
     if (JSON.stringify(newSqlMembershipAttributes) !== JSON.stringify(sqlMembershipSourceAttributes)) {
       dispatch(
         patchDefaultSqlMembershipSourceAttributes(newSqlMembershipAttributes ?? [])
@@ -102,6 +188,14 @@ export const AdminConfigBase: React.FunctionComponent<AdminConfigProps> = (props
     // there is a Toast notification in fluent/react-components (v9) that we should be using for save notifications.
   };
 
+  if (!canViewSettings) {
+    return (<MessageBar
+      messageBarType={MessageBarType.error}
+      isMultiline={false}
+    >
+    {strings.Errors.forbidden}
+  </MessageBar>);
+}
   // render the view with the data from the store and the event handler
   return (
     <AdminConfigView
@@ -110,10 +204,13 @@ export const AdminConfigBase: React.FunctionComponent<AdminConfigProps> = (props
       settings={settings}
       strings={strings}
       onSave={handleSave}
+      handleGetValues={handleGetValues}
       sqlMembershipSource={sqlMembershipSource}
       sqlMembershipSourceAttributes={sqlMembershipSourceAttributes}
       isHyperlinkAdmin={isHyperlinkAdmin}
       isCustomMembershipProviderAdmin={isCustomMembershipProviderAdmin}
+      isOperationsResetAdministrator={isOperationsResetAdministrator}
+      isGeneralSettingsAdministrator={isGeneralSettingsAdministrator}
     />
   );
 };

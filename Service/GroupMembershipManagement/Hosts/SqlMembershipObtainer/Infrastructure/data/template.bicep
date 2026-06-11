@@ -8,14 +8,11 @@ param environmentAbbreviation string
 @maxLength(3)
 param solutionAbbreviation string = 'gmm'
 
-@description('Enter storage account name.')
-param storageAccountName string
-
-@description('Tenant id.')
-param tenantId string
-
 @description('Resource location.')
 param location string
+
+@description('Classify the types of resources in prereqs resource group.')
+param prereqsResourceGroupClassification string = 'prereqs'
 
 @description('SqlMembershipObtainer function internal storage account sku.')
 param storageAccountSku string = 'Standard_LRS'
@@ -23,8 +20,7 @@ param storageAccountSku string = 'Standard_LRS'
 /* This creates the internal storage accounts used by SqlMemberhipObtainer function */
 
 var dataKeyVaultName = '${solutionAbbreviation}-data-${environmentAbbreviation}'
-var prodStorageAccountName = substring('sqlmo${solutionAbbreviation}${environmentAbbreviation}prod${uniqueString(resourceGroup().id)}',0,23)
-var stagingStorageAccountName = substring('sqlmo${solutionAbbreviation}${environmentAbbreviation}staging${uniqueString(resourceGroup().id)}',0,23)
+var prodStorageAccountName = substring('smo${solutionAbbreviation}${environmentAbbreviation}prod${uniqueString(resourceGroup().id)}',0,23)
 
 module smoStorageAccountProd 'storageAccount.bicep' = {
   name: 'smoProdstorageAccountTemplate'
@@ -33,19 +29,21 @@ module smoStorageAccountProd 'storageAccount.bicep' = {
     sku: storageAccountSku
     keyVaultName: dataKeyVaultName
     location: location
-    sqlMembershipObtainerStorageAccountName: 'sqlMembershipObtainerStorageAccountNameProd'
-    storageAccountConnectionStringSettingName: 'sqlMembershipObtainerStorageAccountProd'
+    storageAccountSettingName: 'sqlMembershipObtainerStorageAccountProd'
+    appPackageContainerSettingName: 'sqlMembershipObtainerAppPackageContainerProd'
+    appPackageContainerName: 'app-package'
   }
 }
 
-module smoStorageAccountStaging 'storageAccount.bicep' = {
-  name: 'smoStagingstorageAccountTemplate'
+var nspName = '${solutionAbbreviation}-nsp-${environmentAbbreviation}'
+var prereqsResourceGroupName = '${solutionAbbreviation}-${prereqsResourceGroupClassification}-${environmentAbbreviation}'
+
+module smoStorageAccountAssociationTemplate 'networkSecurityPerimeterResourceAssociation.bicep' = {
+  name: 'smoStorageAccountAssociationTemplate'
+  scope: resourceGroup(prereqsResourceGroupName)
   params: {
-    name: stagingStorageAccountName
-    sku: storageAccountSku
-    keyVaultName: dataKeyVaultName
-    location: location
-    sqlMembershipObtainerStorageAccountName: 'sqlMembershipObtainerStorageAccountNameStaging'
-    storageAccountConnectionStringSettingName: 'sqlMembershipObtainerStorageAccountStaging'
+    nspName: nspName
+    profileName: 'storageaccount'
+    resourceId: smoStorageAccountProd.outputs.storageAccountId
   }
 }

@@ -5,10 +5,10 @@ import {
     type IOnboardingStepStyleProps,
     type IOnboardingStepStyles,
   } from './OnboardingStep.types';
-  
+
   export const getStyles = (props: IOnboardingStepStyleProps): IOnboardingStepStyles => {
     const { className, theme } = props;
-  
+
     return {
       root: [{
       }, className],
@@ -46,4 +46,4 @@ import {
       }
     };
   };
-  
+

@@ -1,5 +1,5 @@
 // Copyright (c) Microsoft Corporation.
-// Licensed under the MIT license.import React from "react";
+// Licensed under the MIT license.import React from 'react';
 
 import { classNamesFunction, IButtonStyles, IconButton, IPersonaSharedProps, IProcessedStyleSet, IStyle, Persona, PersonaSize, useTheme } from '@fluentui/react';
 import { useNavigate } from 'react-router-dom';
@@ -10,12 +10,15 @@ import {
 } from './AppHeader.types';
 import { useDispatch, useSelector } from 'react-redux';
 import { AppDispatch } from '../../store';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { selectProfilePhoto } from '../../store/profile.slice';
 import { getProfilePhoto } from '../../store/profile.api';
 import logo from '../../logo.svg';
 import { useStrings } from '../../store/hooks';
-import { selectIsCustomMembershipProviderAdministrator, selectIsHyperlinkAdministrator } from '../../store/roles.slice';
+import { selectHasAdminCenterPermissions } from '../../store/roles.slice';
+import { selectIsDisclaimerEnabled } from '../../store/settings.slice';
+import { Disclaimer } from '../Disclaimer';
+import { jsxFormat } from '../../utils/stringUtils';
 
 const getClassNames = classNamesFunction<
   IAppHeaderStyleProps,
@@ -38,9 +41,8 @@ export const AppHeaderBase: React.FunctionComponent<IAppHeaderProps> = (
 
   const dispatch = useDispatch<AppDispatch>();
   const profilePhoto = useSelector(selectProfilePhoto);
-  const isHyperlinkAdmin = useSelector(selectIsHyperlinkAdministrator);
-  const isCustomMembershipProviderAdmin = useSelector(selectIsCustomMembershipProviderAdministrator);
-  const canViewSettings = isHyperlinkAdmin || isCustomMembershipProviderAdmin;
+  const canViewSettings = useSelector(selectHasAdminCenterPermissions);
+  const isDisclaimerEnabled = useSelector(selectIsDisclaimerEnabled);
 
   useEffect(() => {
     if (!profilePhoto) {
@@ -51,11 +53,21 @@ export const AppHeaderBase: React.FunctionComponent<IAppHeaderProps> = (
   const navigate = useNavigate();
 
   const onSettingsButtonClicked = (): void => {
-    navigate('/AdminConfig', { replace: false, state: { item: 1 } });
+    navigate('/Admin', { replace: false, state: { item: 1 } });
   };
 
   const onLogoClicked = () => {
     navigate('/', { replace: false, state: { item: 1 } });
+  };
+
+  const [isDisclaimerOpen, setIsDisclaimerOpen] = useState(false);
+
+  const onReviewDisclaimerClicked = (): void => {
+    setIsDisclaimerOpen(true);
+  };
+
+  const closeDisclaimer = (): void => {
+    setIsDisclaimerOpen(false);
   };
 
   const personaProps: IPersonaSharedProps = {
@@ -71,28 +83,59 @@ export const AppHeaderBase: React.FunctionComponent<IAppHeaderProps> = (
     rootPressed: disabledStyles
   }
 
-  return (
-    <header className={classNames.root}>
-      <a href="/" className={classNames.mainButton} onClick={onLogoClicked}>
-        <div className={classNames.titleContainer}>
-          <div className={classNames.appIcon}>
-            <img src={logo} alt="Membership Management Icon" style={{ height: 32, width: 32 }} />
+  return (<>
+      <header className={classNames.root}>
+        <a href="/" className={classNames.mainButton} onClick={onLogoClicked}>
+          <div className={classNames.titleContainer}>
+            <div className={classNames.appIcon}>
+              <img src={logo} aria-hidden="true" style={{ height: 32, width: 32 }} />
+            </div>
+            <div className={classNames.appTitle}>{strings.membershipManagement}</div>
           </div>
-          <div className={classNames.appTitle}>{strings.membershipManagement}</div>
-        </div>
-      </a>
-      {
-        canViewSettings &&
-        <div className={classNames.settingsContainer}>
-          <IconButton
-            title={strings.Components.AppHeader.settings}
-            iconProps={{ iconName: 'settings' }}
-            className={classNames.settingsIcon}
-            styles={buttonStyles}
-            onClick={onSettingsButtonClicked} />
-          <Persona size={PersonaSize.size32} className={classNames.userPersona} {...personaProps} />
-        </div>
-      }
-    </header>
+        </a>
+        {
+          canViewSettings &&
+          <div className={classNames.settingsContainer}>
+            <IconButton
+              title={strings.Components.AppHeader.settings}
+              iconProps={{ iconName: 'settings' }}
+              className={classNames.settingsIcon}
+              styles={buttonStyles}
+              onClick={onSettingsButtonClicked} />
+            <Persona size={PersonaSize.size32} className={classNames.userPersona} {...personaProps} />
+            {isDisclaimerEnabled && (
+              <IconButton
+                title={strings.Components.AppHeader.reviewDisclaimer}
+                iconProps={{ iconName: 'Info' }}
+                className={classNames.settingsIcon}
+                styles={buttonStyles}
+                onClick={onReviewDisclaimerClicked}
+              />
+            )}
+          </div>
+        }
+      </header>
+      <>
+        {isDisclaimerEnabled && isDisclaimerOpen && (
+          <Disclaimer
+            checkboxes={[
+              { id: 'membershipRules', label: jsxFormat(strings.Disclaimer.membershipRules,<strong>{strings.Disclaimer.membershipRulesBoldNote}</strong>) },
+              { id: 'outlookWelcomeMessage', label: strings.Disclaimer.outlookWelcomeMessage },
+              { id: 'autoSubscribeSettings',
+                label: jsxFormat(
+                  strings.Disclaimer.autoSubscribeSettings,
+                  <strong>{strings.Disclaimer.membersAutoFollowGroupConversationsOption}</strong>,
+                  <strong><a href="https://myaccount.microsoft.com/groups" target="_blank" rel="noopener noreferrer" style={{ color: theme.palette.themePrimary, textDecoration: 'underline' }}>{strings.Disclaimer.myGroupsUI}</a></strong>
+                )
+              },
+              { id: 'authorizedSenders', label: jsxFormat(strings.Disclaimer.authorizedSenders,<strong>{strings.Disclaimer.authorizedSendersBoldNote}</strong>) },
+              { id: 'teamsVivaNotifications', label: strings.Disclaimer.teamsVivaNotifications },
+              { id: 'flatList', label: strings.Disclaimer.flatList },
+            ]}
+            onDismiss={closeDisclaimer}
+          />
+        )}
+      </>
+    </>
   );
 };

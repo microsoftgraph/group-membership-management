@@ -6,4 +6,6 @@ export type ODataQueryOptions = {
   $skip?: number;
   $filter?: string;
   $orderBy?: string;
+  customSortBy?: string;
+  isSortedDescending?: boolean;
 };

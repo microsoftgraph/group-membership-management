@@ -1,5 +1,5 @@
 // Copyright (c) Microsoft Corporation.
-// Licensed under the MIT license.import React from "react";
+// Licensed under the MIT license.import React from 'react';
 
 import { render } from '@testing-library/react';
 import '@testing-library/jest-dom';

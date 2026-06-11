@@ -10,5 +10,7 @@ namespace Services.Messages.Requests
     public class GetJobsRequest : RequestBase
     {
         public ODataQueryOptions<SyncJobModel>? QueryOptions { get; set; }
+        public string? CustomSortBy { get; set; }
+        public bool? IsSortedDescending { get; set; }
     }
 }

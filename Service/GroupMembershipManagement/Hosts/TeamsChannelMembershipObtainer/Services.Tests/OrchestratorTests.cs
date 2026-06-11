@@ -3,13 +3,14 @@
 using Hosts.TeamsChannelMembershipObtainer;
 using Microsoft.ApplicationInsights;
 using Microsoft.ApplicationInsights.Extensibility;
-using Microsoft.Azure.WebJobs.Extensions.DurableTask;
+using Microsoft.DurableTask;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Models;
 using Models.Entities;
 using Moq;
 using Repositories.Contracts;
 using Repositories.Contracts.InjectConfig;
+using Services.Contracts;
 using TeamsChannelMembershipObtainer.Service.Contracts;
 
 namespace Services.Tests
@@ -18,80 +19,82 @@ namespace Services.Tests
     public class OrchestratorTests
     {
         private Mock<IDryRunValue> _dryRunValue;
-        private Mock<IDurableOrchestrationContext> _durableOrchestrationContext;
-        private Mock<Microsoft.Azure.WebJobs.ExecutionContext> _executionContext;
+        private Mock<TaskOrchestrationContext> _durableOrchestrationContext;
         private TelemetryClient _telemetryClient;
         private Mock<ITeamsChannelService> _teamsChannelMembershipObtainerService = null!;
         private ChannelSyncInfo _syncInfo = null!;
         private Mock<ILoggingRepository> _loggingRepository = null!;
-        
+
         [TestInitialize]
         public void SetUp()
         {
 
             _telemetryClient = new TelemetryClient(new TelemetryConfiguration());
             _loggingRepository = new Mock<ILoggingRepository>();
-            _executionContext = new Mock<Microsoft.Azure.WebJobs.ExecutionContext>();
-            _durableOrchestrationContext = new Mock<IDurableOrchestrationContext>();
+            _durableOrchestrationContext = new Mock<TaskOrchestrationContext>();
             _dryRunValue = new Mock<IDryRunValue>();
             _teamsChannelMembershipObtainerService = new Mock<ITeamsChannelService>();
 
             List<AzureADTeamsUser> testUsers = new List<AzureADTeamsUser> { new AzureADTeamsUser { ObjectId = Guid.NewGuid(), ConversationMemberId = "user1" }, new AzureADTeamsUser { ObjectId = Guid.NewGuid(), ConversationMemberId = "user2" } };
 
+            Channel destination = new Channel { GroupId = Guid.NewGuid(), ChannelId = "some-channel" };
 
             _teamsChannelMembershipObtainerService.Setup(x => x.GetUsersFromTeamAsync(It.IsAny<AzureADTeamsChannel>(), It.IsAny<Guid>()))
                                   .ReturnsAsync(() => testUsers);
             _teamsChannelMembershipObtainerService.Setup(x => x.VerifyChannelAsync(It.IsAny<ChannelSyncInfo>()))
-                                  .ReturnsAsync(() => (new AzureADTeamsChannel(), isGood: true));
+                                  .ReturnsAsync(() => (new ValidateChannelResponse{
+                                      ParsedChannel = new AzureADTeamsChannel(),
+                                      IsValid = true
+                                  }));
 
 
             _durableOrchestrationContext.Setup(x => x.GetInput<ChannelSyncInfo>())
                                        .Returns(() => _syncInfo);
 
-            _durableOrchestrationContext.Setup(x => x.CallActivityAsync(It.IsAny<string>(), It.IsAny<LoggerRequest>()))
-                                        .Callback<string, object>(async (name, request) =>
+            _durableOrchestrationContext.Setup(x => x.CallActivityAsync(It.IsAny<TaskName>(), It.IsAny<LoggerRequest>(), It.IsAny<TaskOptions>()))
+                                        .Callback<TaskName, object, TaskOptions>(async (name, request, options) =>
                                         {
                                             await CallLoggerFunctionAsync(request as LoggerRequest);
                                         });
 
-            (AzureADTeamsChannel parsedChannel, bool isGood) validated = (null, false);
-            _durableOrchestrationContext.Setup(x => x.CallActivityAsync<(AzureADTeamsChannel parsedChannel, bool isGood)>(It.IsAny<string>(), It.IsAny<ChannelSyncInfo>()))
-                                        .Callback<string, object>(async (name, request) =>
+            var validated = new ValidateChannelResponse{ ParsedChannel = null, IsValid = false };
+            _durableOrchestrationContext.Setup(x => x.CallActivityAsync<ValidateChannelResponse>(It.IsAny<TaskName>(), It.IsAny<ChannelSyncInfo>(), It.IsAny<TaskOptions>()))
+                                        .Callback<TaskName, object, TaskOptions>(async (name, request, options) =>
                                         {
                                             validated = await CallChannelValidatorFunctionAsync(request as ChannelSyncInfo);
                                         })
                                         .ReturnsAsync(() => validated);
 
             List<AzureADTeamsUser> users = null;
-            _durableOrchestrationContext.Setup(x => x.CallActivityAsync<List<AzureADTeamsUser>>(It.IsAny<string>(), It.IsAny<UserReaderRequest>()))
-                                        .Callback<string, object>(async (name, request) =>
+            _durableOrchestrationContext.Setup(x => x.CallActivityAsync<List<AzureADTeamsUser>>(It.IsAny<TaskName>(), It.IsAny<UserReaderRequest>(), It.IsAny<TaskOptions>()))
+                                        .Callback<TaskName, object, TaskOptions>(async (name, request, options) =>
                                         {
                                            users = await CallUserReaderFunctionAsync(request as UserReaderRequest);
                                         })
                                         .ReturnsAsync(() => users);
 
             string filename = null;
-            _durableOrchestrationContext.Setup(x => x.CallActivityAsync<string>(It.IsAny<string>(), It.IsAny<FileUploaderRequest>()))
-                                       .Callback<string, object>(async (name, request) =>
+            _durableOrchestrationContext.Setup(x => x.CallActivityAsync<string>(It.IsAny<TaskName>(), It.IsAny<FileUploaderRequest>(), It.IsAny<TaskOptions>()))
+                                       .Callback<TaskName, object, TaskOptions>(async (name, request, options) =>
                                        {
                                            filename = await CallFileUploaderFunctionAsync(request as FileUploaderRequest);
                                        })
                                        .ReturnsAsync(() => filename);
 
-            _durableOrchestrationContext.Setup(x => x.CallActivityAsync(It.IsAny<string>(), It.IsAny<QueueMessageSenderRequest>()))
-                                        .Callback<string, object>(async (name, request) =>
+            _durableOrchestrationContext.Setup(x => x.CallActivityAsync(It.IsAny<TaskName>(), It.IsAny<QueueMessageSenderRequest>(), It.IsAny<TaskOptions>()))
+                                        .Callback<TaskName, object, TaskOptions>(async (name, request, options) =>
                                         {
                                             await CallQueueMessageSenderFunctionAsync(request as QueueMessageSenderRequest);
                                         });
 
-            _durableOrchestrationContext.Setup(x => x.CallActivityAsync(It.IsAny<string>(), It.IsAny<JobStatusUpdaterRequest>()))
-                                        .Callback<string, object>(async (name, request) =>
+            _durableOrchestrationContext.Setup(x => x.CallActivityAsync(It.IsAny<TaskName>(), It.IsAny<JobStatusUpdaterRequest>(), It.IsAny<TaskOptions>()))
+                                        .Callback<TaskName, object, TaskOptions>(async (name, request, options) =>
                                         {
                                             await CallJobStatusUpdaterFunctionAsync(request as JobStatusUpdaterRequest);
                                         });
 
-            _durableOrchestrationContext.Setup(x => x.CallActivityAsync(It.Is<string>(x => x == nameof(TelemetryTrackerFunction)), It.IsAny<TelemetryTrackerRequest>()))
-                    .Callback<string, object>(async (name, request) =>
+            _durableOrchestrationContext.Setup(x => x.CallActivityAsync(It.Is<TaskName>(x => x.ToString() == nameof(TelemetryTrackerFunction)), It.IsAny<TelemetryTrackerRequest>(), It.IsAny<TaskOptions>()))
+                    .Callback<TaskName, object, TaskOptions>(async (name, request, options) =>
                     {
                         var telemetryRequest = request as TelemetryTrackerRequest;
                         await CallTelemetryTrackerFunctionAsync(telemetryRequest);
@@ -107,10 +110,14 @@ namespace Services.Tests
                 {
                     RunId = Guid.Parse("00000000-0000-0000-0000-000000000012"),
                     Status = SyncStatus.InProgress.ToString(),
-                    TargetOfficeGroupId = Guid.Parse("00000000-0000-0000-0000-000000000042"),
                     Timestamp = new DateTimeOffset(1995, 03, 28, 1, 2, 3, TimeSpan.Zero),
                     Query = @"[{""type"":""GroupMembership"",""source"":""00000000-0000-0000-0000-000000000000""}]",
-                    Destination = @"[{""type"":""TeamsChannelMembership"",""value"":{""objectId"":""00000000-0000-0000-0000-000000000000"", ""channelId"":""some channel""}}]"
+                    MembershipType = "TeamsChannelMembership",
+                    Channel = new Channel
+                    {
+                        GroupId = Guid.NewGuid(),
+                        ChannelId = "some-channel"
+                    }
                 }
             };
 
@@ -129,10 +136,14 @@ namespace Services.Tests
                 {
                     RunId = Guid.Parse("00000000-0000-0000-0000-000000000012"),
                     Status = SyncStatus.InProgress.ToString(),
-                    TargetOfficeGroupId = Guid.Parse("00000000-0000-0000-0000-000000000042"),
                     Timestamp = new DateTimeOffset(1995, 03, 28, 1, 2, 3, TimeSpan.Zero),
                     Query = @"[{""type"":""GroupMembership"",""source"":""00000000-0000-0000-0000-000000000000""}]",
-                    Destination = @"[{""type"":""TeamsChannelMembership"",""value"":{""objectId"":""00000000-0000-0000-0000-000000000000"", ""channelId"":""some channel""}}]"
+                    MembershipType = "TeamsChannelMembership",
+                    Channel = new Channel
+                    {
+                        GroupId = Guid.NewGuid(),
+                        ChannelId = "some-channel"
+                    }
                 }
             };
 
@@ -143,7 +154,7 @@ namespace Services.Tests
                                             _dryRunValue.Object
             );
 
-            await orchestratorFunction.RunOrchestratorAsync(_durableOrchestrationContext.Object, _executionContext.Object);
+            await orchestratorFunction.RunOrchestratorAsync(_durableOrchestrationContext.Object);
 
             _loggingRepository.Verify(x => x.LogMessageAsync(
                                                 It.Is<LogMessage>(m => m.Message.Contains("function finished")),
@@ -152,7 +163,7 @@ namespace Services.Tests
                                                 It.IsAny<string>()
                                             ), Times.Once);
 
-            _durableOrchestrationContext.Verify(x => x.CallActivityAsync(It.IsAny<string>(), It.IsAny<SyncStatus>()), Times.Never);
+            _durableOrchestrationContext.Verify(x => x.CallActivityAsync(It.IsAny<TaskName>(), It.IsAny<SyncStatus>(), It.IsAny<TaskOptions>()), Times.Never);
 
         }
 
@@ -169,10 +180,14 @@ namespace Services.Tests
                 {
                     RunId = Guid.Parse("00000000-0000-0000-0000-000000000012"),
                     Status = SyncStatus.InProgress.ToString(),
-                    TargetOfficeGroupId = Guid.Parse("00000000-0000-0000-0000-000000000042"),
                     Timestamp = new DateTimeOffset(1995, 03, 28, 1, 2, 3, TimeSpan.Zero),
                     Query = @"[{""type"":""GroupMembership"",""source"":""00000000-0000-0000-0000-000000000000""}]",
-                    Destination = @"[{""type"":""TeamsChannelMembership"",""value"":{""objectId"":""00000000-0000-0000-0000-000000000000"", ""channelId"":""some channel""}}]"
+                    MembershipType = "TeamsChannelMembership",
+                    Channel = new Channel
+                    {
+                        GroupId = Guid.NewGuid(),
+                        ChannelId = "some-channel"
+                    }
                 }
             };
 
@@ -183,7 +198,7 @@ namespace Services.Tests
                                             _dryRunValue.Object
             );
 
-            await orchestratorFunction.RunOrchestratorAsync(_durableOrchestrationContext.Object, _executionContext.Object);
+            await orchestratorFunction.RunOrchestratorAsync(_durableOrchestrationContext.Object);
 
             _loggingRepository.Verify(x => x.LogMessageAsync(
                                                 It.Is<LogMessage>(m => m.Message.Contains("Found invalid value for CurrentPart or TotalParts")),
@@ -192,7 +207,7 @@ namespace Services.Tests
                                                 It.IsAny<string>()
                                             ), Times.Once);
 
-            _durableOrchestrationContext.Verify(x => x.CallActivityAsync(It.IsAny<string>(), It.Is<JobStatusUpdaterRequest>(request => request.Status == SyncStatus.Error)), Times.Once);
+            _durableOrchestrationContext.Verify(x => x.CallActivityAsync(It.IsAny<TaskName>(), It.Is<JobStatusUpdaterRequest>(request => request.Status == SyncStatus.Error), It.IsAny<TaskOptions>()), Times.Once);
 
         }
 
@@ -202,10 +217,14 @@ namespace Services.Tests
         {
 
             _teamsChannelMembershipObtainerService.Setup(x => x.VerifyChannelAsync(It.IsAny<ChannelSyncInfo>()))
-                                   .ReturnsAsync(() => (new AzureADTeamsChannel(), isGood: false));
+                                   .ReturnsAsync(() => (new ValidateChannelResponse
+                                    {
+                                        ParsedChannel = new AzureADTeamsChannel(),
+                                        IsValid = false
+                                    }));
 
             var orchestratorFunction = new OrchestratorFunction(_loggingRepository.Object, _teamsChannelMembershipObtainerService.Object, _dryRunValue.Object);
-            await orchestratorFunction.RunOrchestratorAsync(_durableOrchestrationContext.Object, _executionContext.Object);
+            await orchestratorFunction.RunOrchestratorAsync(_durableOrchestrationContext.Object);
 
             _loggingRepository.Verify(x => x.LogMessageAsync(
                                                It.Is<LogMessage>(m => m.Message.Contains("Teams Channel Destination did not validate.")),
@@ -220,11 +239,11 @@ namespace Services.Tests
         public async Task TestUnhandledException()
         {
 
-            _durableOrchestrationContext.Setup(x => x.CallActivityAsync<(AzureADTeamsChannel parsedChannel, bool isGood)>(It.IsAny<string>(), It.IsAny<ChannelSyncInfo>()))
+            _durableOrchestrationContext.Setup(x => x.CallActivityAsync<ValidateChannelResponse>(It.IsAny<TaskName>(), It.IsAny<ChannelSyncInfo>(), It.IsAny<TaskOptions>()))
                                        .Throws<Exception>();
 
             var orchestratorFunction = new OrchestratorFunction(_loggingRepository.Object, _teamsChannelMembershipObtainerService.Object, _dryRunValue.Object);
-            await Assert.ThrowsExceptionAsync<Exception>(async () => await orchestratorFunction.RunOrchestratorAsync(_durableOrchestrationContext.Object, _executionContext.Object));
+            await Assert.ThrowsExceptionAsync<Exception>(async () => await orchestratorFunction.RunOrchestratorAsync(_durableOrchestrationContext.Object));
 
             _loggingRepository.Verify(x => x.LogMessageAsync(
                                                It.Is<LogMessage>(m => m.Message.Contains("Caught unexpected exception:")),
@@ -233,7 +252,7 @@ namespace Services.Tests
                                                It.IsAny<string>()
                                            ), Times.Once);
 
-            _durableOrchestrationContext.Verify(x => x.CallActivityAsync(It.IsAny<string>(), It.Is<JobStatusUpdaterRequest>(request => request.Status == SyncStatus.Error)), Times.Once);
+            _durableOrchestrationContext.Verify(x => x.CallActivityAsync(It.IsAny<TaskName>(), It.Is<JobStatusUpdaterRequest>(request => request.Status == SyncStatus.Error), It.IsAny<TaskOptions>()), Times.Once);
 
         }
 
@@ -273,7 +292,7 @@ namespace Services.Tests
             return await function.ReadUsersAsync(request);
         }
 
-        private async Task<(AzureADTeamsChannel parsedChannel, bool isGood)> CallChannelValidatorFunctionAsync(ChannelSyncInfo request)
+        private async Task<ValidateChannelResponse> CallChannelValidatorFunctionAsync(ChannelSyncInfo request)
         {
             var function = new ChannelValidatorFunction(_loggingRepository.Object, _teamsChannelMembershipObtainerService.Object);
             return await function.ValidateChannelAsync(request);
@@ -281,3 +300,5 @@ namespace Services.Tests
 
     }
 }
+
+

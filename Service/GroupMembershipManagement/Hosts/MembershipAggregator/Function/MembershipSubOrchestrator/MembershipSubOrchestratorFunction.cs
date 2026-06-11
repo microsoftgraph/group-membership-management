@@ -1,95 +1,189 @@
 // Copyright(c) Microsoft Corporation.
 // Licensed under the MIT license.
+using DIConcreteTypes;
 using MembershipAggregator.Activity.EmailSender;
 using MembershipAggregator.Helpers;
+using MembershipAggregator.Services.Entities;
 using Microsoft.ApplicationInsights;
-using Microsoft.Azure.WebJobs;
-using Microsoft.Azure.WebJobs.Extensions.DurableTask;
+using Microsoft.Azure.Functions.Worker;
+using Microsoft.DurableTask;
+using Microsoft.Extensions.Logging;
 using Models;
 using Models.Helpers;
 using Models.Notifications;
 using Models.ServiceBus;
-using Newtonsoft.Json;
+using Repositories.Contracts.Helpers;
 using Repositories.Contracts.InjectConfig;
 using Services.Contracts;
-using Services.Entities;
 using System;
 using System.Collections.Generic;
 using System.Data.SqlTypes;
 using System.Linq;
 using System.Reflection;
 using System.Threading.Tasks;
+using Metric = MembershipAggregator.Services.Entities.Metric;
+using SyncCompleteCustomEvent = MembershipAggregator.Services.Entities.SyncCompleteCustomEvent;
 
 namespace Hosts.MembershipAggregator
 {
     public class MembershipSubOrchestratorFunction
     {
-        private const int MEMBERS_LIMIT = 100000;
         private readonly IThresholdConfig _thresholdConfig = null;
         private readonly IGraphAPIService _graphAPIService = null;
         private readonly TelemetryClient _telemetryClient = null;
+        private readonly MultiLaneConfig _multilaneConfig = null;
 
-        public MembershipSubOrchestratorFunction(IThresholdConfig thresholdConfig, IGraphAPIService graphAPIService, TelemetryClient telemetryClient)
+        public MembershipSubOrchestratorFunction(IThresholdConfig thresholdConfig, IGraphAPIService graphAPIService, TelemetryClient telemetryClient, MultiLaneConfig multilaneConfig)
         {
             _thresholdConfig = thresholdConfig ?? throw new ArgumentNullException(nameof(thresholdConfig));
             _graphAPIService = graphAPIService ?? throw new ArgumentNullException(nameof(graphAPIService));
             _telemetryClient = telemetryClient ?? throw new ArgumentNullException(nameof(telemetryClient));
+            _multilaneConfig = multilaneConfig ?? throw new ArgumentNullException(nameof(multilaneConfig));
         }
 
-        [FunctionName(nameof(MembershipSubOrchestratorFunction))]
-        public async Task<MembershipSubOrchestratorResponse> RunMembershipSubOrchestratorFunctionAsync([OrchestrationTrigger] IDurableOrchestrationContext context)
+        [Function(nameof(MembershipSubOrchestratorFunction))]
+        public async Task<MembershipSubOrchestratorResponse> RunMembershipSubOrchestratorFunctionAsync([OrchestrationTrigger] TaskOrchestrationContext context)
         {
             var request = context.GetInput<MembershipSubOrchestratorRequest>();
-            var runId = request.SyncJob.RunId.GetValueOrDefault(Guid.Empty);
-            var proxy = context.CreateEntityProxy<IJobTracker>(request.EntityId);
-            var state = await proxy.GetState();
-            var downloadFileTasks = new List<Task<(string FilePath, string Content)>>();
+            var runId = request.SyncJob.RunId ?? Guid.Empty;
+            var currentPart = request.CurrentPart;
+            var totalParts = request.TotalParts;
 
-            foreach (var part in state.CompletedParts)
+            var logger = context.CreateReplaySafeLogger("MembershipAggregator.MembershipSubOrchestratorFunction");
+            using var scope = logger.BeginSyncJobScope(request.SyncJob, new Dictionary<string, object>
             {
-                var downloadRequest = new FileDownloaderRequest { FilePath = part, SyncJob = request.SyncJob };
-                downloadFileTasks.Add(context.CallActivityAsync<(string FilePath, string Content)>(nameof(FileDownloaderFunction), downloadRequest));
-            }
+                ["CurrentPart"] = currentPart,
+                ["TotalParts"] = totalParts
+            });
 
-            var completedDownloadTasks = await Task.WhenAll(downloadFileTasks);
-            var (SourceMembership, DestinationMembership) = ExtractMembershipInformationAsync(completedDownloadTasks, state.DestinationPart);
-            var deltaCalculatorRequest = new DeltaCalculatorRequest
+            var state = await context.Entities.CallEntityAsync<JobState>(request.EntityId, nameof(JobTrackerEntity.GetState));
+
+            var currentUtcDateTime = context.CurrentUtcDateTime;
+
+            var membershipExtractionRequest = new MembershipExtractionRequest
             {
-                RunId = request.SyncJob.RunId
+                CompletedParts = state.CompletedParts?.ToList() ?? new List<string>(),
+                DestinationPart = state.DestinationPart,
+                SyncJob = request.SyncJob,
+                CurrentPart = currentPart,
+                TotalParts = totalParts,
+                GroupId = request.GroupId,
+                CurrentUtcDateTime = currentUtcDateTime
             };
 
-            if (!request.SyncJob.AllowEmptyDestination && SourceMembership.SourceMembers.Count == 0)
+            var membershipExtractionResponse = await context.CallActivityAsync<MembershipExtractionResponse>(nameof(MembershipExtractionFunction), membershipExtractionRequest);
+
+            if (!membershipExtractionResponse.IsSuccessful)
+            {
+                var extractionError = string.IsNullOrWhiteSpace(membershipExtractionResponse.ErrorMessage)
+                                        ? "Unknown membership extraction failure"
+                                        : membershipExtractionResponse.ErrorMessage;
+
+                logger.MembershipExtractionFailed(request.GroupId, extractionError);
+
+                await context.CallActivityAsync(nameof(JobStatusUpdaterFunction),
+                                                new JobStatusUpdaterRequest
+                                                {
+                                                    SyncJob = request.SyncJob,
+                                                    CurrentPart = currentPart,
+                                                    TotalParts = totalParts,
+                                                    Status = SyncStatus.Error,
+                                                    IsDryRun = false,
+                                                    IncrementThresholdViolations = false,
+                                                    IsNoOpSync = false
+                                                });
+
+                await context.CallActivityAsync(nameof(TelemetryTrackerFunction), new TelemetryTrackerRequest
+                {
+                    SyncJob = request.SyncJob,
+                    CurrentPart = currentPart,
+                    TotalParts = totalParts,
+                    JobStatus = SyncStatus.Error,
+                    ResultStatus = ResultStatus.Failure
+                });
+
+                return new MembershipSubOrchestratorResponse
+                {
+                    MembershipDeltaStatus = MembershipDeltaStatus.Error
+                };
+            }
+
+            var sourceMembershipFilePath = membershipExtractionResponse.SourceMembershipFilePath;
+            var destinationMembershipFilePath = membershipExtractionResponse.DestinationMembershipFilePath;
+            var destinationExpected = !string.IsNullOrWhiteSpace(state.DestinationPart);
+
+            if (string.IsNullOrWhiteSpace(sourceMembershipFilePath) || (destinationExpected && string.IsNullOrWhiteSpace(destinationMembershipFilePath)))
             {
                 await context.CallActivityAsync(nameof(JobStatusUpdaterFunction),
                                                 new JobStatusUpdaterRequest
                                                 {
                                                     SyncJob = request.SyncJob,
-                                                    Status = SyncStatus.MembershipDataNotFound
+                                                    CurrentPart = currentPart,
+                                                    TotalParts = totalParts,
+                                                    Status = SyncStatus.Error,
+                                                    IsDryRun = false,
+                                                    IncrementThresholdViolations = false,
+                                                    IsNoOpSync = false
                                                 });
-                await context.CallActivityAsync(nameof(LoggerFunction),
-                    new LoggerRequest
-                    {
-                        Message = new LogMessage
-                        {
-                            Message = $"Sources are empty for TargetOfficeGroupId {request.SyncJob.TargetOfficeGroupId}. Empty destination is not allowed for this group. Marking job as 'MembershipDataNotFound'.",
-                            RunId = runId
-                        }
-                    });
+
+                var missingComponent = string.IsNullOrWhiteSpace(sourceMembershipFilePath) ? "SourceMembership" : "DestinationMembership";
+                logger.MissingMembershipComponent(missingComponent, request.GroupId);
 
                 await context.CallActivityAsync(nameof(TelemetryTrackerFunction), new TelemetryTrackerRequest
                 {
-                    JobStatus = SyncStatus.MembershipDataNotFound,
-                    ResultStatus = ResultStatus.Success,
-                    RunId = runId
+                    SyncJob = request.SyncJob,
+                    CurrentPart = currentPart,
+                    TotalParts = totalParts,
+                    JobStatus = SyncStatus.Error,
+                    ResultStatus = ResultStatus.Failure
                 });
 
-                var groupInformation = await context.CallActivityAsync<SyncJobGroup>(nameof(GroupNameReaderFunction), request.SyncJob);
+                return new MembershipSubOrchestratorResponse
+                {
+                    MembershipDeltaStatus = MembershipDeltaStatus.Error
+                };
+            }
+
+            if (!request.SyncJob.AllowEmptyDestination && membershipExtractionResponse.SourceMemberCount == 0)
+            {
+                await context.CallActivityAsync(nameof(JobStatusUpdaterFunction),
+                                                new JobStatusUpdaterRequest
+                                                {
+                                                    SyncJob = request.SyncJob,
+                                                    CurrentPart = currentPart,
+                                                    TotalParts = totalParts,
+                                                    Status = SyncStatus.MembershipDataNotFound,
+                                                    IsDryRun = false,
+                                                    IncrementThresholdViolations = false,
+                                                    IsNoOpSync = false
+                                                });
+
+                logger.SourcesEmptyForGroup(request.GroupId);
+
+                await context.CallActivityAsync(nameof(TelemetryTrackerFunction), new TelemetryTrackerRequest
+                {
+                    SyncJob = request.SyncJob,
+                    CurrentPart = currentPart,
+                    TotalParts = totalParts,
+                    JobStatus = SyncStatus.MembershipDataNotFound,
+                    ResultStatus = ResultStatus.Success
+                });
+
+                var groupInformation = await context.CallActivityAsync<SyncJobGroup>(nameof(GroupNameReaderFunction), new GroupNameReaderRequest
+                                                                                    {
+                                                                                        SyncJob = request.SyncJob,
+                                                                                        CurrentPart = currentPart,
+                                                                                        TotalParts = totalParts,
+                                                                                        GroupId = request.GroupId
+                                                                                    });
                 await context.CallActivityAsync(nameof(EmailSenderFunction),
                                                 new EmailSenderRequest
                                                 {
                                                     SyncJob = request.SyncJob,
+                                                    CurrentPart = currentPart,
+                                                    TotalParts = totalParts,
                                                     NotificationType = NotificationMessageType.NoDataNotification,
-                                                    AdditionalContentParams = new[] { request.SyncJob.TargetOfficeGroupId.ToString(), groupInformation.Name },
+                                                    AdditionalContentParams = new[] { request.GroupId.ToString(), groupInformation.Name },
                                                 });
 
                 return new MembershipSubOrchestratorResponse
@@ -99,71 +193,145 @@ namespace Hosts.MembershipAggregator
                 };
             }
 
-            if (SourceMembership.SourceMembers.Count >= MEMBERS_LIMIT || DestinationMembership.SourceMembers.Count >= MEMBERS_LIMIT)
+            var deltaCalculatorRequest = new DeltaCalculatorRequest
             {
-                var sourceFilePath = GenerateFileName(request.SyncJob, "SourceMembership", context);
-                var sourceContent = TextCompressor.Compress(JsonConvert.SerializeObject(SourceMembership));
-                var sourceRequest = new FileUploaderRequest { FilePath = sourceFilePath, Content = sourceContent, SyncJob = request.SyncJob };
+                SyncJob = request.SyncJob,
+                CurrentPart = currentPart,
+                TotalParts = totalParts,
+                SourceGroupMembership = string.Empty,
+                DestinationGroupMembership = string.Empty,
+                ReadFromBlobs = true,
+                SourceMembershipFilePath = sourceMembershipFilePath,
+                DestinationMembershipFilePath = destinationMembershipFilePath
+            };
 
-                var destinationFilePath = GenerateFileName(request.SyncJob, "DestinationMembership", context);
-                var destinationContent = TextCompressor.Compress(JsonConvert.SerializeObject(DestinationMembership));
-                var destinationRequest = new FileUploaderRequest { FilePath = destinationFilePath, Content = destinationContent, SyncJob = request.SyncJob };
-
-                await Task.WhenAll
-                (
-                    context.CallActivityAsync(nameof(FileUploaderFunction), sourceRequest),
-                    context.CallActivityAsync(nameof(FileUploaderFunction), destinationRequest)
-                );
-
-                deltaCalculatorRequest.ReadFromBlobs = true;
-                deltaCalculatorRequest.SourceMembershipFilePath = sourceFilePath;
-                deltaCalculatorRequest.DestinationMembershipFilePath = destinationFilePath;
-            }
-            else
-            {
-                deltaCalculatorRequest.SourceGroupMembership = TextCompressor.Compress(JsonConvert.SerializeObject(SourceMembership));
-                deltaCalculatorRequest.DestinationGroupMembership = TextCompressor.Compress(JsonConvert.SerializeObject(DestinationMembership));
-            }
+            logger.ReadingMembershipFromBlobs(sourceMembershipFilePath, destinationMembershipFilePath);
 
             var deltaResponse = await context.CallActivityAsync<DeltaCalculatorResponse>(nameof(DeltaCalculatorFunction), deltaCalculatorRequest);
 
+            AggregatedMembershipUploadResponse aggregatedMembershipResponse = null;
+
             if (deltaResponse.MembershipDeltaStatus == MembershipDeltaStatus.Ok)
             {
-                var uploadRequest = CreateAggregatedFileUploaderRequest(SourceMembership, deltaResponse, request.SyncJob, context);
-                await context.CallActivityAsync(nameof(FileUploaderFunction), uploadRequest);
-                await context.CallActivityAsync(nameof(LoggerFunction),
-                    new LoggerRequest
+                aggregatedMembershipResponse = await context.CallActivityAsync<AggregatedMembershipUploadResponse>(nameof(AggregatedMembershipUploaderFunction),
+                    new AggregatedMembershipUploadRequest
                     {
-                        Message = new LogMessage
-                        {
-                            Message = $"Uploaded membership file {uploadRequest.FilePath} with {SourceMembership.SourceMembers.Count} unique members",
-                            RunId = runId
-                        }
+                        SyncJob = request.SyncJob,
+                        CurrentPart = currentPart,
+                        TotalParts = totalParts,
+                        GroupId = request.GroupId,
+                        SourceMembershipFilePath = sourceMembershipFilePath,
+                        CompressedMembersToAddJson = deltaResponse.CompressedMembersToAddJSON,
+                        CompressedMembersToRemoveJson = deltaResponse.CompressedMembersToRemoveJSON,
+                        CurrentUtcDateTime = currentUtcDateTime
                     });
+
+                if (!aggregatedMembershipResponse.IsSuccessful)
+                {
+                    var errorMessage = string.IsNullOrWhiteSpace(aggregatedMembershipResponse.ErrorMessage)
+                        ? "Aggregated membership upload failed without an error message."
+                        : aggregatedMembershipResponse.ErrorMessage;
+
+                    logger.AggregatedUploadError(errorMessage);
+
+                    await context.CallActivityAsync(nameof(JobStatusUpdaterFunction),
+                                                    new JobStatusUpdaterRequest
+                                                    {
+                                                        SyncJob = request.SyncJob,
+                                                        CurrentPart = currentPart,
+                                                        TotalParts = totalParts,
+                                                        Status = SyncStatus.Error,
+                                                        IsDryRun = false,
+                                                        IncrementThresholdViolations = false,
+                                                        IsNoOpSync = false
+                                                    });
+
+                    await context.CallActivityAsync(nameof(TelemetryTrackerFunction), new TelemetryTrackerRequest
+                    {
+                        SyncJob = request.SyncJob,
+                        CurrentPart = currentPart,
+                        TotalParts = totalParts,
+                        JobStatus = SyncStatus.Error,
+                        ResultStatus = ResultStatus.Failure
+                    });
+
+                    await DeleteMembershipFilesAsync(context, deltaCalculatorRequest);
+
+                    return new MembershipSubOrchestratorResponse
+                    {
+                        MembershipDeltaStatus = MembershipDeltaStatus.Error
+                    };
+                }
+
+                logger.UploadedMembershipFile(aggregatedMembershipResponse.FilePath, aggregatedMembershipResponse.MemberCount);
+
+                await DeleteMembershipFilesAsync(context, deltaCalculatorRequest);
 
                 return new MembershipSubOrchestratorResponse
                 {
-                    FilePath = uploadRequest.FilePath,
+                    FilePath = aggregatedMembershipResponse.FilePath,
                     MembershipDeltaStatus = deltaResponse.MembershipDeltaStatus,
-                    ProjectedMemberCount = SourceMembership.SourceMembers.Count
+                    ProjectedMemberCount = membershipExtractionResponse.SourceMemberCount,
+                    MembersToBeAdded = deltaResponse.MembersToAddCount,
+                    MembersToBeRemoved = deltaResponse.MembersToRemoveCount,
                 };
             }
             else if (deltaResponse.MembershipDeltaStatus == MembershipDeltaStatus.ThresholdExceeded)
             {
-                var uploadRequest = CreateAggregatedFileUploaderRequest(SourceMembership, deltaResponse, request.SyncJob, context);
-                await context.CallActivityAsync(nameof(FileUploaderFunction), uploadRequest);
-                await context.CallActivityAsync(nameof(LoggerFunction),
-                    new LoggerRequest
+                aggregatedMembershipResponse = await context.CallActivityAsync<AggregatedMembershipUploadResponse>(nameof(AggregatedMembershipUploaderFunction),
+                    new AggregatedMembershipUploadRequest
                     {
-                        Message = new LogMessage
-                        {
-                            Message = $"Uploaded membership file {uploadRequest.FilePath} with {SourceMembership.SourceMembers.Count} unique members",
-                            RunId = runId
-                        }
+                        SyncJob = request.SyncJob,
+                        CurrentPart = currentPart,
+                        TotalParts = totalParts,
+                        GroupId = request.GroupId,
+                        SourceMembershipFilePath = sourceMembershipFilePath,
+                        CompressedMembersToAddJson = deltaResponse.CompressedMembersToAddJSON,
+                        CompressedMembersToRemoveJson = deltaResponse.CompressedMembersToRemoveJSON,
+                        CurrentUtcDateTime = currentUtcDateTime
                     });
 
+                if (!aggregatedMembershipResponse.IsSuccessful)
+                {
+                    var errorMessage = string.IsNullOrWhiteSpace(aggregatedMembershipResponse.ErrorMessage)
+                        ? "Aggregated membership upload failed without an error message."
+                        : aggregatedMembershipResponse.ErrorMessage;
+
+                    logger.AggregatedUploadError(errorMessage);
+
+                    await context.CallActivityAsync(nameof(JobStatusUpdaterFunction),
+                                                    new JobStatusUpdaterRequest
+                                                    {
+                                                        SyncJob = request.SyncJob,
+                                                        CurrentPart = currentPart,
+                                                        TotalParts = totalParts,
+                                                        Status = SyncStatus.Error,
+                                                        IsDryRun = false,
+                                                        IncrementThresholdViolations = false,
+                                                        IsNoOpSync = false
+                                                    });
+
+                    await context.CallActivityAsync(nameof(TelemetryTrackerFunction), new TelemetryTrackerRequest
+                    {
+                        SyncJob = request.SyncJob,
+                        CurrentPart = currentPart,
+                        TotalParts = totalParts,
+                        JobStatus = SyncStatus.Error,
+                        ResultStatus = ResultStatus.Failure
+                    });
+
+                    await DeleteMembershipFilesAsync(context, deltaCalculatorRequest);
+
+                    return new MembershipSubOrchestratorResponse
+                    {
+                        MembershipDeltaStatus = MembershipDeltaStatus.Error
+                    };
+                }
+
+                logger.UploadedMembershipFile(aggregatedMembershipResponse.FilePath, aggregatedMembershipResponse.MemberCount);
+
                 var currentThresholdViolations = request.SyncJob.ThresholdViolations + 1;
-                SyncStatus? status = currentThresholdViolations >= _thresholdConfig.NumberOfThresholdViolationsToDisableJob
+                SyncStatus status = currentThresholdViolations >= _thresholdConfig.NumberOfThresholdViolationsToDisableJob
                                     ? SyncStatus.ThresholdExceeded
                                     : SyncStatus.Idle;
 
@@ -171,30 +339,45 @@ namespace Hosts.MembershipAggregator
                                                 new JobStatusUpdaterRequest
                                                 {
                                                     SyncJob = request.SyncJob,
+                                                    CurrentPart = currentPart,
+                                                    TotalParts = totalParts,
                                                     Status = status,
-                                                    ThresholdViolations = currentThresholdViolations
+                                                    IsDryRun = false,
+                                                    IncrementThresholdViolations = true,
+                                                    IsNoOpSync = false
                                                 });
-                await context.CallActivityAsync(nameof(TelemetryTrackerFunction), new TelemetryTrackerRequest { JobStatus = status, ResultStatus = ResultStatus.Success, RunId = runId });
+                await context.CallActivityAsync(nameof(TelemetryTrackerFunction), new TelemetryTrackerRequest
+                {
+                    SyncJob = request.SyncJob,
+                    CurrentPart = currentPart,
+                    TotalParts = totalParts,
+                    JobStatus = status,
+                    ResultStatus = ResultStatus.Success
+                });
             }
             else if (deltaResponse.MembershipDeltaStatus == MembershipDeltaStatus.DryRun)
             {
-                var message = $"A Dry Run Synchronization for {request.SyncJob.TargetOfficeGroupId} is now complete. " +
-                              $"{deltaResponse.MembersToAddCount} users would have been added. " +
-                              $"{deltaResponse.MembersToRemoveCount} users would have been removed.";
+                logger.DryRunSyncComplete(request.GroupId, deltaResponse.MembersToAddCount, deltaResponse.MembersToRemoveCount);
 
-                await context.CallActivityAsync(nameof(LoggerFunction),
-                    new LoggerRequest
-                    {
-                        Message = new LogMessage { Message = message, RunId = runId }
-                    });
                 await context.CallActivityAsync(nameof(JobStatusUpdaterFunction),
                                                 new JobStatusUpdaterRequest
                                                 {
                                                     SyncJob = request.SyncJob,
+                                                    CurrentPart = currentPart,
+                                                    TotalParts = totalParts,
                                                     Status = SyncStatus.Idle,
-                                                    IsDryRun = true
+                                                    IsDryRun = true,
+                                                    IncrementThresholdViolations = false,
+                                                    IsNoOpSync = false
                                                 });
-                await context.CallActivityAsync(nameof(TelemetryTrackerFunction), new TelemetryTrackerRequest { JobStatus = SyncStatus.Idle, ResultStatus = ResultStatus.Success, RunId = runId });
+                await context.CallActivityAsync(nameof(TelemetryTrackerFunction), new TelemetryTrackerRequest
+                {
+                    SyncJob = request.SyncJob,
+                    CurrentPart = currentPart,
+                    TotalParts = totalParts,
+                    JobStatus = SyncStatus.Idle,
+                    ResultStatus = ResultStatus.Success
+                });
             }
             else if (deltaResponse.MembershipDeltaStatus == MembershipDeltaStatus.Error)
             {
@@ -202,29 +385,47 @@ namespace Hosts.MembershipAggregator
                                                 new JobStatusUpdaterRequest
                                                 {
                                                     SyncJob = request.SyncJob,
-                                                    Status = SyncStatus.Error
+                                                    CurrentPart = currentPart,
+                                                    TotalParts = totalParts,
+                                                    Status = SyncStatus.Error,
+                                                    IsDryRun = false,
+                                                    IncrementThresholdViolations = false,
+                                                    IsNoOpSync = false
                                                 });
-                await context.CallActivityAsync(nameof(TelemetryTrackerFunction), new TelemetryTrackerRequest { JobStatus = SyncStatus.Error, ResultStatus = ResultStatus.Failure, RunId = runId });
+                await context.CallActivityAsync(nameof(TelemetryTrackerFunction), new TelemetryTrackerRequest
+                {
+                    SyncJob = request.SyncJob,
+                    CurrentPart = currentPart,
+                    TotalParts = totalParts,
+                    JobStatus = SyncStatus.Error,
+                    ResultStatus = ResultStatus.Failure
+                });
             }
             else if (deltaResponse.MembershipDeltaStatus == MembershipDeltaStatus.NoChanges)
             {
-                await context.CallActivityAsync(nameof(LoggerFunction),
-                new LoggerRequest
-                {
-                    Message = new LogMessage
-                    {
-                        Message = $"There are no membership changes for TargetOfficeGroupId {request.SyncJob.TargetOfficeGroupId}.",
-                        RunId = runId
-                    }
-                });
+                logger.NoMembershipChanges(request.GroupId);
 
                 var sourceTypeCounts = JsonParser.GetQueryTypes(request.SyncJob.Query);
-                var destination = JsonParser.GetDestination(request.SyncJob.Destination);
+                var channelId = await context.CallActivityAsync<string>(nameof(GetChannelFunction), new GetChannelRequest
+                {
+                    SyncJob = request.SyncJob,
+                    CurrentPart = currentPart,
+                    TotalParts = totalParts
+                });
+                string identifier = null;
+                if (_multilaneConfig.IsEnabled && request.SyncJob.MembershipType == MembershipTypes.GroupMembership.ToString())
+                {
+                    var membersToBeUpdated = deltaResponse.MembersToAddCount + deltaResponse.MembersToRemoveCount;
+                    identifier = membersToBeUpdated <= _multilaneConfig.Small ? "small" : "large";
+                }
+
                 var syncCompleteEvent = new SyncCompleteCustomEvent
                 {
-                    Type = destination.Type.ToString(),
+                    Type = request.SyncJob.MembershipType,
                     SourceTypesCounts = sourceTypeCounts,
-                    Destination = request.SyncJob.Destination,
+                    Destination = $"[{{\"type\":\"{request.SyncJob.MembershipType}\",\"value\":{{\"objectId\":\"{request.GroupId}\"}}}}]",
+                    GroupId = request.GroupId.ToString(),
+                    ChannelId = channelId,
                     RunId = runId.ToString(),
                     IsDryRunEnabled = false.ToString(),
                     ProjectedMemberCount = "0",
@@ -234,15 +435,27 @@ namespace Hosts.MembershipAggregator
                     MembersRemoved = "0",
                     MembersToAddNotFound = "0",
                     MembersToRemoveNotFound = "0",
-                    IsInitialSync = $"{request.SyncJob.LastRunTime == SqlDateTime.MinValue.Value}"
+                    IsInitialSync = $"{request.SyncJob.LastRunTime == SqlDateTime.MinValue.Value}",
+                    Identifier = identifier
                 };
 
                 var dbSyncJob = await context.CallActivityAsync<SyncJob>(nameof(JobReaderFunction),
                                        new JobReaderRequest
                                        {
-                                           JobId = request.SyncJob.Id,
-                                           RunId = request.SyncJob.RunId.GetValueOrDefault()
+                                           SyncJob = request.SyncJob,
+                                           CurrentPart = currentPart,
+                                           TotalParts = totalParts,
+                                           JobId = request.SyncJob.Id
                                        });
+
+                await context.CallActivityAsync(nameof(TelemetryTrackerFunction), new TelemetryTrackerRequest
+                {
+                    SyncJob = request.SyncJob,
+                    CurrentPart = currentPart,
+                    TotalParts = totalParts,
+                    JobStatus = SyncStatus.Idle,
+                    ResultStatus = ResultStatus.Success
+                });
 
                 if (!context.IsReplaying)
                     TrackSyncCompleteEvent(context, dbSyncJob, syncCompleteEvent, "Success");
@@ -251,78 +464,59 @@ namespace Hosts.MembershipAggregator
                                 new JobStatusUpdaterRequest
                                 {
                                     SyncJob = request.SyncJob,
+                                    CurrentPart = currentPart,
+                                    TotalParts = totalParts,
                                     Status = SyncStatus.Idle,
-                                    DeltaStatus = MembershipDeltaStatus.NoChanges
+                                    IsDryRun = false,
+                                    IncrementThresholdViolations = false,
+                                    IsNoOpSync = true
                                 });
             }
 
+                await DeleteMembershipFilesAsync(context, deltaCalculatorRequest);
+
             return new MembershipSubOrchestratorResponse
             {
-                MembershipDeltaStatus = deltaResponse.MembershipDeltaStatus
+                MembershipDeltaStatus = deltaResponse.MembershipDeltaStatus,
+                MembersToBeAdded = deltaResponse.MembersToAddCount,
+                MembersToBeRemoved = deltaResponse.MembersToRemoveCount
             };
         }
 
-        private (GroupMembership SourceMembership, GroupMembership DestinationMembership)
-                ExtractMembershipInformationAsync((string FilePath, string Content)[] allGroupMemberships, string destinationPath)
+        private async Task DeleteMembershipFilesAsync(TaskOrchestrationContext context, DeltaCalculatorRequest request)
         {
-            var sourceGroupsMemberships = allGroupMemberships
-                                            .Where(x => x.FilePath != destinationPath)
-                                            .Select(x => JsonConvert.DeserializeObject<GroupMembership>(TextCompressor.Decompress(x.Content)))
-                                            .ToList();
-
-            var sourceGroupMembership = sourceGroupsMemberships[0];
-            var toInclude = sourceGroupsMemberships.Where(g => !g.Exclusionary).SelectMany(x => x.SourceMembers).ToList();
-            var toExclude = sourceGroupsMemberships.Where(g => g.Exclusionary).SelectMany(x => x.SourceMembers).ToList();
-            var diff = toInclude.Except(toExclude).ToList();
-
-            var source = sourceGroupsMemberships.SelectMany(x => x.SourceMembers).ToList();
-            var listGrouped = source.GroupBy(u => u.ObjectId)
-                               .Select(u => new AzureADUser() { ObjectId = u.Key, SourceGroups = u.Select(y => y.SourceGroup).Distinct().ToList() })
-                               .ToList();
-
-            var objectIds = new HashSet<Guid>(diff.Select(u => u.ObjectId));
-            var sourceMembers = listGrouped.Where(u => objectIds.Contains(u.ObjectId)).ToList();
-
-            sourceGroupMembership.SourceMembers = sourceMembers;
-
-            var destinationMembershipFile = allGroupMemberships.First(x => x.FilePath == destinationPath);
-            var destinationGroupMembership = JsonConvert.DeserializeObject<GroupMembership>(TextCompressor.Decompress(destinationMembershipFile.Content));
-
-            return (sourceGroupMembership, destinationGroupMembership);
-        }
-
-        private FileUploaderRequest CreateAggregatedFileUploaderRequest(GroupMembership membership, DeltaCalculatorResponse deltaResponse, SyncJob syncJob, IDurableOrchestrationContext context)
-        {
-            var membersToAdd = JsonConvert.DeserializeObject<ICollection<AzureADUser>>(TextCompressor.Decompress(deltaResponse.CompressedMembersToAddJSON));
-            var membersToRemove = JsonConvert.DeserializeObject<ICollection<AzureADUser>>(TextCompressor.Decompress(deltaResponse.CompressedMembersToRemoveJSON));
-
-            var newMembership = (GroupMembership)membership.Clone();
-            newMembership.SourceMembers.Clear();
-            newMembership.SourceMembers.AddRange(membersToAdd);
-            newMembership.SourceMembers.AddRange(membersToRemove);
-
-            var serializerSettings = new JsonSerializerSettings
+            if (request == null)
             {
-                NullValueHandling = NullValueHandling.Ignore, // Ignores null values during serialization
-                DefaultValueHandling = DefaultValueHandling.Ignore
-            };
+                return;
+            }
 
-            var filePath = GenerateFileName(syncJob, "Aggregated", context);
-            var content = TextCompressor.Compress(JsonConvert.SerializeObject(newMembership, serializerSettings));
+            if (!string.IsNullOrWhiteSpace(request.SourceMembershipFilePath))
+            {
+                await context.CallActivityAsync(nameof(FileDeleterFunction), new FileDeleterRequest
+                {
+                    SyncJob = request.SyncJob,
+                    CurrentPart = request.CurrentPart,
+                    TotalParts = request.TotalParts,
+                    FilePath = request.SourceMembershipFilePath
+                });
+            }
 
-            return new FileUploaderRequest { FilePath = filePath, Content = content, SyncJob = syncJob };
+            if (!string.IsNullOrWhiteSpace(request.DestinationMembershipFilePath))
+            {
+                await context.CallActivityAsync(nameof(FileDeleterFunction), new FileDeleterRequest
+                {
+                    SyncJob = request.SyncJob,
+                    CurrentPart = request.CurrentPart,
+                    TotalParts = request.TotalParts,
+                    FilePath = request.DestinationMembershipFilePath
+                });
+            }
         }
 
-        private string GenerateFileName(SyncJob syncJob, string suffix, IDurableOrchestrationContext context)
-        {
-            var timeStamp = context.CurrentUtcDateTime.ToString("MMddyyyy-HHmm");
-            return $"/{syncJob.TargetOfficeGroupId}/{timeStamp}_{syncJob.RunId}_{suffix}.json";
-        }
-
-        private void TrackSyncCompleteEvent(IDurableOrchestrationContext context, SyncJob syncJob, SyncCompleteCustomEvent syncCompleteEvent, string successStatus)
+        private void TrackSyncCompleteEvent(TaskOrchestrationContext context, SyncJob syncJob, SyncCompleteCustomEvent syncCompleteEvent, string successStatus)
         {
             var timeElapsedForJob = (context.CurrentUtcDateTime - syncJob.LastSuccessfulStartTime).TotalSeconds;
-            _telemetryClient.TrackMetric(nameof(Services.Entities.Metric.SyncJobTimeElapsedSeconds), timeElapsedForJob);
+            _telemetryClient.TrackMetric(nameof(Metric.SyncJobTimeElapsedSeconds), timeElapsedForJob);
 
             syncCompleteEvent.SyncJobTimeElapsedSeconds = timeElapsedForJob.ToString();
             syncCompleteEvent.Result = successStatus;
@@ -331,7 +525,7 @@ namespace Hosts.MembershipAggregator
                 .GetProperties(BindingFlags.Instance | BindingFlags.Public)
                 .ToDictionary(prop => prop.Name, prop => (string)prop.GetValue(syncCompleteEvent, null));
 
-            _telemetryClient.TrackEvent(nameof(Services.Entities.Metric.SyncComplete), syncCompleteDict);
+            _telemetryClient.TrackEvent(nameof(Metric.SyncComplete), syncCompleteDict);
         }
     }
 }

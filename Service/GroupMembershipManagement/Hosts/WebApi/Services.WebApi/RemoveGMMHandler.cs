@@ -1,6 +1,7 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
+using Azure;
 using Models;
 using Repositories.Contracts;
 using Services.Contracts;
@@ -38,7 +39,21 @@ namespace Services
                 };
             }
 
-            var isOwner = await _graphGroupRepository.IsEmailRecipientOwnerOfGroupAsync(request.UserIdentity, syncJob.TargetOfficeGroupId);
+
+            var groupId = syncJob.MembershipType == MembershipTypes.TeamsChannelMembership.ToString()
+                ? syncJob.Channel?.GroupId
+                : syncJob.Group?.GroupId;
+
+            if (groupId == null)
+            {
+                return new RemoveGMMResponse
+                {
+                    StatusCode = HttpStatusCode.BadRequest,
+                    ErrorCode = "GroupIdNotFound"
+                };
+            }
+
+            var isOwner = await _graphGroupRepository.IsEmailRecipientOwnerOfGroupAsync(request.UserIdentity, (Guid) groupId);
             if (!(isOwner || request.IsJobTenantWriter))
             {
                 return new RemoveGMMResponse

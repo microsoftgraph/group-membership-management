@@ -16,10 +16,10 @@ param setRBACPermissions bool
 @description('The principalId of the function app for the production slot.')
 param productionSlotPrincipalId string
 
-@description('The principalId of the function app for the staging slot.')
-param stagingSlotPrincipalId string
-
 param functionName string
+
+@description('Storage account name.')
+param storageAccountName string
 
 module functionAppPrereqsRBAC 'keyvaultRBAC.bicep' = if (setRBACPermissions) {
   name: 'prereqsKV-rbac-${functionName}'
@@ -41,22 +41,32 @@ module functionAppDataRBAC 'keyvaultRBAC.bicep' = if (setRBACPermissions) {
   }
 }
 
-module functionAppSlotPrereqsRBAC 'keyvaultRBAC.bicep' = if (setRBACPermissions) {
-  name: 'prereqsKV-rbac-${functionName}Slot'
-  scope: resourceGroup(prereqsKeyVaultResourceGroup)
+module functionAppStorageSBDCRBAC 'storageAccountRBAC.bicep' = if (setRBACPermissions) {
+  name: 'storageAccount-sbdc-${functionName}'
+  scope: resourceGroup(dataKeyVaultResourceGroup)
   params: {
-    keyVaultName: prereqsKeyVaultName
-    principalId: stagingSlotPrincipalId
-    roleName: 'Key Vault Secrets User'
+    storageAccountName: storageAccountName
+    principalId: productionSlotPrincipalId
+    roleName: 'Storage Blob Data Contributor'
   }
 }
 
-module functionAppSlotDataRBAC 'keyvaultRBAC.bicep' = if (setRBACPermissions) {
-  name: 'dataKV-rbac-${functionName}Slot'
+module functionAppStorageSTDCRBAC 'storageAccountRBAC.bicep' = if (setRBACPermissions) {
+  name: 'storageAccount-stdc-${functionName}'
   scope: resourceGroup(dataKeyVaultResourceGroup)
   params: {
-    keyVaultName: dataKeyVaultName
-    principalId: stagingSlotPrincipalId
-    roleName: 'Key Vault Secrets User'
+    storageAccountName: storageAccountName
+    principalId: productionSlotPrincipalId
+    roleName: 'Storage Table Data Contributor'
+  }
+}
+
+module functionAppStorageSQDCRBAC 'storageAccountRBAC.bicep' = if (setRBACPermissions) {
+  name: 'storageAccount-sqdc-${functionName}'
+  scope: resourceGroup(dataKeyVaultResourceGroup)
+  params: {
+    storageAccountName: storageAccountName
+    principalId: productionSlotPrincipalId
+    roleName: 'Storage Queue Data Contributor'
   }
 }

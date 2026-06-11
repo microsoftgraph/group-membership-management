@@ -1,25 +1,28 @@
-// Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 using Hosts.GroupMembershipObtainer;
 using Microsoft.ApplicationInsights;
 using Microsoft.ApplicationInsights.Extensibility;
-using Microsoft.Azure.WebJobs.Extensions.DurableTask;
+using Microsoft.DurableTask;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Models;
-using Models.Helpers;
 using Models.Notifications;
 using Models.ServiceBus;
 using Moq;
-using Newtonsoft.Json;
 using Repositories.Contracts;
 using Repositories.Contracts.InjectConfig;
+using Services.Contracts;
+using Models.SyncJobHistory;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
+using Tests.Helpers;
 
 namespace Tests.Services
 {
@@ -27,55 +30,63 @@ namespace Tests.Services
     public class OrchestratorTests
     {
         private Mock<IDryRunValue> _dryRunValue;
-        private Mock<IConfiguration> _configuration;
-        private Mock<IMailRepository> _mailRepository;
-        private Mock<ILoggingRepository> _loggingRepository;
         private Mock<IDatabaseSyncJobsRepository> _syncJobRepository;
+        private Mock<IDatabaseGroupsRepository> _groupsRepository;
+        private Mock<IDatabaseChannelsRepository> _channelsRepository;
         private Mock<IGraphGroupRepository> _graphGroupRepository;
-        private Mock<IEmailSenderRecipient> _emailSenderRecipient;
         private Mock<IBlobStorageRepository> _blobStorageRepository;
         private Mock<IServiceBusQueueRepository> _serviceBusQueueRepository;
-        private Mock<IDurableOrchestrationContext> _durableOrchestrationContext;
+        private Mock<TaskOrchestrationContext> _durableOrchestrationContext;
         private Mock<IConfigurationRefresherProvider> _configurationRefresherProvider;
         private Mock<IDatabaseDestinationAttributesRepository> _databaseDestinationAttributesRepository;
-        private Mock<ITeamsChannelRepository> _teamsChannelRepository;
         private Mock<Microsoft.Azure.WebJobs.ExecutionContext> _executionContext;
+        private Mock<ISyncJobStatusService> _syncJobStatusService;
         private int _usersToReturn;
         private QuerySample _querySample;
         private OrchestratorRequest _orchestratorRequest;
         private SyncStatus _subOrchestratorResponseStatus;
         private SGMembershipCalculator _membershipCalculator;
-        private DurableHttpResponse _membershipAgregatorResponse;
         private TelemetryClient _telemetryClient;
+        SchemaProvider _schemaProvider;
+        private bool _isValid = true;
+        private GroupMembershipFileResult _membershipFileResult;
 
         [TestInitialize]
         public void Setup()
         {
             _dryRunValue = new Mock<IDryRunValue>();
-            _configuration = new Mock<IConfiguration>();
-            _mailRepository = new Mock<IMailRepository>();
-            _loggingRepository = new Mock<ILoggingRepository>();
             _syncJobRepository = new Mock<IDatabaseSyncJobsRepository>();
+            _groupsRepository = new Mock<IDatabaseGroupsRepository>();
+            _channelsRepository = new Mock<IDatabaseChannelsRepository>();
             _graphGroupRepository = new Mock<IGraphGroupRepository>();
-            _emailSenderRecipient = new Mock<IEmailSenderRecipient>();
             _blobStorageRepository = new Mock<IBlobStorageRepository>();
-            _durableOrchestrationContext = new Mock<IDurableOrchestrationContext>();
+            _durableOrchestrationContext = new Mock<TaskOrchestrationContext>();
+            _durableOrchestrationContext.Setup(x => x.CreateReplaySafeLogger(It.IsAny<string>())).Returns(NullLogger.Instance);
             _configurationRefresherProvider = new Mock<IConfigurationRefresherProvider>();
             _executionContext = new Mock<Microsoft.Azure.WebJobs.ExecutionContext>();
             _telemetryClient = new TelemetryClient(new TelemetryConfiguration());
             _serviceBusQueueRepository = new Mock<IServiceBusQueueRepository>();
             _databaseDestinationAttributesRepository = new Mock<IDatabaseDestinationAttributesRepository>();
-            _teamsChannelRepository = new Mock<ITeamsChannelRepository>();
+            _syncJobStatusService = new Mock<ISyncJobStatusService>();
             _usersToReturn = 10;
             _querySample = QuerySample.GenerateQuerySample("GroupMembership");
 
             var syncJob = new SyncJob
             {
                 Id = Guid.NewGuid(),
-                TargetOfficeGroupId = Guid.NewGuid(),
                 Query = _querySample.GetQuery(),
                 Status = "InProgress",
                 Period = 6
+            };
+
+            // Setup mock to return the sync job when GetSyncJobAsync is called
+            _syncJobRepository.Setup(x => x.GetSyncJobAsync(It.IsAny<Guid>()))
+                .ReturnsAsync((Guid id) => id == syncJob.Id ? syncJob : null);
+
+            var group = new Group
+            {
+                SyncJobId = syncJob.Id,
+                GroupId = Guid.NewGuid()
             };
 
             _orchestratorRequest = new OrchestratorRequest
@@ -87,92 +98,130 @@ namespace Tests.Services
             };
 
             _membershipCalculator = new SGMembershipCalculator(
-                                            _graphGroupRepository.Object,
-                                            _blobStorageRepository.Object,
-                                            _syncJobRepository.Object,
-                                            _serviceBusQueueRepository.Object,
-                                            _databaseDestinationAttributesRepository.Object,
-                                            _loggingRepository.Object,
-                                            _dryRunValue.Object
-                                            );
+                                    _graphGroupRepository.Object,
+                                    _blobStorageRepository.Object,
+                                    _syncJobRepository.Object,
+                                    _groupsRepository.Object,
+                                    _channelsRepository.Object,
+                                    _serviceBusQueueRepository.Object,
+                                    _databaseDestinationAttributesRepository.Object,
+                                    NullLogger<SGMembershipCalculator>.Instance,
+                                    _dryRunValue.Object,
+                                    _syncJobStatusService.Object
+                                    );
 
             var configurationRefresher = new Mock<IConfigurationRefresher>();
             configurationRefresher.Setup(x => x.TryRefreshAsync(It.IsAny<CancellationToken>())).ReturnsAsync(true);
 
             _configurationRefresherProvider.Setup(x => x.Refreshers)
-                                            .Returns(() => new List<IConfigurationRefresher> { configurationRefresher.Object });
+                                    .Returns(() => new List<IConfigurationRefresher> { configurationRefresher.Object });
 
             _durableOrchestrationContext.Setup(x => x.GetInput<OrchestratorRequest>())
-                                        .Returns(() => _orchestratorRequest);
+                                .Returns(() => _orchestratorRequest);
 
             _durableOrchestrationContext.Setup(x => x.CurrentUtcDateTime).Returns(DateTime.UtcNow);
 
-            _durableOrchestrationContext.Setup(x => x.CallActivityAsync(It.IsAny<string>(), It.IsAny<JobStatusUpdaterRequest>()))
-                                        .Callback<string, object>(async (name, request) =>
-                                        {
-                                            await CallJobStatusUpdaterFunctionAsync(request as JobStatusUpdaterRequest);
-                                        });
+            _durableOrchestrationContext.Setup(x => x.CallActivityAsync<Guid>(nameof(GetGroupFunction), It.IsAny<GetGroupRequest>(), It.IsAny<TaskOptions>())).ReturnsAsync(group.GroupId);
 
-            _durableOrchestrationContext.Setup(x => x.CallActivityAsync<string>(nameof(DestinationNameReaderFunction), It.IsAny<SyncJob>()))
-                                        .ReturnsAsync("ExpectedDestinationName");
+            _durableOrchestrationContext.Setup(x => x.CallActivityAsync(It.IsAny<TaskName>(), It.IsAny<JobStatusUpdaterRequest>(), It.IsAny<TaskOptions>()))
+                                .Callback<TaskName, object, TaskOptions>(async (name, request, options) =>
+                                {
+                                    await CallJobStatusUpdaterFunctionAsync(request as JobStatusUpdaterRequest);
+                                });
 
-            AzureADGroup sourceGroup = null;
-            string id = null;
+            _durableOrchestrationContext.Setup(x => x.CallActivityAsync<string>(nameof(DestinationNameReaderFunction), It.IsAny<DestinationNameReaderRequest>(), It.IsAny<TaskOptions>()))
+                                .ReturnsAsync("ExpectedDestinationName");
 
-            _durableOrchestrationContext.Setup(x => x.CallActivityAsync(It.Is<string>(x => x == nameof(TelemetryTrackerFunction)), It.IsAny<TelemetryTrackerRequest>()))
-                    .Callback<string, object>(async (name, request) =>
-                    {
-                        var telemetryRequest = request as TelemetryTrackerRequest;
-                        await CallTelemetryTrackerFunctionAsync(telemetryRequest);
-                    });
+            GroupReaderResponse groupReaderResponse = null;
 
-            _durableOrchestrationContext.Setup(x => x.CallActivityAsync<(AzureADGroup, string)>(It.IsAny<string>(), It.IsAny<GroupReaderRequest>()))
-                                        .Callback<string, object>(async (name, request) =>
-                                        {
-                                            (sourceGroup, id) = await CallSourceGroupsReaderFunctionAsync(request as GroupReaderRequest);
-                                        }).
-                                        ReturnsAsync(() => (sourceGroup, id));
+            _durableOrchestrationContext.Setup(x => x.CallActivityAsync(It.Is<TaskName>(x => x == nameof(TelemetryTrackerFunction)), It.IsAny<TelemetryTrackerRequest>(), It.IsAny<TaskOptions>()))
+            .Callback<TaskName, object, TaskOptions>(async (name, request, options) =>
+            {
+                var telemetryRequest = request as TelemetryTrackerRequest;
+                await CallTelemetryTrackerFunctionAsync(telemetryRequest);
+            });
+
+            _durableOrchestrationContext.Setup(x => x.CallActivityAsync<GroupReaderResponse>(It.IsAny<TaskName>(), It.IsAny<GroupReaderRequest>(), It.IsAny<TaskOptions>()))
+                                .Callback<TaskName, object, TaskOptions>(async (name, request, options) =>
+                                {
+                                    groupReaderResponse = await CallSourceGroupsReaderFunctionAsync(request as GroupReaderRequest);
+                                }).
+                                ReturnsAsync(() => groupReaderResponse);
 
             _subOrchestratorResponseStatus = SyncStatus.InProgress;
-            _durableOrchestrationContext.Setup(x => x.CallSubOrchestratorAsync<string>(It.IsAny<string>(), It.IsAny<GroupMembershipRequest>()))
-                                        .ReturnsAsync(() =>
-                                        {
-                                            var users = new List<AzureADUser>();
-                                            for (var i = 0; i < _usersToReturn; i++)
-                                            {
-                                                users.Add(new AzureADUser { ObjectId = Guid.NewGuid() });
-                                            }
+            _durableOrchestrationContext.Setup(x => x.CallSubOrchestratorAsync<SubOrchestratorResponse>(It.IsAny<TaskName>(), It.IsAny<GroupMembershipRequest>(), It.IsAny<TaskOptions>()))
+                                .ReturnsAsync(() =>
+                                {
+                                    return new SubOrchestratorResponse
+                                    {
+                                        Status = _subOrchestratorResponseStatus
+                                    };
 
-                                            return TextCompressor.Compress(JsonConvert.SerializeObject(new SubOrchestratorResponse
-                                            {
-                                                Users = users,
-                                                Status = _subOrchestratorResponseStatus
-                                            }));
-
-                                        });
+                                });
 
             string _filePath = null;
-            _durableOrchestrationContext.Setup(x => x.CallActivityAsync<string>(It.IsAny<string>(), It.IsAny<UsersSenderRequest>()))
-                                        .Callback<string, object>(async (name, request) =>
-                                        {
-                                            _filePath = await CallUsersSenderFunctionAsync(request as UsersSenderRequest);
-                                        })
-                                        .ReturnsAsync(() => _filePath);
+            _durableOrchestrationContext.Setup(x => x.CallActivityAsync<string>(It.IsAny<TaskName>(), It.IsAny<UsersSenderRequest>(), It.IsAny<TaskOptions>()))
+                                .Callback<TaskName, object, TaskOptions>(async (name, request, options) =>
+                                {
+                                    _filePath = await CallUsersSenderFunctionAsync(request as UsersSenderRequest);
+                                })
+                                .ReturnsAsync(() => _filePath);
 
-            _membershipAgregatorResponse = new DurableHttpResponse(System.Net.HttpStatusCode.NoContent);
-            _durableOrchestrationContext.Setup(x => x.CallHttpAsync(It.IsAny<DurableHttpRequest>())).ReturnsAsync(() => _membershipAgregatorResponse);
+            _blobStorageRepository.Setup(x => x.ReadBlobsAsync(It.IsAny<string>())).ReturnsAsync(() =>
+            {
+                var users = new List<AzureADUser>();
+                for (var i = 0; i < _usersToReturn; i++)
+                {
+                    users.Add(new AzureADUser { ObjectId = Guid.NewGuid() });
+                }
 
-            _durableOrchestrationContext.Setup(x => x.CallActivityAsync(It.IsAny<string>(), It.IsAny<EmailSenderRequest>()))
-                                        .Callback<string, object>(async (name, request) =>
-                                        {
-                                            await CallEmailSenderFunctionAsync(request as EmailSenderRequest);
-                                        });
+                return users;
+            });
 
-            _durableOrchestrationContext.Setup(x => x.CallActivityAsync(nameof(QueueMessageSenderFunction), It.IsAny<MembershipAggregatorHttpRequest>()))
-                                        .Callback<string, object>(async (name, request) =>
-                                        {
-                                            await CallQueueMessageSenderFunctionAsync(request as MembershipAggregatorHttpRequest);
-                                        });
+            _durableOrchestrationContext.Setup(x => x.CallActivityAsync<GroupMembershipFileResult>(It.IsAny<TaskName>(), It.IsAny<TransitiveAndDeltaUsersSenderRequest>(), It.IsAny<TaskOptions>()))
+                                .Callback<TaskName, object, TaskOptions>(async (name, request, options) =>
+                                {
+                                    _membershipFileResult = await CallTransitiveAndDeltaUsersSenderFunctionAsync(request as TransitiveAndDeltaUsersSenderRequest);
+                                })
+                                .ReturnsAsync(() => new GroupMembershipFileResult { FilePath = _filePath, MemberCount = _usersToReturn });
+
+            _durableOrchestrationContext.Setup(x => x.CallActivityAsync<string>(It.IsAny<TaskName>(), It.IsAny<DeleteBlobRequest>(), It.IsAny<TaskOptions>()))
+                                .Callback<TaskName, object, TaskOptions>(async (name, request, options) =>
+                                {
+                                    await CallDeleteBlobFunctionAsync(request as DeleteBlobRequest);
+                                });
+
+            _durableOrchestrationContext.Setup(x => x.CallActivityAsync<string>(It.IsAny<TaskName>(), It.IsAny<DeltaLinkUploaderRequest>(), It.IsAny<TaskOptions>()))
+                               .Callback<TaskName, object, TaskOptions>(async (name, request, options) =>
+                               {
+                                   await CallDeltaLinkUploaderFunctionAsync(request as DeltaLinkUploaderRequest);
+                               });
+
+            _durableOrchestrationContext.Setup(x => x.CallActivityAsync<string>(It.IsAny<TaskName>(), It.IsAny<CacheUploaderRequest>(), It.IsAny<TaskOptions>()))
+                                .Callback<TaskName, object, TaskOptions>(async (name, request, options) =>
+                                {
+                                    await CallCacheUploaderFunctionAsync(request as CacheUploaderRequest);
+                                });
+
+            _durableOrchestrationContext.Setup(x => x.CallActivityAsync(It.IsAny<TaskName>(), It.IsAny<EmailSenderRequest>(), It.IsAny<TaskOptions>()))
+                                .Callback<TaskName, object, TaskOptions>(async (name, request, options) =>
+                                {
+                                    await CallEmailSenderFunctionAsync(request as EmailSenderRequest);
+                                });
+
+            _durableOrchestrationContext.Setup(x => x.CallActivityAsync(nameof(QueueMessageSenderFunction), It.IsAny<MembershipAggregatorHttpRequest>(), It.IsAny<TaskOptions>()))
+                                .Callback<TaskName, object, TaskOptions>(async (name, request, options) =>
+                                {
+                                    await CallQueueMessageSenderFunctionAsync(request as MembershipAggregatorHttpRequest);
+                                });
+            _schemaProvider = SchemaProviderFactory.CreateJsonSchemaProvider();
+
+            _durableOrchestrationContext.Setup(x => x.CallActivityAsync<bool>(nameof(SchemaValidatorFunction), It.IsAny<SchemaValidatorRequest>(), It.IsAny<TaskOptions>()))
+            .Callback<TaskName, object, TaskOptions>(async (name, request, options) =>
+            {
+                await CallSchemaValidatorFunctionAsync(request as SchemaValidatorRequest);
+            })
+            .ReturnsAsync(() => _isValid);
 
         }
 
@@ -181,54 +230,34 @@ namespace Tests.Services
         {
             _orchestratorRequest.CurrentPart = 0;
 
-            var orchestratorFunction = new OrchestratorFunction(
-                                            _loggingRepository.Object,
-                                            _membershipCalculator,
-                                            _configuration.Object,
-                                            _emailSenderRecipient.Object
-                                            );
+            var orchestratorFunction = new OrchestratorFunction();
 
-            await orchestratorFunction.RunOrchestratorAsync(_durableOrchestrationContext.Object, _executionContext.Object);
+            await orchestratorFunction.RunOrchestratorAsync(_durableOrchestrationContext.Object);
 
-            _loggingRepository.Verify(x => x.LogMessageAsync(
-                                                It.Is<LogMessage>(m => m.Message.Contains("Found invalid value for CurrentPart or TotalParts")),
-                                                It.IsAny<VerbosityLevel>(),
-                                                It.IsAny<string>(),
-                                                It.IsAny<string>()
-                                            ), Times.Once);
-
-            _syncJobRepository.Verify(x => x.UpdateSyncJobStatusAsync(
-                                                It.IsAny<IEnumerable<SyncJob>>(),
-                                                It.Is<SyncStatus>(s => s == SyncStatus.Error)
+            _syncJobStatusService.Verify(x => x.UpdateJobStatusAsync(
+                                                It.IsAny<SyncJob>(),
+                                                SyncStatus.Error,
+                                                It.IsAny<SyncJobHistory>(),
+                                                "GroupMembershipObtainer"
                                             ), Times.Once);
         }
 
         [TestMethod]
         public async Task TestInvalidQuerySourceAsync()
         {
-            var invalidSource  = "[{ \"type\": \"GroupMembership\", \"source\": \"0fab28de-4d33-4bb7-17e46cf75200\"}]";
+            var invalidSource = "[{ \"type\": \"GroupMembership\", \"source\": \"0fab28de-4d33-4bb7-17e46cf75200\"}]";
 
             _orchestratorRequest.SyncJob.Query = invalidSource;
 
-            var orchestratorFunction = new OrchestratorFunction(
-                                           _loggingRepository.Object,
-                                           _membershipCalculator,
-                                           _configuration.Object,
-                                            _emailSenderRecipient.Object
-                                           );
+            var orchestratorFunction = new OrchestratorFunction();
 
-            await orchestratorFunction.RunOrchestratorAsync(_durableOrchestrationContext.Object, _executionContext.Object);
+            await orchestratorFunction.RunOrchestratorAsync(_durableOrchestrationContext.Object);
 
-            _loggingRepository.Verify(x => x.LogMessageAsync(
-                                                It.Is<LogMessage>(m => m.Message.Contains($"Marking job as {SyncStatus.QueryNotValid}")),
-                                                It.IsAny<VerbosityLevel>(),
-                                                It.IsAny<string>(),
-                                                It.IsAny<string>()
-                                            ), Times.Once);
-
-            _syncJobRepository.Verify(x => x.UpdateSyncJobStatusAsync(
-                                                It.IsAny<IEnumerable<SyncJob>>(),
-                                                It.Is<SyncStatus>(s => s == SyncStatus.QueryNotValid)
+            _syncJobStatusService.Verify(x => x.UpdateJobStatusAsync(
+                                                It.IsAny<SyncJob>(),
+                                                SyncStatus.QueryNotValid,
+                                                It.IsAny<SyncJobHistory>(),
+                                                "GroupMembershipObtainer"
                                             ), Times.Once);
 
             _serviceBusQueueRepository.Verify(x => x.SendMessageAsync(It.Is<ServiceBusMessage>(msg =>
@@ -243,25 +272,15 @@ namespace Tests.Services
             _querySample.QueryParts.ForEach(x => x.SourceId = Guid.Empty);
             _orchestratorRequest.SyncJob.Query = _querySample.GetQuery();
 
-            var orchestratorFunction = new OrchestratorFunction(
-                                           _loggingRepository.Object,
-                                           _membershipCalculator,
-                                           _configuration.Object,
-                                            _emailSenderRecipient.Object
-                                           );
+            var orchestratorFunction = new OrchestratorFunction();
 
-            await orchestratorFunction.RunOrchestratorAsync(_durableOrchestrationContext.Object, _executionContext.Object);
+            await orchestratorFunction.RunOrchestratorAsync(_durableOrchestrationContext.Object);
 
-            _loggingRepository.Verify(x => x.LogMessageAsync(
-                                                It.Is<LogMessage>(m => m.Message.Contains($"Marking job as {SyncStatus.QueryNotValid}")),
-                                                It.IsAny<VerbosityLevel>(),
-                                                It.IsAny<string>(),
-                                                It.IsAny<string>()
-                                            ), Times.Once);
-
-            _syncJobRepository.Verify(x => x.UpdateSyncJobStatusAsync(
-                                                It.IsAny<IEnumerable<SyncJob>>(),
-                                                It.Is<SyncStatus>(s => s == SyncStatus.QueryNotValid)
+            _syncJobStatusService.Verify(x => x.UpdateJobStatusAsync(
+                                                It.IsAny<SyncJob>(),
+                                                SyncStatus.QueryNotValid,
+                                                It.IsAny<SyncJobHistory>(),
+                                                "GroupMembershipObtainer"
                                             ), Times.Once);
 
             _serviceBusQueueRepository.Verify(x => x.SendMessageAsync(It.Is<ServiceBusMessage>(msg =>
@@ -275,15 +294,10 @@ namespace Tests.Services
 
             _querySample.QueryParts.ForEach(x => x.SourceId = Guid.Empty);
             _orchestratorRequest.SyncJob.Query = _querySample.GetQuery();
-            var orchestratorFunction = new OrchestratorFunction(
-                                           _loggingRepository.Object,
-                                           _membershipCalculator,
-                                           _configuration.Object,
-                                            _emailSenderRecipient.Object
-                                           );
+            var orchestratorFunction = new OrchestratorFunction();
 
-            await orchestratorFunction.RunOrchestratorAsync(_durableOrchestrationContext.Object, _executionContext.Object);
-            _durableOrchestrationContext.Verify(x => x.CallActivityAsync<string>(nameof(DestinationNameReaderFunction), _orchestratorRequest.SyncJob), Times.Once());
+            await orchestratorFunction.RunOrchestratorAsync(_durableOrchestrationContext.Object);
+            _durableOrchestrationContext.Verify(x => x.CallActivityAsync<string>(nameof(DestinationNameReaderFunction), It.IsAny<DestinationNameReaderRequest>(), It.IsAny<TaskOptions>()), Times.Once());
 
         }
 
@@ -292,47 +306,34 @@ namespace Tests.Services
         {
             _subOrchestratorResponseStatus = SyncStatus.SecurityGroupNotFound;
 
-            var orchestratorFunction = new OrchestratorFunction(
-                                            _loggingRepository.Object,
-                                            _membershipCalculator,
-                                            _configuration.Object,
-                                            _emailSenderRecipient.Object
-                                            );
+            var orchestratorFunction = new OrchestratorFunction();
 
-            await orchestratorFunction.RunOrchestratorAsync(_durableOrchestrationContext.Object, _executionContext.Object);
+            await orchestratorFunction.RunOrchestratorAsync(_durableOrchestrationContext.Object);
 
-            _syncJobRepository.Verify(x => x.UpdateSyncJobStatusAsync(
-                                                It.IsAny<IEnumerable<SyncJob>>(),
-                                                It.Is<SyncStatus>(s => s == SyncStatus.SecurityGroupNotFound)
+            _syncJobStatusService.Verify(x => x.UpdateJobStatusAsync(
+                                                It.IsAny<SyncJob>(),
+                                                SyncStatus.SecurityGroupNotFound,
+                                                It.IsAny<SyncJobHistory>(),
+                                                "GroupMembershipObtainer"
                                             ), Times.Once);
         }
 
         [TestMethod]
         public async Task TestUnhandledExceptionAsync()
         {
-            _durableOrchestrationContext.Setup(x => x.CallSubOrchestratorAsync<string>(It.IsAny<string>(), It.IsAny<GroupMembershipRequest>()))
-                                        .Throws<Exception>();
+            _durableOrchestrationContext.Setup(x => x.CallSubOrchestratorAsync<SubOrchestratorResponse>(It.IsAny<TaskName>(), It.IsAny<GroupMembershipRequest>(), It.IsAny<TaskOptions>()))
+                                .Throws<Exception>();
 
-            var orchestratorFunction = new OrchestratorFunction(
-                                            _loggingRepository.Object,
-                                            _membershipCalculator,
-                                            _configuration.Object,
-                                            _emailSenderRecipient.Object
-                                            );
+            var orchestratorFunction = new OrchestratorFunction();
 
-            await Assert.ThrowsExceptionAsync<Exception>(async () => await orchestratorFunction.RunOrchestratorAsync(_durableOrchestrationContext.Object, _executionContext.Object));
+            await Assert.ThrowsExceptionAsync<Exception>(async () => await orchestratorFunction.RunOrchestratorAsync(_durableOrchestrationContext.Object));
 
-            _loggingRepository.Verify(x => x.LogMessageAsync(
-                        It.Is<LogMessage>(m => m.Message.StartsWith("Caught unexpected exception")),
-                        It.IsAny<VerbosityLevel>(),
-                        It.IsAny<string>(),
-                        It.IsAny<string>()
-                    ), Times.Once);
-
-            _syncJobRepository.Verify(x => x.UpdateSyncJobStatusAsync(
-                                                It.IsAny<IEnumerable<SyncJob>>(),
-                                                It.Is<SyncStatus>(s => s == SyncStatus.Error)
-                                            ), Times.Once);
+            _syncJobStatusService.Verify(x => x.UpdateJobStatusAsync(
+                                        It.IsAny<SyncJob>(),
+                                        SyncStatus.Error,
+                                        It.IsAny<SyncJobHistory>(),
+                                        "GroupMembershipObtainer"
+                                    ), Times.Once);
         }
 
         [TestMethod]
@@ -340,120 +341,288 @@ namespace Tests.Services
         {
             var exception = new Exception("The request timed out");
 
-            _durableOrchestrationContext.Setup(x => x.CallSubOrchestratorAsync<string>(It.IsAny<string>(), It.IsAny<GroupMembershipRequest>()))
-                                        .Throws(exception);
+            _durableOrchestrationContext.Setup(x => x.CallSubOrchestratorAsync<SubOrchestratorResponse>(It.IsAny<TaskName>(), It.IsAny<GroupMembershipRequest>(), It.IsAny<TaskOptions>()))
+                                .Throws(exception);
 
-            var orchestratorFunction = new OrchestratorFunction(
-                                            _loggingRepository.Object,
-                                            _membershipCalculator,
-                                            _configuration.Object,
-                                            _emailSenderRecipient.Object
-                                            );
+            var orchestratorFunction = new OrchestratorFunction();
 
-            await orchestratorFunction.RunOrchestratorAsync(_durableOrchestrationContext.Object, _executionContext.Object);
-
-            _loggingRepository.Verify(x => x.LogMessageAsync(
-                        It.Is<LogMessage>(m => m.Message.StartsWith("Rescheduling job at")),
-                        It.IsAny<VerbosityLevel>(),
-                        It.IsAny<string>(),
-                        It.IsAny<string>()
-                    ), Times.Once);
+            await orchestratorFunction.RunOrchestratorAsync(_durableOrchestrationContext.Object);
 
             var currentUtcDate = _durableOrchestrationContext.Object.CurrentUtcDateTime;
-            _syncJobRepository.Verify(x => x.UpdateSyncJobStatusAsync(
-                                                It.Is<IEnumerable<SyncJob>>(x => x.All(y => y.StartDate == currentUtcDate.AddMinutes(30))),
-                                                It.Is<SyncStatus>(s => s == SyncStatus.Idle)
-                                            ), Times.Once);
+            _syncJobStatusService.Verify(x => x.UpdateJobStatusAsync(
+                                        It.Is<SyncJob>(x => x.StartDate == currentUtcDate.AddMinutes(30)),
+                                        SyncStatus.Idle,
+                                        It.IsAny<SyncJobHistory>(),
+                                        "GroupMembershipObtainer"
+                                    ), Times.Once);
         }
 
         [TestMethod]
         public async Task TestValidPartRequestAsync()
         {
-            _usersToReturn = 100000;
+            _durableOrchestrationContext.Setup(x => x.CallSubOrchestratorAsync<SubOrchestratorResponse>(It.IsAny<TaskName>(), It.IsAny<GroupMembershipRequest>(), It.IsAny<TaskOptions>()))
+                               .ReturnsAsync(() =>
+                               {
+                                   return new SubOrchestratorResponse
+                                   {
+                                       Status = _subOrchestratorResponseStatus
+                                   };
 
-            var orchestratorFunction = new OrchestratorFunction(
-                                            _loggingRepository.Object,
-                                            _membershipCalculator,
-                                            _configuration.Object,
-                                            _emailSenderRecipient.Object
-                                            );
+                               });
 
-            await orchestratorFunction.RunOrchestratorAsync(_durableOrchestrationContext.Object, _executionContext.Object);
+            var orchestratorFunction = new OrchestratorFunction();
 
-            _loggingRepository.Verify(x => x.LogMessageAsync(
-                                                It.Is<LogMessage>(m => m.Message.Contains($"Read {_usersToReturn} users from source groups")),
-                                                It.IsAny<VerbosityLevel>(),
-                                                It.IsAny<string>(),
-                                                It.IsAny<string>()
-                                            ), Times.Once);
+            await orchestratorFunction.RunOrchestratorAsync(_durableOrchestrationContext.Object);
 
-            _loggingRepository.Verify(x => x.LogMessageAsync(
-                                    It.Is<LogMessage>(m => m.Message.Contains($"Successfully uploaded {_usersToReturn} users")),
-                                    It.IsAny<VerbosityLevel>(),
-                                    It.IsAny<string>(),
-                                    It.IsAny<string>()
-                                ), Times.Once);
+            _syncJobStatusService.Verify(x => x.UpdateJobStatusAsync(
+                                        It.IsAny<SyncJob>(),
+                                        It.IsAny<SyncStatus?>(),
+                                        It.IsAny<SyncJobHistory>(),
+                                        It.IsAny<string>()
+                                    ), Times.Never);
+        }
 
-            _blobStorageRepository.Verify(x => x.UploadFileAsync(
-                                                It.IsAny<string>(),
-                                                It.IsAny<string>(),
-                                                It.IsAny<Dictionary<string, string>>()
-                                            ), Times.Once);
+        [TestMethod]
+        public async Task TestTransitiveCallAsync()
+        {
+            _durableOrchestrationContext.Setup(x => x.CallSubOrchestratorAsync<SubOrchestratorResponse>(It.IsAny<TaskName>(), It.IsAny<GroupMembershipRequest>(), It.IsAny<TaskOptions>()))
+                               .ReturnsAsync(() =>
+                               {
+                                   return new SubOrchestratorResponse
+                                   {
+                                       Status = _subOrchestratorResponseStatus
+                                   };
+                               });
 
-            _loggingRepository.Verify(x => x.LogMessageAsync(
-                                                It.Is<LogMessage>(m => m.Message == $"{nameof(OrchestratorFunction)} function completed"),
-                                                It.IsAny<VerbosityLevel>(),
-                                                It.IsAny<string>(),
-                                                It.IsAny<string>()
-                                            ), Times.Once);
+            var orchestratorFunction = new OrchestratorFunction();
 
-            _syncJobRepository.Verify(x => x.UpdateSyncJobStatusAsync(
-                                                It.IsAny<IEnumerable<SyncJob>>(),
-                                                It.IsAny<SyncStatus>()
-                                            ), Times.Never);
+            await orchestratorFunction.RunOrchestratorAsync(_durableOrchestrationContext.Object);
+            _durableOrchestrationContext.Verify(x => x.CallActivityAsync<string>(nameof(UsersSenderFunction), It.IsAny<UsersSenderRequest>(), It.IsAny<TaskOptions>()), Times.Never);
+        }
 
+        [TestMethod]
+        public async Task TestDeltaCallAsync()
+        {
 
+            _durableOrchestrationContext.Setup(x => x.CallSubOrchestratorAsync<SubOrchestratorResponse>(It.IsAny<TaskName>(), It.IsAny<GroupMembershipRequest>(), It.IsAny<TaskOptions>()))
+                               .ReturnsAsync(() =>
+                               {
+                                   return new SubOrchestratorResponse
+                                   {
+
+                                       Status = _subOrchestratorResponseStatus
+                                   };
+
+                               });
+
+            var orchestratorFunction = new OrchestratorFunction();
+
+            await orchestratorFunction.RunOrchestratorAsync(_durableOrchestrationContext.Object);
+            _durableOrchestrationContext.Verify(x => x.CallActivityAsync<string>(nameof(UsersSenderFunction), It.IsAny<UsersSenderRequest>(), It.IsAny<TaskOptions>()), Times.Never);
+        }
+
+        [TestMethod]
+        public async Task TestValidPartForTransitiveRequestAsync()
+        {
+            _durableOrchestrationContext.Setup(x => x.CallSubOrchestratorAsync<SubOrchestratorResponse>(It.IsAny<TaskName>(), It.IsAny<GroupMembershipRequest>(), It.IsAny<TaskOptions>()))
+                               .ReturnsAsync(() =>
+                               {
+                                   return new SubOrchestratorResponse
+                                   {
+                                       Status = _subOrchestratorResponseStatus
+                                   };
+                               });
+
+            _durableOrchestrationContext.Setup(x => x.CallActivityAsync(It.IsAny<TaskName>(), It.IsAny<DeleteBlobRequest>(), It.IsAny<TaskOptions>()))
+                        .Callback<TaskName, object, TaskOptions>(async (name, request, options) =>
+                        {
+                            await CallDeleteBlobFunctionAsync(request as DeleteBlobRequest);
+                        });
+
+            _durableOrchestrationContext.Setup(x => x.CallActivityAsync(It.IsAny<TaskName>(), It.IsAny<TransitiveAndDeltaUsersSenderRequest>(), It.IsAny<TaskOptions>()))
+                               .Callback<TaskName, object, TaskOptions>(async (name, request, options) =>
+                               {
+                                   await CallTransitiveAndDeltaUsersSenderFunctionAsync(request as TransitiveAndDeltaUsersSenderRequest);
+                               });
+
+            var orchestratorFunction = new OrchestratorFunction();
+            await orchestratorFunction.RunOrchestratorAsync(_durableOrchestrationContext.Object);
+
+            _durableOrchestrationContext.Verify(x => x.CallSubOrchestratorAsync<SubOrchestratorResponse>(nameof(SubOrchestratorFunction), It.IsAny<GroupMembershipRequest>(), It.IsAny<TaskOptions>()), Times.Once);
+            _durableOrchestrationContext.Verify(x => x.CallActivityAsync(nameof(QueueMessageSenderFunction), It.IsAny<MembershipAggregatorHttpRequest>(), It.IsAny<TaskOptions>()), Times.Once);
+        }
+
+        [TestMethod]
+        public async Task TestValidPartForDeltaRequestAsync()
+        {
+            _durableOrchestrationContext.Setup(x => x.CallSubOrchestratorAsync<SubOrchestratorResponse>(It.IsAny<TaskName>(), It.IsAny<GroupMembershipRequest>(), It.IsAny<TaskOptions>()))
+                               .ReturnsAsync(() =>
+                               {
+                                   return new SubOrchestratorResponse
+                                   {
+                                       Status = _subOrchestratorResponseStatus
+                                   };
+                               });
+
+            _durableOrchestrationContext.Setup(x => x.CallActivityAsync(It.IsAny<TaskName>(), It.IsAny<TransitiveAndDeltaUsersSenderRequest>(), It.IsAny<TaskOptions>()))
+                    .Callback<TaskName, object, TaskOptions>(async (name, request, options) =>
+                    {
+                        await CallTransitiveAndDeltaUsersSenderFunctionAsync(request as TransitiveAndDeltaUsersSenderRequest);
+                    });
+
+            _durableOrchestrationContext.Setup(x => x.CallActivityAsync<bool>(nameof(DeleteBlobFunction), It.IsAny<DeleteBlobRequest>(), It.IsAny<TaskOptions>()))
+                   .Callback<TaskName, object, TaskOptions>(async (name, request, options) =>
+                   {
+                       await CallDeleteBlobFunctionAsync(request as DeleteBlobRequest);
+                   });
+
+            _durableOrchestrationContext.Setup(x => x.CallActivityAsync<bool>(nameof(CacheUploaderFunction), It.IsAny<CacheUploaderRequest>(), It.IsAny<TaskOptions>()))
+                   .Callback<TaskName, object, TaskOptions>(async (name, request, options) =>
+                   {
+                       await CallCacheUploaderFunctionAsync(request as CacheUploaderRequest);
+                   });
+
+            var orchestratorFunction = new OrchestratorFunction();
+            await orchestratorFunction.RunOrchestratorAsync(_durableOrchestrationContext.Object);
+        }
+
+        [TestMethod]
+        public async Task TestMissingSchemasAsync()
+        {
+            _schemaProvider = new SchemaProvider();
+
+            _durableOrchestrationContext.Setup(x => x.CallActivityAsync<bool>(nameof(SchemaValidatorFunction), It.IsAny<SchemaValidatorRequest>(), It.IsAny<TaskOptions>()))
+            .Callback<TaskName, object, TaskOptions>(async (name, request, options) =>
+            {
+                await CallSchemaValidatorFunctionAsync(request as SchemaValidatorRequest);
+            })
+            .ReturnsAsync(() => _isValid);
+
+            var orchestratorFunction = new OrchestratorFunction();
+
+            await orchestratorFunction.RunOrchestratorAsync(_durableOrchestrationContext.Object);
+        }
+
+        [TestMethod]
+        public async Task TestMissingGroupMembershipSchemaAsync()
+        {
+            _schemaProvider = SchemaProviderFactory.CreateMissingGroupMembershipSchemaProvider();
+
+            _durableOrchestrationContext.Setup(x => x.CallActivityAsync<bool>(nameof(SchemaValidatorFunction), It.IsAny<SchemaValidatorRequest>(), It.IsAny<TaskOptions>()))
+            .Callback<TaskName, object, TaskOptions>(async (name, request, options) =>
+            {
+                await CallSchemaValidatorFunctionAsync(request as SchemaValidatorRequest);
+            })
+            .ReturnsAsync(() => _isValid);
+
+            var orchestratorFunction = new OrchestratorFunction();
+
+            await orchestratorFunction.RunOrchestratorAsync(_durableOrchestrationContext.Object);
+        }
+
+        [TestMethod]
+        public async Task TestInvalidSchemaAsync()
+        {
+            var orchestratorFunction = new OrchestratorFunction();
+
+            _durableOrchestrationContext.Setup(x => x.CallActivityAsync<bool>(nameof(SchemaValidatorFunction), It.IsAny<SchemaValidatorRequest>(), It.IsAny<TaskOptions>()))
+           .Callback<TaskName, object, TaskOptions>(async (name, request, options) =>
+           {
+               await CallSchemaValidatorFunctionAsync(request as SchemaValidatorRequest);
+           })
+           .ReturnsAsync(() => false);
+
+            await orchestratorFunction.RunOrchestratorAsync(_durableOrchestrationContext.Object);
+            _durableOrchestrationContext.Verify(x => x.CallActivityAsync(nameof(JobStatusUpdaterFunction),
+                                            It.Is<JobStatusUpdaterRequest>(x => x.Status == SyncStatus.SchemaError), It.IsAny<TaskOptions>()), Times.Once());
+        }
+
+        [TestMethod]
+        public async Task TestJsonReaderExceptionAsync()
+        {
+            _schemaProvider = SchemaProviderFactory.CreateMissingGroupMembershipSchemaProvider();
+
+            _durableOrchestrationContext.Setup(x => x.CallActivityAsync<bool>(nameof(SchemaValidatorFunction), It.IsAny<SchemaValidatorRequest>(), It.IsAny<TaskOptions>()))
+                    .ThrowsAsync(new JsonException());
+
+            var orchestratorFunction = new OrchestratorFunction();
+
+            await orchestratorFunction.RunOrchestratorAsync(_durableOrchestrationContext.Object);
+
+            _durableOrchestrationContext.Verify(x => x.CallActivityAsync(nameof(JobStatusUpdaterFunction),
+                                           It.Is<JobStatusUpdaterRequest>(x => x.Status == SyncStatus.QueryNotValid), It.IsAny<TaskOptions>()), Times.Once());
         }
 
         private async Task CallTelemetryTrackerFunctionAsync(TelemetryTrackerRequest request)
         {
-            var telemetryTrackerFunction = new TelemetryTrackerFunction(_loggingRepository.Object, _telemetryClient);
+            var telemetryTrackerFunction = new TelemetryTrackerFunction(NullLogger<TelemetryTrackerFunction>.Instance, _telemetryClient);
             await telemetryTrackerFunction.TrackEventAsync(request);
         }
 
         private async Task CallJobStatusUpdaterFunctionAsync(JobStatusUpdaterRequest request)
         {
-            var function = new JobStatusUpdaterFunction(_loggingRepository.Object, _membershipCalculator);
+            var function = new JobStatusUpdaterFunction(NullLogger<JobStatusUpdaterFunction>.Instance, _membershipCalculator);
             await function.UpdateJobStatusAsync(request);
         }
 
-        private async Task<(AzureADGroup,string)> CallSourceGroupsReaderFunctionAsync(GroupReaderRequest request)
+        private async Task<GroupReaderResponse> CallSourceGroupsReaderFunctionAsync(GroupReaderRequest request)
         {
-            var function = new GroupReaderFunction(_loggingRepository.Object, _membershipCalculator);
-            var (group, groupId) = function.GetSourceGroup(request);
+            var function = new GroupReaderFunction(NullLogger<GroupReaderFunction>.Instance, _membershipCalculator);
+            var response = function.GetSourceGroup(request);
             AzureADGroup azureAdGroup = request.IsDestinationPart
-                                ? azureAdGroup = new AzureADGroup { ObjectId = request.SyncJob.TargetOfficeGroupId }
-                                : azureAdGroup = group;
-            return (azureAdGroup, groupId);
+                                ? azureAdGroup = new AzureADGroup { ObjectId = request.GroupId }
+                                : azureAdGroup = response.SourceGroup;
+
+            response.SourceGroup = azureAdGroup;
+            return response;
         }
 
         private async Task<string> CallUsersSenderFunctionAsync(UsersSenderRequest request)
         {
-            var function = new UsersSenderFunction(_loggingRepository.Object, _membershipCalculator);
+            var function = new UsersSenderFunction(NullLogger<UsersSenderFunction>.Instance, _membershipCalculator);
             return await function.SendUsersAsync(request);
+        }
+
+        private async Task<GroupMembershipFileResult> CallTransitiveAndDeltaUsersSenderFunctionAsync(TransitiveAndDeltaUsersSenderRequest request)
+        {
+            var function = new TransitiveAndDeltaUsersSenderFunction(NullLogger<TransitiveAndDeltaUsersSenderFunction>.Instance, _blobStorageRepository.Object, _membershipCalculator);
+            return await function.SendUsersAsync(request);
+        }
+
+        private async Task CallCacheUploaderFunctionAsync(CacheUploaderRequest request)
+        {
+            var function = new CacheUploaderFunction(NullLogger<CacheUploaderFunction>.Instance, _membershipCalculator);
+            await function.SendUsersAsync(request);
+        }
+
+        private async Task CallDeltaLinkUploaderFunctionAsync(DeltaLinkUploaderRequest request)
+        {
+            var function = new DeltaLinkUploaderFunction(NullLogger<DeltaLinkUploaderFunction>.Instance, _membershipCalculator);
+            await function.SendDeltaLinkAsync(request);
+        }
+
+        private async Task CallDeleteBlobFunctionAsync(DeleteBlobRequest request)
+        {
+            var function = new DeleteBlobFunction(NullLogger<DeleteBlobFunction>.Instance, _blobStorageRepository.Object);
+            await function.DeleteAsync(request);
         }
 
         private async Task CallEmailSenderFunctionAsync(EmailSenderRequest request)
         {
-            var function = new EmailSenderFunction(_loggingRepository.Object, _membershipCalculator);
+            var function = new EmailSenderFunction(NullLogger<EmailSenderFunction>.Instance, _membershipCalculator);
             await function.SendEmailAsync(request);
         }
 
         private async Task CallQueueMessageSenderFunctionAsync(MembershipAggregatorHttpRequest request)
         {
-            var function = new QueueMessageSenderFunction(_loggingRepository.Object, _serviceBusQueueRepository.Object);
+            var function = new QueueMessageSenderFunction(NullLogger<QueueMessageSenderFunction>.Instance, _serviceBusQueueRepository.Object);
             await function.SendMessageAsync(request);
         }
 
+        private async Task<bool> CallSchemaValidatorFunctionAsync(SchemaValidatorRequest request)
+        {
+            var function = new SchemaValidatorFunction(NullLogger<SchemaValidatorFunction>.Instance, _schemaProvider);
+            return await function.ValidateSchemasAsync(request);
+        }
     }
 }

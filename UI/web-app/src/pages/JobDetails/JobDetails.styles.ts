@@ -5,13 +5,19 @@ import {
     type IJobDetailsStyleProps,
     type IJobDetailsStyles,
 } from './JobDetails.types';
+import { NeutralColors } from '@fluentui/react';
 
 export const getStyles = (props: IJobDetailsStyleProps): IJobDetailsStyles => {
     const { className, theme } = props;
+    const isDarkMode = theme.palette.white.toLowerCase() === NeutralColors.gray220;
+    const statusTextColor = theme.semanticColors.bodyText;
+    const enabledTextColor = isDarkMode ? NeutralColors.white : statusTextColor;
+    const enabledBackgroundColor = isDarkMode ? theme.palette.greenDark : theme.semanticColors.successBackground;
+    const disabledBackgroundColor = theme.semanticColors.disabledBackground;
 
     return {
         root: [{
-            padding: '9px 36px 0px 36px'
+            padding: '0px 36px 0px 36px'
         }, className],
         itemTitle:{
             fontSize: 14,
@@ -46,24 +52,26 @@ export const getStyles = (props: IJobDetailsStyleProps): IJobDetailsStyles => {
             paddingRight: 10
         },
         jobEnabled: {
-            color: theme.palette.black,
-            backgroundColor: theme.semanticColors.successBackground,
+            color: enabledTextColor,
+            backgroundColor: enabledBackgroundColor,
             borderRadius: 50,
             textAlign: 'center',
             height: 20,
             paddingLeft: 5,
             paddingRight: 5,
-            marginLeft: 15
+            marginLeft: 15,
+            fontWeight: 600
         },
         jobDisabled: {
-            color: theme.palette.black,
-            backgroundColor: theme.palette.themeLighterAlt,
+            color: statusTextColor,
+            backgroundColor: disabledBackgroundColor,
             borderRadius: 50,
             textAlign: 'center',
             height: 20,
             paddingLeft: 5,
             paddingRight: 5,
-            marginLeft: 15
+            marginLeft: 15,
+            fontWeight: 600
         },
         membershipStatusContainer: {
             display: "flex",
@@ -77,6 +85,27 @@ export const getStyles = (props: IJobDetailsStyleProps): IJobDetailsStyles => {
             display: "flex",
             flexDirection: "column",
             paddingLeft: 50
+        },
+        requestor: {
+            display: "flex",
+            flexDirection: "column",
+            paddingLeft: 50
+        },
+        hiddenMembershipWarningContainer: {
+            display: 'flex',
+            alignItems: 'center',
+            gap: 8,
+            marginBottom: 12,
+            padding: '6px 10px',
+            borderRadius: 4,
+            backgroundColor: theme.semanticColors.errorBackground
+        },
+        hiddenMembershipWarningIcon: {
+            color: theme.semanticColors.errorText
+        },
+        hiddenMembershipWarningText: {
+            color: theme.semanticColors.errorText,
+            fontWeight: 600
         },
         clockIcon: {
             color: theme.palette.yellowDark,
@@ -95,7 +124,34 @@ export const getStyles = (props: IJobDetailsStyleProps): IJobDetailsStyles => {
         removeGMM: {
             display: "flex",
             alignItems: "flex-end",
-            justifyContent: "flex-end",
+            justifyContent: "flex-end"
+        },
+        removeGMMNotFound: {
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            marginTop: 20,
+        },
+        historyButtonContainer: {
+            display: "flex",
+            justifyContent: "flex-end"
+        },
+        userPersona: {
+            height: 48,
+            width: 48
+        },
+        notFound: {
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            textAlign: 'center',
+            fontSize: '20px',
+            padding: '9px 36px 0px 36px',
+            maxWidth: '600px',
+            width: '100%',
+            margin: '0 auto',
+            height: '20vh'
         }
     };
 };

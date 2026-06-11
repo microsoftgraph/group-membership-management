@@ -1,0 +1,22 @@
+{
+    "IsEncrypted": false,
+    "Values": {
+        "AZURE_TOKEN_CREDENTIALS": "VisualStudioCredential",
+        "appConfigurationEndpoint": "",
+        "APPINSIGHTS_INSTRUMENTATIONKEY": "",
+        "AzureWebJobsStorage": "UseDevelopmentStorage=true",
+        "ConnectionStrings__JobsContext": "",
+        "ConnectionStrings__JobsContextReadOnly": "",
+        "FUNCTIONS_WORKER_RUNTIME": "dotnet-isolated",
+        "graphCredentials__ClientCertificateName": "not-set",
+        "graphCredentials__ClientId": "",
+        "graphCredentials__ClientSecret": "",
+        "graphCredentials__KeyVaultName": "",
+        "graphCredentials__KeyVaultTenantId": "",
+        "graphCredentials__TenantId": "",
+        "graphCredentials__UserAssignedManagedIdentityClientId": "",
+        "logAnalyticsCustomerId": "",
+        "logAnalyticsPrimarySharedKey": "",
+        "storageAccountName": ""
+    }
+}

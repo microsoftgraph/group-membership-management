@@ -7,7 +7,6 @@ using Repositories.Contracts;
 using Services.Contracts;
 using Services.Messages.Requests;
 using Services.Messages.Responses;
-using SqlMembershipAttributeValueDTO = WebApi.Models.DTOs.SqlMembershipAttributeValue;
 
 namespace Services
 {
@@ -31,13 +30,9 @@ namespace Services
             try
             {
                 var response = new GetDefaultSqlMembershipSourceAttributeValuesResponse();
-                var attributeValues = await GetSqlAttributeValuesAsync(request.Attribute);
-                foreach (var attributeValue in attributeValues)
-                {
-                    var dto = new SqlMembershipAttributeValueDTO(attributeValue.Code, attributeValue.Description);
+                var attributeValues = await GetSqlAttributeValuesAsync(request.Attribute, request.HasMapping);
+                response.Values = attributeValues;
 
-                    response.Model.Add(dto);
-                }
                 return response;
             }
             catch (Exception ex)
@@ -47,24 +42,24 @@ namespace Services
             }
         }
 
-        private async Task<List<(string Code, string Description)>> GetSqlAttributeValuesAsync(string attribute)
+        private async Task<List<string>> GetSqlAttributeValuesAsync(string attribute, bool hasMapping)
         {
             var tableName = await GetTableNameAsync();
-            var attributes = await GetAttributeValuesAsync(attribute, tableName);
+            var attributes = await GetAttributeValuesAsync(attribute, hasMapping, tableName);
             return attributes;
         }
 
-        private async Task<List<(string Code, string Description)>> GetAttributeValuesAsync(string attribute, string tableName)
+        private async Task<List<string>> GetAttributeValuesAsync(string attribute, bool hasMapping, string tableName)
         {
-            var attributeValues = new List<(string Code, string Description)>();
+            var attributeValues = new List<string>();
 
             try
             {
-                attributeValues = await _sqlMembershipRepository.GetAttributeValuesAsync(attribute, tableName);
+                attributeValues = await _sqlMembershipRepository.GetAttributeValuesAsync(attribute, hasMapping, tableName);
             }
             catch (SqlException ex)
             {
-                await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"An exception was thrown while attempting to get Sql Filter Attribute Values from mappings table '{tableName}': {ex.Message}" });
+                await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"An exception was thrown while attempting to get Sql Filter Attribute Values from table '{tableName}': {ex.Message}" });
                 throw ex;
             }
 
@@ -75,18 +70,18 @@ namespace Services
         {
             var adfRunId = await GetADFRunIdAsync();
             var tableName = adfRunId.Replace("-", "");
-            var tableExists = await CheckIfMappingsTableExistsAsync(tableName);
+            var tableExists = await CheckIfTableExistsAsync(tableName);
 
             return tableExists ? tableName : "";
         }
 
-        private async Task<bool> CheckIfMappingsTableExistsAsync(string tableName)
+        private async Task<bool> CheckIfTableExistsAsync(string tableName)
         {
             bool tableExists = false;
 
             try
             {
-                tableExists = await _sqlMembershipRepository.CheckIfMappingsTableExistsAsync(tableName);
+                tableExists = await _sqlMembershipRepository.CheckIfTableExistsAsync(tableName);
             }
             catch (SqlException ex)
             {

@@ -5,9 +5,10 @@ namespace Models
 {
     public enum OnboardingStatus
     {
-        Onboarded,
-        ReadyForOnboarding,
-        AppIdNotOwner,
-        UserNotOwner
+        Onboarded = 0,
+        ReadyForOnboarding = 1,
+        GmmNotOwner = 2,
+        UserNotOwner = 3,
+        SyncedOnPremises = 4
     }
 }

@@ -1,8 +1,8 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-using Microsoft.Azure.WebJobs;
-using Microsoft.Azure.WebJobs.Extensions.DurableTask;
+using Microsoft.Azure.Functions.Worker;
+using Microsoft.DurableTask;
 using Models;
 using Repositories.Contracts;
 using Repositories.Contracts.InjectConfig;
@@ -21,9 +21,9 @@ namespace Hosts.JobScheduler
             _jobSchedulerConfig = jobSchedulerConfig ?? throw new ArgumentNullException(nameof(jobSchedulerConfig));
         }
 
-        [FunctionName(nameof(OrchestratorFunction))]
+        [Function(nameof(OrchestratorFunction))]
         public async Task RunOrchestratorAsync(
-            [OrchestrationTrigger] IDurableOrchestrationContext context)
+            [OrchestrationTrigger] TaskOrchestrationContext context)
         {
             var runId = context.NewGuid();
 
@@ -36,9 +36,11 @@ namespace Hosts.JobScheduler
                 });
 
             var orchestratorRequest = context.GetInput<OrchestratorRequest>();
+            var prioritizeThresholdJobs = false;
             if(orchestratorRequest != null)
             {
                 _jobSchedulerConfig.StartTimeDelayMinutes = orchestratorRequest.StartTimeDelayMinutes;
+                prioritizeThresholdJobs = orchestratorRequest.PrioritizeThresholdJobs;
             }
 
             if(!_jobSchedulerConfig.ResetJobs && !_jobSchedulerConfig.DistributeJobs)
@@ -82,7 +84,8 @@ namespace Hosts.JobScheduler
                     {
                         JobsToDistribute = jobsToUpdate,
                         StartTimeDelayMinutes = _jobSchedulerConfig.StartTimeDelayMinutes,
-                        DelayBetweenSyncsSeconds = _jobSchedulerConfig.DelayBetweenSyncsSeconds
+                        DelayBetweenSyncsSeconds = _jobSchedulerConfig.DelayBetweenSyncsSeconds,
+                        PrioritizeThresholdJobs = prioritizeThresholdJobs
                     });
 
                 await context.CallActivityAsync(nameof(LoggerFunction),

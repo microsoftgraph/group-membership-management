@@ -1,6 +1,7 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 using Repositories.Contracts;
+using Repositories.Contracts.Helpers;
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
@@ -12,6 +13,7 @@ namespace Repositories.ServiceBusTopics.Tests
     public class MockGraphGroupRepository : IGraphGroupRepository
     {
         public Guid RunId { get; set; }
+        public Guid? LastResolvedRunId { get; private set; }
 
         public HashSet<Guid> GroupsThatExist = new HashSet<Guid>();
         public HashSet<Guid> GroupsGMMOwns = new HashSet<Guid>();
@@ -23,6 +25,7 @@ namespace Repositories.ServiceBusTopics.Tests
 
         public Task<string> GetGroupNameAsync(Guid objectId)
         {
+            LastResolvedRunId = CorrelationActivity.ResolveRunId(fallbackRunId: RunId == Guid.Empty ? null : RunId);
             return Task.FromResult("GroupName");
         }
 
@@ -38,6 +41,7 @@ namespace Repositories.ServiceBusTopics.Tests
 
         public Task<bool> GroupExists(Guid objectId)
         {
+            LastResolvedRunId = CorrelationActivity.ResolveRunId(fallbackRunId: RunId == Guid.Empty ? null : RunId);
             return Task.FromResult(GroupsThatExist.Contains(objectId));
         }
 
@@ -46,8 +50,9 @@ namespace Repositories.ServiceBusTopics.Tests
             throw new NotImplementedException();
         }
 
-        public Task<bool> IsAppIDOwnerOfGroup(string appId, Guid groupObjectId)
+        public Task<bool> IsAppIDOwnerOfGroup(string appId, Guid groupObjectId, bool validateGroupExists = true)
         {
+            LastResolvedRunId = CorrelationActivity.ResolveRunId(fallbackRunId: RunId == Guid.Empty ? null : RunId);
             return Task.FromResult(GroupsGMMOwns.Contains(groupObjectId));
         }
 
@@ -56,16 +61,12 @@ namespace Repositories.ServiceBusTopics.Tests
             throw new NotImplementedException();
         }
 
-        public Task<(List<AzureADUser> users, Dictionary<string, int> nonUserGraphObjects, string nextPageUrl)> GetNextTransitiveMembersPageAsync(string nextPageUrl)
+        public Task<bool> IsGroupSyncedOnPremisesAsync(Guid groupId)
         {
-            throw new NotImplementedException();
+            return Task.FromResult(false);
         }
 
-        public Task<(List<AzureADUser> usersToAdd, List<AzureADUser> usersToRemove, string nextPageUrl, string deltaUrl)> GetFirstDeltaUsersPageAsync(string deltaLink)
-        {
-            throw new NotImplementedException();
-        }
-        public Task<(List<AzureADUser> usersToAdd, List<AzureADUser> usersToRemove, string nextPageUrl, string deltaUrl)> GetNextDeltaUsersPageAsync(string nextPageUrl)
+        public Task<(List<AzureADUser> users, Dictionary<string, int> nonUserGraphObjects, string nextPageUrl)> GetNextTransitiveMembersPageAsync(Guid objectId, string nextPageUrl)
         {
             throw new NotImplementedException();
         }
@@ -89,7 +90,7 @@ namespace Repositories.ServiceBusTopics.Tests
         {
             throw new NotImplementedException();
         }
-        public Task<(List<AzureADUser> users, string nextPageUrl, string deltaUrl)> GetNextUsersPageAsync(string nextPageUrl)
+        public Task<(List<AzureADUser> users, string nextPageUrl, string deltaUrl)> GetNextUsersPagesAsync(string nextPageUrl, int numberOfPages)
         {
             throw new NotImplementedException();
         }
@@ -106,7 +107,7 @@ namespace Repositories.ServiceBusTopics.Tests
             throw new NotImplementedException();
         }
 
-        public Task<bool> IsEmailRecipientOwnerOfGroupAsync(string email, Guid groupObjectId)
+        public Task<bool> IsEmailRecipientOwnerOfGroupAsync(string email, Guid groupObjectId, bool validateGroupExists = true)
         {
             throw new NotImplementedException();
         }
@@ -146,6 +147,11 @@ namespace Repositories.ServiceBusTopics.Tests
             throw new NotImplementedException();
         }
 
+        public Task<AzureADGroup> CreateGroupFromUI(string newGroupName, Guid groupOwnerId, string newGroupAlias)
+        {
+            throw new NotImplementedException();
+        }
+
         public Task<List<AzureADUser>> GetTenantUsers(int userCount)
         {
             throw new NotImplementedException();
@@ -165,7 +171,10 @@ namespace Repositories.ServiceBusTopics.Tests
         {
             throw new NotImplementedException();
         }
-
+        public Task<Dictionary<Guid, string>> GetGroupEmailsAsync(List<Guid> objectIds)
+        {
+            throw new NotImplementedException();
+        }
         public Task<List<AzureADGroup>> SearchDestinationsAsync(string query)
         {
             throw new NotImplementedException();
@@ -179,6 +188,56 @@ namespace Repositories.ServiceBusTopics.Tests
         public Task<bool> IsServiceAccountOwnerOfGroupAsync(Guid serviceAccountObjectId, Guid groupObjectId)
         {
             return Task.FromResult(GroupsGMMOwns.Contains(groupObjectId));
+        }
+
+        public Task<(List<AzureADUser> usersToAdd, List<AzureADUser> usersToRemove, string nextPageUrl, string deltaUrl)> GetFirstDeltaLinkUsersPageAsync(Guid objectId, string deltaLink, int numberOfPages)
+        {
+            throw new NotImplementedException();
+        }
+
+        public Task<(List<AzureADUser> usersToAdd, List<AzureADUser> usersToRemove, string nextPageUrl, string deltaUrl)> GetNextDeltaLinkUsersPagesAsync(Guid objectId, string nextPageUrl, int numberOfPages)
+        {
+            throw new NotImplementedException();
+        }
+
+        public Task<(List<AzureADUser> users, string nextPageUrl, string deltaUrl)> GetFirstDeltaUsersPageAsync(Guid objectId, int numberOfPages)
+        {
+            throw new NotImplementedException();
+        }
+
+        public Task<(List<AzureADUser> users, string nextPageUrl, string deltaUrl)> GetNextDeltaUsersPagesAsync(Guid objectId, string nextPageUrl, int numberOfPages)
+        {
+            throw new NotImplementedException();
+        }
+
+        public Task<List<string>> GetAllGroupNamesAsync()
+        {
+            throw new NotImplementedException();
+        }
+
+        public Task<string> GetGroupEmailAsync(Guid objectId)
+        {
+            throw new NotImplementedException();
+        }
+        
+        public Task<List<AzureADGroup>> GetGroupsByFilterAsync(string query)
+        {
+            throw new NotImplementedException();
+        }
+
+        public async Task<Guid> GetObjectIdFromAppIdAsync(Guid userIdentifier, Guid? runId)
+        {
+            throw new NotImplementedException();
+        }
+
+        public Task<AzureADUser> GetUserWithOnPremisesImmutableIdAsync(string userIdentifier, Guid? runId)
+        {
+            throw new NotImplementedException();
+        }
+
+        public Task<List<AzureADGroup>> GetDirectGroupTypeMembersAsync(Guid groupObjectId)
+        {
+            throw new NotImplementedException();
         }
     }
 }

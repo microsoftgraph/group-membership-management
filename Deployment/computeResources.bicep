@@ -1,8 +1,10 @@
 // common parameters
 param location string
+param aiLocation string
 param environmentAbbreviation string
 param solutionAbbreviation string
 param tenantId string
+param functionAuthAppClientId string
 param managedResourceGroupName string = ''
 param isManagedApplication bool = false
 param appConfigurationName string
@@ -10,16 +12,44 @@ param setRBACPermissions bool
 
 // UI parameters
 param customDomainName string = ''
-param apiAppClientId string
 param apiServiceBaseUri string
-param uiAppTenantId string
-param uiAppClientId string
-param sharepointDomain string
-param tenantDomain string
 param uiLocation string
+param branch string = 'not-set'
+param repositoryUrl string = 'https://url'
 
 // API parameters
 param pipeline string
+
+//WebAPI, Notifier
+param apiHostname string = ''
+var resolvedApiHostname = apiHostname == '' ? '${solutionAbbreviation}-compute-${environmentAbbreviation}-webapi.azurewebsites.net' : apiHostname
+
+// Message Splitter
+param availableMessageSplitterSubscriptions array = [
+  {
+    name: 's1'
+    subscription: 'Small'
+  }
+  {
+    name: 'l1'
+    subscription: 'Large'
+  }
+]
+
+//AzureUserReader
+param storageAccountSecretName string = 'adfStorageAccountName'
+
+// GraphUpdater
+param concurrentAddRequests int = 1
+param concurrentRemoveRequests int = 1
+
+
+// Used by: JobTrigger, DestinationAttributesUpdater, AzureUserReader, Notifier, JobScheduler, WebApi, NonProdService, GraphUpdater
+param featureFlags object = {
+  skipListingFunctionAppKeys : true
+  enableTeamsChannel: false
+  enableOpenAI: false
+}
 
 var prereqsResourceGroupName = isManagedApplication ? managedResourceGroupName : '${solutionAbbreviation}-prereqs-${environmentAbbreviation}'
 var dataResourceGroupName = isManagedApplication ? managedResourceGroupName : '${solutionAbbreviation}-data-${environmentAbbreviation}'
@@ -34,8 +64,6 @@ module jobTriggerDataResources '../Service/GroupMembershipManagement/Hosts/JobTr
     location: location
     environmentAbbreviation: environmentAbbreviation
     solutionAbbreviation: solutionAbbreviation
-    tenantId: tenantId
-    storageAccountName: 'notused'
   }
 }
 
@@ -47,10 +75,11 @@ module jobTriggerComputeResources '../Service/GroupMembershipManagement/Hosts/Jo
     environmentAbbreviation: environmentAbbreviation
     solutionAbbreviation: solutionAbbreviation
     tenantId: tenantId
-    storageAccountName: 'notused'
+    functionAuthAppClientId: functionAuthAppClientId
     prereqsKeyVaultResourceGroup: prereqsResourceGroupName
     dataKeyVaultResourceGroup: dataResourceGroupName
     setRBACPermissions: setRBACPermissions
+    featureFlags: featureFlags
   }
   dependsOn: [
     jobTriggerDataResources
@@ -65,8 +94,6 @@ module destinationAttributesUpdaterDataResources '../Service/GroupMembershipMana
     location: location
     environmentAbbreviation: environmentAbbreviation
     solutionAbbreviation: solutionAbbreviation
-    tenantId: tenantId
-    storageAccountName: 'notused'
   }
 }
 
@@ -78,10 +105,11 @@ module destinationAttributesUpdaterComputeResources '../Service/GroupMembershipM
     environmentAbbreviation: environmentAbbreviation
     solutionAbbreviation: solutionAbbreviation
     tenantId: tenantId
-    storageAccountName: 'notused'
+    functionAuthAppClientId: functionAuthAppClientId
     prereqsKeyVaultResourceGroup: prereqsResourceGroupName
     dataKeyVaultResourceGroup: dataResourceGroupName
     setRBACPermissions: setRBACPermissions
+    featureFlags: featureFlags
   }
   dependsOn: [
     destinationAttributesUpdaterDataResources
@@ -96,8 +124,6 @@ module groupMembershipObtainerDataResources '../Service/GroupMembershipManagemen
     location: location
     environmentAbbreviation: environmentAbbreviation
     solutionAbbreviation: solutionAbbreviation
-    tenantId: tenantId
-    storageAccountName: 'notused'
   }
 }
 
@@ -109,7 +135,7 @@ module groupMembershipObtainerComputeResources '../Service/GroupMembershipManage
     environmentAbbreviation: environmentAbbreviation
     solutionAbbreviation: solutionAbbreviation
     tenantId: tenantId
-    storageAccountName: 'notused'
+    functionAuthAppClientId: functionAuthAppClientId
     prereqsKeyVaultResourceGroup: prereqsResourceGroupName
     dataKeyVaultResourceGroup: dataResourceGroupName
     setRBACPermissions: setRBACPermissions
@@ -127,8 +153,6 @@ module sqlMembershipObtainerDataResources '../Service/GroupMembershipManagement/
     location: location
     environmentAbbreviation: environmentAbbreviation
     solutionAbbreviation: solutionAbbreviation
-    tenantId: tenantId
-    storageAccountName: 'notused'
   }
 }
 
@@ -140,13 +164,11 @@ module sqlMembershipObtainerComputeResources '../Service/GroupMembershipManageme
     environmentAbbreviation: environmentAbbreviation
     solutionAbbreviation: solutionAbbreviation
     tenantId: tenantId
-    storageAccountName: 'notused'
+    functionAuthAppClientId: functionAuthAppClientId
     prereqsKeyVaultResourceGroup: prereqsResourceGroupName
     dataKeyVaultResourceGroup: dataResourceGroupName
     authority: 'https://login.windows.net/${tenantId}'
     subscriptionId: subscription().subscriptionId
-    sqlMembershipStorageAccountName: 'not-used'
-    sqlMembershipStorageAccountConnectionString: 'not-used'
     pipeline: pipeline
     setRBACPermissions: setRBACPermissions
   }
@@ -163,8 +185,6 @@ module groupOwnershipObtainerDataResources '../Service/GroupMembershipManagement
     location: location
     environmentAbbreviation: environmentAbbreviation
     solutionAbbreviation: solutionAbbreviation
-    tenantId: tenantId
-    storageAccountName: 'notused'
   }
 }
 
@@ -176,7 +196,7 @@ module groupOwnershipObtainerComputeResources '../Service/GroupMembershipManagem
     environmentAbbreviation: environmentAbbreviation
     solutionAbbreviation: solutionAbbreviation
     tenantId: tenantId
-    storageAccountName: 'notused'
+    functionAuthAppClientId: functionAuthAppClientId
     prereqsKeyVaultResourceGroup: prereqsResourceGroupName
     dataKeyVaultResourceGroup: dataResourceGroupName
     setRBACPermissions: setRBACPermissions
@@ -194,8 +214,6 @@ module placeMembershipObtainerDataResources '../Service/GroupMembershipManagemen
     location: location
     environmentAbbreviation: environmentAbbreviation
     solutionAbbreviation: solutionAbbreviation
-    tenantId: tenantId
-    storageAccountName: 'notused'
   }
 }
 
@@ -207,7 +225,7 @@ module placeMembershipObtainerComputeResources '../Service/GroupMembershipManage
     environmentAbbreviation: environmentAbbreviation
     solutionAbbreviation: solutionAbbreviation
     tenantId: tenantId
-    storageAccountName: 'notused'
+    functionAuthAppClientId: functionAuthAppClientId
     prereqsKeyVaultResourceGroup: prereqsResourceGroupName
     dataKeyVaultResourceGroup: dataResourceGroupName
     setRBACPermissions: setRBACPermissions
@@ -225,8 +243,6 @@ module teamsChannelMembershipObtainerDataResources '../Service/GroupMembershipMa
     location: location
     environmentAbbreviation: environmentAbbreviation
     solutionAbbreviation: solutionAbbreviation
-    tenantId: tenantId
-    storageAccountName: 'notused'
   }
 }
 
@@ -238,7 +254,7 @@ module teamsChannelMembershipObtainerComputeResources '../Service/GroupMembershi
     environmentAbbreviation: environmentAbbreviation
     solutionAbbreviation: solutionAbbreviation
     tenantId: tenantId
-    storageAccountName: 'notused'
+    functionAuthAppClientId: functionAuthAppClientId
     prereqsKeyVaultResourceGroup: prereqsResourceGroupName
     dataKeyVaultResourceGroup: dataResourceGroupName
     setRBACPermissions: setRBACPermissions
@@ -256,8 +272,6 @@ module membershipAggregatorDataResources '../Service/GroupMembershipManagement/H
     location: location
     environmentAbbreviation: environmentAbbreviation
     solutionAbbreviation: solutionAbbreviation
-    tenantId: tenantId
-    storageAccountName: 'notused'
   }
 }
 
@@ -269,7 +283,7 @@ module membershipAggregatorComputeResources '../Service/GroupMembershipManagemen
     environmentAbbreviation: environmentAbbreviation
     solutionAbbreviation: solutionAbbreviation
     tenantId: tenantId
-    storageAccountName: 'notused'
+    functionAuthAppClientId: functionAuthAppClientId
     prereqsKeyVaultResourceGroup: prereqsResourceGroupName
     dataKeyVaultResourceGroup: dataResourceGroupName
     setRBACPermissions: setRBACPermissions
@@ -280,35 +294,47 @@ module membershipAggregatorComputeResources '../Service/GroupMembershipManagemen
 }
 
 // ----------------- GraphUpdater
-module graphUpdaterDataResources '../Service/GroupMembershipManagement/Hosts/GraphUpdater/Infrastructure/data/template.bicep' = {
-  name: 'graphUpdaterDataResourcesTemplate'
+
+var guinstanceIds = [
+  ''
+  'small'
+  'large'
+]
+
+module graphUpdaterDataResources '../Service/GroupMembershipManagement/Hosts/GraphUpdater/Infrastructure/data/template.bicep' = [for instance in guinstanceIds: {
+  name: instance == '' ? 'graphUpdaterDataResourcesTemplate' : 'graphUpdater${instance}DataResourcesTemplate'
   scope: resourceGroup(dataResourceGroupName)
   params: {
     location: location
     environmentAbbreviation: environmentAbbreviation
     solutionAbbreviation: solutionAbbreviation
-    tenantId: tenantId
-    storageAccountName: 'notused'
+    instanceIdentifier: instance
   }
 }
+]
 
-module graphUpdaterComputeResources '../Service/GroupMembershipManagement/Hosts/GraphUpdater/Infrastructure/compute/template.bicep' = {
-  name: 'graphUpdaterComputeResourcesTemplate'
+module graphUpdaterComputeResources '../Service/GroupMembershipManagement/Hosts/GraphUpdater/Infrastructure/compute/template.bicep' = [for instance in guinstanceIds: {
+  name: instance == '' ? 'graphUpdaterComputeResourcesTemplate' : 'graphUpdater${instance}ComputeResourcesTemplate'
   scope: resourceGroup(computeResourceGroupName)
   params: {
     location: location
     environmentAbbreviation: environmentAbbreviation
     solutionAbbreviation: solutionAbbreviation
     tenantId: tenantId
-    storageAccountName: 'notused'
+    functionAuthAppClientId: functionAuthAppClientId
     prereqsKeyVaultResourceGroup: prereqsResourceGroupName
     dataKeyVaultResourceGroup: dataResourceGroupName
     setRBACPermissions: setRBACPermissions
+    featureFlags: featureFlags
+    instanceIdentifier: instance
+    concurrentAddRequests: concurrentAddRequests
+    concurrentRemoveRequests: concurrentRemoveRequests
   }
   dependsOn: [
     graphUpdaterDataResources
   ]
-}
+}]
+
 
 // ----------------- TeamsChannelUpdater
 module teamsChannelUpdaterDataResources '../Service/GroupMembershipManagement/Hosts/TeamsChannelUpdater/Infrastructure/data/template.bicep' = {
@@ -318,8 +344,6 @@ module teamsChannelUpdaterDataResources '../Service/GroupMembershipManagement/Ho
     location: location
     environmentAbbreviation: environmentAbbreviation
     solutionAbbreviation: solutionAbbreviation
-    tenantId: tenantId
-    storageAccountName: 'notused'
   }
 }
 
@@ -331,7 +355,7 @@ module teamsChannelUpdaterComputeResources '../Service/GroupMembershipManagement
     environmentAbbreviation: environmentAbbreviation
     solutionAbbreviation: solutionAbbreviation
     tenantId: tenantId
-    storageAccountName: 'notused'
+    functionAuthAppClientId: functionAuthAppClientId
     prereqsKeyVaultResourceGroup: prereqsResourceGroupName
     dataKeyVaultResourceGroup: dataResourceGroupName
     setRBACPermissions: setRBACPermissions
@@ -349,8 +373,6 @@ module nonProdServiceDataResources '../Service/GroupMembershipManagement/Hosts/N
     location: location
     environmentAbbreviation: environmentAbbreviation
     solutionAbbreviation: solutionAbbreviation
-    tenantId: tenantId
-    storageAccountName: 'notused'
   }
 }
 
@@ -362,11 +384,12 @@ module nonProdServiceComputeResources '../Service/GroupMembershipManagement/Host
     environmentAbbreviation: environmentAbbreviation
     solutionAbbreviation: solutionAbbreviation
     tenantId: tenantId
-    storageAccountName: 'notused'
     prereqsKeyVaultResourceGroup: prereqsResourceGroupName
     dataKeyVaultResourceGroup: dataResourceGroupName
     appConfigurationName: appConfigurationName
     setRBACPermissions: setRBACPermissions
+    featureFlags: featureFlags
+    functionAuthAppClientId: functionAuthAppClientId
   }
   dependsOn: [
     nonProdServiceDataResources
@@ -381,8 +404,6 @@ module azureUserReaderDataResources '../Service/GroupMembershipManagement/Hosts/
     location: location
     environmentAbbreviation: environmentAbbreviation
     solutionAbbreviation: solutionAbbreviation
-    tenantId: tenantId
-    storageAccountName: 'notused'
   }
 }
 
@@ -394,11 +415,12 @@ module azureUserReaderComputeResources '../Service/GroupMembershipManagement/Hos
     environmentAbbreviation: environmentAbbreviation
     solutionAbbreviation: solutionAbbreviation
     tenantId: tenantId
-    storageAccountName: 'notused'
     prereqsKeyVaultResourceGroup: prereqsResourceGroupName
     dataKeyVaultResourceGroup: dataResourceGroupName
-    storageAccountSecretName: 'storageAccountConnectionString'
+    storageAccountSecretName: storageAccountSecretName
     setRBACPermissions: setRBACPermissions
+    featureFlags: featureFlags
+    functionAuthAppClientId: functionAuthAppClientId
   }
   dependsOn: [
     azureUserReaderDataResources
@@ -413,8 +435,6 @@ module notifierDataResources '../Service/GroupMembershipManagement/Hosts/Notifie
     location: location
     environmentAbbreviation: environmentAbbreviation
     solutionAbbreviation: solutionAbbreviation
-    tenantId: tenantId
-    storageAccountName: 'notused'
   }
 }
 
@@ -426,13 +446,44 @@ module notifierComputeResources '../Service/GroupMembershipManagement/Hosts/Noti
     environmentAbbreviation: environmentAbbreviation
     solutionAbbreviation: solutionAbbreviation
     tenantId: tenantId
-    storageAccountName: 'notUsed'
     prereqsKeyVaultResourceGroup: prereqsResourceGroupName
-    dataKeyVaultResourceGroup: dataResourceGroupName
+    dataResourceGroup: dataResourceGroupName
     setRBACPermissions: setRBACPermissions
+    featureFlags: featureFlags
+    apiHostname: resolvedApiHostname
+    functionAuthAppClientId: functionAuthAppClientId
   }
   dependsOn: [
     notifierDataResources
+  ]
+}
+
+// ----------------- AutoApprover
+module autoApproverDataResources '../Service/GroupMembershipManagement/Hosts/AutoApprover/Infrastructure/data/template.bicep' = {
+  name: 'autoApproverDataResourcesTemplate'
+  scope: resourceGroup(dataResourceGroupName)
+  params: {
+    location: location
+    environmentAbbreviation: environmentAbbreviation
+    solutionAbbreviation: solutionAbbreviation
+  }
+}
+
+module autoApproverComputeResources '../Service/GroupMembershipManagement/Hosts/AutoApprover/Infrastructure/compute/template.bicep' = {
+  name: 'autoApproverComputeResourcesTemplate'
+  scope: resourceGroup(computeResourceGroupName)
+  params: {
+    location: location
+    environmentAbbreviation: environmentAbbreviation
+    solutionAbbreviation: solutionAbbreviation
+    tenantId: tenantId
+    prereqsKeyVaultResourceGroup: prereqsResourceGroupName
+    dataResourceGroup: dataResourceGroupName
+    setRBACPermissions: setRBACPermissions
+    functionAuthAppClientId: functionAuthAppClientId
+  }
+  dependsOn: [
+    autoApproverDataResources
   ]
 }
 
@@ -444,8 +495,6 @@ module jobSchedulerDataResources '../Service/GroupMembershipManagement/Hosts/Job
     location: location
     environmentAbbreviation: environmentAbbreviation
     solutionAbbreviation: solutionAbbreviation
-    tenantId: tenantId
-    storageAccountName: 'notused'
   }
 }
 
@@ -457,13 +506,179 @@ module jobSchedulerComputeResources '../Service/GroupMembershipManagement/Hosts/
     environmentAbbreviation: environmentAbbreviation
     solutionAbbreviation: solutionAbbreviation
     tenantId: tenantId
-    storageAccountName: 'notused'
     prereqsKeyVaultResourceGroup: prereqsResourceGroupName
     dataKeyVaultResourceGroup: dataResourceGroupName
     setRBACPermissions: setRBACPermissions
+    featureFlags: featureFlags
+    functionAuthAppClientId: functionAuthAppClientId
   }
   dependsOn: [
     jobSchedulerDataResources
+  ]
+}
+
+// ----------------- SyncJobUpdater
+module syncJobUpdaterDataResources '../Service/GroupMembershipManagement/Hosts/SyncJobUpdater/Infrastructure/data/template.bicep' = {
+  name: 'syncJobUpdaterDataResourcesTemplate'
+  scope: resourceGroup(dataResourceGroupName)
+  params: {
+    location: location
+    environmentAbbreviation: environmentAbbreviation
+    solutionAbbreviation: solutionAbbreviation
+  }
+}
+
+module syncJobUpdaterComputeResources '../Service/GroupMembershipManagement/Hosts/SyncJobUpdater/Infrastructure/compute/template.bicep' = {
+  name: 'syncJobUpdaterComputeResourcesTemplate'
+  scope: resourceGroup(computeResourceGroupName)
+  params: {
+    location: location
+    environmentAbbreviation: environmentAbbreviation
+    solutionAbbreviation: solutionAbbreviation
+    tenantId: tenantId
+    functionAuthAppClientId: functionAuthAppClientId
+    prereqsKeyVaultResourceGroup: prereqsResourceGroupName
+    dataResourceGroup: dataResourceGroupName
+    setRBACPermissions: setRBACPermissions
+  }
+  dependsOn: [
+    syncJobUpdaterDataResources
+  ]
+}
+
+// ----------------- MessageSplitter instances
+var instanceIds = [
+  's1'
+  'l1'
+]
+
+module messageSplitterDataResources '../Service/GroupMembershipManagement/Hosts/MessageSplitter/Infrastructure/data/template.bicep' = [for instance in instanceIds: {
+    name: 'messageSplitter${instance}DataResources'
+    scope: resourceGroup(dataResourceGroupName)
+    params: {
+      location: location
+      environmentAbbreviation: environmentAbbreviation
+      solutionAbbreviation: solutionAbbreviation
+      instanceIdentifier: instance
+    }
+  }
+]
+
+module messageSplitterComputeResources '../Service/GroupMembershipManagement/Hosts/MessageSplitter/Infrastructure/compute/template.bicep' = [for instance in instanceIds: {
+  name: 'messageSplitter${instance}ComputeResources'
+  scope: resourceGroup(computeResourceGroupName)
+  params: {
+    location: location
+    environmentAbbreviation: environmentAbbreviation
+    solutionAbbreviation: solutionAbbreviation
+    tenantId: tenantId
+    functionAuthAppClientId: functionAuthAppClientId
+    prereqsKeyVaultResourceGroup: prereqsResourceGroupName
+    dataKeyVaultResourceGroup: dataResourceGroupName
+    setRBACPermissions: setRBACPermissions
+    availableMessageSplitterSubscriptions: availableMessageSplitterSubscriptions
+    instanceIdentifier: instance
+  }
+  dependsOn: [
+    messageSplitterDataResources
+  ]
+}]
+
+// ----------------- AzureMaintenance
+module azureMaintenanceDataResources '../Service/GroupMembershipManagement/Hosts/AzureMaintenance/Infrastructure/data/template.bicep' = {
+  name: 'azureMaintenanceDataResourcesTemplate'
+  scope: resourceGroup(dataResourceGroupName)
+  params: {
+    location: location
+    environmentAbbreviation: environmentAbbreviation
+    solutionAbbreviation: solutionAbbreviation
+  }
+}
+
+module azureMaintenanceComputeResources '../Service/GroupMembershipManagement/Hosts/AzureMaintenance/Infrastructure/compute/template.bicep' = {
+  name: 'azureMaintenanceComputeResourcesTemplate'
+  scope: resourceGroup(computeResourceGroupName)
+  params: {
+    location: location
+    environmentAbbreviation: environmentAbbreviation
+    solutionAbbreviation: solutionAbbreviation
+    tenantId: tenantId
+    setRBACPermissions: setRBACPermissions
+    functionAuthAppClientId: functionAuthAppClientId
+  }
+  dependsOn: [
+    azureMaintenanceDataResources
+  ]
+}
+
+/// Functions Post Compute tasks
+module azureUserReaderPostCompute '../Service/GroupMembershipManagement/Hosts/AzureUserReader/Infrastructure/compute/postCompute.bicep' = {
+  name: 'azureUserReaderPostCompute'
+  params: {
+    dataKeyVaultName: '${solutionAbbreviation}-data-${environmentAbbreviation}'
+    dataKeyVaultResourceGroup: dataResourceGroupName
+    environmentAbbreviation: environmentAbbreviation
+    solutionAbbreviation: solutionAbbreviation
+  }
+  dependsOn:[
+    azureUserReaderComputeResources
+    messageSplitterComputeResources
+  ]
+}
+
+module graphUpdaterPostCompute '../Service/GroupMembershipManagement/Hosts/GraphUpdater/Infrastructure/compute/postCompute.bicep' = {
+  name: 'graphUpdaterPostCompute'
+  params: {
+    dataKeyVaultName: '${solutionAbbreviation}-data-${environmentAbbreviation}'
+    dataKeyVaultResourceGroup: dataResourceGroupName
+    environmentAbbreviation: environmentAbbreviation
+    solutionAbbreviation: solutionAbbreviation
+  }
+  dependsOn:[
+    graphUpdaterComputeResources
+    messageSplitterComputeResources
+  ]
+}
+
+module jobSchedulerPostCompute '../Service/GroupMembershipManagement/Hosts/JobScheduler/Infrastructure/compute/postCompute.bicep' = {
+  name: 'jobSchedulerPostCompute'
+  params: {
+    dataKeyVaultName: '${solutionAbbreviation}-data-${environmentAbbreviation}'
+    dataKeyVaultResourceGroup: dataResourceGroupName
+    environmentAbbreviation: environmentAbbreviation
+    solutionAbbreviation: solutionAbbreviation
+  }
+  dependsOn:[
+    jobSchedulerComputeResources
+    messageSplitterComputeResources
+  ]
+}
+
+module nonProdServicePostCompute '../Service/GroupMembershipManagement/Hosts/NonProdService/Infrastructure/compute/postCompute.bicep' = {
+  name: 'nonProdServicePostCompute'
+  params: {
+    dataKeyVaultName: '${solutionAbbreviation}-data-${environmentAbbreviation}'
+    dataKeyVaultResourceGroup: dataResourceGroupName
+    environmentAbbreviation: environmentAbbreviation
+    solutionAbbreviation: solutionAbbreviation
+  }
+  dependsOn:[
+    nonProdServiceComputeResources
+    messageSplitterComputeResources
+  ]
+}
+
+module notifierPostCompute '../Service/GroupMembershipManagement/Hosts/Notifier/Infrastructure/compute/postCompute.bicep' = {
+  name: 'notifierPostCompute'
+  params: {
+    dataKeyVaultName: '${solutionAbbreviation}-data-${environmentAbbreviation}'
+    dataKeyVaultResourceGroup: dataResourceGroupName
+    environmentAbbreviation: environmentAbbreviation
+    solutionAbbreviation: solutionAbbreviation
+  }
+  dependsOn:[
+    notifierComputeResources
+    messageSplitterComputeResources
   ]
 }
 
@@ -485,14 +700,18 @@ module webApiComputeResources '../Service/GroupMembershipManagement/Hosts/WebApi
     solutionAbbreviation: solutionAbbreviation
     tenantId: tenantId
     location: location
+    aiLocation: aiLocation
     prereqsResourceGroup: prereqsResourceGroupName
     dataResourceGroup: dataResourceGroupName
     adfPipeline: pipeline
     setRBACPermissions: setRBACPermissions
+    featureFlags: featureFlags
+    apiHostname: resolvedApiHostname
   }
   dependsOn: [
     sqlMembershipObtainerComputeResources
     webApiDataResources
+    jobSchedulerPostCompute
   ]
 }
 
@@ -503,15 +722,10 @@ module uiComputeResources '../Service/GroupMembershipManagement/Hosts/UI/Infrast
     solutionAbbreviation: solutionAbbreviation
     environmentAbbreviation: environmentAbbreviation
     location: uiLocation
-    branch: 'not-set'
-    repositoryUrl: 'https://url'
+    branch: branch
+    repositoryUrl: repositoryUrl
     customDomainName: customDomainName
-    apiAppClientId: apiAppClientId
     apiServiceBaseUri: apiServiceBaseUri
-    uiAppTenantId: uiAppTenantId
-    uiAppClientId: uiAppClientId
-    sharepointDomain: sharepointDomain
-    tenantDomain: tenantDomain
     dataResourceGroupName: dataResourceGroupName
     computeResourceGroupName: computeResourceGroupName
     provider: 'Custom'

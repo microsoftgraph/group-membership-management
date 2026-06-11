@@ -43,6 +43,11 @@ namespace Common.DependencyInjection
             return new ClientCertificateCredential(creds.TenantId, creds.ClientId, GetCertificate(creds.ClientCertificateName, creds.KeyVaultName));
         }
 
+        public static TokenCredential CreateAuthProviderFromCertificate(string tenantId, string clientId, string certificateName, string KeyVaultName)
+        {
+            return new ClientCertificateCredential(tenantId, clientId, GetCertificate(certificateName, KeyVaultName));
+        }
+
         public static TokenCredential CreateServiceAccountAuthProvider(GraphCredentials creds)
         {
             return new UsernamePasswordCredential(creds.ServiceAccountUserName, creds.ServiceAccountPassword, creds.TenantId, creds.ClientId);
@@ -55,10 +60,10 @@ namespace Common.DependencyInjection
 
         private static X509Certificate2 GetCertificate(string certificateName, string keyVaultName)
         {
-            var options = new DefaultAzureCredentialOptions();
-            var defaultCredential = new DefaultAzureCredential(options);
+            DefaultAzureCredential credential = new(DefaultAzureCredential.DefaultEnvironmentVariableName);
+
             var keyVaultBaseUrl = new Uri($"https://{keyVaultName}.vault.azure.net/");
-            var secretClient = new SecretClient(keyVaultBaseUrl, defaultCredential);
+            var secretClient = new SecretClient(keyVaultBaseUrl, credential);
             var privateKey = secretClient.GetSecret(certificateName);
             var privateKeyDecoded = Convert.FromBase64String(privateKey.Value.Value);
             var certificate = new X509Certificate2(privateKeyDecoded, (string)null, X509KeyStorageFlags.MachineKeySet);

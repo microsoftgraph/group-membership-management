@@ -3,10 +3,10 @@
 using Models.ServiceBus;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Models;
-using Newtonsoft.Json;
 using Services.Tests.Mocks;
 using System;
 using System.Linq;
+using System.Text.Json;
 
 namespace Services.Tests
 {
@@ -51,7 +51,7 @@ namespace Services.Tests
 		{
 			var initial = MockGroupMembershipHelper.MockGroupMembership();
 
-			var split = JsonConvert.DeserializeObject<GroupMembership[]>(JsonConvert.SerializeObject(initial.Split()));
+			var split = JsonSerializer.Deserialize<GroupMembership[]>(JsonSerializer.Serialize(initial.Split()));
 
 			Assert.AreEqual((UserCount / ChunkSize) + 1, split.Length);
 

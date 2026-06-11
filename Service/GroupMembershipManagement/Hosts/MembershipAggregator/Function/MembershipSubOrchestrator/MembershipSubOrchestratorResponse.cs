@@ -1,6 +1,6 @@
 // Copyright(c) Microsoft Corporation.
 // Licensed under the MIT license.
-using Services.Entities;
+using MembershipAggregator.Services.Entities;
 
 namespace Hosts.MembershipAggregator
 {
@@ -9,5 +9,7 @@ namespace Hosts.MembershipAggregator
         public string FilePath { get; set; }
         public MembershipDeltaStatus MembershipDeltaStatus { get; set; }
         public int ProjectedMemberCount { get; set; }
+        public int MembersToBeAdded { get; set; }
+        public int MembersToBeRemoved { get; set; }
     }
 }

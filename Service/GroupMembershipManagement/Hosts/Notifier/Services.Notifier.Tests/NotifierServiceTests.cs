@@ -1,7 +1,6 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-using Azure.Messaging.ServiceBus;
 using DIConcreteTypes;
 using Hosts.Notifier;
 using Microsoft.ApplicationInsights;
@@ -9,6 +8,7 @@ using Microsoft.ApplicationInsights.Extensibility;
 using Microsoft.Extensions.Localization;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
+using Microsoft.Graph;
 using Microsoft.Kiota.Abstractions;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Models;
@@ -18,8 +18,8 @@ using Moq;
 using Repositories.Contracts;
 using Repositories.Contracts.InjectConfig;
 using Repositories.Localization;
+using Repositories.Mail;
 using Repositories.RetryPolicyProvider;
-using Repositories.ServiceBusQueue;
 using Services.Contracts.Notifications;
 using Services.Tests;
 using System;
@@ -29,16 +29,6 @@ using System.Net;
 using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Text.Json;
-using DIConcreteTypes;
-using Repositories.Logging;
-using Models.Entities;
-using Repositories.Mail;
-using Microsoft.Graph;
-using Microsoft.Azure.Documents.SystemFunctions;
-using Microsoft.Graph.Me.SendMail;
-using static Microsoft.Graph.Me.SendMail.SendMailRequestBuilder;
-using System.Threading;
-using Microsoft.Kiota.Abstractions;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -50,6 +40,7 @@ namespace Services.Notifier.Tests
         private const string GRAPH_API_V1_BASE_URL = "https://graph.microsoft.com/v1.0";
         private const string GroupMembership = "GroupMembership";
 
+        private Group _group;
         private Mock<IGMMResources> _gmmResources;
         private Mock<IGraphGroupRepository> _graphGroupRepository;
         private Mock<IJobNotificationsRepository> _jobNotificationRepository;
@@ -69,6 +60,8 @@ namespace Services.Notifier.Tests
         private Mock<IThresholdNotificationService> _thresholdNotificationService;
         private List<AzureADUser> _users;
         private Mock<IServiceBusQueueRepository> _serviceBusQueueRepository;
+        private Mock<IDatabaseGroupsRepository> _groupsRepository = null;
+        private Mock<IDatabaseChannelsRepository> _channelsRepository = null;
 
 
         [TestMethod]
@@ -132,6 +125,8 @@ namespace Services.Notifier.Tests
             _jobNotificationRepository = new Mock<IJobNotificationsRepository>();
             _thresholdConfig = new Mock<IThresholdConfig>();
             _serviceBusQueueRepository = new Mock<IServiceBusQueueRepository>();
+            _groupsRepository = new Mock<IDatabaseGroupsRepository>();
+            _channelsRepository = new Mock<IDatabaseChannelsRepository>();
             _gmmResources = new Mock<IGMMResources>();
             _notification = new ThresholdNotification
             {
@@ -140,13 +135,18 @@ namespace Services.Notifier.Tests
                 ChangePercentageForRemovals = 1,
                 CreatedTime = DateTime.UtcNow,
                 Resolution = ThresholdNotificationResolution.Unresolved,
-                ResolvedByUPN = string.Empty,
+                ResolvedBy = string.Empty,
                 ResolvedTime = DateTime.UtcNow,
                 Status = ThresholdNotificationStatus.Unknown,
                 CardState = ThresholdNotificationCardState.DefaultCard,
                 TargetOfficeGroupId = _targetOfficeGroupId,
                 ThresholdPercentageForAdditions = -1,
                 ThresholdPercentageForRemovals = -1,
+            };
+            _group = new Group
+            {
+                GroupId = Guid.NewGuid(),
+                SyncJobId = Guid.NewGuid()
             };
             _loggerMock.Setup(x => x.LogMessageAsync(It.IsAny<LogMessage>(), VerbosityLevel.INFO, It.IsAny<string>(), It.IsAny<string>()));
             _telemetryClient = new TelemetryClient(new TelemetryConfiguration());
@@ -159,6 +159,7 @@ namespace Services.Notifier.Tests
                 };
                 _users.Add(user);
             }
+            _groupsRepository.Setup(x => x.GetGroupUsingSyncJobIdAsync(It.IsAny<Guid>())).ReturnsAsync(() => _group);
             _graphGroupRepository.Setup(x => x.GetGroupOwnersAsync(_targetOfficeGroupId, 0)).Returns(() => Task.FromResult(_users));
             _graphGroupRepository.Setup(x => x.GetGroupNameAsync(It.Is<Guid>(id => id == _targetOfficeGroupId))).ReturnsAsync($"Test Group with id {_targetOfficeGroupId}");
             _thresholdNotificationService.Setup(x => x.CreateNotificationCardAsync(It.IsAny<ThresholdNotification>())).ReturnsAsync(_notification.Id.ToString());
@@ -180,6 +181,8 @@ namespace Services.Notifier.Tests
                                                 _thresholdConfig.Object,
                                                 _gmmResources.Object,
                                                 _serviceBusQueueRepository.Object,
+                                                _groupsRepository.Object,
+                                                _channelsRepository.Object,
                                                 _telemetryClient
                                                 );
             _requestAdapter = new Mock<IRequestAdapter>();
@@ -218,8 +221,8 @@ namespace Services.Notifier.Tests
             };
             string subjectTemplate = "DisabledJobEmailSubject";
             string contentTemplate = "SyncDisabledNoGroupEmailBody";
-            _notificationTypesRepository.Setup(repo => repo.GetNotificationTypeByNotificationTypeNameAsync(contentTemplate))
-                .ReturnsAsync(new NotificationType { Id = notificationTypeId, Name = contentTemplate, Disabled = false });
+            _notificationTypesRepository.Setup(repo => repo.GetNotificationTypeByNotificationTypeNameAsync(NotificationMessageType.SyncStartedNotification))
+                .ReturnsAsync(new NotificationType { Id = notificationTypeId, Name = NotificationMessageType.SyncStartedNotification, Disabled = false });
 
             _jobNotificationRepository.Setup(repo => repo.IsNotificationDisabledForJobAsync(job.Id, notificationTypeId))
                 .ReturnsAsync(false);
@@ -233,14 +236,14 @@ namespace Services.Notifier.Tests
                 ContentTemplate = contentTemplate
             };
 
-            await _notifierService.SendEmailAsync(request.MessageType, request.MessageBody, request.SubjectTemplate, request.ContentTemplate);
+            await _notifierService.SendEmailAsync(request.MessageType, request.MessageBody, request.MessageTitle, request.SubjectTemplate, request.ContentTemplate);
             _mailRepository.Verify(x => x.SendMailAsync(It.IsAny<EmailMessage>(), It.IsAny<Guid?>()), Times.Once());
         }
         [TestMethod]
         public async Task TestSendEmailServiceUnavailableAsync()
 
         {
-            var retryRepo = new RetryPolicyProvider(_loggerMock.Object, new GraphServiceAttemptsValue { MaxExceptionHandlingAttempts = 2, MaxRetryAfterAttempts = 4 });
+            var retryRepo = new RetryPolicyProvider(NullLogger<RetryPolicyProvider>.Instance, new GraphServiceAttemptsValue { MaxExceptionHandlingAttempts = 2, MaxRetryAfterAttempts = 4 });
             var runId = Guid.NewGuid();
             var retryAfterPolicy = retryRepo.CreateRetryAfterPolicy(runId);
             var exceptionHandlingPolicy = retryRepo.CreateExceptionHandlingPolicy(runId);
@@ -261,7 +264,7 @@ namespace Services.Notifier.Tests
         public async Task TestSendEmailTooManyRequestsAsync()
 
         {
-            var retryRepo = new RetryPolicyProvider(_loggerMock.Object, new GraphServiceAttemptsValue { MaxExceptionHandlingAttempts = 2, MaxRetryAfterAttempts = 4 });
+            var retryRepo = new RetryPolicyProvider(NullLogger<RetryPolicyProvider>.Instance, new GraphServiceAttemptsValue { MaxExceptionHandlingAttempts = 2, MaxRetryAfterAttempts = 4 });
             var runId = Guid.NewGuid();
             var retryAfterPolicy = retryRepo.CreateRetryAfterPolicy(runId);
             var exceptionHandlingPolicy = retryRepo.CreateExceptionHandlingPolicy(runId);
@@ -282,7 +285,7 @@ namespace Services.Notifier.Tests
         public async Task TestSendEmailRetryAsync()
 
         {
-            var retryRepo = new RetryPolicyProvider(_loggerMock.Object, new GraphServiceAttemptsValue { MaxExceptionHandlingAttempts = 2, MaxRetryAfterAttempts = 4 });
+            var retryRepo = new RetryPolicyProvider(NullLogger<RetryPolicyProvider>.Instance, new GraphServiceAttemptsValue { MaxExceptionHandlingAttempts = 2, MaxRetryAfterAttempts = 4 });
             var runId = Guid.NewGuid();
             var retryAfterPolicy = retryRepo.CreateRetryAfterPolicy(runId);
             var exceptionHandlingPolicy = retryRepo.CreateExceptionHandlingPolicy(runId);
@@ -330,13 +333,13 @@ namespace Services.Notifier.Tests
             var notificationTypeId = 1;
             var notificationName = "SyncStartedEmailBody";
 
-            _notificationTypesRepository.Setup(repo => repo.GetNotificationTypeByNotificationTypeNameAsync(notificationName))
-                .ReturnsAsync(new NotificationType { Id = notificationTypeId, Name = notificationName, Disabled = false });
+            _notificationTypesRepository.Setup(repo => repo.GetNotificationTypeByNotificationTypeNameAsync(NotificationMessageType.SyncStartedNotification))
+                .ReturnsAsync(new NotificationType { Id = notificationTypeId, Name = NotificationMessageType.SyncStartedNotification, Disabled = false });
 
             _jobNotificationRepository.Setup(repo => repo.IsNotificationDisabledForJobAsync(job.Id, notificationTypeId))
                 .ReturnsAsync(true);
 
-            bool result = await _notifierService.IsNotificationDisabledAsync(job.Id, notificationName);
+            bool result = await _notifierService.IsNotificationDisabledAsync(job.Id, NotificationMessageType.SyncStartedNotification);
             Assert.IsTrue(result);
 
         }
@@ -348,22 +351,28 @@ namespace Services.Notifier.Tests
             var notificationTypeId = 1;
             var notificationName = "SyncStartedEmailBody";
 
-            _notificationTypesRepository.Setup(repo => repo.GetNotificationTypeByNotificationTypeNameAsync(notificationName))
-                .ReturnsAsync(new NotificationType { Id = notificationTypeId, Name = notificationName, Disabled = true });
+            _notificationTypesRepository.Setup(repo => repo.GetNotificationTypeByNotificationTypeNameAsync(NotificationMessageType.SyncStartedNotification))
+                .ReturnsAsync(new NotificationType { Id = notificationTypeId, Name = NotificationMessageType.SyncStartedNotification, Disabled = true });
 
             _jobNotificationRepository.Setup(repo => repo.IsNotificationDisabledForJobAsync(job.Id, notificationTypeId))
                 .ReturnsAsync(false);
 
-            bool result = await _notifierService.IsNotificationDisabledAsync(job.Id, notificationName);
+            bool result = await _notifierService.IsNotificationDisabledAsync(job.Id, NotificationMessageType.SyncStartedNotification);
             Assert.IsTrue(result);
 
         }
         [TestMethod]
         public async Task SendEmailAsync_ShouldHandleNonOKResponse()
         {
-            var job = new SyncJob { Id = Guid.NewGuid(), RunId = Guid.NewGuid(), Requestor = "requestor@example.com", TargetOfficeGroupId = Guid.NewGuid() };
+            var job = new SyncJob { Id = Guid.NewGuid(), RunId = Guid.NewGuid(), Requestor = "requestor@example.com"};
+            job.Group = new Group
+            {
+                SyncJobId = job.Id,
+                GroupId = Guid.NewGuid()
+            };
             var messageBody = JsonSerializer.Serialize(new { SyncJob = job });
-            var messageType = "TestMessageType";
+            var messageType = NotificationMessageType.SyncStartedNotification.ToString();
+            var messageTitle = "OnboardingStartedEmailTitle";
             var subjectTemplate = "TestSubjectTemplate";
             var contentTemplate = "SyncDisabledNoGroupEmailBody";
 
@@ -374,7 +383,7 @@ namespace Services.Notifier.Tests
 
             _mailRepository.Setup(x => x.SendMailAsync(It.IsAny<EmailMessage>(), It.IsAny<Guid?>()))
                 .ReturnsAsync(responseMessage);
-            await _notifierService.SendEmailAsync(messageType, messageBody, subjectTemplate, contentTemplate);
+            await _notifierService.SendEmailAsync(messageType, messageBody, messageTitle, subjectTemplate, contentTemplate);
 
             _mailRepository.Verify(x => x.SendMailAsync(It.IsAny<EmailMessage>(), It.IsAny<Guid?>()), Times.Once);
 
@@ -405,17 +414,18 @@ namespace Services.Notifier.Tests
             var requestAdapter = new Mock<IRequestAdapter>();
             requestAdapter.SetupProperty(x => x.BaseUrl).SetReturnsDefault("https://graph.microsoft.com/v1.0");
             var graphServiceClient = new Mock<GraphServiceClient>(requestAdapter.Object, "https://graph.microsoft.com/v1.0");
-            var retryRepo = new RetryPolicyProvider(_loggerMock.Object, new GraphServiceAttemptsValue { MaxExceptionHandlingAttempts = 2, MaxRetryAfterAttempts = 4 });
+            var retryRepo = new RetryPolicyProvider(NullLogger<RetryPolicyProvider>.Instance, new GraphServiceAttemptsValue { MaxExceptionHandlingAttempts = 2, MaxRetryAfterAttempts = 4 });
 
             var mailConfig = new MailConfig(true, false, "not-set", true);
             var mailRepository = new MailRepository(graphServiceClient.Object,
                                                     mailConfig,
                                                     _localizationRepository,
-                                                    _loggerMock.Object,
+                                                    NullLogger<MailRepository>.Instance,
                                                     "abc",
                                                     _graphGroupRepository.Object,
                                                     new Mock<IDatabaseSettingsRepository>().Object,
-                                                    retryRepo);
+                                                    retryRepo,
+                                                    _telemetryClient);
 
             _notifierService = new NotifierService(_loggerMock.Object,
                                     mailRepository,
@@ -429,6 +439,8 @@ namespace Services.Notifier.Tests
                                     _thresholdConfig.Object,
                                     _gmmResources.Object,
                                     _serviceBusQueueRepository.Object,
+                                    _groupsRepository.Object,
+                                    _channelsRepository.Object,
                                     _telemetryClient
                                     );
 
@@ -443,8 +455,8 @@ namespace Services.Notifier.Tests
             };
             string subjectTemplate = "DisabledJobEmailSubject";
             string contentTemplate = "SyncDisabledNoGroupEmailBody";
-            _notificationTypesRepository.Setup(repo => repo.GetNotificationTypeByNotificationTypeNameAsync(contentTemplate))
-                .ReturnsAsync(new NotificationType { Id = notificationTypeId, Name = contentTemplate, Disabled = false });
+            _notificationTypesRepository.Setup(repo => repo.GetNotificationTypeByNotificationTypeNameAsync(NotificationMessageType.SyncStartedNotification))
+                .ReturnsAsync(new NotificationType { Id = notificationTypeId, Name = NotificationMessageType.SyncStartedNotification, Disabled = false });
 
             _jobNotificationRepository.Setup(repo => repo.IsNotificationDisabledForJobAsync(job.Id, notificationTypeId))
                 .ReturnsAsync(false);
@@ -458,7 +470,7 @@ namespace Services.Notifier.Tests
                 ContentTemplate = contentTemplate
             };
 
-            await _notifierService.SendEmailAsync(request.MessageType, request.MessageBody, request.SubjectTemplate, request.ContentTemplate);
+            await _notifierService.SendEmailAsync(request.MessageType, request.MessageBody, request.MessageTitle, request.SubjectTemplate, request.ContentTemplate);
             _loggerMock.Verify(x => x.LogMessageAsync(It.Is<LogMessage>(m => m.Message.Equals("Email notifications are disabled.")), 
                                                         VerbosityLevel.INFO, 
                                                         It.IsAny<string>(), 

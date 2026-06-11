@@ -22,27 +22,40 @@ namespace Repositories.EntityFramework
 
         public async Task<int> InsertPurgedSyncJobsAsync(IEnumerable<PurgedSyncJob> jobs)
         {
+            var jobsToAdd = new List<PurgedSyncJob>();
+
             foreach (var job in jobs)
-            {                
-                var entry = _writeContext.Set<PurgedSyncJob>().Add(job);
-                entry.State = EntityState.Added;
+            {
+                var existingJob = await _writeContext.Set<PurgedSyncJob>()
+                                                      .AnyAsync(j => j.TargetOfficeGroupId == job.TargetOfficeGroupId);
+
+                if (!existingJob)
+                {
+                    jobsToAdd.Add(job);
+                }
             }
 
-            return await _writeContext.SaveChangesAsync();
+            if (jobsToAdd.Any())
+            {
+                await _writeContext.Set<PurgedSyncJob>().AddRangeAsync(jobsToAdd);
+                return await _writeContext.SaveChangesAsync();
+            }
+
+            return 0;
         }
 
         public async Task<IEnumerable<PurgedSyncJob>> GetPurgedSyncJobsAsync(DateTime cutOffDate)
-        { 
+        {
             return await _readContext.PurgedSyncJobs
                                     .Where(job => job.PurgedAt <= cutOffDate)
-                                    .ToListAsync();           
+                                    .ToListAsync();
         }
 
         public async Task<int> DeletePurgedSyncJobsAsync(IEnumerable<PurgedSyncJob> jobs)
         {
             foreach (var job in jobs)
             {
-                var entry = _writeContext.Set<PurgedSyncJob>().Add(job);
+                var entry = await _writeContext.Set<PurgedSyncJob>().AddAsync(job);
                 entry.State = EntityState.Deleted;
             }
 

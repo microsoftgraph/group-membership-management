@@ -2,6 +2,7 @@
 // Licensed under the MIT license.
 
 using Repositories.Contracts.InjectConfig;
+using System.Text.Json.Serialization;
 
 namespace Services.Contracts
 {
@@ -15,6 +16,7 @@ namespace Services.Contracts
         public int DefaultRuntimeSeconds { get; }
         public bool GetRunTimeFromLogs { get; set; }
         public string RunTimeMetric { get; set; }
+        [JsonPropertyName("RuntimeQuery")]
         public string RunTimeQuery { get; set; }
         public int RunTimeRangeInDays { get; set; }
         public string WorkspaceId { get; set; }

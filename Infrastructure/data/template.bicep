@@ -1,3 +1,11 @@
+type topicSubscription = {
+  topicName: string
+  subscriptionName: string
+  ruleName: string
+  ruleSqlExpression: string
+  sessionEnabled: bool?
+}
+
 @description('Enter an abbreviation for the solution.')
 @minLength(2)
 @maxLength(3)
@@ -27,16 +35,16 @@ param subscriptionId string = subscription().subscriptionId
 param tenantId string
 
 @description('SQL SKU Name')
-param sqlSkuName string
+param sqlSkuName string = 'GP_S_Gen5'
 
 @description('SQL SKU Tier')
-param sqlSkuTier string
+param sqlSkuTier string = 'GeneralPurpose'
 
 @description('SQL SKU Family')
-param sqlSkuFamily string
+param sqlSkuFamily string = 'Gen5'
 
 @description('SQL SKU Capacity')
-param sqlSkuCapacity int
+param sqlSkuCapacity int = 4
 
 @description('Key vault name.')
 @minLength(1)
@@ -75,25 +83,106 @@ param serviceBusName string = '${solutionAbbreviation}-${resourceGroupClassifica
 ])
 param serviceBusSku string = 'Standard'
 
-@description('Enter service bus topic name.')
-param serviceBusTopicName string = 'syncJobs'
-
 @description('Enter service bus topic\'s subscriptions.')
-param serviceBusTopicSubscriptions array = [
+param serviceBusTopicSubscriptions topicSubscription[] = [
   {
-    name: 'GroupMembership'
+    topicName: 'membershipUpdaters'
+    subscriptionName: 'GraphUpdater'
+    ruleName: 'updaterType'
+    ruleSqlExpression: 'Type = \'GroupMembership\''
+  }
+  {
+    topicName: 'membershipUpdaters'
+    subscriptionName: 'TeamsChannelUpdater'
+    ruleName: 'updaterType'
+    ruleSqlExpression: 'Type = \'TeamsChannelMembership\''
+  }
+  {
+    topicName: 'syncJobs'
+    subscriptionName: 'PlaceMembership'
+    ruleName: 'syncType'
+    ruleSqlExpression: 'Type = \'PlaceMembership\''
+  }
+  {
+    topicName: 'syncJobs'
+    subscriptionName: 'GroupMembership'
     ruleName: 'syncType'
     ruleSqlExpression: 'Type = \'GroupMembership\''
   }
   {
-    name: 'PlaceMembership'
+    topicName: 'syncJobs'
+    subscriptionName: 'TeamsChannelMembership'
     ruleName: 'syncType'
-    ruleSqlExpression: 'Type = \'PlaceMembership\''
+    ruleSqlExpression: 'Type = \'TeamsChannelMembership\''
+  }
+  {
+    topicName: 'syncJobs'
+    subscriptionName: 'GroupOwnership'
+    ruleName: 'syncType'
+    ruleSqlExpression: 'Type = \'GroupOwnership\''
+  }
+  {
+    topicName: 'syncJobs'
+    subscriptionName: 'SqlMembership'
+    ruleName: 'syncType'
+    ruleSqlExpression: 'Type = \'SqlMembership\''
+  }
+  {
+    topicName: 'messageSplitter'
+    subscriptionName: 'Small'
+    ruleName: 'jobSize'
+    ruleSqlExpression: 'LaneSize = \'Small\''
+  }
+  {
+    topicName: 'messageSplitter'
+    subscriptionName: 'Large'
+    ruleName: 'jobSize'
+    ruleSqlExpression: 'LaneSize = \'Large\''
+  }
+  {
+    topicName: 'messageSplitter'
+    subscriptionName: 'Pending_Small'
+    ruleName: 'pending_small'
+    ruleSqlExpression: 'MessageType = \'pending_small\''
+  }
+  {
+    topicName: 'messageSplitter'
+    subscriptionName: 'Pending_Large'
+    ruleName: 'pending_large'
+    ruleSqlExpression: 'MessageType = \'pending_large\''
+  }
+  {
+    topicName: 'messageSplitter'
+    subscriptionName: 'Completion_Small'
+    ruleName: 'completion_small'
+    ruleSqlExpression: 'MessageType = \'completion_small\''
+  }
+  {
+    topicName: 'messageSplitter'
+    subscriptionName: 'Completion_Large'
+    ruleName: 'completion_large'
+    ruleSqlExpression: 'MessageType = \'completion_large\''
+  }
+  {
+    topicName: 'messageSplitter'
+    subscriptionName: 'LeaseRenew_Large'
+    ruleName: 'lease_renew_large'
+    ruleSqlExpression: 'MessageType = \'lease_renew_large\''
+  }
+  {
+    topicName: 'membershipUpdaters'
+    subscriptionName: 'GraphUpdater_small_1'
+    ruleName: 'GraphUpdater_small_rule'
+    ruleSqlExpression: 'Type = \'groupmembership_small_1\''
+  }
+  {
+    topicName: 'membershipUpdaters'
+    subscriptionName: 'GraphUpdater_large_1'
+    ruleName: 'GraphUpdater_large_rule'
+    ruleSqlExpression: 'Type = \'groupmembership_large_1\''
+    sessionEnabled: true
   }
 ]
-
-@description('Enter service bus membership updaters topic\'s and subscriptions details.')
-param serviceBusMembershipUpdatersTopicSubscriptions object
 
 @description('Enter membership aggregator service bus queue name')
 param serviceBusMembershipAggregatorQueue string = 'membershipAggregator'
@@ -103,6 +192,37 @@ param serviceBusNotificationsQueue string = 'notifications'
 
 @description('Enter notifications service bus queue name')
 param serviceBusFailedNotificationsQueue string = 'failedNotifications'
+
+@description('Enter job finalizer service bus queue name')
+param serviceBusSyncJobUpdaterQueue string = 'syncJobUpdater'
+
+@description('Enter pending configuration service bus queue name')
+param serviceBusConfigurationQueue string = 'configuration'
+
+@description('Enter failed pending configuration service bus queue name')
+param serviceBusFailedConfigurationQueue string = 'failedConfiguration'
+
+@description('Enter auto approver service bus queue name')
+param serviceBusAutoApproverQueue string = 'autoApprover'
+
+@description('Available membership updaters')
+param availableMembershipUpdaters array = [
+  {
+    name: 'GroupMembership'
+    lanes: [
+      {
+        name: 'small'
+        instances: 1
+        messageSize: 400
+      }
+      {
+        name: 'large'
+        instances: 1
+        messageSize: 400
+      }
+    ]
+  }
+]
 
 @description('Enter storage account name.')
 @minLength(1)
@@ -126,10 +246,6 @@ param jobsStorageAccountName string = 'jobs${environmentAbbreviation}${uniqueStr
 @minLength(1)
 param membershipContainerName string = 'membership'
 
-@description('Enter notifications table name.')
-@minLength(1)
-param notificationsTableName string = 'notifications'
-
 param logAnalyticsName string = '${solutionAbbreviation}-${resourceGroupClassification}-${environmentAbbreviation}'
 
 @allowed([
@@ -150,6 +266,7 @@ param logAnalyticsSku string = 'PerGB2018'
 param authenticationType string = 'ClientSecret'
 param skipMailNotifications bool = false
 param isMailApplicationPermissionGranted bool = false
+param isTeamsChannelApplicationPermissionGranted bool = false
 
 @description('Enter app configuration name.')
 @minLength(1)
@@ -220,11 +337,27 @@ param appConfigurationKeyData array = [
     }
   }
   {
+    key: 'GroupMembershipObtainer:EnableHttpHandlerDiagnosticListener'
+    value: 'false'
+    contentType: 'boolean'
+    tag: {
+      tag1: 'GroupMembershipObtainer'
+    }
+  }
+  {
     key: 'MembershipAggregator:IsMembershipAggregatorDryRunEnabled'
     value: 'false'
     contentType: 'boolean'
     tag: {
       tag1: 'DryRun'
+    }
+  }
+  {
+    key: 'AutoApprover:IsEnabled'
+    value: 'false'
+    contentType: 'boolean'
+    tag: {
+      tag1: 'AutoApprover'
     }
   }
   {
@@ -280,6 +413,22 @@ param appConfigurationKeyData array = [
     }
   }
   {
+    key: 'AzureMaintenance:NumberOfDaysBeforePurging'
+    value: 30
+    contentType: 'int'
+    tag: {
+      tag1: 'AzureMaintenance'
+    }
+  }
+  {
+    key: 'AzureMaintenance:NumberOfDaysBeforePurgingToSendWarning'
+    value: 7
+    contentType: 'int'
+    tag: {
+      tag1: 'AzureMaintenance'
+    }
+  }
+  {
     key: 'AzureMaintenance:NumberOfDaysBeforeDeletion'
     value: 35
     contentType: 'int'
@@ -288,8 +437,16 @@ param appConfigurationKeyData array = [
     }
   }
   {
+    key: 'AzureMaintenance:JobHistoryRetentionDays'
+    value: 30
+    contentType: 'int'
+    tag: {
+      tag1: 'AzureMaintenance'
+    }
+  }
+  {
     key: 'JobScheduler:JobSchedulerConfiguration'
-    value: '{"ResetJobs":false,"DaysToAddForReset":0,"DistributeJobs":true,"IncludeFutureJobs":false,"StartTimeDelayMinutes":5,"DelayBetweenSyncsSeconds":5,"DefaultRuntimeSeconds":60,"GetRunTimeFromLogs":true,"RunTimeMetric":"Max","RunTimeRangeInDays":7,"RuntimeQuery":"AppEvents | where Name == \'SyncComplete\' | project TimeElapsed = todouble(Properties[\'SyncJobTimeElapsedSeconds\']), Destination = tostring(Properties[\'TargetOfficeGroupId\']), RunId = Properties[\'RunId\'], Result = Properties[\'Result\'], DryRun = Properties[\'IsDryRunEnabled\'] | where Result == \'Success\' and DryRun == \'False\' | project TimeElapsed, Destination, RunId | summarize MaxProcessingTime=max(TimeElapsed), AvgProcessingTime=avg(TimeElapsed) by Destination"}'
+    value: '{"ResetJobs":false,"DaysToAddForReset":0,"DistributeJobs":true,"IncludeFutureJobs":false,"StartTimeDelayMinutes":5,"DelayBetweenSyncsSeconds":5,"DefaultRuntimeSeconds":60,"GetRunTimeFromLogs":true,"RunTimeMetric":"MaxProcessingTime","RunTimeRangeInDays":7,"RuntimeQuery":"AppEvents | where Name == \'SyncComplete\' | project TimeElapsed = todouble(Properties[\'SyncJobTimeElapsedSeconds\']), Destination = tostring(Properties[\'TargetOfficeGroupId\']), RunId = Properties[\'RunId\'], Result = Properties[\'Result\'], DryRun = Properties[\'IsDryRunEnabled\'] | where Result == \'Success\' and DryRun == \'False\' | project TimeElapsed, Destination, RunId | summarize MaxProcessingTime=max(TimeElapsed), AvgProcessingTime=avg(TimeElapsed) by Destination"}'
     contentType: 'string'
     tag: {
       tag1: 'JobScheduler'
@@ -306,7 +463,7 @@ param appConfigurationKeyData array = [
   {
     key: 'Mail:IsAdaptiveCardEnabled'
     value: 'true'
-    contentType: 'bool'
+    contentType: 'boolean'
     tag: {
       tag1: 'Mail'
     }
@@ -322,7 +479,7 @@ param appConfigurationKeyData array = [
   {
     key: 'ThresholdNotification:IsThresholdNotificationEnabled'
     value: 'false'
-    contentType: 'bool'
+    contentType: 'boolean'
     tag: {
       tag1: 'ThresholdNotification'
     }
@@ -339,7 +496,7 @@ param appConfigurationKeyData array = [
   {
     key: 'Mail:IsMailApplicationPermissionGranted'
     value: isMailApplicationPermissionGranted
-    contentType: 'bool'
+    contentType: 'boolean'
     tag: {
       tag1: 'Mail'
     }
@@ -347,9 +504,114 @@ param appConfigurationKeyData array = [
   {
     key: 'Mail:SkipMailNotifications'
     value: skipMailNotifications
-    contentType: 'bool'
+    contentType: 'boolean'
     tag: {
       tag1: 'Mail'
+    }
+  }
+  {
+    key: 'TeamsChannel:IsChannelReadWriteApplicationPermissionGranted'
+    value: isTeamsChannelApplicationPermissionGranted
+    contentType: 'boolean'
+    tag: {
+      tag1: 'TeamsChannel'
+    }
+  }
+  {
+    key: 'MultiLane:Small'
+    value: 400
+    contentType: 'integer'
+    tag: {
+      tag1: 'MultiLane'
+    }
+    description: 'small: equal or less than value.'
+  }
+  {
+    key: 'MultiLane:IsEnabled'
+    value: false
+    contentType: 'boolean'
+    tag: {
+      tag1: 'MultiLane'
+    }
+  }
+  {
+    key: 'MultiLane:AvailableMembershipUpdaters'
+    value: string(availableMembershipUpdaters)
+    contentType: 'string'
+    tag: {
+      tag1: 'MultiLane'
+    }
+  }
+  {
+    key: 'MultiLane:Small:RateLimiter:IsEnabled'
+    value: true
+    contentType: 'boolean'
+    tag: {
+      tag1: 'MultiLane'
+    }
+  }
+  {
+    key: 'MultiLane:Small:RateLimiter:MaxInFlightMessages'
+    value: 16
+    contentType: 'int'
+    tag: {
+      tag1: 'MultiLane'
+    }
+  }
+  {
+    key: 'MultiLane:Small:RateLimiter:LeaseTimeoutMinutes'
+    value: 5
+    contentType: 'int'
+    tag: {
+      tag1: 'MultiLane'
+    }
+  }
+  {
+    key: 'MultiLane:Small:RateLimiter:HeartbeatIntervalMinutes'
+    value: 0
+    contentType: 'int'
+    tag: {
+      tag1: 'MultiLane'
+    }
+  }
+  {
+    key: 'MultiLane:Large:RateLimiter:IsEnabled'
+    value: true
+    contentType: 'boolean'
+    tag: {
+      tag1: 'MultiLane'
+    }
+  }
+  {
+    key: 'MultiLane:Large:RateLimiter:MaxInFlightMessages'
+    value: 3
+    contentType: 'int'
+    tag: {
+      tag1: 'MultiLane'
+    }
+  }
+  {
+    key: 'MultiLane:Large:RateLimiter:LeaseTimeoutMinutes'
+    value: 15
+    contentType: 'int'
+    tag: {
+      tag1: 'MultiLane'
+    }
+  }
+  {
+    key: 'MultiLane:Large:RateLimiter:HeartbeatIntervalMinutes'
+    value: 3
+    contentType: 'int'
+    tag: {
+      tag1: 'MultiLane'
+    }
+  }
+  {
+    key: 'PendingConfiguration:IsEnabled'
+    value: false
+    contentType: 'boolean'
+    tag: {
+      tag1: 'PendingConfiguration'
     }
   }
 ]
@@ -377,6 +639,14 @@ param emailReceivers array = [
 @maxLength(36)
 param notifierProviderId string
 
+@description('Enter OAM Entra App Id.')
+@minLength(0)
+@maxLength(36)
+param oamEntraAppId string
+
+@description('Enter OAM Entra App Expose and API Scope.')
+param oamEntraAppScope string
+
 @description('JSON string with an array listing the existing data resources [{Name: string, ResourceType: string}]')
 param existingDataResources string = '[]'
 
@@ -389,7 +659,16 @@ param sqlAdministratorsGroupName string
 @description('Failed notifications alert threshold.')
 param notificationAlertThreshold int = 10
 
-module sqlServer 'sqlServer.bicep' =  {
+@description('Location for the OpenAI resource.')
+param aiLocation string = location
+
+param featureFlags object = {
+  enableOpenAI: false
+}
+
+var syncJobsTopicName = 'syncJobs'
+
+module sqlServer 'sqlServer.bicep' = {
   name: 'sqlServerTemplate'
   params: {
     solutionAbbreviation: solutionAbbreviation
@@ -404,15 +683,20 @@ module sqlServer 'sqlServer.bicep' =  {
     sqlAdministratorsGroupName: sqlAdministratorsGroupName
     tenantId: tenantId
   }
-  dependsOn:[
+  dependsOn: [
     dataKeyVaultTemplate
   ]
 }
 
-var isDataKVPresent = !empty(existingDataResources) ? !empty(filter(json(existingDataResources), x => x.Name == keyVaultName && x.ResourceType == 'Microsoft.KeyVault/vaults')) : false
+var isDataKVPresent = !empty(existingDataResources)
+  ? !empty(filter(
+      json(existingDataResources),
+      x => x.Name == keyVaultName && x.ResourceType == 'Microsoft.KeyVault/vaults'
+    ))
+  : false
 var graphUserAssignedManagedIdentityName = '${solutionAbbreviation}-identity-${environmentAbbreviation}-Graph'
 
-module dataKeyVaultTemplate 'keyVault.bicep' = if(!isDataKVPresent) {
+module dataKeyVaultTemplate 'keyVault.bicep' = if (!isDataKVPresent) {
   name: 'dataKeyVaultTemplate'
   params: {
     name: keyVaultName
@@ -429,7 +713,7 @@ module graphUserAssignedManagedIdentity 'userAssignedIdentity.bicep' = {
     identityName: graphUserAssignedManagedIdentityName
     location: location
   }
-  dependsOn:[
+  dependsOn: [
     dataKeyVaultTemplate
   ]
 }
@@ -449,55 +733,36 @@ module serviceBusTemplate 'serviceBus.bicep' = {
   ]
 }
 
-module serviceBusTopicTemplate 'serviceBusTopic.bicep' = {
-  name: 'serviceBusTopicTemplate'
-  params: {
-    serviceBusName: serviceBusName
-    topicName: serviceBusTopicName
-  }
-  dependsOn: [
-    serviceBusTemplate
-    logAnalyticsTemplate
-  ]
-}
+var allTopics = [for topic in serviceBusTopicSubscriptions: topic.topicName]
+var uniqueTopics = union(allTopics, [])
 
-module serviceBusSubscriptionsTemplate 'serviceBusSubscription.bicep' = {
-  name: 'serviceBusSubscriptionsTemplate'
-  params: {
-    serviceBusName: serviceBusName
-    topicName: serviceBusTopicName
-    topicSubscriptions: serviceBusTopicSubscriptions
+module serviceBusTopicTemplate 'serviceBusTopic.bicep' = [
+  for topic in uniqueTopics: {
+    name: '${topic}-Template'
+    params: {
+      serviceBusName: serviceBusName
+      topicName: topic
+    }
+    dependsOn: [
+      serviceBusTemplate
+      logAnalyticsTemplate
+    ]
   }
-  dependsOn: [
-    serviceBusTopicTemplate
-    logAnalyticsTemplate
-  ]
-}
+]
 
-module serviceBusMembershipUpdatersTopicTemplate 'serviceBusTopic.bicep' = {
-  name: 'serviceBusMembershipUpdatersTopicTemplate'
-  params: {
-    serviceBusName: serviceBusName
-    topicName: serviceBusMembershipUpdatersTopicSubscriptions.topicName
+module serviceBusSubscriptionsTemplate 'serviceBusSubscription.bicep' = [
+  for topic in serviceBusTopicSubscriptions: {
+    name: '${topic.topicName}-${topic.subscriptionName}-Template'
+    params: {
+      serviceBusName: serviceBusName
+      topicSubscriptions: serviceBusTopicSubscriptions
+    }
+    dependsOn: [
+      serviceBusTopicTemplate
+      logAnalyticsTemplate
+    ]
   }
-  dependsOn: [
-    serviceBusTemplate
-    logAnalyticsTemplate
-  ]
-}
-
-module serviceBusMembershipUpdatersSubscriptionsTemplate 'serviceBusSubscription.bicep' = {
-  name: 'serviceBusMembershipUpdatersSubscriptionsTemplate'
-  params: {
-    serviceBusName: serviceBusName
-    topicName: serviceBusMembershipUpdatersTopicSubscriptions.topicName
-    topicSubscriptions: serviceBusMembershipUpdatersTopicSubscriptions.subscriptions
-  }
-  dependsOn: [
-    serviceBusMembershipUpdatersTopicTemplate
-    logAnalyticsTemplate
-  ]
-}
+]
 
 module membershipAggregatorQueue 'serviceBusQueue.bicep' = {
   name: 'membershipAggregatorQueue'
@@ -507,7 +772,7 @@ module membershipAggregatorQueue 'serviceBusQueue.bicep' = {
     requiresSession: false
     maxDeliveryCount: 5
   }
-  dependsOn:[
+  dependsOn: [
     serviceBusTemplate
     logAnalyticsTemplate
   ]
@@ -521,7 +786,7 @@ module notificationsQueue 'serviceBusQueue.bicep' = {
     requiresSession: false
     maxDeliveryCount: 5
   }
-  dependsOn:[
+  dependsOn: [
     serviceBusTemplate
     logAnalyticsTemplate
   ]
@@ -535,8 +800,63 @@ module failedNotificationsQueue 'serviceBusQueue.bicep' = {
     requiresSession: false
     maxDeliveryCount: 5
   }
-  dependsOn:[
+  dependsOn: [
     serviceBusTemplate
+  ]
+}
+
+module syncJobUpdaterQueue 'serviceBusQueue.bicep' = {
+  name: 'syncJobUpdaterQueue'
+  params: {
+    queueName: serviceBusSyncJobUpdaterQueue
+    serviceBusName: serviceBusName
+    requiresSession: false
+    maxDeliveryCount: 5
+  }
+  dependsOn: [
+    serviceBusTemplate
+  ]
+}
+
+module configurationQueue 'serviceBusQueue.bicep' = {
+  name: 'configurationQueue'
+  params: {
+    queueName: serviceBusConfigurationQueue
+    serviceBusName: serviceBusName
+    requiresSession: false
+    maxDeliveryCount: 5
+  }
+  dependsOn: [
+    serviceBusTemplate
+    logAnalyticsTemplate
+  ]
+}
+
+module failedConfigurationQueue 'serviceBusQueue.bicep' = {
+  name: 'failedConfigurationQueue'
+  params: {
+    queueName: serviceBusFailedConfigurationQueue
+    serviceBusName: serviceBusName
+    requiresSession: false
+    maxDeliveryCount: 5
+  }
+  dependsOn: [
+    serviceBusTemplate
+    logAnalyticsTemplate
+  ]
+}
+
+module autoApproverQueue 'serviceBusQueue.bicep' = {
+  name: 'autoApproverQueue'
+  params: {
+    queueName: serviceBusAutoApproverQueue
+    serviceBusName: serviceBusName
+    requiresSession: false
+    maxDeliveryCount: 5
+  }
+  dependsOn: [
+    serviceBusTemplate
+    logAnalyticsTemplate
   ]
 }
 
@@ -548,7 +868,7 @@ module storageAccountTemplate 'storageAccount.bicep' = {
     keyVaultName: keyVaultName
     location: location
   }
-  dependsOn:[
+  dependsOn: [
     dataKeyVaultTemplate
   ]
 }
@@ -562,7 +882,7 @@ module jobsStorageAccountTemplate 'storageAccount.bicep' = {
     addJobsStorageAccountPolicies: true
     location: location
   }
-  dependsOn:[
+  dependsOn: [
     dataKeyVaultTemplate
   ]
 }
@@ -595,13 +915,48 @@ module appInsightsTemplate 'applicationInsights.bicep' = {
   ]
 }
 
+module openAIResources 'openAIResources.bicep' = if (featureFlags.enableOpenAI) {
+  name: 'openAIResources'
+  params: {
+    aiLocation: aiLocation
+    openAIResourceName: '${solutionAbbreviation}-${resourceGroupClassification}-${environmentAbbreviation}-openai'
+    solutionAbbreviation: solutionAbbreviation
+    environmentAbbreviation: environmentAbbreviation
+    allowedIpAddresses: ''
+  }
+  dependsOn: [
+    logAnalyticsTemplate
+  ]
+}
+
+var defaultAppConfigurationKeyData = [
+  {
+    key: 'GraphAPI:GraphAppName'
+    value: '${solutionAbbreviation}-Graph-${environmentAbbreviation}'
+    contentType: 'string'
+    tag: {
+      tag1: 'GraphAPI'
+    }
+    description: 'Name of the application registered in Azure AD for Graph API.'
+  }
+  {
+    key: 'GraphAPI:GraphUAMIName'
+    value: '${solutionAbbreviation}-identity-${environmentAbbreviation}-graph'
+    contentType: 'string'
+    tag: {
+      tag1: 'GraphAPI'
+    }
+    description: 'Name of the user assigned managed identity for Graph API.'
+  }
+]
+
 module appConfigurationTemplate 'appConfiguration.bicep' = {
   name: 'appConfigurationTemplate'
   params: {
     configStoreName: appConfigurationName
     appConfigurationSku: appConfigurationSku
     location: location
-    appConfigurationKeyData: appConfigurationKeyData
+    appConfigurationKeyData: union(appConfigurationKeyData, defaultAppConfigurationKeyData)
     featureFlags: appConfigurationfeatureFlags
   }
 }
@@ -615,85 +970,108 @@ module actionGroupTemplate 'actionGroup.bicep' = {
   }
 }
 
-module logAlertRuleTemplate 'logAlertRule.bicep' = {
-  name: 'logAlertRuleTemplate'
-  params: {
-    sourceId: logAnalyticsTemplate.outputs.resourceId
-    location: location
-    actionGroupId: actionGroupTemplate.outputs.actionGroupId
+
+var baseSecrets = [
+  {
+    name: 'storageAccountName'
+    value: storageAccountName
   }
-  dependsOn: [
-    logAnalyticsTemplate
-    actionGroupTemplate
-  ]
-}
+  {
+    name: 'jobsStorageAccountName'
+    value: jobsStorageAccountName
+  }
+  {
+    name: 'membershipContainerName'
+    value: membershipContainerName
+  }
+  {
+    name: 'appInsightsAppId'
+    value: appInsightsTemplate.outputs.appId
+  }
+  {
+    name: 'serviceBusNamespace'
+    value: serviceBusName
+  }
+  {
+    name: 'serviceBusSyncJobTopic'
+    value: syncJobsTopicName
+  }
+  {
+    name: 'serviceBusMembershipUpdatersTopic'
+    value: 'membershipUpdaters'
+  }
+  {
+    name: 'serviceBusMessageSplitterTopic'
+    value: 'messageSplitter'
+  }
+  {
+    name: 'logAnalyticsCustomerId'
+    value: logAnalyticsTemplate.outputs.customerId
+  }
+  {
+    name: 'notifierProviderId'
+    value: notifierProviderId
+  }
+  {
+    name: 'oamEntraAppId'
+    value: oamEntraAppId
+  }
+  {
+    name: 'oamEntraAppScope'
+    value: oamEntraAppScope
+  }
+  {
+    name: 'serviceBusMembershipAggregatorQueue'
+    value: serviceBusMembershipAggregatorQueue
+  }
+  {
+    name: 'serviceBusNotificationsQueue'
+    value: serviceBusNotificationsQueue
+  }
+  {
+    name: 'serviceBusFailedNotificationsQueue'
+    value: serviceBusFailedNotificationsQueue
+  }
+  {
+    name: 'serviceBusSyncJobUpdaterQueue'
+    value: serviceBusSyncJobUpdaterQueue
+  }
+  {
+    name: 'serviceBusConfigurationQueue'
+    value: serviceBusConfigurationQueue
+  }
+  {
+    name: 'serviceBusFailedConfigurationQueue'
+    value: serviceBusFailedConfigurationQueue
+  }
+  {
+    name: 'serviceBusAutoApproverQueue'
+    value: serviceBusAutoApproverQueue
+  }
+  {
+    name: 'graphUserAssignedManagedIdentityName'
+    value: graphUserAssignedManagedIdentityName
+  }
+  {
+    name: 'graphUserAssignedManagedIdentityClientId'
+    value: graphUserAssignedManagedIdentity.outputs.clientId
+  }
+]
+
+var openAISecrets = featureFlags.enableOpenAI ? [
+  {
+    name: 'openAIEndpoint'
+    value: openAIResources.outputs.openAIEndpoint
+  }
+] : []
+
+var allSecrets = union(baseSecrets, openAISecrets)
 
 module secretsTemplate 'keyVaultSecrets.bicep' = {
   name: 'secretsTemplate'
   params: {
     keyVaultName: keyVaultName
-    keyVaultParameters: [
-      {
-        name: 'storageAccountName'
-        value: storageAccountName
-      }
-      {
-        name: 'jobsStorageAccountName'
-        value: jobsStorageAccountName
-      }
-      {
-        name: 'membershipContainerName'
-        value: membershipContainerName
-      }
-      {
-        name: 'notificationsTableName'
-        value: notificationsTableName
-      }
-      {
-        name: 'appInsightsAppId'
-        value: appInsightsTemplate.outputs.appId
-      }
-      {
-        name: 'serviceBusNamespace'
-        value: serviceBusName
-      }
-      {
-        name: 'serviceBusSyncJobTopic'
-        value: serviceBusTopicName
-      }
-      {
-        name: 'serviceBusMembershipUpdatersTopic'
-        value: serviceBusMembershipUpdatersTopicSubscriptions.topicName
-      }
-      {
-        name: 'logAnalyticsCustomerId'
-        value: logAnalyticsTemplate.outputs.customerId
-      }
-      {
-        name: 'notifierProviderId'
-        value: notifierProviderId
-      }
-      {
-        name: 'serviceBusMembershipAggregatorQueue'
-        value: serviceBusMembershipAggregatorQueue
-      }
-      {
-        name: 'serviceBusNotificationsQueue'
-        value: serviceBusNotificationsQueue
-      }
-      {
-        name: 'serviceBusFailedNotificationsQueue'
-        value: serviceBusFailedNotificationsQueue
-      }
-      {
-        name: 'graphUserAssignedManagedIdentityName'
-        value: graphUserAssignedManagedIdentityName
-      }
-      {
-        name: 'graphUserAssignedManagedIdentityClientId'
-        value: graphUserAssignedManagedIdentity.outputs.clientId
-      }
-    ]
+    keyVaultParameters: allSecrets
   }
   dependsOn: [
     dataKeyVaultTemplate
@@ -703,6 +1081,7 @@ module secretsTemplate 'keyVaultSecrets.bicep' = {
     logAnalyticsTemplate
     appInsightsTemplate
     graphUserAssignedManagedIdentity
+    openAIResources
   ]
 }
 
@@ -737,7 +1116,115 @@ module serviceBusQueueAlert 'serviceBusQueueAlert.bicep' = {
   ]
 }
 
+var nspName = '${solutionAbbreviation}-nsp-${environmentAbbreviation}'
+var prereqsResourceGroupName = '${solutionAbbreviation}-${prereqsResourceGroupClassification}-${environmentAbbreviation}'
+var prereqsKeyVaultName = '${solutionAbbreviation}-${prereqsResourceGroupClassification}-${environmentAbbreviation}'
+
+// Deploy Network Security Perimeter, Profiles, and Resource Associations
+module prereqsNetworkSecurityPerimeterTemplate 'networkSecurityPerimeter.bicep' = {
+  name: 'prereqsNetworkSecurityPerimeterTemplate'
+  scope: resourceGroup(prereqsResourceGroupName)
+  params: {
+    nspName: nspName
+    nspLocation: location
+  }
+}
+
+module prereqsNetworkSecurityPerimeterProfilesTemplate 'networkSecurityPerimeterProfiles.bicep' = {
+  name: 'prereqsNetworkSecurityPerimeterProfilesTemplate'
+  scope: resourceGroup(prereqsResourceGroupName)
+  params: {
+    nspName: nspName
+    nspProfileNames: [
+      'keyvault'
+      'sql'
+      'storageaccount'
+    ]
+  }
+  dependsOn: [
+    prereqsNetworkSecurityPerimeterTemplate
+  ]
+}
+
+module nspDataKeyVaultAssociationTemplate 'networkSecurityPerimeterResourceAssociation.bicep' = {
+  name: 'nspDataKeyVaultAssociationTemplate'
+  scope: resourceGroup(prereqsResourceGroupName)
+  params: {
+    nspName: nspName
+    profileName: 'keyvault'
+    resourceId: resourceId('Microsoft.KeyVault/vaults', keyVaultName)
+  }
+  dependsOn: [
+    prereqsNetworkSecurityPerimeterProfilesTemplate
+  ]
+}
+
+module nspPrereqsKeyVaultAssociationTemplate 'networkSecurityPerimeterResourceAssociation.bicep' = {
+  name: 'nspPrereqsKeyVaultAssociationTemplate'
+  scope: resourceGroup(prereqsResourceGroupName)
+  params: {
+    nspName: nspName
+    profileName: 'keyvault'
+    resourceId: resourceId(subscription().subscriptionId, prereqsResourceGroupName, 'Microsoft.KeyVault/vaults', prereqsKeyVaultName)
+  }
+  dependsOn: [
+    prereqsNetworkSecurityPerimeterProfilesTemplate
+  ]
+}
+
+module nspSqlServerAssociationTemplate 'networkSecurityPerimeterResourceAssociation.bicep' = {
+  name: 'nspSqlServerAssociationTemplate'
+  scope: resourceGroup(prereqsResourceGroupName)
+  params: {
+    nspName: nspName
+    profileName: 'sql'
+    resourceId: sqlServer.outputs.sqlServerId
+  }
+  dependsOn: [
+    prereqsNetworkSecurityPerimeterProfilesTemplate
+  ]
+}
+
+module nspReplicaSqlServerAssociationTemplate 'networkSecurityPerimeterResourceAssociation.bicep' = {
+  name: 'nspReplicaSqlServerAssociationTemplate'
+  scope: resourceGroup(prereqsResourceGroupName)
+  params: {
+    nspName: nspName
+    profileName: 'sql'
+    resourceId: sqlServer.outputs.replicaSqlServerId
+  }
+  dependsOn: [
+    prereqsNetworkSecurityPerimeterProfilesTemplate
+  ]
+}
+
+module nspStorageAccountAssociationTemplate 'networkSecurityPerimeterResourceAssociation.bicep' = {
+  name: 'nspStorageAccountAssociationTemplate'
+  scope: resourceGroup(prereqsResourceGroupName)
+  params: {
+    nspName: nspName
+    profileName: 'storageaccount'
+    resourceId: storageAccountTemplate.outputs.storageAccountId
+  }
+  dependsOn: [
+    prereqsNetworkSecurityPerimeterProfilesTemplate
+  ]
+}
+
+module nspJobsStorageAccountAssociationTemplate 'networkSecurityPerimeterResourceAssociation.bicep' = {
+  name: 'nspJobsStorageAccountAssociationTemplate'
+  scope: resourceGroup(prereqsResourceGroupName)
+  params: {
+    nspName: nspName
+    profileName: 'storageaccount'
+    resourceId: jobsStorageAccountTemplate.outputs.storageAccountId
+  }
+  dependsOn: [
+    prereqsNetworkSecurityPerimeterProfilesTemplate
+  ]
+}
+
 output storageAccountName string = storageAccountName
 output serviceBusName string = serviceBusName
-output serviceBusTopicName string = serviceBusTopicName
+output serviceBusTopicName string = syncJobsTopicName
 output isDataKVPresent bool = isDataKVPresent

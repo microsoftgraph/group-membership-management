@@ -2,6 +2,7 @@
 // Licensed under the MIT license.
 
 import { IStrings } from './IStrings';
+import { strings as enStrings } from './i18n/locales/en/translations';
 
-export const defaultLanguage: string = 'en';
-export const defaultStrings: IStrings = require(`./i18n/locales/${defaultLanguage}/translations`).strings;
+export const defaultLanguage = 'en';
+export const defaultStrings: IStrings = enStrings;

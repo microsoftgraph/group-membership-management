@@ -1,26 +1,21 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
-using GraphUpdater.Entities;
 using Models;
-using Newtonsoft.Json.Linq;
-using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using System.Text.Json.Nodes;
 
 namespace GraphUpdater.Helpers
 {
     internal static class JsonParser
     {
-        internal static AzureADGroup GetDestination(string destinationJson)
+        internal static AzureADGroup GetDestination(SyncJob synJob)
         {
-            var destinations = JArray.Parse(destinationJson);
-            var destinationToken = destinations.First();
-
             var destination = new AzureADGroup
             {
-                Type = destinationToken["type"].ToString(),
-                ObjectId = Guid.Parse(destinationToken["value"]["objectId"].Value<string>())
+                Type = synJob.MembershipType.ToString(),
+                ObjectId = synJob.Group.GroupId
             };
 
             return destination;
@@ -28,13 +23,15 @@ namespace GraphUpdater.Helpers
 
         internal static string GetQueryTypes(string query)
         {
-            var queries = JArray.Parse(query);
+            var queries = JsonNode.Parse(query).AsArray();
             var queryTypeCounts = new Dictionary<string, int>();
+            var queryTypes = queries.Select(x => x["type"])
+                                       .OfType<JsonValue>()
+                                       .Select(x => x.GetValue<string>())
+                                       .ToList();
 
-            foreach ( var token in queries.SelectTokens("$..type"))
+            foreach ( var type in queryTypes)
             {
-                var type = token.Value<string>();
-
                 if (queryTypeCounts.ContainsKey(type))
                 {
                     queryTypeCounts[type]++;

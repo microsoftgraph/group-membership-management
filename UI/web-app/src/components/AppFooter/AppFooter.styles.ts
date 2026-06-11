@@ -5,10 +5,10 @@ import {
     type IAppFooterStyleProps,
     type IAppFooterStyles,
   } from './AppFooter.types';
-  
+
   export const getStyles = (props: IAppFooterStyleProps): IAppFooterStyles => {
     const { className, showPagingBar } = props;
-  
+
     return {
       root: [{
         height: '100px',
@@ -17,7 +17,6 @@ import {
         display: 'flex',
         position: 'relative',
         alignItems: 'center',
-        justifyContent: 'space-between',
         width: '100%',
       },
       privacyPolicy: {
@@ -28,7 +27,15 @@ import {
       },
       pagingBar: {
         visibility: showPagingBar ? 'visible' : 'hidden'
+      },
+      rightControls: {
+        display: 'flex',
+        alignItems: 'center',
+        marginLeft: 'auto',
+      },
+      themeToggle: {
+        padding: '20px 36px 20px 0',
       }
     };
   };
-  
+

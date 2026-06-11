@@ -2,12 +2,10 @@
 // Licensed under the MIT license.
 
 using System;
-using System.Net.Http;
 using System.Threading.Tasks;
 using Models;
-using Microsoft.Azure.WebJobs;
-using Microsoft.Azure.WebJobs.Extensions.DurableTask;
-using Microsoft.Azure.WebJobs.Extensions.Http;
+using Microsoft.Azure.Functions.Worker;
+using Microsoft.DurableTask.Client;
 using Repositories.Contracts;
 
 namespace Hosts.JobScheduler
@@ -21,13 +19,13 @@ namespace Hosts.JobScheduler
             _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
         }
 
-        [FunctionName(nameof(StarterFunction))]
+        [Function(nameof(StarterFunction))]
         public async Task RunAsync(
             [TimerTrigger("%jobSchedulerSchedule%")] TimerInfo myTimer,
-            [DurableClient] IDurableOrchestrationClient starter)
+            [DurableClient] DurableTaskClient starter)
         {
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(StarterFunction)} function started" }, VerbosityLevel.DEBUG);
-            await starter.StartNewAsync(nameof(OrchestratorFunction), null);
+            await starter.ScheduleNewOrchestrationInstanceAsync(nameof(OrchestratorFunction), null);
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(StarterFunction)} function completed" }, VerbosityLevel.DEBUG);
         }
     }

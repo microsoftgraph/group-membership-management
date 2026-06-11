@@ -3,11 +3,13 @@
 
 export type GroupOnboardingStatus = {
     status: OnboardingStatus;
+    additionalDetails?: {[key: string]: string};
 };
 
 export enum OnboardingStatus {
     Onboarded,
     ReadyForOnboarding,
-    AppIdNotOwner,
-    UserNotOwner
-}
+    GmmNotOwner,
+    UserNotOwner,
+    SyncedOnPremises
+};

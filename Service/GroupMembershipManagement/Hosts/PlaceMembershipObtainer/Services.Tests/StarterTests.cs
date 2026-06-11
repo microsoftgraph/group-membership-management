@@ -2,16 +2,18 @@
 // Licensed under the MIT license.
 using Azure.Messaging.ServiceBus;
 using Hosts.PlaceMembershipObtainer;
-using Microsoft.Azure.WebJobs.Extensions.DurableTask;
+using Microsoft.DurableTask;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using Moq;
 using Models;
-using Newtonsoft.Json;
+using Moq;
 using Repositories.Contracts;
 using Repositories.Contracts.InjectConfig;
+using Repositories.Mocks;
 using System;
 using System.Collections.Generic;
 using System.Text;
+using System.Text.Json;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace Tests.Services
@@ -22,7 +24,7 @@ namespace Tests.Services
         private Mock<IDryRunValue> _dryRunValue;
         private Mock<ILoggingRepository> _loggingRepository;
         private Mock<IDatabaseSyncJobsRepository> _syncJobRepository;
-        private Mock<IDurableOrchestrationClient> _durableOrchestrationClient;
+        private Mock<MockDurableTaskClient> _durableOrchestrationClient;
         private SyncJob _syncJob;
 
         [TestInitialize]
@@ -31,22 +33,28 @@ namespace Tests.Services
             _dryRunValue = new Mock<IDryRunValue>();
             _loggingRepository = new Mock<ILoggingRepository>();
             _syncJobRepository = new Mock<IDatabaseSyncJobsRepository>();
-            _durableOrchestrationClient = new Mock<IDurableOrchestrationClient>();
+            _durableOrchestrationClient = new Mock<MockDurableTaskClient>();
 
             _syncJob = new SyncJob
             {
                 Id = Guid.NewGuid(),
-                TargetOfficeGroupId = Guid.NewGuid(),
+                MembershipType = "GroupMembership",
                 Query = "[{ \"type\": \"PlaceMembership\", \"source\": \"https://graph.microsoft.com/v1.0/places/microsoft.graph.room\" }]",
                 Status = "InProgress",
                 Period = 6
             };
+            _syncJob.Group = new Group
+            {
+                SyncJobId = _syncJob.Id,
+                GroupId = Guid.NewGuid()
+            };
+
         }
 
         [TestMethod]
         public async Task TestRegularSyncJobRun()
         {
-            var syncJobBytes = Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(_syncJob));
+            var syncJobBytes = Encoding.UTF8.GetBytes(JsonSerializer.Serialize(_syncJob));
             var properties = new Dictionary<string, object>
             {
                 { "CurrentPart", 1},
@@ -57,9 +65,11 @@ namespace Tests.Services
             var starterFunction = new StarterFunction(_loggingRepository.Object, _syncJobRepository.Object, _dryRunValue.Object);
             await starterFunction.RunAsync(message, _durableOrchestrationClient.Object);
 
-            _durableOrchestrationClient.Verify(x => x.StartNewAsync(
-                                                        It.IsAny<string>(),
-                                                        It.Is<OrchestratorRequest>(r => r.CurrentPart == 1 && r.TotalParts == 3)
+            _durableOrchestrationClient.Verify(x => x.ScheduleNewOrchestrationInstanceAsync(
+                                                        It.IsAny<TaskName>(),
+                                                        It.Is<OrchestratorRequest>(r => r.CurrentPart == 1 && r.TotalParts == 3),
+                                                        null,
+                                                        It.IsAny<CancellationToken>()
                                                 ), Times.Once);
 
             _loggingRepository.Verify(x => x.LogMessageAsync(
@@ -83,7 +93,7 @@ namespace Tests.Services
             _dryRunValue.SetupGet(x => x.DryRunEnabled).Returns(true);
             _syncJob.DryRunTimeStamp = DateTime.UtcNow.AddHours(-1);
 
-            var syncJobBytes = Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(_syncJob));
+            var syncJobBytes = Encoding.UTF8.GetBytes(JsonSerializer.Serialize(_syncJob));
             var properties = new Dictionary<string, object>
             {
                 { "CurrentPart", 1},
@@ -95,7 +105,7 @@ namespace Tests.Services
             var starterFunction = new StarterFunction(_loggingRepository.Object, _syncJobRepository.Object, _dryRunValue.Object);
             await starterFunction.RunAsync(message, _durableOrchestrationClient.Object);
 
-            _durableOrchestrationClient.Verify(x => x.StartNewAsync(It.IsAny<string>(), It.IsAny<OrchestratorRequest>()), Times.Never);
+            _durableOrchestrationClient.Verify(x => x.ScheduleNewOrchestrationInstanceAsync(It.IsAny<TaskName>(), It.IsAny<OrchestratorRequest>(), null, It.IsAny<CancellationToken>()), Times.Never);
             _syncJobRepository.Verify(x => x.UpdateSyncJobStatusAsync(It.IsAny<IEnumerable<SyncJob>>(), It.Is<SyncStatus>(s => s == SyncStatus.Idle)), Times.Once);
 
             _loggingRepository.Verify(x => x.LogMessageAsync(

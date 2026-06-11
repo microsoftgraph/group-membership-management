@@ -1,7 +1,7 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-import { getGlobalClassNames } from '@fluentui/react';
+import { getGlobalClassNames, getTheme } from '@fluentui/react';
 
 import { type IAppStyleProps, type IAppStyles } from './App.types';
 
@@ -11,7 +11,9 @@ const GlobalClassNames = {
 
 export const getStyles = (props: IAppStyleProps): IAppStyles => {
   const { className, theme } = props;
-  const classNames = getGlobalClassNames(GlobalClassNames, theme);
+  const currentTheme = theme ?? getTheme();
+  const neutralLighter = currentTheme?.palette?.neutralLighter ?? '#f3f2f1';
+  const classNames = getGlobalClassNames(GlobalClassNames, currentTheme);
 
   return {
     root: [
@@ -22,7 +24,7 @@ export const getStyles = (props: IAppStyleProps): IAppStyles => {
         boxSizing: 'border-box',
         margin: '0 auto',
         fontFamily: 'Segoe UI',
-        backgroundColor: theme.palette.neutralLighter,
+        backgroundColor: neutralLighter,
         minHeight: '100vh',
       },
       classNames.root,

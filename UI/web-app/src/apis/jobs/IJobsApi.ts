@@ -7,4 +7,6 @@ import { Job, NewJob, Page, PagingOptions } from '../../models';
 export interface IJobsApi {
   getAllJobs(pagingOptions?: PagingOptions): Promise<Page<Job>>;
   postNewJob(job: NewJob): Promise<AxiosResponse>;
-}
+  downloadJobs(jobIds: string[]): Promise<AxiosResponse>;
+  approveJobs(jobIds: string[]): Promise<AxiosResponse>;
+};

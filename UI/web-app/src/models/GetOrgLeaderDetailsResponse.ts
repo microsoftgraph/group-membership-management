@@ -5,7 +5,7 @@ export interface GetOrgLeaderDetailsResponse {
     maxDepth: number;
     employeeId: number;
     objectId: string;
-    partId: number;
+    partId: string;
     text: string;
 }
 

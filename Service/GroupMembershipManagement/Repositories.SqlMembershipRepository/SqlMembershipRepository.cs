@@ -1,12 +1,18 @@
 // Copyright(c) Microsoft Corporation.
 // Licensed under the MIT license.
+using Azure.Core.Pipeline;
 using Azure.Identity;
 using Microsoft.Data.SqlClient;
+using Microsoft.Graph.Models;
+using Microsoft.SqlServer.TransactSql.ScriptDom;
 using Polly;
 using Polly.Retry;
 using Repositories.Contracts;
 using Repositories.Contracts.InjectConfig;
 using SqlMembershipObtainer.Entities;
+using System;
+using System.Collections.Concurrent;
+using System.Collections.Generic;
 using System.Data;
 
 namespace Repositories.SqlMembershipRepository
@@ -24,7 +30,7 @@ namespace Repositories.SqlMembershipRepository
         public async Task<List<PersonEntity>> GetChildEntitiesAsync(string filter, int personnelNumber, string tableName, int depth)
         {
             var children = new List<PersonEntity>();
-            var retryPolicy = GetRetryPolicy();
+            var retryPolicy = GetRetryPolicyAsync();
 
             try
             {
@@ -45,7 +51,7 @@ namespace Repositories.SqlMembershipRepository
                         SELECT *
                         FROM emp e {depthQuery} {filterQuery}";
 
-                await retryPolicy.Execute(async () =>
+                await retryPolicy.ExecuteAsync(async () =>
                 {
                     using (var conn = new SqlConnection(_sqlServerConnectionString))
                     {
@@ -61,7 +67,7 @@ namespace Repositories.SqlMembershipRepository
                                 {
                                     var response = new PersonEntity
                                     {
-                                        RowKey = reader.IsDBNull(id) ? null : reader.GetInt32(id).ToString(),
+                                        PersonnelNumber = reader.IsDBNull(id) ? null : reader.GetInt32(id).ToString(),
                                         AzureObjectId = reader.IsDBNull(azureObjectId) ? null : reader.GetString(azureObjectId)
                                     };
                                     children.Add(response);
@@ -83,7 +89,7 @@ namespace Repositories.SqlMembershipRepository
 
         public async Task<(int maxDepth, int id)> GetOrgLeaderDetailsAsync(string azureObjectId, string tableName)
         {
-            var retryPolicy = GetRetryPolicy();
+            var retryPolicy = GetRetryPolicyAsync();
             int maxDepth = 0;
             int employeeId = 0;
 
@@ -107,7 +113,7 @@ namespace Repositories.SqlMembershipRepository
 
                 var selectIdQuery = $"SELECT EmployeeId FROM [users].[{tableName}] WHERE AzureObjectId = '{azureObjectId}'";
 
-                await retryPolicy.Execute(async () =>
+                await retryPolicy.ExecuteAsync(async () =>
                 {
                     using (var conn = new SqlConnection(_sqlServerConnectionString))
                     {
@@ -155,12 +161,12 @@ namespace Repositories.SqlMembershipRepository
         public async Task<List<PersonEntity>> FilterChildEntitiesAsync(string query, string tableName)
         {
             var filteredChildren = new List<PersonEntity>();
-            var retryPolicy = GetRetryPolicy();
+            var retryPolicy = GetRetryPolicyAsync();
             try
             {
                 var selectQuery = $"SELECT EmployeeId, AzureObjectId FROM [users].[{tableName}] WHERE {query}";
 
-                await retryPolicy.Execute(async () =>
+                await retryPolicy.ExecuteAsync(async () =>
                 {
                     using (var conn = new SqlConnection(_sqlServerConnectionString))
                     {
@@ -175,7 +181,7 @@ namespace Repositories.SqlMembershipRepository
                                 {
                                     var response = new PersonEntity
                                     {
-                                        RowKey = reader.IsDBNull(personnelNumber) ? null : reader.GetInt32(personnelNumber).ToString(),
+                                        PersonnelNumber = reader.IsDBNull(personnelNumber) ? null : reader.GetInt32(personnelNumber).ToString(),
                                         AzureObjectId = reader.IsDBNull(azureObjectId) ? null : reader.GetString(azureObjectId)
                                     };
                                     filteredChildren.Add(response);
@@ -198,10 +204,10 @@ namespace Repositories.SqlMembershipRepository
         public async Task<bool> CheckIfTableExistsAsync(string tableName)
         {
             bool tableExists = false;
-            var retryPolicy = GetRetryPolicy();
+            var retryPolicy = GetRetryPolicyAsync();
             try
             {
-                await retryPolicy.Execute(async () =>
+                await retryPolicy.ExecuteAsync(async () =>
                 {
                     using (var conn = new SqlConnection(_sqlServerConnectionString))
                     {
@@ -227,12 +233,12 @@ namespace Repositories.SqlMembershipRepository
         public async Task<List<string>> GetColumnNamesAsync(string tableName)
         {
             var HRColumns = new List<string>();
-            var retryPolicy = GetRetryPolicy();
+            var retryPolicy = GetRetryPolicyAsync();
             try
             {
                 var selectQuery = $"SELECT name FROM sys.columns WHERE object_id = OBJECT_ID('[users].[{tableName}]') ORDER BY name";
 
-                await retryPolicy.Execute(async () =>
+                await retryPolicy.ExecuteAsync(async () =>
                 {
                     using (var conn = new SqlConnection(_sqlServerConnectionString))
                     {
@@ -265,7 +271,7 @@ namespace Repositories.SqlMembershipRepository
 
         public async Task<(int maxDepth, string azureObjectId)> GetOrgLeaderAsync(int employeeId, string tableName)
         {
-            var retryPolicy = GetRetryPolicy();
+            var retryPolicy = GetRetryPolicyAsync();
             int maxDepth = 0;
             string azureObjectId = "";
 
@@ -289,7 +295,7 @@ namespace Repositories.SqlMembershipRepository
 
                 var selectIdQuery = $"SELECT AzureObjectId FROM [users].[{tableName}] WHERE EmployeeId = {employeeId}";
 
-                await retryPolicy.Execute(async () =>
+                await retryPolicy.ExecuteAsync(async () =>
                 {
                     using (var conn = new SqlConnection(_sqlServerConnectionString))
                     {
@@ -337,17 +343,17 @@ namespace Repositories.SqlMembershipRepository
         public async Task<List<(string Name, string Type)>> GetColumnDetailsAsync(string tableName)
         {
             var columnDetails = new List<(string Name, string Type)>();
-            var retryPolicy = GetRetryPolicy();
+            var retryPolicy = GetRetryPolicyAsync();
             try
             {
                 var selectQuery = $@"
-                    SELECT c.name, t.name AS type 
+                    SELECT c.name, t.name AS type
                     FROM sys.columns AS c
                     JOIN sys.types AS t ON c.user_type_id = t.user_type_id
                     WHERE c.object_id = OBJECT_ID('[users].[{tableName}]')
                     ORDER BY c.name";
 
-                await retryPolicy.Execute(async () =>
+                await retryPolicy.ExecuteAsync(async () =>
                 {
                     using (var conn = new SqlConnection(_sqlServerConnectionString))
                     {
@@ -383,10 +389,10 @@ namespace Repositories.SqlMembershipRepository
         public async Task<bool> CheckIfMappingsTableExistsAsync(string tableName)
         {
             bool tableExists = false;
-            var retryPolicy = GetRetryPolicy();
+            var retryPolicy = GetRetryPolicyAsync();
             try
             {
-                await retryPolicy.Execute(async () =>
+                await retryPolicy.ExecuteAsync(async () =>
                 {
                     using (var conn = new SqlConnection(_sqlServerConnectionString))
                     {
@@ -409,16 +415,16 @@ namespace Repositories.SqlMembershipRepository
             return tableExists;
         }
 
-        public async Task<List<(string Code, string Description)>> GetAttributeValuesAsync(string attribute, string tableName)
+        public async Task<List<(string Code, string Description)>> GetAttributeMappingsAsync(string attribute, string tableName)
         {
-            var attributeValues = new List<(string Code, string Description)>();
-            var retryPolicy = GetRetryPolicy();
+            var attributeMappings = new List<(string Code, string Description)>();
+            var retryPolicy = GetRetryPolicyAsync();
 
             try
             {
-                var selectQuery = $"SELECT Code, Description FROM [mappings].[{tableName}] WHERE ColumnName = '{attribute}'";
+                var selectQuery = $"SELECT DISTINCT Code, Description FROM [mappings].[{tableName}] WHERE ColumnName = '{attribute}'";
 
-                await retryPolicy.Execute(async () =>
+                await retryPolicy.ExecuteAsync(async () =>
                 {
                     using (var conn = new SqlConnection(_sqlServerConnectionString))
                     {
@@ -435,7 +441,55 @@ namespace Repositories.SqlMembershipRepository
 
                                     var code = reader.IsDBNull(codeOrdinal) ? null : reader.GetString(codeOrdinal).Trim();
                                     var description = reader.IsDBNull(descriptionOrdinal) ? null : reader.GetString(descriptionOrdinal).Trim();
-                                    attributeValues.Add((code, description));
+                                    attributeMappings.Add((code, description));
+                                }
+                                await reader.CloseAsync();
+                            }
+                        }
+                        await conn.CloseAsync();
+                    }
+                });
+            }
+            catch (SqlException ex)
+            {
+                throw ex;
+            }
+
+            return attributeMappings;
+        }
+
+        public async Task<List<string>> GetAttributeValuesAsync(string attribute, bool hasMapping, string tableName)
+        {
+            var attributeValues = new List<string>();
+            var retryPolicy = GetRetryPolicyAsync();
+
+            var schema = hasMapping ? "mappings" : "users";
+            var column = hasMapping ? "Description" : $"{attribute}";
+            var whereClause = hasMapping ? $" WHERE ColumnName = '{attribute}'" : "";
+
+            try
+            {
+                var selectQuery = $"SELECT DISTINCT TOP(10) {column} FROM [{schema}].[{tableName}]" + whereClause;
+
+                await retryPolicy.ExecuteAsync(async () =>
+                {
+                    using (var conn = new SqlConnection(_sqlServerConnectionString))
+                    {
+                        await conn.OpenAsync();
+                        using (var cmd = new SqlCommand(selectQuery, conn))
+                        {
+                            using (var reader = await cmd.ExecuteReaderAsync(CommandBehavior.CloseConnection))
+                            {
+                                int valueOrdinal = reader.GetOrdinal($"{column}");
+
+                                while (reader.Read())
+                                {
+                                    var value = reader.IsDBNull(valueOrdinal) ? null : reader.GetValue(valueOrdinal)?.ToString()?.Trim();
+
+                                    if (value != null)
+                                    {
+                                        attributeValues.Add(value);
+                                    }
                                 }
                                 await reader.CloseAsync();
                             }
@@ -451,13 +505,91 @@ namespace Repositories.SqlMembershipRepository
 
             return attributeValues;
         }
+        public async Task<Dictionary<int, string>> ValidateFiltersAsync(Dictionary<int, string> sqlFilters, string tableName)
+        {
+            var exceptionsList = new ConcurrentDictionary<int, string>();
+            var validColumnNames = await GetColumnNamesAsync(tableName);
 
-        private RetryPolicy GetRetryPolicy()
+            var tasks = sqlFilters.Select(sqlFilter =>
+            {
+                var whereStatement = $@"SELECT * FROM [users].[{tableName}] WHERE {sqlFilter.Value}";
+
+                var (isValid, errorMessage) = IsValidWhereClause(whereStatement, validColumnNames);
+
+                if (!isValid)
+                {
+                    exceptionsList.TryAdd(sqlFilter.Key, errorMessage);
+                }
+
+                return Task.CompletedTask;
+            });
+
+            await Task.WhenAll(tasks);
+
+            return exceptionsList.ToDictionary();
+        }
+
+        private (bool, string) IsValidWhereClause(string whereStatement, List<string> validColumnNames)
+        {
+            var parser = new TSql150Parser(false);
+            using var reader = new StringReader(whereStatement);
+            var fragment = parser.Parse(reader, out IList<ParseError> errors);
+
+            if (errors.Count > 0)
+            {
+                return (false, errors[0].Message.ToString());
+            }
+            else
+            {
+                // Count the number of T-SQL statements, there should only be 1, the SELECT .. WHERE clause we set
+                if (fragment is TSqlScript script && script.Batches != null)
+                {
+                    int statementCount = script.Batches
+                    .SelectMany(batch => batch.Statements)
+                    .Count();
+
+                    if (statementCount > 1)
+                        return (false, "Multiple SQL statements are not allowed.");
+                }
+
+                // Collect column names
+                var columnCollector = new ColumnCollector();
+                fragment.Accept(columnCollector);
+
+                foreach (var column in columnCollector.ColumnNames)
+                {
+                    if (!validColumnNames.Contains(column, StringComparer.OrdinalIgnoreCase))
+                    {
+                        return (false, $"Invalid column name detected: {column}");
+                    }
+                }
+
+                return (true, string.Empty);
+            }
+        }
+
+        // Helper class to collect column names
+        public class ColumnCollector : TSqlFragmentVisitor
+        {
+            public HashSet<string> ColumnNames { get; } = new();
+
+            public override void Visit(ColumnReferenceExpression node)
+            {
+                if (node.MultiPartIdentifier != null)
+                {
+                    var column = node.MultiPartIdentifier.Identifiers.Last().Value;
+                    ColumnNames.Add(column);
+                }
+            }
+        }
+
+
+        private AsyncRetryPolicy GetRetryPolicyAsync()
         {
             return Policy.Handle<SqlException>()
-                         .WaitAndRetry(
-                             3,
-                             _ => TimeSpan.FromMinutes(1)
+                         .WaitAndRetryAsync(
+                             5,
+                             attempt => TimeSpan.FromSeconds(Math.Pow(2, attempt))
                          );
         }
     }

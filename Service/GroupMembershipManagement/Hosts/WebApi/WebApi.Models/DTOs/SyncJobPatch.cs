@@ -7,8 +7,11 @@ namespace WebApi.Models.DTOs
     {
         public Guid? RunId { get; set; }
         public string Requestor { get; set; }
+        public string? LastModifiedOnBehalfOfDisplayName { get; set; }
+        public string? LastModifiedOnBehalfOfObjectId { get; set; }
         public Guid TargetOfficeGroupId { get; set; }
         public string Destination { get; set; }
+        public NewTitle[] Titles { get; set; }
         public bool AllowEmptyDestination { get; set; }
         public string Status { get; set; }
         public DateTime LastRunTime { get; set; }
@@ -23,5 +26,7 @@ namespace WebApi.Models.DTOs
         public bool IsDryRunEnabled { get; set; }
         public DateTime DryRunTimeStamp { get; set; }
         public int ThresholdViolations { get; set; }
+        public string ChangeReason { get; set; }
+        public string BusinessJustification { get; set; }
     }
 }

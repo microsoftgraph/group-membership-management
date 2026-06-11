@@ -1,20 +1,17 @@
 // Copyright(c) Microsoft Corporation.
 // Licensed under the MIT license.
-using Entities;
-using Microsoft.Azure.WebJobs.Extensions.DurableTask;
+using Microsoft.DurableTask;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
+using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
 using Models;
 using SqlMembershipObtainer;
 using SqlMembershipObtainer.Entities;
-using Services.Tests.Helpers;
 using System;
-using System.Collections.Generic;
-using System.Linq;
 using System.Threading.Tasks;
-using SqlMembershipObtainer.SubOrchestrator;
 using Services.Contracts;
-using Repositories.Contracts;
 
 namespace Services.Tests
 {
@@ -22,167 +19,128 @@ namespace Services.Tests
     public class OrganizationProcessorFunctionTests
     {
         private Mock<ISqlMembershipObtainerService> _sqlMembershipObtainerService = null;
-        private Mock<ILoggingRepository> _loggingRepository = null;
-        private List<PersonEntity> _personEntities = null;
+        private MembershipFileResult _groupMembershipSenderResponse = null;
 
         [TestInitialize]
         public void Setup()
         {
             _sqlMembershipObtainerService = new Mock<ISqlMembershipObtainerService>();
-            _loggingRepository = new Mock<ILoggingRepository>();
 
             _sqlMembershipObtainerService.Setup(x => x.FilterChildEntitiesAsync(
                                                                 It.IsAny<string>(),
                                                                 It.IsAny<string>(),
-                                                                It.IsAny<Guid?>(),
-                                                                It.IsAny<Guid?>()
-                                                                )).ReturnsAsync(() => _personEntities);
+                                                                It.IsAny<SyncJob>(),
+                                                                It.IsAny<Guid>(),
+                                                                It.IsAny<int>(),
+                                                                It.IsAny<bool>()
+                                                                )).ReturnsAsync(() => _groupMembershipSenderResponse);
 
             _sqlMembershipObtainerService.Setup(x => x.GetChildEntitiesAsync(
                                                     It.IsAny<string>(),
                                                     It.IsAny<int>(),
                                                     It.IsAny<string>(),
                                                     It.IsAny<int>(),
-                                                    It.IsAny<Guid?>(),
-                                                    It.IsAny<Guid?>()
-                                                    )).ReturnsAsync(() => _personEntities);
+                                                    It.IsAny<SyncJob>(),
+                                                    It.IsAny<Guid>(),
+                                                    It.IsAny<int>(),
+                                                    It.IsAny<bool>()
+                                                    )).ReturnsAsync(() => _groupMembershipSenderResponse);
 
         }
 
         [TestMethod]
         public async Task ProcessQueryWithOrgLeadersTest()
         {
-            var context = new Mock<IDurableOrchestrationContext>();
-            var queryFunction = new OrganizationProcessorFunction();
-            var organization = new OrganizationCreator().GenerateOrganizationHierarchy();
-
-            CustomizeOrganization(organization);
-
-            var rootentity = organization.Where(x => x.LevelId == 1).First().Entities.First();
-            var engineerCount = organization.SelectMany(x => x.Entities).Count(e => e.StandardTitle == "Engineer");
-            _personEntities = organization.SelectMany(x => x.Entities).Where(e => e.StandardTitle == "Engineer").ToList();
-
-            var organizationProcessorRequest = new OrganizationProcessorRequest
+            var orgProcessorContext = new Mock<TaskOrchestrationContext>();
+            var request = new OrganizationProcessorRequest
             {
-                Query = new Query()
-                {
-                    Manager = new Manager {
-                        Depth = 0,
-                        Id = 1000
-                    },
-                    Filter = "StandardTitle eq 'Engineer'"
-                },
+                Query = new Query { Filter = "Department = 'IT'", Manager = new Manager { Id = 123, Depth = 1 } },
                 SyncJob = new SyncJob
                 {
                     Id = Guid.NewGuid(),
-                    RunId = Guid.NewGuid()
-                }
+                    RunId = Guid.NewGuid(),
+                    MembershipType = "GroupMembership"
+                },
+                GroupId = Guid.NewGuid(),
+                CurrentPart = 1,
+                TotalParts = 1,
+                Exclusionary = false
             };
 
-            GraphProfileInformationResponse managerOrgProcessorResponse = null;
-            GraphProfileInformationResponse managerOrgReaderResponse = null;
+            orgProcessorContext.Setup(x => x.CreateReplaySafeLogger(It.IsAny<string>())).Returns(NullLogger.Instance);
+            orgProcessorContext.Setup(x => x.GetInput<OrganizationProcessorRequest>()).Returns(request);
+            orgProcessorContext.Setup(x => x.CallActivityAsync<string>(nameof(TableNameReaderFunction), It.IsAny<TableNameReaderRequest>(), It.IsAny<TaskOptions>()))
+                .ReturnsAsync("sometable");
+            orgProcessorContext.Setup(x => x.CallActivityAsync<MembershipFileResult>(
+                nameof(ManagerOrgReaderFunction), It.IsAny<ManagerOrgReaderRequest>(), It.IsAny<TaskOptions>()))
+                .ReturnsAsync(new MembershipFileResult());
 
-            context.Setup(x => x.GetInput<OrganizationProcessorRequest>()).Returns(organizationProcessorRequest);
+            var function = new OrganizationProcessorFunction();
+            await function.ProcessQueryAsync(orgProcessorContext.Object);
 
-            context.Setup(x => x.CallActivityAsync(It.IsAny<string>(), It.IsAny<LoggerRequest>()));
-
-            context.Setup(x => x.CallActivityAsync<string>(nameof(TableNameReaderFunction), It.IsAny<SyncJob>())).ReturnsAsync("tbl112233445566");
-
-            context.Setup(x => x.CallSubOrchestratorAsync<GraphProfileInformationResponse>(
-                                                                            It.Is<string>(x => x == nameof(ManagerOrgReaderFunction)),
-                                                                            It.IsAny<ManagerOrgReaderRequest>()))
-                    .ReturnsAsync(() => managerOrgProcessorResponse);
-
-            context.Setup(x => x.CallActivityAsync<GraphProfileInformationResponse>(
-                                                                It.Is<string>(x => x == nameof(ManagerOrgReaderFunction)),
-                                                                It.IsAny<ManagerOrgReaderRequest>()))
-                    .Callback<string, object>(async (name, requestObject) =>
-                    {
-                        var request = requestObject as ManagerOrgReaderRequest;
-                        managerOrgReaderResponse = await ManagerOrgReaderFunctionAsync(request);
-                    })
-                    .ReturnsAsync(() => managerOrgReaderResponse);
-
-            var profiles = await queryFunction.ProcessQueryAsync(context.Object);
-
-            Assert.AreEqual(engineerCount, profiles.GraphProfileCount);
+            orgProcessorContext.Verify(x => x.CallActivityAsync<string>(
+                nameof(TableNameReaderFunction),
+                It.Is<TableNameReaderRequest>(r => r.CurrentPart == 1 && r.TotalParts == 1),
+                It.IsAny<TaskOptions>()), Times.Once());
+            orgProcessorContext.Verify(x => x.CallActivityAsync<MembershipFileResult>(
+                nameof(ManagerOrgReaderFunction),
+                It.Is<ManagerOrgReaderRequest>(r => r.CurrentPart == 1 && r.TotalParts == 1),
+                It.IsAny<TaskOptions>()), Times.Once());
+            orgProcessorContext.Verify(x => x.CallActivityAsync<MembershipFileResult>(
+                nameof(ChildEntitiesFilterFunction), It.IsAny<ChildEntitiesFilterRequest>(), It.IsAny<TaskOptions>()), Times.Never());
         }
+
 
         [TestMethod]
         public async Task ProcessQueryWithNoOrgLeadersTest()
         {
-            var context = new Mock<IDurableOrchestrationContext>();
-            var queryFunction = new OrganizationProcessorFunction();
-            var organization = new OrganizationCreator().GenerateOrganizationHierarchy();
-
-            CustomizeOrganization(organization);
-
-            var rootentity = organization.Where(x => x.LevelId == 1).First().Entities.First();
-            var engineerCount = organization.SelectMany(x => x.Entities).Count(e => e.StandardTitle == "Engineer");
-            _personEntities = organization.SelectMany(x => x.Entities).Where(e => e.StandardTitle == "Engineer").ToList();
-
-            var organizationProcessorRequest = new OrganizationProcessorRequest
+            var orgProcessorContext = new Mock<TaskOrchestrationContext>();
+            var request = new OrganizationProcessorRequest
             {
-                Query = new Query
-                {
-                    Filter = "StandardTitle eq 'Engineer'"
-                },
+                Query = new Query { Filter = "Department = 'IT'" },
                 SyncJob = new SyncJob
                 {
                     Id = Guid.NewGuid(),
-                    RunId = Guid.NewGuid()
-                }
+                    RunId = Guid.NewGuid(),
+                    MembershipType = "GroupMembership"
+                },
+                GroupId = Guid.NewGuid(),
+                CurrentPart = 1,
+                TotalParts = 1,
+                Exclusionary = false
             };
 
-            ManagerOrgReaderRequest managerOrgReaderRequest = null;
-            GraphProfileInformationResponse childEntitiesFilterResponse = null;
-
-            context.Setup(x => x.GetInput<OrganizationProcessorRequest>()).Returns(organizationProcessorRequest);
-            context.Setup(x => x.GetInput<ManagerOrgReaderRequest>()).Returns(() => managerOrgReaderRequest);
-
-            context.Setup(x => x.CallActivityAsync(It.IsAny<string>(), It.IsAny<LoggerRequest>()));
-
-            context.Setup(x => x.CallActivityAsync<string>(nameof(TableNameReaderFunction), It.IsAny<SyncJob>())).ReturnsAsync("tbl112233445566");
-
-            context.Setup(x => x.CallActivityAsync<GraphProfileInformationResponse>(It.IsAny<string>(), It.IsAny<ChildEntitiesFilterRequest>()))
-                .Callback<string, object>(async (name, requestObject) =>
+            orgProcessorContext.Setup(x => x.CreateReplaySafeLogger(It.IsAny<string>())).Returns(NullLogger.Instance);
+            orgProcessorContext.Setup(x => x.GetInput<OrganizationProcessorRequest>()).Returns(request);
+            orgProcessorContext.Setup(x => x.CallActivityAsync<string>(nameof(TableNameReaderFunction), It.IsAny<TableNameReaderRequest>(), It.IsAny<TaskOptions>()))
+                .ReturnsAsync("sometable");
+            orgProcessorContext.Setup(x => x.CallActivityAsync<MembershipFileResult>(
+                nameof(ChildEntitiesFilterFunction), It.IsAny<ChildEntitiesFilterRequest>(), It.IsAny<TaskOptions>()))
+                .Callback<TaskName, object, TaskOptions>(async (name, request, options) =>
                 {
-                    var request = requestObject as ChildEntitiesFilterRequest;
-                    childEntitiesFilterResponse = await CallChildEntitiesFilterFunctionAsync(request);
-
+                    await CallChildEntitiesFilterFunctionAsync(request as ChildEntitiesFilterRequest);
                 })
-                .ReturnsAsync(() => childEntitiesFilterResponse);
+                .ReturnsAsync(new MembershipFileResult());
 
-            var profiles = await queryFunction.ProcessQueryAsync(context.Object);
+            var function = new OrganizationProcessorFunction();
+            await function.ProcessQueryAsync(orgProcessorContext.Object);
 
-            Assert.AreEqual(engineerCount, profiles.GraphProfileCount);
+            orgProcessorContext.Verify(x => x.CallActivityAsync<string>(
+                nameof(TableNameReaderFunction),
+                It.Is<TableNameReaderRequest>(r => r.CurrentPart == 1 && r.TotalParts == 1),
+                It.IsAny<TaskOptions>()), Times.Once());
+            orgProcessorContext.Verify(x => x.CallActivityAsync<MembershipFileResult>(
+                nameof(ManagerOrgReaderFunction), It.IsAny<ManagerOrgReaderRequest>(), It.IsAny<TaskOptions>()), Times.Never());
+            orgProcessorContext.Verify(x => x.CallActivityAsync<MembershipFileResult>(
+                nameof(ChildEntitiesFilterFunction),
+                It.Is<ChildEntitiesFilterRequest>(r => r.CurrentPart == 1 && r.TotalParts == 1),
+                It.IsAny<TaskOptions>()), Times.Once());
         }
 
-        private async Task<GraphProfileInformationResponse> CallChildEntitiesFilterFunctionAsync(ChildEntitiesFilterRequest request)
+        private async Task CallChildEntitiesFilterFunctionAsync(ChildEntitiesFilterRequest request)
         {
-            var function = new ChildEntitiesFilterFunction(_sqlMembershipObtainerService.Object, _loggingRepository.Object);
-            return await function.FilterChildEntities(request);
-        }
-
-        private async Task<GraphProfileInformationResponse> ManagerOrgReaderFunctionAsync(ManagerOrgReaderRequest request)
-        {
-            var function = new ManagerOrgReaderFunction(_sqlMembershipObtainerService.Object, _loggingRepository.Object);
-            return await function.ReadUsersAsync(request);
-        }
-
-        private void CustomizeOrganization(List<OrganizationLevel> organization)
-        {
-            foreach (var level in organization)
-            {
-                var index = 0;
-                foreach (var entity in level.Entities)
-                {
-                    var isEven = index++ % 2 == 0;
-                    entity.CompanyCode = isEven ? "2" : "1";
-                    entity.StandardTitle = isEven ? "PM" : "Engineer";
-                    entity.RowKey = Guid.NewGuid().ToString();
-                }
-            }
+            var function = new ChildEntitiesFilterFunction(NullLogger<ChildEntitiesFilterFunction>.Instance, _sqlMembershipObtainerService.Object);
+            await function.FilterChildEntities(request);
         }
     }
 }

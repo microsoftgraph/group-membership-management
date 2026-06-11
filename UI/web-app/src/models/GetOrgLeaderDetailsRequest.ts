@@ -5,10 +5,10 @@ export interface GetOrgLeaderDetailsRequest {
   objectId: string;
   key: number;
   text: string;
-  partId: number;
+  partId: string;
 }
 
 export interface GetOrgLeaderDetailsUsingIdRequest {
   employeeId: number;
-  partId: number;
-}
+  partId: string;
+};

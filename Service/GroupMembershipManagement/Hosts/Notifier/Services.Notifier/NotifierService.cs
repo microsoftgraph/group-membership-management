@@ -37,12 +37,9 @@ namespace Services.Notifier
         private readonly IThresholdConfig _thresholdConfig;
         private readonly IGMMResources _gmmResources;
         private readonly IServiceBusQueueRepository _serviceBusQueueRepository;
+        private readonly IDatabaseGroupsRepository _databaseGroupsRepository;
+        private readonly IDatabaseChannelsRepository _databaseChannelsRepository;
 
-        enum MembershipType
-        {
-            GroupMembership,
-            TeamsChannelMembership
-        }
         public NotifierService(
             ILoggingRepository loggingRepository,
             IMailRepository mailRepository,
@@ -56,6 +53,8 @@ namespace Services.Notifier
             IThresholdConfig thresholdConfig,
             IGMMResources gmmResources,
             IServiceBusQueueRepository serviceBusQueueRepository,
+            IDatabaseGroupsRepository databaseGroupsRepository,
+            IDatabaseChannelsRepository databaseChannelsRepository,
             TelemetryClient telemetryClient)
         {
             _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
@@ -70,11 +69,49 @@ namespace Services.Notifier
             _thresholdConfig = thresholdConfig ?? throw new ArgumentNullException(nameof(thresholdConfig));
             _gmmResources = gmmResources ?? throw new ArgumentException(nameof(gmmResources));
             _serviceBusQueueRepository = serviceBusQueueRepository ?? throw new ArgumentNullException(nameof(_serviceBusQueueRepository));
+            _databaseGroupsRepository = databaseGroupsRepository ?? throw new ArgumentNullException(nameof(databaseGroupsRepository));
+            _databaseChannelsRepository = databaseChannelsRepository ?? throw new ArgumentNullException(nameof(databaseChannelsRepository));
             _telemetryClient = telemetryClient ?? throw new ArgumentNullException(nameof(telemetryClient));
+        }
+
+        public async Task<Guid> GetGroupIdAsync(SyncJob syncJob)
+        {
+            if (syncJob.MembershipType == MembershipTypes.TeamsChannelMembership.ToString())
+            {
+                var channel = syncJob.Channel ?? await _databaseChannelsRepository.GetChannelUsingSyncJobIdAsync(syncJob.Id);
+                return channel.GroupId;
+            }
+            else if (syncJob.MembershipType == MembershipTypes.GroupMembership.ToString())
+            {
+                var group = syncJob.Group ?? await _databaseGroupsRepository.GetGroupUsingSyncJobIdAsync(syncJob.Id);
+                return group.GroupId;
+            }
+            return Guid.Empty;
+        }
+
+        public async Task<string> GetChannelIdAsync(SyncJob syncJob)
+        {
+            if (syncJob.MembershipType == MembershipTypes.TeamsChannelMembership.ToString())
+            {
+                var channel = syncJob.Channel ?? await _databaseChannelsRepository.GetChannelUsingSyncJobIdAsync(syncJob.Id);
+                return channel.ChannelId;
+            }
+            return string.Empty;
         }
 
         public async Task SendThresholdEmailAsync(ThresholdNotification notification)
         {
+            bool isNotificationDisabled = await IsNotificationDisabledAsync(notification.SyncJobId, NotificationMessageType.ThresholdNotification);
+
+            if (isNotificationDisabled)
+            {
+                await _loggingRepository.LogMessageAsync(new LogMessage
+                {
+                    RunId = notification.SyncJobId,
+                    Message = $"Notification '{NotificationMessageType.ThresholdNotification}' is disabled for job {notification.Id} with destination group {notification.TargetOfficeGroupId}."
+                });
+                return;
+            }
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Sending email to recipient addresses." });
 
             var groupName = await _graphGroupRepository.GetGroupNameAsync(notification.TargetOfficeGroupId);
@@ -82,6 +119,13 @@ namespace Services.Notifier
             var ownerEmails = string.Join(";", owners.Where(x => !string.IsNullOrWhiteSpace(x.Mail)).Select(x => x.Mail));
 
             var adaptiveCard = await _thresholdNotificationService.CreateNotificationCardAsync(notification);
+
+            var fallbackHTMLContent = _localizationRepository.TranslateSetting(NotificationConstants.ThresholdNotificationFallbackBody,
+                groupName,
+                notification.TargetOfficeGroupId.ToString(),
+                notification.ThresholdPercentageForAdditions.ToString(),
+                notification.ThresholdPercentageForRemovals.ToString());
+            
             var htmlTemplate = @"<html>
                 <head
                   <meta http-equiv=""Content-Type"" content=""text/html; charset=utf-8"">
@@ -90,23 +134,53 @@ namespace Services.Notifier
                   </script>
                 </head>
                 <body>
+                <p style=""color: red;"">Warning: Group Membership Management (GMM) notifications are powered by Outlook Actionable Messages. The following is a fallback message that you will see if the Actionable Message fails to render.</p>
+                <h1>Fallback Message</h1>
+                <pre>{1}</pre>
                 </body>
                 </html>";
 
+            var cardState = notification.CardState; 
+
+            string subjectKey = cardState == ThresholdNotificationCardState.DisabledCard 
+                ? "SyncThresholdDisablingJobEmailSubject" 
+                : "SyncThresholdEmailSubject";
+
+            string subject = _localizationRepository.TranslateSetting(subjectKey, groupName);
+            
             var message = new EmailMessage
             {
-                Subject = _localizationRepository.TranslateSetting("SyncThresholdEmailSubject", groupName),
-                Content = string.Format(htmlTemplate, adaptiveCard),
+                Subject = subject,
+                Content = string.Format(htmlTemplate, adaptiveCard, fallbackHTMLContent),
                 SenderAddress = _emailSenderAndRecipients.SenderAddress,
                 SenderPassword = _emailSenderAndRecipients.SenderPassword,
                 ToEmailAddresses = ownerEmails,
                 CcEmailAddresses = _emailSenderAndRecipients.SupportEmailAddresses,
                 IsHTML = true
             };
-            
-            await _mailRepository.SendMailAsync(message, null);
+
+            var response = await _mailRepository.SendMailAsync(message, null);
             TrackSentNotificationEvent(notification.TargetOfficeGroupId);
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Sent email to recipient addresses." });
+
+            if (response != null && response.StatusCode != HttpStatusCode.Accepted)
+            {
+                var messageContent = new Dictionary<string, Object>
+                {
+                    { "MessageBody", message.Content },
+                    { "MessageType", NotificationMessageType.ThresholdNotification.ToString() },
+                    { "HttpStatusCode", response.StatusCode.ToString() },
+                    { "ReasonPhrase", response.ReasonPhrase.ToString() }
+                };
+                var body = System.Text.Encoding.UTF8.GetBytes(JsonSerializer.Serialize(messageContent));
+                var failedMessage = new ServiceBusMessage
+                {
+                    MessageId = $"{notification.Id}_{notification.SyncJobId}_{NotificationMessageType.ThresholdNotification}",
+                    Body = body
+                };
+                await _serviceBusQueueRepository.SendMessageAsync(failedMessage);
+            }
+            TrackSentNotificationEvent(notification.TargetOfficeGroupId);
         }
 
         public async Task<List<Models.ThresholdNotifications.ThresholdNotification>> RetrieveQueuedNotificationsAsync()
@@ -144,7 +218,7 @@ namespace Services.Notifier
             var notification = await CreateActionableNotification(threshold, job, sendDisableJobNotification);
             return notification;
         }
-        private async Task<(SyncJob job, string[] additionalContentParameters)> ParseMessageContentAsync(string messageBody)
+        private (SyncJob job, string[] additionalContentParameters) ParseMessageContentAsync(string messageBody)
         {
             var messageContent = JsonSerializer.Deserialize<Dictionary<string, object>>(messageBody);
 
@@ -162,18 +236,28 @@ namespace Services.Notifier
 
             return (job, additionalContentParameters);
         }
-        public async Task SendEmailAsync(string messageType, string messageBody, string subjectTemplate, string contentTemplate)
+        public async Task SendEmailAsync(string messageType, string messageBody, string messageTitle, string subjectTemplate, string contentTemplate)
         {
-            var (job, additionalContentParameters) = await ParseMessageContentAsync(messageBody);
+            var (job, additionalContentParameters) = ParseMessageContentAsync(messageBody);
+            var groupId = job.TargetOfficeGroupId;
 
-            bool isNotificationDisabled = await IsNotificationDisabledAsync(job.Id, contentTemplate);
+            if (!Enum.TryParse<NotificationMessageType>(messageType, true, out var messageTypeEnum))
+            {
+                await _loggingRepository.LogMessageAsync(new LogMessage
+                {
+                    RunId = job.RunId,
+                    Message = $"Notification type '{messageType}' do not exist."
+                });
+                return;
+            }
+            bool isNotificationDisabled = await IsNotificationDisabledAsync(job.Id, messageTypeEnum);
 
             if (isNotificationDisabled)
             {
                 await _loggingRepository.LogMessageAsync(new LogMessage
                 {
                     RunId = job.RunId,
-                    Message = $"Notification template '{contentTemplate}' is disabled for job {job.Id} with destination group {job.TargetOfficeGroupId}."
+                    Message = $"Notification '{messageType}' is disabled for job {job.Id} with destination group {groupId}."
                 });
                 return;
             }
@@ -182,23 +266,21 @@ namespace Services.Notifier
 
             if (!NotificationConstants.DestinationNotExistContent.Equals(contentTemplate, StringComparison.InvariantCultureIgnoreCase))
             {
-                var destinationObjectId = (await ParseDestinationAsync(job)).ObjectId;
-                var owners = await _graphGroupRepository.GetGroupOwnersAsync(destinationObjectId);
+                var owners = await _graphGroupRepository.GetGroupOwnersAsync(groupId);
                 ownerEmails = string.Join(";", owners.Where(x => !string.IsNullOrWhiteSpace(x.Mail)).Select(x => x.Mail));
             }
 
-            if (contentTemplate.Contains("disabled", StringComparison.InvariantCultureIgnoreCase))
-                ccAddress = _emailSenderAndRecipients.SyncDisabledCCAddresses;
-
             var message = new EmailMessage
             {
+                Title = messageTitle,
                 Subject = subjectTemplate,
                 Content = contentTemplate,
                 SenderAddress = _emailSenderAndRecipients.SenderAddress,
                 SenderPassword = _emailSenderAndRecipients.SenderPassword,
                 ToEmailAddresses = ownerEmails ?? job.Requestor,
                 CcEmailAddresses = ccAddress,
-                AdditionalContentParams = additionalContentParameters
+                AdditionalContentParams = additionalContentParameters,
+                SyncJobId = job.Id
             };
 
             if (messageType.Equals("NoDataNotification", StringComparison.InvariantCultureIgnoreCase))
@@ -225,16 +307,16 @@ namespace Services.Notifier
             }
         }
 
-        public async Task<bool> IsNotificationDisabledAsync(Guid jobId, string contentTemplate)
+        public async Task<bool> IsNotificationDisabledAsync(Guid jobId, NotificationMessageType messageType)
         {
-            var notificationType = await _notificationTypesRepository.GetNotificationTypeByNotificationTypeNameAsync(contentTemplate);
+            var notificationType = await _notificationTypesRepository.GetNotificationTypeByNotificationTypeNameAsync(messageType);
 
             if (notificationType == null)
             {
                 await _loggingRepository.LogMessageAsync(new LogMessage
                 {
                     RunId = jobId,
-                    Message = $"No notification type ID found for notification type name '{contentTemplate}'."
+                    Message = $"No notification type ID found for notification type name '{messageType}'."
                 });
                 return false;
             }
@@ -244,7 +326,7 @@ namespace Services.Notifier
                 await _loggingRepository.LogMessageAsync(new LogMessage
                 {
                     RunId = jobId,
-                    Message = $"Notifications of type '{contentTemplate}' have been globally disabled."
+                    Message = $"Notifications of type '{messageType}' have been globally disabled."
                 });
                 return true;
             }
@@ -254,42 +336,24 @@ namespace Services.Notifier
 
         public async Task<AzureADGroup> ParseDestinationAsync(SyncJob syncJob)
         {
-            if (string.IsNullOrWhiteSpace(syncJob.Destination)) return null;
+            var groupId = await GetGroupIdAsync(syncJob);
+            var channelId = await GetChannelIdAsync(syncJob);
 
-            using JsonDocument doc = JsonDocument.Parse(syncJob.Destination);
-            JsonElement rootElement = doc.RootElement[0];
-
-            if (rootElement.ValueKind != JsonValueKind.Object) return null;
-
-            JsonElement valueElement;
-            if (!rootElement.TryGetProperty("value", out valueElement) ||
-                !rootElement.TryGetProperty("type", out JsonElement typeElement) ||
-                valueElement.ValueKind != JsonValueKind.Object ||
-                !valueElement.TryGetProperty("objectId", out JsonElement objectIdElement) ||
-                !Guid.TryParse(objectIdElement.GetString(), out Guid objectIdGuid))
+            if (syncJob.MembershipType == MembershipTypes.TeamsChannelMembership.ToString())
             {
-                return null;
-            }
-
-            string type = typeElement.GetString();
-
-            if (type == MembershipType.TeamsChannelMembership.ToString())
-            {
-                if (!valueElement.TryGetProperty("channelId", out JsonElement channelIdElement)) return null;
-
                 return new AzureADTeamsChannel
                 {
-                    Type = type,
-                    ObjectId = objectIdGuid,
-                    ChannelId = channelIdElement.GetString()
+                    Type = syncJob.MembershipType,
+                    ObjectId = groupId,
+                    ChannelId = channelId
                 };
             }
-            else if (type == MembershipType.GroupMembership.ToString())
+            else if (syncJob.MembershipType == MembershipTypes.GroupMembership.ToString())
             {
                 return new AzureADGroup
                 {
-                    Type = type,
-                    ObjectId = objectIdGuid
+                    Type = syncJob.MembershipType,
+                    ObjectId = groupId
                 };
             }
             else
@@ -299,6 +363,7 @@ namespace Services.Notifier
         }
         private async Task<Models.ThresholdNotifications.ThresholdNotification> CreateActionableNotification(ThresholdResult threshold, SyncJob job, bool sendDisableJobNotification)
         {
+            var groupId = await GetGroupIdAsync(job);
             var thresholdNotification = await _notificationRepository.GetThresholdNotificationBySyncJobIdAsync(job.Id);
 
             if (thresholdNotification == null)
@@ -306,28 +371,26 @@ namespace Services.Notifier
                 thresholdNotification = new ThresholdNotification
                 {
                     Id = Guid.NewGuid(),
-                    SyncJobPartitionKey = job.Id.ToString(),
-                    SyncJobRowKey = job.Id.ToString(),
                     SyncJobId = job.Id,
-                    ChangePercentageForAdditions = (int)threshold.IncreaseThresholdPercentage,
-                    ChangePercentageForRemovals = (int)threshold.DecreaseThresholdPercentage,
+                    ChangePercentageForAdditions = threshold.IncreaseThresholdPercentage,
+                    ChangePercentageForRemovals = threshold.DecreaseThresholdPercentage,
                     ChangeQuantityForAdditions = threshold.DeltaToAddCount,
                     ChangeQuantityForRemovals = threshold.DeltaToRemoveCount,
                     CreatedTime = DateTime.UtcNow,
                     Resolution = ThresholdNotificationResolution.Unresolved,
-                    ResolvedByUPN = string.Empty,
+                    ResolvedBy = string.Empty,
                     ResolvedTime = DateTime.FromFileTimeUtc(0),
                     Status = ThresholdNotificationStatus.Triggered,
                     CardState = ThresholdNotificationCardState.DefaultCard,
-                    TargetOfficeGroupId = job.TargetOfficeGroupId,
+                    TargetOfficeGroupId = groupId,
                     ThresholdPercentageForAdditions = job.ThresholdPercentageForAdditions,
                     ThresholdPercentageForRemovals = job.ThresholdPercentageForRemovals
                 };
             }
             else
             {
-                thresholdNotification.ChangePercentageForAdditions = (int)threshold.IncreaseThresholdPercentage;
-                thresholdNotification.ChangePercentageForRemovals = (int)threshold.DecreaseThresholdPercentage;
+                thresholdNotification.ChangePercentageForAdditions = threshold.IncreaseThresholdPercentage;
+                thresholdNotification.ChangePercentageForRemovals = threshold.DecreaseThresholdPercentage;
                 thresholdNotification.ChangeQuantityForAdditions = threshold.DeltaToAddCount;
                 thresholdNotification.ChangeQuantityForRemovals = threshold.DeltaToRemoveCount;
                 thresholdNotification.ThresholdPercentageForAdditions = job.ThresholdPercentageForAdditions;
@@ -356,22 +419,33 @@ namespace Services.Notifier
         public async Task SendNormalThresholdEmailAsync(string messageBody)
         {
             var (job, threshold, sendDisableJobNotification, groupName) = ParseNormalThresholdMessageContent(messageBody);
+            var groupId = await GetGroupIdAsync(job);
+            bool isNotificationDisabled = await IsNotificationDisabledAsync(job.Id, NotificationMessageType.NormalThresholdNotification);
 
+            if (isNotificationDisabled)
+            {
+                await _loggingRepository.LogMessageAsync(new LogMessage
+                {
+                    RunId = job.RunId,
+                    Message = $"Notification '{NotificationMessageType.NormalThresholdNotification}' is disabled for job {job.Id} with destination group {groupId}."
+                });
+                return;
+            }
             var emailSubject = NotificationConstants.SyncThresholdEmailSubject;
 
             string contentTemplate;
             string[] additionalContent;
-            string[] additionalSubjectContent = new[] { job.TargetOfficeGroupId.ToString(), groupName };
+            string[] additionalSubjectContent = new[] { groupName };
 
-            var thresholdEmail = GetNormalThresholdEmail(groupName, threshold, job);
+            var thresholdEmail = GetNormalThresholdEmail(groupName, threshold, job, groupId);
             contentTemplate = thresholdEmail.ContentTemplate;
             additionalContent = thresholdEmail.AdditionalContent;
 
-            var recipients = _emailSenderAndRecipients.SupportEmailAddresses ?? _emailSenderAndRecipients.SyncDisabledCCAddresses;
+            var recipients = _emailSenderAndRecipients.SupportEmailAddresses;
 
             if (!string.IsNullOrWhiteSpace(job.Requestor))
             {
-                var recipientList = await GetThresholdRecipientsAsync(job.Requestor, job.TargetOfficeGroupId);
+                var recipientList = await GetThresholdRecipientsAsync(job.Requestor, groupId);
                 if (recipientList.Count > 0)
                     recipients = string.Join(",", recipientList);
             }
@@ -383,7 +457,7 @@ namespace Services.Notifier
                 additionalContent = new[]
                 {
                     groupName,
-                    job.TargetOfficeGroupId.ToString(),
+                    groupId.ToString(),
                     _emailSenderAndRecipients.SupportEmailAddresses,
                     _gmmResources.LearnMoreAboutGMMUrl
                 };
@@ -397,11 +471,30 @@ namespace Services.Notifier
                 ToEmailAddresses = recipients,
                 CcEmailAddresses = _emailSenderAndRecipients.SupportEmailAddresses,
                 AdditionalContentParams = additionalContent,
-                AdditionalSubjectParams = additionalSubjectContent
+                AdditionalSubjectParams = additionalSubjectContent,
+                SyncJobId = job.Id
             };
-            await _mailRepository.SendMailAsync(message, job.RunId);
+            var response = await _mailRepository.SendMailAsync(message, job.RunId);
+
+            if (response != null && response.StatusCode != HttpStatusCode.Accepted)
+            {
+                var messageContent = new Dictionary<string, Object>
+                {
+                    { "MessageBody", messageBody },
+                    { "MessageType", NotificationMessageType.NormalThresholdNotification },
+                    { "HttpStatusCode", response.StatusCode.ToString() },
+                    { "ReasonPhrase", response.ReasonPhrase.ToString() }
+                };
+                var body = System.Text.Encoding.UTF8.GetBytes(JsonSerializer.Serialize(messageContent));
+                var failedMessage = new ServiceBusMessage
+                {
+                    MessageId = $"{job.Id}_{job.RunId}_{NotificationMessageType.NormalThresholdNotification}",
+                    Body = body
+                };
+                await _serviceBusQueueRepository.SendMessageAsync(failedMessage);
+            }
         }
-        private (string ContentTemplate, string[] AdditionalContent) GetNormalThresholdEmail(string groupName, ThresholdResult threshold, SyncJob job)
+        private (string ContentTemplate, string[] AdditionalContent) GetNormalThresholdEmail(string groupName, ThresholdResult threshold, SyncJob job, Guid groupId)
         {
             string increasedThresholdMessage;
             string decreasedThresholdMessage;
@@ -422,7 +515,7 @@ namespace Services.Notifier
             {
                 additionalContent = new[]
                 {
-                      job.TargetOfficeGroupId.ToString(),
+                      groupId.ToString(),
                       groupName,
                       $"{increasedThresholdMessage}\n{decreasedThresholdMessage}",
                       _gmmResources.LearnMoreAboutGMMUrl,
@@ -433,7 +526,7 @@ namespace Services.Notifier
             {
                 additionalContent = new[]
                 {
-                      job.TargetOfficeGroupId.ToString(),
+                      groupId.ToString(),
                       groupName,
                       $"{increasedThresholdMessage}\n",
                       _gmmResources.LearnMoreAboutGMMUrl,
@@ -444,7 +537,7 @@ namespace Services.Notifier
             {
                 additionalContent = new[]
                 {
-                      job.TargetOfficeGroupId.ToString(),
+                      groupId.ToString(),
                       groupName,
                       $"{decreasedThresholdMessage}\n",
                       _gmmResources.LearnMoreAboutGMMUrl,

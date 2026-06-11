@@ -1,0 +1,205 @@
+# SWE Agent Build Validation Pipeline
+# This pipeline validates C# code changes by detecting affected projects and compiling them.
+# Designed for quick feedback on compilation errors in SWE Agent PRs.
+
+trigger: none
+pr: none
+
+parameters:
+- name: NumberOfCommitsToReview
+  displayName: 'Number of commits to review (-1 = auto-detect Copilot commits)'
+  type: number
+  default: -1
+
+pool:
+  vmImage: 'windows-latest'
+
+variables:
+  BuildConfiguration: 'Debug'
+
+stages:
+- stage: ValidateBuild
+  displayName: 'Validate C# Build'
+  jobs:
+  - job: DetectAndBuild
+    displayName: 'Detect Changed Projects and Build'
+    steps:
+    - checkout: self
+      fetchDepth: 20
+
+    - task: UseDotNet@2
+      displayName: 'Use .NET SDK'
+      inputs:
+        packageType: 'sdk'
+        useGlobalJson: true
+        workingDirectory: 'Service\GroupMembershipManagement'
+
+    - task: PowerShell@2
+      displayName: 'Detect Affected Projects'
+      name: DetectProjects
+      inputs:
+        targetType: 'inline'
+        script: |
+          Write-Host "=== SWE Agent Build Validation ==="
+          
+          $numberOfCommits = ${{ parameters.NumberOfCommitsToReview }}
+          Write-Host "NumberOfCommitsToReview parameter: $numberOfCommits"
+          
+          if ($numberOfCommits -eq -1) {
+              # Auto-detect mode: check for sequential Copilot commits from HEAD
+              Write-Host "Auto-detect mode: checking for sequential GitHub Copilot commits from HEAD..."
+              
+              # Get last 10 commits with author info
+              $recentCommits = git log --format="%H|%an" -10 2>$null
+              $sequentialCopilotCommits = @()
+              
+              foreach ($commitInfo in $recentCommits) {
+                  $parts = $commitInfo -split '\|'
+                  $hash = $parts[0]
+                  $author = $parts[1]
+                  
+                  if ($author -eq "GitHub Copilot") {
+                      $sequentialCopilotCommits += $hash
+                  }
+                  else {
+                      # Stop at first non-Copilot commit
+                      break
+                  }
+              }
+              
+              if ($sequentialCopilotCommits.Count -gt 0) {
+                  Write-Host "Found $($sequentialCopilotCommits.Count) sequential commit(s) by GitHub Copilot"
+                  
+                  # Get the oldest sequential Copilot commit to use as the base for diff
+                  $oldestCommit = $sequentialCopilotCommits[-1]
+                  Write-Host "Analyzing changes from commit: $oldestCommit"
+                  $changedFiles = git diff --name-only "$oldestCommit^" HEAD -- "*.cs" 2>$null
+              }
+              else {
+                  # No Copilot commits at HEAD, fall back to last 5 commits
+                  Write-Host "No sequential GitHub Copilot commits found at HEAD. Falling back to last 5 commits."
+                  $changedFiles = git diff --name-only HEAD~5 HEAD -- "*.cs" 2>$null
+              }
+          }
+          else {
+              # Manual mode: use specified number of commits
+              Write-Host "Manual mode: analyzing last $numberOfCommits commit(s)..."
+              $changedFiles = git diff --name-only "HEAD~$numberOfCommits" HEAD -- "*.cs" 2>$null
+          }
+          
+          if (-not $changedFiles) {
+              Write-Host "No C# files changed in the analyzed commits."
+              Write-Host "##vso[task.setvariable variable=HasProjects;isOutput=true]false"
+              Write-Host "##vso[task.setvariable variable=ProjectList;isOutput=true]"
+              exit 0
+          }
+          
+          Write-Host "`nChanged C# files:"
+          $changedFiles | ForEach-Object { Write-Host "  - $_" }
+          
+          # Map changed files to their parent .csproj files
+          $projects = @()
+          foreach ($file in $changedFiles) {
+              $filePath = Join-Path (Get-Location) $file
+              $dir = Split-Path $filePath -Parent
+              
+              while ($dir -and $dir -ne (Get-Location).Path) {
+                  $csprojFiles = Get-ChildItem -Path $dir -Filter "*.csproj" -ErrorAction SilentlyContinue
+                  if ($csprojFiles) {
+                      foreach ($csproj in $csprojFiles) {
+                          $relativePath = $csproj.FullName.Replace((Get-Location).Path + "\", "")
+                          $projects += $relativePath
+                      }
+                      break
+                  }
+                  $dir = Split-Path $dir -Parent
+              }
+          }
+          
+          $uniqueProjects = $projects | Sort-Object -Unique
+          
+          if ($uniqueProjects.Count -eq 0) {
+              Write-Host "`nNo .csproj files found for changed C# files."
+              Write-Host "##vso[task.setvariable variable=HasProjects;isOutput=true]false"
+              Write-Host "##vso[task.setvariable variable=ProjectList;isOutput=true]"
+              exit 0
+          }
+          
+          Write-Host "`nAffected projects ($($uniqueProjects.Count)):"
+          $uniqueProjects | ForEach-Object { Write-Host "  - $_" }
+          
+          # Output for next task
+          $projectListString = $uniqueProjects -join ";"
+          Write-Host "##vso[task.setvariable variable=HasProjects;isOutput=true]true"
+          Write-Host "##vso[task.setvariable variable=ProjectList;isOutput=true]$projectListString"
+
+    - task: PowerShell@2
+      displayName: 'Build Affected Projects'
+      condition: eq(variables['DetectProjects.HasProjects'], 'true')
+      inputs:
+        targetType: 'inline'
+        script: |
+          $projectList = "$(DetectProjects.ProjectList)"
+          $projects = $projectList -split ";" | Where-Object { $_.Trim() -ne "" }
+          
+          Write-Host "=== Building $($projects.Count) affected project(s) ==="
+          Write-Host ""
+          
+          $failedProjects = @()
+          $successProjects = @()
+          
+          foreach ($project in $projects) {
+              Write-Host "----------------------------------------"
+              Write-Host "Building: $project"
+              Write-Host "----------------------------------------"
+              
+              $output = dotnet build $project --configuration $(BuildConfiguration) 2>&1
+              $buildExitCode = $LASTEXITCODE
+              $output | ForEach-Object {
+                  if ($_ -match ": error ") {
+                      Write-Host "##[error]$_"
+                  } else {
+                      Write-Host $_
+                  }
+              }
+              
+              if ($buildExitCode -ne 0) {
+                  $failedProjects += $project
+                  Write-Host "##vso[task.logissue type=error]Build FAILED: $project"
+              } else {
+                  $successProjects += $project
+                  Write-Host "Build succeeded: $project"
+              }
+              Write-Host ""
+          }
+          
+          Write-Host "========================================="
+          Write-Host "BUILD SUMMARY"
+          Write-Host "========================================="
+          Write-Host "Successful: $($successProjects.Count)"
+          Write-Host "Failed: $($failedProjects.Count)"
+          
+          if ($failedProjects.Count -gt 0) {
+              Write-Host ""
+              Write-Host "##vso[task.logissue type=error]The following projects failed to build:"
+              foreach ($failed in $failedProjects) {
+                  Write-Host "##vso[task.logissue type=error]  - $failed"
+              }
+              Write-Host ""
+              Write-Host "Please fix the compilation errors above."
+              exit 1
+          }
+          
+          Write-Host ""
+          Write-Host "All affected projects built successfully!"
+
+    - task: PowerShell@2
+      displayName: 'No C# Changes Detected'
+      condition: ne(variables['DetectProjects.HasProjects'], 'true')
+      inputs:
+        targetType: 'inline'
+        script: |
+          Write-Host "========================================="
+          Write-Host "No C# project changes detected in the last 3 commits."
+          Write-Host "Build validation skipped."
+          Write-Host "========================================="

@@ -1,7 +1,6 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
-using Microsoft.Azure.WebJobs;
-using Microsoft.Azure.WebJobs.Extensions.DurableTask;
+using Microsoft.Azure.Functions.Worker;
 using Microsoft.Extensions.Logging;
 using Models;
 using Repositories.Contracts;
@@ -22,7 +21,7 @@ namespace Hosts.NonProdService
             _graphUserRepository = graphUserRepository ?? throw new ArgumentNullException(nameof(graphUserRepository));
         }
 
-        [FunctionName(nameof(TenantUserCountFunction))]
+        [Function(nameof(TenantUserCountFunction))]
         public async Task<int?> GetTenantUsersAsync([ActivityTrigger] TenantUserCountRequest request, ILogger log)
         {
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(TenantUserCountFunction)} function started", RunId = request.RunId }, VerbosityLevel.DEBUG);

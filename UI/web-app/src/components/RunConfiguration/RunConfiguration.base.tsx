@@ -7,14 +7,15 @@ import {
   classNamesFunction,
   useTheme,
   ChoiceGroup, IChoiceGroupOption, DatePicker, Dropdown, Checkbox,
-  TextField
+  MessageBar, MessageBarType,
+  Label
 } from '@fluentui/react';
 import {
   IRunConfigurationProps,
   IRunConfigurationStyleProps,
   IRunConfigurationStyles,
 } from './RunConfiguration.types';
-import { useStrings } from "../../store/hooks";
+import { useStrings } from '../../store/hooks';
 import { InfoLabel } from '../InfoLabel';
 import {
   manageMembershipPeriod,
@@ -25,20 +26,17 @@ import {
   manageMembershipThresholdPercentageForAdditions,
   manageMembershipThresholdPercentageForRemovals,
   manageMembershipUseThresholdLimits,
-  setNewJobPeriod,
   setNewJobStartDate,
-  setNewJobRequestor,
   setNewJobThresholdPercentageForAdditions,
   setNewJobThresholdPercentageForRemovals,
   setShowDecreaseDropdown,
   setShowIncreaseDropdown,
   setStartDateOption,
-  setUseThresholdLimits,
-  manageMembershipRequestor
+  setUseThresholdLimits
 } from '../../store/manageMembership.slice';
 import { AppDispatch } from '../../store';
 import { useDispatch, useSelector } from 'react-redux';
-import { selectIsJobTenantWriter } from '../../store/roles.slice';
+import { selectIsJobWriter } from '../../store/roles.slice';
 
 const getClassNames = classNamesFunction<
   IRunConfigurationStyleProps,
@@ -55,10 +53,11 @@ export const RunConfigurationBase: React.FunctionComponent<IRunConfigurationProp
       theme: useTheme(),
     }
   );
+
   const dispatch = useDispatch<AppDispatch>();
   const period: number = useSelector(manageMembershipPeriod);
   const startDate: string = useSelector(manageMembershipStartDate);
-  const requestor: string = useSelector(manageMembershipRequestor);
+
   const thresholdPercentageForAdditions: number = useSelector(manageMembershipThresholdPercentageForAdditions);
   const thresholdPercentageForRemovals: number = useSelector(manageMembershipThresholdPercentageForRemovals);
 
@@ -66,10 +65,11 @@ export const RunConfigurationBase: React.FunctionComponent<IRunConfigurationProp
   const startDateOption = useSelector(manageMembershipStartDateOption);
   const showIncreaseDropdown = useSelector(manageMembershipShowIncreaseDropdown);
   const showDecreaseDropdown = useSelector(manageMembershipShowDecreaseDropdown);
-  const isJobTenantWriter = useSelector(selectIsJobTenantWriter);
+  const isJobWriter = useSelector(selectIsJobWriter);
 
   const defaultIncreaseThreshold: number = 100;
   const defaultDecreaseThreshold: number = 20;
+  const defaultPeriod: number = 24;
 
   const startDateOptions: IChoiceGroupOption[] = [
     { key: 'ASAP', text: strings.ManageMembership.labels.ASAP },
@@ -81,42 +81,12 @@ export const RunConfigurationBase: React.FunctionComponent<IRunConfigurationProp
     { key: 'No', text: strings.no },
   ];
 
-  const predefinedFrequencyOptions  = [
-    { key: '12', text: `12 ${strings.ManageMembership.labels.hrs}` },
-    { key: '24', text: `24 ${strings.ManageMembership.labels.hrs}` },
-    { key: '36', text: `36 ${strings.ManageMembership.labels.hrs}` }
-  ];
-
-  const frequencyOptions = [...predefinedFrequencyOptions];
-  if (!predefinedFrequencyOptions.some(option => option.key === period.toString())) {
-    frequencyOptions.push({ key: period.toString(), text: `${period} ${strings.ManageMembership.labels.hrs}` });
-  }
-
   const increaseOptions = Array.from({ length: 10 }, (_, i) => ({ key: `${(i + 1) * 10}`, text: `${(i + 1) * 10}%` }));
   const decreaseOptions = Array.from({ length: 11 }, (_, i) => ({ key: `${i * 5}`, text: `${i * 5}%` }));
 
-  const handleRequestorChange = (ev: React.FormEvent<HTMLInputElement | HTMLTextAreaElement>, newValue?: string) => {
-    dispatch(setNewJobRequestor(newValue || ''));
-  };
-
   return (
     <div className={classNames.root}>
-      {isJobTenantWriter &&
-        <TextField
-          label={strings.ManageMembership.labels.requestor}
-          value={requestor}
-          placeholder={strings.ManageMembership.labels.requestor}
-          onChange={handleRequestorChange}
-          styles={{
-            fieldGroup: classNames.textFieldFieldGroup,
-          }}
-        />
-      }
       <ChoiceGroup
-        styles={{
-          root: classNames.horizontalChoiceGroup,
-          flexContainer: classNames.horizontalChoiceGroupContainer
-        }}
         label={strings.ManageMembership.labels.selectStartDate}
         selectedKey={startDateOption}
         options={startDateOptions}
@@ -128,6 +98,7 @@ export const RunConfigurationBase: React.FunctionComponent<IRunConfigurationProp
             }
           }
         }}
+        disabled={!isJobWriter}
       />
       {startDateOption === 'RequestedDate' && (
         <DatePicker
@@ -142,27 +113,19 @@ export const RunConfigurationBase: React.FunctionComponent<IRunConfigurationProp
               dispatch(setNewJobStartDate(date.toDateString()));
             }
           }}
+          disabled={!isJobWriter}
         />
       )}
       <div>
-        {strings.ManageMembership.labels.selectFrequency}
-        <Dropdown
-          styles={{ title: classNames.dropdownTitle }}
-          className={classNames.controlWidth}
-          label={strings.ManageMembership.labels.frequency}
-          options={frequencyOptions}
-          defaultSelectedKey={period ? period.toString() : predefinedFrequencyOptions[0].key}
-          onChange={(event, option) => {
-            if (option) {
-              dispatch(setNewJobPeriod(Number(option.key)));
-            }
-          }}
-        />
+        <Label>{strings.ManageMembership.labels.frequency}</Label>
+        <Label styles={{ root: classNames.frequencyLabel }}>
+          {period ? `${period} ${strings.ManageMembership.labels.hrs}` : `${defaultPeriod} ${strings.ManageMembership.labels.hrs}`}
+        </Label>
       </div>
       <div>
         <InfoLabel
           label={strings.ManageMembership.labels.preventAutomaticSync}
-          description={strings.ManageMembership.labels.preventAutomaticSync}
+          description={strings.ManageMembership.labels.preventAutomaticSyncInfo}
         />
         <ChoiceGroup
           styles={{
@@ -188,7 +151,17 @@ export const RunConfigurationBase: React.FunctionComponent<IRunConfigurationProp
               }
             }
           }}
+          disabled={!isJobWriter}
         />
+        {useThresholdLimits === 'No' && (
+          <MessageBar
+            messageBarType={MessageBarType.warning}
+            isMultiline={true}
+            dismissButtonAriaLabel="Close"
+            className={classNames.thresholdWarning}          >
+           {strings.ManageMembership.labels.preventAutomaticSyncWarning}
+          </MessageBar>
+      )}
       </div>
       {useThresholdLimits === 'Yes' && (
         <div className={classNames.checkboxPairsContainer}>
@@ -204,6 +177,7 @@ export const RunConfigurationBase: React.FunctionComponent<IRunConfigurationProp
                   dispatch(setNewJobThresholdPercentageForAdditions(-1));
                 }
               }}
+              disabled={!isJobWriter}
             />
             <Dropdown
               title={strings.ManageMembership.labels.increase}
@@ -216,6 +190,7 @@ export const RunConfigurationBase: React.FunctionComponent<IRunConfigurationProp
                   dispatch(setNewJobThresholdPercentageForAdditions(Number(option.key)));
                 }
               }}
+              disabled={!isJobWriter}
             />
           </div>
 
@@ -231,6 +206,7 @@ export const RunConfigurationBase: React.FunctionComponent<IRunConfigurationProp
                   dispatch(setNewJobThresholdPercentageForRemovals(-1));
                 }
               }}
+              disabled={!isJobWriter}
             />
             <Dropdown
               title={strings.ManageMembership.labels.decrease}
@@ -243,6 +219,7 @@ export const RunConfigurationBase: React.FunctionComponent<IRunConfigurationProp
                   dispatch(setNewJobThresholdPercentageForRemovals(Number(option.key)));
                 }
               }}
+              disabled={!isJobWriter}
             /></div>
         </div>
       )}

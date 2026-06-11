@@ -1,46 +1,45 @@
 // Copyright(c) Microsoft Corporation.
 // Licensed under the MIT license.
-using Models.Helpers;
-using Microsoft.Azure.WebJobs;
-using Microsoft.Azure.WebJobs.Extensions.DurableTask;
-using Models;
-using Newtonsoft.Json;
-using SqlMembershipObtainer.SubOrchestrator;
-using Repositories.Contracts;
+using Hosts.SqlMembershipObtainer;
+using Microsoft.Azure.Functions.Worker;
+using Microsoft.Extensions.Logging;
+using Repositories.Contracts.Helpers;
 using Services.Contracts;
+using SqlMembershipObtainer.Entities;
 using System;
-using System.Linq;
+using System.Collections.Generic;
 using System.Threading.Tasks;
 
 namespace SqlMembershipObtainer
 {
     public class ChildEntitiesFilterFunction
     {
-        private readonly ISqlMembershipObtainerService _sqlMembershipObtainerService = null;
-        private readonly ILoggingRepository _loggingRepository = null;
+        private readonly ILogger<ChildEntitiesFilterFunction> _logger;
+        private readonly ISqlMembershipObtainerService _sqlMembershipObtainerService;
 
-        public ChildEntitiesFilterFunction(ISqlMembershipObtainerService sqlMembershipObtainerService, ILoggingRepository loggingRepository)
+        public ChildEntitiesFilterFunction(ILogger<ChildEntitiesFilterFunction> logger, ISqlMembershipObtainerService sqlMembershipObtainerService)
         {
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _sqlMembershipObtainerService = sqlMembershipObtainerService ?? throw new ArgumentNullException(nameof(sqlMembershipObtainerService));
-            _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
         }
 
-        [FunctionName(nameof(ChildEntitiesFilterFunction))]
-        public async Task<GraphProfileInformationResponse> FilterChildEntities([ActivityTrigger] ChildEntitiesFilterRequest request)
+        [Function(nameof(ChildEntitiesFilterFunction))]
+        public async Task<MembershipFileResult> FilterChildEntities([ActivityTrigger] ChildEntitiesFilterRequest request)
         {
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(ChildEntitiesFilterFunction)} function started", RunId = request.SyncJob.RunId }, VerbosityLevel.DEBUG);
-
-            var filteredEntities = await _sqlMembershipObtainerService.FilterChildEntitiesAsync(request.Query, request.TableName, request.SyncJob.RunId, request.SyncJob.TargetOfficeGroupId);
-
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(ChildEntitiesFilterFunction)} function completed", RunId = request.SyncJob.RunId }, VerbosityLevel.DEBUG);
-
-            var profiles = filteredEntities.Select(x => new GraphProfileInformation { PersonnelNumber = x.RowKey, Id = x.AzureObjectId }).Distinct().ToList();
-
-            return new GraphProfileInformationResponse
+            using (_logger.BeginSyncJobScope(request.SyncJob, new Dictionary<string, object>
             {
-                GraphProfiles = TextCompressor.Compress(JsonConvert.SerializeObject(profiles)),
-                GraphProfileCount = profiles.Count
-            };
+                ["CurrentPart"] = request.CurrentPart,
+                ["TotalParts"] = request.TotalParts
+            }))
+            {
+                _logger.FunctionStarted(nameof(ChildEntitiesFilterFunction));
+
+                var response = await _sqlMembershipObtainerService.FilterChildEntitiesAsync(request.Query, request.TableName, request.SyncJob, request.GroupId, request.CurrentPart, request.Exclusionary);
+
+                _logger.FunctionCompleted(nameof(ChildEntitiesFilterFunction));
+
+                return response;
+            }
         }
     }
 }

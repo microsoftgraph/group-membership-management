@@ -8,16 +8,16 @@ import { HRSourcePartSource } from '../../models/HRSourcePart';
 export type HRQuerySourceStyles = {
   root: IStyle;
   detailsList: IStyle;
-  detailsListWithBorder: IStyle;
+  detailsListColumnHeader: IStyle;
   textFieldGroup: IStyle;
   textField: IStyle;
-  spinButton: IStyle;
   labelContainer: IStyle;
   dropdownTitle: IStyle;
   upDown: IStyle;
   horizontalChoiceGroup: IStyle;
   horizontalChoiceGroupContainer: IStyle;
   removeButton: IStyle;
+  removeButtonDisabled: IStyle;
   error: IStyle;
   addAttribute: IStyle;
   betweenGroupsDropdown: IStyle;
@@ -28,6 +28,14 @@ export type HRQuerySourceStyles = {
   separator: IStyle;
   cardHeader: IStyle;
   cardTitle: IStyle;
+  comboBoxOptionCodeText: IStyle;
+  comboBoxOptionContainer: IStyle;
+  comboBoxOptionList: IStyle;
+  errorMessageStyles : IStyle;
+  content: IStyle;
+  generateTitleHeader: IStyle;
+  generateTitleButton: IStyle;
+  generateTitleSpinner: IStyle;
 };
 
 export type HRQuerySourceStyleProps = {
@@ -46,6 +54,10 @@ export type HRQuerySourceProps = React.AllHTMLAttributes<HTMLDivElement> & {
    */
   styles?: IStyleFunctionOrObject<HRQuerySourceStyleProps, HRQuerySourceStyles>;
   source: HRSourcePartSource;
-  partId: number;
-  onSourceChange: (source: HRSourcePartSource, partId: number) => void;
+  partId: string;
+  title?: string;
+  exclusionary?: boolean;
+  onSourceChange: (source: HRSourcePartSource, partId: string, title?: string) => void;
+  onEnableEdit: (isEditEnabled: boolean) => void;
+  isEditable?: boolean;
 };

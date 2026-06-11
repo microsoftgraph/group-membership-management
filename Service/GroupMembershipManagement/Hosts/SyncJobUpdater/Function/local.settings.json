@@ -1,0 +1,33 @@
+{
+  "IsEncrypted": false,
+  "Values": {
+    "AZURE_TOKEN_CREDENTIALS": "VisualStudioCredential",
+    "AzureWebJobsStorage": "UseDevelopmentStorage=true",
+    "FUNCTIONS_WORKER_RUNTIME": "dotnet-isolated",
+    "FUNCTIONS_EXTENSION_VERSION": "~4",
+    "APPINSIGHTS_INSTRUMENTATIONKEY": "",
+    "appConfigurationEndpoint": "",
+    "gmmServiceBus__fullyQualifiedNamespace": "",
+    "AzureFunctionsWebHost__hostid": "SyncJobUpdater",
+    "AzureFunctionsJobHost__extensions__durableTask__hubName": "",
+    "logAnalyticsCustomerId": "",
+    "logAnalyticsPrimarySharedKey": "",
+    "ConnectionStrings__JobsContext": "",
+    "ConnectionStrings__JobsContextReadOnly": "",
+    "graphCredentials__ClientId": "",
+    "graphCredentials__ClientSecret": "",
+    "graphCredentials__ClientCertificateName": "",
+    "graphCredentials__TenantId": "",
+    "graphCredentials__KeyVaultName": "",
+    "graphCredentials__KeyVaultTenantId": "",
+    "graphCredentials__UserAssignedManagedIdentityClientId": "",
+    "serviceBusSyncJobTopic": "",
+    "serviceBusNotificationsQueue": "",
+    "serviceBusSyncJobUpdaterQueue": "",
+    "actionableEmailProviderId": "",
+    "supportEmailAddresses": "",
+    "senderAddress": "",
+    "senderPassword": "",
+    "syncJobUpdaterStorageAccountName": ""
+  }
+}

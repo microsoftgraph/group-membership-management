@@ -1,11 +1,12 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
+using Microsoft.Extensions.Logging;
 using Microsoft.Graph;
 using Microsoft.Kiota.Abstractions.Serialization;
 using Polly.Retry;
 using Polly;
-using Repositories.Contracts;
+using Repositories.Contracts.Helpers;
 using System;
 using System.IO;
 using System.Net.Http;
@@ -20,16 +21,16 @@ namespace Repositories.GraphGroups
     {
         protected const int MaxResultCount = 999;
 
-        protected readonly ILoggingRepository _loggingRepository;
+        protected readonly ILogger _logger;
         protected readonly GraphServiceClient _graphServiceClient;
         protected readonly GraphGroupMetricTracker _graphGroupMetricTracker;
 
         public GraphGroupRepositoryBase(GraphServiceClient graphServiceClient,
-                                        ILoggingRepository loggingRepository,
+                                        ILogger logger,
                                         GraphGroupMetricTracker graphGroupMetricTracker)
         {
             _graphServiceClient = graphServiceClient ?? throw new ArgumentNullException(nameof(graphServiceClient));
-            _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _graphGroupMetricTracker = graphGroupMetricTracker ?? throw new ArgumentNullException(nameof(graphGroupMetricTracker));
         }
 
@@ -53,8 +54,8 @@ namespace Repositories.GraphGroups
                        retryCount: retryLimit,
                        retryAttempt => TimeSpan.FromMinutes(2),
                        onRetry: async (ex, waitTime, retryIndex, context) =>
-                       {
-                           currentRetryIndex = retryIndex;
+                        {
+                            currentRetryIndex = retryIndex;
 
                            var currentLimit = retryLimit;
                            if (ex.Message != null && ex.Message.Contains("The request timed out"))
@@ -62,12 +63,10 @@ namespace Repositories.GraphGroups
                                currentLimit = timeOutRetryLimit;
                            }
 
-                           await _loggingRepository.LogMessageAsync(new LogMessage
-                           {
-                               Message = $"Got a transient exception. Retrying. This was try {retryIndex} out of {currentLimit}.\n{ex}"
-                           });
-                       }
-                    );
+                            _logger.LogWarningWithRunId(null, $"Got a transient exception. Retrying. This was try {retryIndex} out of {currentLimit}.\n{ex}");
+                            await Task.CompletedTask;
+                        }
+                     );
 
             return retryPolicy;
         }

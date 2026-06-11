@@ -1,13 +1,12 @@
 // Copyright(c) Microsoft Corporation.
 // Licensed under the MIT license.
-using Microsoft.Azure.Cosmos.Table;
 using System;
 using System.Diagnostics.CodeAnalysis;
 
 namespace SqlMembershipObtainer.Entities
 {
     [ExcludeFromCodeCoverage]
-    public class PersonEntity : TableEntity
+    public class PersonEntity
     {
         public PersonEntity()
         {
@@ -15,12 +14,12 @@ namespace SqlMembershipObtainer.Entities
 
         public PersonEntity(string reportsToPersonnelNbr, string personnelNumber)
         {
-            PartitionKey = reportsToPersonnelNbr;
-            RowKey = personnelNumber;
+            ReportsToPersonnelNbr = reportsToPersonnelNbr;
+            PersonnelNumber = personnelNumber;
         }
 
-        public string ReportsToPersonnelNbr { get { return PartitionKey; } }
-        public string PersonnelNumber { get { return RowKey; } }
+        public string ReportsToPersonnelNbr { get; set; }
+        public string PersonnelNumber { get; set; }
         public string Business { get; set; }
         public int Childcount { get; set; }
         public string Email { get; set; }

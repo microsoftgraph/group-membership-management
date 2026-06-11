@@ -1,24 +1,26 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 using Microsoft.Extensions.Configuration.AzureAppConfiguration;
+using Microsoft.Extensions.Logging;
 using Microsoft.FeatureManagement;
 using Models;
 using Repositories.Contracts;
+using Repositories.Contracts.Helpers;
 
 namespace Repositories.FeatureFlag
 {
     public class FeatureFlagRepository : IFeatureFlagRepository
     {
-        private readonly ILoggingRepository _loggingRepository;
+        private readonly ILogger<FeatureFlagRepository> _featureFlagRepositoryLogger;
         private readonly IFeatureManager _featureManager;
         private readonly IConfigurationRefresherProvider _refresherProvider;
 
         public FeatureFlagRepository(
-            ILoggingRepository loggingRepository,
+            ILogger<FeatureFlagRepository> featureFlagRepositoryLogger,
             IFeatureManager featureManager,
             IConfigurationRefresherProvider refresherProvider)
         {
-            _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
+            _featureFlagRepositoryLogger = featureFlagRepositoryLogger ?? throw new ArgumentNullException(nameof(featureFlagRepositoryLogger));
             _featureManager = featureManager ?? throw new ArgumentNullException(nameof(featureManager));
             _refresherProvider = refresherProvider ?? throw new ArgumentNullException(nameof(refresherProvider));
         }
@@ -30,20 +32,13 @@ namespace Repositories.FeatureFlag
                 var refresher = _refresherProvider.Refreshers.First();
                 if (!await refresher.TryRefreshAsync())
                 {
-                    await _loggingRepository.LogMessageAsync(new LogMessage
-                    { Message = $"Unable to refresh app configuration values", RunId = runId },
-                    VerbosityLevel.DEBUG);
+                    _featureFlagRepositoryLogger.LogInformationWithRunId(runId, "Unable to refresh app configuration values");
                 }
             }
 
             var isFlagEnabled = await _featureManager.IsEnabledAsync(featureFlagName);
 
-            await _loggingRepository.LogMessageAsync(new LogMessage
-            {
-                Message = $"Feature flag {featureFlagName} is {(isFlagEnabled ? "enabled" : "disabled")}",
-                RunId = runId
-            },
-            VerbosityLevel.INFO);
+            _featureFlagRepositoryLogger.LogInformationWithRunId(runId, $"Feature flag {featureFlagName} is {(isFlagEnabled ? "enabled" : "disabled")}");
 
             return isFlagEnabled;
         }

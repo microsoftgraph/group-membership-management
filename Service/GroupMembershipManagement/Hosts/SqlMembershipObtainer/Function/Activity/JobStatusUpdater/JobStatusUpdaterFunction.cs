@@ -1,11 +1,13 @@
-﻿// Copyright(c) Microsoft Corporation.
+// Copyright(c) Microsoft Corporation.
 // Licensed under the MIT license.
+using Hosts.SqlMembershipObtainer;
 using Entities;
 using Models;
-using Microsoft.Azure.WebJobs;
-using Microsoft.Azure.WebJobs.Extensions.DurableTask;
-using Repositories.Contracts;
-using Repositories.Contracts.InjectConfig;
+using Microsoft.Azure.Functions.Worker;
+using Microsoft.Extensions.Logging;
+using Models.SyncJobHistory;
+using Repositories.Contracts.Helpers;
+using Services.Contracts;
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
@@ -14,25 +16,46 @@ namespace SqlMembershipObtainer
 {
     public class JobStatusUpdaterFunction
     {
-        private readonly ILoggingRepository _loggingRepository;
-        private readonly IDatabaseSyncJobsRepository _syncJobRepository;
+        private readonly ILogger<JobStatusUpdaterFunction> _logger;
+        private readonly ISyncJobStatusService _syncJobStatusService;
 
         public JobStatusUpdaterFunction(
-                        ILoggingRepository loggingRepository,
-                        IDatabaseSyncJobsRepository syncJobRepository)
+                        ILogger<JobStatusUpdaterFunction> logger,
+                        ISyncJobStatusService syncJobStatusService)
         {
-            _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
-            _syncJobRepository = syncJobRepository ?? throw new ArgumentNullException(nameof(syncJobRepository));
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+            _syncJobStatusService = syncJobStatusService ?? throw new ArgumentNullException(nameof(syncJobStatusService));
         }
 
-        [FunctionName(nameof(JobStatusUpdaterFunction))]
+        [Function(nameof(JobStatusUpdaterFunction))]
         public async Task UpdateJobStatusAsync([ActivityTrigger] JobStatusUpdaterRequest request)
         {
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(JobStatusUpdaterFunction)} function started", RunId = request.SyncJob.RunId }, VerbosityLevel.DEBUG);
+            using (_logger.BeginSyncJobScope(request.SyncJob, new Dictionary<string, object>
+            {
+                ["CurrentPart"] = request.CurrentPart,
+                ["TotalParts"] = request.TotalParts
+            }))
+            {
+                _logger.FunctionStarted(nameof(JobStatusUpdaterFunction));
 
-            await _syncJobRepository.UpdateSyncJobStatusAsync(new List<SyncJob> { request.SyncJob }, request.Status);
+                var now = DateTime.UtcNow;
+                var updatedBy = nameof(Hosts.SqlMembershipObtainer);
+                var history = new SyncJobHistory
+                {
+                    SyncJobId = request.SyncJob.Id,
+                    RunId = request.SyncJob.RunId ?? Guid.Empty,
+                    Status = request.Status.ToString(),
+                    UpdatedByFunction = updatedBy,
+                    EndTime = request.Status != SyncStatus.InProgress ? now : null,
+                    UpdatedAt = now
+                };
 
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(JobStatusUpdaterFunction)} function completed", RunId = request.SyncJob.RunId }, VerbosityLevel.DEBUG);
+                request.SyncJob.Status = request.Status.ToString();
+
+                await _syncJobStatusService.UpdateJobStatusAsync(request.SyncJob, request.Status, history, functionName: updatedBy);
+
+                _logger.FunctionCompleted(nameof(JobStatusUpdaterFunction));
+            }
         }
     }
 }

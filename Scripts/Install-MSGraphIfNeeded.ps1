@@ -17,12 +17,12 @@ function Install-MSGraphIfNeeded {
     [string] $BaseScriptDirectory
 )
 
-$scriptsDirectory = (Split-Path $PSScriptRoot -Parent) + "\Scripts"
+$scriptsDirectory = (Split-Path $PSScriptRoot -Parent) + "/Scripts"
 
 if ($BaseScriptDirectory) {
     $scriptsDirectory = $BaseScriptDirectory
 }
 
-. ($scriptsDirectory + '\Install-ModuleIfNeeded.ps1')
+. ($scriptsDirectory + '/Install-ModuleIfNeeded.ps1')
 Install-ModuleIfNeeded -Name Microsoft.Graph -Version "2.17.0" -Verbose
 }

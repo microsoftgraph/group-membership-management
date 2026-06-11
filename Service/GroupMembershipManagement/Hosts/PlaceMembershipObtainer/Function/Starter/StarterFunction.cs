@@ -1,15 +1,15 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
+using Azure.Messaging.ServiceBus;
+using Microsoft.Azure.Functions.Worker;
+using Microsoft.DurableTask.Client;
+using Models;
+using Repositories.Contracts;
+using Repositories.Contracts.InjectConfig;
 using System;
 using System.Text;
+using System.Text.Json;
 using System.Threading.Tasks;
-using Microsoft.Azure.WebJobs;
-using Microsoft.Azure.WebJobs.Extensions.DurableTask;
-using Newtonsoft.Json;
-using Repositories.Contracts.InjectConfig;
-using Repositories.Contracts;
-using Azure.Messaging.ServiceBus;
-using Models;
 
 namespace Hosts.PlaceMembershipObtainer
 {
@@ -21,17 +21,17 @@ namespace Hosts.PlaceMembershipObtainer
 
         public StarterFunction(ILoggingRepository loggingRepository, IDatabaseSyncJobsRepository syncJobRepository, IDryRunValue dryRun)
         {
-            _loggingRepository = loggingRepository;
-            _syncJobRepository = syncJobRepository;
+            _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
+            _syncJobRepository = syncJobRepository ?? throw new ArgumentNullException(nameof(syncJobRepository));
             _isPlaceMembershipObtainerDryRunEnabled = dryRun.DryRunEnabled;
         }
 
-        [FunctionName(nameof(StarterFunction))]
+        [Function(nameof(StarterFunction))]
         public async Task RunAsync(
            [ServiceBusTrigger("%serviceBusSyncJobTopic%", "PlaceMembership", Connection = "gmmServiceBus")] ServiceBusReceivedMessage message,
-           [DurableClient] IDurableOrchestrationClient starter)
+           [DurableClient] DurableTaskClient starter)
         {
-            var syncJob = JsonConvert.DeserializeObject<SyncJob>(Encoding.UTF8.GetString(message.Body));
+            var syncJob = JsonSerializer.Deserialize<SyncJob>(Encoding.UTF8.GetString(message.Body));
             var runId = syncJob.RunId.GetValueOrDefault(Guid.Empty);
             _loggingRepository.SetSyncJobProperties(runId, syncJob.ToDictionary());
 
@@ -49,11 +49,11 @@ namespace Hosts.PlaceMembershipObtainer
                     SyncJob = syncJob,
                     Exclusionary = message.ApplicationProperties.ContainsKey("Exclusionary") ? Convert.ToBoolean(message.ApplicationProperties["Exclusionary"]) : false,
                     CurrentPart = message.ApplicationProperties.ContainsKey("CurrentPart") ? Convert.ToInt32(message.ApplicationProperties["CurrentPart"]) : 1,
-                    TotalParts = message.ApplicationProperties.ContainsKey("TotalParts") ? Convert.ToInt32(message.ApplicationProperties["TotalParts"]) : 1 
+                    TotalParts = message.ApplicationProperties.ContainsKey("TotalParts") ? Convert.ToInt32(message.ApplicationProperties["TotalParts"]) : 1
                 };
 
-                var instanceId = await starter.StartNewAsync(nameof(OrchestratorFunction), request);
-                await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"InstanceId: {instanceId} for job RowKey: {syncJob.RowKey} ", RunId = runId });
+                var instanceId = await starter.ScheduleNewOrchestrationInstanceAsync(nameof(OrchestratorFunction), request);
+                await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"InstanceId: {instanceId} for job Id: {syncJob.Id}", RunId = runId });
             }
 
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(StarterFunction)} function completed", RunId = runId }, VerbosityLevel.DEBUG);

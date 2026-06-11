@@ -2,11 +2,11 @@
 // Licensed under the MIT license.
 using Azure.Messaging.ServiceBus;
 using Models.ServiceBus;
-using Newtonsoft.Json;
 using Repositories.Contracts;
 using System;
 using System.Linq;
 using System.Text;
+using System.Text.Json;
 using System.Threading.Tasks;
 
 namespace Repositories.ServiceBusQueue
@@ -26,7 +26,7 @@ namespace Repositories.ServiceBusQueue
 
             foreach (var message in groupMembership.Split().Select(x => new Azure.Messaging.ServiceBus.ServiceBusMessage
             {
-                Body = new BinaryData(Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(x))),
+                Body = new BinaryData(Encoding.UTF8.GetBytes(JsonSerializer.Serialize(x))),
                 SessionId = groupMembership.RunId.ToString(),
                 ContentType = "application/json"
             }))

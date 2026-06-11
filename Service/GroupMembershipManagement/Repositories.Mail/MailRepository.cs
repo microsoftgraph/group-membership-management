@@ -1,24 +1,26 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
+using AdaptiveCards.Templating;
+using Microsoft.ApplicationInsights;
+using Microsoft.Extensions.Logging;
 using Microsoft.Graph;
 using Microsoft.Graph.Models;
+using Microsoft.Kiota.Abstractions;
 using Models;
 using Models.AdaptiveCards;
+using Polly.Wrap;
 using Repositories.Contracts;
+using Repositories.Contracts.Constants;
+using Repositories.Contracts.Helpers;
 using Repositories.Contracts.InjectConfig;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Security;
-using System.Threading.Tasks;
-using AdaptiveCards.Templating;
-using System.Text.RegularExpressions;
 using System.Net.Http;
-using Polly.Wrap;
-using Microsoft.Kiota.Abstractions;
-using Microsoft.Azure.Documents;
-using System.Net;
+using System.Security;
+using System.Text.RegularExpressions;
+using System.Threading.Tasks;
 
 namespace Repositories.Mail
 {
@@ -27,42 +29,41 @@ namespace Repositories.Mail
         private readonly IMailConfig _mailConfig;
         private readonly ILocalizationRepository _localizationRepository;
         private readonly GraphServiceClient _graphClient;
-        private readonly ILoggingRepository _loggingRepository;
+        private readonly ILogger<MailRepository> _mailRepositoryLogger;
         private readonly string _actionableEmailProviderId;
         private readonly IGraphGroupRepository _graphGroupRepository;
         private readonly IDatabaseSettingsRepository _settingsRepository;
         private readonly IRetryPolicyProvider _retryPolicyProvider;
+        private readonly TelemetryClient _telemetryClient;
 
         public MailRepository(
             GraphServiceClient graphClient, 
             IMailConfig mailAdaptiveCardConfig, 
             ILocalizationRepository localizationRepository, 
-            ILoggingRepository loggingRepository, 
+            ILogger<MailRepository> mailRepositoryLogger,
             string actionableEmailProviderId, 
             IGraphGroupRepository graphGroupRepository,
             IDatabaseSettingsRepository settingsRepository,
-            IRetryPolicyProvider retryPolicyProvider
+            IRetryPolicyProvider retryPolicyProvider,
+            TelemetryClient telemetryClient
             )
         {
             _graphClient = graphClient ?? throw new ArgumentNullException(nameof(graphClient));
             _mailConfig = mailAdaptiveCardConfig ?? throw new ArgumentNullException(nameof(mailAdaptiveCardConfig));
             _localizationRepository = localizationRepository ?? throw new ArgumentNullException(nameof(localizationRepository));
-            _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
+            _mailRepositoryLogger = mailRepositoryLogger ?? throw new ArgumentNullException(nameof(mailRepositoryLogger));
             _actionableEmailProviderId = actionableEmailProviderId ?? throw new ArgumentNullException(nameof(actionableEmailProviderId));
             _graphGroupRepository = graphGroupRepository ?? throw new ArgumentNullException(nameof(graphGroupRepository));
             _settingsRepository = settingsRepository ?? throw new ArgumentNullException(nameof(settingsRepository));
             _retryPolicyProvider = retryPolicyProvider ?? throw new ArgumentNullException(nameof(retryPolicyProvider));
+            _telemetryClient = telemetryClient ?? throw new ArgumentNullException(nameof(telemetryClient));
         }
 
         public async Task<HttpResponseMessage> SendMailAsync(EmailMessage emailMessage, Guid? runId)
         {
             if (_mailConfig.SkipEmailNotifications)
             {
-                await _loggingRepository.LogMessageAsync(new LogMessage
-                {
-                    RunId = runId,
-                    Message = "Email notifications are disabled."
-                });
+                _mailRepositoryLogger.LogInformationWithRunId(runId, "Email notifications are disabled.");
 
                 return new HttpResponseMessage(System.Net.HttpStatusCode.Accepted)
                 {
@@ -143,36 +144,24 @@ namespace Repositories.Mail
             }
             catch (ServiceException ex) when (ex.GetBaseException().GetType().Name == "MsalUiRequiredException")
             {
-                await _loggingRepository.LogMessageAsync(new LogMessage
-                {
-                    RunId = runId,
-                    Message = "Email cannot be sent because Mail.Send permission has not been granted."
-                });
+                _mailRepositoryLogger.LogInformationWithRunId(runId, "Email cannot be sent because Mail.Send permission has not been granted.");
             }
             catch (ServiceException ex) when (ex.Message.Contains("MailboxNotEnabledForRESTAPI"))
             {
-                await _loggingRepository.LogMessageAsync(new LogMessage
-                {
-                    RunId = runId,
-                    Message = "Email cannot be sent because required licenses are missing in the service account."
-                });
+                _mailRepositoryLogger.LogInformationWithRunId(runId, "Email cannot be sent because required licenses are missing in the service account.");
             }
             catch (Exception ex)
             {
-                await _loggingRepository.LogMessageAsync(new LogMessage
-                {
-                    RunId = runId,
-                    Message = $"Email cannot be sent due to an unexpected exception.\n{ex}"
-                });
+                _mailRepositoryLogger.LogErrorWithRunId(runId, $"Email cannot be sent due to an unexpected exception.\n{ex}", ex);
+            }
+            if (httpResponse != null)
+            {
+                await GraphTelemetryHelper.TrackResourceUnitsAsync(httpResponse, QueryType.Other, runId, _mailRepositoryLogger, _telemetryClient);
             }
             if (httpResponse == null)
             {
                 string errorMessage = "Failed to send email due to an unexpected exception.";
-                await _loggingRepository.LogMessageAsync(new LogMessage
-                {
-                    RunId = runId,
-                    Message = errorMessage
-                });
+                _mailRepositoryLogger.LogInformationWithRunId(runId, errorMessage);
                 return new HttpResponseMessage(System.Net.HttpStatusCode.InternalServerError)
                 {
                     ReasonPhrase = errorMessage
@@ -180,19 +169,11 @@ namespace Repositories.Mail
             }
             if (httpResponse.IsSuccessStatusCode)
             {
-                await _loggingRepository.LogMessageAsync(new LogMessage
-                {
-                    RunId = runId,
-                    Message = "Email sent successfully."
-                });
+                _mailRepositoryLogger.LogInformationWithRunId(runId, "Email sent successfully.");
             }
             else
             {
-                await _loggingRepository.LogMessageAsync(new LogMessage
-                {
-                    RunId = runId,
-                    Message = $"Failed to send email: {httpResponse.StatusCode} - {await httpResponse.Content.ReadAsStringAsync()}"
-                });
+                _mailRepositoryLogger.LogInformationWithRunId(runId, $"Failed to send email: {httpResponse.StatusCode} - {await httpResponse.Content.ReadAsStringAsync()}");
             }
             return httpResponse;
         }
@@ -206,7 +187,9 @@ namespace Repositories.Mail
 
         public async Task<Message> GetAdaptiveCardMessage(EmailMessage emailMessage)
         {
-            var subjectContent = _localizationRepository.TranslateSetting(emailMessage?.Subject, emailMessage?.AdditionalSubjectParams);
+            var titleContent = string.IsNullOrEmpty(emailMessage?.Title) ? _localizationRepository.TranslateSetting(emailMessage?.Subject, emailMessage?.AdditionalContentParams) :
+                                                                           _localizationRepository.TranslateSetting(emailMessage?.Title, emailMessage?.AdditionalContentParams);
+            var subjectContent = _localizationRepository.TranslateSetting(emailMessage?.Subject, emailMessage?.AdditionalContentParams);
             var messageContent = _localizationRepository.TranslateSetting(emailMessage?.Content, emailMessage?.AdditionalContentParams);
 
             string adaptiveCardJson = _localizationRepository.TranslateSetting(CardTemplate.DefaultCardTemplate);
@@ -218,21 +201,27 @@ namespace Repositories.Mail
 
             string UIUrl = urlSetting?.SettingValue ?? "";
             string dashboardUrl = dashboardUrlSetting?.SettingValue ?? "";
+            string jobUrl = urlSetting?.SettingValue + "/jobdetails/" + emailMessage.SyncJobId.ToString() ?? "";
 
             var cardData = new DefaultCardTemplate
             {
                 ProviderId = _actionableEmailProviderId,
+                TitleContent = titleContent,
                 SubjectContent = subjectContent,
                 MessageContent = messageContent,
                 GroupId = groupId,
                 CardCreatedTime = DateTime.UtcNow,
                 DestinationGroupName = destinationGroupName,
                 UIUrl = UIUrl,
-                DashboardUrl = dashboardUrl
+                DashboardUrl = dashboardUrl,
+                JobUrl = jobUrl
             };
 
             var template = new AdaptiveCardTemplate(adaptiveCardJson);
             var adaptiveCard = template.Expand(cardData);
+
+            var simpleMessage = GetSimpleMessage(emailMessage);
+            var fallbackHTMLContent = simpleMessage.Body.Content;
 
             var htmlTemplate = @"<html>
                 <head
@@ -242,10 +231,13 @@ namespace Repositories.Mail
                   </script>
                 </head>
                 <body>
+                <p style=""color: red;"">Warning: Group Membership Management (GMM) notifications are powered by Outlook Actionable Messages. The following is a fallback message that you will see if the Actionable Message fails to render.</p>
+                <h1>Original Message</h1>
+                <pre>{1}</pre>
                 </body>
                 </html>";
 
-            var htmlContent = string.Format(htmlTemplate, adaptiveCard);
+            var htmlContent = string.Format(htmlTemplate, adaptiveCard, fallbackHTMLContent);
 
             var message = new Message
             {
@@ -301,11 +293,7 @@ namespace Repositories.Mail
 
             if (Guid.TryParse(emailMessage.AdditionalContentParams[0], out Guid groupId))
             {
-                await _loggingRepository.LogMessageAsync(new LogMessage
-                {
-                    RunId = runId,
-                    Message = $"Successfully parsed group ID: {groupId}"
-                });
+                _mailRepositoryLogger.LogInformationWithRunId(runId, $"Successfully parsed group ID: {groupId}");
 
                 string groupName = await _graphGroupRepository.GetGroupNameAsync(groupId);
                 if (!string.IsNullOrEmpty(groupName))
@@ -315,11 +303,7 @@ namespace Repositories.Mail
             }
             else
             {
-                await _loggingRepository.LogMessageAsync(new LogMessage
-                {
-                    RunId = runId,
-                    Message = $"The provided value '{emailMessage.AdditionalContentParams[0]}' is not a valid GUID."
-                });
+                _mailRepositoryLogger.LogInformationWithRunId(runId, $"The provided value '{emailMessage.AdditionalContentParams[0]}' is not a valid GUID.");
             }
         }
         private AsyncPolicyWrap<HttpResponseMessage> GetHttpResponseMessageRetryPolicy(Guid? runId)

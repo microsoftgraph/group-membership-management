@@ -1,22 +1,16 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
-using Azure;
-using Entities;
-using Microsoft.Azure.WebJobs;
-using Microsoft.Azure.WebJobs.Extensions.DurableTask;
+using Microsoft.Azure.Functions.Worker;
+using Microsoft.DurableTask;
 using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.Primitives;
-using Microsoft.Graph;
 using Models;
-using Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
 using Repositories.Contracts;
 using Services.Entities;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Net;
-using System.Net.Http;
+using System.Text.Json;
+using System.Text.Json.Nodes;
 using System.Threading.Tasks;
 
 namespace Hosts.GroupOwnershipObtainer
@@ -30,9 +24,9 @@ namespace Hosts.GroupOwnershipObtainer
             _configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
         }
 
-        [FunctionName(nameof(OrchestratorFunction))]
+        [Function(nameof(OrchestratorFunction))]
         public async Task RunOrchestratorAsync(
-         [OrchestrationTrigger] IDurableOrchestrationContext context)
+            [OrchestrationTrigger] TaskOrchestrationContext context)
         {
             var mainRequest = context.GetInput<OrchestratorRequest>();
             var syncJob = mainRequest.SyncJob;
@@ -56,10 +50,9 @@ namespace Hosts.GroupOwnershipObtainer
                     return;
                 }
 
-                var queryParts = JArray.Parse(syncJob.Query);
+                var queryParts = JsonNode.Parse(syncJob.Query).AsArray();
                 var currentPart = queryParts[mainRequest.CurrentPart - 1];
-                var sources = currentPart.Value<JArray>("source").Values<string>()
-                              .Where(x => x != null).Select(x => x.Trim()).ToHashSet();
+                var sources = currentPart["source"].AsArray().Where(x => x != null).Select(x => x.GetValue<string>().Trim()).Distinct().ToHashSet();
 
                 if (!sources.Any())
                 {
@@ -91,19 +84,51 @@ namespace Hosts.GroupOwnershipObtainer
                     return;
                 }
 
-                var syncJobs = new List<SyncJob>();
+                else
+                {
+                    try
+                    {
+                        var hasValidJson = await context.CallActivityAsync<bool>(nameof(SchemaValidatorFunction), new SchemaValidatorRequest { Query = currentPart.ToString(), RunId = syncJob.RunId });
+                        if (!hasValidJson)
+                        {
+                            await context.CallActivityAsync(nameof(JobStatusUpdaterFunction), new JobStatusUpdaterRequest { Status = SyncStatus.SchemaError, SyncJob = syncJob });
+                            return;
+                        }
+                    }
+                    catch (JsonException)
+                    {
+                        await context.CallActivityAsync(nameof(LoggerFunction),
+                                new LoggerRequest
+                                {
+                                    SyncJob = syncJob,
+                                    Message = $"Source query is not valid for job:{syncJob.Id}"
+                                });
+
+                        await context.CallActivityAsync(nameof(JobStatusUpdaterFunction), new JobStatusUpdaterRequest { Status = SyncStatus.QueryNotValid, SyncJob = syncJob });
+                        return;
+                    }
+                }
+                var groupId = await context.CallActivityAsync<Guid>(nameof(GetGroupFunction), syncJob);
+                if (groupId.Equals(Guid.Empty))
+                {
+                    await context.CallActivityAsync(nameof(LoggerFunction), new LoggerRequest { SyncJob = syncJob, Message = $"Unable to get group id for job:{syncJob.Id}" });
+                    await context.CallActivityAsync(nameof(JobStatusUpdaterFunction), new JobStatusUpdaterRequest { Status = SyncStatus.Error, SyncJob = syncJob });
+                    return;
+                }
+                await context.CallActivityAsync(nameof(LoggerFunction), new LoggerRequest { SyncJob = syncJob, Message = $"Group Id for job:{syncJob.Id} is {groupId}" });
                 var segmentResponse = await context.CallActivityAsync<List<SyncJob>>(nameof(GetJobsSegmentedFunction), new GetJobsSegmentedRequest { RunId = syncJob.RunId });
-                syncJobs.AddRange(segmentResponse);
+
+                var groupDestinationSyncJobs = segmentResponse.Where(x => x.MembershipType == MembershipTypes.GroupMembership.ToString()).ToList();
 
                 var filteredJobs = await context.CallActivityAsync<List<Guid>>(nameof(JobsFilterFunction),
                                                                                new JobsFilterRequest
                                                                                {
                                                                                    RunId = syncJob.RunId,
                                                                                    RequestedSources = sources,
-                                                                                   SyncJobs = syncJobs.Select(x => new JobsFilterSyncJob
+                                                                                   SyncJobs = groupDestinationSyncJobs.Select(x => new JobsFilterSyncJob
                                                                                    {
                                                                                        Query = x.Query,
-                                                                                       TargetOfficeGroupId = x.TargetOfficeGroupId,
+                                                                                       TargetOfficeGroupId = x.Group.GroupId
                                                                                    }).ToList()
                                                                                });
 
@@ -142,6 +167,7 @@ namespace Hosts.GroupOwnershipObtainer
                                                                        new UsersSenderRequest
                                                                        {
                                                                            SyncJob = syncJob,
+                                                                           GroupId = groupId,
                                                                            Users = owners,
                                                                            CurrentPart = mainRequest.CurrentPart,
                                                                            Exclusionary = mainRequest.Exclusionary
@@ -152,7 +178,8 @@ namespace Hosts.GroupOwnershipObtainer
                     FilePath = filePath,
                     PartNumber = mainRequest.CurrentPart,
                     PartsCount = mainRequest.TotalParts,
-                    SyncJob = mainRequest.SyncJob
+                    SyncJob = mainRequest.SyncJob,
+                    IsDestinationPart = false
                 };
 
 
@@ -163,7 +190,7 @@ namespace Hosts.GroupOwnershipObtainer
                 var message = $"Caught unexpected exception in Part# {mainRequest.CurrentPart}, marking sync job as errored. Exception:\n{ex}";
                 var status = SyncStatus.Error;
 
-                if (ex.GetType() == typeof(JsonReaderException))
+                if (ex.GetType() == typeof(JsonException) || ex.GetType().Name == "JsonReaderException")
                 {
                     message = $"The job RowKey:{syncJob.RowKey} Part#{mainRequest.CurrentPart} does not have a valid query!";
                     status = SyncStatus.QueryNotValid;
@@ -188,7 +215,7 @@ namespace Hosts.GroupOwnershipObtainer
                 new LoggerRequest { Message = $"{nameof(OrchestratorFunction)} function completed", SyncJob = syncJob, Verbosity = VerbosityLevel.DEBUG });
         }
 
-        private List<Task<List<Guid>>> GenerateOwnerRetrievalTasks(IDurableOrchestrationContext context, Guid[] groupIds, SyncJob syncJob)
+        private List<Task<List<Guid>>> GenerateOwnerRetrievalTasks(TaskOrchestrationContext context, Guid[] groupIds, SyncJob syncJob)
         {
             var tasks = new List<Task<List<Guid>>>();
             foreach (var groupId in groupIds)

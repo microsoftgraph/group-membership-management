@@ -1,10 +1,11 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
+using Microsoft.Extensions.Logging;
 using Microsoft.Graph;
 using Models;
-using Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
 using Repositories.Contracts;
+using Repositories.Contracts.Constants;
+using Repositories.Contracts.Helpers;
 using Services.Entities;
 using System;
 using System.Collections.Concurrent;
@@ -13,6 +14,8 @@ using System.Linq;
 using System.Net;
 using System.Net.Http;
 using System.Net.Http.Headers;
+using System.Text.Json.Nodes;
+using System.Text.Json;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 
@@ -21,7 +24,9 @@ namespace Repositories.GraphGroups
     internal class GraphGroupMembershipUpdater : GraphGroupRepositoryBase
     {
         private const int GraphBatchLimit = 20;
-        private const int ConcurrentRequests = 10;
+        private readonly int _concurrentAddRequests;
+        private readonly int _concurrentRemoveRequests;
+        private readonly ILogger<GraphGroupMembershipUpdater> _graphGroupMembershipUpdaterLogger;
 
         private static readonly HttpStatusCode[] _shouldRetry = new[]
             { HttpStatusCode.ServiceUnavailable, HttpStatusCode.GatewayTimeout, HttpStatusCode.BadGateway, HttpStatusCode.InternalServerError };
@@ -33,9 +38,6 @@ namespace Repositories.GraphGroups
         private static readonly string _notFoundResponseError = "One or more removed object references do not exist for the following modified properties: 'members'.";
         private static readonly string _alreadyExistsResponseError = "One or more added object references already exist for the following modified properties: 'members'.";
 
-        private static readonly Regex _userNotFound =
-            new Regex(@"Resource '(?<id>[({]?[a-fA-F0-9]{8}[-]?([a-fA-F0-9]{4}[-]?){3}[a-fA-F0-9]{12}[})]?)' does not exist", RegexOptions.IgnoreCase);
-
         private delegate HttpRequestMessage MakeBulkRequest(List<AzureADUser> batch);
 
         private ConcurrentBag<AzureADUser> _usersNotFound = new ConcurrentBag<AzureADUser>();
@@ -44,10 +46,15 @@ namespace Repositories.GraphGroups
         public Guid? RunId { get; set; }
 
         public GraphGroupMembershipUpdater(GraphServiceClient graphServiceClient,
-                                  ILoggingRepository loggingRepository,
-                                  GraphGroupMetricTracker graphGroupMetricTracker)
-                                  : base(graphServiceClient, loggingRepository, graphGroupMetricTracker)
-        { }
+                                           GraphGroupMetricTracker graphGroupMetricTracker,
+                                           IGraphRepositorySettings graphRepositorySettings,
+                                           ILogger<GraphGroupMembershipUpdater> graphGroupMembershipUpdaterLogger)
+                                           : base(graphServiceClient, graphGroupMembershipUpdaterLogger, graphGroupMetricTracker)
+        {
+            _concurrentAddRequests = graphRepositorySettings == null ? 10 : graphRepositorySettings.ConcurrentAddRequests;
+            _concurrentRemoveRequests = graphRepositorySettings == null ? 10 : graphRepositorySettings.ConcurrentRemoveRequests;
+            _graphGroupMembershipUpdaterLogger = graphGroupMembershipUpdaterLogger ?? throw new ArgumentNullException(nameof(graphGroupMembershipUpdaterLogger));
+        }
 
 
         public Task<(ResponseCode ResponseCode, int SuccessCount, List<AzureADUser> UsersNotFound, List<AzureADUser> UsersAlreadyExist)>
@@ -56,7 +63,7 @@ namespace Repositories.GraphGroups
             //You can, in theory, send batches of 20 requests of 20 group adds each
             // but Graph starts saying "Service Unavailable" for a bunch of them if you do that, so only send so many at once
             // 5 seems to be the most without it starting to throw errors that have to be retried
-            return BatchAndSend(users, b => MakeBulkAddRequest(b, targetGroup.ObjectId), GraphBatchLimit, 5, targetGroup.ObjectId);
+            return BatchAndSend(users, b => MakeBulkAddRequest(b, targetGroup.ObjectId), GraphBatchLimit, 5, targetGroup.ObjectId, _concurrentAddRequests);
         }
 
         private HttpRequestMessage MakeBulkAddRequest(List<AzureADUser> batch, Guid targetGroup)
@@ -69,18 +76,19 @@ namespace Repositories.GraphGroups
 
         private static string MakeAddRequestBody(List<AzureADUser> users)
         {
-            JObject body = new JObject
+            var body = new JsonObject
             {
-                ["members@odata.bind"] = JArray.FromObject(users.Select(x => $"https://graph.microsoft.com/v1.0/users/{x.ObjectId}"))
+                ["members@odata.bind"] = new JsonArray(users.Select(x => JsonValue.Create($"https://graph.microsoft.com/v1.0/users/{x.ObjectId}")).ToArray())
             };
-            return body.ToString(Newtonsoft.Json.Formatting.None);
+
+            return body.ToJsonString(new JsonSerializerOptions { WriteIndented = false });
         }
 
         public Task<(ResponseCode ResponseCode, int SuccessCount, List<AzureADUser> UsersNotFound, List<AzureADUser> UsersAlreadyExist)>
             RemoveUsersFromGroup(IEnumerable<AzureADUser> users, AzureADGroup targetGroup)
         {
             // This, however, is the most we can send per delete batch, and it works pretty well.
-            return BatchAndSend(users, b => MakeBulkRemoveRequest(b, targetGroup.ObjectId), 1, GraphBatchLimit, targetGroup.ObjectId);
+            return BatchAndSend(users, b => MakeBulkRemoveRequest(b, targetGroup.ObjectId), 1, GraphBatchLimit, targetGroup.ObjectId, _concurrentRemoveRequests);
         }
 
         private HttpRequestMessage MakeBulkRemoveRequest(List<AzureADUser> batch, Guid targetGroup)
@@ -97,7 +105,7 @@ namespace Repositories.GraphGroups
         private string GetNewChunkId() => $"{Guid.NewGuid().ToString().Replace("-", string.Empty)}";
 
         private async Task<(ResponseCode ResponseCode, int SuccessCount, List<AzureADUser> UsersNotFound, List<AzureADUser> UsersAlreadyExist)>
-            BatchAndSend(IEnumerable<AzureADUser> users, MakeBulkRequest makeRequest, int requestMax, int batchSize, Guid targetGroupId)
+            BatchAndSend(IEnumerable<AzureADUser> users, MakeBulkRequest makeRequest, int requestMax, int batchSize, Guid targetGroupId, int concurrentRequests)
         {
             if (!users.Any()) { return (ResponseCode.Ok, 0, new List<AzureADUser>(), new List<AzureADUser>()); }
 
@@ -109,7 +117,7 @@ namespace Repositories.GraphGroups
                         Id = x[0].MembershipAction == MembershipAction.Add ? GetNewChunkId() : x[0].ObjectId.ToString()
                     }));
 
-            var responses = await Task.WhenAll(Enumerable.Range(0, ConcurrentRequests).Select(x => ProcessQueue(queuedBatches, makeRequest, x, batchSize, targetGroupId)));
+            var responses = await Task.WhenAll(Enumerable.Range(0, concurrentRequests).Select(x => ProcessQueue(queuedBatches, makeRequest, x, batchSize, targetGroupId)));
             var status = responses.Any(x => x.ResponseCode == ResponseCode.GuestError) ?
                 ResponseCode.GuestError :
                 (responses.Any(x => x.ResponseCode == ResponseCode.Error) ?
@@ -129,7 +137,7 @@ namespace Repositories.GraphGroups
                 var toSend = new List<ChunkOfUsers>();
                 while (queue.TryDequeue(out var step))
                 {
-                    var isUnderMaxLimit = toSend.Sum(x => x.ToSend.Count) + step.ToSend.Count < maxNumberOfRequests;
+                    var isUnderMaxLimit = toSend.Sum(x => x.ToSend.Count) + step.ToSend.Count <= maxNumberOfRequests;
 
                     if (isUnderMaxLimit && toSend.Count < GraphBatchLimit)
                         toSend.Add(step);
@@ -163,7 +171,7 @@ namespace Repositories.GraphGroups
 
         private async Task<(ResponseCode ResponseCode, int SuccessCount)> ProcessPatchBatch(ConcurrentQueue<ChunkOfUsers> queue, List<ChunkOfUsers> toSend, MakeBulkRequest makeRequest, int threadNumber)
         {
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Thread number {threadNumber}: Sending a batch of {toSend.Count} requests.", RunId = RunId }, VerbosityLevel.DEBUG);
+            _graphGroupMembershipUpdaterLogger.LogInformationWithRunId(RunId, $"Thread number {threadNumber}: Sending a batch of {toSend.Count} requests.");
             int requeued = 0;
             bool hasUnrecoverableErrors = false;
             var successfulRequests = toSend.Where(x => !x.SendAsPostRequest).SelectMany(x => x.ToSend).ToList().Count;
@@ -218,7 +226,7 @@ namespace Repositories.GraphGroups
                                ))
                         {
                             chunkToRetry.SendAsPostRequest = true;
-                            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Set {chunkToRetry.Id} as POST request", RunId = RunId });
+                            _graphGroupMembershipUpdaterLogger.LogInformationWithRunId(RunId, $"Set {chunkToRetry.Id} as POST request");
                             continue;
                         }
 
@@ -228,43 +236,37 @@ namespace Repositories.GraphGroups
                             {
                                 if (idToRetry.ResponseCode == ResponseCode.IndividualRetryAlreadyExists)
                                 {
-                                    await _loggingRepository.LogMessageAsync(new LogMessage
-                                    {
-                                        Message = $"{chunkToRetry.Id} already exists",
-                                        RunId = RunId
-                                    });
+                                    _graphGroupMembershipUpdaterLogger.LogInformationWithRunId(RunId, $"{chunkToRetry.Id} already exists");
 
                                     _usersAlreadyExist.Add(chunkToRetry.ToSend[0]);
                                 }
                                 else
                                 {
-                                    await _loggingRepository.LogMessageAsync(new LogMessage
-                                    {
-                                        Message = $"{chunkToRetry.Id} was not removed as it could not be found",
-                                        RunId = RunId
-                                    });
+                                    _graphGroupMembershipUpdaterLogger.LogInformationWithRunId(RunId, $"{chunkToRetry.Id} was not removed as it could not be found");
                                 }
                             }
+                            else if (chunkToRetry.ToSend.Count == 1 && idToRetry.HttpStatusCode == HttpStatusCode.NotFound)
+                            {
+                                // Single-user PATCH that got NotFound - user doesn't exist, no point retrying
+                                _graphGroupMembershipUpdaterLogger.LogInformationWithRunId(RunId, $"Adding {chunkToRetry.ToSend[0].ObjectId} failed as this resource does not exist.");
 
+                                _usersNotFound.Add(chunkToRetry.ToSend[0]);
+                            }
                             else if (chunkToRetry.ToSend.Count == 1 && idToRetry.HttpStatusCode == HttpStatusCode.Forbidden && idToRetry.ResponseCode == ResponseCode.GuestError)
                             {
-                                await _loggingRepository.LogMessageAsync(new LogMessage
-                                {
-                                    Message = $"{chunkToRetry.ToSend[0].ObjectId} was not added because it is a guest user and the destination does not allow guest users",
-                                    RunId = RunId
-                                });
+                                _graphGroupMembershipUpdaterLogger.LogInformationWithRunId(RunId, $"{chunkToRetry.ToSend[0].ObjectId} was not added because it is a guest user and the destination does not allow guest users");
                                 guestUserError = true;
                             }
                             else
                             {
                                 requeued++;
                                 queue.Enqueue(chunkToRetry);
-                                await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Requeued {chunkToRetry.Id}-{chunkToRetry.RetryCount}", RunId = RunId });
+                                _graphGroupMembershipUpdaterLogger.LogInformationWithRunId(RunId, $"Requeued {chunkToRetry.Id}-{chunkToRetry.RetryCount}");
                             }
                         }
                     }
                 }
-                await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Thread number {threadNumber}: {toSend.Count - requeued} out of {toSend.Count} requests succeeded. {queue.Count} left.", RunId = RunId }, VerbosityLevel.DEBUG);
+                _graphGroupMembershipUpdaterLogger.LogInformationWithRunId(RunId, $"Thread number {threadNumber}: {toSend.Count - requeued} out of {toSend.Count} requests succeeded. {queue.Count} left.");
             }
             catch (ServiceException ex)
             {
@@ -274,11 +276,7 @@ namespace Repositories.GraphGroups
                 // but if a chunk has already been queued five times or so, drop it on the floor so we don't go forever
                 // in the future, log the exception and which ones get dropped.
 
-                await _loggingRepository.LogMessageAsync(new LogMessage
-                {
-                    Message = ex.GetBaseException().ToString(),
-                    RunId = RunId
-                });
+                _graphGroupMembershipUpdaterLogger.LogErrorWithRunId(RunId, "Unexpected Graph ServiceException during batch membership update. Requeueing eligible chunks.", ex);
 
                 foreach (var chunk in toSend)
                 {
@@ -287,7 +285,7 @@ namespace Repositories.GraphGroups
                         var originalId = chunk.Id;
                         queue.Enqueue(chunk.UpdateIdForRetry());
 
-                        await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Requeued {originalId}-{chunk.RetryCount} ", RunId = RunId });
+                        _graphGroupMembershipUpdaterLogger.LogInformationWithRunId(RunId, $"Requeued {originalId}-{chunk.RetryCount} ");
                     }
                 }
             }
@@ -324,21 +322,15 @@ namespace Repositories.GraphGroups
 
                             if (response.ResponseCode == ResponseCode.IndividualRetryAlreadyExists)
                             {
-                                await _loggingRepository.LogMessageAsync(new LogMessage
-                                {
-                                    Message = $"{response.RequestId} already exists",
-                                    RunId = RunId
-                                });
+                                _graphGroupMembershipUpdaterLogger.LogInformationWithRunId(RunId, $"{response.RequestId} already exists");
 
                                 _usersAlreadyExist.Add(new AzureADUser { ObjectId = Guid.Parse(response.RequestId) });
                             }
                             else if (response.ResponseCode == ResponseCode.GuestError)
                             {
-                                await _loggingRepository.LogMessageAsync(new LogMessage
-                                {
-                                    Message = $"{response.RequestId} was not added because it is a guest user and the destination does not allow guest users",
-                                    RunId = RunId
-                                });
+                                _graphGroupMembershipUpdaterLogger.LogInformationWithRunId(RunId, $"{response.RequestId} was not added because it is a guest user and the destination does not allow guest users");
+
+                                postResponse.ResponseCode = ResponseCode.GuestError;
                             }
                         }
                     }
@@ -351,7 +343,7 @@ namespace Repositories.GraphGroups
                     {
                         request.UpdateIdForRetry();
                         queue.Enqueue(request);
-                        await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Requeued {request.Id}-{request.RetryCount}", RunId = RunId });
+                        _graphGroupMembershipUpdaterLogger.LogInformationWithRunId(RunId, $"Requeued {request.Id}-{request.RetryCount}");
                     }
                 }
 
@@ -368,12 +360,13 @@ namespace Repositories.GraphGroups
             {
                 var httpMethod = user.MembershipAction == MembershipAction.Add ? HttpMethod.Post : HttpMethod.Delete;
 
-                JObject body = new JObject
+                var body = new JsonObject
                 {
                     ["@odata.id"] = $"https://graph.microsoft.com/v1.0/directoryObjects/{user.ObjectId}"
                 };
 
-                var json = body.ToString(Newtonsoft.Json.Formatting.None);
+                var json = body.ToJsonString(new JsonSerializerOptions { WriteIndented = false });
+
                 var request = new HttpRequestMessage(httpMethod, $"https://graph.microsoft.com/v1.0/groups/{targetGroupId}/members/$ref")
                 {
                     Content = new StringContent(json, System.Text.Encoding.UTF8, "application/json"),
@@ -402,8 +395,7 @@ namespace Repositories.GraphGroups
         {
             try
             {
-                await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Sending requests {string.Join(",", tosend.BatchRequestSteps.Keys)}.", RunId = RunId });
-
+                _graphGroupMembershipUpdaterLogger.LogInformationWithRunId(RunId, $"Sending requests {string.Join(",", tosend.BatchRequestSteps.Keys)}.");              
                 var response = await _graphServiceClient.Batch.PostAsync(tosend);
                 var responseStatusCodes = await response.GetResponsesStatusCodesAsync();
                 var responses = await Task.WhenAll(responseStatusCodes.Select(async x => new KeyValuePair<string, HttpResponseMessage>(x.Key, await response.GetResponseByIdAsync(x.Key))));
@@ -411,11 +403,7 @@ namespace Repositories.GraphGroups
             }
             catch (ServiceException ex)
             {
-                await _loggingRepository.LogMessageAsync(new LogMessage
-                {
-                    Message = ex.GetBaseException().ToString(),
-                    RunId = RunId
-                });
+                _graphGroupMembershipUpdaterLogger.LogErrorWithRunId(RunId, "Graph ServiceException while posting batch request.", ex);
 
                 throw;
             }
@@ -426,6 +414,8 @@ namespace Repositories.GraphGroups
             // we're much more likely to hit the write quota, so default to the 2 minute and 30 second wait
             // https://docs.microsoft.com/en-us/graph/throttling#pattern
             TimeSpan waitFor = TimeSpan.FromSeconds(150);
+            if (wait == null) return waitFor;
+
             if (wait.Delta.HasValue) { waitFor = wait.Delta.Value; }
             if (wait.Date.HasValue) { waitFor = wait.Date.Value - DateTimeOffset.UtcNow; }
             return waitFor;
@@ -433,13 +423,15 @@ namespace Repositories.GraphGroups
 
         private static bool IsNotFoundError(string error)
         {
-            error = JObject.Parse(error)["error"]["message"].Value<string>();
+            var jsonDocument = JsonDocument.Parse(error);
+            error = jsonDocument.RootElement.GetProperty("error").GetProperty("message").GetString();
             return error.Contains(_notFoundResponseError);
         }
 
         private static bool IsAlreadyExistsError(string error)
         {
-            error = JObject.Parse(error)["error"]["message"].Value<string>();
+            var jsonDocument = JsonDocument.Parse(error);
+            error = jsonDocument.RootElement.GetProperty("error").GetProperty("message").GetString();
             return error.Contains(_alreadyExistsResponseError);
         }
 
@@ -448,10 +440,10 @@ namespace Repositories.GraphGroups
         {
             var retryResponses = new List<RetryResponse>();
             bool beenThrottled = false;
+            bool beenConcurrencyViolated = false;
 
-            var resourceUnitsUsed = _graphGroupMetricTracker.GetMetric(nameof(Metric.ResourceUnitsUsed));
-            var throttleLimitPercentage = _graphGroupMetricTracker.GetMetric(nameof(Metric.ThrottleLimitPercentage));
             var writesUsed = _graphGroupMetricTracker.GetMetric(nameof(Metric.WritesUsed));
+            var writeRequests = _graphGroupMetricTracker.GetMetric(nameof(Metric.WriteRequests));
 
             foreach (var kvp in responses)
             {
@@ -460,22 +452,12 @@ namespace Repositories.GraphGroups
                 var status = response.StatusCode;
                 var content = await response.Content.ReadAsStringAsync();
 
-                if (response.Headers.TryGetValues(GraphResponseHeader.ResourceUnitHeader, out var resourceValues))
-                {
-                    int ruu = GraphGroupMetricTracker.ParseFirst<int>(resourceValues, int.TryParse);
-                    await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Resource unit cost of {Enum.GetName(typeof(QueryType), QueryType.Other)} - {ruu}", RunId = RunId });
-                    _graphGroupMetricTracker.TrackResourceUnitsUsedByTypeEvent(ruu, QueryType.Other, RunId);
-                    resourceUnitsUsed.TrackValue(ruu);
-                }
+                var headers = response.Headers.ToDictionary(h => h.Key, h => h.Value);
+                await _graphGroupMetricTracker.TrackMetricsAsync(headers, QueryType.Other, RunId, GraphOperationType.Write);
 
-                if (response.Headers.TryGetValues(GraphResponseHeader.ThrottlePercentageHeader, out var throttleValues))
-                    throttleLimitPercentage.TrackValue(GraphGroupMetricTracker.ParseFirst<double>(throttleValues, double.TryParse));
+                _graphGroupMembershipUpdaterLogger.LogInformationWithRunId(RunId, $"Response - RequestId:{kvp.Key} - StatusCode:{status} - Content:{content}");
 
-                await _loggingRepository.LogMessageAsync(new LogMessage
-                {
-                    Message = $"Response - RequestId:{kvp.Key} - StatusCode:{status} - Content:{content}",
-                    RunId = RunId
-                }, VerbosityLevel.DEBUG);
+                writeRequests.TrackValue(1);
 
                 // Note that the ones with empty bodies mean "this response is okay and we don't have to do anything about it."
                 if (status == HttpStatusCode.BadRequest)
@@ -501,55 +483,74 @@ namespace Repositories.GraphGroups
                 }
                 else if (status == HttpStatusCode.NotFound && (content).Contains("does not exist or one of its queried reference-property objects are not present."))
                 {
-                    var match = _userNotFound.Match(content);
-                    var userId = default(string);
                     var requestStep = requests[kvp.Key];
-
-                    if (match.Success)
+                    
+                    // For individual requests (DELETE/POST), we can use the requestId directly
+                    // For batch PATCH requests, the requestId is a batch ID, not a user ID
+                    if (requestStep.Request.Method == HttpMethod.Delete || requestStep.Request.Method == HttpMethod.Post)
                     {
-                        userId = match.Groups["id"].Value;
-                        await _loggingRepository.LogMessageAsync(new LogMessage
+                        // Use the requestId directly for individual requests to avoid parsing issues 
+                        // where Graph may return group IDs in error messages instead of user IDs
+                        var userId = requestStep.RequestId;
+
+                        if (requestStep.Request.Method == HttpMethod.Delete)
                         {
-                            Message = $"User ID is found",
-                            RunId = RunId
+                            _graphGroupMembershipUpdaterLogger.LogInformationWithRunId(RunId, $"Removing {userId} failed as this resource does not exists.");
+                        }
+                        else
+                        {
+                            _graphGroupMembershipUpdaterLogger.LogInformationWithRunId(RunId, $"Adding {userId} failed as this resource does not exists.");
+                        }
+
+                        _usersNotFound.Add(new AzureADUser { ObjectId = Guid.Parse(userId) });
+                        
+                        retryResponses.Add(new RetryResponse
+                        {
+                            RequestId = kvp.Key,
+                            ResponseCode = ResponseCode.IndividualRetry,
+                            AzureObjectId = userId,
+                            HttpStatusCode = HttpStatusCode.NotFound
                         });
                     }
                     else
                     {
-                        userId = requestStep.RequestId;
-                    }
-
-                    if (requestStep.Request.Method == HttpMethod.Delete)
-                    {
-                        await _loggingRepository.LogMessageAsync(new LogMessage
+                        // For batch PATCH requests, we can't reliably determine the user ID from the response
+                        // Just mark for individual retry - the specific user will be identified during retry
+                        retryResponses.Add(new RetryResponse
                         {
-                            Message = $"Removing {userId} failed as this resource does not exists.",
-                            RunId = RunId
+                            RequestId = kvp.Key,
+                            ResponseCode = ResponseCode.IndividualRetry,
+                            HttpStatusCode = HttpStatusCode.NotFound
                         });
-
-                        _usersNotFound.Add(new AzureADUser { ObjectId = Guid.Parse(userId) });
                     }
-                    else
+                }
+                else if (status == HttpStatusCode.Conflict
+                    && !string.IsNullOrWhiteSpace(content)
+                    && content.Contains("Directory_ConcurrencyViolation", StringComparison.OrdinalIgnoreCase))
+                {
+                    if (!beenConcurrencyViolated)
                     {
-                        await _loggingRepository.LogMessageAsync(new LogMessage
-                        {
-                            Message = $"Adding {userId} failed as this resource does not exists.",
-                            RunId = RunId
-                        });
+                        var throttleWait = CalculateThrottleWait(response.Headers.RetryAfter);
 
-                        _usersNotFound.Add(new AzureADUser { ObjectId = Guid.Parse(userId) });
+                        _graphGroupMembershipUpdaterLogger.LogInformationWithRunId(RunId, $"Got 409 conflict due to concurrent updates. Waiting {throttleWait.TotalSeconds} seconds before retrying.");
+
+                        await Task.Delay(throttleWait);
+                        beenConcurrencyViolated = true;
                     }
+
+                    _graphGroupMembershipUpdaterLogger.LogInformationWithRunId(RunId, $"Got 409 conflict due to concurrent updates. Retrying request {kvp.Key}.");
 
                     retryResponses.Add(new RetryResponse
                     {
                         RequestId = kvp.Key,
                         ResponseCode = ResponseCode.IndividualRetry,
-                        AzureObjectId = userId,
-                        HttpStatusCode = HttpStatusCode.NotFound
+                        HttpStatusCode = HttpStatusCode.Conflict
                     });
-
                 }
-                else if (_isOkay.Contains(status)) { writesUsed.TrackValue(1); }
+                else if (_isOkay.Contains(status)) 
+                { 
+                    writesUsed.TrackValue(1);
+                }
                 else if (status == HttpStatusCode.TooManyRequests)
                 {
                     // basically, each request in the batch will probably say it's been throttled
@@ -564,18 +565,16 @@ namespace Repositories.GraphGroups
                         var throttleWait = CalculateThrottleWait(response.Headers.RetryAfter) + TimeSpan.FromSeconds(10);
 
                         var startThrottling = Task.Delay(throttleWait);
-                        var gotThrottleInfo = response.Headers.TryGetValues(GraphResponseHeader.ThrottleInfoHeader, out var throttleInfo);
-                        var gotThrottleScope = response.Headers.TryGetValues(GraphResponseHeader.ThrottleScopeHeader, out var throttleScope);
-                        await _loggingRepository.LogMessageAsync(new LogMessage
-                        {
-                            Message = string.Format("Got 429 throttled. Waiting {0} seconds. Delta: {1} Date: {2} Reason: {3} Scope: {4}",
+                        var gotThrottleInfo = response.Headers.TryGetValues(GraphResponseHeaders.ThrottleInformation, out var throttleInfo);
+                        var gotThrottleScope = response.Headers.TryGetValues(GraphResponseHeaders.ThrottleScope, out var throttleScope);
+                        _graphGroupMembershipUpdaterLogger.LogInformationWithRunId(
+                            RunId,
+                            string.Format("Got 429 throttled. Waiting {0} seconds. Delta: {1} Date: {2} Reason: {3} Scope: {4}",
                                 throttleWait.TotalSeconds,
                                 response.Headers.RetryAfter.Delta != null ? response.Headers.RetryAfter.Delta.ToString() : "(none)",
                                 response.Headers.RetryAfter.Date != null ? response.Headers.RetryAfter.Date.ToString() : "(none)",
                                 gotThrottleInfo ? string.Join(',', throttleInfo) : "(none)",
-                                gotThrottleScope ? string.Join(',', throttleScope) : "(none)"),
-                            RunId = RunId
-                        });
+                                gotThrottleScope ? string.Join(',', throttleScope) : "(none)"));
                         await startThrottling;
                         beenThrottled = true;
                     }
@@ -608,7 +607,7 @@ namespace Repositories.GraphGroups
                 }
                 else
                 {
-                    await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Got an unexpected error from Graph, stopping all processing for current job: {status} {response.ReasonPhrase} {content}.", RunId = RunId });
+                    _graphGroupMembershipUpdaterLogger.LogErrorWithRunId(RunId, $"Got an unexpected error from Graph, stopping all processing for current job: {status} {response.ReasonPhrase} {content}.");
                     retryResponses.Add(new RetryResponse
                     {
                         RequestId = kvp.Key,

@@ -5,8 +5,11 @@ import {
     type IStyle,
     type IStyleFunctionOrObject,
     type ITheme,
+    type IProcessedStyleSet
 } from '@fluentui/react';
 import type React from 'react';
+
+import { type Job } from '../../models/Job';
 
 export interface IJobDetailsStyles {
     root: IStyle;
@@ -21,10 +24,18 @@ export interface IJobDetailsStyles {
     membershipStatusContainer: IStyle;
     membershipStatusControls: IStyle;
     membershipStatusMessage: IStyle;
+    requestor: IStyle;
     clockIcon: IStyle;
+    hiddenMembershipWarningContainer: IStyle;
+    hiddenMembershipWarningIcon: IStyle;
+    hiddenMembershipWarningText: IStyle;
     membershipStatusActionButtons: IStyle;
     membershipStatusPendingLabel: IStyle;
     removeGMM: IStyle;
+    removeGMMNotFound: IStyle;
+    historyButtonContainer: IStyle;
+    userPersona: IStyle;
+    notFound: IStyle;
 }
 
 export interface IJobDetailsStyleProps {
@@ -44,3 +55,14 @@ export interface IJobDetailsProps
      */
     styles?: IStyleFunctionOrObject<IJobDetailsStyleProps, IJobDetailsStyles>;
 }
+
+export interface IContentProps extends React.AllHTMLAttributes<HTMLDivElement> {
+    job: Job,
+    classNames: IProcessedStyleSet<IJobDetailsStyles>
+}
+
+export interface IStatusContentProps extends React.AllHTMLAttributes<HTMLDivElement> {
+    job: Job,
+    resolveReview: () => void,
+    classNames: IProcessedStyleSet<IJobDetailsStyles>
+};

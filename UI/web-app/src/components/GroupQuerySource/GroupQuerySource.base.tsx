@@ -21,7 +21,9 @@ import { AppDispatch } from '../../store';
 import { searchDestinations } from '../../store/manageMembership.api';
 import { IsGroupMembershipSourcePartQuery } from '../../models/GroupMembershipSourcePart';
 import { useSelectedGroupById } from '../../store/groupPart.slice';
+import { selectIsJobWriter } from '../../store/roles.slice';
 import { searchGroups } from '../../store/groups.api';
+import { generateGroupTitle } from '../../utils/titleGenerator';
 
 export const getClassNames = classNamesFunction<GroupQuerySourceStyleProps, GroupQuerySourceStyles>();
 
@@ -33,6 +35,7 @@ export const GroupQuerySourceBase: React.FunctionComponent<GroupQuerySourceProps
   });
   const strings = useStrings();
   const dispatch = useDispatch<AppDispatch>();
+  const isJobWriter = useSelector(selectIsJobWriter);
 
   const groupId: string = IsGroupMembershipSourcePartQuery(part.query) ? part.query.source : '';
   const [localSearchResults, setLocalSearchResults] = useState<IPersonaProps[]>([]);
@@ -85,10 +88,20 @@ export const GroupQuerySourceBase: React.FunctionComponent<GroupQuerySourceProps
   const handleGroupPickerChange = useCallback((items?: IPersonaProps[]): void => {
     if (items && items.length > 0) {
       setSelectedGroup(items);
-      onSourceChange(items[0].id ?? '');
+      const newTitle = generateGroupTitle(
+        items[0].text,
+        items[0].id,
+        part.query.exclusionary,
+        {
+          excludePrefix: strings.excludePrefix,
+          allUsersInGroup: strings.ManageMembership?.labels?.allUsersInGroup,
+          allUsersInFallback: strings.ManageMembership?.labels?.allUsersInFallback
+        }
+      );
+      onSourceChange(items[0].id ?? '', newTitle);
     } else {
       setSelectedGroup([]);
-      onSourceChange('');
+      onSourceChange('', '');
     }
   }, [onSourceChange]);
 
@@ -106,13 +119,14 @@ export const GroupQuerySourceBase: React.FunctionComponent<GroupQuerySourceProps
         aria-label={strings.Components.GroupQuerySource.searchGroupName}
         selectionAriaLabel={strings.Components.GroupQuerySource.selectionAriaLabel}
         removeButtonAriaLabel={strings.Components.GroupQuerySource.removeButtonAriaLabel}
-        resolveDelay={300}
+        resolveDelay={600}
         itemLimit={1}
         onInputChange={handleGroupSearchInputChanged}
         onChange={handleGroupPickerChange}
         selectedItems={selectedGroup}
         styles={{ text: classNames.groupPicker }}
         pickerCalloutProps={{ calloutMinWidth: 500 }}
+        disabled={!isJobWriter}
       />
     </div>
   );

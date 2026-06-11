@@ -28,4 +28,4 @@ export abstract class ApiBase {
       throw new Error(`Request failed with status code ${response.status}.`);
     }
   }
-}
+};

@@ -1,14 +1,13 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-using Microsoft.Azure.WebJobs;
-using Microsoft.Azure.WebJobs.Extensions.DurableTask;
+using Microsoft.Azure.Functions.Worker;
+using Microsoft.DurableTask;
 using Repositories.Contracts;
 using System.Threading.Tasks;
 using Models.ThresholdNotifications;
 using Models.Notifications;
 using Services.Contracts;
-using Hosts.AzureMaintenance.Activity.SendNormalThresholdNotification;
 using Models;
 using System.Text.Json;
 using System.Collections.Generic;
@@ -22,14 +21,13 @@ namespace Hosts.Notifier
         {
         }
 
-        [FunctionName(nameof(OrchestratorFunction))]
-        public async Task RunOrchestratorAsync(
-            [OrchestrationTrigger] IDurableOrchestrationContext context)
+        [Function(nameof(OrchestratorFunction))]
+        public async Task RunOrchestratorAsync([OrchestrationTrigger] TaskOrchestrationContext context)
         {
             var message = context.GetInput<OrchestratorRequest>();
             var messageContent = JsonSerializer.Deserialize<Dictionary<string, Object>>(message.MessageBody);
             SyncJob job = ((JsonElement)messageContent["SyncJob"]).Deserialize<SyncJob>();
-            Guid runId = (Guid)job.RunId;
+            Guid runId = job.RunId ?? Guid.Empty;
 
             message.RunId = runId;
             await context.CallActivityAsync(nameof(LoggerFunction),
@@ -53,44 +51,86 @@ namespace Hosts.Notifier
                     break;
 
                 case nameof(NotificationMessageType.SyncStartedNotification):
-                    message.SubjectTemplate = NotificationConstants.OnboardingSubject;
+                    message.MessageTitle = NotificationConstants.OnboardingStartedEmailTitle;
+                    message.SubjectTemplate = NotificationConstants.OnboardingStartedEmailSubject;
                     message.ContentTemplate = NotificationConstants.SyncStartedContent;
                     await context.CallActivityAsync(nameof(SendNotification), message);
                     break;
 
                 case nameof(NotificationMessageType.DestinationNotExistNotification):
-                    message.SubjectTemplate = NotificationConstants.DisabledNotificationSubject;
+                    message.MessageTitle = NotificationConstants.DestinationNotExistTitle;
+                    message.SubjectTemplate = NotificationConstants.DestinationNotExistSubject;
                     message.ContentTemplate = NotificationConstants.DestinationNotExistContent;
                     await context.CallActivityAsync(nameof(SendNotification), message);
                     break;
 
                 case nameof(NotificationMessageType.NotOwnerNotification):
+                    message.MessageTitle = NotificationConstants.NotOwnerTitle;
                     message.SubjectTemplate = NotificationConstants.DisabledNotificationSubject;
                     message.ContentTemplate = NotificationConstants.NotOwnerContent;
                     await context.CallActivityAsync(nameof(SendNotification), message);
                     break;
 
                 case nameof(NotificationMessageType.SyncCompletedNotification):
-                    message.SubjectTemplate = NotificationConstants.OnboardingSubject;
+                    message.MessageTitle = NotificationConstants.OnboardingCompleteEmailTitle;
+                    message.SubjectTemplate = NotificationConstants.OnboardingCompleteEmailSubject;
                     message.ContentTemplate = NotificationConstants.SyncCompletedContent;
                     await context.CallActivityAsync(nameof(SendNotification), message);
                     break;
 
                 case nameof(NotificationMessageType.NotValidSourceNotification):
-                    message.SubjectTemplate = NotificationConstants.OnboardingSubject;
+                    message.MessageTitle = NotificationConstants.NotValidSourceTitle;
+                    message.SubjectTemplate = NotificationConstants.NotValidSourceSubject;
                     message.ContentTemplate = NotificationConstants.NoValidGroupIdsContent;
                     await context.CallActivityAsync(nameof(SendNotification), message);
                     break;
 
                 case nameof(NotificationMessageType.SourceNotExistNotification):
+                    message.MessageTitle = NotificationConstants.SourceNotExistTitle;
                     message.SubjectTemplate = NotificationConstants.DisabledNotificationSubject;
                     message.ContentTemplate = NotificationConstants.SyncDisabledNoGroupContent;
                     await context.CallActivityAsync(nameof(SendNotification), message);
                     break;
 
                 case nameof(NotificationMessageType.NoDataNotification):
+                    message.MessageTitle = NotificationConstants.NoDataTitle;
                     message.SubjectTemplate = NotificationConstants.NoDataSubject;
                     message.ContentTemplate = NotificationConstants.NoDataContent;
+                    await context.CallActivityAsync(nameof(SendNotification), message);
+                    break;
+
+                case nameof(NotificationMessageType.InactiveSyncJobNotification):
+                    message.MessageTitle = NotificationConstants.SyncPurgedForInactivityEmailTitle;
+                    message.SubjectTemplate = NotificationConstants.SyncPurgedForInactivityEmailSubject;
+                    message.ContentTemplate = NotificationConstants.SyncPurgedForInactivityEmailBody;
+                    await context.CallActivityAsync(nameof(SendNotification), message);
+                    break;
+
+                case nameof(NotificationMessageType.GuestUserFailureNotification):
+                    message.MessageTitle = NotificationConstants.GuestUserFailureTitle;
+                    message.SubjectTemplate = NotificationConstants.DisabledNotificationSubject;
+                    message.ContentTemplate = NotificationConstants.GuestUserFailureEmailBody;
+                    await context.CallActivityAsync(nameof(SendNotification), message);
+                    break;
+
+                case nameof(NotificationMessageType.SubmissionRejectedNotification):
+                    message.MessageTitle = NotificationConstants.SubmissionRejectedEmailTitle;
+                    message.SubjectTemplate = NotificationConstants.SubmissionRejectedEmailSubject;
+                    message.ContentTemplate = NotificationConstants.SubmissionRejectedEmailBody;
+                    await context.CallActivityAsync(nameof(SendNotification), message);
+                    break;
+
+                case nameof(NotificationMessageType.JobPurgingWarningNotification):
+                    message.MessageTitle = NotificationConstants.JobPurgingWarningEmailTitle;
+                    message.SubjectTemplate = NotificationConstants.JobPurgingWarningEmailSubject;
+                    message.ContentTemplate = NotificationConstants.JobPurgingWarningEmailBody;
+                    await context.CallActivityAsync(nameof(SendNotification), message);
+                    break;
+
+                case nameof(NotificationMessageType.NestedGroupsFoundNotification):
+                    message.MessageTitle = NotificationConstants.NestedGroupsFoundTitle;
+                    message.SubjectTemplate = NotificationConstants.NestedGroupsFoundSubject;
+                    message.ContentTemplate = NotificationConstants.NestedGroupsFoundContent;
                     await context.CallActivityAsync(nameof(SendNotification), message);
                     break;
 

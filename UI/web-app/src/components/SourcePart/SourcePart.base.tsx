@@ -10,12 +10,18 @@ import {
   Dropdown,
   IDropdownOption,
   IProcessedStyleSet,
+  TextField,
+  IPersonaProps,
+  Shimmer,
+  Icon,
+  Text
 } from '@fluentui/react';
 import { ActionButton, DefaultButton, IconButton } from '@fluentui/react/lib/Button';
 import { useTheme } from '@fluentui/react/lib/Theme';
+import { v4 as uuidv4 } from 'uuid';
 import { SourcePartStyleProps, SourcePartStyles, SourcePartProps } from './SourcePart.types';
 import { AppDispatch } from '../../store';
-import { manageMembershipIsEditingExistingJob, updateSourcePart, copySourcePart, updateSourcePartType } from '../../store/manageMembership.slice';
+import { updateSourcePart, copySourcePart, updateSourcePartType } from '../../store/manageMembership.slice';
 import { useStrings } from '../../store/hooks';
 import { ISourcePart } from '../../models/ISourcePart';
 import { HRQuerySource } from '../HRQuerySource';
@@ -26,11 +32,17 @@ import { SourcePartQuery } from '../../models/SourcePartQuery';
 import { AdvancedViewSourcePart } from '../AdvancedViewSourcePart';
 import { selectSource } from '../../store/sqlMembershipSources.slice';
 import { SqlMembershipSource } from '../../models';
+import { selectIsJobTenantWriter, selectIsJobWriter } from '../../store/roles.slice';
+import { selectIsAITitleEnabled } from '../../store/settings.slice';
+import { selectIsGeneratingHRTitle, selectIsGeneratingTitles, selectIsGeneratingGroupTitle } from '../../store/title.slice';
+import { extractExclusionaryFromTitle, removeExclusionaryPrefix } from '../../utils/titleGenerator';
+import { IsGroupMembershipSourcePartQuery } from '../../models/GroupMembershipSourcePart';
+import { selectSelectedJobDetails } from '../../store/jobs.slice';
 
 const getClassNames = classNamesFunction<SourcePartStyleProps, SourcePartStyles>();
 
 export const SourcePartBase: React.FunctionComponent<SourcePartProps> = (props: SourcePartProps) => {
-  const { className, styles, index, totalSourceParts, onDelete, query, part } = props;
+  const { className, styles, partId, totalSourceParts, onDelete, query, part, isEditable } = props;
   const classNames: IProcessedStyleSet<SourcePartStyles> = getClassNames(styles, {
     className,
     theme: useTheme(),
@@ -39,40 +51,64 @@ export const SourcePartBase: React.FunctionComponent<SourcePartProps> = (props: 
 
   const toggleExpand = () => {
     setExpanded(!expanded);
+    dispatch(updateSourcePart({ ...part, isExpanded: !expanded }));
   };
 
   const [hrSourcePartSource, setHRSourcePartSource] = useState<HRSourcePartSource>(query.source as HRSourcePartSource);
 
-  const options: IChoiceGroupOption[] = [
-    { key: 'Yes', text: strings.yes },
-    { key: 'No', text: strings.no },
+  const inclusionaryOptions: IChoiceGroupOption[] = [
+    { key: 'Yes', text: strings.ManageMembership.labels.yesInclusionary },
+    { key: 'No', text: strings.ManageMembership.labels.noInclusionary },
   ];
 
-
   const dispatch = useDispatch<AppDispatch>();
-  const [isExclusionary, setIsExclusionary] = useState(query.exclusionary);
+  const [isInclusionary, setIsInclusionary] = useState(!(part.query.exclusionary ?? false));
   const [errorMessage, setErrorMessage] = useState<string>('');
-  const isEditingExistingJob = useSelector(manageMembershipIsEditingExistingJob);
-  const [expanded, setExpanded] = useState(isEditingExistingJob);
+  const isJobWriter = useSelector(selectIsJobWriter);
+  const isJobTenantWriter = useSelector(selectIsJobTenantWriter);
+  const [isEditEnabled, setIsEditEnabled] = useState<boolean>(false);
+  const [isEditButtonClicked, setIsEditButtonClicked] = useState<boolean>(false);
+  const [expanded, setExpanded] = useState(part.isExpanded);
   const hrSource = useSelector(selectSource);
+  const isAITitleEnabled = useSelector(selectIsAITitleEnabled);
+  const isGeneratingTitles = useSelector(selectIsGeneratingTitles);
+  const isGeneratingHRTitle = useSelector(selectIsGeneratingHRTitle);
+  const isGeneratingGroupTitle = useSelector(selectIsGeneratingGroupTitle);
+  const groupId = IsGroupMembershipSourcePartQuery(part.query) ? part.query.source : '';
+  const jobDetails = useSelector(selectSelectedJobDetails);
+  const hiddenMembershipSourceIds = jobDetails?.hiddenMembershipSourceIds ?? [];
+  const isHiddenMembership =
+    groupId.length > 0 &&
+    hiddenMembershipSourceIds.some((id) => id.toLowerCase() === groupId.toLowerCase());
+
+  useEffect(() => {
+    if (part.isNew) {
+      dispatch(updateSourcePart({ ...part, isNew: false }));
+    }
+  }, [dispatch, part]);
+
+  useEffect(() => {
+    setExpanded(part.isExpanded);
+  }, [part.isExpanded]);
 
   const handleSourceTypeChanged = (event: React.FormEvent<HTMLDivElement>, item: IDropdownOption | undefined): void => {
     if (!item) return;
 
-    dispatch(updateSourcePartType({ partId: index, type: item.key as SourcePartType }));
+    dispatch(updateSourcePartType({ partId: partId, type: item.key as SourcePartType }));
 
     if (item.key === SourcePartType.HR) {
       setHRSourcePartSource({ manager: { id: undefined, depth: undefined }, filter: "" });
     }
   }
 
-  const handleGroupMembershipSourceChange = (sourceId: string) => {
+  const handleGroupMembershipSourceChange = (sourceId: string, title: string) => {
     const newQuery: ISourcePart = {
       ...part,
+      title: title,
       query: {
         type: SourcePartType.GroupMembership,
         source: sourceId,
-        exclusionary: isExclusionary
+        exclusionary: !isInclusionary,
       },
     };
     dispatch(updateSourcePart(newQuery));
@@ -80,7 +116,7 @@ export const SourcePartBase: React.FunctionComponent<SourcePartProps> = (props: 
 
   const handleDelete = () => {
     if (totalSourceParts > 1) {
-      onDelete(index);
+      onDelete(partId);
     } else {
       setErrorMessage(strings.ManageMembership.labels.deleteLastSourcePartWarning);
     }
@@ -90,11 +126,14 @@ export const SourcePartBase: React.FunctionComponent<SourcePartProps> = (props: 
     const newQuery: HRSourcePart = {
       type: SourcePartType.HR,
       source: part.query.source as HRSourcePartSource,
-      exclusionary: isExclusionary
+      exclusionary: !isInclusionary
     }
     const newPart: ISourcePart = {
-      id: index + 1,
-      query: newQuery
+      id: uuidv4(),
+      title: part.title || "",
+      query: newQuery,
+      isExpanded: true,
+      isNew: true
     };
     dispatch(copySourcePart(newPart));
   };
@@ -103,8 +142,20 @@ export const SourcePartBase: React.FunctionComponent<SourcePartProps> = (props: 
     setErrorMessage('');
   }, [query, expanded]);
 
+  const onEditButtonClick = (partId: string, partTitle: string) => {
+    setIsEditButtonClicked(true);
+  };
+
+  const onTitleChange = (partId: string, partTitle: string) => {
+    dispatch(updateSourcePart({ ...part, title: partTitle }));
+  };
+
+  const handleBlur = () => {
+    setIsEditButtonClicked(false);
+  };
+
   const getOptions = (hrSource?: SqlMembershipSource): IDropdownOption[] => {
-    let sourceTypeOptions: IDropdownOption[] = [];
+    const sourceTypeOptions: IDropdownOption[] = [];
     if (hrSource) {
       sourceTypeOptions.push({
         key: SourcePartType.HR,
@@ -114,46 +165,66 @@ export const SourcePartBase: React.FunctionComponent<SourcePartProps> = (props: 
       sourceTypeOptions.push( { key: SourcePartType.HR, text: strings.ManageMembership.labels.HR });
     }
     sourceTypeOptions.push( { key: SourcePartType.GroupMembership, text: strings.ManageMembership.labels.groupMembership });
-    sourceTypeOptions.push( { key: SourcePartType.GroupOwnership, text: strings.ManageMembership.labels.groupOwnership });
-    sourceTypeOptions.push( { key: SourcePartType.PlaceMembership, text: strings.ManageMembership.labels.placeMembership });
+    if (isJobTenantWriter) {
+      sourceTypeOptions.push( { key: SourcePartType.GroupOwnership, text: strings.ManageMembership.labels.groupOwnership });
+      sourceTypeOptions.push( { key: SourcePartType.PlaceMembership, text: strings.ManageMembership.labels.placeMembership });
+    }
     return sourceTypeOptions;
   };
 
   useEffect(() => {
-    setIsExclusionary(part.query.exclusionary ?? false);
+    setIsInclusionary(!(part.query.exclusionary ?? false));
     if (part.query.type === SourcePartType.HR) {
       setHRSourcePartSource(part.query.source as HRSourcePartSource);
     }
   }, [part.query.type, part.query.exclusionary, part.query.source]);
 
 
-  const handleSourceChange = (source: HRSourcePartSource, partId: number) => {
+  const handleSourceChange = (source: HRSourcePartSource, partId: string, title?: string) => {
     const newQuery: HRSourcePart = {
       type: SourcePartType.HR,
       source: source,
-      exclusionary: isExclusionary
+      exclusionary: !isInclusionary
     }
     const newPart: ISourcePart = {
-      id: partId,
+      ...part,
+      title: title ?? "",
       query: newQuery
     };
     dispatch(updateSourcePart(newPart));
   };
 
-  const handleExclusionaryChange = (ev?: React.FormEvent<HTMLElement | HTMLInputElement>, option?: IChoiceGroupOption): void => {
-    if (!option) return;
-    const isExclusionarySelected = option.key === 'Yes';
+  const handleEnableEdit = (isEditEnabled: boolean) => {
+    setIsEditEnabled(isEditEnabled);
+  };
 
-    setIsExclusionary(isExclusionarySelected);
+  const handleInclusionaryChange = (ev?: React.FormEvent<HTMLElement | HTMLInputElement>, option?: IChoiceGroupOption): void => {
+    if (!option) return;
+    const isInclusionarySelected = option.key === 'Yes';
+
+    setIsInclusionary(isInclusionarySelected);
     try {
+      const currentTitle = part.title || '';
+      let newTitle = currentTitle;
+      const currentlyHasExcludePrefix = extractExclusionaryFromTitle(currentTitle, strings.excludePrefix);
+
+      if (!isInclusionarySelected && !currentlyHasExcludePrefix) {
+        newTitle = `${strings.excludePrefix} ${currentTitle}`;
+      } else if (isInclusionarySelected && currentlyHasExcludePrefix) {
+        newTitle = removeExclusionaryPrefix(currentTitle, strings.excludePrefix);
+      }
+
       const updatedQuery: SourcePartQuery = {
         ...query,
-        exclusionary: isExclusionarySelected
+        exclusionary: !isInclusionarySelected
       };
 
       const updatedSourcePart: ISourcePart = {
-        id: index,
-        query: updatedQuery
+        id: partId,
+        title: newTitle,
+        query: updatedQuery,
+        isExpanded: true,
+        isNew: false
       };
 
       dispatch(updateSourcePart(updatedSourcePart));
@@ -166,7 +237,49 @@ export const SourcePartBase: React.FunctionComponent<SourcePartProps> = (props: 
     <div className={classNames.card}>
       <div className={classNames.header}>
         <div className={classNames.title}>
-          {strings.ManageMembership.labels.sourcePart} {index}
+        <div className={classNames.existingTitle}>{strings.ManageMembership.labels.sourcePart}</div>
+
+        {isAITitleEnabled && (
+          <>
+            {!isEditButtonClicked && (isGeneratingTitles || isGeneratingHRTitle || isGeneratingGroupTitle) && (part.title === "") && (
+              <Shimmer className={classNames.shimmer} />
+            )}
+            {!isEditButtonClicked && (part.title || props.title) && (
+              <div className={classNames.generatedTitle}>: {part.title || props.title}</div>
+            )}
+            {isHiddenMembership && (
+              <div className={classNames.hiddenMembershipIndicator}>
+                <Icon iconName="Hide" className={classNames.hiddenMembershipIcon} />
+                <Text className={classNames.hiddenMembershipText}>
+                  {strings.ManageMembership.labels.hiddenMembershipGroup}
+                </Text>
+              </div>
+            )}
+            {isEditButtonClicked && (
+              <div>
+                <TextField
+                  value={part.title || props.title}
+                  onChange={(event, newValue) => onTitleChange(part.id, newValue || '')}
+                  onBlur={() => handleBlur()}
+                  styles={{
+                    fieldGroup: classNames.titleTextField,
+                  }}
+                />
+              </div>
+            )}
+            {isEditEnabled && (
+              <div className={classNames.editButton}>
+                <ActionButton
+                  iconProps={{ iconName: 'Edit' }}
+                  styles={{ root: { fontSize: 12, height: 14 }, icon: { fontSize: 10 }}}
+                  onClick={() => onEditButtonClick(part.id, part.title)}>
+                  {strings.edit}
+                </ActionButton>
+              </div>
+            )}
+          </>
+        )}
+
         </div>
         <IconButton
           className={classNames.expandButton}
@@ -178,25 +291,32 @@ export const SourcePartBase: React.FunctionComponent<SourcePartProps> = (props: 
       {expanded &&
         <div className={classNames.content}>
           <div className={classNames.controls}>
-            <Dropdown
-              styles={{ title: classNames.dropdownTitle }}
-              options={getOptions(hrSource)}
-              label="Source Type"
-              required={true}
-              selectedKey={part.query.type}
-              onChange={handleSourceTypeChanged}
-            />
-            <ChoiceGroup
-              className={classNames.exclusionaryPart}
-              options={options}
-              label="Exclude source part"
-              required={true}
-              onChange={handleExclusionaryChange}
-              selectedKey={isExclusionary ? 'Yes' : 'No'}
-            />
-            {isEditingExistingJob ?
-              <></>
-              : <DefaultButton iconProps={{ iconName: 'Delete' }} className={classNames.deleteButton} onClick={handleDelete} >
+            <div>
+              <Dropdown
+                styles={{ title: classNames.dropdownTitle }}
+                options={getOptions(hrSource)}
+                label={strings.ManageMembership.labels.sourceType}
+                required={true}
+                selectedKey={part.query.type}
+                onChange={handleSourceTypeChanged}
+                disabled={!isJobWriter || !isEditable}
+              />
+              <ChoiceGroup
+                options={inclusionaryOptions}
+                label={strings.ManageMembership.labels.includeSourcePart}
+                required={true}
+                onChange={handleInclusionaryChange}
+                selectedKey={isInclusionary ? 'Yes' : 'No'}
+                disabled={!isJobWriter || !isEditable}
+              />
+            </div>
+            {isEditable &&
+              <DefaultButton
+                  iconProps={{ iconName: 'Delete' }}
+                  className={classNames.deleteButton}
+                  onClick={handleDelete}
+                  disabled={!isJobWriter || !isEditable}
+                >
                 {strings.delete}
               </DefaultButton>
             }
@@ -204,27 +324,39 @@ export const SourcePartBase: React.FunctionComponent<SourcePartProps> = (props: 
 
           {part.query.type === SourcePartType.HR && (
             <div key={SourcePartType.HR} className={classNames.advancedQuery}>
-              <HRQuerySource source={hrSourcePartSource} partId={index} onSourceChange={isEditingExistingJob ? () => { } : handleSourceChange} />
+              <HRQuerySource
+                source={hrSourcePartSource}
+                title={part.title || props.title}
+                partId={partId}
+                exclusionary={part.query.exclusionary}
+                onSourceChange={handleSourceChange}
+                onEnableEdit={handleEnableEdit}
+                isEditable={isEditable}
+              />
             </div>
           )}
           {part.query.type === SourcePartType.GroupMembership && (
             <GroupQuerySource part={part} onSourceChange={handleGroupMembershipSourceChange} />
           )}
           {part.query.type === SourcePartType.GroupOwnership && (
-            <AdvancedViewSourcePart key={SourcePartType.GroupOwnership} part={part} />
+            <AdvancedViewSourcePart key={SourcePartType.GroupOwnership} part={part} isEditable={isEditable} />
           )}
           {part.query.type === SourcePartType.PlaceMembership && (
-            <AdvancedViewSourcePart key={SourcePartType.PlaceMembership} part={part} />
+            <AdvancedViewSourcePart key={SourcePartType.PlaceMembership} part={part} isEditable={isEditable} />
           )}
-          <div className={classNames.error}>
+          <div className={classNames.error} role="alert" aria-live="assertive" aria-atomic="true">
             {errorMessage}
           </div>
-          {part.query.type === SourcePartType.HR && (part.query.source.filter !== "" || part.query.source.manager?.id !== undefined) && (totalSourceParts === part.id) && (
-          <ActionButton
+          {part.query.type === SourcePartType.HR &&
+            isEditable &&
+            (part.query.source.filter !== "" || part.query.source.manager?.id !== undefined) && (
+          <div><ActionButton
             iconProps={{ iconName: "Copy" }}
-            onClick={handleCopy}>
+            onClick={handleCopy}
+            disabled={!isJobWriter || !isEditable}
+          >
             {strings.copy}
-        </ActionButton>
+        </ActionButton></div>
         )}
         </div>
       }

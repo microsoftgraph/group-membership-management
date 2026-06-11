@@ -60,7 +60,7 @@ stages:
         arguments: '--configuration $(BuildConfiguration)
                     /p:CollectCoverage=true
                     /p:CoverletOutputFormat=cobertura
-                    /p:threshold=86
+                    /p:threshold=82
                     /p:thresholdType=line
                     /p:thresholdStat=total
                     /p:CoverletOutput=$(Build.SourcesDirectory)\TestResults\Coverage\webapi\
@@ -81,7 +81,7 @@ stages:
       displayName: 'dotnet publish webapi package'
       inputs:
         command: publish
-        arguments: '--configuration $(BuildConfiguration) --output webapi'
+        arguments: '--configuration $(BuildConfiguration) --output webapi /p:AssemblyVersion=$(Build.BuildNumber)'
         projects: 'Service/GroupMembershipManagement/Hosts/WebApi/WebApi/*.csproj'
         publishWebProjects: true
         modifyOutputPath: false

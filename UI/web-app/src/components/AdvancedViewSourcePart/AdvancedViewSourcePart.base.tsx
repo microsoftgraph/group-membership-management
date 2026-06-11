@@ -2,7 +2,7 @@
 // Licensed under the MIT license.
 
 import React, { useEffect, useState } from 'react';
-import { useDispatch } from 'react-redux';
+import { useDispatch, useSelector } from 'react-redux';
 import {
   IProcessedStyleSet,
   TextField,
@@ -16,7 +16,7 @@ import {
   IAdvancedViewSourcePartStyleProps,
   IAdvancedViewSourcePartStyles,
 } from './AdvancedViewSourcePart.types';
-import { useStrings } from "../../store/hooks";
+import { useStrings } from '../../store/hooks';
 import GroupOwnershipSchema from '../../models/schemas/GroupOwnershipSchema.json';
 import PlaceMembershipSchema from '../../models/schemas/PlaceMembershipSchema.json';
 import { AppDispatch } from '../../store';
@@ -27,6 +27,7 @@ import {
 import { ISourcePart } from '../../models/ISourcePart';
 import { GroupOwnershipSourcePart } from '../../models/GroupOwnershipSourcePart';
 import { PlaceMembershipSourcePart } from '../../models/PlaceMembershipSourcePart';
+import { selectIsJobWriter } from '../../store/roles.slice';
 
 const getClassNames = classNamesFunction<
   IAdvancedViewSourcePartStyleProps,
@@ -38,7 +39,7 @@ interface ExtendedErrorObject extends ErrorObject<string, Record<string, any>, u
 }
 
 export const AdvancedViewSourcePartBase: React.FunctionComponent<IAdvancedViewSourcePartProps> = (props) => {
-  const { className, styles, part } = props;
+  const { className, styles, part, isEditable } = props;
   const strings = useStrings();
   const classNames: IProcessedStyleSet<IAdvancedViewSourcePartStyles> = getClassNames(
     styles,
@@ -52,6 +53,7 @@ export const AdvancedViewSourcePartBase: React.FunctionComponent<IAdvancedViewSo
   const [localQuery, setLocalQuery] = useState<string | undefined>(JSON.stringify(part.query));
   const schema = part.query.type === 'GroupOwnership' ? GroupOwnershipSchema : PlaceMembershipSchema;
   const ajv = new Ajv();
+  const isJobWriter = useSelector(selectIsJobWriter);
 
   useEffect(() => {
     setLocalQuery(JSON.stringify(part.query));
@@ -90,7 +92,10 @@ export const AdvancedViewSourcePartBase: React.FunctionComponent<IAdvancedViewSo
       if(isValid) {
         const updatedSourcePart: ISourcePart = {
           id: part.id,
-          query: JSON.parse(localQuery ?? '{}') as GroupOwnershipSourcePart | PlaceMembershipSourcePart
+          title: "",
+          query: JSON.parse(localQuery ?? '{}') as GroupOwnershipSourcePart | PlaceMembershipSourcePart,
+          isNew: part.isNew,
+          isExpanded: part.isExpanded,
         };
         dispatch(updateSourcePart(updatedSourcePart));
         setValidationMessage(strings.ManageMembership.labels.validQuery);
@@ -124,6 +129,7 @@ export const AdvancedViewSourcePartBase: React.FunctionComponent<IAdvancedViewSo
         value={localQuery}
         onChange={handleQueryChange}
         onBlur={handleBlur}
+        disabled={!isJobWriter || !isEditable}
       />
       {validationMessage && (
         <div className={validationMessage === strings.ManageMembership.labels.validQuery ? classNames.successMessage : classNames.errorMessage}>

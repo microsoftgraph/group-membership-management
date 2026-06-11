@@ -9,5 +9,6 @@ namespace Hosts.AzureUserReader
     {
         public List<string> PersonnelNumbers { get; set; }
         public TenantInformation TenantInformation { get; set; }
+        public string RequestId { get; set; }
     }
 }

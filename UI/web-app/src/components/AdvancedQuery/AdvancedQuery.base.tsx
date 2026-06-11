@@ -9,37 +9,30 @@ import {
   classNamesFunction,
   useTheme,
 } from '@fluentui/react';
-import Ajv, { ErrorObject } from 'ajv';
 import {
   IAdvancedQueryProps,
   IAdvancedQueryStyleProps,
   IAdvancedQueryStyles,
 } from './AdvancedQuery.types';
-import { useStrings } from "../../store/hooks";
-import schemaDefinition from '../../models/schemas/Query.json';
+import { useStrings, useQueryValidation } from '../../store/hooks';
 import { AppDispatch } from '../../store';
 import {
   manageMembershipAdvancedViewQuery,
-  setAdvancedViewQuery,
-  setIsAdvancedQueryValid,
+  applyAdvancedViewQuery,
 } from '../../store/manageMembership.slice';
 import { removeUnusedProperties } from '../../utils/sourcePartUtils';
-import { SourcePartType } from '../../models/SourcePartType';
+import { selectIsJobWriter } from '../../store/roles.slice';
 import { SourcePartQuery } from '../../models/SourcePartQuery';
-import { validateGroup } from '../../store/groups.api';
 
 const getClassNames = classNamesFunction<
   IAdvancedQueryStyleProps,
   IAdvancedQueryStyles
 >();
 
-interface ExtendedErrorObject extends ErrorObject<string, Record<string, any>, unknown> {
-  dataPath: string;
-}
-
 export const AdvancedQueryBase: React.FunctionComponent<IAdvancedQueryProps> = (props) => {
-  const { className, styles, query, onQueryChange } = props;
+  const { className, styles, query, onQueryChange, isEditable } = props;
   const strings = useStrings();
+  const { validateQuery } = useQueryValidation();
   const classNames: IProcessedStyleSet<IAdvancedQueryStyles> = getClassNames(
     styles,
     {
@@ -47,112 +40,104 @@ export const AdvancedQueryBase: React.FunctionComponent<IAdvancedQueryProps> = (
       theme: useTheme(),
     }
   );
-  const defaultAdvancedViewQuery: string = `[
+  const defaultAdvancedViewQuery = `[
     {
       "type": "SqlMembership",
       "source": {
-        "manager": {
-          "id": 0,
-          "depth": 0
-        },    
-        filter: "" 
+        "manager": { "id": 1, "depth": 1 },
+        "filter": "EmployeeId < 0"
       },
+      "exclusionary": false
     },
     {
       "type": "GroupMembership",
-      "source": "00000000-0000-0000-0000-000000000000"
+      "source": "123e4567-e89b-12d3-a456-426614174000"
     },
     {
       "type": "GroupOwnership",
       "source": ["All"]
+    },
+    {
+      "type": "PlaceMembership",
+      "source": "SomePlace",
+      "exclusionary": false
     }
   ]`;
 
   const dispatch = useDispatch<AppDispatch>();
   const [validationMessage, setValidationMessage] = useState<React.ReactNode | null>(null);
-  const [localQuery, setLocalQuery] = useState<string>(query === '' ? defaultAdvancedViewQuery : query);
-  const schema = schemaDefinition;
-  const ajv = new Ajv();
+  const [localQuery, setLocalQuery] = useState<string>(() => {
+    // Initialize with prop query if provided, otherwise use default placeholder
+    const propQuery = query?.trim();
+    return propQuery || defaultAdvancedViewQuery;
+  });
   const advancedViewQueryFromStore = useSelector(manageMembershipAdvancedViewQuery);
+  const isJobWriter = useSelector(selectIsJobWriter);
 
   useEffect(() => {
-    setLocalQuery(advancedViewQueryFromStore || defaultAdvancedViewQuery);
-  }, [advancedViewQueryFromStore]);
+    // Only update from store if we have meaningful content
+    // This prevents overwriting the placeholder with empty strings
+    if (advancedViewQueryFromStore && advancedViewQueryFromStore.trim().length > 0) {
+      setLocalQuery(advancedViewQueryFromStore);
+    } else if (!advancedViewQueryFromStore) {
+      // If store is null/undefined (first time), use placeholder
+      setLocalQuery(defaultAdvancedViewQuery);
+    }
+    // If store is empty string '', keep current localQuery (don't overwrite)
+  }, [advancedViewQueryFromStore, defaultAdvancedViewQuery]);
+
+  const hasValidStructure = (item: unknown): boolean => {
+    return item !== null &&
+           typeof item === 'object' &&
+           'type' in item &&
+           'source' in item;
+  };
 
   useEffect(() => {
     if (query && query.trim().length > 0) {
       try {
-        let jsonArray = JSON.parse(query);
-        let modifiedArray = jsonArray.map(removeUnusedProperties);
-        let modifiedQuery = JSON.stringify(modifiedArray);
+        const jsonArray = JSON.parse(query);
+        // Only process if the array contains valid objects with required properties
+        const modifiedArray = jsonArray.map((item: unknown) => {
+          // Check if the item has basic SourcePartQuery structure before processing
+          if (hasValidStructure(item)) {
+            try {
+              return removeUnusedProperties(item as SourcePartQuery);
+            } catch {
+              // If removeUnusedProperties fails, return the original item
+              return item;
+            }
+          }
+          return item;
+        });
+        const modifiedQuery = JSON.stringify(modifiedArray);
         setLocalQuery(modifiedQuery);
       } catch (error) {
-        throw new Error('Error parsing query');
+        // Don't log parsing errors during user typing - this is expected behavior
+        // Just preserve the user's input as-is when JSON is malformed
+        setLocalQuery(query);
       }
     }
+    // Don't overwrite localQuery when query is empty - preserve placeholder or user's empty state
   }, [query]);
-
-  const formatErrors = (errors: (ErrorObject<string, Record<string, any>, unknown> & { dataPath: string })[] | null | undefined) => {
-    if (!errors || errors.length === 0) return null;
-
-    return (
-      <div>
-        {errors.map((error, index) => {
-          let message = error.message;
-          if (error.keyword === 'type') {
-            message = `Expected ${error.schema} but got type ${typeof error.data} at ${error.dataPath}..`;
-          }
-          return (
-            <div key={index}>
-              {message}
-            </div>
-          );
-        })}
-      </div>
-    );
-  };
 
   const handleQueryChange = (event: React.FormEvent<HTMLTextAreaElement | HTMLInputElement>, newValue?: string) => {
     setLocalQuery(newValue || '');
+    // Don't update Redux store during typing - only update on explicit validation
+    // This prevents crashes when JSON is temporarily malformed during editing
     onQueryChange(event, newValue);
   };
 
   const onValidateQuery = async () => {
     try {
       const parsedQuery = JSON.parse(localQuery || '[]');
-      const validate = ajv.compile(schema);
-      const isValid = validate(parsedQuery);
+      dispatch(applyAdvancedViewQuery(localQuery || '[]'));
 
-      if (isValid) {
-        const validationResults = await Promise.all(
-          (parsedQuery as Array<SourcePartQuery>).map(async (part) => {
-            if (part.type === SourcePartType.GroupMembership && part.source) {
-              const result = await dispatch(validateGroup(part.source)).unwrap();
-              return result;
-            }
-            return { groupId: part.source, isValid: true };
-          })
-        );
-
-        const invalidGroups = validationResults.filter(result => !result.isValid);
-        if (invalidGroups.length > 0) {
-          const invalidGroupIds = invalidGroups.map(result => result.groupId).join(', ');
-          setValidationMessage(`${strings.ManageMembership.labels.invalidGroups} ${invalidGroupIds}`);
-        } else {
-          setValidationMessage(strings.ManageMembership.labels.validQuery);
-        }
-
-        dispatch(setAdvancedViewQuery(localQuery || '[]'));
-      } else {
-        const errorsFromAjv = validate.errors;
-        const formattedErrors = formatErrors(errorsFromAjv as ExtendedErrorObject[] | null | undefined);
-        setValidationMessage(formattedErrors);
-      }
-      dispatch(setIsAdvancedQueryValid(isValid));
+      // Use the shared validation hook
+      await validateQuery(parsedQuery, setValidationMessage);
     } catch (error) {
       console.error('Error validating query:', error);
       setValidationMessage(strings.ManageMembership.labels.invalidQuery);
-      dispatch(setIsAdvancedQueryValid(false));
     }
   };
 
@@ -164,6 +149,8 @@ export const AdvancedQueryBase: React.FunctionComponent<IAdvancedQueryProps> = (
     <div className={classNames.root}>
       {strings.ManageMembership.labels.query}
       <TextField
+        id="advancedQueryTextField"
+        label={strings.ManageMembership.labels.query}
         title={strings.ManageMembership.labels.query}
         styles={{ root: classNames.textField, fieldGroup: classNames.textFieldGroup }}
         multiline
@@ -172,9 +159,15 @@ export const AdvancedQueryBase: React.FunctionComponent<IAdvancedQueryProps> = (
         value={localQuery}
         onChange={handleQueryChange}
         onBlur={handleBlur}
+        disabled={!isJobWriter || !isEditable}
       />
       {validationMessage && (
-        <div className={validationMessage === strings.ManageMembership.labels.validQuery ? classNames.successMessage : classNames.errorMessage}>
+        <div
+          className={validationMessage === strings.ManageMembership.labels.validQuery ? classNames.successMessage : classNames.errorMessage}
+          role={validationMessage === strings.ManageMembership.labels.validQuery ? undefined : 'alert'}
+          aria-live={validationMessage === strings.ManageMembership.labels.validQuery ? undefined : 'assertive'}
+          aria-atomic={validationMessage === strings.ManageMembership.labels.validQuery ? undefined : 'true'}
+        >
           {validationMessage}
         </div>
       )}

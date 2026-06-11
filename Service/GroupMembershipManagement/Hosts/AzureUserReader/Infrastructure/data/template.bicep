@@ -8,20 +8,16 @@ param environmentAbbreviation string
 @maxLength(3)
 param solutionAbbreviation string = 'gmm'
 
-@description('Enter tenant Id.')
-param tenantId string
-
-@description('Enter storage account name.')
-param storageAccountName string
-
 param storageAccountSku string = 'Standard_LRS'
 
 @description('Resource location.')
 param location string
 
+@description('Classify the types of resources in prereqs resource group.')
+param prereqsResourceGroupClassification string = 'prereqs'
+
 var keyVaultName = '${solutionAbbreviation}-data-${environmentAbbreviation}'
 var prodStorageAccountName = substring('aur${solutionAbbreviation}${environmentAbbreviation}prod${uniqueString(resourceGroup().id)}',0,23)
-var stagingStorageAccountName = substring('aur${solutionAbbreviation}${environmentAbbreviation}staging${uniqueString(resourceGroup().id)}',0,23)
 
 module azureUserReaderStorageAccountProd 'storageAccount.bicep' = {
   name: 'aurProdstorageAccountTemplate'
@@ -30,17 +26,21 @@ module azureUserReaderStorageAccountProd 'storageAccount.bicep' = {
     sku: storageAccountSku
     keyVaultName: keyVaultName
     location: location
-    storageAccountConnectionStringSettingName: 'azureUserReaderStorageAccountProd'
+    storageAccountSettingName: 'azureUserReaderStorageAccountProd'
+    appPackageContainerSettingName: 'azureUserReaderAppPackageContainerProd'
+    appPackageContainerName: 'app-package'
   }
 }
 
-module azureUserReaderStorageAccountStaging 'storageAccount.bicep' = {
-  name: 'aurStagingstorageAccountTemplate'
+var nspName = '${solutionAbbreviation}-nsp-${environmentAbbreviation}'
+var prereqsResourceGroupName = '${solutionAbbreviation}-${prereqsResourceGroupClassification}-${environmentAbbreviation}'
+
+module aurStorageAccountAssociationTemplate 'networkSecurityPerimeterResourceAssociation.bicep' = {
+  name: 'aurStorageAccountAssociationTemplate'
+  scope: resourceGroup(prereqsResourceGroupName)
   params: {
-    name: stagingStorageAccountName
-    sku: storageAccountSku
-    keyVaultName: keyVaultName
-    location: location
-    storageAccountConnectionStringSettingName: 'azureUserReaderStorageAccountStaging'
+    nspName: nspName
+    profileName: 'storageaccount'
+    resourceId: azureUserReaderStorageAccountProd.outputs.storageAccountId
   }
 }

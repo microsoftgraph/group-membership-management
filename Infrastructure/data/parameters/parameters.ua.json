@@ -2,35 +2,114 @@
   "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentParameters.json#",
   "contentVersion": "1.0.0.0",
   "parameters": {
-    "notificationsTableName": {
-      "value": "notifications"
-    },
     "serviceBusTopicSubscriptions": {
       "value": [
         {
-          "name": "GroupMembership",
+          "topicName": "membershipUpdaters",
+          "subscriptionName": "GraphUpdater",
+          "ruleName": "updaterType",
+          "ruleSqlExpression": "Type = 'GroupMembership'"
+        },
+        {
+          "topicName": "membershipUpdaters",
+          "subscriptionName": "TeamsChannelUpdater",
+          "ruleName": "updaterType",
+          "ruleSqlExpression": "Type = 'TeamsChannelMembership'"
+        },
+        {
+          "topicName": "syncJobs",
+          "subscriptionName": "PlaceMembership",
+          "ruleName": "syncType",
+          "ruleSqlExpression": "Type = 'PlaceMembership'"
+        },
+        {
+          "topicName": "syncJobs",
+          "subscriptionName": "GroupMembership",
           "ruleName": "syncType",
           "ruleSqlExpression": "Type = 'GroupMembership'"
         },
         {
-          "name": "TeamsChannelMembership",
+          "topicName": "syncJobs",
+          "subscriptionName": "TeamsChannelMembership",
           "ruleName": "syncType",
           "ruleSqlExpression": "Type = 'TeamsChannelMembership'"
         },
         {
-          "name": "GroupOwnership",
+          "topicName": "syncJobs",
+          "subscriptionName": "GroupOwnership",
           "ruleName": "syncType",
           "ruleSqlExpression": "Type = 'GroupOwnership'"
+        },
+        {
+          "topicName": "syncJobs",
+          "subscriptionName": "SqlMembership",
+          "ruleName": "syncType",
+          "ruleSqlExpression": "Type = 'SqlMembership'"
+        },
+        {
+          "topicName": "messageSplitter",
+          "subscriptionName": "Small",
+          "ruleName": "jobSize",
+          "ruleSqlExpression": "LaneSize = 'Small'"
+        },
+        {
+          "topicName": "messageSplitter",
+          "subscriptionName": "Large",
+          "ruleName": "jobSize",
+          "ruleSqlExpression": "LaneSize = 'Large'"
+        },
+        {
+          "topicName": "messageSplitter",
+          "subscriptionName": "Pending_Small",
+          "ruleName": "pending_small",
+          "ruleSqlExpression": "MessageType = 'pending_small'"
+        },
+        {
+          "topicName": "messageSplitter",
+          "subscriptionName": "Pending_Large",
+          "ruleName": "pending_large",
+          "ruleSqlExpression": "MessageType = 'pending_large'"
+        },
+        {
+          "topicName": "messageSplitter",
+          "subscriptionName": "Completion_Small",
+          "ruleName": "completion_small",
+          "ruleSqlExpression": "MessageType = 'completion_small'"
+        },
+        {
+          "topicName": "messageSplitter",
+          "subscriptionName": "Completion_Large",
+          "ruleName": "completion_large",
+          "ruleSqlExpression": "MessageType = 'completion_large'"
+        },
+        {
+          "topicName": "messageSplitter",
+          "subscriptionName": "LeaseRenew_Large",
+          "ruleName": "lease_renew_large",
+          "ruleSqlExpression": "MessageType = 'lease_renew_large'"
+        },
+        {
+          "topicName": "membershipUpdaters",
+          "subscriptionName": "GraphUpdater_small_1",
+          "ruleName": "GraphUpdater_small_rule",
+          "ruleSqlExpression": "Type = 'groupmembership_small_1'"
+        },
+        {
+          "topicName": "membershipUpdaters",
+          "subscriptionName": "GraphUpdater_large_1",
+          "ruleName": "GraphUpdater_large_rule",
+          "ruleSqlExpression": "Type = 'groupmembership_large_1'",
+          "sessionEnabled": true
         }
       ]
     },
-    "serviceBusTopicName": {
-      "value": "syncJobs"
-    },
-    "serviceBusQueueName": {
-      "value": "membership"
-    },
     "notifierProviderId": {
+      "value": ""
+    },
+    "oamEntraAppId": {
+      "value": ""
+    },
+    "oamEntraAppScope": {
       "value": ""
     },
     "sqlAdministratorsGroupId": {
@@ -50,23 +129,6 @@
     },
     "sqlSkuCapacity": {
       "value": 4
-    },
-    "serviceBusMembershipUpdatersTopicSubscriptions": {
-      "value": {
-        "topicName": "membershipUpdaters",
-        "subscriptions": [
-          {
-            "name": "GraphUpdater",
-            "ruleName": "updaterType",
-            "ruleSqlExpression": "Type = 'GroupMembership'"
-          },
-          {
-            "name": "TeamsChannelUpdater",
-            "ruleName": "updaterType",
-            "ruleSqlExpression": "Type = 'TeamsChannelMembership'"
-          }
-        ]
-      }
     }
   }
 }

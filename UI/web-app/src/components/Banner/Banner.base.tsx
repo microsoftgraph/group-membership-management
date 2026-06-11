@@ -61,13 +61,14 @@ export const BannerBase: React.FunctionComponent<IBannerProps> = (props) => {
     <div className={classNames.root}>
       {!collapsed && (
         <div className={classNames.messageContainer}>
-          <InfoIcon title={strings.needHelp} className={classNames.icon} />
+          <InfoIcon className={classNames.icon} aria-hidden="true" />
           <div className={classNames.message}>
             {strings.Components.Banner.bannerMessageStart}
             <Link
               href={dashboardUrl}
               onClick={(event) => openLink(event)}
               underline={true}
+              aria-label={strings.learnMembershipManagement}
               className={classNames.link}>
               {strings.Components.Banner.clickHere}
             </Link>

@@ -27,4 +27,4 @@ export interface IPageProps extends React.AllHTMLAttributes<HTMLDivElement> {
    * Call to provide customized styling that will layer on top of the variant rules.
    */
   styles?: IStyleFunctionOrObject<IPageStyleProps, IPageStyles>;
-}
+};

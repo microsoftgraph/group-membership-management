@@ -35,4 +35,5 @@ export interface IAdvancedViewSourcePartProps
    */
   styles?: IStyleFunctionOrObject<IAdvancedViewSourcePartStyleProps, IAdvancedViewSourcePartStyles>;
   part: ISourcePart;
-}
+  isEditable?: boolean;
+};

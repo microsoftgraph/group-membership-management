@@ -30,10 +30,10 @@ param storageAccountSku string = 'Standard_LRS'
 param storageAccountContainerName string = 'csvcontainer'
 
 @description('Name of SQL Server')
-param sqlServerName string = '${solutionAbbreviation}-data-${environmentAbbreviation}'
+param sqlServerName string
 
 @description('Name of ADF  SQL Server')
-param adfSqlDataBaseName string = '${solutionAbbreviation}-data-${environmentAbbreviation}-destination'
+param adfSqlDataBaseName string
 
 @description('Name of Jobs SQL Server')
 param jobsSqlDataBaseName string = '${solutionAbbreviation}-data-${environmentAbbreviation}'

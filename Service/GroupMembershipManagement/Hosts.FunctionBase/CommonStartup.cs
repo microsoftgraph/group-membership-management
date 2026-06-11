@@ -30,6 +30,9 @@ using Microsoft.EntityFrameworkCore;
 using Repositories.EntityFramework;
 using Repositories.FeatureFlag;
 using Azure.Core;
+using System.IO;
+using Models;
+using System.Data;
 
 namespace Hosts.FunctionBase
 {
@@ -38,11 +41,14 @@ namespace Hosts.FunctionBase
         protected abstract string FunctionName { get; }
         protected abstract string DryRunSettingName { get; }
 
+        private const string SCHEMA_DIRECTORY = "Schemas";
+
         public override void ConfigureAppConfiguration(IFunctionsConfigurationBuilder builder)
         {
             builder.ConfigurationBuilder.AddAzureAppConfiguration(options =>
             {
-                options.Connect(new Uri(GetValueOrThrow("appConfigurationEndpoint")), new DefaultAzureCredential())
+                DefaultAzureCredential credential = new(DefaultAzureCredential.DefaultEnvironmentVariableName);
+                options.Connect(new Uri(GetValueOrThrow("appConfigurationEndpoint")), credential)
                        .UseFeatureFlags();
             });
         }
@@ -92,12 +98,18 @@ namespace Hosts.FunctionBase
             });
 
             builder.Services.AddDbContext<GMMContext>(options =>
-                options.UseSqlServer(GetValueOrThrow("ConnectionStrings:JobsContext")),
+                options.UseSqlServer(GetValueOrThrow("ConnectionStrings:JobsContext"), sqlServerOptions =>
+                {
+                    sqlServerOptions.EnableRetryOnFailure();
+                }),
                 ServiceLifetime.Scoped
             );
 
             builder.Services.AddDbContext<GMMReadContext>(options =>
-                options.UseSqlServer(GetValueOrThrow("ConnectionStrings:JobsContextReadOnly")),
+                options.UseSqlServer(GetValueOrThrow("ConnectionStrings:JobsContextReadOnly"), sqlServerOptions =>
+                {
+                    sqlServerOptions.EnableRetryOnFailure();
+                }),
                 ServiceLifetime.Scoped
             );
 
@@ -119,6 +131,8 @@ namespace Hosts.FunctionBase
 
             builder.Services.AddSingleton<ILoggingRepository, LoggingRepository>();
             builder.Services.AddScoped<IDatabaseSyncJobsRepository, DatabaseSyncJobsRepository>();
+            builder.Services.AddScoped<IDatabaseGroupsRepository, DatabaseGroupsRepository>();
+            builder.Services.AddScoped<IDatabaseChannelsRepository, DatabaseChannelsRepository>();
             builder.Services.AddScoped<IDatabaseSettingsRepository, DatabaseSettingsRepository>();
             builder.Services.AddScoped<IDatabaseDestinationAttributesRepository, DatabaseDestinationAttributesRespository>();
             builder.Services.AddScoped<INotificationTypesRepository, NotificationTypesRepository>();
@@ -149,74 +163,9 @@ namespace Hosts.FunctionBase
                                 settings.AuthenticationType = authenticationType;
                             });
 
-            builder.Services.AddOptions<EmailSenderRecipient>().Configure<IConfiguration>((settings, configuration) =>
-            {
-                settings.SenderAddress = configuration.GetValue<string>("senderAddress");
-                settings.SenderPassword = configuration.GetValue<string>("senderPassword");
-                settings.SyncDisabledCCAddresses = configuration.GetValue<string>("syncDisabledCCEmailAddresses");
-                settings.SyncCompletedCCAddresses = configuration.GetValue<string>("syncCompletedCCEmailAddresses");
-                settings.SupportEmailAddresses = configuration.GetValue<string>("supportEmailAddresses");
-            });
+            builder.Services.AddScopedMailRepository();
 
-            builder.Services.AddSingleton<IEmailSenderRecipient>(services =>
-            {
-                var creds = services.GetService<IOptions<EmailSenderRecipient>>();
-                return new EmailSenderRecipient(
-                    creds.Value.SenderAddress,
-                    creds.Value.SenderPassword,
-                    creds.Value.SyncCompletedCCAddresses,
-                    creds.Value.SyncDisabledCCAddresses,
-                    creds.Value.SupportEmailAddresses);
-            });
-
-            builder.Services.AddSingleton<IMailConfig>(services =>
-            {
-                var configuration = services.GetService<IConfiguration>();
-                return new MailConfig(configuration.GetValue<bool>("Mail:IsAdaptiveCardEnabled"),
-                    configuration.GetValue("Mail:IsMailApplicationPermissionGranted", false),
-                    configuration.GetValue<string>("senderAddress"),
-                    configuration.GetValue("Mail:SkipMailNotifications", false));
-            });
-
-            builder.Services.AddSingleton<IMailRepository>(services =>
-            {
-                var mailConfig = services.GetService<IMailConfig>();
-                var graphCredentials = services.GetService<IOptions<GraphCredentials>>().Value;
-
-                TokenCredential graphTokenCredential;
-
-                if (mailConfig.GMMHasSendMailApplicationPermissions)
-                {
-                    graphTokenCredential = FunctionAppDI.CreateAuthProviderFromSecret(graphCredentials);
-                }
-                else
-                {
-                    var mailCredentials = services.GetService<IOptions<EmailSenderRecipient>>();
-                    graphCredentials.ServiceAccountUserName = mailCredentials.Value.SenderAddress;
-                    graphCredentials.ServiceAccountPassword = mailCredentials.Value.SenderPassword;
-
-                    graphTokenCredential = FunctionAppDI.CreateServiceAccountAuthProvider(graphCredentials);
-                }
-
-                return new MailRepository(
-                    new GraphServiceClient(graphTokenCredential),
-                        services.GetService<IMailConfig>(),
-                        services.GetService<ILocalizationRepository>(),
-                        services.GetService<ILoggingRepository>(),
-                        GetValueOrDefault("actionableEmailProviderId"),
-                        services.GetService<IGraphGroupRepository>(),
-                        services.GetService<IDatabaseSettingsRepository>(),
-                        services.GetService<IRetryPolicyProvider>()
-                        );
-            });
-
-            builder.Services.AddOptions<NotificationRepoCredentials<NotificationRepository>>().Configure<IConfiguration>((settings, configuration) =>
-            {
-                settings.ConnectionString = configuration.GetValue<string>("jobsStorageAccountConnectionString");
-                settings.TableName = configuration.GetValue<string>("notificationsTableName");
-            });
-
-            builder.Services.AddSingleton<INotificationRepository, NotificationRepository>();
+            builder.Services.AddScoped<INotificationRepository, NotificationRepository>();
 
             builder.Services.AddOptions<ThresholdNotificationConfig>().Configure<IConfiguration>((settings, configuration) =>
             {
@@ -245,8 +194,23 @@ namespace Hosts.FunctionBase
                 if (string.IsNullOrWhiteSpace(serviceBusFQN))
                     throw new ArgumentNullException($"Could not start because of missing configuration option: servicebus fully qualified namespace.");
 
-                return new ServiceBusClient(serviceBusFQN, new DefaultAzureCredential());
+                DefaultAzureCredential credential = new(DefaultAzureCredential.DefaultEnvironmentVariableName);
+                return new ServiceBusClient(serviceBusFQN, credential);
             });
+
+            var rootPath = builder.GetContext().ApplicationRootPath;
+            var jsonSchemasPath = Path.Combine(rootPath, SCHEMA_DIRECTORY);
+            var schemaProvider = new SchemaProvider();
+            if (Directory.Exists(jsonSchemasPath))
+            {
+                var files = Directory.EnumerateFiles(jsonSchemasPath);
+                foreach (var file in files)
+                {
+                    var fileName = Path.GetFileNameWithoutExtension(file);
+                    schemaProvider.Schemas.Add((Schema)Enum.Parse(typeof(Schema), fileName), File.ReadAllText(file));
+                }
+            }
+            builder.Services.AddSingleton(schemaProvider);
         }
 
         public string GetValueOrThrow(string key, [CallerFilePath] string callerFile = "", [CallerLineNumber] int callerLine = 0)

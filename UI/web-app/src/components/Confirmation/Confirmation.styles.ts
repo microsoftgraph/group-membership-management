@@ -45,10 +45,30 @@ export const getStyles = (props: IConfirmationStyleProps): IConfirmationStyles =
             paddingTop: 10,
             fontSize: 14
         },
-        endpointsContainer: {
+        labelContainer: {
+            display: 'flex',
+            alignItems: 'center'
+        },
+        valuesDropdown: {
+            maxWidth: 500
+        },
+        dropdownTitle: {
+            borderRadius: 4,
+            borderStyle: 'solid',
+            borderWidth: 1,
+            borderColor: theme.palette.neutralQuaternary,
+            background: theme.palette.white,
+            maxWidth: 500
+        },
+        dropdownOptionContainer: {
             display: 'flex',
             flexDirection: 'column',
-            gap: 23
+            padding: 4
+        },
+        dropdownOptionEmail: {
+            fontSize: '12px',
+            color: theme.palette.neutralSecondary,
+            marginTop: '2px'
         },
     };
 };

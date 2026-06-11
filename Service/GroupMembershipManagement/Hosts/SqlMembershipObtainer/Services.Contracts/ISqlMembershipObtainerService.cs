@@ -10,10 +10,11 @@ namespace Services.Contracts
 {
     public interface ISqlMembershipObtainerService
     {
-        Task<List<PersonEntity>> GetChildEntitiesAsync(string filter, int personnelNumber, string tableName, int depth, Guid? runId, Guid? targetOfficeGroupId);
-        Task<List<PersonEntity>> FilterChildEntitiesAsync(string query, string sourceTableName, Guid? runId, Guid? targetOfficeGroupId);
-        Task<(SyncStatus Status, string FilePath)> SendGroupMembershipAsync(List<GraphProfileInformation> profiles, SyncJob syncJob, int currentPart, bool exclusionary, string adaptiveCardTemplateDirectory = "");
+        Task<MembershipFileResult> GetChildEntitiesAsync(string filter, int personnelNumber, string tableName, int depth, SyncJob syncJob, Guid targetOfficeGroupId, int currentPart, bool exclusionary);
+        Task<MembershipFileResult> FilterChildEntitiesAsync(string query, string sourceTableName, SyncJob syncJob, Guid targetOfficeGroupId, int currentPart, bool exclusionary);
+        Task<MembershipFileResult> UploadMembershipFileAsync(List<GraphProfileInformation> profiles, SyncJob syncJob, Guid groupId, int currentPart, bool exclusionary);
         Task<string> GetTableNameAsync(Guid? runId, Guid? targetOfficeGroupId);
         Task UpdateSyncJobStatusToIdleAsync(SyncJob job);
+        Task<Guid> GetGroupIdAsync(SyncJob syncJob);
     }
 }

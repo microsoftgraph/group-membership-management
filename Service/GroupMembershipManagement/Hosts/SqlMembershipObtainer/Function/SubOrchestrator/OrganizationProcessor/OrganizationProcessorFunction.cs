@@ -1,51 +1,38 @@
 // Copyright(c) Microsoft Corporation.
 // Licensed under the MIT license.
-using Models.Helpers;
-using Microsoft.Azure.WebJobs;
-using Microsoft.Azure.WebJobs.Extensions.DurableTask;
-using Models;
-using Newtonsoft.Json;
-using SqlMembershipObtainer.SubOrchestrator;
+
+using Hosts.SqlMembershipObtainer;
+using Microsoft.Azure.Functions.Worker;
+using Microsoft.DurableTask;
+using Microsoft.Extensions.Logging;
+using Repositories.Contracts.Helpers;
+using SqlMembershipObtainer.Entities;
 using System.Collections.Generic;
-using System.Linq;
 using System.Threading.Tasks;
-using Repositories.Contracts;
 
 namespace SqlMembershipObtainer
 {
     public class OrganizationProcessorFunction
     {
-        public OrganizationProcessorFunction()
+        [Function(nameof(OrganizationProcessorFunction))]
+        public async Task<MembershipFileResult> ProcessQueryAsync([OrchestrationTrigger] TaskOrchestrationContext context)
         {
-        }
-
-        [FunctionName(nameof(OrganizationProcessorFunction))]
-        public async Task<GraphProfileInformationResponse> ProcessQueryAsync([OrchestrationTrigger] IDurableOrchestrationContext context)
-        {
-            List<GraphProfileInformation> graphProfileInformation = null;
-            var response = new GraphProfileInformationResponse();
-            var queryTasks = new List<Task<GraphProfileInformationResponse>>();
+            var response = new MembershipFileResult();
             var request = context.GetInput<OrganizationProcessorRequest>();
 
-            await context.CallActivityAsync(
-                            nameof(LoggerFunction),
-                            new LoggerRequest
-                            {
-                                SyncJob = request.SyncJob,
-                                Message = $"{nameof(OrganizationProcessorFunction)} function started",
-                                Verbosity = VerbosityLevel.DEBUG
-                            });
+            var logger = context.CreateReplaySafeLogger("SqlMembershipObtainer.OrganizationProcessorFunction");
+            using var scope = logger.BeginSyncJobScope(request.SyncJob, new Dictionary<string, object>
+            {
+                ["CurrentPart"] = request.CurrentPart,
+                ["TotalParts"] = request.TotalParts
+            });
 
-            var tableName = await context.CallActivityAsync<string>(nameof(TableNameReaderFunction), request.SyncJob);
+            logger.FunctionStarted(nameof(OrganizationProcessorFunction));
+
+            var tableName = await context.CallActivityAsync<string>(nameof(TableNameReaderFunction), new TableNameReaderRequest { SyncJob = request.SyncJob, GroupId = request.GroupId, CurrentPart = request.CurrentPart, TotalParts = request.TotalParts });
             if (string.IsNullOrWhiteSpace(tableName))
             {
-                await context.CallActivityAsync(
-                            nameof(LoggerFunction),
-                            new LoggerRequest
-                            {
-                                SyncJob = request.SyncJob,
-                                Message = "Table does not exist",
-                            });
+                logger.TableDoesNotExist();
                 return response;
             }
 
@@ -54,7 +41,7 @@ namespace SqlMembershipObtainer
 
             if (manager != null && manager.Id > 0)
             {
-                var res = await context.CallActivityAsync<GraphProfileInformationResponse>(
+                response = await context.CallActivityAsync<MembershipFileResult>(
                                                     nameof(ManagerOrgReaderFunction),
                                                     new ManagerOrgReaderRequest
                                                     {
@@ -62,40 +49,33 @@ namespace SqlMembershipObtainer
                                                         Depth = manager.Depth,
                                                         PersonnelNumber = manager.Id,
                                                         SyncJob = request.SyncJob,
+                                                        GroupId = request.GroupId,
+                                                        CurrentPart = request.CurrentPart,
+                                                        TotalParts = request.TotalParts,
+                                                        Exclusionary = request.Exclusionary,
                                                         TableName = tableName
                                                     });
-
-                graphProfileInformation = JsonConvert.DeserializeObject<List<GraphProfileInformation>>(TextCompressor.Decompress(res.GraphProfiles));
-                graphProfileInformation = graphProfileInformation.GroupBy(user => user.Id).Select(userGrp => userGrp.First()).ToList();
-                response = new GraphProfileInformationResponse
-                {
-                    GraphProfiles = TextCompressor.Compress(JsonConvert.SerializeObject(graphProfileInformation)),
-                    GraphProfileCount = res.GraphProfileCount
-                };
             }
             else
             {
                 if (!string.IsNullOrWhiteSpace(filter))
                 {
-                    response = await context.CallActivityAsync<GraphProfileInformationResponse>(
+                    response = await context.CallActivityAsync<MembershipFileResult>(
                                                                 nameof(ChildEntitiesFilterFunction),
                                                                 new ChildEntitiesFilterRequest
                                                                 {
                                                                     Query = filter,
                                                                     SyncJob = request.SyncJob,
+                                                                    GroupId = request.GroupId,
+                                                                    CurrentPart = request.CurrentPart,
+                                                                    TotalParts = request.TotalParts,
+                                                                    Exclusionary = request.Exclusionary,
                                                                     TableName = tableName
                                                                 });
                 }
             }
 
-            await context.CallActivityAsync(
-                           nameof(LoggerFunction),
-                           new LoggerRequest
-                           {
-                               SyncJob = request.SyncJob,
-                               Message = $"{nameof(OrganizationProcessorFunction)} function completed",
-                               Verbosity = VerbosityLevel.DEBUG
-                           });
+            logger.FunctionCompleted(nameof(OrganizationProcessorFunction));
 
             return response;
         }

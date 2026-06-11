@@ -1,0 +1,1299 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <!-- 
+    Microsoft ResX Schema 
+    
+    Version 2.0
+    
+    The primary goals of this format is to allow a simple XML format 
+    that is mostly human readable. The generation and parsing of the 
+    various data types are done through the TypeConverter classes 
+    associated with the data types.
+    
+    Example:
+    
+    ... ado.net/XML headers & schema ...
+    <resheader name="resmimetype">text/microsoft-resx</resheader>
+    <resheader name="version">2.0</resheader>
+    <resheader name="reader">System.Resources.ResXResourceReader, System.Windows.Forms, ...</resheader>
+    <resheader name="writer">System.Resources.ResXResourceWriter, System.Windows.Forms, ...</resheader>
+    <data name="Name1"><value>this is my long string</value><comment>this is a comment</comment></data>
+    <data name="Color1" type="System.Drawing.Color, System.Drawing">Blue</data>
+    <data name="Bitmap1" mimetype="application/x-microsoft.net.object.binary.base64">
+        <value>[base64 mime encoded serialized .NET Framework object]</value>
+    </data>
+    <data name="Icon1" type="System.Drawing.Icon, System.Drawing" mimetype="application/x-microsoft.net.object.bytearray.base64">
+        <value>[base64 mime encoded string representing a byte array form of the .NET Framework object]</value>
+        <comment>This is a comment</comment>
+    </data>
+                
+    There are any number of "resheader" rows that contain simple 
+    name/value pairs.
+    
+    Each data row contains a name, and value. The row also contains a 
+    type or mimetype. Type corresponds to a .NET class that support 
+    text/value conversion through the TypeConverter architecture. 
+    Classes that don't support this are serialized and stored with the 
+    mimetype set.
+    
+    The mimetype is used for serialized objects, and tells the 
+    ResXResourceReader how to depersist the object. This is currently not 
+    extensible. For a given mimetype the value must be set accordingly:
+    
+    Note - application/x-microsoft.net.object.binary.base64 is the format 
+    that the ResXResourceWriter will generate, however the reader can 
+    read any of the formats listed below.
+    
+    mimetype: application/x-microsoft.net.object.binary.base64
+    value   : The object must be serialized with 
+            : System.Runtime.Serialization.Formatters.Binary.BinaryFormatter
+            : and then encoded with base64 encoding.
+    
+    mimetype: application/x-microsoft.net.object.soap.base64
+    value   : The object must be serialized with 
+            : System.Runtime.Serialization.Formatters.Soap.SoapFormatter
+            : and then encoded with base64 encoding.
+
+    mimetype: application/x-microsoft.net.object.bytearray.base64
+    value   : The object must be serialized into a byte array 
+            : using a System.ComponentModel.TypeConverter
+            : and then encoded with base64 encoding.
+    -->
+  <xsd:schema id="root" xmlns="" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata">
+    <xsd:import namespace="http://www.w3.org/XML/1998/namespace" />
+    <xsd:element name="root" msdata:IsDataSet="true">
+      <xsd:complexType>
+        <xsd:choice maxOccurs="unbounded">
+          <xsd:element name="metadata">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" />
+              </xsd:sequence>
+              <xsd:attribute name="name" use="required" type="xsd:string" />
+              <xsd:attribute name="type" type="xsd:string" />
+              <xsd:attribute name="mimetype" type="xsd:string" />
+              <xsd:attribute ref="xml:space" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="assembly">
+            <xsd:complexType>
+              <xsd:attribute name="alias" type="xsd:string" />
+              <xsd:attribute name="name" type="xsd:string" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="data">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+                <xsd:element name="comment" type="xsd:string" minOccurs="0" msdata:Ordinal="2" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" msdata:Ordinal="1" />
+              <xsd:attribute name="type" type="xsd:string" msdata:Ordinal="3" />
+              <xsd:attribute name="mimetype" type="xsd:string" msdata:Ordinal="4" />
+              <xsd:attribute ref="xml:space" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="resheader">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" />
+            </xsd:complexType>
+          </xsd:element>
+        </xsd:choice>
+      </xsd:complexType>
+    </xsd:element>
+  </xsd:schema>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <data name="CardTemplate.ThresholdNotification" xml:space="preserve">
+    <value>{
+    "$schema": "http://adaptivecards.io/schemas/adaptive-card.json",
+    "type": "AdaptiveCard",
+    "version": "1.0",
+    "hideOriginalBody": true,
+    "originator": "${$root.providerId}",
+    "createdUtc": "${$root.cardCreatedTime}",
+    "body": [
+      {
+        "type": "Container",
+        "padding": "Small",
+        "style": "emphasis",
+        "items": [
+          {
+            "type": "ColumnSet",
+            "padding": "None",
+            "columns": [
+              {
+                "type": "Column",
+                "padding": "None",
+                "width": "auto",
+                "items": [
+                  {
+                    "type": "Image",
+                    "url": "data:image/png;base64,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",
+                    "altText": "Synchronization Exception Icon",
+                    "size": "Small"
+                  }
+                ]
+              },
+              {
+                "type": "Column",
+                "padding": "None",
+                "verticalContentAlignment": "Center",
+                "width": "auto",
+                "items": [
+                  {
+                    "type": "TextBlock",
+                    "text": "Membership Change Alert Review",
+                    "wrap": true,
+                    "weight": "Bolder"
+                  },
+                  {
+                    "type": "TextBlock",
+                    "text": "Group Membership Management",
+                    "wrap": true,
+                    "spacing": "None",
+                    "color": "Dark",
+                    "size": "Small"
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "type": "Container",
+        "padding": "Default",
+        "separator": true,
+        "items": [
+          {
+            "type": "TextBlock",
+            "text": "${$root.groupName}",
+            "wrap": true,
+            "size": "Large",
+            "weight": "Bolder"
+          }
+        ]
+      },
+      {
+        "type": "Container",
+        "padding": "Default",
+        "items": [
+          {
+            "type": "TextBlock",
+            "text": "The most recent attempt to update the membership of your GMM managed group '**${$root.groupName}**' exceeded the configured alert threshold.GMM will stop syncing this group by the end of {{DATE(${$root.disableDate}, SHORT)}}. If no action is taken by {{DATE(${$root.purgeDate}, SHORT)}} GMM will purge this sync.  At that point, if you wish to re enable the sync, you will need to follow GMM's onboarding process again.  Please reach out to the **CC'ed alias** for inquiries about re-onboarding or any questions you may have.",
+            "wrap": true,
+            "color": "Attention"
+          },
+          {
+            "type": "TextBlock",
+            "text": "GMM has identified **${$root.changeQuantityForAdditions}** members to be added, increasing the group size by **${$root.changePercentageForAdditions}%**, which is more than the current additions threshold of **${$root.thresholdPercentageForAdditions}%**.",
+            "wrap": true,
+            "spacing": "Small",
+            "color": "Accent",
+            "$when": "${$root.changePercentageForAdditions &gt; $root.thresholdPercentageForAdditions}"
+          },
+          {
+            "type": "TextBlock",
+            "text": "GMM has identified **${$root.changeQuantityForRemovals}** members to be removed, decreasing the group size by **${$root.changePercentageForRemovals}%**, which is more than the current removals threshold of **${$root.thresholdPercentageForRemovals}%**.",
+            "wrap": true,
+            "spacing": "Small",
+            "color": "Accent",
+            "$when": "${$root.changePercentageForRemovals &gt; $root.thresholdPercentageForRemovals}"
+          },
+          {
+            "type": "TextBlock",
+            "text": "Do you want to proceed?",
+            "wrap": true,
+            "color": "Accent",
+            "size": "Default",
+            "weight": "Bolder"
+          },
+          {
+            "type": "ActionSet",
+            "actions": [
+              {
+                "type": "Action.Http",
+                "title": "No, Pause Sync Job",
+                "method": "POST",
+                "url": "https://${$root.apiHostname}/api/v1/notifications/${$root.notificationId}/resolve",
+                "body": "{\"resolution\":\"Paused\"}",
+                "isPrimary": true,
+                "style": "positive"
+              },
+              {
+                "type": "Action.Http",
+                "title": "Yes, Apply Changes",
+                "method": "POST",
+                "url": "https://${$root.apiHostname}/api/v1/notifications/${$root.notificationId}/resolve",
+                "body": "{\"resolution\":\"IgnoreOnce\"}"
+              }
+            ],
+            "spacing": "Large"
+          },
+          {
+            "type": "Container",
+            "padding": "Medium",
+            "separator": true,
+            "items": [
+              {
+                "type": "TextBlock",
+                "text": "**${$root.thresholdPercentageForAdditions}% increase** and **${$root.thresholdPercentageForRemovals}% decrease** alerts are configured for this group. If you would like to change these alert percentages or disable them, please pause the sync and contact GMM support for further inquiry.",
+                "wrap": true
+              }
+            ],
+            "spacing": "Medium"
+          }
+        ],
+        "separator": true
+      }
+    ],
+    "autoInvokeAction": {
+      "method": "POST",
+      "url": "https://${$root.apiHostname}/api/v1/notifications/${$root.notificationId}/card",
+      "body": "",
+      "type": "Action.Http"
+    }
+  }</value>
+  </data>
+  <data name="CardTemplate.ThresholdNotificationDisabled" xml:space="preserve">
+    <value>{
+ "$schema": "http://adaptivecards.io/schemas/adaptive-card.json",
+ "type": "AdaptiveCard",
+ "version": "1.0",
+ "hideOriginalBody": true,
+ "originator": "${$root.providerId}",
+ "createdUtc": "${$root.cardCreatedTime}",
+ "body": [
+  {
+   "type": "Container",
+   "padding": "Small",
+   "style": "emphasis",
+   "items": [
+    {
+     "type": "ColumnSet",
+     "padding": "None",
+     "columns": [
+      {
+       "type": "Column",
+       "padding": "None",
+       "width": "auto",
+       "items": [
+        {
+         "type": "Image",
+         "url": "data:image/png;base64,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",
+         "altText": "Synchronization Exception Icon",
+         "size": "Small"
+        }
+       ]
+      },
+      {
+       "type": "Column",
+       "padding": "None",
+       "verticalContentAlignment": "Center",
+       "width": "auto",
+       "items": [
+        {
+         "type": "TextBlock",
+         "text": "Synchronization Job Disabled",
+         "wrap": true,
+         "weight": "Bolder"
+        },
+        {
+         "type": "TextBlock",
+         "text": "Group Membership Management",
+         "wrap": true,
+         "spacing": "None",
+         "color": "Dark",
+         "size": "Small"
+        }
+       ]
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "type": "Container",
+   "padding": "Default",
+   "separator": true,
+   "items": [
+    {
+     "type": "TextBlock",
+     "text": "${$root.groupName}",
+     "wrap": true,
+     "size": "Large",
+     "weight": "Bolder"
+    }
+   ]
+  },
+  {
+   "type": "Container",
+   "padding": "Default",
+   "items": [
+    {
+     "type": "TextBlock",
+     "text": "Synchronization of your GMM group **${$root.groupName}** has been disabled. If no action is taken, the sync will be deleted on **{{DATE(${$root.jobExpirationDate}, SHORT)}} at {{TIME(${$root.jobExpirationDate})}}**. After this period, if you wish to reenable the sync, you will need to follow GMM's onboarding process again.",
+     "wrap": true,
+     "color": "Attention"
+    },
+    {
+     "type": "TextBlock",
+     "text": "GMM has identified **${$root.changeQuantityForAdditions}** members to be added, increasing the group size by **${$root.changePercentageForAdditions}%**, which is more than the current additions threshold of **${$root.thresholdPercentageForAdditions}%**.",
+     "wrap": true,
+     "spacing": "Small",
+     "color": "Accent",
+     "$when": "${$root.changePercentageForAdditions &gt; $root.thresholdPercentageForAdditions}"
+    },
+    {
+     "type": "TextBlock",
+     "text": "GMM has identified **${$root.changeQuantityForRemovals}** members to be removed, decreasing the group size by **${$root.changePercentageForRemovals}%**, which is more than the current removals threshold of **${$root.thresholdPercentageForRemovals}%**.",
+     "wrap": true,
+     "spacing": "Small",
+     "color": "Accent",
+     "$when": "${$root.changePercentageForRemovals &gt; $root.thresholdPercentageForRemovals}"
+    },
+    {
+     "type": "TextBlock",
+     "text": "Do you want to proceed?",
+     "wrap": true,
+     "color": "Accent",
+     "size": "Default",
+     "weight": "Bolder"
+    },
+    {
+     "type": "ActionSet",
+     "actions": [
+      {
+       "type": "Action.Http",
+       "title": "No, Pause Sync Job",
+       "method": "POST",
+       "url": "https://${$root.apiHostname}/api/v1/notifications/${$root.notificationId}/resolve",
+       "body": "{\"resolution\":\"Paused\"}",
+       "isPrimary": true,
+       "style": "positive"
+      },
+      {
+       "type": "Action.Http",
+       "title": "Yes, Apply Changes",
+       "method": "POST",
+       "url": "https://${$root.apiHostname}/api/v1/notifications/${$root.notificationId}/resolve",
+       "body": "{\"resolution\":\"IgnoreOnce\"}"
+      }
+     ],
+     "spacing": "Large"
+    },
+    {
+     "type": "Container",
+     "padding": "Medium",
+     "separator": true,
+     "items": [
+      {
+       "type": "TextBlock",
+       "text": "**${$root.thresholdPercentageForAdditions}% increase** and **${$root.thresholdPercentageForRemovals}% decrease** alerts are configured for this group. If you would like to change these alert percentages or disable them, please pause the sync and contact GMM support for further inquiry.",
+       "wrap": true
+      }
+     ],
+     "spacing": "Medium"
+    }
+   ],
+   "separator": true
+  }
+ ],
+ "autoInvokeAction": {
+  "method": "POST",
+  "url": "https://${$root.apiHostname}/api/v1/notifications/${$root.notificationId}/card",
+  "body": "",
+  "type": "Action.Http"
+ }
+}</value>
+  </data>
+  <data name="CardTemplate.ThresholdNotificationNotFound" xml:space="preserve">
+    <value>{
+  "$schema": "http://adaptivecards.io/schemas/adaptive-card.json",
+  "type": "AdaptiveCard",
+  "version": "1.0",
+  "hideOriginalBody": true,
+  "createdUtc": "${$root.cardCreatedTime}",
+  "body": [
+    {
+      "type": "Container",
+      "padding": "Small",
+      "items": [
+        {
+          "type": "ColumnSet",
+          "columns": [
+            {
+              "type": "Column",
+              "padding": "None",
+              "width": "auto",
+              "items": [
+                {
+                  "type": "Image",
+                  "url": "data:image/png;base64,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",
+                  "altText": "Synchronization Exception Icon",
+                  "size": "Small"
+                }
+              ]
+            },
+            {
+              "type": "Column",
+              "padding": "None",
+              "width": "auto",
+              "items": [
+                {
+                  "type": "TextBlock",
+                  "text": "Error: Not Found",
+                  "wrap": true,
+                  "weight": "Bolder"
+                },
+                {
+                  "type": "TextBlock",
+                  "text": "Group Membership Management",
+                  "wrap": true,
+                  "spacing": "None",
+                  "color": "Light",
+                  "size": "Small"
+                }
+              ],
+              "verticalContentAlignment": "Center"
+            }
+          ],
+          "padding": "None"
+        }
+      ],
+      "style": "emphasis"
+    },
+    {
+      "type": "Container",
+      "padding": "Default",
+      "items": [
+        {
+          "type": "TextBlock",
+          "text": "Notification Not Found",
+          "wrap": true,
+          "size": "Large",
+          "weight": "Bolder",
+          "color": "Attention"
+        }
+      ]
+    },
+    {
+      "type": "Container",
+      "padding": "Default",
+      "items": [
+        {
+          "type": "TextBlock",
+          "text": "The notification no longer exists.  It's likely that this is an old notification and has been pruned by the system.",
+          "wrap": true,
+          "spacing": "Small"
+        }
+      ],
+      "separator": true
+    },
+    {
+      "type": "Container",
+      "items": [
+        {
+          "type": "TextBlock",
+          "text": "${$root.notificationId}",
+          "wrap": true,
+          "horizontalAlignment": "Right",
+          "size": "Small"
+        }
+      ]
+    }
+  ],
+  "padding": "None",
+  "@type": "AdaptiveCard",
+  "@context": "http://schema.org/extensions",
+  "originator": "${$root.providerId}"
+}</value>
+  </data>
+  <data name="CardTemplate.ThresholdNotificationResolved" xml:space="preserve">
+    <value>{
+  "$schema": "http://adaptivecards.io/schemas/adaptive-card.json",
+  "type": "AdaptiveCard",
+  "version": "1.0",
+  "hideOriginalBody": true,
+  "createdUtc": "${$root.cardCreatedTime}",
+  "body": [
+    {
+      "type": "Container",
+      "padding": "Small",
+      "items": [
+        {
+          "type": "ColumnSet",
+          "columns": [
+            {
+              "type": "Column",
+              "padding": "None",
+              "width": "auto",
+              "items": [
+                {
+                  "type": "Image",
+                  "url": "data:image/png;base64,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",
+                  "altText": "Synchronization Exception Icon",
+                  "size": "Small"
+                }
+              ]
+            },
+            {
+              "type": "Column",
+              "padding": "None",
+              "width": "auto",
+              "items": [
+                {
+                  "type": "TextBlock",
+                  "text": "Membership Change Alert Review",
+                  "wrap": true,
+                  "weight": "Bolder"
+                },
+                {
+                  "type": "TextBlock",
+                  "text": "Group Membership Management",
+                  "wrap": true,
+                  "spacing": "None",
+                  "color": "Light",
+                  "size": "Small"
+                }
+              ],
+              "verticalContentAlignment": "Center"
+            }
+          ],
+          "padding": "None"
+        }
+      ],
+      "spacing": "None",
+      "style": "emphasis"
+    },
+    {
+      "type": "Container",
+      "padding": "Default",
+      "separator": true,
+      "items": [
+        {
+          "type": "TextBlock",
+          "text": "${$root.groupName}",
+          "wrap": true,
+          "size": "Large",
+          "weight": "Bolder"
+        }
+      ]
+    },
+    {
+      "type": "Container",
+      "padding": "Default",
+      "items": [
+       {
+          "type": "TextBlock",
+          "text": "A recent synchronization attempt of **${$root.groupName}** resulted in changes that were larger than expected and require approval before synchronization can proceed.",
+          "wrap": true,
+          "color": "Attention"
+        },
+        {
+          "type": "TextBlock",
+          "text": "GMM has identified **${$root.changeQuantityForAdditions}** members to be added, increasing the group size by **${$root.changePercentageForAdditions}%**, which is more than the current additions threshold of **${$root.thresholdPercentageForAdditions}%**.",
+          "wrap": true,
+          "spacing": "Small",
+          "color": "Accent",
+          "$when": "${$root.changePercentageForAdditions &gt; $root.thresholdPercentageForAdditions}"
+        },
+        {
+          "type": "TextBlock",
+          "text": "GMM has identified **${$root.changeQuantityForRemovals}** members to be removed, decreasing the group size by **${$root.changePercentageForRemovals}%**, which is more than the current removals threshold of **${$root.thresholdPercentageForRemovals}%**",
+          "wrap": true,
+          "spacing": "Small",
+          "color": "Accent",
+          "$when": "${$root.changePercentageForRemovals &gt; $root.thresholdPercentageForRemovals}"
+        },
+        {
+          "type": "Container",
+          "id": "734aa3fd-c67c-f747-2a86-55f40f6d8a6e",
+          "padding": "None",
+          "items": [
+            {
+              "type": "TextBlock",
+              "text": "Notification Resolved",
+              "wrap": true,
+              "spacing": "None",
+              "size": "Medium",
+              "color": "Good"
+            },
+            {
+              "type": "TextBlock",
+              "text": "This notification was resolved by **${$root.resolvedBy}** on **${$root.resolvedTime}** UTC.",
+              "wrap": true,
+              "spacing": "Small",
+              "color": "Good"
+            },
+            {
+              "type": "TextBlock",
+              "text": "Action taken: **${$root.resolution}**.",
+              "wrap": true,
+              "spacing": "Small",
+              "color": "Good"
+            }
+          ],
+          "separator": true
+        }
+      ],
+      "separator": true
+    },
+    {
+      "type": "Container",
+      "items": [
+        {
+          "type": "TextBlock",
+          "text": "${$root.notificationId}",
+          "wrap": true,
+          "horizontalAlignment": "Right",
+          "size": "Small"
+        }
+      ]
+    }
+  ],
+  "padding": "None",
+  "@type": "AdaptiveCard",
+  "@context": "http://schema.org/extensions",
+  "originator": "${$root.providerId}"
+}</value>
+  </data>
+  <data name="CardTemplate.ThresholdNotificationUnauthorized" xml:space="preserve">
+    <value>{
+  "$schema": "http://adaptivecards.io/schemas/adaptive-card.json",
+  "type": "AdaptiveCard",
+  "version": "1.0",
+  "hideOriginalBody": true,
+  "createdUtc": "${$root.cardCreatedTime}",
+  "body": [
+    {
+      "type": "Container",
+      "padding": "Small",
+      "items": [
+        {
+          "type": "ColumnSet",
+          "columns": [
+            {
+              "type": "Column",
+              "padding": "None",
+              "width": "auto",
+              "items": [
+                {
+                  "type": "Image",
+                  "url": "data:image/png;base64,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",
+                  "altText": "Synchronization Icon",
+                  "size": "Small"
+                }
+              ]
+            },
+            {
+              "type": "Column",
+              "padding": "None",
+              "width": "auto",
+              "items": [
+                {
+                  "type": "TextBlock",
+                  "text": "Membership Change Alert Review",
+                  "wrap": true,
+                  "weight": "Bolder"
+                },
+                {
+                  "type": "TextBlock",
+                  "text": "Group Membership Management",
+                  "wrap": true,
+                  "spacing": "None",
+                  "color": "Light",
+                  "size": "Small"
+                }
+              ],
+              "verticalContentAlignment": "Center"
+            }
+          ],
+          "padding": "None"
+        }
+      ],
+      "style": "emphasis"
+    },
+    {
+      "type": "Container",
+      "padding": "Default",
+      "items": [
+        {
+          "type": "TextBlock",
+          "text": "${$root.groupName}",
+          "wrap": true,
+          "size": "Large",
+          "weight": "Bolder",
+          "color": "Attention"
+        }
+      ]
+    },
+    {
+      "type": "Container",
+      "padding": "Default",
+      "items": [
+        {
+          "type": "TextBlock",
+          "text": "Error: You are no longer authorized to view notifications for **${$root.groupName}** because you are not an owner of the group.",
+          "wrap": true
+        }
+      ],
+      "separator": true
+    },
+    {
+      "type": "Container",
+      "items": [
+        {
+          "type": "TextBlock",
+          "text": "${$root.notificationId}",
+          "wrap": true,
+          "horizontalAlignment": "Right",
+          "size": "Small"
+        }
+      ]
+    }
+  ],
+  "padding": "None",
+  "@type": "AdaptiveCard",
+  "@context": "http://schema.org/extensions",
+  "originator": "${$root.providerId}"
+}</value>
+  </data>
+  <data name="CardTemplate.ThresholdNotificationExpired" xml:space="preserve">
+    <value>{
+      "$schema": "http://adaptivecards.io/schemas/adaptive-card.json",
+      "type": "AdaptiveCard",
+      "version": "1.0",
+      "hideOriginalBody": true,
+      "createdUtc": "${$root.cardCreatedTime}",
+      "body": [
+        {
+          "type": "Container",
+          "padding": "Small",
+          "items": [
+            {
+              "type": "ColumnSet",
+              "columns": [
+                {
+                  "type": "Column",
+                  "padding": "None",
+                  "width": "auto",
+                  "items": [
+                    {
+                      "type": "Image",
+                      "url": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAYAAACqaXHeAAAACXBIWXMAAA7EAAAOxAGVKw4bAAAGwklEQVR4nOWbMWjjSBSGJ0GFiilUuFChQgcqBKtChwNx4UKFl/NyXnDhgGGzELgUOnChwoWLBXNs4cJFChcuXLgwR7zkwIWyKOA9tGAOHwSjgBMUsEAprthyCxcuFuaKtXOKLNmSLHsC9+BvxtbMe9/Mk2ZGoz2EENi2dbvd1P39ffLu7o6zLEv8+vUr+PLlC5jNZtLiPzRNf+Y4DkAIweHh4R+pVOrPbDZ7v2nbnz594l6/fj2ZzWag1+v9mM/nb578ASEUu3RdZ2VZrrAsqwMA7LlQSNkAAJvnea1cLpd0XWej+EKSpLmokyRJ0/17rIE3Go0cx3H9iAGvBSIIgvr+/fvjMD65fLG3AqBarZ5ACMchArdXaO21FEUZ1Wr1BDuARqORYxhmsMJxe9FzsixXzs/PU7qus+PxGPqlTrPZzCqKohwcHFysgWJTFGXU6/XCzgGYpklmMpmWj3M2SZJmPp8/Oz8/T206ulRVFYrFYm2ey57tiaLYMwyD2gkAVVWFRCJx7eUITdPDsDkaNtUoijK8QJAkaXY6nfRWAZTL5ZJf40Fzcssg7NPT03dbAXB8fPzeq0FJktp+Ob1t+aShnc1mm7ECyOVyDXdDBEFMGo1GDkfgTrXbbWk+Gp5AyGQyrVgAePU8TdPD4XBI4w5+IcMwKJqmh+5gPXwPB8Aj522WZfXJZELgDtpLPM9ra+YSwQGoqiq4K2NZVscd5DqtmYkGA2CaJul+1EEIx6ZpkrgDDKJ5OkQHkM1mm+4LVVUVcAcWVIZhUPOpeXgAjUYj5877bU5utqVWq5WJBGA+t3+8KJ1Od3AG0u/3Occ0OKzCAahUKrLzQoIgJtfX1wmcAJzr+Ri0GoArb+xSqVTGPZQJgpjEBYCm6aEvgGq1euLsfa/dExzSNI3fIAUeRZKk2Ww2s74AXLn/LHp/FwIIfd+IeI69vwvtAwDAhw8figAAFsxNkqTP4H9i+wAAcHV19ZOj7OHNmze/Y/Jn57aHEAJ7e3s2+G8EPCCEfsDo005tv9vtppwFgiDc4nIGh+3f398ngSP/0+n0X/jc2b3t393dcc6Cw8PDv3E5g8MIy7JEZwHHcRYmX3yt2+2mPn78+PPt7a1gWRY3nU4hAABACKcMw/wjiuJNMpkc5XK5S57nZ6EqZ1n2yVz5uez26LrO5vP5sxXvAzzn+oIgqO12Wwo8ESJJcuViAUfgqVTqPETQviB6vZ64FoD7QpzBVyoVOc7FDwDALhQK9ZUACIJ4FgBEUext2OsrR4MvAOdq6+Li4gBH8I5zBHEH/wjBb0MX23DfQc8vQUilUufPCoB7BypoIC6Futa9zMcWfL/f5yLc8B5feSGEQD6fP4sCYTAYMNgBzPM+9DBeGsIR0seZCliCb7fbUsS8jwUAAMBeTJawAJjf+CLdyGICgERR7GEBYBgGFdXpOAEAAGzTNMl9sGO7urrKAsfyG6Oxl5eXv+wcwGg0Su66TT8bjUbczgFYlsWt/9du7ObmRlzKUVVVBcehx43ktRrzeWuL4x6AIISxPZ895Xk2d8Nlbsz1oaUUeHh4YN1lUW02m5Fx1bUtIwL+7yFK5RcXF0fuMgjhdDqdRqkOAADAq1evmpqm/QoAAEdHR/XIFX33ZXkeADyGVBxHXmOYBD2mgUuR6xJFUQ/0FHj79m3Hsqygo2WlxbDpyrq0iS83gQB8+/aNe/nyZX+TxhaWTCZHcdQTh7148cIKlAJz2Yv5M86pMEVRhizLFUVRFI/DkaHqGgwGTBgAsUGIeh+gKMpw1+U+0xRUi33CdQDs09PTd+4yhmEGmxyVnZ/gCt1zsixX3HXNd5VC936r1coEAoCQ/2FpryMnQRWl5xRFUeIAwDDM4DHeIAAQ8t1+sovFYi0KAE3T+LBbYjGlwJPd78AAEEJAluWKFwQI4bhWqxXDQvBIr7XOJxKJa0VRlEqlIq/5Xsnz+lwu13gSbxgACCHQ6XTSfsdQKYoywp4q3eG2OOJ5XluKNywAhBAYj8fQ8VXXEggI4fjk5OQ3TdP4IBB28GIE+R3zjwRgoXq9XvD7iMkJQ5KktqIoyioggiCoW4Jg8zyv+Z103wjAQqu+5nKKIIiJ3+dtCCFQLBZrMUOwvR6dsQNYqFarFdd9Out8BHlJVVUhhpSwGYYZBDniv1TgejSFArBQv9/nSqVS2QHjCdQgX560Wq1MhBukLQiCupjkBNFSwfxtMQIAoLjeFvd6PVFRlDNJknSO41AikbimaXrofEXlJ8MwqFqtdlYoFHRRFHUI4WPAEEIkiqJeKBT0arV6FqQ+t/4FtljDw9p0jt4AAAAASUVORK5CYII=",
+                      "altText": "Synchronization Exception Icon",
+                      "size": "Small"
+                    }
+                  ]
+                },
+                {
+                  "type": "Column",
+                  "padding": "None",
+                  "width": "auto",
+                  "items": [
+                    {
+                      "type": "TextBlock",
+                      "text": "Error: Notification Expired",
+                      "wrap": true,
+                      "weight": "Bolder"
+                    },
+                    {
+                      "type": "TextBlock",
+                      "text": "Group Membership Management",
+                      "wrap": true,
+                      "spacing": "None",
+                      "color": "Light",
+                      "size": "Small"
+                    }
+                  ],
+                  "verticalContentAlignment": "Center"
+                }
+              ],
+              "padding": "None"
+            }
+          ],
+          "style": "emphasis"
+        },
+        {
+          "type": "Container",
+          "padding": "Default",
+          "items": [
+            {
+              "type": "TextBlock",
+              "text": "This notification has expired",
+              "wrap": true,
+              "size": "Large",
+              "weight": "Bolder",
+              "color": "Attention"
+            }
+          ]
+        },
+        {
+          "type": "Container",
+          "padding": "Default",
+          "items": [
+            {
+              "type": "TextBlock",
+              "text": "The time period to address the threshold violation for your GMM managed group **${$root.Id}** managed by GMM has expired and the sync has been purged.",
+              "wrap": true,
+              "spacing": "Small"
+            },
+            {
+              "type": "TextBlock",
+              "text": "If you would like to re-onboard on to GMM, please reach out to the GMM team.",
+              "wrap": true,
+              "spacing": "Small"
+            }
+          ],
+          "separator": true
+        },
+        {
+          "type": "Container",
+          "items": [
+            {
+              "type": "TextBlock",
+              "text": "${$root.notificationId}",
+              "wrap": true,
+              "horizontalAlignment": "Right",
+              "size": "Small"
+            }
+          ]
+        }
+      ],
+      "padding": "None",
+      "@type": "AdaptiveCard",
+      "@context": "http://schema.org/extensions",
+      "originator": "${$root.providerId}"
+  }</value>
+  </data>
+  <data name="CardTemplate.DefaultCardTemplate" xml:space="preserve">
+    <value> {
+    "$schema": "http://adaptivecards.io/schemas/adaptive-card.json",
+    "type": "AdaptiveCard",
+    "version": "1.4",
+    "hideOriginalBody": true,
+    "createdUtc": "${$root.cardCreatedTime}",
+    "body": [
+        {
+            "type": "Container",
+            "padding": "Small",
+            "items": [
+                {
+                    "type": "ColumnSet",
+                    "columns": [
+                        {
+                            "type": "Column",
+                            "padding": "None",
+                            "width": "auto",
+                            "items": [
+                                {
+                                    "type": "Image",
+                                    "url": "data:image/png;base64,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",
+                                    "altText": "Synchronization Icon",
+                                    "size": "Small"
+                                }
+                            ]
+                        },
+                        {
+                            "type": "Column",
+                            "padding": "None",
+                            "width": "auto",
+                            "items": [
+                                {
+                                    "type": "TextBlock",
+                                    "text": "${$root.titleContent}",
+                                    "wrap": true,
+                                    "weight": "Bolder"
+                                },
+                                {
+                                    "type": "TextBlock",
+                                    "text": "Group Membership Management",
+                                    "wrap": true,
+                                    "spacing": "None",
+                                    "color": "Light",
+                                    "size": "Small"
+                                }
+                            ],
+                            "verticalContentAlignment": "Center"
+                        }
+                    ],
+                    "padding": "None"
+                }
+            ],
+            "style": "emphasis"
+        },
+        {
+            "type": "Container",
+            "padding": "Default",
+            "items": [
+                {
+                    "type": "TextBlock",
+                    "text": "${$root.destinationGroupName}",
+                    "wrap": true,
+                    "size": "Large",
+                    "weight": "Bolder"
+                }
+            ]
+        },
+        {
+            "type": "Container",
+            "padding": "Default",
+            "items": [
+                {
+                    "type": "TextBlock",
+                    "text": "${$root.messageContent}",
+                    "wrap": true
+                }
+            ],
+            "separator": true
+        },
+        {
+            "type": "Container",
+            "items": [
+                {
+                    "type": "ColumnSet",
+                    "columns": [
+                        {
+                            "type": "Column",
+                            "width": "auto",
+                            "items": [
+                                {
+                                    "type": "ActionSet",
+                                    "actions": [
+                                        {
+                                            "type": "Action.OpenUrl",
+                                            "title": "Learn more about GMM",
+                                            "url": "${$root.DashboardUrl}"
+                                        }
+                                    ],
+                                    "$when": "${$root.DashboardUrl != \"\"}"
+                                }
+                            ]
+                        },
+                        {
+                            "type": "Column",
+                            "width": "stretch"
+                        },
+                        {
+                            "type": "Column",
+                            "width": "auto",
+                            "items": [
+                                {
+                                    "type": "ActionSet",
+                                    "actions": [
+                                        {
+                                            "type": "Action.OpenUrl",
+                                            "title": "Go to GMM UI",
+                                            "url": "${$root.JobUrl}"
+                                        }
+                                    ],
+                                    "$when": "${$root.JobUrl != \"\"}"
+                                }
+                            ]
+                        }
+                    ]
+                }
+            ],
+            "separator": true,
+            "spacing": "ExtraLarge"
+        }
+    ],
+    "padding": "None",
+    "@type": "AdaptiveCard",
+    "@context": "http://schema.org/extensions",
+    "originator": "${$root.providerId}"
+}</value>
+  </data>
+  <data name="OnboardingStartedEmailTitle" xml:space="preserve">
+    <value>Initial Sync Started</value>
+  </data>
+  <data name="OnboardingStartedEmailSubject" xml:space="preserve">
+    <value>[Awareness] Initial Sync Started for {1}</value>
+  </data>
+  <data name="SyncStartedEmailBody" xml:space="preserve">
+    <value>You received this notification because you are listed as an owner of **{1}**.
+
+{4} requested that GMM systematically manage this group's membership based on predefined rules. You can find more specifics on the predefined rules in the GMM UI.
+
+The group **{1}** with Object Id: {0} **has started its initial sync**.
+    </value>
+  </data>
+  <data name="OnboardingCompleteEmailTitle" xml:space="preserve">
+    <value>Onboarding Complete</value>
+  </data>
+  <data name="OnboardingCompleteEmailSubject" xml:space="preserve">
+    <value>[Awareness] Onboarding Complete for {1}</value>
+  </data>
+  <data name="SyncCompletedEmailBody" xml:space="preserve">
+    <value>You received this notification because you are listed as an owner of **{1}**.
+
+{4} requested that GMM systematically manage this group's membership based on predefined rules. You can find more specifics on the predefined rules in the GMM UI.
+
+The group **{1}** with Id: {0} **has completed its initial sync**.
+
+**{2} users were added.**
+
+**{3} users were removed.**
+    </value>
+  </data>
+  <data name="DisabledJobEmailSubject" xml:space="preserve">
+    <value>[Action Required] Sync Disabled for {1}</value>
+  </data>
+  <data name="DestinationNotExistTitle" xml:space="preserve">
+    <value>Sync Disabled with Status {2}</value>
+  </data>
+   <data name="DestinationNotExistSubject" xml:space="preserve">
+    <value>[Action Required] Sync Disabled for {1}</value>
+  </data>
+  <data name="SyncDisabledNoGroupEmailBody" xml:space="preserve">
+    <value>You received this notification because you are listed as an owner of **{1}**.
+
+Membership syncs for group with object Id {0}, previously named **{1}**, are now **disabled** because the group **no longer exists**.
+
+If this is an intended deletion, there's no further action needed.
+
+Otherwise, contact support for further help.
+    </value>
+  </data>
+  <data name="SourceNotExistTitle" xml:space="preserve">
+    <value>Sync Disabled with Status {3}</value>
+  </data>
+  <data name="SyncDisabledNoSourceGroupEmailBody" xml:space="preserve">
+    <value>You received this notification because you are listed as an owner of **{1}**.
+
+Membership syncs for group **{1}**, are now **disabled** because its pre-defined source group with object Id: {2} **no longer exists**.
+
+Please reach out to support to update the source definition and re-enable the membership syncs.
+</value>
+  </data>
+  <data name="NotOwnerTitle" xml:space="preserve">
+    <value>Sync Disabled with Status {2}</value>
+  </data>
+  <data name="SyncDisabledNoOwnerEmailBody" xml:space="preserve">
+    <value> You received this notification because you are listed as an owner of **{1}**.
+
+  Membership syncs are **disabled** because **GMM is not an owner** of **{1}** with object Id {0}.
+
+  Contact support if you would like to re-enable GMM.
+    </value>
+  </data>
+  <data name="SyncPurgedForInactivityEmailBody" xml:space="preserve">
+    <value>You received this notification because you are listed as the owner of **{1}**.
+
+Your group's affiliation with GMM has been removed for inactivity due to one of the following reasons:
+
+* Source and/or destination group(s) no longer exist.
+*	Group owner did not take action on a drastic membership change alert.
+*	Membership syncs were paused by owner for more than 30 days.
+
+Please reach out to the **CC'ed alias** for inquiries about re-onboarding or any questions you may have.
+You can click on the "Go to GMM UI" option below to check the status of other groups you own and currently manage through GMM.</value>
+  </data>
+  <data name="SyncPurgedForInactivityEmailTitle" xml:space="preserve">
+    <value>Sync Disabled due to Inactivity</value>
+  </data>
+  <data name="SyncPurgedForInactivityEmailSubject" xml:space="preserve">
+    <value>[Final Notice] Sync Disabled for {1} due to Inactivity</value>
+  </data>
+  <data name="JobPurgingWarningEmailTitle" xml:space="preserve">
+    <value>Sync Job Purging Warning</value>
+  </data>
+  <data name="JobPurgingWarningEmailSubject" xml:space="preserve">
+    <value>[Warning] Your sync job for {5} will be purged soon</value>
+  </data>
+  <data name="JobPurgingWarningEmailBody" xml:space="preserve">
+    <value>You received this notification because you are listed as the owner of **{5}**.
+
+Your job has been in {0} status since {1}. It can only be in this status for {2} days. Your job will be purged by {3} if this issue is not resolved.
+
+Please take one of the following actions before {3} to prevent your job from being purged:
+- Enable the sync job if you want to resume membership management
+- Update the sync job configuration if changes are needed
+- Contact support if you need assistance
+
+If no action is taken, the job will be permanently removed from the system and you will need to re-submit it to restore membership management.
+
+You can click on the "Go to GMM UI" option below to manage your sync jobs.</value>
+  </data>
+  <data name="DecreaseThresholdMessage" xml:space="preserve">
+    <value>Decrease membership threshold {0}%. Detected threshold {1}%.</value>
+  </data>
+  <data name="IncreaseThresholdMessage" xml:space="preserve">
+    <value>Increase membership threshold {0}%. Detected threshold {1}%.</value>
+  </data>
+  <data name="NoDataEmailContent" xml:space="preserve">
+    <value>You received this notification because you are listed as a GMM onboarding requestor or as owner of **{1}**.
+
+The membership definition provided for **{1}** currently does not return any users. This is not common, so out of an abundance of caution, no users have been removed and subsequent membership syncs have been paused.
+
+Please review your membership definition by visiting the GMM UI.
+
+</value>
+  </data>
+  <data name="NoDataEmailTitle" xml:space="preserve">
+    <value>No Data Found</value>
+  </data>
+  <data name="NoDataEmailSubject" xml:space="preserve">
+    <value>[Action Required] No Data Found for {1}</value>
+  </data>
+   <data name="NotValidSourceTitle" xml:space="preserve">
+    <value>Sync Disabled with Status {3}</value>
+  </data>
+  <data name="NotValidSourceSubject" xml:space="preserve">
+    <value>[Action Required] Sync Disabled for {0}</value>
+  </data>
+  <data name="SyncDisabledNoValidGroupIds" xml:space="preserve">
+    <value>You received this notification because you are listed as an owner of **{0}**.
+
+    Membership syncs for **{0}** with Id {1} have been disabled because its following source group object ID(s) are not valid:
+{2}</value>
+  </data>
+  <data name="SyncJobDisabledEmailBody" xml:space="preserve">
+    <value>You received this notification because you are listed as a GMM onboarding requestor or as owner of **{0}**. Please visit {3} to learn more about GMM.
+
+The synchronization job for group {0} with Id: {1} has been disabled.
+
+If you would like to have it re-enabled please reach out to {2}.
+
+The group sync will be PAUSED until your response is received.
+</value>
+  </data>
+  <data name="SyncThresholdBothEmailBody" xml:space="preserve">
+    <value>You received this notification because you are listed as a GMM onboarding requestor or as owner of **{1}**. Please visit {3} to learn more about GMM.
+
+The group {1} with Id: {0} has exceeded the specified thresholds.
+
+{2}
+
+What is Threshold?
+
+The Configurable Threshold is a feature of GMM aimed to protect group membership from drastic changes caused by unexpected reasons such as re-organization, source group reconstruction, etc. It alerts the group requestor that the membership change will go beyond the specified Threshold and provides an opportunity for the requestor to review and confirm before GMM takes action.
+
+This is a default-on feature for all the groups, but you may request to update the threshold number or choose to disable this feature all together. Please note GMM does NOT log the individual member to be added or removed due to PII concerns, so we are unable to provide this information.
+
+Actions needed - Please 'Reply All' indicating what GMM should do about the threshold by highlighting one of the following options.
+
+1. The membership change looks right.  Please allow the threshold to be exceeded this time only.
+2. The membership change looks right.  Please allow the threshold to be exceeded, and update the default threshold to X%.
+3. The membership change looks right.  I don’t need the threshold check in the future so please disable this feature. (Not recommended)
+4. The projected increase or decrease does not look right to me. Please do not allow the sync to exceed the threshold. I will contact support to follow up.
+
+The group sync will be PAUSED until your response is received.
+</value>
+  </data>
+  <data name="SyncThresholdDisablingJobEmailSubject" xml:space="preserve">
+    <value>[Action Required] Synchronization Job Disabled for {0}</value>
+  </data>
+  <data name="SyncThresholdEmailSubject" xml:space="preserve">
+    <value>[Action Required] Membership Change Alert Review for {0}</value>
+  </data>
+  <data name="ThresholdNotificationResolution.IgnoreOnce" xml:space="preserve">
+    <value>Ignore Thresholds Once</value>
+  </data>
+  <data name="ThresholdNotificationResolution.Paused" xml:space="preserve">
+    <value>Sync Job Paused</value>
+  </data>
+  <data name="GuestUserFailureTitle" xml:space="preserve">
+    <value>Sync Disabled: Guest Users Not Supported</value>
+  </data>
+  <data name="GuestUserFailureEmailBody" xml:space="preserve">
+    <value>You’re receiving this notification because you are an owner of **{1}**.
+
+During the latest sync, GMM detected one or more **guest users** in the membership source. GMM does not support adding guest users to Groups.
+
+As a result, **sync has been disabled** and the group status is now **GuestUsersNotSupported**.
+
+Before sync was disabled, the following updates were applied for non-guest users:
+
+* **{2} users were added**
+* **{3} users were removed**
+
+To continue using GMM for this group:
+
+* Remove guest users from the sources
+* Then re-enable sync
+
+If guest users are required, they will need to be managed outside of GMM.
+
+</value>
+  </data>
+  <data name="ThresholdNotificationFallbackBody" xml:space="preserve">
+    <value>The most recent attempt to update the membership of your GMM managed group '**{0}**' with Id: {1} exceeded the configured alert threshold.
+
+**{2}% increase** and **{3}% decrease** alerts are configured for this group.
+
+Please forward this message to the CC'ed email for support and they will guide you through the actions.</value>
+  </data>
+  <data name="SubmissionRejectedEmailTitle" xml:space="preserve">
+    <value>Submission Rejected</value>
+  </data>
+  <data name="SubmissionRejectedEmailSubject" xml:space="preserve">
+    <value>[Action Required] Submission Rejected for {1}</value>
+  </data>
+  <data name="SubmissionRejectedEmailBody" xml:space="preserve">
+    <value>You received this notification because you submitted a request for **{1}**.
+
+Your submission for the sync job for group **{1}** with Id: {0} has been **rejected**.
+
+**Reason for rejection:** {2}
+
+If you believe this rejection was made in error or if you have questions about the decision, please forward this message to the CC'ed email for further assistance.
+
+You can access the GMM UI to review the current sync job configuration and submit a new request if needed.</value>
+  </data>
+  <data name="SubmissionApprovedEmailTitle" xml:space="preserve">
+    <value>Submission Approved</value>
+  </data>
+  <data name="SubmissionApprovedEmailSubject" xml:space="preserve">
+    <value>Submission Approved for {1}</value>
+  </data>
+  <data name="SubmissionApprovedEmailBody" xml:space="preserve">
+    <value>You received this notification because you submitted a request for **{1}**.
+
+Your submission for the sync job for group **{1}** with Id: {0} has been **approved**.
+
+Your sync job is now active and will run according to its configured schedule.
+
+You can access the GMM UI to view your sync job status and configuration.</value>
+  </data>
+  <data name="NestedGroupsFoundTitle" xml:space="preserve">
+    <value>Sync Disabled with Status {4}</value>
+  </data>
+  <data name="NestedGroupsFoundSubject" xml:space="preserve">
+    <value>[Action Required] Sync Disabled for {1}</value>
+  </data>
+  <data name="NestedGroupsFoundEmailBody" xml:space="preserve">
+    <value>You received this notification because you are listed as an owner of **{1}**.
+
+GMM cannot manage a destination group that contains nested groups (groups added as members). As a result, membership sync has been automatically disabled for {1} with object Id: {0}.
+
+Nested groups detected:
+
+{3}
+
+**What you need to do**
+
+To continue using GMM to manage this group:
+1. **Remove the nested groups** listed above from {1} via [Entra ID](https://portal.azure.com/#view/Microsoft_AAD_IAM/GroupDetailsMenuBlade/~/Members/groupId/{0})
+2. Go to the **GMM UI** and **re-enable membership sync**
+
+Once the nested groups are removed and group sync re-enabled, GMM will resume managing membership based on your configured rules.
+
+If you intentionally require nested groups, GMM will not be able to manage this group, and you should keep manual or alternative management.</value>
+  </data>
+</root>

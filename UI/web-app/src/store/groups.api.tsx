@@ -5,8 +5,9 @@ import { createAsyncThunk } from '@reduxjs/toolkit';
 import { config } from '../authConfig';
 import { ThunkConfig } from './store';
 import { TokenType } from '../services/auth';
-import { Destination } from '../models';
+import { Destination, PostGroupResponse } from '../models';
 import { IPersonaProps } from '@fluentui/react';
+import { PostGroupRequest } from '../models/PostGroupRequest';
 
 interface ValidateGroupResponse {
     groupId: string;
@@ -75,3 +76,18 @@ export const validateGroup = createAsyncThunk<ValidateGroupResponse, string, Thu
     }
 );
 
+export const createGroup = createAsyncThunk<PostGroupResponse, PostGroupRequest, ThunkConfig>(
+    '/groups',
+    async (postGroupRequest: PostGroupRequest, { extra, rejectWithValue } ) => {
+        const { gmmApi } = extra.apis;
+        try {
+            const response = await gmmApi.destinations.createGroup(postGroupRequest);
+            return response.data;
+        } catch (error: any) {
+            if (error.response && error.response.data && error.response.data.detail) {
+                return rejectWithValue(error.response.data.detail);
+            }
+            throw new Error('Failed to call createGroup endpoint');
+        }
+    }
+);

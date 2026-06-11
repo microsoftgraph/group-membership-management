@@ -54,33 +54,63 @@ export const getStyles = (props: ISelectDestinationStyleProps): ISelectDestinati
       lineHeight: 16,
       fontFamily: 'Segoe UI',
       color: theme.semanticColors.errorText,
+      width: 500,
     },
     resultsContainer: {
       display: 'flex',
       flexDirection: 'column',
       gap: 16,
     },
-    endpointsContainer: {
-      display: 'flex',
-      flexDirection: 'column',
-      gap: 23,
-      overflow: 'auto'
-    },
-    outlookWarning: {
-      width: 'fit-content',
-      display: 'flex',
-      alignItems: 'center'
-    },
-    outlookContainer: {
-      display: 'flex',
-      flexDirection: 'row',
-      gap: 70
-    },
     spinnerContainer: {
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
       minHeight: 20
+    },
+    comboBoxOptionContainer: {
+      paddingTop: 3,
+      paddingBottom: 3,
+    },
+    comboBoxOptionCodeText: {
+      fontStyle: 'italic',
+    },
+    textField: {
+        fontWeight: 300,
+        fontSize: 16,
+        fontFamily: 'Segoe UI',
+        borderRadius: 4,
+        borderStyle: 'solid',
+        borderWidth: 1,
+        borderColor: theme.palette.neutralQuaternary,
+        minWidth: 100,
+        width: '20%'
+    },
+    textFieldGroup: {
+        border: 'none'
+    },
+    messageBarContent: {
+      color: 'inherit'
+    },
+    messageBarSection: {
+      marginTop: 8
+    },
+    linkButton: {
+      root: {
+        border: 'none',
+        backgroundColor: 'transparent',
+        padding: '0px 0px',
+      }
+    },
+    checkAgainButton: {
+      root: {
+        border: 'none',
+        backgroundColor: 'transparent',
+        padding: '0px 0px',
+        color: 'inherit',
+      },
+      label: {
+        color: 'inherit',
+      }
     }
   };
 };

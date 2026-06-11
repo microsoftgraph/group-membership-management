@@ -3,18 +3,20 @@
 using Hosts.PlaceMembershipObtainer;
 using Microsoft.ApplicationInsights;
 using Microsoft.ApplicationInsights.Extensibility;
-using Microsoft.Azure.WebJobs.Extensions.DurableTask;
+using Microsoft.DurableTask;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Models;
 using Models.ServiceBus;
 using Moq;
-using Newtonsoft.Json;
 using Repositories.Contracts;
 using Repositories.Contracts.InjectConfig;
+using Repositories.Mocks;
 using Services;
+using Services.Contracts;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text.Json;
 using System.Threading.Tasks;
 
 namespace Tests.Services
@@ -25,11 +27,13 @@ namespace Tests.Services
         private Mock<IDryRunValue> _dryRunValue;
         private Mock<IMailRepository> _mailRepository;
         private Mock<ILoggingRepository> _loggingRepository;
-        private Mock<IDatabaseSyncJobsRepository> _syncJobRepository;
+        private Mock<ISyncJobStatusService> _syncJobStatusService;
+        private Mock<IDatabaseGroupsRepository> _groupsRepository;
+        private Mock<IDatabaseChannelsRepository> _channelsRepository;
         private Mock<IGraphGroupRepository> _graphGroupRepository;
         private Mock<IEmailSenderRecipient> _emailSenderRecipient;
         private Mock<IBlobStorageRepository> _blobStorageRepository;
-        private Mock<IDurableOrchestrationContext> _durableOrchestrationContext;
+        private Mock<TaskOrchestrationContext> _durableOrchestrationContext;
 
         private int _userCount;
         private BlobResult _blobResult;
@@ -45,17 +49,19 @@ namespace Tests.Services
             _dryRunValue = new Mock<IDryRunValue>();
             _mailRepository = new Mock<IMailRepository>();
             _loggingRepository = new Mock<ILoggingRepository>();
-            _syncJobRepository = new Mock<IDatabaseSyncJobsRepository>();
+            _syncJobStatusService = new Mock<ISyncJobStatusService>();
+            _groupsRepository = new Mock<IDatabaseGroupsRepository>();
+            _channelsRepository = new Mock<IDatabaseChannelsRepository>();
             _graphGroupRepository = new Mock<IGraphGroupRepository>();
             _emailSenderRecipient = new Mock<IEmailSenderRecipient>();
             _blobStorageRepository = new Mock<IBlobStorageRepository>();
-            _durableOrchestrationContext = new Mock<IDurableOrchestrationContext>();
+            _durableOrchestrationContext = new Mock<TaskOrchestrationContext>();
 
             _userCount = 10;
 
             var content = new GroupMembership
             {
-                SyncJobId = Guid.NewGuid(),                
+                SyncJobId = Guid.NewGuid(),
                 MembershipObtainerDryRunEnabled = false,
                 RunId = Guid.Empty,
                 SourceMembers = Enumerable.Range(0, _userCount)
@@ -70,41 +76,43 @@ namespace Tests.Services
             _blobResult = new BlobResult
             {
                 BlobStatus = BlobStatus.Found,
-                Content = JsonConvert.SerializeObject(content)
+                Content = JsonSerializer.Serialize(content)
             };
 
             _service = new PlaceMembershipObtainerService(
                                             _graphGroupRepository.Object,
                                             _blobStorageRepository.Object,
-                                            _syncJobRepository.Object,
+                                            _syncJobStatusService.Object,
+                                            _groupsRepository.Object,
+                                            _channelsRepository.Object,
                                             _dryRunValue.Object
                                             );
 
             _durableOrchestrationContext.Setup(x => x.GetInput<SubOrchestratorRequest>()).Returns(() => _subOrchestratorRequest);
 
-            _durableOrchestrationContext.Setup(x => x.CallActivityAsync<PlaceInformation>(It.IsAny<string>(), It.IsAny<RoomsReaderRequest>()))
-                                         .Callback<string, object>(async (name, request) =>
+            _durableOrchestrationContext.Setup(x => x.CallActivityAsync<PlaceInformation>(It.IsAny<TaskName>(), It.IsAny<RoomsReaderRequest>(), It.IsAny<TaskOptions>()))
+                                         .Callback<TaskName, object, TaskOptions>(async (name, request, options) =>
                                          {
                                              _placesReaderResponse = await CallRoomsReaderFunctionAsync(request as RoomsReaderRequest);
                                          })
                                          .ReturnsAsync(() => _placesReaderResponse);
 
-            _durableOrchestrationContext.Setup(x => x.CallActivityAsync<PlaceInformation>(It.IsAny<string>(), It.IsAny<WorkSpacesReaderRequest>()))
-                                        .Callback<string, object>(async (name, request) =>
+            _durableOrchestrationContext.Setup(x => x.CallActivityAsync<PlaceInformation>(It.IsAny<TaskName>(), It.IsAny<WorkSpacesReaderRequest>(), It.IsAny<TaskOptions>()))
+                                        .Callback<TaskName, object, TaskOptions>(async (name, request, options) =>
                                         {
                                             _workSpacesReaderResponse = await CallWorkSpacesReaderFunctionAsync(request as WorkSpacesReaderRequest);
                                         })
                                         .ReturnsAsync(() => _workSpacesReaderResponse);
 
-            _durableOrchestrationContext.Setup(x => x.CallActivityAsync<UserInformation>(It.IsAny<string>(), It.IsAny<UsersReaderRequest>()))
-                                        .Callback<string, object>(async (name, request) =>
+            _durableOrchestrationContext.Setup(x => x.CallActivityAsync<UserInformation>(It.IsAny<TaskName>(), It.IsAny<UsersReaderRequest>(), It.IsAny<TaskOptions>()))
+                                        .Callback<TaskName, object, TaskOptions>(async (name, request, options) =>
                                         {
                                             _usersReaderResponse = await CallUsersReaderFunctionAsync(request as UsersReaderRequest);
                                         })
                                         .ReturnsAsync(() => _usersReaderResponse);
 
-            _durableOrchestrationContext.Setup(x => x.CallActivityAsync<UserInformation>(It.IsAny<string>(), It.IsAny<SubsequentUsersReaderRequest>()))
-                                        .Callback<string, object>(async (name, request) =>
+            _durableOrchestrationContext.Setup(x => x.CallActivityAsync<UserInformation>(It.IsAny<TaskName>(), It.IsAny<SubsequentUsersReaderRequest>(), It.IsAny<TaskOptions>()))
+                                        .Callback<TaskName, object, TaskOptions>(async (name, request, options) =>
                                         {
                                             _usersReaderResponse = await CallSubsequentUsersReaderFunctionAsync(request as SubsequentUsersReaderRequest);
                                         })
@@ -119,12 +127,16 @@ namespace Tests.Services
             var syncJob = new SyncJob
             {
                 Id = Guid.NewGuid(),
-                TargetOfficeGroupId = Guid.NewGuid(),
+                MembershipType = "GroupMembership",
                 Query = "[{ 'type': 'PlaceMembership', 'source': 'https://graph.microsoft.com/v1.0/Rooms/microsoft.graph.room' }]",
                 Status = "InProgress",
                 Period = 6
             };
-
+            syncJob.Group = new Group
+            {
+                SyncJobId = syncJob.Id,
+                GroupId = Guid.NewGuid()
+            };
 
             _subOrchestratorRequest = new SubOrchestratorRequest
             {
@@ -163,7 +175,7 @@ namespace Tests.Services
 
             var telemetryClient = new TelemetryClient(TelemetryConfiguration.CreateDefault());
             var subOrchestratorFunction = new SubOrchestratorFunction(_loggingRepository.Object, telemetryClient);
-            var (Users, Status) = await subOrchestratorFunction.RunSubOrchestratorAsync(_durableOrchestrationContext.Object);
+            var subOrchestratorResponse = await subOrchestratorFunction.RunSubOrchestratorAsync(_durableOrchestrationContext.Object);
 
             _loggingRepository.Verify(x => x.LogMessageAsync(
                                     It.Is<LogMessage>(m => m.Message == $"{nameof(SubOrchestratorFunction)} function started"),
@@ -181,9 +193,9 @@ namespace Tests.Services
                         It.IsAny<string>()
                     ), Times.Once);
 
-            Assert.IsNotNull(Users);
-            Assert.AreEqual(_userCount, Users.Count);
-            Assert.AreEqual(SyncStatus.InProgress, Status);
+            Assert.IsNotNull(subOrchestratorResponse.Users);
+            Assert.AreEqual(_userCount, subOrchestratorResponse.Users.Count);
+            Assert.AreEqual(SyncStatus.InProgress, subOrchestratorResponse.Status);
         }
 
         [TestMethod]
@@ -192,12 +204,16 @@ namespace Tests.Services
             var syncJob = new SyncJob
             {
                 Id = Guid.NewGuid(),
-                TargetOfficeGroupId = Guid.NewGuid(),
+                MembershipType = "GroupMembership",
                 Query = "[{ 'type': 'PlaceMembership', 'source': 'https://graph.microsoft.com/v1.0/Rooms/microsoft.graph.workspace' }]",
                 Status = "InProgress",
                 Period = 6
             };
-
+            syncJob.Group = new Group
+            {
+                SyncJobId = syncJob.Id,
+                GroupId = Guid.NewGuid()
+            };
 
             _subOrchestratorRequest = new SubOrchestratorRequest
             {
@@ -236,7 +252,7 @@ namespace Tests.Services
 
             var telemetryClient = new TelemetryClient(TelemetryConfiguration.CreateDefault());
             var subOrchestratorFunction = new SubOrchestratorFunction(_loggingRepository.Object, telemetryClient);
-            var (Users, Status) = await subOrchestratorFunction.RunSubOrchestratorAsync(_durableOrchestrationContext.Object);
+            var subOrchestratorResponse = await subOrchestratorFunction.RunSubOrchestratorAsync(_durableOrchestrationContext.Object);
 
             _loggingRepository.Verify(x => x.LogMessageAsync(
                                     It.Is<LogMessage>(m => m.Message == $"{nameof(SubOrchestratorFunction)} function started"),
@@ -254,9 +270,9 @@ namespace Tests.Services
                         It.IsAny<string>()
                     ), Times.Once);
 
-            Assert.IsNotNull(Users);
-            Assert.AreEqual(_userCount, Users.Count);
-            Assert.AreEqual(SyncStatus.InProgress, Status);
+            Assert.IsNotNull(subOrchestratorResponse.Users);
+            Assert.AreEqual(_userCount, subOrchestratorResponse.Users.Count);
+            Assert.AreEqual(SyncStatus.InProgress, subOrchestratorResponse.Status);
         }
 
         [TestMethod]
@@ -265,12 +281,16 @@ namespace Tests.Services
             var syncJob = new SyncJob
             {
                 Id = Guid.NewGuid(),
-                TargetOfficeGroupId = Guid.NewGuid(),
+                MembershipType = "GroupMembership",
                 Query = "[{ 'type': 'PlaceMembership', 'source': 'https://graph.microsoft.com/v1.0/users?$filter=endsWith(mail,'microsoft.com')&$orderBy=displayName&$select=id,displayName,mail' }]",
                 Status = "InProgress",
                 Period = 6
             };
-
+            syncJob.Group = new Group
+            {
+                SyncJobId = syncJob.Id,
+                GroupId = Guid.NewGuid()
+            };
             _subOrchestratorRequest = new SubOrchestratorRequest
             {
                 RunId = Guid.NewGuid(),
@@ -308,7 +328,7 @@ namespace Tests.Services
 
             var telemetryClient = new TelemetryClient(TelemetryConfiguration.CreateDefault());
             var subOrchestratorFunction = new SubOrchestratorFunction(_loggingRepository.Object, telemetryClient);
-            var (Users, Status) = await subOrchestratorFunction.RunSubOrchestratorAsync(_durableOrchestrationContext.Object);
+            var subOrchestratorResponse = await subOrchestratorFunction.RunSubOrchestratorAsync(_durableOrchestrationContext.Object);
 
             _loggingRepository.Verify(x => x.LogMessageAsync(
                                     It.Is<LogMessage>(m => m.Message == $"{nameof(SubOrchestratorFunction)} function started"),
@@ -326,9 +346,9 @@ namespace Tests.Services
                         It.IsAny<string>()
                     ), Times.Once);
 
-            Assert.IsNotNull(Users);
-            Assert.AreEqual(_userCount, Users.Count);
-            Assert.AreEqual(SyncStatus.InProgress, Status);
+            Assert.IsNotNull(subOrchestratorResponse.Users);
+            Assert.AreEqual(_userCount, subOrchestratorResponse.Users.Count);
+            Assert.AreEqual(SyncStatus.InProgress, subOrchestratorResponse.Status);
         }
 
         [TestMethod]
@@ -337,12 +357,16 @@ namespace Tests.Services
             var syncJob = new SyncJob
             {
                 Id = Guid.NewGuid(),
-                TargetOfficeGroupId = Guid.NewGuid(),
+                MembershipType = "GroupMembership",
                 Query = "[{ 'type': 'PlaceMembership', 'source': 'https://graph.microsoft.com/v1.0/users?$filter=endsWith(mail,'microsoft.com')&$orderBy=displayName&$select=id,displayName,mail' }]",
                 Status = "InProgress",
                 Period = 6
             };
-
+            syncJob.Group = new Group
+            {
+                SyncJobId = syncJob.Id,
+                GroupId = Guid.NewGuid()
+            };
             _subOrchestratorRequest = new SubOrchestratorRequest
             {
                 RunId = Guid.NewGuid(),
@@ -391,7 +415,7 @@ namespace Tests.Services
 
             var telemetryClient = new TelemetryClient(TelemetryConfiguration.CreateDefault());
             var subOrchestratorFunction = new SubOrchestratorFunction(_loggingRepository.Object, telemetryClient);
-            var (Users, Status) = await subOrchestratorFunction.RunSubOrchestratorAsync(_durableOrchestrationContext.Object);
+            var subOrchestratorResponse = await subOrchestratorFunction.RunSubOrchestratorAsync(_durableOrchestrationContext.Object);
 
             _loggingRepository.Verify(x => x.LogMessageAsync(
                                     It.Is<LogMessage>(m => m.Message == $"{nameof(SubOrchestratorFunction)} function started"),
@@ -410,9 +434,9 @@ namespace Tests.Services
                         It.IsAny<string>()
                     ), Times.Once);
 
-            Assert.IsNotNull(Users);
-            Assert.AreEqual(_userCount, Users.Count);
-            Assert.AreEqual(SyncStatus.InProgress, Status);
+            Assert.IsNotNull(subOrchestratorResponse.Users);
+            Assert.AreEqual(_userCount, subOrchestratorResponse.Users.Count);
+            Assert.AreEqual(SyncStatus.InProgress, subOrchestratorResponse.Status);
         }
 
         private async Task<PlaceInformation> CallRoomsReaderFunctionAsync(RoomsReaderRequest request)

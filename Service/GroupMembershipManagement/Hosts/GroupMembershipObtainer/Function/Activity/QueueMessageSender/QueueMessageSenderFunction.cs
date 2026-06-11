@@ -1,59 +1,51 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
-using Microsoft.Azure.WebJobs;
-using Microsoft.Azure.WebJobs.Extensions.DurableTask;
+using Microsoft.Azure.Functions.Worker;
+using Microsoft.Extensions.Logging;
 using Models;
 using Models.ServiceBus;
-using Newtonsoft.Json;
 using Repositories.Contracts;
+using Repositories.Contracts.Helpers;
 using System;
+using System.Collections.Generic;
+using System.Text.Json;
 using System.Threading.Tasks;
 
 namespace Hosts.GroupMembershipObtainer
 {
     public class QueueMessageSenderFunction
     {
-        private readonly ILoggingRepository _loggingRepository = null;
+        private readonly ILogger<QueueMessageSenderFunction> _logger;
         private readonly IServiceBusQueueRepository _serviceBusQueueRepository = null;
         public QueueMessageSenderFunction(
-            ILoggingRepository loggingRepository,
+            ILogger<QueueMessageSenderFunction> logger,
             IServiceBusQueueRepository serviceBusQueueRepository)
         {
-            _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _serviceBusQueueRepository = serviceBusQueueRepository ?? throw new ArgumentNullException(nameof(serviceBusQueueRepository));
         }
 
-        [FunctionName(nameof(QueueMessageSenderFunction))]
+        [Function(nameof(QueueMessageSenderFunction))]
         public async Task SendMessageAsync([ActivityTrigger] MembershipAggregatorHttpRequest request)
         {
-
-            await _loggingRepository.LogMessageAsync(new LogMessage
+            using (_logger.BeginSyncJobScope(request.SyncJob, new Dictionary<string, object> { ["CurrentPart"] = request.PartNumber, ["TotalParts"] = request.PartsCount }))
             {
-                Message = $"{nameof(QueueMessageSenderFunction)} function started",
-                RunId = request.SyncJob.RunId
-            }, VerbosityLevel.DEBUG);
+                _logger.FunctionStarted(nameof(QueueMessageSenderFunction));
 
-            var body = System.Text.Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(request));
+                var body = System.Text.Encoding.UTF8.GetBytes(JsonSerializer.Serialize(request));
 
-            var message = new ServiceBusMessage
-            {
-                MessageId = $"{request.SyncJob.Id}_{request.SyncJob.RunId}_{Guid.NewGuid()}",
-                Body = body
-            };
+                var message = new ServiceBusMessage
+                {
+                    MessageId = $"{request.SyncJob.Id}_{request.SyncJob.RunId}_{Guid.NewGuid()}",
+                    Body = body
+                };
 
-            await _serviceBusQueueRepository.SendMessageAsync(message);
+                await _serviceBusQueueRepository.SendMessageAsync(message);
 
-            await _loggingRepository.LogMessageAsync(new LogMessage
-            {
-                Message = $"Sent message {message.MessageId} to membership aggregator",
-                RunId = request.SyncJob.RunId
-            }, VerbosityLevel.INFO);
+                _logger.SentMessageToAggregator(message.MessageId);
 
-            await _loggingRepository.LogMessageAsync(new LogMessage
-            {
-                Message = $"{nameof(QueueMessageSenderFunction)} function completed",
-                RunId = request.SyncJob.RunId
-            }, VerbosityLevel.DEBUG);
+                _logger.FunctionCompleted(nameof(QueueMessageSenderFunction));
+            }
         }
     }
 }

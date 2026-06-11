@@ -12,6 +12,14 @@ using System.Security.Claims;
 using WebApi.Models;
 using Services.WebApi;
 using WebApi.Controllers.v1.Jobs;
+using System.Net;
+using Azure.Security.KeyVault.Secrets;
+using Azure;
+using Services.Messages.Requests;
+using Services.Contracts;
+using Services.Messages.Responses;
+using Microsoft.Extensions.Options;
+using WebApi.Configuration;
 
 namespace Services.Tests
 {
@@ -29,7 +37,8 @@ namespace Services.Tests
         private PatchSettingHandler _patchSettingHandler = null!;
         private SettingKey _settingKey;
         private Mock<IHttpContextAccessor> _httpContextAccessor = null!;
-
+        private Mock<IRequestHandler<GetSupportEmailRequest, GetSupportEmailResponse>> _getSupportEmailHandlerMock = null!;
+        private IRequestHandler<GetSupportEmailRequest, GetSupportEmailResponse> _getSupportEmailHandler = null!;
 
         [TestInitialize]
         public void Initialize()
@@ -37,10 +46,15 @@ namespace Services.Tests
             _context = new DefaultHttpContext();
             _loggingRepository = new Mock<ILoggingRepository>();
             _settingsRepository = new Mock<IDatabaseSettingsRepository>();
+            _getSupportEmailHandlerMock = new Mock<IRequestHandler<GetSupportEmailRequest, GetSupportEmailResponse>>();
+            _getSupportEmailHandlerMock.Setup(h => h.ExecuteAsync(It.IsAny<GetSupportEmailRequest>()))
+                                       .ReturnsAsync(new GetSupportEmailResponse { SupportEmailAddress = "support@example.com" });
+
+            _getSupportEmailHandler = _getSupportEmailHandlerMock.Object;
             _getAllSettingsHandler = new GetAllSettingsHandler(_loggingRepository.Object, _settingsRepository.Object);
             _getSettingHandler = new GetSettingHandler(_loggingRepository.Object, _settingsRepository.Object);
             _patchSettingHandler = new PatchSettingHandler(_loggingRepository.Object, _settingsRepository.Object);
-            _settingsController = new SettingsController(_getSettingHandler, _getAllSettingsHandler, _patchSettingHandler)
+            _settingsController = new SettingsController(_getSettingHandler, _getAllSettingsHandler, _patchSettingHandler, _getSupportEmailHandler)
             {
                 ControllerContext = CreateControllerContext(new List<Claim>
                 {
@@ -76,6 +90,17 @@ namespace Services.Tests
         }
 
         [TestMethod]
+        public async Task GetSettingByKeyNotFoundTestAsync()
+        {
+            _settingsRepository.Setup(x => x.GetSettingByKeyAsync(_settingKey)).ReturnsAsync(() => null);
+            var response = await _settingsController.GetSettingByKeyAsync(_settingKey);
+            Assert.IsNotNull(response);
+
+            var result = response as ObjectResult;
+            Assert.IsNull(result);
+        }
+
+        [TestMethod]
         public async Task GetAllSettingsTestAsync()
         {
             var response = await _settingsController.GetAllSettingsAsync();
@@ -92,10 +117,42 @@ namespace Services.Tests
         }
 
         [TestMethod]
+        public async Task GetSettingByKeyExceptionTestAsync()
+        {
+            var nonExistentSettingKey = new SettingKey();
+
+            _settingsRepository.Setup(x => x.GetSettingByKeyAsync(nonExistentSettingKey))
+                               .ThrowsAsync(new Exception());
+
+            var response = await _settingsController.GetSettingByKeyAsync(nonExistentSettingKey);
+            Assert.IsNotNull(response);
+
+            var internalServerErrorResponse = response as StatusCodeResult;
+
+            Assert.IsNotNull(internalServerErrorResponse);
+            Assert.AreEqual(internalServerErrorResponse.StatusCode, (int)HttpStatusCode.InternalServerError);
+        }
+
+        [TestMethod]
+        public async Task GetAllSettingsExceptionTestAsync()
+        {
+            _settingsRepository.Setup(x => x.GetAllSettingsAsync())
+                               .ThrowsAsync(new Exception());
+
+            var response = await _settingsController.GetAllSettingsAsync();
+            Assert.IsNotNull(response);
+
+            var internalServerErrorResponse = response as StatusCodeResult;
+
+            Assert.IsNotNull(internalServerErrorResponse);
+            Assert.AreEqual(internalServerErrorResponse.StatusCode, (int)HttpStatusCode.InternalServerError);
+        }
+
+        [TestMethod]
         [DataRow(Roles.HYPERLINK_ADMINISTRATOR)]
         public async Task PatchSettingWhenHyperlinkAdminTestAsync(string role)
         {
-            _settingsController = new SettingsController(_getSettingHandler, _getAllSettingsHandler, _patchSettingHandler)
+            _settingsController = new SettingsController(_getSettingHandler, _getAllSettingsHandler, _patchSettingHandler, _getSupportEmailHandler)
             {
                 ControllerContext = CreateControllerContext(new List<Claim>
                 {
@@ -113,6 +170,45 @@ namespace Services.Tests
 
             _settingsRepository.Verify(x => x.PatchSettingAsync(_settingKey, "updatedValue"), Times.Once());
         }
+
+        [TestMethod]
+        public async Task PatchSettingNotFoundTestAsync()
+        {
+            var nonExistentSettingKey = SettingKey.UIUrl;
+            _settingsRepository.Setup(x => x.PatchSettingAsync(nonExistentSettingKey, It.IsAny<string>()))
+                               .ThrowsAsync(new KeyNotFoundException());
+
+            var response = await _settingsController.PatchSettingAsync(nonExistentSettingKey, "updatedValue");
+
+            Assert.IsInstanceOfType(response, typeof(NotFoundResult));
+        }
+
+        [TestMethod]
+        public async Task PatchSettingExceptionTestAsync()
+        {
+            _settingsRepository.Setup(x => x.PatchSettingAsync(It.IsAny<SettingKey>(), It.IsAny<string>()))
+                               .ThrowsAsync(new Exception());
+
+            var response = await _settingsController.PatchSettingAsync(_settingKey, "updatedValue");
+
+            Assert.IsInstanceOfType(response, typeof(StatusCodeResult));
+
+            var internalServerErrorResponse = response as StatusCodeResult;
+
+            Assert.IsNotNull(internalServerErrorResponse);
+            Assert.AreEqual(internalServerErrorResponse.StatusCode, (int)HttpStatusCode.InternalServerError);
+        }
+
+        [TestMethod]
+        public async Task GetSupportEmailAddress_ReturnsSupportEmailAddress()
+        {
+            var result = await _settingsController.GetSupportEmailAddressAsync();
+
+            var okResult = result as OkObjectResult;
+            Assert.IsNotNull(okResult);
+            Assert.AreEqual("support@example.com", okResult.Value);
+        }
+
         private ControllerContext CreateControllerContext(HttpContext httpContext)
         {
             return new ControllerContext { HttpContext = httpContext };
@@ -132,5 +228,6 @@ namespace Services.Tests
 
             return httpContext;
         }
+
     }
 }

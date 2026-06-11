@@ -8,6 +8,7 @@ export type MembershipConfigurationStyles = {
   root: IStyle;
   addButtonContainer: IStyle;
   toggleContainer: IStyle;
+  expandCollapseButton: IStyle;
   card: IStyle;
 };
 
@@ -26,4 +27,5 @@ export type MembershipConfigurationProps = React.AllHTMLAttributes<HTMLDivElemen
    * Call to provide customized styling that will layer on top of the variant rules.
    */
   styles?: IStyleFunctionOrObject<MembershipConfigurationStyleProps, MembershipConfigurationStyles>;
+  isEditable?: boolean;
 };

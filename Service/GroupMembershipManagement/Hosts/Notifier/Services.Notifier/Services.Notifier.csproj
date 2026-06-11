@@ -1,13 +1,13 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>net6.0</TargetFramework>
+    <TargetFramework>net8.0</TargetFramework>
   </PropertyGroup>
   <ItemGroup>
-	  <PackageReference Include="AdaptiveCards.Templating" Version="1.5.0" />
-	  <PackageReference Include="Azure.Identity" Version="1.11.0" />
-	  <PackageReference Include="Azure.Monitor.Query" Version="1.1.0" />
-	  <PackageReference Include="Microsoft.ApplicationInsights" Version="2.20.0" />
+	  <PackageReference Include="AdaptiveCards.Templating" />
+	  <PackageReference Include="Azure.Identity" />
+	  <PackageReference Include="Azure.Monitor.Query" />
+	  <PackageReference Include="Microsoft.ApplicationInsights" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\..\Repositories.Contracts\Repositories.Contracts.csproj" />

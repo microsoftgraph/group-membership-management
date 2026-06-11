@@ -8,6 +8,6 @@ namespace Hosts.JobScheduler
 {
     public class BatchUpdateJobsRequest
     {
-        public IEnumerable<DistributionSyncJob> SyncJobBatch;
+        public IEnumerable<DistributionSyncJob> SyncJobBatch { get; set; }
     }
 }

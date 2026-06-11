@@ -1,0 +1,41 @@
+%%{init: {'flowchart': {'defaultRenderer': 'elk'}}}%%
+flowchart TD
+    subgraph ACQUIRE["1. LEASE ACQUISITION"]
+        A1[MS.DeferredPendingDrainOrchestrator<br/>calls RunLimiter.Acquire] --> A2{Capacity<br/>Available?}
+        A2 -->|Yes| A3[Lease Created<br/>RunId added to Leases dictionary<br/>Expiry set based on lane]
+        A2 -->|No| A4[Denied<br/>Job stays in pending queue]
+    end
+
+    subgraph ACTIVE["2. LEASE ACTIVE - Job Processing"]
+        B1[GU.OrchestratorMultiLaneFunction<br/>processes membership changes]
+        B2{Large Lane?}
+        B1 --> B2
+        B2 -->|Yes| B3[Heartbeat sent every 3 min<br/>via GU.MessageSplitterLeaseRenewSenderFunction]
+        B3 --> B4[MS.LeaseRenewOrchestratorFunction<br/>extends lease expiry by 15 min]
+        B4 --> B1
+        B2 -->|No| B5[Small lane: No heartbeat<br/>Must complete within 2 min]
+    end
+
+    subgraph RELEASE["3. LEASE RELEASE - Normal Completion"]
+        C1[Job completes successfully] --> C2[GU.MessageSplitterCompletionSenderFunction<br/>sends completion signal]
+        C2 --> C3[MS.CompletionOrchestratorFunction<br/>calls RunLimiter.Release]
+        C3 --> C4[Lease removed from dictionary<br/>Capacity freed]
+        C4 --> C5[Drain kicked to process<br/>waiting jobs]
+    end
+
+    subgraph EXPIRE["4. LEASE EXPIRATION - Failure Recovery"]
+        D1[Job crashes or hangs<br/>No heartbeat sent] --> D2[Lease expiry time passes]
+        D2 --> D3[MS.DeferredPendingSweepFunction<br/>runs every 5 minutes]
+        D3 --> D4[RunLimiter.Prune removes<br/>expired leases]
+        D4 --> D5[Capacity freed<br/>Waiting jobs can proceed]
+    end
+
+    A3 --> B1
+    B5 --> C1
+    B1 --> C1
+    B1 -.->|Timeout| D1
+
+    style A3 fill:#c8e6c9
+    style A4 fill:#ffcdd2
+    style C4 fill:#c8e6c9
+    style D4 fill:#fff3e0

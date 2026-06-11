@@ -15,12 +15,16 @@ import orgLeaderDetailsReducer from './orgLeaderDetails.slice';
 import settingsReducer from './settings.slice';
 import rolesReducer from './roles.slice';
 import sqlMembershipSourcesReducer from './sqlMembershipSources.slice';
+import operationsReducer from './operations.slice';
+import titleReducer from './title.slice';
+import themeReducer from './theme.slice';
 
 import { Services } from '../services';
 import { MsalAuthenticationService, TokenType } from '../services/auth';
 import { LocalizationService } from '../services/localization';
 import { ApiOptions, Apis, GraphApi } from '../apis';
 import { GMMApi } from '../apis/GMMApi';
+import { localStorageMiddleware } from './localStorage.middleware';
 
 // use OfflineAuthenticationService for offline development.
 const services: Services = {
@@ -56,6 +60,9 @@ const rootReducer = combineReducers({
   settings: settingsReducer,
   roles: rolesReducer,
   sqlMembershipSources: sqlMembershipSourcesReducer,
+  operations: operationsReducer,
+  title: titleReducer,
+  theme: themeReducer
 });
 
 export const store = configureStore({
@@ -68,7 +75,7 @@ export const store = configureStore({
           apis,
         },
       },
-    }),
+    }).concat(localStorageMiddleware),
 });
 
 /**
@@ -96,7 +103,7 @@ export function setupStore(
             },
           },
         },
-      }),
+      }).concat(localStorageMiddleware),
     preloadedState,
   });
 }
@@ -107,7 +114,7 @@ type ExtraArgument = {
 };
 
 // Infer the `RootState` and `AppDispatch` types from the store itself
-export type RootState = ReturnType<typeof store.getState>;
+export type RootState = ReturnType<typeof rootReducer>;
 export type AppStore = ReturnType<typeof setupStore>;
 export type AppDispatch = typeof store.dispatch;
 

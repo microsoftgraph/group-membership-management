@@ -42,26 +42,16 @@ resource websiteTemplate 'Microsoft.Web/sites@2022-03-01' = {
     httpsOnly: true
     reserved: false
     serverFarmId: resourceId('Microsoft.Web/serverfarms', servicePlanName)
+    siteConfig: {
+      minTlsVersion: '1.2'
+      cors: {
+        supportCredentials: true
+      }
+    }
   }
   identity: {
     type: deployUserManagedIdentity ? 'SystemAssigned, UserAssigned' : 'SystemAssigned'
     userAssignedIdentities: deployUserManagedIdentity ? userManagedIdentities : null
-  }
-}
-
-resource sites_ftp 'Microsoft.Web/sites/basicPublishingCredentialsPolicies@2022-09-01' = {
-  parent: websiteTemplate
-  name: 'ftp'
-  properties: {
-    allow: false
-  }
-}
-
-resource sites_scm 'Microsoft.Web/sites/basicPublishingCredentialsPolicies@2022-09-01' = {
-  parent: websiteTemplate
-  name: 'scm'
-  properties: {
-    allow: false
   }
 }
 
@@ -75,9 +65,27 @@ module webApiRBAC 'webApiRBAC.bicep' = {
     setRBACPermissions: setRBACPermissions
     webApiPrincipalId: websiteTemplate.identity.principalId
   }
-  dependsOn: [
+}
+
+resource sites_ftp 'Microsoft.Web/sites/basicPublishingCredentialsPolicies@2022-09-01' = {
+  parent: websiteTemplate
+  name: 'ftp'
+  properties: {
+    allow: false
+  }
+  dependsOn:[
+    webApiRBAC
+  ]
+}
+
+resource sites_scm 'Microsoft.Web/sites/basicPublishingCredentialsPolicies@2022-09-01' = {
+  parent: websiteTemplate
+  name: 'scm'
+  properties: {
+    allow: false
+  }
+  dependsOn:[
     sites_ftp
-    sites_scm
   ]
 }
 
@@ -91,9 +99,11 @@ resource websiteConfig 'Microsoft.Web/sites/config@2022-03-01' = {
     appSettings: appSettings
   }
   dependsOn: [
-    webApiRBAC
-    ]
+    sites_scm
+  ]
 }
 
 
 output principalId string = websiteTemplate.identity.principalId
+output outboundIpAddresses string = websiteTemplate.properties.outboundIpAddresses
+output possibleOutboundIpAddresses string = websiteTemplate.properties.possibleOutboundIpAddresses

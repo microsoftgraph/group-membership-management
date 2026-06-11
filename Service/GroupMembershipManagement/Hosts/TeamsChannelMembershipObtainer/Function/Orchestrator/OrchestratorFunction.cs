@@ -1,8 +1,8 @@
 // Copyright(c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-using Microsoft.Azure.WebJobs;
-using Microsoft.Azure.WebJobs.Extensions.DurableTask;
+using Microsoft.Azure.Functions.Worker;
+using Microsoft.DurableTask;
 using Models;
 using Models.Entities;
 using Repositories.Contracts;
@@ -27,8 +27,8 @@ namespace Hosts.TeamsChannelMembershipObtainer
             _isTeamsChannelDryRunEnabled = dryRun?.DryRunEnabled ?? throw new ArgumentNullException(nameof(dryRun));
         }
 
-        [FunctionName(nameof(OrchestratorFunction))]
-        public async Task RunOrchestratorAsync([OrchestrationTrigger] IDurableOrchestrationContext context, ExecutionContext executionContext)
+        [Function(nameof(OrchestratorFunction))]
+        public async Task RunOrchestratorAsync([OrchestrationTrigger] TaskOrchestrationContext context)
         {
 
             var channelSyncInfo = context.GetInput<ChannelSyncInfo>();
@@ -61,9 +61,9 @@ namespace Hosts.TeamsChannelMembershipObtainer
                     Verbosity = VerbosityLevel.DEBUG
                 });
 
-                var parsedAndValidated = await context.CallActivityAsync<(AzureADTeamsChannel parsedChannel, bool isValid)>(nameof(ChannelValidatorFunction), channelSyncInfo);
+                var parsedAndValidated = await context.CallActivityAsync<ValidateChannelResponse>(nameof(ChannelValidatorFunction), channelSyncInfo);
 
-                if (!parsedAndValidated.isValid)
+                if (!parsedAndValidated.IsValid)
                 {
                     await context.CallActivityAsync(nameof(LoggerFunction),
                        new LoggerRequest
@@ -81,7 +81,7 @@ namespace Hosts.TeamsChannelMembershipObtainer
                 var users = await context.CallActivityAsync<List<AzureADTeamsUser>>(nameof(UserReaderFunction), 
                     new UserReaderRequest
                     {
-                        Channel = parsedAndValidated.parsedChannel,
+                        Channel = parsedAndValidated.ParsedChannel,
                         RunId = runId,
                         ChannelSyncInfo = channelSyncInfo
                     });
@@ -92,7 +92,8 @@ namespace Hosts.TeamsChannelMembershipObtainer
                      {
                          Users = users,
                          ChannelSyncInfo = channelSyncInfo,
-                         IsDryRunEnabled = _isTeamsChannelDryRunEnabled
+                         IsDryRunEnabled = _isTeamsChannelDryRunEnabled,
+                         Channel = parsedAndValidated.ParsedChannel
                      });
 
 

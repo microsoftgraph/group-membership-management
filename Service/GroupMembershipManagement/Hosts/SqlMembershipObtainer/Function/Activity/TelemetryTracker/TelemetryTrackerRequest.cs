@@ -7,8 +7,10 @@ namespace SqlMembershipObtainer
 {
     public class TelemetryTrackerRequest
     {
-        public SyncStatus JobStatus { get; set; }
-        public ResultStatus ResultStatus { get; set; }
-        public Guid? RunId { get; set; }
+        public required SyncStatus JobStatus { get; init; }
+        public required ResultStatus ResultStatus { get; init; }
+        public required SyncJob SyncJob { get; init; }
+        public required int CurrentPart { get; init; }
+        public required int TotalParts { get; init; }
     }
 }

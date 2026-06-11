@@ -1,6 +1,6 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
-using Services.Entities;
+using MembershipAggregator.Services.Entities;
 
 namespace Hosts.MembershipAggregator
 {

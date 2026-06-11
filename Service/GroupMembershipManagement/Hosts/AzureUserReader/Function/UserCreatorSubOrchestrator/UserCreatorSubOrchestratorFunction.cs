@@ -5,8 +5,8 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
-using Microsoft.Azure.WebJobs;
-using Microsoft.Azure.WebJobs.Extensions.DurableTask;
+using Microsoft.Azure.Functions.Worker;
+using Microsoft.DurableTask;
 using Models;
 using Repositories.Contracts;
 
@@ -21,9 +21,9 @@ namespace Hosts.AzureUserReader
             _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
         }
 
-        [FunctionName(nameof(UserCreatorSubOrchestratorFunction))]
+        [Function(nameof(UserCreatorSubOrchestratorFunction))]
         public async Task<List<GraphProfileInformation>> CreateUsersAsync(
-            [OrchestrationTrigger] IDurableOrchestrationContext context)
+            [OrchestrationTrigger] TaskOrchestrationContext context)
         {
             var request = context.GetInput<AzureUserCreatorRequest>();
             var profiles = new List<GraphProfileInformation>();
@@ -41,6 +41,17 @@ namespace Hosts.AzureUserReader
                     RunId = null
                 });
 
+            if (request.PersonnelNumbers == null || !request.PersonnelNumbers.Any())
+            {
+                if (!context.IsReplaying)
+                    _ = _loggingRepository.LogMessageAsync(new LogMessage
+                    {
+                        Message = "No personnel numbers provided. Skipping user creation.",
+                        RunId = null
+                    });
+                return new List<GraphProfileInformation>();
+            }
+
             while ((batch = request.PersonnelNumbers.Skip(skip).Take(take).ToList()).Count > 0)
             {
                 if (!context.IsReplaying)
@@ -53,8 +64,16 @@ namespace Hosts.AzureUserReader
                 var userCreatorRequest = new AzureUserCreatorRequest
                 {
                     PersonnelNumbers = batch,
-                    TenantInformation = request.TenantInformation
+                    TenantInformation = request.TenantInformation,
+                    RequestId = context.InstanceId
                 };
+
+                if (!context.IsReplaying)
+                    _ = _loggingRepository.LogMessageAsync(new LogMessage
+                    {
+                        Message = $"UserCreatorRequest: {Newtonsoft.Json.JsonConvert.SerializeObject(userCreatorRequest)}",
+                        RunId = null
+                    });
 
                 var newProfiles = await context.CallActivityAsync<List<GraphProfileInformation>>(nameof(AzureUserCreatorFunction), userCreatorRequest);
                 profiles.AddRange(newProfiles);

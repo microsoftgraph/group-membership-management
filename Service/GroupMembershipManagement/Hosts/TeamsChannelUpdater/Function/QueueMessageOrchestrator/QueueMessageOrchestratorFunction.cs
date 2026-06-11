@@ -1,7 +1,7 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
-using Microsoft.Azure.WebJobs;
-using Microsoft.Azure.WebJobs.Extensions.DurableTask;
+using Microsoft.Azure.Functions.Worker;
+using Microsoft.DurableTask;
 using Models;
 using Repositories.Contracts;
 using System;
@@ -18,8 +18,8 @@ namespace Hosts.TeamsChannelUpdater
             _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
         }
 
-        [FunctionName(nameof(QueueMessageOrchestratorFunction))]
-        public async Task RunOrchestratorAsync([OrchestrationTrigger] IDurableOrchestrationContext context)
+        [Function(nameof(QueueMessageOrchestratorFunction))]
+        public async Task RunOrchestratorAsync([OrchestrationTrigger] TaskOrchestrationContext context)
         {
             try
             {
@@ -45,12 +45,12 @@ namespace Hosts.TeamsChannelUpdater
                 await context.CallActivityAsync(nameof(LoggerFunction),
                                                    new LoggerRequest
                                                    {
-                                                       Message = $"Processing message for group {request.SyncJob.TargetOfficeGroupId}",
+                                                       Message = $"Processing message for group {request.GroupId}",
                                                        RunId = runId,
                                                        Verbosity = VerbosityLevel.INFO,
                                                    });
 
-                await context.CallSubOrchestratorAsync<OrchestrationRuntimeStatus>(nameof(OrchestratorFunction), request);
+                await context.CallSubOrchestratorAsync(nameof(OrchestratorFunction), request);
             }
             catch
             {
@@ -63,3 +63,4 @@ namespace Hosts.TeamsChannelUpdater
         }
     }
 }
+

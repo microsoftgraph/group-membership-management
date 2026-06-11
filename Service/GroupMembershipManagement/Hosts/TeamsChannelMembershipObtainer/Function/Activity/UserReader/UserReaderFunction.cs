@@ -2,8 +2,7 @@
 // Licensed under the MIT license.
 
 using Models;
-using Microsoft.Azure.WebJobs;
-using Microsoft.Azure.WebJobs.Extensions.DurableTask;
+using Microsoft.Azure.Functions.Worker;
 using Repositories.Contracts;
 using System;
 using System.Threading.Tasks;
@@ -24,7 +23,7 @@ namespace Hosts.TeamsChannelMembershipObtainer
             _teamsChannelService = teamsChannelService ?? throw new ArgumentNullException(nameof(teamsChannelService));
         }
 
-        [FunctionName(nameof(UserReaderFunction))]
+        [Function(nameof(UserReaderFunction))]
         public async Task<List<AzureADTeamsUser>> ReadUsersAsync([ActivityTrigger] UserReaderRequest request)
         {
             var runId = request.RunId;
@@ -33,7 +32,7 @@ namespace Hosts.TeamsChannelMembershipObtainer
 
             var users = await _teamsChannelService.GetUsersFromTeamAsync(request.Channel, runId);
 
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Read {users.Count} users from {request.ChannelSyncInfo.SyncJob.Destination}.", RunId = runId });
+            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Read {users.Count} users from Group: {request.Channel.ObjectId} with Channel Id: {request.Channel.ChannelId}.", RunId = runId });
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(UserReaderFunction)} function completed", RunId = runId }, VerbosityLevel.DEBUG);
 
             return users;

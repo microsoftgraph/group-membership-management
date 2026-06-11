@@ -15,19 +15,19 @@ import {
     successMessage: IStyle;
     errorMessage: IStyle;
   }
-  
+
   export interface IAdvancedQueryStyleProps {
     className?: string;
     theme: ITheme;
   }
-  
+
   export interface IAdvancedQueryProps
     extends React.AllHTMLAttributes<HTMLDivElement> {
     /**
      * Optional className to apply to the root of the component.
      */
     className?: string;
-  
+
     /**
      * Call to provide customized styling that will layer on top of the variant rules.
      */
@@ -35,5 +35,6 @@ import {
     query: string;
     onQueryChange: (event: React.FormEvent<HTMLTextAreaElement | HTMLInputElement>, newValue?: string) => void;
     partId: number;
-  }
-  
+    isEditable?: boolean;
+  };
+

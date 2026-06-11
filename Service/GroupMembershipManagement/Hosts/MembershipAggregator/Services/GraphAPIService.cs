@@ -1,11 +1,12 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
+using Hosts.MembershipAggregator;
+using Microsoft.Extensions.Logging;
 using Models;
 using Models.Notifications;
 using Models.ServiceBus;
 using Polly;
 using Repositories.Contracts;
-using Repositories.Contracts.InjectConfig;
 using Services.Contracts;
 using System;
 using System.Collections.Generic;
@@ -18,27 +19,16 @@ namespace Services
     public class GraphAPIService : IGraphAPIService
     {
         private const int NumberOfGraphRetries = 5;
-        private readonly ILoggingRepository _loggingRepository;
+        private readonly ILogger<GraphAPIService> _logger;
         private readonly IGraphGroupRepository _graphGroupRepository;
         private readonly IServiceBusQueueRepository _notificationsQueueRepository;
 
-        private Guid _runId;
-        public Guid RunId
-        {
-            get { return _runId; }
-            set
-            {
-                _runId = value;
-                _graphGroupRepository.RunId = value;
-            }
-        }
-
         public GraphAPIService(
-                ILoggingRepository loggingRepository,
+                ILogger<GraphAPIService> logger,
                 IGraphGroupRepository graphGroupRepository,
                 IServiceBusQueueRepository notificationsQueueRepository)
         {
-            _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _graphGroupRepository = graphGroupRepository ?? throw new ArgumentNullException(nameof(graphGroupRepository));
             _notificationsQueueRepository = notificationsQueueRepository ?? throw new ArgumentNullException(nameof(notificationsQueueRepository));
         }
@@ -48,17 +38,13 @@ namespace Services
             return await _graphGroupRepository.GetGroupNameAsync(groupId);
         }
 
-        public async Task<PolicyResult<bool>> GroupExistsAsync(Guid groupId, Guid runId)
+        public async Task<PolicyResult<bool>> GroupExistsAsync(Guid groupId)
         {
             var graphRetryPolicy = Policy.Handle<SocketException>()
                                     .WaitAndRetryAsync(NumberOfGraphRetries, retryAttempt => TimeSpan.FromSeconds(Math.Pow(2, retryAttempt)),
-                   onRetry: async (ex, count) =>
+                   onRetry: (ex, sleepDuration) =>
                    {
-                       await _loggingRepository.LogMessageAsync(new LogMessage
-                       {
-                           Message = $"Got a transient SocketException. Retrying. This was try {count} out of {NumberOfGraphRetries}.\n" + ex.ToString(),
-                           RunId = runId
-                       });
+                       _logger.TransientSocketException(ex, sleepDuration, NumberOfGraphRetries);
                    });
 
             return await graphRetryPolicy.ExecuteAndCaptureAsync(() => _graphGroupRepository.GroupExists(groupId));
@@ -88,12 +74,7 @@ namespace Services
             };
             message.ApplicationProperties.Add("MessageType", notificationType.ToString());
             await _notificationsQueueRepository.SendMessageAsync(message);
-            await _loggingRepository.LogMessageAsync(new LogMessage
-            {
-                RunId = job.RunId,
-                Message = $"Sent message {message.MessageId} to service bus notifications queue "
-
-            });
+            _logger.SentGraphNotificationMessage(message.MessageId);
         }
     }
 }

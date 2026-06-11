@@ -19,18 +19,24 @@ namespace Services.Notifications
         private readonly IHandleInactiveJobsConfig _handleInactiveJobsConfig;
         private readonly string _apiHostname;
         private readonly Guid _providerId;
+        private readonly IThresholdConfig _thresholdConfig;
+        private readonly IDatabaseSyncJobsRepository _databaseSyncJobsRepository;
 
         public ThresholdNotificationService(
             IOptions<ThresholdNotificationServiceConfig> config,
             IGraphGroupRepository graphGroupRepository,
             ILocalizationRepository localizationRepository,
-            IHandleInactiveJobsConfig handleInactiveJobsConfig)
+            IHandleInactiveJobsConfig handleInactiveJobsConfig,
+            IThresholdConfig thresholdConfig,
+            IDatabaseSyncJobsRepository databaseSyncJobsRepository)
         {
             _apiHostname = config.Value.ApiHostname;
             _providerId = config.Value.ActionableEmailProviderId;
             _graphGroupRepository = graphGroupRepository ?? throw new ArgumentNullException(nameof(graphGroupRepository));
             _localizationRepository = localizationRepository ?? throw new ArgumentNullException(nameof(localizationRepository));
             _handleInactiveJobsConfig = handleInactiveJobsConfig ?? throw new ArgumentNullException( nameof(handleInactiveJobsConfig));
+            _thresholdConfig = thresholdConfig ?? throw new ArgumentNullException(nameof(thresholdConfig));
+            _databaseSyncJobsRepository = databaseSyncJobsRepository ?? throw new ArgumentNullException(nameof(databaseSyncJobsRepository));
         }
 
         /// <inheritdoc />
@@ -51,25 +57,34 @@ namespace Services.Notifications
             }
             else
             {
-                throw new NotSupportedException("Currently the Notifier trigger only supports NextCardState of DefaultCard and DisabledCard. Please check on this card");
+                throw new NotSupportedException("Currently the Notifier trigger only supports NextCardState of DefaultCard, DisabledCard, and ExpiredCard. Please check on this card");
             }
 
             var groupName = await _graphGroupRepository.GetGroupNameAsync(notification.TargetOfficeGroupId);
+            int thresholdViolations = await _databaseSyncJobsRepository.GetThresholdViolationsBySyncJobIdAsync(notification.SyncJobId); ;
+            int violationsRemaining = _thresholdConfig.NumberOfThresholdViolationsToDisableJob - thresholdViolations;
+            int period = await _databaseSyncJobsRepository.GetPeriodBySyncJobIdAsync(notification.SyncJobId);
+            double hoursUntilDisable = (violationsRemaining * period);
+            string disableDate = DateTime.UtcNow.AddHours(hoursUntilDisable).ToString("yyyy-MM-dd'T'HH:mm:ss'Z'"); ;
+            string purgeDate = notification.LastUpdatedTime.AddDays(_handleInactiveJobsConfig.NumberOfDaysBeforePurging).ToString("yyyy-MM-dd'T'HH:mm:ss'Z'");
+            DateTime jobExpirationDate = notification.CardState == ThresholdNotificationCardState.DisabledCard ?
+                    notification.LastUpdatedTime.AddDays(_handleInactiveJobsConfig.NumberOfDaysBeforePurging) : DateTime.MinValue;
             var cardData = new ThresholdNotificationCardData
             {
                 GroupName = groupName,
                 ChangeQuantityForAdditions = notification.ChangeQuantityForAdditions,
                 ChangeQuantityForRemovals = notification.ChangeQuantityForRemovals,
-                ChangePercentageForAdditions = notification.ChangePercentageForAdditions,
-                ChangePercentageForRemovals = notification.ChangePercentageForRemovals,
+                ChangePercentageForAdditions = GetTruncatedPercentage(notification.ChangePercentageForAdditions, notification.ThresholdPercentageForAdditions),
+                ChangePercentageForRemovals = GetTruncatedPercentage(notification.ChangePercentageForRemovals, notification.ThresholdPercentageForRemovals),
                 ThresholdPercentageForAdditions = notification.ThresholdPercentageForAdditions,
                 ThresholdPercentageForRemovals = notification.ThresholdPercentageForRemovals,
                 ApiHostname = _apiHostname,
                 NotificationId = $"{notification.Id}",
-                ProviderId = $"{_providerId}", 
+                ProviderId = $"{_providerId}",
                 CardCreatedTime = DateTime.UtcNow,
-                JobExpirationDate = notification.CardState == ThresholdNotificationCardState.DisabledCard ?
-                    notification.LastUpdatedTime.AddDays(_handleInactiveJobsConfig.NumberOfDaysBeforeDeletion) : DateTime.MinValue
+                JobExpirationDate = jobExpirationDate.ToString("yyyy-MM-dd'T'HH:mm:ss'Z'"),
+                DisableDate = disableDate,
+                PurgeDate = purgeDate
             };
 
             var template = new AdaptiveCardTemplate(cardJson);
@@ -107,11 +122,11 @@ namespace Services.Notifications
                 GroupName = groupName,
                 ChangeQuantityForAdditions = notification.ChangeQuantityForAdditions,
                 ChangeQuantityForRemovals = notification.ChangeQuantityForRemovals,
-                ChangePercentageForAdditions = notification.ChangePercentageForAdditions,
-                ChangePercentageForRemovals = notification.ChangePercentageForRemovals,
+                ChangePercentageForAdditions = GetTruncatedPercentage(notification.ChangePercentageForAdditions, notification.ThresholdPercentageForAdditions),
+                ChangePercentageForRemovals = GetTruncatedPercentage(notification.ChangePercentageForRemovals, notification.ThresholdPercentageForRemovals),
                 ThresholdPercentageForAdditions = notification.ThresholdPercentageForAdditions,
                 ThresholdPercentageForRemovals = notification.ThresholdPercentageForRemovals,
-                ResolvedByUPN = notification.ResolvedByUPN,
+                ResolvedBy = notification.ResolvedBy,
                 ResolvedTime = notification.ResolvedTime.ToString("U"),
                 Resolution = resolution,
                 NotificationId = $"{notification.Id}",
@@ -123,6 +138,18 @@ namespace Services.Notifications
             var card = template.Expand(cardData);
 
             return card;
+        }
+
+        private double GetTruncatedPercentage(double changePercentage, int thresholdPercentage)
+        {
+            if (changePercentage - thresholdPercentage >= 1)
+            {
+                return Math.Round(changePercentage, 1);
+            }
+            else
+            {
+                return Math.Ceiling(changePercentage * 100) / 100.0;
+            }
         }
 
         /// <inheritdoc />

@@ -37,8 +37,9 @@ namespace Services
 
         public async Task<IList<string>> GetPersonnelNumbersAsync(string containerName, string blobPath)
         {
-            var blob = await DownloadFileAsync(_storageAccountSecret.ConnectionString, containerName, blobPath);
-            var personnelNumbers = ExtractPersonnelNumbers(blob);
+            var uri = new Uri($"https://{_storageAccountSecret.AccountName}.blob.core.windows.net/{containerName}/{blobPath}");
+            var blob = await DownloadFileAsync(uri);
+            var personnelNumbers = ExtractPersonnelNumbers(blob).Where(x => !string.IsNullOrWhiteSpace(x)).ToList();
 
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Retrieved {personnelNumbers.Count} personnel numbers." });
 
@@ -50,16 +51,17 @@ namespace Services
             var blobPath = $"{request.BlobTargetDirectory}/{MemberIdsFileName}";
             var usersRetrieved = request.Users.Where(x => !string.IsNullOrWhiteSpace(x.Id)).ToList();
 
-            await UploadFileAsync(_storageAccountSecret.ConnectionString, request.ContainerName, blobPath, usersRetrieved);
+            var uri = new Uri($"https://{_storageAccountSecret.AccountName}.blob.core.windows.net/{request.ContainerName}/{blobPath}");
+            await UploadFileAsync(uri, usersRetrieved);
 
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Uploaded {usersRetrieved.Count} user ids." });
         }
 
-        private async Task<Stream> DownloadFileAsync(string connectionString, string containerName, string filePath)
+        private async Task<Stream> DownloadFileAsync(Uri blobPath)
         {
             int status;
             Response<BlobDownloadInfo> response = null;
-            var blobClient = _blobClientFactory.GetBlobClient(connectionString, containerName, filePath);
+            var blobClient = _blobClientFactory.GetBlobClient(blobPath);
 
             if (blobClient.Exists())
             {
@@ -68,7 +70,7 @@ namespace Services
             }
             else
             {
-                var message = $"File not found {filePath}.";
+                var message = $"File not found {blobPath}.";
                 await _loggingRepository.LogMessageAsync(new LogMessage { Message = message });
                 throw new FileNotFoundException(message);
             }
@@ -86,10 +88,10 @@ namespace Services
             }
         }
 
-        private async Task<Stream> DownloadFileIfExistsAsync(string connectionString, string containerName, string filePath)
+        private async Task<Stream> DownloadFileIfExistsAsync(Uri blobPath)
         {
             Response<BlobDownloadInfo> response = null;
-            var blobClient = _blobClientFactory.GetBlobClient(connectionString, containerName, filePath);
+            var blobClient = _blobClientFactory.GetBlobClient(blobPath);
 
             if (blobClient.Exists())
             {
@@ -138,9 +140,9 @@ namespace Services
             return users;
         }
 
-        private async Task UploadFileAsync(string connectionString, string containerName, string filePath, List<GraphProfileInformation> users)
+        private async Task UploadFileAsync(Uri blobPath, List<GraphProfileInformation> users)
         {
-            var blobClient = _blobClientFactory.GetBlobClient(connectionString, containerName, filePath);
+            var blobClient = _blobClientFactory.GetBlobClient(blobPath);
             using var st = new StreamWriter(new MemoryStream());
             st.WriteLine("PersonnelNumber,AzureObjectId,UserPrincipalName");
             foreach (var user in users)

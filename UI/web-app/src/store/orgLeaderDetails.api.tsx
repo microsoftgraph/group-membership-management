@@ -33,7 +33,7 @@ export const fetchOrgLeaderDetails = createAsyncThunk<
     const payload: GetOrgLeaderDetailsResponse = {
       employeeId: response["employeeId"],
       objectId: orgLeaderDetailsDetailsRequest.objectId,
-      text: orgLeaderDetailsDetailsRequest.text,        
+      text: orgLeaderDetailsDetailsRequest.text,
       maxDepth: response["maxDepth"],
       partId: orgLeaderDetailsDetailsRequest.partId
     };
@@ -65,7 +65,7 @@ export const fetchOrgLeaderDetailsUsingId = createAsyncThunk<
         `/EmployeeId/${encodeURIComponent(GetOrgLeaderDetailsUsingIdRequest.employeeId)}`,
       options
     ).then(async (response) => await response.json());
-    var displayName = await graphApi.getUser(response["azureObjectId"]);
+    const displayName = await graphApi.getUser(response["azureObjectId"]);
 
     const payload: GetOrgLeaderDetailsResponse = {
       employeeId: GetOrgLeaderDetailsUsingIdRequest.employeeId,

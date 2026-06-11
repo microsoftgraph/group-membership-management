@@ -4,6 +4,7 @@ using Microsoft.ApplicationInsights;
 using Models;
 using Models.ServiceBus;
 using Models.Notifications;
+using Models.SyncJobHistory;
 using Repositories.Contracts;
 using Repositories.Contracts.InjectConfig;
 using Services.Contracts;
@@ -27,9 +28,12 @@ namespace Services
         private readonly IMailRepository _mailRepository;
         private readonly IEmailSenderRecipient _emailSenderAndRecipients;
         private readonly IDatabaseSyncJobsRepository _syncJobRepository;
-		private readonly INotificationTypesRepository _notificationTypesRepository;
+        private readonly IDatabaseGroupsRepository _databaseGroupsRepository;
+        private readonly INotificationTypesRepository _notificationTypesRepository;
 		private readonly IJobNotificationsRepository _jobNotificationRepository;
         private readonly IServiceBusQueueRepository _serviceBusQueueRepository;
+        private readonly ISyncJobStatusService _syncJobStatusService;
+        private readonly ISyncJobHistoryRepository _syncJobHistoryRepository;
         private Guid _runId;
         public Guid RunId
         {
@@ -48,9 +52,12 @@ namespace Services
                 IMailRepository mailRepository,
                 IEmailSenderRecipient emailSenderAndRecipients,
                 IDatabaseSyncJobsRepository syncJobRepository,
-				INotificationTypesRepository notificationTypesRepository,
+                IDatabaseGroupsRepository databaseGroupsRepository,
+                INotificationTypesRepository notificationTypesRepository,
 			    IJobNotificationsRepository jobNotificationRepository,
-                IServiceBusQueueRepository serviceBusQueueRepository)
+                IServiceBusQueueRepository serviceBusQueueRepository,
+            ISyncJobStatusService syncJobStatusService,
+            ISyncJobHistoryRepository syncJobHistoryRepository)
         {
             _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
             _telemetryClient = telemetryClient ?? throw new ArgumentNullException(nameof(telemetryClient));
@@ -58,39 +65,27 @@ namespace Services
             _mailRepository = mailRepository ?? throw new ArgumentNullException(nameof(mailRepository));
             _emailSenderAndRecipients = emailSenderAndRecipients ?? throw new ArgumentNullException(nameof(emailSenderAndRecipients));
             _syncJobRepository = syncJobRepository ?? throw new ArgumentNullException(nameof(syncJobRepository));
-			_jobNotificationRepository = jobNotificationRepository ?? throw new ArgumentNullException(nameof(jobNotificationRepository));
+            _databaseGroupsRepository = databaseGroupsRepository ?? throw new ArgumentNullException(nameof(databaseGroupsRepository));
+            _jobNotificationRepository = jobNotificationRepository ?? throw new ArgumentNullException(nameof(jobNotificationRepository));
 			_notificationTypesRepository = notificationTypesRepository ?? throw new ArgumentNullException(nameof(notificationTypesRepository));
             _serviceBusQueueRepository = serviceBusQueueRepository ?? throw new ArgumentNullException(nameof(_serviceBusQueueRepository));
-        }
-
-        public async Task<UsersPageResponse> GetFirstMembersPageAsync(Guid groupId, Guid runId)
-        {
-            await _loggingRepository.LogMessageAsync(new LogMessage { RunId = runId, Message = $"Reading users from the group with ID {groupId}." });
-            _graphGroupRepository.RunId = runId;
-            var result = await _graphGroupRepository.GetFirstTransitiveMembersPageAsync(groupId);
-            return new UsersPageResponse
-            {
-                NextPageUrl = result.nextPageUrl,
-                Members = result.users,
-                NonUserGraphObjects = result.nonUserGraphObjects
-            };
-        }
-
-        public async Task<UsersPageResponse> GetNextMembersPageAsync(string nextPageUrl, Guid runId)
-        {
-            _graphGroupRepository.RunId = runId;
-            var result = await _graphGroupRepository.GetNextTransitiveMembersPageAsync(nextPageUrl);
-            return new UsersPageResponse
-            {
-                NextPageUrl = result.nextPageUrl,
-                Members = result.users,
-                NonUserGraphObjects = result.nonUserGraphObjects
-            };
+            _syncJobStatusService = syncJobStatusService ?? throw new ArgumentNullException(nameof(syncJobStatusService));
+            _syncJobHistoryRepository = syncJobHistoryRepository ?? throw new ArgumentNullException(nameof(syncJobHistoryRepository));
         }
 
         public async Task<bool> GroupExistsAsync(Guid groupId, Guid runId)
         {
             return await _graphGroupRepository.GroupExists(groupId);
+        }
+
+        public async Task<Guid> GetGroupIdAsync(SyncJob syncJob)
+        {
+            if (syncJob.MembershipType == MembershipTypes.GroupMembership.ToString())
+            {
+                var group = syncJob.Group ?? await _databaseGroupsRepository.GetGroupUsingSyncJobIdAsync(syncJob.Id);
+                return group.GroupId;
+            }
+            return Guid.Empty;
         }
 
         public async Task SendEmailAsync(SyncJob job, NotificationMessageType notificationType, string[] additionalContentParameters)
@@ -115,7 +110,7 @@ namespace Services
 
             });
         }
-		public async Task UpdateSyncJobStatusAsync(SyncJob job, SyncStatus status, bool isDryRun, Guid runId)
+        public async Task UpdateSyncJobStatusAsync(SyncJob job, SyncStatus status, bool isDryRun, Guid runId, int? usersAdded, int? usersRemoved)
         {
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Set job status to {status}.", RunId = runId });
 
@@ -137,14 +132,62 @@ namespace Services
             job.ScheduledDate = currentDate.AddHours(job.Period);
             job.RunId = runId;
 
-            await _syncJobRepository.UpdateSyncJobStatusAsync(new[] { job }, status);
+            // Calculate AfterSyncUserCount only when sync completes successfully
+            var afterSyncUserCount = status == SyncStatus.Idle 
+                ? await CalculateAfterSyncUserCountAsync(runId, usersAdded, usersRemoved)
+                : null;
+
+            var history = new SyncJobHistory
+            {
+                SyncJobId = job.Id,
+                RunId = runId,
+                Status = status.ToString(),
+                UpdatedByFunction = "GraphUpdater",
+                ThresholdViolations = job.ThresholdViolations,
+                UsersAdded = usersAdded,
+                UsersRemoved = usersRemoved,
+                EndTime = status != SyncStatus.InProgress ? currentDate : null,              
+                UpdatedAt = currentDate,
+                AfterSyncUserCount = afterSyncUserCount
+            };
+
+            job.Status = status.ToString();
+
+            await _syncJobStatusService.UpdateJobStatusAsync(job, status, history, functionName: "GraphUpdater");
+            
+            var groupId = await GetGroupIdAsync(job);
 
             string message = isDryRunSync
-                                ? $"Dry Run of a sync to {job.TargetOfficeGroupId} is complete. Membership will not be updated."
-                                : $"Syncing to {job.TargetOfficeGroupId} done.";
+                                ? $"Dry Run of a sync to {groupId} is complete. Membership will not be updated."
+                                : $"Syncing to {groupId} done.";
 
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = message, RunId = runId });
         }
+
+        private async Task<int?> CalculateAfterSyncUserCountAsync(Guid runId, int? usersAdded, int? usersRemoved)
+        {
+            // Retrieve existing history to get BeforeSyncUserCount
+            var existingHistory = await _syncJobHistoryRepository.GetByRunIdAsync(runId);
+
+            if (existingHistory?.BeforeSyncUserCount.HasValue != true)
+            {
+                return null;
+            }
+
+            var usersAddedCount = usersAdded ?? 0;
+            var usersRemovedCount = usersRemoved ?? 0;
+
+            // Calculate only if there were actual changes
+            if (usersAddedCount > 0 || usersRemovedCount > 0)
+            {
+                return existingHistory.BeforeSyncUserCount.Value + usersAddedCount - usersRemovedCount;
+            }
+
+            // No changes, count remains the same
+            return existingHistory.BeforeSyncUserCount.Value;
+        }
+
+
 
         public async Task<SyncJob> GetSyncJobAsync(Guid syncJobId)
         {

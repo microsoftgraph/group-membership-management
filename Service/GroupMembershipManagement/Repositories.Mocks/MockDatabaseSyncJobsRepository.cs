@@ -7,6 +7,7 @@ using Repositories.Contracts;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace Repositories.Mocks
@@ -62,6 +63,16 @@ namespace Repositories.Mocks
             var job = Jobs.FirstOrDefault(x => x.Id == syncJobId);
             return await Task.FromResult(job);
         }
+        public async Task<int> GetThresholdViolationsBySyncJobIdAsync(Guid syncJobId)
+        {
+            var job = Jobs.FirstOrDefault(x => x.Id == syncJobId);
+            return await Task.FromResult(job.ThresholdViolations);
+        }
+        public async Task<int> GetPeriodBySyncJobIdAsync(Guid syncJobId)
+        {
+            var job = Jobs.FirstOrDefault(x => x.Id == syncJobId);
+            return await Task.FromResult(job.Period);
+        }
 
         public async Task UpdateSyncJobStatusAsync(IEnumerable<SyncJob> jobs, SyncStatus? status)
         {
@@ -77,6 +88,11 @@ namespace Repositories.Mocks
         }
 
         public Task UpdateSyncJobsAsync(IEnumerable<SyncJob> jobs, SyncStatus? status = null)
+        {
+            throw new NotImplementedException();
+        }
+
+        public Task<int> BulkApproveSyncJobsAsync(List<string> syncJobIds, int? thresholdViolationsToSet = null)
         {
             throw new NotImplementedException();
         }
@@ -124,6 +140,46 @@ namespace Repositories.Mocks
         public Task InsertSyncJobAsync(SyncJob job)
         {
             throw new NotImplementedException();
+        }
+
+        public Task<int> BulkResetJobStatusAsync(SyncStatus fromStatus, SyncStatus toStatus, CancellationToken cancellationToken = default)
+        {
+            throw new NotImplementedException();
+        }
+
+                public Task<int> ClaimSyncJobAsync(Guid jobId, Guid? runId, int period, string targetStatus)
+        {
+            var job = Jobs.FirstOrDefault(x => x.Id == jobId);
+            if (job == null)
+                return Task.FromResult(0);
+
+            var idleStatus = SyncStatus.Idle.ToString();
+            var inProgressStatus = SyncStatus.InProgress.ToString();
+            var stuckStatus = SyncStatus.StuckInProgress.ToString();
+            var transientStatus = SyncStatus.TransientError.ToString();
+            var cutoffTime = DateTime.UtcNow.AddHours(-period);
+
+            var eligible = job.Status == idleStatus
+                || job.Status == transientStatus
+                || (job.Status == inProgressStatus && job.LastSuccessfulStartTime < cutoffTime);
+
+            if (!eligible)
+                return Task.FromResult(0);
+
+            job.Status = targetStatus;
+            job.RunId = runId;
+            job.LastSuccessfulStartTime = DateTime.UtcNow;
+            if (targetStatus == stuckStatus)
+                job.LastRunTime = DateTime.UtcNow;
+            return Task.FromResult(1);
+        }
+
+        public Task UpdateSyncJobDestinationAsync(Guid jobId, string destination)
+        {
+            var job = Jobs.FirstOrDefault(x => x.Id == jobId);
+            if (job != null)
+                job.Destination = destination;
+            return Task.CompletedTask;
         }
     }
 }

@@ -20,10 +20,16 @@ param addJobsStorageAccountPolicies bool = false
 @description('Specifies the Azure location where the storage account will be created.')
 param location string
 
-@description('Key vault setting name to store the connection string.')
-param storageAccountConnectionStringSettingName string
+@description('Key vault setting name to store the storage account name.')
+param storageAccountSettingName string
 
-resource storageAccount 'Microsoft.Storage/storageAccounts@2019-04-01' = {
+@description('Key vault setting name to store the name of the app package container.')
+param appPackageContainerSettingName string
+
+@description('Specifies the name of the app package container.')
+param appPackageContainerName string
+
+resource storageAccount 'Microsoft.Storage/storageAccounts@2022-05-01' = {
   name: name
   location: location
   kind: 'StorageV2'
@@ -34,9 +40,20 @@ resource storageAccount 'Microsoft.Storage/storageAccounts@2019-04-01' = {
     supportsHttpsTrafficOnly: true
     allowBlobPublicAccess: false
     minimumTlsVersion: 'TLS1_2'
+    allowSharedKeyAccess: false
   }
   identity: {
     type: 'SystemAssigned'
+  }
+
+  resource blobServices 'blobServices' = {
+    name: 'default'
+    resource container 'containers' = {
+      name: appPackageContainerName
+      properties: {
+        publicAccess: 'None'
+      }
+    }
   }
 }
 
@@ -99,10 +116,16 @@ module secureSecretsTemplate 'keyVaultSecretsSecure.bicep' = {
     keyVaultSecrets: {
       secrets: [
         {
-          name:  storageAccountConnectionStringSettingName
-          value: 'DefaultEndpointsProtocol=https;AccountName=${storageAccount.name};AccountKey=${storageAccount.listKeys().keys[0].value}'
+          name: storageAccountSettingName
+          value: name
+        }
+        {
+          name: appPackageContainerSettingName
+          value: appPackageContainerName
         }
       ]
     }
   }
 }
+
+output storageAccountId string = storageAccount.id

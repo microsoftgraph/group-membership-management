@@ -4,4 +4,7 @@
 export type Page<T> = {
   items: T[];
   totalNumberOfPages: number;
-}
+  currentPage?: number;
+  pageSize?: number;
+  totalItems?: number;
+};

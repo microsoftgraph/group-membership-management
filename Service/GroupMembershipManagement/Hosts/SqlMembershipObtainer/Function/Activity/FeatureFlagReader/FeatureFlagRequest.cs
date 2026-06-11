@@ -1,13 +1,15 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
-using System;
+using Models;
 
 namespace SqlMembershipObtainer
 {
     public class FeatureFlagRequest
     {
-        public Guid? RunId { get; set; }
-        public string FeatureFlagName { get; set; }
-        public bool RefreshAppConfigurationValues { get; set; }
+        public required SyncJob SyncJob { get; init; }
+        public required string FeatureFlagName { get; init; }
+        public required bool RefreshAppConfigurationValues { get; init; }
+        public required int CurrentPart { get; init; }
+        public required int TotalParts { get; init; }
     }
 }

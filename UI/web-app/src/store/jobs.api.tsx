@@ -2,19 +2,18 @@
 // Licensed under the MIT license.
 
 import { createAsyncThunk } from '@reduxjs/toolkit';
-import { SyncStatus, ActionRequired } from '../models/Status';
 import { type Job } from '../models/Job';
 import { ThunkConfig } from './store';
-import { 
-  NewJob, 
-  PostJobResponse, 
-  Page, 
+import {
+  NewJob,
+  PostJobResponse,
+  Page,
   PagingOptions,
   PeoplePickerPersona
 } from '../models';
-import { formatLastRunTime, formatNextRunTime } from '../utils/dateUtils';
-import { format } from '@fluentui/react';
-import { strings } from '../services/localization/i18n/locales/en/translations';
+import { processJob } from '../utils/jobUtils';
+import { BulkApproveRequest } from '../models/BulkApproveRequest';
+import { BulkApproveResponse } from '../models/BulkApproveResponse';
 
 export interface JobsResponse {
   jobs: Job[];
@@ -28,63 +27,47 @@ export const fetchJobs = createAsyncThunk<Page<Job>, PagingOptions | undefined, 
 
     try {
       const jobsPage = await gmmApi.jobs.getAllJobs(pagingOptions);
-
-      const mapped = jobsPage.items.map((index) => {
-        index['enabledOrNot'] =
-        index['status'] === SyncStatus.Idle || index['status'] === SyncStatus.InProgress ? true : false;
-        const lastRunTime = formatLastRunTime(index['lastSuccessfulRunTime']);
-        const estimatedNextRunTime = formatNextRunTime(index['estimatedNextRunTime'], index['enabledOrNot']);
-        const SQLMinDate = new Date(Date.UTC(1753, 0, 1));
-        
-        if(lastRunTime[0] === SQLMinDate.toLocaleDateString()) { // Jobs that haven't run yet
-          index['lastSuccessfulRunTime'] = "Pending initial sync";
-          index['estimatedNextRunTime'] = "Pending initial sync";
-        }
-        else {
-          index['lastSuccessfulRunTime'] = `${format(strings.hoursAgo, lastRunTime[0], lastRunTime[1])}`;
-          index['estimatedNextRunTime'] = estimatedNextRunTime[0] === "-" ? "-" // Disabled jobs
-                                            : `${format(strings.hoursLeft, estimatedNextRunTime[0], estimatedNextRunTime[1])}`;
-        }
-        
-        index['arrow'] = '';
-
-        return index;
-      });
-
-      const newPayload = mapped.map((index) => {
-        switch (index['status']) {
-          case SyncStatus.ThresholdExceeded:
-            index['actionRequired'] = ActionRequired.ThresholdExceeded;
-            break;
-          case SyncStatus.CustomerPaused:
-            index['actionRequired'] = ActionRequired.CustomerPaused;
-            break;
-          case SyncStatus.MembershipDataNotFound:
-            index['actionRequired'] = ActionRequired.MembershipDataNotFound;
-            break;
-          case SyncStatus.DestinationGroupNotFound:
-            index['actionRequired'] = ActionRequired.DestinationGroupNotFound;
-            break;
-          case SyncStatus.NotOwnerOfDestinationGroup:
-            index['actionRequired'] = ActionRequired.NotOwnerOfDestinationGroup;
-            break;
-          case SyncStatus.SecurityGroupNotFound:
-            index['actionRequired'] = ActionRequired.SecurityGroupNotFound;
-            break;
-          case SyncStatus.PendingReview:
-            index['actionRequired'] = ActionRequired.PendingReview;
-            break;
-          case SyncStatus.SubmissionRejected:
-            index['actionRequired'] = ActionRequired.SubmissionRejected;
-            break;
-        }
-        return index;
-      });
-
-      jobsPage.items = newPayload;
+      const mapped = jobsPage.items.map(processJob);
+      jobsPage.items = mapped;
       return jobsPage;
     } catch (error) {
       throw new Error('Failed to fetch jobs!');
+    }
+  }
+);
+
+export const downloadJobs = createAsyncThunk<Job[], string[], ThunkConfig>(
+  'jobs/downloadJobs',
+  async (syncJobIds: string[], { extra }) => {
+    const { gmmApi } = extra.apis;
+    try {
+      const response = await gmmApi.jobs.downloadJobs(syncJobIds);
+      return response.data;
+    } catch (error) {
+      throw new Error('Failed to fetch jobs!');
+    }
+  }
+);
+
+export const approveJobs = createAsyncThunk<BulkApproveResponse, BulkApproveRequest, ThunkConfig>(
+  'jobs/approveJobs',
+  async (request: BulkApproveRequest, { extra , dispatch }) => {
+    const { gmmApi } = extra.apis;
+    try {
+      const response = await gmmApi.jobs.approveJobs(request.jobIdsToApprove);
+      await dispatch(fetchJobs({
+        pageSize: 10,
+        itemsToSkip: 0,
+        orderBy: undefined,
+        filter: undefined,
+      }));
+      const payload: BulkApproveResponse = {
+        totalNumberOfApprovedJobs: response.data.approvedJobsCount,
+        totalNumberOfJobs: request.totalNumberOfJobs
+      };
+      return payload;
+    } catch (error) {
+      throw new Error('Failed to approve jobs!');
     }
   }
 );
@@ -104,7 +87,7 @@ export const postJob = createAsyncThunk<PostJobResponse, NewJob, ThunkConfig>(
         postResponse.errorCode = response.data?.detail;
         postResponse.newSyncJobId = response.data?.responseData;
       }
-      
+
       return postResponse;
     } catch (error) {
       throw new Error('Failed to post job!');
@@ -112,14 +95,14 @@ export const postJob = createAsyncThunk<PostJobResponse, NewJob, ThunkConfig>(
   }
 );
 
-export const getJobOwnerFilterSuggestions = createAsyncThunk<PeoplePickerPersona[], {displayName: string; alias: string}, ThunkConfig>(
-  'filter/getJobOwnerFilterSuggestions',
+export const getPeoplePickerSuggestions = createAsyncThunk<PeoplePickerPersona[], string, ThunkConfig>(
+  'filter/getPeoplePickerSuggestions',
   async (input, { extra }) => {
     const { graphApi } = extra.apis;
     try {
-      return await graphApi.getJobOwnerFilterSuggestions(input.displayName, input.alias);
+      return await graphApi.getPeoplePickerSuggestions(input);
     } catch (error) {
-      throw new Error('Failed to call getJobOwnerFilterSuggestions endpoint');
+      throw new Error('Failed to call getPeoplePickerSuggestions endpoint');
     }
   }
 );

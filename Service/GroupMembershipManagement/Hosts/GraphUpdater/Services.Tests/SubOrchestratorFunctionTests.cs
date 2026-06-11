@@ -1,24 +1,23 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
-using Entities;
-using Models.ServiceBus;
 using Hosts.GraphUpdater;
 using Microsoft.ApplicationInsights;
 using Microsoft.ApplicationInsights.Extensibility;
-using Microsoft.Azure.WebJobs.Extensions.DurableTask;
-using Microsoft.Graph;
+using Microsoft.Azure.Functions.Worker;
+using Microsoft.DurableTask;
+using Microsoft.DurableTask.Client;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using Moq;
 using Models;
+using Models.ServiceBus;
+using Moq;
 using Repositories.Contracts;
 using Repositories.Contracts.InjectConfig;
-using Repositories.Mocks;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text.Json;
+using System.Threading;
 using System.Threading.Tasks;
-using System.Text.Json.Serialization;
-using Newtonsoft.Json;
 
 namespace Services.Tests
 {
@@ -29,7 +28,7 @@ namespace Services.Tests
         private Mock<ILoggingRepository> _loggingRepository;
         private Mock<IGraphGroupRepository> _graphGroupRepository;
         private Mock<IBlobStorageRepository> _blobStorageRepository;
-        private Mock<IDurableOrchestrationContext> _durableOrchestrationContext;
+        private Mock<TaskOrchestrationContext> _durableOrchestrationContext;
 
         private int _userCount;
         private BlobResult _blobResult;
@@ -43,7 +42,7 @@ namespace Services.Tests
             _loggingRepository = new Mock<ILoggingRepository>();
             _graphGroupRepository = new Mock<IGraphGroupRepository>();
             _blobStorageRepository = new Mock<IBlobStorageRepository>();
-            _durableOrchestrationContext = new Mock<IDurableOrchestrationContext>();
+            _durableOrchestrationContext = new Mock<TaskOrchestrationContext>();
 
             _userCount = 10;
 
@@ -64,61 +63,74 @@ namespace Services.Tests
             _blobResult = new BlobResult
             {
                 BlobStatus = BlobStatus.Found,
-                Content = JsonConvert.SerializeObject(content)
+                Content = JsonSerializer.Serialize(content)
             };
 
             var syncJob = new SyncJob
             {
                 Id = Guid.NewGuid(),
-                TargetOfficeGroupId = Guid.NewGuid(),
+                MembershipType = "GroupMembership",
+                Group = new Group
+                {
+                    GroupId = Guid.NewGuid()
+                },
                 Query = "[{ \"type\": \"GroupMembership\", \"sources\": [\"da144736-962b-4879-a304-acd9f5221e78\"]}]",
                 Status = "InProgress",
-                Period = 6
+                Period = 6,
+                RunId = Guid.NewGuid()
             };
 
-            var users = new List<AzureADUser>();
+            var userIds = new HashSet<Guid>();
             for (int i = 0; i < 10; i++)
             {
-                users.Add(new AzureADUser
-                {
-                    ObjectId = Guid.NewGuid()
-                });
+                userIds.Add(Guid.NewGuid());
             }
 
             _cacheUserUpdaterRequest = new CacheUserUpdaterRequest
             {
                 RunId = Guid.NewGuid(),
-                UserIds = users,
+                UserIds = userIds,
                 SyncJob = syncJob,
                 GroupId = Guid.NewGuid()
             };
 
             _durableOrchestrationContext.Setup(x => x.GetInput<CacheUserUpdaterRequest>()).Returns(() => _cacheUserUpdaterRequest);
             _blobStorageRepository.Setup(x => x.DownloadCacheFileAsync(It.IsAny<string>())).ReturnsAsync(() => _blobResult);
+            _blobStorageRepository.Setup(x => x.ReadValuesFromBlobAsync<Guid>(It.IsAny<string>(), It.IsAny<Func<string, Guid>>()))
+                                  .ReturnsAsync(() => content.SourceMembers.Select(x => x.ObjectId).ToHashSet());
         }
 
         [TestMethod]
         public async Task DownloadCacheFileAsync()
         {
             _cacheUrl = "http://cache-url";
-            _durableOrchestrationContext.Setup(x => x.CallActivityAsync<string>(It.IsAny<string>(), It.IsAny<FileDownloaderRequest>()))
-                                       .Callback<string, object>(async (name, request) =>
+            _durableOrchestrationContext.Setup(x => x.CallActivityAsync<string>(It.IsAny<TaskName>(), It.IsAny<FileDownloaderRequest>(), It.IsAny<TaskOptions>()))
+                                       .Callback<TaskName, object, TaskOptions>(async (name, request, options) =>
                                        {
                                            _cacheUrl = await CallFileDownloaderFunctionAsync(request as FileDownloaderRequest);
                                        })
                                        .ReturnsAsync(() => _cacheUrl);
 
-            _durableOrchestrationContext.Setup(x => x.CallActivityAsync(It.Is<string>(x => x == nameof(CacheUpdaterFunction)), It.IsAny<CacheUpdaterRequest>()))
-                            .Callback<string, object>(async (name, request) =>
+            _durableOrchestrationContext.Setup(x => x.CallActivityAsync(It.Is<TaskName>(x => x.Name == nameof(CacheUpdaterFunction)), It.IsAny<CacheUpdaterRequest>(), It.IsAny<TaskOptions>()))
+                            .Callback<TaskName, object, TaskOptions>(async (name, request, options) =>
                             {
                                 await CallCacheUpdaterFunctionAsync(request as CacheUpdaterRequest);
                             });
 
-            _durableOrchestrationContext.Setup(x => x.CallActivityAsync(It.Is<string>(x => x == nameof(LoggerFunction)), It.IsAny<LoggerRequest>()))
-                            .Callback<string, object>(async (name, request) =>
+            _durableOrchestrationContext.Setup(x => x.CallActivityAsync(It.Is<TaskName>(x => x.Name == nameof(LoggerFunction)), It.IsAny<LoggerRequest>(), It.IsAny<TaskOptions>()))
+                            .Callback<TaskName, object, TaskOptions>(async (name, request, options) =>
                             {
                                 await CallLoggerFunctionAsync(request as LoggerRequest);
                             });
+
+            var cacheBlobResult = new BlobResult
+            {
+                BlobStatus = BlobStatus.Found,
+                Path = "cache/file-name.txt",
+            };
+
+            _durableOrchestrationContext.Setup(x => x.CallActivityAsync<BlobResult>(It.Is<TaskName>(x => x.Name == nameof(BlobCheckerFunction)), It.IsAny<BlobCheckerRequest>(), It.IsAny<TaskOptions>()))
+                            .ReturnsAsync(() => cacheBlobResult);
 
             var telemetryClient = new TelemetryClient(TelemetryConfiguration.CreateDefault());
             var subOrchestratorFunction = new CacheUserUpdaterSubOrchestratorFunction(_loggingRepository.Object, telemetryClient);
@@ -130,8 +142,8 @@ namespace Services.Tests
                                     It.IsAny<string>()
                                 ), Times.Once);
 
-            _blobStorageRepository.Verify(x => x.DownloadCacheFileAsync(It.IsAny<string>()), Times.Exactly(1));
-            _blobStorageRepository.Verify(x => x.UploadFileAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<Dictionary<string, string>>()), Times.Exactly(1));
+            _blobStorageRepository.Verify(x => x.ReadValuesFromBlobAsync(It.IsAny<string>(), It.IsAny<Func<string, Guid>>()), Times.Exactly(1));
+            _blobStorageRepository.Verify(x => x.UploadCacheFromGuidsAsync(It.IsAny<string>(), It.IsAny<IEnumerable<Guid>>(), It.IsAny<Dictionary<string, string>>()), Times.Exactly(1));
             _loggingRepository.Verify(x => x.LogMessageAsync(
                         It.Is<LogMessage>(m => m.Message == $"{nameof(CacheUserUpdaterSubOrchestratorFunction)} function completed"),
                         It.IsAny<VerbosityLevel>(),
@@ -160,4 +172,3 @@ namespace Services.Tests
         }
     }
 }
-

@@ -1,7 +1,6 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
-using Microsoft.Azure.WebJobs;
-using Microsoft.Azure.WebJobs.Extensions.DurableTask;
+using Microsoft.Azure.Functions.Worker;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Models;
@@ -27,20 +26,31 @@ namespace Hosts.NonProdService
             _options = options ?? throw new ArgumentNullException(nameof(options));
         }
 
-        [FunctionName(nameof(LoadTestingSyncJobCreatorFunction))]
+        [Function(nameof(LoadTestingSyncJobCreatorFunction))]
         public async Task CreateLoadTestingSyncJobs([ActivityTrigger] LoadTestingSyncJobCreatorRequest request, ILogger log)
         {
             var runId = request.RunId;
             var groupSizesAndIds = request.GroupSizesAndIds;
-            var syncJobs = request.SyncJobs;
+            var targetGroupIds = request.TargetGroupIds;
             var options = _options.Value;
 
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(LoadTestingSyncJobCreatorFunction)} function started", RunId = runId }, VerbosityLevel.DEBUG);
-            
+
+            var groupSizeCounts = groupSizesAndIds.ToDictionary(kvp => kvp.Key, kvp => kvp.Value.Count);
+            await _loggingRepository.LogMessageAsync(new LogMessage
+            {
+                Message = $"SyncJobs to be created: {string.Join(", ", groupSizeCounts.Select(kvp => $"{kvp.Key} => {kvp.Value}"))}",
+                RunId = runId
+            }, VerbosityLevel.DEBUG);
+
             // spread out jobs evenly across 1 day
             var totalJobsToCreate = groupSizesAndIds.Keys.Sum(groupSize => groupSizesAndIds[groupSize].Count);
             var minutesInADay = 60 * 24;
             var minutesBetweenJobs = minutesInADay / totalJobsToCreate;
+
+            // For ensuring no-op enforcement
+            var P = 4; // Thus %no op = 1 - 1/4 = 75%
+            var jobIndex = 0;
 
             var nextJobTime = DateTime.UtcNow;
 
@@ -48,16 +58,16 @@ namespace Hosts.NonProdService
             {
                 foreach (var groupId in groupSizesAndIds[groupSize])
                 {
-                    if (syncJobs.Any(syncJob => syncJob.Destination.ToLower().Contains(groupId.ToString().ToLower())))
+                    if (targetGroupIds.Any(id => id.ToString().ToLower().Equals(groupId.ToString().ToLower())))
                     {
                         continue;
                     }
 
                     var destination = "[{\"type\":\"GroupMembership\",\"value\":{\"objectId\":\"" + groupId + "\"}}]";
 
-                    var offset = (int)(groupSize * ((decimal)options.SyncJobChangePercent / 100));
+                    var offset = (int)Math.Ceiling(groupSize * ((decimal)options.SyncJobChangePercent / 100));
                     var offsetProbabilityAsMS = (int)(1000 * ((decimal)options.SyncJobProbabilityOfChangePercent / 100));
-                    var filter = $"(EmployeeId > 0 AND EmployeeId <= {groupSize} AND DATEPART(ms, GETDATE()) < {offsetProbabilityAsMS}) OR (EmployeeId > {offset} AND EmployeeId <= {groupSize + offset} AND DATEPART(ms, GETDATE()) >= {offsetProbabilityAsMS})";
+                    var filter = $"(EmployeeId > 0 AND EmployeeId <= {groupSize} AND ({jobIndex % (2 * P)} + DATEPART(dayofyear, GETDATE())) % ({2*P}) < {P}) OR (EmployeeId > {offset} AND EmployeeId <= {groupSize + offset} AND ({jobIndex % (2 * P)} + DATEPART(dayofyear, GETDATE())) % ({2 * P}) >= {P})";
                     var query = "[{\"type\":\"SqlMembership\",\"source\":{\"filter\": \"" + filter + "\"}}]";
 
                     nextJobTime = nextJobTime.AddMinutes(minutesBetweenJobs);
@@ -73,13 +83,21 @@ namespace Hosts.NonProdService
                         ThresholdPercentageForAdditions = 100,
                         ThresholdPercentageForRemovals = 20,
                         ThresholdViolations = 0,
-                        StartDate = nextJobTime,
+                        StartDate = DateTime.UtcNow,
                         LastRunTime = SqlDateTime.MinValue.Value.AddDays(1),
+                        ScheduledDate = nextJobTime,
                         IgnoreThresholdOnce = true,
-                        Query = query
+                        Query = query,
+                        MembershipType = MembershipTypes.GroupMembership.ToString(),
+                        Group = new Group
+                        {
+                            GroupId = groupId
+                        }
                     };
 
                     await _databaseSyncJobsRepository.CreateSyncJobAsync(syncJob);
+
+                    jobIndex++;
                 }
             }
 

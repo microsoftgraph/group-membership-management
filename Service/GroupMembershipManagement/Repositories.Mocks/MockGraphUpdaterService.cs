@@ -13,6 +13,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text.Json;
 using System.Threading.Tasks;
+using Group = Microsoft.Graph.Models.Group;
 
 namespace Repositories.Mocks
 {
@@ -72,10 +73,10 @@ namespace Repositories.Mocks
             };
             message.ApplicationProperties.Add("MessageType", notificationType.ToString());
             await _serviceBusQueueRepository.SendMessageAsync(message);
-    
+
         }
 
-        public Task UpdateSyncJobStatusAsync(SyncJob job, SyncStatus status, bool isDryRun, Guid runId)
+        public Task UpdateSyncJobStatusAsync(SyncJob job, SyncStatus status, bool isDryRun, Guid runId, int? usersAdded, int? usersRemoved)
         {
             job.RunId = runId;
             job.Status = status.ToString();
@@ -116,6 +117,11 @@ namespace Repositories.Mocks
         }
 
         public Task SendEmailAsync(string toEmail, string contentTemplate, string[] additionalContentParams, SyncJob syncJob, string ccEmail, string emailSubject, string[] additionalSubjectParams)
+        {
+            throw new NotImplementedException();
+        }
+
+        public Task<Guid> GetGroupIdAsync(SyncJob syncJob)
         {
             throw new NotImplementedException();
         }

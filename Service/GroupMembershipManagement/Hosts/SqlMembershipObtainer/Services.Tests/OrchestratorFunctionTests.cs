@@ -2,25 +2,31 @@
 // Licensed under the MIT license.
 using Microsoft.ApplicationInsights;
 using Microsoft.ApplicationInsights.Extensibility;
-using Microsoft.Azure.WebJobs.Extensions.DurableTask;
-using Microsoft.Extensions.Configuration;
+using Microsoft.Azure.Functions.Worker;
+using Microsoft.DurableTask;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Models;
 using Models.Helpers;
 using Models.ServiceBus;
 using Moq;
-using Newtonsoft.Json;
-using SqlMembershipObtainer;
-using SqlMembershipObtainer.SubOrchestrator;
 using Repositories.Contracts;
 using Services.Contracts;
 using Services.Tests.Helpers;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Net;
+using System.Text.Json;
 using System.Threading.Tasks;
 using Microsoft.Data.SqlClient;
+using Polly;
+using SqlMembershipObtainer;
+using SqlMembershipObtainer.SubOrchestrator;
+using System.Net;
+using SqlMembershipObtainer.Entities;
 
 namespace Services.Tests
 {
@@ -29,28 +35,25 @@ namespace Services.Tests
     {
         private int _profilesCount = 10;
         private List<GraphProfileInformation> _profiles;
-        private Mock<IConfiguration> _configuration;
-        private Mock<ILoggingRepository> _loggingRepository;
-        private Mock<IDurableOrchestrationContext> _context;
-        private Mock<Microsoft.Azure.WebJobs.ExecutionContext> _executionContext;
+        private Mock<TaskOrchestrationContext> _context;
+        private Mock<FunctionContext> _functionContext;
         private SyncJob _syncJob;
         private OrchestratorRequest _mainRequest;
-        private GraphProfileInformationResponse _graphProfileInformationResponse;
+        private MembershipFileResult _groupMembershipSenderResponse;
         private SyncStatus _senderResponseStatus = SyncStatus.InProgress;
         private string _senderResponseFilePath = "file-path";
-        private DurableHttpResponse _membershipAggregatorResponse;
         private TelemetryClient _telemetryClient;
         private Mock<ISqlMembershipObtainerService> _sqlMembershipObtainerService;
         private Mock<IServiceBusQueueRepository> _serviceBusQueueRepository;
+        SchemaProvider _schemaProvider;
+        private bool _isValid = true;
 
         [TestInitialize]
         public void Setup()
         {
-            _configuration = new Mock<IConfiguration>();
-            _loggingRepository = new Mock<ILoggingRepository>();
             _sqlMembershipObtainerService = new Mock<ISqlMembershipObtainerService>();
-            _context = new Mock<IDurableOrchestrationContext>();
-            _executionContext = new Mock<Microsoft.Azure.WebJobs.ExecutionContext>();
+            _context = new Mock<TaskOrchestrationContext>();
+            _functionContext = new Mock<FunctionContext>();
             _telemetryClient = new TelemetryClient(TelemetryConfiguration.CreateDefault());
             _serviceBusQueueRepository = new Mock<IServiceBusQueueRepository>();
 
@@ -60,7 +63,8 @@ namespace Services.Tests
             {
                 CurrentPart = 1,
                 TotalParts = 2,
-                SyncJob = _syncJob
+                SyncJob = _syncJob,
+                Exclusionary = false
             };
 
             _profiles = new List<GraphProfileInformation>();
@@ -74,85 +78,68 @@ namespace Services.Tests
                 });
             }
 
-            _graphProfileInformationResponse = new GraphProfileInformationResponse
+            _groupMembershipSenderResponse = new MembershipFileResult
             {
-                GraphProfiles = TextCompressor.Compress(JsonConvert.SerializeObject(_profiles)),
-                GraphProfileCount = _profiles.Count
+                Status = _senderResponseStatus,
+                FilePath = _senderResponseFilePath
             };
 
-            _membershipAggregatorResponse = new DurableHttpResponse(HttpStatusCode.NoContent);
+            _context.Setup(x => x.CreateReplaySafeLogger(It.IsAny<string>())).Returns(NullLogger.Instance);
+
+            _context.Setup(x => x.CallActivityAsync<Guid>(nameof(GetGroupFunction), It.IsAny<GetGroupRequest>(), It.IsAny<TaskOptions>())).ReturnsAsync(_syncJob.Group.GroupId);
 
             _context.Setup(x => x.GetInput<OrchestratorRequest>()).Returns(() => _mainRequest);
-            _context.Setup(x => x.CallActivityAsync(nameof(LoggerFunction), It.IsAny<LoggerRequest>()))
-                    .Callback<string, object>(async (name, request) =>
-                    {
-                        await CallLoggerFunctionAsync(request as LoggerRequest);
-                    });
 
-            _context.Setup(x => x.CallSubOrchestratorAsync<GraphProfileInformationResponse>(
+            _context.Setup(x => x.CallSubOrchestratorAsync<MembershipFileResult>(
                                                         nameof(OrganizationProcessorFunction),
-                                                        It.IsAny<OrganizationProcessorRequest>()
-                                                        ))
-                    .ReturnsAsync(() => _graphProfileInformationResponse);
+                                                        It.IsAny<OrganizationProcessorRequest>(),
+                                                        It.IsAny<TaskOptions>()))
+                    .ReturnsAsync(() => _groupMembershipSenderResponse);
 
-            _context.Setup(x => x.CallActivityAsync(It.Is<string>(x => x == nameof(TelemetryTrackerFunction)), It.IsAny<TelemetryTrackerRequest>()))
-                    .Callback<string, object>(async (name, request) =>
+            _context.Setup(x => x.CallActivityAsync(It.Is<TaskName>(x => x == nameof(TelemetryTrackerFunction)), It.IsAny<TelemetryTrackerRequest>(), It.IsAny<TaskOptions>()))
+                    .Callback<TaskName, object, TaskOptions>(async (name, request, options) =>
                     {
-                        var telemetryRequest = request as TelemetryTrackerRequest;
-                        await CallTelemetryTrackerFunctionAsync(telemetryRequest);
+                        await CallTelemetryTrackerFunctionAsync(request as TelemetryTrackerRequest);
                     });
 
-            _context.Setup(x => x.CallActivityAsync<(SyncStatus Status, string FilePath)>(
-                                                        nameof(GroupMembershipSenderFunction),
-                                                        It.IsAny<GroupMembershipSenderRequest>()))
-                    .Callback<string, object>(async (name, request) =>
+            _context.Setup(x => x.CallActivityAsync(nameof(QueueMessageSenderFunction), It.IsAny<MembershipAggregatorHttpRequest>(), It.IsAny<TaskOptions>()))
+                    .Callback<TaskName, object, TaskOptions>(async (name, request, options) =>
                     {
-                        await CallGroupMembershipSenderFunctionAsync(request as GroupMembershipSenderRequest);
+                        await CallQueueMessageSenderFunctionAsync(request as MembershipAggregatorHttpRequest);
+                    });
+
+            _schemaProvider = SchemaProviderFactory.CreateJsonSchemaProvider();
+
+            _context.Setup(x => x.CallActivityAsync<bool>(nameof(SchemaValidatorFunction), It.IsAny<SchemaValidatorRequest>(), It.IsAny<TaskOptions>()))
+                    .Callback<TaskName, object, TaskOptions>(async (name, request, options) =>
+                    {
+                        await CallSchemaValidatorFunctionAsync(request as SchemaValidatorRequest);
                     })
-                    .ReturnsAsync(() => (_senderResponseStatus, _senderResponseFilePath));
-
-            _context.Setup(x => x.CallHttpAsync(It.IsAny<DurableHttpRequest>())).ReturnsAsync(() => _membershipAggregatorResponse);
-
-            _context.Setup(x => x.CallActivityAsync(nameof(QueueMessageSenderFunction), It.IsAny<MembershipAggregatorHttpRequest>()))
-                                        .Callback<string, object>(async (name, request) =>
-                                        {
-                                            await CallQueueMessageSenderFunctionAsync(request as MembershipAggregatorHttpRequest);
-                                        });
+                    .ReturnsAsync(() => _isValid);
         }
 
         [TestMethod]
         public async Task TestValidSqlMembershipQueryAsync()
         {
-            List<GraphProfileInformation> profilesSent = null;
-            _sqlMembershipObtainerService.Setup(x => x.SendGroupMembershipAsync(
-                                                        It.IsAny<List<GraphProfileInformation>>(),
-                                                        It.IsAny<SyncJob>(),
-                                                        It.IsAny<int>(),
-                                                        It.IsAny<bool>(),
-                                                        It.IsAny<string>()))
-                                .Callback<List<GraphProfileInformation>, SyncJob, int, bool, string>((profiles, syncJob, currentPart, exclusionary, directory) =>
-                                {
-                                    profilesSent = profiles;
-                                })
-                                .ReturnsAsync(() => (_senderResponseStatus, _senderResponseFilePath));
+            var expectedResponse = new MembershipFileResult
+            {
+                Status = _senderResponseStatus,
+                FilePath = _senderResponseFilePath
+            };
 
-            var orchestratorFunction = new OrchestratorFunction(_configuration.Object, _loggingRepository.Object);
-            await orchestratorFunction.RunOrchestratorAsync(_context.Object, _executionContext.Object);
+            _context.Setup(x => x.CallActivityAsync<MembershipFileResult>(
+                nameof(ChildEntitiesFilterFunction),
+                It.IsAny<ChildEntitiesFilterRequest>(),
+                It.IsAny<TaskOptions>()))
+                .ReturnsAsync(expectedResponse);
 
-            _loggingRepository.Verify(x => x.LogMessageAsync(
-                                It.Is<LogMessage>(m => m.Message.StartsWith($"Retrieved {_profilesCount} total profiles from SqlMembershipObtainer")),
-                                It.IsAny<VerbosityLevel>(),
-                                It.IsAny<string>(),
-                                It.IsAny<string>()), Times.Once());
+            var orchestratorFunction = new OrchestratorFunction();
+            await orchestratorFunction.RunOrchestratorAsync(_context.Object);
 
-            _sqlMembershipObtainerService.Verify(x => x.SendGroupMembershipAsync(It.IsAny<List<GraphProfileInformation>>(),
-                                                        It.IsAny<SyncJob>(),
-                                                        It.IsAny<int>(),
-                                                        It.IsAny<bool>(),
-                                                        It.IsAny<string>()), Times.Once());
-
-            Assert.AreEqual(_profilesCount, profilesSent.Count);
-            Assert.IsTrue(profilesSent.All(x => _profiles.Contains(x)));
+            _context.Verify(x => x.CallSubOrchestratorAsync<MembershipFileResult>(
+                nameof(OrganizationProcessorFunction),
+                It.Is<OrganizationProcessorRequest>(r => r.CurrentPart == 1 && r.TotalParts == 2),
+                It.IsAny<TaskOptions>()), Times.Once());
         }
 
         [TestMethod]
@@ -162,14 +149,12 @@ namespace Services.Tests
         {
             _syncJob.Query = query;
 
-            var orchestratorFunction = new OrchestratorFunction(_configuration.Object, _loggingRepository.Object);
-            await orchestratorFunction.RunOrchestratorAsync(_context.Object, _executionContext.Object);
+            var orchestratorFunction = new OrchestratorFunction();
+            await orchestratorFunction.RunOrchestratorAsync(_context.Object);
 
-            _loggingRepository.Verify(x => x.LogMessageAsync(
-                                It.Is<LogMessage>(m => m.Message.Contains($"The job Id:{_syncJob.Id} Part#{_mainRequest.CurrentPart} does not have a valid query")),
-                                It.IsAny<VerbosityLevel>(),
-                                It.IsAny<string>(),
-                                It.IsAny<string>()), Times.Once());
+            _context.Verify(x => x.CallActivityAsync(nameof(JobStatusUpdaterFunction),
+                                                    It.Is<JobStatusUpdaterRequest>(x => x.Status == SyncStatus.QueryNotValid && x.CurrentPart == 1 && x.TotalParts == 2),
+                                                    It.IsAny<TaskOptions>()), Times.Once());
         }
 
         [TestMethod]
@@ -177,17 +162,32 @@ namespace Services.Tests
         {
             _syncJob.Query = "some-invalid-query";
 
-            var orchestratorFunction = new OrchestratorFunction(_configuration.Object, _loggingRepository.Object);
-            await orchestratorFunction.RunOrchestratorAsync(_context.Object, _executionContext.Object);
-
-            _loggingRepository.Verify(x => x.LogMessageAsync(
-                                It.Is<LogMessage>(m => m.Message.Contains($"The job Id:{_syncJob.Id} Part#{_mainRequest.CurrentPart} does not have a valid query")),
-                                It.IsAny<VerbosityLevel>(),
-                                It.IsAny<string>(),
-                                It.IsAny<string>()), Times.Once());
+            var orchestratorFunction = new OrchestratorFunction();
+            await orchestratorFunction.RunOrchestratorAsync(_context.Object);
 
             _context.Verify(x => x.CallActivityAsync(nameof(JobStatusUpdaterFunction),
-                                                    It.Is<JobStatusUpdaterRequest>(x => x.Status == SyncStatus.QueryNotValid)), Times.Once());
+                                                    It.Is<JobStatusUpdaterRequest>(x => x.Status == SyncStatus.QueryNotValid && x.CurrentPart == 1 && x.TotalParts == 2),
+                                                    It.IsAny<TaskOptions>()), Times.Once());
+        }
+
+        [TestMethod]
+        public async Task TestInvalidSchemaAsync()
+        {
+            _syncJob.Query = "[{\"type\":\"SqlMembership\",\"source\":{\"manager\":{\"id\":[1, 2]},\"filter\":\"Attribute = 'Value'\"}}]";
+
+            _context.Setup(x => x.CallActivityAsync<bool>(nameof(SchemaValidatorFunction), It.IsAny<SchemaValidatorRequest>(), It.IsAny<TaskOptions>()))
+                    .Callback<TaskName, object, TaskOptions>(async (name, request, options) =>
+                    {
+                        await CallSchemaValidatorFunctionAsync(request as SchemaValidatorRequest);
+                    })
+                    .ReturnsAsync(() => false);
+
+            var orchestratorFunction = new OrchestratorFunction();
+            await orchestratorFunction.RunOrchestratorAsync(_context.Object);
+
+            _context.Verify(x => x.CallActivityAsync(nameof(JobStatusUpdaterFunction),
+                                                    It.Is<JobStatusUpdaterRequest>(x => x.Status == SyncStatus.SchemaError && x.CurrentPart == 1 && x.TotalParts == 2),
+                                                    It.IsAny<TaskOptions>()), Times.Once());
         }
 
         [TestMethod]
@@ -195,23 +195,18 @@ namespace Services.Tests
         {
             _senderResponseFilePath = null;
 
-            var orchestratorFunction = new OrchestratorFunction(_configuration.Object, _loggingRepository.Object);
-            await orchestratorFunction.RunOrchestratorAsync(_context.Object, _executionContext.Object);
+            _groupMembershipSenderResponse = new MembershipFileResult
+            {
+                Status = SyncStatus.InProgress,
+                FilePath = _senderResponseFilePath
+            };
 
-            _loggingRepository.Verify(x => x.LogMessageAsync(
-                                It.Is<LogMessage>(m => m.Message.StartsWith($"Retrieved {_profilesCount} total profiles from SqlMembershipObtainer")),
-                                It.IsAny<VerbosityLevel>(),
-                                It.IsAny<string>(),
-                                It.IsAny<string>()), Times.Once());
-
-            _loggingRepository.Verify(x => x.LogMessageAsync(
-                    It.Is<LogMessage>(m => m.Message.StartsWith($"Membership file path is not valid, marking sync job as {SyncStatus.FilePathNotValid}")),
-                    It.IsAny<VerbosityLevel>(),
-                    It.IsAny<string>(),
-                    It.IsAny<string>()), Times.Once());
+            var orchestratorFunction = new OrchestratorFunction();
+            await orchestratorFunction.RunOrchestratorAsync(_context.Object);
 
             _context.Verify(x => x.CallActivityAsync(nameof(JobStatusUpdaterFunction),
-                                                    It.Is<JobStatusUpdaterRequest>(x => x.Status == SyncStatus.FilePathNotValid)), Times.Once());
+                                                    It.Is<JobStatusUpdaterRequest>(x => x.Status == SyncStatus.FilePathNotValid && x.CurrentPart == 1 && x.TotalParts == 2),
+                                                    It.IsAny<TaskOptions>()), Times.Once());
         }
 
         [TestMethod]
@@ -225,46 +220,61 @@ namespace Services.Tests
             _syncJob.LastSuccessfulRunTime = DateTime.UtcNow.AddHours(-hoursSinceLastSuccessfulRun);
 
             _context.Setup(x => x.CurrentUtcDateTime).Returns(originalStartDate);
-            _context.Setup(x => x.CallSubOrchestratorAsync<GraphProfileInformationResponse>(
+            _context.Setup(x => x.CallSubOrchestratorAsync<MembershipFileResult>(
                                                       nameof(OrganizationProcessorFunction),
-                                                      It.IsAny<OrganizationProcessorRequest>()
-                                                      ))
+                                                      It.IsAny<OrganizationProcessorRequest>(),
+                                                      It.IsAny<TaskOptions>()))
                     .ThrowsAsync(new Exception("Internal .NET Framework Data Provider error 6"));
 
-            var orchestratorFunction = new OrchestratorFunction(_configuration.Object, _loggingRepository.Object);
-            await orchestratorFunction.RunOrchestratorAsync(_context.Object, _executionContext.Object);
-
-            _loggingRepository.Verify(x => x.LogMessageAsync(
-                                It.Is<LogMessage>(m => m.Message.StartsWith($"Rescheduling job at")),
-                                It.IsAny<VerbosityLevel>(),
-                                It.IsAny<string>(),
-                                It.IsAny<string>()), Times.Never());
+            var orchestratorFunction = new OrchestratorFunction();
+            await orchestratorFunction.RunOrchestratorAsync(_context.Object);
 
             _context.Verify(x => x.CallActivityAsync(nameof(JobStatusUpdaterFunction),
-                                                    It.Is<JobStatusUpdaterRequest>(x => x.Status == SyncStatus.Error)), Times.Once());
+                                                    It.Is<JobStatusUpdaterRequest>(x => x.Status == SyncStatus.Error && x.CurrentPart == 1 && x.TotalParts == 2),
+                                                    It.IsAny<TaskOptions>()), Times.Once());
         }
 
         [TestMethod]
-        [ExpectedException(typeof(Microsoft.Data.SqlClient.SqlException))]
         public async Task TestFailJobOnSqlExceptionAsync()
         {
-            _context.Setup(x => x.CallSubOrchestratorAsync<GraphProfileInformationResponse>(
+            _context.Reset();
+
+            _context.Setup(x => x.CreateReplaySafeLogger(It.IsAny<string>())).Returns(NullLogger.Instance);
+            _context.Setup(x => x.GetInput<OrchestratorRequest>()).Returns(() => _mainRequest);
+            _context.Setup(x => x.CallActivityAsync<Guid>(nameof(GetGroupFunction), It.IsAny<GetGroupRequest>(), It.IsAny<TaskOptions>())).ReturnsAsync(_syncJob.Group.GroupId);
+            _context.Setup(x => x.CallActivityAsync<bool>(nameof(SchemaValidatorFunction), It.IsAny<SchemaValidatorRequest>(), It.IsAny<TaskOptions>()))
+                    .Callback<TaskName, object, TaskOptions>(async (name, request, options) =>
+                    {
+                        await CallSchemaValidatorFunctionAsync(request as SchemaValidatorRequest);
+                    })
+                    .ReturnsAsync(() => _isValid);
+            _context.Setup(x => x.CallActivityAsync(nameof(JobStatusUpdaterFunction), It.IsAny<JobStatusUpdaterRequest>(), It.IsAny<TaskOptions>()));
+            _context.Setup(x => x.CallActivityAsync(nameof(TelemetryTrackerFunction), It.IsAny<TelemetryTrackerRequest>(), It.IsAny<TaskOptions>()))
+                    .Callback<TaskName, object, TaskOptions>(async (name, request, options) =>
+                    {
+                        await CallTelemetryTrackerFunctionAsync(request as TelemetryTrackerRequest);
+                    });
+
+            _context.Setup(x => x.CallSubOrchestratorAsync<MembershipFileResult>(
                                                       nameof(OrganizationProcessorFunction),
-                                                      It.IsAny<OrganizationProcessorRequest>()
-                                                      ))
+                                                      It.IsAny<OrganizationProcessorRequest>(),
+                                                      It.IsAny<TaskOptions>()))
                     .ThrowsAsync(MakeSqlException());
 
-            var orchestratorFunction = new OrchestratorFunction(_configuration.Object, _loggingRepository.Object);
-            await orchestratorFunction.RunOrchestratorAsync(_context.Object, _executionContext.Object);
+            var orchestratorFunction = new OrchestratorFunction();
+            var sqlException = await Assert.ThrowsExceptionAsync<SqlException>(async () =>
+            {
+                await orchestratorFunction.RunOrchestratorAsync(_context.Object);
+            });
 
-            _loggingRepository.Verify(x => x.LogMessageAsync(
-                                It.Is<LogMessage>(m => m.Message.StartsWith($"Caught SqlException")),
-                                It.IsAny<VerbosityLevel>(),
-                                It.IsAny<string>(),
-                                It.IsAny<string>()), Times.Once());
+            _context.Verify(x => x.CallSubOrchestratorAsync<MembershipFileResult>(
+                                                      nameof(OrganizationProcessorFunction),
+                                                      It.Is<OrganizationProcessorRequest>(r => r.CurrentPart == 1 && r.TotalParts == 2),
+                                                      It.IsAny<TaskOptions>()), Times.Once());
 
             _context.Verify(x => x.CallActivityAsync(nameof(JobStatusUpdaterFunction),
-                                                    It.Is<JobStatusUpdaterRequest>(x => x.Status == SyncStatus.Error)), Times.Once());
+                                                    It.Is<JobStatusUpdaterRequest>(x => x.Status == SyncStatus.Error && x.CurrentPart == 1 && x.TotalParts == 2),
+                                                    It.IsAny<TaskOptions>()), Times.Once());
         }
 
         public static SqlException MakeSqlException()
@@ -284,25 +294,19 @@ namespace Services.Tests
 
         private async Task CallTelemetryTrackerFunctionAsync(TelemetryTrackerRequest request)
         {
-            var telemetryTrackerFunction = new TelemetryTrackerFunction(_loggingRepository.Object, _telemetryClient);
-            await telemetryTrackerFunction.TrackEventAsync(request);
+            var function = new TelemetryTrackerFunction(NullLogger<TelemetryTrackerFunction>.Instance, _telemetryClient);
+            await function.TrackEventAsync(request);
         }
 
-        private async Task CallLoggerFunctionAsync(LoggerRequest request)
+        private async Task CallSchemaValidatorFunctionAsync(SchemaValidatorRequest request)
         {
-            var function = new LoggerFunction(_loggingRepository.Object);
-            await function.LogMessageAsync(request);
-        }
-
-        private async Task<(SyncStatus Status, string FilePath)> CallGroupMembershipSenderFunctionAsync(GroupMembershipSenderRequest request)
-        {
-            var function = new GroupMembershipSenderFunction(_sqlMembershipObtainerService.Object, _loggingRepository.Object);
-            return await function.SendGroupMembershipAsync(request);
+            var function = new SchemaValidatorFunction(NullLogger<SchemaValidatorFunction>.Instance, _schemaProvider);
+            await function.ValidateSchemasAsync(request);
         }
 
         private async Task CallQueueMessageSenderFunctionAsync(MembershipAggregatorHttpRequest request)
         {
-            var function = new QueueMessageSenderFunction(_loggingRepository.Object, _serviceBusQueueRepository.Object);
+            var function = new QueueMessageSenderFunction(NullLogger<QueueMessageSenderFunction>.Instance, _serviceBusQueueRepository.Object);
             await function.SendMessageAsync(request);
         }
     }

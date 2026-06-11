@@ -33,6 +33,10 @@ resource keyVault 'Microsoft.KeyVault/vaults@2023-07-01' = {
       family: skuFamily
     }
     tenantId: tenantId
-    accessPolicies: []
+    publicNetworkAccess: 'Enabled'
+    networkAcls: {
+      bypass: 'AzureServices'
+      defaultAction: 'Deny'
+    }
   }
 }

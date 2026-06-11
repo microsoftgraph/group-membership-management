@@ -7,18 +7,22 @@ param name string
   'functionapp'
   'linux'
   'container'
+  'functionapp,linux'
 ])
-param kind string = 'functionapp'
+param kind string = 'functionapp,linux'
 
 @description('Function app location.')
 param location string
+
+@description('Function authentication app client id.')
+param functionAuthAppClientId string
 
 @description('Service plan name.')
 @minLength(1)
 param servicePlanName string
 
 @description('app settings')
-param secretSettings object
+param appSettings object
 
 @description('User assigned managed identities. Single or list of user assigned managed identities. Format: /subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.ManagedIdentity/userAssignedIdentities/{identityName}')
 param userManagedIdentities object = {}
@@ -28,7 +32,59 @@ var deployUserManagedIdentity = userManagedIdentities != null && userManagedIden
 @description('Log Analytics Workspace Id.')
 param logAnalyticsWorkspaceId string
 
-resource functionApp 'Microsoft.Web/sites@2018-02-01' = {
+@description('Name of the resource group where the \'prereqs\' key vault is located.')
+param prereqsKeyVaultName string
+
+@description('Name of the resource group where the \'prereqs\' key vault is located.')
+param prereqsKeyVaultResourceGroup string
+
+@description('Name of the \'data\' key vault.')
+param dataKeyVaultName string
+
+@description('Name of the resource group where the \'data\' key vault is located.')
+param dataKeyVaultResourceGroup string
+
+@description('Flag to indicate if the deployment should set RBAC permissions.')
+param setRBACPermissions bool
+
+@description('Storage account name.')
+param storageAccountName string
+
+@description('Storage account container name.')
+param appPackageContainerName string
+
+@description('Maximum instance count.')
+param maxInstanceCount int = 40
+
+@description('Instance memory in MB.')
+param instanceMemoryMB int = 2048
+
+resource storageAccount 'Microsoft.Storage/storageAccounts@2023-01-01' existing = {
+  name: storageAccountName
+  scope: resourceGroup(dataKeyVaultResourceGroup)
+}
+
+var functionAppConfig = {
+  deployment: {
+    storage: {
+      type: 'blobContainer'
+      value: '${storageAccount.properties.primaryEndpoints.blob}${appPackageContainerName}'
+      authentication: {
+        type: 'SystemAssignedIdentity'
+      }
+    }
+  }
+  scaleAndConcurrency: {
+    maximumInstanceCount: maxInstanceCount
+    instanceMemoryMB: instanceMemoryMB
+  }
+  runtime: {
+    name: 'dotnet-isolated'
+    version: '8.0'
+  }
+}
+
+resource functionApp 'Microsoft.Web/sites@2023-12-01' = {
   name: name
   location: location
   kind: kind
@@ -37,14 +93,71 @@ resource functionApp 'Microsoft.Web/sites@2018-02-01' = {
     clientAffinityEnabled: false
     httpsOnly: true
     siteConfig: {
-      use32BitWorkerProcess : false
-      appSettings: secretSettings
+      minTlsVersion: '1.2'
       ftpsState: 'Disabled'
+      appSettings: [
+        for key in objectKeys(appSettings): {
+          name: key
+          value: appSettings[key]
+        }
+      ]
     }
+    functionAppConfig: functionAppConfig
   }
   identity: {
     type: deployUserManagedIdentity ? 'SystemAssigned, UserAssigned' : 'SystemAssigned'
     userAssignedIdentities: deployUserManagedIdentity ? userManagedIdentities : null
+  }
+}
+
+module functionAppRBAC 'functionAppRBAC.bicep' = {
+  name: 'functionAppsRBAC-JobTrigger'
+  params: {
+    functionName: 'JobTrigger'
+    prereqsKeyVaultName: prereqsKeyVaultName
+    prereqsKeyVaultResourceGroup: prereqsKeyVaultResourceGroup
+    dataKeyVaultName: dataKeyVaultName
+    dataKeyVaultResourceGroup: dataKeyVaultResourceGroup
+    setRBACPermissions: setRBACPermissions
+    productionSlotPrincipalId: functionApp.identity.principalId
+    storageAccountName: storageAccountName
+  }
+}
+
+resource authSettings 'Microsoft.Web/sites/config@2022-09-01' = {
+  parent: functionApp
+  name: 'authsettingsV2'
+  properties: {
+    platform: {
+      enabled: true
+      runtimeVersion: '~1'
+    }
+    globalValidation: {
+      requireAuthentication: true
+      unauthenticatedClientAction: 'Return401'
+    }
+    identityProviders: {
+      azureActiveDirectory: {
+        enabled: true
+        registration: {
+          clientId: functionAuthAppClientId
+          openIdIssuer: '${environment().authentication.loginEndpoint}${tenant().tenantId}/v2.0'
+        }
+        validation: {
+          allowedAudiences: [
+            'api://${functionAuthAppClientId}'
+          ]
+          defaultAuthorizationPolicy: {
+            allowedPrincipals: []
+          }
+        }
+      }
+    }
+    login: {
+      tokenStore: {
+        enabled: false
+      }
+    }
   }
 }
 
@@ -64,6 +177,9 @@ resource diagnosticSettings 'Microsoft.Insights/diagnosticSettings@2021-05-01-pr
       }
     ]
   }
+  dependsOn:[
+    functionAppRBAC
+  ]
 }
 
 resource snScmBasicAuth 'Microsoft.Web/sites/basicPublishingCredentialsPolicies@2022-09-01' = {
@@ -72,6 +188,9 @@ resource snScmBasicAuth 'Microsoft.Web/sites/basicPublishingCredentialsPolicies@
   properties: {
     allow: false
   }
+  dependsOn:[
+    diagnosticSettings
+  ]
 }
 
 resource snFtpBasicAuth 'Microsoft.Web/sites/basicPublishingCredentialsPolicies@2022-09-01' = {
@@ -80,27 +199,26 @@ resource snFtpBasicAuth 'Microsoft.Web/sites/basicPublishingCredentialsPolicies@
   properties: {
     allow: false
   }
+  dependsOn:[
+    snScmBasicAuth
+  ]
 }
 
-resource functionAppSlotConfig 'Microsoft.Web/sites/config@2021-03-01' = {
-  name: 'slotConfigNames'
-  parent: functionApp
-  properties: {
-    appSettingNames: [
-      'AzureFunctionsJobHost__extensions__durableTask__hubName'
-      'AzureWebJobs.StarterFunction.Disabled'
-      'AzureWebJobs.OrchestratorFunction.Disabled'
-      'AzureWebJobs.SubOrchestratorFunction.Disabled'
-      'AzureWebJobs.EmailSenderFunction.Disabled'
-      'AzureWebJobs.GroupNameReaderFunction.Disabled'
-      'AzureWebJobs.GroupVerifierFunction.Disabled'
-      'AzureWebJobs.JobStatusUpdaterFunction.Disabled'
-      'AzureWebJobs.SyncJobsReaderFunction.Disabled'
-      'AzureWebJobs.TopicMessageSenderFunction.Disabled'
-      'AzureWebJobsStorage'
-      'AzureFunctionsWebHost__hostid'
+module secretsTemplate 'keyVaultSecrets.bicep' = {
+  name: 'secretsTemplate-JobTrigger'
+  scope: resourceGroup(dataKeyVaultResourceGroup)
+  params: {
+    keyVaultName: dataKeyVaultName
+    keyVaultParameters: [
+      {
+        name: 'jobTriggerFunctionName'
+        value: '${name}-JobTrigger'
+      }
     ]
   }
+  dependsOn:[
+    snFtpBasicAuth
+  ]
 }
 
 output msi string = functionApp.identity.principalId

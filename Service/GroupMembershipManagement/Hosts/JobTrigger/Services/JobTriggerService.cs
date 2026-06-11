@@ -1,21 +1,23 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
+using Hosts.JobTrigger;
 using Microsoft.ApplicationInsights;
+using Microsoft.Extensions.Logging;
 using Models;
 using Models.Entities;
+using Models.Helpers;
 using Models.Notifications;
 using Models.ServiceBus;
-using Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
+using Models.SyncJobHistory;
 using Repositories.Contracts;
+using Repositories.Contracts.Helpers;
 using Repositories.Contracts.InjectConfig;
 using Services.Contracts;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Threading.Tasks;
 using System.Text.Json;
-using Models.Helpers;
+using System.Threading.Tasks;
 using JsonSerializer = System.Text.Json.JsonSerializer;
 
 namespace Services
@@ -25,12 +27,17 @@ namespace Services
 
         enum Metric
         {
-            SyncJobsCount,
-            TotalSyncJobsCount
+            PotentialSyncJobCount,
+            TotalSyncJobsCount,
+            ActiveInProgressJobCount,
+            JobsDueToRunCount,
+            JobsToBeStarted
         }
 
-        private readonly ILoggingRepository _loggingRepository;
+        private readonly ILogger<JobTriggerService> _logger;
         private readonly IDatabaseSyncJobsRepository _databaseSyncJobsRepository;
+        private readonly IDatabaseGroupsRepository _databaseGroupsRepository;
+        private readonly IDatabaseChannelsRepository _databaseChannelsRepository;
         private readonly IDatabaseDestinationAttributesRepository _databaseDestinationAttributesRepository;
         private readonly INotificationTypesRepository _notificationTypesRepository;
         private readonly IJobNotificationsRepository _jobNotificationRepository;
@@ -44,21 +51,13 @@ namespace Services
         private readonly IJobTriggerConfig _jobTriggerConfig;
         private readonly TelemetryClient _telemetryClient;
         private readonly IServiceBusQueueRepository _serviceBusQueueRepository;
-
-        private Guid _runId;
-        public Guid RunId
-        {
-            get { return _runId; }
-            set
-            {
-                _runId = value;
-                _graphGroupRepository.RunId = value;
-            }
-        }
+        private readonly ISyncJobStatusService _syncJobStatusService;
 
         public JobTriggerService(
-            ILoggingRepository loggingRepository,
+            ILogger<JobTriggerService> logger,
             IDatabaseSyncJobsRepository databaseSyncJobsRepository,
+            IDatabaseGroupsRepository databaseGroupsRepository,
+            IDatabaseChannelsRepository databaseChannelsRepository,
             IDatabaseDestinationAttributesRepository databaseDestinationAttributesRepository,
             INotificationTypesRepository notificationTypesRepository,
             IJobNotificationsRepository jobNotificationRepository,
@@ -71,12 +70,15 @@ namespace Services
             IServiceBusQueueRepository serviceBusQueueRepository,
             IGMMResources gmmResources,
             IJobTriggerConfig jobTriggerConfig,
-            TelemetryClient telemetryClient
+            TelemetryClient telemetryClient,
+            ISyncJobStatusService syncJobStatusService
             )
         {
             _emailSenderAndRecipients = emailSenderAndRecipients;
-            _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _databaseSyncJobsRepository = databaseSyncJobsRepository ?? throw new ArgumentNullException(nameof(databaseSyncJobsRepository));
+            _databaseGroupsRepository = databaseGroupsRepository ?? throw new ArgumentNullException(nameof(databaseGroupsRepository));
+            _databaseChannelsRepository = databaseChannelsRepository ?? throw new ArgumentNullException(nameof(databaseChannelsRepository));
             _databaseDestinationAttributesRepository = databaseDestinationAttributesRepository ?? throw new ArgumentNullException(nameof(databaseDestinationAttributesRepository));
             _jobNotificationRepository = jobNotificationRepository ?? throw new ArgumentNullException(nameof(jobNotificationRepository));
             _notificationTypesRepository = notificationTypesRepository ?? throw new ArgumentNullException(nameof(notificationTypesRepository));
@@ -89,25 +91,42 @@ namespace Services
             _gmmResources = gmmResources ?? throw new ArgumentNullException(nameof(gmmResources));
             _jobTriggerConfig = jobTriggerConfig ?? throw new ArgumentNullException(nameof(jobTriggerConfig));
             _telemetryClient = telemetryClient ?? throw new ArgumentNullException(nameof(telemetryClient));
+            _syncJobStatusService = syncJobStatusService ?? throw new ArgumentNullException(nameof(syncJobStatusService));
         }
 
-        public async Task<(List<SyncJob> jobs, bool jobTriggerThresholdExceeded, int maxJobsAllowed)> GetSyncJobsAsync()
+        public async Task<List<SyncJob>> GetSyncJobsAsync()
         {
             var jobs = await _databaseSyncJobsRepository.GetSyncJobsAsync(false, SyncStatus.Idle, SyncStatus.InProgress, SyncStatus.StuckInProgress, SyncStatus.TransientError);
-            var filteredJobs = ApplyJobTriggerFilters(jobs).ToList();
-            var jobsExcludingFiltered = jobs.Except(filteredJobs).ToList();
+            var jobsDueToRun = ApplyJobTriggerFilters(jobs).ToList();
+            var jobsExcludingFiltered = jobs.Except(jobsDueToRun).ToList();
             var activeInProgressJobs = jobsExcludingFiltered.Where(job => job.Status == SyncStatus.InProgress.ToString()).ToList();
-            var syncJobsCount = filteredJobs.Count + activeInProgressJobs.Count;
+            var potentialSyncJobCount = jobsDueToRun.Count + activeInProgressJobs.Count;
             var totalSyncJobsCount = await _databaseSyncJobsRepository.GetSyncJobCountAsync(SyncStatus.All);
-            _telemetryClient.TrackMetric(nameof(Metric.SyncJobsCount), syncJobsCount);
+
+            _telemetryClient.TrackMetric(nameof(Metric.ActiveInProgressJobCount), activeInProgressJobs.Count);
+            _telemetryClient.TrackMetric(nameof(Metric.JobsDueToRunCount), jobsDueToRun.Count);
+            _telemetryClient.TrackMetric(nameof(Metric.PotentialSyncJobCount), potentialSyncJobCount);
             _telemetryClient.TrackMetric(nameof(Metric.TotalSyncJobsCount), totalSyncJobsCount);
-            var jobTriggerThresholdExceeded = HasJobTriggerThresholdExceeded(syncJobsCount, totalSyncJobsCount);
-            return (filteredJobs, jobTriggerThresholdExceeded, _jobTriggerConfig.JobCountThreshold);
+
+            var jobTriggerThresholdExceeded = HasJobTriggerThresholdExceeded(potentialSyncJobCount, totalSyncJobsCount);
+
+            var jobsToBeStarted = jobsDueToRun;
+            if (jobTriggerThresholdExceeded)
+            {
+                jobsToBeStarted = jobsToBeStarted.OrderBy(job => job.ScheduledDate).Take(_jobTriggerConfig.JobCountThreshold).ToList();
+            }
+            _telemetryClient.TrackMetric(nameof(Metric.JobsToBeStarted), jobsToBeStarted.Count);
+
+            return jobsToBeStarted;
         }
+
+        public async Task<SyncJob> GetSyncJobByIdAsync(Guid syncJobId)
+        {
+            return await _databaseSyncJobsRepository.GetSyncJobAsync(syncJobId);
+        }
+
         public async Task<string> GetDestinationNameAsync(SyncJob job)
         {
-            var destination = DestinationParser.ParseDestination(job);
-
             // Try to get the name from the DestinationNames table first
 
             var destinationName = await _databaseDestinationAttributesRepository.GetDestinationName(job);
@@ -116,19 +135,19 @@ namespace Services
                 return destinationName;
             }
 
-            if (destination.Type == "TeamsChannelMembership")
+            if (job.MembershipType == "TeamsChannelMembership")
             {
                 var channel = new AzureADTeamsChannel
                 {
-                    ObjectId = destination.Value.ObjectId,
-                    ChannelId = (destination.Value as TeamsChannelDestinationValue).ChannelId
+                    ObjectId = job.Channel.GroupId,
+                    ChannelId = job.Channel.ChannelId
                 };
 
                 return await _teamsChannelRepository.GetTeamsChannelNameAsync(channel);
             }
-            else if (destination.Type == "GroupMembership")
+            else if (job.MembershipType == "GroupMembership")
             {
-                var objectId = destination.Value.ObjectId;
+                var objectId = job.Group.GroupId;
                 return await _graphGroupRepository.GetGroupNameAsync(objectId);
             }
 
@@ -150,84 +169,140 @@ namespace Services
             };
             message.ApplicationProperties.Add("MessageType", notificationType.ToString());
             await _serviceBusQueueRepository.SendMessageAsync(message);
-            await _loggingRepository.LogMessageAsync(new LogMessage
+            using (_logger.BeginSyncJobScope(job))
             {
-                RunId = job.RunId,
-                Message = $"Sent message {message.MessageId} to service bus notifications queue "
-
-            });
+                _logger.SentNotificationMessage(message.MessageId);
+            }
 
         }
-        
+
         public async Task UpdateSyncJobAsync(SyncStatus? status, SyncJob job)
         {
+            var now = DateTime.UtcNow;
+            SyncJobHistory history = null;
+
             if (status == SyncStatus.InProgress)
             {
-                await _loggingRepository.LogMessageAsync(new LogMessage
+                using (_logger.BeginSyncJobScope(job))
                 {
-                    RunId = job.RunId,
-                    Message = $"Starting job."
-                });
+                    _logger.StartingJob();
+                }
 
-                job.LastSuccessfulStartTime = DateTime.UtcNow;
+                job.LastSuccessfulStartTime = now;
             }
 
             if (status == SyncStatus.StuckInProgress)
             {
-                await _loggingRepository.LogMessageAsync(new LogMessage
+                using (_logger.BeginSyncJobScope(job))
                 {
-                    RunId = job.RunId,
-                    Message = $"Restarting job stuck in InProgress."
-                });
+                    _logger.RestartingStuckJob();
+                }
 
-                job.LastRunTime = DateTime.UtcNow;
-                job.LastSuccessfulStartTime = DateTime.UtcNow;
+                job.LastRunTime = now;
+                job.LastSuccessfulStartTime = now;
             }
 
-            await _databaseSyncJobsRepository.UpdateSyncJobStatusAsync(new[] { job }, status);
+            if (status.HasValue
+                && status.Value != SyncStatus.InProgress
+                && status.Value != SyncStatus.StuckInProgress
+                && job.RunId.HasValue)
+            {
+                history = new SyncJobHistory
+                {
+                    SyncJobId = job.Id,
+                    RunId = job.RunId.Value,
+                    EndTime = now,
+                    Status = status.Value.ToString(),
+                    UpdatedByFunction = "JobTrigger"
+                };
+            }
+
+            await _syncJobStatusService.UpdateJobStatusAsync(job, status, history, functionName: "JobTrigger");
+        }
+
+        public async Task<bool> TryClaimAndUpdateJobAsync(SyncStatus status, SyncJob job)
+        {
+            var claimedCount = await _databaseSyncJobsRepository.ClaimSyncJobAsync(
+                job.Id, job.RunId, job.Period, status.ToString());
+            if (claimedCount == 0)
+                return false;
+
+            using (_logger.BeginSyncJobScope(job))
+            {
+                if (status == SyncStatus.InProgress)
+                    _logger.StartingJob();
+                else if (status == SyncStatus.StuckInProgress)
+                    _logger.RestartingStuckJob();
+            }
+
+            return true;
         }
         public async Task SendMessageAsync(SyncJob job)
         {
             await _serviceBusTopicsRepository.AddMessageAsync(job);
         }
         public async Task<DestinationVerifierResult> DestinationExistsAndGMMCanWriteToItAsync(SyncJob job)
-        {            
-            var destinationType =  DestinationParser.ParseDestination(job).Type;
-
-            if (destinationType == "TeamsChannelMembership")
+        {
+            if (job.MembershipType == "TeamsChannelMembership")
                 return await TeamsChannelExistsAndGMMCanWriteToItAsync(job);
-            else if (destinationType == "GroupMembership")
+            else if (job.MembershipType == "GroupMembership")
                 return await GroupExistsAndGMMCanWriteToItAsync(job);
             else
                 return DestinationVerifierResult.NotFound;
         }
         public async Task<List<string>> GetGroupEndpointsAsync(SyncJob job)
         {
-            var destinationObjectId =  DestinationParser.ParseDestination(job).Value.ObjectId;
+            var destinationObjectId = job.MembershipType switch
+            {
+                var type when type == MembershipTypes.TeamsChannelMembership.ToString() => job.Channel.GroupId,
+                var type when type == MembershipTypes.GroupMembership.ToString() => job.Group.GroupId,
+                _ => Guid.Empty
+            };
+
             return await _graphGroupRepository.GetGroupEndpointsAsync(destinationObjectId);
         }
-        public async Task<(bool IsValid, string DestinationObject)> ParseAndValidateDestinationAsync(SyncJob syncJob)
+
+        public async Task UpdateSyncJobDestinationAsync(Guid jobId, string destination)
+        {
+            await _databaseSyncJobsRepository.UpdateSyncJobDestinationAsync(jobId, destination);
+        }
+
+        public async Task<Group> GetGroupAsync(SyncJob syncJob)
+        {
+            return syncJob.Group ?? await _databaseGroupsRepository.GetGroupUsingSyncJobIdAsync(syncJob.Id);
+        }
+        public async Task<Channel> GetChannelAsync(SyncJob syncJob)
+        {
+            return syncJob.Channel ?? await _databaseChannelsRepository.GetChannelUsingSyncJobIdAsync(syncJob.Id);
+        }
+        public async Task<ParsedAndValidateDestinationResponse> ParseAndValidateDestinationAsync(SyncJob syncJob)
         {
             var destinationObject = DestinationParser.ParseDestination(syncJob);
 
             if (destinationObject == null)
             {
-                return (false, null);
+                return new ParsedAndValidateDestinationResponse{
+                    IsValid = false,
+                    DestinationObject = null
+                };
             }
             else
             {
                 var options = new JsonSerializerOptions { Converters = { new DestinationValueConverter() } };
                 var serializedDestinationObject = JsonSerializer.Serialize(destinationObject, options);
 
-                return (true, serializedDestinationObject);
+                return new ParsedAndValidateDestinationResponse
+                {
+                    IsValid = true,
+                    DestinationObject = serializedDestinationObject
+                };
             }
         }
         private IEnumerable<SyncJob> ApplyJobTriggerFilters(IEnumerable<SyncJob> jobs)
         {
-            var allNonDryRunSyncJobs = jobs.Where(x => ((DateTime.UtcNow - x.LastRunTime) > TimeSpan.FromHours(x.Period)) && x.IsDryRunEnabled == false && x.Status != SyncStatus.InProgress.ToString());
-            var allDryRunSyncJobs = jobs.Where(x => ((DateTime.UtcNow - x.DryRunTimeStamp) > TimeSpan.FromHours(x.Period)) && x.IsDryRunEnabled == true && x.Status != SyncStatus.InProgress.ToString());
+            var allDueToRunJobs = jobs.Where(x => !x.IsDryRunEnabled && x.Status != SyncStatus.InProgress.ToString());
             var inProgressSyncJobs = jobs.Where(x => ((DateTime.UtcNow - x.LastSuccessfulStartTime) > TimeSpan.FromHours(x.Period)) && x.Status == SyncStatus.InProgress.ToString());
-            return allNonDryRunSyncJobs.Concat(allDryRunSyncJobs).Concat(inProgressSyncJobs);
+            return allDueToRunJobs.Concat(inProgressSyncJobs);
         }
         private bool HasJobTriggerThresholdExceeded(int syncJobsCount, int totalSyncJobsCount)
         {
@@ -248,7 +323,7 @@ namespace Services
         }
         private async Task<DestinationVerifierResult> GroupExistsAndGMMCanWriteToItAsync(SyncJob job)
         {
-            var groupId =  DestinationParser.ParseDestination(job).Value.ObjectId;
+            var groupId = job.Group.GroupId;
 
             if (!(await CheckGroupExists(job, groupId)))
                 return DestinationVerifierResult.NotFound;
@@ -258,20 +333,17 @@ namespace Services
         }
         private async Task<DestinationVerifierResult> TeamsChannelExistsAndGMMCanWriteToItAsync(SyncJob job)
         {
-            var destinationObject = DestinationParser.ParseDestination(job);
+            var destinationObject = job.Channel;
             var channel = new AzureADTeamsChannel
             {
-                ObjectId = destinationObject.Value.ObjectId,
-                ChannelId = (destinationObject.Value as TeamsChannelDestinationValue).ChannelId
+                ObjectId = destinationObject.GroupId,
+                ChannelId = destinationObject.ChannelId
             };
 
-            if (!await CheckTeamExists(job, channel))
+            if (!await CheckTeamExists(job, channel) || !await CheckChannelExists(job, channel))
                 return DestinationVerifierResult.NotFound;
-            if (!await CheckGMMIsTeamOwner(job, channel))
-                return DestinationVerifierResult.NotOwnedByGMM;
-            if (!await CheckChannelExists(job, channel))
-                return DestinationVerifierResult.NotFound;
-            if (!await CheckGMMIsChannelOwner(job, channel))
+
+            if(!_jobTriggerConfig.GMMHasChannelReadWriteAllPermissions && !await CheckGMMIsChannelOwner(job, channel))
                 return DestinationVerifierResult.NotOwnedByGMM;
 
             return DestinationVerifierResult.Success;
@@ -296,11 +368,6 @@ namespace Services
             return await CheckAndLogAsync(job, $"team {channel.ObjectId}",
                 () => _graphGroupRepository.GroupExists(channel.ObjectId));
         }
-        private async Task<bool> CheckGMMIsTeamOwner(SyncJob job, AzureADTeamsChannel channel)
-        {
-            return await CheckAndLogAsync(job, $"GMM ownership of team {channel.ObjectId}",
-                () => _graphGroupRepository.IsServiceAccountOwnerOfGroupAsync(_gmmTeamsChannelServiceAccountId, channel.ObjectId));
-        }
         private async Task<bool> CheckGMMIsChannelOwner(SyncJob job, AzureADTeamsChannel channel)
         {
             return await CheckAndLogAsync(job, $"GMM ownership of channel {channel.ChannelId} in team {channel.ObjectId}",
@@ -308,11 +375,13 @@ namespace Services
         }
         private async Task<bool> CheckAndLogAsync(SyncJob job, string checkDescription, Func<Task<bool>> checkFunc)
         {
-            await _loggingRepository.LogMessageAsync(new LogMessage { RunId = job.RunId, Message = $"Checking: {checkDescription} exists." });
-            bool result = await checkFunc();
-            string resultMessage = result ? "passed" : "failed";
-            await _loggingRepository.LogMessageAsync(new LogMessage { RunId = job.RunId, Message = $"Check {resultMessage}: {checkDescription} {(result ? "exists" : "does not exist")}." });
-            return result;
+            using (_logger.BeginSyncJobScope(job))
+            {
+                _logger.CheckingExists(checkDescription);
+                bool result = await checkFunc();
+                _logger.CheckResult(result ? "passed" : "failed", checkDescription, result ? "exists" : "does not exist");
+                return result;
+            }
         }
 
     }

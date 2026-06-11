@@ -1,17 +1,21 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-import { ThemeProvider, initializeIcons } from '@fluentui/react';
+import { ThemeProvider, initializeIcons, createTheme } from '@fluentui/react';
 import React from 'react';
-import ReactDOM from 'react-dom';
+import { createRoot } from 'react-dom/client';
 import { ApplicationInsights } from '@microsoft/applicationinsights-web';
 import { ReactPlugin } from '@microsoft/applicationinsights-react-js';
-import { Provider } from 'react-redux';
+import { Provider, useSelector } from 'react-redux';
 import { BrowserRouter, Route, Routes } from 'react-router-dom';
+import './index.css';
 
 import { App } from './App';
-import { AdminConfig, JobsPage, JobDetails, OwnerPage, ManageMembership } from './pages';
+import { AdminConfig, JobsPage, JobDetails, OwnerPage, ManageMembership, NotFound } from './pages';
+import { MaintenanceCheckWrapper } from './pages/Maintenance/MaintenanceCheckWrapper';
 import { store } from './store';
+import { selectIsDarkMode } from './store/theme.slice';
+import { darkPalette } from './theme/palette';
 
 const connectionString = process.env.REACT_APP_APPINSIGHTS_CONNECTIONSTRING;
 if (!connectionString || connectionString === '') {
@@ -43,24 +47,59 @@ if (!connectionString || connectionString === '') {
 }
 
 initializeIcons();
-ReactDOM.render(
-  <ThemeProvider>
+
+// Wrap components that should respect maintenance mode
+const JobsPageWithMaintenanceCheck = MaintenanceCheckWrapper(JobsPage);
+const JobDetailsWithMaintenanceCheck = MaintenanceCheckWrapper(JobDetails);
+const OwnerPageWithMaintenanceCheck = MaintenanceCheckWrapper(OwnerPage);
+const ManageMembershipWithMaintenanceCheck = MaintenanceCheckWrapper(ManageMembership);
+const NotFoundWithMaintenanceCheck = MaintenanceCheckWrapper(NotFound);
+
+const lightTheme = createTheme({});
+const darkTheme = createTheme({
+  palette: darkPalette,
+});
+
+const getAppTheme = (isDarkMode: boolean) => {
+  return isDarkMode ? darkTheme : lightTheme;
+};
+
+// ThemedApp component that applies theme based on Redux state
+const ThemedApp: React.FC = () => {
+  const isDarkMode = useSelector(selectIsDarkMode);
+  const theme = React.useMemo(() => getAppTheme(isDarkMode), [isDarkMode]);
+
+  return (
+    <ThemeProvider theme={theme}>
+      <BrowserRouter basename="/">
+        <Routes>
+          <Route path="" element={<App />}>
+            <Route path="/" element={<JobsPageWithMaintenanceCheck />} />
+            <Route path="/JobDetails/:jobId" element={<JobDetailsWithMaintenanceCheck />} />
+            <Route path="/JobDetails/:jobId/history" element={<JobDetailsWithMaintenanceCheck />} />
+            <Route path="/Groups/:groupId" element={<JobDetailsWithMaintenanceCheck />} />
+            <Route path="/Groups/:groupId/Channels/:channelId" element={<JobDetailsWithMaintenanceCheck />} />
+            <Route path="/OwnerPage" element={<OwnerPageWithMaintenanceCheck />} />
+            <Route path="/Admin" element={<AdminConfig />} />
+            <Route path="/ManageMembership" element={<ManageMembershipWithMaintenanceCheck />} />
+            <Route path="/ManageMembership/:jobId" element={<ManageMembershipWithMaintenanceCheck />} />
+            <Route path="/NotFound" element={<NotFoundWithMaintenanceCheck />} />
+          </Route>
+        </Routes>
+      </BrowserRouter>
+    </ThemeProvider>
+  );
+};
+
+const container = document.getElementById('root');
+
+if (container) {
+  const root = createRoot(container);
+  root.render(
     <React.StrictMode>
       <Provider store={store}>
-        <BrowserRouter>
-          <Routes>
-            <Route path="" element={<App />}>
-              <Route path="/" element={<JobsPage />} />
-              <Route path="/JobDetails" element={<JobDetails />} />
-              <Route path="/OwnerPage" element={<OwnerPage />} />
-              <Route path="/AdminConfig" element={<AdminConfig />} />
-              <Route path="/ManageMembership" element={<ManageMembership />} />
-            </Route>
-          </Routes>
-        </BrowserRouter>
+        <ThemedApp />
       </Provider>
     </React.StrictMode>
-  </ThemeProvider>,
-
-  document.getElementById('root')
-);
+  );
+}

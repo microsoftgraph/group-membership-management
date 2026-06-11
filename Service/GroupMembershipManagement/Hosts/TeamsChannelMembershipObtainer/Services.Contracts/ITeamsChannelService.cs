@@ -7,9 +7,10 @@ namespace TeamsChannelMembershipObtainer.Service.Contracts
 {
     public interface ITeamsChannelService
     {
-        public Task<(AzureADTeamsChannel parsedChannel, bool isValid)> VerifyChannelAsync(ChannelSyncInfo channelSyncInfo);
+        public Task<Channel> GetDestinationAsync(SyncJob syncJob);
+        public Task<ValidateChannelResponse> VerifyChannelAsync(ChannelSyncInfo channelSyncInfo);
         public Task<List<AzureADTeamsUser>> GetUsersFromTeamAsync(AzureADTeamsChannel azureADTeamsChannel, Guid runId);
-        public Task<string> UploadMembershipAsync(List<AzureADTeamsUser> users, ChannelSyncInfo channelSyncInfo, bool dryRun);
+        public Task<string> UploadMembershipAsync(List<AzureADTeamsUser> users, ChannelSyncInfo channelSyncInfo, bool dryRun, Guid targetOfficeGroupId);
         public Task MakeMembershipAggregatorRequestAsync(ChannelSyncInfo syncInfo, string blobFilePath);
         public Task UpdateSyncJobStatusAsync(SyncJob syncJob, SyncStatus status);
     }

@@ -2,12 +2,13 @@
 // Licensed under the MIT license.
 using Azure.Messaging.ServiceBus;
 using Models;
-using Newtonsoft.Json.Linq;
 using Repositories.Contracts;
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Text.Json;
+using System.Text.Json.Nodes;
 using System.Threading.Tasks;
 using Message = Azure.Messaging.ServiceBus.ServiceBusMessage;
 using MessageDTO = Models.ServiceBus.ServiceBusMessage;
@@ -26,7 +27,11 @@ namespace Repositories.ServiceBusTopics
         public async Task AddMessageAsync(SyncJob job)
         {
             var index = 1;
-            var queries = JArray.Parse(job.Query);
+
+            // Parse the JSON array
+            var queries = JsonNode.Parse(job.Query).AsArray();
+
+            // Select the query types
             var queryTypes = queries.Select(x => new
             {
                 type = (string)x["type"],
@@ -47,7 +52,7 @@ namespace Repositories.ServiceBusTopics
                 await _serviceBusSender.SendMessageAsync(sourceGroupMessage);
             }
 
-            var destinationType = (JArray.Parse(job.Destination)[0] as JObject)["type"].Value<string>(); 
+            var destinationType = job.MembershipType;
 
             var destinationGroupMessage = CreateMessage(job);
             destinationGroupMessage.ApplicationProperties.Add("Type", destinationType);
@@ -66,6 +71,11 @@ namespace Repositories.ServiceBusTopics
                 MessageId = message.MessageId
             };
 
+            if (!string.IsNullOrEmpty(message.SessionId))
+            {
+                serviceBusmessage.SessionId = message.SessionId;
+            }
+
             if (message.ApplicationProperties != null)
             {
                 foreach (var property in message.ApplicationProperties)
@@ -75,6 +85,45 @@ namespace Repositories.ServiceBusTopics
             }
 
             await _serviceBusSender.SendMessageAsync(serviceBusmessage);
+        }
+
+        public async Task AddMessagesAsync(IEnumerable<MessageDTO> messages)
+        {
+            var batch = await _serviceBusSender.CreateMessageBatchAsync();
+
+            foreach (var message in messages)
+            {
+                var serviceBusmessage = new Message
+                {
+                    Body = new BinaryData(message.Body),
+                    MessageId = message.MessageId
+                };
+
+                if (!string.IsNullOrEmpty(message.SessionId))
+                {
+                    serviceBusmessage.SessionId = message.SessionId;
+                }
+
+                if (message.ApplicationProperties != null)
+                {
+                    foreach (var property in message.ApplicationProperties)
+                    {
+                        serviceBusmessage.ApplicationProperties.Add(property.Key, property.Value);
+                    }
+                }
+
+                if (!batch.TryAddMessage(serviceBusmessage))
+                {
+                    await _serviceBusSender.SendMessagesAsync(batch);
+                    batch = await _serviceBusSender.CreateMessageBatchAsync();
+                    batch.TryAddMessage(serviceBusmessage);
+                }
+            }
+
+            if (batch.Count > 0)
+            {
+                await _serviceBusSender.SendMessagesAsync(batch);
+            }
         }
 
         private Message CreateMessage(SyncJob job)

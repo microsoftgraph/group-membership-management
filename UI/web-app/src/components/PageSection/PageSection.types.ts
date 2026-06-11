@@ -20,7 +20,7 @@ export interface IPageSectionStyleProps {
 export interface IPageSectionProps
   extends React.AllHTMLAttributes<HTMLDivElement> {
   backButtonHidden?: boolean;
-  
+
   /**
    * Optional className to apply to the root of the component.
    */
@@ -30,4 +30,4 @@ export interface IPageSectionProps
    * Call to provide customized styling that will layer on top of the variant rules.
    */
   styles?: IStyleFunctionOrObject<IPageSectionStyleProps, IPageSectionStyles>;
-}
+};

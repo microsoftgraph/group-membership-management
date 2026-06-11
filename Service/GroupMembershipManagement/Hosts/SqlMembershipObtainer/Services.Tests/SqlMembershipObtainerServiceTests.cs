@@ -2,19 +2,22 @@
 // Licensed under the MIT license.
 using Microsoft.ApplicationInsights;
 using Microsoft.ApplicationInsights.Extensibility;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Models;
 using Models.ServiceBus;
 using Moq;
-using Newtonsoft.Json;
 using Repositories.Contracts;
 using Repositories.Contracts.InjectConfig;
+using Services.Contracts;
 using Services.Tests.Helpers;
+using SqlMembershipObtainer.Entities;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text.Json;
 using System.Threading.Tasks;
-using Services.Contracts;
 
 namespace Services.Tests
 {
@@ -30,8 +33,10 @@ namespace Services.Tests
         {
             var sqlMembershipRepository = new Mock<ISqlMembershipRepository>();
             var blobStorageRepository = new Mock<IBlobStorageRepository>();
-            var syncJobRepository = new Mock<IDatabaseSyncJobsRepository>();
-            var loggingRepository = new Mock<ILoggingRepository>();
+            var syncJobStatusService = new Mock<ISyncJobStatusService>();
+            var groupsRepository = new Mock<IDatabaseGroupsRepository>();
+            var channelsRepository = new Mock<IDatabaseChannelsRepository>();
+            var logger = NullLogger<SqlMembershipObtainerService>.Instance;
             var telemetryClient = new TelemetryClient(new TelemetryConfiguration());
             var dryRunValue = new Mock<IDryRunValue>();
             var groupMembership = default(GroupMembership);
@@ -42,14 +47,20 @@ namespace Services.Tests
             blobStorageRepository.Setup(x => x.UploadFileAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<Dictionary<string, string>>()))
                                     .Callback<string, string, Dictionary<string, string>>((path, content, metadata) =>
                                     {
-                                        groupMembership = JsonConvert.DeserializeObject<GroupMembership>(content);
+                                        groupMembership = JsonSerializer.Deserialize<GroupMembership>(content);
                                     });
 
             var currentPart = 1;
             var syncJob = new SyncJob
             {
                 Id = Guid.NewGuid(),
-                RunId = Guid.NewGuid()
+                RunId = Guid.NewGuid(),
+                MembershipType = "GroupMembership"
+            };
+            syncJob.Group = new Group
+            {
+                SyncJobId = syncJob.Id,
+                GroupId = Guid.NewGuid()
             };
 
             var organization = new OrganizationCreator().GenerateOrganizationHierarchy();
@@ -60,22 +71,114 @@ namespace Services.Tests
             var sqlMembershipObtainerService = new SqlMembershipObtainerService(
                                             sqlMembershipRepository.Object,
                                             blobStorageRepository.Object,
-                                            syncJobRepository.Object,
-                                            loggingRepository.Object,
+                                            syncJobStatusService.Object,
+                                            groupsRepository.Object,
+                                            channelsRepository.Object,
+                                            logger,
                                             telemetryClient,
                                             dryRunValue.Object,
                                             dfService.Object);
 
-            await sqlMembershipObtainerService.SendGroupMembershipAsync(profiles, syncJob, currentPart, false);
+            await sqlMembershipObtainerService.UploadMembershipFileAsync(profiles, syncJob, syncJob.Group.GroupId, currentPart, false);
 
             blobStorageRepository.Verify(x => x.UploadFileAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<Dictionary<string, string>>()), Times.Once());
             Assert.AreEqual(profiles.Count, groupMembership.SourceMembers.Count);
-
-            loggingRepository.Verify(x => x.LogMessageAsync(
-                                            It.Is<LogMessage>(m => m.Message.StartsWith("SqlMembershipObtainer service completed")),
-                                            It.IsAny<VerbosityLevel>(),
-                                            It.IsAny<string>(),
-                                            It.IsAny<string>()), Times.Once());
         }
+
+        [TestMethod]
+        public async Task GetChildEntitiesAsync_ReturnsExpectedResponse_AndProfilesCount()
+        {
+            var sqlMembershipRepository = new Mock<ISqlMembershipRepository>();
+            var blobStorageRepository = new Mock<IBlobStorageRepository>();
+            var syncJobStatusService = new Mock<ISyncJobStatusService>();
+            var groupsRepository = new Mock<IDatabaseGroupsRepository>();
+            var channelsRepository = new Mock<IDatabaseChannelsRepository>();
+            var logger = NullLogger<SqlMembershipObtainerService>.Instance;
+            var telemetryClient = new TelemetryClient(new TelemetryConfiguration());
+            var dryRunValue = new Mock<IDryRunValue>();
+            var dfService = new Mock<IDataFactoryService>();
+
+            var syncJob = new SyncJob { Id = Guid.NewGuid(), RunId = Guid.NewGuid() };
+            var groupId = Guid.NewGuid();
+            var currentPart = 1;
+            var tableName = "TestTable";
+            var filter = "filter";
+            var depth = 2;
+            var exclusionary = false;
+
+            var personEntities = new List<PersonEntity>
+            {
+                new PersonEntity { PersonnelNumber = "1", AzureObjectId = Guid.NewGuid().ToString() },
+                new PersonEntity { PersonnelNumber = "2", AzureObjectId = Guid.NewGuid().ToString() }
+            };
+
+            sqlMembershipRepository
+                .Setup(x => x.GetChildEntitiesAsync(filter, 0, tableName, depth))
+                .ReturnsAsync(personEntities);
+
+            var sqlMembershipObtainerService = new SqlMembershipObtainerService(
+                                            sqlMembershipRepository.Object,
+                                            blobStorageRepository.Object,
+                                            syncJobStatusService.Object,
+                                            groupsRepository.Object,
+                                            channelsRepository.Object,
+                                            logger,
+                                            telemetryClient,
+                                            dryRunValue.Object,
+                                            dfService.Object);
+
+            var result = await sqlMembershipObtainerService.GetChildEntitiesAsync(filter, 0, tableName, depth, syncJob, groupId, currentPart, exclusionary);
+
+            Assert.IsNotNull(result);
+            Assert.AreEqual(SyncStatus.InProgress, result.Status);
+        }
+
+        [TestMethod]
+        public async Task FilterChildEntitiesAsync_ReturnsExpectedResponse_AndProfilesCount()
+        {
+            var sqlMembershipRepository = new Mock<ISqlMembershipRepository>();
+            var blobStorageRepository = new Mock<IBlobStorageRepository>();
+            var syncJobStatusService = new Mock<ISyncJobStatusService>();
+            var groupsRepository = new Mock<IDatabaseGroupsRepository>();
+            var channelsRepository = new Mock<IDatabaseChannelsRepository>();
+            var logger = NullLogger<SqlMembershipObtainerService>.Instance;
+            var telemetryClient = new TelemetryClient(new TelemetryConfiguration());
+            var dryRunValue = new Mock<IDryRunValue>();
+            var dfService = new Mock<IDataFactoryService>();
+
+            var syncJob = new SyncJob { Id = Guid.NewGuid(), RunId = Guid.NewGuid() };
+            var groupId = Guid.NewGuid();
+            var currentPart = 1;
+            var tableName = "TestTable";
+            var query = "query";
+            var exclusionary = false;
+
+            var personEntities = new List<PersonEntity>
+            {
+                new PersonEntity { PersonnelNumber = "1", AzureObjectId = Guid.NewGuid().ToString() },
+                new PersonEntity { PersonnelNumber = "2", AzureObjectId = Guid.NewGuid().ToString() }
+            };
+
+            sqlMembershipRepository
+                .Setup(x => x.FilterChildEntitiesAsync(query, tableName))
+                .ReturnsAsync(personEntities);
+
+            var sqlMembershipObtainerService = new SqlMembershipObtainerService(
+                                            sqlMembershipRepository.Object,
+                                            blobStorageRepository.Object,
+                                            syncJobStatusService.Object,
+                                            groupsRepository.Object,
+                                            channelsRepository.Object,
+                                            logger,
+                                            telemetryClient,
+                                            dryRunValue.Object,
+                                            dfService.Object);
+
+            var result = await sqlMembershipObtainerService.FilterChildEntitiesAsync(query, tableName, syncJob, groupId, currentPart, exclusionary);
+
+            Assert.IsNotNull(result);
+            Assert.AreEqual(SyncStatus.InProgress, result.Status);
+        }
+
     }
 }

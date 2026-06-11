@@ -1,5 +1,6 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
+using Azure;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Models;
@@ -17,22 +18,28 @@ namespace WebApi.Controllers.v1.SqlMembershipSources
     {
         private readonly IRequestHandler<GetDefaultSqlMembershipSourceRequest, GetDefaultSqlMembershipSourceResponse> _getDefaultSqlMembershipSourceHandler;
         private readonly IRequestHandler<GetDefaultSqlMembershipSourceAttributesRequest, GetDefaultSqlMembershipSourceAttributesResponse> _getDefaultSqlMembershipSourceAttributesHandler;
+        private readonly IRequestHandler<GetDefaultSqlMembershipSourceAttributeMappingsRequest, GetDefaultSqlMembershipSourceAttributeMappingsResponse> _getDefaultSqlMembershipSourceAttributeMappingsHandler;
         private readonly IRequestHandler<GetDefaultSqlMembershipSourceAttributeValuesRequest, GetDefaultSqlMembershipSourceAttributeValuesResponse> _getDefaultSqlMembershipSourceAttributeValuesHandler;
         private readonly IRequestHandler<PatchDefaultSqlMembershipSourceCustomLabelRequest, NullResponse> _patchDefaultSqlMembershipSourceCustomLabelHandler;
         private readonly IRequestHandler<PatchDefaultSqlMembershipSourceAttributesRequest, NullResponse> _patchDefaultSqlMembershipSourceAttributesHandler;
+        private readonly IRequestHandler<GetSqlValidationRequest, GetSqlValidationResponse> _getSqlValidationHandler;
 
         public SqlMembershipSourcesController(
             IRequestHandler<GetDefaultSqlMembershipSourceRequest, GetDefaultSqlMembershipSourceResponse> getDefaultSqlMembershipSourceHandler,
             IRequestHandler<GetDefaultSqlMembershipSourceAttributesRequest, GetDefaultSqlMembershipSourceAttributesResponse> getDefaultSqlMembershipSourceAttributesHandler,
+            IRequestHandler<GetDefaultSqlMembershipSourceAttributeMappingsRequest, GetDefaultSqlMembershipSourceAttributeMappingsResponse> getDefaultSqlMembershipSourceAttributeMappingsHandler,
             IRequestHandler<GetDefaultSqlMembershipSourceAttributeValuesRequest, GetDefaultSqlMembershipSourceAttributeValuesResponse> getDefaultSqlMembershipSourceAttributeValuesHandler,
             IRequestHandler<PatchDefaultSqlMembershipSourceCustomLabelRequest, NullResponse> patchDefaultSqlMembershipSourceCustomLabelHandler,
-            IRequestHandler<PatchDefaultSqlMembershipSourceAttributesRequest, NullResponse> patchDefaultSqlMembershipSourceAttributesHandler)
+            IRequestHandler<PatchDefaultSqlMembershipSourceAttributesRequest, NullResponse> patchDefaultSqlMembershipSourceAttributesHandler,
+            IRequestHandler<GetSqlValidationRequest, GetSqlValidationResponse> getSqlValidationHandler)
         {
             _getDefaultSqlMembershipSourceHandler = getDefaultSqlMembershipSourceHandler ?? throw new ArgumentNullException(nameof(getDefaultSqlMembershipSourceHandler));
             _getDefaultSqlMembershipSourceAttributesHandler = getDefaultSqlMembershipSourceAttributesHandler ?? throw new ArgumentNullException(nameof(getDefaultSqlMembershipSourceAttributesHandler));
+            _getDefaultSqlMembershipSourceAttributeMappingsHandler = getDefaultSqlMembershipSourceAttributeMappingsHandler ?? throw new ArgumentNullException(nameof(getDefaultSqlMembershipSourceAttributeMappingsHandler));
             _getDefaultSqlMembershipSourceAttributeValuesHandler = getDefaultSqlMembershipSourceAttributeValuesHandler ?? throw new ArgumentNullException(nameof(getDefaultSqlMembershipSourceAttributeValuesHandler));
             _patchDefaultSqlMembershipSourceCustomLabelHandler = patchDefaultSqlMembershipSourceCustomLabelHandler ?? throw new ArgumentNullException(nameof(patchDefaultSqlMembershipSourceCustomLabelHandler));
             _patchDefaultSqlMembershipSourceAttributesHandler = patchDefaultSqlMembershipSourceAttributesHandler ?? throw new ArgumentNullException(nameof(patchDefaultSqlMembershipSourceAttributesHandler));
+            _getSqlValidationHandler = getSqlValidationHandler ?? throw new ArgumentNullException(nameof(getSqlValidationHandler));
         }
 
         [Authorize()]
@@ -66,13 +73,28 @@ namespace WebApi.Controllers.v1.SqlMembershipSources
         }
 
         [Authorize()]
-        [HttpGet("attributeValues/{attribute}")]
-        public async Task<IActionResult> GetDefaultSourceAttributeValuesAsync(string attribute)
+        [HttpGet("attributeMappings/{attribute}")]
+        public async Task<IActionResult> GetDefaultSourceAttributeMappingsAsync(string attribute)
         {
             try
             {
-                var response = await _getDefaultSqlMembershipSourceAttributeValuesHandler.ExecuteAsync(new GetDefaultSqlMembershipSourceAttributeValuesRequest(attribute));
+                var response = await _getDefaultSqlMembershipSourceAttributeMappingsHandler.ExecuteAsync(new GetDefaultSqlMembershipSourceAttributeMappingsRequest(attribute));
                 return Ok(response.Model);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode((int)HttpStatusCode.InternalServerError);
+            }
+        }
+
+        [Authorize(Roles = Models.Roles.CUSTOM_MEMBERSHIP_PROVIDER_ADMINISTRATOR)]
+        [HttpGet("attributeValues/{attribute}")]
+        public async Task<IActionResult> GetDefaultSourceAttributeValuesAsync([FromRoute] string attribute, [FromQuery] bool hasMapping)
+        {
+            try
+            {
+                var response = await _getDefaultSqlMembershipSourceAttributeValuesHandler.ExecuteAsync(new GetDefaultSqlMembershipSourceAttributeValuesRequest(attribute, hasMapping));
+                return Ok(response.Values);
             }
             catch (Exception ex)
             {
@@ -91,7 +113,7 @@ namespace WebApi.Controllers.v1.SqlMembershipSources
             }
             catch (Exception)
             {
-                return StatusCode(500);
+                return StatusCode((int)HttpStatusCode.InternalServerError);
             }
         }
 
@@ -106,7 +128,22 @@ namespace WebApi.Controllers.v1.SqlMembershipSources
             }
             catch (Exception)
             {
-                return StatusCode(500);
+                return StatusCode((int)HttpStatusCode.InternalServerError);
+            }
+        }
+
+        [Authorize(Roles = Models.Roles.JOB_OWNER_WRITER + "," + Models.Roles.JOB_TENANT_WRITER)]
+        [HttpPost("validateFilters")]
+        public async Task<IActionResult> ValidateSqlFilterAsync([FromBody] Dictionary<int, string> sqlFilters)
+        {
+            try
+            {
+                var response = await _getSqlValidationHandler.ExecuteAsync(new GetSqlValidationRequest(sqlFilters));
+                return Ok(response);
+            }
+            catch (Exception)
+            {
+                return StatusCode((int)HttpStatusCode.InternalServerError);
             }
         }
     }

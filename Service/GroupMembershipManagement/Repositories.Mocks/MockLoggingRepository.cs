@@ -58,5 +58,10 @@ namespace Repositories.Mocks
             MessagesLogged.Add(logMessage);
             return Task.CompletedTask;
         }
+
+        public void UpsertSyncJobProperties(Guid key, Dictionary<string, string> properties)
+        {
+            
+        }
     }
 }

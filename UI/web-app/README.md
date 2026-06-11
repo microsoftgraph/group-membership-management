@@ -1,6 +1,6 @@
-# Getting Started with Create React App
+# Getting Started with Vite
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+This project uses [Vite](https://vite.dev/) for development and builds.
 
 ## Development Tools
 ### Node Version Switcher (NVS) - Cross Platform
@@ -37,15 +37,16 @@ Set default Node version:
 1. Open browser to check the current [NodeJS LTS version](https://nodejs.org/)
 1. At the shell prompt type:
 
-    ``` bash
+    ```bash
     nvs add <version>
-        Example: nvs add 14.19.0
+    # Example: nvs add 23.1.0
     nvs link <version>
-        Example: nvs add 14.19.0
+    # Example: nvs link 23.1.0
+    ```
 
 ### PNPM
 Performant Node Package Manager, or pnpm is what we use to manage dependencies. You can get it [here](https://pnpm.io/installation).
-We are using pnpm v7, which is compatible with node v14.
+We are using pnpm v7, which is compatible with this node version.
 
 ## Available Scripts
 
@@ -53,7 +54,7 @@ In this project directory, you can run:
 
 ### `pnpm start`
 
-Runs the app in the development mode.\
+Runs the app in development mode using Vite.\
 Open [http://localhost:3000](http://localhost:3000) to view it in the browser.
 
 The page will reload if you make edits.\
@@ -61,21 +62,29 @@ You will also see any lint errors in the console.
 
 ### `pnpm test`
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+Launches the unit test runner in watch mode using Vitest.\
+
+### `pnpm test:run`
+
+Runs unit tests once (non-watch mode) using Vitest.
 
 ### `pnpm run build`
 
 Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
+It bundles React in production mode and optimizes output for performance.
 
 The build is minified and the filenames include the hashes.\
 Your app is ready to be deployed!
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+### `pnpm preview`
+
+Serves the built app locally for verification.
+
+### `npx eslint .`
+
+Runs ESLint on all files in the project according to the configuration in `eslint.config.mjs`.
 
 ## Learn More
 
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
-
-To learn React, check out the [React documentation](https://reactjs.org/).
+- [Vite Documentation](https://vite.dev/guide/)
+- [React Documentation](https://react.dev/)

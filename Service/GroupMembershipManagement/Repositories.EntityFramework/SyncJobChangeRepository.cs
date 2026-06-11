@@ -1,6 +1,7 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
+using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 using Models;
 using Models.SyncJobChange;
@@ -83,35 +84,103 @@ namespace Repositories.EntityFramework
             await _writeContext.SaveChangesAsync();
         }
 
-        // TODO: Add 'override' keyword to the following methods once the RepositoryBase is added.
-        protected SyncJobChange MapEntityToModel(Entities.SyncJobChange entity)
+        public async Task BulkSaveAsync(IEnumerable<SyncJobChange> syncJobChanges)
         {
-            return new SyncJobChange
-            {
-                Id = entity.Id,
-                SyncJobId = entity.SyncJobId,
-                ChangeTime = entity.ChangeTime,
-                ChangedByDisplayName = entity.ChangedByDisplayName,
-                ChangedByObjectId = entity.ChangedByObjectId,
-                ChangeSource = (SyncJobChangeSource)entity.ChangeSource,
-                ChangeReason = entity.ChangeReason,
-                ChangeDetails = entity.ChangeDetails
-            };
+            var entities = syncJobChanges.Select(MapModelToEntity).ToList();
+            _writeContext.Set<Entities.SyncJobChange>().AddRange(entities);
+            await _writeContext.SaveChangesAsync();
         }
 
-        protected Entities.SyncJobChange MapModelToEntity(SyncJobChange model)
+        public async Task UpdateSyncJobChangeAsync(SyncJobChange syncJobChange)
         {
-            return new Entities.SyncJobChange
-            {
-                Id = model.Id,
-                SyncJobId = model.SyncJobId,
-                ChangeTime = model.ChangeTime,
-                ChangedByDisplayName = model.ChangedByDisplayName,
-                ChangedByObjectId = model.ChangedByObjectId,
-                ChangeSource = (Entities.SyncJobChangeSource)model.ChangeSource,
-                ChangeReason = model.ChangeReason,
-                ChangeDetails = model.ChangeDetails
-            };
+            var entry = _writeContext.Set<Entities.SyncJobChange>().Add(MapModelToEntity(syncJobChange));
+            entry.State = EntityState.Modified;
+            await _writeContext.SaveChangesAsync();
+        }
+
+        public async Task<SyncJobChange?> GetLastSyncJobChangeBySyncJobIdAsync(Guid syncJobId)
+        {
+            var entity = await _readContext.SyncJobChanges
+                                                .Where(s => s.SyncJobId == syncJobId &&
+                                                            (s.ChangeReason == SyncJobChangeReason.Onboarding.ToString() ||
+                                                             s.ChangeReason == SyncJobChangeReason.OnboardingAutoApproved.ToString() ||
+                                                             s.ChangeReason == SyncJobChangeReason.Update.ToString() ||
+                                                             s.ChangeReason == SyncJobChangeReason.SubmissionRejected.ToString()))
+                                                .OrderByDescending(s => s.ChangeTime)
+                                                .FirstOrDefaultAsync();
+
+            return entity == null ? null : MapEntityToModel(entity);
+        }
+
+        public async Task<SyncJobChange?> GetLastSyncJobRecordBySyncJobIdAsync(Guid syncJobId)
+        {
+            // Return the absolute most recent record for this job regardless of change reason
+            var entity = await _readContext.SyncJobChanges
+                                           .Where(s => s.SyncJobId == syncJobId)
+                                           .OrderByDescending(s => s.ChangeTime)
+                                           .FirstOrDefaultAsync();
+
+            return entity == null ? null : MapEntityToModel(entity);
+        }
+
+        public async Task<SyncJobChange?> GetLastSyncJobChangeWithOnboardingOrUpdateBySyncJobIdAsync(Guid syncJobId)
+        {
+            var entity = await _readContext.SyncJobChanges
+                                                .Where(s => s.SyncJobId == syncJobId &&
+                                                            (s.ChangeReason == SyncJobChangeReason.Onboarding.ToString() ||
+                                                             s.ChangeReason == SyncJobChangeReason.OnboardingAutoApproved.ToString() ||
+                                                             s.ChangeReason == SyncJobChangeReason.Update.ToString()))
+                                                .OrderByDescending(s => s.ChangeTime)
+                                                .FirstOrDefaultAsync();
+
+            return entity == null ? null : MapEntityToModel(entity);
+        }
+
+        public async Task<SyncJobChange?> GetRecentGroupSettingsBySyncJobIdAsync(Guid syncJobId)
+        {
+            var entity = await _readContext.SyncJobChanges
+                                                .Where(s => s.SyncJobId == syncJobId && s.ChangeReason == SyncJobChangeReason.GroupSettings.ToString())
+                                                .OrderByDescending(s => s.ChangeTime)
+                                                .FirstOrDefaultAsync();
+
+            return entity == null ? null : MapEntityToModel(entity);
+        }
+
+        // TODO: Add 'override' keyword to the following methods once the RepositoryBase is added.
+        private static SyncJobChange MapEntityToModel(Entities.SyncJobChange entity)
+        {
+            var syncJobChange = new SyncJobChange();
+            syncJobChange.Id = entity.Id;
+            syncJobChange.SyncJobId = entity.SyncJobId;
+            syncJobChange.ChangeTime = entity.ChangeTime;
+            syncJobChange.ChangedByDisplayName = entity.ChangedByDisplayName;
+            syncJobChange.ChangedByObjectId = entity.ChangedByObjectId;
+            syncJobChange.ChangedOnBehalfOfDisplayName = entity.ChangedOnBehalfOfDisplayName;
+            syncJobChange.ChangedOnBehalfOfObjectId = entity.ChangedOnBehalfOfObjectId;
+            syncJobChange.ChangeSource = (SyncJobChangeSource?)entity.ChangeSource;
+            syncJobChange.ChangeReason = entity.ChangeReason;
+            syncJobChange.ChangeDetails = entity.ChangeDetails;
+            syncJobChange.BusinessJustification = entity.BusinessJustification;
+
+            return syncJobChange;
+        }
+
+        private static Entities.SyncJobChange MapModelToEntity(SyncJobChange model)
+        {
+            var syncJobChange = new Entities.SyncJobChange();
+            syncJobChange.Id = model.Id;
+            syncJobChange.SyncJobId = model.SyncJobId;
+            syncJobChange.ChangeTime = model.ChangeTime;
+            syncJobChange.ChangedByDisplayName = model.ChangedByDisplayName;
+            syncJobChange.ChangedByObjectId = model.ChangedByObjectId;
+            syncJobChange.ChangedOnBehalfOfDisplayName = model.ChangedOnBehalfOfDisplayName;
+            syncJobChange.ChangedOnBehalfOfObjectId = model.ChangedOnBehalfOfObjectId;
+            syncJobChange.ChangeSource = (Entities.SyncJobChangeSource?)model.ChangeSource;
+            syncJobChange.ChangeReason = model.ChangeReason;
+            syncJobChange.ChangeDetails = model.ChangeDetails;
+            syncJobChange.BusinessJustification = model.BusinessJustification;
+
+            return syncJobChange;
         }
     }
 }

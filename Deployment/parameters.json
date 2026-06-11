@@ -2,207 +2,327 @@
   "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentParameters.json#",
   "contentVersion": "1.0.0.0",
   "parameters": {
-    "skipMailNotifications": {
-      "value": false,
-      "metadata": {
-        "description": "If you don't want to send email notifications set this to true. When this is true, 'senderUsername','senderPassword','supportEmailAddresses','syncDisabledCCEmailAddresses','syncCompletedCCEmailAddresses' should be set to 'not-set'."
-      }
-    },
-    "isMailApplicationPermissionGranted": {
-      "value": false,
-      "metadata": {
-        "description": "If you are not able or don't want to use delegated Mail.Send permission, you can grant application permission Mail.Send to the <solution>-Graph-<environment> or <solution>-identity-<environment>-Graph application depending on the authentication type selected. Then set this parameter to true."
-      }
-    },
-    "senderUsername": {
+    "solutionAbbreviation": {
       "value": "",
       "metadata": {
-        "description": "The email address of the user that will be used to send emails."
+        "description": "The solution abbreviation.",
+        "required": true
       }
     },
-    "senderPassword": {
+    "environmentAbbreviation": {
       "value": "",
       "metadata": {
-        "description": "The password of the user that will be used to send emails."
+        "description": "The environment abbreviation.",
+        "required": true
       }
     },
-    "supportEmailAddresses": {
+    "subscriptionId": {
       "value": "",
       "metadata": {
-        "description": "The email addresses of the users that will receive support emails."
-      }
-    },
-    "syncDisabledCCEmailAddresses": {
-      "value": "",
-      "metadata": {
-        "description": "The email addresses of the users that will receive emails when a sync job is disabled."
-      }
-    },
-    "syncCompletedCCEmailAddresses": {
-      "value": "",
-      "metadata": {
-        "description": "The email addresses of the users that will receive emails when a sync job is completed."
-      }
-    },
-    "teamsChannelServiceAccountObjectId": {
-      "value": "",
-      "metadata": {
-        "description": "The object id of the service account that will be used to manage Teams channels."
-      }
-    },
-    "teamsChannelServiceAccountUsername": {
-      "value": "",
-      "metadata": {
-        "description": "The username of the service account that will be used to manage Teams channels."
-      }
-    },
-    "teamsChannelServiceAccountPassword": {
-      "value": "",
-      "metadata": {
-        "description": "The password of the service account that will be used to manage Teams channels."
+        "description": "The Azure subscription ID where the resources will be deployed.",
+        "required": true
       }
     },
     "location": {
       "value": "",
       "metadata": {
-        "description": "The Azure region where the resources will be deployed. See https://azure.microsoft.com/en-us/explore/global-infrastructure/geographies/#overview"
+        "description": "The Azure region where the resources will be deployed. See https://azure.microsoft.com/en-us/explore/global-infrastructure/geographies/#overview",
+        "required": true
       }
     },
     "uiLocation": {
       "value": "",
       "metadata": {
-        "description": "The Azure region where the UI will be deployed. Could be the same value as the 'location' parameter or different."
+        "description": "The Azure region where the UI will be deployed. Could be the same value as the 'location' parameter or different.",
+        "required": true
       }
     },
     "tenantId": {
       "value": "",
       "metadata": {
-        "description": "The Azure AD tenant id."
+        "description": "The Azure AD tenant id.",
+        "required": true
       }
     },
     "sqlAdministratorsGroupId": {
       "value": "",
       "metadata": {
-        "description": "The object id of the group that will be added as an administrator to the SQL server. Make sure you are a member of this group."
+        "description": "The object id of the group that will be added as an administrator to the SQL server. Make sure you are a member of this group.",
+        "required": true
       }
     },
     "sqlAdministratorsGroupName": {
       "value": "",
       "metadata": {
-        "description": "The name of the group that will be added as an administrator to the SQL server."
-      }
-    },
-    "sqlSkuCapacity": {
-      "value": 4
-    },
-    "sqlSkuFamily": {
-      "value": "Gen5"
-    },
-    "sqlSkuName": {
-      "value": "GP_S_Gen5"
-    },
-    "sqlSkuTier": {
-      "value": "GeneralPurpose"
-    },
-    "notifierProviderId": {
-      "value": "00000000-0000-0000-0000-000000000000",
-      "metadata": {
-        "description": "The provider id of the notifier. See https://github.com/microsoftgraph/group-membership-management/blob/main/Documentation/NotifierSetup.md"
-      }
-    },
-    "serviceBusTopicSubscriptions": {
-      "value": [
-        {
-          "name": "Organization",
-          "ruleName": "syncType",
-          "ruleSqlExpression": "Type = 'Organization'"
-        },
-        {
-          "name": "GroupMembership",
-          "ruleName": "syncType",
-          "ruleSqlExpression": "Type = 'GroupMembership'"
-        },
-        {
-          "name": "PlaceMembership",
-          "ruleName": "syncType",
-          "ruleSqlExpression": "Type = 'PlaceMembership'"
-        },
-        {
-          "name": "TeamsChannelMembership",
-          "rulename": "syncType",
-          "rulesqlexpression": "Type = 'TeamsChannelMembership'"
-        },
-        {
-          "name": "GroupOwnership",
-          "ruleName": "syncType",
-          "ruleSqlExpression": "Type = 'GroupOwnership'"
-        },
-        {
-          "name": "SqlMembership",
-          "ruleName": "syncType",
-          "ruleSqlExpression": "Type = 'SqlMembership'"
-        }
-      ]
-    },
-    "serviceBusMembershipUpdatersTopicSubscriptions": {
-      "value": {
-        "topicName": "membershipUpdaters",
-        "subscriptions": [
-          {
-            "name": "GraphUpdater",
-            "ruleName": "updaterType",
-            "ruleSqlExpression": "Type = 'GroupMembership'"
-          },
-          {
-            "name": "TeamsChannelUpdater",
-            "ruleName": "updaterType",
-            "ruleSqlExpression": "Type = 'TeamsChannelMembership'"
-          }
-        ]
-      }
-    },
-    "sharepointDomain": {
-      "value": "m365x00000000.sharepoint.com",
-      "metadata": {
-        "description": "The SharePoint domain of the tenant."
-      }
-    },
-    "tenantDomain": {
-      "value": "m365x00000000.onmicrosoft.com",
-      "metadata": {
-        "description": "The domain of the tenant."
+        "description": "The name of the group that will be added as an administrator to the SQL server.",
+        "required": true
       }
     },
     "appConfigurationDataOwners": {
       "value": [
         {
           "principalId": "<guid>",
-          "principalType": "Device|ForeignGroup|Group|ServicePrincipal|User"
+          "principalType": "User"
         }
       ],
       "metadata": {
-        "description": "The list of data owners for the App Configuration. principalId is the object id of the user, group, or service principal. principalType is the type of the principal, pick only one value."
+        "description": "The list of data owners for the App Configuration. PrincipalId is the object id of the user, group, or service principal. principalType is the type of the principal, pick only one value.",
+        "required": true,
+        "options": ["Device", "ForeignGroup", "Group", "ServicePrincipal", "User"]
       }
     },
     "authenticationType": {
-      "value": "UserAssignedManagedIdentity|ClientSecret|Certificate",
+      "value": "UserAssignedManagedIdentity",
       "metadata": {
-        "description": "The type of authentication to use for the App Configuration. UserAssignedManagedIdentity is recommended and will use <solution>-identity-<environment>-Graph. ClientSecret and Certificate will use <solution>-Graph-<environment>."
+        "description": "The type of authentication to use for the App Configuration. UserAssignedManagedIdentity is recommended and will use <solution>-identity-<environment>-Graph. ClientSecret and Certificate will use <solution>-Graph-<environment>.",
+        "required": true,
+        "options": ["UserAssignedManagedIdentity", "ClientSecret", "Certificate"]
       }
     },
-    "certificateName": {
+    "graphAppCertificateName": {
       "value": "not-set",
       "metadata": {
-        "description": "The name of the certificate in the Key Vault. This is required if the authenticationType is Certificate. This is only used by application <solutionAbbreviation>-Graph-<EnvironmentAbbreviation>. See https://learn.microsoft.com/en-us/azure/key-vault/certificates/quick-create-portal for more information on certificates."
+        "description": "The name of the certificate in the Key Vault. This is required if the authenticationType is Certificate. This is only used by application <solutionAbbreviation>-Graph-<EnvironmentAbbreviation>. See https://learn.microsoft.com/en-us/azure/key-vault/certificates/quick-create-portal for more information on certificates.",
+        "required": false
+      }
+    },
+    "teamsChannelAppCertificateName": {
+      "value": "not-set",
+      "metadata": {
+        "description": "The name of the certificate in the Key Vault. This is required if the authenticationType is Certificate. This is only used by application <solutionAbbreviation>-TeamsChannel-<EnvironmentAbbreviation>. See https://learn.microsoft.com/en-us/azure/key-vault/certificates/quick-create-portal for more information on certificates.",
+        "required": false
+      }
+    },
+    "IpRangesToWhiteList": {
+      "value": [],
+      "metadata": {
+        "description": "List of IP ranges or individual addresses to whitelist. Example value: ['192.168.1.1/32', '10.0.0.1'] (make sure to use double quotes).",
+        "required": false
+      }
+    },
+    "skipMailNotifications": {
+      "value": false,
+      "metadata": {
+        "description": "If you don't want to send email notifications set this to true. When this is true, 'senderUsername','senderPassword','supportEmailAddresses' should be set to 'not-set'.",
+        "required": false
+      }
+    },
+    "isMailApplicationPermissionGranted": {
+      "value": false,
+      "metadata": {
+        "description": "If you are not able or don't want to use delegated Mail.Send permission, you can grant application permission Mail.Send to the <solution>-Graph-<environment> or <solution>-identity-<environment>-Graph application depending on the authentication type selected. Then set this parameter to true.",
+        "required": false
+      }
+    },
+    "senderUsername": {
+      "value": "",
+      "metadata": {
+        "description": "The email address of the user that will be used to send emails.",
+        "required": false
+      }
+    },
+    "senderPassword": {
+      "value": "",
+      "metadata": {
+        "description": "The password of the user that will be used to send emails.",
+        "required": false
+      }
+    },
+    "supportEmailAddresses": {
+      "value": "",
+      "metadata": {
+        "description": "The email addresses of the users that will receive support emails.",
+        "required": false
+      }
+    },
+    "teamsChannelServiceAccountObjectId": {
+      "value": "",
+      "metadata": {
+        "description": "The object id of the service account that will be used to manage Teams channels.",
+        "required": false
+      }
+    },
+    "teamsChannelServiceAccountUsername": {
+      "value": "",
+      "metadata": {
+        "description": "The username of the service account that will be used to manage Teams channels.",
+        "required": false
+      }
+    },
+    "teamsChannelServiceAccountPassword": {
+      "value": "",
+      "metadata": {
+        "description": "The password of the service account that will be used to manage Teams channels.",
+        "required": false
+      }
+    },
+    "functionAuthAppClientId": {
+      "value": "",
+      "metadata": {
+        "description": "The client id of the function authentication app registration. If left empty, the script will create it and store/retrieve it from the keyvault.",
+        "required": false
+      }
+    },
+    "directoryTenantId": {
+      "value": "",
+      "metadata": {
+        "description": "The tenant id of the directory targeted by GMM. Only required if the Azure resources are hosted in a different tenant from the one where users reside.",
+        "required": false
+      }
+    },
+    "notifierProviderId": {
+      "value": "00000000-0000-0000-0000-000000000000",
+      "metadata": {
+        "description": "The OAM provider id for the notifier to send actionable emails with. See https://github.com/microsoftgraph/group-membership-management/blob/main/Service/GroupMembershipManagement/Hosts/Notifier/Documentation/NotifierSetup.md",
+        "required": false
+      }
+    },
+    "oamEntraAppId": {
+      "value": "00000000-0000-0000-0000-000000000000",
+      "metadata": {
+        "description": "The application id of the OAM Entra application. See https://github.com/microsoftgraph/group-membership-management/blob/main/Service/GroupMembershipManagement/Hosts/Notifier/Documentation/NotifierSetup.md",
+        "required": false
+      }
+    },
+    "oamEntraAppScope": {
+      "value": "Global",
+      "metadata": {
+        "description": "The scope of the OAM Entra application. See https://github.com/microsoftgraph/group-membership-management/blob/main/Service/GroupMembershipManagement/Hosts/Notifier/Documentation/NotifierSetup.md",
+        "required": false
+      }
+    },
+    "sharepointDomain": {
+      "value": "m365x00000000.sharepoint.com",
+      "metadata": {
+        "description": "The SharePoint domain of the tenant.",
+        "required": false
+      }
+    },
+    "tenantDomain": {
+      "value": "m365x00000000.onmicrosoft.com",
+      "metadata": {
+        "description": "The domain of the tenant.",
+        "required": false
       }
     },
     "pipeline": {
-      "value": "PopulateDestinationPipeline"
+      "value": "PopulateDestinationPipeline_demo",
+      "metadata": {
+        "description": "The name of the ADF pipeline producing SqlMembership tables.",
+        "required": false
+      }
+    },
+    "isInitialDeployment": {
+      "value": true,
+      "metadata": {
+        "description": "Flag to indicate whether this is the initial deployment.",
+        "required": true
+      }
+    },
+    "useDeviceAuthentication": {
+      "value": false,
+      "metadata": {
+        "description": "Flag to indicate whether to use device authentication.",
+        "required": true
+      }
+    },
+    "skipModuleInstallation": {
+      "value": false,
+      "metadata": {
+        "description": "Flag to indicate whether to skip the installation of required PowerShell modules. Only set to true if running from docker container.",
+        "required": true
+      }
     },
     "setRBACPermissions": {
       "value": true,
       "metadata": {
-        "description": "Flag to set RBAC permissions for the service principals."
+        "description": "Flag to set RBAC permissions for the service principals from the script.",
+        "required": false
+      }
+    },
+    "skipPrivilegedDirectoryActions": {
+      "value": false,
+      "metadata": {
+        "description": "If you are deploying to a different tenant or don't have the required permissions to create app registrations and assign API permissions, set this to true and create the app registrations manually following the instructions in the documentation.",
+        "required": false
+      }
+    },
+    "skipAppRegistrationSetup": {
+      "value": false,
+      "metadata": {
+        "description": "Flag to skip the creation and setup of the App Registrations leveraged by GMM.",
+        "required": false
+      }
+    },
+    "skipAppRegistrationSecretStorage": {
+      "value": false,
+      "metadata": {
+        "description": "Flag to skip the storage of App Registration secrets in the Key Vault.",
+        "required": false
+      }
+    },
+    "skipAppRegistrationSetupIfAppExists": {
+      "value": false,
+      "metadata": {
+        "description": "Flag to skip the app registration setup (API permissions). Set it to true to speed up the deployment if your App Registrations are already up to date with the required API permissions.",
+        "required": false
+      }
+    },
+    "skipAzureDataFactoryDeployment": {
+      "value": false,
+      "metadata": {
+        "description": "Flag to skip the deployment of Azure Data Factory resources.",
+        "required": false
+      }
+    },
+    "skipSqlServerPermissionSetup": {
+      "value": false,
+      "metadata": {
+        "description": "Flag to skip setting up Sql Server permissions.",
+        "required": false
+      }
+    },
+    "skipResourceProvidersCheck": {
+      "value": false,
+      "metadata": {
+        "description": "Flag to skip the resource providers check.",
+        "required": true
+      }
+    },
+    "startFunctions": {
+      "value": true,
+      "metadata": {
+        "description": "Flag to indicate whether to start Azure Functions after deployment.",
+        "required": true
+      }
+    },
+    "createResourceGroups": {
+      "value": true,
+      "metadata": {
+        "description": "Flag to create resource groups. Set to true on initial deployment.",
+        "required": false
+      }
+    },
+     "assertUserPermissions": {
+      "value": true,
+      "metadata": {
+        "description": "Flag to indicate whether to assert user permissions before deployment.",
+        "required": true
+      }
+    },
+    "resetGMMType": {
+      "value": "Skip",
+      "metadata": {
+        "description": "The type of reset to perform on GMM.",
+        "required": true,
+        "options": ["Credentials", "ServicePrincipal","Skip"]
+      }
+    },
+    "aiLocation": {
+      "value": "westus3",
+      "metadata": {
+        "description": "Location of AI resources. Default is westus3.",
+        "required": false
       }
     }
   }

@@ -3,10 +3,12 @@
 
 namespace Models
 {
-    public class MembershipAggregatorHttpRequest : MembershipHttpRequest
+    public class MembershipAggregatorHttpRequest
     {
-        public int PartNumber { get; set; }
-        public int PartsCount { get; set; }
-        public bool IsDestinationPart { get; set; }
+        public required string FilePath { get; init; }
+        public required int PartNumber { get; init; }
+        public required int PartsCount { get; init; }
+        public required SyncJob SyncJob { get; init; }
+        public required bool IsDestinationPart { get; init; }
     }
 }

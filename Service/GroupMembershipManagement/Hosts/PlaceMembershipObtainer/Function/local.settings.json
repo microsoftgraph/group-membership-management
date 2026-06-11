@@ -1,7 +1,10 @@
 {
   "IsEncrypted": false,
   "Values": {
+    "AZURE_TOKEN_CREDENTIALS": "VisualStudioCredential",
     "AzureWebJobsStorage": "UseDevelopmentStorage=true",
+    "FUNCTIONS_WORKER_RUNTIME": "dotnet-isolated",
+    "FUNCTIONS_EXTENSION_VERSION": "~4",
     "APPINSIGHTS_INSTRUMENTATIONKEY": "",
     "graphCredentials:ClientSecret": "",
     "graphCredentials:ClientId": "",
@@ -15,7 +18,6 @@
     "logAnalyticsPrimarySharedKey": "",
     "senderAddress": "",
     "senderPassword": "",
-    "syncDisabledCCEmailAddresses": "",
     "supportEmailAddresses": "",
     "membershipStorageAccountName": "",
     "membershipContainerName": "",

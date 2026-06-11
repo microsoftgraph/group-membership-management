@@ -5,4 +5,4 @@ export interface PatchJobResponse {
     statusCode: number;
     errorCode?: string;
     responseData?: string[];
-}
+};

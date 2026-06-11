@@ -12,7 +12,7 @@ import { Stack } from '@fluentui/react';
 import { PageSection } from '../components/PageSection';
 
 export const JobsPage: React.FunctionComponent = () => {
-  
+
   return (
     <Page>
       <PageHeader backButtonHidden>

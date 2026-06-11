@@ -31,6 +31,7 @@ resource storageAccount 'Microsoft.Storage/storageAccounts@2019-04-01' = {
     supportsHttpsTrafficOnly: true
     allowBlobPublicAccess: false
     minimumTlsVersion: 'TLS1_2'
+    allowSharedKeyAccess: false
   }
   identity: {
     type: 'SystemAssigned'
@@ -104,4 +105,4 @@ module secureSecretsTemplate 'keyVaultSecretsSecure.bicep' = {
   }
 }
 
-
+output storageAccountId string = storageAccount.id

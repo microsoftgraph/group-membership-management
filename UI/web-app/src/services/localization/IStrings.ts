@@ -2,8 +2,9 @@
 // Licensed under the MIT license.
 
 export type IStrings = {
-  emptyList: string;
   loading: string;
+  refresh: string;
+  continue: string;
   addOwner204Message: string;
   addOwner400Message: string;
   addOwner403Message: string;
@@ -14,9 +15,12 @@ export type IStrings = {
   addOwnerButton: string;
   membershipManagement: string;
   learnMembershipManagement: string;
+  maintenanceTitle: string;
+  maintenanceMessage: string;
   permissionDenied: string;
   HROnboarding: {
     orgLeader: string;
+    provideOrgLeader: string;
     orgLeaderPlaceHolder: string;
     orgLeaderInfo: string;
     depth: string;
@@ -29,7 +33,6 @@ export type IStrings = {
     filterInfo: string;
     includeOrg: string;
     includeFilter: string;
-    includeLeader: string;
     group: string;
     ungroup: string;
     attributeTitle: string;
@@ -40,6 +43,18 @@ export type IStrings = {
     orAndOperator: string;
     attributeInfo: string;
     equalityOperatorInfo: string;
+    equalityOperatorInfoTitle: string;
+    equalToDescription: string;
+    lessThanDescription: string;
+    lessThanOrEqualDescription: string;
+    greaterThanDescription: string;
+    greaterThanOrEqualDescription: string;
+    notEqualToDescription: string;
+    inDescription: string;
+    notInDescription: string;
+    inOperatorDescription: string;
+    notInOperatorDescription: string;
+    notEqualToOperatorDescription: string;
     attributeValueInfo: string;
     orAndOperatorInfo: string;
     missingAttributeErrorMessage: string;
@@ -47,11 +62,46 @@ export type IStrings = {
     orgLeaderMissingErrorMessage: string;
     source: string;
     invalidInputErrorMessage: string;
+    valueComboBoxOptionCodeLabel: string;
+    descriptionLabel: string;
+    attributeDisabledErrorMessage: string;
+    supportPlaceHolder: string;
+    all: string;
+    level: string;
+    levelsPlural: string;
+    down: string;
+    up: string;
+    andOrInfoTitle: string;
+    andLogicDescription: string;
+    orLogicDescription: string;
+    AND: string;
+    OR: string;
+    any: string;
+    allLowercase: string;
+    IN: string;
+    NOTIN: string;
+    notEqualTo: string;
+    orgLeaderTitle: string;
+    orgLeaderSingleLevelTitle: string;
+    orgLeaderMultipleLevelsTitle: string;
+    withSummarizedCriteria: string;
+    loadingText: string;
+    generateTitle: string;
+    generatingTitleText: string;
+    multipleItemsSelected: string;
+    selectionColumnAriaLabel: string;
+    selectRowAriaLabel: string;
+    comboBoxCaretAriaLabel: string;
   },
   Components: {
     AppHeader: {
       title: string;
       settings: string;
+      reviewDisclaimer: string;
+    },
+    AppFooter: {
+      switchToLightMode: string;
+      switchToDarkMode: string;
     },
     Banner: {
       bannerMessageStart: string;
@@ -63,6 +113,9 @@ export type IStrings = {
       address: string;
       addHyperlink: string;
       invalidUrl: string;
+    },
+    InfoIcon: {
+      ariaLabel: string;
     },
     GroupQuerySource: {
       searchGroupSuggestedText: string;
@@ -80,6 +133,9 @@ export type IStrings = {
       pageTitle: string;
       saveButton: string;
       saveSuccess: string;
+    },
+    Errors:{
+      forbidden: string;
     },
     HyperlinkSettings: {
       labels: {
@@ -99,6 +155,21 @@ export type IStrings = {
         description: string;
       },
     },
+    Operations: {
+      labels: {
+        operations: string;
+        description: string;
+        title: string;
+      };
+      buttons: {
+        stop: string;
+        stopping: string;
+        reset: string;
+        resetting: string;
+        start: string;
+        starting: string;
+      };
+    },
     CustomSourceSettings: {
       labels: {
         customSource: string;
@@ -109,8 +180,35 @@ export type IStrings = {
         attributeColumn: string;
         customLabelColumn: string;
         customLabelInputPlaceHolder: string;
+        valuesColumn: string;
+        valuesDropdownSpinnerLabel: string;
+        valuesDropdownPlaceholder: string;
+        valuesDropdownTitle: string;
+        descriptionColumn: string;
+        enabledColumn: string;
+        enabledToggleTitle: string;
+        descriptionPlaceHolder: string;
       },
     },
+    GeneralSettings: {
+      labels: {
+        general: string;
+        reviewOwnSubmissionTitle: string;
+        reviewOwnSubmissionDescription: string;
+        createGroupTitle: string;
+        createGroupDescription: string;
+        businessJustificationTitle: string;
+        businessJustificationDescription: string;
+        isDisclaimerEnabledTitle: string;
+        isDisclaimerEnabledDescription: string;
+        isAutoApprovalForGroupBasedSyncsEnabledTitle: string;
+        isAutoApprovalForGroupBasedSyncsEnabledDescription: string;
+        isAutoApprovalForRequestorIsOrgLeaderSyncsEnabledTitle: string;
+        isAutoApprovalForRequestorIsOrgLeaderSyncsEnabledDescription: string;
+        isAITitleEnabledTitle: string;
+        isAITitleEnabledDescription: string;
+      }
+    }
   },
   Authentication: {
     loginFailed: string;
@@ -120,11 +218,16 @@ export type IStrings = {
       pageTitle: string;
       sectionTitle: string;
       lastModifiedby: string;
+      requestedBy: string;
+      requestedOnBehalfOf: string;
       groupLinks: string;
       destination: string;
       type: string;
       name: string;
       ID: string;
+      teamName: string;
+      channelName: string;
+      channelId: string;
       configuration: string;
       startDate: string;
       endDate: string;
@@ -139,21 +242,32 @@ export type IStrings = {
       thresholdViolations: string;
       sourceParts: string;
       membershipStatus: string;
+      hiddenMembershipWarning: string;
       sync: string;
       enabled: string;
       disabled: string;
       pendingReview: string;
       pendingReviewDescription: string;
       pendingReviewInstructions: string;
+      pendingConfiguration: string;
+      pendingConfigurationInstructions: string;
+      businessJustification: string;
       approve: string;
       reject: string;
       submissionRejected: string;
+      rejectionDialogTitle: string;
+      rejectionDialogSubText: string;
+      rejectionReasonLabel: string;
+      rejectionReasonPlaceholder: string;
+      submitRejection: string;
+      submittingRejection: string;
       removeGMM: string;
       removeGMMWarning: string;
       removeGMMConfirmation: string;
     };
     descriptions: {
-      lastModifiedby: string;
+      requestedBy: string;
+      requestedOnBehalfOf: string;
       startDate: string;
       endDate: string;
       type: string;
@@ -171,11 +285,94 @@ export type IStrings = {
     };
     Errors:{
       jobInProgress: string;
-      notGroupOwner: string;
+      forbidden: string;
       internalError: string;
       removeGMMError: string;
-    }
+      submitterNotOwner: string;
+      reviewerCannotReviewOwnSubmission: string;
+      rejectionError: string;
+    };
+    Panel: {
+      dismissButtonAriaLabel: string;
+      changeTimeColumnLabel: string;
+      eventTypeColumnLabel: string;
+      changedByColumnLabel: string;
+      changeReasonColumnLabel: string;
+      changeDetailsColumnLabel: string;
+      viewDetails: string;
+      openQuery: string;
+      emptyValuePlaceholder: string;
+      expandRowAriaLabel: string;
+      collapseRowAriaLabel: string;
+      history: string;
+      configurationPivotHeader: string;
+      syncPivotHeader: string;
+      runIdColumnLabel: string;
+      startTimeColumnLabel: string;
+      endTimeColumnLabel: string;
+      durationColumnLabel: string;
+      statusColumnLabel: string;
+      beforeSyncUserCountColumnLabel: string;
+      usersAddedColumnLabel: string;
+      usersRemovedColumnLabel: string;
+      afterSyncUserCountColumnLabel: string;
+      thresholdViolationsColumnLabel: string;
+      updatedByFunctionColumnLabel: string;
+      createdAtColumnLabel: string;
+      updatedAtColumnLabel: string;
+      onboardingRequest: string;
+      onboardingAutoApproved: string;
+      statusUpdate: string;
+      update: string;
+      submissionApproved: string;
+      submissionRejected: string;
+      ignoreThresholdOnce: string;
+      businessJustification: string;
+      groupSettings: string;
+      takeAction: string;
+      syncPausedSuccess: string;
+      ThresholdExceededActionDialog: {
+        title: string;
+        warningText: string;
+        detailsText: string;
+        applyChanges: string;
+        applyChangesDescription: string;
+        editRules: string;
+        editRulesDescription: string;
+        editThreshold: string;
+        editThresholdDescription: string;
+        pauseSync: string;
+        pauseSyncDescription: string;
+      };
+      RunHistoryStatus: {
+        idle: string;
+        failed: string;
+        thresholdExceeded: string;
+        membershipDataNotFound: string;
+        destinationGroupNotFound: string;
+        notOwnerOfDestinationGroup: string;
+        securityGroupNotFound: string;
+        guestUsersNotSupported: string;
+      };
+      downloadAriaLabel: string;
+      downloadError: string;
+      downloadColumnLabel: string;
+      downloadLinkText: string;
+      downloadingText: string;
+      statusFilterLabel: string;
+      statusFilterAllOption: string;
+      searchUserLabel: string;
+      searchUserPlaceholder: string;
+      searchUserNoResults: string;
+      searchUserLoading: string;
+      searchUserError: string;
+      searchUserProgressUnavailableMessage: string;
+      userAddedPriorToHistoryMessage: string;
+      userNeverInGroupOrRemovedPriorToHistoryMessage: string;
+    };
+    notFound: string;
     openInAzure: string;
+    openInTeams: string;
     viewDetails: string;
     editButton: string;
   };
@@ -192,8 +389,10 @@ export type IStrings = {
         type: string;
         lastRun: string;
         nextRun: string;
+        lastModified: string;
         status: string;
         actionRequired: string;
+        email: string;
       };
     };
     MessageBar: {
@@ -230,11 +429,16 @@ export type IStrings = {
             all: string;
             thresholdExceeded: string;
             customerPaused: string;
+            developerPaused: string;
             membershipDataNotFound: string;
             destinationGroupNotFound: string;
             notOwnerOfDestinationGroup: string;
             securityGroupNotFound: string;
             pendingReview: string;
+            pendingConfiguration: string;
+            submissionRejected: string;
+            nestedGroupsFound: string;
+            guestUsersCannotBeAddedToUnifiedGroup: string;
           };
         };
         destinationType: {
@@ -267,6 +471,20 @@ export type IStrings = {
     manageMembershipButton: string;
     addSyncButton: string;
     bulkAddSyncsButton: string;
+    bulkApproveSyncsButton: string;
+    downloadButton: string;
+    downloadingButton: string;
+    uploadHeader: string;
+    uploadingLabel: string;
+    selectCSVFileLabel: string;
+    chooseFileButton: string;
+    csvErrorMessage: string;
+    uploadErrorMessage: string;
+    uploadCompleteLabel: string;
+    totalNumberOfJobsLabel: string;
+    totalNumberOfApprovedJobsLabel: string;
+    approveErrorStatusLabel: string;
+    approveButton: string;
     labels: {
       abandonOnboarding: string;
       abandonOnboardingDescription: string;
@@ -275,15 +493,34 @@ export type IStrings = {
       pageTitle: string;
       step1title: string;
       step1description: string;
+      selectOrCreateGroup: string;
       selectDestinationType: string;
       selectDestinationTypePlaceholder: string;
-      searchDestination: string;
+      selectDestination: string;
+      createNewGroup: string;
+      searchGroup: string;
+      searchTeam: string;
+      searchChannel: string;
       searchGroupSuggestedText: string;
+      searchChannelSuggestedText: string;
       noResultsFound: string;
       appsUsed: string;
+      entraSecurityGroup: string;
+      onPremisesSyncedGroup: string;
       outlookWarning: string;
+      teamsNotSupportedWarning: string;
       appIdNotOwnerWarning: string;
+      addOwnerMessage: string;
+      teamsServiceAccountNotOwnerWarning: string;
       userNotOwnerWarning: string;
+      hasNestedGroupsWarning: string;
+      nestedGroupsFound: string;
+      viewInEntra: string;
+      here: string;
+      refreshInstructions: string;
+      checkAgain: string;
+      groupDescription: string;
+      channelDescription: string;
       step2title: string;
       step2description: string;
       advancedQuery: string;
@@ -292,6 +529,7 @@ export type IStrings = {
       validQuery: string;
       invalidQuery: string;
       invalidGroups: string;
+      invalidSqlFilters: string;
       step3title: string;
       step3description: string;
       selectStartDate: string;
@@ -299,10 +537,11 @@ export type IStrings = {
       requestedDate: string;
       selectRequestedStartDate: string;
       from: string;
-      selectFrequency: string;
       hrs: string;
       frequency: string;
       preventAutomaticSync: string;
+      preventAutomaticSyncInfo: string;
+      preventAutomaticSyncWarning: string;
       increase: string;
       decrease: string;
       step4title: string;
@@ -310,6 +549,7 @@ export type IStrings = {
       objectId: string;
       sourceParts: string;
       sourcePart: string;
+      hiddenMembershipGroup: string;
       noThresholdSet: string;
       savingSyncJob: string;
       updatingSyncJob: string;
@@ -319,7 +559,9 @@ export type IStrings = {
       collapse: string;
       sourceType: string;
       addSourcePart: string;
-      excludeSourcePart: string;
+      includeSourcePart: string;
+      yesInclusionary: string;
+      noInclusionary: string;
       deleteLastSourcePartWarning: string;
       errorOnSchema: string;
       searchGroupName: string;
@@ -329,8 +571,38 @@ export type IStrings = {
       placeMembership: string;
       clickHere: string;
       requestor: string;
+      requestorInfo: string;
+      businessJustificationSubtitle: string;
+      businessJustificationPrompt: string;
+      businessJustificationPlaceholder: string;
+      requestedBy: string;
+      requestedOnBehalfOf: string;
+      requestedOnBehalfOfPlaceholder: string;
+      requestedOnBehalfOfDescription: string;
+      expandAll: string;
+      collapseAll: string;
+      allUsersInGroup: string;
+      allUsersInFallback: string;
+      hiddenMembershipConfirmationWarning: string;
+    },
+    CreateGroup: {
+      createNewGroup: string;
+      groupName: string;
+      groupNamePlaceholder: string;
+      groupAlias: string;
+      groupAliasPlaceholder: string;
+      creating: string;
+      created: string;
+      createGroup: string;
+      authorizedSenders: string;
+      authorizedSendersToolTip: string;
+      hiddenFromExchangeClients: string
+      hiddenFromExchangeClientsToolTip: string
+      welcomeMessageEnabled: string;
+      welcomeMessageEnabledToolTip: string;
     }
   };
+  excludePrefix: string;
   copy: string;
   remove: string;
   delete: string;
@@ -350,8 +622,24 @@ export type IStrings = {
   no: string;
   or: string;
   and: string;
+  true: string;
+  false: string;
   privacyPolicy: string;
   hoursAgo: string;
   hoursLeft: string;
   pendingInitialSync: string;
+  Disclaimer: {
+    title: string;
+    submitButton: string;
+    membershipRules: string;
+    membershipRulesBoldNote: string;
+    outlookWelcomeMessage: string;
+    autoSubscribeSettings: string;
+    authorizedSenders: string;
+    authorizedSendersBoldNote: string;
+    teamsVivaNotifications: string;
+    flatList: string;
+      membersAutoFollowGroupConversationsOption: string;
+      myGroupsUI: string;
+  };
 };

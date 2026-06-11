@@ -1,9 +1,7 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 using Microsoft.Data.SqlClient;
-using Microsoft.Graph.Models;
 using Models;
-using Newtonsoft.Json;
 using Repositories.Contracts;
 using Services.Contracts;
 using Services.Messages.Requests;
@@ -41,7 +39,7 @@ namespace Services
 
                 if (storedAttributeSettings != null)
                 {
-                    storedAttributeSettings.RemoveAll(attribute => !sqlFilterAttributes.Any(t => t.Name == attribute.Name && t.Type == attribute.Type));
+                    storedAttributeSettings.RemoveAll(attribute => !sqlFilterAttributes.Any(t => t.Name == attribute.Name));
 
                     await _databaseSqlMembershipSourcesRepository.UpdateDefaultSourceAttributesAsync(storedAttributeSettings);
                 }
@@ -49,10 +47,13 @@ namespace Services
                 var attributesToReturn = sqlFilterAttributes.Select(sqlAttribute =>
                 {
                     var storedAttribute = storedAttributeSettings?.FirstOrDefault(attribute =>
-                        attribute.Name == sqlAttribute.Name && attribute.Type == sqlAttribute.Type
+                        attribute.Name == sqlAttribute.Name
                     );
 
-                    return storedAttribute ?? sqlAttribute;
+                    sqlAttribute.CustomLabel = storedAttribute?.CustomLabel ?? "";
+                    sqlAttribute.Description = storedAttribute?.Description ?? "";
+                    sqlAttribute.Enabled = storedAttribute?.Enabled ?? true;
+                    return sqlAttribute;
 
                 }).ToList();
 
@@ -69,6 +70,14 @@ namespace Services
         {
             var tableName = await GetTableNameAsync();
             var columns = await GetColumnDetailsAsync(tableName);
+
+            if (columns.Count == 0)
+            {
+                var message = $"Unable to retrieve SQL membership attributes. The ADF HR data table '{tableName}' does not exist or has no columns.";
+                await _loggingRepository.LogMessageAsync(new LogMessage { Message = message });
+                throw new InvalidOperationException(message);
+            }
+
             var attributes = columns.Select(column =>
             {
                 var codeSuffix = "_Code";
@@ -86,6 +95,8 @@ namespace Services
                     Name = attributeName,
                     Type = column.Type,
                     CustomLabel = "",
+                    Description = "",
+                    Enabled = true,
                     HasMapping = hasMapping
                 };
             }).ToList();

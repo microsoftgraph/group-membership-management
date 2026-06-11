@@ -1,5 +1,6 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
+using System;
 using System.Diagnostics.CodeAnalysis;
 
 namespace Models
@@ -7,6 +8,7 @@ namespace Models
     [ExcludeFromCodeCoverage]
     public class EmailMessage
     {
+        public string Title { get; set; }
         public string Subject { get; set; }
         public string Content { get; set; }
         public string SenderAddress { get; set; }
@@ -17,5 +19,6 @@ namespace Models
         public string[] AdditionalSubjectParams { get; set; }
         public bool IsHTML { get; set; }
         public string DestinationGroupName { get; set; }
+        public Guid SyncJobId { get; set; }
     }
 }

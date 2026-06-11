@@ -26,11 +26,51 @@ namespace Services.Tests
                     Query = GetJobQuery(syncType, new[] { Guid.NewGuid().ToString() }),
                     StartDate = startDateBase ?? DateTime.UtcNow.AddDays(-1),
                     Status = SyncStatus.Idle.ToString(),
-                    TargetOfficeGroupId = Guid.NewGuid(),
                     LastRunTime = lastRunTime ?? SqlDateTime.MinValue.Value,
                     RunId = Guid.NewGuid(),
-                    Destination = $"[{{\"type\":\"GroupMembership\",\"value\":{{\"objectId\":\"{Guid.NewGuid()}\"}}}}]",
                     ScheduledDate = scheduledDateBase ?? DateTime.UtcNow.AddDays(-1),
+                    MembershipType = MembershipTypes.GroupMembership.ToString()
+                };
+
+                job.Group = new Group
+                {
+                    SyncJobId = job.Id,
+                    GroupId = Guid.NewGuid()
+                };
+
+                jobs.Add(job);
+            }
+
+            return jobs;
+        }
+
+        public static List<SyncJob> CreateSampleSyncJobsWithTeamsChannelMembership(int numberOfJobs, string syncType, int period = 1, DateTime? startDateBase = null, DateTime? lastRunTime = null, DateTime? scheduledDateBase = null)
+        {
+            var jobs = new List<SyncJob>();
+
+            for (int i = 0; i < numberOfJobs; i++)
+            {
+                var job = new SyncJob
+                {
+                    Requestor = $"requestor_{i}@email.com",
+                    Id = Guid.NewGuid(),
+                    PartitionKey = DateTime.UtcNow.ToString("MMddyyyy"),
+                    RowKey = Guid.NewGuid().ToString(),
+                    Period = period,
+                    Query = GetJobQuery(syncType, new[] { Guid.NewGuid().ToString() }),
+                    StartDate = startDateBase ?? DateTime.UtcNow.AddDays(-1),
+                    Status = SyncStatus.Idle.ToString(),
+                    LastRunTime = lastRunTime ?? SqlDateTime.MinValue.Value,
+                    RunId = Guid.NewGuid(),
+                    ScheduledDate = scheduledDateBase ?? DateTime.UtcNow.AddDays(-1),
+                    MembershipType = MembershipTypes.TeamsChannelMembership.ToString()
+                };
+
+                job.Channel = new Channel
+                {
+                    SyncJobId = job.Id,
+                    GroupId = Guid.NewGuid(),
+                    ChannelId = "Channel_ID"
                 };
 
                 jobs.Add(job);

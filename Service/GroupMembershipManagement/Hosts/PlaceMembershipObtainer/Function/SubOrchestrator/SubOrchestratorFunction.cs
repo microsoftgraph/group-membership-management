@@ -1,14 +1,15 @@
 // Copyright(c) Microsoft Corporation.
 // Licensed under the MIT license.
 using Entities;
-using Microsoft.Azure.WebJobs;
-using Microsoft.Azure.WebJobs.Extensions.DurableTask;
+using Microsoft.Azure.Functions.Worker;
+using Microsoft.DurableTask;
 using Repositories.Contracts;
 using System.Threading.Tasks;
 using System.Collections.Generic;
 using System.Linq;
 using Microsoft.ApplicationInsights;
 using Models;
+using System;
 
 namespace Hosts.PlaceMembershipObtainer
 {
@@ -19,12 +20,12 @@ namespace Hosts.PlaceMembershipObtainer
 
         public SubOrchestratorFunction(ILoggingRepository loggingRepository, TelemetryClient telemetryClient)
         {
-            _log = loggingRepository;
-            _telemetryClient = telemetryClient;
+            _log = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
+            _telemetryClient = telemetryClient ?? throw new ArgumentNullException(nameof(telemetryClient));
         }
 
-        [FunctionName(nameof(SubOrchestratorFunction))]
-        public async Task<(List<AzureADUser> Users, SyncStatus Status)> RunSubOrchestratorAsync([OrchestrationTrigger] IDurableOrchestrationContext context)
+        [Function(nameof(SubOrchestratorFunction))]
+        public async Task<SubOrchestratorResponse> RunSubOrchestratorAsync([OrchestrationTrigger] TaskOrchestrationContext context)
         {
             var request = context.GetInput<SubOrchestratorRequest>();
             var allUsers = new List<AzureADUser>();
@@ -51,7 +52,7 @@ namespace Hosts.PlaceMembershipObtainer
                     userResponse.NonUserGraphObjects.ToList().ForEach(x => allNonUserGraphObjects.Add(x.Key, x.Value));
                     while (!string.IsNullOrEmpty(userResponse.NextPageUrl))
                     {
-                        if (!context.IsReplaying) _ = _log.LogMessageAsync(new LogMessage { RunId = request.RunId, Message = $"Getting results from next page for url: {request.Url}" });
+                        _ = _log.LogMessageAsync(new LogMessage { RunId = request.RunId, Message = $"Getting results from next page for url: {request.Url}" });
                         userResponse = await context.CallActivityAsync<UserInformation>(nameof(SubsequentUsersReaderFunction), new SubsequentUsersReaderRequest { RunId = request.RunId, NextPageUrl = userResponse.NextPageUrl });
                         allUsers.AddRange(userResponse.Users);
                         userResponse.NonUserGraphObjects.ToList().ForEach(x =>
@@ -66,12 +67,12 @@ namespace Hosts.PlaceMembershipObtainer
                 else
                 {
                     _ = _log.LogMessageAsync(new LogMessage { RunId = request.RunId, Message = $"Url {request.Url} not supported" });
-                    return (allUsers, SyncStatus.Error);
+                    return ( new SubOrchestratorResponse { Users = allUsers, Status = SyncStatus.Error });
                 }
                 _ = _log.LogMessageAsync(new LogMessage { RunId = request.RunId, Message = $"Read {allUsers.Count} users" });
             }
             _ = _log.LogMessageAsync(new LogMessage { Message = $"{nameof(SubOrchestratorFunction)} function completed", RunId = request.RunId }, VerbosityLevel.DEBUG);
-            return (allUsers, SyncStatus.InProgress);
+            return (new SubOrchestratorResponse { Users = allUsers, Status = SyncStatus.InProgress });
         }
     }
 }

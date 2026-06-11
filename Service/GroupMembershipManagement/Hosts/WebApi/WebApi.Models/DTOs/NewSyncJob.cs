@@ -11,11 +11,16 @@ namespace WebApi.Models.DTOs
         public string Status { get; set; }
         public int Period { get; set; }
         public string Query { get; set; }
+        public NewTitle[]? Titles { get; set; }
         public string Requestor { get; set; }
+        public string LastModifiedOnBehalfOfDisplayName { get; set; }
+        public string LastModifiedOnBehalfOfObjectId { get; set; }
         public int ThresholdPercentageForAdditions { get; set; }
         public int ThresholdPercentageForRemovals { get; set; }
         public string StartDate { get; set; }
         public string Destination { get; set; }
+        public string BusinessJustification { get; set; }
+        public GroupSettings? GroupSettings { get; set; }
 
     }
 }

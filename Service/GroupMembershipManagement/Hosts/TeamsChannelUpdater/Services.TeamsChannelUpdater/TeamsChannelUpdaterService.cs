@@ -2,9 +2,14 @@
 // Licensed under the MIT license.
 using Models;
 using Models.Entities;
+using Models.SyncJobHistory;
 using Repositories.Contracts;
+using Services.Contracts;
 using Services.TeamsChannelUpdater.Contracts;
-using Repositories.Contracts.InjectConfig;
+using Models.Notifications;
+using Models.ServiceBus;
+using System.Text.Json;
+using System.Text;
 
 namespace Services.TeamsChannelUpdater
 {
@@ -15,9 +20,11 @@ namespace Services.TeamsChannelUpdater
 
         private readonly ITeamsChannelRepository _teamsChannelRepository;
         private readonly IDatabaseSyncJobsRepository _syncJobRepository;
+        private readonly IDatabaseGroupsRepository _databaseGroupsRepository;
+        private readonly IDatabaseChannelsRepository _databaseChannelsRepository;
         private readonly ILoggingRepository _loggingRepository;
-        private readonly IMailRepository _mailRepository;
-        private readonly IEmailSenderRecipient _emailSenderAndRecipients;
+        private readonly IServiceBusQueueRepository _serviceBusQueueRepository;
+        private readonly ISyncJobStatusService _syncJobStatusService;
 
         private Guid _runId;
         public Guid RunId
@@ -32,15 +39,45 @@ namespace Services.TeamsChannelUpdater
 
         public TeamsChannelUpdaterService(ITeamsChannelRepository teamsChannelRepository,
             IDatabaseSyncJobsRepository syncJobRepository, 
+            IDatabaseGroupsRepository databaseGroupsRepository,
+            IDatabaseChannelsRepository databaseChannelsRepository,
             ILoggingRepository loggingRepository,
-            IMailRepository mailRepository,
-            IEmailSenderRecipient emailSenderAndRecipients)
+            IServiceBusQueueRepository serviceBusQueueRepository,
+            ISyncJobStatusService syncJobStatusService)
         {
             _teamsChannelRepository = teamsChannelRepository ?? throw new ArgumentNullException(nameof(teamsChannelRepository));
             _syncJobRepository = syncJobRepository ?? throw new ArgumentNullException(nameof(syncJobRepository));
+            _databaseGroupsRepository = databaseGroupsRepository ?? throw new ArgumentNullException(nameof(databaseGroupsRepository));
+            _databaseChannelsRepository = databaseChannelsRepository ?? throw new ArgumentNullException(nameof(databaseChannelsRepository));
             _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
-            _mailRepository = mailRepository ?? throw new ArgumentNullException(nameof(mailRepository));
-            _emailSenderAndRecipients = emailSenderAndRecipients ?? throw new ArgumentNullException(nameof(emailSenderAndRecipients));
+            _serviceBusQueueRepository = serviceBusQueueRepository ?? throw new ArgumentNullException(nameof(serviceBusQueueRepository));
+            _syncJobStatusService = syncJobStatusService ?? throw new ArgumentNullException(nameof(syncJobStatusService));
+        }
+
+        public async Task<Guid> GetGroupIdAsync(SyncJob syncJob)
+        {
+            if (syncJob.MembershipType == MembershipTypes.TeamsChannelMembership.ToString())
+            {
+                var channel = syncJob.Channel ?? await _databaseChannelsRepository.GetChannelUsingSyncJobIdAsync(syncJob.Id);
+                return channel.GroupId;
+
+            }
+            else if (syncJob.MembershipType == MembershipTypes.GroupMembership.ToString())
+            {
+                var group = syncJob.Group ?? await _databaseGroupsRepository.GetGroupUsingSyncJobIdAsync(syncJob.Id);
+                return group.GroupId;
+            }
+            return Guid.Empty;
+        }
+
+        public async Task<string> GetChannelIdAsync(SyncJob syncJob)
+        {
+            if (syncJob.MembershipType == MembershipTypes.TeamsChannelMembership.ToString())
+            {
+                var channel = syncJob.Channel ?? await _databaseChannelsRepository.GetChannelUsingSyncJobIdAsync(syncJob.Id);
+                return channel.ChannelId;
+            }
+            return string.Empty;
         }
 
         public async Task<SyncJob> GetSyncJobAsync(Guid syncJobId)
@@ -71,18 +108,45 @@ namespace Services.TeamsChannelUpdater
             job.ScheduledDate = currentDate.AddHours(job.Period);
             job.RunId = runId;
 
-            await _syncJobRepository.UpdateSyncJobStatusAsync(new[] { job }, status);
+            // TeamsChannelUpdater only owns end-time + threshold violations history updates.
+            // StartTime is created by JobTrigger when the run is created.
+            var historyPatch = new SyncJobHistory
+            {
+                SyncJobId = job.Id,
+                RunId = runId,
+                Status = status.ToString(),
+                ThresholdViolations = job.ThresholdViolations,
+                UpdatedByFunction = "TeamsChannelUpdater",
+                EndTime = status != SyncStatus.InProgress ? currentDate : null,
+                UpdatedAt = currentDate
+            };
+
+            await _syncJobStatusService.UpdateJobStatusAsync(job, status, historyPatch, "TeamsChannelUpdater");
+
+            var groupId = await GetGroupIdAsync(job);
 
             string message = isDryRunSync
-                                ? $"Dry Run of a sync to {job.TargetOfficeGroupId} is complete. Membership will not be updated."
-                                : $"Syncing to {job.TargetOfficeGroupId} done.";
+                                ? $"Dry Run of a sync to {groupId} is complete. Membership will not be updated."
+                                : $"Syncing to {groupId} done.";
 
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = message, RunId = runId });
         }
 
         public async Task MarkSyncJobAsErroredAsync(SyncJob syncJob)
         {
-            await _syncJobRepository.UpdateSyncJobStatusAsync(new[] { syncJob }, SyncStatus.Error);
+            var now = DateTime.UtcNow;
+            var historyPatch = new SyncJobHistory
+            {
+                SyncJobId = syncJob.Id,
+                RunId = syncJob.RunId ?? Guid.Empty,
+                Status = SyncStatus.Error.ToString(),
+                ThresholdViolations = syncJob.ThresholdViolations,
+                UpdatedByFunction = "TeamsChannelUpdater",
+                EndTime = now,
+                UpdatedAt = now
+            };
+
+            await _syncJobStatusService.UpdateJobStatusAsync(syncJob, SyncStatus.Error, historyPatch, "TeamsChannelUpdater");
         }
 
         public async Task<(int SuccessCount, List<AzureADTeamsUser> UsersToRetry, List<AzureADTeamsUser> UsersNotFound)> AddUsersToChannelAsync(AzureADTeamsChannel azureADTeamsChannel, List<AzureADTeamsUser> members)
@@ -109,19 +173,28 @@ namespace Services.TeamsChannelUpdater
             return await _teamsChannelRepository.GetGroupOwnersAsync(groupObjectId, runId, top);
         }
 
-        public async Task SendEmailAsync(string toEmail, string contentTemplate, string[] additionalContentParams, Guid runId, string ccEmail = null, string emailSubject = null, string[] additionalSubjectParams = null)
+        public async Task SendEmailAsync(SyncJob job, NotificationMessageType notificationType, string[] additionalContentParams)
         {
-            await _mailRepository.SendMailAsync(new EmailMessage
+            var messageContent = new Dictionary<string, Object>
             {
-                Subject = emailSubject ?? EmailSubject,
-                Content = contentTemplate,
-                SenderAddress = _emailSenderAndRecipients.SenderAddress,
-                SenderPassword = _emailSenderAndRecipients.SenderPassword,
-                ToEmailAddresses = toEmail,
-                CcEmailAddresses = ccEmail,
-                AdditionalContentParams = additionalContentParams,
-                AdditionalSubjectParams = additionalSubjectParams
-            }, runId);
+                { "SyncJob", job },
+                { "AdditionalContentParameters", additionalContentParams }
+            };
+
+            var body = Encoding.UTF8.GetBytes(JsonSerializer.Serialize(messageContent));
+            var message = new ServiceBusMessage
+            {
+                MessageId = $"{job.Id}_{job.RunId}_{notificationType}",
+                Body = body
+            };
+            message.ApplicationProperties.Add("MessageType", notificationType.ToString());
+
+            await _serviceBusQueueRepository.SendMessageAsync(message);
+            await _loggingRepository.LogMessageAsync(new LogMessage
+            {
+                RunId = job.RunId,
+                Message = $"Sent message {message.MessageId} to service bus notifications queue "
+            });
         }
 
     }

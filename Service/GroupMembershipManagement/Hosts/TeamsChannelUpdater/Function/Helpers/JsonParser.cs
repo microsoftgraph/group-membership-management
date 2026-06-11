@@ -1,25 +1,25 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
-using Newtonsoft.Json.Linq;
+
+using Models.Entities;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using Models.Entities;
 using System.Text;
+using System.Text.Json.Nodes;
+using Models;
 
 namespace TeamsChannelUpdater.Helpers
 {
     internal static class JsonParser
     {
-        internal static AzureADTeamsChannel GetDestination(string destinationJson)
+        internal static AzureADTeamsChannel GetDestination(SyncJob synJob)
         {
-            var destinations = JArray.Parse(destinationJson);
-            var destinationToken = destinations.First();
             var destination = new AzureADTeamsChannel
             {
-                Type = destinationToken["type"].ToString(),
-                ObjectId = Guid.Parse(destinationToken["value"]["objectId"].ToString()),
-                ChannelId = destinationToken["value"]["channelId"].ToString()
+                Type = synJob.MembershipType.ToString(),
+                ObjectId = synJob.Channel.GroupId,
+                ChannelId = synJob.Channel.ChannelId
             };
 
             return destination;
@@ -27,13 +27,15 @@ namespace TeamsChannelUpdater.Helpers
 
         internal static string GetQueryTypes(string query)
         {
-            var queries = JArray.Parse(query);
+            var queries = JsonNode.Parse(query).AsArray(); ;
             var queryTypeCounts = new Dictionary<string, int>();
+            var queryTypes = queries.Select(x => x["type"])
+                           .OfType<JsonValue>()
+                           .Select(x => x.GetValue<string>())
+                           .ToList();
 
-            foreach (var token in queries.SelectTokens("$..type"))
+            foreach (var type in queryTypes)
             {
-                var type = token.Value<string>();
-
                 if (queryTypeCounts.ContainsKey(type))
                 {
                     queryTypeCounts[type]++;

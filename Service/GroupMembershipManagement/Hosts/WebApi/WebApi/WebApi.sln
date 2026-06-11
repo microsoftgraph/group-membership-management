@@ -1,7 +1,7 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio Version 17
-VisualStudioVersion = 17.5.33326.253
+# Visual Studio Version 18
+VisualStudioVersion = 18.0.10827.20 main
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "WebApi", "WebApi.csproj", "{B2BF5D0B-7DC5-4769-9DD0-5E773E5D4FFE}"
 EndProject
@@ -35,8 +35,6 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Services.Contracts", "..\..
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Services.Notifications", "..\..\..\Services.Notifications\Services.Notifications.csproj", "{83648C3D-303F-4292-9228-84598B84B334}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Repositories.NotificationRepository", "..\..\..\Repositories.Notifications\Repositories.NotificationRepository.csproj", "{B0614A69-D5D3-494C-8DD0-BFA2E9E75469}"
-EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Repositories.Localization", "..\..\..\Repositories.Localization\Repositories.Localization.csproj", "{EF7436BD-26A1-49D8-AFCB-1803EB24C4CB}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Repositories.EntityFramework.Contexts", "..\..\..\Repositories.EntityFramework.Contexts\Repositories.EntityFramework.Contexts.csproj", "{D4E9D493-2DD5-499D-B011-80B386FDB759}"
@@ -50,6 +48,16 @@ EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "SqlMembershipObtainer.Entities", "..\..\SqlMembershipObtainer.Common\SqlMembershipObtainer.Entities\SqlMembershipObtainer.Entities.csproj", "{51E97CCD-AB4E-4294-A8FD-D1F3630C8022}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Services.Entities", "..\..\GraphUpdater\Services.Entities\Services.Entities.csproj", "{3AE58292-C456-4C09-AD12-EC374BA1E4DF}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Repositories.ServiceStatus", "..\..\..\Repositories.ServiceStatus\Repositories.ServiceStatus.csproj", "{88B1C083-EE8D-4337-B411-BAF8A3AB098F}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Services.Defaults", "..\Services.Defaults\Services.Defaults.csproj", "{E7551F2B-5E50-4345-9A41-B765FCD6A69E}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Repositories.TeamsChannel", "..\..\..\Repositories.TeamsChannel\Repositories.TeamsChannel.csproj", "{64494230-82EF-88B7-5643-8021A242A781}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Repositories.Mail", "..\..\..\Repositories.Mail\Repositories.Mail.csproj", "{356618A3-9E70-00D1-49B3-6830FAEBDB8D}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Repositories.ServiceBusQueue", "..\..\..\Repositories.ServiceBusQueue\Repositories.ServiceBusQueue.csproj", "{CF56E234-0A7F-8977-85A1-398285DF029F}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -121,10 +129,6 @@ Global
 		{83648C3D-303F-4292-9228-84598B84B334}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{83648C3D-303F-4292-9228-84598B84B334}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{83648C3D-303F-4292-9228-84598B84B334}.Release|Any CPU.Build.0 = Release|Any CPU
-		{B0614A69-D5D3-494C-8DD0-BFA2E9E75469}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{B0614A69-D5D3-494C-8DD0-BFA2E9E75469}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{B0614A69-D5D3-494C-8DD0-BFA2E9E75469}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{B0614A69-D5D3-494C-8DD0-BFA2E9E75469}.Release|Any CPU.Build.0 = Release|Any CPU
 		{EF7436BD-26A1-49D8-AFCB-1803EB24C4CB}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{EF7436BD-26A1-49D8-AFCB-1803EB24C4CB}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{EF7436BD-26A1-49D8-AFCB-1803EB24C4CB}.Release|Any CPU.ActiveCfg = Release|Any CPU
@@ -153,6 +157,26 @@ Global
 		{3AE58292-C456-4C09-AD12-EC374BA1E4DF}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{3AE58292-C456-4C09-AD12-EC374BA1E4DF}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{3AE58292-C456-4C09-AD12-EC374BA1E4DF}.Release|Any CPU.Build.0 = Release|Any CPU
+		{88B1C083-EE8D-4337-B411-BAF8A3AB098F}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{88B1C083-EE8D-4337-B411-BAF8A3AB098F}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{88B1C083-EE8D-4337-B411-BAF8A3AB098F}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{88B1C083-EE8D-4337-B411-BAF8A3AB098F}.Release|Any CPU.Build.0 = Release|Any CPU
+		{E7551F2B-5E50-4345-9A41-B765FCD6A69E}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{E7551F2B-5E50-4345-9A41-B765FCD6A69E}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{E7551F2B-5E50-4345-9A41-B765FCD6A69E}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{E7551F2B-5E50-4345-9A41-B765FCD6A69E}.Release|Any CPU.Build.0 = Release|Any CPU
+		{64494230-82EF-88B7-5643-8021A242A781}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{64494230-82EF-88B7-5643-8021A242A781}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{64494230-82EF-88B7-5643-8021A242A781}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{64494230-82EF-88B7-5643-8021A242A781}.Release|Any CPU.Build.0 = Release|Any CPU
+		{356618A3-9E70-00D1-49B3-6830FAEBDB8D}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{356618A3-9E70-00D1-49B3-6830FAEBDB8D}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{356618A3-9E70-00D1-49B3-6830FAEBDB8D}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{356618A3-9E70-00D1-49B3-6830FAEBDB8D}.Release|Any CPU.Build.0 = Release|Any CPU
+		{CF56E234-0A7F-8977-85A1-398285DF029F}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{CF56E234-0A7F-8977-85A1-398285DF029F}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{CF56E234-0A7F-8977-85A1-398285DF029F}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{CF56E234-0A7F-8977-85A1-398285DF029F}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

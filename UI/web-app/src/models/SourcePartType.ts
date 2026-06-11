@@ -6,4 +6,5 @@ export enum SourcePartType {
     GroupMembership = "GroupMembership",
     GroupOwnership = "GroupOwnership",
     PlaceMembership = "PlaceMembership",
-}
+    TeamsChannelMembership = "TeamsChannelMembership",
+};

@@ -1,14 +1,15 @@
 // Copyright(c) Microsoft Corporation.
 // Licensed under the MIT license.
+using Azure.Core;
 using Azure.Identity;
-using Microsoft.Azure.Management.DataFactory;
-using Microsoft.Azure.Management.DataFactory.Models;
-using Microsoft.Identity.Client;
-using Microsoft.Rest;
+using Azure.ResourceManager;
+using Azure.ResourceManager.DataFactory;
+using Azure.ResourceManager.DataFactory.Models;
 using Repositories.Contracts;
 using Repositories.Contracts.InjectConfig;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
 
 namespace Repositories.DataFactory
@@ -19,6 +20,8 @@ namespace Repositories.DataFactory
         private readonly string _dataFactory = null;
         private readonly string _subscriptionId = null;
         private readonly string _resourceGroup = null;
+        private readonly ArmClient _client = null;
+        private readonly ResourceIdentifier _dataFactoryResourceId = null;
 
         public DataFactoryRepository(IDataFactorySecret<IDataFactoryRepository> dataFactorySecrets)
         {
@@ -26,47 +29,44 @@ namespace Repositories.DataFactory
             _dataFactory = dataFactorySecrets.DataFactoryName;
             _subscriptionId = dataFactorySecrets.SubscriptionId;
             _resourceGroup = dataFactorySecrets.ResourceGroup;
+
+            DefaultAzureCredential credential = new(DefaultAzureCredential.DefaultEnvironmentVariableName);
+
+            _client = new ArmClient(credential);
+            _dataFactoryResourceId = DataFactoryResource.CreateResourceIdentifier(_subscriptionId, _resourceGroup, _dataFactory);
         }
 
         public async Task<string> GetMostRecentSucceededRunIdAsync()
         {
             var pipelineResponse = await GetDataFactoryPipelineRunsAsync();
-            return pipelineResponse?.Value?.Count > 0 ? pipelineResponse?.Value?[0]?.RunId : null;
+            return pipelineResponse.Count > 0 ? pipelineResponse[0].RunId?.ToString() : null;
         }
 
         public async Task<(string latest, string previous)> GetTwoRecentSucceededRunIdsAsync()
         {
             var pipelineResponse = await GetDataFactoryPipelineRunsAsync();
-            return (pipelineResponse?.Value?.Count >= 2) ? (pipelineResponse?.Value?[0]?.RunId, pipelineResponse?.Value?[1]?.RunId) : (null, null);
+            return (pipelineResponse?.Count >= 2) ? (pipelineResponse[0]?.RunId?.ToString(), pipelineResponse[1]?.RunId?.ToString()) : (null, null);
         }
 
-        private async Task<PipelineRunsQueryResponse> GetDataFactoryPipelineRunsAsync()
+        private async Task<List<DataFactoryPipelineRunInfo>> GetDataFactoryPipelineRunsAsync()
         {
-            var credentials = await GetCredentialsAsync();
-            var client = new DataFactoryManagementClient(credentials)
+            var dataFactory = _client.GetDataFactoryResource(_dataFactoryResourceId);
+            RunFilterContent content = new RunFilterContent(DateTime.UtcNow.AddMonths(-1), DateTime.UtcNow)
             {
-                SubscriptionId = _subscriptionId
+                Filters =
+                {
+                    new RunQueryFilter(RunQueryFilterOperand.PipelineName, RunQueryFilterOperator.EqualsValue, new string[] { _pipeline }),
+                    new RunQueryFilter(RunQueryFilterOperand.Status, RunQueryFilterOperator.EqualsValue, new string[] { "Succeeded" })
+                }
             };
 
-            var pipeline = new RunQueryFilter("PipelineName", "Equals", new List<string> { _pipeline });
-            var status = new RunQueryFilter("Status", "Equals", new List<string> { "Succeeded" });
-            var pipelineRuns = new RunQueryOrderBy("RunEnd", "DESC");
-            var before = DateTime.UtcNow;
-            var after = before.AddMonths(-1);
-            var param = new RunFilterParameters(after, before, null, new List<RunQueryFilter> { pipeline, status }, new List<RunQueryOrderBy> { pipelineRuns });
-            var pipelineResponse = await client.PipelineRuns.QueryByFactoryAsync(
-                                                            _resourceGroup,
-                                                            _dataFactory, param);
-            return pipelineResponse;
-        }
+            var pipelineRuns = new List<DataFactoryPipelineRunInfo>();
+            await foreach (DataFactoryPipelineRunInfo item in dataFactory.GetPipelineRunsAsync(content))
+            {
+                pipelineRuns.Add(item);
+            }
 
-        private async Task<TokenCredentials> GetCredentialsAsync()
-        {
-            var defaultAzureCredential = new DefaultAzureCredential(); 
-            var tokenRequestContext = new Azure.Core.TokenRequestContext(new[] { "https://management.azure.com/.default" });
-            var accessToken = await defaultAzureCredential.GetTokenAsync(tokenRequestContext);
-            var tokenCredentials = new TokenCredentials(accessToken.Token);
-            return tokenCredentials;
+            return pipelineRuns.OrderByDescending(x => x.RunEndOn).ToList();
         }
     }
 }

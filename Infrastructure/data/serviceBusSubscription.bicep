@@ -1,25 +1,30 @@
+type topicSubscription = {
+  topicName: string
+  subscriptionName: string
+  ruleName: string
+  ruleSqlExpression: string
+  sessionEnabled: bool?
+}
+
 @minLength(1)
 param serviceBusName string
 
-@minLength(1)
-param topicName string
-
 @metadata({
   description: 'Topic\'s subscriptions'
-  sample: '\\[{\'name\': \'subscriptionOne\', \'ruleName\': \'ruleOne\', \'ruleSqlExpression\': \'Property = \\\'value\\\'\'}]\\]'
 })
-param topicSubscriptions array
+param topicSubscriptions topicSubscription[]
 
 resource serviceBusNameSubscription 'Microsoft.ServiceBus/namespaces/topics/subscriptions@2017-04-01' = [for item in topicSubscriptions: {
-  name: '${serviceBusName}/${topicName}/${item.name}'
+  name: '${serviceBusName}/${item.topicName}/${item.subscriptionName}'
   properties: {
-    maxDeliveryCount: 5
+    maxDeliveryCount: 10
     lockDuration: 'PT5M'
+    requiresSession: item.?sessionEnabled  ?? false
   }
 }]
 
 resource serviceBusNameSubscriptionRules 'Microsoft.ServiceBus/namespaces/topics/subscriptions/Rules@2017-04-01' = [for item in topicSubscriptions: {
-  name: '${serviceBusName}/${topicName}/${item.name}/${item.ruleName}'
+  name: '${serviceBusName}/${item.topicName}/${item.subscriptionName}/${item.ruleName}'
   properties: {
     filterType: 'SqlFilter'
     sqlFilter: {

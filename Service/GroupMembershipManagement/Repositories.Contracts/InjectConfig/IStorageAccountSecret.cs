@@ -5,6 +5,6 @@ namespace Repositories.Contracts.InjectConfig
 {
     public interface IStorageAccountSecret
     {
-        public string ConnectionString { get; set; }
+        public string AccountName { get; set; }
     }
 }

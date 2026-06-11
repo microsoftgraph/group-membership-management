@@ -2,6 +2,7 @@
 // Licensed under the MIT license.
 using Models;
 using Models.ServiceBus;
+using System.Collections.Generic;
 using System.Threading.Tasks;
 
 namespace Repositories.Contracts
@@ -10,5 +11,6 @@ namespace Repositories.Contracts
     {
         Task AddMessageAsync(SyncJob job);
         Task AddMessageAsync(ServiceBusMessage message);
+        Task AddMessagesAsync(IEnumerable<ServiceBusMessage> messages);
     }
 }

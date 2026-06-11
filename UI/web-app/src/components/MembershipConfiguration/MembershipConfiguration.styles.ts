@@ -34,6 +34,11 @@ export const getStyles = (props: MembershipConfigurationStyleProps): MembershipC
             borderRadius: 10,
             marginBottom: 12,
             backgroundColor: theme.palette.white
+        },
+        expandCollapseButton: {
+            display: 'flex',
+            flexDirection: 'row',
+            justifyContent: 'flex-end',
         }
     };
 };

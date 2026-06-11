@@ -8,8 +8,13 @@ namespace Hosts.JobScheduler
 {
     public class DistributeJobsRequest
     {
-        public List<DistributionSyncJob> JobsToDistribute;
-        public int StartTimeDelayMinutes;
-        public int DelayBetweenSyncsSeconds;
+        public List<DistributionSyncJob> JobsToDistribute { get; set; }
+        public int StartTimeDelayMinutes { get; set; }
+        public int DelayBetweenSyncsSeconds { get; set; }
+        
+        /// <summary>
+        /// When true, jobs with thresholds are prioritized over jobs without thresholds during distribution.
+        /// </summary>
+        public bool PrioritizeThresholdJobs { get; set; }
     }
 }

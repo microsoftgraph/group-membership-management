@@ -9,12 +9,14 @@ namespace Models.AdaptiveCards
     {
         public string GroupId { get; set; }
         public string ProviderId { get; set; }
+        public string TitleContent { get; set; }
         public string SubjectContent { get; set; }
         public string MessageContent { get; set; }
         public DateTime CardCreatedTime { get; set; }
         public string DestinationGroupName { get; set; }
         public string UIUrl { get; set; }
         public string DashboardUrl { get; set; }
+        public string JobUrl { get; set; }
     }
 }
                

@@ -19,6 +19,9 @@ param environmentAbbreviation string
 @description('Tenant id.')
 param tenantId string
 
+@description('Function authentication app client id.')
+param functionAuthAppClientId string
+
 @description('Name of the resource group where the \'prereqs\' key vault is located.')
 param prereqsKeyVaultName string = '${solutionAbbreviation}-prereqs-${environmentAbbreviation}'
 
@@ -29,27 +32,7 @@ param prereqsKeyVaultResourceGroup string = '${solutionAbbreviation}-prereqs-${e
 param servicePlanName string = '${solutionAbbreviation}-${resourceGroupClassification}-${environmentAbbreviation}-${substring(uniqueString(subscription().id,'JobScheduler'),0,8)}'
 
 @description('Service plan sku')
-@allowed([
-  'D1'
-  'F1'
-  'B1'
-  'B2'
-  'B3'
-  'S1'
-  'S2'
-  'S3'
-  'P1'
-  'P2'
-  'P3'
-  'P1V2'
-  'P2V2'
-  'P3V2'
-  'I1'
-  'I2'
-  'I3'
-  'Y1'
-])
-param servicePlanSku string = 'Y1'
+param servicePlanSku string = 'FC1'
 
 @description('Resource location.')
 param location string
@@ -58,27 +41,7 @@ param location string
 param functionAppName string = '${solutionAbbreviation}-${resourceGroupClassification}-${environmentAbbreviation}'
 
 @description('Function app kind.')
-@allowed([
-  'functionapp'
-  'linux'
-  'container'
-])
-param functionAppKind string = 'functionapp'
-
-@description('Maximum elastic worker count.')
-param maximumElasticWorkerCount int = 1
-
-@description('Enter application insights name.')
-param appInsightsName string = '${solutionAbbreviation}-data-${environmentAbbreviation}'
-
-@description('Resource group where Application Insights is located.')
-param appInsightsResourceGroup string = '${solutionAbbreviation}-data-${environmentAbbreviation}'
-
-@description('Enter storage account name.')
-param storageAccountName string
-
-@description('Resource group where storage account is located.')
-param storageAccountResourceGroup string = '${solutionAbbreviation}-data-${environmentAbbreviation}'
+param functionAppKind string = 'functionapp,linux'
 
 @description('Name of the \'data\' key vault.')
 param dataKeyVaultName string = '${solutionAbbreviation}-data-${environmentAbbreviation}'
@@ -92,9 +55,16 @@ param appConfigurationEndpoint string = 'https://${solutionAbbreviation}-appconf
 @description('Flag to indicate if the deployment should set RBAC permissions.')
 param setRBACPermissions bool = false
 
+@description('Object with flags to determine behaviour')
+param featureFlags object = {
+  skipListingFunctionAppKeys : false
+}
+
+@description('CRON schedule for triggering this function app.')
+param timerTriggerSchedule string = '0 0 0 * * *'
+
 var logAnalyticsCustomerId = resourceId(subscription().subscriptionId, dataKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'logAnalyticsCustomerId')
 var logAnalyticsPrimarySharedKey = resourceId(subscription().subscriptionId, dataKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'logAnalyticsPrimarySharedKey')
-var storageAccountConnectionString = resourceId(subscription().subscriptionId, dataKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'storageAccountConnectionString')
 var appInsightsInstrumentationKey = resourceId(subscription().subscriptionId, dataKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'appInsightsInstrumentationKey')
 var jobsMSIConnectionString = resourceId(subscription().subscriptionId, dataKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'jobsMSIConnectionString')
 var replicaJobsMSIConnectionString = resourceId(subscription().subscriptionId, dataKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'replicaJobsMSIConnectionString')
@@ -105,70 +75,51 @@ module servicePlanTemplate 'servicePlan.bicep' = {
     name: servicePlanName
     sku: servicePlanSku
     location: location
-    maximumElasticWorkerCount: maximumElasticWorkerCount
   }
 }
 
-var commonSettings = {
-  WEBSITE_ADD_SITENAME_BINDINGS_IN_APPHOST_CONFIG: 1
-  WEBSITE_ENABLE_SYNC_UPDATE_SITE: 1
-  SCM_TOUCH_WEBCONFIG_AFTER_DEPLOYMENT: 0
-  FUNCTIONS_WORKER_RUNTIME: 'dotnet'
-  FUNCTIONS_EXTENSION_VERSION: '~4'
-}
-
 var appSettings = {
+  AZURE_TOKEN_CREDENTIALS: 'ManagedIdentityCredential'
+  AzureWebJobsStorage__accountName: storageAccountNameReader.outputs.value
+  AzureWebJobsStorage__credential: 'managedidentity'
+  AzureFunctionsJobHost__extensions__durableTask__hubName: '${solutionAbbreviation}compute${environmentAbbreviation}JobScheduler'
+  AzureFunctionsWebHost__hostid: 'JobScheduler'
   APPINSIGHTS_INSTRUMENTATIONKEY: '@Microsoft.KeyVault(SecretUri=${reference(appInsightsInstrumentationKey, '2019-09-01').secretUriWithVersion})'
-  AzureWebJobsStorage: '@Microsoft.KeyVault(SecretUri=${reference(storageAccountConnectionString, '2019-09-01').secretUriWithVersion})'
-  WEBSITE_CONTENTAZUREFILECONNECTIONSTRING: '@Microsoft.KeyVault(SecretUri=${reference(storageAccountConnectionString, '2019-09-01').secretUriWithVersion})'
-  jobSchedulerSchedule: '0 0 0 * * Sun'
+  jobSchedulerSchedule: timerTriggerSchedule
   logAnalyticsCustomerId: '@Microsoft.KeyVault(SecretUri=${reference(logAnalyticsCustomerId, '2019-09-01').secretUriWithVersion})'
   logAnalyticsPrimarySharedKey: '@Microsoft.KeyVault(SecretUri=${reference(logAnalyticsPrimarySharedKey, '2019-09-01').secretUriWithVersion})'
   appConfigurationEndpoint: appConfigurationEndpoint
-  'ConnectionStrings:JobsContext': '@Microsoft.KeyVault(SecretUri=${reference(jobsMSIConnectionString, '2019-09-01').secretUriWithVersion})'
-  'ConnectionStrings:JobsContextReadOnly': '@Microsoft.KeyVault(SecretUri=${reference(replicaJobsMSIConnectionString, '2019-09-01').secretUriWithVersion})'
+  ConnectionStrings__JobsContext: '@Microsoft.KeyVault(SecretUri=${reference(jobsMSIConnectionString, '2019-09-01').secretUriWithVersion})'
+  ConnectionStrings__JobsContextReadOnly: '@Microsoft.KeyVault(SecretUri=${reference(replicaJobsMSIConnectionString, '2019-09-01').secretUriWithVersion})'
 }
 
-var stagingSettings = {
-  WEBSITE_CONTENTSHARE: toLower('functionApp-JobScheduler-staging')
-  AzureFunctionsJobHost__extensions__durableTask__hubName: '${solutionAbbreviation}compute${environmentAbbreviation}JobSchedulerStaging'
-  'AzureWebJobs.StarterFunction.Disabled': 1
-  'AzureWebJobs.OrchestratorFunction.Disabled': 1
-  'AzureWebJobs.LoggerFunction.Disabled': 1
-  'AzureWebJobs.GetJobsSubOrchestratorFunction.Disabled': 1
-  'AzureWebJobs.GetJobsSegmentedFunction.Disabled': 1
-  'AzureWebJobs.ResetJobsFunction.Disabled': 1
-  'AzureWebJobs.DistributeJobsFunction.Disabled': 1
-  'AzureWebJobs.UpdateJobsSubOrchestratorFunction.Disabled': 1
-  'AzureWebJobs.BatchUpdateJobsFunction.Disabled': 1
-  'AzureWebJobs.PipelineInvocationStarterFunction.Disabled': 1
-  'AzureWebJobs.StatusCallbackOrchestratorFunction.Disabled': 1
-  'AzureWebJobs.CheckJobSchedulerStatusFunction.Disabled': 1
-  'AzureWebJobs.PostCallbackFunction.Disabled': 1
-  AzureFunctionsWebHost__hostid: 'JobSchedulerStaging'
+resource dataKeyVault 'Microsoft.KeyVault/vaults@2023-07-01' existing = {
+  name: dataKeyVaultName
+  scope: resourceGroup(dataKeyVaultResourceGroup)
 }
 
-var productionSettings = {
-  WEBSITE_CONTENTSHARE: toLower('functionApp-JobScheduler')
-  AzureFunctionsJobHost__extensions__durableTask__hubName: '${solutionAbbreviation}compute${environmentAbbreviation}JobScheduler'
-  'AzureWebJobs.StarterFunction.Disabled': 0
-  'AzureWebJobs.OrchestratorFunction.Disabled': 0
-  'AzureWebJobs.LoggerFunction.Disabled': 0
-  'AzureWebJobs.GetJobsSubOrchestratorFunction.Disabled': 0
-  'AzureWebJobs.GetJobsSegmentedFunction.Disabled': 0
-  'AzureWebJobs.ResetJobsFunction.Disabled': 0
-  'AzureWebJobs.DistributeJobsFunction.Disabled': 0
-  'AzureWebJobs.UpdateJobsSubOrchestratorFunction.Disabled': 0
-  'AzureWebJobs.BatchUpdateJobsFunction.Disabled': 0
-  'AzureWebJobs.PipelineInvocationStarterFunction.Disabled': 0
-  'AzureWebJobs.StatusCallbackOrchestratorFunction.Disabled': 0
-  'AzureWebJobs.CheckJobSchedulerStatusFunction.Disabled': 0
-  'AzureWebJobs.PostCallbackFunction.Disabled': 0
-  AzureFunctionsWebHost__hostid: 'JobScheduler'
+module storageAccountNameReader 'keyVaultReader.bicep' = {
+  name: 'storageAccountNameReader-JobScheduler'
+  params: {
+    value: dataKeyVault.getSecret('jobSchedulerStorageAccountProd')
+  }
+  dependsOn: [
+    dataKeyVault
+  ]
+}
+
+module appPackageContainerNameReader 'keyVaultReader.bicep' = {
+  name: 'appPackageContainerNameReader-JobScheduler'
+  params: {
+    value: dataKeyVault.getSecret('jobSchedulerAppPackageContainerProd')
+  }
+  dependsOn: [
+    dataKeyVault
+  ]
 }
 
 module existingLogAnalyticsWorkspace 'logAnalyticsWorkspace.bicep' = {
-  name: 'existingLogAnalyticsWorkspace'
+  name: 'existingLogAnalyticsWorkspace-js'
   scope: resourceGroup('${solutionAbbreviation}-data-${environmentAbbreviation}')
   params: {
     environmentAbbreviation: environmentAbbreviation
@@ -184,65 +135,22 @@ module functionAppTemplate_JobScheduler 'functionApp.bicep' = {
     kind: functionAppKind
     location: location
     servicePlanName: servicePlanName
-    dataKeyVaultName: dataKeyVaultName
-    dataKeyVaultResourceGroup: dataKeyVaultResourceGroup
-    secretSettings: commonSettings
+    appSettings: appSettings
+    userManagedIdentities: {}
     logAnalyticsWorkspaceId: existingLogAnalyticsWorkspace.outputs.workspaceId
-  }
-  dependsOn: [
-    servicePlanTemplate
-    existingLogAnalyticsWorkspace
-  ]
-}
-
-module functionAppSlotTemplate_JobScheduler 'functionAppSlot.bicep' = {
-  name: 'functionAppSlotTemplate-JobScheduler'
-  params: {
-    name: '${functionAppName}-JobScheduler/staging'
-    kind: functionAppKind
-    location: location
-    servicePlanName: servicePlanName
-    secretSettings: commonSettings
-    logAnalyticsWorkspaceId: existingLogAnalyticsWorkspace.outputs.workspaceId
-  }
-  dependsOn: [
-    functionAppTemplate_JobScheduler
-  ]
-}
-
-module functionAppRBAC 'functionAppRBAC.bicep' = {
-  name: 'functionAppsRBAC-JobScheduler'
-  params: {
-    functionName: 'JobScheduler'
     prereqsKeyVaultName: prereqsKeyVaultName
     prereqsKeyVaultResourceGroup: prereqsKeyVaultResourceGroup
     dataKeyVaultName: dataKeyVaultName
     dataKeyVaultResourceGroup: dataKeyVaultResourceGroup
     setRBACPermissions: setRBACPermissions
-    productionSlotPrincipalId: functionAppTemplate_JobScheduler.outputs.msi
-    stagingSlotPrincipalId: functionAppSlotTemplate_JobScheduler.outputs.msi
+    storageAccountName: storageAccountNameReader.outputs.value
+    appPackageContainerName: appPackageContainerNameReader.outputs.value
+    instanceMemoryMB: 4096
+    featureFlags: featureFlags
+    functionAuthAppClientId: functionAuthAppClientId
   }
   dependsOn: [
-    functionAppTemplate_JobScheduler
-    functionAppSlotTemplate_JobScheduler
-  ]
-}
-
-resource functionAppSettings 'Microsoft.Web/sites/config@2022-03-01' = {
-  name: '${functionAppName}-JobScheduler/appsettings'
-  kind: 'string'
-  properties: union(commonSettings, appSettings, productionSettings)
-  dependsOn: [
-    functionAppRBAC
-  ]
-}
-
-resource functionAppStagingSettings 'Microsoft.Web/sites/slots/config@2022-03-01' = {
-  name: '${functionAppName}-JobScheduler/staging/appsettings'
-  kind: 'string'
-  properties: union(commonSettings, appSettings, stagingSettings)
-  dependsOn: [
-    functionAppRBAC
-    functionAppSettings
+    servicePlanTemplate
+    existingLogAnalyticsWorkspace
   ]
 }

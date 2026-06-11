@@ -1,8 +1,8 @@
 // Copyright(c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-using Microsoft.Azure.WebJobs;
-using Microsoft.Azure.WebJobs.Extensions.DurableTask;
+using Microsoft.Azure.Functions.Worker;
+using Microsoft.DurableTask;
 using Models;
 using Repositories.Contracts;
 using Repositories.Contracts.InjectConfig;
@@ -20,8 +20,8 @@ namespace Hosts.JobScheduler
             _jobSchedulerConfig = jobSchedulerConfig;
         }
 
-        [FunctionName(nameof(GetJobsSubOrchestratorFunction))]
-        public async Task<List<DistributionSyncJob>> RunSubOrchestratorAsync([OrchestrationTrigger] IDurableOrchestrationContext context)
+        [Function(nameof(GetJobsSubOrchestratorFunction))]
+        public async Task<List<DistributionSyncJob>> RunSubOrchestratorAsync([OrchestrationTrigger] TaskOrchestrationContext context)
         {
             await context.CallActivityAsync(nameof(LoggerFunction),
                 new LoggerRequest

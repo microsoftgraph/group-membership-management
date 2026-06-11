@@ -1,8 +1,8 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-using Microsoft.Azure.WebJobs;
-using Microsoft.Azure.WebJobs.Extensions.DurableTask;
+using Microsoft.Azure.Functions.Worker;
+using Microsoft.DurableTask;
 using Repositories.Contracts;
 using System.Threading.Tasks;
 using Models;
@@ -14,10 +14,11 @@ using System.Linq;
 using Models.ServiceBus;
 using TeamsChannelUpdater.Helpers;
 using Repositories.Contracts.InjectConfig;
-using ExecutionContext = Microsoft.Azure.WebJobs.ExecutionContext;
 using Models.Entities;
 using System.Text.Json;
 using Services.TeamsChannelUpdater.Contracts;
+using Models.Notifications;
+using Models.Helpers;
 
 namespace Hosts.TeamsChannelUpdater
 {
@@ -45,9 +46,9 @@ namespace Hosts.TeamsChannelUpdater
             _gmmResources = gmmResources ?? throw new ArgumentNullException(nameof(gmmResources));
         }
 
-        [FunctionName(nameof(OrchestratorFunction))]
-        public async Task<OrchestrationRuntimeStatus> RunOrchestratorAsync(
-            [OrchestrationTrigger] IDurableOrchestrationContext context, ExecutionContext executionContext)
+        [Function(nameof(OrchestratorFunction))]
+        public async Task RunOrchestratorAsync(
+            [OrchestrationTrigger] TaskOrchestrationContext context)
         {
             TeamsGroupMembership groupMembership = null;
             MembershipHttpRequest graphRequest = null;
@@ -65,15 +66,21 @@ namespace Hosts.TeamsChannelUpdater
                                                            JobId = graphRequest.SyncJob.Id,
                                                            RunId = graphRequest.SyncJob.RunId.GetValueOrDefault()
                                                        });
-                var sourceTypesCounts = JsonParser.GetQueryTypes(syncJob.Query);
-                var destination = JsonParser.GetDestination(syncJob.Destination);
 
-                syncCompleteEvent.Type = destination.Type;
-                syncCompleteEvent.Destination = syncJob.Destination;
+                var groupId = await context.CallActivityAsync<Guid>(nameof(GetGroupFunction), syncJob);
+                var channelId = await context.CallActivityAsync<string>(nameof(GetChannelFunction), syncJob);
+
+                var sourceTypesCounts = JsonParser.GetQueryTypes(syncJob.Query);
+                var destination = JsonParser.GetDestination(syncJob);
+
+                syncCompleteEvent.Type = syncJob.MembershipType;
+                syncCompleteEvent.Destination = $"[{{\"type\":\"{syncJob.MembershipType}\",\"value\":{{\"objectId\":\"{groupId}\",\"channelId\":\"{channelId}\"}}}}]";
+                syncCompleteEvent.GroupId = groupId.ToString();
+                syncCompleteEvent.ChannelId = channelId;
                 syncCompleteEvent.SourceTypesCounts = sourceTypesCounts;
                 syncCompleteEvent.RunId = syncJob.RunId.ToString();
                 syncCompleteEvent.IsDryRunEnabled = false.ToString();
-                syncCompleteEvent.ProjectedMemberCount = graphRequest.ProjectedMemberCount.HasValue ? graphRequest.ProjectedMemberCount.ToString() : "Not provided";
+                syncCompleteEvent.ProjectedMemberCount = graphRequest.ProjectedMemberCount.ToString();
 
                 var fileContent = await context.CallActivityAsync<string>(nameof(FileDownloaderFunction),
                                                                             new FileDownloaderRequest
@@ -84,7 +91,12 @@ namespace Hosts.TeamsChannelUpdater
 
                 JsonSerializerOptions options = new JsonSerializerOptions();
                 options.Converters.Add(new AzureADTeamsUserConverter());
-                groupMembership = JsonSerializer.Deserialize<TeamsGroupMembership>(fileContent, options);
+                var decompressedContent = TryDecompress(fileContent);
+                groupMembership = JsonSerializer.Deserialize<TeamsGroupMembership>(decompressedContent, options);
+                if (groupMembership == null)
+                {
+                    throw new InvalidOperationException("Deserialized group membership is null.");
+                }
 
                 await context.CallActivityAsync(nameof(LoggerFunction), new LoggerRequest { Message = $"{nameof(OrchestratorFunction)} function started", RunId = syncJob.RunId.GetValueOrDefault(Guid.Empty), Verbosity = VerbosityLevel.DEBUG });
                 await context.CallActivityAsync(nameof(LoggerFunction), new LoggerRequest
@@ -125,11 +137,6 @@ namespace Hosts.TeamsChannelUpdater
                     var groupName = await context.CallActivityAsync<string>(nameof(GroupNameReaderFunction),
                                                     new GroupNameReaderRequest { RunId = groupMembership.RunId, GroupId = groupMembership.Destination.ObjectId });
 
-                    var groupOwners = await context.CallActivityAsync<List<AzureADUser>>(nameof(GroupOwnersReaderFunction),
-                                                    new GroupOwnersReaderRequest { RunId = groupMembership.RunId, GroupId = groupMembership.Destination.ObjectId });
-
-                    var ownerEmails = string.Join(";", groupOwners.Where(x => !string.IsNullOrWhiteSpace(x.Mail)).Select(x => x.Mail));
-
                     var additionalContent = new[]
                     {
                                 groupMembership.Destination.ObjectId.ToString(),
@@ -142,14 +149,12 @@ namespace Hosts.TeamsChannelUpdater
                     };
 
                     await context.CallActivityAsync(nameof(EmailSenderFunction),
-                                                    new EmailSenderRequest
-                                                    {
-                                                        ToEmail = ownerEmails,
-                                                        CcEmail = _emailSenderAndRecipients.SyncCompletedCCAddresses,
-                                                        ContentTemplate = SyncCompletedEmailBody,
-                                                        AdditionalContentParams = additionalContent,
-                                                        RunId = groupMembership.RunId
-                                                    });
+                        new EmailSenderRequest
+                        {
+                            SyncJob = syncJob,
+                            NotificationType = NotificationMessageType.SyncCompletedNotification,
+                            AdditionalContentParams = additionalContent,
+                        });
                 }
 
 
@@ -191,7 +196,6 @@ namespace Hosts.TeamsChannelUpdater
                         Verbosity = VerbosityLevel.DEBUG
                     });
 
-                return OrchestrationRuntimeStatus.Completed;
             }
 
             catch (Exception ex)
@@ -199,7 +203,7 @@ namespace Hosts.TeamsChannelUpdater
                 if (syncJob == null)
                 {
                     await context.CallActivityAsync(nameof(LoggerFunction), new LoggerRequest { Message = "SyncJob is null. Removing the message from the queue..." });
-                    return OrchestrationRuntimeStatus.Failed;
+                    return;
                 }
 
                 if (syncJob != null)
@@ -227,9 +231,9 @@ namespace Hosts.TeamsChannelUpdater
             }
         }
 
-        private void TrackSyncCompleteEvent(IDurableOrchestrationContext context, SyncJob syncJob, SyncCompleteCustomEvent syncCompleteEvent, string successStatus)
+        private void TrackSyncCompleteEvent(TaskOrchestrationContext context, SyncJob syncJob, SyncCompleteCustomEvent syncCompleteEvent, string successStatus)
         {
-            var timeElapsedForJob = (context.CurrentUtcDateTime - syncJob.Timestamp.GetValueOrDefault()).TotalSeconds;
+            var timeElapsedForJob = (context.CurrentUtcDateTime - syncJob.LastSuccessfulStartTime).TotalSeconds;
             _telemetryClient.TrackMetric(nameof(Metric.SyncJobTimeElapsedSeconds), timeElapsedForJob);
 
             syncCompleteEvent.SyncJobTimeElapsedSeconds = timeElapsedForJob.ToString();
@@ -271,5 +275,23 @@ namespace Hosts.TeamsChannelUpdater
                    $"{membersToAdd} users have been added. " +
                    $"{membersToRemove} users have been removed.";
         }
+
+        private static string TryDecompress(string content)
+        {
+            if (string.IsNullOrEmpty(content))
+            {
+                return content;
+            }
+
+            try
+            {
+                return TextCompressor.Decompress(content);
+            }
+            catch (FormatException)
+            {
+                return content;
+            }
+        }
     }
 }
+

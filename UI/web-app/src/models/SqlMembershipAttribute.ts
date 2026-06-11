@@ -6,5 +6,8 @@ export type SqlMembershipAttribute = {
     customLabel: string;
     type: string;
     hasMapping: boolean;
-  };
-  
+    values: string[];
+    description: string;
+    enabled: boolean;
+};
+

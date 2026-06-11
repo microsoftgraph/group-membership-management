@@ -7,4 +7,4 @@ import { IGraphApi } from './IGraphApi';
 export type Apis = {
   gmmApi: IGMMApi;
   graphApi: IGraphApi;
-}
+};

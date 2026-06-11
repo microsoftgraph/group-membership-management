@@ -1,14 +1,13 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
+using Microsoft.Azure.Functions.Worker;
 using Models;
-using Microsoft.Azure.WebJobs;
-using Microsoft.Azure.WebJobs.Extensions.DurableTask;
-using Newtonsoft.Json;
 using Repositories.Contracts;
 using System;
 using System.Collections.Generic;
 using System.Net.Http;
+using System.Text.Json;
 using System.Threading.Tasks;
 
 namespace Hosts.JobScheduler
@@ -24,24 +23,24 @@ namespace Hosts.JobScheduler
             _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
         }
 
-        [FunctionName(nameof(CheckJobSchedulerStatusFunction))]
+        [Function(nameof(CheckJobSchedulerStatusFunction))]
         public async Task<bool> CheckStatusAsync([ActivityTrigger] CheckJobSchedulerStatusRequest request)
         {
             var completed = false;
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(CheckJobSchedulerStatusFunction)} function started at: {DateTime.UtcNow}" }, VerbosityLevel.DEBUG);
-            
+
             var response = await _httpClient.GetAsync(new Uri(request.StatusUrl));
             await _loggingRepository.LogMessageAsync(new LogMessage
-            { 
-                Message = $"Response content for status check is: {await response.Content.ReadAsStringAsync()}" 
+            {
+                Message = $"Response content for status check is: {await response.Content.ReadAsStringAsync()}"
             }, VerbosityLevel.INFO);
-            
-            var responseDict = JsonConvert.DeserializeObject<Dictionary<string, object>>(await response.Content.ReadAsStringAsync());
+
+            var responseDict = JsonSerializer.Deserialize<Dictionary<string, object>>(await response.Content.ReadAsStringAsync());
 
             var status = responseDict.GetValueOrDefault("runtimeStatus").ToString();
 
-                
-            completed = status == OrchestrationRuntimeStatus.Completed.ToString();
+
+            completed = status == "Completed";
 
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(CheckJobSchedulerStatusFunction)} function completed at: {DateTime.UtcNow}" }, VerbosityLevel.DEBUG);
 

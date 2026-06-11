@@ -1,0 +1,100 @@
+$ErrorActionPreference = "Stop"
+<#
+.SYNOPSIS
+This script runs the role assignment scripts with elevated permissions
+
+.PARAMETER SolutionAbbreviation
+Abbreviation used to denote the overall solution (or application)
+
+.PARAMETER EnvironmentAbbreviation
+Abbreviation for the environment
+
+.PARAMETER AppConfigName
+App config name
+
+.PARAMETER ErrorActionPreference
+Parameter description
+
+.EXAMPLE
+Set-PostDeploymentRoles -SolutionAbbreviation "<solutionAbbreviation>" `
+                        -EnvironmentAbbreviation "<environmentAbbreviation>" `
+                        -UamiTenantId "<TenantId>" `
+						-Verbose
+#>
+
+function Set-PostDeploymentRoles {
+    [CmdletBinding()]
+	param(
+        [Parameter(Mandatory=$True)]
+        [string] $SolutionAbbreviation,
+		[Parameter(Mandatory=$True)]
+		[string] $EnvironmentAbbreviation,
+        [Parameter(Mandatory=$True)]
+        [string] $TenantId,
+        [Parameter(Mandatory = $False)]
+		[array] $UserPrincipalNames,
+        [Parameter(Mandatory = $False)]
+		[string] $DataResourceGroupName = $null,
+        [Parameter(Mandatory = $False)]
+		[string] $ComputeResourceGroupName = $null,
+        [Parameter(Mandatory = $False)]
+		[bool] $SetUserAssignedManagedIdentityPermissions = $false,
+        [Parameter(Mandatory = $False)]
+		[boolean] $SkipPrivilegedDirectoryActions = $false
+    )
+
+    $scriptsDirectory = Split-Path $PSScriptRoot -Parent
+    . ($scriptsDirectory + '/PostDeploymentRoleAssignments/Set-StorageAccountContainerManagedIdentityRoles.ps1')
+
+    Set-StorageAccountContainerManagedIdentityRoles	-SolutionAbbreviation $SolutionAbbreviation `
+                                                    -EnvironmentAbbreviation $EnvironmentAbbreviation `
+                                                    -DataResourceGroupName $DataResourceGroupName `
+                                                    -Verbose
+
+    . ($scriptsDirectory + '/PostDeploymentRoleAssignments/Set-AppConfigurationManagedIdentityRoles.ps1')
+    Set-AppConfigurationManagedIdentityRoles    -SolutionAbbreviation $SolutionAbbreviation `
+                                                -EnvironmentAbbreviation $EnvironmentAbbreviation `
+                                                -DataResourceGroupName $DataResourceGroupName `
+                                                -Verbose
+
+    . ($scriptsDirectory + '/PostDeploymentRoleAssignments/Set-LogAnalyticsReaderRole.ps1')
+    Set-LogAnalyticsReaderRole	-SolutionAbbreviation $SolutionAbbreviation `
+                                -EnvironmentAbbreviation $EnvironmentAbbreviation `
+                                -DataResourceGroupName $DataResourceGroupName `
+                                -Verbose
+
+    . ($scriptsDirectory + '/PostDeploymentRoleAssignments/Set-ADFManagedIdentityRoles.ps1')
+    Set-ADFManagedIdentityRoles	-SolutionAbbreviation $SolutionAbbreviation `
+                                -EnvironmentAbbreviation $EnvironmentAbbreviation `
+                                -UserPrincipalNames $UserPrincipalNames
+
+    . ($scriptsDirectory + '/PostDeploymentRoleAssignments/Set-ServiceBusManagedIdentityRoles.ps1')
+    Set-ServiceBusManagedIdentityRoles -SolutionAbbreviation $SolutionAbbreviation `
+                                       -EnvironmentAbbreviation $EnvironmentAbbreviation `
+                                       -DataResourceGroupName $DataResourceGroupName `
+                                       -ComputeResourceGroupName $ComputeResourceGroupName `
+                                       -Verbose
+
+    . ($scriptsDirectory + '/PostDeploymentRoleAssignments/Set-KeyVaultAccessRoles.ps1')
+    Set-KeyVaultAccessRoles `
+        -SolutionAbbreviation $SolutionAbbreviation `
+        -EnvironmentAbbreviation $EnvironmentAbbreviation `
+        -Verbose
+
+    . ($scriptsDirectory + '/PostDeploymentRoleAssignments/Set-WebAPIAccessRoles.ps1')
+    Set-WebAPIAccessRoles `
+        -SolutionAbbreviation $SolutionAbbreviation `
+        -EnvironmentAbbreviation $EnvironmentAbbreviation `
+        -ComputeResourceGroupName $ComputeResourceGroupName `
+        -DataResourceGroupName $DataResourceGroupName `
+        -Verbose
+    
+    if ($SetUserAssignedManagedIdentityPermissions) {
+        . ($scriptsDirectory + '/PostDeploymentRoleAssignments/Set-UserManagedIdentityPermissions.ps1')
+        Set-UserManagedIdentityPermissions	-SolutionAbbreviation $SolutionAbbreviation `
+                                            -EnvironmentAbbreviation $EnvironmentAbbreviation `
+                                            -TenantId $TenantId `
+                                            -SkipPrivilegedDirectoryActions $SkipPrivilegedDirectoryActions `
+                                            -Verbose
+    }
+}

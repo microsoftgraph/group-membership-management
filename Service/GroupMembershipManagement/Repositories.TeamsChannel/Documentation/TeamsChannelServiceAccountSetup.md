@@ -2,12 +2,16 @@
 
 1) Open the Azure Portal from the tenant where the Graph App is created in.
 2) Ensure that the `Channel.ReadBasic.All` and `ChannelMember.ReadWrite.All` Delegated Permissions have been granted for the `<SolutionAbbreviation>-Graph-<EnvironmentAbbreviation>` application.
+
+  a. **If you are in an environment that requires MFA for all service accounts**, then add the Channel.ReadBasic.All and ChannelMember.ReadWrite.All **Application Permission** instead (Delegated permissions don't work when MFA is required on the service account).
+
+
 3) Enable 'Allow public client flows' in `<SolutionAbbreviation>-Graph-<EnvironmentAbbreviation>` application -> Authentication.
 4) Create a new service account:
 
     * This can be done by creating a new user from the tenant where the Graph App is created in
     * Make sure the user has a usage location set
-    * This account will be used by GMM to get information about channels and to add and remove users from channels. 
+    * This account will be used by GMM to get information about channels and to add and remove users from channels.
     * Please note username & password of this user.
 
 5) Run [Set-TeamsChannelServiceAccountSecrets.ps1](/Scripts/Set-TeamsChannelServiceAccountSecrets.ps1) to store the service account information in the prereqs keyvault
@@ -25,8 +29,12 @@
                                                 -EnvironmentAbbreviation "<Environment Abbreviation>" `
                                                 -teamsChannelServiceAccountUsername $teamsChannelServiceAccountUsername `
                                                 -teamsChannelServiceAccountPassword $teamsChannelServiceAccountPassword `
-                                                -teamsChannelServiceAccountObjectId $teamsChannelServiceAccountObjectId
+                                                -teamsChannelServiceAccountObjectId $teamsChannelServiceAccountObjectId `
+										                            -GmmGraphAppHasTeamsChannelApplicationPermissions $false
         ```
+
+>Note: Make sure that **if you added Channel.ReadBasic.All and ChannelMember.ReadWrite.All Application permissions** to your GMM Graph App, that you set the GmmGraphAppHasTeamsChannelApplicationPermissions parameter in the Set-TeamsChannelServiceAccountSecrets script to $true!
+
 6) Assign the following two licenses to this user by going to [this](https://admin.microsoft.com/AdminPortal/Home#/licenses) link from your demo tenant page. You may have to unassign some licenses from other users to do this.
 
 - Enterprise Mobility + Security E5

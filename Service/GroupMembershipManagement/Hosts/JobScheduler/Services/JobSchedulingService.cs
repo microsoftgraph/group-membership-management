@@ -2,12 +2,12 @@
 // Licensed under the MIT license.
 
 using Models;
-using Newtonsoft.Json;
 using Repositories.Contracts;
 using Services.Contracts;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text.Json;
 using System.Threading.Tasks;
 
 namespace Services
@@ -45,11 +45,11 @@ namespace Services
             return updatedJobs;
         }
 
-        public async Task<List<DistributionSyncJob>> DistributeJobsAsync(List<DistributionSyncJob> jobs, int startTimeDelayMinutes, int delayBetweenSyncsSeconds)
+        public async Task<List<DistributionSyncJob>> DistributeJobsAsync(List<DistributionSyncJob> jobs, int startTimeDelayMinutes, int delayBetweenSyncsSeconds, bool prioritizeThresholdJobs = false)
         {
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Distributing {jobs.Count} jobs" });
+            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Distributing {jobs.Count} jobs (PrioritizeThresholdJobs: {prioritizeThresholdJobs})" });
 
-            List<DistributionSyncJob> updatedJobs = await DistributeJobStartTimesAsync(jobs, startTimeDelayMinutes, delayBetweenSyncsSeconds);
+            List<DistributionSyncJob> updatedJobs = await DistributeJobStartTimesAsync(jobs, startTimeDelayMinutes, delayBetweenSyncsSeconds, prioritizeThresholdJobs);
 
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Distributed {jobs.Count} jobs" });
 
@@ -59,7 +59,7 @@ namespace Services
         public async Task<List<SyncJob>> GetSyncJobsAsync()
         {
             var includeFutureScheduledJobs = true;
-            var jobs = await _databaseSyncJobsRepository.GetSyncJobsAsync(includeFutureScheduledJobs, SyncStatus.All);
+            var jobs = await _databaseSyncJobsRepository.GetSyncJobsAsync(includeFutureScheduledJobs, SyncStatus.Idle, SyncStatus.InProgress, SyncStatus.StuckInProgress);
             return jobs.ToList();
         }
 
@@ -97,7 +97,8 @@ namespace Services
         public async Task<List<DistributionSyncJob>> DistributeJobStartTimesAsync(
             List<DistributionSyncJob> syncJobsToDistribute,
             int startTimeDelayMinutes,
-            int bufferBetweenSyncsSeconds)
+            int bufferBetweenSyncsSeconds,
+            bool prioritizeThresholdJobs = false)
         {
             // Get all runtimes for destination groups
             Dictionary<string, double> runtimeMap = await _runtimeRetrievalService.GetRunTimesInSecondsAsync();
@@ -123,7 +124,7 @@ namespace Services
             {
                 var jobsForPeriod = periodToJobs[period];
 
-                List<DistributionSyncJob> updatedJobsForPeriod = await DistributeJobStartTimesForPeriod(jobsForPeriod, period, startTimeDelayMinutes, bufferBetweenSyncsSeconds, runtimeMap);
+                List<DistributionSyncJob> updatedJobsForPeriod = await DistributeJobStartTimesForPeriod(jobsForPeriod, period, startTimeDelayMinutes, bufferBetweenSyncsSeconds, runtimeMap, prioritizeThresholdJobs);
                 updatedJobs.AddRange(updatedJobsForPeriod);
             }
 
@@ -135,14 +136,26 @@ namespace Services
             int periodInHours,
             int startTimeDelayMinutes,
             int bufferBetweenSyncsSeconds,
-            Dictionary<string, double> runtimeMap)
+            Dictionary<string, double> runtimeMap,
+            bool prioritizeThresholdJobs = false)
         {
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Calculating distribution for jobs with period {periodInHours}" });
 
-            HashSet<string> groupDestinationsForPeriod = new HashSet<string>(jobsToDistribute.ConvertAll(job => job.Destination));
+            HashSet<string> groupDestinationsForPeriod = new HashSet<string>(jobsToDistribute.ConvertAll(job => job.Id.ToString()));
             runtimeMap = new Dictionary<string, double>(runtimeMap.Where(entry => groupDestinationsForPeriod.Contains(entry.Key) || entry.Key == "Default"));
 
-            // Sort sync jobs by Status, LastRunTime
+            // Set the prioritization flag on all jobs before sorting
+            foreach (var job in jobsToDistribute)
+            {
+                job.PrioritizeThresholdJobs = prioritizeThresholdJobs;
+            }
+
+            var prioritizationMessage = prioritizeThresholdJobs 
+                ? "Sorting jobs WITH threshold prioritization (jobs with thresholds will be scheduled first)" 
+                : "Sorting jobs WITHOUT threshold prioritization (normal sort order by Status and LastRunTime)";
+            await _loggingRepository.LogMessageAsync(new LogMessage { Message = prioritizationMessage });
+
+            // Sort sync jobs by Status, LastRunTime and (optionally) ThresholdPercentages
             jobsToDistribute.Sort();
 
             double totalTimeInSeconds = runtimeMap.Values.Sum() + (jobsToDistribute.Count - runtimeMap.Count) * runtimeMap["Default"];
@@ -163,11 +176,11 @@ namespace Services
             {
                 DateTime earliestTime = jobThreads.Min();
 
-                var serializedJob = JsonConvert.SerializeObject(job);
-                var updatedJob = JsonConvert.DeserializeObject<DistributionSyncJob>(serializedJob);
+                var serializedJob = JsonSerializer.Serialize(job);
+                var updatedJob = JsonSerializer.Deserialize<DistributionSyncJob>(serializedJob);
 
                 updatedJob.ScheduledDate = earliestTime;
-                var groupRuntime = runtimeMap.ContainsKey(job.Destination) ? runtimeMap[job.Destination] : runtimeMap["Default"];
+                var groupRuntime = runtimeMap.ContainsKey(job.Id.ToString()) ? runtimeMap[job.Id.ToString()] : runtimeMap["Default"];
                 DateTime updatedTime = earliestTime.AddSeconds(groupRuntime + bufferBetweenSyncsSeconds);
                 int index = jobThreads.IndexOf(earliestTime);
                 jobThreads[index] = updatedTime;

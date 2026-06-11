@@ -23,8 +23,6 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Repositories.Logging", "..\
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Common.DependencyInjection", "..\..\..\Common.DependencyInjection\Common.DependencyInjection.csproj", "{5C683B9D-E546-4FA0-87F8-242342EC5BA8}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Repositories.NotificationRepository", "..\..\..\Repositories.Notifications\Repositories.NotificationRepository.csproj", "{9AD0DD4C-01FB-40A1-9A9E-BBDC2DD74EB7}"
-EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Services.TeamsChannelUpdater", "..\Services.TeamsChannelUpdater\Services.TeamsChannelUpdater.csproj", "{FC7E66B0-A134-4041-867E-370834F2C0D1}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Services.TeamsChannelUpdater.Contracts", "..\Services.TeamsChannelUpdater.Contracts\Services.TeamsChannelUpdater.Contracts.csproj", "{46E07EED-A68C-4850-9AA5-89BEB144B028}"
@@ -44,6 +42,10 @@ EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Repositories.Mail", "..\..\..\Repositories.Mail\Repositories.Mail.csproj", "{6314F17B-C6D6-4F9C-B445-F86C3B34A8C4}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Repositories.Localization", "..\..\..\Repositories.Localization\Repositories.Localization.csproj", "{8C5D2583-A04B-45E1-A4F5-40B5E5DEC042}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Repositories.RetryPolicyProvider", "..\..\..\Repositories.RetryPolicyProvider\Repositories.RetryPolicyProvider.csproj", "{FCF83599-33C3-4C6F-BCA4-0EAC2D7D0ABF}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SqlMembershipObtainer.Entities", "..\..\SqlMembershipObtainer.Common\SqlMembershipObtainer.Entities\SqlMembershipObtainer.Entities.csproj", "{F3F6BA44-2DC3-BFCC-0011-A6BD3B9338F1}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -87,10 +89,6 @@ Global
 		{5C683B9D-E546-4FA0-87F8-242342EC5BA8}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{5C683B9D-E546-4FA0-87F8-242342EC5BA8}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{5C683B9D-E546-4FA0-87F8-242342EC5BA8}.Release|Any CPU.Build.0 = Release|Any CPU
-		{9AD0DD4C-01FB-40A1-9A9E-BBDC2DD74EB7}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{9AD0DD4C-01FB-40A1-9A9E-BBDC2DD74EB7}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{9AD0DD4C-01FB-40A1-9A9E-BBDC2DD74EB7}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{9AD0DD4C-01FB-40A1-9A9E-BBDC2DD74EB7}.Release|Any CPU.Build.0 = Release|Any CPU
 		{FC7E66B0-A134-4041-867E-370834F2C0D1}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{FC7E66B0-A134-4041-867E-370834F2C0D1}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{FC7E66B0-A134-4041-867E-370834F2C0D1}.Release|Any CPU.ActiveCfg = Release|Any CPU
@@ -131,6 +129,14 @@ Global
 		{8C5D2583-A04B-45E1-A4F5-40B5E5DEC042}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{8C5D2583-A04B-45E1-A4F5-40B5E5DEC042}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{8C5D2583-A04B-45E1-A4F5-40B5E5DEC042}.Release|Any CPU.Build.0 = Release|Any CPU
+		{FCF83599-33C3-4C6F-BCA4-0EAC2D7D0ABF}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{FCF83599-33C3-4C6F-BCA4-0EAC2D7D0ABF}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{FCF83599-33C3-4C6F-BCA4-0EAC2D7D0ABF}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{FCF83599-33C3-4C6F-BCA4-0EAC2D7D0ABF}.Release|Any CPU.Build.0 = Release|Any CPU
+		{F3F6BA44-2DC3-BFCC-0011-A6BD3B9338F1}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{F3F6BA44-2DC3-BFCC-0011-A6BD3B9338F1}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{F3F6BA44-2DC3-BFCC-0011-A6BD3B9338F1}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{F3F6BA44-2DC3-BFCC-0011-A6BD3B9338F1}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

@@ -19,6 +19,9 @@ param environmentAbbreviation string
 @description('Tenant id.')
 param tenantId string
 
+@description('Function authentication app client id.')
+param functionAuthAppClientId string
+
 @description('Name of the resource group where the \'prereqs\' key vault is located.')
 param prereqsKeyVaultName string = '${solutionAbbreviation}-prereqs-${environmentAbbreviation}'
 
@@ -48,8 +51,9 @@ param servicePlanName string = '${solutionAbbreviation}-${resourceGroupClassific
   'I2'
   'I3'
   'Y1'
+  'FC1'
 ])
-param servicePlanSku string = 'Y1'
+param servicePlanSku string = 'FC1'
 
 @description('Resource location.')
 param location string
@@ -62,23 +66,9 @@ param functionAppName string = '${solutionAbbreviation}-${resourceGroupClassific
   'functionapp'
   'linux'
   'container'
+  'functionapp,linux'
 ])
-param functionAppKind string = 'functionapp'
-
-@description('Maximum elastic worker count.')
-param maximumElasticWorkerCount int = 1
-
-@description('Enter application insights name.')
-param appInsightsName string = '${solutionAbbreviation}-data-${environmentAbbreviation}'
-
-@description('Resource group where Application Insights is located.')
-param appInsightsResourceGroup string = '${solutionAbbreviation}-data-${environmentAbbreviation}'
-
-@description('Enter storage account name.')
-param storageAccountName string
-
-@description('Resource group where storage account is located.')
-param storageAccountResourceGroup string = '${solutionAbbreviation}-data-${environmentAbbreviation}'
+param functionAppKind string = 'functionapp,linux'
 
 @description('Name of the \'data\' key vault.')
 param dataKeyVaultName string = '${solutionAbbreviation}-data-${environmentAbbreviation}'
@@ -109,6 +99,11 @@ param appConfigurationEndpoint string = 'https://${appConfigurationName}.azconfi
 @description('Flag to indicate if the deployment should set RBAC permissions.')
 param setRBACPermissions bool = false
 
+@description('Object with flags to determine behaviour')
+param featureFlags object = {
+  skipListingFunctionAppKeys : false
+}
+
 var logAnalyticsCustomerId = resourceId(subscription().subscriptionId, dataKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'logAnalyticsCustomerId')
 var logAnalyticsPrimarySharedKey = resourceId(subscription().subscriptionId, dataKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'logAnalyticsPrimarySharedKey')
 var graphAppClientId = resourceId(subscription().subscriptionId, prereqsKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', prereqsKeyVaultName, 'graphAppClientId')
@@ -118,8 +113,6 @@ var graphAppTenantId = resourceId(subscription().subscriptionId, prereqsKeyVault
 var appInsightsInstrumentationKey = resourceId(subscription().subscriptionId, dataKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'appInsightsInstrumentationKey')
 var jobsMSIConnectionString = resourceId(subscription().subscriptionId, dataKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'jobsMSIConnectionString')
 var replicaJobsMSIConnectionString = resourceId(subscription().subscriptionId, dataKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'replicaJobsMSIConnectionString')
-var nonProdServiceStorageAccountProd = resourceId(subscription().subscriptionId, dataKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'nonProdServiceStorageAccountProd')
-var nonProdServiceStorageAccountStaging = resourceId(subscription().subscriptionId, dataKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'nonProdServiceStorageAccountStaging')
 var graphUserAssignedManagedIdentityClientId = resourceId(subscription().subscriptionId, dataKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'graphUserAssignedManagedIdentityClientId')
 
 param appConfigurationKeyData array = [
@@ -174,60 +167,29 @@ module servicePlanTemplate 'servicePlan.bicep' = {
     name: servicePlanName
     sku: servicePlanSku
     location: location
-    maximumElasticWorkerCount: maximumElasticWorkerCount
   }
 }
 
-var commonSettings = {
-  WEBSITE_ADD_SITENAME_BINDINGS_IN_APPHOST_CONFIG: 1
-  WEBSITE_ENABLE_SYNC_UPDATE_SITE: 1
-  SCM_TOUCH_WEBCONFIG_AFTER_DEPLOYMENT: 0
-  FUNCTIONS_WORKER_RUNTIME: 'dotnet'
-  FUNCTIONS_EXTENSION_VERSION: '~4'
-}
 
 var appSettings =  {
-  WEBSITE_CONTENTAZUREFILECONNECTIONSTRING: '@Microsoft.KeyVault(SecretUri=${reference(nonProdServiceStorageAccountProd, '2019-09-01').secretUriWithVersion})'
-  WEBSITE_CONTENTSHARE: toLower('functionApp-NonProdService')
+  AZURE_TOKEN_CREDENTIALS: 'ManagedIdentityCredential'
+  AzureWebJobsStorage__accountName: storageAccountNameReader.outputs.value
+  AzureWebJobsStorage__credential: 'managedidentity'
+  AzureFunctionsJobHost__extensions__durableTask__hubName: '${solutionAbbreviation}compute${environmentAbbreviation}NonProdService'
+  AzureFunctionsWebHost__hostid: 'NonProdService'
   APPINSIGHTS_INSTRUMENTATIONKEY: '@Microsoft.KeyVault(SecretUri=${reference(appInsightsInstrumentationKey, '2019-09-01').secretUriWithVersion})'
   logAnalyticsCustomerId: '@Microsoft.KeyVault(SecretUri=${reference(logAnalyticsCustomerId, '2019-09-01').secretUriWithVersion})'
   logAnalyticsPrimarySharedKey: '@Microsoft.KeyVault(SecretUri=${reference(logAnalyticsPrimarySharedKey, '2019-09-01').secretUriWithVersion})'
-  'graphCredentials:ClientCertificateName': '@Microsoft.KeyVault(SecretUri=${reference(graphAppCertificateName, '2019-09-01').secretUriWithVersion})'
-  'graphCredentials:ClientSecret': '@Microsoft.KeyVault(SecretUri=${reference(graphAppClientSecret, '2019-09-01').secretUriWithVersion})'
-  'graphCredentials:ClientId': '@Microsoft.KeyVault(SecretUri=${reference(graphAppClientId, '2019-09-01').secretUriWithVersion})'
-  'graphCredentials:TenantId': '@Microsoft.KeyVault(SecretUri=${reference(graphAppTenantId, '2019-09-01').secretUriWithVersion})'
-  'graphCredentials:KeyVaultName': prereqsKeyVaultName
-  'graphCredentials:KeyVaultTenantId': tenantId
-  'ConnectionStrings:JobsContext': '@Microsoft.KeyVault(SecretUri=${reference(jobsMSIConnectionString, '2019-09-01').secretUriWithVersion})'
-  'ConnectionStrings:JobsContextReadOnly': '@Microsoft.KeyVault(SecretUri=${reference(replicaJobsMSIConnectionString, '2019-09-01').secretUriWithVersion})'
+  graphCredentials__ClientCertificateName: '@Microsoft.KeyVault(SecretUri=${reference(graphAppCertificateName, '2019-09-01').secretUriWithVersion})'
+  graphCredentials__ClientSecret: '@Microsoft.KeyVault(SecretUri=${reference(graphAppClientSecret, '2019-09-01').secretUriWithVersion})'
+  graphCredentials__ClientId: '@Microsoft.KeyVault(SecretUri=${reference(graphAppClientId, '2019-09-01').secretUriWithVersion})'
+  graphCredentials__TenantId: '@Microsoft.KeyVault(SecretUri=${reference(graphAppTenantId, '2019-09-01').secretUriWithVersion})'
+  graphCredentials__KeyVaultName: prereqsKeyVaultName
+  graphCredentials__KeyVaultTenantId: tenantId
+  ConnectionStrings__JobsContext: '@Microsoft.KeyVault(SecretUri=${reference(jobsMSIConnectionString, '2019-09-01').secretUriWithVersion})'
+  ConnectionStrings__JobsContextReadOnly: '@Microsoft.KeyVault(SecretUri=${reference(replicaJobsMSIConnectionString, '2019-09-01').secretUriWithVersion})'
   appConfigurationEndpoint: appConfigurationEndpoint
-  'graphCredentials:UserAssignedManagedIdentityClientId': '@Microsoft.KeyVault(SecretUri=${reference(graphUserAssignedManagedIdentityClientId, '2019-09-01').secretUriWithVersion})'
-}
-
-var stagingSettings = {
-  AzureWebJobsStorage: '@Microsoft.KeyVault(SecretUri=${reference(nonProdServiceStorageAccountStaging, '2019-09-01').secretUriWithVersion})'
-  AzureFunctionsJobHost__extensions__durableTask__hubName: '${solutionAbbreviation}compute${environmentAbbreviation}NonProdServiceStaging'
-  'AzureWebJobs.StarterFunction.Disabled': 1
-  'AzureWebJobs.OrchestratorFunction.Disabled': 1
-  'AzureWebJobs.GroupUpdaterSubOrchestratorFunction.Disabled': 1
-  'AzureWebJobs.GroupCreatorAndRetrieverFunction.Disabled': 1
-  'AzureWebJobs.GroupUpdaterFunction.Disabled': 1
-  'AzureWebJobs.LoggerFunction.Disabled': 1
-  'AzureWebJobs.TenantUserReaderFunction.Disabled': 1
-  AzureFunctionsWebHost__hostid: 'NonProdServiceStaging'
-}
-
-var productionSettings = {
-  AzureWebJobsStorage: '@Microsoft.KeyVault(SecretUri=${reference(nonProdServiceStorageAccountProd, '2019-09-01').secretUriWithVersion})'
-  AzureFunctionsJobHost__extensions__durableTask__hubName: '${solutionAbbreviation}compute${environmentAbbreviation}NonProdService'
-  'AzureWebJobs.StarterFunction.Disabled': 0
-  'AzureWebJobs.OrchestratorFunction.Disabled': 0
-  'AzureWebJobs.GroupUpdaterSubOrchestratorFunction.Disabled': 0
-  'AzureWebJobs.GroupCreatorAndRetrieverFunction.Disabled': 0
-  'AzureWebJobs.GroupUpdaterFunction.Disabled': 0
-  'AzureWebJobs.LoggerFunction.Disabled': 0
-  'AzureWebJobs.TenantUserReaderFunction.Disabled': 0
-  AzureFunctionsWebHost__hostid: 'NonProdService'
+  graphCredentials__UserAssignedManagedIdentityClientId: '@Microsoft.KeyVault(SecretUri=${reference(graphUserAssignedManagedIdentityClientId, '2019-09-01').secretUriWithVersion})'
 }
 
 resource dataKeyVault 'Microsoft.KeyVault/vaults@2023-07-01' existing = {
@@ -245,13 +207,33 @@ module userAssignedManagedIdentityNameReader 'keyVaultReader.bicep' = {
   ]
 }
 
+module storageAccountNameReader 'keyVaultReader.bicep' = {
+  name: 'storageAccountNameReader-NonProdService'
+  params: {
+    value: dataKeyVault.getSecret('nonProdServiceStorageAccountProd')
+  }
+  dependsOn: [
+    dataKeyVault
+  ]
+}
+
+module appPackageContainerNameReader 'keyVaultReader.bicep' = {
+  name: 'appPackageContainerNameReader-NonProdService'
+  params: {
+    value: dataKeyVault.getSecret('nonProdServiceAppPackageContainerProd')
+  }
+  dependsOn: [
+    dataKeyVault
+  ]
+}
+
 resource graphUAMI 'Microsoft.ManagedIdentity/userAssignedIdentities@2023-07-31-preview' existing = {
   name: userAssignedManagedIdentityNameReader.outputs.value
   scope: resourceGroup(dataKeyVaultResourceGroup)
 }
 
 module existingLogAnalyticsWorkspace 'logAnalyticsWorkspace.bicep' = {
-  name: 'existingLogAnalyticsWorkspace'
+  name: 'existingLogAnalyticsWorkspace-nps'
   scope: resourceGroup('${solutionAbbreviation}-data-${environmentAbbreviation}')
   params: {
     environmentAbbreviation: environmentAbbreviation
@@ -269,72 +251,22 @@ module functionAppTemplate_NonProdService 'functionApp.bicep' = {
     servicePlanName: servicePlanName
     dataKeyVaultName: dataKeyVaultName
     dataKeyVaultResourceGroup: dataKeyVaultResourceGroup
-    secretSettings: commonSettings
+    appSettings: appSettings
+    functionAuthAppClientId: functionAuthAppClientId
     userManagedIdentities:{
       '${graphUAMI.id}' : {}
     }
     logAnalyticsWorkspaceId: existingLogAnalyticsWorkspace.outputs.workspaceId
+    featureFlags: featureFlags
+    prereqsKeyVaultName: prereqsKeyVaultName
+    prereqsKeyVaultResourceGroup: prereqsKeyVaultResourceGroup
+    setRBACPermissions: setRBACPermissions
+    storageAccountName: storageAccountNameReader.outputs.value
+    appPackageContainerName: appPackageContainerNameReader.outputs.value
   }
   dependsOn: [
     servicePlanTemplate
     graphUAMI
-    existingLogAnalyticsWorkspace
   ]
 }
 
-module functionAppSlotTemplate_NonProdService 'functionAppSlot.bicep' = {
-  name: 'functionAppSlotTemplate-NonProdService'
-  params: {
-    name: '${functionAppName}-NonProdService/staging'
-    kind: functionAppKind
-    location: location
-    servicePlanName: servicePlanName
-    dataKeyVaultName: dataKeyVaultName
-    dataKeyVaultResourceGroup: dataKeyVaultResourceGroup
-    secretSettings: commonSettings
-    userManagedIdentities:{
-      '${graphUAMI.id}' : {}
-    }
-    logAnalyticsWorkspaceId: existingLogAnalyticsWorkspace.outputs.workspaceId
-  }
-  dependsOn: [
-    functionAppTemplate_NonProdService
-  ]
-}
-
-module functionAppRBAC 'functionAppRBAC.bicep' = {
-  name: 'functionAppsRBAC-NonProdService'
-  params: {
-    functionName: 'NonProdService'
-    prereqsKeyVaultName: prereqsKeyVaultName
-    prereqsKeyVaultResourceGroup: prereqsKeyVaultResourceGroup
-    dataKeyVaultName: dataKeyVaultName
-    dataKeyVaultResourceGroup: dataKeyVaultResourceGroup
-    setRBACPermissions: setRBACPermissions
-    productionSlotPrincipalId: functionAppTemplate_NonProdService.outputs.msi
-    stagingSlotPrincipalId: functionAppSlotTemplate_NonProdService.outputs.msi
-  }
-  dependsOn: [
-    functionAppTemplate_NonProdService
-    functionAppSlotTemplate_NonProdService
-  ]
-}
-
-resource functionAppSettings 'Microsoft.Web/sites/config@2022-09-01' = {
-  name: '${functionAppName}-NonProdService/appsettings'
-  kind: 'string'
-  properties: union(commonSettings, appSettings, productionSettings)
-  dependsOn: [
-    functionAppRBAC
-  ]
-}
-
-resource functionAppStagingSettings 'Microsoft.Web/sites/slots/config@2022-09-01' = {
-  name: '${functionAppName}-NonProdService/staging/appsettings'
-  kind: 'string'
-  properties: union(commonSettings, appSettings, stagingSettings)
-  dependsOn: [
-    functionAppRBAC
-    functionAppSettings
-  ]
-}

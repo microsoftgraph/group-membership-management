@@ -24,4 +24,4 @@ export interface IPrivacyPolicyLinkProps extends React.AllHTMLAttributes<HTMLDiv
    * Call to provide customized styling that will layer on top of the variant rules.
    */
   styles?: IStyleFunctionOrObject<IPrivacyPolicyLinkStyleProps, IPrivacyPolicyLinkStyles>;
-}
+};

@@ -6,6 +6,8 @@ namespace Hosts.TeamsChannelUpdater
     public class SyncCompleteCustomEvent
     {
         public string Destination { get; set; } = "N/A";
+        public string GroupId { get; set; } = "N/A";
+        public string ChannelId { get; set; } = "N/A";
         public string RunId { get; set; } = "N/A";
         public string IsDryRunEnabled { get; set; } = "N/A";
         public string ProjectedMemberCount { get; set; } = "N/A";

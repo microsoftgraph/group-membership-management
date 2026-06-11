@@ -1,7 +1,6 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 using Models;
-using Newtonsoft.Json;
 using Polly;
 using Repositories.Contracts;
 using Repositories.Contracts.InjectConfig;
@@ -15,6 +14,7 @@ using System.Net.Http.Headers;
 using System.Runtime.CompilerServices;
 using System.Security.Cryptography;
 using System.Text;
+using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -26,7 +26,8 @@ namespace Repositories.Logging
         private readonly string _workSpaceId;
         private readonly string _sharedKey;
         private readonly string _location;
-        private const int MAX_RETRY_ATTEMPTS = 8;
+        private const int MAX_RETRY_ATTEMPTS = 3;
+        private const int HTTP_TIMEOUT = 30;
 
         // you should only have one httpClient for the life of your program
         // see https://aspnetmonsters.com/2016/08/2016-08-27-httpclientwrong/?fbclid=IwAR2aNRweTjGdx5Foev4XvHj2Xldeg_UAb6xW3eLTFQDB7Xghv65LvrVa5wA
@@ -49,7 +50,10 @@ namespace Repositories.Logging
 
         private static HttpClient MakeClient(string logType)
         {
-            var client = new HttpClient();
+            var client = new HttpClient
+            {
+                Timeout = TimeSpan.FromSeconds(HTTP_TIMEOUT)
+            };
             client.DefaultRequestHeaders.Add("Log-Type", logType);
             return client;
         }
@@ -69,6 +73,29 @@ namespace Repositories.Logging
             }
 
             _logPropertiesSemaphore.Release();
+        }
+
+        public void UpsertSyncJobProperties(Guid runId, Dictionary<string, string> properties)
+        {
+            _logPropertiesSemaphore.Wait();
+
+            try
+            {
+                if (SyncJobProperties.ContainsKey(runId))
+                {
+                    var bag = SyncJobProperties[runId].Properties ??= new Dictionary<string, string>();
+                    foreach (var kvp in properties)
+                        bag[kvp.Key] = kvp.Value;
+                }
+                else
+                {
+                    SyncJobProperties.Add(runId, new LogProperties { Properties = new Dictionary<string, string>(properties) });
+                }
+            }
+            finally
+            {
+                _logPropertiesSemaphore.Release();
+            }
         }
 
         public void RemoveSyncJobProperties(Guid runId)
@@ -115,7 +142,7 @@ namespace Repositories.Logging
                 properties.Add("operation", Path.GetFileNameWithoutExtension(file));
 
 
-            var serializedMessage = JsonConvert.SerializeObject(properties);
+            var serializedMessage = JsonSerializer.Serialize(properties);
 
             HttpStatusCode[] httpStatusCodesWorthRetrying = {
                 HttpStatusCode.RequestTimeout, // 408
@@ -128,6 +155,8 @@ namespace Repositories.Logging
 
             var retryPolicy = Policy
                             .Handle<HttpRequestException>()
+                            .Or<TimeoutException>()
+                            .Or<TaskCanceledException>()
                             .OrResult<HttpResponseMessage>(r => httpStatusCodesWorthRetrying.Contains(r.StatusCode))
                             .WaitAndRetryAsync(
                                 MAX_RETRY_ATTEMPTS,

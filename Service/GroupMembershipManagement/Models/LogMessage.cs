@@ -20,8 +20,13 @@ namespace Models
 
         public Dictionary<string, string> ToDictionary()
         {
+            if (DynamicProperties == null)
+            {
+                DynamicProperties = new Dictionary<string, string>();
+            }
+
             var properties = DictionaryHelper.ToDictionary(this, new DictionaryHelper.Options { UseCamelCase = false });
-            foreach(var property in DynamicProperties)
+            foreach (var property in DynamicProperties)
             {
                 properties[property.Key] = property.Value;
             }

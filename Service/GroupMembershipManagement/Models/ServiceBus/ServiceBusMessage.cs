@@ -29,5 +29,8 @@ namespace Models.ServiceBus
         /// </remarks>
         public Dictionary<string, object> ApplicationProperties { get; set; } = new Dictionary<string, object>();
 
+        // Optional session identifier for session-enabled subscriptions
+        public string? SessionId { get; set; }
+
     }
 }

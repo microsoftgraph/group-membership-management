@@ -9,12 +9,13 @@ param tenantId string
 param senderPassword string
 param senderUsername string
 param supportEmailAddresses string
-param syncDisabledCCEmailAddresses string
-param syncCompletedCCEmailAddresses string
 param teamsChannelServiceAccountObjectId string
 @secure()
 param teamsChannelServiceAccountPassword string
 param teamsChannelServiceAccountUsername string
+param functionAuthAppClientId string = ''
+
+param isInitialDeployment bool
 
 // prereqs resources
 module prereqsKeyVault '../Infrastructure/data/keyVault.bicep' = {
@@ -28,45 +29,22 @@ module prereqsKeyVault '../Infrastructure/data/keyVault.bicep' = {
   }
 }
 
-module prereqsScretsTemplate '../Infrastructure/data/keyVaultSecretsSecure.bicep' = {
+var secretsToUpdate = union(
+  isInitialDeployment || !empty(senderPassword) ? [{ name: 'senderPassword', value: senderPassword }] : [],
+  isInitialDeployment || !empty(senderUsername) ? [{ name: 'senderUsername', value: senderUsername }] : [],
+  isInitialDeployment || !empty(supportEmailAddresses) ? [{ name: 'supportEmailAddresses', value: supportEmailAddresses }] : [],
+  isInitialDeployment || !empty(teamsChannelServiceAccountObjectId) ? [{ name: 'teamsChannelServiceAccountObjectId', value: teamsChannelServiceAccountObjectId }] : [],
+  isInitialDeployment || !empty(teamsChannelServiceAccountPassword) ? [{ name: 'teamsChannelServiceAccountPassword', value: teamsChannelServiceAccountPassword }] : [],
+  isInitialDeployment || !empty(teamsChannelServiceAccountUsername) ? [{ name: 'teamsChannelServiceAccountUsername', value: teamsChannelServiceAccountUsername }] : [],
+  isInitialDeployment || !empty(functionAuthAppClientId) ? [{ name: 'functionAuthAppClientId', value: functionAuthAppClientId }] : []
+)
+
+module prereqsScretsTemplate '../Infrastructure/data/keyVaultSecretsSecure.bicep' = if (!empty(secretsToUpdate)) {
   name: 'prereqsScretsTemplate'
   params: {
     keyVaultName: prereqsKeyVaultName
     keyVaultSecrets: {
-      secrets: [
-        {
-          name: 'senderPassword'
-          value: senderPassword
-        }
-        {
-          name: 'senderUsername'
-          value: senderUsername
-        }
-        {
-          name: 'supportEmailAddresses'
-          value: supportEmailAddresses
-        }
-        {
-          name: 'syncDisabledCCEmailAddresses'
-          value: syncDisabledCCEmailAddresses
-        }
-        {
-          name: 'syncCompletedCCEmailAddresses'
-          value: syncCompletedCCEmailAddresses
-        }
-        {
-          name: 'teamsChannelServiceAccountObjectId'
-          value: teamsChannelServiceAccountObjectId
-        }
-        {
-          name: 'teamsChannelServiceAccountPassword'
-          value: teamsChannelServiceAccountPassword
-        }
-        {
-          name: 'teamsChannelServiceAccountUsername'
-          value: teamsChannelServiceAccountUsername
-        }
-      ]
+      secrets: secretsToUpdate
     }
   }
   dependsOn: [

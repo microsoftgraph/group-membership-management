@@ -1,11 +1,12 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>net6.0</TargetFramework>
+    <TargetFramework>net8.0</TargetFramework>
+    <AssemblyName>GraphUpdater.Services.Contracts</AssemblyName>
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Polly" Version="7.2.3" />
+    <PackageReference Include="Polly" />
   </ItemGroup>
 
   <ItemGroup>

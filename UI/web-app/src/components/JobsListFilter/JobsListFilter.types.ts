@@ -42,5 +42,4 @@ export interface IJobsListFilterProps
    * Call to provide customized styling that will layer on top of the variant rules.
    */
   styles?: IStyleFunctionOrObject<IJobsListFilterStyleProps, IJobsListFilterStyles>;
-  getJobsByPage: () => void;
-}
+};

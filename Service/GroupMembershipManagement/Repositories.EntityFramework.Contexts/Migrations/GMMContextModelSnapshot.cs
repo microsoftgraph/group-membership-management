@@ -17,10 +17,10 @@ namespace Repositories.EntityFramework.Contexts.Migrations
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "6.0.22")
+                .HasAnnotation("ProductVersion", "8.0.7")
                 .HasAnnotation("Relational:MaxIdentifierLength", 128);
 
-            SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder, 1L, 1);
+            SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
 
             modelBuilder.Entity("DestinationOwnerSyncJob", b =>
                 {
@@ -35,6 +35,44 @@ namespace Repositories.EntityFramework.Contexts.Migrations
                     b.HasIndex("SyncJobsId");
 
                     b.ToTable("DestinationOwnerSyncJob");
+                });
+
+            modelBuilder.Entity("Entities.ServiceStatus", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(max)");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("ServiceStatuses", (string)null);
+                });
+
+            modelBuilder.Entity("Entities.ServiceStatusHistory", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("RequestorObjectId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("ServiceStatusId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("Timestamp")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ServiceStatusId");
+
+                    b.ToTable("ServiceStatusHistory");
                 });
 
             modelBuilder.Entity("Entities.SqlMembershipSource", b =>
@@ -64,7 +102,7 @@ namespace Repositories.EntityFramework.Contexts.Migrations
                     b.HasData(
                         new
                         {
-                            Id = new Guid("e10dbc23-84d2-4843-b020-d5e2698a0f7a"),
+                            Id = new Guid("e9f905c9-7127-47fe-8fc1-de4a93dc8526"),
                             Name = "SqlMembership"
                         });
                 });
@@ -76,27 +114,34 @@ namespace Repositories.EntityFramework.Contexts.Migrations
                         .HasColumnType("uniqueidentifier")
                         .HasDefaultValueSql("NEWSEQUENTIALID()");
 
+                    b.Property<string>("BusinessJustification")
+                        .HasColumnType("nvarchar(max)");
+
                     b.Property<string>("ChangeDetails")
-                        .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("ChangeReason")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<int>("ChangeSource")
+                    b.Property<int?>("ChangeSource")
                         .HasColumnType("int");
 
                     b.Property<DateTime>("ChangeTime")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("datetime2")
-                        .HasDefaultValue(new DateTime(2024, 4, 8, 19, 7, 33, 472, DateTimeKind.Utc).AddTicks(8183));
+                        .HasDefaultValue(new DateTime(2026, 2, 12, 0, 8, 57, 137, DateTimeKind.Utc).AddTicks(4451));
 
                     b.Property<string>("ChangedByDisplayName")
-                        .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<Guid>("ChangedByObjectId")
+                    b.Property<Guid?>("ChangedByObjectId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("ChangedOnBehalfOfDisplayName")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<Guid?>("ChangedOnBehalfOfObjectId")
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<Guid>("SyncJobId")
@@ -113,6 +158,124 @@ namespace Repositories.EntityFramework.Contexts.Migrations
                     b.HasIndex("SyncJobId");
 
                     b.ToTable("SyncJobChanges");
+                });
+
+            modelBuilder.Entity("Entities.ThresholdNotification", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier")
+                        .HasDefaultValueSql("NEWSEQUENTIALID()");
+
+                    b.Property<string>("CardStateName")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<double>("ChangePercentageForAdditions")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("float")
+                        .HasDefaultValue(0.0);
+
+                    b.Property<double>("ChangePercentageForRemovals")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("float")
+                        .HasDefaultValue(0.0);
+
+                    b.Property<int>("ChangeQuantityForAdditions")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(0);
+
+                    b.Property<int>("ChangeQuantityForRemovals")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(0);
+
+                    b.Property<DateTime>("CreatedTime")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("datetime2")
+                        .HasDefaultValueSql("GETUTCDATE()");
+
+                    b.Property<DateTime>("LastUpdatedTime")
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("datetime2")
+                        .HasDefaultValueSql("GETUTCDATE()");
+
+                    b.Property<string>("ResolutionName")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<string>("ResolvedBy")
+                        .HasMaxLength(255)
+                        .HasColumnType("nvarchar(255)");
+
+                    b.Property<DateTime>("ResolvedTime")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("datetime2")
+                        .HasDefaultValueSql("GETUTCDATE()");
+
+                    b.Property<string>("StatusName")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<Guid>("SyncJobId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("TargetOfficeGroupId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<int>("ThresholdPercentageForAdditions")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(100);
+
+                    b.Property<int>("ThresholdPercentageForRemovals")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(20);
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("SyncJobId");
+
+                    b.ToTable("ThresholdNotifications");
+                });
+
+            modelBuilder.Entity("Models.Channel", b =>
+                {
+                    b.Property<Guid>("SyncJobId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("ChannelId")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<Guid>("GroupId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("SyncJobId");
+
+                    b.HasIndex("SyncJobId", "GroupId")
+                        .IsUnique();
+
+                    b.ToTable("TeamsChannels");
+                });
+
+            modelBuilder.Entity("Models.DestinationEmail", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Email")
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<DateTime>("LastUpdatedTime")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Email");
+
+                    b.ToTable("DestinationEmail");
                 });
 
             modelBuilder.Entity("Models.DestinationName", b =>
@@ -153,6 +316,22 @@ namespace Repositories.EntityFramework.Contexts.Migrations
                     b.ToTable("DestinationOwners");
                 });
 
+            modelBuilder.Entity("Models.Group", b =>
+                {
+                    b.Property<Guid>("SyncJobId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("GroupId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("SyncJobId");
+
+                    b.HasIndex("SyncJobId", "GroupId")
+                        .IsUnique();
+
+                    b.ToTable("Groups");
+                });
+
             modelBuilder.Entity("Models.JobNotification", b =>
                 {
                     b.Property<Guid>("Id")
@@ -179,24 +358,127 @@ namespace Repositories.EntityFramework.Contexts.Migrations
                     b.ToTable("JobNotifications");
                 });
 
+            modelBuilder.Entity("Models.MembershipType", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(max)");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("MembershipTypes", (string)null);
+                });
+
             modelBuilder.Entity("Models.NotificationType", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("int");
 
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"), 1L, 1);
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
                     b.Property<bool>("Disabled")
                         .HasColumnType("bit");
 
                     b.Property<string>("Name")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(max)");
 
                     b.HasKey("Id");
 
                     b.ToTable("NotificationTypes");
+
+                    b.HasData(
+                        new
+                        {
+                            Id = 1,
+                            Disabled = false,
+                            Name = "ThresholdNotification"
+                        },
+                        new
+                        {
+                            Id = 2,
+                            Disabled = false,
+                            Name = "SyncStartedNotification"
+                        },
+                        new
+                        {
+                            Id = 3,
+                            Disabled = false,
+                            Name = "SyncCompletedNotification"
+                        },
+                        new
+                        {
+                            Id = 4,
+                            Disabled = false,
+                            Name = "DestinationNotExistNotification"
+                        },
+                        new
+                        {
+                            Id = 5,
+                            Disabled = false,
+                            Name = "SourceNotExistNotification"
+                        },
+                        new
+                        {
+                            Id = 6,
+                            Disabled = false,
+                            Name = "NotOwnerNotification"
+                        },
+                        new
+                        {
+                            Id = 7,
+                            Disabled = false,
+                            Name = "NotValidSourceNotification"
+                        },
+                        new
+                        {
+                            Id = 8,
+                            Disabled = false,
+                            Name = "NoDataNotification"
+                        },
+                        new
+                        {
+                            Id = 9,
+                            Disabled = false,
+                            Name = "NormalThresholdNotification"
+                        },
+                        new
+                        {
+                            Id = 10,
+                            Disabled = false,
+                            Name = "InactiveSyncJobNotification"
+                        },
+                        new
+                        {
+                            Id = 11,
+                            Disabled = false,
+                            Name = "GuestUserFailureNotification"
+                        },
+                        new
+                        {
+                            Id = 12,
+                            Disabled = false,
+                            Name = "SubmissionRejectedNotification"
+                        },
+                        new
+                        {
+                            Id = 13,
+                            Disabled = false,
+                            Name = "JobPurgingWarningNotification"
+                        },
+                        new
+                        {
+                            Id = 14,
+                            Disabled = false,
+                            Name = "SubmissionApprovedNotification"
+                        });
                 });
 
             modelBuilder.Entity("Models.PurgedSyncJob", b =>
@@ -326,6 +608,11 @@ namespace Repositories.EntityFramework.Contexts.Migrations
                     b.Property<bool>("IgnoreThresholdOnce")
                         .HasColumnType("bit");
 
+                    b.Property<DateTime>("InitialOnboardingDate")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("datetime2")
+                        .HasDefaultValueSql("GETUTCDATE()");
+
                     b.Property<bool>("IsDryRunEnabled")
                         .HasColumnType("bit");
 
@@ -337,6 +624,9 @@ namespace Repositories.EntityFramework.Contexts.Migrations
 
                     b.Property<DateTime>("LastSuccessfulStartTime")
                         .HasColumnType("datetime2");
+
+                    b.Property<string>("MembershipType")
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<int>("Period")
                         .HasColumnType("int");
@@ -380,6 +670,96 @@ namespace Repositories.EntityFramework.Contexts.Migrations
                     b.ToTable("SyncJobs");
                 });
 
+            modelBuilder.Entity("Models.SyncJobHistory.SyncJobHistory", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier")
+                        .HasDefaultValueSql("NEWSEQUENTIALID()");
+
+                    b.Property<int?>("AfterSyncUserCount")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("BeforeSyncUserCount")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("datetime2")
+                        .HasDefaultValueSql("GETUTCDATE()");
+
+                    b.Property<int?>("Duration")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("EndTime")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid>("RunId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime?>("StartTime")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Status")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<Guid>("SyncJobId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<int?>("ThresholdViolations")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("datetime2")
+                        .HasDefaultValueSql("GETUTCDATE()");
+
+                    b.Property<string>("UpdatedByFunction")
+                        .HasMaxLength(255)
+                        .HasColumnType("nvarchar(255)");
+
+                    b.Property<int?>("UsersAdded")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("UsersRemoved")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("EndTime");
+
+                    b.HasIndex("RunId")
+                        .IsUnique();
+
+                    b.HasIndex("SyncJobId");
+
+                    b.ToTable("SyncJobHistory", (string)null);
+                });
+
+            modelBuilder.Entity("Models.Title", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Name")
+                        .HasColumnType("nvarchar(max)")
+                        .HasAnnotation("Relational:JsonPropertyName", "name");
+
+                    b.Property<Guid>("PartId")
+                        .HasColumnType("uniqueidentifier")
+                        .HasAnnotation("Relational:JsonPropertyName", "partId");
+
+                    b.Property<Guid>("SyncJobId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("SyncJobId");
+
+                    b.ToTable("Titles");
+                });
+
             modelBuilder.Entity("DestinationOwnerSyncJob", b =>
                 {
                     b.HasOne("Models.DestinationOwner", null)
@@ -395,6 +775,46 @@ namespace Repositories.EntityFramework.Contexts.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("Entities.ServiceStatusHistory", b =>
+                {
+                    b.HasOne("Entities.ServiceStatus", "StatusDetails")
+                        .WithMany()
+                        .HasForeignKey("ServiceStatusId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("StatusDetails");
+                });
+
+            modelBuilder.Entity("Entities.ThresholdNotification", b =>
+                {
+                    b.HasOne("Models.SyncJob", null)
+                        .WithMany()
+                        .HasForeignKey("SyncJobId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Models.Channel", b =>
+                {
+                    b.HasOne("Models.SyncJob", null)
+                        .WithOne("Channel")
+                        .HasForeignKey("Models.Channel", "SyncJobId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Models.DestinationEmail", b =>
+                {
+                    b.HasOne("Models.SyncJob", "SyncJob")
+                        .WithOne("DestinationEmail")
+                        .HasForeignKey("Models.DestinationEmail", "Id")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("SyncJob");
+                });
+
             modelBuilder.Entity("Models.DestinationName", b =>
                 {
                     b.HasOne("Models.SyncJob", "SyncJob")
@@ -404,6 +824,15 @@ namespace Repositories.EntityFramework.Contexts.Migrations
                         .IsRequired();
 
                     b.Navigation("SyncJob");
+                });
+
+            modelBuilder.Entity("Models.Group", b =>
+                {
+                    b.HasOne("Models.SyncJob", null)
+                        .WithOne("Group")
+                        .HasForeignKey("Models.Group", "SyncJobId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("Models.JobNotification", b =>
@@ -436,9 +865,26 @@ namespace Repositories.EntityFramework.Contexts.Migrations
                     b.Navigation("StatusDetails");
                 });
 
+            modelBuilder.Entity("Models.Title", b =>
+                {
+                    b.HasOne("Models.SyncJob", null)
+                        .WithMany("Titles")
+                        .HasForeignKey("SyncJobId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("Models.SyncJob", b =>
                 {
+                    b.Navigation("Channel");
+
+                    b.Navigation("DestinationEmail");
+
                     b.Navigation("DestinationName");
+
+                    b.Navigation("Group");
+
+                    b.Navigation("Titles");
                 });
 #pragma warning restore 612, 618
         }

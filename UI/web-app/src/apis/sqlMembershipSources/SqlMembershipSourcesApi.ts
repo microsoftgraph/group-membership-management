@@ -1,7 +1,8 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-import { SqlMembershipAttribute, SqlMembershipAttributeValue, SqlMembershipSource } from '../../models';
+import { SqlMembershipAttribute, SqlMembershipAttributeMapping, SqlMembershipSource } from '../../models';
+import { ValidateSqlFiltersResponse } from '../../models/ValidateSqlFiltersResponse';
 import { ApiBase } from '../ApiBase';
 import { ISqlMembershipSourcesApi } from './ISqlMembershipSourcesApi';
 
@@ -20,8 +21,14 @@ export class SqlMembershipSourcesApi extends ApiBase implements ISqlMembershipSo
     return response.data;
   }
 
-  public async fetchDefaultSqlMembershipSourceAttributeValues(attribute: string): Promise<SqlMembershipAttributeValue[]> {
-    const response = await this.httpClient.get<SqlMembershipAttributeValue[]>('/attributeValues/' + attribute);
+  public async fetchDefaultSqlMembershipSourceAttributeMappings(attribute: string): Promise<SqlMembershipAttributeMapping[]> {
+    const response = await this.httpClient.get<SqlMembershipAttributeMapping[]>('/attributeMappings/' + attribute);
+    this.ensureSuccessStatusCode(response);
+    return response.data;
+  }
+
+  public async fetchDefaultSqlMembershipSourceAttributeValues(attribute: SqlMembershipAttribute): Promise<string[]> {
+    const response = await this.httpClient.get<string[]>('/attributeValues/' + attribute.name, { params: { hasMapping: attribute.hasMapping } });
     this.ensureSuccessStatusCode(response);
     return response.data;
   }
@@ -40,4 +47,10 @@ export class SqlMembershipSourcesApi extends ApiBase implements ISqlMembershipSo
     this.ensureSuccessStatusCode(response);
   }
 
-}
+  public async validateSqlFilters(filters: Map<number, string>): Promise<ValidateSqlFiltersResponse> {
+    const response = await this.httpClient.post<ValidateSqlFiltersResponse>('/validateFilters', Object.fromEntries(filters));
+    this.ensureSuccessStatusCode(response);
+    return response.data;
+  }
+
+};

@@ -1,10 +1,10 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-using Microsoft.Azure.WebJobs;
-using Microsoft.Azure.WebJobs.Extensions.DurableTask;
+using Microsoft.Azure.Functions.Worker;
+using Microsoft.DurableTask;
+using Microsoft.Extensions.Logging;
 using Models;
-using Repositories.Contracts;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -18,19 +18,14 @@ namespace Hosts.DestinationAttributesUpdater
 
         public OrchestratorFunction()
         {
-
         }
 
-        [FunctionName(nameof(OrchestratorFunction))]
-        public async Task RunOrchestratorAsync([OrchestrationTrigger] IDurableOrchestrationContext context)
+        [Function(nameof(OrchestratorFunction))]
+        public async Task RunOrchestratorAsync([OrchestrationTrigger] TaskOrchestrationContext context)
         {
+            var logger = context.CreateReplaySafeLogger("DestinationAttributesUpdater.OrchestratorFunction");
 
-            await context.CallActivityAsync(nameof(LoggerFunction),
-                new LoggerRequest
-                {
-                    Message = $"{nameof(OrchestratorFunction)} function started at: {context.CurrentUtcDateTime}",
-                    Verbosity = VerbosityLevel.DEBUG
-                });
+            logger.FunctionStarted(nameof(OrchestratorFunction));
 
             try
             {
@@ -38,8 +33,7 @@ namespace Hosts.DestinationAttributesUpdater
 
                 foreach (var destinationType in destinationTypes)
                 {
-
-                    var destinationsList = await context.CallActivityAsync<List<(string Destination, Guid TableId)>>(nameof(DestinationReaderFunction), destinationType);
+                    var destinationsList = await context.CallActivityAsync<List<DestinationInfo>>(nameof(DestinationReaderFunction), destinationType);
 
                     int index = 0;
                     while (index < destinationsList.Count)
@@ -57,19 +51,12 @@ namespace Hosts.DestinationAttributesUpdater
             }
             catch (Exception ex)
             {
-                await context.CallActivityAsync(nameof(LoggerFunction),
-                   new LoggerRequest
-                   {
-                       Message = $"An unexpected error occurred.\n{ex}"
-                   });
+                logger.OrchestratorUnexpectedException(ex);
+                logger.FunctionFailed(nameof(OrchestratorFunction));
+                return;
             }
 
-            await context.CallActivityAsync(nameof(LoggerFunction),
-               new LoggerRequest
-               {
-                   Message = $"{nameof(OrchestratorFunction)} function completed at: {context.CurrentUtcDateTime}",
-                   Verbosity = VerbosityLevel.DEBUG
-               });
+            logger.FunctionCompleted(nameof(OrchestratorFunction));
         }
     }
 }

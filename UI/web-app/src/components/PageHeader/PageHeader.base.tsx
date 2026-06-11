@@ -55,7 +55,7 @@ export const PageHeaderBase: React.FunctionComponent<IPageHeaderProps> = (
           <ActionButton
             className={classNames.backButton}
             iconProps={leftArrowIcon}
-            text={onBackToDashboardButtonClick ? strings.backToDashboard : strings.back} 
+            text={onBackToDashboardButtonClick ? strings.backToDashboard : strings.back}
             onClick={onBackToDashboardButtonClick ?? backButtonOnClick}
           />
           <Banner />

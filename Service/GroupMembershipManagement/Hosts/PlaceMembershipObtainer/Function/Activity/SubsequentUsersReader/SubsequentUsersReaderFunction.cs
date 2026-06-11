@@ -1,8 +1,8 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 using Entities;
-using Microsoft.Azure.WebJobs;
-using Microsoft.Azure.WebJobs.Extensions.DurableTask;
+using Microsoft.Azure.Functions.Worker;
+
 using Models;
 using Repositories.Contracts;
 using Services;
@@ -22,7 +22,7 @@ namespace Hosts.PlaceMembershipObtainer
             _membershipProviderService = membershipProviderService ?? throw new ArgumentNullException(nameof(membershipProviderService));
         }
 
-        [FunctionName(nameof(SubsequentUsersReaderFunction))]
+        [Function(nameof(SubsequentUsersReaderFunction))]
 		public async Task<UserInformation> GetUsersAsync([ActivityTrigger] SubsequentUsersReaderRequest request)
 		{
 			await _log.LogMessageAsync(new LogMessage { Message = $"{nameof(SubsequentUsersReaderFunction)} function started", RunId = request.RunId }, VerbosityLevel.DEBUG);

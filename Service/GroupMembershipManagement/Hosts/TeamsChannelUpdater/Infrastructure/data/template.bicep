@@ -8,20 +8,16 @@ param environmentAbbreviation string
 @maxLength(3)
 param solutionAbbreviation string = 'gmm'
 
-@description('Enter tenant Id.')
-param tenantId string
-
-@description('Enter storage account name.')
-param storageAccountName string
-
 param storageAccountSku string = 'Standard_LRS'
 
 @description('Resource location.')
 param location string
 
+@description('Classify the types of resources in prereqs resource group.')
+param prereqsResourceGroupClassification string = 'prereqs'
+
 var keyVaultName = '${solutionAbbreviation}-data-${environmentAbbreviation}'
 var prodStorageAccountName = substring('tcu${solutionAbbreviation}${environmentAbbreviation}prod${uniqueString(resourceGroup().id)}',0,23)
-var stagingStorageAccountName = substring('tcu${solutionAbbreviation}${environmentAbbreviation}staging${uniqueString(resourceGroup().id)}',0,23)
 
 module teamsChannelUpdaterStorageAccountProd 'storageAccount.bicep' = {
   name: 'tcuProdstorageAccountTemplate'
@@ -30,17 +26,22 @@ module teamsChannelUpdaterStorageAccountProd 'storageAccount.bicep' = {
     sku: storageAccountSku
     keyVaultName: keyVaultName
     location: location
-    storageAccountConnectionStringSettingName: 'teamsChannelUpdaterStorageAccountProd'
+    storageAccountSettingName: 'teamsChannelUpdaterStorageAccountProd'
+    appPackageContainerSettingName: 'teamsChannelUpdaterAppPackageContainerProd'
+    appPackageContainerName: 'app-package'
+
   }
 }
 
-module teamsChannelUpdaterStorageAccountStaging 'storageAccount.bicep' = {
-  name: 'tcuStagingstorageAccountTemplate'
+var nspName = '${solutionAbbreviation}-nsp-${environmentAbbreviation}'
+var prereqsResourceGroupName = '${solutionAbbreviation}-${prereqsResourceGroupClassification}-${environmentAbbreviation}'
+
+module tcuStorageAccountAssociationTemplate 'networkSecurityPerimeterResourceAssociation.bicep' = {
+  name: 'tcuStorageAccountAssociationTemplate'
+  scope: resourceGroup(prereqsResourceGroupName)
   params: {
-    name: stagingStorageAccountName
-    sku: storageAccountSku
-    keyVaultName: keyVaultName
-    location: location
-    storageAccountConnectionStringSettingName: 'teamsChannelUpdaterStorageAccountStaging'
+    nspName: nspName
+    profileName: 'storageaccount'
+    resourceId: teamsChannelUpdaterStorageAccountProd.outputs.storageAccountId
   }
 }

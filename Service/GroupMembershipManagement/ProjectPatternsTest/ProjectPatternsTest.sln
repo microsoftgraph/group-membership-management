@@ -1,0 +1,31 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 18
+VisualStudioVersion = 18.0.10925.136
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ProjectPatternsTest", "ProjectPatternsTest.csproj", "{D722C722-3AC9-6F5C-D493-4CA839A53298}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MembershipAggregator", "..\Hosts\MembershipAggregator\Function\MembershipAggregator.csproj", "{51BD552D-79C9-7440-B498-DD5CAC0EC7E5}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{D722C722-3AC9-6F5C-D493-4CA839A53298}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{D722C722-3AC9-6F5C-D493-4CA839A53298}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{D722C722-3AC9-6F5C-D493-4CA839A53298}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{D722C722-3AC9-6F5C-D493-4CA839A53298}.Release|Any CPU.Build.0 = Release|Any CPU
+		{51BD552D-79C9-7440-B498-DD5CAC0EC7E5}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{51BD552D-79C9-7440-B498-DD5CAC0EC7E5}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{51BD552D-79C9-7440-B498-DD5CAC0EC7E5}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{51BD552D-79C9-7440-B498-DD5CAC0EC7E5}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {66EBA4C7-539A-4E30-9D3C-7DE53FBDD55C}
+	EndGlobalSection
+EndGlobal

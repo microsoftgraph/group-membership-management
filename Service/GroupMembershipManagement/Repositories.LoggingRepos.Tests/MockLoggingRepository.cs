@@ -113,5 +113,10 @@ namespace Repositories.LoggingRepos.Tests
         {
             throw new NotImplementedException();
         }
+
+        public void UpsertSyncJobProperties(Guid key, Dictionary<string, string> properties)
+        {
+            throw new NotImplementedException();
+        }
     }
 }

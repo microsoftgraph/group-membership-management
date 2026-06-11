@@ -1,13 +1,11 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Extensions.Options;
-using Microsoft.O365.ActionableMessages.Utilities;
 using Services.Contracts;
 using Services.Messages.Requests;
 using Services.Messages.Responses;
-using WebApi.Models;
 using WebApi.Models.Requests;
 
 namespace WebApi.Controllers.v1.Notifications
@@ -15,30 +13,25 @@ namespace WebApi.Controllers.v1.Notifications
     [ApiController]
     [ApiVersion("1.0")]
     [Route("api/v{version:apiVersion}/notifications")]
+    [Authorize]
     public class NotificationsController : ControllerBase
     {
         private readonly IRequestHandler<NotificationCardRequest, NotificationCardResponse> _notificationCardHandler;
         private readonly IRequestHandler<ResolveNotificationRequest, ResolveNotificationResponse> _resolveNotificationHandler;
-        private readonly IActionableMessageTokenValidator _actionableMessageTokenValidator;
-        private readonly IOptions<WebApiSettings> _webApiSettings;
 
         public NotificationsController(
-            IRequestHandler<ResolveNotificationRequest, ResolveNotificationResponse> notificationCardHandler,
-            IRequestHandler<NotificationCardRequest, NotificationCardResponse> getNotificationCardRequestHandler,
-            IActionableMessageTokenValidator actionableMessageTokenValidator,
-            IOptions<WebApiSettings> webApiSettings)
+            IRequestHandler<ResolveNotificationRequest, ResolveNotificationResponse> resolveNotificationHandler,
+            IRequestHandler<NotificationCardRequest, NotificationCardResponse> notificationCardHandler)
         {
-            _resolveNotificationHandler = notificationCardHandler ?? throw new ArgumentNullException(nameof(notificationCardHandler));
-            _notificationCardHandler = getNotificationCardRequestHandler ?? throw new ArgumentNullException(nameof(getNotificationCardRequestHandler));
-            _actionableMessageTokenValidator = actionableMessageTokenValidator ?? throw new ArgumentNullException(nameof(actionableMessageTokenValidator));
-            _webApiSettings = webApiSettings ?? throw new ArgumentNullException(nameof(webApiSettings));
+            _resolveNotificationHandler = resolveNotificationHandler ?? throw new ArgumentNullException(nameof(resolveNotificationHandler));
+            _notificationCardHandler = notificationCardHandler ?? throw new ArgumentNullException(nameof(notificationCardHandler));
         }
 
         [HttpPost()]
         [Route("{id}/card")]
         public async Task<ActionResult<string>> GetCardAsync(Guid id)
         {
-            var userIdentification = await GetUserEmailOrObjectId(); 
+            var userIdentification = GetUserEmailOrObjectId(); 
             var response = await _notificationCardHandler.ExecuteAsync(new NotificationCardRequest(id, userIdentification));
             Response.Headers["card-update-in-body"] = "true";
             return Content(response.CardJson, "application/json");
@@ -48,19 +41,22 @@ namespace WebApi.Controllers.v1.Notifications
         [HttpPost()]
         public async Task<ActionResult<string>> ResolveNotificationAsync(Guid id, [FromBody] ResolveNotification model)
         {
-            var userIdentification = await GetUserEmailOrObjectId();
+            var userIdentification = GetUserEmailOrObjectId();
             var response = await _resolveNotificationHandler.ExecuteAsync(new ResolveNotificationRequest(id, userIdentification, model.Resolution));
             Response.Headers["card-update-in-body"] = "true";
             return Content(response.CardJson, "application/json");
         }
 
-        private async Task<string> GetUserEmailOrObjectId()
+        private string GetUserEmailOrObjectId()
         {
-            var bearerToken = HttpContext.Request.Headers["Authorization"].ToString().Replace("Bearer ", "");
-            var currentSettings = _webApiSettings.Value;
-            ActionableMessageTokenValidationResult result = await _actionableMessageTokenValidator.ValidateTokenAsync(bearerToken, $"https://{currentSettings.ApiHostname}");
-
-            return result.ActionPerformer;
+            // Extract user identification from AAD token claims (already validated by [Authorize] attribute)
+            // Priority: upn (user principal name) -> unique_name -> email -> oid (object id)
+            var upn = User.Claims.FirstOrDefault(c => c.Type == "upn")?.Value;
+            var uniqueName = User.Claims.FirstOrDefault(c => c.Type == "unique_name")?.Value;
+            var email = User.Claims.FirstOrDefault(c => c.Type == "preferred_username" || c.Type == "email")?.Value;
+            var objectId = User.Claims.FirstOrDefault(c => c.Type == "oid" || c.Type == "http://schemas.microsoft.com/identity/claims/objectidentifier")?.Value;
+            
+            return upn ?? uniqueName ?? email ?? objectId ?? throw new UnauthorizedAccessException("Unable to identify user from token claims");
         }
     }
 }

@@ -8,20 +8,16 @@ param environmentAbbreviation string
 @maxLength(3)
 param solutionAbbreviation string = 'gmm'
 
-@description('Enter tenant Id.')
-param tenantId string
-
-@description('Enter storage account name.')
-param storageAccountName string
-
 param storageAccountSku string = 'Standard_LRS'
 
 @description('Resource location.')
 param location string
 
+@description('Classify the types of resources in prereqs resource group.')
+param prereqsResourceGroupClassification string = 'prereqs'
+
 var keyVaultName = '${solutionAbbreviation}-data-${environmentAbbreviation}'
 var prodStorageAccountName = substring('dau${solutionAbbreviation}${environmentAbbreviation}prod${uniqueString(resourceGroup().id)}',0,23)
-var stagingStorageAccountName = substring('dau${solutionAbbreviation}${environmentAbbreviation}staging${uniqueString(resourceGroup().id)}',0,23)
 
 module destinationAttributesUpdaterStorageAccountProd 'storageAccount.bicep' = {
   name: 'dauProdstorageAccountTemplate'
@@ -30,17 +26,21 @@ module destinationAttributesUpdaterStorageAccountProd 'storageAccount.bicep' = {
     sku: storageAccountSku
     keyVaultName: keyVaultName
     location: location
-    storageAccountConnectionStringSettingName: 'destinationAttributesUpdaterStorageAccountProd'
+    storageAccountSettingName: 'destinationAttributesUpdaterStorageAccountProd'
+    appPackageContainerSettingName: 'destinationAttributesUpdaterAppPackageContainerProd'
+    appPackageContainerName: 'app-package'
   }
 }
 
-module destinationAttributesUpdaterStorageAccountStaging 'storageAccount.bicep' = {
-  name: 'dauStagingstorageAccountTemplate'
+var nspName = '${solutionAbbreviation}-nsp-${environmentAbbreviation}'
+var prereqsResourceGroupName = '${solutionAbbreviation}-${prereqsResourceGroupClassification}-${environmentAbbreviation}'
+
+module dauStorageAccountAssociationTemplate 'networkSecurityPerimeterResourceAssociation.bicep' = {
+  name: 'dauStorageAccountAssociationTemplate'
+  scope: resourceGroup(prereqsResourceGroupName)
   params: {
-    name: stagingStorageAccountName
-    sku: storageAccountSku
-    keyVaultName: keyVaultName
-    location: location
-    storageAccountConnectionStringSettingName: 'destinationAttributesUpdaterStorageAccountStaging'
+    nspName: nspName
+    profileName: 'storageaccount'
+    resourceId: destinationAttributesUpdaterStorageAccountProd.outputs.storageAccountId
   }
 }

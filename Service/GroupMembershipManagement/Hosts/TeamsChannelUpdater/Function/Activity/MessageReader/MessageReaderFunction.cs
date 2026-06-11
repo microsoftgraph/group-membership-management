@@ -1,13 +1,13 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 using Azure.Messaging.ServiceBus;
-using Microsoft.Azure.WebJobs;
-using Microsoft.Azure.WebJobs.Extensions.DurableTask;
+using Microsoft.Azure.Functions.Worker;
+using Microsoft.DurableTask;
 using Models;
-using Newtonsoft.Json;
 using Repositories.Contracts;
 using System;
 using System.Text;
+using System.Text.Json;
 using System.Threading.Tasks;
 
 namespace Hosts.TeamsChannelUpdater
@@ -23,7 +23,7 @@ namespace Hosts.TeamsChannelUpdater
             _serviceBusReceiver = serviceBusReceiver ?? throw new ArgumentNullException(nameof(serviceBusReceiver));
         }
 
-        [FunctionName(nameof(MessageReaderFunction))]
+        [Function(nameof(MessageReaderFunction))]
         public async Task<MembershipHttpRequest> GetSyncJobAsync([ActivityTrigger] object input)
         {
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(MessageReaderFunction)} function started" }, VerbosityLevel.DEBUG);
@@ -34,11 +34,12 @@ namespace Hosts.TeamsChannelUpdater
             if (message != null)
             {
                 await _serviceBusReceiver.CompleteMessageAsync(message);
-                request = JsonConvert.DeserializeObject<MembershipHttpRequest>(Encoding.UTF8.GetString(message.Body));
+                request = JsonSerializer.Deserialize<MembershipHttpRequest>(Encoding.UTF8.GetString(message.Body));
             }
 
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(MessageReaderFunction)} function started" }, VerbosityLevel.DEBUG);
+            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(MessageReaderFunction)} function completed" }, VerbosityLevel.DEBUG);
             return request;
         }
     }
 }
+

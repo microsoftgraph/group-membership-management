@@ -1,6 +1,8 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
+using Azure.Core;
 using Azure.Identity;
+using Azure.Messaging.ServiceBus;
 using Common.DependencyInjection;
 using DIConcreteTypes;
 using Microsoft.ApplicationInsights;
@@ -21,6 +23,7 @@ using Microsoft.IdentityModel.Tokens;
 using Microsoft.IdentityModel.Validators;
 using Microsoft.O365.ActionableMessages.Utilities;
 using Microsoft.OpenApi.Models;
+using Repositories.BlobStorage;
 using Repositories.Contracts;
 using Repositories.Contracts.InjectConfig;
 using Repositories.DataFactory;
@@ -30,10 +33,17 @@ using Repositories.GraphGroups;
 using Repositories.Localization;
 using Repositories.Logging;
 using Repositories.NotificationsRepository;
+using Repositories.ServiceBusQueue;
+using Repositories.ServiceStatus;
 using Repositories.SqlMembershipRepository;
+using Repositories.TeamsChannel;
+using Services.Contracts;
 using Services.Contracts.Notifications;
+using Services.Entities;
 using Services.Notifications;
-using System.Security.Claims;
+using Services.WebApi;
+using Services.WebApi.Contracts;
+using WebApi.BackgroundServices;
 using WebApi.Configuration;
 using WebApi.Models;
 
@@ -44,6 +54,11 @@ namespace WebApi
         public static void Main(string[] args)
         {
             var builder = WebApplication.CreateBuilder(args);
+
+            if (builder.Environment.IsDevelopment())
+            {
+                builder.AddServiceDefaults();
+            }
 
             builder.Services.AddHttpContextAccessor();
 
@@ -61,6 +76,10 @@ namespace WebApi
             var apiHostName = builder.Configuration.GetValue<string>("Settings:ApiHostname");
             var secureApiHostName = $"https://{apiHostName}";
 
+            var actionableEmailProviderId = builder.Configuration.GetValue<Guid>("Settings:ActionableEmailProviderId");
+            var oamEntraAppId = builder.Configuration.GetValue<string>("Settings:oamEntraAppId");
+            var oamEntraAppScope = builder.Configuration.GetValue<string>("Settings:oamEntraAppScope");
+
             builder.Services.AddDbContext<GMMContext>(options =>
                 options.UseSqlServer(builder.Configuration.GetConnectionString("JobsContext")));
 
@@ -70,15 +89,24 @@ namespace WebApi
             builder.Services.Configure<WebAPISettings>(builder.Configuration.GetSection("WebAPI:Settings"));
             builder.Configuration.AddAzureAppConfiguration(options =>
             {
+                DefaultAzureCredential credential = new(DefaultAzureCredential.DefaultEnvironmentVariableName);
+
                 var appConfigurationEndpoint = builder.Configuration.GetValue<string>("Settings:appConfigurationEndpoint");
-                options.Connect(new Uri(appConfigurationEndpoint), new DefaultAzureCredential())
+                options.Connect(new Uri(appConfigurationEndpoint), credential)
                     .Select("WebAPI:*")
                     .ConfigureRefresh(refreshOptions =>
                     {
                         refreshOptions.Register("WebAPI:Settings:Sentinel", refreshAll: true);
                     })
                     .Select("Mail:*")
-                    .Select("GraphAPI:*");
+                    .Select("GraphAPI:*")
+                    .Select("MaximumNumberOfThresholdRecipients")
+                    .Select("NumberOfThresholdViolationsToNotify")
+                    .Select("NumberOfThresholdViolationsFollowUps")
+                    .Select("NumberOfThresholdViolationsToDisableJob")
+                    .Select("PendingConfiguration:*")
+                    .Select("TeamsChannel:*")
+                    .Select("AzureMaintenance:*");
             });
 
             // Add services to the container.
@@ -116,17 +144,28 @@ namespace WebApi
                 var tenantSigningKeysv2 = await GetSigningKeysFromUrlAsync($"{azureAdInstanceUrl}{azureAdTenantId}/v2.0/.well-known/openid-configuration");
                 var officeSigningKeys = await GetSigningKeysFromUrlAsync("https://substrate.office.com/sts/common/.well-known/openid-configuration");
 
-                options.TokenValidationParameters = new TokenValidationParameters
-                {
-                    ValidateAudience = true,
-                    ValidAudiences = new[] {
+                var validAudiences = new[] {
                         $"api://{azureAdClientId}",
                         azureAdClientId,
                         secureApiHostName
-                    },
+                    };
+
+                if (!string.IsNullOrWhiteSpace(oamEntraAppId))
+                {
+                    validAudiences = validAudiences.Concat(new[] {
+                        $"api://auth-am-{actionableEmailProviderId}/{oamEntraAppId}",
+                        oamEntraAppId
+                    }).ToArray();
+                }
+
+                options.TokenValidationParameters = new TokenValidationParameters
+                {
+                    ValidateAudience = true,
+                    ValidAudiences = validAudiences,
                     ValidateIssuer = true,
                     ValidIssuers = new[] {
                         $"https://sts.windows.net/{azureAdTenantId}/",
+                        $"https://login.microsoftonline.com/{azureAdTenantId}/v2.0",
                         "https://substrate.office.com/sts/"
                     },
                     ValidateIssuerSigningKey = true,
@@ -134,6 +173,26 @@ namespace WebApi
                 };
 
                 options.TokenValidationParameters.EnableAadSigningKeyIssuerValidation();
+                
+                options.Events.OnTokenValidated = async context =>
+                {
+                    // Validate scope for OAM (Outlook Actionable Messages) endpoints
+                    var path = context.HttpContext.Request.Path.Value;
+                    if (path != null && path.Contains("/notifications", StringComparison.OrdinalIgnoreCase))
+                    {
+                        var scopeClaim = context.Principal?.Claims.FirstOrDefault(c => c.Type == "scp" || c.Type == "http://schemas.microsoft.com/identity/claims/scope")?.Value;
+                        var hasOamScope = !string.IsNullOrWhiteSpace(scopeClaim) && scopeClaim.Contains(oamEntraAppScope);
+                        var hasUiScope = !string.IsNullOrWhiteSpace(scopeClaim) && scopeClaim.Contains("user_impersonation");
+
+                        if (!hasOamScope && !hasUiScope)
+                        {
+                            context.Fail($"Required scope '{oamEntraAppScope}' or 'user_impersonation' not present in token");
+                            return;
+                        }
+                    }
+                    await Task.CompletedTask;
+                };
+                
                 options.Events.OnMessageReceived = async context =>
                 {
                     context.Options.TokenValidationParameters.ConfigurationManager ??= options.ConfigurationManager as BaseConfigurationManager;
@@ -197,9 +256,22 @@ namespace WebApi
             builder.Services.AddCors();
 
             builder.Services.ConfigureOptions<ConfigureSwaggerOptions>();
+            builder.Services.AddOptions<TelemetryInitializerConfig>().Configure<IConfiguration>((settings, configuration) =>
+            {
+                configuration.GetSection("Settings:TelemetryInitializer").Bind(settings);
+            });
+            builder.Services.AddSingleton(services =>
+            {
+                var config = services.GetRequiredService<IOptions<TelemetryInitializerConfig>>();
+                return config.Value;
+            });
             builder.Services.AddApplicationInsightsTelemetry();
+            builder.Services.AddSingleton<ITelemetryInitializer, TelemetryInitializer>();
+            builder.Services.AddApplicationInsightsTelemetryProcessor<TelemetryProcessor>();
 
             builder.Services.InjectMessageHandlers();
+
+            builder.Services.AddTransient<INotificationService, NotificationService>();
 
             builder.Services.AddLocalization(options =>
             {
@@ -241,39 +313,103 @@ namespace WebApi
             builder.Services.AddSingleton<IKeyVaultSecret<ISqlMembershipRepository>>(services => new KeyVaultSecret<ISqlMembershipRepository>(services.GetService<IConfiguration>().GetValue<string>("Settings:SqlServerConnectionString")));
             builder.Services.AddSingleton<ISqlMembershipRepository, SqlMembershipRepository>();
 
-            builder.Services.AddOptions<NotificationRepoCredentials<NotificationRepository>>().Configure<IConfiguration>((settings, configuration) =>
-            {
-                settings.ConnectionString = configuration.GetValue<string>("Settings:jobsStorageAccountConnectionString");
-                settings.TableName = configuration.GetValue<string>("Settings:notificationsTableName");
-            });
-            builder.Services.AddSingleton<INotificationRepository, NotificationRepository>();
+            builder.Services.AddScoped<INotificationRepository, NotificationRepository>();
 
-            builder.Services.Configure<GraphCredentials>(builder.Configuration.GetSection("Settings:GraphCredentials"))
-            .AddGraphAPIClient()
+            builder.Services.Configure<GraphCredentials>(options =>
+            {
+                builder.Configuration.GetSection("Settings:GraphCredentials").Bind(options);
+                options.AppRegistrationName = builder.Configuration["GraphAPI:GraphAppName"];
+                options.UAMIName = builder.Configuration["GraphAPI:GraphUAMIName"];
+            });
+
+            builder.Services.AddGraphAPIClient()
             .AddScoped<IGraphGroupRepository, GraphGroupRepository>();
 
+            builder.Services.AddSingleton<ITeamsChannelConfig>(services =>
+            {
+                var configuration = services.GetService<IConfiguration>();
+                var gmmHasTeamChannelReadWriteApplicationPermissions = GetBoolSetting(configuration, "TeamsChannel:IsChannelReadWriteApplicationPermissionGranted", false);
+                var serviceAccountObjectId = configuration.GetValue<string>("Settings:TeamsGraphCredentials:serviceAccountObjectId");
+                var serviceAccountUserName = configuration.GetValue<string>("Settings:TeamsGraphCredentials:serviceAccountUsername");
+                var serviceAccountPassword = configuration.GetValue<string>("Settings:TeamsGraphCredentials:serviceAccountPassword");
+                var appRegistrationName = configuration.GetValue<string>("Settings:TeamsGraphCredentials:AppName");
+                var teamsChannelConfig = new TeamsChannelConfig(gmmHasTeamChannelReadWriteApplicationPermissions, serviceAccountObjectId, serviceAccountUserName, serviceAccountPassword);
+                teamsChannelConfig.TeamsChannelAppRegistrationName = appRegistrationName;
+                return teamsChannelConfig;
+            });
+
+            builder.Services.Configure<GraphCredentials>("TeamsGraphCredentials", builder.Configuration.GetSection("Settings:TeamsGraphCredentials"));
+
+            builder.Services.AddScoped<ITeamsChannelRepository, TeamsChannelRepository>(services =>
+            {
+                var teamsChannelConfig = services.GetService<ITeamsChannelConfig>();
+                var teamsGraphCredentials = services.GetService<IOptionsSnapshot<GraphCredentials>>().Get("TeamsGraphCredentials");
+
+                TokenCredential teamsTokenCredential;
+
+                if (teamsChannelConfig.GMMHasTeamsChannelApplicationPermissions)
+                {
+                    teamsTokenCredential = FunctionAppDI.CreateAuthProviderFromSecret(teamsGraphCredentials);
+                }
+                else
+                {
+                    teamsGraphCredentials.ServiceAccountUserName = teamsChannelConfig.TeamsChannelServiceAccountUsername;
+                    teamsGraphCredentials.ServiceAccountPassword = teamsChannelConfig.TeamsChannelServiceAccountPassword;
+
+                    teamsTokenCredential = FunctionAppDI.CreateServiceAccountAuthProvider(teamsGraphCredentials);
+                }
+
+                var graphClient = new GraphServiceClient(teamsTokenCredential);
+                var telemetryClient = services.GetRequiredService<TelemetryClient>();
+                var teamsChannelRepositoryLogger = services.GetRequiredService<ILogger<TeamsChannelRepository>>();
+                var loggerFactory = services.GetRequiredService<ILoggerFactory>();
+                return new TeamsChannelRepository(graphClient, telemetryClient, teamsChannelRepositoryLogger, loggerFactory);
+            });
 
             builder.Services.AddOptions<HandleInactiveJobsConfig>().Configure<IConfiguration>((settings, configuration) =>
             {
                 settings.HandleInactiveJobsEnabled = GetBoolSetting(configuration, "AzureMaintenance:HandleInactiveJobsEnabled", false);
-                settings.NumberOfDaysBeforeDeletion = GetIntSetting(configuration, "AzureMaintenance:NumberOfDaysBeforeDeletion", 0);
+                settings.NumberOfDaysBeforePurging = GetIntSetting(configuration, "AzureMaintenance:NumberOfDaysBeforePurging", 30);
+                settings.NumberOfDaysBeforePurgingToSendWarning = GetIntSetting(configuration, "AzureMaintenance:NumberOfDaysBeforePurgingToSendWarning", 7);
+                settings.NumberOfDaysBeforeDeletion = GetIntSetting(configuration, "AzureMaintenance:NumberOfDaysBeforeDeletion", 35);
+                settings.JobHistoryRetentionDays = GetIntSetting(configuration, "AzureMaintenance:JobHistoryRetentionDays", 30);
             });
-
-            builder.Services.AddOptions<WebApiSettings>().Configure<IConfiguration>((settings, configuration) =>
-            {
-                settings.ApiHostname = configuration.GetValue<string>("Settings:apiHostname");
-            });
-
             builder.Services.AddSingleton<IHandleInactiveJobsConfig>(services =>
             {
                 return new HandleInactiveJobsConfig(
                     services.GetService<IOptions<HandleInactiveJobsConfig>>().Value.HandleInactiveJobsEnabled,
-                    services.GetService<IOptions<HandleInactiveJobsConfig>>().Value.NumberOfDaysBeforeDeletion);
+                    services.GetService<IOptions<HandleInactiveJobsConfig>>().Value.NumberOfDaysBeforePurging,
+                    services.GetService<IOptions<HandleInactiveJobsConfig>>().Value.NumberOfDaysBeforePurgingToSendWarning,
+                    services.GetService<IOptions<HandleInactiveJobsConfig>>().Value.NumberOfDaysBeforeDeletion,
+                    services.GetService<IOptions<HandleInactiveJobsConfig>>().Value.JobHistoryRetentionDays);
+            });
+
+            builder.Services.AddOptions<WebApiSettings>().Configure<IConfiguration>((settings, configuration) =>
+            {
+                settings.KeyVaultName = configuration.GetValue<string>("Settings:GraphCredentials:KeyVaultName");
+            });
+
+            builder.Services.AddOptions<ThresholdConfig>().Configure<IConfiguration>((settings, configuration) =>
+            {
+                settings.MaximumNumberOfThresholdRecipients = GetIntSetting(configuration, "MaximumNumberOfThresholdRecipients", 10);
+                settings.NumberOfThresholdViolationsToNotify = GetIntSetting(configuration, "NumberOfThresholdViolationsToNotify", 3);
+                settings.NumberOfThresholdViolationsFollowUps = GetIntSetting(configuration, "NumberOfThresholdViolationsFollowUps", 3);
+                settings.NumberOfThresholdViolationsToDisableJob = GetIntSetting(configuration, "NumberOfThresholdViolationsToDisableJob", 10);
+            });
+            builder.Services.AddSingleton<IThresholdConfig>(services =>
+            {
+                return new ThresholdConfig
+                    (
+                        services.GetService<IOptions<ThresholdConfig>>().Value.MaximumNumberOfThresholdRecipients,
+                        services.GetService<IOptions<ThresholdConfig>>().Value.NumberOfThresholdViolationsToNotify,
+                        services.GetService<IOptions<ThresholdConfig>>().Value.NumberOfThresholdViolationsFollowUps,
+                        services.GetService<IOptions<ThresholdConfig>>().Value.NumberOfThresholdViolationsToDisableJob
+                    );
             });
 
             builder.Services.AddOptions<ThresholdNotificationServiceConfig>().Configure<IConfiguration>((settings, configuration) =>
             {
-                settings.ActionableEmailProviderId = configuration.GetValue<Guid>("Settings:ActionableEmailProviderId");
+                settings.ActionableEmailProviderId = actionableEmailProviderId;
                 settings.ApiHostname = apiHostName;
             });
 
@@ -282,12 +418,118 @@ namespace WebApi
             builder.Services.AddScoped<IDataFactoryRepository, DataFactoryRepository>();
             builder.Services.AddScoped<IDatabaseMigrationsRepository, DatabaseMigrationsRepository>();
             builder.Services.AddScoped<IDatabaseSyncJobsRepository, DatabaseSyncJobsRepository>();
+            builder.Services.AddSingleton<IBlobStorageRepository>(sp =>
+            {
+                var configuration = sp.GetRequiredService<IConfiguration>();
+                var storageAccountName = configuration["Settings:membershipStorageAccountName"];
+                var containerName = configuration["Settings:membershipContainerName"];
+                return new BlobStorageRepository($"https://{storageAccountName}.blob.core.windows.net/{containerName}");
+            });
+            builder.Services.AddScoped<IDatabaseGroupsRepository, DatabaseGroupsRepository>();
+            builder.Services.AddScoped<IDatabaseChannelsRepository, DatabaseChannelsRepository>();
+            builder.Services.AddScoped<ISyncJobChangeRepository, SyncJobChangeRepository>();
+            builder.Services.AddScoped<ISyncJobHistoryRepository, SyncJobHistoryRepository>();
+            builder.Services.AddScoped<IDatabaseTitlesRepository, DatabaseTitlesRepository>();
             builder.Services.AddScoped<IDatabaseSettingsRepository, DatabaseSettingsRepository>();
             builder.Services.AddScoped<IDatabaseDestinationAttributesRepository, DatabaseDestinationAttributesRespository>();
             builder.Services.AddScoped<IDatabaseSqlMembershipSourcesRepository, DatabaseSqlMembershipSourcesRepository>();
             builder.Services.AddScoped<INotificationTypesRepository, NotificationTypesRepository>();
             builder.Services.AddScoped<IJobNotificationsRepository, JobNotificationRepository>();
+            builder.Services.AddScoped<IServiceStatusRepository, ServiceStatusRepository>();
 
+            builder.Services.AddOptions<ResourceManagerServiceConfiguration>()
+                            .Configure<IConfiguration, IDataFactorySecret<IDataFactoryRepository>>((settings, configuration, dataFactorySecrets) =>
+                            {
+                                var computeResourceGroup = dataFactorySecrets.ResourceGroup.Replace("data", "compute", StringComparison.InvariantCultureIgnoreCase);
+                                settings.SubscriptionId = dataFactorySecrets.SubscriptionId;
+                                settings.DataResourceGroup = dataFactorySecrets.ResourceGroup;
+                                settings.ComputeResourceGroup = computeResourceGroup;
+                            });
+
+            builder.Services.AddSingleton<IResourceManagerService, ResourceManagerService>(services =>
+            {
+                var settings = services.GetRequiredService<IOptions<ResourceManagerServiceConfiguration>>();
+                var loggingRepository = services.GetRequiredService<ILoggingRepository>();
+                return new ResourceManagerService(settings.Value, loggingRepository);
+            });
+
+            builder.Services.AddOptions<OperationsSettings>().Configure<IConfiguration, IServiceProvider>((settings, configuration, services) =>
+            {
+                var rmsc = services.GetRequiredService<IOptions<ResourceManagerServiceConfiguration>>();
+                configuration.GetSection("Settings:ServiceBus").Bind(settings);
+                var functionBaseUrl = configuration.GetValue<string>("Settings:JobSchedulerFunctionBaseUrl");
+                var functionKey = configuration.GetValue<string>("Settings:JobSchedulerFunctionKey");
+                var functionAuthAppClientId = configuration.GetValue<string>("Settings:FunctionAuthAppClientId");
+                settings.JobSchedulerFunctionBaseUrl = functionBaseUrl;
+                settings.JobSchedulerFunctionKey = functionKey;
+                settings.FunctionAuthAppClientId = functionAuthAppClientId;
+                settings.DataResourceGroupName = rmsc.Value.DataResourceGroup;
+                settings.ComputeResourceGroupName = rmsc.Value.ComputeResourceGroup;
+            });
+
+            builder.Services.AddOptions<PendingConfigurationConfig>().Configure<IConfiguration>((settings, configuration) =>
+            {
+                settings.PendingConfigurationIsEnabled = GetBoolSetting(configuration, "PendingConfiguration:IsEnabled", false);
+            });
+            builder.Services.AddSingleton<IPendingConfigurationConfig>(services =>
+            {
+                return new PendingConfigurationConfig
+                    (
+                        services.GetService<IOptions<PendingConfigurationConfig>>().Value.PendingConfigurationIsEnabled
+                    );
+            });
+
+            builder.Services.AddSingleton(services =>
+            {
+                var settings = services.GetRequiredService<IOptions<OperationsSettings>>();
+                return settings.Value;
+            });
+
+            builder.Services.AddSingleton(services =>
+            {
+                var operationsSettings = services.GetRequiredService<OperationsSettings>();
+                var serviceBusFQN = operationsSettings.ServiceBusFQN;
+
+                if (string.IsNullOrWhiteSpace(serviceBusFQN))
+                    throw new ArgumentNullException($"Could not start because of missing configuration option: servicebus fully qualified namespace.");
+
+                DefaultAzureCredential credential = new(DefaultAzureCredential.DefaultEnvironmentVariableName);
+                return new ServiceBusClient(serviceBusFQN, credential);
+            });
+
+            builder.Services.AddSingleton<IServiceBusQueueRepository, ServiceBusQueueRepository>(services =>
+            {
+                var operationsSettings = services.GetRequiredService<OperationsSettings>();
+                var pendingConfigurationQueue = operationsSettings.PendingConfigurationQueue;
+                var notificationsQueue = operationsSettings.NotificationsQueue;
+                var client = services.GetRequiredService<ServiceBusClient>();
+                var sender = client.CreateSender(pendingConfigurationQueue);
+                return new ServiceBusQueueRepository(sender);
+            });
+
+            builder.Services.AddKeyedSingleton<IServiceBusQueueRepository, ServiceBusQueueRepository>("Notifications", (services, key) =>
+            {
+                var operationsSettings = services.GetRequiredService<OperationsSettings>();
+                var notificationsQueue = operationsSettings.NotificationsQueue;
+                var client = services.GetRequiredService<ServiceBusClient>();
+                var sender = client.CreateSender(notificationsQueue);
+                return new ServiceBusQueueRepository(sender);
+            });
+
+            var openAIEndpoint = builder.Configuration["Settings:OpenAIEndpoint"];
+            if (!string.IsNullOrWhiteSpace(openAIEndpoint))
+            {
+                builder.Services.AddSingleton<IOpenAIService, OpenAIService>();
+            }
+
+            builder.Services.AddSignalR().AddAzureSignalR(builder.Configuration["Settings:AzureSignalRConnectionString"]);
+
+            builder.WebHost.ConfigureServices(services =>
+            {
+                services.AddHostedService<OperationsBackgroundService>();
+            });
+
+            builder.Services.AddSingleton<IOperationsTaskQueue, OperationsTaskQueue>();
 
             var app = builder.Build();
 
@@ -315,15 +557,15 @@ namespace WebApi
                             });
                     }
                 });
-            }
 
-            app.UseSwagger(c =>
-            {
-                c.PreSerializeFilters.Add((swagger, httpReq) =>
+                app.UseSwagger(c =>
                 {
-                    swagger.Servers = new List<OpenApiServer> { new OpenApiServer { Url = $"{httpReq.Scheme}://{httpReq.Host.Value}" } };
+                    c.PreSerializeFilters.Add((swagger, httpReq) =>
+                    {
+                        swagger.Servers = new List<OpenApiServer> { new OpenApiServer { Url = $"{httpReq.Scheme}://{httpReq.Host.Value}" } };
+                    });
                 });
-            });
+            }
 
             using (var scope = app.Services.CreateScope())
             {
@@ -350,6 +592,8 @@ namespace WebApi
 
             app.UseAuthentication();
             app.UseAuthorization();
+
+            app.MapHub<SignalRService>("/servicestatus");
 
             app.MapControllers();
 

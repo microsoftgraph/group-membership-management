@@ -12,8 +12,10 @@ import {
   IPersonaProps,
   Dialog, DialogType, DialogFooter,
   Spinner,
+  IComboBoxOption,
+  IComboBox,
 } from '@fluentui/react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate, useLocation, useParams } from 'react-router-dom';
 import { Page } from '../../components/Page';
 import { PageHeader } from '../../components/PageHeader';
 import { IManageMembershipProps, IManageMembershipStyleProps, IManageMembershipStyles } from './ManageMembership.types';
@@ -26,7 +28,9 @@ import {
   manageMembershipIsGroupReadyForOnboarding,
   manageMembershipCurrentStep,
   manageMembershipHasChanges,
+  manageMembershipIsMissingAndOrOperator,
   manageMembershipisAdvancedQueryValid,
+  manageMembershipIsAdvancedView,
   manageMembershipSelectedDestination,
   setCurrentStep,
   setHasChanges,
@@ -43,9 +47,21 @@ import {
   manageMembershipCompositeQuery,
   clearSourceParts,
   manageMembershipRequestor,
-  manageMembershipAdvancedViewQuery
+  manageMembershipAdvancedViewQuery,
+  manageMembershipCreatedGroupId,
+  setCreatedGroupName,
+  manageMembershipCreatedGroupName,
+  manageMembershipBusinessJustification,
+  setBusinessJustification,
+  manageMembershipLastModifiedOnBehalfOfDisplayName,
+  manageMembershipLastModifiedOnBehalfOfObjectId,
+  setGroupSettings,
+  manageMembershipGroupSettings,
+  getSourcePartsFromState,
+  manageMembershipGroupMembers
 } from '../../store/manageMembership.slice';
-import { getGroupEndpoints, getGroupOnboardingStatus } from '../../store/manageMembership.api';
+import { getGroupEndpoints, getGroupOnboardingStatus, getChannelOnboardingStatus, getGroupMembers } from '../../store/manageMembership.api';
+import { clearGroupMembers } from '../../store/manageMembership.slice';
 import { NewJob } from '../../models/NewJob';
 import { fetchJobs, postJob } from '../../store/jobs.api';
 import { RunConfiguration } from '../../components/RunConfiguration';
@@ -54,12 +70,20 @@ import { selectAccountUsername } from '../../store/account.slice';
 import { setPagingBarVisible } from '../../store/pagingBar.slice';
 import { MembershipConfiguration } from '../../components/MembershipConfiguration';
 import { OnboardingSteps } from '../../models/OnboardingSteps';
-import { selectSelectedJobDetails, selectSelectedJobLoading } from '../../store/jobs.slice';
+import { selectSelectedJobDetails, selectSelectedJobLoading, selectSelectedJobWithNoTitles } from '../../store/jobs.slice';
 import { fetchJobDetails, patchJobDetails } from '../../store/jobDetails.api';
 import { Loader } from '../../components/Loader';
-import { selectIsJobWriter } from '../../store/roles.slice';
-import { SyncStatus } from '../../models';
+import { selectIsJobTenantWriter, selectIsJobWriter } from '../../store/roles.slice';
+import { PostGroupResponse, SyncStatus } from '../../models';
 import { SyncJobQuery } from '../../models/SyncJobQuery';
+import { PatchJobRequest } from '../../models/PatchJobRequest';
+import { SyncJobChangeReason } from '../../models/SyncJobChangeReason';
+import { selectOrgLeaderDataReturned } from '../../store/orgLeaderDetails.slice';
+import { createGroup } from '../../store/groups.api';
+import { selectIsBusinessJustificationRequired } from '../../store/settings.slice';
+import { DestinationType } from '../../models/DestinationType';
+import { ChannelOnboardingStatusRequest } from '../../models/ChannelOnboardingStatusRequest';
+import { GroupSettings } from '../../models/GroupSettings';
 
 const getClassNames = classNamesFunction<
   IManageMembershipStyleProps,
@@ -81,7 +105,10 @@ export const ManageMembershipBase: React.FunctionComponent<IManageMembershipProp
   const strings = useStrings();
   const navigate = useNavigate();
   const location = useLocation();
+  const { jobId: urlJobId } = useParams<{ jobId: string }>();
   const locationState = location.state as { currentStep?: number, jobId?: string };
+  const jobId = locationState?.jobId ?? urlJobId;
+  const orgLeaderDataReturned = useSelector(selectOrgLeaderDataReturned);
 
   const dispatch = useDispatch<AppDispatch>();
   useEffect(() => {
@@ -92,35 +119,33 @@ export const ManageMembershipBase: React.FunctionComponent<IManageMembershipProp
   const [isPostingJob, setIsPostingJob] = useState(false);
   const [isEditingJob, setIsEditingJob] = useState(false);
   const currentStep = useSelector(manageMembershipCurrentStep);
+  const [isStep1ConditionsMet, setIsStep1ConditionsMet] = useState(false);
   const hasChanges = useSelector(manageMembershipHasChanges);
   const selectedDestination = useSelector(manageMembershipSelectedDestination);
   const isGroupReadyForOnboarding = useSelector(manageMembershipIsGroupReadyForOnboarding);
-  const isJobWriter = useSelector(selectIsJobWriter)
-
+  const isJobWriter = useSelector(selectIsJobWriter);
   // Existing job
   const jobDetailsRef = useRef(useSelector(selectSelectedJobDetails));
   const isLoading = useSelector(selectSelectedJobLoading);
+  const jobWithNoTitles = useSelector(selectSelectedJobWithNoTitles);
 
   useEffect(() => {
-    let editingExistingJob = !!locationState?.jobId && isJobWriter;
+    const editingExistingJob = !!jobId;
     dispatch(setIsEditingExistingJob(editingExistingJob));
-
     if (!editingExistingJob) {
       jobDetailsRef.current = undefined;
+      dispatch(resetManageMembership());
     }
 
     if (locationState?.currentStep) {
       dispatch(setCurrentStep(locationState.currentStep));
     }
-
-    if (locationState?.jobId) {
+    if (jobId) {
       dispatch(fetchJobDetails({
-        syncJobId: locationState.jobId
+        syncJobId: jobId
       }));
-    } else {
-      dispatch(resetManageMembership());
     }
-  }, [dispatch, locationState, isJobWriter]);
+  }, [dispatch, jobId, locationState, location]);
 
   useEffect(() => {
     if (jobDetailsRef.current) {
@@ -128,44 +153,151 @@ export const ManageMembershipBase: React.FunctionComponent<IManageMembershipProp
     }
   }, [dispatch, jobDetailsRef.current]);
 
+  const groupMembers = useSelector(manageMembershipGroupMembers);
+  const hasNestedGroups = groupMembers && groupMembers.groupMemberCount > 0;
+
+  useEffect(() => {
+    setIsStep1ConditionsMet(!!selectedDestination && isGroupReadyForOnboarding === true && !hasNestedGroups);
+  }, [selectedDestination, isGroupReadyForOnboarding, hasNestedGroups]);
+
+  // Reset isEditingExistingJob when leaving ManageMembership page
+  useEffect(() => {
+    return () => {
+      dispatch(setIsEditingExistingJob(false));
+    };
+  }, [dispatch]);
+
+  const isMissingAndOrOperator = useSelector(manageMembershipIsMissingAndOrOperator);
   const isAdvancedQueryValid = useSelector(manageMembershipisAdvancedQueryValid);
+  const isAdvancedView = useSelector(manageMembershipIsAdvancedView);
   const allSourcePartsValid = useSelector(areAllSourcePartsValid);
   const startDate = useSelector(manageMembershipStartDate);
   const period = useSelector(manageMembershipPeriod);
   const thresholdPercentageForAdditions = useSelector(manageMembershipThresholdPercentageForAdditions);
   const thresholdPercentageForRemovals = useSelector(manageMembershipThresholdPercentageForRemovals);
+  const createdGroupId = useSelector(manageMembershipCreatedGroupId);
+  const createdGroupName = useSelector(manageMembershipCreatedGroupName);
+  const groupSettings = useSelector(manageMembershipGroupSettings);
   const currentUser = useSelector(selectAccountUsername) ?? '';
   const inputRequestor = useSelector(manageMembershipRequestor);
   const requestor: string = inputRequestor === '' ? currentUser : inputRequestor;
+  const lastModifiedOnBehalfOfDisplayName = useSelector(manageMembershipLastModifiedOnBehalfOfDisplayName);
+  const lastModifiedOnBehalfOfObjectId = useSelector(manageMembershipLastModifiedOnBehalfOfObjectId);
   const isEditingExistingJob = useSelector(manageMembershipIsEditingExistingJob);
   const advancedViewQuery = useSelector(manageMembershipAdvancedViewQuery);
   const sourcePartsQuery = useSelector(manageMembershipCompositeQuery);
+  const isTenantJobWriter: boolean | undefined = useSelector(selectIsJobTenantWriter);
+  const isBusinessJustificationRequired = useSelector(selectIsBusinessJustificationRequired);
+  const businessJustification: string = useSelector(manageMembershipBusinessJustification) ?? '';
+  const isBusinessJustificationProvided = businessJustification !== '';
+  const sourceParts = useSelector(getSourcePartsFromState);
 
   const finalQuery: SyncJobQuery = useMemo(() => {
-    if (!sourcePartsQuery || sourcePartsQuery.length === 0) {
-      return advancedViewQuery ? JSON.parse(advancedViewQuery) : {} as SyncJobQuery;
+    // If we have source parts (regular view derived query), prefer that.
+    if (sourcePartsQuery && sourcePartsQuery.length > 0) {
+      return sourcePartsQuery;
     }
-    return sourcePartsQuery;
-  }, [sourcePartsQuery, advancedViewQuery]);
-  
+    // Otherwise attempt to parse advanced view text only if it's been validated as JSON.
+    if (advancedViewQuery && advancedViewQuery.trim().length > 0 && isAdvancedQueryValid) {
+      try {
+        const parsed = JSON.parse(advancedViewQuery);
+        return Array.isArray(parsed) ? parsed : [];
+      } catch {
+        // Swallow parse errors – treat as empty until user fixes JSON.
+        return [];
+      }
+    }
+    return [];
+  }, [sourcePartsQuery, advancedViewQuery, isAdvancedQueryValid]);
+
+  const handleDestinationTypeChange = (
+    event: React.FormEvent<IComboBox>,
+    option?: IComboBoxOption
+  ): void => {
+    dispatch(setHasChanges(true));
+    const updatedDestination: Destination = {
+      type: option?.key as string,
+    };
+    dispatch(setSelectedDestination(updatedDestination));
+  };
+
   const handleSearchDestinationChange = (selectedDestinations: IPersonaProps[] | undefined) => {
     dispatch(setHasChanges(true));
 
     if (selectedDestinations && selectedDestinations.length > 0) {
       const selectedGroupId = selectedDestinations[0].id as string;
       const groupName = selectedDestinations[0].text as string;
-      const selectedDestination: Destination = {
+      const updatedDestination: Destination = {
         id: selectedGroupId,
         name: groupName,
-        type: 'GroupMembership' // Make type configurable once we support Teams Channels
+        type: selectedDestination?.type ?? DestinationType.GroupMembership
       };
 
-      dispatch(setSelectedDestination(selectedDestination));
+      dispatch(setSelectedDestination(updatedDestination));
       dispatch(getGroupEndpoints(selectedGroupId));
-      dispatch(getGroupOnboardingStatus(selectedGroupId));
+      if (updatedDestination.type === DestinationType.GroupMembership) {
+        dispatch(getGroupOnboardingStatus(selectedGroupId));
+        dispatch(getGroupMembers(selectedGroupId));
+      }
     } else {
-      dispatch(setSelectedDestination(undefined));
+      const updatedDestination: Destination = {
+        id: undefined,
+        name: undefined,
+        type: selectedDestination?.type ?? DestinationType.GroupMembership
+      };
+      dispatch(setSelectedDestination(updatedDestination));
+      dispatch(clearGroupMembers());
     }
+  };
+
+  const handleSearchChannelChange = (selectedChannels: IPersonaProps[] | undefined) => {
+    dispatch(setHasChanges(true));
+    if (selectedChannels && selectedChannels.length > 0) {
+      const selectedChannelId = selectedChannels[0].id as string;
+      const channelName = selectedChannels[0].text as string;
+      const updatedDestination: Destination = {
+        ...selectedDestination,
+        type: DestinationType.TeamsChannelMembership,
+        channelId: selectedChannelId,
+        channelName: channelName,
+      };
+      dispatch(setSelectedDestination(updatedDestination));
+      const channelOnboardingStatusRequest: ChannelOnboardingStatusRequest = {
+        teamId: updatedDestination.id!,
+        channelId: selectedChannelId,
+      };
+      dispatch(getChannelOnboardingStatus(channelOnboardingStatusRequest));
+    } else {
+      const updatedDestination: Destination = {
+        ...selectedDestination,
+        channelId: undefined,
+        channelName: undefined,
+        type: selectedDestination?.type ?? DestinationType.GroupMembership
+      };
+      dispatch(setSelectedDestination(updatedDestination));
+    }
+  };
+
+  const handleGroupCreated = async (groupName: string, groupAlias: string) => {
+    await dispatch(setCreatedGroupName(groupName));
+    await dispatch(createGroup({ groupName, groupAlias }));
+  };
+
+  useEffect(() => {
+    if(createdGroupId && createdGroupName){
+      const selectedDestination: Destination = {
+        id: createdGroupId,
+        name: createdGroupName,
+        type: DestinationType.GroupMembership, // Make type configurable once we support Teams Channel creation
+        groupSettings: groupSettings
+      };
+      dispatch(setSelectedDestination(selectedDestination));
+      dispatch(getGroupEndpoints(createdGroupId));
+    }
+  }, [createdGroupId, createdGroupName, groupSettings, dispatch]);
+
+  const handleEditBusinessJustification = (justification: string) => {
+    dispatch(setBusinessJustification(justification));
   };
 
   const handleBackToDashboardButtonClick = () => {
@@ -201,51 +333,76 @@ export const ManageMembershipBase: React.FunctionComponent<IManageMembershipProp
   };
 
   const handleSaveButtonClick = async () => {
-    if (locationState.jobId !== undefined) {
-      const patchOperation = [{
+    const allHaveTitles = sourceParts.every(
+      part => part.title && part.title.trim() !== ""
+    );
+    if (jobId !== undefined) {
+      const patchOperation = [];
+      patchOperation.push({
         op: "replace",
-        path: "/Query",
-        value: JSON.stringify(finalQuery)
-      },
-      {
-        op: "replace",
-        path: "/Status",
-        value: SyncStatus.PendingReview
-      },
-      {
-        op: "replace",
-        path: "/StartDate",
-        value: startDate
-      },
-      {
-        op: "replace",
-        path: "/Period",
-        value: period
-      },
-      {
-        op: "replace",
-        path: "/ThresholdPercentageForAdditions",
-        value: thresholdPercentageForAdditions
-      },
-      {
-        op: "replace",
-        path: "/ThresholdPercentageForRemovals",
-        value: thresholdPercentageForRemovals
-      },
-      {
-        op: "replace",
-        path: "/Requestor",
-        value: requestor
-      }
-    ];
+        path: "/Titles",
+        value: allHaveTitles
+          ? sourceParts.map(part => ({
+              partId: part.id,
+              name: part.title
+            }))
+          : ""
+      });
+      patchOperation.push(
+        {
+          op: "replace",
+          path: "/Query",
+          value: JSON.stringify(finalQuery)
+        },
+        {
+          op: "replace",
+          path: "/Status",
+          value: SyncStatus.PendingReview
+        },
+        {
+          op: "replace",
+          path: "/StartDate",
+          value: startDate
+        },
+        {
+          op: "replace",
+          path: "/Period",
+          value: period
+        },
+        {
+          op: "replace",
+          path: "/ThresholdPercentageForAdditions",
+          value: thresholdPercentageForAdditions
+        },
+        {
+          op: "replace",
+          path: "/ThresholdPercentageForRemovals",
+          value: thresholdPercentageForRemovals
+        },
+        {
+          op: "replace",
+          path: "/LastModifiedOnBehalfOfDisplayName",
+          value: lastModifiedOnBehalfOfDisplayName
+        },
+        {
+          op: "replace",
+          path: "/LastModifiedOnBehalfOfObjectId",
+          value: lastModifiedOnBehalfOfObjectId
+        }
+      );
 
       setIsEditingJob(true);
+      const patchRequest: PatchJobRequest = {
+        syncJobId: jobId,
+        patchOperation,
+        changeReason: SyncJobChangeReason.Update,
+        businessJustification: businessJustification
+      };
 
       try {
-        await dispatch(patchJobDetails({syncJobId: locationState.jobId, patchOperation: patchOperation}));
+        await dispatch(patchJobDetails(patchRequest));
         dispatch(resetManageMembership());
         dispatch(clearSourceParts());
-        await dispatch(fetchJobs());
         navigate('/');
         setIsEditingJob(false);
       } catch (error) {
@@ -254,19 +411,29 @@ export const ManageMembershipBase: React.FunctionComponent<IManageMembershipProp
 
     } else {
       const destinationJson = JSON.stringify([{
-        value: { objectId: selectedDestination?.id },
+        value: { objectId: selectedDestination?.id, channelId: selectedDestination?.channelId },
         type: selectedDestination?.type
       }]);
 
       const newJob: NewJob = {
         destination: destinationJson,
         requestor: requestor ?? '',
+        lastModifiedOnBehalfOfDisplayName: lastModifiedOnBehalfOfDisplayName ?? '',
+        lastModifiedOnBehalfOfObjectId: lastModifiedOnBehalfOfObjectId ?? '',
         startDate: startDate,
         period: period,
         query: finalQuery,
         thresholdPercentageForAdditions: thresholdPercentageForAdditions,
         thresholdPercentageForRemovals: thresholdPercentageForRemovals,
         status: 'Idle',
+        businessJustification: businessJustification,
+        groupSettings: groupSettings,
+        ...(allHaveTitles && {
+          titles: sourceParts.map(part => ({
+            partId: part.id,
+            name: part.title
+          }))
+        })
       };
 
       setIsPostingJob(true);
@@ -275,7 +442,6 @@ export const ManageMembershipBase: React.FunctionComponent<IManageMembershipProp
         await dispatch(postJob(newJob));
         dispatch(resetManageMembership());
         dispatch(clearSourceParts());
-        await dispatch(fetchJobs());
         navigate('/');
         setIsPostingJob(false);
       } catch (error) {
@@ -284,8 +450,11 @@ export const ManageMembershipBase: React.FunctionComponent<IManageMembershipProp
     }
   };
 
-  const isStep1ConditionsMet = selectedDestination && isGroupReadyForOnboarding === true;
-  const isStep3ConditionsMet = isAdvancedQueryValid || allSourcePartsValid;
+  // In advanced view, we require the advanced query itself to be valid (ignore sourceParts validity).
+  // In regular view, rely solely on the composed source parts validation.
+  const isStep3ConditionsMet = (
+    isAdvancedView ? isAdvancedQueryValid : allSourcePartsValid
+  ) && !isMissingAndOrOperator;
   let isNextDisabled = false;
 
   if (currentStep === OnboardingSteps.SelectDestination && !isStep1ConditionsMet) {
@@ -294,9 +463,14 @@ export const ManageMembershipBase: React.FunctionComponent<IManageMembershipProp
     isNextDisabled = false;
   } else if (currentStep === OnboardingSteps.MembershipConfiguration && !isStep3ConditionsMet) {
     isNextDisabled = true;
-  } else if (currentStep === OnboardingSteps.Confirmation) {
+  } else if (currentStep === OnboardingSteps.Confirmation || !isJobWriter) {
     isNextDisabled = true;
   }
+  if (orgLeaderDataReturned === false) {
+    isNextDisabled = true;
+  }
+
+  const isSubmitDisabled = isBusinessJustificationRequired && !isBusinessJustificationProvided;
 
   return (
     <Page>
@@ -310,7 +484,10 @@ export const ManageMembershipBase: React.FunctionComponent<IManageMembershipProp
             children={
               <SelectDestination
                 selectedDestination={selectedDestination}
+                onDestinationTypeChange={handleDestinationTypeChange}
                 onSearchDestinationChange={handleSearchDestinationChange}
+                onSearchChannelChange={handleSearchChannelChange}
+                onGroupCreated={handleGroupCreated}
               />}
           />}
           {currentStep === OnboardingSteps.RunConfiguration && <OnboardingStep
@@ -327,17 +504,18 @@ export const ManageMembershipBase: React.FunctionComponent<IManageMembershipProp
             destinationType={selectedDestination?.type}
             destinationName={selectedDestination?.name}
             children={
-              <MembershipConfiguration />
+              <MembershipConfiguration isEditable={true} />
             }
           />}
           {currentStep === OnboardingSteps.Confirmation && <OnboardingStep
             stepTitle={strings.ManageMembership.labels.step4title}
             stepDescription={strings.ManageMembership.labels.step4description}
-            destinationType={selectedDestination?.type}
-            destinationName={selectedDestination?.name}
+            destinationType={selectedDestination?.type ?? jobDetailsRef.current?.targetDestinationType}
+            destinationName={selectedDestination?.name ?? jobDetailsRef.current?.targetGroupName}
             children={
               <Confirmation
                 onEditButtonClick={onEditButtonClick}
+                onEditBusinessJustification={handleEditBusinessJustification}
               />}
           />}
           <div className={classNames.bottomContainer}>
@@ -359,7 +537,7 @@ export const ManageMembershipBase: React.FunctionComponent<IManageMembershipProp
             </div>
             <div className={classNames.nextButtonContainer}>
               {currentStep === OnboardingSteps.Confirmation ?
-                <PrimaryButton text={strings.submit} onClick={handleSaveButtonClick} />
+                <PrimaryButton text={strings.submit} onClick={handleSaveButtonClick} disabled={isSubmitDisabled} />
                 : <PrimaryButton text={strings.next} onClick={onNextStepClick} disabled={isNextDisabled} />}
             </div>
           </div>

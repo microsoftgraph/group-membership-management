@@ -57,7 +57,12 @@ namespace Tests.FunctionApps.Mocks
             return Task.FromResult(GroupsToUsers.ContainsKey(objectId));
         }
 
-        public Task<bool> IsAppIDOwnerOfGroup(string appId, Guid groupObjectId)
+        public Task<bool> IsAppIDOwnerOfGroup(string appId, Guid groupObjectId, bool validateGroupExists = true)
+        {
+            throw new NotImplementedException();
+        }
+
+        public Task<bool> IsGroupSyncedOnPremisesAsync(Guid groupId)
         {
             throw new NotImplementedException();
         }
@@ -85,23 +90,24 @@ namespace Tests.FunctionApps.Mocks
         {
             throw new NotImplementedException();
         }
-        public Task<(List<AzureADUser> usersToAdd, List<AzureADUser> usersToRemove, string nextPageUrl, string deltaUrl)> GetFirstDeltaUsersPageAsync(string deltaLink)
+        public Task<(List<AzureADUser> usersToAdd, List<AzureADUser> usersToRemove, string nextPageUrl, string deltaUrl)> GetFirstDeltaLinkUsersPageAsync(Guid objectId, string deltaLink, int numberOfPages)
         {
             throw new NotImplementedException();
         }
-        public Task<(List<AzureADUser> usersToAdd, List<AzureADUser> usersToRemove, string nextPageUrl, string deltaUrl)> GetNextDeltaUsersPageAsync(string nextPageUrl)
+        public Task<(List<AzureADUser> users, string nextPageUrl, string deltaUrl)> GetFirstDeltaUsersPageAsync(Guid objectId, int numberOfPages)
         {
             throw new NotImplementedException();
         }
-        public Task<(List<AzureADUser> users, string nextPageUrl, string deltaUrl)> GetFirstUsersPageAsync(Guid objectId)
-        {
-            throw new NotImplementedException();
-        }
-        public Task<(List<AzureADUser> users, string nextPageUrl, string deltaUrl)> GetNextUsersPageAsync(string nextPageUrl)
+        public Task<(List<AzureADUser> users, string nextPageUrl, string deltaUrl)> GetNextDeltaUsersPagesAsync(Guid objectId, string nextPageUrl, int numberOfPages)
         {
             throw new NotImplementedException();
         }
         public Task<AzureADUser> GetUserByUpnOrIdAsync(string userIdentifier, bool includeMailProperty)
+        {
+            throw new NotImplementedException();
+        }
+        
+        public Task<AzureADUser> GetUserWithOnPremisesImmutableIdAsync(string userIdentifier, Guid? runId)
         {
             throw new NotImplementedException();
         }
@@ -122,14 +128,14 @@ namespace Tests.FunctionApps.Mocks
 
         }
 
-        public Task<(List<AzureADUser> users, Dictionary<string, int> nonUserGraphObjects, string nextPageUrl)> GetNextTransitiveMembersPageAsync(string nextPageUrl)
+        public Task<(List<AzureADUser> users, Dictionary<string, int> nonUserGraphObjects, string nextPageUrl)> GetNextTransitiveMembersPageAsync(Guid objectId, string nextPageUrl)
         {
             var users = new List<AzureADUser>();
             var nonUserGraphObjects = new Dictionary<string, int>();
             return Task.FromResult((users, nonUserGraphObjects, ""));
         }
 
-        public Task<bool> IsEmailRecipientOwnerOfGroupAsync(string email, Guid groupObjectId)
+        public Task<bool> IsEmailRecipientOwnerOfGroupAsync(string email, Guid groupObjectId, bool validateGroupExists = true)
         {
             throw new NotImplementedException();
         }
@@ -159,6 +165,11 @@ namespace Tests.FunctionApps.Mocks
             throw new NotImplementedException();
         }
 
+        public Task<AzureADGroup> CreateGroupFromUI(string newGroupName, Guid groupOwnerId, string newGroupAlias)
+        {
+            throw new NotImplementedException();
+        }
+
         public Task<List<AzureADUser>> GetTenantUsers(int userCount)
         {
             throw new NotImplementedException();
@@ -175,6 +186,10 @@ namespace Tests.FunctionApps.Mocks
         }
 
         public Task<Dictionary<Guid, string>> GetGroupNamesAsync(List<Guid> objectIds)
+        {
+            throw new NotImplementedException();
+        }
+        public Task<Dictionary<Guid, string>> GetGroupEmailsAsync(List<Guid> objectIds)
         {
             throw new NotImplementedException();
         }
@@ -195,6 +210,36 @@ namespace Tests.FunctionApps.Mocks
         }
 
         public Task<bool> IsServiceAccountOwnerOfGroupAsync(Guid serviceAccountObjectId, Guid groupObjectId)
+        {
+            throw new NotImplementedException();
+        }
+
+        public Task<(List<AzureADUser> usersToAdd, List<AzureADUser> usersToRemove, string nextPageUrl, string deltaUrl)> GetNextDeltaLinkUsersPagesAsync(Guid objectId, string nextPageUrl, int numberOfPages)
+        {
+            throw new NotImplementedException();
+        }
+
+        public Task<List<string>> GetAllGroupNamesAsync()
+        {
+            throw new NotImplementedException();
+        }
+
+        public Task<string> GetGroupEmailAsync(Guid objectId)
+        {
+            throw new NotImplementedException();
+        }
+        
+        public Task<List<AzureADGroup>> GetGroupsByFilterAsync(string query)
+        {
+            throw new NotImplementedException();
+        }
+        
+        public async Task<Guid> GetObjectIdFromAppIdAsync(Guid userIdentifier, Guid? runId)
+        {
+            throw new NotImplementedException();
+        }
+
+        public Task<List<AzureADGroup>> GetDirectGroupTypeMembersAsync(Guid groupObjectId)
         {
             throw new NotImplementedException();
         }

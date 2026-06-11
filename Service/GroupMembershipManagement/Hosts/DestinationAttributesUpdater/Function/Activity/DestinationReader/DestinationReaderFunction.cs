@@ -1,10 +1,9 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-using Microsoft.Azure.WebJobs;
-using Microsoft.Azure.WebJobs.Extensions.DurableTask;
+using Microsoft.Azure.Functions.Worker;
+using Microsoft.Extensions.Logging;
 using Models;
-using Repositories.Contracts;
 using Services.Contracts;
 using System;
 using System.Collections.Generic;
@@ -14,24 +13,25 @@ namespace Hosts.DestinationAttributesUpdater
 {
     public class DestinationReaderFunction
     {
-        private readonly ILoggingRepository _loggingRepository = null;
-        private readonly IDestinationAttributesUpdaterService _destinationAttributeUpdater = null;
+        private readonly ILogger<DestinationReaderFunction> _logger;
+        private readonly IDestinationAttributesUpdaterService _destinationAttributeUpdater;
 
-        public DestinationReaderFunction(ILoggingRepository loggingRepository, IDestinationAttributesUpdaterService destinationAttributeUpdater)
+        public DestinationReaderFunction(ILogger<DestinationReaderFunction> logger, IDestinationAttributesUpdaterService destinationAttributeUpdater)
         {
-            _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _destinationAttributeUpdater = destinationAttributeUpdater ?? throw new ArgumentNullException(nameof(destinationAttributeUpdater));
         }
 
-        [FunctionName(nameof(DestinationReaderFunction))]
-        public async Task<List<(string Destination, Guid TableId)>> GetDestinationsAsync([ActivityTrigger] string destinationType)
+        [Function(nameof(DestinationReaderFunction))]
+        public async Task<List<DestinationInfo>> GetDestinationsAsync([ActivityTrigger] string destinationType)
         {
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(DestinationReaderFunction)} function started"}, VerbosityLevel.DEBUG);
+            _logger.FunctionStarted(nameof(DestinationReaderFunction));
 
             var destinations = await _destinationAttributeUpdater.GetDestinationsAsync(destinationType);
 
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(DestinationReaderFunction)} function completed"}, VerbosityLevel.DEBUG);
-            
+            _logger.DestinationsRetrieved(destinations?.Count ?? 0, destinationType);
+            _logger.FunctionCompleted(nameof(DestinationReaderFunction));
+
             return destinations;
         }
     }

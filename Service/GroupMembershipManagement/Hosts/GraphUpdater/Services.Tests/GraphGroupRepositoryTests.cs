@@ -2,13 +2,13 @@
 // Licensed under the MIT license.
 using Microsoft.ApplicationInsights;
 using Microsoft.ApplicationInsights.Extensibility;
+using Microsoft.Extensions.Logging;
 using Microsoft.Graph;
 using Microsoft.Kiota.Abstractions;
 using Microsoft.Kiota.Abstractions.Serialization;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Models;
 using Moq;
-using Newtonsoft.Json.Linq;
 using Repositories.Contracts;
 using Repositories.GraphGroups;
 using System;
@@ -16,6 +16,8 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Net.Http;
 using System.Text;
+using System.Text.Json;
+using System.Text.Json.Nodes;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
@@ -27,12 +29,17 @@ namespace Services.Tests
     {
         private const string GRAPH_API_V1_BASE_URL = "https://graph.microsoft.com/v1.0";
         private Mock<IRequestAdapter> _requestAdapter;
+        private Mock<IGraphRepositorySettings> _graphRepositorySettings;
 
         [TestInitialize]
         public void Setup()
         {
             _requestAdapter = new Mock<IRequestAdapter>();
             _requestAdapter.SetupProperty(x => x.BaseUrl).SetReturnsDefault(GRAPH_API_V1_BASE_URL);
+            _graphRepositorySettings = new Mock<IGraphRepositorySettings>();
+
+            _graphRepositorySettings.Setup(x => x.ConcurrentAddRequests).Returns(10);
+            _graphRepositorySettings.Setup(x => x.ConcurrentRemoveRequests).Returns(10);
 
             string requestUrl = null;
             HttpMethod requestMethod = null;
@@ -89,9 +96,7 @@ namespace Services.Tests
                                 }
 
                                 var stringContent = Encoding.UTF8.GetString(buffer);
-                                var root = JObject.Parse(stringContent);
-                                var requestsNode = root["requests"].ToString();
-                                var batchRequest = JArray.Parse(requestsNode);
+                                var batchRequest = GetBatchRequests(stringContent);
 
                                 var requests = new Dictionary<string, string>();
                                 var userIds = new List<string>();
@@ -100,18 +105,14 @@ namespace Services.Tests
                                 foreach (var step in batchRequest)
                                 {
                                     //PATCH requests have multiple userIds per step
-                                    if (step["method"].Value<string>() == "PATCH")
+                                    if (step["method"].GetValue<string>() == "PATCH")
                                     {
-                                        userIds = step["body"]["members@odata.bind"]
-                                                  .Values()
-                                                  .Select(x => x.Value<string>()
-                                                  .Replace("https://graph.microsoft.com/v1.0/users/", string.Empty))
-                                                  .ToList();
+                                        userIds = GetUserIds(step);
 
                                         var userNotFound = userIds.Intersect(usersNotFoundIds).FirstOrDefault();
                                         if (userNotFound != null)
                                         {
-                                            requests.Add(step["id"].Value<string>(), userNotFound);
+                                            requests.Add(step["id"].GetValue<string>(), userNotFound);
                                             var content = GenerateNotFoundBatchResponse(requests);
                                             batchResponseContent = GenerateBatchResponseContent(content);
                                             nativeResponseHandler.Value = GetHttpResponseMessage(content);
@@ -121,18 +122,18 @@ namespace Services.Tests
                                     {
                                         //POST requests have a single userId per step
                                         var userId = step["body"]["@odata.id"]
-                                                        .Value<string>()
+                                                        .GetValue<string>()
                                                         .Replace("https://graph.microsoft.com/v1.0/directoryObjects/", string.Empty);
 
                                         if (usersNotFoundIds.Contains(userId))
                                         {
-                                            var id = step["id"].Value<string>();
-                                            var message = $"Resource '{id}' does not exist or one of its queried reference-property objects are not present.";
+                                            var id = step["id"].GetValue<string>();
+                                            var message = $"Resource '{userId}' does not exist or one of its queried reference-property objects are not present.";
                                             individualResponsesForPOSTRequests.Add(GenerateNotFoundIndividualResponse(id, message));
                                         }
                                         else
                                         {
-                                            individualResponsesForPOSTRequests.Add(GenerateSuccessIndividualResponse(step["id"].Value<string>()));
+                                            individualResponsesForPOSTRequests.Add(GenerateSuccessIndividualResponse(step["id"].GetValue<string>()));
                                         }
                                     }
                                 }
@@ -147,21 +148,17 @@ namespace Services.Tests
                             });
 
             var graphServiceClient = new Mock<GraphServiceClient>(_requestAdapter.Object, GRAPH_API_V1_BASE_URL);
-            var logger = new Mock<ILoggingRepository>();
+            var loggerFactory = new TestLoggerFactory();
             var telemetryConfiguration = new TelemetryConfiguration("instrumentationkey");
             var telemetryClient = new TelemetryClient(telemetryConfiguration);
             var targetGroup = new AzureADGroup { ObjectId = Guid.Empty };
-            var graphGroupRepository = new GraphGroupRepository(graphServiceClient.Object, telemetryClient, logger.Object);
+            var graphGroupRepository = new GraphGroupRepository(graphServiceClient.Object, telemetryClient, _graphRepositorySettings.Object, loggerFactory);
             var response = await graphGroupRepository.AddUsersToGroup(users, targetGroup);
 
             foreach (var userId in usersNotFoundIds)
             {
                 var message = $"Adding {userId} failed as this resource does not exists.";
-                logger.Verify(x => x.LogMessageAsync(
-                                   It.Is<LogMessage>(x => x.Message == message),
-                                   It.IsAny<VerbosityLevel>(),
-                                   It.IsAny<string>(),
-                                   It.IsAny<string>()), Times.Exactly(1));
+                Assert.AreEqual(1, loggerFactory.Entries.Count(x => x.Message == message));
             }
 
             Assert.AreEqual(usersNotFoundIds.Count, response.UsersNotFound.Count);
@@ -171,7 +168,7 @@ namespace Services.Tests
         public async Task RemoveUsersIgnoreNotFoundFromGroup()
         {
             var userIdRegexPattern = new Regex("members/(?<userId>.*?)/");
-            var logger = new Mock<ILoggingRepository>();
+            var loggerFactory = new TestLoggerFactory();
             var telemetryConfiguration = new TelemetryConfiguration("instrumentationkey");
             var telemetryClient = new TelemetryClient(telemetryConfiguration);
 
@@ -211,14 +208,12 @@ namespace Services.Tests
                                 }
 
                                 var stringContent = Encoding.UTF8.GetString(buffer);
-                                var root = JObject.Parse(stringContent);
-                                var requestsNode = root["requests"].ToString();
-                                var batchRequest = JArray.Parse(requestsNode);
+                                var batchRequest = GetBatchRequests(stringContent);
 
                                 var steps = batchRequest.Select(jtoken => new
                                 {
-                                    Id = jtoken["id"].Value<string>(),
-                                    Url = jtoken["url"].Value<string>(),
+                                    Id = jtoken["id"].GetValue<string>(),
+                                    Url = jtoken["url"].GetValue<string>(),
                                 }).ToList();
 
                                 var individualResponsesForPOSTRequests = new List<string>();
@@ -246,17 +241,13 @@ namespace Services.Tests
                             });
 
             var graphServiceClient = new Mock<GraphServiceClient>(_requestAdapter.Object, GRAPH_API_V1_BASE_URL);
-            var graphGroupRepository = new GraphGroupRepository(graphServiceClient.Object, telemetryClient, logger.Object);
+            var graphGroupRepository = new GraphGroupRepository(graphServiceClient.Object, telemetryClient, _graphRepositorySettings.Object, loggerFactory);
             var response = await graphGroupRepository.RemoveUsersFromGroup(users, targetGroup);
 
             foreach (var userId in usersNotFoundIds)
             {
                 var message = $"Removing {userId} failed as this resource does not exists.";
-                logger.Verify(x => x.LogMessageAsync(
-                                   It.Is<LogMessage>(x => x.Message == message),
-                                   It.IsAny<VerbosityLevel>(),
-                                   It.IsAny<string>(),
-                                   It.IsAny<string>()), Times.Exactly(1));
+                Assert.AreEqual(1, loggerFactory.Entries.Count(x => x.Message == message));
             }
 
             Assert.AreEqual(usersNotFoundIds.Count, response.UsersNotFound.Count);
@@ -294,9 +285,7 @@ namespace Services.Tests
                     }
 
                     var stringContent = Encoding.UTF8.GetString(buffer);
-                    var root = JObject.Parse(stringContent);
-                    var requestsNode = root["requests"].ToString();
-                    var batchRequest = JArray.Parse(requestsNode);
+                    var batchRequest = GetBatchRequests(stringContent);
 
                     var requests = new Dictionary<string, string>();
                     var userIds = new List<string>();
@@ -306,17 +295,13 @@ namespace Services.Tests
                     foreach (var step in batchRequest)
                     {
                         //PATCH requests have multiple userIds per step
-                        if (step["method"].Value<string>() == "PATCH")
+                        if (step["method"].GetValue<string>() == "PATCH")
                         {
-                            userIds = step["body"]["members@odata.bind"]
-                                      .Values()
-                                      .Select(x => x.Value<string>()
-                                      .Replace("https://graph.microsoft.com/v1.0/users/", string.Empty))
-                                      .ToList();
+                            userIds = GetUserIds(step);
 
                             if (userIds.Any(x => usersThatAlreadyExist.Contains(x)))
                             {
-                                requests.Add(step["id"].Value<string>(), usersThatAlreadyExist.First());
+                                requests.Add(step["id"].GetValue<string>(), usersThatAlreadyExist.First());
                                 var content = GenerateBadRequestBatchResponse(requests, userAlreadyExistsMessage);
                                 batchResponseContent = GenerateBatchResponseContent(content);
                                 nativeResponseHandler.Value = GetHttpResponseMessage(content);
@@ -326,16 +311,16 @@ namespace Services.Tests
                         {
                             //POST requests have a single userId per step
                             var userId = step["body"]["@odata.id"]
-                                            .Value<string>()
+                                            .GetValue<string>()
                                             .Replace("https://graph.microsoft.com/v1.0/directoryObjects/", string.Empty);
 
                             if (usersThatAlreadyExist.Contains(userId))
                             {
-                                individualResponsesForPOSTRequests.Add(GenerateBadRequestIndividualResponse(step["id"].Value<string>(), userAlreadyExistsMessage));
+                                individualResponsesForPOSTRequests.Add(GenerateBadRequestIndividualResponse(step["id"].GetValue<string>(), userAlreadyExistsMessage));
                             }
                             else
                             {
-                                individualResponsesForPOSTRequests.Add(GenerateSuccessIndividualResponse(step["id"].Value<string>()));
+                                individualResponsesForPOSTRequests.Add(GenerateSuccessIndividualResponse(step["id"].GetValue<string>()));
                             }
                         }
                     }
@@ -350,10 +335,10 @@ namespace Services.Tests
                 });
 
             var graphServiceClient = new Mock<GraphServiceClient>(_requestAdapter.Object, GRAPH_API_V1_BASE_URL);
-            var logger = new Mock<ILoggingRepository>();
+            var loggerFactory = new TestLoggerFactory();
             var telemetryConfiguration = new TelemetryConfiguration("instrumentationkey");
             var telemetryClient = new TelemetryClient(telemetryConfiguration);
-            var graphGroupRepository = new GraphGroupRepository(graphServiceClient.Object, telemetryClient, logger.Object);
+            var graphGroupRepository = new GraphGroupRepository(graphServiceClient.Object, telemetryClient, _graphRepositorySettings.Object, loggerFactory);
 
             var usersToAdd = new List<AzureADUser>();
             Enumerable.Range(0, numberOfUsers)
@@ -374,11 +359,7 @@ namespace Services.Tests
 
             var response = await graphGroupRepository.AddUsersToGroup(usersToAdd, new AzureADGroup { ObjectId = Guid.NewGuid() });
 
-            logger.Verify(x => x.LogMessageAsync(
-                                    It.Is<LogMessage>(x => x.Message.EndsWith("already exists")),
-                                    It.IsAny<VerbosityLevel>(),
-                                    It.IsAny<string>(),
-                                    It.IsAny<string>()), Times.Exactly(usersThatAlreadyExist.Count));
+            Assert.AreEqual(usersThatAlreadyExist.Count, loggerFactory.Entries.Count(x => x.Message.EndsWith("already exists", StringComparison.Ordinal)));
 
             Assert.AreEqual(usersThatAlreadyExist.Count, response.UsersAlreadyExist.Count);
         }
@@ -417,9 +398,7 @@ namespace Services.Tests
                     }
 
                     var stringContent = Encoding.UTF8.GetString(buffer);
-                    var root = JObject.Parse(stringContent);
-                    var requestsNode = root["requests"].ToString();
-                    var batchRequest = JArray.Parse(requestsNode);
+                    var batchRequest = GetBatchRequests(stringContent);
 
                     var requests = new Dictionary<string, string>();
                     var userIds = new List<string>();
@@ -429,17 +408,13 @@ namespace Services.Tests
                     foreach (var step in batchRequest)
                     {
                         //PATCH requests have multiple userIds per step
-                        if (step["method"].Value<string>() == "PATCH")
+                        if (step["method"].GetValue<string>() == "PATCH")
                         {
-                            userIds = step["body"]["members@odata.bind"]
-                                      .Values()
-                                      .Select(x => x.Value<string>()
-                                      .Replace("https://graph.microsoft.com/v1.0/users/", string.Empty))
-                                      .ToList();
+                            userIds = GetUserIds(step);
 
                             if (userIds.Any(x => guestUsers.Contains(x)))
                             {
-                                requests.Add(step["id"].Value<string>(), guestUsers.First());
+                                requests.Add(step["id"].GetValue<string>(), guestUsers.First());
                                 var content = GenerateForbiddenBatchResponse(requests, guestUserErrorMessage);
                                 batchResponseContent = GenerateBatchResponseContent(content);
                                 nativeResponseHandler.Value = GetHttpResponseMessage(content);
@@ -449,16 +424,16 @@ namespace Services.Tests
                         {
                             //POST requests have a single userId per step
                             var userId = step["body"]["@odata.id"]
-                                            .Value<string>()
+                                            .GetValue<string>()
                                             .Replace("https://graph.microsoft.com/v1.0/directoryObjects/", string.Empty);
 
                             if (guestUsers.Contains(userId))
                             {
-                                individualResponsesForPOSTRequests.Add(GenerateForbiddenIndividualResponse(step["id"].Value<string>(), guestUserErrorMessage));
+                                individualResponsesForPOSTRequests.Add(GenerateForbiddenIndividualResponse(step["id"].GetValue<string>(), guestUserErrorMessage));
                             }
                             else
                             {
-                                individualResponsesForPOSTRequests.Add(GenerateSuccessIndividualResponse(step["id"].Value<string>()));
+                                individualResponsesForPOSTRequests.Add(GenerateSuccessIndividualResponse(step["id"].GetValue<string>()));
                             }
                         }
                     }
@@ -473,10 +448,10 @@ namespace Services.Tests
                 });
 
             var graphServiceClient = new Mock<GraphServiceClient>(_requestAdapter.Object, GRAPH_API_V1_BASE_URL);
-            var logger = new Mock<ILoggingRepository>();
+            var loggerFactory = new TestLoggerFactory();
             var telemetryConfiguration = new TelemetryConfiguration("instrumentationkey");
             var telemetryClient = new TelemetryClient(telemetryConfiguration);
-            var graphGroupRepository = new GraphGroupRepository(graphServiceClient.Object, telemetryClient, logger.Object);
+            var graphGroupRepository = new GraphGroupRepository(graphServiceClient.Object, telemetryClient, _graphRepositorySettings.Object, loggerFactory);
             var usersToAdd = new List<AzureADUser>();
 
             Enumerable.Range(0, numberOfUsers)
@@ -500,11 +475,63 @@ namespace Services.Tests
             foreach (var guestUser in guestUsers)
             {
                 var message = $"{guestUser} was not added because it is a guest user and the destination does not allow guest users";
-                logger.Verify(x => x.LogMessageAsync(
-                                    It.Is<LogMessage>(x => x.Message == message),
-                                    It.IsAny<VerbosityLevel>(),
-                                    It.IsAny<string>(),
-                                    It.IsAny<string>()), Times.Exactly(1));
+                Assert.AreEqual(1, loggerFactory.Entries.Count(x => x.Message == message));
+            }
+        }
+
+        private sealed class TestLoggerFactory : ILoggerFactory
+        {
+            public List<TestLogEntry> Entries { get; } = new();
+
+            public void AddProvider(ILoggerProvider provider)
+            {
+            }
+
+            public ILogger CreateLogger(string categoryName)
+            {
+                return new TestLogger(categoryName, Entries);
+            }
+
+            public void Dispose()
+            {
+            }
+        }
+
+        private sealed class TestLogger : ILogger
+        {
+            private readonly string _categoryName;
+            private readonly List<TestLogEntry> _entries;
+
+            public TestLogger(string categoryName, List<TestLogEntry> entries)
+            {
+                _categoryName = categoryName;
+                _entries = entries;
+            }
+
+            public IDisposable BeginScope<TState>(TState state)
+            {
+                return NullScope.Instance;
+            }
+
+            public bool IsEnabled(LogLevel logLevel)
+            {
+                return true;
+            }
+
+            public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception exception, Func<TState, Exception, string> formatter)
+            {
+                _entries.Add(new TestLogEntry(_categoryName, logLevel, formatter(state, exception)));
+            }
+        }
+
+        private sealed record TestLogEntry(string CategoryName, LogLevel LogLevel, string Message);
+
+        private sealed class NullScope : IDisposable
+        {
+            public static NullScope Instance { get; } = new();
+
+            public void Dispose()
+            {
             }
         }
 
@@ -617,6 +644,22 @@ namespace Services.Tests
             }}";
 
             return response;
+        }
+
+        private List<string> GetUserIds(JsonNode node)
+        {
+            return node["body"]["members@odata.bind"].AsArray()
+                    .Select(x => x.GetValue<string>()
+                    .Replace("https://graph.microsoft.com/v1.0/users/", string.Empty))
+                    .ToList();
+        }
+
+        private JsonArray GetBatchRequests(string json)
+        {
+            var root = JsonDocument.Parse(json);
+            var requestsNode = root.RootElement.GetProperty("requests");
+            var batchRequest = JsonNode.Parse(requestsNode.ToString()).AsArray();
+            return batchRequest;
         }
     }
 }

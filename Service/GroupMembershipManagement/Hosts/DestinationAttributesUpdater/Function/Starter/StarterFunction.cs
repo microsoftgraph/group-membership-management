@@ -1,10 +1,10 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-using Microsoft.Azure.WebJobs;
-using Microsoft.Azure.WebJobs.Extensions.DurableTask;
-using Models;
-using Repositories.Contracts;
+using Microsoft.Azure.Functions.Worker;
+using Microsoft.Azure.Functions.Worker.Extensions.DurableTask;
+using Microsoft.DurableTask.Client;
+using Microsoft.Extensions.Logging;
 using System;
 using System.Threading.Tasks;
 
@@ -12,21 +12,21 @@ namespace Hosts.DestinationAttributesUpdater
 {
     public class StarterFunction
     {
-        private readonly ILoggingRepository _loggingRepository = null;
-        public StarterFunction(ILoggingRepository loggingRepository)
+        private readonly ILogger<StarterFunction> _logger;
+
+        public StarterFunction(ILogger<StarterFunction> logger)
         {
-            _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
 
-
-        [FunctionName(nameof(StarterFunction))]
+        [Function(nameof(StarterFunction))]
         public async Task Run(
             [TimerTrigger("%destinationAttributesUpdaterSchedule%")] TimerInfo myTimer,
-            [DurableClient] IDurableOrchestrationClient starter)
+            [DurableClient] DurableTaskClient starter)
         {
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(StarterFunction)} function started" }, VerbosityLevel.DEBUG);
-            await starter.StartNewAsync(nameof(OrchestratorFunction), null);
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(StarterFunction)} function completed" }, VerbosityLevel.DEBUG);
+            _logger.FunctionStarted(nameof(StarterFunction));
+            await starter.ScheduleNewOrchestrationInstanceAsync(nameof(OrchestratorFunction));
+            _logger.FunctionCompleted(nameof(StarterFunction));
         }
     }
 }

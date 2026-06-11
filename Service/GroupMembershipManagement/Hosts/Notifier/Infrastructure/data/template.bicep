@@ -8,39 +8,39 @@ param environmentAbbreviation string
 @maxLength(3)
 param solutionAbbreviation string = 'gmm'
 
-@description('Enter tenant Id.')
-param tenantId string
-
-@description('Enter storage account name.')
-param storageAccountName string
-
 param storageAccountSku string = 'Standard_LRS'
 
 @description('Resource location.')
 param location string
 
+@description('Classify the types of resources in prereqs resource group.')
+param prereqsResourceGroupClassification string = 'prereqs'
+
 var keyVaultName = '${solutionAbbreviation}-data-${environmentAbbreviation}'
-var prodStorageAccountName = substring('ntf${solutionAbbreviation}${environmentAbbreviation}prod${uniqueString(resourceGroup().id)}',0,23)
-var stagingStorageAccountName = substring('ntf${solutionAbbreviation}${environmentAbbreviation}staging${uniqueString(resourceGroup().id)}',0,23)
+var prodStorageAccountName = substring('n${solutionAbbreviation}${environmentAbbreviation}prod${uniqueString(resourceGroup().id)}',0,23)
 
 module notifierStorageAccountProd 'storageAccount.bicep' = {
-  name: 'ntfProdstorageAccountTemplate'
+  name: 'nProdstorageAccountTemplate'
   params: {
     name: prodStorageAccountName
     sku: storageAccountSku
     keyVaultName: keyVaultName
     location: location
-    storageAccountConnectionStringSettingName: 'notifierStorageAccountProd'
+    storageAccountSettingName: 'notifierStorageAccountProd'
+    appPackageContainerSettingName: 'notifierAppPackageContainerProd'
+    appPackageContainerName: 'app-package'
   }
 }
 
-module notifierStorageAccountStaging 'storageAccount.bicep' = {
-  name: 'ntfStagingstorageAccountTemplate'
+var nspName = '${solutionAbbreviation}-nsp-${environmentAbbreviation}'
+var prereqsResourceGroupName = '${solutionAbbreviation}-${prereqsResourceGroupClassification}-${environmentAbbreviation}'
+
+module nStorageAccountAssociationTemplate 'networkSecurityPerimeterResourceAssociation.bicep' = {
+  name: 'nStorageAccountAssociationTemplate'
+  scope: resourceGroup(prereqsResourceGroupName)
   params: {
-    name: stagingStorageAccountName
-    sku: storageAccountSku
-    keyVaultName: keyVaultName
-    location: location
-    storageAccountConnectionStringSettingName: 'notifierStorageAccountStaging'
+    nspName: nspName
+    profileName: 'storageaccount'
+    resourceId: notifierStorageAccountProd.outputs.storageAccountId
   }
 }

@@ -1,0 +1,22 @@
+{
+  "IsEncrypted": false,
+  "Values": {
+    "AZURE_TOKEN_CREDENTIALS": "VisualStudioCredential",
+    "AzureWebJobsStorage": "UseDevelopmentStorage=true",
+    "AzureWebJobsStorage__credential": "managedidentity",
+    "FUNCTIONS_WORKER_RUNTIME": "dotnet-isolated",
+    "appConfigurationEndpoint": "https://gmm-appconfig-<env>.azconfig.io",
+    "APPINSIGHTS_INSTRUMENTATIONKEY": "",
+    "gmmServiceBus__fullyQualifiedNamespace": "",
+    "instanceIdentifier": "",
+    "logAnalyticsCustomerId": "",
+    "logAnalyticsPrimarySharedKey": "",
+    "membershipContainerName": "membership",
+    "membershipStorageAccountName": "",
+    "messageSplitterSubscription": "",
+    "serviceBusMembershipUpdatersTopic": "membershipUpdaters",
+    "serviceBusMessageSplitterTopic": "messageSplitter",
+    "ConnectionStrings__JobsContext": "",
+    "ConnectionStrings__JobsContextReadOnly": ""
+  }
+}

@@ -24,11 +24,13 @@ namespace WebApi.Models.DTOs
         public Guid SyncJobId { get; set; }
         public Guid TargetGroupId { get; set; }
         public string? TargetGroupName { get; set; }
-        public string? TargetGroupType { get; set; }
+        public string? TargetGroupEmail { get; set; }
+        public string? TargetDestinationType { get; set; }
         public string Status { get; set; }
         public int Period { get; set; }
 
         public DateTime LastSuccessfulRunTime { get; set; }
         public DateTime EstimatedNextRunTime { get; set; }
+        public DateTime? LastModifiedTime { get; set; }
     }
 }

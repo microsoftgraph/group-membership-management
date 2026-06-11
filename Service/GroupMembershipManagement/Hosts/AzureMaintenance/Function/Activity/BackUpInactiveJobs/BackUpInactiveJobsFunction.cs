@@ -1,7 +1,6 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
-using Microsoft.Azure.WebJobs;
-using Microsoft.Azure.WebJobs.Extensions.DurableTask;
+using Microsoft.Azure.Functions.Worker;
 using Models;
 using Repositories.Contracts;
 using Services.Contracts;
@@ -21,15 +20,13 @@ namespace Hosts.AzureMaintenance
             _azureMaintenanceService = azureMaintenanceService ?? throw new ArgumentNullException(nameof(azureMaintenanceService));
         }
 
-        [FunctionName(nameof(BackUpInactiveJobsFunction))]
-        public async Task<int> BackupInactiveJobsAsync([ActivityTrigger] List<SyncJob> syncJobs)
+        [Function(nameof(BackUpInactiveJobsFunction))]
+        public async Task<List<PurgedSyncJob>> BackupInactiveJobsAsync([ActivityTrigger] List<SyncJob> syncJobs)
         {
-            int countOfBackUpJobs = 0;
-            if (syncJobs.Count > 0)
-            {
-                countOfBackUpJobs = await _azureMaintenanceService.BackupInactiveJobsAsync(syncJobs);
-            }
-            return countOfBackUpJobs;
+            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(BackUpInactiveJobsFunction)} function started" }, VerbosityLevel.DEBUG);
+            var backUpJobs = await _azureMaintenanceService.BackupInactiveJobsAsync(syncJobs);
+            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(BackUpInactiveJobsFunction)} function completed" }, VerbosityLevel.DEBUG);
+            return backUpJobs;
         }
     }
 }

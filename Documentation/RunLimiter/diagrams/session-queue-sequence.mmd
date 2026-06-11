@@ -1,0 +1,64 @@
+%%{init: {'flowchart': {'defaultRenderer': 'elk'}}}%%
+flowchart TD
+    subgraph WHY["WHY SESSION QUEUES?"]
+        W0["<b>Problem Statement</b>"]:::header
+        W0 --> W1[Large jobs split into<br/>multiple messages]
+        W1 --> W2[Each message = batch of<br/>membership changes]
+        W2 --> W3[Must process in order<br/>Must track state across messages]
+        W3 --> W4[Only send ONE completion<br/>when ALL messages done]
+    end
+
+    subgraph SETUP["1. MESSAGE ROUTING"]
+        A0["<b>MS.OrchestratorFunction</b>"]:::header
+        A0 --> A1[MembershipAggregator determines<br/>job is Large lane]
+        A1 --> A2[Split into multiple messages<br/>e.g., 3 messages for big job]
+        A2 --> A3[Each message sent with<br/>SessionId = RunId]
+        A3 --> A4[All messages for same job<br/>have same SessionId]
+    end
+
+    subgraph SESSION["2. SESSION QUEUE GUARANTEES"]
+        B0["<b>ServiceBus Session Lock</b>"]:::header
+        B0 --> B1[ServiceBus acquires session lock<br/>for this SessionId]
+        B1 --> B2[Only ONE consumer can<br/>receive this session]
+        B2 --> B3[Messages delivered in order<br/>Message 1 before Message 2]
+        B3 --> B4[Next message waits until<br/>current one acknowledged]
+    end
+
+    subgraph PROCESS1["3. FIRST MESSAGE"]
+        C0["<b>GU.StarterFunction_large</b>"]:::header
+        C0 --> C1[Receives Message 1]
+        C1 --> C2[Create instanceId =<br/>runId_sequenceNumber]
+        C2 --> C3[Schedule GU.OrchestratorMultiLaneFunction]
+        C3 --> C4[WaitForInstanceAsync BLOCKS<br/>Function does not return]
+        C4 --> C5[Orchestrator processes batch<br/>Updates JobTrackerEntity]
+        C5 --> C6[Orchestrator completes<br/>WaitForInstanceAsync returns]
+        C6 --> C7[Message 1 acknowledged<br/>ServiceBus releases for next]
+    end
+
+    subgraph PROCESS2["4. SUBSEQUENT MESSAGES"]
+        D0["<b>Same Pattern Repeats</b>"]:::header
+        D0 --> D1[Message 2 delivered]
+        D1 --> D2[Same JobTrackerEntity<br/>State accumulated]
+        D2 --> D3[Message 3 delivered<br/>Final message]
+    end
+
+    subgraph COMPLETE["5. COMPLETION"]
+        E0["<b>Only Once Per Job</b>"]:::header
+        E0 --> E1[Last orchestrator checks<br/>JobTrackerEntity.CompletionSent]
+        E1 --> E2{Already sent?}
+        E2 -->|Yes| E3[Skip: Another message<br/>already sent completion]
+        E2 -->|No| E4[Send completion signal<br/>Set CompletionSent = true]
+        E4 --> E5[Lease released in<br/>MessageSplitter]
+    end
+
+    classDef header fill:#1976d2,color:#fff,font-weight:bold
+
+    A4 --> B1
+    B4 --> C1
+    C7 --> D1
+    D3 --> E1
+
+    style C4 fill:#e3f2fd
+    style B2 fill:#e3f2fd
+    style E4 fill:#c8e6c9
+    style E3 fill:#fff3e0

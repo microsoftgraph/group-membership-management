@@ -7,10 +7,12 @@ namespace Hosts.MembershipAggregator
 {
     public class JobStatusUpdaterRequest
     {
-        public SyncJob SyncJob { get; set; }
-        public SyncStatus? Status { get; set; }
-        public bool IsDryRun { get; set; }
-        public int? ThresholdViolations { get; set; }
-        public MembershipDeltaStatus DeltaStatus { get; set; }
+        public required SyncJob SyncJob { get; init; }
+        public required int CurrentPart { get; init; }
+        public required int TotalParts { get; init; }
+        public required SyncStatus Status { get; init; }
+        public required bool IsDryRun { get; init; }
+        public required bool IncrementThresholdViolations { get; init; }
+        public required bool IsNoOpSync { get; init; }
     }
 }

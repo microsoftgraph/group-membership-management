@@ -1,0 +1,16 @@
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT license.
+
+using Models;
+using Models.ServiceBus;
+using Models.SyncJobHistory;
+using System.Threading.Tasks;
+
+namespace Services.Contracts
+{
+    public interface ISyncJobStatusService
+    {
+        Task UpdateJobStatusAsync(SyncJob job, SyncStatus? status, SyncJobHistory? history = null,  string? functionName = null);
+        Task CreateOrUpdateJobHistoryAsync(SyncJobHistory history);
+    }
+}

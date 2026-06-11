@@ -24,6 +24,7 @@ resource storageAccount 'Microsoft.Storage/storageAccounts@2019-04-01' = {
     supportsHttpsTrafficOnly: true
     allowBlobPublicAccess: false
     minimumTlsVersion: 'TLS1_2'
+    allowSharedKeyAccess: false
   }
   identity: {
     type: 'SystemAssigned'
@@ -44,8 +45,8 @@ module secureSecretsTemplate 'keyVaultSecretsSecure.bicep' = {
     keyVaultSecrets: {
       secrets: [
         {
-          name: 'adfStorageAccountConnectionString'
-          value: 'DefaultEndpointsProtocol=https;AccountName=${storageAccount.name};AccountKey=${storageAccount.listKeys().keys[0].value}'
+          name: 'adfStorageAccountName'
+          value: storageAccount.name
         }
       ]
     }

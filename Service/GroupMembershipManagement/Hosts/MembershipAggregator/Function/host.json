@@ -1,14 +1,19 @@
 {
   "version": "2.0",
   "functionTimeout": "00:10:00",
+  "extensions": {
+    "durableTask": {
+      "maxConcurrentOrchestratorFunctions": 20,
+      "maxConcurrentActivityFunctions": 5,
+      "extendedSessionsEnabled": true,
+      "extendedSessionIdleTimeoutInSeconds": 30
+    }
+  },
   "concurrency": {
     "dynamicConcurrencyEnabled": true,
     "snapshotPersistenceEnabled": true
   },
   "logging": {
-    "logLevel": {
-      "Host.Concurrency": "Trace"
-    },
     "applicationInsights": {
       "samplingSettings": {
         "isEnabled": true,

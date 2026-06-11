@@ -1,5 +1,5 @@
 branches: 
-  - name: develop
+  - name: stable
 comments:
   - markdown: |
       # Is your code accessible?

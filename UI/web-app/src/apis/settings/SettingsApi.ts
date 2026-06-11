@@ -24,13 +24,19 @@ export class SettingsApi extends ApiBase implements ISettingsApi {
     return response.data;
   }
 
-  async patchSetting(setting: Setting): Promise<Setting> {
+  public async patchSetting(setting: Setting): Promise<Setting> {
     const response = await this.httpClient.patch<Setting, AxiosResponse<Setting>, string>(
       `/${encodeURIComponent(setting.settingKey)}`,
-      setting.settingValue,
+      JSON.stringify(setting.settingValue),
       { headers: { 'Content-Type': 'application/json' } }
     );
     this.ensureSuccessStatusCode(response);
     return response.data;
   }
-}
+
+  public async getSupportEmailAddress(): Promise<string> {
+    const response = await this.httpClient.get<string>('supportEmail');
+    this.ensureSuccessStatusCode(response);
+    return response.data;
+  }
+};

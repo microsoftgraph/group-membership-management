@@ -26,11 +26,44 @@ export const getStyles = (props: SourcePartStyleProps): SourcePartStyles => {
             flexDirection: 'row',
             justifyContent: 'space-between',
         },
+        titleTextField: {
+            borderRadius: 4,
+            border: '1px solid',
+            borderColor: theme.palette.neutralQuaternary,
+            backgroud: theme.palette.white,
+            minWidth: 500,
+            width: '100%',
+            marginLeft: 30
+        },
+        editButton: {
+            marginLeft: 30
+        },
         title: {
-            fontWeight: 600,
             fontSize: 16,
             fontFamily: 'Segoe UI',
-            marginRight: 'auto'
+            marginRight: 'auto',
+            display: 'flex',
+            alignItems: 'center'
+        },
+        existingTitle: {
+            fontWeight: 600
+        },
+        generatedTitle: {
+            fontWeight: 400
+        },
+        hiddenMembershipIndicator: {
+            display: 'flex',
+            alignItems: 'center',
+            gap: 6,
+            marginLeft: 12
+        },
+        hiddenMembershipIcon: {
+            color: theme.semanticColors.errorText
+        },
+        hiddenMembershipText: {
+            color: theme.semanticColors.errorText,
+            fontSize: 12,
+            fontWeight: 600
         },
         expandButton: {
             color: theme.semanticColors.bodyText,
@@ -49,7 +82,7 @@ export const getStyles = (props: SourcePartStyleProps): SourcePartStyles => {
             flexDirection: 'row',
             flexWrap: 'wrap',
             flex: '0 1 auto',
-            gap: 32
+            gap: 16
         },
         advancedQuery: {
             display: 'flex',
@@ -58,13 +91,6 @@ export const getStyles = (props: SourcePartStyleProps): SourcePartStyles => {
             justifyContent: 'flex-start',
             flex: '1 0 auto',
             width: '100%',
-        },
-        exclusionaryPart: {
-            display: 'flex',
-            flexDirection: 'row',
-            alignItems: 'center',
-            flex: '0 1 auto',
-            marginRight: '8px',
         },
         deleteButton: {
             marginLeft: 'auto',
@@ -87,6 +113,12 @@ export const getStyles = (props: SourcePartStyleProps): SourcePartStyles => {
             borderColor: theme.palette.neutralQuaternary,
             background: theme.palette.white,
             minWidth: 200
+        },
+        shimmer: {
+            marginLeft: '8px',
+            display: 'inline-block',
+            width: '200px',
+            height: '20px'
         }
     };
 };

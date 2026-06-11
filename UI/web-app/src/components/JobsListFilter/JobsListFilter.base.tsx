@@ -17,21 +17,27 @@ import {
 import { useTheme } from '@fluentui/react/lib/Theme';
 import { IJobsListFilterProps, IJobsListFilterStyleProps, IJobsListFilterStyles } from './JobsListFilter.types';
 import { SyncStatus } from '../../models/Status';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { useStrings } from '../../store/hooks';
 import { IPersonaProps } from '@fluentui/react/lib/Persona';
 import { useDispatch, useSelector } from 'react-redux';
-import { selectIsJobTenantWriter, selectIsSubmissionReviewer } from '../../store/roles.slice';
+import { selectIsJobTenantWriter, selectIsSubmissionReviewer, selectIsSubmissionRejector } from '../../store/roles.slice';
 import { AppDispatch } from '../../store';
-import { selectJobOwnerFilterSuggestions } from '../../store/jobs.slice';
-import { getJobOwnerFilterSuggestions } from '../../store/jobs.api';
+import { selectPeoplePickerSuggestions } from '../../store/jobs.slice';
+import { getPeoplePickerSuggestions } from '../../store/jobs.api';
 import {
   setFilterActionRequired,
   setFilterStatus,
   setFilterDestinationId,
   setFilterDestinationType,
   setFilterDestinationName,
-  setFilterDestinationOwner
+  setFilterDestinationOwnerPersona,
+  selectPagingBarfilterDestinationId,
+  selectPagingBarFilterStatus,
+  selectPagingBarFilterActionRequired,
+  selectPagingBarfilterDestinationType,
+  selectPagingBarfilterDestinationName,
+  selectPagingBarfilterDestinationOwnerPersona
 } from '../../store/pagingBar.slice';
 
 const getClassNames = classNamesFunction<IJobsListFilterStyleProps, IJobsListFilterStyles>();
@@ -39,8 +45,7 @@ const getClassNames = classNamesFunction<IJobsListFilterStyleProps, IJobsListFil
 export const JobsListFilterBase: React.FunctionComponent<IJobsListFilterProps> = (props: IJobsListFilterProps) => {
   const {
     className,
-    styles,
-    getJobsByPage
+    styles
   } = props;
 
   const classNames: IProcessedStyleSet<IJobsListFilterStyles> = getClassNames(styles, {
@@ -49,6 +54,19 @@ export const JobsListFilterBase: React.FunctionComponent<IJobsListFilterProps> =
   });
 
   const strings = useStrings();
+  const dispatch = useDispatch<AppDispatch>();
+  const isTenantJobWriter = useSelector(selectIsJobTenantWriter);
+  const isSubmissionReviewer = useSelector(selectIsSubmissionReviewer);
+  const isSubmissionRejector = useSelector(selectIsSubmissionRejector);
+  const ownerPickerSuggestions = useSelector(selectPeoplePickerSuggestions);
+
+  // Get persisted filter states from Redux store
+  const persistedFilterDestinationId = useSelector(selectPagingBarfilterDestinationId);
+  const persistedFilterStatus = useSelector(selectPagingBarFilterStatus);
+  const persistedFilterActionRequired = useSelector(selectPagingBarFilterActionRequired);
+  const persistedFilterDestinationType = useSelector(selectPagingBarfilterDestinationType);
+  const persistedFilterDestinationName = useSelector(selectPagingBarfilterDestinationName);
+  const persistedFilterDestinationOwnerPersona = useSelector(selectPagingBarfilterDestinationOwnerPersona);
 
   const statusDropdownOptions = [
     {
@@ -94,6 +112,10 @@ export const JobsListFilterBase: React.FunctionComponent<IJobsListFilterProps> =
       text: strings.JobsList.JobsListFilter.filters.actionRequired.options.customerPaused,
     },
     {
+      key: SyncStatus.DeveloperPaused,
+      text: strings.JobsList.JobsListFilter.filters.actionRequired.options.developerPaused,
+    },
+    {
       key: SyncStatus.MembershipDataNotFound,
       text: strings.JobsList.JobsListFilter.filters.actionRequired.options.membershipDataNotFound,
     },
@@ -112,24 +134,44 @@ export const JobsListFilterBase: React.FunctionComponent<IJobsListFilterProps> =
     {
       key: SyncStatus.PendingReview,
       text: strings.JobsList.JobsListFilter.filters.actionRequired.options.pendingReview,
+    },
+    ...(isSubmissionReviewer || isSubmissionRejector ? [{
+      key: SyncStatus.PendingConfiguration,
+      text: strings.JobsList.JobsListFilter.filters.actionRequired.options.pendingConfiguration,
+    }] : []),
+    {
+      key: SyncStatus.SubmissionRejected,
+      text: strings.JobsList.JobsListFilter.filters.actionRequired.options.submissionRejected,
+    },
+    {
+      key: SyncStatus.NestedGroupsFound,
+      text: strings.JobsList.JobsListFilter.filters.actionRequired.options.nestedGroupsFound,
+    },
+    {
+      key: SyncStatus.GuestUsersCannotBeAddedToUnifiedGroup,
+      text: strings.JobsList.JobsListFilter.filters.actionRequired.options.guestUsersCannotBeAddedToUnifiedGroup,
     }
   ];
 
-  const [destinationId, setDestinationId] = useState<string>('');
-  const [statusSelectedItem, setStatusSelectedItem] = useState<IDropdownOption>(statusDropdownOptions[0]);
-  const [actionRequiredSelectedItem, setActionRequiredSelectedItem] = useState<IDropdownOption>(actionRequiredDropdownOptions[0]);
-  const [destinationTypeSelectedItem, setDestinationTypeSelectedItem] = useState<IDropdownOption>(typeDropdownOptions[0]);
-  const [destinationName, setDestinationName] = useState<string>();
+  const [destinationId, setDestinationId] = useState<string>(persistedFilterDestinationId || '');
+  const [statusSelectedItem, setStatusSelectedItem] = useState<IDropdownOption>(() => {
+    const persistedKey = persistedFilterStatus || 'All';
+    return statusDropdownOptions.find(option => option.key === persistedKey) || statusDropdownOptions[0];
+  });
+  const [actionRequiredSelectedItem, setActionRequiredSelectedItem] = useState<IDropdownOption>(() => {
+    const persistedKey = persistedFilterActionRequired || 'All';
+    return actionRequiredDropdownOptions.find(option => option.key === persistedKey) || actionRequiredDropdownOptions[0];
+  });
+  const [destinationTypeSelectedItem, setDestinationTypeSelectedItem] = useState<IDropdownOption>(() => {
+    const persistedKey = persistedFilterDestinationType || 'All';
+    return typeDropdownOptions.find(option => option.key === persistedKey) || typeDropdownOptions[0];
+  });
+  const [destinationName, setDestinationName] = useState<string>(persistedFilterDestinationName || '');
   const [idValidationErrorMessage, setIdValidationErrorMessage] = useState<string>();
-  const [selectedOwners, setSelectedOwners] = useState<IPersonaProps[]>([]);
-  const isTenantJobWriter = useSelector(selectIsJobTenantWriter);
-  const isSubmissionReviewer = useSelector(selectIsSubmissionReviewer);
-  const ownerPickerSuggestions = useSelector(selectJobOwnerFilterSuggestions);
-  const dispatch = useDispatch<AppDispatch>();
-
-  useEffect(() => {
-
-  }, [dispatch, ownerPickerSuggestions]);
+  const [selectedOwners, setSelectedOwners] = useState<IPersonaProps[]>(() => {
+    // Initialize with persisted owner persona if available
+    return persistedFilterDestinationOwnerPersona ? [persistedFilterDestinationOwnerPersona] : [];
+  });
 
   const handleIdChanged = (event: React.FormEvent<HTMLInputElement | HTMLTextAreaElement>, newValue?: string): void => {
     const inputGuid = newValue || '';
@@ -145,8 +187,8 @@ export const JobsListFilterBase: React.FunctionComponent<IJobsListFilterProps> =
   };
 
   const handleNameChanged = (event: React.FormEvent<HTMLInputElement | HTMLTextAreaElement>, newValue?: string): void => {
-    setDestinationName(newValue);
-    dispatch(setFilterDestinationName(newValue as string));
+    setDestinationName(newValue || '');
+    dispatch(setFilterDestinationName(newValue || ''));
   };
 
   const handleStatusChanged = (event: React.FormEvent<HTMLDivElement>, item?: IDropdownOption): void => {
@@ -167,18 +209,25 @@ export const JobsListFilterBase: React.FunctionComponent<IJobsListFilterProps> =
   const handleOwnersChanged = (items?: IPersonaProps[] | undefined) => {
     if (items !== undefined && items.length > 0) {
       setSelectedOwners(items);
-      dispatch(setFilterDestinationOwner(items[0].id as string));
+      const persona = items[0];
+      const personaKey = typeof persona.key === 'number' ? persona.key : parseInt(persona.key as string, 10);
+      dispatch(setFilterDestinationOwnerPersona({
+        key: personaKey,
+        text: persona.text || '',
+        secondaryText: persona.secondaryText || '',
+        id: persona.id as string
+      }));
     }
     else
     {
       setSelectedOwners([]);
-      dispatch(setFilterDestinationOwner(''));
+      dispatch(setFilterDestinationOwnerPersona(undefined));
     }
   };
 
   const handleOwnersInputChanged = (input: string): string => {
     if (input.trim()) {
-      dispatch(getJobOwnerFilterSuggestions({displayName: input, alias: input}))
+      dispatch(getPeoplePickerSuggestions(input))
     }
     return input;
   }
@@ -188,21 +237,13 @@ export const JobsListFilterBase: React.FunctionComponent<IJobsListFilterProps> =
     return guidRegex.test(guid);
   };
 
-  const getFilteredJobs = () => {
-    if (idValidationErrorMessage !== undefined) {
-      return;
-    }
-    getJobsByPage();
-  };
-
   const clearFilters = () => {
     dispatch(setFilterDestinationId(''));
     dispatch(setFilterDestinationType(''));
     dispatch(setFilterDestinationName(''));
-    dispatch(setFilterDestinationOwner(''));
+    dispatch(setFilterDestinationOwnerPersona(undefined));
     dispatch(setFilterStatus(''));
     dispatch(setFilterActionRequired(''));
-
     setDestinationId('');
     setDestinationName('');
     setSelectedOwners([]);
@@ -213,8 +254,7 @@ export const JobsListFilterBase: React.FunctionComponent<IJobsListFilterProps> =
   };
 
   const getPickerSuggestions = async (
-    filterText: string,
-    currentPersonas: IPersonaProps[] | undefined
+    filterText: string
   ): Promise<IPersonaProps[]> => {
     return filterText && ownerPickerSuggestions ? ownerPickerSuggestions : [];
   };
@@ -283,9 +323,9 @@ export const JobsListFilterBase: React.FunctionComponent<IJobsListFilterProps> =
                 label={strings.JobsList.JobsListFilter.filters.destinationName.label}
                 value={destinationName}
                 onChange={handleNameChanged}
-                placeholder={strings.JobsList.JobsListFilter.filters.ID.placeholder}
+                placeholder={strings.JobsList.JobsListFilter.filters.destinationName.placeholder}
                 styles={{
-                  fieldGroup: classNames.textFieldFieldGroup,
+                  fieldGroup: classNames.textFieldFieldGroupGuid,
                 }}
               />
             </Stack.Item>
@@ -354,7 +394,8 @@ export const JobsListFilterBase: React.FunctionComponent<IJobsListFilterProps> =
                   }
                   pickerCalloutProps={
                     {
-                      directionalHint: DirectionalHint.bottomCenter,
+                      directionalHint: DirectionalHint.bottomAutoEdge,
+                      calloutWidth: 300
                     }
                   }
                 />

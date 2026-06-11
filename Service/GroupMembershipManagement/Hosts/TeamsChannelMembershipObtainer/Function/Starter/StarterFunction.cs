@@ -1,14 +1,14 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 using Azure.Messaging.ServiceBus;
-using Microsoft.Azure.WebJobs;
-using Microsoft.Azure.WebJobs.Extensions.DurableTask;
+using Microsoft.Azure.Functions.Worker;
+using Microsoft.DurableTask.Client;
 using Models;
-using Newtonsoft.Json;
 using Repositories.Contracts;
 using Repositories.Contracts.InjectConfig;
 using System;
 using System.Text;
+using System.Text.Json;
 using System.Threading.Tasks;
 using TeamsChannelMembershipObtainer.Service.Contracts;
 
@@ -27,15 +27,15 @@ namespace Hosts.TeamsChannelMembershipObtainer
             _isGroupMembershipDryRunEnabled = dryRun.DryRunEnabled;
         }
 
-        [FunctionName(nameof(StarterFunction))]
+        [Function(nameof(StarterFunction))]
         public async Task RunAsync(
             [ServiceBusTrigger("%serviceBusSyncJobTopic%", "TeamsChannelMembership", Connection = "gmmServiceBus")] ServiceBusReceivedMessage message,
-            [DurableClient] IDurableOrchestrationClient starter)
+            [DurableClient] DurableTaskClient starter)
         {
 
             var channelSyncInfo = new ChannelSyncInfo
             {
-                SyncJob = JsonConvert.DeserializeObject<SyncJob>(Encoding.UTF8.GetString(message.Body)),
+                SyncJob = JsonSerializer.Deserialize<SyncJob>(Encoding.UTF8.GetString(message.Body)),
                 Exclusionary = message.ApplicationProperties.ContainsKey("Exclusionary") ? Convert.ToBoolean(message.ApplicationProperties["Exclusionary"]) : false,
                 CurrentPart = message.ApplicationProperties.ContainsKey("CurrentPart") ? Convert.ToInt32(message.ApplicationProperties["CurrentPart"]) : 0,
                 TotalParts = message.ApplicationProperties.ContainsKey("TotalParts") ? Convert.ToInt32(message.ApplicationProperties["TotalParts"]) : 0,
@@ -48,7 +48,7 @@ namespace Hosts.TeamsChannelMembershipObtainer
 
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(StarterFunction)} function started", RunId = runId }, VerbosityLevel.DEBUG);
 
-            var instanceId = await starter.StartNewAsync(nameof(OrchestratorFunction), channelSyncInfo);
+            var instanceId = await starter.ScheduleNewOrchestrationInstanceAsync(nameof(OrchestratorFunction), channelSyncInfo);
 
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"InstanceId: {instanceId} for job RowKey: {channelSyncInfo.SyncJob.RowKey} ", RunId = runId });
 

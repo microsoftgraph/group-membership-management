@@ -11,5 +11,11 @@ namespace Models.Notifications
         NotValidSourceNotification= 6,
         NoDataNotification = 7,
         NormalThresholdNotification = 8,
+        InactiveSyncJobNotification = 9,
+        GuestUserFailureNotification = 10,
+        SubmissionRejectedNotification = 11,
+        JobPurgingWarningNotification = 12,
+        SubmissionApprovedNotification = 13,
+        NestedGroupsFoundNotification = 14,
     }
 }

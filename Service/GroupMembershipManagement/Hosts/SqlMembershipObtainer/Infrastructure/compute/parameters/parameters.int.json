@@ -10,12 +10,6 @@
     },
     "pipeline": {
       "value": ""
-    },
-    "sqlMembershipStorageAccountName": {
-      "value": ""
-    },
-    "sqlMembershipStorageAccountConnectionString": {
-      "value": ""
     }
   }
 }

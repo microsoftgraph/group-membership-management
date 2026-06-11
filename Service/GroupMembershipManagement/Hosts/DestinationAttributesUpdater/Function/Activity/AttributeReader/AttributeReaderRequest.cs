@@ -9,7 +9,7 @@ namespace Hosts.DestinationAttributesUpdater
 {
     public class AttributeReaderRequest
     {
-        public List<(string Destination, Guid JobId)> Destinations { get; set; }
+        public List<DestinationInfo> Destinations { get; set; }
         public string DestinationType { get; set; }
     }
 }

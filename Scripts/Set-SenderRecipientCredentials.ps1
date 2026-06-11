@@ -18,12 +18,6 @@ Sender Username
 .PARAMETER SenderPassword
 Sender Password
 
-.PARAMETER SyncCompletedCCEmailAddresses
-Comma separated list of email addresseses of secondary recipients to an email when the sync is complete, eg: abc@tenant.com, def@tenant.com
-
-.PARAMETER SyncDisabledCCEmailAddresses
-Comma separated list of email addresseses of secondary recipients to an email when the sync is disabled, eg: abc@tenant.com, def@tenant.com
-
 .PARAMETER SupportEmailAddresses
 Comma separated list of email addresseses of secondary recipients providing technical support, eg: abc@tenant.com, def@tenant.com
 
@@ -31,8 +25,6 @@ Comma separated list of email addresseses of secondary recipients providing tech
 
 $secureSenderUsername = ConvertTo-SecureString -AsPlainText -Force "<sender username>"
 $secureSecurePassword = ConvertTo-SecureString -AsPlainText -Force "<sender password>"
-$secureSyncCompletedCCEmailAddresses = ConvertTo-SecureString -AsPlainText -Force "<cc email addresses when sync is completed>"
-$secureSyncDisabledCCEmailAddresses = ConvertTo-SecureString -AsPlainText -Force "<cc email addresses when sync is disabled>"
 $secureSupportEmailAddresses = ConvertTo-SecureString -AsPlainText -Force "<cc email addresses when sync is disabled>"
 
 Set-SenderRecipientCredentials	-SubscriptionName "<subscription name>" `
@@ -40,8 +32,6 @@ Set-SenderRecipientCredentials	-SubscriptionName "<subscription name>" `
 								-EnvironmentAbbreviation "<env>" `
 								-SecureSenderUsername $secureSenderUsername `
 								-SecureSenderPassword $secureSecurePassword `
-								-SecureSyncCompletedCCEmailAddresses $secureSyncCompletedCCEmailAddresses `
-								-SecureSyncDisabledCCEmailAddresses $secureSyncDisabledCCEmailAddresses `
 								-SecureSupportEmailAddresses $secureSupportEmailAddresses `
 								-GmmGraphAppHasMailApplicationPermissions $false `
 								-Verbose
@@ -69,8 +59,6 @@ function Skip-SenderRecipientCredentials {
 		-EnvironmentAbbreviation $EnvironmentAbbreviation `
 		-SecureSenderUsername $defaultSecret `
 		-SecureSenderPassword $defaultSecret `
-		-SecureSyncCompletedCCEmailAddresses $defaultValue `
-		-SecureSyncDisabledCCEmailAddresses $defaultValue `
 		-SecureSupportEmailAddresses $defaultValue `
 		-GmmGraphAppHasMailApplicationPermissions $false
 
@@ -100,10 +88,6 @@ function Set-SenderRecipientCredentials {
 		[SecureString] $SecureSenderUsername,
 		[Parameter(Mandatory=$True)]
 		[SecureString] $SecureSenderPassword,
-		[Parameter(Mandatory=$False)]
-		[SecureString] $SecureSyncCompletedCCEmailAddresses,
-		[Parameter(Mandatory=$False)]
-		[SecureString] $SecureSyncDisabledCCEmailAddresses,
 		[Parameter(Mandatory=$False)]
 		[SecureString] $SecureSupportEmailAddresses,
 		[Parameter(Mandatory=$False)]
@@ -146,32 +130,6 @@ function Set-SenderRecipientCredentials {
 						 -Name $senderPasswordKeyVaultSecretName `
 						 -SecretValue $SecureSenderPassword
 	Write-Verbose "$senderPasswordKeyVaultSecretName added to vault..."
-
-	if(!($SyncCompletedCCEmailAddresses))
-    {
-        $SyncCompletedCCEmailAddresses = "admin@$tenantName.onmicrosoft.com"
-    }
-
-	#region Store SyncCompletedCCEmailAddresses secret in KeyVault
-	$syncCompletedCCKeyVaultSecretName = "syncCompletedCCEmailAddresses"
-	Set-AzKeyVaultSecret -VaultName $keyVault.VaultName `
-						 -Name $syncCompletedCCKeyVaultSecretName `
-						 -SecretValue $SecureSyncCompletedCCEmailAddresses
-	Write-Verbose "$syncCompletedCCKeyVaultSecretName added to vault..."
-
-	if(!($SyncDisabledCCEmailAddresses))
-    {
-        $SyncDisabledCCEmailAddresses = "admin@$tenantName.onmicrosoft.com"
-    }
-
-	#region Store SyncDisabledCCEmailAddresses secret in KeyVault
-	$syncDisabledCCKeyVaultSecretName = "syncDisabledCCEmailAddresses"
-	Set-AzKeyVaultSecret -VaultName $keyVault.VaultName `
-						 -Name $syncDisabledCCKeyVaultSecretName `
-						 -SecretValue $SecureSyncDisabledCCEmailAddresses
-	Write-Verbose "$syncDisabledCCKeyVaultSecretName added to vault..."
-
-	#endregion
 
 	if(!($SupportEmailAddresses))
     {

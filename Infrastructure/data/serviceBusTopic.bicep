@@ -10,5 +10,6 @@ resource serviceBusTopic 'Microsoft.ServiceBus/namespaces/topics@2017-04-01' = {
     requiresDuplicateDetection: true
     defaultMessageTimeToLive: 'P14D'
     duplicateDetectionHistoryTimeWindow: 'PT01M'
+    maxSizeInMegabytes: 5120
   }
 }

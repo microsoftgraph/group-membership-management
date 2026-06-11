@@ -18,13 +18,20 @@ export interface IJobsListStyles {
   pendingReviewIcon: IStyle;
   rejectedIcon: IStyle;
   tabContent: IStyle;
-  columnToEnd: IStyle;
   refresh: IStyle;
   jobsList: IStyle;
   jobsListFilter: IStyle;
   footer: IStyle;
   noMembershipsFoundText: IStyle;
   errorMessageBar: IStyle;
+  header: IStyle;
+  manageMembershipButton: IStyle;
+  successStatus: IStyle;
+  errorStatus: IStyle;
+  chooseFileButton: IStyle;
+  jobsHeader: IStyle;
+  approvedJobsLabel: IStyle;
+  totalJobsLabel: IStyle;
 }
 
 export interface IJobsListStyleProps {
@@ -43,4 +50,4 @@ export interface IJobsListProps
    * Call to provide customized styling that will layer on top of the variant rules.
    */
   styles?: IStyleFunctionOrObject<IJobsListStyleProps, IJobsListStyles>;
-}
+};

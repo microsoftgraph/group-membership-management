@@ -3,13 +3,14 @@
 using GraphUpdater.Entities;
 using GraphUpdater.Helpers;
 using Microsoft.ApplicationInsights;
-using Microsoft.Azure.WebJobs;
-using Microsoft.Azure.WebJobs.Extensions.DurableTask;
+using Microsoft.Azure.Functions.Worker;
+using Microsoft.DurableTask;
+using Microsoft.DurableTask.Client;
 using Microsoft.Identity.Client;
 using Models;
+using Models.Helpers;
 using Models.Notifications;
 using Models.ServiceBus;
-using Newtonsoft.Json;
 using Repositories.Contracts;
 using Repositories.Contracts.InjectConfig;
 using Services.Contracts;
@@ -20,8 +21,8 @@ using System.Data.SqlTypes;
 using System.Linq;
 using System.Net.Http;
 using System.Reflection;
+using System.Text.Json;
 using System.Threading.Tasks;
-using static System.Net.WebRequestMethods;
 
 namespace Hosts.GraphUpdater
 {
@@ -56,8 +57,8 @@ namespace Hosts.GraphUpdater
             _deltaCachingConfig = deltaCachingConfig ?? throw new ArgumentNullException(nameof(deltaCachingConfig));
         }
 
-        [FunctionName(nameof(OrchestratorFunction))]
-        public async Task<OrchestrationRuntimeStatus> RunOrchestratorAsync([OrchestrationTrigger] IDurableOrchestrationContext context, ExecutionContext executionContext)
+        [Function(nameof(OrchestratorFunction))]
+        public async Task<OrchestrationRuntimeStatus> RunOrchestratorAsync([OrchestrationTrigger] TaskOrchestrationContext context)
         {
             GroupMembership groupMembership = null;
             MembershipHttpRequest graphRequest = null;
@@ -78,15 +79,26 @@ namespace Hosts.GraphUpdater
                                                            RunId = graphRequest.SyncJob.RunId.GetValueOrDefault()
                                                        });
 
+                var groupId = await context.CallActivityAsync<Guid>(nameof(GetGroupFunction), syncJob);
+                if (groupId.Equals(Guid.Empty))
+                {
+                    await context.CallActivityAsync(nameof(LoggerFunction), new LoggerRequest { Message = $"Unable to get group id for job:{syncJob.Id}", SyncJob = syncJob });
+                    await context.CallActivityAsync(nameof(JobStatusUpdaterFunction), CreateJobStatusUpdaterRequest(syncJob.Id, SyncStatus.Error, syncJob.ThresholdViolations, syncJob.RunId ?? Guid.Empty));
+                    await context.CallActivityAsync(nameof(TelemetryTrackerFunction), new TelemetryTrackerRequest { JobStatus = SyncStatus.Error, ResultStatus = ResultStatus.Failure, RunId = syncJob.RunId });
+                    return OrchestrationRuntimeStatus.Failed;
+                }
+                await context.CallActivityAsync(nameof(LoggerFunction), new LoggerRequest { Message = $"Group Id for job:{syncJob.Id} is {groupId}", SyncJob = syncJob });
+
                 var sourceTypeCounts = JsonParser.GetQueryTypes(syncJob.Query);
-                var destination = JsonParser.GetDestination(syncJob.Destination);
+                var destination = JsonParser.GetDestination(syncJob);
 
                 syncCompleteEvent.Type = destination.Type.ToString();
                 syncCompleteEvent.SourceTypesCounts = sourceTypeCounts;
-                syncCompleteEvent.Destination = syncJob.Destination;
+                syncCompleteEvent.Destination = $"[{{\"type\":\"{destination.Type}\",\"value\":{{\"objectId\":\"{groupId}\"}}}}]";
+                syncCompleteEvent.GroupId = groupId.ToString();
                 syncCompleteEvent.RunId = syncJob.RunId.ToString();
                 syncCompleteEvent.IsDryRunEnabled = false.ToString();
-                syncCompleteEvent.ProjectedMemberCount = graphRequest.ProjectedMemberCount.HasValue ? graphRequest.ProjectedMemberCount.ToString() : "Not provided";
+                syncCompleteEvent.ProjectedMemberCount = graphRequest.ProjectedMemberCount.ToString();
 
                 var fileContent = await context.CallActivityAsync<string>(nameof(FileDownloaderFunction),
                                                                             new FileDownloaderRequest
@@ -95,7 +107,8 @@ namespace Hosts.GraphUpdater
                                                                                 SyncJob = syncJob
                                                                             });
 
-                groupMembership = JsonConvert.DeserializeObject<GroupMembership>(fileContent);
+                var membershipJson = TryDecompress(fileContent);
+                groupMembership = JsonSerializer.Deserialize<GroupMembership>(membershipJson);
 
                 await context.CallActivityAsync(nameof(LoggerFunction), new LoggerRequest { Message = $"{nameof(OrchestratorFunction)} function started", SyncJob = syncJob, Verbosity = VerbosityLevel.DEBUG });
                 await context.CallActivityAsync(nameof(LoggerFunction), new LoggerRequest
@@ -152,11 +165,31 @@ namespace Hosts.GraphUpdater
                                         CreateJobStatusUpdaterRequest(groupMembership.SyncJobId,
                                                                         SyncStatus.GuestUsersCannotBeAddedToUnifiedGroup, syncJob.ThresholdViolations, groupMembership.RunId));
 
-                    await context.CallActivityAsync(nameof(TelemetryTrackerFunction), new TelemetryTrackerRequest { 
+                    await context.CallActivityAsync(nameof(TelemetryTrackerFunction), new TelemetryTrackerRequest {
 						JobStatus = SyncStatus.GuestUsersCannotBeAddedToUnifiedGroup,
 						ResultStatus = ResultStatus.Success,
 						RunId = syncJob.RunId
 					});
+
+                    var groupName = await context.CallActivityAsync<string>(nameof(GroupNameReaderFunction),
+                                                    new GroupNameReaderRequest { RunId = groupMembership.RunId, GroupId = groupMembership.Destination.ObjectId });
+
+                    var additionalContent = new[]
+                    {
+                                groupMembership.Destination.ObjectId.ToString(),
+                                groupName,
+                                membersAddedResponse.SuccessCount.ToString(),
+                                membersRemovedResponse.SuccessCount.ToString(),
+                                DisabledNotificationType.StatusDescriptions[NotificationMessageType.GuestUserFailureNotification]
+                    };
+
+                    await context.CallActivityAsync(nameof(EmailSenderFunction),
+                                                    new EmailSenderRequest
+                                                    {
+                                                        SyncJob = syncJob,
+                                                        NotificationType = NotificationMessageType.GuestUserFailureNotification,
+                                                        AdditionalContentParams = additionalContent
+                                                    });
 
                     TrackSyncCompleteEvent(context, syncJob, syncCompleteEvent, "Failure");
 
@@ -172,11 +205,6 @@ namespace Hosts.GraphUpdater
                 {
                     var groupName = await context.CallActivityAsync<string>(nameof(GroupNameReaderFunction),
                                                     new GroupNameReaderRequest { RunId = groupMembership.RunId, GroupId = groupMembership.Destination.ObjectId });
-
-                    var groupOwners = await context.CallActivityAsync<List<AzureADUser>>(nameof(GroupOwnersReaderFunction),
-                                                    new GroupOwnersReaderRequest { RunId = groupMembership.RunId, GroupId = groupMembership.Destination.ObjectId });
-
-                    var ownerEmails = string.Join(";", groupOwners.Where(x => !string.IsNullOrWhiteSpace(x.Mail)).Select(x => x.Mail));
 
                     var additionalContent = new[]
                     {
@@ -204,7 +232,7 @@ namespace Hosts.GraphUpdater
 
                 await context.CallActivityAsync(nameof(JobStatusUpdaterFunction),
                                     CreateJobStatusUpdaterRequest(groupMembership.SyncJobId,
-                                                                    SyncStatus.Idle, 0, groupMembership.RunId));
+                                                                    SyncStatus.Idle, 0, groupMembership.RunId, membersAddedResponse.SuccessCount, membersRemovedResponse.SuccessCount));
                 await context.CallActivityAsync(nameof(TelemetryTrackerFunction), new TelemetryTrackerRequest { JobStatus = SyncStatus.Idle, ResultStatus = ResultStatus.Success, RunId = syncJob.RunId });
                 if (!context.IsReplaying)
                 {
@@ -249,7 +277,7 @@ namespace Hosts.GraphUpdater
                     await context.CallActivityAsync(nameof(LoggerFunction), new LoggerRequest { Message = "SyncJob is null. Removing the message from the queue..." });
                     return OrchestrationRuntimeStatus.Failed;
                 }
-                
+
                 if (syncJob != null && groupMembership != null && groupMembership.SyncJobId != Guid.Empty)
                 {
                     await context.CallActivityAsync(nameof(JobStatusUpdaterFunction),
@@ -269,7 +297,7 @@ namespace Hosts.GraphUpdater
             }
         }
 
-        public async Task UpdateCachesAsync(IDurableOrchestrationContext context,
+        public async Task UpdateCachesAsync(TaskOrchestrationContext context,
                                                 List<AzureADUser> sourceUsersNotFound,
                                                 List<AzureADUser> destinationUsersNotFound,
                                                 SyncJob syncJob,
@@ -277,51 +305,70 @@ namespace Hosts.GraphUpdater
         {
             if (sourceUsersNotFound != null && destinationUsersNotFound != null)
             {
-                var destination = JsonParser.GetDestination(syncJob.Destination);
-                var totalUsersNotFound = sourceUsersNotFound.Union(destinationUsersNotFound).ToList();
-
-                if (!context.IsReplaying & totalUsersNotFound.Count > 0) { TrackUsersNotFoundEvent(syncJob.RunId, totalUsersNotFound.Count, destination.ObjectId); }
+                var destination = JsonParser.GetDestination(syncJob);
 
                 var sourceObjectIds = new HashSet<Guid>(sourceUsersNotFound.Select(emp => emp.ObjectId));
-                var sourceUsers = sourceMembers.Where(product => sourceObjectIds.Contains(product.ObjectId)).ToList();
                 var destinationObjectIds = new HashSet<Guid>(destinationUsersNotFound.Select(emp => emp.ObjectId));
-                var destinationUsers = sourceMembers.Where(product => destinationObjectIds.Contains(product.ObjectId)).ToList();
 
-                if (sourceUsers.Count > 0)
+                // Compute count by unioning into a copy to avoid allocating intermediate LINQ collection
+                var totalUsersNotFoundCount = sourceObjectIds.Count + destinationObjectIds.Count(id => !sourceObjectIds.Contains(id));
+
+                if (!context.IsReplaying && totalUsersNotFoundCount > 0) { TrackUsersNotFoundEvent(syncJob.RunId, totalUsersNotFoundCount, destination.ObjectId); }
+                var sourceGroups = new Dictionary<Guid, HashSet<Guid>>();
+                var destinationUserIds = new HashSet<Guid>();
+
+                foreach (var member in sourceMembers)
                 {
-                    var sourceGroups = sourceUsers
-                                    .SelectMany(u => u.SourceGroups.Select(c => (ObjectId: u, SourceGroup: c)))
-                                    .GroupBy(x => x.SourceGroup)
-                                    .Select(g => new GroupInfo { GroupId = g.Key, UserIds = g.Select(x => x.ObjectId).Distinct().ToList() }).ToList();
-
-                    sourceGroups.RemoveAll(g => g.GroupId == Guid.Empty);
-
-                    if (sourceGroups != null && sourceGroups.Count > 0)
+                    if (sourceObjectIds.Contains(member.ObjectId) && member.SourceGroups != null)
                     {
-                        // These calls to the cache updater suborchestrator were once done in parallel, but this caused an OutOfMemoryException due to loading multiple big files at once into memory. 
-                        // Although this does not affect many sync runs, we should revise it once we have upgraded our service plan. 
-                        foreach (var sourceGroup in sourceGroups)
+                        foreach (var sourceGroupId in member.SourceGroups)
                         {
-                            await context.CallSubOrchestratorAsync(nameof(CacheUserUpdaterSubOrchestratorFunction),
-                                new CacheUserUpdaterRequest
-                                {
-                                    GroupId = sourceGroup.GroupId,
-                                    UserIds = sourceGroup.UserIds,
-                                    RunId = syncJob.RunId,
-                                    SyncJob = syncJob
-                                });
+                            if (sourceGroupId == Guid.Empty)
+                            {
+                                continue;
+                            }
+
+                            if (!sourceGroups.TryGetValue(sourceGroupId, out var userIdsForGroup))
+                            {
+                                userIdsForGroup = new HashSet<Guid>();
+                                sourceGroups[sourceGroupId] = userIdsForGroup;
+                            }
+
+                            userIdsForGroup.Add(member.ObjectId);
                         }
+                    }
+
+                    if (destinationObjectIds.Contains(member.ObjectId))
+                    {
+                        destinationUserIds.Add(member.ObjectId);
                     }
                 }
 
-                if (destinationUsers.Count > 0)
+                if (sourceGroups.Count > 0)
+                {
+                    // These calls to the cache updater suborchestrator were once done in parallel, but this caused an OutOfMemoryException due to loading multiple big files at once into memory.
+                    // Although this does not affect many sync runs, we should revise it once we have upgraded our service plan.
+                    foreach (var sourceGroup in sourceGroups)
+                    {
+                        await context.CallSubOrchestratorAsync(nameof(CacheUserUpdaterSubOrchestratorFunction),
+                            new CacheUserUpdaterRequest
+                            {
+                                GroupId = sourceGroup.Key,
+                                UserIds = sourceGroup.Value,
+                                RunId = syncJob.RunId,
+                                SyncJob = syncJob
+                            });
+                    }
+                }
+
+                if (destinationUserIds.Count > 0)
                 {
                     await context.CallSubOrchestratorAsync(
                         nameof(CacheUserUpdaterSubOrchestratorFunction),
                         new CacheUserUpdaterRequest
                         {
                             GroupId = destination.ObjectId,
-                            UserIds = destinationUsers,
+                            UserIds = destinationUserIds,
                             RunId = syncJob.RunId,
                             SyncJob = syncJob
                         });
@@ -340,7 +387,7 @@ namespace Hosts.GraphUpdater
             _telemetryClient.TrackEvent("UsersNotFoundCount", usersNotFoundEvent);
         }
 
-        private void TrackSyncCompleteEvent(IDurableOrchestrationContext context, SyncJob syncJob, SyncCompleteCustomEvent syncCompleteEvent, string successStatus)
+        private void TrackSyncCompleteEvent(TaskOrchestrationContext context, SyncJob syncJob, SyncCompleteCustomEvent syncCompleteEvent, string successStatus)
         {
             var timeElapsedForJob = (context.CurrentUtcDateTime - syncJob.LastSuccessfulStartTime).TotalSeconds;
             _telemetryClient.TrackMetric(nameof(Metric.SyncJobTimeElapsedSeconds), timeElapsedForJob);
@@ -355,14 +402,16 @@ namespace Hosts.GraphUpdater
             _telemetryClient.TrackEvent(nameof(Metric.SyncComplete), syncCompleteDict);
         }
 
-        private JobStatusUpdaterRequest CreateJobStatusUpdaterRequest(Guid jobId, SyncStatus syncStatus, int thresholdViolations, Guid runId)
+        private JobStatusUpdaterRequest CreateJobStatusUpdaterRequest(Guid jobId, SyncStatus syncStatus, int thresholdViolations, Guid runId, int? usersAdded = null, int? usersRemoved = null)
         {
             return new JobStatusUpdaterRequest
             {
                 RunId = runId,
                 JobId = jobId,
                 Status = syncStatus,
-                ThresholdViolations = thresholdViolations
+                ThresholdViolations = thresholdViolations,
+                UsersAdded = usersAdded ?? 0,
+                UsersRemoved = usersRemoved ?? 0
             };
         }
 
@@ -375,6 +424,23 @@ namespace Hosts.GraphUpdater
                 Type = type,
                 IsInitialSync = isInitialSync
             };
+        }
+
+        private static string TryDecompress(string content)
+        {
+            if (string.IsNullOrEmpty(content))
+            {
+                return content;
+            }
+
+            try
+            {
+                return TextCompressor.Decompress(content);
+            }
+            catch (FormatException)
+            {
+                return content;
+            }
         }
 
         private string GetUsersDataMessage(Guid targetGroupId, int membersToAdd, int membersToRemove)

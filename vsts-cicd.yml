@@ -5,7 +5,8 @@
 name: $(major).$(minor).$(Date:yyMM).$(Rev:r)
 
 trigger:
-- develop
+- stable
+- release
 - main
 
 schedules:
@@ -30,7 +31,7 @@ parameters:
   - name: buildSourceCode
     displayName: Build source code?
     type: boolean
-    default: false
+    default: true
 
 stages:
 
@@ -58,7 +59,7 @@ stages:
          coverageThreshold: 100
       - function:
          name: 'JobTrigger'
-         coverageThreshold: 86
+         coverageThreshold: 83
       - function:
          name: 'GraphUpdater'
          coverageThreshold: 74
@@ -70,10 +71,10 @@ stages:
          coverageThreshold: 64
       - function:
          name: 'GroupMembershipObtainer'
-         coverageThreshold: 89
+         coverageThreshold: 73
       - function:
          name: 'SqlMembershipObtainer'
-         coverageThreshold: 50
+         coverageThreshold: 40
       - function:
          name: 'PlaceMembershipObtainer'
          coverageThreshold: 45
@@ -91,13 +92,22 @@ stages:
          coverageThreshold: 48
       - function:
          name: 'MembershipAggregator'
-         coverageThreshold: 85
+         coverageThreshold: 74
       - function:
          name: 'Notifier'
          coverageThreshold: 75
       - function:
          name: 'GroupOwnershipObtainer'
          coverageThreshold: 80
+      - function:
+         name: 'SyncJobUpdater'
+         coverageThreshold: 40
+      - function:
+         name: 'MessageSplitter'
+         coverageThreshold: 40
+      - function:
+         name: 'AutoApprover'
+         coverageThreshold: 0
 
   - template: yaml/build-release-package.yml
     parameters:

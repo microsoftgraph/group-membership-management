@@ -1,9 +1,8 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
-import { classNamesFunction, type IProcessedStyleSet } from '@fluentui/react';
+import { classNamesFunction, Icon, type IProcessedStyleSet } from '@fluentui/react';
 import { useTheme } from '@fluentui/react/lib/Theme';
-import React, { useEffect } from 'react';
-
+import React, { useEffect, useState } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { Outlet } from 'react-router-dom';
 import { Text } from '@fluentui/react/lib/Text';
@@ -20,6 +19,12 @@ import { fetchSettings } from '../store/settings.api';
 import { AppFooter } from '../components/AppFooter';
 import { fetchDefaultSqlMembershipSource, fetchDefaultSqlMembershipSourceAttributes } from '../store/sqlMembershipSources.api';
 import { selectHasAccess, selectIsFetchingRoles } from '../store/roles.slice';
+import { Disclaimer } from '../components/Disclaimer';
+import { jsxFormat } from '../utils/stringUtils';
+import { fetchServiceStatus } from '../store/operations.api';
+import { selectOperationError } from '../store/operations.slice';
+import { Maintenance } from '../pages/Maintenance/Maintenance';
+
 
 const getClassNames = classNamesFunction<IAppStyleProps, IAppStyles>();
 
@@ -37,11 +42,23 @@ export const AppBase: React.FunctionComponent<IAppProps> = (props: IAppProps) =>
   const loggedIn = useSelector(selectLoggedIn);
   const hasAccess = useSelector(selectHasAccess);
   const isFetchingRoles = useSelector(selectIsFetchingRoles);
+  const operationStatusError = useSelector(selectOperationError);
+
+  const [isDisclaimerOpen, setIsDisclaimerOpen] = useState(() => {
+    return localStorage.getItem('disclaimerSubmitted') !== 'true';
+  });
+
+  const handleDismissDisclaimer = () => {
+    setIsDisclaimerOpen(false);
+  };
 
   // run once after load.
   useEffect(() => {
     if (!loggedIn) {
       dispatch(loginAsync());
+    } else {
+      // Only fetch service status after login completes.
+      dispatch(fetchServiceStatus());
     }
   }, [dispatch, loggedIn]);
 
@@ -71,12 +88,37 @@ export const AppBase: React.FunctionComponent<IAppProps> = (props: IAppProps) =>
       <div className={classNames.root}>
         <AppHeader />
         <div className={classNames.content}>
-          {hasAccess ?
-            <Outlet /> :
+          {operationStatusError === 'Failed to fetch service status.' ?
+          (<Maintenance />) :
+          (
+            hasAccess ?
+              <>
+              {isDisclaimerOpen && (
+                <Disclaimer
+                  checkboxes={[
+                    { id: 'membershipRules', label: jsxFormat(strings.Disclaimer.membershipRules,<strong>{strings.Disclaimer.membershipRulesBoldNote}</strong>) },
+                    { id: 'outlookWelcomeMessage', label: strings.Disclaimer.outlookWelcomeMessage },
+                    { id: 'autoSubscribeSettings',
+                      label: jsxFormat(
+                        strings.Disclaimer.autoSubscribeSettings,
+                        <strong>{strings.Disclaimer.membersAutoFollowGroupConversationsOption}</strong>,
+                        <strong><a href="https://myaccount.microsoft.com/groups" target="_blank" rel="noopener noreferrer" style={{ color: theme.palette.themePrimary, textDecoration: 'underline' }}>{strings.Disclaimer.myGroupsUI}</a></strong>
+                      )
+                    },
+                    { id: 'authorizedSenders', label: jsxFormat(strings.Disclaimer.authorizedSenders,<strong>{strings.Disclaimer.authorizedSendersBoldNote}</strong>) },
+                    { id: 'teamsVivaNotifications', label: strings.Disclaimer.teamsVivaNotifications },
+                    { id: 'flatList', label: strings.Disclaimer.flatList },
+                  ]}
+                  onDismiss={handleDismissDisclaimer}
+                />
+              )}
+              <Outlet />
+            </> :
             <div className={classNames.permissionDenied}>
               <Text>{strings.permissionDenied}</Text>
             </div>
-          }
+          )
+        }
         </div>
         <AppFooter />
       </div>

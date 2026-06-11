@@ -12,6 +12,7 @@ using Repositories.Contracts;
 using System.Net;
 using TeamsChannelMembershipObtainer.Service;
 using TeamsChannelMembershipObtainer.Service.Contracts;
+using Services.Contracts;
 
 namespace Services.Tests
 {
@@ -20,13 +21,16 @@ namespace Services.Tests
     {
         private TeamsChannelMembershipObtainerService _service = null!;
         private ChannelSyncInfo _syncInfo = null!;
+        private Guid _targetOfficeGroupId = Guid.Empty;
         private Mock<IDatabaseSyncJobsRepository> _syncJobRepository = null!;
+        private Mock<IDatabaseChannelsRepository> _channelsRepository = null!;
         private Mock<ITeamsChannelRepository> _mockTeamsChannelRepository = null!;
         private Mock<IBlobStorageRepository> _mockBlobStorageRepository = null!;
         private Mock<IHttpClientFactory> _mockHttpClientFactory = null!;
         private Mock<IServiceBusQueueRepository> _serviceBusQueueRepository = null!;
         private Mock<IConfigurationRefresherProvider> _configurationRefresherProvider = null!;
         private Mock<ILoggingRepository> _loggingRepository = null!;
+        private Mock<ISyncJobStatusService> _syncJobStatusService = null!;
         private Mock<HttpMessageHandler> _messageHandler = null!;
         private HttpStatusCode _responseStatusCode = HttpStatusCode.NoContent;
 
@@ -50,6 +54,10 @@ namespace Services.Tests
             _mockTeamsChannelRepository.Setup<Task<string>>(repo => repo.GetChannelTypeAsync(It.IsIn<AzureADTeamsChannel>(_mockChannels.Keys), It.IsAny<Guid>()))
                 .ReturnsAsync("private");
 
+            _channelsRepository = new Mock<IDatabaseChannelsRepository>();
+            _channelsRepository.Setup<Task<Channel>>(repo => repo.GetChannelUsingSyncJobIdAsync(It.IsAny<Guid>()))
+                .ReturnsAsync(new Channel { GroupId = Guid.Parse("00000000-0000-0000-0000-000000000042"), ChannelId = "some channel" });
+
             _mockBlobStorageRepository = new Mock<IBlobStorageRepository>();
             _syncJobRepository = new Mock<IDatabaseSyncJobsRepository>();
 
@@ -57,6 +65,7 @@ namespace Services.Tests
             _loggingRepository = new Mock<ILoggingRepository>();
             _serviceBusQueueRepository = new Mock<IServiceBusQueueRepository>();
             _configurationRefresherProvider = new Mock<IConfigurationRefresherProvider>();
+            _syncJobStatusService = new Mock<ISyncJobStatusService>();
 
             _messageHandler = new Mock<HttpMessageHandler>();
             _messageHandler
@@ -83,9 +92,11 @@ namespace Services.Tests
                                                 _mockBlobStorageRepository.Object,
                                                 _mockHttpClientFactory.Object,
                                                 _syncJobRepository.Object,
+                                                _channelsRepository.Object,
                                                 _loggingRepository.Object,
                                                 _configurationRefresherProvider.Object,
-                                                _serviceBusQueueRepository.Object);
+                                                _serviceBusQueueRepository.Object,
+                                                _syncJobStatusService.Object);
 
             _syncInfo = new ChannelSyncInfo
             {
@@ -96,12 +107,13 @@ namespace Services.Tests
                 {
                     RunId = Guid.Parse("00000000-0000-0000-0000-000000000012"),
                     Status = SyncStatus.InProgress.ToString(),
-                    TargetOfficeGroupId = Guid.Parse("00000000-0000-0000-0000-000000000042"),
                     Timestamp = new DateTimeOffset(1995, 03, 28, 1, 2, 3, TimeSpan.Zero),
                     Query = @"[{""type"":""GroupMembership"",""source"":""00000000-0000-0000-0000-000000000000""}]",
-                    Destination = @"[{""type"":""TeamsChannelMembership"",""value"":{""objectId"":""00000000-0000-0000-0000-000000000000"", ""channelId"":""some channel""}}]"
+                    MembershipType = "TeamsChannelMembership"
                 }
             };
+
+            _targetOfficeGroupId = Guid.Parse("00000000-0000-0000-0000-000000000042");
 
 
         }
@@ -114,7 +126,7 @@ namespace Services.Tests
 
             var verification = await _service.VerifyChannelAsync(_syncInfo);
 
-            Assert.IsFalse(verification.isValid);
+            Assert.IsFalse(verification.IsValid);
         }
 
         [TestMethod]
@@ -129,16 +141,15 @@ namespace Services.Tests
                 {
                     RunId = Guid.Parse("00000000-0000-0000-0000-000000000012"),
                     Status = SyncStatus.InProgress.ToString(),
-                    TargetOfficeGroupId = Guid.Parse("00000000-0000-0000-0000-000000000042"),
                     Timestamp = new DateTimeOffset(1995, 03, 28, 1, 2, 3, TimeSpan.Zero),
                     Query = @"[{""type"":""GroupMembership"",""source"":""00000000-0000-0000-0000-000000000000""}]",
-                    Destination = @"[{""type"":""TeamsChannelMembership"",""value"":{""objectId"":""00000000-0000-0000-0000-000000000000"", ""channelId"":""some channel""}}]"
+                    MembershipType = "TeamsChannelMembership"
                 }
             };
 
             var verification = await _service.VerifyChannelAsync(badSyncInfo);
 
-            Assert.IsFalse(verification.isValid);
+            Assert.IsFalse(verification.IsValid);
          }
 
 
@@ -147,7 +158,7 @@ namespace Services.Tests
         {
             var verification = await _service.VerifyChannelAsync(_syncInfo);
 
-            Assert.IsTrue(verification.isValid);
+            Assert.IsTrue(verification.IsValid);
             Assert.AreEqual(SyncStatus.InProgress.ToString(), _syncInfo.SyncJob.Status);
         }
 
@@ -170,7 +181,7 @@ namespace Services.Tests
             var sourceChannel = new AzureADTeamsChannel { ObjectId = Guid.Empty, ChannelId = "some channel" };
             var sourceMembers = _mockChannels[sourceChannel];
 
-            var filePath = await _service.UploadMembershipAsync(sourceMembers, _syncInfo, false);
+            var filePath = await _service.UploadMembershipAsync(sourceMembers, _syncInfo, false, _targetOfficeGroupId);
 
             Assert.AreEqual(ExpectedFilename, filePath);
             _mockBlobStorageRepository.Verify(mock => mock.UploadFileAsync(ExpectedFilename, It.IsNotNull<string>(), It.IsAny<Dictionary<string, string>>()));
@@ -183,7 +194,7 @@ namespace Services.Tests
                .Returns((IEnumerable<SyncJob> jobs, SyncStatus status) =>  UpdateJobStatus(jobs, status));
 
             await _service.UpdateSyncJobStatusAsync(_syncInfo.SyncJob, SyncStatus.Error);
-            Assert.AreEqual(SyncStatus.Error.ToString(), _syncInfo.SyncJob.Status);
+            _syncJobStatusService.Verify(s => s.UpdateJobStatusAsync(_syncInfo.SyncJob, SyncStatus.Error, It.IsAny<Models.SyncJobHistory.SyncJobHistory>(), "TeamsChannelMembershipObtainer"), Times.Once);
         }
 
         private Task UpdateJobStatus(IEnumerable<SyncJob> jobs, SyncStatus status)

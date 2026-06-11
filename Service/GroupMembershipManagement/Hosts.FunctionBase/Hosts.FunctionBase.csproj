@@ -1,26 +1,27 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>net6.0</TargetFramework>
+    <TargetFramework>net8.0</TargetFramework>
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Azure.Identity" Version="1.11.0" />
-    <PackageReference Include="Microsoft.ApplicationInsights" Version="2.20.0" />
-    <PackageReference Include="Microsoft.AspNetCore.Localization" Version="2.2.0" />
-    <PackageReference Include="Microsoft.Azure.Functions.Extensions" Version="1.1.0" />
-    <PackageReference Include="Microsoft.Data.SqlClient" Version="5.2.0" />
-    <PackageReference Include="Microsoft.EntityFrameworkCore" Version="6.0.22" />
-    <PackageReference Include="Microsoft.Extensions.Configuration.Abstractions" Version="6.0.0" />
-    <PackageReference Include="Microsoft.Extensions.Configuration.AzureAppConfiguration" Version="6.0.1" />
-    <PackageReference Include="Microsoft.Extensions.Localization" Version="6.0.7" />
-    <PackageReference Include="Microsoft.FeatureManagement" Version="2.5.1" />
+    <PackageReference Include="Azure.Identity" />
+    <PackageReference Include="Microsoft.ApplicationInsights" />
+    <PackageReference Include="Microsoft.ApplicationInsights.WorkerService" />
+    <PackageReference Include="Microsoft.AspNetCore.Localization" />
+    <PackageReference Include="Microsoft.Azure.Functions.Extensions" />
+    <PackageReference Include="Microsoft.Data.SqlClient" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore" />
+    <PackageReference Include="Microsoft.Extensions.Configuration.Abstractions" />
+    <PackageReference Include="Microsoft.Extensions.Configuration.AzureAppConfiguration" />
+    <PackageReference Include="Microsoft.Extensions.Localization" />
+    <PackageReference Include="Microsoft.FeatureManagement" />
+    <PackageReference Include="Newtonsoft.Json" />
   </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\Common.DependencyInjection\Common.DependencyInjection.csproj" />
     <ProjectReference Include="..\DIConcreteTypes\DIConcreteTypes.csproj" />
-    <ProjectReference Include="..\Repositories.Contracts\Repositories.Contracts.csproj" />
     <ProjectReference Include="..\Repositories.EntityFramework.Contexts\Repositories.EntityFramework.Contexts.csproj" />
     <ProjectReference Include="..\Repositories.EntityFramework\Repositories.EntityFramework.csproj" />
     <ProjectReference Include="..\Repositories.FeatureFlag\Repositories.FeatureFlag.csproj" />
@@ -28,8 +29,8 @@
     <ProjectReference Include="..\Repositories.Logging\Repositories.Logging.csproj" />
     <ProjectReference Include="..\Repositories.Mail\Repositories.Mail.csproj" />
     <ProjectReference Include="..\Repositories.ServiceBusQueue\Repositories.ServiceBusQueue.csproj" />
-    <ProjectReference Include="..\Repositories.Notifications\Repositories.NotificationRepository.csproj" />
     <ProjectReference Include="..\Repositories.RetryPolicyProvider\Repositories.RetryPolicyProvider.csproj" />
+    <ProjectReference Include="..\Repositories.Contracts\Repositories.Contracts.csproj" />
   </ItemGroup>
 
 </Project>

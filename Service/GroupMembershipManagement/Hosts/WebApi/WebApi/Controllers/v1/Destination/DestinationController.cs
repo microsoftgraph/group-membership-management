@@ -1,16 +1,13 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
-using Common.DependencyInjection;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Extensions.Options;
-using Models;
-using Repositories.Contracts;
 using Services.Contracts;
 using Services.Messages.Requests;
 using Services.Messages.Responses;
+using System.Net;
 using System.Security.Claims;
-using AzureADGroup = Models.AzureADGroup;
+using NewGroupDTO = WebApi.Models.DTOs.NewGroup;
 
 namespace WebApi.Controllers.v1.Destination
 {
@@ -19,25 +16,48 @@ namespace WebApi.Controllers.v1.Destination
     [Route("api/v{version:apiVersion}/destinations")]
     public class DestinationController : ControllerBase
     {
-        private readonly IRequestHandler<SearchDestinationsRequest, SearchDestinationsResponse> _searchDestinationsRequestHandler;
+        private readonly IRequestHandler<SearchGroupsRequest, SearchGroupsResponse> _searchGroupsRequestHandler;
+        private readonly IRequestHandler<SearchChannelsRequest, SearchChannelsResponse> _searchChannelsRequestHandler;
         private readonly IRequestHandler<GetGroupEndpointsRequest, GetGroupEndpointsResponse> _getGroupEndpointsRequestHandler;
-        private readonly IRequestHandler<GetGroupOnboardingStatusRequest, GetGroupOnboardingStatusResponse> _getGroupOnboardingStatusHandler;
-
+        private readonly IRequestHandler<GetGroupOwnersRequest, GetGroupOwnersResponse> _getGroupOwnersRequestHandler;
+        private readonly IRequestHandler<GetGroupOnboardingStatusRequest, GetOnboardingStatusResponse> _getGroupOnboardingStatusHandler;
+        private readonly IRequestHandler<GetChannelOnboardingStatusRequest, GetOnboardingStatusResponse> _getChannelOnboardingStatusHandler;
+        private readonly IRequestHandler<PostGroupRequest, PostGroupResponse> _postGroupHandler;
         public DestinationController
-            (IRequestHandler<SearchDestinationsRequest, SearchDestinationsResponse> searchDestinationsRequestHandler,
+            (IRequestHandler<SearchGroupsRequest, SearchGroupsResponse> searchGroupsRequestHandler,
+            IRequestHandler<SearchChannelsRequest, SearchChannelsResponse> searchChannelsRequestHandler,
             IRequestHandler<GetGroupEndpointsRequest, GetGroupEndpointsResponse> getGroupEndpointsRequestHandler,
-            IRequestHandler<GetGroupOnboardingStatusRequest, GetGroupOnboardingStatusResponse> getGroupOnboardingStatusHandler)
+            IRequestHandler<GetGroupOwnersRequest, GetGroupOwnersResponse> getGroupOwnersRequestHandler,
+            IRequestHandler<GetGroupOnboardingStatusRequest, GetOnboardingStatusResponse> getGroupOnboardingStatusHandler,
+            IRequestHandler<GetChannelOnboardingStatusRequest, GetOnboardingStatusResponse> getChannelOnboardingStatusHandler,
+            IRequestHandler<PostGroupRequest, PostGroupResponse> postGroupHandler)
         {
-            _searchDestinationsRequestHandler = searchDestinationsRequestHandler ?? throw new ArgumentNullException(nameof(searchDestinationsRequestHandler));
+            _searchGroupsRequestHandler = searchGroupsRequestHandler ?? throw new ArgumentNullException(nameof(searchGroupsRequestHandler));
+            _searchChannelsRequestHandler = searchChannelsRequestHandler ?? throw new ArgumentNullException(nameof(searchChannelsRequestHandler));
             _getGroupEndpointsRequestHandler = getGroupEndpointsRequestHandler ?? throw new ArgumentNullException(nameof(getGroupEndpointsRequestHandler));
+            _getGroupOwnersRequestHandler = getGroupOwnersRequestHandler ?? throw new ArgumentNullException(nameof(getGroupOwnersRequestHandler));
             _getGroupOnboardingStatusHandler = getGroupOnboardingStatusHandler ?? throw new ArgumentNullException(nameof(getGroupOnboardingStatusHandler));
+            _getChannelOnboardingStatusHandler = getChannelOnboardingStatusHandler ?? throw new ArgumentNullException(nameof(getChannelOnboardingStatusHandler));
+            _postGroupHandler = postGroupHandler ?? throw new ArgumentNullException(nameof(postGroupHandler));
         }
 
         [Authorize()]
-        [HttpGet("search/{query}")]
-        public async Task<ActionResult<IEnumerable<AzureADGroup>>> SearchAsync(string query)
+        [HttpGet("searchGroups/{query}")]
+        public async Task<ActionResult<IEnumerable<Models.DTOs.Destination>>> SearchGroupsAsync(string query)
         {
-            var response = await _searchDestinationsRequestHandler.ExecuteAsync(new SearchDestinationsRequest { Query = query });
+            var response = await _searchGroupsRequestHandler.ExecuteAsync(new SearchGroupsRequest { Query = query });
+            return Ok(response.Model);
+        }
+
+        [Authorize()]
+        [HttpGet("teams/{teamId}/searchChannels/{query}")]
+        public async Task<ActionResult<IEnumerable<Models.DTOs.Channel>>> SearchChannelsAsync(Guid teamId, string query)
+        {
+            var response = await _searchChannelsRequestHandler.ExecuteAsync(new SearchChannelsRequest
+            {
+                TeamId = teamId,
+                Query = query
+            });
             return Ok(response.Model);
         }
 
@@ -50,8 +70,32 @@ namespace WebApi.Controllers.v1.Destination
         }
 
         [Authorize()]
+        [HttpGet("groups/{groupId}/owners")]
+        public async Task<ActionResult<List<Models.DTOs.GroupOwner>>> GetGroupOwnersAsync(Guid groupId)
+        {
+            try
+            {
+                var response = await _getGroupOwnersRequestHandler.ExecuteAsync(new GetGroupOwnersRequest { GroupId = groupId });
+                return Ok(response.Owners);
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest($"Invalid group ID: {ex.Message}");
+            }
+            catch (UnauthorizedAccessException)
+            {
+                return Forbid("Insufficient permissions to access group owners");
+            }
+            catch (Exception ex)
+            {
+                return Problem(statusCode: (int)System.Net.HttpStatusCode.InternalServerError, 
+                               detail: "An error occurred while retrieving group owners");
+            }
+        }
+
+        [Authorize()]
         [HttpGet("groups/{groupId}/onboarding-status")]
-        public async Task<ActionResult<GetGroupOnboardingStatusResponse>> GetGroupOnboardingStatusAsync(Guid groupId)
+        public async Task<ActionResult<GetOnboardingStatusResponse>> GetGroupOnboardingStatusAsync(Guid groupId)
         {
             try
             {
@@ -66,12 +110,103 @@ namespace WebApi.Controllers.v1.Destination
                     return new ForbidResult();
                 }
 
-                var response = await _getGroupOnboardingStatusHandler.ExecuteAsync(new GetGroupOnboardingStatusRequest (groupId, userId, isJobTenantWriter));
-                return Ok(response.Status);
+                var response = await _getGroupOnboardingStatusHandler.ExecuteAsync(new GetGroupOnboardingStatusRequest(groupId, userId, isJobTenantWriter));
+                return Ok(response);
             }
             catch (Exception ex)
             {
                 return Problem(statusCode: (int)System.Net.HttpStatusCode.InternalServerError, detail: $"An error occurred: ${ex}");
+            }
+        }
+
+        [Authorize()]
+        [HttpGet("teams/{teamId}/channel/{channelId}/onboarding-status")]
+        public async Task<ActionResult<GetOnboardingStatusResponse>> GetChannelOnboardingStatusAsync(Guid teamId, string channelId)
+        {
+            try
+            {
+                var user = User;
+                var claimsIdentity = User.Identity as ClaimsIdentity;
+                var userId = claimsIdentity?.Claims.FirstOrDefault(c => c.Type == "http://schemas.microsoft.com/identity/claims/objectidentifier")?.Value;
+
+                var isJobTenantWriter = User.IsInRole(Models.Roles.JOB_TENANT_WRITER);
+
+                if (string.IsNullOrEmpty(userId))
+                {
+                    return new ForbidResult();
+                }
+
+                var response = await _getChannelOnboardingStatusHandler.ExecuteAsync(new GetChannelOnboardingStatusRequest(teamId, channelId, userId, isJobTenantWriter));
+                return Ok(response);
+            }
+            catch (Exception ex)
+            {
+                return Problem(statusCode: (int)System.Net.HttpStatusCode.InternalServerError, detail: $"An error occurred: ${ex}");
+            }
+        }
+
+        [Authorize()]
+        [HttpPost("groups")]
+        public async Task<ActionResult<PostGroupResponse>> CreateGroupAsync([FromBody] NewGroupDTO newGroupDTO)
+        {
+            try
+            {
+                var user = User;
+                var claimsIdentity = User.Identity as ClaimsIdentity;
+                var userId = claimsIdentity?.Claims.FirstOrDefault(c => c.Type == "http://schemas.microsoft.com/identity/claims/objectidentifier")?.Value;
+
+                if (string.IsNullOrEmpty(userId))
+                {
+                    return new ForbidResult();
+                }
+
+                var response = await _postGroupHandler.ExecuteAsync(new PostGroupRequest (new Guid(userId), newGroupDTO.GroupName, newGroupDTO.GroupAlias));
+                
+                if (response.StatusCode == HttpStatusCode.OK)
+                {
+                    return Ok(response);
+                }
+                else if (response.StatusCode == HttpStatusCode.BadRequest)
+                {
+                    return BadRequest(response);
+                }
+                else if (response.StatusCode == HttpStatusCode.Forbidden)
+                {
+                    return Forbid();
+                }
+                else
+                {
+                    return StatusCode((int)response.StatusCode, response);
+                }
+
+            }
+            catch (Exception ex)
+            {
+                return Problem(statusCode: (int)System.Net.HttpStatusCode.InternalServerError, detail: $"An error occurred: {ex.Message}");
+            }
+        }
+
+        [Authorize()]
+        [HttpGet("groups/{groupId}/group-members")]
+        public async Task<ActionResult<GetGroupMembersResponse>> GetGroupMembersAsync(Guid groupId)
+        {
+            try
+            {
+                var handler = HttpContext.RequestServices.GetRequiredService<IRequestHandler<GetGroupMembersRequest, GetGroupMembersResponse>>();
+                var response = await handler.ExecuteAsync(new GetGroupMembersRequest { GroupId = groupId });
+                return Ok(response);
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(ex.Message);
+            }
+            catch (UnauthorizedAccessException)
+            {
+                return Forbid();
+            }
+            catch (Exception)
+            {
+                return Problem(statusCode: (int)System.Net.HttpStatusCode.InternalServerError, detail: "An error occurred while retrieving group-type members");
             }
         }
     }

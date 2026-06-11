@@ -2,8 +2,7 @@
 // Licensed under the MIT license.
 
 using Models;
-using Microsoft.Azure.WebJobs;
-using Microsoft.Azure.WebJobs.Extensions.DurableTask;
+using Microsoft.Azure.Functions.Worker;
 using Repositories.Contracts;
 using Services.Contracts;
 using Services.Entities;
@@ -24,7 +23,7 @@ namespace Hosts.AzureUserReader
             _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
         }
 
-        [FunctionName(nameof(UploadUsersFunction))]
+        [Function(nameof(UploadUsersFunction))]
         public async Task UploadUsersMemberIdAsync([ActivityTrigger] UploadUsersRequest request)
         {
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(UploadUsersFunction)} function started" }, VerbosityLevel.DEBUG);

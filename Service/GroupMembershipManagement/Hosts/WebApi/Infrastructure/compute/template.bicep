@@ -64,6 +64,17 @@ param adfPipeline string
 @description('Flag to indicate if the deployment should set RBAC permissions.')
 param setRBACPermissions bool = false
 
+@description('Allowed origins for the SignalR service.')
+param signalrCORS array = ['https://microsoft.com']
+
+@description('Location for the OpenAI resource.')
+param aiLocation string
+
+param featureFlags object = {
+  enableTeamsChannel: false
+  enableOpenAI: false
+}
+
 var subscriptionId = subscription().subscriptionId
 var appInsightsInstrumentationKey = resourceId(subscription().subscriptionId, dataResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'appInsightsInstrumentationKey')
 var webapiClientId = resourceId(subscription().subscriptionId, prereqsResourceGroup, 'Microsoft.KeyVault/vaults/secrets', prereqsKeyVaultName, 'webapiClientId')
@@ -71,15 +82,38 @@ var webApiTenantId = resourceId(subscription().subscriptionId, prereqsResourceGr
 var logAnalyticsCustomerId = resourceId(subscription().subscriptionId, dataResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'logAnalyticsCustomerId')
 var logAnalyticsPrimarySharedKey = resourceId(subscription().subscriptionId, dataResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'logAnalyticsPrimarySharedKey')
 var jobsStorageAccountConnectionString = resourceId(subscription().subscriptionId, dataResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'jobsStorageAccountConnectionString')
+var membershipStorageAccountName = resourceId(subscription().subscriptionId, dataResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'jobsStorageAccountName')
+var membershipContainerName = resourceId(subscription().subscriptionId, dataResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'membershipContainerName')
 var graphAppClientId = resourceId(subscription().subscriptionId, prereqsResourceGroup, 'Microsoft.KeyVault/vaults/secrets', prereqsKeyVaultName, 'graphAppClientId')
 var graphAppClientSecret = resourceId(subscription().subscriptionId, prereqsResourceGroup, 'Microsoft.KeyVault/vaults/secrets', prereqsKeyVaultName, 'graphAppClientSecret')
 var graphAppCertificateName = resourceId(subscription().subscriptionId, prereqsResourceGroup, 'Microsoft.KeyVault/vaults/secrets', prereqsKeyVaultName, 'graphAppCertificateName')
 var graphAppTenantId = resourceId(subscription().subscriptionId, prereqsResourceGroup, 'Microsoft.KeyVault/vaults/secrets', prereqsKeyVaultName, 'graphAppTenantId')
+var teamsChannelAppClientId =  resourceId(subscription().subscriptionId, prereqsResourceGroup, 'Microsoft.KeyVault/vaults/secrets', prereqsKeyVaultName, 'teamsChannelAppClientId')
+var teamsChannelAppClientSecret = resourceId(subscription().subscriptionId, prereqsResourceGroup, 'Microsoft.KeyVault/vaults/secrets', prereqsKeyVaultName, 'teamsChannelAppClientSecret')
+var teamsChannelAppCertificateName = resourceId(subscription().subscriptionId, prereqsResourceGroup, 'Microsoft.KeyVault/vaults/secrets', prereqsKeyVaultName, 'teamsChannelAppCertificateName')
+var teamsChannelAppTenantId = resourceId(subscription().subscriptionId, prereqsResourceGroup, 'Microsoft.KeyVault/vaults/secrets', prereqsKeyVaultName, 'teamsChannelAppTenantId')
+var teamsChannelServiceAccountObjectId = resourceId(subscription().subscriptionId, prereqsResourceGroup, 'Microsoft.KeyVault/vaults/secrets', prereqsKeyVaultName, 'teamsChannelServiceAccountObjectId')
+var teamsChannelServiceAccountUsername = resourceId(subscription().subscriptionId, prereqsResourceGroup, 'Microsoft.KeyVault/vaults/secrets', prereqsKeyVaultName, 'teamsChannelServiceAccountUsername')
+var teamsChannelServiceAccountPassword = resourceId(subscription().subscriptionId, prereqsResourceGroup, 'Microsoft.KeyVault/vaults/secrets', prereqsKeyVaultName, 'teamsChannelServiceAccountPassword')
 var actionableEmailProviderId = resourceId(subscription().subscriptionId, dataResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'notifierProviderId')
+var oamEntraAppId = resourceId(subscription().subscriptionId, dataResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'oamEntraAppId')
+var oamEntraAppScope = resourceId(subscription().subscriptionId, dataResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'oamEntraAppScope')
 var replicaJobsMSIConnectionString = resourceId(subscription().subscriptionId, dataResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'replicaJobsMSIConnectionString')
 var jobsMSIConnectionString = resourceId(subscription().subscriptionId, dataResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'jobsMSIConnectionString')
 var sqlServerMSIConnectionString = resourceId(subscription().subscriptionId, dataResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'sqlServerMSIConnectionString')
 var graphUserAssignedManagedIdentityClientId = resourceId(subscription().subscriptionId, dataResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'graphUserAssignedManagedIdentityClientId')
+var azureSignalRConnectionString = resourceId(subscription().subscriptionId, dataResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'azureSignalRConnectionString')
+var openAIEndpoint = resourceId(subscription().subscriptionId, dataResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'openAIEndpoint')
+
+var serviceBusFQN = resourceId(subscription().subscriptionId, dataResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'serviceBusFQN')
+var serviceBusMembershipAggregatorQueue = resourceId(subscription().subscriptionId, dataResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'serviceBusMembershipAggregatorQueue')
+var serviceBusMembershipUpdatersTopic = resourceId(subscription().subscriptionId, dataResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'serviceBusMembershipUpdatersTopic')
+var serviceBusConfigurationQueue = resourceId(subscription().subscriptionId, dataResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'serviceBusConfigurationQueue')
+var serviceBusSyncJobTopic = resourceId(subscription().subscriptionId, dataResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'serviceBusSyncJobTopic')
+var serviceBusNotificationsQueue = resourceId(subscription().subscriptionId, dataResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'serviceBusNotificationsQueue')
+var jobSchedulerFunctionBaseUrl = resourceId(subscription().subscriptionId, dataResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'jobSchedulerFunctionBaseUrl')
+var jobSchedulerFunctionKey = resourceId(subscription().subscriptionId, dataResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'jobSchedulerFunctionKey')
+var functionAuthAppClientId = resourceId(subscription().subscriptionId, prereqsResourceGroup, 'Microsoft.KeyVault/vaults/secrets', prereqsKeyVaultName, 'functionAuthAppClientId')
 
 resource appInsights 'Microsoft.Insights/components@2020-02-02' existing = {
   scope: resourceGroup(dataResourceGroup)
@@ -87,6 +121,10 @@ resource appInsights 'Microsoft.Insights/components@2020-02-02' existing = {
 }
 
 var appSettings = [
+  {
+    name: 'AZURE_TOKEN_CREDENTIALS'
+    value:'ManagedIdentityCredential'
+  }
   {
     name: 'APPINSIGHTS_INSTRUMENTATIONKEY'
     value:'@Microsoft.KeyVault(SecretUri=${reference(appInsightsInstrumentationKey, '2019-09-01').secretUriWithVersion})'
@@ -136,6 +174,14 @@ var appSettings = [
     value: '@Microsoft.KeyVault(SecretUri=${reference(jobsStorageAccountConnectionString, '2019-09-01').secretUriWithVersion})'
   }
   {
+    name: 'Settings:membershipStorageAccountName'
+    value: '@Microsoft.KeyVault(SecretUri=${reference(membershipStorageAccountName, '2019-09-01').secretUriWithVersion})'
+  }
+  {
+    name: 'Settings:membershipContainerName'
+    value: '@Microsoft.KeyVault(SecretUri=${reference(membershipContainerName, '2019-09-01').secretUriWithVersion})'
+  }
+  {
     name: 'Settings:GraphCredentials:ClientCertificateName'
     value: '@Microsoft.KeyVault(SecretUri=${reference(graphAppCertificateName, '2019-09-01').secretUriWithVersion})'
   }
@@ -152,8 +198,48 @@ var appSettings = [
     value: '@Microsoft.KeyVault(SecretUri=${reference(graphAppTenantId, '2019-09-01').secretUriWithVersion})'
   }
   {
+    name: 'Settings:TeamsGraphCredentials:ClientCertificateName'
+    value: featureFlags.enableTeamsChannel ? '@Microsoft.KeyVault(SecretUri=${reference(teamsChannelAppCertificateName, '2019-09-01').secretUriWithVersion})' : 'not-set'
+  }
+  {
+    name: 'Settings:TeamsGraphCredentials:ClientSecret'
+    value: featureFlags.enableTeamsChannel ? '@Microsoft.KeyVault(SecretUri=${reference(teamsChannelAppClientSecret, '2019-09-01').secretUriWithVersion})' : 'not-set'
+  }
+  {
+    name: 'Settings:TeamsGraphCredentials:ClientId'
+    value: featureFlags.enableTeamsChannel ? '@Microsoft.KeyVault(SecretUri=${reference(teamsChannelAppClientId, '2019-09-01').secretUriWithVersion})' : 'not-set'
+  }
+  {
+    name: 'Settings:TeamsGraphCredentials:TenantId'
+    value: featureFlags.enableTeamsChannel ? '@Microsoft.KeyVault(SecretUri=${reference(teamsChannelAppTenantId, '2019-09-01').secretUriWithVersion})' : 'not-set'
+  }
+  {
+    name: 'Settings:TeamsGraphCredentials:ServiceAccountObjectId'
+    value: featureFlags.enableTeamsChannel ? '@Microsoft.KeyVault(SecretUri=${reference(teamsChannelServiceAccountObjectId, '2019-09-01').secretUriWithVersion})' : 'not-set'
+  }
+  {
+    name: 'Settings:TeamsGraphCredentials:ServiceAccountUsername'
+    value: featureFlags.enableTeamsChannel ? '@Microsoft.KeyVault(SecretUri=${reference(teamsChannelServiceAccountUsername, '2019-09-01').secretUriWithVersion})' : 'not-set'
+  }
+  {
+    name: 'Settings:TeamsGraphCredentials:ServiceAccountPassword'
+    value: featureFlags.enableTeamsChannel ? '@Microsoft.KeyVault(SecretUri=${reference(teamsChannelServiceAccountPassword, '2019-09-01').secretUriWithVersion})' : 'not-set'
+  }
+  {
+    name: 'Settings:TeamsGraphCredentials:AppName'
+    value: '${solutionAbbreviation}-TeamsChannel-${environmentAbbreviation}'
+  }
+  {
     name: 'Settings:ActionableEmailProviderId'
     value: '@Microsoft.KeyVault(SecretUri=${reference(actionableEmailProviderId, '2019-09-01').secretUriWithVersion})'
+  }
+  {
+    name: 'Settings:oamEntraAppId'
+    value: '@Microsoft.KeyVault(SecretUri=${reference(oamEntraAppId, '2019-09-01').secretUriWithVersion})'
+  }
+  {
+    name: 'Settings:oamEntraAppScope'
+    value: '@Microsoft.KeyVault(SecretUri=${reference(oamEntraAppScope, '2019-09-01').secretUriWithVersion})'
   }
   {
     name: 'Settings:ApiHostname'
@@ -164,12 +250,24 @@ var appSettings = [
     value: prereqsKeyVaultName
   }
   {
+    name: 'Settings:TeamsGraphCredentials:KeyVaultName'
+    value: prereqsKeyVaultName
+  }
+  {
     name: 'Settings:GraphCredentials:KeyVaultTenantId'
     value: tenantId
   }
   {
     name: 'Settings:SqlServerConnectionString'
     value: '@Microsoft.KeyVault(SecretUri=${reference(sqlServerMSIConnectionString, '2019-09-01').secretUriWithVersion})'
+  }
+  {
+    name: 'Settings:AzureSignalRConnectionString'
+    value: '@Microsoft.KeyVault(SecretUri=${reference(azureSignalRConnectionString, '2019-09-01').secretUriWithVersion})'
+  }
+  {
+    name: 'Settings:OpenAIEndpoint'
+    value: featureFlags.enableOpenAI ? '@Microsoft.KeyVault(SecretUri=${reference(openAIEndpoint, '2019-09-01').secretUriWithVersion})' : 'not-set'
   }
   {
     name: 'ADF:Pipeline'
@@ -190,6 +288,42 @@ var appSettings = [
   {
     name: 'Settings:GraphCredentials:UserAssignedManagedIdentityClientId'
     value: '@Microsoft.KeyVault(SecretUri=${reference(graphUserAssignedManagedIdentityClientId, '2019-09-01').secretUriWithVersion})'
+  }
+  {
+    name: 'Settings:ServiceBus:ServiceBusFQN'
+    value: '@Microsoft.KeyVault(SecretUri=${reference(serviceBusFQN, '2019-09-01').secretUriWithVersion})'
+  }
+  {
+    name: 'Settings:ServiceBus:MembershipAggregatorQueue'
+    value: '@Microsoft.KeyVault(SecretUri=${reference(serviceBusMembershipAggregatorQueue, '2019-09-01').secretUriWithVersion})'
+  }
+  {
+    name: 'Settings:ServiceBus:MembershipUpdatersTopic'
+    value: '@Microsoft.KeyVault(SecretUri=${reference(serviceBusMembershipUpdatersTopic, '2019-09-01').secretUriWithVersion})'
+  }
+  {
+    name: 'Settings:ServiceBus:SyncJobTopic'
+    value: '@Microsoft.KeyVault(SecretUri=${reference(serviceBusSyncJobTopic, '2019-09-01').secretUriWithVersion})'
+  }
+  {
+    name: 'Settings:ServiceBus:PendingConfigurationQueue'
+    value: '@Microsoft.KeyVault(SecretUri=${reference(serviceBusConfigurationQueue, '2019-09-01').secretUriWithVersion})'
+  }
+  {
+    name: 'Settings:ServiceBus:NotificationsQueue'
+    value: '@Microsoft.KeyVault(SecretUri=${reference(serviceBusNotificationsQueue, '2019-09-01').secretUriWithVersion})'
+  }
+  {
+    name: 'Settings:JobSchedulerFunctionBaseUrl'
+    value: '@Microsoft.KeyVault(SecretUri=${reference(jobSchedulerFunctionBaseUrl, '2019-09-01').secretUriWithVersion})'
+  }
+  {
+    name: 'Settings:JobSchedulerFunctionKey'
+    value: '@Microsoft.KeyVault(SecretUri=${reference(jobSchedulerFunctionKey, '2019-09-01').secretUriWithVersion})'
+  }
+  {
+    name: 'Settings:FunctionAuthAppClientId'
+    value: '@Microsoft.KeyVault(SecretUri=${reference(functionAuthAppClientId, '2019-09-01').secretUriWithVersion})'
   }
 ]
 
@@ -213,6 +347,32 @@ resource graphUAMI 'Microsoft.ManagedIdentity/userAssignedIdentities@2023-07-31-
   scope: resourceGroup(dataResourceGroup)
 }
 
+resource signalR 'Microsoft.SignalRService/signalR@2023-08-01-preview' = {
+  name: '${solutionAbbreviation}-compute-${environmentAbbreviation}-signalr'
+  location: location
+  sku: {
+    name: 'Standard_S1'
+    tier: 'Standard'
+    capacity: 1
+  }
+  kind: 'SignalR'
+  identity: {
+    type: 'SystemAssigned'
+  }
+  properties: {
+    cors: {
+      allowedOrigins: signalrCORS
+    }
+    disableLocalAuth: true
+    features: [
+      {
+        flag: 'ServiceMode'
+        value: 'Default'
+      }
+    ]
+  }
+}
+
 module servicePlanTemplate 'servicePlan.bicep' = {
   name: 'servicePlanTemplate-WebApi'
   params: {
@@ -223,7 +383,6 @@ module servicePlanTemplate 'servicePlan.bicep' = {
     maximumElasticWorkerCount: maximumElasticWorkerCount
   }
 }
-
 module appService 'appService.bicep' = {
   name: 'appServiceTemplate-WebApi'
   params: {
@@ -242,8 +401,20 @@ module appService 'appService.bicep' = {
     setRBACPermissions: setRBACPermissions
   }
   dependsOn: [
-    appInsights
     servicePlanTemplate
     graphUAMI
+  ]
+}
+
+module openAINetworking 'openAIResources.bicep' = if (featureFlags.enableOpenAI) {
+  name: 'openAINetworkingTemplate-WebApi'
+  scope: resourceGroup(dataResourceGroup)
+  params: {
+    openAIResourceName: '${solutionAbbreviation}-data-${environmentAbbreviation}-openai'
+    aiLocation: aiLocation
+    allowedIpAddresses: '${appService.outputs.outboundIpAddresses},${appService.outputs.possibleOutboundIpAddresses}'
+  }
+  dependsOn: [
+    appService
   ]
 }

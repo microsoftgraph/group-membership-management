@@ -1,11 +1,14 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
+using Microsoft.Extensions.Logging;
 using Microsoft.Graph;
 using Microsoft.Graph.Models;
 using Microsoft.Kiota.Abstractions;
+using Microsoft.Kiota.Http.HttpClientLibrary.Middleware.Options;
 using Models;
 using Repositories.Contracts;
+using Repositories.Contracts.Helpers;
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
@@ -17,11 +20,15 @@ namespace Repositories.GraphGroups
 {
     internal class GraphUserReader : GraphGroupRepositoryBase
     {
+        private readonly ILogger<GraphUserReader> _graphUserReaderLogger;
+
         public GraphUserReader(GraphServiceClient graphServiceClient,
-                                          ILoggingRepository loggingRepository,
-                                          GraphGroupMetricTracker graphGroupMetricTracker)
-                                          : base(graphServiceClient, loggingRepository, graphGroupMetricTracker)
-        { }
+                               GraphGroupMetricTracker graphGroupMetricTracker,
+                               ILogger<GraphUserReader> graphUserReaderLogger)
+                               : base(graphServiceClient, graphUserReaderLogger, graphGroupMetricTracker)
+        {
+            _graphUserReaderLogger = graphUserReaderLogger ?? throw new ArgumentNullException(nameof(graphUserReaderLogger));
+        }
 
         public async Task<List<AzureADUser>> GetTenantUsersAsync(int userCount, Guid? runId)
         {
@@ -53,25 +60,87 @@ namespace Repositories.GraphGroups
 
             try
             {
-                var user = await _graphServiceClient.Users[userIdentifier].GetAsync();
-                if (user != null) userDetails = new AzureADUser
-                {
-                    ObjectId = Guid.Parse(user.Id)
-                };
+                var nativeResponseHandler = new NativeResponseHandler();
 
-                if (includeMailProperty)
+                await _graphServiceClient.Users[userIdentifier].GetAsync(requestConfiguration =>
                 {
-                    userDetails.Mail = user.Mail;
+                    requestConfiguration.Options.Add(new ResponseHandlerOption { ResponseHandler = nativeResponseHandler });
+                });
+
+                var nativeResponse = nativeResponseHandler.Value as HttpResponseMessage;
+
+                if (nativeResponse != null)
+                {
+                    var headers = nativeResponse.Headers.ToImmutableDictionary(x => x.Key, x => x.Value);
+                    await _graphGroupMetricTracker.TrackMetricsAsync(headers, QueryType.Other, runId);
+
+                    if (nativeResponse.IsSuccessStatusCode)
+                    {
+                        var user = await DeserializeResponseAsync(nativeResponse, User.CreateFromDiscriminatorValue);
+
+                        if (user != null)
+                        {
+                            userDetails = new AzureADUser
+                            {
+                                ObjectId = Guid.Parse(user.Id),
+                                UserPrincipalName = user.UserPrincipalName,
+                                OnPremisesImmutableId = user.OnPremisesImmutableId,
+                                Mail = includeMailProperty ? user.Mail : null
+                            };
+                        }
+                    }
                 }
             }
 
             catch (Exception exception)
             {
-                await _loggingRepository.LogMessageAsync(new LogMessage
+                _graphUserReaderLogger.LogErrorWithRunId(runId, $"Exception: {exception}, FailedMethod: {nameof(GetUserByUpnOrIdAsync)}, UserIdentifier: {userIdentifier}", exception);
+            }
+
+            return userDetails;
+        }
+
+        public async Task<AzureADUser> GetUserWithOnPremisesImmutableIdAsync(string userIdentifier, Guid? runId)
+        {
+            AzureADUser userDetails = null;
+
+            try
+            {
+                var nativeResponseHandler = new NativeResponseHandler();
+
+                await _graphServiceClient.Users[userIdentifier]
+                    .GetAsync(requestConfiguration =>
+                    {
+                        requestConfiguration.QueryParameters.Select = new string[] { "id", "userPrincipalName", "onPremisesImmutableId" };
+                        requestConfiguration.Options.Add(new ResponseHandlerOption { ResponseHandler = nativeResponseHandler });
+                    });
+
+                var nativeResponse = nativeResponseHandler.Value as HttpResponseMessage;
+
+                if (nativeResponse != null)
                 {
-                    RunId = runId,
-                    Message = $"Exception: {exception}, FailedMethod: {nameof(GetUserByUpnOrIdAsync)}, UserIdentifier: {userIdentifier}"
-                });
+                    var headers = nativeResponse.Headers.ToImmutableDictionary(x => x.Key, x => x.Value);
+                    await _graphGroupMetricTracker.TrackMetricsAsync(headers, QueryType.Other, runId);
+
+                    if (nativeResponse.IsSuccessStatusCode)
+                    {
+                        var user = await DeserializeResponseAsync(nativeResponse, User.CreateFromDiscriminatorValue);
+
+                        if (user != null)
+                        {
+                            userDetails = new AzureADUser
+                            {
+                                ObjectId = Guid.Parse(user.Id),
+                                UserPrincipalName = user.UserPrincipalName,
+                                OnPremisesImmutableId = user.OnPremisesImmutableId
+                            };
+                        }
+                    }
+                }
+            }
+            catch (Exception exception)
+            {
+                _graphUserReaderLogger.LogErrorWithRunId(runId, $"Exception: {exception}, FailedMethod: {nameof(GetUserWithOnPremisesImmutableIdAsync)}, UserIdentifier: {userIdentifier}", exception);
             }
 
             return userDetails;
@@ -104,6 +173,32 @@ namespace Repositories.GraphGroups
 
             users.AddRange(ToUsers(usersResponse.Response.Value, nonUserGraphObjects));
             return (users, nonUserGraphObjects, usersResponse.Response.OdataNextLink);
+        }
+
+        public async Task<Guid> GetObjectIdFromServicePrincipalAsync(Guid appId, Guid? runId)
+        {
+            try
+            {
+                var servicePrincipals = await _graphServiceClient.ServicePrincipals
+                    .GetAsync(requestConfig =>
+                    {
+                        requestConfig.QueryParameters.Filter = $"appId eq '{appId}'";
+                    });
+
+                var servicePrincipal = servicePrincipals?.Value?.FirstOrDefault();
+
+                if (servicePrincipal != null)
+                {
+                    return Guid.Parse(servicePrincipal.Id);
+                }
+
+                return Guid.Empty;
+            }
+            catch (Exception ex)
+            {
+                _graphUserReaderLogger.LogErrorWithRunId(runId, $"Exception: {nameof(GetObjectIdFromServicePrincipalAsync)} failed with error {ex.Message}", ex);
+                return Guid.Empty;
+            }
         }
 
         private async Task<GraphObjectResponse<UserCollectionResponse>> GetFirstMembersAsync(string url)

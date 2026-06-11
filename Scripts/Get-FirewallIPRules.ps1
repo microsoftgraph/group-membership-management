@@ -8,14 +8,21 @@ param (
     [Parameter(Mandatory=$false)]
     [string]$Regions
 )
-    # Installing MSIdentityTools Module
-    Write-Host "Installing MSIdentityTools Module to fetch the Azure published IP ranges..." -ForegroundColor Yellow
-    Install-Module -Name MSIdentityTools -RequiredVersion 2.0.52 -Force
-    Import-Module -Name MSIdentityTools
-    Write-Host "Installed MSIdentityTools Module to fetch the Azure published IP ranges..." -ForegroundColor Yellow
+
+    if ($global:SkipModuleInstall -ne $true) {
+		# Installing MSIdentityTools Module
+        Write-Host "Installing MSIdentityTools Module to fetch the Azure published IP ranges..." -ForegroundColor Yellow
+        . ($scriptsDirectory + '/Install-ModuleIfNeeded.ps1')
+        Install-ModuleIfNeeded -Name MSIdentityTools -Version "2.0.52" -Verbose
+        Write-Host "Installed MSIdentityTools Module to fetch the Azure published IP ranges..." -ForegroundColor Yellow
+
+	}
 
     Write-Host "Retrieving Azure published IP ranges..." -ForegroundColor Yellow
-    $allIPRanges = Get-MsIdAzureIpRange -AllServiceTagsAndRegions
+    $allIPRanges = Invoke-WithRetry `
+        -Operation { Get-MsIdAzureIpRange -AllServiceTagsAndRegions } `
+        -OperationName "Retrieve Azure IP ranges" `
+        -MaxAttempts 3 -BaseDelaySeconds 2
     Write-Host "Retrieved Azure published IP ranges..." -ForegroundColor Yellow
 
     $azureSubnetProperties = $allIPRanges.values.properties
@@ -47,4 +54,4 @@ param (
     $filteredIpV4AddressPrefixes = $filteredIpV4AddressPrefixes | Sort-Object -Unique
     $filteredIpV4AddressPrefixes.Count
 
-    $filteredIpV4AddressPrefixes | Out-File "$FolderPathToSaveIpRules\ipRules.txt"
+    $filteredIpV4AddressPrefixes | Out-File "$FolderPathToSaveIpRules/ipRules.txt"

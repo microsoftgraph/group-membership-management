@@ -2,8 +2,8 @@
 // Licensed under the MIT license.
 
 using Azure.Messaging.ServiceBus;
-using Microsoft.Azure.WebJobs;
-using Microsoft.Azure.WebJobs.Extensions.DurableTask;
+using Microsoft.Azure.Functions.Worker;
+using Microsoft.DurableTask.Client;
 using Models;
 using Repositories.Contracts;
 using Repositories.Contracts.InjectConfig;
@@ -27,10 +27,10 @@ namespace Hosts.Notifier
             _mailConfig = mailConfig ?? throw new ArgumentNullException(nameof(mailConfig)); ;
         }
 
-        [FunctionName(nameof(StarterFunction))]
-        public async Task ProcessServiceBusMessageAsync(
+        [Function(nameof(StarterFunction))]
+        public async Task RunAsync(
             [ServiceBusTrigger("%serviceBusNotificationsQueue%", Connection = "gmmServiceBus")] ServiceBusReceivedMessage message,
-            [DurableClient] IDurableOrchestrationClient starter)
+            [DurableClient] DurableTaskClient starter)
         {
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(StarterFunction)} function started" }, VerbosityLevel.DEBUG);
             string messageBody = Encoding.UTF8.GetString(message.Body.ToArray());
@@ -45,7 +45,7 @@ namespace Hosts.Notifier
             };
             var messageContent = JsonSerializer.Deserialize<Dictionary<string, Object>>(messageBody);
             SyncJob job = ((JsonElement)messageContent["SyncJob"]).Deserialize<SyncJob>();
-            Guid runId = (Guid)job.RunId;
+            Guid runId = job.RunId ?? Guid.Empty;
             _loggingRepository.SetSyncJobProperties(runId, job.ToDictionary());
 
             if (_mailConfig.SkipEmailNotifications)
@@ -59,7 +59,7 @@ namespace Hosts.Notifier
             }
             else
             {
-                var instanceId = await starter.StartNewAsync(nameof(OrchestratorFunction), (orchestratorRequest));
+                var instanceId = await starter.ScheduleNewOrchestrationInstanceAsync(nameof(OrchestratorFunction), orchestratorRequest);
             }
 
 

@@ -1,32 +1,40 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
-using Models;
+using Microsoft.Azure.Functions.Worker;
+using Microsoft.Extensions.Logging;
 using Models.Helpers;
-using Microsoft.Azure.WebJobs;
-using Microsoft.Azure.WebJobs.Extensions.DurableTask;
 using Repositories.Contracts;
+using Repositories.Contracts.Helpers;
 using System;
+using System.Collections.Generic;
 using System.Threading.Tasks;
 
 namespace Hosts.MembershipAggregator
 {
     public class FileUploaderFunction
     {
-        private readonly ILoggingRepository _loggingRepository;
+        private readonly ILogger<FileUploaderFunction> _logger;
         private readonly IBlobStorageRepository _blobStorageRepository;
 
-        public FileUploaderFunction(ILoggingRepository loggingRepository, IBlobStorageRepository blobStorageRepository)
+        public FileUploaderFunction(ILogger<FileUploaderFunction> logger, IBlobStorageRepository blobStorageRepository)
         {
-            _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _blobStorageRepository = blobStorageRepository ?? throw new ArgumentNullException(nameof(blobStorageRepository));
         }
 
-        [FunctionName(nameof(FileUploaderFunction))]
+        [Function(nameof(FileUploaderFunction))]
         public async Task UploadFileAsync([ActivityTrigger] FileUploaderRequest request)
         {
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Uploading file {request.FilePath}", RunId = request.SyncJob.RunId }, VerbosityLevel.DEBUG);
-            await _blobStorageRepository.UploadFileAsync(request.FilePath, TextCompressor.Decompress(request.Content));
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Uploaded file {request.FilePath}", RunId = request.SyncJob.RunId }, VerbosityLevel.DEBUG);
+            using (_logger.BeginSyncJobScope(request.SyncJob, new Dictionary<string, object>
+            {
+                ["CurrentPart"] = request.CurrentPart,
+                ["TotalParts"] = request.TotalParts
+            }))
+            {
+                _logger.UploadingFile(request.FilePath);
+                await _blobStorageRepository.UploadFileAsync(request.FilePath, TextCompressor.Decompress(request.Content));
+                _logger.UploadedFile(request.FilePath);
+            }
         }
     }
 }

@@ -1,0 +1,111 @@
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT license.
+
+using Models;
+using Models.ServiceBus;
+using Models.SyncJobHistory;
+using Repositories.Contracts;
+using Services.Contracts;
+using System;
+using System.Threading.Tasks;
+
+namespace BusinessLogic.SyncJobUpdater
+{
+    public class SyncJobStatusService : ISyncJobStatusService
+    {
+        private readonly IDatabaseSyncJobsRepository _databaseSyncJobsRepository;
+        private readonly ISyncJobHistoryRepository _syncJobHistoryRepository;
+
+        public SyncJobStatusService(
+            IDatabaseSyncJobsRepository databaseSyncJobsRepository,
+            ISyncJobHistoryRepository syncJobHistoryRepository)
+        {
+            _databaseSyncJobsRepository = databaseSyncJobsRepository;
+            _syncJobHistoryRepository = syncJobHistoryRepository;
+        }
+
+        public async Task UpdateJobStatusAsync(SyncJob job, SyncStatus? status, SyncJobHistory? history = null, string? functionName = null)
+        {
+            // Only write to the SyncJob row when the caller actually wants to change its status.
+            // Passing status=null means "persist only auxiliary history fields".
+            if (status.HasValue)
+            {
+                await _databaseSyncJobsRepository.UpdateSyncJobStatusAsync(new[] { job }, status);
+            }
+
+            // When both status and history are null there is nothing to persist (no status change,
+            // no history update). Callers needing to persist other SyncJob fields without changing
+            // status should use a dedicated repository method (e.g. UpdateSyncJobsAsync), not this one.
+            if (!status.HasValue && history == null)
+            {
+                return;
+            }
+
+            if (history == null)
+            {
+                var now = DateTime.UtcNow;
+                history = new SyncJobHistory
+                {
+                    SyncJobId = job.Id,
+                    RunId = job.RunId ?? Guid.Empty,
+                    Status = status.Value.ToString(),
+                    UpdatedByFunction = functionName,
+                    StartTime = job.LastSuccessfulStartTime,
+                    CreatedAt = now,
+                    UpdatedAt = now
+                };
+            }
+
+            await CreateOrUpdateJobHistoryAsync(history);
+        }
+
+        public async Task CreateOrUpdateJobHistoryAsync(SyncJobHistory history)
+        {
+            var existingHistory = await _syncJobHistoryRepository.GetByRunIdAsync(history.RunId);
+
+            if (existingHistory != null)
+            {
+                existingHistory.StartTime = history.StartTime ?? existingHistory.StartTime;
+                existingHistory.EndTime = history.EndTime ?? existingHistory.EndTime;
+                existingHistory.Status = history.Status;
+                existingHistory.UsersAdded = history.UsersAdded ?? existingHistory.UsersAdded;
+                existingHistory.UsersRemoved = history.UsersRemoved ?? existingHistory.UsersRemoved;
+                existingHistory.ThresholdViolations = history.ThresholdViolations ?? existingHistory.ThresholdViolations;
+                existingHistory.UpdatedByFunction = !string.IsNullOrEmpty(history.UpdatedByFunction) ? history.UpdatedByFunction : existingHistory.UpdatedByFunction;
+                existingHistory.UpdatedAt = DateTime.UtcNow;
+
+                if (history.BeforeSyncUserCount.HasValue)
+                {
+                    existingHistory.BeforeSyncUserCount = history.BeforeSyncUserCount;
+                }
+
+                if (history.StartTime.HasValue && !existingHistory.StartTime.HasValue)
+                {
+                    existingHistory.StartTime = history.StartTime;
+                }
+
+                if (history.AfterSyncUserCount.HasValue)
+                {
+                    existingHistory.AfterSyncUserCount = history.AfterSyncUserCount;
+                }
+
+                if (existingHistory.StartTime.HasValue && existingHistory.EndTime.HasValue)
+                {
+                    existingHistory.Duration = (int)(existingHistory.EndTime.Value - existingHistory.StartTime.Value).TotalSeconds;
+                }
+
+                await _syncJobHistoryRepository.UpdateAsync(existingHistory);
+            }
+            else
+            {
+
+                if (history.StartTime.HasValue && history.EndTime.HasValue)
+                {
+                    history.Duration = (int)(history.EndTime.Value - history.StartTime.Value).TotalSeconds;
+                }
+
+                await _syncJobHistoryRepository.CreateAsync(history);
+            }
+        }
+    }
+}

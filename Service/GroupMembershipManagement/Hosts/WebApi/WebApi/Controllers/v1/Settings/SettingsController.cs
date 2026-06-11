@@ -19,15 +19,18 @@ namespace WebApi.Controllers.v1.Settings
         private readonly IRequestHandler<GetSettingRequest, GetSettingResponse> _getSettingRequestHandler;
         private readonly IRequestHandler<GetAllSettingsRequest, GetAllSettingsResponse> _getAllSettingsRequestHandler;
         private readonly IRequestHandler<PatchSettingRequest, NullResponse> _patchSettingRequestHandler;
+        private readonly IRequestHandler<GetSupportEmailRequest, GetSupportEmailResponse> _getSupportEmailRequestHandler;
 
         public SettingsController(
             IRequestHandler<GetSettingRequest, GetSettingResponse> getSettingRequestHandler,
             IRequestHandler<GetAllSettingsRequest, GetAllSettingsResponse> getAllSettingsRequestHandler,
-            IRequestHandler<PatchSettingRequest, NullResponse> patchSettingRequestHandler)
+            IRequestHandler<PatchSettingRequest, NullResponse> patchSettingRequestHandler,
+            IRequestHandler<GetSupportEmailRequest, GetSupportEmailResponse> getSupportEmailRequestHandler)
         {
             _getSettingRequestHandler = getSettingRequestHandler ?? throw new ArgumentNullException(nameof(getSettingRequestHandler));
             _getAllSettingsRequestHandler = getAllSettingsRequestHandler ?? throw new ArgumentNullException(nameof(getAllSettingsRequestHandler));
             _patchSettingRequestHandler = patchSettingRequestHandler ?? throw new ArgumentNullException(nameof(patchSettingRequestHandler));
+            _getSupportEmailRequestHandler = getSupportEmailRequestHandler ?? throw new ArgumentNullException(nameof(getSupportEmailRequestHandler));
         }
 
         [Authorize()]
@@ -64,7 +67,7 @@ namespace WebApi.Controllers.v1.Settings
             }
         }
 
-        [Authorize(Roles = Models.Roles.HYPERLINK_ADMINISTRATOR)]
+        [Authorize(Roles = $"{Models.Roles.HYPERLINK_ADMINISTRATOR}, {Models.Roles.GENERAL_SETTINGS_ADMINISTRATOR}")]
         [HttpPatch("{settingKey}")]
         public async Task<IActionResult> PatchSettingAsync(SettingKey settingKey, [FromBody] string settingValue)
         {
@@ -81,6 +84,15 @@ namespace WebApi.Controllers.v1.Settings
             {
                 return StatusCode(500);
             }
+        }
+
+        [Authorize()]
+        [HttpGet("supportEmail")]
+        public async Task<IActionResult> GetSupportEmailAddressAsync()
+        {
+            var request = new GetSupportEmailRequest();
+            var response = await _getSupportEmailRequestHandler.ExecuteAsync(request);
+            return Ok(response.SupportEmailAddress);
         }
     }
 }
