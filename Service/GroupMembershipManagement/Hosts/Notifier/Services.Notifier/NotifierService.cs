@@ -297,11 +297,8 @@ namespace Services.Notifier
                 return false;
             }
 
-            if (notificationType.Disabled)
-            {
-                _logger.NotificationsGloballyDisabled(messageType.ToString());
-                return true;
-            }
+            // Global suppression (notificationType.Disabled) is now handled pre-consumption
+            // in StarterFunction via message deferral. This method only checks per-job suppression.
 
             return await _jobNotificationRepository.IsNotificationDisabledForJobAsync(jobId, notificationType.Id);
         }

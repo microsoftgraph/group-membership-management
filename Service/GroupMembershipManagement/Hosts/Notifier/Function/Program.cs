@@ -106,6 +106,7 @@ namespace Hosts.Notifier
                         .AddLocalization(options => options.ResourcesPath = "Resources")
                         .AddScoped<IGraphGroupRepository, GraphGroupRepository>()
                         .AddScoped<IDatabaseSyncJobsRepository, DatabaseSyncJobsRepository>()
+                        .AddScoped<IDeferredNotificationsRepository, DeferredNotificationsRepository>()
                         .AddScoped<INotifierService, NotifierService>();
 
                     services.AddSingleton<IServiceBusQueueRepository>(sp =>

@@ -34,6 +34,7 @@ namespace Repositories.EntityFramework.Contexts
         public DbSet<Group> Groups { get; set; }
         public DbSet<Channel> TeamsChannels { get; set; }
         public DbSet<Title> Titles { get; set; }
+        public DbSet<DeferredNotification> DeferredNotifications { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -205,6 +206,32 @@ namespace Repositories.EntityFramework.Contexts
                 entity.HasIndex(a => a.AdfRunId).IsUnique();
 
                 entity.ToTable("AdfRuns");
+            });
+
+            modelBuilder.Entity<DeferredNotification>(entity =>
+            {
+                entity.HasKey(d => d.Id);
+                entity.Property(d => d.Id).ValueGeneratedOnAdd();
+                entity.Property(d => d.SequenceNumber).IsRequired();
+                entity.Property(d => d.MessageType).IsRequired()
+                    .HasConversion(
+                        v => v.ToString(),
+                        v => (NotificationMessageType)Enum.Parse(typeof(NotificationMessageType), v))
+                    .IsUnicode(false)
+                    .HasMaxLength(100);
+                entity.Property(d => d.Status).IsRequired()
+                    .HasConversion(
+                        v => v.ToString(),
+                        v => (DeferredNotificationStatus)Enum.Parse(typeof(DeferredNotificationStatus), v))
+                    .IsUnicode(false)
+                    .HasMaxLength(50);
+                entity.Property(d => d.DeferredAt).IsRequired();
+                entity.Property(d => d.SuppressionReason).HasMaxLength(500);
+
+                entity.HasIndex(d => d.SequenceNumber).IsUnique();
+                entity.HasIndex(d => new { d.MessageType, d.Status });
+
+                entity.ToTable("DeferredNotifications");
             });
 
             modelBuilder.Entity<ThresholdNotification>(entity =>

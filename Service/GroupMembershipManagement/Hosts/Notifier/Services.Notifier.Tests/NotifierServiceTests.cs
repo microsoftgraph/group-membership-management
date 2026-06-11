@@ -371,8 +371,10 @@ namespace Services.Notifier.Tests
             _jobNotificationRepository.Setup(repo => repo.IsNotificationDisabledForJobAsync(job.Id, notificationTypeId))
                 .ReturnsAsync(false);
 
+            // Global suppression (Disabled=true) is now handled by StarterFunction via message deferral,
+            // not by IsNotificationDisabledAsync which only checks per-job suppression.
             bool result = await _notifierService.IsNotificationDisabledAsync(job.Id, NotificationMessageType.SyncStartedNotification);
-            Assert.IsTrue(result);
+            Assert.IsFalse(result);
 
         }
         [TestMethod]

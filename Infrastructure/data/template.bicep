@@ -185,13 +185,22 @@ param serviceBusTopicSubscriptions topicSubscription[] = [
     ruleSqlExpression: 'Type = \'groupmembership_large_1\''
     sessionEnabled: true
   }
+  {
+    topicName: 'notifications'
+    subscriptionName: 'notifier'
+    ruleName: 'allNotifications'
+    ruleSqlExpression: '1=1'
+  }
 ]
 
 @description('Enter membership aggregator service bus queue name')
 param serviceBusMembershipAggregatorQueue string = 'membershipAggregator'
 
-@description('Enter notifications service bus queue name')
-param serviceBusNotificationsQueue string = 'notifications'
+@description('Enter notifications service bus topic name')
+param serviceBusNotificationsTopic string = 'notifications'
+
+@description('Enter notifications service bus subscription name')
+param serviceBusNotificationsSubscription string = 'notifier'
 
 @description('Enter notifications service bus queue name')
 param serviceBusFailedNotificationsQueue string = 'failedNotifications'
@@ -805,19 +814,7 @@ module membershipAggregatorQueue 'serviceBusQueue.bicep' = {
   ]
 }
 
-module notificationsQueue 'serviceBusQueue.bicep' = {
-  name: 'notificationsQueue'
-  params: {
-    queueName: serviceBusNotificationsQueue
-    serviceBusName: serviceBusName
-    requiresSession: false
-    maxDeliveryCount: 5
-  }
-  dependsOn: [
-    serviceBusTemplate
-    logAnalyticsTemplate
-  ]
-}
+// notifications topic is provisioned via serviceBusTopicSubscriptions parameter above
 
 module failedNotificationsQueue 'serviceBusQueue.bicep' = {
   name: 'failedNotificationsQueue'
@@ -1100,8 +1097,16 @@ var baseSecrets = [
     value: serviceBusMembershipAggregatorQueue
   }
   {
+    name: 'serviceBusNotificationsTopic'
+    value: serviceBusNotificationsTopic
+  }
+  {
+    name: 'serviceBusNotificationsSubscription'
+    value: serviceBusNotificationsSubscription
+  }
+  {
     name: 'serviceBusNotificationsQueue'
-    value: serviceBusNotificationsQueue
+    value: serviceBusNotificationsTopic
   }
   {
     name: 'serviceBusFailedNotificationsQueue'

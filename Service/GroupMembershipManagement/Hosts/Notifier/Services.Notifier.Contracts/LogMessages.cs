@@ -55,5 +55,47 @@ namespace Hosts.Notifier
         [LoggerMessage(EventId = 80085, Level = LogLevel.Information,
             Message = "Notifications of type '{NotificationType}' have been globally disabled.")]
         public static partial void NotificationsGloballyDisabled(this ILogger logger, string notificationType);
+
+        [LoggerMessage(EventId = 80086, Level = LogLevel.Warning,
+            Message = "Notification type '{MessageType}' is suppressed. Message with sequence number {SequenceNumber} has been deferred.")]
+        public static partial void NotificationTypeSuppressed(this ILogger logger, string messageType, long sequenceNumber);
+
+        // ── ReplayDeferredNotificationsFunction ──
+
+        [LoggerMessage(EventId = 80090, Level = LogLevel.Information,
+            Message = "Replaying {Count} deferred notifications of type '{MessageType}'.")]
+        public static partial void ReplayingDeferredNotifications(this ILogger logger, string messageType, int count);
+
+        [LoggerMessage(EventId = 80091, Level = LogLevel.Information,
+            Message = "Deferred message with sequence number {SequenceNumber} of type '{MessageType}' has been replayed.")]
+        public static partial void DeferredMessageReplayed(this ILogger logger, long sequenceNumber, string messageType);
+
+        [LoggerMessage(EventId = 80092, Level = LogLevel.Information,
+            Message = "Replay completed for notification type '{MessageType}'. {Count} messages replayed.")]
+        public static partial void ReplayCompleted(this ILogger logger, string messageType, int count);
+
+        [LoggerMessage(EventId = 80093, Level = LogLevel.Warning,
+            Message = "Deferred message not found for type '{MessageType}'. Messages may have expired. Details: {Details}")]
+        public static partial void DeferredMessageNotFound(this ILogger logger, string messageType, string details);
+
+        [LoggerMessage(EventId = 80094, Level = LogLevel.Warning,
+            Message = "{Count} deferred message(s) of type '{MessageType}' have expired and cannot be replayed.")]
+        public static partial void DeferredMessagesExpired(this ILogger logger, string messageType, int count);
+
+        [LoggerMessage(EventId = 80095, Level = LogLevel.Warning,
+            Message = "{Count} deferred message(s) of type '{MessageType}' are approaching TTL expiry (oldest expires in {HoursUntilExpiry:F1} hours).")]
+        public static partial void DeferredMessagesApproachingExpiry(this ILogger logger, string messageType, int count, double hoursUntilExpiry);
+
+        [LoggerMessage(EventId = 80096, Level = LogLevel.Information,
+            Message = "Replay skipped: global email suppression (SkipEmailNotifications) is still active.")]
+        public static partial void ReplaySkippedGlobalSuppression(this ILogger logger);
+
+        [LoggerMessage(EventId = 80097, Level = LogLevel.Warning,
+            Message = "Failed to replay deferred message with sequence number {SequenceNumber} of type '{MessageType}': {Details}")]
+        public static partial void DeferredMessageReplayFailed(this ILogger logger, long sequenceNumber, string messageType, string details);
+
+        [LoggerMessage(EventId = 80098, Level = LogLevel.Warning,
+            Message = "Error emitting observability metrics: {Details}")]
+        public static partial void ObservabilityMetricsError(this ILogger logger, string details);
     }
 }

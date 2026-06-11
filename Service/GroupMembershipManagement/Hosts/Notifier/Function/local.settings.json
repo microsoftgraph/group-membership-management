@@ -20,6 +20,8 @@
     "supportEmailAddresses": "",
     "actionableEmailProviderId": "",
     "apiHostname": "",
-    "serviceBusNotificationsQueue": ""
+    "serviceBusNotificationsTopic": "notifications",
+    "serviceBusNotificationsSubscription": "notifier",
+    "notifierReplaySchedule": "0 */5 * * * *"
   }
 }
