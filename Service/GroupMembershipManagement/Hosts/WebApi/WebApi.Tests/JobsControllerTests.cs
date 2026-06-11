@@ -451,7 +451,7 @@ namespace Services.Tests
                                                  _serviceBusQueueRepository.Object,
                                                  _autoApproverQueueRepository.Object);
 
-            _jobsController = new JobsController(_getJobsHandler, _patchJobsHandler, _postJobHandler, _getJobDetailsHandler, _postResetRequestHandler);
+            _jobsController = new JobsController(_getJobsHandler, _patchJobsHandler, _postJobHandler, _getJobDetailsHandler, _postResetRequestHandler, NullLogger<JobsController>.Instance);
             _jobsController.ControllerContext = new ControllerContext
             {
                 HttpContext = _context

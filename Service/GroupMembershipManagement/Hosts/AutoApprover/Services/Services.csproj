@@ -6,7 +6,6 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\..\Repositories.Contracts\Repositories.Contracts.csproj" />
-    <ProjectReference Include="..\..\..\Services.Contracts\Services.Contracts.csproj" />
     <ProjectReference Include="..\Services.Contracts\Services.Contracts.csproj" />
   </ItemGroup>
 
