@@ -1,4 +1,4 @@
-﻿
+
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.1.32414.318
@@ -12,8 +12,6 @@ EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Entities", "..\..\..\Entities\Entities.csproj", "{2B77E3B2-1622-4B3F-988C-24428B7EA459}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Repositories.BlobStorage", "..\..\..\Repositories.BlobStorage\Repositories.BlobStorage.csproj", "{E06B31B4-1A49-4FFB-BAE7-E856066900D1}"
-EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Repositories.Logging", "..\..\..\Repositories.Logging\Repositories.Logging.csproj", "{62A7A70B-A3AA-4ED1-B761-53C9467E545D}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Services.Tests", "..\Services.Tests\Services.Tests.csproj", "{9BB4387A-58A5-4FB5-A0FE-4ACDC1046379}"
 EndProject
@@ -75,10 +73,6 @@ Global
 		{E06B31B4-1A49-4FFB-BAE7-E856066900D1}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{E06B31B4-1A49-4FFB-BAE7-E856066900D1}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{E06B31B4-1A49-4FFB-BAE7-E856066900D1}.Release|Any CPU.Build.0 = Release|Any CPU
-		{62A7A70B-A3AA-4ED1-B761-53C9467E545D}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{62A7A70B-A3AA-4ED1-B761-53C9467E545D}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{62A7A70B-A3AA-4ED1-B761-53C9467E545D}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{62A7A70B-A3AA-4ED1-B761-53C9467E545D}.Release|Any CPU.Build.0 = Release|Any CPU
 		{9BB4387A-58A5-4FB5-A0FE-4ACDC1046379}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{9BB4387A-58A5-4FB5-A0FE-4ACDC1046379}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{9BB4387A-58A5-4FB5-A0FE-4ACDC1046379}.Release|Any CPU.ActiveCfg = Release|Any CPU

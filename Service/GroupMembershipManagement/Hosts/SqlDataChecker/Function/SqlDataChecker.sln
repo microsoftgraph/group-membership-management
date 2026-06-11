@@ -39,8 +39,6 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Repositories.Localization",
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Repositories.Mail", "..\..\..\Repositories.Mail\Repositories.Mail.csproj", "{36AD104C-C67D-47FF-85F5-E4D200176B3F}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Repositories.Logging", "..\..\..\Repositories.Logging\Repositories.Logging.csproj", "{6061BC37-9C24-4A7B-A34A-AC7F69622A7A}"
-EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -115,10 +113,6 @@ Global
 		{36AD104C-C67D-47FF-85F5-E4D200176B3F}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{36AD104C-C67D-47FF-85F5-E4D200176B3F}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{36AD104C-C67D-47FF-85F5-E4D200176B3F}.Release|Any CPU.Build.0 = Release|Any CPU
-		{6061BC37-9C24-4A7B-A34A-AC7F69622A7A}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{6061BC37-9C24-4A7B-A34A-AC7F69622A7A}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{6061BC37-9C24-4A7B-A34A-AC7F69622A7A}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{6061BC37-9C24-4A7B-A34A-AC7F69622A7A}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

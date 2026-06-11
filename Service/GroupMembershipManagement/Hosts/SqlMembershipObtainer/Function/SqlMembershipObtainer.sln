@@ -1,4 +1,4 @@
-﻿
+
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.6.33829.357
@@ -10,8 +10,6 @@ EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "DIConcreteTypes", "..\..\..\DIConcreteTypes\DIConcreteTypes.csproj", "{1CB8F237-5AC8-4204-962E-D92B7CFBE3D5}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Hosts.FunctionBase", "..\..\..\Hosts.FunctionBase\Hosts.FunctionBase.csproj", "{5541C33E-DF0B-4A97-AFC5-B8ED8C0BD48C}"
-EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Repositories.Logging", "..\..\..\Repositories.Logging\Repositories.Logging.csproj", "{F6677FBF-D083-4090-A83A-166C6887CADB}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Models", "..\..\..\Models\Models.csproj", "{0E597FAA-99B7-4A3A-A86C-30564796FE12}"
 EndProject
@@ -63,10 +61,6 @@ Global
 		{5541C33E-DF0B-4A97-AFC5-B8ED8C0BD48C}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{5541C33E-DF0B-4A97-AFC5-B8ED8C0BD48C}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{5541C33E-DF0B-4A97-AFC5-B8ED8C0BD48C}.Release|Any CPU.Build.0 = Release|Any CPU
-		{F6677FBF-D083-4090-A83A-166C6887CADB}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{F6677FBF-D083-4090-A83A-166C6887CADB}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{F6677FBF-D083-4090-A83A-166C6887CADB}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{F6677FBF-D083-4090-A83A-166C6887CADB}.Release|Any CPU.Build.0 = Release|Any CPU
 		{0E597FAA-99B7-4A3A-A86C-30564796FE12}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{0E597FAA-99B7-4A3A-A86C-30564796FE12}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{0E597FAA-99B7-4A3A-A86C-30564796FE12}.Release|Any CPU.ActiveCfg = Release|Any CPU

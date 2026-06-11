@@ -38,7 +38,6 @@
     <ProjectReference Include="..\..\..\Repositories.BlobStorage\Repositories.BlobStorage.csproj" />
     <ProjectReference Include="..\..\..\Repositories.Contracts\Repositories.Contracts.csproj" />
     <ProjectReference Include="..\..\..\Repositories.GraphGroups\Repositories.GraphAzureADGroups.csproj" />
-    <ProjectReference Include="..\..\..\Repositories.Logging\Repositories.Logging.csproj" />
     <ProjectReference Include="..\Services\GroupMembershipObtainerService\GroupMembershipObtainerService.csproj" />
   </ItemGroup>
 

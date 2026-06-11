@@ -16,8 +16,6 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Tests.Services", "..\Servic
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "GroupMembershipObtainerService", "..\Services\GroupMembershipObtainerService\GroupMembershipObtainerService.csproj", "{89192A60-B8F0-480D-A756-02A56BF8B1B4}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Repositories.Logging", "..\..\..\Repositories.Logging\Repositories.Logging.csproj", "{E28452BB-67A4-4781-AC79-DB1C9CF2A7CA}"
-EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "DIConcreteTypes", "..\..\..\DIConcreteTypes\DIConcreteTypes.csproj", "{07791FB7-93E9-4D73-8A4C-1E1E514C05B3}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Hosts.FunctionBase", "..\..\..\Hosts.FunctionBase\Hosts.FunctionBase.csproj", "{3C074686-6663-4699-90BB-C75EC4D7939C}"
@@ -82,10 +80,6 @@ Global
 		{89192A60-B8F0-480D-A756-02A56BF8B1B4}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{89192A60-B8F0-480D-A756-02A56BF8B1B4}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{89192A60-B8F0-480D-A756-02A56BF8B1B4}.Release|Any CPU.Build.0 = Release|Any CPU
-		{E28452BB-67A4-4781-AC79-DB1C9CF2A7CA}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{E28452BB-67A4-4781-AC79-DB1C9CF2A7CA}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{E28452BB-67A4-4781-AC79-DB1C9CF2A7CA}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{E28452BB-67A4-4781-AC79-DB1C9CF2A7CA}.Release|Any CPU.Build.0 = Release|Any CPU
 		{07791FB7-93E9-4D73-8A4C-1E1E514C05B3}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{07791FB7-93E9-4D73-8A4C-1E1E514C05B3}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{07791FB7-93E9-4D73-8A4C-1E1E514C05B3}.Release|Any CPU.ActiveCfg = Release|Any CPU

@@ -1,4 +1,4 @@
-﻿
+
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.0.32112.339
@@ -16,8 +16,6 @@ EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Entities", "..\..\..\Entities\Entities.csproj", "{E8682E88-ED3B-4C5C-94A8-25D54A5476B9}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Repositories.GraphAzureADUsers", "..\..\..\Repositories.GraphUsers\Repositories.GraphAzureADUsers.csproj", "{C9B0E939-0951-44D0-B40B-621F628DC28A}"
-EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Repositories.Logging", "..\..\..\Repositories.Logging\Repositories.Logging.csproj", "{4A65AAD9-F67C-4718-88A4-D1DB410D828F}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Services", "..\Services\Services.csproj", "{4161CF62-F27B-4DFC-8CDE-70DF48B17F72}"
 EndProject
@@ -63,10 +61,6 @@ Global
 		{C9B0E939-0951-44D0-B40B-621F628DC28A}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{C9B0E939-0951-44D0-B40B-621F628DC28A}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{C9B0E939-0951-44D0-B40B-621F628DC28A}.Release|Any CPU.Build.0 = Release|Any CPU
-		{4A65AAD9-F67C-4718-88A4-D1DB410D828F}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{4A65AAD9-F67C-4718-88A4-D1DB410D828F}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{4A65AAD9-F67C-4718-88A4-D1DB410D828F}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{4A65AAD9-F67C-4718-88A4-D1DB410D828F}.Release|Any CPU.Build.0 = Release|Any CPU
 		{4161CF62-F27B-4DFC-8CDE-70DF48B17F72}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{4161CF62-F27B-4DFC-8CDE-70DF48B17F72}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{4161CF62-F27B-4DFC-8CDE-70DF48B17F72}.Release|Any CPU.ActiveCfg = Release|Any CPU

@@ -15,7 +15,6 @@ using Microsoft.Graph;
 using Repositories.Contracts;
 using Repositories.Contracts.InjectConfig;
 using Repositories.Localization;
-using Repositories.Logging;
 using Repositories.Mail;
 using Repositories.NotificationsRepository;
 using Repositories.RetryPolicyProvider;
@@ -76,14 +75,6 @@ namespace Hosts.FunctionBase
 
             services.AddSingleton<ILocalizationRepository, LocalizationRepository>();
 
-            services.AddSingleton<ILogAnalyticsSecret<LoggingRepository>>(new LogAnalyticsSecret<LoggingRepository>(GetValueOrThrowBase(configuration, "logAnalyticsCustomerId"), GetValueOrThrowBase(configuration, "logAnalyticsPrimarySharedKey"), functionName));
-            services.AddOptions<AppConfigVerbosity>().Configure<IConfiguration>((settings, config) =>
-            {
-                var verbosity = GetValueOrDefaultBase(config, "GMM:LoggingVerbosity");
-                if (Enum.TryParse<VerbosityLevel>(verbosity, out var level))
-                    settings.Verbosity = level;
-            });
-
             services.AddDbContext<GMMContext>(options =>
                 options.UseSqlServer(GetValueOrThrowBase(configuration, "ConnectionStrings__JobsContext"), sqlServerOptions =>
                 {
@@ -116,7 +107,6 @@ namespace Hosts.FunctionBase
                 };
             });
 
-            services.AddSingleton<ILoggingRepository, LoggingRepository>();
             services.AddScoped<IDatabaseSyncJobsRepository, DatabaseSyncJobsRepository>();
             services.AddScoped<IDatabaseGroupsRepository, DatabaseGroupsRepository>();
             services.AddScoped<IDatabaseChannelsRepository, DatabaseChannelsRepository>();
@@ -126,11 +116,6 @@ namespace Hosts.FunctionBase
             services.AddScoped<INotificationTypesRepository, NotificationTypesRepository>();
             services.AddScoped<IJobNotificationsRepository, JobNotificationRepository>();
             services.AddScoped<IRetryPolicyProvider, RetryPolicyProvider>();
-            services.AddSingleton<IAppConfigVerbosity>(services =>
-            {
-                var creds = services.GetService<IOptions<AppConfigVerbosity>>();
-                return new AppConfigVerbosity(creds.Value.Verbosity);
-            });
 
             services.AddOptions<GMMResources>().Configure<IConfiguration>((settings, config) =>
             {

@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk.Worker">
+<Project Sdk="Microsoft.NET.Sdk.Worker">
 
   <PropertyGroup>
     <TargetFramework>net8.0</TargetFramework>
@@ -35,7 +35,6 @@
     <ProjectReference Include="..\..\..\Repositories.BlobStorage\Repositories.BlobStorage.csproj" />
     <ProjectReference Include="..\..\..\Repositories.Contracts\Repositories.Contracts.csproj" />
     <ProjectReference Include="..\..\..\Repositories.GraphGroups\Repositories.GraphAzureADGroups.csproj" />
-    <ProjectReference Include="..\..\..\Repositories.Logging\Repositories.Logging.csproj" />
     <ProjectReference Include="..\..\..\Repositories.TeamsChannel\Repositories.TeamsChannel.csproj" />
     <ProjectReference Include="..\..\..\BusinessLogic.SyncJobUpdater\BusinessLogic.SyncJobUpdater.csproj" />
     <ProjectReference Include="..\..\..\Services.Contracts\Services.Contracts.csproj" />

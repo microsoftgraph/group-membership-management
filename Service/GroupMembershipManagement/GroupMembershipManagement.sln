@@ -1,4 +1,4 @@
-﻿
+
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.1.32210.238
@@ -17,8 +17,6 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution 
 	ProjectSection(SolutionItems) = preProject
 		nuget.config = nuget.config
 	EndProjectSection
-EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Repositories.Logging", "Repositories.Logging\Repositories.Logging.csproj", "{05FDF931-B8EA-4873-AEEB-680193D9F0DF}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Hosts.FunctionBase", "Hosts.FunctionBase\Hosts.FunctionBase.csproj", "{E7274DFF-5E6A-4B40-BCA7-92B8F7C913DB}"
 EndProject
@@ -41,8 +39,6 @@ EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Repositories.Mail", "Repositories.Mail\Repositories.Mail.csproj", "{223A67CC-E2B3-4844-B4BC-9F1AAE06C800}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Repositories.Localization", "Repositories.Localization\Repositories.Localization.csproj", "{FE15FD53-3DE8-42C6-84F9-3F8FA2BEAAB4}"
-EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Repositories.LoggingRepos.Tests", "Repositories.LoggingRepos.Tests\Repositories.LoggingRepos.Tests.csproj", "{CEF3324D-74AD-4094-AC80-485E262B8E91}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Repositories.GraphAzureADUsers", "Repositories.GraphUsers\Repositories.GraphAzureADUsers.csproj", "{6F5C7C65-3C4B-40E6-ACA9-632FBE6FF17E}"
 EndProject
@@ -138,18 +134,6 @@ Global
 		{213E3500-4FB9-45C3-ACDB-5DC4B05DF2D7}.Release|x64.Build.0 = Release|Any CPU
 		{213E3500-4FB9-45C3-ACDB-5DC4B05DF2D7}.Release|x86.ActiveCfg = Release|Any CPU
 		{213E3500-4FB9-45C3-ACDB-5DC4B05DF2D7}.Release|x86.Build.0 = Release|Any CPU
-		{05FDF931-B8EA-4873-AEEB-680193D9F0DF}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{05FDF931-B8EA-4873-AEEB-680193D9F0DF}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{05FDF931-B8EA-4873-AEEB-680193D9F0DF}.Debug|x64.ActiveCfg = Debug|Any CPU
-		{05FDF931-B8EA-4873-AEEB-680193D9F0DF}.Debug|x64.Build.0 = Debug|Any CPU
-		{05FDF931-B8EA-4873-AEEB-680193D9F0DF}.Debug|x86.ActiveCfg = Debug|Any CPU
-		{05FDF931-B8EA-4873-AEEB-680193D9F0DF}.Debug|x86.Build.0 = Debug|Any CPU
-		{05FDF931-B8EA-4873-AEEB-680193D9F0DF}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{05FDF931-B8EA-4873-AEEB-680193D9F0DF}.Release|Any CPU.Build.0 = Release|Any CPU
-		{05FDF931-B8EA-4873-AEEB-680193D9F0DF}.Release|x64.ActiveCfg = Release|Any CPU
-		{05FDF931-B8EA-4873-AEEB-680193D9F0DF}.Release|x64.Build.0 = Release|Any CPU
-		{05FDF931-B8EA-4873-AEEB-680193D9F0DF}.Release|x86.ActiveCfg = Release|Any CPU
-		{05FDF931-B8EA-4873-AEEB-680193D9F0DF}.Release|x86.Build.0 = Release|Any CPU
 		{E7274DFF-5E6A-4B40-BCA7-92B8F7C913DB}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{E7274DFF-5E6A-4B40-BCA7-92B8F7C913DB}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{E7274DFF-5E6A-4B40-BCA7-92B8F7C913DB}.Debug|x64.ActiveCfg = Debug|Any CPU
@@ -282,18 +266,6 @@ Global
 		{FE15FD53-3DE8-42C6-84F9-3F8FA2BEAAB4}.Release|x64.Build.0 = Release|Any CPU
 		{FE15FD53-3DE8-42C6-84F9-3F8FA2BEAAB4}.Release|x86.ActiveCfg = Release|Any CPU
 		{FE15FD53-3DE8-42C6-84F9-3F8FA2BEAAB4}.Release|x86.Build.0 = Release|Any CPU
-		{CEF3324D-74AD-4094-AC80-485E262B8E91}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{CEF3324D-74AD-4094-AC80-485E262B8E91}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{CEF3324D-74AD-4094-AC80-485E262B8E91}.Debug|x64.ActiveCfg = Debug|Any CPU
-		{CEF3324D-74AD-4094-AC80-485E262B8E91}.Debug|x64.Build.0 = Debug|Any CPU
-		{CEF3324D-74AD-4094-AC80-485E262B8E91}.Debug|x86.ActiveCfg = Debug|Any CPU
-		{CEF3324D-74AD-4094-AC80-485E262B8E91}.Debug|x86.Build.0 = Debug|Any CPU
-		{CEF3324D-74AD-4094-AC80-485E262B8E91}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{CEF3324D-74AD-4094-AC80-485E262B8E91}.Release|Any CPU.Build.0 = Release|Any CPU
-		{CEF3324D-74AD-4094-AC80-485E262B8E91}.Release|x64.ActiveCfg = Release|Any CPU
-		{CEF3324D-74AD-4094-AC80-485E262B8E91}.Release|x64.Build.0 = Release|Any CPU
-		{CEF3324D-74AD-4094-AC80-485E262B8E91}.Release|x86.ActiveCfg = Release|Any CPU
-		{CEF3324D-74AD-4094-AC80-485E262B8E91}.Release|x86.Build.0 = Release|Any CPU
 		{6F5C7C65-3C4B-40E6-ACA9-632FBE6FF17E}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{6F5C7C65-3C4B-40E6-ACA9-632FBE6FF17E}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{6F5C7C65-3C4B-40E6-ACA9-632FBE6FF17E}.Debug|x64.ActiveCfg = Debug|Any CPU
