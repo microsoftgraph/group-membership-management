@@ -20,9 +20,9 @@ namespace SqlDataChecker
 
         public ThresholdReaderFunction(SqlDataCheckerValidatorService sqlDataCheckerValidator, ILogger<ThresholdReaderFunction> logger, TelemetryClient telemetryClient)
         {
-            _sqlDataCheckerValidator = sqlDataCheckerValidator;
-            _logger = logger;
-            _telemetryClient = telemetryClient;
+            _sqlDataCheckerValidator = sqlDataCheckerValidator ?? throw new ArgumentNullException(nameof(sqlDataCheckerValidator));
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+            _telemetryClient = telemetryClient ?? throw new ArgumentNullException(nameof(telemetryClient));
         }
 
         [Function(nameof(ThresholdReaderFunction))]

@@ -17,8 +17,8 @@ namespace SqlDataChecker
 
         public ColumnReaderFunction(SqlDataCheckerValidatorService sqlDataCheckerValidator, ILogger<ColumnReaderFunction> logger)
         {
-            _sqlDataCheckerValidator = sqlDataCheckerValidator;
-            _logger = logger;
+            _sqlDataCheckerValidator = sqlDataCheckerValidator ?? throw new System.ArgumentNullException(nameof(sqlDataCheckerValidator));
+            _logger = logger ?? throw new System.ArgumentNullException(nameof(logger));
         }
 
         [Function(nameof(ColumnReaderFunction))]

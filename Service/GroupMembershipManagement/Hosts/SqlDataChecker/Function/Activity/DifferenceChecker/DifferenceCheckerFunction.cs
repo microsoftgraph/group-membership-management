@@ -20,9 +20,9 @@ namespace SqlDataChecker
 
         public DifferenceCheckerFunction(SqlDataCheckerValidatorService sqlDataCheckerValidator, ILogger<DifferenceCheckerFunction> logger, TelemetryClient telemetryClient)
         {
-            _sqlDataCheckerValidator = sqlDataCheckerValidator;
-            _logger = logger;
-            _telemetryClient = telemetryClient;
+            _sqlDataCheckerValidator = sqlDataCheckerValidator ?? throw new ArgumentNullException(nameof(sqlDataCheckerValidator));
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+            _telemetryClient = telemetryClient ?? throw new ArgumentNullException(nameof(telemetryClient));
         }
 
         private const double NullThresholdPercentage = 0.50;
