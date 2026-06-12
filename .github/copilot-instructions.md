@@ -101,7 +101,7 @@ Service/GroupMembershipManagement/
 - **IGraphGroupRepository**: Azure AD group operations via Microsoft Graph
 - **ITeamsChannelRepository**: Teams channel management
 - **IDatabaseSyncJobsRepository**: Sync job data persistence
-- **ILoggingRepository**: Centralized logging
+- **ILogger&lt;T&gt;**: Centralized logging (Microsoft.Extensions.Logging)
 - **INotificationRepository**: Email and notification services
 
 ## Development Best Practices
@@ -125,7 +125,7 @@ Service/GroupMembershipManagement/
 ### Azure Function Development
 - Use **CommonStartup** base class for function initialization
 - Implement **proper dependency injection** setup
-- Use **ILoggingRepository** for structured logging
+- Use **ILogger&lt;T&gt;** (Microsoft.Extensions.Logging) for structured logging
 - Handle **retry policies** and transient failures
 - Implement **dry run capabilities** where applicable
 - Design functions to be **stateless** and **idempotent**

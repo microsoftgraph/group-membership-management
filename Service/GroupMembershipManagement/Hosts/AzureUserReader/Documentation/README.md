@@ -22,11 +22,7 @@ Once GMM is setup you should have all the resources required by this function to
    - Locate the connection string from step one and create a new keyvault secret, the name of the secret can be anything of your choice (i.e. myNewConnectionString) and the value of the secret will be the connection string.   
    - Update the parameter file for your enviroment which can be located at AzureUserReader/Infrastructure/compute/parameters/parameter.`<environment>`.json, open the file and locate the parameter "storageAccountSecretName" replace its value’s placeholder with the secret's name you just created (i.e. myNewConnectionString).
 
-3. Log Analytics  
- This resource is created as part of GMM setup, it should be already available for use.
- The function will read Log Analytics settings logAnalyticsCustomerId and logAnalyticsPrimarySharedKey from the `<SolutionAbbreviation>`-data-`<EnvironmentAbbreviation>` keyvault.
-
-4. Azure Application with Microsoft API Graph API permissions  
+3. Azure Application with Microsoft API Graph API permissions  
  This application should be already created, see "Create <solutionAbbreviation>-Graph-<environmentAbbreviation> Azure Application" section in the main GMM README.md for more information.
  
  ### YAML Pipeline
