@@ -94,8 +94,6 @@ param maxInstanceCount int = 500
 @description('Instance memory in MB.')
 param instanceMemoryMB int = 4096
 
-var logAnalyticsCustomerId = resourceId(subscription().subscriptionId, dataKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'logAnalyticsCustomerId')
-var logAnalyticsPrimarySharedKey = resourceId(subscription().subscriptionId, dataKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'logAnalyticsPrimarySharedKey')
 var appInsightsConnectionString = resourceId(subscription().subscriptionId, dataKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'appInsightsConnectionString')
 var sqlMembershipStorageAccountName = resourceId(subscription().subscriptionId, dataKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'sqlMembershipStorageAccountName')
 var serviceBusTopicName = resourceId(subscription().subscriptionId, dataKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'serviceBusSyncJobTopic')
@@ -130,8 +128,6 @@ var appSettings = {
   AzureFunctionsWebHost__hostid: 'SqlDataChecker'
   AzureFunctionsJobHost__extensions__durableTask__extendedSessionsEnabled: 'True'
   APPLICATIONINSIGHTS_CONNECTION_STRING: '@Microsoft.KeyVault(SecretUri=${reference(appInsightsConnectionString, '2019-09-01').secretUriWithVersion})'
-  logAnalyticsCustomerId: '@Microsoft.KeyVault(SecretUri=${reference(logAnalyticsCustomerId, '2019-09-01').secretUriWithVersion})'
-  logAnalyticsPrimarySharedKey: '@Microsoft.KeyVault(SecretUri=${reference(logAnalyticsPrimarySharedKey, '2019-09-01').secretUriWithVersion})'
   tenantId: tenantId
   authority: authority
   dataFactoryName: dataFactoryName
