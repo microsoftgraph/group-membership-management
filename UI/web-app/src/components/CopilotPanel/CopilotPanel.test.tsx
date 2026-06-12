@@ -222,7 +222,11 @@ describe('CopilotPanel', () => {
       },
     });
 
-    expect(screen.getByRole('button', { name: defaultStrings.Copilot.acceptAndApply })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: defaultStrings.Copilot.resumeDialogContinue }));
+
+    expect(
+      await screen.findByRole('button', { name: defaultStrings.Copilot.acceptAndApply })
+    ).toBeInTheDocument();
   });
 
   it('calls dismissPanel on close button click', async () => {
@@ -255,7 +259,11 @@ describe('CopilotPanel', () => {
       },
     });
 
-    fireEvent.click(screen.getByRole('button', { name: defaultStrings.Copilot.newConversation }));
+    fireEvent.click(screen.getByRole('button', { name: defaultStrings.Copilot.resumeDialogContinue }));
+
+    fireEvent.click(
+      await screen.findByRole('button', { name: defaultStrings.Copilot.newConversation })
+    );
 
     expect(store.getState().copilot.messages).toEqual([]);
     expect(store.getState().copilot.error).toBeNull();
