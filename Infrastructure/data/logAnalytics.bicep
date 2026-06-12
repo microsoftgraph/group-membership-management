@@ -16,9 +16,6 @@ param sku string = 'PerGB2018'
 @description('Location for the log analytics account.')
 param location string
 
-@description('Key vault name.')
-param keyVaultName string
-
 resource logAnalyticsWorkspace 'Microsoft.OperationalInsights/workspaces@2021-06-01' = {
   name: name
   location: location
@@ -27,21 +24,6 @@ resource logAnalyticsWorkspace 'Microsoft.OperationalInsights/workspaces@2021-06
       name: sku
     }
     retentionInDays: 365
-  }
-}
-
-module secureSecretsTemplatePrimaryKey 'keyVaultSecretsSecure.bicep' = {
-  name: 'logAnalyticsWorkspacePrimaryKey'
-  params: {
-    keyVaultName: keyVaultName
-    keyVaultSecrets: {
-      secrets: [
-        {
-          name: 'logAnalyticsPrimarySharedKey'
-          value: logAnalyticsWorkspace.listKeys().primarySharedKey
-        }
-      ]
-    }
   }
 }
 

@@ -905,7 +905,6 @@ module logAnalyticsTemplate 'logAnalytics.bicep' = {
     name: logAnalyticsName
     sku: logAnalyticsSku
     location: location
-    keyVaultName: keyVaultName
   }
   dependsOn: [
     dataKeyVaultTemplate
