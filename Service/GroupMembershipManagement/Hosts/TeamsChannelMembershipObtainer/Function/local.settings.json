@@ -16,8 +16,6 @@
     "graphCredentials__TenantId": "",
     "ConnectionStrings__JobsContext": "",
     "ConnectionStrings__JobsContextReadOnly": "",
-    "logAnalyticsCustomerId": "",
-    "logAnalyticsPrimarySharedKey": "",
     "membershipContainerName": "",
     "membershipStorageAccountName": "",
     "SCM_TOUCH_WEBCONFIG_AFTER_DEPLOYMENT": "",

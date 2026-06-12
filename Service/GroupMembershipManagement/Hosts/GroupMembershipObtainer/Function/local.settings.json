@@ -13,8 +13,6 @@
     "graphCredentials:ClientSecret": "",
     "graphCredentials:ClientId": "",
     "graphCredentials:TenantId": "",
-    "logAnalyticsCustomerId": "",
-    "logAnalyticsPrimarySharedKey": "",
     "ConnectionStrings:JobsContext": "",
     "ConnectionStrings:JobsContextReadOnly": "",
     "senderAddress": "",

@@ -24,8 +24,6 @@
     "serviceBusNamespace": "<serviceBusNamespace>",
     "sqlMembershipAppId": "<appId>",
     "sqlMembershipAppPasswordCredentialValue": "<appPasswordCredentialValue>",
-    "logAnalyticsCustomerId": "<logAnalyticsCustomerId>",
-    "logAnalyticsPrimarySharedKey": "<logAnalyticsPrimarySharedKey>",
     "ConnectionStrings:JobsContext": "",
     "shouldStopSyncIfSourceNotPresentInGraph": false,
     "maxExceptionHandlingAttempts": 2,

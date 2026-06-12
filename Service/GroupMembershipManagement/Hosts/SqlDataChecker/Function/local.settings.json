@@ -20,8 +20,6 @@
     "authority": "https://login.windows.net/<tenantId>",
     "graphResourceUri": "https://graph.microsoft.com/",
     "serviceBusNamespace": "<serviceBusNamespace>",
-    "logAnalyticsCustomerId": "<logAnalyticsCustomerId>",
-    "logAnalyticsPrimarySharedKey": "<logAnalyticsPrimarySharedKey>",
     "ConnectionStrings__JobsContext": "",
     "shouldStopSyncIfSourceNotPresentInGraph": false,
     "maxExceptionHandlingAttempts": 2,

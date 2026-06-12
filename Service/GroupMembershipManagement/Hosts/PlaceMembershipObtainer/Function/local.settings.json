@@ -14,8 +14,6 @@
     "appConfigurationEndpoint": "",
     "serviceBusSyncJobTopic": "",
     "gmmServiceBus__fullyQualifiedNamespace": "<service_bus_namespace>.servicebus.windows.net",
-    "logAnalyticsCustomerId": "",
-    "logAnalyticsPrimarySharedKey": "",
     "senderAddress": "",
     "senderPassword": "",
     "supportEmailAddresses": "",

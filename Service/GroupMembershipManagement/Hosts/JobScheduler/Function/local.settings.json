@@ -6,7 +6,6 @@
     "AzureWebJobsStorage__credential": "managedidentity",
     "FUNCTIONS_WORKER_RUNTIME": "dotnet-isolated",
     "logAnalyticsCustomerId": "",
-    "logAnalyticsPrimarySharedKey": "",
     "ConnectionStrings:JobsContext": "",
     "ConnectionStrings:JobsContextReadOnly": "",
     "jobSchedulerSchedule": "",

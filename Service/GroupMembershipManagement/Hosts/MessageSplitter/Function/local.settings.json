@@ -9,8 +9,6 @@
     "APPLICATIONINSIGHTS_CONNECTION_STRING": "",
     "gmmServiceBus__fullyQualifiedNamespace": "",
     "instanceIdentifier": "",
-    "logAnalyticsCustomerId": "",
-    "logAnalyticsPrimarySharedKey": "",
     "membershipContainerName": "membership",
     "membershipStorageAccountName": "",
     "messageSplitterSubscription": "",

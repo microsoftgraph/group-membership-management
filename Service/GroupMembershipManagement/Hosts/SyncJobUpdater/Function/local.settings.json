@@ -10,8 +10,6 @@
     "gmmServiceBus__fullyQualifiedNamespace": "",
     "AzureFunctionsWebHost__hostid": "SyncJobUpdater",
     "AzureFunctionsJobHost__extensions__durableTask__hubName": "",
-    "logAnalyticsCustomerId": "",
-    "logAnalyticsPrimarySharedKey": "",
     "ConnectionStrings__JobsContext": "",
     "ConnectionStrings__JobsContextReadOnly": "",
     "graphCredentials__ClientId": "",

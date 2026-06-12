@@ -5,8 +5,6 @@
     "AzureWebJobsStorage": "UseDevelopmentStorage=true",
     "FUNCTIONS_WORKER_RUNTIME": "dotnet-isolated",
     "maintenanceTriggerSchedule": "0 0 0 * * *",
-    "logAnalyticsCustomerId": "<customer-id>",
-    "logAnalyticsPrimarySharedKey": "<primary-shared-key>",
     "appConfigurationEndpoint": "https://gmm-appconfig-<env>.azconfig.io",
     "jobsStorageAccountConnectionString": "",
     "ConnectionStrings:JobsContext": "",

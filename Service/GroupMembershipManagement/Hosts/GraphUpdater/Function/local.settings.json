@@ -14,8 +14,6 @@
     "graphCredentials__ClientSecret": "",
     "graphCredentials__ClientId": "",
     "graphCredentials__TenantId": "",
-    "logAnalyticsCustomerId": "",
-    "logAnalyticsPrimarySharedKey": "",
     "senderAddress": "",
     "senderPassword": "",
     "supportEmailAddresses": "",

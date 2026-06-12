@@ -5,8 +5,6 @@
   "FUNCTIONS_EXTENSION_VERSION": "~4",
   "APPLICATIONINSIGHTS_CONNECTION_STRING": "",
   "destinationAttributesUpdaterSchedule": "0 0 */12 * * *",
-  "logAnalyticsCustomerId": "",
-  "logAnalyticsPrimarySharedKey": "",
   "graphCredentials:ClientId": "",
   "graphCredentials:ClientSecret": "",
   "graphCredentials:KeyVaultName": "gmm-prereqs-<env>",

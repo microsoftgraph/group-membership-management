@@ -15,8 +15,6 @@
         "graphCredentials__KeyVaultTenantId": "",
         "graphCredentials__TenantId": "",
         "graphCredentials__UserAssignedManagedIdentityClientId": "",
-        "logAnalyticsCustomerId": "",
-        "logAnalyticsPrimarySharedKey": "",
         "storageAccountName": ""
     }
 }
