@@ -56,6 +56,10 @@ resource openAI 'Microsoft.CognitiveServices/accounts@2025-04-01-preview' = {
     restrictOutboundNetworkAccess: true
   }
   tags: {
+    // Bypass buggy CloudGov RAI deny policies (CloudGov_Input_CF_Hate / _Out_CF_Hate).
+    // Per Cory Delamarter (CloudGov) 2026-06-12 — proper fix tracked in WI 16265440.
+    'skip-cloudgov-AIFoundry_InputContentFilter_Hate': 'WI 16265440 - pending CloudGov fix'
+    'skip-cloudgov-AIFoundry_OutputContentFilter_Hate': 'WI 16265440 - pending CloudGov fix'
   }
 }
 
