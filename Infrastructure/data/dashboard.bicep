@@ -4236,7 +4236,7 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
           '46': {
             position: {
               x: 1
-              y: 52
+              y: 56
               colSpan: 9
               rowSpan: 2
             }
@@ -4259,7 +4259,7 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
           '47': {
             position: {
               x: 1
-              y: 54
+              y: 58
               colSpan: 6
               rowSpan: 4
             }
@@ -4380,7 +4380,7 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
           '48': {
             position: {
               x: 7
-              y: 54
+              y: 58
               colSpan: 9
               rowSpan: 4
             }
@@ -4479,7 +4479,7 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
           '49': {
             position: {
               x: 1
-              y: 58
+              y: 62
               colSpan: 8
               rowSpan: 4
             }
@@ -4576,7 +4576,7 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
           '50': {
             position: {
               x: 9
-              y: 58
+              y: 62
               colSpan: 7
               rowSpan: 4
             }
@@ -4673,7 +4673,7 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
           '51': {
             position: {
               x: 1
-              y: 62
+              y: 66
               colSpan: 8
               rowSpan: 4
             }
@@ -4795,7 +4795,7 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
           '52': {
             position: {
               x: 9
-              y: 62
+              y: 66
               colSpan: 8
               rowSpan: 4
             }
@@ -4899,7 +4899,7 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
           '53': {
             position: {
               x: 1
-              y: 66
+              y: 70
               colSpan: 16
               rowSpan: 5
             }
@@ -5005,7 +5005,7 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
           '54': {
             position: {
               x: 1
-              y: 71
+              y: 75
               colSpan: 10
               rowSpan: 2
             }
@@ -5026,7 +5026,7 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
           '55': {
             position: {
               x: 1
-              y: 73
+              y: 77
               colSpan: 6
               rowSpan: 4
             }
@@ -5142,7 +5142,7 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
           '56': {
             position: {
               x: 7
-              y: 73
+              y: 77
               colSpan: 6
               rowSpan: 4
             }
@@ -5258,7 +5258,7 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
           '57': {
             position: {
               x: 1
-              y: 77
+              y: 81
               colSpan: 6
               rowSpan: 4
             }
@@ -5615,6 +5615,130 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
               }
               partHeader: {
                 title: 'Entra RUUs per 20s vs 150K quota'
+                subtitle: ''
+              }
+            }
+          }
+          '60': {
+            position: {
+              x: 1
+              y: 52
+              colSpan: 6
+              rowSpan: 4
+            }
+            metadata: {
+              inputs: [
+                {
+                  name: 'resourceTypeMode'
+                  isOptional: true
+                }
+                {
+                  name: 'ComponentId'
+                  isOptional: true
+                }
+                {
+                  name: 'Scope'
+                  value: {
+                    resourceIds: [
+                      '/subscriptions/${subscriptionId}/resourceGroups/${resourceGroup}/providers/microsoft.insights/components/${resourceGroup}'
+                    ]
+                  }
+                  isOptional: true
+                }
+                {
+                  name: 'PartId'
+                  value: '6a6f2345-0001-4c6f-b6f6-c2d3e4f5a060'
+                  isOptional: true
+                }
+                {
+                  name: 'Version'
+                  value: '2.0'
+                  isOptional: true
+                }
+                {
+                  name: 'TimeRange'
+                  isOptional: true
+                }
+                {
+                  name: 'DashboardId'
+                  isOptional: true
+                }
+                {
+                  name: 'DraftRequestParameters'
+                  isOptional: true
+                }
+                {
+                  name: 'Query'
+                  value: 'let bin_t = 20s;\nlet quota = 150000.0;\nlet bins = customMetrics\n| where name == "ResourceUnitsUsed"\n| extend OperationType = tostring(customDimensions["OperationType"])\n| extend customMetric_valueSum = iif(itemType == \'customMetric\', valueSum, todouble(\'\'))\n| summarize RU_sum = sum(customMetric_valueSum) by bin(timestamp, bin_t), OperationType;\nunion\n(bins | extend [\'Quota %\'] = (RU_sum / quota) * 100.0),\n(bins | summarize RU_sum = sum(RU_sum) by timestamp | extend OperationType = "Total", [\'Quota %\'] = (RU_sum / quota) * 100.0),\n(bins | distinct timestamp | extend OperationType = "100% Limit", [\'Quota %\'] = 100.0)\n| project timestamp, [\'Quota %\'], OperationType\n'
+                  isOptional: true
+                }
+                {
+                  name: 'ControlType'
+                  value: 'AnalyticsGrid'
+                  isOptional: true
+                }
+                {
+                  name: 'SpecificChart'
+                  isOptional: true
+                }
+                {
+                  name: 'PartTitle'
+                  value: 'Analytics'
+                  isOptional: true
+                }
+                {
+                  name: 'PartSubTitle'
+                  value: resourceGroup
+                  isOptional: true
+                }
+                {
+                  name: 'Dimensions'
+                  isOptional: true
+                }
+                {
+                  name: 'LegendOptions'
+                  isOptional: true
+                }
+                {
+                  name: 'IsQueryContainTimeRange'
+                  value: false
+                  isOptional: true
+                }
+              ]
+              type: 'Extension/Microsoft_OperationsManagementSuite_Workspace/PartType/LogsDashboardPart'
+              settings: {
+                content: {
+                  Query: 'let bin_t = 20s;\nlet quota = 150000.0;\nlet bins = customMetrics\n| where name == "ResourceUnitsUsed"\n| extend OperationType = tostring(customDimensions["OperationType"])\n| extend customMetric_valueSum = iif(itemType == \'customMetric\', valueSum, todouble(\'\'))\n| summarize RU_sum = sum(customMetric_valueSum) by bin(timestamp, bin_t), OperationType;\nunion\n(bins | extend [\'Quota %\'] = (RU_sum / quota) * 100.0),\n(bins | summarize RU_sum = sum(RU_sum) by timestamp | extend OperationType = "Total", [\'Quota %\'] = (RU_sum / quota) * 100.0),\n(bins | distinct timestamp | extend OperationType = "100% Limit", [\'Quota %\'] = 100.0)\n| project timestamp, [\'Quota %\'], OperationType\n'
+                  ControlType: 'FrameControlChart'
+                  SpecificChart: 'Line'
+                  PartTitle: 'Entra RUU % per 20s vs 150K quota'
+                  Dimensions: {
+                    xAxis: {
+                      name: 'timestamp'
+                      type: 'datetime'
+                    }
+                    yAxis: [
+                      {
+                        name: 'Quota %'
+                        type: 'real'
+                      }
+                    ]
+                    splitBy: [
+                      {
+                        name: 'OperationType'
+                        type: 'string'
+                      }
+                    ]
+                    aggregation: 'Sum'
+                  }
+                  LegendOptions: {
+                    isEnabled: true
+                    position: 'Bottom'
+                  }
+                }
+              }
+              partHeader: {
+                title: 'Entra RUU % per 20s vs 150K quota'
                 subtitle: ''
               }
             }
