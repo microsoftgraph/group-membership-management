@@ -15,6 +15,7 @@ import {
   classNamesFunction,
   type IProcessedStyleSet,
   type IComboBox,
+  type IComboBoxOption,
 } from '@fluentui/react';
 import { useTheme } from '@fluentui/react/lib/Theme';
 import { useStrings } from '../../../store/hooks';
@@ -105,18 +106,24 @@ export const HRQueryItemColumnBase: React.FunctionComponent<HRQueryItemColumnPro
         : getOptions(attributes, currentAttributeKey)
       : filteredOptions[index] || getOptions(attributes, currentAttributeKey);
 
+    const selectedKeys = getSelectedKeys(items[index].value);
+    const sortValueOptionsSelectedFirst = (opts: IComboBoxOption[] | undefined): IComboBoxOption[] | undefined => {
+      if (!opts) return opts;
+      const sel = opts.filter(o => selectedKeys.includes(String(o.key)));
+      const unsel = opts.filter(o => !selectedKeys.includes(String(o.key)));
+      return [...sel, ...unsel];
+    };
     const attributeValueOptions = groupingEnabled
       ? (groups.length > 0 &&
         (groupIndex === undefined && groupIndexForAttributeValue === -1 ? true : groupIndex === groupIndexForAttributeValue) &&
         (childIndex === undefined && childIndexForAttributeValue === -1 ? true : childIndex === childIndexForAttributeValue) &&
         (index === undefined && itemIndexForAttributeValue === -1 ? true : index === itemIndexForAttributeValue))
-        ? filteredValueOptions[index] || getValueOptions(attributeMappings[currentAttributeKey]?.mappings, getSelectedKeys(items[index].value))
-        : getValueOptions(attributeMappings[currentAttributeKey]?.mappings, getSelectedKeys(items[index].value))
-      : filteredValueOptions[index] || getValueOptions(attributeMappings[currentAttributeKey]?.mappings, getSelectedKeys(items[index].value));
+        ? sortValueOptionsSelectedFirst(filteredValueOptions[index]) || getValueOptions(attributeMappings[currentAttributeKey]?.mappings, selectedKeys)
+        : getValueOptions(attributeMappings[currentAttributeKey]?.mappings, selectedKeys)
+      : sortValueOptionsSelectedFirst(filteredValueOptions[index]) || getValueOptions(attributeMappings[currentAttributeKey]?.mappings, selectedKeys);
 
     const isMulti = (op?: string) => op === 'IN' || op === 'NOT IN';
     const multi = isMulti(item.equalityOperator);
-    const selectedKeys = getSelectedKeys(items[index].value);
     const hasMultiple = multi && selectedKeys.length > 1;
     const menuOpen = isOpen;
     const userTyping = isFocused && searchText.length > 0;
@@ -314,7 +321,10 @@ export const HRQueryItemColumnBase: React.FunctionComponent<HRQueryItemColumnPro
                     setShouldReopen(false);
                   } else {
                     setIsFocused(false);
-                    if (!readOnly) setSearchText('');
+                    if (!readOnly) {
+                      setSearchText('');
+                      onAttributeValueChange('', index, currentAttributeKey, groupIndex, childIndex);
+                    }
                   }
                 }}
                 onKeyDown={(e) => {

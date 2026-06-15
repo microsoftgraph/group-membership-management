@@ -1453,7 +1453,6 @@ const getOptions = (
         });
       }
     }
-    setFilteredValueOptions({});
   };
 
   const handleTAttributeValueChange = (attribute: string, event: React.FormEvent<HTMLInputElement | HTMLTextAreaElement>, newValue: string = '', index: number, operator?: string, groupIndex?: number, childIndex?: number) => {
