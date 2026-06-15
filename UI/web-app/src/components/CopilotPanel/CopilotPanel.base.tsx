@@ -228,6 +228,48 @@ export const CopilotPanelBase: React.FunctionComponent<ICopilotPanelProps> = (
         setInputValue('');
     }, [dispatch]);
 
+    const copiedTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const isMountedRef = useRef(true);
+    const [copied, setCopied] = useState(false);
+
+    useEffect(() => {
+        isMountedRef.current = true;
+        return () => {
+            isMountedRef.current = false;
+            if (copiedTimeoutRef.current) {
+                clearTimeout(copiedTimeoutRef.current);
+                copiedTimeoutRef.current = null;
+            }
+        };
+    }, []);
+
+    const handleCopyConversation = useCallback(async () => {
+        if (messages.length === 0) {
+            return;
+        }
+        const payload = JSON.stringify(messages, null, 2);
+        try {
+            await navigator.clipboard.writeText(payload);
+            if (!isMountedRef.current) {
+                return;
+            }
+            setCopied(true);
+            if (copiedTimeoutRef.current) {
+                clearTimeout(copiedTimeoutRef.current);
+            }
+            copiedTimeoutRef.current = setTimeout(() => {
+                if (!isMountedRef.current) {
+                    return;
+                }
+                setCopied(false);
+                copiedTimeoutRef.current = null;
+            }, 1500);
+        } catch (err) {
+            // eslint-disable-next-line no-console
+            console.error('Failed to copy conversation', err);
+        }
+    }, [messages]);
+
     const handleResumeStartOver = useCallback(() => {
         dispatch(clearMessages());
         setInputValue('');
@@ -269,6 +311,28 @@ export const CopilotPanelBase: React.FunctionComponent<ICopilotPanelProps> = (
                         </div>
                     </div>
                     <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
+                        <IconButton
+                            iconProps={{ iconName: copied ? 'CheckMark' : 'Copy' }}
+                            title={copied
+                                ? (strings.Copilot?.copiedConversation || 'Copied!')
+                                : (strings.Copilot?.copyConversation || 'Copy conversation')}
+                            ariaLabel={copied
+                                ? (strings.Copilot?.copiedConversation || 'Copied!')
+                                : (strings.Copilot?.copyConversation || 'Copy conversation')}
+                            onClick={handleCopyConversation}
+                            disabled={messages.length === 0}
+                            styles={{
+                                root: {
+                                    color: theme.palette.neutralSecondary,
+                                    height: '28px',
+                                    width: '28px',
+                                },
+                                rootHovered: {
+                                    color: theme.palette.themePrimary,
+                                    backgroundColor: theme.palette.neutralLighter,
+                                },
+                            }}
+                        />
                         {messages.length > 0 && (
                             <IconButton
                                 iconProps={{ iconName: 'EditNote' }}

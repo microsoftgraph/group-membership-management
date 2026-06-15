@@ -733,6 +733,8 @@ export const strings: IStrings = {
     leaderInputPlaceholder: 'Escribe un alias o nombre',
     leaderSubmit: 'Continuar',
     tryOneOfTheseToGetStarted: 'PRUEBA UNA DE ESTAS PARA COMENZAR',
+    copyConversation: 'Copiar conversación',
+    copiedConversation: '¡Copiado!',
   },
   excludePrefix: 'Excluir',
   copy: 'Copiar',

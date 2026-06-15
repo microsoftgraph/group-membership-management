@@ -731,6 +731,8 @@ export const strings: IStrings = {
     leaderInputPlaceholder: 'Type an alias or name',
     leaderSubmit: 'Continue',
     tryOneOfTheseToGetStarted: 'TRY ONE OF THESE TO GET STARTED',
+    copyConversation: 'Copy conversation',
+    copiedConversation: 'Copied!',
   },
   excludePrefix: 'Exclude',
   copy: 'Copy',

@@ -2,7 +2,7 @@
 // Licensed under the MIT license.
 
 import React from 'react';
-import { fireEvent, screen } from '@testing-library/react';
+import { fireEvent, screen, waitFor } from '@testing-library/react';
 import { initializeIcons } from '@fluentui/react';
 import { beforeAll, describe, expect, it, vi } from 'vitest';
 
@@ -258,17 +258,72 @@ describe('CopilotPanel', () => {
         },
       },
     });
-
+    
     fireEvent.click(screen.getByRole('button', { name: defaultStrings.Copilot.resumeDialogContinue }));
-
+    
     fireEvent.click(
       await screen.findByRole('button', { name: defaultStrings.Copilot.newConversation })
     );
-
+    
     expect(store.getState().copilot.messages).toEqual([]);
     expect(store.getState().copilot.error).toBeNull();
     expect(store.getState().copilot.lastSourceParts).toEqual([]);
     expect(store.getState().copilot.useOrgStructure).toBe(false);
+  });
+
+  describe('copy conversation', () => {
+  const setupClipboardMock = () => {
+  const writeText = vi.fn().mockResolvedValue(undefined);
+  Object.defineProperty(navigator, 'clipboard', {
+    configurable: true,
+    value: { writeText },
+  });
+  return writeText;
+  };
+
+  it('renders copy conversation button disabled when there are no messages', async () => {
+  const { defaultStrings } = await loadModules();
+  setupClipboardMock();
+  await renderCopilotPanel();
+
+  const copyButton = screen.getByRole('button', { name: defaultStrings.Copilot.copyConversation });
+  expect(copyButton).toBeDisabled();
+  });
+
+  it('copies conversation JSON to clipboard when messages exist', async () => {
+  const { defaultStrings } = await loadModules();
+  const writeText = setupClipboardMock();
+  const messages = [
+    {
+      id: 'user-message',
+      role: 'user',
+      content: 'Show me FTEs.',
+      timestamp: '2026-01-01T00:00:00.000Z',
+    },
+    {
+      id: 'assistant-message',
+      role: 'assistant',
+      content: 'Here is a filter for FTEs.',
+      timestamp: '2026-01-01T00:00:01.000Z',
+    },
+  ];
+  await renderCopilotPanel({
+    preloadedState: {
+      copilot: { messages },
+    },
+  });
+
+  fireEvent.click(screen.getByRole('button', { name: defaultStrings.Copilot.resumeDialogContinue }));
+
+  const copyButton = await screen.findByRole('button', { name: defaultStrings.Copilot.copyConversation });
+  expect(copyButton).toBeEnabled();
+
+  fireEvent.click(copyButton);
+
+  await waitFor(() => expect(writeText).toHaveBeenCalledTimes(1));
+  const written = writeText.mock.calls[0][0];
+  expect(JSON.parse(written)).toEqual(messages);
+  });
   });
 
   describe('suggested prompts', () => {

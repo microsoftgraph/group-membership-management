@@ -752,5 +752,7 @@ export type IStrings = {
       leaderInputPlaceholder: string;
       leaderSubmit: string;
       tryOneOfTheseToGetStarted: string;
+      copyConversation: string;
+      copiedConversation: string;
   };
 };
