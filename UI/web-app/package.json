@@ -130,7 +130,7 @@
       "webpack": ">=5.97.1",
       "webpack-dev-middleware": ">=5.3.4",
       "webpack-dev-server": ">=4.15.3",
-      "ws": ">=8.20.1",
+      "ws": ">=8.21.0",
       "@nevware21/ts-utils": ">=0.14.0"
     },
     "x-override-notes": {
@@ -170,7 +170,7 @@
       "webpack>=5.97.1": "CVE-2024-43788 - XSS via AutoPublicPathRuntimeModule (fixed 5.94.0; floor set higher)",
       "webpack-dev-middleware>=5.3.4": "CVE-2024-29180 - Path traversal via URL encoding",
       "webpack-dev-server>=4.15.3": "CVE-2024-29180 - Path traversal (webpack-dev-middleware transitive)",
-      "ws>=8.17.1": "CVE-2024-37890 - DoS via HTTP/2 header flood",
+      "ws>=8.21.0": "GHSA-96hv-2xvq-fx4p - DoS via uncaught exception on malformed HTTP request (CVE-2024-37890 also covered)",
       "@nevware21/ts-utils>=0.14.0": "GHSA-x7j8-49r8-mr43 - High severity vulnerability in transitive dep from @microsoft/applicationinsights-*"
     }
   },
