@@ -45,7 +45,7 @@ namespace Hosts.Notifier
 
         [Function(nameof(StarterFunction))]
         public async Task RunAsync(
-            [ServiceBusTrigger("%serviceBusNotificationsTopic%", "%serviceBusNotificationsSubscription%", Connection = "gmmServiceBus")] ServiceBusReceivedMessage message,
+            [ServiceBusTrigger("%serviceBusNotificationsTopic%", "%serviceBusNotificationsSubscription%", Connection = "gmmServiceBus", AutoCompleteMessages = false)] ServiceBusReceivedMessage message,
             ServiceBusMessageActions messageActions,
             [DurableClient] DurableTaskClient starter)
         {

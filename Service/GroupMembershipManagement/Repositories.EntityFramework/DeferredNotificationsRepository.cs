@@ -22,15 +22,18 @@ namespace Repositories.EntityFramework
 
         public async Task AddDeferredNotificationAsync(DeferredNotification deferredNotification)
         {
-            // Idempotent: if a row with the same SequenceNumber already exists, skip insertion.
-            var exists = await _writeContext.DeferredNotifications
-                .AnyAsync(d => d.SequenceNumber == deferredNotification.SequenceNumber);
-
-            if (exists)
-                return;
-
             _writeContext.DeferredNotifications.Add(deferredNotification);
-            await _writeContext.SaveChangesAsync();
+            try
+            {
+                await _writeContext.SaveChangesAsync();
+            }
+            catch (DbUpdateException ex) when (
+                ex.InnerException is Microsoft.Data.SqlClient.SqlException sqlEx
+                && (sqlEx.Number == 2601 || sqlEx.Number == 2627))
+            {
+                // Idempotent: ignore duplicate key violations on SequenceNumber unique index.
+                _writeContext.Entry(deferredNotification).State = EntityState.Detached;
+            }
         }
 
         public async Task<IList<DeferredNotification>> GetDeferredNotificationsByTypeAsync(NotificationMessageType messageType)

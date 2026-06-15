@@ -208,17 +208,25 @@ namespace Hosts.Notifier
             }
             catch (Exception ex)
             {
-                // On any unexpected exception (SQL timeouts, ObjectDisposedException, etc.),
-                // reset all messages back to Deferred to prevent permanent orphaning.
-                // We reset ALL messages for this batch since we can't know which ones
-                // were individually updated to Replayed already.
+                // On unexpected exceptions, reset only rows still in Replaying status.
+                // Rows already marked Replayed were successfully completed in Service Bus
+                // and must not be reverted.
                 _logger.DeferredMessageReplayFailed(0, messageType.ToString(),
                     $"Unexpected error during replay: {ex.Message}");
 
                 try
                 {
-                    await _deferredNotificationsRepository.UpdateStatusBatchAsync(
-                        deferredMessages.Select(d => d.Id), DeferredNotificationStatus.Deferred);
+                    var stillReplayingIds = (await _deferredNotificationsRepository
+                        .GetDeferredNotificationsByTypeAndStatusAsync(messageType, DeferredNotificationStatus.Replaying))
+                        .Select(d => d.Id)
+                        .Intersect(deferredMessages.Select(d => d.Id))
+                        .ToList();
+
+                    if (stillReplayingIds.Any())
+                    {
+                        await _deferredNotificationsRepository.UpdateStatusBatchAsync(
+                            stillReplayingIds, DeferredNotificationStatus.Deferred);
+                    }
                 }
                 catch
                 {
