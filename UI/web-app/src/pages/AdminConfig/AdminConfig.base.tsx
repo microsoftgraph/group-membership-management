@@ -23,6 +23,7 @@ import {
   selectCopilotInstructions,
   selectCopilotSuggestedPrompts,
   selectDefaultAIPrompt,
+  selectIsAISearchForUserEnabled,
 } from '../../store/settings.slice';
 import { patchSetting, fetchDefaultAIPrompt, fetchSettings } from '../../store/settings.api';
 import { AppDispatch } from '../../store';
@@ -64,6 +65,7 @@ export const AdminConfigBase: React.FunctionComponent<AdminConfigProps> = (props
   const IsAutoApprovalForRequestorIsOrgLeaderSyncsEnabled = useSelector(selectIsAutoApprovalForRequestorIsOrgLeaderSyncsEnabled);
   const isAITitleEnabled = useSelector(selectIsAITitleEnabled);
   const isAICopilotEnabled = useSelector(selectIsAICopilotEnabled);
+  const isAISearchForUserEnabled = useSelector(selectIsAISearchForUserEnabled);
   const copilotTemperature = useSelector(selectCopilotTemperature);
   const copilotTopP = useSelector(selectCopilotTopP);
   const copilotInstructions = useSelector(selectCopilotInstructions);
@@ -96,6 +98,7 @@ export const AdminConfigBase: React.FunctionComponent<AdminConfigProps> = (props
     [SettingKey.IsAutoApprovalForRequestorIsOrgLeaderSyncsEnabled]: IsAutoApprovalForRequestorIsOrgLeaderSyncsEnabled ? 'true' : 'false',
     [SettingKey.IsAITitleEnabled]: isAITitleEnabled ? 'true' : 'false',
     [SettingKey.IsAICopilotEnabled]: isAICopilotEnabled ? 'true' : 'false',
+    [SettingKey.IsAISearchForUserEnabled]: isAISearchForUserEnabled ? 'true' : 'false',
     [SettingKey.CopilotTemperature]: copilotTemperature ?? '0.7',
     [SettingKey.CopilotTopP]: copilotTopP ?? '0.9',
     [SettingKey.CopilotInstructions]: copilotInstructions ?? '',
@@ -106,7 +109,7 @@ export const AdminConfigBase: React.FunctionComponent<AdminConfigProps> = (props
 
   useEffect(() => {
     setSettings(generateSettings())
-  }, [dashboardUrl, outlookWarningUrl, privacyPolicyUrl, canReviewOwnSubmissions, createGroupFeatureEnabled, isBusinessJustificationRequired, IsDisclaimerEnabled, IsAutoApprovalForGroupBasedSyncsEnabled, IsAutoApprovalForRequestorIsOrgLeaderSyncsEnabled, isAITitleEnabled, isAICopilotEnabled, copilotTemperature, copilotTopP, copilotInstructions, copilotSuggestedPrompts]);
+  }, [dashboardUrl, outlookWarningUrl, privacyPolicyUrl, canReviewOwnSubmissions, createGroupFeatureEnabled, isBusinessJustificationRequired, IsDisclaimerEnabled, IsAutoApprovalForGroupBasedSyncsEnabled, IsAutoApprovalForRequestorIsOrgLeaderSyncsEnabled, isAITitleEnabled, isAICopilotEnabled, isAISearchForUserEnabled, copilotTemperature, copilotTopP, copilotInstructions, copilotSuggestedPrompts]);
 
   const handleGetValues = (attribute: SqlMembershipAttribute) => {
     dispatch(fetchAttributeValues(attribute));
@@ -122,6 +125,7 @@ export const AdminConfigBase: React.FunctionComponent<AdminConfigProps> = (props
       [SettingKey.IsDisclaimerEnabled]: newSettings[SettingKey.IsDisclaimerEnabled] === 'true' ? 'true' : 'false',
       [SettingKey.IsAITitleEnabled]: newSettings[SettingKey.IsAITitleEnabled] === 'true' ? 'true' : 'false',
       [SettingKey.IsAICopilotEnabled]: newSettings[SettingKey.IsAICopilotEnabled] === 'true' ? 'true' : 'false',
+      [SettingKey.IsAISearchForUserEnabled]: newSettings[SettingKey.IsAISearchForUserEnabled] === 'true' ? 'true' : 'false',
     };
 
     if (JSON.stringify(formattedSettings) !== JSON.stringify(settings)) {
@@ -189,6 +193,12 @@ export const AdminConfigBase: React.FunctionComponent<AdminConfigProps> = (props
         patchSetting({
           settingKey: SettingKey.IsAICopilotEnabled,
           settingValue: formattedSettings[SettingKey.IsAICopilotEnabled]
+        })
+      );
+      dispatch(
+        patchSetting({
+          settingKey: SettingKey.IsAISearchForUserEnabled,
+          settingValue: formattedSettings[SettingKey.IsAISearchForUserEnabled]
         })
       );
       dispatch(

@@ -215,6 +215,8 @@ export type IStrings = {
         isAITitleEnabledDescription: string;
         isAICopilotEnabledTitle: string;
         isAICopilotEnabledDescription: string;
+        isAISearchForUserEnabledTitle: string;
+        isAISearchForUserEnabledDescription: string;
         copilotInstructionsPromptTitle: string;
         copilotInstructionsPromptDescription: string;
         copilotInstructionsPromptPlaceholder: string;

@@ -32,6 +32,7 @@ const defaultSettings: SettingRecord[] = [
     { label: 'Include all reports who roll up to an employee', prompt: 'Include all reports who roll up to an employee' },
     { label: 'Include members of a group', prompt: 'Include all members of a specific group' },
   ]) },
+  { settingKey: 16, settingValue: 'true' },
 ];
 
 const mockSupportEmail = 'gmm-support@contoso.com';
@@ -54,6 +55,7 @@ const settingKeyByName: Record<string, number> = {
   CopilotTopP: 13,
   CopilotInstructions: 14,
   CopilotSuggestedPrompts: 15,
+  IsAISearchForUserEnabled: 16,
 };
 
 function resolveSettingKey(rawKey: string): number {

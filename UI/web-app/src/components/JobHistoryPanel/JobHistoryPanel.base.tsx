@@ -46,6 +46,7 @@ import { SyncHistorySearchProgressUpdate } from '../../models/SyncHistorySearchP
 import { MembershipChangeType, SearchSyncHistoryByUserRunMembershipChange } from '../../models/SearchSyncHistoryByUserResult';
 import { ThresholdNotificationData } from '../../models/ThresholdNotificationData';
 import { selectIsJobTenantReader, selectIsJobTenantWriter } from '../../store/roles.slice';
+import { selectIsAISearchForUserEnabled } from '../../store/settings.slice';
 import { renderMultilineHeader } from '../../utils/stringUtils';
 import { getStatusDisplayText } from '../../utils/jobUtils';
 import { RunHistoryStatus } from '../../models/Status';
@@ -98,6 +99,7 @@ export const JobHistoryPanelBase: React.FunctionComponent<IJobHistoryPanelProps>
     const selectedJob = useSelector(selectSelectedJobDetails);
     const isJobTenantReader = useSelector(selectIsJobTenantReader);
     const isJobTenantWriter = useSelector(selectIsJobTenantWriter);
+    const isAISearchForUserEnabled = useSelector(selectIsAISearchForUserEnabled);
     const showSyncTab = isJobTenantReader || isJobTenantWriter;
     const canDownloadMembershipChanges = isJobTenantWriter;
 
@@ -1434,6 +1436,7 @@ export const JobHistoryPanelBase: React.FunctionComponent<IJobHistoryPanelProps>
                                 {downloadError}
                             </MessageBar>
                         )}
+                        {isAISearchForUserEnabled && (<>
                         <div className={classNames.syncFiltersContainer}>
                             <div className={classNames.userSearchField} style={{ gridColumn: '1 / -1' }}>
                                 <Label className={classNames.userSearchLabel}>{strings.JobDetails.Panel.searchUserLabel}</Label>
@@ -1522,6 +1525,7 @@ export const JobHistoryPanelBase: React.FunctionComponent<IJobHistoryPanelProps>
                                 )}
                             </div>
                         )}
+                        </>)}
                         <DetailsList
                             setKey="combinedSyncSet"
                             columns={syncColumns}

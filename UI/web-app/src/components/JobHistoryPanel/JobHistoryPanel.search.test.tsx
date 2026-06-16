@@ -319,6 +319,11 @@ beforeEach(() => {
       isJobTenantReader: true,
       isJobTenantWriter: true,
     },
+    settings: {
+      settings: [
+        { settingKey: 16, settingValue: 'true' },
+      ],
+    },
   };
   mockSyncHistoryItems = [
     buildSyncHistoryItem('run-added', '2024-05-02T00:00:00Z', 3, 0),

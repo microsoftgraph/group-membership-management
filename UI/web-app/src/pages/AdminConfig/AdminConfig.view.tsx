@@ -263,6 +263,7 @@ const HyperlinkSettings: React.FunctionComponent<HyperlinkSettingsProps> = (prop
     [SettingKey.IsAutoApprovalForRequestorIsOrgLeaderSyncsEnabled]: true,
     [SettingKey.IsAITitleEnabled]: true,
     [SettingKey.IsAICopilotEnabled]: true,
+    [SettingKey.IsAISearchForUserEnabled]: true,
     [SettingKey.CopilotTemperature]: true,
     [SettingKey.CopilotTopP]: true,
     [SettingKey.CopilotInstructions]: true,
@@ -638,6 +639,13 @@ const AISettings: React.FunctionComponent<AISettingsProps> = (props: AISettingsP
         description={strings.AISettings.labels.isAICopilotEnabledDescription}
         onGeneralSettingChange={handleSettingChange(SettingKey.IsAICopilotEnabled)}
         generalSettingValue={settings[SettingKey.IsAICopilotEnabled]}
+      />
+      <GeneralSetting
+        id={SettingKeyMap[SettingKey.IsAISearchForUserEnabled]}
+        title={strings.AISettings.labels.isAISearchForUserEnabledTitle}
+        description={strings.AISettings.labels.isAISearchForUserEnabledDescription}
+        onGeneralSettingChange={handleSettingChange(SettingKey.IsAISearchForUserEnabled)}
+        generalSettingValue={settings[SettingKey.IsAISearchForUserEnabled]}
       />
       <div className={classNames.aiSettingsInstructionsSection}>
         <Text variant="mediumPlus" className={classNames.aiSettingsSectionTitle}>{strings.AISettings.labels.copilotInstructionsPromptTitle}</Text>

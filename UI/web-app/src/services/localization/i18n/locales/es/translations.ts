@@ -219,6 +219,8 @@ export const strings: IStrings = {
         isAITitleEnabledDescription: "Habilitar la generación de títulos de IA para ayudar a los usuarios a crear títulos descriptivos para sus sincronizaciones de membresía.",
         isAICopilotEnabledTitle: "¿Está habilitado el Copiloto de IA?",
         isAICopilotEnabledDescription: "Habilitar el asistente de chat de IA Copiloto para ayudar a los usuarios a construir filtros y configurar membresías.",
+        isAISearchForUserEnabledTitle: "¿Está habilitada la búsqueda de usuario con IA?",
+        isAISearchForUserEnabledDescription: "Habilitar la función de búsqueda de usuario con IA en el panel de historial de sincronización, permitiendo buscar el historial de cambios de membresía por usuario.",
         copilotInstructionsPromptTitle: "Instrucciones del Copiloto",
         copilotInstructionsPromptDescription: "Personalice las instrucciones de comportamiento para el Copiloto de IA. Estas instrucciones guían cómo el copiloto responde a los usuarios.",
         copilotInstructionsPromptPlaceholder: "Ingrese instrucciones personalizadas para el Copiloto de IA...",
