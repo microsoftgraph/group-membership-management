@@ -125,7 +125,7 @@ Use only the provided data. If you cannot determine the reason with reasonable c
 
                 var configChanges = await GetRecentConfigChangesAsync(request.SyncJobId, runHistory);
                 var configDiff = await GetConfigurationDiffAsync(request.SyncJobId, runHistory);
-                var userAttributes = await GetUserAttributesForPromptAsync(syncJob.Query, request.UserObjectId);
+                var userAttributes = await GetUserAttributesForPromptAsync(syncJob.Query, request.UserObjectId, runHistory.AdfRunId);
 
                 var userPrompt = BuildUserPrompt(request, runHistory, syncJob.Query, membershipChange.Value, configChanges, configDiff, userAttributes);
                 var explanation = await _openAIService.GetCompletionAsync(SystemPrompt, userPrompt);
@@ -332,16 +332,17 @@ Use only the provided data. If you cannot determine the reason with reasonable c
             }
         }
 
-        private async Task<string> GetUserAttributesForPromptAsync(string? query, Guid userObjectId)
+        private async Task<string> GetUserAttributesForPromptAsync(string? query, Guid userObjectId, Guid? syncJobAdfRunId)
         {
             if (string.IsNullOrWhiteSpace(query))
                 return "No filter configured.";
 
             try
             {
-                var adfRunId = await _dataFactoryRepository.GetMostRecentSucceededRunIdAsync();
-                if (string.IsNullOrWhiteSpace(adfRunId))
+                if (!syncJobAdfRunId.HasValue || syncJobAdfRunId.Value == Guid.Empty)
                     return "ADF data unavailable.";
+
+                var adfRunId = syncJobAdfRunId.Value.ToString();
 
                 var tableName = adfRunId.Replace("-", "");
                 var tableExists = await _sqlMembershipRepository.CheckIfTableExistsAsync(tableName);

@@ -692,6 +692,138 @@ namespace WebApi.Tests
                 .ReturnsAsync(new BlobResult { BlobStatus = BlobStatus.Found, Content = json });
         }
 
+        [TestMethod]
+        public async Task ExecuteAsync_UsesAdfRunIdFromHistory_WhenAvailable()
+        {
+            var specificAdfRunId = Guid.NewGuid();
+            var tableName = specificAdfRunId.ToString().Replace("-", "");
+
+            var runHistory = new global::Models.SyncJobHistory.SyncJobHistory
+            {
+                SyncJobId = _syncJobId,
+                RunId = _runId,
+                Status = SyncStatus.Idle.ToString(),
+                StartTime = DateTime.UtcNow.AddMinutes(-10),
+                EndTime = DateTime.UtcNow,
+                UsersAdded = 5,
+                UsersRemoved = 2,
+                BeforeSyncUserCount = 100,
+                AfterSyncUserCount = 103,
+                AdfRunId = specificAdfRunId
+            };
+
+            _mockSyncJobHistoryRepository
+                .Setup(x => x.GetByRunIdAsync(_runId))
+                .ReturnsAsync(runHistory);
+
+            SetupBlobWithUser(MembershipAction.Add);
+
+            _mockSqlMembershipRepository
+                .Setup(x => x.CheckIfTableExistsAsync(tableName))
+                .ReturnsAsync(true);
+
+            _mockSqlMembershipRepository
+                .Setup(x => x.GetUserAttributesAsync(
+                    _userObjectId.ToString(), tableName))
+                .ReturnsAsync(new Dictionary<string, string> { { "Building", "B40" } });
+
+            _mockOpenAIService
+                .Setup(x => x.GetCompletionAsync(It.IsAny<string>(), It.IsAny<string>()))
+                .ReturnsAsync("User was added because their Building is B40.");
+
+            var response = await _handler.ExecuteAsync(
+                new GetSyncExplanationRequest(_syncJobId, _runId, _userObjectId, TestUserIdentity, hasAiSyncJobRole: true));
+
+            Assert.AreEqual(HttpStatusCode.OK, response.StatusCode);
+            Assert.AreEqual("User was added because their Building is B40.", response.Explanation);
+
+            _mockDataFactoryRepository.Verify(
+                x => x.GetMostRecentSucceededRunIdAsync(), Times.Never,
+                "Should use AdfRunId from history instead of fetching the most recent run.");
+
+            _mockSqlMembershipRepository.Verify(
+                x => x.CheckIfTableExistsAsync(tableName), Times.Once,
+                "Should look up the table using the AdfRunId from history.");
+
+            _mockSqlMembershipRepository.Verify(
+                x => x.GetUserAttributesAsync(_userObjectId.ToString(), tableName), Times.Once,
+                "Should fetch user attributes from the table matching the AdfRunId from history.");
+        }
+
+        [TestMethod]
+        public async Task ExecuteAsync_ReturnsAdfUnavailable_WhenAdfRunIdIsNull()
+        {
+            var runHistory = new global::Models.SyncJobHistory.SyncJobHistory
+            {
+                SyncJobId = _syncJobId,
+                RunId = _runId,
+                Status = SyncStatus.Idle.ToString(),
+                StartTime = DateTime.UtcNow.AddMinutes(-10),
+                EndTime = DateTime.UtcNow,
+                UsersAdded = 5,
+                UsersRemoved = 2,
+                BeforeSyncUserCount = 100,
+                AfterSyncUserCount = 103,
+                AdfRunId = null
+            };
+
+            _mockSyncJobHistoryRepository
+                .Setup(x => x.GetByRunIdAsync(_runId))
+                .ReturnsAsync(runHistory);
+
+            SetupBlobWithUser(MembershipAction.Add);
+
+            _mockOpenAIService
+                .Setup(x => x.GetCompletionAsync(It.IsAny<string>(), It.Is<string>(p => p.Contains("ADF data unavailable."))))
+                .ReturnsAsync("Unable to determine the exact reason due to unavailable HR data.");
+
+            var response = await _handler.ExecuteAsync(
+                new GetSyncExplanationRequest(_syncJobId, _runId, _userObjectId, TestUserIdentity, hasAiSyncJobRole: true));
+
+            Assert.AreEqual(HttpStatusCode.OK, response.StatusCode);
+
+            _mockDataFactoryRepository.Verify(
+                x => x.GetMostRecentSucceededRunIdAsync(), Times.Never,
+                "Should not attempt fallback when AdfRunId is null.");
+        }
+
+        [TestMethod]
+        public async Task ExecuteAsync_ReturnsAdfUnavailable_WhenAdfRunIdIsEmpty()
+        {
+            var runHistory = new global::Models.SyncJobHistory.SyncJobHistory
+            {
+                SyncJobId = _syncJobId,
+                RunId = _runId,
+                Status = SyncStatus.Idle.ToString(),
+                StartTime = DateTime.UtcNow.AddMinutes(-10),
+                EndTime = DateTime.UtcNow,
+                UsersAdded = 5,
+                UsersRemoved = 2,
+                BeforeSyncUserCount = 100,
+                AfterSyncUserCount = 103,
+                AdfRunId = Guid.Empty
+            };
+
+            _mockSyncJobHistoryRepository
+                .Setup(x => x.GetByRunIdAsync(_runId))
+                .ReturnsAsync(runHistory);
+
+            SetupBlobWithUser(MembershipAction.Add);
+
+            _mockOpenAIService
+                .Setup(x => x.GetCompletionAsync(It.IsAny<string>(), It.Is<string>(p => p.Contains("ADF data unavailable."))))
+                .ReturnsAsync("Unable to determine the exact reason due to unavailable HR data.");
+
+            var response = await _handler.ExecuteAsync(
+                new GetSyncExplanationRequest(_syncJobId, _runId, _userObjectId, TestUserIdentity, hasAiSyncJobRole: true));
+
+            Assert.AreEqual(HttpStatusCode.OK, response.StatusCode);
+
+            _mockDataFactoryRepository.Verify(
+                x => x.GetMostRecentSucceededRunIdAsync(), Times.Never,
+                "Should not attempt fallback when AdfRunId is Guid.Empty.");
+        }
+
         private void SetupAdfData(Dictionary<string, string> userAttributes)
         {
             var adfRunId = Guid.NewGuid().ToString();
