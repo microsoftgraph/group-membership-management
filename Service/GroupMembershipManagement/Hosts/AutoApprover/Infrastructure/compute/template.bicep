@@ -87,6 +87,8 @@ var replicaJobsMSIConnectionString = resourceId(subscription().subscriptionId, d
 var graphUserAssignedManagedIdentityClientId = resourceId(subscription().subscriptionId, dataResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'graphUserAssignedManagedIdentityClientId')
 
 var appSettings = {
+  logAnalyticsCustomerId: 'notused'
+  logAnalyticsPrimarySharedKey: 'notused'
   AZURE_TOKEN_CREDENTIALS: 'ManagedIdentityCredential'
   AzureWebJobsStorage__accountName: storageAccountNameReader.outputs.value
   AzureWebJobsStorage__credential: 'managedidentity'

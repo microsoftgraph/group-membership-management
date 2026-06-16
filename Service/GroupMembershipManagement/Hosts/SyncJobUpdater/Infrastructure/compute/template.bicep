@@ -90,6 +90,8 @@ var serviceBusNotificationsQueue = resourceId(subscription().subscriptionId, dat
 var serviceBusSyncJobUpdaterQueue = resourceId(subscription().subscriptionId, dataResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'serviceBusSyncJobUpdaterQueue')
 
 var appSettings = {
+  logAnalyticsCustomerId: 'notused'
+  logAnalyticsPrimarySharedKey: 'notused'
   AZURE_TOKEN_CREDENTIALS: 'ManagedIdentityCredential'
   AzureWebJobsStorage__accountName: storageAccountNameReader.outputs.value
   AzureWebJobsStorage__credential: 'managedidentity'

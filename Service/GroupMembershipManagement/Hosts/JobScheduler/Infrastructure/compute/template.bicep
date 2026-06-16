@@ -79,6 +79,7 @@ module servicePlanTemplate 'servicePlan.bicep' = {
 }
 
 var appSettings = {
+  logAnalyticsPrimarySharedKey: 'notused'
   AZURE_TOKEN_CREDENTIALS: 'ManagedIdentityCredential'
   AzureWebJobsStorage__accountName: storageAccountNameReader.outputs.value
   AzureWebJobsStorage__credential: 'managedidentity'
