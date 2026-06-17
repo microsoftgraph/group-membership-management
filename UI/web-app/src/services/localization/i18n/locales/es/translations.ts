@@ -735,6 +735,7 @@ export const strings: IStrings = {
     tryOneOfTheseToGetStarted: 'PRUEBA UNA DE ESTAS PARA COMENZAR',
     copyConversation: 'Copiar conversación',
     copiedConversation: '¡Copiado!',
+    copyFailed: 'Error al copiar',
   },
   excludePrefix: 'Excluir',
   copy: 'Copiar',

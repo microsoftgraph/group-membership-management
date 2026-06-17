@@ -230,7 +230,7 @@ export const CopilotPanelBase: React.FunctionComponent<ICopilotPanelProps> = (
 
     const copiedTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const isMountedRef = useRef(true);
-    const [copied, setCopied] = useState(false);
+    const [copyStatus, setCopyStatus] = useState<'idle' | 'success' | 'error'>('idle');
 
     useEffect(() => {
         isMountedRef.current = true;
@@ -253,7 +253,7 @@ export const CopilotPanelBase: React.FunctionComponent<ICopilotPanelProps> = (
             if (!isMountedRef.current) {
                 return;
             }
-            setCopied(true);
+            setCopyStatus('success');
             if (copiedTimeoutRef.current) {
                 clearTimeout(copiedTimeoutRef.current);
             }
@@ -261,12 +261,26 @@ export const CopilotPanelBase: React.FunctionComponent<ICopilotPanelProps> = (
                 if (!isMountedRef.current) {
                     return;
                 }
-                setCopied(false);
+                setCopyStatus('idle');
                 copiedTimeoutRef.current = null;
             }, 1500);
         } catch (err) {
             // eslint-disable-next-line no-console
             console.error('Failed to copy conversation', err);
+            if (!isMountedRef.current) {
+                return;
+            }
+            setCopyStatus('error');
+            if (copiedTimeoutRef.current) {
+                clearTimeout(copiedTimeoutRef.current);
+            }
+            copiedTimeoutRef.current = setTimeout(() => {
+                if (!isMountedRef.current) {
+                    return;
+                }
+                setCopyStatus('idle');
+                copiedTimeoutRef.current = null;
+            }, 2000);
         }
     }, [messages]);
 
@@ -312,18 +326,24 @@ export const CopilotPanelBase: React.FunctionComponent<ICopilotPanelProps> = (
                     </div>
                     <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
                         <IconButton
-                            iconProps={{ iconName: copied ? 'CheckMark' : 'Copy' }}
-                            title={copied
+                            iconProps={{ 
+                                iconName: copyStatus === 'success' ? 'CheckMark' 
+                                    : copyStatus === 'error' ? 'StatusErrorFull' 
+                                    : 'Copy' 
+                            }}
+                            title={copyStatus === 'success'
                                 ? (strings.Copilot?.copiedConversation || 'Copied!')
-                                : (strings.Copilot?.copyConversation || 'Copy conversation')}
-                            ariaLabel={copied
-                                ? (strings.Copilot?.copiedConversation || 'Copied!')
-                                : (strings.Copilot?.copyConversation || 'Copy conversation')}
+                                : copyStatus === 'error'
+                                    ? (strings.Copilot?.copyFailed || 'Copy failed')
+                                    : (strings.Copilot?.copyConversation || 'Copy conversation')}
+                            ariaLabel={strings.Copilot?.copyConversation || 'Copy conversation'}
                             onClick={handleCopyConversation}
                             disabled={messages.length === 0}
                             styles={{
                                 root: {
-                                    color: theme.palette.neutralSecondary,
+                                    color: copyStatus === 'error' 
+                                        ? theme.semanticColors.errorIcon 
+                                        : theme.palette.neutralSecondary,
                                     height: '28px',
                                     width: '28px',
                                 },
@@ -333,6 +353,28 @@ export const CopilotPanelBase: React.FunctionComponent<ICopilotPanelProps> = (
                                 },
                             }}
                         />
+                        {/* Screen reader announcement for copy status */}
+                        <span 
+                            role="status" 
+                            aria-live="polite" 
+                            style={{ 
+                                position: 'absolute', 
+                                width: '1px', 
+                                height: '1px', 
+                                padding: 0, 
+                                margin: '-1px', 
+                                overflow: 'hidden', 
+                                clip: 'rect(0, 0, 0, 0)', 
+                                whiteSpace: 'nowrap', 
+                                border: 0 
+                            }}
+                        >
+                            {copyStatus === 'success' 
+                                ? (strings.Copilot?.copiedConversation || 'Copied!') 
+                                : copyStatus === 'error' 
+                                    ? (strings.Copilot?.copyFailed || 'Copy failed') 
+                                    : ''}
+                        </span>
                         {messages.length > 0 && (
                             <IconButton
                                 iconProps={{ iconName: 'EditNote' }}

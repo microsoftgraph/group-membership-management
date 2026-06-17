@@ -733,6 +733,7 @@ export const strings: IStrings = {
     tryOneOfTheseToGetStarted: 'TRY ONE OF THESE TO GET STARTED',
     copyConversation: 'Copy conversation',
     copiedConversation: 'Copied!',
+    copyFailed: 'Copy failed',
   },
   excludePrefix: 'Exclude',
   copy: 'Copy',

@@ -754,5 +754,6 @@ export type IStrings = {
       tryOneOfTheseToGetStarted: string;
       copyConversation: string;
       copiedConversation: string;
+      copyFailed: string;
   };
 };
