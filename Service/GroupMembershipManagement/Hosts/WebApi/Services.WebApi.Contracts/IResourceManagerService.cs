@@ -8,5 +8,6 @@ namespace Services.Contracts
         Task StartWebSitesAsync(Guid requestorId, CancellationToken cancellationToken);
         Task StartWebSiteAsync(Guid requestorId, string websiteName, CancellationToken cancellationToken);
         Task StopWebSitesAsync(Guid requestorId, CancellationToken cancellationToken);
+        Task<Dictionary<string, string>> GetWebSitesStorageAccountsAsync(CancellationToken cancellationToken);
     }
 }

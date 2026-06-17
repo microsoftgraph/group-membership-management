@@ -77,10 +77,7 @@ namespace Services
             }
             catch (Exception ex)
             {
-                await _loggingRepository.LogMessageAsync(new LogMessage
-                {
-                    Message = $"Unable to retrieve group name for GroupId {request.GroupId}\n{ex.GetBaseException()}"
-                });
+                _logger.GroupNameRetrievalFailed(request.GroupId, ex);
             }
 
             string? targetChannelName = null;
@@ -91,10 +88,7 @@ namespace Services
             }
             catch (Exception ex)
             {
-                await _loggingRepository.LogMessageAsync(new LogMessage
-                {
-                    Message = $"Unable to retrieve channel name for ChannelId {request.ChannelId}\n{ex.GetBaseException()}"
-                });
+                _logger.LogWarning(ex, "Unable to retrieve channel name for ChannelId {ChannelId}", request.ChannelId);
             }
 
             var titles = await _titlesRepository.GetTitlesAsync(job.Id);
