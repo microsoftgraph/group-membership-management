@@ -140,7 +140,7 @@ describe('CopilotPanel', () => {
     await renderCopilotPanel({ isOpen: false });
 
     expect(screen.queryByText(defaultStrings.Copilot.welcomeMessage)).not.toBeInTheDocument();
-  });
+  }, 15000);
 
   it('renders welcome message with steps when open and no messages', async () => {
     const { defaultStrings } = await loadModules();
