@@ -135,14 +135,14 @@ Run these when you only want to validate UI behavior and avoid dependencies on W
 ### Run in PowerShell
 
 ```powershell
-Set-Location "c:\Users\abgonz\workspace\Public-GMM\UI\web-app"
+Set-Location "<path-to-repo>\UI\web-app"
 pnpm exec playwright test
 ```
 
 ### Force real integration mode (existing sign-in flow)
 
 ```powershell
-Set-Location "c:\Users\abgonz\workspace\Public-GMM\UI\web-app"
+Set-Location "<path-to-repo>\UI\web-app"
 $env:PLAYWRIGHT_USE_MOCK_API = 'false'
 pnpm exec playwright test
 ```
