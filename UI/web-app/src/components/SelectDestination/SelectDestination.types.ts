@@ -18,6 +18,7 @@ export interface ISelectDestinationStyles {
   dropdownTitle: IStyle;
   dropdownField: IStyle;
   peoplePicker: IStyle;
+  channelSuggestionItem: IStyle;
   resultsContainer: IStyle;
   ownershipWarning: IStyle;
   spinnerContainer: IStyle;

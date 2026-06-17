@@ -388,6 +388,14 @@ export const SelectDestinationBase: React.FunctionComponent<ISelectDestinationPr
     return text && channelPickerSuggestions ? channelPickerSuggestions : [];
   };
 
+  const onRenderChannelSuggestionItem = (personaProps: IPersonaProps): JSX.Element => {
+    return (
+      <div className={classNames.channelSuggestionItem} title={personaProps.text}>
+        {personaProps.text}
+      </div>
+    );
+  };
+
   const visibleOptionsDestinationType = optionsDestinationType.filter((option) => !option.disabled);
 
   const onDestinationActionChange = (
@@ -461,7 +469,7 @@ export const SelectDestinationBase: React.FunctionComponent<ISelectDestinationPr
                   {strings.ManageMembership.labels.searchChannel}
                   <NormalPeoplePicker
                     onResolveSuggestions={getChannelPickerSuggestions}
-                    onRenderSuggestionsItem={renderSuggestionItem}
+                    onRenderSuggestionsItem={onRenderChannelSuggestionItem}
                     pickerSuggestionsProps={{
                       suggestionsHeaderText: strings.ManageMembership.labels.searchChannelSuggestedText,
                       noResultsFoundText: strings.JobsList.JobsListFilter.filters.ownerPeoplePicker.noResultsFoundText,

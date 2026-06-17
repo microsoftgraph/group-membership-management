@@ -49,6 +49,18 @@ export const getStyles = (props: ISelectDestinationStyleProps): ISelectDestinati
         }
       }
     },
+    channelSuggestionItem: {
+      width: '100%',
+      padding: '6px 12px',
+      boxSizing: 'border-box',
+      fontFamily: 'Segoe UI',
+      fontSize: 14,
+      lineHeight: '20px',
+      whiteSpace: 'normal',
+      overflowWrap: 'anywhere',
+      wordBreak: 'break-word',
+      textAlign: 'left',
+    },
     ownershipWarning: {
       fontWeight: 400,
       fontSize: 12,
