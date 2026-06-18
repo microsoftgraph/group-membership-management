@@ -612,19 +612,24 @@ namespace WebApi.BackgroundServices
         {
             _logger.ClearInternalTablesAndQueuesStarting();
 
-            var storageAccounts = await _resourceManagerService.GetWebSitesStorageAccountsAsync(cancellationToken);
-            foreach (var storageAccount in storageAccounts)
+            if (string.IsNullOrWhiteSpace(_operationsSettings.FunctionsStorageAccountName))
             {
-                await ClearInternalQueuesAsync(storageAccount.Value, storageAccount.Key);
-                await DeleteInternalTablesAsync(storageAccount.Value, storageAccount.Key);
+                _logger.LogError("Settings:functionsStorageAccountName is not configured; internal tables/queues cannot be cleared.");
+
+                throw new InvalidOperationException("Missing required setting: Settings:functionsStorageAccountName");
             }
+
+            await ClearInternalQueuesAsync(_operationsSettings.FunctionsStorageAccountName);
+            await DeleteInternalTablesAsync(_operationsSettings.FunctionsStorageAccountName);
 
             // Deleting a table takes at least 40 seconds, so we need to wait a bit before restarting the functions
             // reference: https://learn.microsoft.com/en-us/rest/api/storageservices/delete-table#remarks
             await Task.Delay(TimeSpan.FromSeconds(60), cancellationToken);
+
+            _logger.LogInformation("Clearing function's internal tables and queues completed.");
         }
 
-        private async Task DeleteInternalTablesAsync(string storageAccountName, string functionName)
+        private async Task DeleteInternalTablesAsync(string storageAccountName)
         {
             DefaultAzureCredential credential = new(DefaultAzureCredential.DefaultEnvironmentVariableName);
 
@@ -641,16 +646,16 @@ namespace WebApi.BackgroundServices
 
                     await tableServiceClient.DeleteTableAsync(table.Name);
 
-                    _logger.InternalTableDeleted(table.Name, storageAccountName, functionName);
+                    _logger.InternalTableDeleted(table.Name, storageAccountName, "SharedFunctionsStorageAccount");
                 }
                 catch (Exception ex)
                 {
-                    _logger.InternalTableDeleteFailed(table.Name, storageAccountName, functionName, ex);
+                    _logger.InternalTableDeleteFailed(table.Name, storageAccountName, "SharedFunctionsStorageAccount", ex);
                 }
             }
         }
 
-        private async Task ClearInternalQueuesAsync(string storageAccountName, string functionName)
+        private async Task ClearInternalQueuesAsync(string storageAccountName)
         {
             DefaultAzureCredential credential = new(DefaultAzureCredential.DefaultEnvironmentVariableName);
 
@@ -667,12 +672,12 @@ namespace WebApi.BackgroundServices
                     var individualClient = queueClient.GetQueueClient(queue.Name);
                     await individualClient.ClearMessagesAsync();
 
-                    _logger.InternalQueueCleared(queue.Name, storageAccountName, functionName);
+                    _logger.InternalQueueCleared(queue.Name, storageAccountName, "SharedFunctionsStorageAccount");
 
                 }
                 catch (Exception ex)
                 {
-                    _logger.InternalQueueClearFailed(queue.Name, storageAccountName, functionName, ex);
+                    _logger.InternalQueueClearFailed(queue.Name, storageAccountName, "SharedFunctionsStorageAccount", ex);
                 }
             }
         }
