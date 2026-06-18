@@ -2,7 +2,6 @@
 // Licensed under the MIT license.
 
 using Microsoft.EntityFrameworkCore;
-using Models.AdfRun;
 using Repositories.Contracts;
 using Repositories.EntityFramework.Contexts;
 
@@ -17,16 +16,7 @@ namespace Repositories.EntityFramework
             _readContext = readContext ?? throw new ArgumentNullException(nameof(readContext));
         }
 
-        public async Task<AdfRun?> GetByAdfRunIdAsync(string adfRunId)
-        {
-            if (string.IsNullOrWhiteSpace(adfRunId))
-                return null;
-
-            return await _readContext.AdfRuns
-                .FirstOrDefaultAsync(a => a.AdfRunId == adfRunId);
-        }
-
-        public async Task<IReadOnlyDictionary<string, string>> GetActiveNotesByAdfRunIdsAsync(IEnumerable<string> adfRunIds)
+        public async Task<IReadOnlyDictionary<string, string>> GetNotesByAdfRunIdsAsync(IEnumerable<string> adfRunIds)
         {
             var distinctIds = adfRunIds?
                 .Where(id => !string.IsNullOrWhiteSpace(id))
@@ -37,8 +27,7 @@ namespace Repositories.EntityFramework
                 return new Dictionary<string, string>();
 
             var records = await _readContext.AdfRuns
-                .Where(a => a.IsActive
-                    && a.Notes != null
+                .Where(a => a.Notes != null
                     && a.Notes != string.Empty
                     && distinctIds.Contains(a.AdfRunId))
                 .Select(a => new { a.AdfRunId, a.Notes })

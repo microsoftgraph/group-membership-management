@@ -199,8 +199,6 @@ namespace Repositories.EntityFramework.Contexts
                 entity.Property(a => a.Id).ValueGeneratedOnAdd().HasDefaultValueSql("NEWSEQUENTIALID()");
                 entity.Property(a => a.AdfRunId).IsRequired().HasMaxLength(255);
                 entity.Property(a => a.Notes).HasMaxLength(2000);
-                entity.Property(a => a.IsActive).HasDefaultValue(true);
-                entity.Property(a => a.CreatedBy).HasMaxLength(255);
                 entity.Property(a => a.CreatedAt).HasDefaultValueSql("GETUTCDATE()");
                 entity.Property(a => a.NotesModifiedAt);
 

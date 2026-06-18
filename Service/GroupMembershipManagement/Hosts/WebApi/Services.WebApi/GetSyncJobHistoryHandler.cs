@@ -66,7 +66,7 @@ namespace Services
             if (adfRunIds.Count == 0)
                 return;
 
-            var notesByAdfRunId = await _adfRunRepository.GetActiveNotesByAdfRunIdsAsync(adfRunIds);
+            var notesByAdfRunId = await _adfRunRepository.GetNotesByAdfRunIdsAsync(adfRunIds);
             if (notesByAdfRunId.Count == 0)
                 return;
 

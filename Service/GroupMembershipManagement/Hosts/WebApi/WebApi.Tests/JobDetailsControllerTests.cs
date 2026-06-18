@@ -112,7 +112,7 @@ namespace Services.Tests
             _syncJobHistoryRepository = new Mock<ISyncJobHistoryRepository>();
             _adfRunRepository = new Mock<IAdfRunRepository>();
             _adfRunRepository
-                .Setup(x => x.GetActiveNotesByAdfRunIdsAsync(It.IsAny<IEnumerable<string>>()))
+                .Setup(x => x.GetNotesByAdfRunIdsAsync(It.IsAny<IEnumerable<string>>()))
                 .ReturnsAsync(new Dictionary<string, string>());
             _blobStorageRepository = new Mock<IBlobStorageRepository>();
             _getMembershipDownloadHandler = new GetMembershipDownloadHandler(NullLogger<GetMembershipDownloadHandler>.Instance, _syncJobRepository.Object, _blobStorageRepository.Object);
@@ -1813,7 +1813,7 @@ namespace Services.Tests
             _syncJobHistoryRepository.Setup(x => x.GetBySyncJobIdAsync(_jobEntity.Id, It.IsAny<int>(), It.IsAny<int>()))
                                      .ReturnsAsync(histories);
 
-            _adfRunRepository.Setup(x => x.GetActiveNotesByAdfRunIdsAsync(It.IsAny<IEnumerable<string>>()))
+            _adfRunRepository.Setup(x => x.GetNotesByAdfRunIdsAsync(It.IsAny<IEnumerable<string>>()))
                              .ReturnsAsync(new Dictionary<string, string> { { adfRunId.ToString(), expectedMessage } });
 
             var context = CreateHttpContext(new List<Claim>
@@ -1869,7 +1869,7 @@ namespace Services.Tests
             var history = result.Value as List<SyncJobHistory>;
             Assert.IsNotNull(history);
             Assert.IsTrue(history.All(h => h.CustomMessage == null));
-            _adfRunRepository.Verify(x => x.GetActiveNotesByAdfRunIdsAsync(It.IsAny<IEnumerable<string>>()), Times.Never);
+            _adfRunRepository.Verify(x => x.GetNotesByAdfRunIdsAsync(It.IsAny<IEnumerable<string>>()), Times.Never);
         }
 
         [TestMethod]
