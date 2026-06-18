@@ -170,20 +170,11 @@ export const getStyles = (props: ICopilotPanelStyleProps): ICopilotPanelStyles =
         welcomeCard: {
             padding: '14px 16px',
             borderRadius: '12px',
-            backgroundColor: theme.palette.white,
+            backgroundColor: theme.palette.neutralLighterAlt,
             border: `1px solid ${theme.palette.neutralLight}`,
+            color: theme.palette.neutralPrimary,
             position: 'relative',
             overflow: 'hidden',
-            background: `linear-gradient(135deg, ${theme.palette.white} 0%, #f0f4ff 50%, ${theme.palette.white} 100%)`,
-            backgroundSize: '200% 200%',
-            animationName: keyframes({
-                '0%': { backgroundPosition: '0% 50%' },
-                '50%': { backgroundPosition: '100% 50%' },
-                '100%': { backgroundPosition: '0% 50%' },
-            }),
-            animationDuration: '12s',
-            animationTimingFunction: 'ease-in-out',
-            animationIterationCount: 'infinite',
         },
 
         welcomeStepList: {

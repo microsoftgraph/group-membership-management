@@ -317,7 +317,7 @@ export const CopilotPanelBase: React.FunctionComponent<ICopilotPanelProps> = (
                 {renderBotAvatar()}
                 <div>
                     <div className={classNames.welcomeCard}>
-                        <div style={{ fontWeight: 600, fontSize: '14px', marginBottom: '4px' }}>
+                        <div style={{ fontWeight: 600, fontSize: '14px', marginBottom: '4px', color: theme.palette.neutralPrimary }}>
                             {strings.Copilot?.welcomeMessage || "Hi, I'm GMM Copilot."}
                         </div>
                         <div style={{ fontSize: '13px', lineHeight: '18px', color: theme.palette.neutralSecondary }}>
