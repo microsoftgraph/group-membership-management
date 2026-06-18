@@ -28,6 +28,7 @@ import {
     SpinnerSize,
     DirectionalHint,
     Icon,
+    TooltipHost,
 } from '@fluentui/react';
 import { IPersonaProps } from '@fluentui/react/lib/Persona';
 import {
@@ -45,7 +46,7 @@ import { SyncJobHistory } from '../../models/SyncJobHistory';
 import { SyncHistorySearchProgressUpdate } from '../../models/SyncHistorySearchProgressUpdate';
 import { MembershipChangeType, SearchSyncHistoryByUserRunMembershipChange } from '../../models/SearchSyncHistoryByUserResult';
 import { ThresholdNotificationData } from '../../models/ThresholdNotificationData';
-import { selectIsJobTenantReader, selectIsJobTenantWriter } from '../../store/roles.slice';
+import { selectIsJobTenantReader, selectIsJobTenantWriter, selectIsGeneralSettingsAdministrator } from '../../store/roles.slice';
 import { selectIsAISearchForUserEnabled } from '../../store/settings.slice';
 import { renderMultilineHeader } from '../../utils/stringUtils';
 import { getStatusDisplayText } from '../../utils/jobUtils';
@@ -99,6 +100,7 @@ export const JobHistoryPanelBase: React.FunctionComponent<IJobHistoryPanelProps>
     const selectedJob = useSelector(selectSelectedJobDetails);
     const isJobTenantReader = useSelector(selectIsJobTenantReader);
     const isJobTenantWriter = useSelector(selectIsJobTenantWriter);
+    const isGeneralSettingsAdministrator = useSelector(selectIsGeneralSettingsAdministrator);
     const isAISearchForUserEnabled = useSelector(selectIsAISearchForUserEnabled);
     const showSyncTab = isJobTenantReader || isJobTenantWriter;
     const canDownloadMembershipChanges = isJobTenantWriter;
@@ -1041,7 +1043,13 @@ export const JobHistoryPanelBase: React.FunctionComponent<IJobHistoryPanelProps>
                 </span>
                 
                 {isThresholdExceeded && item.syncHistory && item.syncHistory.runId === mostRecentThresholdRunId && !resolvedRunIds.has(item.syncHistory.runId) && !isThresholdResolved && (
-                    <Link onClick={() => handleTakeAction(item.syncHistory!)}>{strings.JobDetails.Panel.takeAction}</Link>
+                    item.syncHistory.customMessage ? (
+                        <TooltipHost content={strings.JobDetails.Panel.takeActionDisabledTooltip}>
+                            <Link disabled aria-disabled>{strings.JobDetails.Panel.takeAction}</Link>
+                        </TooltipHost>
+                    ) : (
+                        <Link onClick={() => handleTakeAction(item.syncHistory!)}>{strings.JobDetails.Panel.takeAction}</Link>
+                    )
                 )}
             </div>
         );
@@ -1301,6 +1309,8 @@ export const JobHistoryPanelBase: React.FunctionComponent<IJobHistoryPanelProps>
         if (item.eventType === 'sync' && item.syncHistory) {
             const downloadLink = renderDownloadLink(item);
             const aiExplanation = renderAiExplanation(item.syncHistory.runId);
+            const customMessage = item.syncHistory.customMessage;
+            const showAdfRunId = isGeneralSettingsAdministrator && !!item.syncHistory.adfRunId;
 
             return (
                 <div style={{ display: 'flex', gap: '24px' }}>
@@ -1309,15 +1319,24 @@ export const JobHistoryPanelBase: React.FunctionComponent<IJobHistoryPanelProps>
                             <strong style={{ fontSize: '14px' }}>{strings.JobDetails.Panel.runIdColumnLabel}:</strong>
                             <span style={{ fontSize: '12px' }}>{item.syncHistory.runId}</span>
                         </div>
+                        {showAdfRunId && (
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                                <strong style={{ fontSize: '14px' }}>{strings.JobDetails.Panel.adfRunIdColumnLabel}:</strong>
+                                <span style={{ fontSize: '12px' }}>{item.syncHistory.adfRunId}</span>
+                            </div>
+                        )}
                         {downloadLink && (
                             <div>
                                 {downloadLink}
                             </div>
                         )}
                     </div>
-                    {aiExplanation && (
-                        <div style={{ flex: '1 1 auto' }}>
+                    {(aiExplanation || customMessage) && (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', flex: '1 1 auto' }}>
                             {aiExplanation}
+                            {customMessage && (
+                                <span style={{ fontSize: '12px', color: theme.palette.redDark }}>{customMessage}</span>
+                            )}
                         </div>
                     )}
                 </div>

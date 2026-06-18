@@ -1,6 +1,7 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 using System;
+using System.ComponentModel.DataAnnotations.Schema;
 
 namespace Models.SyncJobHistory
 {
@@ -89,6 +90,13 @@ namespace Models.SyncJobHistory
         /// Gets or sets the timestamp when this history entry was last updated
         /// </summary>
         public DateTime UpdatedAt { get; set; }
+
+        /// <summary>
+        /// Gets or sets an optional custom message associated with this run's ADF run.
+        /// Populated from the AdfRuns table at read time; not persisted on the history record.
+        /// </summary>
+        [NotMapped]
+        public string? CustomMessage { get; set; }
 
     }
 }

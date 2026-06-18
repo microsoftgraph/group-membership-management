@@ -653,6 +653,16 @@ export async function registerMockApiRoutes(page: Page): Promise<void> {
           usersAdded: 2,
           usersRemoved: 1,
         },
+        {
+          runId: 'run-002',
+          adfRunId: '32318507-19ee-43b8-92ca-3a69f0ac116b',
+          customMessage: 'This run was identified as problematic and is being investigated.',
+          status: 'Idle',
+          startTime: '2026-02-28T00:00:00Z',
+          endTime: '2026-02-28T00:01:00Z',
+          usersAdded: 0,
+          usersRemoved: 0,
+        },
       ]);
       return;
     }

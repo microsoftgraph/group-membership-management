@@ -25,6 +25,16 @@ namespace Models.AdfRun
         public string? Notes { get; set; }
 
         /// <summary>
+        /// Gets or sets a value indicating whether the Notes for this run are active and should be surfaced to users.
+        /// </summary>
+        public bool IsActive { get; set; } = true;
+
+        /// <summary>
+        /// Gets or sets the identifier of the user who created this record (e.g., who authored the Notes).
+        /// </summary>
+        public string? CreatedBy { get; set; }
+
+        /// <summary>
         /// Gets or sets the timestamp when this record was created
         /// </summary>
         public DateTime CreatedAt { get; set; }

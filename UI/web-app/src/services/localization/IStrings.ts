@@ -429,6 +429,8 @@ export type IStrings = {
       aiDescriptionLabel: string;
       aiDescriptionLoading: string;
       aiDescriptionError: string;
+      adfRunIdColumnLabel: string;
+      takeActionDisabledTooltip: string;
     };
     notFound: string;
     notFoundWithoutPurgeDate: string;

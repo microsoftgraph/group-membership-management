@@ -57,6 +57,7 @@ namespace Services.Tests
         private Mock<IDatabaseChannelsRepository> _channelRepository = null!;
         private Mock<ISyncJobChangeRepository> _syncJobChangeRepository = null!;
         private Mock<ISyncJobHistoryRepository> _syncJobHistoryRepository = null!;
+        private Mock<IAdfRunRepository> _adfRunRepository = null!;
         private Mock<IBlobStorageRepository> _blobStorageRepository = null!;
         private GetMembershipDownloadHandler _getMembershipDownloadHandler = null!;
         private Mock<IRequestHandler<GetThresholdNotificationRequest, GetThresholdNotificationResponse>> _getThresholdNotificationHandlerMock = null!;
@@ -109,6 +110,10 @@ namespace Services.Tests
             _channelRepository = new Mock<IDatabaseChannelsRepository>();
             _syncJobChangeRepository = new Mock<ISyncJobChangeRepository>();
             _syncJobHistoryRepository = new Mock<ISyncJobHistoryRepository>();
+            _adfRunRepository = new Mock<IAdfRunRepository>();
+            _adfRunRepository
+                .Setup(x => x.GetActiveNotesByAdfRunIdsAsync(It.IsAny<IEnumerable<string>>()))
+                .ReturnsAsync(new Dictionary<string, string>());
             _blobStorageRepository = new Mock<IBlobStorageRepository>();
             _getMembershipDownloadHandler = new GetMembershipDownloadHandler(NullLogger<GetMembershipDownloadHandler>.Instance, _syncJobRepository.Object, _blobStorageRepository.Object);
             _titlesRepository = new Mock<IDatabaseTitlesRepository>();
@@ -311,7 +316,8 @@ namespace Services.Tests
                                                             _syncJobChangeRepository.Object);
 
             _getSyncJobHistoryHandler = new GetSyncJobHistoryHandler(NullLogger<GetSyncJobHistoryHandler>.Instance,
-                                                                    _syncJobHistoryRepository.Object);
+                                                                    _syncJobHistoryRepository.Object,
+                                                                    _adfRunRepository.Object);
 
             _notificationRepository = new Mock<INotificationRepository>();
             _getThresholdNotificationHandlerMock = new Mock<IRequestHandler<GetThresholdNotificationRequest, GetThresholdNotificationResponse>>();
@@ -1762,6 +1768,108 @@ namespace Services.Tests
             Assert.IsTrue(history.All(h => h.Status == SyncStatus.Idle.ToString() || 
                                           h.Status == SyncStatus.Error.ToString()),
                 "History should only contain Idle and Error sync records");
+        }
+
+        [TestMethod]
+        public async Task GetSyncJobHistory_AttachesCustomMessage_ForMatchingAdfRunId()
+        {
+            // Arrange
+            var userId = Guid.NewGuid().ToString();
+            var adfRunId = Guid.NewGuid();
+            var expectedMessage = "This run was identified as problematic.";
+
+            var histories = new List<SyncJobHistory>
+            {
+                new SyncJobHistory
+                {
+                    Id = Guid.NewGuid(),
+                    SyncJobId = _jobEntity.Id,
+                    RunId = Guid.NewGuid(),
+                    AdfRunId = adfRunId,
+                    StartTime = DateTime.UtcNow.AddMinutes(-30),
+                    EndTime = DateTime.UtcNow.AddMinutes(-15),
+                    Duration = 900,
+                    Status = SyncStatus.Idle.ToString(),
+                    UpdatedByFunction = "GraphUpdater",
+                    CreatedAt = DateTime.UtcNow.AddMinutes(-30),
+                    UpdatedAt = DateTime.UtcNow.AddMinutes(-15)
+                },
+                new SyncJobHistory
+                {
+                    Id = Guid.NewGuid(),
+                    SyncJobId = _jobEntity.Id,
+                    RunId = Guid.NewGuid(),
+                    AdfRunId = null,
+                    StartTime = DateTime.UtcNow.AddHours(-2),
+                    EndTime = DateTime.UtcNow.AddHours(-1),
+                    Duration = 3600,
+                    Status = SyncStatus.Idle.ToString(),
+                    UpdatedByFunction = "GraphUpdater",
+                    CreatedAt = DateTime.UtcNow.AddHours(-2),
+                    UpdatedAt = DateTime.UtcNow.AddHours(-1)
+                }
+            };
+
+            _syncJobHistoryRepository.Setup(x => x.GetBySyncJobIdAsync(_jobEntity.Id, It.IsAny<int>(), It.IsAny<int>()))
+                                     .ReturnsAsync(histories);
+
+            _adfRunRepository.Setup(x => x.GetActiveNotesByAdfRunIdsAsync(It.IsAny<IEnumerable<string>>()))
+                             .ReturnsAsync(new Dictionary<string, string> { { adfRunId.ToString(), expectedMessage } });
+
+            var context = CreateHttpContext(new List<Claim>
+                {
+                    new Claim(ClaimTypes.Name, "user@domain.com"),
+                    new Claim(ClaimTypes.Role, Roles.JOB_TENANT_READER),
+                    new Claim("http://schemas.microsoft.com/identity/claims/objectidentifier", userId)
+                });
+
+            _jobDetailsController.ControllerContext = CreateControllerContext(context);
+
+            // Act
+            var response = await _jobDetailsController.GetSyncJobHistoryAsync(_jobEntity.Id);
+            var result = response.Result as OkObjectResult;
+
+            // Assert
+            Assert.IsNotNull(result);
+            Assert.AreEqual((int)HttpStatusCode.OK, result.StatusCode);
+
+            var history = result.Value as List<SyncJobHistory>;
+            Assert.IsNotNull(history);
+            Assert.AreEqual(2, history.Count);
+
+            var withAdfRun = history.Single(h => h.AdfRunId == adfRunId);
+            Assert.AreEqual(expectedMessage, withAdfRun.CustomMessage);
+
+            var withoutAdfRun = history.Single(h => h.AdfRunId == null);
+            Assert.IsNull(withoutAdfRun.CustomMessage);
+        }
+
+        [TestMethod]
+        public async Task GetSyncJobHistory_DoesNotQueryAdfRepository_WhenNoAdfRunIds()
+        {
+            // Arrange
+            var userId = Guid.NewGuid().ToString();
+
+            // Default _syncJobHistoryEntries has no AdfRunId set.
+            var context = CreateHttpContext(new List<Claim>
+                {
+                    new Claim(ClaimTypes.Name, "user@domain.com"),
+                    new Claim(ClaimTypes.Role, Roles.JOB_TENANT_READER),
+                    new Claim("http://schemas.microsoft.com/identity/claims/objectidentifier", userId)
+                });
+
+            _jobDetailsController.ControllerContext = CreateControllerContext(context);
+
+            // Act
+            var response = await _jobDetailsController.GetSyncJobHistoryAsync(_jobEntity.Id);
+            var result = response.Result as OkObjectResult;
+
+            // Assert
+            Assert.IsNotNull(result);
+            var history = result.Value as List<SyncJobHistory>;
+            Assert.IsNotNull(history);
+            Assert.IsTrue(history.All(h => h.CustomMessage == null));
+            _adfRunRepository.Verify(x => x.GetActiveNotesByAdfRunIdsAsync(It.IsAny<IEnumerable<string>>()), Times.Never);
         }
 
         [TestMethod]

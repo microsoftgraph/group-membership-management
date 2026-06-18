@@ -434,6 +434,8 @@ export const strings: IStrings = {
       aiDescriptionLabel: 'Description (AI generated):',
       aiDescriptionLoading: 'Generating explanation...',
       aiDescriptionError: 'Unable to generate explanation.',
+      adfRunIdColumnLabel: 'ADF Run ID',
+      takeActionDisabledTooltip: 'A message has been added for this run. No action is needed.',
     },
     openInAzure: 'Open in Azure',
     openInTeams: 'Open in Teams',

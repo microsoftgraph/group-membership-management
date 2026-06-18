@@ -84,6 +84,8 @@ const strings = {
       downloadLinkText: 'Download',
       downloadError: 'Download error',
       resolveError: 'Resolve error',
+      adfRunIdColumnLabel: 'ADF Run ID',
+      takeActionDisabledTooltip: 'A message has been added for this run. No action is needed.',
     },
   },
 } as const;
@@ -166,6 +168,7 @@ vi.mock('@fluentui/react', async () => {
     </button>
   );
   const Modal = ({ isOpen, children }: any) => (isOpen ? <div>{children}</div> : null);
+  const TooltipHost = ({ children, content }: any) => <div title={content}>{children}</div>;
   const DetailsRow = ({ children }: any) => <div>{children}</div>;
   const NormalPeoplePicker = ({ onChange, ariaLabel }: any) => (
     <div>
@@ -217,6 +220,7 @@ vi.mock('@fluentui/react', async () => {
     Spinner,
     SpinnerSize: { small: 'small' },
     TextField,
+    TooltipHost,
     DirectionalHint: { bottomLeftEdge: 'bottomLeftEdge' },
     useTheme: () => mockTheme,
   };
@@ -244,6 +248,7 @@ vi.mock('../../store/jobs.slice', () => ({
 vi.mock('../../store/roles.slice', () => ({
   selectIsJobTenantReader: (state: any) => state.roles.isJobTenantReader,
   selectIsJobTenantWriter: (state: any) => state.roles.isJobTenantWriter,
+  selectIsGeneralSettingsAdministrator: (state: any) => state.roles.isGeneralSettingsAdministrator,
 }));
 
 vi.mock('../../services/signalR/SignalRSyncHistorySearchService', () => ({
@@ -501,5 +506,50 @@ describe('JobHistoryPanelBase membership change highlighting', () => {
     await selectUser();
 
     expect(await screen.findByLabelText('2 (user was removed in this sync)')).toBeInTheDocument();
+  });
+});
+
+describe('JobHistoryPanelBase custom ADF run messages', () => {
+  const buildThresholdItem = (overrides: Partial<SyncJobHistory> = {}): SyncJobHistory => ({
+    runId: 'run-threshold',
+    startTime: '2024-06-01T00:00:00Z',
+    endTime: '2024-06-01T00:05:00Z',
+    duration: 300,
+    status: RunHistoryStatus.ThresholdExceeded,
+    beforeSyncUserCount: 100,
+    usersAdded: 90,
+    usersRemoved: 0,
+    afterSyncUserCount: 190,
+    thresholdViolations: 1,
+    updatedByFunction: 'Function',
+    createdAt: '2024-06-01T00:05:00Z',
+    updatedAt: '2024-06-01T00:05:00Z',
+    ...overrides,
+  });
+
+  it('disables the take action link and shows a tooltip when a custom message exists', async () => {
+    mockSyncHistoryItems = [
+      buildThresholdItem({
+        customMessage: 'This run was identified as problematic.',
+      }),
+    ];
+
+    await renderPanel();
+
+    const takeActionButton = await screen.findByText(strings.JobDetails.Panel.takeAction);
+    expect(takeActionButton).toBeDisabled();
+    expect(takeActionButton.closest('div')).toHaveAttribute(
+      'title',
+      strings.JobDetails.Panel.takeActionDisabledTooltip
+    );
+  });
+
+  it('keeps the take action link enabled when no custom message exists', async () => {
+    mockSyncHistoryItems = [buildThresholdItem()];
+
+    await renderPanel();
+
+    const takeActionButton = await screen.findByText(strings.JobDetails.Panel.takeAction);
+    expect(takeActionButton).toBeEnabled();
   });
 });

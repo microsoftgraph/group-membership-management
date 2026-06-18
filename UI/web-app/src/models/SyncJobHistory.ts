@@ -3,6 +3,7 @@
 
 export interface SyncJobHistory {
   runId: string;
+  adfRunId?: string | null;
   startTime: string | null;
   endTime: string | null;
   duration: number | null;
@@ -15,4 +16,5 @@ export interface SyncJobHistory {
   updatedByFunction: string;
   createdAt: string;
   updatedAt: string;
+  customMessage?: string | null;
 }

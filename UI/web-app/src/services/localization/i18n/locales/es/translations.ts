@@ -436,6 +436,8 @@ export const strings: IStrings = {
       aiDescriptionLabel: 'Descripción (generada por IA):',
       aiDescriptionLoading: 'Generando explicación...',
       aiDescriptionError: 'No se pudo generar la explicación.',
+      adfRunIdColumnLabel: 'ID de ejecución de ADF',
+      takeActionDisabledTooltip: 'Se ha agregado un mensaje para esta ejecución. No se requiere ninguna acción.',
     },
     notFound: 'La sincronización de membresía para el grupo con ID {0} ahora está deshabilitada porque el grupo ya no existe. GMM detectó este problema el {1}. Este trabajo se eliminará automáticamente el {2}. Para dejar inmediatamente de administrar con GMM, use el botón "Dejar de administrar con GMM" que aparece abajo.',
     notFoundWithoutPurgeDate: 'El grupo de destino con ID de objeto {0} no se pudo encontrar y es posible que haya sido eliminado recientemente. Como resultado, la sincronización ha sido deshabilitada y ya no puede ser revisada ni editada. Para eliminar la afiliación con GMM de inmediato, use el botón Eliminar administración de GMM que aparece abajo.',
