@@ -47,9 +47,11 @@ const operationsSlice = createSlice({
         state.displayStatus = action.payload;
         state.isOperationInProgress = false;
       })
-      .addCase(fetchServiceStatus.rejected, (state) => {
+      .addCase(fetchServiceStatus.rejected, (state, action) => {
         state.isLoading = false;
-        state.error = 'Failed to fetch service status.';
+        // Only a genuine service failure renders the maintenance page. Auth/token
+        // failures (payload 'auth') are recovered via interactive re-auth.
+        state.error = action.payload === 'auth' ? null : 'Failed to fetch service status.';
         state.isOperationInProgress = false;
       })
       .addCase(processOperation.pending, (state, action) => {

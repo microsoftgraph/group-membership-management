@@ -51,6 +51,25 @@ describe('operations.slice — fetchServiceStatus extraReducers', () => {
     expect(state.isLoading).toBe(false);
     expect(state.error).toBe('Failed to fetch service status.');
   });
+
+  it('rejected with auth payload does not set maintenance error', () => {
+    const state = operationsReducer(
+      initial,
+      fetchServiceStatus.rejected(new Error('e'), 'req1', undefined as any, 'auth')
+    );
+    expect(state.isLoading).toBe(false);
+    expect(state.error).toBeNull();
+    expect(state.isOperationInProgress).toBe(false);
+  });
+
+  it('rejected with service payload sets maintenance error', () => {
+    const state = operationsReducer(
+      initial,
+      fetchServiceStatus.rejected(new Error('e'), 'req1', undefined as any, 'service')
+    );
+    expect(state.isLoading).toBe(false);
+    expect(state.error).toBe('Failed to fetch service status.');
+  });
 });
 
 describe('operations.slice — processOperation extraReducers', () => {

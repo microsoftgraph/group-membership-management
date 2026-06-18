@@ -41,6 +41,18 @@ jest.mock('@azure/msal-browser', () => {
 		.fn()
 		.mockResolvedValue({ accessToken: 'test-access-token' });
 
+	// Mirrors @azure/msal-browser's error raised by acquireTokenSilent when the
+	// cached session can no longer be used silently. MsalAuthenticationService
+	// relies on `instanceof InteractionRequiredAuthError`, so the mock must
+	// export a real class.
+	class InteractionRequiredAuthError extends Error {
+		constructor(message?: string) {
+			super(message);
+			this.name = 'InteractionRequiredAuthError';
+			Object.setPrototypeOf(this, InteractionRequiredAuthError.prototype);
+		}
+	}
+
 	class MockPublicClientApplication {
 		initialize = jest.fn().mockResolvedValue(undefined);
 		handleRedirectPromise = jest.fn().mockResolvedValue(null);
@@ -49,9 +61,11 @@ jest.mock('@azure/msal-browser', () => {
 		setActiveAccount = jest.fn();
 		getActiveAccount = jest.fn().mockReturnValue(mockAccount);
 		acquireTokenSilent = acquireTokenSilent;
+		acquireTokenRedirect = jest.fn().mockResolvedValue(undefined);
 	}
 
 	return {
 		PublicClientApplication: MockPublicClientApplication,
+		InteractionRequiredAuthError,
 	};
 });

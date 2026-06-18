@@ -2,7 +2,7 @@
 // Licensed under the MIT license.
 
 import React from 'react';
-import { screen } from '@testing-library/react';
+import { screen, waitFor } from '@testing-library/react';
 import { initializeIcons } from '@fluentui/react';
 import { MemoryRouter } from 'react-router-dom';
 
@@ -299,4 +299,94 @@ test('renders existing permissionDenied message when dashboardUrl uses an unsafe
 
   expect(await screen.findByText(defaultStrings.permissionDenied)).toBeInTheDocument();
   expect(container.querySelector('a[href^="javascript:"]')).toBeNull();
+});
+
+test('renders the maintenance page when fetchServiceStatus fails for a service-class reason', async () => {
+  const authenticationService = new OfflineAuthenticationService();
+  const rolesResponse = buildNoAccessRoles();
+  const preloadedState = buildPreloadedState(authenticationService, rolesResponse);
+  const gmmApiMock = buildGmmApiMock(rolesResponse, []);
+
+  // The backend is genuinely unavailable (5xx). This is the only class of
+  // failure that should surface the maintenance page.
+  const serviceUnavailableError = Object.assign(new Error('Service Unavailable'), {
+    isAxiosError: true,
+    response: { status: 503 },
+  });
+  (gmmApiMock.operationsApi.fetchServiceStatus as any).mockRejectedValue(serviceUnavailableError);
+
+  const store = setupStore(preloadedState, { authenticationService }, { gmmApi: gmmApiMock });
+
+  renderWithProviders(
+    <MemoryRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+      <App />
+    </MemoryRouter>,
+    { store }
+  );
+
+  expect(await screen.findByText(defaultStrings.maintenanceTitle)).toBeInTheDocument();
+});
+
+test('renders the maintenance page when fetchServiceStatus fails for an unexpected (non-auth) reason', async () => {
+  const authenticationService = new OfflineAuthenticationService();
+  const rolesResponse = buildNoAccessRoles();
+  const preloadedState = buildPreloadedState(authenticationService, rolesResponse);
+  const gmmApiMock = buildGmmApiMock(rolesResponse, []);
+
+  // An unexpected, unclassified error must fail safe to maintenance rather than
+  // being silently hidden as an auth failure.
+  (gmmApiMock.operationsApi.fetchServiceStatus as any).mockRejectedValue(new Error('unexpected boom'));
+
+  const store = setupStore(preloadedState, { authenticationService }, { gmmApi: gmmApiMock });
+
+  renderWithProviders(
+    <MemoryRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+      <App />
+    </MemoryRouter>,
+    { store }
+  );
+
+  expect(await screen.findByText(defaultStrings.maintenanceTitle)).toBeInTheDocument();
+});
+
+test('does not render the maintenance page when fetchServiceStatus fails for an auth-class reason', async () => {
+  const authenticationService = new OfflineAuthenticationService();
+  const rolesResponse: RolesResponse = { ...buildNoAccessRoles(), isJobOwnerReader: true };
+  const preloadedState = buildPreloadedState(authenticationService, rolesResponse);
+  const gmmApiMock = buildGmmApiMock(rolesResponse, []);
+
+  // A 401 means the user is authenticated but not authorized for this call. It
+  // is an auth problem, not a service outage, so it must never be surfaced as
+  // maintenance (which would mask the real cause).
+  const unauthorizedError = Object.assign(new Error('Unauthorized'), {
+    isAxiosError: true,
+    response: { status: 401 },
+  });
+  (gmmApiMock.operationsApi.fetchServiceStatus as any).mockRejectedValue(unauthorizedError);
+
+  const store = setupStore(preloadedState, { authenticationService }, { gmmApi: gmmApiMock });
+
+  renderWithProviders(
+    <MemoryRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+      <App />
+    </MemoryRouter>,
+    { store }
+  );
+
+  // The app gets past the loader (header renders in both the maintenance and
+  // non-maintenance branches)...
+  expect(await screen.findByText(/Membership Management/i)).toBeInTheDocument();
+  // ...the failing status fetch actually ran (so the thunk's pending reducer has
+  // set isLoading=true)...
+  await waitFor(() => expect(gmmApiMock.operationsApi.fetchServiceStatus).toHaveBeenCalled());
+  // ...and once it has SETTLED (isLoading back to false), an auth-class failure
+  // leaves the maintenance error unset — asserting isLoading too prevents this
+  // from passing prematurely while the thunk is still pending (error is also
+  // null during pending).
+  await waitFor(() => {
+    const operations = store.getState().operations;
+    expect(operations.isLoading).toBe(false);
+    expect(operations.error).toBeNull();
+  });
+  expect(screen.queryByText(defaultStrings.maintenanceTitle)).toBeNull();
 });

@@ -4,6 +4,7 @@
 import {
   AuthenticationResult,
   Configuration,
+  InteractionRequiredAuthError,
   PublicClientApplication,
   RedirectRequest,
   SilentRequest,
@@ -29,6 +30,7 @@ const graphTokenRequest: SilentRequest = {
 
 export class MsalAuthenticationService implements IAuthenticationService {
   private _initialized = false;
+  private _interactiveAuthPromise: Promise<string> | null = null;
   private _msalInstance: PublicClientApplication;
   private _msalConfig: Configuration = {
     auth: {
@@ -90,11 +92,47 @@ export class MsalAuthenticationService implements IAuthenticationService {
     const account = this._msalInstance.getActiveAccount();
     if (!account) throw new Error('No active account. Please call loginAsync first.');
 
-    const tokenResponse = await this._msalInstance.acquireTokenSilent({
-      ...request,
-      account,
-    });
+    try {
+      const tokenResponse = await this._msalInstance.acquireTokenSilent({
+        ...request,
+        account,
+      });
 
-    return tokenResponse.accessToken;
+      return tokenResponse.accessToken;
+    } catch (error) {
+      // An active account can exist while its cached session is no longer
+      // usable (expired session, consent or conditional-access re-challenge).
+      // In that case acquireTokenSilent throws InteractionRequiredAuthError.
+      // Recover by re-authenticating interactively instead of letting the
+      // failure bubble up to the UI, where it previously latched the
+      // maintenance page (see fetchServiceStatus / operations.slice).
+      if (error instanceof InteractionRequiredAuthError) {
+        if (!this._interactiveAuthPromise) {
+          const redirectRequest: RedirectRequest = {
+            scopes: request.scopes,
+            account,
+            ...(error.claims ? { claims: error.claims } : {}),
+          };
+
+          this._interactiveAuthPromise = this._msalInstance
+            .acquireTokenRedirect(redirectRequest)
+            // The page is redirecting to AAD for re-authentication; never
+            // resolve so callers do not proceed without a token before
+            // navigation occurs.
+            .then(() => new Promise<string>(() => { /* intentionally never resolves */ }))
+            .catch((redirectError) => {
+              // Starting the redirect failed (e.g. another interaction is
+              // already in progress). Drop the shared attempt so a later token
+              // request can retry, and surface the failure to every waiter.
+              this._interactiveAuthPromise = null;
+              throw redirectError;
+            });
+        }
+
+        return this._interactiveAuthPromise;
+      }
+
+      throw error;
+    }
   }
 };
