@@ -390,3 +390,38 @@ test('does not render the maintenance page when fetchServiceStatus fails for an 
   });
   expect(screen.queryByText(defaultStrings.maintenanceTitle)).toBeNull();
 });
+
+test('does not render the maintenance page when fetchServiceStatus fails with an MSAL token-flow error', async () => {
+  const authenticationService = new OfflineAuthenticationService();
+  const rolesResponse: RolesResponse = { ...buildNoAccessRoles(), isJobOwnerReader: true };
+  const preloadedState = buildPreloadedState(authenticationService, rolesResponse);
+  const gmmApiMock = buildGmmApiMock(rolesResponse, []);
+
+  // A stale MSAL session can make getTokenAsync rethrow an MSAL auth-layer
+  // error (e.g. interaction_in_progress when a redirect is already in flight).
+  // It is not an AxiosError and carries a string `errorCode`, so it must be
+  // classified as auth and never surfaced as maintenance.
+  const msalTokenError = Object.assign(new Error('interaction_in_progress: a redirect is already in progress'), {
+    errorCode: 'interaction_in_progress',
+    name: 'BrowserAuthError',
+  });
+  (gmmApiMock.operationsApi.fetchServiceStatus as any).mockRejectedValue(msalTokenError);
+
+  const store = setupStore(preloadedState, { authenticationService }, { gmmApi: gmmApiMock });
+
+  renderWithProviders(
+    <MemoryRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+      <App />
+    </MemoryRouter>,
+    { store }
+  );
+
+  expect(await screen.findByText(/Membership Management/i)).toBeInTheDocument();
+  await waitFor(() => expect(gmmApiMock.operationsApi.fetchServiceStatus).toHaveBeenCalled());
+  await waitFor(() => {
+    const operations = store.getState().operations;
+    expect(operations.isLoading).toBe(false);
+    expect(operations.error).toBeNull();
+  });
+  expect(screen.queryByText(defaultStrings.maintenanceTitle)).toBeNull();
+});
