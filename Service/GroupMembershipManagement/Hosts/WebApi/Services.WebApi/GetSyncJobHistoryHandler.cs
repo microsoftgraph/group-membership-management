@@ -37,7 +37,14 @@ namespace Services
                     request.PageSize,
                     request.PageNumber);
 
-                await AttachCustomMessagesAsync(history);
+                try
+                {
+                    await AttachCustomMessagesAsync(history);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Failed to attach custom messages for sync job {SyncJobId}. Returning history without custom messages.", request.SyncJobId);
+                }
 
                 response.History = history;
                 response.StatusCode = HttpStatusCode.OK;
