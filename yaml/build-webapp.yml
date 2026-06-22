@@ -62,8 +62,8 @@ stages:
           targetType: inline
           workingDirectory: 'UI/web-app'
           script: |
-            npx pnpm@9.15.4 install --frozen-lockfile
-            npx pnpm@9.15.4 run test:run --coverage
+            npx pnpm@10.34.4 install --frozen-lockfile
+            npx pnpm@10.34.4 run test:run --coverage
             if ($LASTEXITCODE -ne 0) {
               Write-Error "UI unit tests failed or coverage threshold not met."
               exit 1
