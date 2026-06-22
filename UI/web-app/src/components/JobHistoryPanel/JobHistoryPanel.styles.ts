@@ -195,6 +195,18 @@ export const getStyles = (props: IJobHistoryPanelStyleProps): IJobHistoryPanelSt
             padding: '2px 8px',
             display: 'inline-block',
         },
+        pendingMarker: {
+            display: 'inline-block',
+            marginTop: '2px',
+            padding: '1px 8px',
+            borderRadius: '10px',
+            fontSize: '11px',
+            lineHeight: '14px',
+            fontWeight: 400,
+            color: theme.palette.neutralPrimary,
+            backgroundColor: theme.palette.neutralLighter,
+            border: `1px solid ${theme.palette.neutralQuaternaryAlt}`,
+        },
         matchingRow: {
             backgroundColor: theme.palette.themeLighterAlt,
         },
@@ -227,4 +239,3 @@ export const getStyles = (props: IJobHistoryPanelStyleProps): IJobHistoryPanelSt
         },
     };
 };
-

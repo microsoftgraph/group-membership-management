@@ -5,6 +5,7 @@ using Microsoft.Extensions.Logging;
 using Repositories.Contracts;
 using Repositories.Contracts.Helpers;
 using Services.Contracts;
+using Models;
 using Models.SyncJobHistory;
 using System;
 using System.Collections.Generic;
@@ -76,6 +77,19 @@ namespace Hosts.MembershipAggregator
                         EndTime = currentDate,
                         UpdatedAt = currentDate
                     };
+
+                    if (request.Status == SyncStatus.ThresholdExceeded)
+                    {
+                        if (request.ProposedUsersAdded.HasValue)
+                        {
+                            history.UsersAdded = request.ProposedUsersAdded;
+                        }
+
+                        if (request.ProposedUsersRemoved.HasValue)
+                        {
+                            history.UsersRemoved = request.ProposedUsersRemoved;
+                        }
+                    }
 
                     await _syncJobStatusService.UpdateJobStatusAsync(syncJob, request.Status, history, functionName: "MembershipAggregator");
                 }

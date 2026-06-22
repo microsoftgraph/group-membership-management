@@ -503,6 +503,30 @@ namespace Services.Tests
         }
 
         [TestMethod]
+        public async Task HitMaxThresholdViolations_EmitsProposedCountsOnJobStatusUpdaterRequestAsync()
+        {
+            _thresholdConfig.Setup(x => x.NumberOfThresholdViolationsToDisableJob).Returns(5);
+            _thresholdConfig.Setup(x => x.NumberOfThresholdViolationsToNotify).Returns(5);
+
+            _syncJob.ThresholdViolations = 4;
+
+            var orchestratorFunction = new MembershipSubOrchestratorFunction(_thresholdConfig.Object, _graphAPIService.Object, _telemetryClient, _multiLaneConfig);
+            var response = await orchestratorFunction.RunMembershipSubOrchestratorFunctionAsync(_durableContext.Object);
+
+            Assert.AreEqual(MembershipDeltaStatus.ThresholdExceeded, response.MembershipDeltaStatus);
+            Assert.IsNotNull(_deltaCalculatorResponse);
+
+            _durableContext.Verify(x => x.CallActivityAsync(
+                nameof(JobStatusUpdaterFunction),
+                It.Is<JobStatusUpdaterRequest>(request =>
+                    request.Status == SyncStatus.ThresholdExceeded &&
+                    request.ProposedUsersAdded == _deltaCalculatorResponse.MembersToAddCount &&
+                    request.ProposedUsersRemoved == _deltaCalculatorResponse.MembersToRemoveCount),
+                It.IsAny<TaskOptions>()),
+                Times.Once);
+        }
+
+        [TestMethod]
         public async Task HitMaxAddsThresholdViolationsTestAsync()
         {
             _thresholdConfig.Setup(x => x.NumberOfThresholdViolationsToDisableJob).Returns(5);

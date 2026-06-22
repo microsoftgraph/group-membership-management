@@ -567,12 +567,14 @@ export const JobHistoryPanelBase: React.FunctionComponent<IJobHistoryPanelProps>
         const runId = item.syncHistory?.runId;
         const changeType = runId && runMembershipChangeMap ? runMembershipChangeMap.get(runId) : undefined;
         const isHighlighted = changeType === highlightChangeType;
+        const shouldShowPendingMarker = value !== null && value > 0 && showPendingMarker(item);
+        let countElement: JSX.Element;
 
         if (isHighlighted && value !== null) {
             const highlightClass = highlightChangeType === MembershipChangeType.Added
                 ? classNames.highlightedAddedCell
                 : classNames.highlightedRemovedCell;
-            return (
+            countElement = (
                 <span
                     className={highlightClass}
                     aria-label={highlightChangeType === MembershipChangeType.Added
@@ -582,9 +584,22 @@ export const JobHistoryPanelBase: React.FunctionComponent<IJobHistoryPanelProps>
                     {value}
                 </span>
             );
+        } else {
+            countElement = <span>{value ?? strings.JobDetails.Panel.emptyValuePlaceholder}</span>;
         }
 
-        return <span>{value ?? strings.JobDetails.Panel.emptyValuePlaceholder}</span>;
+        if (!shouldShowPendingMarker) {
+            return countElement;
+        }
+
+        return (
+            <span style={{ display: 'inline-flex', flexDirection: 'column', alignItems: 'flex-start', gap: '2px' }}>
+                {countElement}
+                <span className={classNames.pendingMarker} aria-label={strings.JobDetails.Panel.pendingMarkerAriaLabel}>
+                    {strings.JobDetails.Panel.pendingMarkerLabel}
+                </span>
+            </span>
+        );
     };
 
     const canRenderDownloadLink = (item: CombinedHistoryListItem): boolean => {
@@ -895,6 +910,13 @@ export const JobHistoryPanelBase: React.FunctionComponent<IJobHistoryPanelProps>
                 getUtcTimestampMillis(change.changeTime) > thresholdTime
         );
     }, [mostRecentThresholdRunId, syncHistoryItems, jobChanges]);
+
+    const showPendingMarker = (item: CombinedHistoryListItem): boolean =>
+        item.eventType === 'sync' &&
+        item.syncHistory?.status === RunHistoryStatus.ThresholdExceeded &&
+        item.syncHistory.runId === mostRecentThresholdRunId &&
+        !resolvedRunIds.has(item.syncHistory.runId) &&
+        !isThresholdResolved;
 
     const combinedSyncItems = useMemo<CombinedHistoryListItem[]>(() => {
         const configurationItems = jobChanges.map((item, index) => ({

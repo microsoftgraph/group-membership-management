@@ -14,5 +14,7 @@ namespace Hosts.MembershipAggregator
         public required bool IsDryRun { get; init; }
         public required bool IncrementThresholdViolations { get; init; }
         public required bool IsNoOpSync { get; init; }
+        public int? ProposedUsersAdded { get; init; }
+        public int? ProposedUsersRemoved { get; init; }
     }
 }

@@ -409,6 +409,8 @@ export type IStrings = {
       downloadColumnLabel: string;
       downloadLinkText: string;
       downloadingText: string;
+      pendingMarkerLabel: string;
+      pendingMarkerAriaLabel: string;
       statusFilterLabel: string;
       statusFilterAllOption: string;
       searchUserLabel: string;

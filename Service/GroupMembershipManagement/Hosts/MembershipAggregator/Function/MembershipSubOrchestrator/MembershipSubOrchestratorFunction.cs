@@ -348,7 +348,9 @@ namespace Hosts.MembershipAggregator
                                                     Status = status,
                                                     IsDryRun = false,
                                                     IncrementThresholdViolations = true,
-                                                    IsNoOpSync = false
+                                                    IsNoOpSync = false,
+                                                    ProposedUsersAdded = status == SyncStatus.ThresholdExceeded ? deltaResponse.MembersToAddCount : null,
+                                                    ProposedUsersRemoved = status == SyncStatus.ThresholdExceeded ? deltaResponse.MembersToRemoveCount : null
                                                 });
                 await context.CallActivityAsync(nameof(TelemetryTrackerFunction), new TelemetryTrackerRequest
                 {

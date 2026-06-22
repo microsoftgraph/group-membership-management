@@ -414,6 +414,8 @@ export const strings: IStrings = {
       downloadColumnLabel: 'Download',
       downloadLinkText: 'Download',
       downloadingText: 'Downloading...',
+      pendingMarkerLabel: 'Pending',
+      pendingMarkerAriaLabel: 'Pending — awaiting owner approval',
       statusFilterLabel: 'Status Filter',
       statusFilterAllOption: 'All statuses',
       searchUserLabel: 'Person involved',

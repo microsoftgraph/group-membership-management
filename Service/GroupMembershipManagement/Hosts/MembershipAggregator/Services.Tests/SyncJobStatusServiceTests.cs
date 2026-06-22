@@ -146,6 +146,51 @@ namespace Services.Tests
         }
 
         [TestMethod]
+        public async Task CreateOrUpdateJobHistoryAsync_WithExistingThresholdCounts_AllowsGraphUpdaterCountsToOverwrite()
+        {
+            // Arrange
+            var runId = Guid.NewGuid();
+            var existingHistory = new SyncJobHistory
+            {
+                RunId = runId,
+                SyncJobId = _job.Id,
+                Status = SyncStatus.ThresholdExceeded.ToString(),
+                UsersAdded = 30,
+                UsersRemoved = 1,
+                UpdatedByFunction = "MembershipAggregator"
+            };
+
+            var graphUpdaterHistory = new SyncJobHistory
+            {
+                RunId = runId,
+                Status = SyncStatus.Idle.ToString(),
+                UsersAdded = 28,
+                UsersRemoved = 2,
+                UpdatedByFunction = "GraphUpdater"
+            };
+
+            _syncJobHistoryRepository
+                .Setup(repo => repo.GetByRunIdAsync(runId))
+                .ReturnsAsync(existingHistory);
+
+            _syncJobHistoryRepository
+                .Setup(repo => repo.UpdateAsync(It.Is<SyncJobHistory>(history =>
+                    history == existingHistory &&
+                    history.Status == SyncStatus.Idle.ToString() &&
+                    history.UsersAdded == graphUpdaterHistory.UsersAdded &&
+                    history.UsersRemoved == graphUpdaterHistory.UsersRemoved &&
+                    history.UpdatedByFunction == graphUpdaterHistory.UpdatedByFunction)))
+                .Returns(Task.CompletedTask)
+                .Verifiable();
+
+            // Act
+            await _service.CreateOrUpdateJobHistoryAsync(graphUpdaterHistory);
+
+            // Assert
+            _syncJobHistoryRepository.Verify();
+        }
+
+        [TestMethod]
         public async Task CreateOrUpdateJobHistoryAsync_WithoutExistingHistory_ComputesDuration()
         {
             // Arrange

@@ -1,5 +1,5 @@
 import React from 'react';
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { JobHistoryPanelBase } from './JobHistoryPanel.base';
 import { MembershipChangeType } from '../../models/SearchSyncHistoryByUserResult';
@@ -83,6 +83,8 @@ const strings = {
       downloadingText: 'Downloading',
       downloadLinkText: 'Download',
       downloadError: 'Download error',
+      pendingMarkerLabel: 'Pending',
+      pendingMarkerAriaLabel: 'Pending — awaiting owner approval',
       resolveError: 'Resolve error',
       adfRunIdColumnLabel: 'ADF Run ID',
       takeActionDisabledTooltip: 'A message has been added for this run. No action is needed.',
@@ -169,7 +171,15 @@ vi.mock('@fluentui/react', async () => {
   );
   const Modal = ({ isOpen, children }: any) => (isOpen ? <div>{children}</div> : null);
   const TooltipHost = ({ children, content }: any) => <div title={content}>{children}</div>;
-  const DetailsRow = ({ children }: any) => <div>{children}</div>;
+  const DetailsRow = ({ children, item, columns }: any) => (
+    <div>
+      {children ?? columns?.map((column: any) => (
+        <div key={column.key} data-testid={`cell-${item.id ?? item.runId}-${column.key}`}>
+          {column.onRender ? column.onRender(item) : column.fieldName ? item[column.fieldName] : null}
+        </div>
+      ))}
+    </div>
+  );
   const NormalPeoplePicker = ({ onChange, ariaLabel }: any) => (
     <div>
       <button
@@ -182,10 +192,18 @@ vi.mock('@fluentui/react', async () => {
       </button>
     </div>
   );
-  const DetailsList = ({ items, columns, setKey }: any) => (
+  const DetailsList = ({ items, columns, setKey, onRenderRow }: any) => (
     <div data-testid={`details-list-${setKey}`}>
       {items.map((item: any, rowIndex: number) => {
         const itemKey = item.id ?? item.runId ?? `${setKey}-${rowIndex}`;
+        if (onRenderRow) {
+          return (
+            <div key={itemKey} data-testid={`row-${setKey}-${rowIndex}`}>
+              {onRenderRow({ item, columns })}
+            </div>
+          );
+        }
+
         return (
           <div key={itemKey} data-testid={`row-${setKey}-${rowIndex}`}>
             {columns.map((column: any) => (
@@ -506,6 +524,98 @@ describe('JobHistoryPanelBase membership change highlighting', () => {
     await selectUser();
 
     expect(await screen.findByLabelText('2 (user was removed in this sync)')).toBeInTheDocument();
+  });
+});
+
+describe('JobHistoryPanelBase threshold pending counts', () => {
+  const buildThresholdHistoryItem = (
+    runId: string,
+    endTime: string,
+    overrides: Partial<SyncJobHistory> = {}
+  ): SyncJobHistory => ({
+    ...buildSyncHistoryItem(runId, endTime, 30, 1),
+    status: RunHistoryStatus.ThresholdExceeded,
+    endTime: null,
+    afterSyncUserCount: null,
+    thresholdViolations: 1,
+    ...overrides,
+  });
+
+  it('renders pending markers under added and removed counts for the most recent unresolved ThresholdExceeded run', async () => {
+    mockSyncHistoryItems = [
+      buildThresholdHistoryItem('run-threshold-current', '2024-06-02T00:00:00Z', {
+        usersAdded: 30,
+        usersRemoved: 1,
+      }),
+    ];
+
+    await renderPanel();
+
+    const addedCell = await screen.findByTestId('cell-sync-run-threshold-current-usersAdded');
+    const removedCell = await screen.findByTestId('cell-sync-run-threshold-current-usersRemoved');
+
+    expect(within(addedCell).getByText('30')).toBeInTheDocument();
+    expect(within(addedCell).getByLabelText(strings.JobDetails.Panel.pendingMarkerAriaLabel)).toHaveTextContent(strings.JobDetails.Panel.pendingMarkerLabel);
+    expect(within(removedCell).getByText('1')).toBeInTheDocument();
+    expect(within(removedCell).getByLabelText(strings.JobDetails.Panel.pendingMarkerAriaLabel)).toHaveTextContent(strings.JobDetails.Panel.pendingMarkerLabel);
+  });
+
+  it('does not render pending markers for older resolved ThresholdExceeded rows', async () => {
+    mockSyncHistoryItems = [
+      buildThresholdHistoryItem('run-threshold-current', '2024-06-02T00:00:00Z'),
+      buildThresholdHistoryItem('run-threshold-old', '2024-06-01T00:00:00Z'),
+    ];
+
+    await renderPanel();
+
+    const oldAddedCell = await screen.findByTestId('cell-sync-run-threshold-old-usersAdded');
+
+    expect(within(oldAddedCell).getByText('30')).toBeInTheDocument();
+    expect(within(oldAddedCell).queryByText(strings.JobDetails.Panel.pendingMarkerLabel)).not.toBeInTheDocument();
+  });
+
+  it('does not render pending markers for non-ThresholdExceeded rows', async () => {
+    mockSyncHistoryItems = [
+      buildSyncHistoryItem('run-idle', '2024-06-02T00:00:00Z', 30, 1),
+    ];
+
+    await renderPanel();
+
+    const addedCell = await screen.findByTestId('cell-sync-run-idle-usersAdded');
+
+    expect(within(addedCell).getByText('30')).toBeInTheDocument();
+    expect(within(addedCell).queryByText(strings.JobDetails.Panel.pendingMarkerLabel)).not.toBeInTheDocument();
+  });
+
+  it('renders the existing Download link for tenant admins when a paused ThresholdExceeded row has pending counts', async () => {
+    mockSyncHistoryItems = [
+      buildThresholdHistoryItem('run-threshold-download', '2024-06-02T00:00:00Z', {
+        usersAdded: 2,
+        usersRemoved: 0,
+      }),
+    ];
+
+    await renderPanel();
+
+    fireEvent.click(await screen.findByLabelText(strings.JobDetails.Panel.expandRowAriaLabel));
+
+    expect(await screen.findByText(strings.JobDetails.Panel.downloadLinkText)).toBeInTheDocument();
+  });
+
+  it('does not render the Download link for non-admins when a paused ThresholdExceeded row has pending counts', async () => {
+    mockState.roles.isJobTenantWriter = false;
+    mockSyncHistoryItems = [
+      buildThresholdHistoryItem('run-threshold-download', '2024-06-02T00:00:00Z', {
+        usersAdded: 2,
+        usersRemoved: 0,
+      }),
+    ];
+
+    await renderPanel();
+
+    fireEvent.click(await screen.findByLabelText(strings.JobDetails.Panel.expandRowAriaLabel));
+
+    expect(screen.queryByText(strings.JobDetails.Panel.downloadLinkText)).not.toBeInTheDocument();
   });
 });
 
