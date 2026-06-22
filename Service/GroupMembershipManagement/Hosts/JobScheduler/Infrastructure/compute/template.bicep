@@ -69,6 +69,12 @@ var appInsightsConnectionString = resourceId(subscription().subscriptionId, data
 var jobsMSIConnectionString = resourceId(subscription().subscriptionId, dataKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'jobsMSIConnectionString')
 var replicaJobsMSIConnectionString = resourceId(subscription().subscriptionId, dataKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'replicaJobsMSIConnectionString')
 
+@description('When true, attaches the function app to a delegated subnet for VNET integration (FC1 / Microsoft.App/environments). Default false preserves pre-feature behavior.')
+param enableVnetIntegration bool = false
+
+@description('Resource ID of the delegated subnet for VNET integration. Required when enableVnetIntegration is true; ignored otherwise.')
+param virtualNetworkSubnetId string = ''
+
 module servicePlanTemplate 'servicePlan.bicep' = {
   name: 'servicePlanTemplate-JobScheduler'
   params: {
@@ -124,6 +130,8 @@ module existingLogAnalyticsWorkspace 'logAnalyticsWorkspace.bicep' = {
 module functionAppTemplate_JobScheduler 'functionApp.bicep' = {
   name: 'functionAppTemplate-JobScheduler'
   params: {
+    enableVnetIntegration: enableVnetIntegration
+    virtualNetworkSubnetId: virtualNetworkSubnetId
     name: '${functionAppName}-JobScheduler'
     kind: functionAppKind
     location: location

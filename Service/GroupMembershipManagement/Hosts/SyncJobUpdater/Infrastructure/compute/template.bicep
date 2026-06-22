@@ -62,6 +62,12 @@ param appConfigurationEndpoint string = 'https://${solutionAbbreviation}-appconf
 @description('Flag to indicate if the deployment should set RBAC permissions.')
 param setRBACPermissions bool = false
 
+@description('When true, attaches the function app to a delegated subnet for VNET integration (FC1 / Microsoft.App/environments). Default false preserves pre-feature behavior.')
+param enableVnetIntegration bool = false
+
+@description('Resource ID of the delegated subnet for VNET integration. Required when enableVnetIntegration is true; ignored otherwise.')
+param virtualNetworkSubnetId string = ''
+
 module servicePlanTemplate 'servicePlan.bicep' = {
   name: 'servicePlanTemplate-SyncJobUpdater'
   params: {
@@ -167,6 +173,8 @@ module existingLogAnalyticsWorkspace 'logAnalyticsWorkspace.bicep' = {
 module functionAppTemplate_SyncJobUpdater 'functionApp.bicep' = {
   name: 'functionAppTemplate-SyncJobUpdater'
   params: {
+    enableVnetIntegration: enableVnetIntegration
+    virtualNetworkSubnetId: virtualNetworkSubnetId
     name: '${functionAppName}-SyncJobUpdater'
     kind: functionAppKind
     location: location

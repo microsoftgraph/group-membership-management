@@ -94,6 +94,12 @@ var replicaJobsMSIConnectionString = resourceId(subscription().subscriptionId, d
 
 var graphUserAssignedManagedIdentityClientId = resourceId(subscription().subscriptionId, dataKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'graphUserAssignedManagedIdentityClientId')
 
+@description('When true, attaches the function app to a delegated subnet for VNET integration (FC1 / Microsoft.App/environments). Default false preserves pre-feature behavior.')
+param enableVnetIntegration bool = false
+
+@description('Resource ID of the delegated subnet for VNET integration. Required when enableVnetIntegration is true; ignored otherwise.')
+param virtualNetworkSubnetId string = ''
+
 module servicePlanTemplate 'servicePlan.bicep' = {
   name: 'servicePlanTemplate-DestinationAttributesUpdater'
   params: {
@@ -185,6 +191,8 @@ module existingLogAnalyticsWorkspace 'logAnalyticsWorkspace.bicep' = {
 module functionAppTemplate_DestinationAttributesUpdater 'functionApp.bicep' = {
   name: 'functionAppTemplate-DestinationAttributesUpdater'
   params: {
+    enableVnetIntegration: enableVnetIntegration
+    virtualNetworkSubnetId: virtualNetworkSubnetId
     name: '${functionAppName}-DestinationAttributesUpdater'
     kind: functionAppKind
     location: location

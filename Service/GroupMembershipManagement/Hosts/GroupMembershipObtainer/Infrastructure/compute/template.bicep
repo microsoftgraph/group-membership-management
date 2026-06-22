@@ -75,6 +75,12 @@ var replicaJobsMSIConnectionString = resourceId(subscription().subscriptionId, d
 var graphUserAssignedManagedIdentityClientId = resourceId(subscription().subscriptionId, dataKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'graphUserAssignedManagedIdentityClientId')
 var serviceBusNotificationsQueue = resourceId(subscription().subscriptionId, dataKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'serviceBusNotificationsQueue')
 
+@description('When true, attaches the function app to a delegated subnet for VNET integration (FC1 / Microsoft.App/environments). Default false preserves pre-feature behavior.')
+param enableVnetIntegration bool = false
+
+@description('Resource ID of the delegated subnet for VNET integration. Required when enableVnetIntegration is true; ignored otherwise.')
+param virtualNetworkSubnetId string = ''
+
 module servicePlanTemplate 'servicePlan.bicep' = {
   name: 'servicePlanTemplate-GroupMembershipObtainer'
   params: {
@@ -161,6 +167,8 @@ module existingLogAnalyticsWorkspace 'logAnalyticsWorkspace.bicep' = {
 module functionAppTemplate_GroupMembershipObtainer 'functionApp.bicep' = {
   name: 'functionAppTemplate-GroupMembershipObtainer'
   params: {
+    enableVnetIntegration: enableVnetIntegration
+    virtualNetworkSubnetId: virtualNetworkSubnetId
     name: '${functionAppName}-GroupMembershipObtainer'
     kind: functionAppKind
     location: location

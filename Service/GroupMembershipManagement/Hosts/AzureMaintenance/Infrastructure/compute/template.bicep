@@ -82,6 +82,12 @@ var replicaJobsMSIConnectionString = resourceId(subscription().subscriptionId, d
 var graphUserAssignedManagedIdentityClientId = resourceId(subscription().subscriptionId, dataKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'graphUserAssignedManagedIdentityClientId')
 var serviceBusNotificationsQueue = resourceId(subscription().subscriptionId, dataKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'serviceBusNotificationsQueue')
 
+@description('When true, attaches the function app to a delegated subnet for VNET integration (FC1 / Microsoft.App/environments). Default false preserves pre-feature behavior.')
+param enableVnetIntegration bool = false
+
+@description('Resource ID of the delegated subnet for VNET integration. Required when enableVnetIntegration is true; ignored otherwise.')
+param virtualNetworkSubnetId string = ''
+
 module servicePlanTemplate 'servicePlan.bicep' = {
   name: 'servicePlanTemplate-AzureMaintenance'
   params: {
@@ -164,6 +170,8 @@ module existingLogAnalyticsWorkspace 'logAnalyticsWorkspace.bicep' = {
 module functionAppTemplate_AzureMaintenance 'functionApp.bicep' = {
   name: 'functionAppTemplate-AzureMaintenance'
   params: {
+    enableVnetIntegration: enableVnetIntegration
+    virtualNetworkSubnetId: virtualNetworkSubnetId
     name: '${functionAppName}-AzureMaintenance'
     kind: functionAppKind
     location: location

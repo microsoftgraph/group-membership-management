@@ -149,6 +149,12 @@ param appConfigurationKeyData array = [
   }
 ]
 
+@description('When true, attaches the function app to a delegated subnet for VNET integration (FC1 / Microsoft.App/environments). Default false preserves pre-feature behavior.')
+param enableVnetIntegration bool = false
+
+@description('Resource ID of the delegated subnet for VNET integration. Required when enableVnetIntegration is true; ignored otherwise.')
+param virtualNetworkSubnetId string = ''
+
 module appConfigurationTemplate 'appConfigurationKeyValues.bicep' = {
   name: 'appConfigurationTemplate-NonProdService'
   scope: resourceGroup(dataKeyVaultResourceGroup)
@@ -237,6 +243,8 @@ module existingLogAnalyticsWorkspace 'logAnalyticsWorkspace.bicep' = {
 module functionAppTemplate_NonProdService 'functionApp.bicep' = {
   name: 'functionAppTemplate-NonProdService'
   params: {
+    enableVnetIntegration: enableVnetIntegration
+    virtualNetworkSubnetId: virtualNetworkSubnetId
     name: '${functionAppName}-NonProdService'
     kind: functionAppKind
     location: location

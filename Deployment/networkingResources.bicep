@@ -70,6 +70,13 @@ param natGatewayPipIpTags array = []
 @description('Tags to apply to the Bastion Host resource.')
 param bastionTags object = {}
 
+// -----------------------------------------------
+// Function VNET Integration (FlexConsumption / FC1)
+// -----------------------------------------------
+
+@description('Additional/Private function-subnet list to append to the public list.')
+param additionalFunctionSubnets array = []
+
 // networking resources
 module networkingInfrastructureTemplate '../Infrastructure/networking/template.bicep' = {
   name: 'networkingInfrastructureResources'
@@ -92,6 +99,7 @@ module networkingInfrastructureTemplate '../Infrastructure/networking/template.b
     bastionPipIpTags: bastionPipIpTags
     natGatewayPipIpTags: natGatewayPipIpTags
     bastionTags: bastionTags
+    additionalFunctionSubnets: additionalFunctionSubnets
   }
 }
 

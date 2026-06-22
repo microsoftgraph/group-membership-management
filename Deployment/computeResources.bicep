@@ -55,6 +55,44 @@ param featureFlags object = {
   enableOpenAI: false
 }
 
+@description('When true, attaches every public function/app-service to its delegated function-integration subnet in the consolidated Resources VNET (FC1 / Microsoft.App/environments). Default false preserves pre-feature behavior.')
+param enableFunctionVnetIntegration bool = false
+
+@description('Resource group hosting the consolidated Resources VNET (created by the networking deployment). When empty, defaults to `<solutionAbbreviation>-networking-<environmentAbbreviation>`.')
+param networkingResourceGroupName string = ''
+
+@description('Name of the consolidated Resources VNET. When empty, defaults to `<solutionAbbreviation>-networking-<environmentAbbreviation>-resources-vnet` (matches the networking template).')
+param resourcesVnetName string = ''
+
+var _resolvedNetworkingResourceGroupName = empty(networkingResourceGroupName) ? '${solutionAbbreviation}-networking-${environmentAbbreviation}' : networkingResourceGroupName
+var _resolvedResourcesVnetName = empty(resourcesVnetName) ? '${solutionAbbreviation}-networking-${environmentAbbreviation}-resources-vnet' : resourcesVnetName
+
+// Helper: compute the subnet ID for a given public function short name.
+// Subnet names follow `func-pub-<name>` for populated indices in [0, 18]
+// (indices 19..59 are reserved but unallocated; 
+func publicFunctionSubnetId(subscriptionId string, networkingRg string, vnetName string, shortName string) string => resourceId(subscriptionId, networkingRg, 'Microsoft.Network/virtualNetworks/subnets', vnetName, 'func-pub-${shortName}')
+
+var _vnetSubnetIdAutoApprover                = enableFunctionVnetIntegration ? publicFunctionSubnetId(subscription().subscriptionId, _resolvedNetworkingResourceGroupName, _resolvedResourcesVnetName, 'autoapprover') : ''
+var _vnetSubnetIdAzureMaintenance            = enableFunctionVnetIntegration ? publicFunctionSubnetId(subscription().subscriptionId, _resolvedNetworkingResourceGroupName, _resolvedResourcesVnetName, 'azuremaintenance') : ''
+var _vnetSubnetIdAzureUserReader             = enableFunctionVnetIntegration ? publicFunctionSubnetId(subscription().subscriptionId, _resolvedNetworkingResourceGroupName, _resolvedResourcesVnetName, 'azureuserreader') : ''
+var _vnetSubnetIdDestinationAttributesUpdater = enableFunctionVnetIntegration ? publicFunctionSubnetId(subscription().subscriptionId, _resolvedNetworkingResourceGroupName, _resolvedResourcesVnetName, 'destinationattributesupdater') : ''
+var _vnetSubnetIdGraphUpdater                = enableFunctionVnetIntegration ? publicFunctionSubnetId(subscription().subscriptionId, _resolvedNetworkingResourceGroupName, _resolvedResourcesVnetName, 'graphupdater') : ''
+var _vnetSubnetIdGroupMembershipObtainer     = enableFunctionVnetIntegration ? publicFunctionSubnetId(subscription().subscriptionId, _resolvedNetworkingResourceGroupName, _resolvedResourcesVnetName, 'groupmembershipobtainer') : ''
+var _vnetSubnetIdGroupOwnershipObtainer      = enableFunctionVnetIntegration ? publicFunctionSubnetId(subscription().subscriptionId, _resolvedNetworkingResourceGroupName, _resolvedResourcesVnetName, 'groupownershipobtainer') : ''
+var _vnetSubnetIdJobScheduler                = enableFunctionVnetIntegration ? publicFunctionSubnetId(subscription().subscriptionId, _resolvedNetworkingResourceGroupName, _resolvedResourcesVnetName, 'jobscheduler') : ''
+var _vnetSubnetIdJobTrigger                  = enableFunctionVnetIntegration ? publicFunctionSubnetId(subscription().subscriptionId, _resolvedNetworkingResourceGroupName, _resolvedResourcesVnetName, 'jobtrigger') : ''
+var _vnetSubnetIdMembershipAggregator        = enableFunctionVnetIntegration ? publicFunctionSubnetId(subscription().subscriptionId, _resolvedNetworkingResourceGroupName, _resolvedResourcesVnetName, 'membershipaggregator') : ''
+var _vnetSubnetIdMessageSplitter             = enableFunctionVnetIntegration ? publicFunctionSubnetId(subscription().subscriptionId, _resolvedNetworkingResourceGroupName, _resolvedResourcesVnetName, 'messagesplitter') : ''
+var _vnetSubnetIdNonProdService              = enableFunctionVnetIntegration ? publicFunctionSubnetId(subscription().subscriptionId, _resolvedNetworkingResourceGroupName, _resolvedResourcesVnetName, 'nonprodservice') : ''
+var _vnetSubnetIdNotifier                    = enableFunctionVnetIntegration ? publicFunctionSubnetId(subscription().subscriptionId, _resolvedNetworkingResourceGroupName, _resolvedResourcesVnetName, 'notifier') : ''
+var _vnetSubnetIdPlaceMembershipObtainer     = enableFunctionVnetIntegration ? publicFunctionSubnetId(subscription().subscriptionId, _resolvedNetworkingResourceGroupName, _resolvedResourcesVnetName, 'placemembershipobtainer') : ''
+var _vnetSubnetIdSqlDataChecker              = enableFunctionVnetIntegration ? publicFunctionSubnetId(subscription().subscriptionId, _resolvedNetworkingResourceGroupName, _resolvedResourcesVnetName, 'sqldatachecker') : ''
+var _vnetSubnetIdSqlMembershipObtainer       = enableFunctionVnetIntegration ? publicFunctionSubnetId(subscription().subscriptionId, _resolvedNetworkingResourceGroupName, _resolvedResourcesVnetName, 'sqlmembershipobtainer') : ''
+var _vnetSubnetIdSyncJobUpdater              = enableFunctionVnetIntegration ? publicFunctionSubnetId(subscription().subscriptionId, _resolvedNetworkingResourceGroupName, _resolvedResourcesVnetName, 'syncjobupdater') : ''
+var _vnetSubnetIdTeamsChannelMembershipObtainer = enableFunctionVnetIntegration ? publicFunctionSubnetId(subscription().subscriptionId, _resolvedNetworkingResourceGroupName, _resolvedResourcesVnetName, 'teamschannelmembershipobtainer') : ''
+var _vnetSubnetIdTeamsChannelUpdater         = enableFunctionVnetIntegration ? publicFunctionSubnetId(subscription().subscriptionId, _resolvedNetworkingResourceGroupName, _resolvedResourcesVnetName, 'teamschannelupdater') : ''
+
+
 var prereqsResourceGroupName = isManagedApplication ? managedResourceGroupName : '${solutionAbbreviation}-prereqs-${environmentAbbreviation}'
 var dataResourceGroupName = isManagedApplication ? managedResourceGroupName : '${solutionAbbreviation}-data-${environmentAbbreviation}'
 var computeResourceGroupName = isManagedApplication ? managedResourceGroupName : '${solutionAbbreviation}-compute-${environmentAbbreviation}'
@@ -74,6 +112,8 @@ module jobTriggerComputeResources '../Service/GroupMembershipManagement/Hosts/Jo
   name: 'jobTriggerComputeResourcesTemplate'
   scope: resourceGroup(computeResourceGroupName)
   params: {
+    enableVnetIntegration: enableFunctionVnetIntegration
+    virtualNetworkSubnetId: _vnetSubnetIdJobTrigger
     location: location
     environmentAbbreviation: environmentAbbreviation
     solutionAbbreviation: solutionAbbreviation
@@ -104,6 +144,8 @@ module destinationAttributesUpdaterComputeResources '../Service/GroupMembershipM
   name: 'destinationAttributesUpdaterComputeResourcesTemplate'
   scope: resourceGroup(computeResourceGroupName)
   params: {
+    enableVnetIntegration: enableFunctionVnetIntegration
+    virtualNetworkSubnetId: _vnetSubnetIdDestinationAttributesUpdater
     location: location
     environmentAbbreviation: environmentAbbreviation
     solutionAbbreviation: solutionAbbreviation
@@ -134,6 +176,8 @@ module groupMembershipObtainerComputeResources '../Service/GroupMembershipManage
   name: 'groupMembershipObtainerComputeResourcesTemplate'
   scope: resourceGroup(computeResourceGroupName)
   params: {
+    enableVnetIntegration: enableFunctionVnetIntegration
+    virtualNetworkSubnetId: _vnetSubnetIdGroupMembershipObtainer
     location: location
     environmentAbbreviation: environmentAbbreviation
     solutionAbbreviation: solutionAbbreviation
@@ -163,6 +207,8 @@ module sqlMembershipObtainerComputeResources '../Service/GroupMembershipManageme
   name: 'sqlMembershipObtainerComputeResourcesTemplate'
   scope: resourceGroup(computeResourceGroupName)
   params: {
+    enableVnetIntegration: enableFunctionVnetIntegration
+    virtualNetworkSubnetId: _vnetSubnetIdSqlMembershipObtainer
     location: location
     environmentAbbreviation: environmentAbbreviation
     solutionAbbreviation: solutionAbbreviation
@@ -195,6 +241,8 @@ module groupOwnershipObtainerComputeResources '../Service/GroupMembershipManagem
   name: 'groupOwnershipObtainerComputeResourcesTemplate'
   scope: resourceGroup(computeResourceGroupName)
   params: {
+    enableVnetIntegration: enableFunctionVnetIntegration
+    virtualNetworkSubnetId: _vnetSubnetIdGroupOwnershipObtainer
     location: location
     environmentAbbreviation: environmentAbbreviation
     solutionAbbreviation: solutionAbbreviation
@@ -224,6 +272,8 @@ module placeMembershipObtainerComputeResources '../Service/GroupMembershipManage
   name: 'placeMembershipObtainerComputeResourcesTemplate'
   scope: resourceGroup(computeResourceGroupName)
   params: {
+    enableVnetIntegration: enableFunctionVnetIntegration
+    virtualNetworkSubnetId: _vnetSubnetIdPlaceMembershipObtainer
     location: location
     environmentAbbreviation: environmentAbbreviation
     solutionAbbreviation: solutionAbbreviation
@@ -253,6 +303,8 @@ module teamsChannelMembershipObtainerComputeResources '../Service/GroupMembershi
   name: 'teamsChannelMembershipObtainerComputeResourcesTemplate'
   scope: resourceGroup(computeResourceGroupName)
   params: {
+    enableVnetIntegration: enableFunctionVnetIntegration
+    virtualNetworkSubnetId: _vnetSubnetIdTeamsChannelMembershipObtainer
     location: location
     environmentAbbreviation: environmentAbbreviation
     solutionAbbreviation: solutionAbbreviation
@@ -282,6 +334,8 @@ module membershipAggregatorComputeResources '../Service/GroupMembershipManagemen
   name: 'membershipAggregatorComputeResourcesTemplate'
   scope: resourceGroup(computeResourceGroupName)
   params: {
+    enableVnetIntegration: enableFunctionVnetIntegration
+    virtualNetworkSubnetId: _vnetSubnetIdMembershipAggregator
     location: location
     environmentAbbreviation: environmentAbbreviation
     solutionAbbreviation: solutionAbbreviation
@@ -319,6 +373,8 @@ module graphUpdaterComputeResources '../Service/GroupMembershipManagement/Hosts/
   name: instance == '' ? 'graphUpdaterComputeResourcesTemplate' : 'graphUpdater${instance}ComputeResourcesTemplate'
   scope: resourceGroup(computeResourceGroupName)
   params: {
+    enableVnetIntegration: enableFunctionVnetIntegration
+    virtualNetworkSubnetId: _vnetSubnetIdGraphUpdater
     location: location
     environmentAbbreviation: environmentAbbreviation
     solutionAbbreviation: solutionAbbreviation
@@ -353,6 +409,8 @@ module teamsChannelUpdaterComputeResources '../Service/GroupMembershipManagement
   name: 'teamsChannelUpdaterComputeResourcesTemplate'
   scope: resourceGroup(computeResourceGroupName)
   params: {
+    enableVnetIntegration: enableFunctionVnetIntegration
+    virtualNetworkSubnetId: _vnetSubnetIdTeamsChannelUpdater
     location: location
     environmentAbbreviation: environmentAbbreviation
     solutionAbbreviation: solutionAbbreviation
@@ -382,6 +440,8 @@ module nonProdServiceComputeResources '../Service/GroupMembershipManagement/Host
   name: 'nonProdServiceComputeResourcesTemplate'
   scope: resourceGroup(computeResourceGroupName)
   params: {
+    enableVnetIntegration: enableFunctionVnetIntegration
+    virtualNetworkSubnetId: _vnetSubnetIdNonProdService
     location: location
     environmentAbbreviation: environmentAbbreviation
     solutionAbbreviation: solutionAbbreviation
@@ -413,6 +473,8 @@ module azureUserReaderComputeResources '../Service/GroupMembershipManagement/Hos
   name: 'azureUserReaderComputeResourcesTemplate'
   scope: resourceGroup(computeResourceGroupName)
   params: {
+    enableVnetIntegration: enableFunctionVnetIntegration
+    virtualNetworkSubnetId: _vnetSubnetIdAzureUserReader
     location: location
     environmentAbbreviation: environmentAbbreviation
     solutionAbbreviation: solutionAbbreviation
@@ -444,6 +506,8 @@ module notifierComputeResources '../Service/GroupMembershipManagement/Hosts/Noti
   name: 'notifierComputeResourcesTemplate'
   scope: resourceGroup(computeResourceGroupName)
   params: {
+    enableVnetIntegration: enableFunctionVnetIntegration
+    virtualNetworkSubnetId: _vnetSubnetIdNotifier
     location: location
     environmentAbbreviation: environmentAbbreviation
     solutionAbbreviation: solutionAbbreviation
@@ -475,6 +539,8 @@ module autoApproverComputeResources '../Service/GroupMembershipManagement/Hosts/
   name: 'autoApproverComputeResourcesTemplate'
   scope: resourceGroup(computeResourceGroupName)
   params: {
+    enableVnetIntegration: enableFunctionVnetIntegration
+    virtualNetworkSubnetId: _vnetSubnetIdAutoApprover
     location: location
     environmentAbbreviation: environmentAbbreviation
     solutionAbbreviation: solutionAbbreviation
@@ -504,6 +570,8 @@ module jobSchedulerComputeResources '../Service/GroupMembershipManagement/Hosts/
   name: 'jobSchedulerComputeResourcesTemplate'
   scope: resourceGroup(computeResourceGroupName)
   params: {
+    enableVnetIntegration: enableFunctionVnetIntegration
+    virtualNetworkSubnetId: _vnetSubnetIdJobScheduler
     location: location
     environmentAbbreviation: environmentAbbreviation
     solutionAbbreviation: solutionAbbreviation
@@ -534,6 +602,8 @@ module syncJobUpdaterComputeResources '../Service/GroupMembershipManagement/Host
   name: 'syncJobUpdaterComputeResourcesTemplate'
   scope: resourceGroup(computeResourceGroupName)
   params: {
+    enableVnetIntegration: enableFunctionVnetIntegration
+    virtualNetworkSubnetId: _vnetSubnetIdSyncJobUpdater
     location: location
     environmentAbbreviation: environmentAbbreviation
     solutionAbbreviation: solutionAbbreviation
@@ -569,6 +639,8 @@ module messageSplitterComputeResources '../Service/GroupMembershipManagement/Hos
   name: 'messageSplitter${instance}ComputeResources'
   scope: resourceGroup(computeResourceGroupName)
   params: {
+    enableVnetIntegration: enableFunctionVnetIntegration
+    virtualNetworkSubnetId: _vnetSubnetIdMessageSplitter
     location: location
     environmentAbbreviation: environmentAbbreviation
     solutionAbbreviation: solutionAbbreviation
@@ -600,6 +672,8 @@ module azureMaintenanceComputeResources '../Service/GroupMembershipManagement/Ho
   name: 'azureMaintenanceComputeResourcesTemplate'
   scope: resourceGroup(computeResourceGroupName)
   params: {
+    enableVnetIntegration: enableFunctionVnetIntegration
+    virtualNetworkSubnetId: _vnetSubnetIdAzureMaintenance
     location: location
     environmentAbbreviation: environmentAbbreviation
     solutionAbbreviation: solutionAbbreviation
@@ -627,6 +701,8 @@ module sqlDataCheckerComputeResources '../Service/GroupMembershipManagement/Host
   name: 'sqlDataCheckerComputeResourcesTemplate'
   scope: resourceGroup(computeResourceGroupName)
   params: {
+    enableVnetIntegration: enableFunctionVnetIntegration
+    virtualNetworkSubnetId: _vnetSubnetIdSqlDataChecker
     location: location
     environmentAbbreviation: environmentAbbreviation
     solutionAbbreviation: solutionAbbreviation

@@ -69,6 +69,86 @@ param bastionSubnetAddressPrefix string = '10.0.0.0/26'
 param resourcesVnetAddressPrefix string = '10.1.0.0/16'
 
 // -----------------------------------------------
+// Function VNET Integration (FlexConsumption / FC1)
+// -----------------------------------------------
+// Function-integration subnets are allocated from CIDR `cidrSubnet(resourcesVnetAddressPrefix, 26, index + 4)`.
+// The `+ 4` skips the four /26 blocks that make up VmSubnet (10.x.0.0/24).
+// Public indices [0, 59] = up to 60 subnets (0..18 assigned today, 19..59 reserved).
+// Additional indices [60, ∞) = passed via additionalFunctionSubnets (3 assigned: 60, 61, 62).
+//
+// Allocation is split between two append-only lists sharing one CIDR reservation:
+//   - publicFunctionSubnets:    indices [0, 59]   (this template)
+//   - additionalFunctionSubnets indices [60, ∞)  (additional functions, passed as parameter)
+//
+// Ordering rules (NORMATIVE — see contracts/function-subnet-allocation-contract.md):
+//   1. Append-only in both lists.
+//   2. Never renumber an existing entry.
+//   3. Never reuse a tombstoned index; set `removed: true` to retire an entry while
+//      preserving its slot.
+//   4. Public range MUST stay in [0, functionSubnetIndexFloor - 1].
+//   5. Additional range MUST be >= functionSubnetIndexFloor; enforced at deploy time
+//      via the `_additionalIndexFloorCheck` guard array below.
+
+@description('Additional function-subnet list to append to the public list. Each entry: { name: string, index: int, removed: bool? }. Index MUST be >= functionSubnetIndexFloor (60). Default `[]` keeps the OSS / public-only deploy path identical to pre-feature behavior.')
+param additionalFunctionSubnets array = []
+
+var functionSubnetIndexFloor = 60
+
+// Canonical public function-subnet catalog. Indices 0..18 are assigned today;
+// 19..59 are reserved for future public functions (WebApi will be re-added
+// when Standard plan + Swift VNET integration work lands). Names MUST match
+// Service/GroupMembershipManagement/Hosts/<X>/Infrastructure/compute/ folders.
+// APPEND-ONLY: never reorder, never renumber, tombstone removals.
+var publicFunctionSubnets = [
+  { name: 'autoapprover', index: 0 }
+  { name: 'azuremaintenance', index: 1 }
+  { name: 'azureuserreader', index: 2 }
+  { name: 'destinationattributesupdater', index: 3 }
+  { name: 'graphupdater', index: 4 }
+  { name: 'groupmembershipobtainer', index: 5 }
+  { name: 'groupownershipobtainer', index: 6 }
+  { name: 'jobscheduler', index: 7 }
+  { name: 'jobtrigger', index: 8 }
+  { name: 'membershipaggregator', index: 9 }
+  { name: 'messagesplitter', index: 10 }
+  { name: 'nonprodservice', index: 11 }
+  { name: 'notifier', index: 12 }
+  { name: 'placemembershipobtainer', index: 13 }
+  { name: 'sqldatachecker', index: 14 }
+  { name: 'sqlmembershipobtainer', index: 15 }
+  { name: 'syncjobupdater', index: 16 }
+  { name: 'teamschannelmembershipobtainer', index: 17 }
+  { name: 'teamschannelupdater', index: 18 }
+  // indices 19..59 reserved for future public functions
+]
+
+var allFunctionSubnets = concat(publicFunctionSubnets, additionalFunctionSubnets)
+var activeFunctionSubnets = filter(allFunctionSubnets, s => !(s.?removed ?? false))
+
+// Index-floor enforcement (per spec FR-007 / FR-008 + contract §3).
+// Bicep `assert` is not enabled in the build pipeline's Bicep version
+// (0.41.x — no bicepconfig.json + experimental `assertions` feature opt-in).
+// Fallback: guard array. If any additional entry has index < 60, the conditional
+// expression injects the string 'INVALID_INDEX_BELOW_FLOOR' into an int slot,
+// causing ARM template type-coercion to fail deployment before any infra change.
+// `_additionalIndexFloorCheck` is referenced from a benign output below to prevent
+// the symbol from being pruned by the compiler.
+var _additionalIndexFloorCheck = [
+  for s in additionalFunctionSubnets: s.index >= functionSubnetIndexFloor ? s.index : json('"INVALID_INDEX_BELOW_FLOOR"')
+]
+
+// Project active function subnets into the shape virtualNetwork.bicep consumes.
+// Use `resourceId()` (computable at deploy start) rather than `resourcesNsg.outputs.id`
+// (runtime-only) so the for-expression is valid in a variable.
+var resourcesFunctionSubnets = [
+  for s in activeFunctionSubnets: {
+    name: 'func-${s.index < functionSubnetIndexFloor ? 'pub' : 'priv'}-${s.name}'
+    addressPrefix: cidrSubnet(resourcesVnetAddressPrefix, 26, s.index + 4)
+    nsgId: resourceId('Microsoft.Network/networkSecurityGroups', resourcesNsgName)
+  }
+]
+
+// -----------------------------------------------
 // VM Parameters
 // -----------------------------------------------
 
@@ -421,6 +501,10 @@ module resourcesVnet 'virtualNetwork.bicep' = {
         addressPrefix: privateEndpointSubnetAddressPrefix
         nsgId: resourcesNsg.outputs.id
         natGatewayId: null
+        // VERIFY before first validation deploy: confirm this matches the value on the
+        // LIVE int/ua PrivateEndpointSubnet (it holds ~10 live private endpoints — a
+        // wrong value drifts it). 'Disabled' is the conventional default for PE subnets.
+        privateEndpointNetworkPolicies: 'Disabled'
       }
       {
         name: 'VmSubnet'
@@ -429,7 +513,11 @@ module resourcesVnet 'virtualNetwork.bicep' = {
         natGatewayId: natGateway.outputs.id
       }
     ]
+    functionSubnets: resourcesFunctionSubnets
   }
+  dependsOn: [
+    resourcesNsg
+  ]
 }
 
 // =====================================================================================
@@ -516,10 +604,15 @@ module bastionHost 'bastion.bicep' = if (deployBastion) {
   params: {
     name: bastionHostName
     location: location
-    subnetId: bastionVnet.outputs.subnets[0].id
+    subnetId: resourceId('Microsoft.Network/virtualNetworks/subnets', bastionVnetName, 'AzureBastionSubnet')
     publicIpId: bastionPip.outputs.id
     tags: bastionTags
   }
+  // subnetId is now a plain resourceId string (no longer a module-output reference), so
+  // the implicit dependency on the Bastion VNet/subnet is gone — make it explicit.
+  dependsOn: [
+    bastionVnet
+  ]
 }
 
 // =====================================================================================
@@ -531,8 +624,13 @@ module managementNic 'networkInterface.bicep' = {
   params: {
     name: managementNicName
     location: location
-    subnetId: first(filter(resourcesVnet.outputs.subnets, s => s.name == 'VmSubnet')).id
+    subnetId: resourceId('Microsoft.Network/virtualNetworks/subnets', resourcesVnetName, 'VmSubnet')
   }
+  // subnetId is now a plain resourceId string (no longer a module-output reference), so
+  // make the dependency on the Resources VNet (which creates VmSubnet) explicit.
+  dependsOn: [
+    resourcesVnet
+  ]
 }
 
 module vmAdminSecrets '../data/keyVaultSecretsSecure.bicep' = if (setVmAdminSecrets) {
@@ -623,12 +721,13 @@ module prereqsKvPrivateEndpoint 'privateEndpoint.bicep' = {
   params: {
     name: '${namePrefix}-prereqs-kv-pe'
     location: location
-    subnetId: resourcesVnet.outputs.subnets[0].id
+    subnetId: resourceId('Microsoft.Network/virtualNetworks/subnets', resourcesVnetName, 'PrivateEndpointSubnet')
     privateLinkServiceId: prereqsKeyVault.id
     groupIds: ['vault']
     privateDnsZoneId: dnsZones[indexOf(privateDnsZoneNames, 'privatelink.vaultcore.azure.net')].outputs.id
   }
   dependsOn: [
+    resourcesVnet
     dnsZonePrivateLinkLinks
   ]
 }
@@ -638,12 +737,13 @@ module dataKvPrivateEndpoint 'privateEndpoint.bicep' = {
   params: {
     name: '${namePrefix}-data-kv-pe'
     location: location
-    subnetId: resourcesVnet.outputs.subnets[0].id
+    subnetId: resourceId('Microsoft.Network/virtualNetworks/subnets', resourcesVnetName, 'PrivateEndpointSubnet')
     privateLinkServiceId: dataKeyVault.id
     groupIds: ['vault']
     privateDnsZoneId: dnsZones[indexOf(privateDnsZoneNames, 'privatelink.vaultcore.azure.net')].outputs.id
   }
   dependsOn: [
+    resourcesVnet
     dnsZonePrivateLinkLinks
   ]
 }
@@ -657,12 +757,13 @@ module primarySqlPrivateEndpoint 'privateEndpoint.bicep' = {
   params: {
     name: '${namePrefix}-primary-sql-pe'
     location: location
-    subnetId: resourcesVnet.outputs.subnets[0].id
+    subnetId: resourceId('Microsoft.Network/virtualNetworks/subnets', resourcesVnetName, 'PrivateEndpointSubnet')
     privateLinkServiceId: resourceId(dataResourceGroupName, 'Microsoft.Sql/servers', sqlServerName)
     groupIds: ['sqlServer']
     privateDnsZoneId: dnsZones[indexOf(privateDnsZoneNames, 'privatelink.database.windows.net')].outputs.id
   }
   dependsOn: [
+    resourcesVnet
     dnsZonePrivateLinkLinks
   ]
 }
@@ -672,12 +773,13 @@ module replicaSqlPrivateEndpoint 'privateEndpoint.bicep' = {
   params: {
     name: '${namePrefix}-replica-sql-pe'
     location: location
-    subnetId: resourcesVnet.outputs.subnets[0].id
+    subnetId: resourceId('Microsoft.Network/virtualNetworks/subnets', resourcesVnetName, 'PrivateEndpointSubnet')
     privateLinkServiceId: resourceId(dataResourceGroupName, 'Microsoft.Sql/servers', replicaSqlServerName)
     groupIds: ['sqlServer']
     privateDnsZoneId: dnsZones[indexOf(privateDnsZoneNames, 'privatelink.database.windows.net')].outputs.id
   }
   dependsOn: [
+    resourcesVnet
     dnsZonePrivateLinkLinks
   ]
 }
@@ -691,12 +793,13 @@ module jobsStorageBlobPrivateEndpoint 'privateEndpoint.bicep' = {
   params: {
     name: '${namePrefix}-jobs-sa-blob-pe'
     location: location
-    subnetId: resourcesVnet.outputs.subnets[0].id
+    subnetId: resourceId('Microsoft.Network/virtualNetworks/subnets', resourcesVnetName, 'PrivateEndpointSubnet')
     privateLinkServiceId: resourceId(dataResourceGroupName, 'Microsoft.Storage/storageAccounts', jobsStorageAccountName)
     groupIds: ['blob']
     privateDnsZoneId: dnsZones[indexOf(privateDnsZoneNames, 'privatelink.blob.core.windows.net')].outputs.id
   }
   dependsOn: [
+    resourcesVnet
     dnsZonePrivateLinkLinks
   ]
 }
@@ -710,12 +813,13 @@ module functionsStorageBlobPrivateEndpoint 'privateEndpoint.bicep' = {
   params: {
     name: '${namePrefix}-fn-sa-blob-pe'
     location: location
-    subnetId: resourcesVnet.outputs.subnets[0].id
+    subnetId: resourceId('Microsoft.Network/virtualNetworks/subnets', resourcesVnetName, 'PrivateEndpointSubnet')
     privateLinkServiceId: resourceId(dataResourceGroupName, 'Microsoft.Storage/storageAccounts', functionsStorageAccountName)
     groupIds: ['blob']
     privateDnsZoneId: dnsZones[indexOf(privateDnsZoneNames, 'privatelink.blob.core.windows.net')].outputs.id
   }
   dependsOn: [
+    resourcesVnet
     dnsZonePrivateLinkLinks
   ]
 }
@@ -729,12 +833,13 @@ module functionsStorageTablePrivateEndpoint 'privateEndpoint.bicep' = {
   params: {
     name: '${namePrefix}-fn-sa-table-pe'
     location: location
-    subnetId: resourcesVnet.outputs.subnets[0].id
+    subnetId: resourceId('Microsoft.Network/virtualNetworks/subnets', resourcesVnetName, 'PrivateEndpointSubnet')
     privateLinkServiceId: resourceId(dataResourceGroupName, 'Microsoft.Storage/storageAccounts', functionsStorageAccountName)
     groupIds: ['table']
     privateDnsZoneId: dnsZones[indexOf(privateDnsZoneNames, 'privatelink.table.core.windows.net')].outputs.id
   }
   dependsOn: [
+    resourcesVnet
     dnsZonePrivateLinkLinks
   ]
 }
@@ -748,12 +853,13 @@ module functionsStorageQueuePrivateEndpoint 'privateEndpoint.bicep' = {
   params: {
     name: '${namePrefix}-fn-sa-queue-pe'
     location: location
-    subnetId: resourcesVnet.outputs.subnets[0].id
+    subnetId: resourceId('Microsoft.Network/virtualNetworks/subnets', resourcesVnetName, 'PrivateEndpointSubnet')
     privateLinkServiceId: resourceId(dataResourceGroupName, 'Microsoft.Storage/storageAccounts', functionsStorageAccountName)
     groupIds: ['queue']
     privateDnsZoneId: dnsZones[indexOf(privateDnsZoneNames, 'privatelink.queue.core.windows.net')].outputs.id
   }
   dependsOn: [
+    resourcesVnet
     dnsZonePrivateLinkLinks
   ]
 }
@@ -767,12 +873,13 @@ module appConfigPrivateEndpoint 'privateEndpoint.bicep' = {
   params: {
     name: '${namePrefix}-appconfig-pe'
     location: location
-    subnetId: resourcesVnet.outputs.subnets[0].id
+    subnetId: resourceId('Microsoft.Network/virtualNetworks/subnets', resourcesVnetName, 'PrivateEndpointSubnet')
     privateLinkServiceId: resourceId(dataResourceGroupName, 'Microsoft.AppConfiguration/configurationStores', appConfigurationName)
     groupIds: ['configurationStores']
     privateDnsZoneId: dnsZones[indexOf(privateDnsZoneNames, 'privatelink.azconfig.io')].outputs.id
   }
   dependsOn: [
+    resourcesVnet
     dnsZonePrivateLinkLinks
   ]
 }
@@ -784,5 +891,27 @@ module appConfigPrivateEndpoint 'privateEndpoint.bicep' = {
 output bastionVnetId string = deployBastion ? bastionVnet.outputs.id : existingBastionVnetId
 output resourcesVnetId string = resourcesVnet.outputs.id
 output resourcesVnetName string = resourcesVnet.outputs.name
-output privateEndpointSubnetId string = resourcesVnet.outputs.subnets[0].id
-output vmSubnetId string = first(filter(resourcesVnet.outputs.subnets, s => s.name == 'VmSubnet')).id
+output privateEndpointSubnetId string = resourceId('Microsoft.Network/virtualNetworks/subnets', resourcesVnetName, 'PrivateEndpointSubnet')
+output vmSubnetId string = resourceId('Microsoft.Network/virtualNetworks/subnets', resourcesVnetName, 'VmSubnet')
+
+// Catalog of active function-integration subnets keyed by both the original short
+// name (from publicFunctionSubnets / additionalFunctionSubnets) and the deployed
+// subnet name (`func-pub-*` / `func-priv-*`). Consumers (compute templates) look up
+// subnet IDs by short name to stay tombstone-safe (array index is not stable across
+// tombstones).
+output functionSubnets array = [
+  for s in activeFunctionSubnets: {
+    name: s.name
+    index: s.index
+    subnetName: 'func-${s.index < functionSubnetIndexFloor ? 'pub' : 'priv'}-${s.name}'
+    id: resourceId('Microsoft.Network/virtualNetworks/subnets', resourcesVnetName, 'func-${s.index < functionSubnetIndexFloor ? 'pub' : 'priv'}-${s.name}')
+  }
+]
+
+// Index-floor guard surface. Emitting `_additionalIndexFloorCheck` as a strongly-typed
+// `int[]` output forces ARM to validate every element against the declared type.
+// If any entry in `additionalFunctionSubnets` has `index < functionSubnetIndexFloor`,
+// the corresponding slot holds the string `'INVALID_INDEX_BELOW_FLOOR'` (via
+// `json('"..."')`) and the deployment fails type validation BEFORE any infra change.
+// This output is otherwise informational; consumers should not depend on it.
+output _additionalIndexFloorEnforcement int[] = _additionalIndexFloorCheck

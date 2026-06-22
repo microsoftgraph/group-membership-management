@@ -67,6 +67,12 @@ param instanceMemoryMB int = 2048
 ])
 param instanceIdentifier string
 
+@description('When true, attaches the function app to a delegated subnet for VNET integration (FC1 / Microsoft.App/environments). Default false preserves pre-feature behavior.')
+param enableVnetIntegration bool = false
+
+@description('Resource ID of the delegated subnet for VNET integration. Required when enableVnetIntegration is true; ignored otherwise.')
+param virtualNetworkSubnetId string = ''
+
 resource storageAccount 'Microsoft.Storage/storageAccounts@2023-01-01' existing = {
   name: storageAccountName
   scope: resourceGroup(dataKeyVaultResourceGroup)
@@ -111,6 +117,7 @@ resource functionApp 'Microsoft.Web/sites@2023-12-01' = {
       ]
     }
     functionAppConfig: functionAppConfig
+    virtualNetworkSubnetId: (enableVnetIntegration && !empty(virtualNetworkSubnetId)) ? virtualNetworkSubnetId : null
   }
   identity: {
     type: deployUserManagedIdentity ? 'SystemAssigned, UserAssigned' : 'SystemAssigned'

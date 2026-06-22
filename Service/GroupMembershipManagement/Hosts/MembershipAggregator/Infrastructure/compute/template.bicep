@@ -79,6 +79,12 @@ var graphUserAssignedManagedIdentityClientId = resourceId(subscription().subscri
 var serviceBusMessageSplitterTopic = resourceId(subscription().subscriptionId, dataKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'serviceBusMessageSplitterTopic')
 
 
+@description('When true, attaches the function app to a delegated subnet for VNET integration (FC1 / Microsoft.App/environments). Default false preserves pre-feature behavior.')
+param enableVnetIntegration bool = false
+
+@description('Resource ID of the delegated subnet for VNET integration. Required when enableVnetIntegration is true; ignored otherwise.')
+param virtualNetworkSubnetId string = ''
+
 module servicePlanTemplate 'servicePlan.bicep' = {
   name: 'servicePlanTemplate-MembershipAggregator'
   params: {
@@ -167,6 +173,8 @@ module existingLogAnalyticsWorkspace 'logAnalyticsWorkspace.bicep' = {
 module functionAppTemplate_MembershipAggregator 'functionApp.bicep' = {
   name: 'functionAppTemplate-MembershipAggregator'
   params: {
+    enableVnetIntegration: enableVnetIntegration
+    virtualNetworkSubnetId: virtualNetworkSubnetId
     name: functionAppFullName
     kind: functionAppKind
     location: location
