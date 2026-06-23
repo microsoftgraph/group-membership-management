@@ -39,13 +39,15 @@ export const AppFooterBase: React.FunctionComponent<IAppFooterProps> = (
 
     return (
         <div className={classNames.footer}>
-            <PageVersion />
-            <PrivacyPolicyLink className={classNames.privacyPolicy} />
-            <div className={classNames.rightControls}>
-                {showPagingBar && (
-                    <PagingBar />
-                )}
+            <div className={classNames.topRow}>
+                <PageVersion className={classNames.pageVersion} />
+                <div className={classNames.rightControls}>
+                    {showPagingBar && (
+                        <PagingBar />
+                    )}
+                </div>
             </div>
+            <PrivacyPolicyLink className={classNames.privacyPolicy} />
         </div>
     );
 };

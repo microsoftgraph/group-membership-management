@@ -15,15 +15,28 @@ import {
       }, className],
       footer: {
         display: 'flex',
+        flexDirection: 'column',
+        justifyContent: 'center',
+        width: '100%',
+        height: '100%',
+      },
+      topRow: {
+        display: 'flex',
         position: 'relative',
         alignItems: 'center',
         width: '100%',
       },
-      privacyPolicy: {
-        padding: '20px 36px',
+      pageVersion: {
         position: 'absolute',
-        left: '50%',
-        transform: 'translateX(-50%)',
+        left: 0,
+        top: '50%',
+        transform: 'translateY(-50%)',
+      },
+      privacyPolicy: {
+        padding: '10px 36px',
+        width: '100%',
+        textAlign: 'center',
+        boxSizing: 'border-box',
       },
       pagingBar: {
         visibility: showPagingBar ? 'visible' : 'hidden'
@@ -31,7 +44,7 @@ import {
       rightControls: {
         display: 'flex',
         alignItems: 'center',
-        flex: 1,
+        width: '100%',
       },
       themeToggle: {
         padding: '20px 36px 20px 0',

@@ -11,6 +11,8 @@ import {
   export interface IAppFooterStyles {
     root: IStyle;
     footer: IStyle;
+    topRow: IStyle;
+    pageVersion: IStyle;
     privacyPolicy: IStyle;
     pagingBar: IStyle;
     rightControls: IStyle;
