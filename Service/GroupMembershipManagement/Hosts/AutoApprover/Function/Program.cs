@@ -8,6 +8,8 @@ using Microsoft.Azure.Functions.Worker;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Repositories.Contracts;
+using Repositories.GraphGroups;
 using Services.AutoApprover;
 using Services.AutoApprover.Contracts;
 using System;
@@ -41,6 +43,9 @@ namespace Hosts.AutoApprover
                     CommonServices.ConfigureCommonServices(services, configuration, functionName, dryRunSettingName, rootPath);
 
                     services.ConfigureFunctionsApplicationInsights();
+
+                    services.AddGraphAPIClient();
+                    services.AddScoped<IGraphGroupRepository, GraphGroupRepository>();
 
                     services.AddScoped<IAutoApproverService, AutoApproverService>();
                 })
