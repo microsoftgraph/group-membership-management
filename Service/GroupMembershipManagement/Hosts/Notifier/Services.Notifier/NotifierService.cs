@@ -41,6 +41,7 @@ namespace Services.Notifier
         private readonly IServiceBusQueueRepository _serviceBusQueueRepository;
         private readonly IDatabaseGroupsRepository _databaseGroupsRepository;
         private readonly IDatabaseChannelsRepository _databaseChannelsRepository;
+        private readonly IDatabaseSettingsRepository _databaseSettingsRepository;
 
         public NotifierService(
             ILogger<NotifierService> logger,
@@ -57,6 +58,7 @@ namespace Services.Notifier
             IServiceBusQueueRepository serviceBusQueueRepository,
             IDatabaseGroupsRepository databaseGroupsRepository,
             IDatabaseChannelsRepository databaseChannelsRepository,
+            IDatabaseSettingsRepository databaseSettingsRepository,
             TelemetryClient telemetryClient)
         {
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
@@ -73,6 +75,7 @@ namespace Services.Notifier
             _serviceBusQueueRepository = serviceBusQueueRepository ?? throw new ArgumentNullException(nameof(_serviceBusQueueRepository));
             _databaseGroupsRepository = databaseGroupsRepository ?? throw new ArgumentNullException(nameof(databaseGroupsRepository));
             _databaseChannelsRepository = databaseChannelsRepository ?? throw new ArgumentNullException(nameof(databaseChannelsRepository));
+            _databaseSettingsRepository = databaseSettingsRepository ?? throw new ArgumentNullException(nameof(databaseSettingsRepository));
             _telemetryClient = telemetryClient ?? throw new ArgumentNullException(nameof(telemetryClient));
         }
 
@@ -118,11 +121,20 @@ namespace Services.Notifier
 
             var adaptiveCard = await _thresholdNotificationService.CreateNotificationCardAsync(notification);
 
+            // Build a Run History deep link (UI route: /JobDetails/{jobId}/history) so the
+            // fallback message directs owners to the run outcomes for this job rather than the
+            // generic Job Details page. Only the non-OAM fallback body uses this link; the
+            // actionable adaptive card above is unchanged.
+            var uiUrlSetting = await _databaseSettingsRepository.GetSettingByKeyAsync(SettingKey.UIUrl);
+            var uiUrl = uiUrlSetting?.SettingValue ?? string.Empty;
+            var runHistoryUrl = uiUrl + "/jobdetails/" + notification.SyncJobId.ToString() + "/history";
+
             var fallbackHTMLContent = _localizationRepository.TranslateSetting(NotificationConstants.ThresholdNotificationFallbackBody,
                 groupName,
                 notification.TargetOfficeGroupId.ToString(),
                 notification.ThresholdPercentageForAdditions.ToString(),
-                notification.ThresholdPercentageForRemovals.ToString());
+                notification.ThresholdPercentageForRemovals.ToString(),
+                runHistoryUrl);
             
             var htmlTemplate = @"<html>
                 <head

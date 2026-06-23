@@ -1236,6 +1236,8 @@ If guest users are required, they will need to be managed outside of GMM.
 
 **{2}% increase** and **{3}% decrease** alerts are configured for this group.
 
+To review the run outcomes for this group, visit the Sync History page: {4}
+
 Please forward this message to the CC'ed email for support and they will guide you through the actions.</value>
   </data>
   <data name="SubmissionRejectedEmailTitle" xml:space="preserve">

@@ -210,6 +210,7 @@ namespace Repositories.Mail
             string UIUrl = urlSetting?.SettingValue ?? "";
             string dashboardUrl = dashboardUrlSetting?.SettingValue ?? "";
             string jobUrl = urlSetting?.SettingValue + "/jobdetails/" + emailMessage.SyncJobId.ToString() ?? "";
+            string historyUrl = urlSetting?.SettingValue + "/jobdetails/" + emailMessage.SyncJobId.ToString() + "/history" ?? "";
 
             var cardData = new DefaultCardTemplate
             {
@@ -247,15 +248,15 @@ namespace Repositories.Mail
                 }
 
                 if (string.Equals(emailMessage?.Content, "SyncStartedEmailBody", StringComparison.OrdinalIgnoreCase))
-                    styledFallback = await _mailFallbackBuilder.BuildSyncStartedFallbackAsync(emailMessage, fallbackDestinationGroupName, groupId, jobUrl, sentDate);
+                    styledFallback = await _mailFallbackBuilder.BuildSyncStartedFallbackAsync(emailMessage, fallbackDestinationGroupName, groupId, historyUrl, sentDate);
                 else if (string.Equals(emailMessage?.Content, "SyncCompletedEmailBody", StringComparison.OrdinalIgnoreCase))
-                    styledFallback = await _mailFallbackBuilder.BuildSyncCompletedFallbackAsync(emailMessage, fallbackDestinationGroupName, groupId, jobUrl, sentDate);
+                    styledFallback = await _mailFallbackBuilder.BuildSyncCompletedFallbackAsync(emailMessage, fallbackDestinationGroupName, groupId, historyUrl, sentDate);
                 else if (string.Equals(emailMessage?.Content, NotificationConstants.JobPurgingWarningEmailBody, StringComparison.OrdinalIgnoreCase))
-                    styledFallback = await _mailFallbackBuilder.BuildJobPurgingWarningFallbackAsync(emailMessage, fallbackDestinationGroupName, groupId, jobUrl, sentDate);
+                    styledFallback = await _mailFallbackBuilder.BuildJobPurgingWarningFallbackAsync(emailMessage, fallbackDestinationGroupName, groupId, historyUrl, sentDate);
                 else if (string.Equals(emailMessage?.Content, NotificationConstants.SyncPurgedForInactivityEmailBody, StringComparison.OrdinalIgnoreCase))
                     styledFallback = await _mailFallbackBuilder.BuildFinalNoticeFallbackAsync(emailMessage, fallbackDestinationGroupName, groupId, jobUrl, sentDate);
                 else if (IsSyncDisabledNotification(emailMessage?.Content))
-                    styledFallback = await _mailFallbackBuilder.BuildSyncDisabledFallbackAsync(emailMessage, fallbackDestinationGroupName, groupId, jobUrl, sentDate);
+                    styledFallback = await _mailFallbackBuilder.BuildSyncDisabledFallbackAsync(emailMessage, fallbackDestinationGroupName, groupId, historyUrl, sentDate);
                 else if (string.Equals(emailMessage?.Content, NotificationConstants.SubmissionRejectedEmailBody, StringComparison.OrdinalIgnoreCase))
                     styledFallback = await _mailFallbackBuilder.BuildSubmissionRejectedFallbackAsync(emailMessage, fallbackDestinationGroupName, groupId, jobUrl, sentDate);
 

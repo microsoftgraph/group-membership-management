@@ -60,6 +60,7 @@ namespace Services.Notifier.Tests
         private Mock<IServiceBusQueueRepository> _serviceBusQueueRepository;
         private Mock<IDatabaseGroupsRepository> _groupsRepository = null;
         private Mock<IDatabaseChannelsRepository> _channelsRepository = null;
+        private Mock<IDatabaseSettingsRepository> _settingsRepository = null;
 
 
         [TestMethod]
@@ -142,6 +143,9 @@ namespace Services.Notifier.Tests
             _serviceBusQueueRepository = new Mock<IServiceBusQueueRepository>();
             _groupsRepository = new Mock<IDatabaseGroupsRepository>();
             _channelsRepository = new Mock<IDatabaseChannelsRepository>();
+            _settingsRepository = new Mock<IDatabaseSettingsRepository>();
+            _settingsRepository.Setup(x => x.GetSettingByKeyAsync(SettingKey.UIUrl))
+                .ReturnsAsync(new Setting { SettingKey = SettingKey.UIUrl, SettingValue = "https://gmm.example.com" });
             _gmmResources = new Mock<IGMMResources>();
             _notification = new ThresholdNotification
             {
@@ -197,6 +201,7 @@ namespace Services.Notifier.Tests
                                                 _serviceBusQueueRepository.Object,
                                                 _groupsRepository.Object,
                                                 _channelsRepository.Object,
+                                                _settingsRepository.Object,
                                                 _telemetryClient
                                                 );
             _requestAdapter = new Mock<IRequestAdapter>();
@@ -330,8 +335,18 @@ namespace Services.Notifier.Tests
         [TestMethod]
         public async Task TestSendThresholdEmail()
         {
+            EmailMessage capturedMessage = null;
+            _mailRepository.Setup(x => x.SendMailAsync(It.IsAny<EmailMessage>(), null))
+                .Callback<EmailMessage, Guid?>((m, _) => capturedMessage = m);
+
+            _notification.SyncJobId = Guid.NewGuid();
+
             await _notifierService.SendThresholdEmailAsync(_notification);
+
             _mailRepository.Verify(x => x.SendMailAsync(It.IsAny<EmailMessage>(), null), Times.Once());
+            Assert.IsNotNull(capturedMessage);
+            StringAssert.Contains(capturedMessage.Content,
+                $"https://gmm.example.com/jobdetails/{_notification.SyncJobId}/history");
         }
 
         [TestMethod]
@@ -458,6 +473,7 @@ namespace Services.Notifier.Tests
                                     _serviceBusQueueRepository.Object,
                                     _groupsRepository.Object,
                                     _channelsRepository.Object,
+                                    _settingsRepository.Object,
                                     _telemetryClient
                                     );
 
