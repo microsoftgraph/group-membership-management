@@ -29,7 +29,7 @@ export enum ActionRequired {
   SecurityGroupNotFound = 'Source Group Not Found',
   PendingReview = 'Pending Review',
   PendingConfiguration = 'System Configuration in Progress',
-  PendingAutoApproval = 'Pending Review',
+  PendingAutoApproval = 'Pending Automated Review',
   SubmissionRejected = 'Submission Rejected',
   NestedGroupsFound = 'Nested Groups Detected',
   GuestUsersCannotBeAddedToUnifiedGroup = 'Guest Users Not Supported'
