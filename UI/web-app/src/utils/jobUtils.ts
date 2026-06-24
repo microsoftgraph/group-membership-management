@@ -55,6 +55,9 @@ export const processJob = (job: Job): Job => {
     case SyncStatus.PendingConfiguration:
       job['actionRequired'] = ActionRequired.PendingConfiguration;
       break;
+    case SyncStatus.PendingAutoApproval:
+      job['actionRequired'] = ActionRequired.PendingAutoApproval;
+      break;
     case SyncStatus.SubmissionRejected:
       job['actionRequired'] = ActionRequired.SubmissionRejected;
       break;

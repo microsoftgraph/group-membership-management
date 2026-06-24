@@ -72,9 +72,13 @@ namespace Services
                 {
                     newSyncJobEntity.Status = SyncStatus.PendingConfiguration.ToString();
                 }
-                else
+                else if (_autoApproverQueueRepository != null)
                 {
-                    // Auto-approval is now handled by the AutoApprover function
+                    // Route through the AutoApprover: the job waits in PendingAutoApproval until the
+                    // AutoApprover evaluates it (approves -> Idle, declines -> PendingReview). If the
+                    // AutoApprover queue isn't configured, leave the default PendingReview so the job
+                    // isn't stranded with no consumer.
+                    newSyncJobEntity.Status = SyncStatus.PendingAutoApproval.ToString();
                 }
 
                 var isAITitleEnabled = await IsAITitleEnabledAsync();
@@ -171,7 +175,7 @@ namespace Services
 
                     if (!isPendingConfigurationEnabled || newSyncJobEntity.MembershipType != MembershipTypes.GroupMembership.ToString())
                     {
-                        if (_autoApproverQueueRepository != null && newSyncJobEntity.Status == SyncStatus.PendingReview.ToString())
+                        if (_autoApproverQueueRepository != null && newSyncJobEntity.Status == SyncStatus.PendingAutoApproval.ToString())
                         {
                             var autoApprovalMessage = new AutoApprovalQueueMessage
                             {

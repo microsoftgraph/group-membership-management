@@ -48,7 +48,7 @@ namespace Services.Tests
             var syncJob = new SyncJob
             {
                 Id = syncJobId,
-                Status = SyncStatus.PendingReview.ToString(),
+                Status = SyncStatus.PendingAutoApproval.ToString(),
                 StartDate = DateTime.UtcNow.AddHours(-1),
                 Query = $"[{{\"type\":\"GroupMembership\",\"source\":\"{groupId1}\"}},{{\"type\":\"GroupMembership\",\"source\":\"{groupId2}\"}}]"
             };
@@ -94,7 +94,7 @@ namespace Services.Tests
         }
 
         [TestMethod]
-        public async Task ProcessAutoApproval_GroupMembershipHidden_DoesNotApproveAsync()
+        public async Task ProcessAutoApproval_GroupMembershipHidden_MovesToPendingReviewAsync()
         {
             var syncJobId = Guid.NewGuid();
             var groupId = Guid.NewGuid();
@@ -102,7 +102,7 @@ namespace Services.Tests
             var syncJob = new SyncJob
             {
                 Id = syncJobId,
-                Status = SyncStatus.PendingReview.ToString(),
+                Status = SyncStatus.PendingAutoApproval.ToString(),
                 Query = $"[{{\"type\":\"GroupMembership\",\"source\":\"{groupId}\"}}]"
             };
 
@@ -136,7 +136,10 @@ namespace Services.Tests
                 RequestorDisplayName = "Requestor"
             });
 
-            syncJobsRepository.Verify(x => x.UpdateSyncJobsAsync(It.IsAny<IEnumerable<SyncJob>>(), It.IsAny<SyncStatus?>()), Times.Never);
+            // Not granted: the job is handed off to a human by moving it to PendingReview, but no
+            // OnboardingAutoApproved audit record is written.
+            syncJobsRepository.Verify(x => x.UpdateSyncJobsAsync(It.Is<IEnumerable<SyncJob>>(jobs =>
+                jobs.Count() == 1 && jobs.First().Status == SyncStatus.PendingReview.ToString()), It.IsAny<SyncStatus?>()), Times.Once);
             syncJobChangeRepository.Verify(x => x.Save(It.IsAny<SyncJobChange>()), Times.Never);
         }
 
@@ -150,7 +153,7 @@ namespace Services.Tests
             var syncJob = new SyncJob
             {
                 Id = syncJobId,
-                Status = SyncStatus.PendingReview.ToString(),
+                Status = SyncStatus.PendingAutoApproval.ToString(),
                 Query = $"[{{\"type\":\"SqlMembership\",\"source\":{{\"manager\":{{\"id\":{managerId}}}}}}}]"
             };
 
@@ -201,7 +204,7 @@ namespace Services.Tests
             var syncJob = new SyncJob
             {
                 Id = syncJobId,
-                Status = SyncStatus.PendingReview.ToString(),
+                Status = SyncStatus.PendingAutoApproval.ToString(),
                 StartDate = DateTime.UtcNow.AddHours(-1),
                 Query = $"[{{\"type\":\"GroupMembership\",\"source\":\"{groupId1}\"}},{{\"type\":\"GroupMembership\",\"source\":\"{groupId2}\"}}]"
             };
@@ -252,18 +255,19 @@ namespace Services.Tests
 
             Assert.AreSame(saveException, thrown);
 
-            // Two persistence calls: the initial flip to Idle, then the compensating revert to PendingReview.
+            // Two persistence calls: the initial flip to Idle, then the compensating revert to PendingAutoApproval.
             syncJobsRepository.Verify(x => x.UpdateSyncJobsAsync(It.IsAny<IEnumerable<SyncJob>>(), It.IsAny<SyncStatus?>()), Times.Exactly(2));
             CollectionAssert.AreEqual(
-                new[] { SyncStatus.Idle.ToString(), SyncStatus.PendingReview.ToString() },
+                new[] { SyncStatus.Idle.ToString(), SyncStatus.PendingAutoApproval.ToString() },
                 observedStatuses);
 
-            // The job is left in PendingReview so the Service Bus retry re-runs the full approval path.
-            Assert.AreEqual(SyncStatus.PendingReview.ToString(), syncJob.Status);
+            // The job is left in PendingAutoApproval so the Service Bus retry re-runs the full approval path
+            // (and writes the missing audit record) instead of short-circuiting on the status guard.
+            Assert.AreEqual(SyncStatus.PendingAutoApproval.ToString(), syncJob.Status);
         }
 
         [TestMethod]
-        public async Task ProcessAutoApproval_StatusNotPendingReview_SkipsAsync()
+        public async Task ProcessAutoApproval_StatusNotPendingAutoApproval_SkipsAsync()
         {
             var syncJobId = Guid.NewGuid();
             var syncJob = new SyncJob
@@ -297,6 +301,94 @@ namespace Services.Tests
 
             syncJobsRepository.Verify(x => x.UpdateSyncJobsAsync(It.IsAny<IEnumerable<SyncJob>>(), It.IsAny<SyncStatus?>()), Times.Never);
             syncJobChangeRepository.Verify(x => x.Save(It.IsAny<SyncJobChange>()), Times.Never);
+        }
+
+        [TestMethod]
+        public async Task MoveJobToPendingReview_PendingAutoApproval_MovesToPendingReviewAsync()
+        {
+            var syncJobId = Guid.NewGuid();
+            var syncJob = new SyncJob
+            {
+                Id = syncJobId,
+                Status = SyncStatus.PendingAutoApproval.ToString(),
+                Query = "[]"
+            };
+
+            var syncJobsRepository = new Mock<IDatabaseSyncJobsRepository>();
+            var settingsRepository = new Mock<IDatabaseSettingsRepository>();
+            var graphGroupRepository = new Mock<IGraphGroupRepository>();
+            var syncJobChangeRepository = new Mock<ISyncJobChangeRepository>();
+            var logger = new Mock<ILogger<AutoApproverService>>();
+
+            syncJobsRepository.Setup(x => x.GetSyncJobAsync(syncJobId)).ReturnsAsync(syncJob);
+
+            var service = new AutoApproverService(
+                syncJobsRepository.Object,
+                settingsRepository.Object,
+                graphGroupRepository.Object,
+                syncJobChangeRepository.Object,
+                logger.Object);
+
+            await service.MoveJobToPendingReviewAsync(syncJobId);
+
+            syncJobsRepository.Verify(x => x.UpdateSyncJobsAsync(It.Is<IEnumerable<SyncJob>>(jobs =>
+                jobs.Count() == 1 && jobs.First().Status == SyncStatus.PendingReview.ToString()), It.IsAny<SyncStatus?>()), Times.Once);
+        }
+
+        [TestMethod]
+        public async Task MoveJobToPendingReview_AlreadyAdvanced_NoOpAsync()
+        {
+            var syncJobId = Guid.NewGuid();
+            var syncJob = new SyncJob
+            {
+                Id = syncJobId,
+                Status = SyncStatus.Idle.ToString(),
+                Query = "[]"
+            };
+
+            var syncJobsRepository = new Mock<IDatabaseSyncJobsRepository>();
+            var settingsRepository = new Mock<IDatabaseSettingsRepository>();
+            var graphGroupRepository = new Mock<IGraphGroupRepository>();
+            var syncJobChangeRepository = new Mock<ISyncJobChangeRepository>();
+            var logger = new Mock<ILogger<AutoApproverService>>();
+
+            syncJobsRepository.Setup(x => x.GetSyncJobAsync(syncJobId)).ReturnsAsync(syncJob);
+
+            var service = new AutoApproverService(
+                syncJobsRepository.Object,
+                settingsRepository.Object,
+                graphGroupRepository.Object,
+                syncJobChangeRepository.Object,
+                logger.Object);
+
+            await service.MoveJobToPendingReviewAsync(syncJobId);
+
+            syncJobsRepository.Verify(x => x.UpdateSyncJobsAsync(It.IsAny<IEnumerable<SyncJob>>(), It.IsAny<SyncStatus?>()), Times.Never);
+        }
+
+        [TestMethod]
+        public async Task MoveJobToPendingReview_JobNotFound_NoOpAsync()
+        {
+            var syncJobId = Guid.NewGuid();
+
+            var syncJobsRepository = new Mock<IDatabaseSyncJobsRepository>();
+            var settingsRepository = new Mock<IDatabaseSettingsRepository>();
+            var graphGroupRepository = new Mock<IGraphGroupRepository>();
+            var syncJobChangeRepository = new Mock<ISyncJobChangeRepository>();
+            var logger = new Mock<ILogger<AutoApproverService>>();
+
+            syncJobsRepository.Setup(x => x.GetSyncJobAsync(syncJobId)).ReturnsAsync((SyncJob)null);
+
+            var service = new AutoApproverService(
+                syncJobsRepository.Object,
+                settingsRepository.Object,
+                graphGroupRepository.Object,
+                syncJobChangeRepository.Object,
+                logger.Object);
+
+            await service.MoveJobToPendingReviewAsync(syncJobId);
+
+            syncJobsRepository.Verify(x => x.UpdateSyncJobsAsync(It.IsAny<IEnumerable<SyncJob>>(), It.IsAny<SyncStatus?>()), Times.Never);
         }
     }
 }

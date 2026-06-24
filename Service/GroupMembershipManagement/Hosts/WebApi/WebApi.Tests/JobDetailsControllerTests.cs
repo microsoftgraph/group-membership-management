@@ -1349,6 +1349,39 @@ namespace Services.Tests
 
         [TestMethod]
         [DataRow(Roles.JOB_OWNER_WRITER)]
+        [DataRow(Roles.JOB_TENANT_WRITER)]
+        public async Task UpdatePendingAutoApprovalJobFailureAsync(string role)
+        {
+            _jobEntity.Status = SyncStatus.PendingAutoApproval.ToString();
+            _jobDetailsController = new JobDetailsController(_getJobDetailsHandler, _removeGMMHandler, _patchJobHandler, _getGroupHandler, _getChannelHandler, _getJobChangesHandler, _getSyncJobHistoryHandler, _getMembershipDownloadHandler, _getThresholdNotificationHandlerMock.Object, _syncJobChangeRepository.Object, NullLogger<JobDetailsController>.Instance)
+            {
+                ControllerContext = CreateControllerContext(new List<Claim> {
+                    new Claim(ClaimTypes.Name, "user@domain.com"),
+                    new Claim(ClaimTypes.Role, role),
+                    new Claim("http://schemas.microsoft.com/identity/claims/objectidentifier", Guid.NewGuid().ToString())})
+            };
+
+            var operations = new List<PatchOperation>
+            {
+                new PatchOperation { Op = "replace", Path = "/Query", Value = ConvertToJsonElement("UpdatedQuery") },
+                new PatchOperation { Op = "replace", Path = "/ChangeReason", Value = ConvertToJsonElement(SyncJobChangeReason.Update.ToString()) },
+                new PatchOperation { Op = "replace", Path = "/BusinessJustification", Value = ConvertToJsonElement("Update pending auto approval") }
+            };
+
+            var requestDTO = CreatePatchJobRequestDTO(operations, SyncJobChangeReason.Update.ToString(), "Update pending auto approval");
+            var response = await _jobDetailsController.UpdateJobAsync(_jobEntity.Id, requestDTO);
+            var result = response as ObjectResult;
+            var problem = result.Value as ProblemDetails;
+
+            Assert.IsNotNull(result);
+            Assert.AreEqual(SyncStatus.PendingAutoApproval.ToString(), _jobEntity.Status);
+            Assert.AreEqual((int)HttpStatusCode.PreconditionFailed, problem.Status);
+            Assert.AreEqual("JobInPendingAutoApprovalStateCannotBeUpdated", problem.Detail);
+            _syncJobChangeRepository.Verify(x => x.Save(It.IsAny<SyncJobChange>()), Times.Never);
+        }
+
+        [TestMethod]
+        [DataRow(Roles.JOB_OWNER_WRITER)]
         public async Task PatchJobWhenChangeReasonIsEmpty(string role)
         {
             _jobDetailsController = new JobDetailsController(_getJobDetailsHandler, _removeGMMHandler, _patchJobHandler, _getGroupHandler, _getChannelHandler, _getJobChangesHandler, _getSyncJobHistoryHandler, _getMembershipDownloadHandler, _getThresholdNotificationHandlerMock.Object, _syncJobChangeRepository.Object, NullLogger<JobDetailsController>.Instance)

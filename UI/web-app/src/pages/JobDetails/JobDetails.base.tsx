@@ -212,7 +212,7 @@ export const JobDetailsBase: React.FunctionComponent<IJobDetailsProps> = (
   const isJobInProgress = job?.status === SyncStatus.InProgress;
 
   useEffect(() => {
-    setCanEditJob(isJobWriter && job?.status !== SyncStatus.PendingReview && job?.status !== SyncStatus.PendingConfiguration);
+    setCanEditJob(isJobWriter && job?.status !== SyncStatus.PendingReview && job?.status !== SyncStatus.PendingConfiguration && job?.status !== SyncStatus.PendingAutoApproval);
   }, [isJobWriter, job?.status]);
 
   useEffect(() => {
@@ -758,7 +758,7 @@ const MembershipStatusContent: React.FunctionComponent<IStatusContentProps> = (
           inlineLabel={true}
           checked={isJobEnabled}
           onChange={handleStatusChange}
-          disabled={!canEnableJob || jobStatus === SyncStatus.PendingReview || jobStatus === SyncStatus.PendingConfiguration || jobStatus === SyncStatus.SubmissionRejected}
+          disabled={!canEnableJob || jobStatus === SyncStatus.PendingReview || jobStatus === SyncStatus.PendingConfiguration || jobStatus === SyncStatus.PendingAutoApproval || jobStatus === SyncStatus.SubmissionRejected}
         />
         <div>
           <div className={isJobEnabled ? classNames.jobEnabled : classNames.jobDisabled}>
@@ -780,7 +780,7 @@ const MembershipStatusContent: React.FunctionComponent<IStatusContentProps> = (
             </MessageBar>
           )}
         </div>
-        {(jobStatus === SyncStatus.PendingReview || jobStatus === SyncStatus.PendingConfiguration) && (
+        {(jobStatus === SyncStatus.PendingReview || jobStatus === SyncStatus.PendingConfiguration || jobStatus === SyncStatus.PendingAutoApproval) && (
           <Stack>
             {jobStatus === SyncStatus.PendingConfiguration && (isSubmissionReviewer || isSubmissionRejector) ?
               <div className={classNames.membershipStatusPendingLabel}>

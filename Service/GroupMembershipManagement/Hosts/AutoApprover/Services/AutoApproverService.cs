@@ -54,7 +54,7 @@ namespace Services.AutoApprover
                 return;
             }
 
-            if (!string.Equals(syncJob.Status, SyncStatus.PendingReview.ToString(), StringComparison.OrdinalIgnoreCase))
+            if (!string.Equals(syncJob.Status, SyncStatus.PendingAutoApproval.ToString(), StringComparison.OrdinalIgnoreCase))
             {
                 _logger.SyncJobStatusNotPendingReview(message.SyncJobId, syncJob.Status);
                 return;
@@ -73,6 +73,8 @@ namespace Services.AutoApprover
             if (!shouldAutoApprove)
             {
                 _logger.AutoApprovalNotGranted(message.SyncJobId);
+                syncJob.Status = SyncStatus.PendingReview.ToString();
+                await _syncJobRepository.UpdateSyncJobsAsync(new[] { syncJob });
                 return;
             }
 
@@ -109,13 +111,13 @@ namespace Services.AutoApprover
             {
                 // The status update and the audit record are not written atomically. If the status was
                 // already flipped to Idle but persisting the audit record failed, revert the job back to
-                // PendingReview so the Service Bus retry re-runs the full approval path (and writes the
-                // missing audit record) instead of short-circuiting on the "not PendingReview" guard.
+                // PendingAutoApproval so the Service Bus retry re-runs the full approval path (and writes the
+                // missing audit record) instead of short-circuiting on the "not PendingAutoApproval" guard.
                 _logger.AutoApprovalPersistenceFailed(message.SyncJobId, ex);
 
                 try
                 {
-                    syncJob.Status = SyncStatus.PendingReview.ToString();
+                    syncJob.Status = SyncStatus.PendingAutoApproval.ToString();
                     await _syncJobRepository.UpdateSyncJobsAsync(new[] { syncJob });
                 }
                 catch (Exception revertEx)
@@ -127,6 +129,28 @@ namespace Services.AutoApprover
             }
 
             _logger.SyncJobAutoApproved(message.SyncJobId);
+        }
+
+        public async Task MoveJobToPendingReviewAsync(Guid syncJobId)
+        {
+            var syncJob = await _syncJobRepository.GetSyncJobAsync(syncJobId);
+            if (syncJob == null)
+            {
+                _logger.SyncJobNotFound(syncJobId);
+                return;
+            }
+
+            // Only transition jobs still awaiting auto-approval. If the job has already advanced
+            // (e.g. approved to Idle or already moved to PendingReview), this is a no-op so the
+            // call is idempotent under Service Bus at-least-once redelivery.
+            if (!string.Equals(syncJob.Status, SyncStatus.PendingAutoApproval.ToString(), StringComparison.OrdinalIgnoreCase))
+            {
+                return;
+            }
+
+            syncJob.Status = SyncStatus.PendingReview.ToString();
+            await _syncJobRepository.UpdateSyncJobsAsync(new[] { syncJob });
+            _logger.SyncJobMovedToPendingReview(syncJobId);
         }
 
         private async Task<bool> ShouldAutoApproveJobAsync(string query, string userIdentity, bool isGroupBasedAutoApprovalEnabled, bool isOrgLeaderAutoApprovalEnabled)

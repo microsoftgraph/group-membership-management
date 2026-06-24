@@ -125,6 +125,13 @@ namespace Services.WebApi
                 response.ErrorCode = "JobInPendingConfigurationStateCannotBeUpdated";
                 return response;
             }
+            // If the job is awaiting auto-approval, it cannot be updated until the AutoApprover resolves it
+            else if (syncJob.Status == SyncStatus.PendingAutoApproval.ToString())
+            {
+                response.StatusCode = HttpStatusCode.PreconditionFailed;
+                response.ErrorCode = "JobInPendingAutoApprovalStateCannotBeUpdated";
+                return response;
+            }
             // Handle Reject/Approve for PendingReview
             else if (request.ChangeReason == SyncJobChangeReason.SubmissionApproved.ToString() || request.ChangeReason == SyncJobChangeReason.SubmissionRejected.ToString())
             {

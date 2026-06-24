@@ -510,6 +510,7 @@ export const strings: IStrings = {
             securityGroupNotFound: 'Grupo de origen no encontrado',
             pendingReview: 'Revisión pendiente',
             pendingConfiguration: 'Configuración del sistema en progreso',
+            pendingAutoApproval: 'Aprobación automática pendiente',
             submissionRejected: 'Solicitud rechazada',
             nestedGroupsFound: 'Grupos anidados detectados',
             guestUsersCannotBeAddedToUnifiedGroup: 'Usuarios invitados no compatibles',

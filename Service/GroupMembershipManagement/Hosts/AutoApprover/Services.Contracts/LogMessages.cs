@@ -95,11 +95,15 @@ namespace Hosts.AutoApprover
         public static partial void OrgLeaderSettingRetrievalError(this ILogger logger, Exception exception);
 
         [LoggerMessage(EventId = 250114, Level = LogLevel.Error,
-            Message = "Failed to persist auto-approval for sync job {SyncJobId}. Reverting status to PendingReview for retry.")]
+            Message = "Failed to persist auto-approval for sync job {SyncJobId}. Reverting status to PendingAutoApproval for retry.")]
         public static partial void AutoApprovalPersistenceFailed(this ILogger logger, Guid syncJobId, Exception exception);
 
         [LoggerMessage(EventId = 250115, Level = LogLevel.Error,
-            Message = "Failed to revert sync job {SyncJobId} back to PendingReview after auto-approval persistence failure. Job may be left in Idle status without an audit record.")]
+            Message = "Failed to revert sync job {SyncJobId} back to PendingAutoApproval after auto-approval persistence failure. Job may be left in Idle status without an audit record.")]
         public static partial void AutoApprovalRevertFailed(this ILogger logger, Guid syncJobId, Exception exception);
+
+        [LoggerMessage(EventId = 250116, Level = LogLevel.Information,
+            Message = "Sync job {SyncJobId} moved to PendingReview for human review.")]
+        public static partial void SyncJobMovedToPendingReview(this ILogger logger, Guid syncJobId);
     }
 }

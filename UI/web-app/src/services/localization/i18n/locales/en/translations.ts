@@ -508,6 +508,7 @@ export const strings: IStrings = {
             securityGroupNotFound: 'Source Group Not Found',
             pendingReview: 'Pending Review',
             pendingConfiguration: 'System Configuration in Progress',
+            pendingAutoApproval: 'Pending Auto-Approval',
             submissionRejected: 'Submission Rejected',
             nestedGroupsFound: 'Nested Groups Detected',
             guestUsersCannotBeAddedToUnifiedGroup: 'Guest Users Not Supported',

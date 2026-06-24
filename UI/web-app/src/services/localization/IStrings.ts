@@ -503,6 +503,7 @@ export type IStrings = {
             securityGroupNotFound: string;
             pendingReview: string;
             pendingConfiguration: string;
+            pendingAutoApproval: string;
             submissionRejected: string;
             nestedGroupsFound: string;
             guestUsersCannotBeAddedToUnifiedGroup: string;

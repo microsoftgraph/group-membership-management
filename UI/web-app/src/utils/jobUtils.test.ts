@@ -88,6 +88,11 @@ describe('processJob', () => {
     expect(job.actionRequired).toBe(ActionRequired.PendingConfiguration);
   });
 
+  it('sets actionRequired for PendingAutoApproval', () => {
+    const job = processJob(makeJob(SyncStatus.PendingAutoApproval));
+    expect(job.actionRequired).toBe(ActionRequired.PendingAutoApproval);
+  });
+
   it('sets actionRequired for SubmissionRejected', () => {
     const job = processJob(makeJob(SyncStatus.SubmissionRejected));
     expect(job.actionRequired).toBe(ActionRequired.SubmissionRejected);

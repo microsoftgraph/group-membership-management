@@ -140,6 +140,10 @@ export const JobsListFilterBase: React.FunctionComponent<IJobsListFilterProps> =
       key: SyncStatus.PendingConfiguration,
       text: strings.JobsList.JobsListFilter.filters.actionRequired.options.pendingConfiguration,
     }] : []),
+    ...(isSubmissionReviewer || isSubmissionRejector ? [{
+      key: SyncStatus.PendingAutoApproval,
+      text: strings.JobsList.JobsListFilter.filters.actionRequired.options.pendingAutoApproval,
+    }] : []),
     {
       key: SyncStatus.SubmissionRejected,
       text: strings.JobsList.JobsListFilter.filters.actionRequired.options.submissionRejected,

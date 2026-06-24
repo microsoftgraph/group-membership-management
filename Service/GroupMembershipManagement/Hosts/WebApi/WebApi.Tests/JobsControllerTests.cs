@@ -1601,9 +1601,9 @@ namespace Services.Tests
             
             Assert.IsNotNull(result);
             
-            // Verify that the job was created in PendingReview
+            // Verify that the job was created in PendingAutoApproval (awaiting AutoApprover evaluation)
             _databaseSyncJobsRepository.Verify(x => x.CreateSyncJobAsync(It.Is<SyncJob>(job => 
-                job.Status == SyncStatus.PendingReview.ToString())), Times.Once);
+                job.Status == SyncStatus.PendingAutoApproval.ToString())), Times.Once);
             
             // Verify that the sync job change was saved with Onboarding reason
             _syncJobChangeRepository.Verify(x => x.Save(It.Is<SyncJobChange>(change => 
@@ -1662,9 +1662,9 @@ namespace Services.Tests
             
             Assert.IsNotNull(result);
             
-            // Verify that the job was NOT auto-approved (status should be PendingReview)
+            // Verify that the job was NOT auto-approved (status should be PendingAutoApproval)
             _databaseSyncJobsRepository.Verify(x => x.CreateSyncJobAsync(It.Is<SyncJob>(job => 
-                job.Status == SyncStatus.PendingReview.ToString())), Times.Once);
+                job.Status == SyncStatus.PendingAutoApproval.ToString())), Times.Once);
             
             // Verify that the sync job change was saved with regular Onboarding reason
             _syncJobChangeRepository.Verify(x => x.Save(It.Is<SyncJobChange>(change => 
@@ -1721,9 +1721,9 @@ namespace Services.Tests
             
             Assert.IsNotNull(result);
             
-            // Verify that the job was NOT auto-approved (status should be PendingReview)
+            // Verify that the job was NOT auto-approved (status should be PendingAutoApproval)
             _databaseSyncJobsRepository.Verify(x => x.CreateSyncJobAsync(It.Is<SyncJob>(job => 
-                job.Status == SyncStatus.PendingReview.ToString())), Times.Once);
+                job.Status == SyncStatus.PendingAutoApproval.ToString())), Times.Once);
             
             // Verify that the sync job change was saved with regular Onboarding reason
             _syncJobChangeRepository.Verify(x => x.Save(It.Is<SyncJobChange>(change => 
@@ -1772,9 +1772,9 @@ namespace Services.Tests
             
             Assert.IsNotNull(result);
             
-            // Verify that the job was NOT auto-approved (status should be PendingReview)
+            // Verify that the job was NOT auto-approved (status should be PendingAutoApproval)
             _databaseSyncJobsRepository.Verify(x => x.CreateSyncJobAsync(It.Is<SyncJob>(job => 
-                job.Status == SyncStatus.PendingReview.ToString())), Times.Once);
+                job.Status == SyncStatus.PendingAutoApproval.ToString())), Times.Once);
             
             // Verify that the sync job change was saved with regular Onboarding reason
             _syncJobChangeRepository.Verify(x => x.Save(It.Is<SyncJobChange>(change => 
@@ -1838,9 +1838,9 @@ namespace Services.Tests
             
             Assert.IsNotNull(result);
             
-            // Verify that the job was created in PendingReview
+            // Verify that the job was created in PendingAutoApproval (awaiting AutoApprover evaluation)
             _databaseSyncJobsRepository.Verify(x => x.CreateSyncJobAsync(It.Is<SyncJob>(job => 
-                job.Status == SyncStatus.PendingReview.ToString())), Times.Once);
+                job.Status == SyncStatus.PendingAutoApproval.ToString())), Times.Once);
             
             // Verify that the sync job change was saved with Onboarding reason
             _syncJobChangeRepository.Verify(x => x.Save(It.Is<SyncJobChange>(change => 
@@ -1899,9 +1899,9 @@ namespace Services.Tests
             
             Assert.IsNotNull(result);
             
-            // Verify that the job was NOT auto-approved (status should be PendingReview)
+            // Verify that the job was NOT auto-approved (status should be PendingAutoApproval)
             _databaseSyncJobsRepository.Verify(x => x.CreateSyncJobAsync(It.Is<SyncJob>(job => 
-                job.Status == SyncStatus.PendingReview.ToString())), Times.Once);
+                job.Status == SyncStatus.PendingAutoApproval.ToString())), Times.Once);
             
             // Verify that the sync job change was saved with regular Onboarding reason
             _syncJobChangeRepository.Verify(x => x.Save(It.Is<SyncJobChange>(change => 
@@ -1959,9 +1959,9 @@ namespace Services.Tests
             
             Assert.IsNotNull(result);
             
-            // Verify that the job was NOT auto-approved (status should be PendingReview)
+            // Verify that the job was NOT auto-approved (status should be PendingAutoApproval)
             _databaseSyncJobsRepository.Verify(x => x.CreateSyncJobAsync(It.Is<SyncJob>(job => 
-                job.Status == SyncStatus.PendingReview.ToString())), Times.Once);
+                job.Status == SyncStatus.PendingAutoApproval.ToString())), Times.Once);
             
             // Verify that the sync job change was saved with regular Onboarding reason
             _syncJobChangeRepository.Verify(x => x.Save(It.Is<SyncJobChange>(change => 
@@ -2019,9 +2019,9 @@ namespace Services.Tests
             
             Assert.IsNotNull(result);
             
-            // Verify that the job was NOT auto-approved (status should be PendingReview)
+            // Verify that the job was NOT auto-approved (status should be PendingAutoApproval)
             _databaseSyncJobsRepository.Verify(x => x.CreateSyncJobAsync(It.Is<SyncJob>(job => 
-                job.Status == SyncStatus.PendingReview.ToString())), Times.Once);
+                job.Status == SyncStatus.PendingAutoApproval.ToString())), Times.Once);
             
             // Verify that the sync job change was saved with regular Onboarding reason
             _syncJobChangeRepository.Verify(x => x.Save(It.Is<SyncJobChange>(change => 
@@ -2080,9 +2080,9 @@ namespace Services.Tests
             
             Assert.IsNotNull(result);
             
-            // Verify that the job was NOT auto-approved (status should be PendingReview)
+            // Verify that the job was NOT auto-approved (status should be PendingAutoApproval)
             _databaseSyncJobsRepository.Verify(x => x.CreateSyncJobAsync(It.Is<SyncJob>(job => 
-                job.Status == SyncStatus.PendingReview.ToString())), Times.Once);
+                job.Status == SyncStatus.PendingAutoApproval.ToString())), Times.Once);
             
             // Verify that the sync job change was saved with regular Onboarding reason
             _syncJobChangeRepository.Verify(x => x.Save(It.Is<SyncJobChange>(change => 
@@ -2140,9 +2140,9 @@ namespace Services.Tests
             
             Assert.IsNotNull(result);
             
-            // Verify that the job was NOT auto-approved (status should be PendingReview)
+            // Verify that the job was NOT auto-approved (status should be PendingAutoApproval)
             _databaseSyncJobsRepository.Verify(x => x.CreateSyncJobAsync(It.Is<SyncJob>(job => 
-                job.Status == SyncStatus.PendingReview.ToString())), Times.Once);
+                job.Status == SyncStatus.PendingAutoApproval.ToString())), Times.Once);
             
             // Verify that the sync job change was saved with regular Onboarding reason
             _syncJobChangeRepository.Verify(x => x.Save(It.Is<SyncJobChange>(change => 
@@ -2210,9 +2210,9 @@ namespace Services.Tests
             
             Assert.IsNotNull(result);
             
-            // Verify that the job was created in PendingReview
+            // Verify that the job was created in PendingAutoApproval (awaiting AutoApprover evaluation)
             _databaseSyncJobsRepository.Verify(x => x.CreateSyncJobAsync(It.Is<SyncJob>(job =>
-                job.Status == SyncStatus.PendingReview.ToString())), Times.Once);
+                job.Status == SyncStatus.PendingAutoApproval.ToString())), Times.Once);
 
             // Verify that the sync job change was saved with Onboarding reason
             _syncJobChangeRepository.Verify(x => x.Save(It.Is<SyncJobChange>(change =>
@@ -2272,9 +2272,9 @@ namespace Services.Tests
             
             Assert.IsNotNull(result);
             
-            // Verify that the job was created in PendingReview
+            // Verify that the job was created in PendingAutoApproval (awaiting AutoApprover evaluation)
             _databaseSyncJobsRepository.Verify(x => x.CreateSyncJobAsync(It.Is<SyncJob>(job =>
-                job.Status == SyncStatus.PendingReview.ToString())), Times.Once);
+                job.Status == SyncStatus.PendingAutoApproval.ToString())), Times.Once);
 
             // Verify that the sync job change was saved with Onboarding reason
             _syncJobChangeRepository.Verify(x => x.Save(It.Is<SyncJobChange>(change =>
@@ -2326,9 +2326,9 @@ namespace Services.Tests
             
             Assert.IsNotNull(result);
             
-            // Verify that the job was NOT auto-approved due to settings error (status should be PendingReview)
+            // Verify that the job was NOT auto-approved due to settings error (status should be PendingAutoApproval)
             _databaseSyncJobsRepository.Verify(x => x.CreateSyncJobAsync(It.Is<SyncJob>(job => 
-                job.Status == SyncStatus.PendingReview.ToString())), Times.Once);
+                job.Status == SyncStatus.PendingAutoApproval.ToString())), Times.Once);
             
             // Verify that the sync job change was saved with regular Onboarding reason
             _syncJobChangeRepository.Verify(x => x.Save(It.Is<SyncJobChange>(change => 
@@ -2384,9 +2384,9 @@ namespace Services.Tests
             
             Assert.IsNotNull(result);
             
-            // Verify that the job was NOT auto-approved due to Graph API error (status should be PendingReview)
+            // Verify that the job was NOT auto-approved due to Graph API error (status should be PendingAutoApproval)
             _databaseSyncJobsRepository.Verify(x => x.CreateSyncJobAsync(It.Is<SyncJob>(job => 
-                job.Status == SyncStatus.PendingReview.ToString())), Times.Once);
+                job.Status == SyncStatus.PendingAutoApproval.ToString())), Times.Once);
             
             // Verify that the sync job change was saved with regular Onboarding reason
             _syncJobChangeRepository.Verify(x => x.Save(It.Is<SyncJobChange>(change => 
@@ -2531,9 +2531,9 @@ namespace Services.Tests
             
             Assert.IsNotNull(result);
             
-            // Verify that the job was NOT auto-approved due to empty query (status should be PendingReview)
+            // Verify that the job was NOT auto-approved due to empty query (status should be PendingAutoApproval)
             _databaseSyncJobsRepository.Verify(x => x.CreateSyncJobAsync(It.Is<SyncJob>(job => 
-                job.Status == SyncStatus.PendingReview.ToString())), Times.Once);
+                job.Status == SyncStatus.PendingAutoApproval.ToString())), Times.Once);
             
             // Verify that the sync job change was saved with regular Onboarding reason
             _syncJobChangeRepository.Verify(x => x.Save(It.Is<SyncJobChange>(change => 
@@ -2594,9 +2594,9 @@ namespace Services.Tests
             
             Assert.IsNotNull(result);
             
-            // Verify that the job was NOT auto-approved due to invalid onPremisesImmutableId (status should be PendingReview)
+            // Verify that the job was NOT auto-approved due to invalid onPremisesImmutableId (status should be PendingAutoApproval)
             _databaseSyncJobsRepository.Verify(x => x.CreateSyncJobAsync(It.Is<SyncJob>(job => 
-                job.Status == SyncStatus.PendingReview.ToString())), Times.Once);
+                job.Status == SyncStatus.PendingAutoApproval.ToString())), Times.Once);
             
             // Verify that the sync job change was saved with regular Onboarding reason
             _syncJobChangeRepository.Verify(x => x.Save(It.Is<SyncJobChange>(change => 
@@ -2656,7 +2656,7 @@ namespace Services.Tests
             
             // Verify that the job was created but NOT auto-approved due to the user lookup error
             _databaseSyncJobsRepository.Verify(x => x.CreateSyncJobAsync(It.Is<SyncJob>(job => 
-                job.Status == SyncStatus.PendingReview.ToString())), Times.Once);
+                job.Status == SyncStatus.PendingAutoApproval.ToString())), Times.Once);
             
             // Verify that the sync job change was saved with regular onboarding reason (not auto-approved)
             _syncJobChangeRepository.Verify(x => x.Save(It.Is<SyncJobChange>(change => 
@@ -2708,9 +2708,9 @@ namespace Services.Tests
             
             Assert.IsNotNull(result);
             
-            // Verify that the job was NOT auto-approved due to null settings (status should be PendingReview)
+            // Verify that the job was NOT auto-approved due to null settings (status should be PendingAutoApproval)
             _databaseSyncJobsRepository.Verify(x => x.CreateSyncJobAsync(It.Is<SyncJob>(job => 
-                job.Status == SyncStatus.PendingReview.ToString())), Times.Once);
+                job.Status == SyncStatus.PendingAutoApproval.ToString())), Times.Once);
             
             // Verify that the sync job change was saved with regular Onboarding reason
             _syncJobChangeRepository.Verify(x => x.Save(It.Is<SyncJobChange>(change => 
