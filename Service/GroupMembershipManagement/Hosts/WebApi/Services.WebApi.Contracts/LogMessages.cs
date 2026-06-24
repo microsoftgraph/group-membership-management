@@ -657,5 +657,13 @@ namespace Hosts.WebApi
         [LoggerMessage(EventId = 91623, Level = LogLevel.Warning,
             Message = "Failed to search run history for SyncJobId {SyncJobId}, UserObjectId {UserObjectId}")]
         public static partial void SearchSyncHistoryByUserFailed(this ILogger logger, Guid syncJobId, Guid userObjectId, Exception exception);
+
+        [LoggerMessage(EventId = 91625, Level = LogLevel.Error,
+            Message = "Failed to enqueue sync job {SyncJobId} to the auto-approver queue; reverting status to PendingReview for manual review")]
+        public static partial void AutoApproverMessageSendFailed(this ILogger logger, Guid syncJobId, Exception exception);
+
+        [LoggerMessage(EventId = 91626, Level = LogLevel.Error,
+            Message = "Failed to revert sync job {SyncJobId} to PendingReview after auto-approver enqueue failure; the job may remain stuck in PendingAutoApproval")]
+        public static partial void AutoApproverRevertToPendingReviewFailed(this ILogger logger, Guid syncJobId, Exception exception);
     }
 }

@@ -1613,6 +1613,63 @@ namespace Services.Tests
         }
 
         [TestMethod]
+        public async Task PostJobWithAutoApproverEnqueueFailure_RevertsJobToPendingReviewAsync()
+        {
+            // Setup context
+            _context = CreateHttpContext(new List<Claim>
+            {
+                new Claim(ClaimTypes.Name, "user@domain.com"),
+                new Claim(ClaimTypes.Role, Roles.JOB_TENANT_WRITER),
+                new Claim("http://schemas.microsoft.com/identity/claims/objectidentifier", Guid.NewGuid().ToString())
+            });
+
+            _httpContextAccessor.Setup(x => x.HttpContext).Returns(_context);
+
+            // Setup auto-approval setting to enabled
+            _databaseSettingsRepository.Setup(x => x.GetSettingByKeyAsync(SettingKey.IsAutoApprovalForGroupBasedSyncsEnabled))
+                                      .ReturnsAsync(new Setting { SettingKey = SettingKey.IsAutoApprovalForGroupBasedSyncsEnabled, SettingValue = "true" });
+
+            var groupId1 = Guid.NewGuid();
+            _groups.Add(new AzureADGroup { ObjectId = groupId1, Visibility = "Public" });
+
+            _newSyncJob.Query = $"[{{\"type\":\"GroupMembership\",\"source\":\"{groupId1}\"}}]";
+
+            // Simulate the enqueue to the AutoApprover queue failing
+            _autoApproverQueueRepository.Setup(x => x.SendMessageAsync(It.IsAny<ServiceBusMessage>()))
+                                        .ThrowsAsync(new Exception("Service Bus unavailable"));
+
+            _postJobHandler = new PostJobHandler(NullLogger<PostJobHandler>.Instance, _databaseSyncJobsRepository.Object,
+                                                 _destinationAttributesRepository.Object,
+                                                 _titlesRepository.Object,
+                                                 _graphGroupRepository.Object,
+                                                 _syncJobChangeRepository.Object,
+                                                 _databaseSettingsRepository.Object,
+                                                 _pendingConfigurationConfig.Object,
+                                                 _serviceBusQueueRepository.Object,
+                                                 _autoApproverQueueRepository.Object);
+
+            _jobsController = new JobsController(_getJobsHandler, _patchJobsHandler, _postJobHandler, _getJobDetailsHandler, _postResetRequestHandler, NullLogger<JobsController>.Instance);
+            _jobsController.ControllerContext = new ControllerContext
+            {
+                HttpContext = _context
+            };
+
+            var response = await _jobsController.PostJobAsync(_newSyncJob);
+            var result = response as CreatedResult;
+
+            // The job was still created successfully, so a Created response is expected
+            Assert.IsNotNull(result);
+
+            // The enqueue was attempted but failed
+            _autoApproverQueueRepository.Verify(x => x.SendMessageAsync(It.IsAny<ServiceBusMessage>()), Times.Once);
+
+            // The job must be reverted to PendingReview so a human reviewer can pick it up
+            _databaseSyncJobsRepository.Verify(x => x.UpdateSyncJobsAsync(
+                It.Is<IEnumerable<SyncJob>>(jobs => jobs.Any(job => job.Status == SyncStatus.PendingReview.ToString())),
+                It.IsAny<SyncStatus?>()), Times.Once);
+        }
+
+        [TestMethod]
         public async Task PostJobWithAutoApprovalEnabledButHiddenMembershipGroup_EnqueuesForAutoApproverAsync()
         {
             // Setup context

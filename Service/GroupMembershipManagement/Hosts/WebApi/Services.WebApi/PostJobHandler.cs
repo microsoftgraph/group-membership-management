@@ -195,9 +195,30 @@ namespace Services
                                 Body = autoApprovalBody
                             };
 
-                            await _autoApproverQueueRepository.SendMessageAsync(autoApprovalServiceBusMessage);
+                            try
+                            {
+                                await _autoApproverQueueRepository.SendMessageAsync(autoApprovalServiceBusMessage);
+                                _logger.AutoApproverMessageSent(autoApprovalServiceBusMessage.MessageId);
+                            }
+                            catch (Exception ex)
+                            {
+                                // The job was already persisted with PendingAutoApproval status. The AutoApprover
+                                // only acts on queue messages (it never scans the database for orphaned jobs), so
+                                // if enqueueing fails nothing would ever move the job out of PendingAutoApproval and
+                                // it would be invisible to reviewers. Revert it to PendingReview for human review.
+                                _logger.AutoApproverMessageSendFailed(newSyncJobId, ex);
 
-                            _logger.AutoApproverMessageSent(autoApprovalServiceBusMessage.MessageId);
+                                try
+                                {
+                                    newSyncJobEntity.Id = newSyncJobId;
+                                    newSyncJobEntity.Status = SyncStatus.PendingReview.ToString();
+                                    await _syncJobRepository.UpdateSyncJobsAsync(new[] { newSyncJobEntity });
+                                }
+                                catch (Exception revertEx)
+                                {
+                                    _logger.AutoApproverRevertToPendingReviewFailed(newSyncJobId, revertEx);
+                                }
+                            }
                         }
                     }
 
