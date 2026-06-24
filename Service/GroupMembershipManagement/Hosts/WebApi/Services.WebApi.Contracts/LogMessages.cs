@@ -570,6 +570,10 @@ namespace Hosts.WebApi
             Message = "Sent message {MessageId} to configuration queue")]
         public static partial void JobConfigurationMessageSent(this ILogger logger, string messageId);
 
+        [LoggerMessage(EventId = 91624, Level = LogLevel.Information,
+            Message = "Sent message {MessageId} to auto-approver queue")]
+        public static partial void AutoApproverMessageSent(this ILogger logger, string messageId);
+
         [LoggerMessage(EventId = 91603, Level = LogLevel.Warning,
             Message = "Failed to create sync job: CreateSyncJobAsync returned an empty Guid")]
         public static partial void JobCreationReturnedEmptyId(this ILogger logger);

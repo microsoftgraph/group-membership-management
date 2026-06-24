@@ -192,7 +192,7 @@ namespace Services
 
                             await _autoApproverQueueRepository.SendMessageAsync(autoApprovalServiceBusMessage);
 
-                            _logger.LogInformation("Sent message {MessageId} to auto-approver queue", autoApprovalServiceBusMessage.MessageId);
+                            _logger.AutoApproverMessageSent(autoApprovalServiceBusMessage.MessageId);
                         }
                     }
 
