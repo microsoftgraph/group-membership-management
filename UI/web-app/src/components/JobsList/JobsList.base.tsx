@@ -620,6 +620,10 @@ export const JobsListBase: React.FunctionComponent<IJobsListProps> = (
                 <div>
                   <HourGlassIcon className={classNames.pendingReviewIcon} /> {displayActionRequired}
                 </div>
+                : displayActionRequired === ActionRequired.PendingAutoApproval ?
+                  <div>
+                    <HourGlassIcon className={classNames.pendingReviewIcon} /> {displayActionRequired}
+                  </div>
                 : displayActionRequired === ActionRequired.SubmissionRejected ?
                   <div>
                     <ErrorBadgeIcon className={classNames.rejectedIcon} /> {displayActionRequired}
