@@ -131,28 +131,6 @@ namespace Services.AutoApprover
             _logger.SyncJobAutoApproved(message.SyncJobId);
         }
 
-        public async Task MoveJobToPendingReviewAsync(Guid syncJobId)
-        {
-            var syncJob = await _syncJobRepository.GetSyncJobAsync(syncJobId);
-            if (syncJob == null)
-            {
-                _logger.SyncJobNotFound(syncJobId);
-                return;
-            }
-
-            // Only transition jobs still awaiting auto-approval. If the job has already advanced
-            // (e.g. approved to Idle or already moved to PendingReview), this is a no-op so the
-            // call is idempotent under Service Bus at-least-once redelivery.
-            if (!string.Equals(syncJob.Status, SyncStatus.PendingAutoApproval.ToString(), StringComparison.OrdinalIgnoreCase))
-            {
-                return;
-            }
-
-            syncJob.Status = SyncStatus.PendingReview.ToString();
-            await _syncJobRepository.UpdateSyncJobsAsync(new[] { syncJob });
-            _logger.SyncJobMovedToPendingReview(syncJobId);
-        }
-
         private async Task<bool> ShouldAutoApproveJobAsync(string query, string userIdentity, bool isGroupBasedAutoApprovalEnabled, bool isOrgLeaderAutoApprovalEnabled)
         {
             try

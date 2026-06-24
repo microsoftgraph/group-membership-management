@@ -557,14 +557,20 @@ namespace WebApi
                 return new ServiceBusQueueRepository(sender);
             });
 
-            builder.Services.AddKeyedSingleton<IServiceBusQueueRepository, ServiceBusQueueRepository>("AutoApprover", (services, key) =>
+            // Only register the AutoApprover queue sender when the feature is enabled. When it is not
+            // registered, PostJobHandler's [FromKeyedServices("AutoApprover")] dependency resolves to null,
+            // so new jobs stay in PendingReview and are never enqueued for (or moved to) auto-approval.
+            if (GetBoolSetting(builder.Configuration, "AutoApprover:IsEnabled", false))
             {
-                var operationsSettings = services.GetRequiredService<OperationsSettings>();
-                var autoApproverQueue = operationsSettings.AutoApproverQueue;
-                var client = services.GetRequiredService<ServiceBusClient>();
-                var sender = client.CreateSender(autoApproverQueue);
-                return new ServiceBusQueueRepository(sender);
-            });
+                builder.Services.AddKeyedSingleton<IServiceBusQueueRepository, ServiceBusQueueRepository>("AutoApprover", (services, key) =>
+                {
+                    var operationsSettings = services.GetRequiredService<OperationsSettings>();
+                    var autoApproverQueue = operationsSettings.AutoApproverQueue;
+                    var client = services.GetRequiredService<ServiceBusClient>();
+                    var sender = client.CreateSender(autoApproverQueue);
+                    return new ServiceBusQueueRepository(sender);
+                });
+            }
 
             builder.Services.AddKeyedSingleton<IServiceBusQueueRepository, ServiceBusQueueRepository>("Notifications", (services, key) =>
             {

@@ -35,6 +35,12 @@ namespace Hosts.AutoApprover
         {
             _logger.FunctionStarted(nameof(StarterFunction));
 
+            if (!CommonServices.GetBoolSettingBase(_configuration, "AutoApprover:IsEnabled", false))
+            {
+                _logger.AutoApproverDisabled();
+                return;
+            }
+
             var messageBody = Encoding.UTF8.GetString(message.Body.ToArray());
             _logger.MessageReceived(message.MessageId, messageBody.Length);
 
@@ -51,17 +57,6 @@ namespace Hosts.AutoApprover
             catch (JsonException ex)
             {
                 _logger.MessageDeserializationFailed(ex.Message);
-                return;
-            }
-
-            if (!CommonServices.GetBoolSettingBase(_configuration, "AutoApprover:IsEnabled", false))
-            {
-                // When auto-approval is disabled we still consume the message (a Service Bus trigger
-                // return completes it), so move the job out of PendingAutoApproval and into PendingReview
-                // for human review. Otherwise the job would be stranded in PendingAutoApproval with no
-                // pending message to reprocess if the feature is later re-enabled.
-                _logger.AutoApproverDisabled();
-                await _autoApproverService.MoveJobToPendingReviewAsync(autoApprovalMessage.SyncJobId);
                 return;
             }
 

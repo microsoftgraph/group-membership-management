@@ -75,9 +75,10 @@ namespace Services
                 else if (_autoApproverQueueRepository != null)
                 {
                     // Route through the AutoApprover: the job waits in PendingAutoApproval until the
-                    // AutoApprover evaluates it (approves -> Idle, declines -> PendingReview). If the
-                    // AutoApprover queue isn't configured, leave the default PendingReview so the job
-                    // isn't stranded with no consumer.
+                    // AutoApprover evaluates it (approves -> Idle, declines -> PendingReview). The queue
+                    // repository is only registered when AutoApprover:IsEnabled is true, so when the feature
+                    // is disabled (or not configured) it resolves to null and the job keeps the default
+                    // PendingReview status and is never enqueued.
                     newSyncJobEntity.Status = SyncStatus.PendingAutoApproval.ToString();
                 }
 
