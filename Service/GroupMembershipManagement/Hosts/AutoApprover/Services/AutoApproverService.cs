@@ -83,12 +83,10 @@ namespace Services.AutoApprover
 
             syncJob.Status = SyncStatus.Idle.ToString();
 
-            await _syncJobRepository.UpdateSyncJobsAsync(new[] { syncJob });
-
             var changedOnBehalfOfDisplayName = message.ChangedOnBehalfOfDisplayName;
             var changedOnBehalfOfObjectId = message.ChangedOnBehalfOfObjectId;
 
-            await _syncJobChangeRepository.Save(new SyncJobChange
+            var changeRecord = new SyncJobChange
             {
                 SyncJobId = message.SyncJobId,
                 ChangeTime = DateTime.UtcNow,
@@ -100,7 +98,33 @@ namespace Services.AutoApprover
                 BusinessJustification = message.BusinessJustification,
                 ChangedOnBehalfOfDisplayName = changedOnBehalfOfDisplayName != null && changedOnBehalfOfDisplayName != message.RequestorDisplayName ? changedOnBehalfOfDisplayName : null,
                 ChangedOnBehalfOfObjectId = !string.IsNullOrEmpty(changedOnBehalfOfObjectId) && changedOnBehalfOfObjectId != message.RequestorObjectId ? new Guid(changedOnBehalfOfObjectId) : (Guid?)null
-            });
+            };
+
+            try
+            {
+                await _syncJobRepository.UpdateSyncJobsAsync(new[] { syncJob });
+                await _syncJobChangeRepository.Save(changeRecord);
+            }
+            catch (Exception ex)
+            {
+                // The status update and the audit record are not written atomically. If the status was
+                // already flipped to Idle but persisting the audit record failed, revert the job back to
+                // PendingReview so the Service Bus retry re-runs the full approval path (and writes the
+                // missing audit record) instead of short-circuiting on the "not PendingReview" guard.
+                _logger.AutoApprovalPersistenceFailed(message.SyncJobId, ex);
+
+                try
+                {
+                    syncJob.Status = SyncStatus.PendingReview.ToString();
+                    await _syncJobRepository.UpdateSyncJobsAsync(new[] { syncJob });
+                }
+                catch (Exception revertEx)
+                {
+                    _logger.AutoApprovalRevertFailed(message.SyncJobId, revertEx);
+                }
+
+                throw;
+            }
 
             _logger.SyncJobAutoApproved(message.SyncJobId);
         }

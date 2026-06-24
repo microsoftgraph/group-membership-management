@@ -191,6 +191,78 @@ namespace Services.Tests
         }
 
         [TestMethod]
+        public async Task ProcessAutoApproval_ChangeRecordSaveFails_RevertsStatusAndRethrowsAsync()
+        {
+            var syncJobId = Guid.NewGuid();
+            var groupId1 = Guid.NewGuid();
+            var groupId2 = Guid.NewGuid();
+            var requestorId = Guid.NewGuid().ToString();
+
+            var syncJob = new SyncJob
+            {
+                Id = syncJobId,
+                Status = SyncStatus.PendingReview.ToString(),
+                StartDate = DateTime.UtcNow.AddHours(-1),
+                Query = $"[{{\"type\":\"GroupMembership\",\"source\":\"{groupId1}\"}},{{\"type\":\"GroupMembership\",\"source\":\"{groupId2}\"}}]"
+            };
+
+            var syncJobsRepository = new Mock<IDatabaseSyncJobsRepository>();
+            var settingsRepository = new Mock<IDatabaseSettingsRepository>();
+            var graphGroupRepository = new Mock<IGraphGroupRepository>();
+            var syncJobChangeRepository = new Mock<ISyncJobChangeRepository>();
+            var logger = new Mock<ILogger<AutoApproverService>>();
+
+            syncJobsRepository.Setup(x => x.GetSyncJobAsync(syncJobId)).ReturnsAsync(syncJob);
+            settingsRepository.Setup(x => x.GetSettingByKeyAsync(SettingKey.IsAutoApprovalForGroupBasedSyncsEnabled))
+                              .ReturnsAsync(new Setting { SettingKey = SettingKey.IsAutoApprovalForGroupBasedSyncsEnabled, SettingValue = "true" });
+            settingsRepository.Setup(x => x.GetSettingByKeyAsync(SettingKey.IsAutoApprovalForRequestorIsOrgLeaderSyncsEnabled))
+                              .ReturnsAsync(new Setting { SettingKey = SettingKey.IsAutoApprovalForRequestorIsOrgLeaderSyncsEnabled, SettingValue = "false" });
+
+            graphGroupRepository.Setup(x => x.GetGroupsAsync(It.IsAny<List<Guid>>()))
+                                .ReturnsAsync(new List<AzureADGroup>
+                                {
+                                    new AzureADGroup { ObjectId = groupId1, Visibility = "Public" },
+                                    new AzureADGroup { ObjectId = groupId2, Visibility = "Private" }
+                                });
+
+            // The same syncJob reference is mutated in place during the revert, so capture the status at
+            // call time rather than relying on the object's final state during Verify.
+            var observedStatuses = new List<string>();
+            syncJobsRepository.Setup(x => x.UpdateSyncJobsAsync(It.IsAny<IEnumerable<SyncJob>>(), It.IsAny<SyncStatus?>()))
+                              .Callback<IEnumerable<SyncJob>, SyncStatus?>((jobs, status) => observedStatuses.Add(jobs.First().Status))
+                              .Returns(Task.CompletedTask);
+
+            var saveException = new InvalidOperationException("Save failed");
+            syncJobChangeRepository.Setup(x => x.Save(It.IsAny<SyncJobChange>())).ThrowsAsync(saveException);
+
+            var service = new AutoApproverService(
+                syncJobsRepository.Object,
+                settingsRepository.Object,
+                graphGroupRepository.Object,
+                syncJobChangeRepository.Object,
+                logger.Object);
+
+            var thrown = await Assert.ThrowsExceptionAsync<InvalidOperationException>(() =>
+                service.ProcessAutoApprovalAsync(new AutoApprovalQueueMessage
+                {
+                    SyncJobId = syncJobId,
+                    RequestorObjectId = requestorId,
+                    RequestorDisplayName = "Requestor"
+                }));
+
+            Assert.AreSame(saveException, thrown);
+
+            // Two persistence calls: the initial flip to Idle, then the compensating revert to PendingReview.
+            syncJobsRepository.Verify(x => x.UpdateSyncJobsAsync(It.IsAny<IEnumerable<SyncJob>>(), It.IsAny<SyncStatus?>()), Times.Exactly(2));
+            CollectionAssert.AreEqual(
+                new[] { SyncStatus.Idle.ToString(), SyncStatus.PendingReview.ToString() },
+                observedStatuses);
+
+            // The job is left in PendingReview so the Service Bus retry re-runs the full approval path.
+            Assert.AreEqual(SyncStatus.PendingReview.ToString(), syncJob.Status);
+        }
+
+        [TestMethod]
         public async Task ProcessAutoApproval_StatusNotPendingReview_SkipsAsync()
         {
             var syncJobId = Guid.NewGuid();

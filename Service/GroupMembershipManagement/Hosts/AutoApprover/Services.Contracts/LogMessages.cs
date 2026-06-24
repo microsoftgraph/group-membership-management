@@ -93,5 +93,13 @@ namespace Hosts.AutoApprover
         [LoggerMessage(EventId = 250113, Level = LogLevel.Error,
             Message = "Error retrieving org leader auto-approval setting.")]
         public static partial void OrgLeaderSettingRetrievalError(this ILogger logger, Exception exception);
+
+        [LoggerMessage(EventId = 250114, Level = LogLevel.Error,
+            Message = "Failed to persist auto-approval for sync job {SyncJobId}. Reverting status to PendingReview for retry.")]
+        public static partial void AutoApprovalPersistenceFailed(this ILogger logger, Guid syncJobId, Exception exception);
+
+        [LoggerMessage(EventId = 250115, Level = LogLevel.Error,
+            Message = "Failed to revert sync job {SyncJobId} back to PendingReview after auto-approval persistence failure. Job may be left in Idle status without an audit record.")]
+        public static partial void AutoApprovalRevertFailed(this ILogger logger, Guid syncJobId, Exception exception);
     }
 }
