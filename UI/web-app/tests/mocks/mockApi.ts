@@ -512,7 +512,7 @@ export async function registerMockApiRoutes(page: Page): Promise<void> {
         titles: [{ partId: `part-${syncJobId}`, name: ': Mock HR Query' }],
         actionRequired: '',
         enabledOrNot: true,
-        status: 'PendingAutoApproval',
+        status: 'PendingReview',
         period: Number(body['period']) || 6,
         arrow: '',
         estimatedNextRunTime: now,
