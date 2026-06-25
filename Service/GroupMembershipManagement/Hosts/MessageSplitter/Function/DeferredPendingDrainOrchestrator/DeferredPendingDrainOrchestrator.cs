@@ -109,14 +109,29 @@ namespace Hosts.MessageSplitter
                 var shouldRemove = received.ShouldRemoveFromIndex;
 
                 if (!shouldRemove && received.MessageNotFound
-                    && (utcNow - item.EnqueuedAtUtc).TotalMinutes > 5)
+                    && (utcNow - item.EnqueuedAtUtc).TotalMinutes > _runLimiterSettings.MaxPendingAgeMinutes)
                 {
-                    shouldRemove = true;
-                    logger.DrainRemovingStaleEntry(
-                        $"{(utcNow - item.EnqueuedAtUtc).TotalMinutes:F1}",
-                        item.SequenceNumber,
+                    // The message is gone and the entry has outlived the pending-age window:
+                    // a confirmed orphan. Fail the job explicitly rather than dropping it silently,
+                    // then remove the entry in the shared removal step below.
+                    var ageMinutes = (utcNow - item.EnqueuedAtUtc).TotalMinutes;
+
+                    await context.CallActivityAsync(
+                        nameof(JobStatusUpdaterFunction),
+                        new JobStatusUpdaterRequest
+                        {
+                            SyncJob = new SyncJob { Id = item.JobId, RunId = item.RunId },
+                            Status = SyncStatus.Error
+                        });
+
+                    logger.DrainErroredConfirmedOrphan(
+                        lane,
                         item.JobId,
-                        lane);
+                        item.RunId,
+                        item.SequenceNumber,
+                        $"{ageMinutes:F1}");
+
+                    shouldRemove = true;
                 }
 
                 if (shouldRemove)
@@ -141,10 +156,10 @@ namespace Hosts.MessageSplitter
                 logger.DrainItemProcessed(lane, item.SequenceNumber, result, received.MessageNotFound);
 
                 // Only continue draining when forward progress was made (item removed or
-                // newly dispatched). If the item was kept (e.g., message not found < 5 min,
-                // already-dispatched but still running), stop and let the next natural trigger
-                // (CompletionListener, Enqueue, Sweep) resume the drain. This prevents hot-looping
-                // on retryable items while still efficiently draining pending work.
+                // newly dispatched). If the item was kept (e.g., message not found within the
+                // pending-age window, already-dispatched but still running), stop and let the next
+                // natural trigger (CompletionListener, Enqueue, Sweep) resume the drain. This
+                // prevents hot-looping on retryable items while still efficiently draining pending work.
                 if (madeProgress)
                 {
                     context.ContinueAsNew(input);

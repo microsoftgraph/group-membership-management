@@ -204,34 +204,5 @@ namespace Hosts.MessageSplitter
             State ??= new DeferredPendingIndexState();
             return State;
         }
-
-        public List<DeferredPendingItem> PruneOlderThanMinutes(PruneOlderThanMinutesRequest request)
-        {
-            State ??= new DeferredPendingIndexState();
-
-            if (State.Items.Count == 0)
-            {
-                return new List<DeferredPendingItem>();
-            }
-
-            var cutoff = request.UtcNow.AddMinutes(-request.MaxAgeMinutes);
-
-            // Never prune items the system is actively managing:
-            // - Dispatched items are being processed by GU (may take hours for large groups).
-            // - Capacity-denied items are waiting for a slot — the drain will dispatch them
-            //   when capacity frees up, regardless of how long they've waited.
-            // Only prune truly orphaned items: not dispatched, never capacity-denied, and older
-            // than the threshold. These are entries that were indexed but never picked up by
-            // the drain, indicating a possible enqueue/index race or messaging failure.
-            var pruned = State.Items
-                .Where(i => !i.Dispatched
-                             && !i.LastCapacityDeniedAtUtc.HasValue
-                             && i.EnqueuedAtUtc < cutoff)
-                .ToList();
-
-            var prunedSeqs = new HashSet<long>(pruned.Select(i => i.SequenceNumber));
-            State.Items = State.Items.Where(i => !prunedSeqs.Contains(i.SequenceNumber)).ToList();
-            return pruned;
-        }
     }
 }

@@ -10,7 +10,6 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Models;
 using System;
-using System.Collections.Generic;
 using System.Threading.Tasks;
 
 namespace Hosts.MessageSplitter
@@ -74,66 +73,21 @@ namespace Hosts.MessageSplitter
             var limiterEntityId = new EntityInstanceId(nameof(RunLimiter), lane);
             var prunedLeases = await context.Entities.CallEntityAsync<int>(limiterEntityId, nameof(RunLimiter.Prune), utcNow);
 
-            // Check current capacity after pruning expired leases.
-            // If all slots are occupied, the downstream updater is actively processing —
-            // do not prune deferred items; they will drain naturally when capacity frees.
+            // Check current capacity after pruning expired leases. The sweep no longer ages out
+            // deferred index entries — capacity-waiting entries are left for the drain to dispatch
+            // when a slot frees up, and genuinely orphaned entries are handled by the drain. When
+            // downstream is saturated we still emit informational telemetry so the at-capacity
+            // window is observable.
             var limiterState = await context.Entities.CallEntityAsync<RunLimiterState>(limiterEntityId, nameof(RunLimiter.GetState));
             var activeLeases = limiterState?.Leases?.Count ?? 0;
             var maxInFlight = _runLimiterSettings.MaxInFlightMessages;
 
-            var prunedItemCount = 0;
             if (activeLeases >= maxInFlight)
             {
                 logger.SweepSkippedAtCapacity(lane, activeLeases, maxInFlight);
             }
-            else
-            {
-                // Capacity is available but items are still waiting — they may be stuck.
-                // Prune entries older than the configured age threshold.
-                var maxAgeMinutes = _runLimiterSettings.MaxPendingAgeMinutes > 0
-                    ? _runLimiterSettings.MaxPendingAgeMinutes
-                    : 60;
 
-                var indexEntityId = new EntityInstanceId(nameof(DeferredPendingIndexEntity), lane);
-                var prunedItems = await context.Entities.CallEntityAsync<List<DeferredPendingItem>>(
-                    indexEntityId,
-                    nameof(DeferredPendingIndexEntity.PruneOlderThanMinutes),
-                    new PruneOlderThanMinutesRequest(utcNow, maxAgeMinutes));
-
-                // Set pruned jobs to Error status.
-                var statusUpdateFailures = 0;
-                foreach (var item in prunedItems)
-                {
-                    try
-                    {
-                        await context.CallActivityAsync(
-                            nameof(JobStatusUpdaterFunction),
-                            new JobStatusUpdaterRequest
-                            {
-                                SyncJob = new SyncJob { Id = item.JobId, RunId = item.RunId },
-                                Status = SyncStatus.Error
-                            });
-                    }
-                    catch (Exception ex)
-                    {
-                        statusUpdateFailures++;
-                        logger.SweepJobStatusUpdateFailed(item.SequenceNumber, item.JobId, lane, ex.Message);
-                        // Continue — items are already removed from the index;
-                        // failing one status update should not abort the rest.
-                    }
-
-                    logger.SweepPrunedStaleEntry(item.SequenceNumber, item.JobId, lane);
-                }
-
-                if (statusUpdateFailures > 0)
-                {
-                    logger.SweepStatusUpdateFailures(statusUpdateFailures, prunedItems.Count, lane);
-                }
-
-                prunedItemCount = prunedItems.Count;
-            }
-
-            logger.SweepCompleted(prunedLeases, prunedItemCount, lane);
+            logger.SweepCompleted(prunedLeases, lane);
 
             // Kick drain.
             await context.CallSubOrchestratorAsync(nameof(DeferredPendingDrainOrchestrator), new DeferredPendingDrainRequest(lane));

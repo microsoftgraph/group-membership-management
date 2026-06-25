@@ -41,146 +41,6 @@ namespace Services.Tests
         }
 
         [TestMethod]
-        public async Task RunAsync_AtCapacity_SkipsPruningIndexItems()
-        {
-            // Arrange — 3 active leases, max is 3
-            SetupPrune(prunedLeases: 0);
-            SetupGetState(activeLeaseCount: 3);
-            SetupDrainSubOrchestrator();
-
-            var sut = new DeferredPendingSweepOrchestratorFunction(_settings);
-
-            // Act
-            await sut.RunAsync(_context.Object);
-
-            // Assert — should NOT call PruneOlderThanMinutes on the index entity
-            _context.Verify(x => x.Entities.CallEntityAsync<List<DeferredPendingItem>>(
-                It.IsAny<EntityInstanceId>(),
-                nameof(DeferredPendingIndexEntity.PruneOlderThanMinutes),
-                It.IsAny<object>(),
-                It.IsAny<CallEntityOptions>()), Times.Never());
-
-            // Should still kick drain
-            _context.Verify(x => x.CallSubOrchestratorAsync(
-                nameof(DeferredPendingDrainOrchestrator),
-                It.IsAny<DeferredPendingDrainRequest>(),
-                It.IsAny<TaskOptions>()), Times.Once());
-        }
-
-        [TestMethod]
-        public async Task RunAsync_BelowCapacity_PrunesOldItems()
-        {
-            // Arrange — 1 active lease, max is 3 → capacity available
-            var staleItem = new DeferredPendingItem(42, Guid.NewGuid(), DateTimeOffset.UtcNow.AddMinutes(-90), Guid.NewGuid());
-            SetupPrune(prunedLeases: 0);
-            SetupGetState(activeLeaseCount: 1);
-            SetupPruneIndex(new List<DeferredPendingItem> { staleItem });
-            SetupJobStatusUpdater();
-            SetupDrainSubOrchestrator();
-
-            var sut = new DeferredPendingSweepOrchestratorFunction(_settings);
-
-            // Act
-            await sut.RunAsync(_context.Object);
-
-            // Assert — should call PruneOlderThanMinutes
-            _context.Verify(x => x.Entities.CallEntityAsync<List<DeferredPendingItem>>(
-                It.IsAny<EntityInstanceId>(),
-                nameof(DeferredPendingIndexEntity.PruneOlderThanMinutes),
-                It.IsAny<object>(),
-                It.IsAny<CallEntityOptions>()), Times.Once());
-
-            // Should set pruned item to Error
-            _context.Verify(x => x.CallActivityAsync(
-                nameof(JobStatusUpdaterFunction),
-                It.IsAny<object>(),
-                It.IsAny<TaskOptions>()), Times.Once());
-        }
-
-        [TestMethod]
-        public async Task RunAsync_BelowCapacity_NothingOld_PrunesNothing()
-        {
-            // Arrange — capacity available but no old items
-            SetupPrune(prunedLeases: 0);
-            SetupGetState(activeLeaseCount: 0);
-            SetupPruneIndex(new List<DeferredPendingItem>());
-            SetupDrainSubOrchestrator();
-
-            var sut = new DeferredPendingSweepOrchestratorFunction(_settings);
-
-            // Act
-            await sut.RunAsync(_context.Object);
-
-            // Assert — should call PruneOlderThanMinutes but no JobStatusUpdater calls
-            _context.Verify(x => x.Entities.CallEntityAsync<List<DeferredPendingItem>>(
-                It.IsAny<EntityInstanceId>(),
-                nameof(DeferredPendingIndexEntity.PruneOlderThanMinutes),
-                It.IsAny<object>(),
-                It.IsAny<CallEntityOptions>()), Times.Once());
-
-            _context.Verify(x => x.CallActivityAsync(
-                nameof(JobStatusUpdaterFunction),
-                It.IsAny<object>(),
-                It.IsAny<TaskOptions>()), Times.Never());
-        }
-
-        [TestMethod]
-        public async Task RunAsync_CustomMaxPendingAgeMinutes_UsesConfiguredValue()
-        {
-            // Arrange — set custom age
-            _settings.MaxPendingAgeMinutes = 120;
-            SetupPrune(prunedLeases: 0);
-            SetupGetState(activeLeaseCount: 0);
-            object capturedRequest = null;
-            _context.Setup(x => x.Entities.CallEntityAsync<List<DeferredPendingItem>>(
-                    It.IsAny<EntityInstanceId>(),
-                    nameof(DeferredPendingIndexEntity.PruneOlderThanMinutes),
-                    It.IsAny<object>(),
-                    It.IsAny<CallEntityOptions>()))
-                   .Callback<EntityInstanceId, string, object, CallEntityOptions>((_, _, input, _) => capturedRequest = input)
-                   .ReturnsAsync(new List<DeferredPendingItem>());
-            SetupDrainSubOrchestrator();
-
-            var sut = new DeferredPendingSweepOrchestratorFunction(_settings);
-
-            // Act
-            await sut.RunAsync(_context.Object);
-
-            // Assert — verify MaxAgeMinutes = 120
-            Assert.IsNotNull(capturedRequest);
-            var pruneReq = (PruneOlderThanMinutesRequest)capturedRequest;
-            Assert.AreEqual(120, pruneReq.MaxAgeMinutes);
-        }
-
-        [TestMethod]
-        public async Task RunAsync_DefaultMaxPendingAgeMinutes_FallsBackTo60()
-        {
-            // Arrange — MaxPendingAgeMinutes = 0 (default/unset)
-            _settings.MaxPendingAgeMinutes = 0;
-            SetupPrune(prunedLeases: 0);
-            SetupGetState(activeLeaseCount: 0);
-            object capturedRequest = null;
-            _context.Setup(x => x.Entities.CallEntityAsync<List<DeferredPendingItem>>(
-                    It.IsAny<EntityInstanceId>(),
-                    nameof(DeferredPendingIndexEntity.PruneOlderThanMinutes),
-                    It.IsAny<object>(),
-                    It.IsAny<CallEntityOptions>()))
-                   .Callback<EntityInstanceId, string, object, CallEntityOptions>((_, _, input, _) => capturedRequest = input)
-                   .ReturnsAsync(new List<DeferredPendingItem>());
-            SetupDrainSubOrchestrator();
-
-            var sut = new DeferredPendingSweepOrchestratorFunction(_settings);
-
-            // Act
-            await sut.RunAsync(_context.Object);
-
-            // Assert — verify MaxAgeMinutes falls back to 60
-            Assert.IsNotNull(capturedRequest);
-            var pruneReq = (PruneOlderThanMinutesRequest)capturedRequest;
-            Assert.AreEqual(60, pruneReq.MaxAgeMinutes);
-        }
-
-        [TestMethod]
         public async Task RunAsync_EmptyLane_ReturnsEarly()
         {
             // Arrange — empty lane
@@ -201,29 +61,53 @@ namespace Services.Tests
         }
 
         [TestMethod]
-        public async Task RunAsync_AfterPruningStaleLeases_FreesCapacity_PrunesItems()
+        public async Task RunAsync_BelowCapacity_DoesNotErrorAnyJob()
         {
-            // Arrange — 3 leases but Prune removes 2 expired → only 1 active remains
-            SetupPrune(prunedLeases: 2);
-            SetupGetState(activeLeaseCount: 1);
-            SetupPruneIndex(new List<DeferredPendingItem>
-            {
-                new DeferredPendingItem(10, Guid.NewGuid(), DateTimeOffset.UtcNow.AddMinutes(-70), Guid.NewGuid()),
-                new DeferredPendingItem(11, Guid.NewGuid(), DateTimeOffset.UtcNow.AddMinutes(-65), Guid.NewGuid())
-            });
-            SetupJobStatusUpdater();
+            // In a capacity-free window the sweep does not transition any job to Error. It only kicks
+            // the drain so waiting entries get dispatched once a slot frees.
+            SetupPrune(prunedLeases: 0);
+            SetupGetState(activeLeaseCount: 0);
             SetupDrainSubOrchestrator();
 
             var sut = new DeferredPendingSweepOrchestratorFunction(_settings);
 
-            // Act
             await sut.RunAsync(_context.Object);
 
-            // Assert — should prune items since capacity freed after lease expiry
+            // No job is transitioned to Error by the sweep.
             _context.Verify(x => x.CallActivityAsync(
                 nameof(JobStatusUpdaterFunction),
                 It.IsAny<object>(),
-                It.IsAny<TaskOptions>()), Times.Exactly(2));
+                It.IsAny<TaskOptions>()), Times.Never());
+
+            // The drain is still kicked so waiting entries get dispatched once capacity allows.
+            _context.Verify(x => x.CallSubOrchestratorAsync(
+                nameof(DeferredPendingDrainOrchestrator),
+                It.IsAny<DeferredPendingDrainRequest>(),
+                It.IsAny<TaskOptions>()), Times.Once());
+        }
+
+        [TestMethod]
+        public async Task RunAsync_AtCapacity_TransitionsNoJobToError()
+        {
+            // In a capacity-saturated window the sweep removes nothing and Errors nothing —
+            // unchanged behavior — while still kicking the drain.
+            SetupPrune(prunedLeases: 0);
+            SetupGetState(activeLeaseCount: 3);
+            SetupDrainSubOrchestrator();
+
+            var sut = new DeferredPendingSweepOrchestratorFunction(_settings);
+
+            await sut.RunAsync(_context.Object);
+
+            _context.Verify(x => x.CallActivityAsync(
+                nameof(JobStatusUpdaterFunction),
+                It.IsAny<object>(),
+                It.IsAny<TaskOptions>()), Times.Never());
+
+            _context.Verify(x => x.CallSubOrchestratorAsync(
+                nameof(DeferredPendingDrainOrchestrator),
+                It.IsAny<DeferredPendingDrainRequest>(),
+                It.IsAny<TaskOptions>()), Times.Once());
         }
 
         #region Helpers
@@ -252,25 +136,6 @@ namespace Services.Tests
                     It.IsAny<object>(),
                     It.IsAny<CallEntityOptions>()))
                    .ReturnsAsync(state);
-        }
-
-        private void SetupPruneIndex(List<DeferredPendingItem> items)
-        {
-            _context.Setup(x => x.Entities.CallEntityAsync<List<DeferredPendingItem>>(
-                    It.IsAny<EntityInstanceId>(),
-                    nameof(DeferredPendingIndexEntity.PruneOlderThanMinutes),
-                    It.IsAny<object>(),
-                    It.IsAny<CallEntityOptions>()))
-                   .ReturnsAsync(items);
-        }
-
-        private void SetupJobStatusUpdater()
-        {
-            _context.Setup(x => x.CallActivityAsync(
-                    nameof(JobStatusUpdaterFunction),
-                    It.IsAny<object>(),
-                    It.IsAny<TaskOptions>()))
-                   .Returns(Task.CompletedTask);
         }
 
         private void SetupDrainSubOrchestrator()

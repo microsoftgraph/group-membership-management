@@ -20,8 +20,76 @@ namespace Services.Tests
             MaxInFlightMessages = 16,
             LeaseTimeoutMinutes = 2,
             HeartbeatIntervalMinutes = 0,
+            MaxPendingAgeMinutes = 60,
             IsEnabled = true
         };
+
+        private static RunLimiterSettings SettingsWithMaxPendingAge(int maxPendingAgeMinutes) => new RunLimiterSettings
+        {
+            MaxInFlightMessages = 16,
+            LeaseTimeoutMinutes = 2,
+            HeartbeatIntervalMinutes = 0,
+            MaxPendingAgeMinutes = maxPendingAgeMinutes,
+            IsEnabled = true
+        };
+
+        // Wires a context where TakeNext yields a single undispatched item of the given age and
+        // ReceiveDeferredPending reports the message as not found. Both terminal index operations
+        // (Remove for an orphan, ReleaseInProgress for a retry) are stubbed so the orchestrator's
+        // age decision selects which one runs; the test asserts the chosen path.
+        private static Mock<TaskOrchestrationContext> CreateNotFoundContext(
+            DateTime utcNow, string lane, long sequenceNumber, Guid runId, Guid jobId, double ageMinutes,
+            out EntityInstanceId indexEntityId, out EntityInstanceId limiterEntityId)
+        {
+            var context = CreateContext(utcNow, lane, out indexEntityId, out limiterEntityId);
+            var idx = indexEntityId;
+            var lim = limiterEntityId;
+            var enqueuedAt = new DateTimeOffset(utcNow, TimeSpan.Zero).AddMinutes(-ageMinutes);
+
+            context.Setup(x => x.Entities.CallEntityAsync<DeferredPendingItem>(
+                    idx,
+                    nameof(DeferredPendingIndexEntity.TakeNext),
+                    It.IsAny<TakeNextRequest>(),
+                    It.IsAny<CallEntityOptions>()))
+                .ReturnsAsync(new DeferredPendingItem(sequenceNumber, runId, enqueuedAt, jobId)
+                {
+                    Dispatched = false,
+                    OrchestrationInstanceId = null
+                });
+
+            context.Setup(x => x.Entities.CallEntityAsync<AcquireLeaseResponse>(
+                    lim,
+                    nameof(RunLimiter.Acquire),
+                    It.IsAny<AcquireLeaseRequest>(),
+                    It.IsAny<CallEntityOptions>()))
+                .ReturnsAsync(new AcquireLeaseResponse(true, 1, new DateTimeOffset(utcNow, TimeSpan.Zero).AddMinutes(2)));
+
+            context.Setup(x => x.CallActivityAsync<ReceiveDeferredPendingResponse>(
+                    nameof(ReceiveDeferredPendingFunction),
+                    It.IsAny<ReceiveDeferredPendingRequest>(),
+                    It.IsAny<TaskOptions>()))
+                .ReturnsAsync(new ReceiveDeferredPendingResponse(
+                    Dispatched: false,
+                    ShouldRemoveFromIndex: false,
+                    OrchestrationInstanceId: null,
+                    MessageNotFound: true));
+
+            context.Setup(x => x.Entities.CallEntityAsync<bool>(
+                    idx,
+                    nameof(DeferredPendingIndexEntity.Remove),
+                    It.IsAny<long>(),
+                    It.IsAny<CallEntityOptions>()))
+                .ReturnsAsync(true);
+
+            context.Setup(x => x.Entities.CallEntityAsync<bool>(
+                    idx,
+                    nameof(DeferredPendingIndexEntity.ReleaseInProgress),
+                    It.IsAny<long>(),
+                    It.IsAny<CallEntityOptions>()))
+                .ReturnsAsync(true);
+
+            return context;
+        }
 
         private static Mock<TaskOrchestrationContext> CreateContext(
             DateTime utcNow, string lane, out EntityInstanceId indexEntityId, out EntityInstanceId limiterEntityId)
@@ -262,7 +330,7 @@ namespace Services.Tests
         }
 
         [TestMethod]
-        public async Task RunAsync_RemovesStaleEntryAndContinues_WhenMessageNotFoundOlderThan5Min()
+        public async Task RunAsync_ErrorsAndRemovesConfirmedOrphan_WhenMessageNotFoundAgedPastWindow()
         {
             var utcNow = new DateTime(2025, 12, 17, 12, 0, 0, DateTimeKind.Utc);
             var lane = "small";
@@ -272,8 +340,13 @@ namespace Services.Tests
 
             var context = CreateContext(utcNow, lane, out var indexEntityId, out var limiterEntityId);
 
-            // Item enqueued 10 minutes ago
-            var enqueuedAt = new DateTimeOffset(utcNow, TimeSpan.Zero).AddMinutes(-10);
+            // Capture the orchestrator's logger so the confirmed-orphan signal can be asserted.
+            var loggerMock = new Mock<ILogger>();
+            loggerMock.Setup(x => x.IsEnabled(It.IsAny<LogLevel>())).Returns(true);
+            context.Setup(x => x.CreateReplaySafeLogger(It.IsAny<string>())).Returns(loggerMock.Object);
+
+            // Enqueued 90 minutes ago — past the 60-minute pending-age window.
+            var enqueuedAt = new DateTimeOffset(utcNow, TimeSpan.Zero).AddMinutes(-90);
 
             context.Setup(x => x.Entities.CallEntityAsync<DeferredPendingItem>(
                     indexEntityId,
@@ -313,26 +386,41 @@ namespace Services.Tests
             var orchestrator = new DeferredPendingDrainOrchestrator(DefaultSettings);
             await orchestrator.RunAsync(context.Object);
 
-            // Should remove stale entry
+            // The job is transitioned to Error exactly once, carrying the orphaned item's identity.
+            context.Verify(x => x.CallActivityAsync(
+                nameof(JobStatusUpdaterFunction),
+                It.Is<JobStatusUpdaterRequest>(r =>
+                    r.Status == SyncStatus.Error && r.SyncJob.Id == jobId && r.SyncJob.RunId == runId),
+                It.IsAny<TaskOptions>()), Times.Once());
+
+            // The entry is removed in the same step.
             context.Verify(x => x.Entities.CallEntityAsync<bool>(
                 indexEntityId,
                 nameof(DeferredPendingIndexEntity.Remove),
                 It.Is<long>(s => s == sequenceNumber),
                 It.IsAny<CallEntityOptions>()), Times.Once());
 
-            // Should release lease (no work dispatched)
+            // The capacity lease acquired for the dispatch attempt is released exactly once — not leaked on the orphan path.
             context.Verify(x => x.Entities.CallEntityAsync<bool>(
                 limiterEntityId,
                 nameof(RunLimiter.Release),
                 It.Is<Guid>(r => r == runId),
                 It.IsAny<CallEntityOptions>()), Times.Once());
 
-            // Stale removal = forward progress → ContinueAsNew
+            // The confirmed-orphan signal (EventId 120077) is emitted exactly once.
+            loggerMock.Verify(l => l.Log(
+                LogLevel.Warning,
+                It.Is<EventId>(e => e.Id == 120077),
+                It.IsAny<It.IsAnyType>(),
+                It.IsAny<Exception>(),
+                It.IsAny<Func<It.IsAnyType, Exception?, string>>()), Times.Once());
+
+            // Removal is forward progress → ContinueAsNew.
             context.Verify(x => x.ContinueAsNew(It.IsAny<object>(), It.IsAny<bool>()), Times.Once());
         }
 
         [TestMethod]
-        public async Task RunAsync_KeepsItemWithoutContinue_WhenMessageNotFoundUnder5Min()
+        public async Task RunAsync_RetriesWithoutError_WhenMessageNotFoundWithinWindow()
         {
             var utcNow = new DateTime(2025, 12, 17, 12, 0, 0, DateTimeKind.Utc);
             var lane = "small";
@@ -342,8 +430,8 @@ namespace Services.Tests
 
             var context = CreateContext(utcNow, lane, out var indexEntityId, out var limiterEntityId);
 
-            // Item enqueued just now (< 5 min ago)
-            var enqueuedAt = new DateTimeOffset(utcNow, TimeSpan.Zero);
+            // Enqueued 30 minutes ago — within the 60-minute pending-age window.
+            var enqueuedAt = new DateTimeOffset(utcNow, TimeSpan.Zero).AddMinutes(-30);
 
             context.Setup(x => x.Entities.CallEntityAsync<DeferredPendingItem>(
                     indexEntityId,
@@ -383,7 +471,13 @@ namespace Services.Tests
             var orchestrator = new DeferredPendingDrainOrchestrator(DefaultSettings);
             await orchestrator.RunAsync(context.Object);
 
-            // Should keep in index (release, not remove)
+            // A within-window not-found entry is never transitioned to Error.
+            context.Verify(x => x.CallActivityAsync(
+                nameof(JobStatusUpdaterFunction),
+                It.IsAny<object>(),
+                It.IsAny<TaskOptions>()), Times.Never());
+
+            // Should keep in index (release in place, not remove) so it is retried.
             context.Verify(x => x.Entities.CallEntityAsync<bool>(
                 indexEntityId,
                 nameof(DeferredPendingIndexEntity.ReleaseInProgress),
@@ -405,6 +499,122 @@ namespace Services.Tests
 
             // No forward progress → should NOT continue
             context.Verify(x => x.ContinueAsNew(It.IsAny<object>(), It.IsAny<bool>()), Times.Never());
+        }
+
+        [TestMethod]
+        public async Task RunAsync_HonorsConfiguredMaxPendingAge_ErrorsOrphanAgedPastConfiguredWindow()
+        {
+            var utcNow = new DateTime(2025, 12, 17, 12, 0, 0, DateTimeKind.Utc);
+            var lane = "small";
+            var runId = Guid.NewGuid();
+            var jobId = Guid.NewGuid();
+            const long sequenceNumber = 600;
+
+            // Configured window is 30 minutes and the entry is 45 minutes old: orphaned only
+            // because the configured value is honored — the default 60-minute window would retry.
+            var context = CreateNotFoundContext(
+                utcNow, lane, sequenceNumber, runId, jobId, ageMinutes: 45,
+                out var indexEntityId, out _);
+
+            var orchestrator = new DeferredPendingDrainOrchestrator(SettingsWithMaxPendingAge(30));
+            await orchestrator.RunAsync(context.Object);
+
+            // The job is transitioned to Error and the entry removed.
+            context.Verify(x => x.CallActivityAsync(
+                nameof(JobStatusUpdaterFunction),
+                It.Is<JobStatusUpdaterRequest>(r =>
+                    r.Status == SyncStatus.Error && r.SyncJob.Id == jobId && r.SyncJob.RunId == runId),
+                It.IsAny<TaskOptions>()), Times.Once());
+
+            context.Verify(x => x.Entities.CallEntityAsync<bool>(
+                indexEntityId,
+                nameof(DeferredPendingIndexEntity.Remove),
+                It.Is<long>(s => s == sequenceNumber),
+                It.IsAny<CallEntityOptions>()), Times.Once());
+        }
+
+        [TestMethod]
+        public async Task RunAsync_FallsBackToDefaultWindow_WhenConfiguredMaxPendingAgeNonPositive()
+        {
+            var utcNow = new DateTime(2025, 12, 17, 12, 0, 0, DateTimeKind.Utc);
+            var lane = "small";
+            var runId = Guid.NewGuid();
+            var jobId = Guid.NewGuid();
+            const long sequenceNumber = 610;
+
+            // Configured value is non-positive, so the default 60-minute window applies. At 30
+            // minutes old the entry is within that default window and must be retried, not errored.
+            var context = CreateNotFoundContext(
+                utcNow, lane, sequenceNumber, runId, jobId, ageMinutes: 30,
+                out var indexEntityId, out _);
+
+            var orchestrator = new DeferredPendingDrainOrchestrator(SettingsWithMaxPendingAge(0));
+            await orchestrator.RunAsync(context.Object);
+
+            // Within the fallback window: never errored.
+            context.Verify(x => x.CallActivityAsync(
+                nameof(JobStatusUpdaterFunction),
+                It.IsAny<object>(),
+                It.IsAny<TaskOptions>()), Times.Never());
+
+            // Released in place for retry, not removed.
+            context.Verify(x => x.Entities.CallEntityAsync<bool>(
+                indexEntityId,
+                nameof(DeferredPendingIndexEntity.ReleaseInProgress),
+                It.Is<long>(s => s == sequenceNumber),
+                It.IsAny<CallEntityOptions>()), Times.Once());
+
+            context.Verify(x => x.Entities.CallEntityAsync<bool>(
+                indexEntityId,
+                nameof(DeferredPendingIndexEntity.Remove),
+                It.IsAny<long>(),
+                It.IsAny<CallEntityOptions>()), Times.Never());
+        }
+
+        [TestMethod]
+        public async Task RunAsync_EvaluatesEachLaneAgainstItsOwnThreshold()
+        {
+            var utcNow = new DateTime(2025, 12, 17, 12, 0, 0, DateTimeKind.Utc);
+            var smallRunId = Guid.NewGuid();
+            var smallJobId = Guid.NewGuid();
+            var largeRunId = Guid.NewGuid();
+            var largeJobId = Guid.NewGuid();
+            const long smallSeq = 620;
+            const long largeSeq = 720;
+
+            // Same 60-minute age, different per-lane thresholds: the small lane (30) treats it as an
+            // orphan while the large lane (120) keeps retrying — proving each lane uses its own value.
+            var smallContext = CreateNotFoundContext(
+                utcNow, "small", smallSeq, smallRunId, smallJobId, ageMinutes: 60,
+                out var smallIndexEntityId, out _);
+            var largeContext = CreateNotFoundContext(
+                utcNow, "large", largeSeq, largeRunId, largeJobId, ageMinutes: 60,
+                out var largeIndexEntityId, out _);
+
+            await new DeferredPendingDrainOrchestrator(SettingsWithMaxPendingAge(30)).RunAsync(smallContext.Object);
+            await new DeferredPendingDrainOrchestrator(SettingsWithMaxPendingAge(120)).RunAsync(largeContext.Object);
+
+            // Small lane: aged past its 30-minute window → Error + Remove.
+            smallContext.Verify(x => x.CallActivityAsync(
+                nameof(JobStatusUpdaterFunction),
+                It.Is<JobStatusUpdaterRequest>(r => r.Status == SyncStatus.Error && r.SyncJob.Id == smallJobId),
+                It.IsAny<TaskOptions>()), Times.Once());
+            smallContext.Verify(x => x.Entities.CallEntityAsync<bool>(
+                smallIndexEntityId,
+                nameof(DeferredPendingIndexEntity.Remove),
+                It.Is<long>(s => s == smallSeq),
+                It.IsAny<CallEntityOptions>()), Times.Once());
+
+            // Large lane: within its 120-minute window → no Error, released for retry.
+            largeContext.Verify(x => x.CallActivityAsync(
+                nameof(JobStatusUpdaterFunction),
+                It.IsAny<object>(),
+                It.IsAny<TaskOptions>()), Times.Never());
+            largeContext.Verify(x => x.Entities.CallEntityAsync<bool>(
+                largeIndexEntityId,
+                nameof(DeferredPendingIndexEntity.ReleaseInProgress),
+                It.Is<long>(s => s == largeSeq),
+                It.IsAny<CallEntityOptions>()), Times.Once());
         }
 
         [TestMethod]
@@ -552,7 +762,7 @@ namespace Services.Tests
 
             var context = CreateContext(utcNow, lane, out var indexEntityId, out var limiterEntityId);
 
-            // Enqueued exactly 5 minutes ago (boundary — should NOT remove)
+            // Enqueued 5 minutes ago — well within the 60-minute pending-age window.
             var enqueuedAt = new DateTimeOffset(utcNow, TimeSpan.Zero).AddMinutes(-5);
 
             context.Setup(x => x.Entities.CallEntityAsync<DeferredPendingItem>(
@@ -593,7 +803,13 @@ namespace Services.Tests
             var orchestrator = new DeferredPendingDrainOrchestrator(DefaultSettings);
             await orchestrator.RunAsync(context.Object);
 
-            // Should keep in index (exactly 5 min is NOT > 5 min)
+            // A within-window not-found entry is never transitioned to Error.
+            context.Verify(x => x.CallActivityAsync(
+                nameof(JobStatusUpdaterFunction),
+                It.IsAny<object>(),
+                It.IsAny<TaskOptions>()), Times.Never());
+
+            // Should keep in index (within the pending-age window) so it is retried.
             context.Verify(x => x.Entities.CallEntityAsync<bool>(
                 indexEntityId,
                 nameof(DeferredPendingIndexEntity.ReleaseInProgress),

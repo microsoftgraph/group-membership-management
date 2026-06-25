@@ -129,13 +129,13 @@ namespace Hosts.MessageSplitter
             Message = "DeferredPendingDrain: ReceiveDeferredPending failed; lane={LaneSize} runId={RunId} seq={SequenceNumber}")]
         public static partial void DrainReceiveFailed(this ILogger logger, Exception exception, string laneSize, Guid runId, long sequenceNumber);
 
-        [LoggerMessage(EventId = 120075, Level = LogLevel.Information,
-            Message = "DeferredPendingDrain: removing stale index entry (message not found, age={AgeMinutes}min); seq={SequenceNumber} jobId={JobId} lane={LaneSize}")]
-        public static partial void DrainRemovingStaleEntry(this ILogger logger, string ageMinutes, long sequenceNumber, Guid jobId, string laneSize);
-
         [LoggerMessage(EventId = 120076, Level = LogLevel.Information,
             Message = "DeferredPendingDrain: item processed lane={LaneSize} seq={SequenceNumber} result={Result} messageNotFound={MessageNotFound}")]
         public static partial void DrainItemProcessed(this ILogger logger, string laneSize, long sequenceNumber, string result, bool messageNotFound);
+
+        [LoggerMessage(EventId = 120077, Level = LogLevel.Warning,
+            Message = "DeferredPendingDrain: confirmed orphan — message not found and aged past MaxPendingAgeMinutes; set job to Error. lane={LaneSize} jobId={JobId} runId={RunId} seq={SequenceNumber} age={AgeMinutes}min")]
+        public static partial void DrainErroredConfirmedOrphan(this ILogger logger, string laneSize, Guid jobId, Guid runId, long sequenceNumber, string ageMinutes);
 
         // ── DeferredPendingEnqueueOrchestrator (120080-120089) ──
 
@@ -153,13 +153,9 @@ namespace Hosts.MessageSplitter
             Message = "DeferredPendingSweep: start lane={LaneSize}")]
         public static partial void SweepStarted(this ILogger logger, string laneSize);
 
-        [LoggerMessage(EventId = 120092, Level = LogLevel.Warning,
-            Message = "DeferredPendingSweep: pruned stale index entry and set job to Error; seq={SequenceNumber} jobId={JobId} lane={LaneSize}")]
-        public static partial void SweepPrunedStaleEntry(this ILogger logger, long sequenceNumber, Guid jobId, string laneSize);
-
         [LoggerMessage(EventId = 120093, Level = LogLevel.Information,
-            Message = "DeferredPendingSweep: prunedExpiredLeases={PrunedLeases} prunedOldIndexItems={PrunedItems} lane={LaneSize}")]
-        public static partial void SweepCompleted(this ILogger logger, int prunedLeases, int prunedItems, string laneSize);
+            Message = "DeferredPendingSweep: prunedExpiredLeases={PrunedLeases} lane={LaneSize}")]
+        public static partial void SweepCompleted(this ILogger logger, int prunedLeases, string laneSize);
 
         [LoggerMessage(EventId = 120094, Level = LogLevel.Information,
             Message = "DeferredPendingSweep: skipped pruning — downstream at capacity; activeLeases={ActiveLeases} maxInFlight={MaxInFlight} lane={LaneSize}")]
@@ -208,15 +204,5 @@ namespace Hosts.MessageSplitter
         [LoggerMessage(EventId = 120111, Level = LogLevel.Error,
             Message = "OrchestratorFunction failed to update job status to Error after TopicMessageSender failure")]
         public static partial void OrchestratorStatusUpdateFailed(this ILogger logger, Exception exception);
-
-        // ── DeferredPendingSweep Reliability (120095-120099) ──
-
-        [LoggerMessage(EventId = 120095, Level = LogLevel.Warning,
-            Message = "DeferredPendingSweep: failed to set Error status for pruned item; seq={SequenceNumber} jobId={JobId} lane={LaneSize} err={ErrorMessage}")]
-        public static partial void SweepJobStatusUpdateFailed(this ILogger logger, long sequenceNumber, Guid jobId, string laneSize, string errorMessage);
-
-        [LoggerMessage(EventId = 120096, Level = LogLevel.Warning,
-            Message = "DeferredPendingSweep: {FailedCount}/{TotalCount} job status updates failed; lane={LaneSize}")]
-        public static partial void SweepStatusUpdateFailures(this ILogger logger, int failedCount, int totalCount, string laneSize);
     }
 }

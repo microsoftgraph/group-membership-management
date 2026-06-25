@@ -585,6 +585,14 @@ param appConfigurationKeyData array = [
     }
   }
   {
+    key: 'MultiLane:Small:RateLimiter:MaxPendingAgeMinutes'
+    value: 60
+    contentType: 'int'
+    tag: {
+      tag1: 'MultiLane'
+    }
+  }
+  {
     key: 'MultiLane:Large:RateLimiter:IsEnabled'
     value: true
     contentType: 'boolean'
@@ -611,6 +619,14 @@ param appConfigurationKeyData array = [
   {
     key: 'MultiLane:Large:RateLimiter:HeartbeatIntervalMinutes'
     value: 3
+    contentType: 'int'
+    tag: {
+      tag1: 'MultiLane'
+    }
+  }
+  {
+    key: 'MultiLane:Large:RateLimiter:MaxPendingAgeMinutes'
+    value: 60
     contentType: 'int'
     tag: {
       tag1: 'MultiLane'
