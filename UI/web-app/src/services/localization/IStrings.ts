@@ -126,6 +126,33 @@ export type IStrings = {
       validQuery: string;
       invalidQuery: string;
       searchGroupName: string;
+    },
+    UserSpotCheck: {
+      title: string;
+      description: string;
+      searchLabel: string;
+      suggestedText: string;
+      noResultsFoundText: string;
+      loadingText: string;
+      removeButtonAriaLabel: string;
+      selectionAriaLabel: string;
+      checking: string;
+      accountDisabled: string;
+      included: string;
+      notIncluded: string;
+      exclusionaryIncluded: string;
+      exclusionaryNotIncluded: string;
+      notSupported: string;
+      undetermined: string;
+      includedTooltip: string;
+      notIncludedTooltip: string;
+      exclusionaryIncludedTooltip: string;
+      exclusionaryNotIncludedTooltip: string;
+      notSupportedTooltip: string;
+      undeterminedTooltip: string;
+      unsupportedBanner: string;
+      sourcePartLabel: string;
+      errorMessage: string;
     }
   },
   AdminConfig: {

@@ -241,6 +241,45 @@ namespace Repositories.SqlMembershipRepository
             return filteredChildren;
         }
 
+        public async Task<bool> IsUserInFilterAsync(string filter, string tableName, string azureObjectId)
+        {
+            ValidateTableName(tableName);
+
+            if (string.IsNullOrWhiteSpace(filter) || string.IsNullOrWhiteSpace(azureObjectId))
+            {
+                return false;
+            }
+
+            var retryPolicy = GetRetryPolicyAsync();
+            var isMember = false;
+
+            try
+            {
+                var selectQuery = $"SELECT TOP 1 1 FROM [users].[{tableName}] WHERE AzureObjectId = @AzureObjectId AND ({filter})";
+
+                await retryPolicy.ExecuteAsync(async () =>
+                {
+                    using (var conn = new SqlConnection(_sqlServerConnectionString))
+                    {
+                        await conn.OpenAsync();
+                        using (var cmd = new SqlCommand(selectQuery, conn))
+                        {
+                            cmd.Parameters.Add(new SqlParameter("@AzureObjectId", SqlDbType.NVarChar, 128) { Value = azureObjectId });
+                            var result = await cmd.ExecuteScalarAsync();
+                            isMember = result != null && result != DBNull.Value;
+                        }
+                        conn.Close();
+                    }
+                });
+            }
+            catch (SqlException ex)
+            {
+                throw ex;
+            }
+
+            return isMember;
+        }
+
         public async Task<bool> CheckIfTableExistsAsync(string tableName)
         {
             ValidateTableName(tableName);

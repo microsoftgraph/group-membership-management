@@ -64,4 +64,5 @@ export const config = {
   getChannelDetails: (teamId: string, channelId: string) => `${appServiceBaseUri}/api/v1/jobDetails/groups/${teamId}/channels/${channelId}`,
   removeGMM: (syncJobId: string) =>`${appServiceBaseUri}/api/v1/jobDetails/${syncJobId}/removeGmm`,
   resolveNotification: (notificationId: string) => `${appServiceBaseUri}/api/v1/notifications/${encodeURIComponent(notificationId)}/resolve`,
+  spotCheckUser: (syncJobId: string, userId: string) => `${appServiceBaseUri}/api/v1/spotCheck/job/${encodeURIComponent(syncJobId)}/user/${encodeURIComponent(userId)}`,
 };

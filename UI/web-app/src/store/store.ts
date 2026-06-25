@@ -16,6 +16,7 @@ import orgLeaderDetailsReducer from './orgLeaderDetails.slice';
 import settingsReducer from './settings.slice';
 import rolesReducer from './roles.slice';
 import sqlMembershipSourcesReducer from './sqlMembershipSources.slice';
+import spotCheckReducer from './spotCheck.slice';
 import operationsReducer from './operations.slice';
 import titleReducer from './title.slice';
 import themeReducer from './theme.slice';
@@ -66,6 +67,7 @@ const rootReducer = combineReducers({
   settings: settingsReducer,
   roles: rolesReducer,
   sqlMembershipSources: sqlMembershipSourcesReducer,
+  spotCheck: spotCheckReducer,
   operations: operationsReducer,
   title: titleReducer,
   userProfile: userProfileReducer,

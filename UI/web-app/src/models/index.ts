@@ -13,6 +13,7 @@ export * from './ODataQueryOptions';
 export * from './Page';
 export * from './PagingOptions';
 export * from './PatchJobResponse';
+export * from './SpotCheckResult';
 export * from './PostJobResponse';
 export * from './RemoveGMMResponse';
 export * from './Setting';

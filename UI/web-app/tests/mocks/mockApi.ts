@@ -823,6 +823,24 @@ export async function registerMockApiRoutes(page: Page): Promise<void> {
       return;
     }
 
+    const spotCheckMatch = path.match(/\/api\/v1\/spotCheck\/job\/([^\/]+)\/user\/([^\/]+)$/);
+    if (method === 'GET' && spotCheckMatch) {
+      await fulfillJson(route, {
+        accountEnabled: true,
+        hasUnsupportedParts: false,
+        parts: [
+          {
+            index: 0,
+            type: 'GroupMembership',
+            supported: true,
+            exclusionary: false,
+            included: true,
+          },
+        ],
+      });
+      return;
+    }
+
     if (method === 'GET') {
       await fulfillJson(route, {});
       return;

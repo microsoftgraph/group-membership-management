@@ -26,6 +26,7 @@ namespace Repositories.Contracts
         Task<bool> IsServiceAccountOwnerOfGroupAsync(Guid serviceAccountObjectId, Guid groupObjectId);
         Task<bool> IsEmailRecipientOwnerOfGroupAsync(string userIdentifier, Guid groupObjectId, bool validateGroupExists = true);
         Task<bool> IsEmailRecipientMemberOfGroupAsync(string userIdentifier, Guid groupObjectId);
+        Task<bool?> GetUserAccountEnabledAsync(string userIdentifier);
         Task<Dictionary<Guid, List<Guid>>> GetDestinationOwnersAsync(List<Guid> objectIds);
         Task<List<AzureADUser>> GetGroupOwnersAsync(Guid groupObjectId, int top = 0);
         Task<bool> GroupExists(Guid objectId);

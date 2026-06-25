@@ -35,6 +35,8 @@ import { HRSourcePartSource } from '../../models/HRSourcePart';
 import { ISourcePart } from '../../models/ISourcePart';
 import { SourcePartType } from '../../models/SourcePartType';
 import { selectIsJobTenantWriter, selectIsJobWriter } from '../../store/roles.slice';
+import { selectIsSubmissionReviewer } from '../../store/roles.slice';
+import { UserSpotCheck } from '../UserSpotCheck';
 import { selectGeneratedTitlesYet, selectSelectedJobDetails, selectSelectedJobWithNoTitles, setGeneratedTitlesYet, setTitles} from '../../store/jobs.slice';
 import { SyncJobQuery } from '../../models/SyncJobQuery';
 import { selectOrgLeaderDataReturned } from '../../store/orgLeaderDetails.slice';
@@ -66,6 +68,7 @@ export const MembershipConfigurationBase: React.FunctionComponent<MembershipConf
   const isToggleEnabled = useSelector(manageMembershipIsToggleEnabled);
   const isJobWriter = useSelector(selectIsJobWriter);
   const isJobTenantWriter = useSelector(selectIsJobTenantWriter);
+  const isSubmissionReviewer = useSelector(selectIsSubmissionReviewer);
   const orgLeaderDataReturned = useSelector(selectOrgLeaderDataReturned);
   const isEditingExistingJob = useSelector(manageMembershipIsEditingExistingJob);
   const isAITitleEnabled = useSelector(selectIsAITitleEnabled);
@@ -435,6 +438,9 @@ export const MembershipConfigurationBase: React.FunctionComponent<MembershipConf
         </div>
       )}
       {!isAdvancedView ? (<>
+        {isSubmissionReviewer && !isEditable && jobDetails?.syncJobId && (
+          <UserSpotCheck syncJobId={jobDetails.syncJobId} sourceParts={sourceParts} />
+        )}
         <div className={classNames.expandCollapseButton}>
           <ActionButton
               id="expandCollapseAllButton"

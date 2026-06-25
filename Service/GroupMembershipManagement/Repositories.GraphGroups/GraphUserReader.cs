@@ -100,6 +100,40 @@ namespace Repositories.GraphGroups
             return userDetails;
         }
 
+        public async Task<bool?> GetUserAccountEnabledAsync(string userIdentifier, Guid? runId)
+        {
+            try
+            {
+                var nativeResponseHandler = new NativeResponseHandler();
+
+                await _graphServiceClient.Users[userIdentifier].GetAsync(requestConfiguration =>
+                {
+                    requestConfiguration.QueryParameters.Select = new string[] { "id", "accountEnabled" };
+                    requestConfiguration.Options.Add(new ResponseHandlerOption { ResponseHandler = nativeResponseHandler });
+                });
+
+                var nativeResponse = nativeResponseHandler.Value as HttpResponseMessage;
+
+                if (nativeResponse != null)
+                {
+                    var headers = nativeResponse.Headers.ToImmutableDictionary(x => x.Key, x => x.Value);
+                    await _graphGroupMetricTracker.TrackMetricsAsync(headers, QueryType.Other, runId);
+
+                    if (nativeResponse.IsSuccessStatusCode)
+                    {
+                        var user = await DeserializeResponseAsync(nativeResponse, User.CreateFromDiscriminatorValue);
+                        return user?.AccountEnabled;
+                    }
+                }
+            }
+            catch (Exception exception)
+            {
+                _graphUserReaderLogger.LogErrorWithRunId(runId, $"Exception: {exception}, FailedMethod: {nameof(GetUserAccountEnabledAsync)}, UserIdentifier: {userIdentifier}", exception);
+            }
+
+            return null;
+        }
+
         public async Task<AzureADUser> GetUserWithOnPremisesImmutableIdAsync(string userIdentifier, Guid? runId)
         {
             AzureADUser userDetails = null;

@@ -12,6 +12,7 @@ namespace Repositories.Contracts
         Task<List<PersonEntity>> GetChildEntitiesAsync(string filter, int personnelNumber, string tableName, int depth);
         Task<(int maxDepth, int id)> GetOrgLeaderDetailsAsync(string azureObjectId, string tableName);
         Task<List<PersonEntity>> FilterChildEntitiesAsync(string query, string tableName);
+        Task<bool> IsUserInFilterAsync(string filter, string tableName, string azureObjectId);
         Task<bool> CheckIfTableExistsAsync(string tableName);
         Task<List<string>> GetColumnNamesAsync(string tableName);
         Task<(int maxDepth, string azureObjectId)> GetOrgLeaderAsync(int employeeId, string tableName);
