@@ -63,8 +63,8 @@ namespace Services.Tests
         [TestMethod]
         public async Task RunAsync_BelowCapacity_DoesNotErrorAnyJob()
         {
-            // In a capacity-free window the sweep does not transition any job to Error. It only kicks
-            // the drain so waiting entries get dispatched once a slot frees.
+            // In a capacity-free window the sweep transitions no job to Error and removes no index
+            // entry. It only kicks the drain so waiting entries get dispatched once a slot frees.
             SetupPrune(prunedLeases: 0);
             SetupGetState(activeLeaseCount: 0);
             SetupDrainSubOrchestrator();
@@ -78,6 +78,12 @@ namespace Services.Tests
                 nameof(JobStatusUpdaterFunction),
                 It.IsAny<object>(),
                 It.IsAny<TaskOptions>()), Times.Never());
+
+            _context.Verify(x => x.Entities.CallEntityAsync<bool>(
+                It.IsAny<EntityInstanceId>(),
+                nameof(DeferredPendingIndexEntity.Remove),
+                It.IsAny<object>(),
+                It.IsAny<CallEntityOptions>()), Times.Never());
 
             // The drain is still kicked so waiting entries get dispatched once capacity allows.
             _context.Verify(x => x.CallSubOrchestratorAsync(
@@ -103,6 +109,12 @@ namespace Services.Tests
                 nameof(JobStatusUpdaterFunction),
                 It.IsAny<object>(),
                 It.IsAny<TaskOptions>()), Times.Never());
+
+            _context.Verify(x => x.Entities.CallEntityAsync<bool>(
+                It.IsAny<EntityInstanceId>(),
+                nameof(DeferredPendingIndexEntity.Remove),
+                It.IsAny<object>(),
+                It.IsAny<CallEntityOptions>()), Times.Never());
 
             _context.Verify(x => x.CallSubOrchestratorAsync(
                 nameof(DeferredPendingDrainOrchestrator),

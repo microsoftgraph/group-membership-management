@@ -534,6 +534,56 @@ namespace Services.Tests
         }
 
         [TestMethod]
+        public async Task RunAsync_RetriesWithoutError_WhenMessageNotFoundExactlyAtWindowBoundary()
+        {
+            var utcNow = new DateTime(2025, 12, 17, 12, 0, 0, DateTimeKind.Utc);
+            var lane = "small";
+            var runId = Guid.NewGuid();
+            var jobId = Guid.NewGuid();
+            const long sequenceNumber = 605;
+
+            // Age equals the pending-age window exactly (60 == 60). The orphan gate is strictly
+            // greater-than (age > MaxPendingAgeMinutes), so an entry sitting precisely at the
+            // boundary is NOT yet a confirmed orphan: it must be retried, not errored. This guards
+            // against a future regression that relaxes the comparison from `>` to `>=`.
+            var context = CreateNotFoundContext(
+                utcNow, lane, sequenceNumber, runId, jobId, ageMinutes: 60,
+                out var indexEntityId, out var limiterEntityId);
+
+            var orchestrator = new DeferredPendingDrainOrchestrator(DefaultSettings);
+            await orchestrator.RunAsync(context.Object);
+
+            // At the exact boundary: never errored.
+            context.Verify(x => x.CallActivityAsync(
+                nameof(JobStatusUpdaterFunction),
+                It.IsAny<object>(),
+                It.IsAny<TaskOptions>()), Times.Never());
+
+            // Released in place for retry, not removed.
+            context.Verify(x => x.Entities.CallEntityAsync<bool>(
+                indexEntityId,
+                nameof(DeferredPendingIndexEntity.ReleaseInProgress),
+                It.Is<long>(s => s == sequenceNumber),
+                It.IsAny<CallEntityOptions>()), Times.Once());
+
+            context.Verify(x => x.Entities.CallEntityAsync<bool>(
+                indexEntityId,
+                nameof(DeferredPendingIndexEntity.Remove),
+                It.IsAny<long>(),
+                It.IsAny<CallEntityOptions>()), Times.Never());
+
+            // Lease released (no work dispatched).
+            context.Verify(x => x.Entities.CallEntityAsync<bool>(
+                limiterEntityId,
+                nameof(RunLimiter.Release),
+                It.Is<Guid>(r => r == runId),
+                It.IsAny<CallEntityOptions>()), Times.Once());
+
+            // No forward progress → no continue.
+            context.Verify(x => x.ContinueAsNew(It.IsAny<object>(), It.IsAny<bool>()), Times.Never());
+        }
+
+        [TestMethod]
         public async Task RunAsync_FallsBackToDefaultWindow_WhenConfiguredMaxPendingAgeNonPositive()
         {
             var utcNow = new DateTime(2025, 12, 17, 12, 0, 0, DateTimeKind.Utc);
