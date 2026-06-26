@@ -62,7 +62,11 @@ namespace Services
             var accountEnabled = await _graphGroupRepository.GetUserAccountEnabledAsync(request.UserId);
             if (accountEnabled == null)
             {
-                // The user could not be found in Entra ID.
+                // GetUserAccountEnabledAsync returns null both when the user genuinely does not exist
+                // in Entra ID and when the Graph lookup fails (exception / non-success response). We
+                // surface 404 for the common not-found case, but log so transient Graph failures that
+                // masquerade as 404 remain diagnosable.
+                _logger.LogWarning("Graph returned no account status for spot-check (user not found or Graph lookup failure). UserId: {UserId}, SyncJobId: {SyncJobId}", request.UserId, request.SyncJobId);
                 response.StatusCode = HttpStatusCode.NotFound;
                 return response;
             }

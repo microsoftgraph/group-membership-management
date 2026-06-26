@@ -253,6 +253,17 @@ namespace Repositories.SqlMembershipRepository
             var retryPolicy = GetRetryPolicyAsync();
             var isMember = false;
 
+            // Validate the filter using the same WHERE-clause parser used for membership obtaining
+            // before interpolating it into the executed statement. This guards against malformed or
+            // malicious filters from stored job configuration altering the query (SQL injection).
+            var validColumnNames = await GetColumnNamesAsync(tableName);
+            var validationStatement = $"SELECT * FROM [users].[{tableName}] WHERE ({filter})";
+            var (isValidFilter, _) = IsValidWhereClause(validationStatement, validColumnNames);
+            if (!isValidFilter)
+            {
+                return false;
+            }
+
             try
             {
                 var selectQuery = $"SELECT TOP 1 1 FROM [users].[{tableName}] WHERE AzureObjectId = @AzureObjectId AND ({filter})";

@@ -27,7 +27,6 @@ import { getPeoplePickerSuggestions } from '../../store/jobs.api';
 import { spotCheckUser } from '../../store/spotCheck.api';
 import {
   clearSpotCheck,
-  selectSpotCheckError,
   selectSpotCheckResult,
   selectSpotCheckStatus,
 } from '../../store/spotCheck.slice';
@@ -47,7 +46,6 @@ export const UserSpotCheckBase: React.FunctionComponent<UserSpotCheckProps> = (p
 
   const status = useSelector(selectSpotCheckStatus);
   const result = useSelector(selectSpotCheckResult);
-  const error = useSelector(selectSpotCheckError);
 
   useEffect(() => {
     dispatch(clearSpotCheck());
