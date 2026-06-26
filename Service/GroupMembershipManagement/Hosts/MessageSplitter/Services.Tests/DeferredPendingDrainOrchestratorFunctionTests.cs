@@ -420,6 +420,92 @@ namespace Services.Tests
         }
 
         [TestMethod]
+        public async Task RunAsync_RemovesWithoutError_WhenDispatchedItemMessageNotFoundAgedPastWindow()
+        {
+            // Regression guard for the confirmed-orphan gate: an ALREADY-DISPATCHED item whose deferred
+            // message is gone and that has aged past MaxPendingAgeMinutes must NOT be transitioned to Error.
+            // Age + missing-message is the orphan trigger only for never-dispatched items; once dispatched,
+            // the receive activity reports ShouldRemoveFromIndex = AlreadyDispatched = true (the message is
+            // gone because it was already dispatched and completed), so the entry is cleanly removed and the
+            // orphan-Error branch (guarded by !shouldRemove) is unreachable.
+            var utcNow = new DateTime(2025, 12, 17, 12, 0, 0, DateTimeKind.Utc);
+            var lane = "small";
+            var runId = Guid.NewGuid();
+            var jobId = Guid.NewGuid();
+            const long sequenceNumber = 305;
+
+            var context = CreateContext(utcNow, lane, out var indexEntityId, out var limiterEntityId);
+
+            // Capture the orchestrator's logger so the confirmed-orphan signal can be asserted absent.
+            var loggerMock = new Mock<ILogger>();
+            loggerMock.Setup(x => x.IsEnabled(It.IsAny<LogLevel>())).Returns(true);
+            context.Setup(x => x.CreateReplaySafeLogger(It.IsAny<string>())).Returns(loggerMock.Object);
+
+            // Already dispatched and enqueued 90 minutes ago — well past the 60-minute pending-age window.
+            var enqueuedAt = new DateTimeOffset(utcNow, TimeSpan.Zero).AddMinutes(-90);
+
+            context.Setup(x => x.Entities.CallEntityAsync<DeferredPendingItem>(
+                    indexEntityId,
+                    nameof(DeferredPendingIndexEntity.TakeNext),
+                    It.IsAny<TakeNextRequest>(),
+                    It.IsAny<CallEntityOptions>()))
+                .ReturnsAsync(new DeferredPendingItem(sequenceNumber, runId, enqueuedAt, jobId)
+                {
+                    Dispatched = true,
+                    OrchestrationInstanceId = "orch-dispatched"
+                });
+
+            // Production contract for an already-dispatched, message-not-found item: ShouldRemoveFromIndex
+            // is coupled to AlreadyDispatched and therefore true.
+            context.Setup(x => x.CallActivityAsync<ReceiveDeferredPendingResponse>(
+                    nameof(ReceiveDeferredPendingFunction),
+                    It.IsAny<ReceiveDeferredPendingRequest>(),
+                    It.IsAny<TaskOptions>()))
+                .ReturnsAsync(new ReceiveDeferredPendingResponse(
+                    Dispatched: true,
+                    ShouldRemoveFromIndex: true,
+                    OrchestrationInstanceId: "orch-dispatched",
+                    MessageNotFound: true));
+
+            context.Setup(x => x.Entities.CallEntityAsync<bool>(
+                    indexEntityId,
+                    nameof(DeferredPendingIndexEntity.Remove),
+                    It.Is<long>(s => s == sequenceNumber),
+                    It.IsAny<CallEntityOptions>()))
+                .ReturnsAsync(true);
+
+            var orchestrator = new DeferredPendingDrainOrchestrator(DefaultSettings);
+            await orchestrator.RunAsync(context.Object);
+
+            // The job is NEVER transitioned to Error — even though the message is gone and the entry aged past the window.
+            context.Verify(x => x.CallActivityAsync(
+                nameof(JobStatusUpdaterFunction),
+                It.IsAny<object>(),
+                It.IsAny<TaskOptions>()), Times.Never());
+
+            // The confirmed-orphan signal (EventId 120077) is never emitted for a dispatched item.
+            loggerMock.Verify(l => l.Log(
+                LogLevel.Warning,
+                It.Is<EventId>(e => e.Id == 120077),
+                It.IsAny<It.IsAnyType>(),
+                It.IsAny<Exception>(),
+                It.IsAny<Func<It.IsAnyType, Exception?, string>>()), Times.Never());
+
+            // The entry is cleanly removed (ShouldRemoveFromIndex), not tail-requeued.
+            context.Verify(x => x.Entities.CallEntityAsync<bool>(
+                indexEntityId,
+                nameof(DeferredPendingIndexEntity.Remove),
+                It.Is<long>(s => s == sequenceNumber),
+                It.IsAny<CallEntityOptions>()), Times.Once());
+
+            context.Verify(x => x.Entities.CallEntityAsync<bool>(
+                indexEntityId,
+                nameof(DeferredPendingIndexEntity.ReleaseInProgress),
+                It.IsAny<long>(),
+                It.IsAny<CallEntityOptions>()), Times.Never());
+        }
+
+        [TestMethod]
         public async Task RunAsync_RetriesWithoutError_WhenMessageNotFoundWithinWindow()
         {
             var utcNow = new DateTime(2025, 12, 17, 12, 0, 0, DateTimeKind.Utc);
