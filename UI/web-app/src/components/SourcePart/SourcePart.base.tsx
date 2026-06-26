@@ -37,7 +37,7 @@ import { selectIsAITitleEnabled } from '../../store/settings.slice';
 import { selectIsGeneratingHRTitle, selectIsGeneratingTitles, selectIsGeneratingGroupTitle } from '../../store/title.slice';
 import { extractExclusionaryFromTitle, removeExclusionaryPrefix } from '../../utils/titleGenerator';
 import { IsGroupMembershipSourcePartQuery } from '../../models/GroupMembershipSourcePart';
-import { selectSelectedJobDetails } from '../../store/jobs.slice';
+import { selectSelectedJobDetails, selectSelectedJobWithNoTitles } from '../../store/jobs.slice';
 
 const getClassNames = classNamesFunction<SourcePartStyleProps, SourcePartStyles>();
 
@@ -76,6 +76,7 @@ export const SourcePartBase: React.FunctionComponent<SourcePartProps> = (props: 
   const isGeneratingGroupTitle = useSelector(selectIsGeneratingGroupTitle);
   const groupId = IsGroupMembershipSourcePartQuery(part.query) ? part.query.source : '';
   const jobDetails = useSelector(selectSelectedJobDetails);
+  const jobWithNoTitles = useSelector(selectSelectedJobWithNoTitles);
   const hiddenMembershipSourceIds = jobDetails?.hiddenMembershipSourceIds ?? [];
   const isHiddenMembership =
     groupId.length > 0 &&
@@ -241,7 +242,7 @@ export const SourcePartBase: React.FunctionComponent<SourcePartProps> = (props: 
 
         {isAITitleEnabled && (
           <>
-            {!isEditButtonClicked && (isGeneratingTitles || isGeneratingHRTitle || isGeneratingGroupTitle) && (part.title === "") && (
+            {!isEditButtonClicked && (isGeneratingTitles || isGeneratingHRTitle || isGeneratingGroupTitle || (jobWithNoTitles && isAITitleEnabled)) && (part.title === "") && (
               <Shimmer className={classNames.shimmer} />
             )}
             {!isEditButtonClicked && (part.title || props.title) && (
@@ -267,7 +268,7 @@ export const SourcePartBase: React.FunctionComponent<SourcePartProps> = (props: 
                 />
               </div>
             )}
-            {isEditEnabled && (
+            {isEditEnabled && (part.title || props.title) && (
               <div className={classNames.editButton}>
                 <ActionButton
                   iconProps={{ iconName: 'Edit' }}

@@ -64,7 +64,7 @@ import { getGroupEndpoints, getGroupOnboardingStatus, getChannelOnboardingStatus
 import { clearGroupMembers } from '../../store/manageMembership.slice';
 import { NewJob } from '../../models/NewJob';
 import { fetchJobs, postJob } from '../../store/jobs.api';
-import { selectTitles, selectGeneratedHRParts } from '../../store/title.slice';
+import { selectTitles } from '../../store/title.slice';
 import { allSourcePartsHaveFreshTitles } from '../../utils/titleFreshness';
 import { RunConfiguration } from '../../components/RunConfiguration';
 import { Confirmation } from '../../components/Confirmation';
@@ -275,6 +275,7 @@ export const ManageMembershipBase: React.FunctionComponent<IManageMembershipProp
   useEffect(() => {
     return () => {
       dispatch(setIsEditingExistingJob(false));
+      dispatch(resetManageMembership());
     };
   }, [dispatch]);
 
@@ -303,7 +304,6 @@ export const ManageMembershipBase: React.FunctionComponent<IManageMembershipProp
   const isBusinessJustificationProvided = businessJustification !== '';
   const sourceParts = useSelector(getSourcePartsFromState);
   const aiGeneratedTitles = useSelector(selectTitles);
-  const generatedHRParts = useSelector(selectGeneratedHRParts);
 
   const finalQuery: SyncJobQuery = useMemo(() => {
     // If we have source parts (regular view derived query), prefer that.
@@ -446,7 +446,7 @@ export const ManageMembershipBase: React.FunctionComponent<IManageMembershipProp
   };
 
   const handleSaveButtonClick = async () => {
-    const allHaveTitles = allSourcePartsHaveFreshTitles(sourceParts, aiGeneratedTitles, generatedHRParts);
+    const allHaveTitles = allSourcePartsHaveFreshTitles(sourceParts, aiGeneratedTitles);
     if (jobId !== undefined) {
       const patchOperation = [];
       patchOperation.push({

@@ -289,7 +289,8 @@ const manageMembershipSlice = createSlice({
             }
             state.sourceParts[partIndex] = {
                 ...state.sourceParts[partIndex],
-                query: updatedQuery
+                query: updatedQuery,
+                title: ""
             };
             const compositeQuery = buildCompositeQuery(state.sourceParts);
             state.compositeQuery = compositeQuery;

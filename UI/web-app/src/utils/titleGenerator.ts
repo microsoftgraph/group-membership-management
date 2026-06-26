@@ -160,8 +160,13 @@ export const updateHRTitleWithNewLeader = (
   const isExclusionary = extractExclusionaryFromTitle(currentTitle, excludePrefix);
   const titleWithoutPrefix = removeExclusionaryPrefix(currentTitle, excludePrefix);
   const currentDepth = extractDepthFromTitle(titleWithoutPrefix);
+  const currentLeaderName = extractOrgLeaderName(titleWithoutPrefix);
   const criteriaSeparator = templates?.withSummarizedCriteria ?? "with the following summarized criteria:";
-  const criteria = extractCriteriaFromTitle(titleWithoutPrefix, criteriaSeparator);
+  let criteria = extractCriteriaFromTitle(titleWithoutPrefix, criteriaSeparator);
+
+  if (!criteria && !currentLeaderName && currentDepth === undefined) {
+    criteria = titleWithoutPrefix.trim();
+  }
 
   // Generate new title with the same depth structure and exclusionary state
   let newTitle = generateHRTitle({
@@ -244,6 +249,10 @@ export const combineHRTitleWithAICriteria = (
   // If no AI title available, return existing title
   if (!aiTitle) {
     return existingTitle;
+  }
+
+  if (!isHRWithManager) {
+    return exclusionary ? `${excludePrefix} ${aiTitle}` : aiTitle;
   }
 
   // If no existing title, use AI title only (with exclusionary prefix if needed)

@@ -16,7 +16,7 @@ interface UseTitleProcessingProps {
   generatedTitlesYet: boolean;
   jobWithNoTitles: boolean;
   sourceParts: ISourcePart[];
-  titles: { partId: string; title?: string }[];
+  titles: { partId: string; filter?: string; title?: string }[];
   generatedHRParts: { id: string; title: string }[];
   generatedGroupParts: {id: string; title: string}[];
   withSummarizedCriteriaString: string;
@@ -58,8 +58,12 @@ export const useTitleProcessing = ({
       );
 
       const partsNeedingAITitles = [...partsWithManagerAndFilter, ...partsWithFilterOnly];
+      const hasFreshAiTitleForPart = (part: ISourcePart): boolean => {
+        const currentFilter = (part.query.source as HRSourcePartSource).filter;
+        return titles.some(t => t.partId === part.id && t.filter === currentFilter);
+      };
       const hasRequiredAITitles = partsNeedingAITitles.length === 0 ||
-        (titles.length > 0 && partsNeedingAITitles.every(part => titles.some(t => t.partId === part.id)));
+        (titles.length > 0 && partsNeedingAITitles.every(hasFreshAiTitleForPart));
 
       const hasRequiredHRTitles = partsWithManagerOnly.length === 0 ||
         (generatedHRParts.length > 0 && partsWithManagerOnly.every(part => generatedHRParts.some(hr => hr.id === part.id)));
@@ -69,7 +73,8 @@ export const useTitleProcessing = ({
 
       if (hasRequiredAITitles && hasRequiredHRTitles && hasRequiredGroupTitles) {
         const updatedSourceParts = sourceParts.map(part => {
-          const title = titles.find(t => t.partId === part.id);
+          const currentFilter = part.query.type === SourcePartType.HR ? (part.query.source as HRSourcePartSource).filter : undefined;
+          const title = titles.find(t => t.partId === part.id && t.filter === currentFilter);
           const isHRWithManager = part.query.type === SourcePartType.HR &&
                                  (part.query.source as HRSourcePartSource).manager?.id !== undefined;
           const generatedHRPart = generatedHRParts.find(hrPart => hrPart.id === part.id);

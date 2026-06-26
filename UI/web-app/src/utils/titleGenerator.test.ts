@@ -135,6 +135,18 @@ describe('updateHRTitleWithNewLeader', () => {
     expect(result).toContain('Exclude');
     expect(result).toContain('dept eq Sales');
   });
+
+  it('preserves pure AI criteria when adding leader to a filter-only part', () => {
+    const title = 'Employees with IDs between 1-11 filtered by alternating day-of-year conditions';
+    const result = updateHRTitleWithNewLeader(title, 'User 12');
+    expect(result).toBe("Everyone in User 12's org with the following summarized criteria: Employees with IDs between 1-11 filtered by alternating day-of-year conditions");
+  });
+
+  it('preserves pure AI criteria and Exclude prefix when adding leader to an exclusionary filter-only part', () => {
+    const title = 'Exclude Employees with IDs between 1-11';
+    const result = updateHRTitleWithNewLeader(title, 'User 12');
+    expect(result).toBe("Exclude Everyone in User 12's org with the following summarized criteria: Employees with IDs between 1-11");
+  });
 });
 
 describe('updateHRTitleWithNewDepth', () => {
@@ -183,8 +195,12 @@ describe('combineHRTitleWithAICriteria', () => {
     expect(combineHRTitleWithAICriteria(existing, 'new', true)).toBe(existing);
   });
 
-  it('returns existing when not HR with manager', () => {
-    expect(combineHRTitleWithAICriteria('existing title', 'AI', false)).toBe('existing title');
+  it('returns AI title (ignoring existing HR portion) when not HR with manager', () => {
+    expect(combineHRTitleWithAICriteria('existing title', 'AI', false)).toBe('AI');
+  });
+
+  it('returns AI title with Exclude prefix when not HR with manager and exclusionary', () => {
+    expect(combineHRTitleWithAICriteria('existing title', 'AI', false, undefined, true)).toBe('Exclude AI');
   });
 });
 

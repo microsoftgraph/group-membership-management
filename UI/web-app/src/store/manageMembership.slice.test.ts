@@ -213,6 +213,12 @@ describe('manageMembership.slice — source part reducers', () => {
     expect(state.sourceParts[0].query.type).toBe(SourcePartType.PlaceMembership);
   });
 
+  it('updateSourcePartType clears the stale title on type change', () => {
+    const seeded = { ...initial, sourceParts: [makeSourcePart('p1', SourcePartType.GroupMembership, 'All Users in TestGroup')] };
+    const state = manageMembershipReducer(seeded, updateSourcePartType({ partId: 'p1', type: SourcePartType.HR }));
+    expect(state.sourceParts[0].title).toBe('');
+  });
+
   it('updateSourcePart updates an existing part', () => {
     const seeded = { ...initial, sourceParts: [makeSourcePart('p1')] };
     const updated = { ...makeSourcePart('p1'), title: 'Updated Title' };

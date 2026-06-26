@@ -28,6 +28,7 @@ import { SqlMembershipAttribute, SqlMembershipAttributeMapping } from '../../mod
 import { IFilterPart } from '../../models/IFilterPart';
 import { Group } from '../../models/Group';
 import { containsSqlExpression, countOccurrences, parseGroup, stringifyGroups, stripQuotedContent } from './QuerySerializer';
+import { hasTrailingAndOrOperator, hasValidEqualityOperators, hasValueAfterOperator } from '../../utils/filterValidationHelpers';
 import { updateHRTitleWithNewLeader, updateHRTitleWithNewDepth, combineHRTitleWithAICriteria } from '../../utils/titleGenerator';
 import { getEqualityOperatorOptions, nullOptions, getOrAndOperatorOptions, getYesNoOptions } from '../../models/Options';
 import { selectSupportEmail, selectSupportEmailLoading, selectSupportEmailError, selectIsAITitleEnabled } from '../../store/settings.slice';
@@ -35,7 +36,7 @@ import { selectOrgLeaderDataReturned } from '../../store/orgLeaderDetails.slice'
 import { InfoWord } from '../InfoWord';
 import { OrgLeader } from '../OrgLeader';
 import { jsxFormat } from '../../utils/stringUtils';
-import { selectIsGeneratingTitle, upsertGeneratedTitle } from '../../store/title.slice';
+import { upsertGeneratedTitle } from '../../store/title.slice';
 import { fetchOrgLeaderDetailsAndGenerateHRTitle, getTitle } from '../../store/title.api';
 import { setIsMissingAndOrOperator } from '../../store/manageMembership.slice';
 import { HRQueryItemColumn } from './components';
@@ -43,6 +44,14 @@ import { SourcePartQuery } from '../../models/SourcePartQuery';
 import { SourcePartType } from '../../models/SourcePartType';
 
 const PLACEHOLDER_OPERATOR = 'placeholder';
+
+// Every row must have a non-empty attribute, operator, and value; rejects placeholder AND/OR and dangling IN ()/NOT IN ().
+function isFilterComplete(filter: string): boolean {
+  if (!filter || filter.includes(PLACEHOLDER_OPERATOR)) return false;
+  if (hasTrailingAndOrOperator(filter)) return false;
+  if (!hasValidEqualityOperators(filter)) return false;
+  return hasValueAfterOperator(filter);
+}
 
 export const getClassNames = classNamesFunction<HRQuerySourceStyleProps, HRQuerySourceStyles>();
 
@@ -88,7 +97,6 @@ export const HRQuerySourceBase: React.FunctionComponent<HRQuerySourceProps> = (p
   const [children, setChildren] = useState<ChildType[]>([]);
   const attributes = useSelector(selectAttributes);
   const attributeMappings = useSelector(selectAttributeMappings);
-  const isGeneratingTitle = useSelector(selectIsGeneratingTitle);
   const areAttributeMappingsLoading = useSelector(selectAreAttributeMappingsLoading);
   const hrSource = useSelector(selectSource);
   const [childIndexForAttribute, setChildIndexForAttribute] = useState<number>(-1);
@@ -107,11 +115,19 @@ export const HRQuerySourceBase: React.FunctionComponent<HRQuerySourceProps> = (p
   const [filterTextEnabled, setFilterTextEnabled] = useState(false);
   const [expanded, setExpanded] = useState(true);
   const [orgLeaderUpdated, setOrgLeaderUpdated] = useState(false);
+  const pendingOrgLeaderObjectIdRef = React.useRef<string | undefined>(undefined);
   const [selectedKeys, setSelectedKeys] = React.useState<string[]>([]);
   const [localTitle, setLocalTitle] = useState<string>("");
   const orgLeaderDataReturned = useSelector(selectOrgLeaderDataReturned);
   const orgLeaderDetailsRef = React.useRef(orgLeaderDetails);
   orgLeaderDetailsRef.current = orgLeaderDetails;
+  const filterRegenTimeoutRef = React.useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const lastGeneratedKeyRef = React.useRef<string | undefined>(
+    (props.title && props.title.trim() !== '') ? (props.source.filter ?? '') : undefined
+  );
+  const sourceRef = React.useRef(props.source);
+  sourceRef.current = props.source;
+  const [isManualGenerating, setIsManualGenerating] = useState(false);
   const email = useSelector(selectSupportEmail);
   const emailLoading = useSelector(selectSupportEmailLoading);
   const emailError = useSelector(selectSupportEmailError);
@@ -129,6 +145,36 @@ export const HRQuerySourceBase: React.FunctionComponent<HRQuerySourceProps> = (p
   useEffect(() => {
     setSource(props.source);
   }, [props.source]);
+
+  // Mirror props.title into localTitle so external updates (e.g. exclusionary radio toggle) aren't shadowed by stale local copy.
+  useEffect(() => {
+    setLocalTitle(props.title ?? "");
+  }, [props.title]);
+
+  // Debounced auto-regen on filter change only; depth/leader are handled by their own handlers (adding them here caused a re-render loop via the org-leader thunk).
+  useEffect(() => {
+    if (!isAITitleEnabled) return;
+    const currentFilter = source.filter;
+    if (!currentFilter) return;
+    if (!isFilterComplete(currentFilter)) return;
+
+    if (lastGeneratedKeyRef.current === currentFilter) return;
+
+    if (filterRegenTimeoutRef.current) {
+      clearTimeout(filterRegenTimeoutRef.current);
+    }
+    filterRegenTimeoutRef.current = setTimeout(() => {
+      lastGeneratedKeyRef.current = currentFilter;
+      generateTitle();
+    }, 1500);
+
+    return () => {
+      if (filterRegenTimeoutRef.current) {
+        clearTimeout(filterRegenTimeoutRef.current);
+      }
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- timer closes over latest render; only restart when filter changes
+  }, [source.filter, isAITitleEnabled, partId]);
 
   useEffect(() => {
     if (!groupingEnabled) {
@@ -214,10 +260,11 @@ export const HRQuerySourceBase: React.FunctionComponent<HRQuerySourceProps> = (p
             displayName = suggestions[0].text as string;
           }
 
+          pendingOrgLeaderObjectIdRef.current = objectId;
           setOrgLeaderUpdated(true);
 
           const currentOrgLeaderDetails = orgLeaderDetailsRef.current;
-          if (!(currentOrgLeaderDetails.employeeId > 0 && currentOrgLeaderDetails.partId === partId)) {
+          if (!(currentOrgLeaderDetails.employeeId > 0 && currentOrgLeaderDetails.partId === partId && currentOrgLeaderDetails.objectId === objectId)) {
             dispatch(fetchOrgLeaderDetails({
               objectId,
               key: 0,
@@ -667,8 +714,16 @@ const getOptions = (
 
   useEffect(() => {
     if (orgLeaderUpdated && orgLeaderDetails.employeeId > 0 && partId === orgLeaderDetails.partId) {
+      if (pendingOrgLeaderObjectIdRef.current && pendingOrgLeaderObjectIdRef.current !== orgLeaderDetails.objectId) {
+        return;
+      }
       const id: number = orgLeaderDetails.employeeId;
-      const depth = depthToAutoSelect ?? undefined;
+      const existingDepth = props.source.manager?.depth;
+      const maxDepth = orgLeaderDetails.maxDepth;
+      // Clamp the previous depth to the new leader's maxDepth; if invalid, drop it so the depth dropdown isn't blank and the title isn't stale.
+      const depth = existingDepth !== undefined && maxDepth > 0 && existingDepth > maxDepth
+        ? undefined
+        : (existingDepth ?? depthToAutoSelect ?? undefined);
       const newSource = {
         ...props.source,
         manager: {
@@ -677,9 +732,19 @@ const getOptions = (
           depth: depth
         }
       };
-      const updatedTitle = localTitle || props.title || "";
+      let updatedTitle = localTitle || props.title || "";
+      if (existingDepth !== depth) {
+        updatedTitle = updateHRTitleWithNewDepth(updatedTitle, depth, {
+          excludePrefix: strings.excludePrefix,
+          orgLeaderTitle: strings.HROnboarding.orgLeaderTitle,
+          orgLeaderSingleLevelTitle: strings.HROnboarding.orgLeaderSingleLevelTitle,
+          orgLeaderMultipleLevelsTitle: strings.HROnboarding.orgLeaderMultipleLevelsTitle
+        });
+      }
       setSource(newSource);
       onSourceChange(newSource, partId, updatedTitle);
+      pendingOrgLeaderObjectIdRef.current = undefined;
+      setOrgLeaderUpdated(false);
     }
   }, [objectIdEmployeeIdMapping, orgLeaderUpdated, orgLeaderDetails]);
 
@@ -718,19 +783,23 @@ const getOptions = (
   };
 
   const generateTitle = async () => {
-    const hrTitle = source.manager?.id
+    const filterAtStart = source.filter;
+    const exclusionaryAtStart = props.exclusionary || false;
+    const hasManagerAtStart = !!source.manager?.id;
+    const hrTitle = hasManagerAtStart
       ? ((await dispatch(fetchOrgLeaderDetailsAndGenerateHRTitle({
-          part: { id: partId, title: props.title || '', query: { type: SourcePartType.HR, source, exclusionary: props.exclusionary || false } as SourcePartQuery, isNew: false, isExpanded: true },
+          part: { id: partId, title: props.title || '', query: { type: SourcePartType.HR, source, exclusionary: exclusionaryAtStart } as SourcePartQuery, isNew: false, isExpanded: true },
           strings }))).payload as any)?.title || '' : '';
 
-    const aiTitle = source.filter ? (await dispatch(getTitle(source.filter))).payload as string : '';
-    if (source.filter) {
-      dispatch(upsertGeneratedTitle({ partId, filter: source.filter, title: aiTitle }));
+    const aiTitle = filterAtStart ? (await dispatch(getTitle(filterAtStart))).payload as string : '';
+    if (sourceRef.current.filter !== filterAtStart) return;
+    if (filterAtStart) {
+      dispatch(upsertGeneratedTitle({ partId, filter: filterAtStart, title: aiTitle }));
     }
-    const newTitle = combineHRTitleWithAICriteria(hrTitle, aiTitle, !!source.manager?.id, strings.HROnboarding.withSummarizedCriteria, props.exclusionary, strings.excludePrefix);
+    const newTitle = combineHRTitleWithAICriteria(hrTitle, aiTitle, hasManagerAtStart, strings.HROnboarding.withSummarizedCriteria, exclusionaryAtStart, strings.excludePrefix);
 
     onEnableEdit(true);
-    onSourceChange(props.source, partId, newTitle);
+    onSourceChange(sourceRef.current, partId, newTitle);
     setLocalTitle(newTitle);
   };
 
@@ -788,6 +857,7 @@ const getOptions = (
         text: items[0].text as string,
         partId: partId as string
       }));
+      pendingOrgLeaderObjectIdRef.current = items[0].id as string;
       setOrgLeaderUpdated(true);
     }
   };
@@ -1048,6 +1118,16 @@ const getOptions = (
       const newFilter = remainingChildren.map(child => child.filter).join(' ').trim();
       const prevIndex = indexToRemove - 1;
       const isSecondLast = prevIndex === children.length - 2;
+      // When the remaining filter is empty, strip the AI criteria suffix so the title doesn't keep showing criteria for a filter that no longer exists.
+      const stripCriteriaIfEmpty = (filterAfter: string, current: string): string => {
+        if (filterAfter !== '') return current;
+        const sep = strings.HROnboarding.withSummarizedCriteria;
+        if (sep && current) {
+          const sepIdx = current.indexOf(sep);
+          if (sepIdx >= 0) return current.slice(0, sepIdx).trimEnd();
+        }
+        return source.manager?.id ? current : '';
+      };
 
       if (prevIndex >= 0 && children[prevIndex].filter && isSecondLast) {
         const prevChild = children[prevIndex];
@@ -1067,21 +1147,25 @@ const getOptions = (
                                                .map(child => child.filter)
                                                .join(' ')
                                                .trim();
+          const titleAfterCleaned = stripCriteriaIfEmpty(cleanedFilter, localTitle || props.title || '');
           setSource(prevSource => {
               const newSource = { ...prevSource, filter: cleanedFilter };
-              onSourceChange(newSource, partId, props.title);
+              onSourceChange(newSource, partId, titleAfterCleaned);
               return newSource;
           });
+          if (titleAfterCleaned !== (localTitle || props.title || '')) setLocalTitle(titleAfterCleaned);
           setChildren(updatedChildren.filter((_, index) => index !== indexToRemove));
           return;
         }
       }
 
+      const titleAfterRemove = stripCriteriaIfEmpty(newFilter, localTitle || props.title || '');
       setSource(prevSource => {
           const newSource = { ...prevSource, filter: newFilter };
-          onSourceChange(newSource, partId, props.title);
+          onSourceChange(newSource, partId, titleAfterRemove);
           return newSource;
       });
+      if (titleAfterRemove !== (localTitle || props.title || '')) setLocalTitle(titleAfterRemove);
       setChildren(prevChildren => prevChildren.filter((_, index) => index !== indexToRemove));
     }
   };
@@ -1092,6 +1176,18 @@ const getOptions = (
       dispatch(updateOrgLeaderDetails({ employeeId: -1 }));
       const id = undefined;
       const depth = undefined;
+      const currentTitle = localTitle || props.title || "";
+      const criteriaSeparator = strings.HROnboarding.withSummarizedCriteria;
+      let newTitle = "";
+      if (criteriaSeparator && currentTitle) {
+        const sepIdx = currentTitle.indexOf(criteriaSeparator);
+        if (sepIdx >= 0) {
+          const criteria = currentTitle.slice(sepIdx + criteriaSeparator.length).trim();
+          newTitle = (props.exclusionary && !criteria.startsWith(strings.excludePrefix))
+            ? `${strings.excludePrefix} ${criteria}`
+            : criteria;
+        }
+      }
       setSource(prevSource => {
         const newSource = {
           ...prevSource,
@@ -1101,9 +1197,10 @@ const getOptions = (
             depth
           }
         };
-        onSourceChange(newSource, partId);
+        onSourceChange(newSource, partId, newTitle);
         return newSource;
       });
+      setLocalTitle(newTitle);
     }
     else if (option?.key === "Yes") {
       setIncludeOrg(true);
@@ -1116,15 +1213,34 @@ const getOptions = (
       setExpanded(false);
       setFilteredOptions({});
       setFilteredValueOptions({});
+      setChildren([]);
+      setItems([]);
+      setGroups([]);
+      setSelectedItems([]);
+      setSelectedIndices([]);
+      setGroupingEnabled(false);
+      setFilterTextEnabled(false);
       const filter = "";
+      const currentTitle = localTitle || props.title || "";
+      const criteriaSeparator = strings.HROnboarding.withSummarizedCriteria;
+      const sepIdx = criteriaSeparator ? currentTitle.indexOf(criteriaSeparator) : -1;
+      const newTitle = sepIdx > 0
+        ? currentTitle.slice(0, sepIdx).trimEnd()
+        : (source.manager?.id ? currentTitle : "");
+      lastGeneratedKeyRef.current = filter;
       setSource(prevSource => {
         const newSource = { ...prevSource, filter };
-        onSourceChange(newSource, partId, props.title);
+        onSourceChange(newSource, partId, newTitle);
         return newSource;
       });
+      setLocalTitle(newTitle);
     }
     else if (option?.key === "Yes") {
       if (children.length === 0) {
+        setItems([]);
+        setGroups([]);
+        setFilteredOptions({});
+        setFilteredValueOptions({});
         addComponent();
       }
       setIncludeFilter(true);
@@ -2444,12 +2560,19 @@ const getOptions = (
         <div className={classNames.generateTitleButton}>
         <PrimaryButton
           text={strings.HROnboarding.generateTitle}
-          onClick={generateTitle}
+          onClick={async () => {
+            setIsManualGenerating(true);
+            try {
+              await generateTitle();
+            } finally {
+              setIsManualGenerating(false);
+            }
+          }}
           disabled={!isJobWriter || !isEditable}
         />
         </div>
         <div className={classNames.generateTitleSpinner}>
-        {isGeneratingTitle && (<Spinner size={SpinnerSize.small} label={strings.HROnboarding.generatingTitleText} />)}
+        {isManualGenerating && (<Spinner size={SpinnerSize.small} label={strings.HROnboarding.generatingTitleText} />)}
         </div>
       </div>
       </div>

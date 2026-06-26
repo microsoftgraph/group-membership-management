@@ -1,7 +1,7 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-import { hasTrailingAndOrOperator, removeTrailingAndOrOperator } from './filterValidationHelpers';
+import { hasTrailingAndOrOperator, hasValueAfterOperator, removeTrailingAndOrOperator } from './filterValidationHelpers';
 
 describe('hasTrailingAndOrOperator', () => {
   it('returns false for null/undefined/empty string', () => {
@@ -51,5 +51,42 @@ describe('removeTrailingAndOrOperator', () => {
   it('does not modify filter without trailing operator', () => {
     expect(removeTrailingAndOrOperator('department eq "Sales"')).toBe('department eq "Sales"');
     expect(removeTrailingAndOrOperator('name eq "Anderson"')).toBe('name eq "Anderson"');
+  });
+});
+
+describe('hasValueAfterOperator', () => {
+  it('returns false for empty/whitespace input', () => {
+    expect(hasValueAfterOperator('')).toBe(false);
+    expect(hasValueAfterOperator('   ')).toBe(false);
+  });
+
+  it('returns false when operator has no value (e.g. "Col IN")', () => {
+    expect(hasValueAfterOperator('CompanyType IN')).toBe(false);
+    expect(hasValueAfterOperator('CompanyType NOT IN')).toBe(false);
+    expect(hasValueAfterOperator('Height >')).toBe(false);
+  });
+
+  it('returns false for dangling empty parens after IN/NOT IN', () => {
+    expect(hasValueAfterOperator("CompanyType IN ()")).toBe(false);
+    expect(hasValueAfterOperator("CompanyType NOT IN ( )")).toBe(false);
+  });
+
+  it('returns true for complete single-row filters', () => {
+    expect(hasValueAfterOperator("CompanyType IN ('MS','LI')")).toBe(true);
+    expect(hasValueAfterOperator("Height > 2")).toBe(true);
+    expect(hasValueAfterOperator("Department = 'Sales'")).toBe(true);
+  });
+
+  it('returns true when every segment has a value', () => {
+    expect(hasValueAfterOperator("CompanyType IN ('MS') AND Height > 2")).toBe(true);
+    expect(hasValueAfterOperator("Dept = 'Sales' OR Dept = 'Eng'")).toBe(true);
+  });
+
+  it('returns false when any segment is missing a value', () => {
+    expect(hasValueAfterOperator("CompanyType IN ('MS') AND Height >")).toBe(false);
+  });
+
+  it('handles grouped filters with outer parentheses', () => {
+    expect(hasValueAfterOperator("(CompanyType IN ('MS') AND Height > 2) OR Building = '102682'")).toBe(true);
   });
 });

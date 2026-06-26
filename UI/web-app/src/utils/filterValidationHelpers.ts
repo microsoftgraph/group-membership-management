@@ -80,6 +80,35 @@ export function hasValidEqualityOperators(filter: string): boolean {
 }
 
 /**
+ * Checks that every segment has a non-empty value after its equality operator
+ * (and that IN/NOT IN values aren't empty `()`). Complements
+ * `hasValidEqualityOperators`, which only verifies that an operator is present.
+ */
+export function hasValueAfterOperator(filter: string): boolean {
+  if (!filter || filter.trim() === '') return false;
+
+  const sortedOperators = [...VALID_EQUALITY_OPERATORS].sort((a, b) => b.length - a.length);
+  const segments = splitFilterSegments(filter);
+
+  return segments.every(segment => {
+    const trimmed = segment.trim();
+    if (!trimmed) return false;
+
+    for (const op of sortedOperators) {
+      const opRegex = new RegExp(`\\s+${op.replace(/\s+/g, '\\s+')}\\s+(.+)$`, 'i');
+      const match = opRegex.exec(` ${trimmed}`);
+      if (!match) continue;
+
+      const value = match[1].trim();
+      if (!value) return false;
+      if ((op === 'IN' || op === 'NOT IN') && /^\(\s*\)$/.test(value)) return false;
+      return true;
+    }
+    return false;
+  });
+}
+
+/**
  * Splits a filter string into individual clause segments by AND/OR operators
  * that are not inside parentheses or quotes.
  */
