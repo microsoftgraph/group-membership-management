@@ -38,11 +38,14 @@ namespace Services
         public async Task<List<DistributionSyncJob>> ResetJobsAsync(List<DistributionSyncJob> jobs, int daysToAddForReset)
         {
             var newStartTime = DateTime.UtcNow.AddDays(daysToAddForReset);
-            _logger.UpdatingJobsScheduledDate(jobs.Count, newStartTime);
 
-            List<DistributionSyncJob> updatedJobs = ResetJobStartTimes(jobs, newStartTime);
+            List<DistributionSyncJob> jobsToReschedule = ExcludeInProgressJobsFromWriteBack(jobs);
 
-            _logger.UpdatedJobsScheduledDate(jobs.Count, newStartTime);
+            _logger.UpdatingJobsScheduledDate(jobsToReschedule.Count, newStartTime);
+
+            List<DistributionSyncJob> updatedJobs = ResetJobStartTimes(jobsToReschedule, newStartTime);
+
+            _logger.UpdatedJobsScheduledDate(updatedJobs.Count, newStartTime);
 
             return updatedJobs;
         }
@@ -51,11 +54,32 @@ namespace Services
         {
             _logger.DistributingJobs(jobs.Count, prioritizeThresholdJobs);
 
+            // Distribute over the full set first so the load/concurrency math counts all jobs, then filter.
             List<DistributionSyncJob> updatedJobs = await DistributeJobStartTimesAsync(jobs, startTimeDelayMinutes, delayBetweenSyncsSeconds, prioritizeThresholdJobs);
 
-            _logger.DistributedJobs(jobs.Count);
+            List<DistributionSyncJob> jobsToReschedule = ExcludeInProgressJobsFromWriteBack(updatedJobs);
 
-            return updatedJobs;
+            _logger.DistributedJobs(jobsToReschedule.Count);
+
+            return jobsToReschedule;
+        }
+
+        // Excludes InProgress/StuckInProgress jobs from the ScheduledDate write-back so JobScheduler does not
+        // push their ScheduledDate forward, which would hide them from JobTrigger stuck-job detection.
+        private List<DistributionSyncJob> ExcludeInProgressJobsFromWriteBack(List<DistributionSyncJob> jobs)
+        {
+            List<DistributionSyncJob> jobsToReschedule = jobs
+                .Where(job => job.Status != SyncStatus.InProgress.ToString()
+                           && job.Status != SyncStatus.StuckInProgress.ToString())
+                .ToList();
+
+            int skippedCount = jobs.Count - jobsToReschedule.Count;
+            if (skippedCount > 0)
+            {
+                _logger.SkippingInProgressJobsFromScheduledDateUpdate(skippedCount);
+            }
+
+            return jobsToReschedule;
         }
 
         public async Task<List<SyncJob>> GetSyncJobsAsync()

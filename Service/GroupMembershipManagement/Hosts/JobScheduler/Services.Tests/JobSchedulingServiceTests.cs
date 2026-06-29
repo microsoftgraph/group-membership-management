@@ -361,7 +361,91 @@ namespace Services.Tests
             }
         }
 
-        private List<DistributionSyncJob> CreateSampleSyncJobs(int numberOfJobs, int period, DateTime? scheduledDateBase = null, DateTime? lastRunTimeBase = null)
+        [TestMethod]
+        public async Task DistributeJobsAsyncExcludesOnlyInProgressJobs()
+        {
+            DateTime dateTimeNow = DateTime.UtcNow;
+            DateTime knownExcludedScheduledDate = dateTimeNow.AddDays(5);
+
+            // Idle and other non-InProgress statuses (e.g. ThresholdExceeded) must be rescheduled.
+            List<DistributionSyncJob> idleJobs = CreateSampleSyncJobs(3, 1, status: SyncStatus.Idle);
+            List<DistributionSyncJob> otherStatusJobs = CreateSampleSyncJobs(2, 1, status: SyncStatus.ThresholdExceeded);
+            List<DistributionSyncJob> inProgressJobs = CreateSampleSyncJobs(2, 1, scheduledDateBase: knownExcludedScheduledDate, status: SyncStatus.InProgress);
+            List<DistributionSyncJob> stuckJobs = CreateSampleSyncJobs(2, 1, scheduledDateBase: knownExcludedScheduledDate, status: SyncStatus.StuckInProgress);
+
+            var passThroughIds = idleJobs.Concat(otherStatusJobs).Select(j => j.Id).ToHashSet();
+            var excludedIds = inProgressJobs.Concat(stuckJobs).Select(j => j.Id).ToHashSet();
+
+            // Snapshot the excluded jobs' ScheduledDate so we can prove it is never mutated.
+            var originalExcludedScheduledDates = inProgressJobs.Concat(stuckJobs)
+                .ToDictionary(j => j.Id, j => j.ScheduledDate);
+
+            var mixedJobs = new List<DistributionSyncJob>();
+            mixedJobs.AddRange(idleJobs);
+            mixedJobs.AddRange(otherStatusJobs);
+            mixedJobs.AddRange(inProgressJobs);
+            mixedJobs.AddRange(stuckJobs);
+
+            List<DistributionSyncJob> updatedJobs = await _jobSchedulingService.DistributeJobsAsync(mixedJobs, START_TIME_DELAY_MINUTES, BUFFER_SECONDS);
+
+            Assert.AreEqual(passThroughIds.Count, updatedJobs.Count);
+            Assert.IsTrue(updatedJobs.All(j => passThroughIds.Contains(j.Id)));
+            Assert.IsTrue(updatedJobs.All(j => j.Status != SyncStatus.InProgress.ToString() && j.Status != SyncStatus.StuckInProgress.ToString()));
+            Assert.IsFalse(updatedJobs.Any(j => excludedIds.Contains(j.Id)));
+            Assert.IsTrue(inProgressJobs.Concat(stuckJobs).All(j => j.ScheduledDate == originalExcludedScheduledDates[j.Id]));
+            Assert.IsTrue(updatedJobs.All(j => j.ScheduledDate > dateTimeNow));
+        }
+
+        [TestMethod]
+        public async Task ResetJobsAsyncExcludesOnlyInProgressJobs()
+        {
+            DateTime knownExcludedScheduledDate = DateTime.UtcNow.AddDays(5);
+            int daysToAddForReset = 1;
+
+            // Idle and other non-InProgress statuses (e.g. ThresholdExceeded) must be reset.
+            List<DistributionSyncJob> idleJobs = CreateSampleSyncJobs(3, 1, status: SyncStatus.Idle);
+            List<DistributionSyncJob> otherStatusJobs = CreateSampleSyncJobs(2, 1, status: SyncStatus.ThresholdExceeded);
+            List<DistributionSyncJob> inProgressJobs = CreateSampleSyncJobs(2, 1, scheduledDateBase: knownExcludedScheduledDate, status: SyncStatus.InProgress);
+            List<DistributionSyncJob> stuckJobs = CreateSampleSyncJobs(2, 1, scheduledDateBase: knownExcludedScheduledDate, status: SyncStatus.StuckInProgress);
+
+            var passThroughIds = idleJobs.Concat(otherStatusJobs).Select(j => j.Id).ToHashSet();
+            var excludedIds = inProgressJobs.Concat(stuckJobs).Select(j => j.Id).ToHashSet();
+
+            // Snapshot the excluded jobs' ScheduledDate so we can prove it is never mutated.
+            var originalExcludedScheduledDates = inProgressJobs.Concat(stuckJobs)
+                .ToDictionary(j => j.Id, j => j.ScheduledDate);
+
+            var mixedJobs = new List<DistributionSyncJob>();
+            mixedJobs.AddRange(idleJobs);
+            mixedJobs.AddRange(otherStatusJobs);
+            mixedJobs.AddRange(inProgressJobs);
+            mixedJobs.AddRange(stuckJobs);
+
+            List<DistributionSyncJob> updatedJobs = await _jobSchedulingService.ResetJobsAsync(mixedJobs, daysToAddForReset);
+
+            Assert.AreEqual(passThroughIds.Count, updatedJobs.Count);
+            Assert.IsTrue(updatedJobs.All(j => passThroughIds.Contains(j.Id)));
+            Assert.IsTrue(updatedJobs.All(j => j.Status != SyncStatus.InProgress.ToString() && j.Status != SyncStatus.StuckInProgress.ToString()));
+            Assert.IsFalse(updatedJobs.Any(j => excludedIds.Contains(j.Id)));
+            Assert.IsTrue(updatedJobs.All(j => j.ScheduledDate >= DateTime.UtcNow.AddDays(daysToAddForReset).AddMinutes(-1)));
+            Assert.IsTrue(inProgressJobs.Concat(stuckJobs).All(j => j.ScheduledDate == originalExcludedScheduledDates[j.Id]));
+        }
+
+        [TestMethod]
+        public async Task DistributeJobsAsyncIdleOnlyPreservesAllJobs()
+        {
+            DateTime dateTimeNow = DateTime.UtcNow;
+            List<DistributionSyncJob> idleJobs = CreateSampleSyncJobs(5, 1, status: SyncStatus.Idle);
+
+            List<DistributionSyncJob> updatedJobs = await _jobSchedulingService.DistributeJobsAsync(idleJobs, START_TIME_DELAY_MINUTES, BUFFER_SECONDS);
+
+            // An all-Idle input set is unaffected by the filter: every job is returned with a distributed ScheduledDate.
+            Assert.AreEqual(idleJobs.Count, updatedJobs.Count);
+            Assert.IsTrue(updatedJobs.All(j => j.Status == SyncStatus.Idle.ToString()));
+            Assert.IsTrue(updatedJobs.All(j => j.ScheduledDate > dateTimeNow));
+        }
+
+        private List<DistributionSyncJob> CreateSampleSyncJobs(int numberOfJobs, int period, DateTime? scheduledDateBase = null, DateTime? lastRunTimeBase = null, SyncStatus status = SyncStatus.Idle)
         {
             var jobs = new List<DistributionSyncJob>();
             DateTime ScheduledDateBase = scheduledDateBase ?? DateTime.UtcNow.AddDays(-1);
@@ -374,7 +458,7 @@ namespace Services.Tests
                     Id = Guid.NewGuid(),
                     Period = period,
                     ScheduledDate = ScheduledDateBase.AddDays(-1 * i),
-                    Status = SyncStatus.Idle.ToString(),
+                    Status = status.ToString(),
                     LastRunTime = LastRunTimeBase.AddDays(-1 * i)
                 };
 

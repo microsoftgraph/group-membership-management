@@ -48,7 +48,7 @@ namespace Services
 
                 jobsWithUpdates = await _jobSchedulingService.ResetJobsAsync(jobsToUpdate, _jobSchedulerConfig.DaysToAddForReset);
 
-                _logger.ResetJobs(jobsToUpdate.Count, newStartTime);
+                _logger.ResetJobs(jobsWithUpdates.Count, newStartTime);
             }
 
             else if (_jobSchedulerConfig.DistributeJobs)
@@ -57,7 +57,7 @@ namespace Services
 
                 jobsWithUpdates = await _jobSchedulingService.DistributeJobsAsync(jobsToUpdate, _jobSchedulerConfig.StartTimeDelayMinutes, _jobSchedulerConfig.DelayBetweenSyncsSeconds);
 
-                _logger.DistributedJobsInApplicationService(jobsToUpdate.Count);
+                _logger.DistributedJobsInApplicationService(jobsWithUpdates.Count);
             }
 
             if (jobsWithUpdates != null && jobsWithUpdates.Count > 0)

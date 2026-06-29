@@ -98,6 +98,10 @@ namespace Hosts.JobScheduler
             Message = "Calculated {ConcurrencyNumber} thread count for jobs with period {PeriodInHours}")]
         public static partial void CalculatedThreadCount(this ILogger logger, int concurrencyNumber, int periodInHours);
 
+        [LoggerMessage(EventId = 40038, Level = LogLevel.Information,
+            Message = "Skipping {JobCount} InProgress/StuckInProgress jobs from ScheduledDate write-back so they remain visible to JobTrigger stuck-job detection")]
+        public static partial void SkippingInProgressJobsFromScheduledDateUpdate(this ILogger logger, int jobCount);
+
         // ── ApplicationService ──
 
         [LoggerMessage(EventId = 40040, Level = LogLevel.Information,
