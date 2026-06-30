@@ -2559,6 +2559,7 @@ const getOptions = (
       </Stack.Item>
       )}
 
+      {!detailsOnly && (
       <Stack.Item align="start">
       {(isAITitleEnabled && source.filter) &&
       <div className={classNames.content}>
@@ -2584,6 +2585,7 @@ const getOptions = (
       </div>
       }
       </Stack.Item>
+      )}
       </Stack>
 
       {(includeFilter || source.filter) && !detailsOnly &&

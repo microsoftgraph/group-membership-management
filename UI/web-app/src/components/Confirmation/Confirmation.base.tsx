@@ -278,7 +278,7 @@ export const ConfirmationBase: React.FunctionComponent<IConfirmationProps> = (pr
                 </ActionButton>
               </div>
               <Separator />
-              {sourceParts && sourceParts.length > 0 ? (
+              {!isAdvancedView && sourceParts && sourceParts.length > 0 ? (
                 <RulesReview parts={sourceParts} />
               ) : (
                 <Stack enableScopedSelectors tokens={{ childrenGap: 30 }}>
