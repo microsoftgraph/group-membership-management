@@ -124,6 +124,19 @@ namespace WebApi.Controllers.v1.OpenAI
                         return StatusCode(500, new { error = "OpenAI response contains empty titles." });
                     }
 
+                    var partsLookup = new Dictionary<Guid, string>();
+                    foreach (var p in parts)
+                    {
+                        partsLookup[p.PartId] = p.Filter;
+                    }
+                    foreach (var title in titles)
+                    {
+                        if (partsLookup.TryGetValue(title.PartId, out var filter))
+                        {
+                            title.Filter = filter;
+                        }
+                    }
+
                     _logger.GenerateTitlesSucceeded(titles.Count);
 
                     return Ok(titles);
