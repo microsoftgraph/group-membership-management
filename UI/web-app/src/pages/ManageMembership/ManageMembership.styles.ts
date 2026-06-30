@@ -18,7 +18,8 @@ export const getStyles = (props: IManageMembershipStyleProps): IManageMembership
             display: 'flex',
             justifyContent: 'space-between',
             alignItems: 'center',
-            flexDirection: 'row'
+            flexDirection: 'row',
+            paddingBottom: 24
         },
         circlesContainer: {
             flex: 1,

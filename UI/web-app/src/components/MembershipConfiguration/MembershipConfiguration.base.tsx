@@ -30,6 +30,7 @@ import {
 } from '../../store/manageMembership.slice';
 import { selectAttributes, selectAreAttributeMappingsLoading } from '../../store/sqlMembershipSources.slice';
 import { SourcePart } from '../SourcePart';
+import { RulesReview } from '../RulesReview';
 import { useStrings, useQueryValidation } from '../../store/hooks';
 import { HRSourcePartSource } from '../../models/HRSourcePart';
 import { ISourcePart } from '../../models/ISourcePart';
@@ -437,10 +438,8 @@ export const MembershipConfigurationBase: React.FunctionComponent<MembershipConf
           />
         </div>
       )}
-      {!isAdvancedView ? (<>
-        {isSubmissionReviewer && !isEditable && jobDetails?.syncJobId && (
-          <UserSpotCheck syncJobId={jobDetails.syncJobId} sourceParts={sourceParts} />
-        )}
+      {!isAdvancedView ? (
+        isEditable ? (<>
         <div className={classNames.expandCollapseButton}>
           <ActionButton
               id="expandCollapseAllButton"
@@ -488,17 +487,21 @@ export const MembershipConfigurationBase: React.FunctionComponent<MembershipConf
             />
           ))}
         </div>
-        {isEditable &&
-          <div className={classNames.addButtonContainer}>
-            <DefaultButton
-              iconProps={{ iconName: 'Add' }}
-              onClick={newSourcePart}
-              disabled={!isJobWriter || !isEditable}>
-              {strings.ManageMembership.labels.addSourcePart}
-            </DefaultButton>
-          </div>
-        }
-      </>) : (<div className={classNames.card}>
+        <div className={classNames.addButtonContainer}>
+          <DefaultButton
+            iconProps={{ iconName: 'Add' }}
+            onClick={newSourcePart}
+            disabled={!isJobWriter || !isEditable}>
+            {strings.ManageMembership.labels.addSourcePart}
+          </DefaultButton>
+        </div>
+      </>) : (<>
+        {isSubmissionReviewer && jobDetails?.syncJobId && (
+          <UserSpotCheck syncJobId={jobDetails.syncJobId} sourceParts={sourceParts} />
+        )}
+        <RulesReview parts={sourceParts} />
+      </>)
+      ) : (<div className={classNames.card}>
         <AdvancedQuery
           query={advancedViewQuery}
           onQueryChange={handleAdvancedViewQueryChange}

@@ -57,7 +57,7 @@ export const getClassNames = classNamesFunction<HRQuerySourceStyleProps, HRQuery
 
 export const HRQuerySourceBase: React.FunctionComponent<HRQuerySourceProps> = (props: HRQuerySourceProps) => {
 
-  const { className, styles, partId, onSourceChange, onEnableEdit, isEditable, useOrgStructure, managerToAutoSelect, depthToAutoSelect } = props;
+  const { className, styles, partId, onSourceChange, onEnableEdit, isEditable, detailsOnly, useOrgStructure, managerToAutoSelect, depthToAutoSelect } = props;
   const classNames: IProcessedStyleSet<HRQuerySourceStyles> = getClassNames(styles, {
     className,
     theme: useTheme(),
@@ -1753,14 +1753,14 @@ const getOptions = (
   };
 
   const columns = [
-     {
+     ...(!detailsOnly ? [{
       key: 'upDown',
       name: '',
       fieldName: 'upDown',
       minWidth: 20,
       maxWidth: 20,
       isResizable: false
-    },
+    }] : []),
     {
       key: 'attribute',
       name: 'Attribute',
@@ -1793,14 +1793,14 @@ const getOptions = (
       maxWidth: 200,
       isResizable: true,
     },
-    {
+    ...(!detailsOnly ? [{
       key: 'remove',
       name: '',
       fieldName: 'remove',
       minWidth: 200,
       maxWidth: 200,
       isResizable: true
-    }
+    }] : [])
   ];
 
   function reorderItems(index: number, newIndex: number, items: IFilterPart[]) {
@@ -2479,7 +2479,8 @@ const getOptions = (
   }
 
   return (
-    <div className={classNames.root}>
+    <div className={classNames.root} style={detailsOnly ? { maxWidth: '100%' } : undefined}>
+      {!detailsOnly && (<>
       <Label>{strings.HROnboarding.includeOrg}</Label>
       <ChoiceGroup
         data-testid="hr-include-org-choice"
@@ -2492,8 +2493,9 @@ const getOptions = (
         }}
         disabled={!isJobWriter || !isEditable}
       />
+      </>)}
 
-{(includeOrg || (source?.manager?.id && objectIdEmployeeIdMapping[source.manager.id])) && (
+{!detailsOnly && (includeOrg || (source?.manager?.id && objectIdEmployeeIdMapping[source.manager.id])) && (
       <Stack horizontal verticalAlign="center" tokens={stackTokens}>
         <Stack.Item align="start">
           <OrgLeader
@@ -2532,12 +2534,15 @@ const getOptions = (
       </Stack>
        )}
 
+      {!detailsOnly && (<>
       <div className={classNames.error} role="alert" aria-live="assertive" aria-atomic="true">
         {orgLeaderDataReturned && orgLeaderDetails.employeeId === 0 && partId === orgLeaderDetails.partId && orgErrorMessage}
       </div>
       <br />
+      </>)}
 
       <Stack horizontal horizontalAlign="space-between" verticalAlign="center" tokens={stackTokens}>
+      {!detailsOnly && (
       <Stack.Item align="start">
       <Label>{format(strings.HROnboarding.includeFilter, hrSource?.customLabel ?? hrSource?.name)}</Label>
       <ChoiceGroup
@@ -2552,6 +2557,7 @@ const getOptions = (
         disabled={!isJobWriter || !isEditable}
       />
       </Stack.Item>
+      )}
 
       <Stack.Item align="start">
       {(isAITitleEnabled && source.filter) &&
@@ -2580,7 +2586,7 @@ const getOptions = (
       </Stack.Item>
       </Stack>
 
-      {(includeFilter || source.filter) &&
+      {(includeFilter || source.filter) && !detailsOnly &&
       <div className={classNames.cardHeader}>
         <div className={classNames.cardTitle}>
           {strings.HROnboarding.attributeTitle}
@@ -2594,7 +2600,7 @@ const getOptions = (
         />
       </div>}
 
-      {(includeFilter || source.filter) && <Separator styles={{root: classNames.separator}} />}
+      {(includeFilter || source.filter) && !detailsOnly && <Separator styles={{root: classNames.separator}} />}
 
       {(source.filter && (filterTextEnabled || !attributes)) ?
        (
@@ -2618,7 +2624,8 @@ const getOptions = (
         ></TextField></>
         ) : attributes && attributes.length > 0 && expanded && (includeFilter || source.filter) ?
         (
-          <div>
+          <div className={detailsOnly ? classNames.detailsListContainerReadOnly : undefined}>
+            {!detailsOnly && (<>
             <ActionButton
               data-testid="hr-group-button"
               iconProps={{ iconName: 'GroupObject' }}
@@ -2634,6 +2641,7 @@ const getOptions = (
               {strings.HROnboarding.ungroup}
             </ActionButton>
           <br/>
+          </>)}
 
 
           {(groupingEnabled && expanded) ? (
@@ -2662,12 +2670,12 @@ const getOptions = (
               checkButtonAriaLabel={strings.HROnboarding.selectRowAriaLabel}
               layoutMode={DetailsListLayoutMode.justified}
               styles={{
-                root: classNames.detailsList
+                root: detailsOnly ? classNames.detailsListReadOnly : classNames.detailsList
               }}
             />
           )}
 
-          {(!groupingEnabled) &&
+          {(!groupingEnabled) && !detailsOnly &&
           <ActionButton
             data-testid="hr-add-attribute-button"
             styles={{ root: classNames.addAttribute }}

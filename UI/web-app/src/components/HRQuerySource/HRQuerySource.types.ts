@@ -8,6 +8,8 @@ import { HRSourcePartSource } from '../../models/HRSourcePart';
 export type HRQuerySourceStyles = {
   root: IStyle;
   detailsList: IStyle;
+  detailsListReadOnly: IStyle;
+  detailsListContainerReadOnly: IStyle;
   detailsListColumnHeader: IStyle;
   textFieldGroup: IStyle;
   textField: IStyle;
@@ -60,6 +62,12 @@ export type HRQuerySourceProps = React.AllHTMLAttributes<HTMLDivElement> & {
   onSourceChange: (source: HRSourcePartSource, partId: string, title?: string) => void;
   onEnableEdit: (isEditEnabled: boolean) => void;
   isEditable?: boolean;
+  /**
+   * When true, renders the source in a compact read-only review mode: hides the
+   * org-structure and attribute-filter questions and the Group/Ungroup controls,
+   * since that context is already conveyed by the rule card.
+   */
+  detailsOnly?: boolean;
   /**
    * Whether to auto-enable the org structure toggle (set by Copilot when it detects hierarchy is needed)
    */

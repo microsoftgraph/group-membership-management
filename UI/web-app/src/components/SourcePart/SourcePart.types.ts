@@ -45,6 +45,11 @@ export type SourcePartProps = React.AllHTMLAttributes<HTMLDivElement> & {
   part: ISourcePart;
   isNew?: boolean;
   isEditable?: boolean;
+  /**
+   * When true, renders only the read-only configuration content (no card chrome,
+   * header, or expand/collapse control) so it can be embedded below the rule carousel.
+   */
+  detailsOnly?: boolean;
 
   /**
    * Call to provide customized styling that will layer on top of the variant rules.

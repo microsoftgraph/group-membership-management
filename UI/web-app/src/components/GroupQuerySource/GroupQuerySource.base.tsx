@@ -28,7 +28,7 @@ import { generateGroupTitle } from '../../utils/titleGenerator';
 export const getClassNames = classNamesFunction<GroupQuerySourceStyleProps, GroupQuerySourceStyles>();
 
 export const GroupQuerySourceBase: React.FunctionComponent<GroupQuerySourceProps> = (props: GroupQuerySourceProps) => {
-  const { className, styles, part, onSourceChange } = props;
+  const { className, styles, part, isEditable = true, onSourceChange } = props;
   const classNames: IProcessedStyleSet<GroupQuerySourceStyles> = getClassNames(styles, {
     className,
     theme: useTheme(),
@@ -126,7 +126,7 @@ export const GroupQuerySourceBase: React.FunctionComponent<GroupQuerySourceProps
         selectedItems={selectedGroup}
         styles={{ text: classNames.groupPicker }}
         pickerCalloutProps={{ calloutMinWidth: 500 }}
-        disabled={!isJobWriter}
+        disabled={!isJobWriter || !isEditable}
       />
     </div>
   );

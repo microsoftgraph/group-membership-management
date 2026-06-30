@@ -68,6 +68,14 @@ export const getStyles = (props: HRQuerySourceStyleProps): HRQuerySourceStyles =
     detailsList: {
       minWidth: 1200
     },
+    detailsListReadOnly: {
+      minWidth: 'unset',
+      width: '100%'
+    },
+    detailsListContainerReadOnly: {
+      maxWidth: '100%',
+      overflowX: 'auto'
+    },
     detailsListColumnHeader:{
       fontWeight: 600,
       fontSize: 14,

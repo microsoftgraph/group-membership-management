@@ -153,6 +153,26 @@ export type IStrings = {
       unsupportedBanner: string;
       sourcePartLabel: string;
       errorMessage: string;
+    },
+    RuleCard: {
+      inclusive: string;
+      exclusive: string;
+      typeGroup: string;
+      typePlace: string;
+      typeGroupOwnership: string;
+      typeTeamsChannel: string;
+      typeHRFallback: string;
+      orgLeaderLabel: string;
+      depthLabel: string;
+      nameLabel: string;
+      aliasLabel: string;
+      notSet: string;
+      allLevels: string;
+      levelDown: string;
+      levelsDown: string;
+      scrollLeft: string;
+      scrollRight: string;
+      selectRuleAria: string;
     }
   },
   AdminConfig: {
@@ -657,6 +677,8 @@ export type IStrings = {
       objectId: string;
       sourceParts: string;
       sourcePart: string;
+      rulesTitle: string;
+      rulesDescription: string;
       hiddenMembershipGroup: string;
       noThresholdSet: string;
       savingSyncJob: string;

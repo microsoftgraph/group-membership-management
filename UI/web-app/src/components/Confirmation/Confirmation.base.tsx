@@ -44,7 +44,8 @@ import {
   manageMembershipLastModifiedOnBehalfOfDisplayName,
   setNewJobLastModifiedOnBehalfOfDisplayName,
   setNewJobLastModifiedOnBehalfOfObjectId,
-  manageMembershipGroupOwners
+  manageMembershipGroupOwners,
+  getSourcePartsFromState
 } from '../../store/manageMembership.slice';
 import { OnboardingSteps } from '../../models/OnboardingSteps';
 import { useLocation, useParams } from 'react-router-dom';
@@ -58,6 +59,7 @@ import { SyncStatus } from '../../models';
 import { AppDispatch } from '../../store';
 import { getGroupOwners } from '../../store/manageMembership.api';
 import { SourcePartType } from '../../models/SourcePartType';
+import { RulesReview } from '../RulesReview';
 import { destinationTypeLocalization } from '../../utils/destinationTypeUtils';
 
 const getClassNames = classNamesFunction<
@@ -104,6 +106,7 @@ export const ConfirmationBase: React.FunctionComponent<IConfirmationProps> = (pr
   const isAdvancedView = useSelector(manageMembershipIsAdvancedView);
   const compositeQuery = useSelector(manageMembershipCompositeQuery);
   const globalQuery = useSelector(manageMembershipQuery);
+  const sourceParts = useSelector(getSourcePartsFromState);
 
   const isJobTenantWriter = useSelector(selectIsJobTenantWriter);
 
@@ -275,21 +278,25 @@ export const ConfirmationBase: React.FunctionComponent<IConfirmationProps> = (pr
                 </ActionButton>
               </div>
               <Separator />
-              <Stack enableScopedSelectors tokens={{ childrenGap: 30 }}>
-                <Stack.Item align="stretch" grow>
-                  <TextField
-                    label={strings.ManageMembership.labels.query}
-                    value={displayQuery}
-                    readOnly
-                    multiline
-                    resizable={true}
-                    autoAdjustHeight={true}
-                    styles={{
-                      field: { fontFamily: "monospace" },
-                    }}
-                  />
-                </Stack.Item>
-              </Stack>
+              {sourceParts && sourceParts.length > 0 ? (
+                <RulesReview parts={sourceParts} />
+              ) : (
+                <Stack enableScopedSelectors tokens={{ childrenGap: 30 }}>
+                  <Stack.Item align="stretch" grow>
+                    <TextField
+                      label={strings.ManageMembership.labels.query}
+                      value={displayQuery}
+                      readOnly
+                      multiline
+                      resizable={true}
+                      autoAdjustHeight={true}
+                      styles={{
+                        field: { fontFamily: "monospace" },
+                      }}
+                    />
+                  </Stack.Item>
+                </Stack>
+              )}
             </div>
 
           <div>

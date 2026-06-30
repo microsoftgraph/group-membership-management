@@ -42,7 +42,7 @@ import { selectSelectedJobDetails, selectSelectedJobWithNoTitles } from '../../s
 const getClassNames = classNamesFunction<SourcePartStyleProps, SourcePartStyles>();
 
 export const SourcePartBase: React.FunctionComponent<SourcePartProps> = (props: SourcePartProps) => {
-  const { className, styles, partId, totalSourceParts, onDelete, query, part, isEditable } = props;
+  const { className, styles, partId, totalSourceParts, onDelete, query, part, isEditable, detailsOnly } = props;
   const classNames: IProcessedStyleSet<SourcePartStyles> = getClassNames(styles, {
     className,
     theme: useTheme(),
@@ -235,7 +235,8 @@ export const SourcePartBase: React.FunctionComponent<SourcePartProps> = (props: 
   };
 
   return (
-    <div className={classNames.card}>
+    <div className={detailsOnly ? classNames.root : classNames.card}>
+      {!detailsOnly && (
       <div className={classNames.header}>
         <div className={classNames.title}>
         <div className={classNames.existingTitle}>{strings.ManageMembership.labels.sourcePart}</div>
@@ -289,28 +290,31 @@ export const SourcePartBase: React.FunctionComponent<SourcePartProps> = (props: 
           title={expanded ? strings.ManageMembership.labels.collapse : strings.ManageMembership.labels.expand}
         />
       </div>
-      {expanded &&
+      )}
+      {(expanded || detailsOnly) &&
         <div className={classNames.content}>
           <div className={classNames.controls}>
-            <div>
-              <Dropdown
-                styles={{ title: classNames.dropdownTitle }}
-                options={getOptions(hrSource)}
-                label={strings.ManageMembership.labels.sourceType}
-                required={true}
-                selectedKey={part.query.type}
-                onChange={handleSourceTypeChanged}
-                disabled={!isJobWriter || !isEditable}
-              />
-              <ChoiceGroup
-                options={inclusionaryOptions}
-                label={strings.ManageMembership.labels.includeSourcePart}
-                required={true}
-                onChange={handleInclusionaryChange}
-                selectedKey={isInclusionary ? 'Yes' : 'No'}
-                disabled={!isJobWriter || !isEditable}
-              />
-            </div>
+            {!detailsOnly && (
+              <div>
+                <Dropdown
+                  styles={{ title: classNames.dropdownTitle }}
+                  options={getOptions(hrSource)}
+                  label={strings.ManageMembership.labels.sourceType}
+                  required={true}
+                  selectedKey={part.query.type}
+                  onChange={handleSourceTypeChanged}
+                  disabled={!isJobWriter || !isEditable}
+                />
+                <ChoiceGroup
+                  options={inclusionaryOptions}
+                  label={strings.ManageMembership.labels.includeSourcePart}
+                  required={true}
+                  onChange={handleInclusionaryChange}
+                  selectedKey={isInclusionary ? 'Yes' : 'No'}
+                  disabled={!isJobWriter || !isEditable}
+                />
+              </div>
+            )}
             {isEditable &&
               <DefaultButton
                   iconProps={{ iconName: 'Delete' }}
@@ -333,6 +337,7 @@ export const SourcePartBase: React.FunctionComponent<SourcePartProps> = (props: 
                 onSourceChange={handleSourceChange}
                 onEnableEdit={handleEnableEdit}
                 isEditable={isEditable}
+                detailsOnly={detailsOnly}
                 useOrgStructure={part.useOrgStructure}
                 managerToAutoSelect={part.managerToAutoSelect}
                 depthToAutoSelect={part.depthToAutoSelect}
@@ -340,7 +345,7 @@ export const SourcePartBase: React.FunctionComponent<SourcePartProps> = (props: 
             </div>
           )}
           {part.query.type === SourcePartType.GroupMembership && (
-            <GroupQuerySource part={part} onSourceChange={handleGroupMembershipSourceChange} />
+            <GroupQuerySource part={part} isEditable={isEditable} onSourceChange={handleGroupMembershipSourceChange} />
           )}
           {part.query.type === SourcePartType.GroupOwnership && (
             <AdvancedViewSourcePart key={SourcePartType.GroupOwnership} part={part} isEditable={isEditable} />
