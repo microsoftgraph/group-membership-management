@@ -26,7 +26,8 @@ namespace Models
             { SettingKey.CopilotTopP, Guid.Parse("D4E5F6A7-B8C9-0123-DEF0-234567890123") },
             { SettingKey.CopilotInstructions, Guid.Parse("E5F6A7B8-C9D0-1234-EF01-345678901234") },
             { SettingKey.CopilotSuggestedPrompts, Guid.Parse("F6A7B8C9-D0E1-2345-F012-456789012345") },
-            { SettingKey.IsAISearchForUserEnabled, Guid.Parse("A7B8C9D0-E1F2-3456-0123-567890123456") }
+            { SettingKey.IsAISearchForUserEnabled, Guid.Parse("A7B8C9D0-E1F2-3456-0123-567890123456") },
+            { SettingKey.IsAIRunExplanationEnabled, Guid.Parse("FCC646D4-5EB9-4753-88F9-6450806AD3C6") }
         };
     }
 }

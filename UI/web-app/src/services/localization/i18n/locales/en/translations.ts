@@ -248,6 +248,8 @@ export const strings: IStrings = {
         isAICopilotEnabledDescription: "Enable the AI Copilot chat assistant to help users build filters and configure memberships.",
         isAISearchForUserEnabledTitle: "Is AI Search for User enabled?",
         isAISearchForUserEnabledDescription: "Enable the AI-powered search for user feature in the sync history panel, allowing users to search membership change history by user.",
+        isAIRunExplanationEnabledTitle: "Is AI Run Explanation enabled?",
+        isAIRunExplanationEnabledDescription: "Enable AI-generated descriptions on sync history rows, summarizing why each run added or removed members.",
         copilotInstructionsPromptTitle: "Copilot Instructions Prompt",
         copilotInstructionsPromptDescription: "Customize the behavioral instructions for the AI Copilot. These instructions guide how the copilot responds to users.",
         copilotInstructionsPromptPlaceholder: "Enter custom instructions for the AI Copilot...",

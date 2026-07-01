@@ -260,6 +260,13 @@ export const selectIsAISearchForUserEnabled = (state: RootState) => {
   return setting ? setting.settingValue === 'true' : undefined;
 }
 
+export const selectIsAIRunExplanationEnabled = (state: RootState) => {
+  const settingsArray = state.settings.settings;
+  if (!settingsArray) return undefined;
+  const setting = settingsArray.find((s) => s.settingKey === SettingKey.IsAIRunExplanationEnabled);
+  return setting ? setting.settingValue === 'true' : undefined;
+}
+
 export const selectPatchSettingResponse = (state: RootState) => state.settings.patchSettingResponse;
 export const selectPatchSettingError = (state: RootState) => state.settings.patchSettingError;
 

@@ -18,6 +18,7 @@ namespace WebApi.Controllers.v1.Settings
         private static readonly IReadOnlySet<SettingKey> AISettingKeys = new HashSet<SettingKey>
         {
             SettingKey.IsAICopilotEnabled,
+            SettingKey.IsAIRunExplanationEnabled,
             SettingKey.CopilotTemperature,
             SettingKey.CopilotTopP,
             SettingKey.CopilotInstructions,
