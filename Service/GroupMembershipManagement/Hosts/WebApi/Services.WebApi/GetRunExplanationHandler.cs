@@ -8,7 +8,6 @@ using Repositories.Contracts;
 using Services.Contracts;
 using Services.Messages.Requests;
 using Services.Messages.Responses;
-using Services.WebApi;
 using Services.WebApi.Contracts;
 using System.Net;
 using System.Text;
@@ -18,20 +17,20 @@ namespace Services
 {
     public class GetRunExplanationHandler : RequestHandlerBase<GetRunExplanationRequest, GetRunExplanationResponse>
     {
-        internal const string FallbackExplanation = "The specific reason could not be determined from the available data.";
-        internal const string NotEnoughInformation = "Not enough information to determine a cause.";
-        internal const string NoMembershipChanges = "This sync completed with no membership changes.";
+        public const string FallbackExplanation = "The specific reason could not be determined from the available data.";
+        public const string NotEnoughInformation = "Not enough information to determine a cause.";
+        public const string NoMembershipChanges = "This sync completed with no membership changes.";
 
         // Cap on group-source display names resolved via Graph per row expansion; falls back to raw GUIDs on Graph failure.
-        internal const int MaxGroupNamesToResolve = 25;
+        public const int MaxGroupNamesToResolve = 25;
 
         // Cap on manager scopes resolved to display names per row expansion (SQL + Graph roundtrip each).
-        internal const int MaxManagerNamesToResolve = 10;
+        public const int MaxManagerNamesToResolve = 10;
 
         // Attribution caps: parallel per-part probes; 1000-user cap preserves bucket accuracy.
-        internal const int MaxSqlRulesToIntersect = 5;
-        internal const int MaxAddsForRuleAttribution = 1000;
-        internal const int MaxGroupPartsToAttribute = 10;
+        public const int MaxSqlRulesToIntersect = 5;
+        public const int MaxAddsForRuleAttribution = 1000;
+        public const int MaxGroupPartsToAttribute = 10;
 
         // Per-run (population-level) system prompt; kept separate from the per-user prompt so each is independently tunable.
         private static readonly string SystemPrompt = @"You are a sync analysis assistant for Group Membership Management (GMM).
@@ -145,6 +144,15 @@ Use only the provided data. Output 1-2 sentences only.";
                 var runHistory = await _syncJobHistoryRepository.GetByRunIdAsync(request.RunId);
                 if (runHistory == null)
                 {
+                    response.StatusCode = HttpStatusCode.NotFound;
+                    return response;
+                }
+
+                // Prevent cross-job run-id disclosure: the run must belong to the requested sync job.
+                if (runHistory.SyncJobId != request.SyncJobId)
+                {
+                    _logger.LogWarning("Cross-job run access attempt: RunId {RunId} belongs to SyncJob {ActualSyncJobId} but was requested against SyncJob {RequestedSyncJobId}.",
+                        request.RunId, runHistory.SyncJobId, request.SyncJobId);
                     response.StatusCode = HttpStatusCode.NotFound;
                     return response;
                 }
@@ -344,7 +352,7 @@ Use only the provided data. Output 1-2 sentences only.";
             return null;
         }
 
-        internal const int MaxUsersPerRunExplanation = 150;
+        public const int MaxUsersPerRunExplanation = 150;
 
         private async Task<(List<Guid> Added, List<Guid> Removed)> ReadMembershipDeltaAsync(string targetGroupId, Guid runId)
         {
@@ -372,7 +380,7 @@ Use only the provided data. Output 1-2 sentences only.";
         }
 
         // Forward-only Utf8JsonReader parse; ref struct prohibits use inside async, so this lives in a sync helper.
-        internal static (List<Guid> Added, List<Guid> Removed) ParseMembershipDelta(string json)
+        public static (List<Guid> Added, List<Guid> Removed) ParseMembershipDelta(string json)
         {
             var added = new List<Guid>();
             var removed = new List<Guid>();
@@ -501,7 +509,7 @@ Use only the provided data. Output 1-2 sentences only.";
 
         // Cap combined users at MaxUsersPerRunExplanation, biased toward keeping both sides represented
         // when one side dominates. If total <= cap, returns inputs unchanged.
-        internal static (List<Guid> Added, List<Guid> Removed) CapAt150(IReadOnlyList<Guid> added, IReadOnlyList<Guid> removed)
+        public static (List<Guid> Added, List<Guid> Removed) CapAt150(IReadOnlyList<Guid> added, IReadOnlyList<Guid> removed)
         {
             int total = added.Count + removed.Count;
             if (total <= MaxUsersPerRunExplanation)
@@ -689,7 +697,7 @@ Use only the provided data. Output 1-2 sentences only.";
         }
 
         // Inlined from GetSyncExplanationHandler.ExtractAttributeNamesFromSqlFilter for now.
-        internal static void ExtractAttributeNamesFromSqlFilter(string filter, HashSet<string> attributeNames)
+        public static void ExtractAttributeNamesFromSqlFilter(string filter, HashSet<string> attributeNames)
         {
             var operators = new[] { "=", "<>", ">=", "<=", ">", "<", " IN ", " NOT IN ", " LIKE ", " NOT LIKE " };
             var logicalOps = new[] { " AND ", " OR " };
@@ -981,7 +989,7 @@ Configuration history:
         }
 
         // Inlined from GetSyncExplanationHandler for now; see plan.md follow-up to extract into a shared helper.
-        internal static List<QueryPartInfo>? ParseQueryParts(string? query)
+        public static List<QueryPartInfo>? ParseQueryParts(string? query)
         {
             if (string.IsNullOrWhiteSpace(query))
                 return null;
@@ -1058,7 +1066,7 @@ Configuration history:
         // TeamsChannelMembership source GUIDs. Silent fallback to raw GUIDs on any failure.
 
         // Collects unique non-empty source GUIDs across query parts, filtering to group-referencing types.
-        internal static HashSet<Guid> CollectGroupSourceGuids(params IReadOnlyList<QueryPartInfo>?[] partLists)
+        public static HashSet<Guid> CollectGroupSourceGuids(params IReadOnlyList<QueryPartInfo>?[] partLists)
         {
             var result = new HashSet<Guid>();
             if (partLists == null) return result;
@@ -1123,7 +1131,7 @@ Configuration history:
         }
 
         // Renders a source GUID as "'Display Name' (guid)" when a name is cached, otherwise passes through unchanged.
-        internal static string FormatGroupRef(string? rawSource, IReadOnlyDictionary<Guid, string>? nameCache)
+        public static string FormatGroupRef(string? rawSource, IReadOnlyDictionary<Guid, string>? nameCache)
         {
             if (string.IsNullOrEmpty(rawSource)) return rawSource ?? string.Empty;
             if (nameCache != null
@@ -1138,7 +1146,7 @@ Configuration history:
 
         // Builds the optional "Source group display names" prompt section. Returns an empty string
         // when no names were resolved, so the prompt stays unchanged in the fallback path.
-        internal static string BuildGroupNameReferenceTable(IReadOnlyDictionary<Guid, string>? groupNames)
+        public static string BuildGroupNameReferenceTable(IReadOnlyDictionary<Guid, string>? groupNames)
         {
             if (groupNames == null || groupNames.Count == 0) return string.Empty;
 
@@ -1157,7 +1165,7 @@ Configuration history:
         // (SQL for AzureObjectId, then Graph for DisplayName). Sequential per manager id; silent fallback to id-only on any failure.
 
         // Collects unique non-empty positive manager IDs from parsed query part lists.
-        internal static HashSet<int> CollectManagerIds(params IReadOnlyList<QueryPartInfo>?[] partLists)
+        public static HashSet<int> CollectManagerIds(params IReadOnlyList<QueryPartInfo>?[] partLists)
         {
             var result = new HashSet<int>();
             if (partLists == null) return result;
@@ -1282,7 +1290,7 @@ Configuration history:
 
         // Wraps QueryPartInfo.FormatManagerScope() to swap the manager's employee ID for their display name when available.
         // Unresolved IDs pass through unchanged so callers always have a usable identifier.
-        internal static string FormatManagerScopeWithName(QueryPartInfo part, IReadOnlyDictionary<int, string>? managerNames)
+        public static string FormatManagerScopeWithName(QueryPartInfo part, IReadOnlyDictionary<int, string>? managerNames)
         {
             var baseScope = part.FormatManagerScope();
             if (managerNames == null || managerNames.Count == 0) return baseScope;
@@ -1298,7 +1306,7 @@ Configuration history:
 
         // Builds the optional "Manager display names" prompt section. Returns an empty string
         // when no names were resolved, so the prompt stays unchanged in the fallback path.
-        internal static string BuildManagerNameReferenceTable(IReadOnlyDictionary<int, string>? managerNames)
+        public static string BuildManagerNameReferenceTable(IReadOnlyDictionary<int, string>? managerNames)
         {
             if (managerNames == null || managerNames.Count == 0) return string.Empty;
 
@@ -1491,7 +1499,7 @@ Configuration history:
 
         // Qualitative bucketing for attribution ratios. The buckets are deliberately wide so the
         // AI can quote them verbatim without inviting precision-fabrication ("most" vs "73%").
-        internal static string BucketAttribution(int matched, int total)
+        public static string BucketAttribution(int matched, int total)
         {
             if (total <= 0 || matched == 0) return "none";
             if (matched >= total) return "all";
@@ -1505,7 +1513,7 @@ Configuration history:
         }
 
         // Owner-facing label for an inclusionary SqlMembership part in the attribution section (rule # + scope only, no filter expression).
-        internal static string FormatSqlPartLabel(QueryPartInfo part, IReadOnlyDictionary<int, string>? managerNames)
+        public static string FormatSqlPartLabel(QueryPartInfo part, IReadOnlyDictionary<int, string>? managerNames)
         {
             if (string.IsNullOrEmpty(part.ManagerId))
             {
@@ -1516,13 +1524,13 @@ Configuration history:
         }
 
         // Owner-facing label for a GroupMembership-family part; uses resolved display name when available, falls back to raw source GUID.
-        internal static string FormatGroupFamilyPartLabel(QueryPartInfo part, IReadOnlyDictionary<Guid, string>? groupNames)
+        public static string FormatGroupFamilyPartLabel(QueryPartInfo part, IReadOnlyDictionary<Guid, string>? groupNames)
         {
             var sourceLabel = FormatGroupRef(part.Source, groupNames);
             return $"Inclusionary {part.Type} part #{part.Index + 1} ({sourceLabel})";
         }
 
-        internal class QueryPartInfo
+        public class QueryPartInfo
         {
             public int Index { get; set; }
             public string Type { get; set; } = "Unknown";
