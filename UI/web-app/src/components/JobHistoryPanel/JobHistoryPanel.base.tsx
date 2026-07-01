@@ -1427,7 +1427,11 @@ export const JobHistoryPanelBase: React.FunctionComponent<IJobHistoryPanelProps>
             styles={{
                 main: { overflow: 'visible' },
                 contentInner: { overflow: 'visible' },
-                scrollableContent: { overflow: 'visible' },
+                scrollableContent: {
+                    overflowY: 'auto',
+                    overflowX: 'visible',
+                    maxHeight: '100vh',
+                },
             }}
         >
             {changesApplied && (
