@@ -38,7 +38,7 @@ import { useStrings } from '../../store/hooks';
 import { useDispatch, useSelector } from 'react-redux';
 import { AppDispatch } from '../../store';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { downloadMembershipChanges, fetchJobChanges, fetchSyncJobHistory, fetchThresholdNotification, resolveNotification, searchSyncHistoryByUser, fetchSyncExplanation } from '../../store/jobDetails.api';
+import { downloadMembershipChanges, fetchJobChanges, fetchSyncJobHistory, fetchThresholdNotification, resolveNotification, searchSyncHistoryByUser, fetchSyncExplanation, fetchRunExplanation } from '../../store/jobDetails.api';
 import { selectSelectedJobChanges, selectSelectedJobDetails, setSelectedJobEnabled } from '../../store/jobs.slice';
 import { SyncJobChange } from '../../models/SyncJobChange';
 import { SyncJobChangeReason } from '../../models/SyncJobChangeReason';
@@ -47,7 +47,7 @@ import { SyncHistorySearchProgressUpdate } from '../../models/SyncHistorySearchP
 import { MembershipChangeType, SearchSyncHistoryByUserRunMembershipChange } from '../../models/SearchSyncHistoryByUserResult';
 import { ThresholdNotificationData } from '../../models/ThresholdNotificationData';
 import { selectIsJobTenantReader, selectIsJobTenantWriter, selectIsGeneralSettingsAdministrator } from '../../store/roles.slice';
-import { selectIsAISearchForUserEnabled } from '../../store/settings.slice';
+import { selectIsAISearchForUserEnabled, selectIsAIRunExplanationEnabled } from '../../store/settings.slice';
 import { renderMultilineHeader } from '../../utils/stringUtils';
 import { getStatusDisplayText } from '../../utils/jobUtils';
 import { RunHistoryStatus } from '../../models/Status';
@@ -88,6 +88,8 @@ const syncPageSizeOptions: IDropdownOption[] = [10, 20, 30, 40, 50].map((value) 
     text: value.toString(),
 }));
 
+const RUN_EXPLANATION_FALLBACK = 'The specific reason could not be determined from the available data.';
+
 
 export const JobHistoryPanelBase: React.FunctionComponent<IJobHistoryPanelProps> = (
     props: IJobHistoryPanelProps
@@ -102,6 +104,7 @@ export const JobHistoryPanelBase: React.FunctionComponent<IJobHistoryPanelProps>
     const isJobTenantWriter = useSelector(selectIsJobTenantWriter);
     const isGeneralSettingsAdministrator = useSelector(selectIsGeneralSettingsAdministrator);
     const isAISearchForUserEnabled = useSelector(selectIsAISearchForUserEnabled);
+    const isAIRunExplanationEnabled = useSelector(selectIsAIRunExplanationEnabled);
     const showSyncTab = isJobTenantReader || isJobTenantWriter;
     const canDownloadMembershipChanges = isJobTenantWriter;
 
@@ -147,6 +150,10 @@ export const JobHistoryPanelBase: React.FunctionComponent<IJobHistoryPanelProps>
     const [aiExplanationCache, setAiExplanationCache] = useState<Map<string, string>>(new Map());
     const [aiExplanationLoading, setAiExplanationLoading] = useState<Set<string>>(new Set());
     const [aiExplanationErrors, setAiExplanationErrors] = useState<Set<string>>(new Set());
+    // Per-run AI explanation (keyed by runId, independent of any selected user).
+    const [runExplanationCache, setRunExplanationCache] = useState<Map<string, string>>(new Map());
+    const [runExplanationLoading, setRunExplanationLoading] = useState<Set<string>>(new Set());
+    const [runExplanationErrors, setRunExplanationErrors] = useState<Set<string>>(new Set());
 
     const getChangeReasonText = (changeReason: string | null): string => {
         switch (changeReason) {
@@ -1327,10 +1334,93 @@ export const JobHistoryPanelBase: React.FunctionComponent<IJobHistoryPanelProps>
         return null;
     };
 
+    const fetchExplanationForRunOnly = (runId: string): void => {
+        if (runExplanationCache.has(runId) || runExplanationLoading.has(runId)) {
+            return;
+        }
+
+        setRunExplanationLoading((prev) => new Set(prev).add(runId));
+        setRunExplanationErrors((prev) => {
+            const next = new Set(prev);
+            next.delete(runId);
+            return next;
+        });
+
+        dispatch(fetchRunExplanation({ syncJobId: jobId, runId }))
+            .unwrap()
+            .then((result) => {
+                if (result.explanation !== RUN_EXPLANATION_FALLBACK) {
+                    setRunExplanationCache((prev) => new Map(prev).set(runId, result.explanation));
+                }
+            })
+            .catch(() => {
+                setRunExplanationErrors((prev) => new Set(prev).add(runId));
+            })
+            .finally(() => {
+                setRunExplanationLoading((prev) => {
+                    const next = new Set(prev);
+                    next.delete(runId);
+                    return next;
+                });
+            });
+    };
+
+    const renderRunAiExplanation = (runId: string): JSX.Element | null => {
+        if (!isAIRunExplanationEnabled) {
+            return null;
+        }
+
+        const isLoading = runExplanationLoading.has(runId);
+        const hasError = runExplanationErrors.has(runId);
+        const hasCachedEntry = runExplanationCache.has(runId);
+        const explanation = runExplanationCache.get(runId);
+
+        if (!isLoading && !hasCachedEntry) {
+            fetchExplanationForRunOnly(runId);
+            return (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                    <strong style={{ fontSize: '14px' }}>{strings.JobDetails.Panel.aiDescriptionLabel}</strong>
+                    <Spinner size={SpinnerSize.small} label={strings.JobDetails.Panel.aiDescriptionLoading} />
+                </div>
+            );
+        }
+
+        if (isLoading) {
+            return (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                    <strong style={{ fontSize: '14px' }}>{strings.JobDetails.Panel.aiDescriptionLabel}</strong>
+                    <Spinner size={SpinnerSize.small} label={strings.JobDetails.Panel.aiDescriptionLoading} />
+                </div>
+            );
+        }
+
+        if (hasError) {
+            return (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                    <strong style={{ fontSize: '14px' }}>{strings.JobDetails.Panel.aiDescriptionLabel}</strong>
+                    <span style={{ fontSize: '12px', color: theme.palette.redDark }}>{strings.JobDetails.Panel.aiDescriptionError}</span>
+                </div>
+            );
+        }
+
+        // Empty explanation -> Skip Path A on the backend (nothing to explain). Render nothing.
+        if (!explanation) {
+            return null;
+        }
+
+        return (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                <strong style={{ fontSize: '14px' }}>{strings.JobDetails.Panel.aiDescriptionLabel}</strong>
+                <span style={{ fontSize: '12px' }}>{explanation}</span>
+            </div>
+        );
+    };
+
     const renderExpandedSyncContent = (item: CombinedHistoryListItem): JSX.Element | null => {
         if (item.eventType === 'sync' && item.syncHistory) {
             const downloadLink = renderDownloadLink(item);
-            const aiExplanation = renderAiExplanation(item.syncHistory.runId);
+            // Per-user description wins when a user search is active and this run matches; per-run fills in elsewhere.
+            const aiExplanation = renderAiExplanation(item.syncHistory.runId) ?? renderRunAiExplanation(item.syncHistory.runId);
             const customMessage = item.syncHistory.customMessage;
             const showAdfRunId = isGeneralSettingsAdministrator && !!item.syncHistory.adfRunId;
 
@@ -1397,7 +1487,7 @@ export const JobHistoryPanelBase: React.FunctionComponent<IJobHistoryPanelProps>
 
         const item = rowProps.item as CombinedHistoryListItem;
         const isExpanded = expandedSyncRowIds.has(item.id);
-        const expandedContent = renderExpandedSyncContent(item);
+        const expandedContent = isExpanded ? renderExpandedSyncContent(item) : null;
 
         return (
             <>

@@ -41,6 +41,7 @@ export const config = {
   searchSyncHistoryUser: (syncJobId: string, userObjectId: string) => `${appServiceBaseUri}/api/v1/jobDetails/history/sync/${syncJobId}/search-user/${userObjectId}`,
   downloadMembershipChanges: (syncJobId: string, runId: string) => `${appServiceBaseUri}/api/v1/jobDetails/history/sync/${syncJobId}/runs/${runId}/download`,
   getSyncExplanation: (syncJobId: string, runId: string, userObjectId: string) => `${appServiceBaseUri}/api/v1/jobDetails/history/sync/${syncJobId}/runs/${runId}/explain-user/${userObjectId}`,
+  getRunExplanation: (syncJobId: string, runId: string) => `${appServiceBaseUri}/api/v1/jobDetails/history/sync/${syncJobId}/runs/${runId}/explain-run`,
   getOrgLeaderDetails: `${appServiceBaseUri}/api/v1/orgLeaderDetails`,
   settings: `${appServiceBaseUri}/api/v1/settings`,
   patchSetting: `${appServiceBaseUri}/api/v1/settings`,

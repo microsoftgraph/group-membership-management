@@ -15,6 +15,7 @@ import { GetChannelRequest } from '../models/GetChannelRequest';
 import { SyncJobChangeReason } from '../models/SyncJobChangeReason';
 import { SearchSyncHistoryByUserResult } from '../models/SearchSyncHistoryByUserResult';
 import { SyncExplanationResult } from '../models/SyncExplanationResult';
+import { RunExplanationResult } from '../models/RunExplanationResult';
 import { ThresholdNotificationData } from '../models/ThresholdNotificationData';
 
 export const fetchJobDetails = createAsyncThunk<
@@ -390,6 +391,33 @@ export const fetchSyncExplanation = createAsyncThunk<
 
   if (!response.ok) {
     throw new Error('Failed to fetch sync explanation.');
+  }
+
+  return await response.json();
+});
+
+export const fetchRunExplanation = createAsyncThunk<
+  RunExplanationResult,
+  { syncJobId: string; runId: string },
+  ThunkConfig
+>('jobs/fetchRunExplanation', async ({ syncJobId, runId }, { extra }) => {
+  const { authenticationService } = extra.services;
+  const token = await authenticationService.getTokenAsync(TokenType.GMM);
+  const headers = new Headers({
+    'Authorization': `Bearer ${token}`,
+    'Content-Type': 'application/json',
+  });
+
+  const response = await fetch(
+    config.getRunExplanation(
+      encodeURIComponent(syncJobId),
+      encodeURIComponent(runId)
+    ),
+    { method: 'GET', headers }
+  );
+
+  if (!response.ok) {
+    throw new Error('Failed to fetch run explanation.');
   }
 
   return await response.json();
