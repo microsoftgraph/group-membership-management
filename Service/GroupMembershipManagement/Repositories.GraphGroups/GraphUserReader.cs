@@ -64,6 +64,7 @@ namespace Repositories.GraphGroups
 
                 await _graphServiceClient.Users[userIdentifier].GetAsync(requestConfiguration =>
                 {
+                    requestConfiguration.QueryParameters.Select = new string[] { "id", "displayName", "userPrincipalName", "onPremisesImmutableId", "mail" };
                     requestConfiguration.Options.Add(new ResponseHandlerOption { ResponseHandler = nativeResponseHandler });
                 });
 
@@ -83,6 +84,7 @@ namespace Repositories.GraphGroups
                             userDetails = new AzureADUser
                             {
                                 ObjectId = Guid.Parse(user.Id),
+                                DisplayName = user.DisplayName,
                                 UserPrincipalName = user.UserPrincipalName,
                                 OnPremisesImmutableId = user.OnPremisesImmutableId,
                                 Mail = includeMailProperty ? user.Mail : null

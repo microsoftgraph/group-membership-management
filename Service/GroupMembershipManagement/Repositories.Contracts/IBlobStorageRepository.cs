@@ -24,6 +24,18 @@ namespace Repositories.Contracts
         public Task DeleteBlobsAsync(string path);
         public Task<BlobResult> FindLatestFileAsync(string prefix);
         public Task<BlobResult> FindAggregatedFileByRunIdAsync(string groupId, string runId);
+
+        /// <summary>
+        /// Enumerates the destination group's blob container for all per-part membership files
+        /// written during a specific sync run (e.g. {timestamp}_{runId}_GroupMembership_1.json,
+        /// {timestamp}_{runId}_SqlMembership_3.json, etc.), keyed by the file's "{PartType}_{Index}"
+        /// suffix so callers can look up a specific part directly. The Aggregated file is
+        /// intentionally excluded — callers already have FindAggregatedFileByRunIdAsync for that.
+        /// Returns an empty dictionary when no per-part files exist for the run (e.g. after retention
+        /// trimmed them) so callers can degrade gracefully.
+        /// </summary>
+        public Task<Dictionary<string, BlobResult>> FindPartFilesByRunIdAsync(string groupId, string runId);
+
         public Task<HashSet<T>> ReadValuesFromBlobAsync<T>(string path, System.Func<string, T> parseFunction);
 
         /// <summary>

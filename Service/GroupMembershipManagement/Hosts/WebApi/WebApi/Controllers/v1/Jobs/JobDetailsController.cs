@@ -500,6 +500,34 @@ namespace WebApi.Controllers.v1.Jobs
             };
         }
 
+        [Authorize(Roles = $"{Models.Roles.JOB_OWNER_READER},{Models.Roles.JOB_OWNER_WRITER},{Models.Roles.JOB_TENANT_READER},{Models.Roles.JOB_TENANT_WRITER},{Models.Roles.AI_SYNC_JOB}")]
+        [HttpGet("history/sync/{syncJobId}/runs/{runId}/explain-run")]
+        public async Task<ActionResult<GetRunExplanationResponse>> GetRunExplanationAsync(Guid syncJobId, Guid runId)
+        {
+            var claimsIdentity = User.Identity as ClaimsIdentity;
+            var userId = claimsIdentity?.Claims.FirstOrDefault(c => c.Type == "http://schemas.microsoft.com/identity/claims/objectidentifier")?.Value;
+
+            if (string.IsNullOrEmpty(userId))
+            {
+                return new ForbidResult();
+            }
+
+            var hasAiSyncJobRole = User.IsInRole(Models.Roles.AI_SYNC_JOB)
+                                   || User.IsInRole(Models.Roles.JOB_TENANT_READER)
+                                   || User.IsInRole(Models.Roles.JOB_TENANT_WRITER);
+
+            var handler = HttpContext.RequestServices.GetRequiredService<IRequestHandler<GetRunExplanationRequest, GetRunExplanationResponse>>();
+            var response = await handler.ExecuteAsync(new GetRunExplanationRequest(syncJobId, runId, userId, hasAiSyncJobRole));
+
+            return response.StatusCode switch
+            {
+                System.Net.HttpStatusCode.OK => Ok(response),
+                System.Net.HttpStatusCode.NotFound => NotFound(),
+                System.Net.HttpStatusCode.Forbidden => Forbid(),
+                _ => Problem(statusCode: (int)System.Net.HttpStatusCode.InternalServerError)
+            };
+        }
+
         private (string titlesValue, bool hasTitlesOp) ExtractAndRemoveTitles(List<PatchOperation> patchOperations)
         {
             var titlesOp = patchOperations?.FirstOrDefault(op => op.Path == "/Titles");

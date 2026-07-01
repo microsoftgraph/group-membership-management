@@ -414,6 +414,40 @@ namespace Repositories.BlobStorage
             return new BlobResult { BlobStatus = BlobStatus.NotFound };
         }
 
+        public async Task<Dictionary<string, BlobResult>> FindPartFilesByRunIdAsync(string groupId, string runId)
+        {
+            var result = new Dictionary<string, BlobResult>(StringComparer.OrdinalIgnoreCase);
+            var prefix = $"{groupId}/";
+            var runIdMarker = $"_{runId}_";
+            const string aggregatedSuffix = "_Aggregated.json";
+            const string jsonSuffix = ".json";
+
+            await foreach (var blob in _containerClient.GetBlobsAsync(prefix: prefix))
+            {
+                var name = blob.Name;
+                if (!name.EndsWith(jsonSuffix, StringComparison.OrdinalIgnoreCase)) continue;
+                if (name.EndsWith(aggregatedSuffix, StringComparison.OrdinalIgnoreCase)) continue;
+
+                var runIdIdx = name.IndexOf(runIdMarker, StringComparison.OrdinalIgnoreCase);
+                if (runIdIdx < 0) continue;
+
+                // Extract "{PartType}_{Index}" from between "_{runId}_" and ".json".
+                // Example: "2f51.../07012026-0430_edab070d-..._GroupMembership_1.json" -> "GroupMembership_1"
+                var tagStart = runIdIdx + runIdMarker.Length;
+                var tagLength = name.Length - tagStart - jsonSuffix.Length;
+                if (tagLength <= 0) continue;
+                var tag = name.Substring(tagStart, tagLength);
+
+                result[tag] = new BlobResult
+                {
+                    Path = name,
+                    BlobStatus = BlobStatus.Found,
+                };
+            }
+
+            return result;
+        }
+
         public async Task<HashSet<Guid>> ExtractGroupMembershipSourceMembersAsync(string path)
         {
             var blobClient = _containerClient.GetBlobClient(path);

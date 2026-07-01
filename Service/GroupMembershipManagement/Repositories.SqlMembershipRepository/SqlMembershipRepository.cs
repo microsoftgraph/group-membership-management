@@ -761,5 +761,101 @@ namespace Repositories.SqlMembershipRepository
 
             return attributes;
         }
+
+        public async Task<Dictionary<string, Dictionary<string, string>>> GetUserAttributesBatchAsync(IEnumerable<string> userIds, string tableName)
+        {
+            ValidateTableName(tableName);
+
+            var result = new Dictionary<string, Dictionary<string, string>>(StringComparer.OrdinalIgnoreCase);
+            if (userIds == null)
+            {
+                return result;
+            }
+
+            var distinctIds = userIds
+                .Where(id => !string.IsNullOrWhiteSpace(id))
+                .Select(id => id.Trim())
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList();
+            if (distinctIds.Count == 0)
+            {
+                return result;
+            }
+
+            // SQL Server commands cap at 2100 parameters; chunk well under that for safety.
+            const int chunkSize = 1000;
+            var retryPolicy = GetRetryPolicyAsync();
+
+            for (int offset = 0; offset < distinctIds.Count; offset += chunkSize)
+            {
+                var chunk = distinctIds.Skip(offset).Take(chunkSize).ToList();
+                var parameterNames = new List<string>(chunk.Count);
+                for (int i = 0; i < chunk.Count; i++)
+                {
+                    parameterNames.Add($"@p{i}");
+                }
+
+                var selectQuery = $"SELECT * FROM [users].[{tableName}] WHERE AzureObjectId IN ({string.Join(",", parameterNames)})";
+
+                await retryPolicy.ExecuteAsync(async () =>
+                {
+                    using (var conn = new SqlConnection(_sqlServerConnectionString))
+                    {
+                        await conn.OpenAsync();
+                        using (var cmd = new SqlCommand(selectQuery, conn))
+                        {
+                            for (int i = 0; i < chunk.Count; i++)
+                            {
+                                cmd.Parameters.AddWithValue(parameterNames[i], chunk[i]);
+                            }
+
+                            using (var reader = await cmd.ExecuteReaderAsync(CommandBehavior.CloseConnection))
+                            {
+                                int azureObjectIdOrdinal = -1;
+                                for (int i = 0; i < reader.FieldCount; i++)
+                                {
+                                    if (string.Equals(reader.GetName(i), "AzureObjectId", StringComparison.OrdinalIgnoreCase))
+                                    {
+                                        azureObjectIdOrdinal = i;
+                                        break;
+                                    }
+                                }
+
+                                while (await reader.ReadAsync())
+                                {
+                                    if (azureObjectIdOrdinal < 0 || reader.IsDBNull(azureObjectIdOrdinal))
+                                    {
+                                        continue;
+                                    }
+
+                                    var userKey = reader.GetValue(azureObjectIdOrdinal)?.ToString()?.Trim();
+                                    if (string.IsNullOrEmpty(userKey))
+                                    {
+                                        continue;
+                                    }
+
+                                    var attributes = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+                                    for (int i = 0; i < reader.FieldCount; i++)
+                                    {
+                                        var columnName = reader.GetName(i);
+                                        var value = reader.IsDBNull(i) ? null : reader.GetValue(i)?.ToString()?.Trim();
+                                        if (value != null)
+                                        {
+                                            attributes[columnName] = value;
+                                        }
+                                    }
+
+                                    result[userKey] = attributes;
+                                }
+                                await reader.CloseAsync();
+                            }
+                        }
+                        await conn.CloseAsync();
+                    }
+                });
+            }
+
+            return result;
+        }
     }
 }

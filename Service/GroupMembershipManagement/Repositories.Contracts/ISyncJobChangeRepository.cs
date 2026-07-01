@@ -65,5 +65,14 @@ namespace Repositories.Contracts
         /// of filter configurations for sync explanations.
         /// </summary>
         Task<List<SyncJobChange>> GetRecentConfigChangesBySyncJobIdAsync(Guid syncJobId, DateTime asOf, int count = 2);
+
+        /// <summary>
+        /// Retrieves the most recent IgnoreThresholdOnce activations for a sync job that
+        /// occurred at or before the specified time. Deliberately separate from
+        /// <see cref="GetRecentConfigChangesBySyncJobIdAsync"/> so callers that only want
+        /// query-shape changes are unaffected. Used by per-run AI explanations to detect
+        /// "threshold ignore" retries where a previously-blocked delta now applies.
+        /// </summary>
+        Task<List<SyncJobChange>> GetRecentIgnoreThresholdOnceEventsAsync(Guid syncJobId, DateTime asOf, int count = 2);
     }
 }

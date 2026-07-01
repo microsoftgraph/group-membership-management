@@ -185,6 +185,21 @@ namespace Repositories.EntityFramework
             return entities.Select(MapEntityToModel).ToList();
         }
 
+        public async Task<List<SyncJobChange>> GetRecentIgnoreThresholdOnceEventsAsync(Guid syncJobId, DateTime asOf, int count = 2)
+        {
+            var ignoreThresholdOnce = SyncJobChangeReason.IgnoreThresholdOnce.ToString();
+
+            var entities = await _readContext.SyncJobChanges
+                .Where(s => s.SyncJobId == syncJobId
+                    && s.ChangeTime <= asOf
+                    && s.ChangeReason == ignoreThresholdOnce)
+                .OrderByDescending(s => s.ChangeTime)
+                .Take(count)
+                .ToListAsync();
+
+            return entities.Select(MapEntityToModel).ToList();
+        }
+
         // TODO: Add 'override' keyword to the following methods once the RepositoryBase is added.
         private static SyncJobChange MapEntityToModel(Entities.SyncJobChange entity)
         {

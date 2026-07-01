@@ -155,6 +155,11 @@ namespace Tests.FunctionApps.Mocks
             throw new NotImplementedException();
         }
 
+        public Task<Dictionary<string, BlobResult>> FindPartFilesByRunIdAsync(string groupId, string runId)
+        {
+            throw new NotImplementedException();
+        }
+
         public Task<HashSet<T>> ReadValuesFromBlobAsync<T>(string path, Func<string, T> parseFunction)
         {
             throw new NotImplementedException();
