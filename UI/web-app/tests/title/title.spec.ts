@@ -81,8 +81,12 @@ test('Title Generation - Complete Workflow Test', { tag: '@title' }, async ({ pa
     await page.waitForTimeout(5000);
   }
   
-  // Check for generated titles
-  // Generated titles appear in divs with class 'generatedTitle'
+  // Check for generated titles. In the read-only review view (JobDetails) titles are rendered
+  // inside selectable rule cards, each exposed as role="button" with an aria-label of
+  // "Select rule: <title>". In the editable/legacy view titles render in 'generatedTitle' divs.
+  const ruleCards = page.locator('[role="button"][aria-label^="Select rule:"]');
+  const ruleCardCount = await ruleCards.count();
+
   const generatedTitles = page.locator('div').filter({ hasText: /^: / });
   const generatedTitleCount = await generatedTitles.count();
 
@@ -91,11 +95,15 @@ test('Title Generation - Complete Workflow Test', { tag: '@title' }, async ({ pa
   const textFieldCount = await titleTextFields.count();
   
   // Assert that at least one title representation exists
-  expect(generatedTitleCount + textFieldCount).toBeGreaterThan(0);
-  console.log(`✅ Found titles via labels(${generatedTitleCount}) or text fields(${textFieldCount})`);
+  expect(ruleCardCount + generatedTitleCount + textFieldCount).toBeGreaterThan(0);
+  console.log(`✅ Found titles via rule cards(${ruleCardCount}), labels(${generatedTitleCount}) or text fields(${textFieldCount})`);
   
   // Get the text of the first generated title
-  if (generatedTitleCount > 0) {
+  if (ruleCardCount > 0) {
+    const firstTitle = (await ruleCards.first().getAttribute('aria-label'))?.replace(/^Select rule:\s*/, '');
+    expect(firstTitle && firstTitle.trim().length).toBeGreaterThan(2);
+    console.log(`✅ First generated title: ${firstTitle}`);
+  } else if (generatedTitleCount > 0) {
     const firstTitle = await generatedTitles.first().textContent();
     expect(firstTitle).toMatch(/^: .+/);
     expect(firstTitle?.trim().length).toBeGreaterThan(2);
@@ -103,7 +111,9 @@ test('Title Generation - Complete Workflow Test', { tag: '@title' }, async ({ pa
   }
   
   // Check if any titles have the exclusionary prefix
-  const exclusionaryTitles = generatedTitles.filter({ hasText: /: Exclude / });
+  const exclusionaryTitles = ruleCardCount > 0
+    ? page.locator('[role="button"][aria-label^="Select rule:"][aria-label*="Exclude"]')
+    : generatedTitles.filter({ hasText: /: Exclude / });
   const exclusionaryCount = await exclusionaryTitles.count();
   if (exclusionaryCount > 0) {
     console.log(`✅ Found ${exclusionaryCount} exclusionary titles (with "Exclude" prefix)`);
