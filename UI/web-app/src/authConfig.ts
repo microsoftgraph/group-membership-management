@@ -45,6 +45,7 @@ export const config = {
   getOrgLeaderDetails: `${appServiceBaseUri}/api/v1/orgLeaderDetails`,
   settings: `${appServiceBaseUri}/api/v1/settings`,
   patchSetting: `${appServiceBaseUri}/api/v1/settings`,
+  alertBanner: `${appServiceBaseUri}/api/v1/settings/alertBanner`,
   patchEnableJob: (jobId: string) => `${appServiceBaseUri}/api/v1/jobDetails/${jobId}/enable`,
   patchReviewJob: (jobId: string) => `${appServiceBaseUri}/api/v1/jobDetails/${jobId}/review`,
   patchUpdateJob: (jobId: string) => `${appServiceBaseUri}/api/v1/jobDetails/${jobId}/update`,

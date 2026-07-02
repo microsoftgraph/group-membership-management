@@ -22,6 +22,7 @@ import { Page } from '../../components/Page';
 import { PageHeader } from '../../components/PageHeader';
 import { SettingKey, SettingKeyMap, SqlMembershipAttribute, SqlMembershipSource } from '../../models';
 import { GeneralSetting } from '../../components/GeneralSetting';
+import { AlertBannerAdmin } from './AlertBannerAdmin';
 
 const getClassNames = classNamesFunction<AdminConfigStyleProps, AdminConfigStyles>();
 
@@ -161,6 +162,17 @@ export const AdminConfigView: React.FunctionComponent<AdminConfigViewProps> = (p
                     settings={newSettings}
                     setSettings={setNewSettings}
                     defaultAIPrompt={defaultAIPrompt} />
+                </PivotItem>
+              }
+              {isGeneralSettingsAdministrator &&
+                <PivotItem
+                  headerText={'Alert Banner'}
+                  headerButtonProps={{
+                    'data-order': 6,
+                    'data-title': 'Alert Banner',
+                  }}
+                >
+                  <AlertBannerAdmin />
                 </PivotItem>
               }
             </Pivot>

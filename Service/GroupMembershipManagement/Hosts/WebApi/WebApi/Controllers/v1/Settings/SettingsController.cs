@@ -7,6 +7,8 @@ using Services.Contracts;
 using Services.Messages.Requests;
 using Services.Messages.Responses;
 using Services.WebApi;
+using System.Text.Json;
+using WebApi.Models.DTOs;
 
 namespace WebApi.Controllers.v1.Settings
 {
@@ -125,6 +127,116 @@ namespace WebApi.Controllers.v1.Settings
         public IActionResult GetDefaultAIPrompt()
         {
             return Ok(CopilotPrompts.DefaultInstructions);
+        }
+
+        private static readonly JsonSerializerOptions AlertBannerJsonOptions = new JsonSerializerOptions
+        {
+            PropertyNameCaseInsensitive = true,
+            PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+        };
+
+        /// <summary>
+        /// Maximum allowed length for an alert banner message.
+        /// </summary>
+        private const int AlertBannerMaxMessageLength = 250;
+
+        [Authorize()]
+        [HttpGet("alertBanner")]
+        public async Task<IActionResult> GetAlertBannerAsync()
+        {
+            try
+            {
+                var response = await _getSettingRequestHandler.ExecuteAsync(new GetSettingRequest(SettingKey.AlertBannerConfig));
+
+                AlertBannerConfigDto config;
+                if (response.Model == null || string.IsNullOrWhiteSpace(response.Model.SettingValue))
+                {
+                    config = AlertBannerConfigDto.Default;
+                }
+                else
+                {
+                    config = JsonSerializer.Deserialize<AlertBannerConfigDto>(response.Model.SettingValue, AlertBannerJsonOptions)
+                             ?? AlertBannerConfigDto.Default;
+                    config.NormalizeDatesToUtc();
+                }
+
+                return Ok(config);
+            }
+            catch (Exception)
+            {
+                return StatusCode(500);
+            }
+        }
+
+        [Authorize(Roles = Models.Roles.GENERAL_SETTINGS_ADMINISTRATOR)]
+        [HttpPatch("alertBanner")]
+        public async Task<IActionResult> PatchAlertBannerAsync([FromBody] AlertBannerConfigDto config)
+        {
+            if (!User.IsInRole(Models.Roles.GENERAL_SETTINGS_ADMINISTRATOR))
+            {
+                return Forbid();
+            }
+
+            if (config == null)
+            {
+                return BadRequest("Alert banner configuration is required.");
+            }
+
+            config.NormalizeDatesToUtc();
+
+            var validationError = ValidateAlertBannerConfig(config);
+            if (validationError != null)
+            {
+                return BadRequest(validationError);
+            }
+
+            try
+            {
+                var json = JsonSerializer.Serialize(config, AlertBannerJsonOptions);
+                await _patchSettingRequestHandler.ExecuteAsync(new PatchSettingRequest(SettingKey.AlertBannerConfig, json));
+                return Ok(config);
+            }
+            catch (Exception)
+            {
+                return StatusCode(500);
+            }
+        }
+
+        /// <summary>
+        /// Validates an alert banner configuration. Returns an error message when invalid,
+        /// or <c>null</c> when the configuration passes all rules.
+        /// </summary>
+        private static string? ValidateAlertBannerConfig(AlertBannerConfigDto config)
+        {
+            if (config.IsEnabled && string.IsNullOrWhiteSpace(config.Message))
+            {
+                return "Message is required when the alert banner is enabled.";
+            }
+
+            if (!string.IsNullOrEmpty(config.Message) && config.Message.Length > AlertBannerMaxMessageLength)
+            {
+                return $"Message must be {AlertBannerMaxMessageLength} characters or fewer.";
+            }
+
+            if (config.StartDate >= config.EndDate)
+            {
+                return "Start date must be earlier than end date.";
+            }
+
+            if (!string.IsNullOrWhiteSpace(config.LinkUrl))
+            {
+                if (!config.LinkUrl.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
+                {
+                    return "Link URL must start with https://.";
+                }
+
+                if (!Uri.TryCreate(config.LinkUrl, UriKind.Absolute, out var uri) || uri.Scheme != Uri.UriSchemeHttps)
+                {
+                    return "Link URL must be a valid absolute https URI.";
+                }
+            }
+
+            return null;
         }
     }
 }

@@ -8,6 +8,7 @@ using Repositories.Contracts;
 using WebApi.Controllers.v1.Settings;
 using Microsoft.AspNetCore.Http;
 using SettingDTO = WebApi.Models.DTOs.Setting;
+using AlertBannerConfigDto = WebApi.Models.DTOs.AlertBannerConfigDto;
 using System.Security.Claims;
 using WebApi.Models;
 using Services.WebApi;
@@ -378,6 +379,211 @@ namespace Services.Tests
             var okResult = result as OkObjectResult;
             Assert.IsNotNull(okResult);
             Assert.AreEqual("support@example.com", okResult.Value);
+        }
+
+        // ---------------------------------------------------------------------
+        // Alert Banner endpoints (US1 PATCH, US2 GET, US3 edit)
+        // ---------------------------------------------------------------------
+
+        private static readonly System.Text.Json.JsonSerializerOptions AlertBannerJsonOptions = new System.Text.Json.JsonSerializerOptions
+        {
+            PropertyNameCaseInsensitive = true,
+            PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase
+        };
+
+        private SettingsController CreateGeneralSettingsAdminController()
+        {
+            return new SettingsController(_getSettingHandler, _getAllSettingsHandler, _patchSettingHandler, _getSupportEmailHandler)
+            {
+                ControllerContext = CreateControllerContext(new List<Claim>
+                {
+                    new Claim(ClaimTypes.Name, "admin@domain.com"),
+                    new Claim(ClaimTypes.Role, Roles.GENERAL_SETTINGS_ADMINISTRATOR)
+                })
+            };
+        }
+
+        private static AlertBannerConfigDto CreateValidAlertConfig()
+        {
+            return new AlertBannerConfigDto
+            {
+                Message = "Scheduled maintenance tonight.",
+                IsEnabled = true,
+                StartDate = new DateTime(2026, 6, 1, 0, 0, 0, DateTimeKind.Utc),
+                EndDate = new DateTime(2026, 6, 10, 0, 0, 0, DateTimeKind.Utc),
+                LinkUrl = "https://status.example.com",
+                LinkText = "View details"
+            };
+        }
+
+        [TestMethod]
+        public async Task PatchAlertBanner_ValidConfig_PersistsAndReturnsOk()
+        {
+            var controller = CreateGeneralSettingsAdminController();
+            string? persistedJson = null;
+            _settingsRepository.Setup(x => x.PatchSettingAsync(SettingKey.AlertBannerConfig, It.IsAny<string>()))
+                               .Callback<SettingKey, string>((_, value) => persistedJson = value)
+                               .Returns(Task.CompletedTask);
+
+            var config = CreateValidAlertConfig();
+            var response = await controller.PatchAlertBannerAsync(config);
+
+            Assert.IsInstanceOfType(response, typeof(OkObjectResult));
+            _settingsRepository.Verify(x => x.PatchSettingAsync(SettingKey.AlertBannerConfig, It.IsAny<string>()), Times.Once());
+            Assert.IsNotNull(persistedJson);
+            var roundTrip = System.Text.Json.JsonSerializer.Deserialize<AlertBannerConfigDto>(persistedJson!, AlertBannerJsonOptions);
+            Assert.IsNotNull(roundTrip);
+            Assert.AreEqual(config.Message, roundTrip!.Message);
+            Assert.IsTrue(roundTrip.IsEnabled);
+        }
+
+        [TestMethod]
+        public async Task PatchAlertBanner_EmptyMessageWhenEnabled_ReturnsBadRequest()
+        {
+            var controller = CreateGeneralSettingsAdminController();
+            var config = CreateValidAlertConfig();
+            config.Message = "   ";
+
+            var response = await controller.PatchAlertBannerAsync(config);
+
+            Assert.IsInstanceOfType(response, typeof(BadRequestObjectResult));
+            _settingsRepository.Verify(x => x.PatchSettingAsync(It.IsAny<SettingKey>(), It.IsAny<string>()), Times.Never());
+        }
+
+        [TestMethod]
+        public async Task PatchAlertBanner_MessageTooLong_ReturnsBadRequest()
+        {
+            var controller = CreateGeneralSettingsAdminController();
+            var config = CreateValidAlertConfig();
+            config.Message = new string('a', 251);
+
+            var response = await controller.PatchAlertBannerAsync(config);
+
+            Assert.IsInstanceOfType(response, typeof(BadRequestObjectResult));
+            _settingsRepository.Verify(x => x.PatchSettingAsync(It.IsAny<SettingKey>(), It.IsAny<string>()), Times.Never());
+        }
+
+        [TestMethod]
+        public async Task PatchAlertBanner_StartDateNotBeforeEndDate_ReturnsBadRequest()
+        {
+            var controller = CreateGeneralSettingsAdminController();
+            var config = CreateValidAlertConfig();
+            config.StartDate = new DateTime(2026, 6, 10, 0, 0, 0, DateTimeKind.Utc);
+            config.EndDate = new DateTime(2026, 6, 10, 0, 0, 0, DateTimeKind.Utc);
+
+            var response = await controller.PatchAlertBannerAsync(config);
+
+            Assert.IsInstanceOfType(response, typeof(BadRequestObjectResult));
+            _settingsRepository.Verify(x => x.PatchSettingAsync(It.IsAny<SettingKey>(), It.IsAny<string>()), Times.Never());
+        }
+
+        [TestMethod]
+        public async Task PatchAlertBanner_NonHttpsLinkUrl_ReturnsBadRequest()
+        {
+            var controller = CreateGeneralSettingsAdminController();
+            var config = CreateValidAlertConfig();
+            config.LinkUrl = "http://insecure.example.com";
+
+            var response = await controller.PatchAlertBannerAsync(config);
+
+            Assert.IsInstanceOfType(response, typeof(BadRequestObjectResult));
+            _settingsRepository.Verify(x => x.PatchSettingAsync(It.IsAny<SettingKey>(), It.IsAny<string>()), Times.Never());
+        }
+
+        [TestMethod]
+        public async Task PatchAlertBanner_NonAdmin_ReturnsForbid()
+        {
+            // Default controller has only HYPERLINK_ADMINISTRATOR role.
+            var response = await _settingsController.PatchAlertBannerAsync(CreateValidAlertConfig());
+
+            Assert.IsInstanceOfType(response, typeof(ForbidResult));
+            _settingsRepository.Verify(x => x.PatchSettingAsync(It.IsAny<SettingKey>(), It.IsAny<string>()), Times.Never());
+        }
+
+        [TestMethod]
+        public async Task GetAlertBanner_ReturnsStoredConfig()
+        {
+            var stored = CreateValidAlertConfig();
+            var json = System.Text.Json.JsonSerializer.Serialize(stored, AlertBannerJsonOptions);
+            _settingsRepository.Setup(x => x.GetSettingByKeyAsync(SettingKey.AlertBannerConfig))
+                               .ReturnsAsync(new Setting { SettingKey = SettingKey.AlertBannerConfig, SettingValue = json });
+
+            var response = await _settingsController.GetAlertBannerAsync();
+
+            var okResult = response as OkObjectResult;
+            Assert.IsNotNull(okResult);
+            var config = okResult!.Value as AlertBannerConfigDto;
+            Assert.IsNotNull(config);
+            Assert.AreEqual(stored.Message, config!.Message);
+            Assert.IsTrue(config.IsEnabled);
+            Assert.AreEqual("https://status.example.com", config.LinkUrl);
+        }
+
+        [TestMethod]
+        public async Task GetAlertBanner_NoRowExists_ReturnsDefaultDisabledConfig()
+        {
+            _settingsRepository.Setup(x => x.GetSettingByKeyAsync(SettingKey.AlertBannerConfig))
+                               .ReturnsAsync(() => null);
+
+            var response = await _settingsController.GetAlertBannerAsync();
+
+            var okResult = response as OkObjectResult;
+            Assert.IsNotNull(okResult);
+            var config = okResult!.Value as AlertBannerConfigDto;
+            Assert.IsNotNull(config);
+            Assert.AreEqual(string.Empty, config!.Message);
+            Assert.IsFalse(config.IsEnabled);
+        }
+
+        [TestMethod]
+        public async Task GetAlertBanner_AccessibleToAnyAuthenticatedUser()
+        {
+            // Controller with a non-admin role should still be able to read the banner.
+            var controller = new SettingsController(_getSettingHandler, _getAllSettingsHandler, _patchSettingHandler, _getSupportEmailHandler)
+            {
+                ControllerContext = CreateControllerContext(new List<Claim>
+                {
+                    new Claim(ClaimTypes.Name, "user@domain.com"),
+                    new Claim(ClaimTypes.Role, Roles.JOB_OWNER_READER)
+                })
+            };
+            _settingsRepository.Setup(x => x.GetSettingByKeyAsync(SettingKey.AlertBannerConfig))
+                               .ReturnsAsync(() => null);
+
+            var response = await controller.GetAlertBannerAsync();
+
+            Assert.IsInstanceOfType(response, typeof(OkObjectResult));
+        }
+
+        [TestMethod]
+        public async Task AlertBanner_EditExistingConfig_PersistsUpdatedValuesAndGetReturnsThem()
+        {
+            var controller = CreateGeneralSettingsAdminController();
+            string? persistedJson = null;
+            _settingsRepository.Setup(x => x.PatchSettingAsync(SettingKey.AlertBannerConfig, It.IsAny<string>()))
+                               .Callback<SettingKey, string>((_, value) => persistedJson = value)
+                               .Returns(Task.CompletedTask);
+
+            // Edit: change message and move end date into the past.
+            var edited = CreateValidAlertConfig();
+            edited.Message = "Updated maintenance window.";
+            edited.EndDate = new DateTime(2026, 6, 5, 0, 0, 0, DateTimeKind.Utc);
+
+            var patchResponse = await controller.PatchAlertBannerAsync(edited);
+            Assert.IsInstanceOfType(patchResponse, typeof(OkObjectResult));
+            Assert.IsNotNull(persistedJson);
+
+            // GET now returns the persisted (updated) values.
+            _settingsRepository.Setup(x => x.GetSettingByKeyAsync(SettingKey.AlertBannerConfig))
+                               .ReturnsAsync(new Setting { SettingKey = SettingKey.AlertBannerConfig, SettingValue = persistedJson! });
+
+            var getResponse = await controller.GetAlertBannerAsync();
+            var okResult = getResponse as OkObjectResult;
+            Assert.IsNotNull(okResult);
+            var config = okResult!.Value as AlertBannerConfigDto;
+            Assert.IsNotNull(config);
+            Assert.AreEqual("Updated maintenance window.", config!.Message);
+            Assert.AreEqual(new DateTime(2026, 6, 5, 0, 0, 0, DateTimeKind.Utc), config.EndDate);
         }
 
         private ControllerContext CreateControllerContext(HttpContext httpContext)

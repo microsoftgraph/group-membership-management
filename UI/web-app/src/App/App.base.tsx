@@ -8,6 +8,7 @@ import { Outlet } from 'react-router-dom';
 import { Text } from '@fluentui/react/lib/Text';
 import { type IAppProps, type IAppStyleProps, type IAppStyles } from './App.types';
 import { AppHeader } from '../components/AppHeader';
+import { AlertBanner } from '../components/AlertBanner';
 import { Loader } from '../components/Loader';
 import { AppDispatch } from '../store';
 import { loginAsync } from '../store/account.api';
@@ -16,6 +17,7 @@ import { useStrings } from '../store/hooks';
 import { selectProfile } from '../store/profile.slice';
 import { setLanguage } from '../store/localization.api';
 import { fetchSettings } from '../store/settings.api';
+import { fetchAlertBanner } from '../store/alertBanner.api';
 import { selectDashboardUrl } from '../store/settings.slice';
 import { AppFooter } from '../components/AppFooter';
 import { fetchDefaultSqlMembershipSource, fetchDefaultSqlMembershipSourceAttributes } from '../store/sqlMembershipSources.api';
@@ -70,6 +72,7 @@ export const AppBase: React.FunctionComponent<IAppProps> = (props: IAppProps) =>
   useEffect(() => {
     if (loggedIn) {
       dispatch(fetchSettings());
+      dispatch(fetchAlertBanner());
       dispatch(fetchDefaultSqlMembershipSource());
       dispatch(fetchDefaultSqlMembershipSourceAttributes());
       dispatch(fetchMyProfile());
@@ -93,6 +96,7 @@ export const AppBase: React.FunctionComponent<IAppProps> = (props: IAppProps) =>
     return (
       <div className={classNames.root}>
         <AppHeader />
+        <AlertBanner />
         <div className={classNames.content}>
           {operationStatusError === 'Failed to fetch service status.' ?
           (<Maintenance />) :

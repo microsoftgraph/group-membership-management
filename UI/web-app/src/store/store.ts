@@ -5,6 +5,7 @@ import { PreloadedState, combineReducers, configureStore } from '@reduxjs/toolki
 
 import accountReducer from './account.slice';
 import copilotReducer from './copilot.slice';
+import alertBannerReducer from './alertBanner.slice';
 import groupPartReducer from './groupPart.slice';
 import jobsReducer from './jobs.slice';
 import localizationReducer from './localization.slice';
@@ -56,6 +57,7 @@ const apis: Apis = {
 const rootReducer = combineReducers({
   account: accountReducer,
   copilot: copilotReducer,
+  alertBanner: alertBannerReducer,
   groupPart: groupPartReducer,
   jobs: jobsReducer,
   localization: localizationReducer,

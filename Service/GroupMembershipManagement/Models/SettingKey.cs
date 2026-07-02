@@ -22,6 +22,7 @@ namespace Models
         CopilotInstructions = 14,
         CopilotSuggestedPrompts = 15,
         IsAISearchForUserEnabled = 16,
-        IsAIRunExplanationEnabled = 17
+        IsAIRunExplanationEnabled = 17,
+        AlertBannerConfig = 18
     }
 }

@@ -22,6 +22,11 @@ namespace Services{
         {
             var response = new GetSettingResponse();
             var setting = await _databaseSettingsRepository.GetSettingByKeyAsync(request.SettingKey);
+            if (setting == null)
+            {
+                response.Model = null;
+                return response;
+            }
             var dto = new SettingDTO(setting.SettingKey, setting.SettingValue);
             response.Model = dto;
             return response;

@@ -3,6 +3,7 @@
 
 import { AxiosResponse } from 'axios';
 import { Setting } from '../../models/Setting';
+import { AlertBannerConfig } from '../../models/AlertBannerConfig';
 import { ApiBase } from '../ApiBase';
 import { ISettingsApi } from './ISettingsApi';
 
@@ -42,6 +43,22 @@ export class SettingsApi extends ApiBase implements ISettingsApi {
 
   public async getDefaultAIPrompt(): Promise<string> {
     const response = await this.httpClient.get<string>('aiPrompt/defaults');
+    this.ensureSuccessStatusCode(response);
+    return response.data;
+  }
+
+  public async getAlertBanner(): Promise<AlertBannerConfig> {
+    const response = await this.httpClient.get<AlertBannerConfig>('alertBanner');
+    this.ensureSuccessStatusCode(response);
+    return response.data;
+  }
+
+  public async patchAlertBanner(config: AlertBannerConfig): Promise<AlertBannerConfig> {
+    const response = await this.httpClient.patch<AlertBannerConfig, AxiosResponse<AlertBannerConfig>, AlertBannerConfig>(
+      'alertBanner',
+      config,
+      { headers: { 'Content-Type': 'application/json' } }
+    );
     this.ensureSuccessStatusCode(response);
     return response.data;
   }

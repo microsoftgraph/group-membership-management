@@ -325,6 +325,17 @@ export async function registerMockApiRoutes(page: Page): Promise<void> {
   let serviceStatus = 0;
   let resetStatusPollCount = 0;
 
+  // Alert banner mock state. Tests can override the GET response by registering
+  // their own `**/api/v1/settings/alertBanner` route before navigation.
+  let alertBannerConfig = {
+    message: '',
+    isEnabled: false,
+    startDate: new Date().toISOString(),
+    endDate: new Date().toISOString(),
+    linkUrl: null as string | null,
+    linkText: null as string | null,
+  };
+
   const getJobDetailsFromState = (syncJobId: string) => {
     const found = jobsState.find((job) => job.syncJobId === syncJobId);
     if (found) {
@@ -421,6 +432,18 @@ export async function registerMockApiRoutes(page: Page): Promise<void> {
         serviceStatus = 0;
       }
       await fulfillJson(route, { ok: true });
+      return;
+    }
+
+    if (method === 'GET' && path.endsWith('/api/v1/settings/alertBanner')) {
+      await fulfillJson(route, alertBannerConfig);
+      return;
+    }
+
+    if (method === 'PATCH' && path.endsWith('/api/v1/settings/alertBanner')) {
+      const body = request.postData() ?? '{}';
+      alertBannerConfig = { ...alertBannerConfig, ...JSON.parse(body) };
+      await fulfillJson(route, alertBannerConfig);
       return;
     }
 
