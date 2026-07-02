@@ -15,7 +15,6 @@ import {
   Persona,
   PersonaSize,
   Shimmer,
-  Label,
   Dropdown,
   IDropdownOption,
   MessageBar,
@@ -31,10 +30,7 @@ import { useStrings } from '../../store/hooks';
 import { PageSection } from '../PageSection';
 import { useDispatch, useSelector } from 'react-redux';
 import {
-  manageMembershipCompositeQuery,
-  manageMembershipIsAdvancedView,
   manageMembershipPeriod,
-  manageMembershipQuery,
   manageMembershipSelectedDestination,
   manageMembershipSelectedDestinationEndpoints,
   manageMembershipStartDate,
@@ -45,7 +41,7 @@ import {
   setNewJobLastModifiedOnBehalfOfDisplayName,
   setNewJobLastModifiedOnBehalfOfObjectId,
   manageMembershipGroupOwners,
-  getSourcePartsFromState
+  manageMembershipIsEditingExistingJob,
 } from '../../store/manageMembership.slice';
 import { OnboardingSteps } from '../../models/OnboardingSteps';
 import { useLocation, useParams } from 'react-router-dom';
@@ -59,8 +55,10 @@ import { SyncStatus } from '../../models';
 import { AppDispatch } from '../../store';
 import { getGroupOwners } from '../../store/manageMembership.api';
 import { SourcePartType } from '../../models/SourcePartType';
-import { RulesReview } from '../RulesReview';
+import { MembershipConfiguration } from '../MembershipConfiguration';
 import { destinationTypeLocalization } from '../../utils/destinationTypeUtils';
+import { Destination } from '../../models/Destination';
+import { DestinationType } from '../../models/DestinationType';
 
 const getClassNames = classNamesFunction<
   IConfirmationStyleProps,
@@ -103,14 +101,7 @@ export const ConfirmationBase: React.FunctionComponent<IConfirmationProps> = (pr
     text: lastModifiedOnBehalfOfUserProfile?.displayName
   };
 
-  const isAdvancedView = useSelector(manageMembershipIsAdvancedView);
-  const compositeQuery = useSelector(manageMembershipCompositeQuery);
-  const globalQuery = useSelector(manageMembershipQuery);
-  const sourceParts = useSelector(getSourcePartsFromState);
-
   const isJobTenantWriter = useSelector(selectIsJobTenantWriter);
-
-  const displayQuery: string = isAdvancedView ? JSON.stringify(globalQuery, null, 2) : JSON.stringify(compositeQuery, null, 2);
 
   const location = useLocation();
   const locationState = location.state as { currentStep?: number, jobId?: string };
@@ -118,6 +109,30 @@ export const ConfirmationBase: React.FunctionComponent<IConfirmationProps> = (pr
   const jobId = locationState?.jobId ?? urlJobId;
 
   const isJobWriter = useSelector(selectIsJobWriter);
+  const isEditingExistingJob = useSelector(manageMembershipIsEditingExistingJob);
+
+  // When editing an existing job, the selectedDestination is not always populated in state,
+  // so fall back to the destination data on the loaded job details so the DESTINATION section
+  // still renders on the Confirmation step.
+  const effectiveDestination: Destination | undefined = React.useMemo(() => {
+    if (selectedDestination) {
+      return selectedDestination;
+    }
+    if (isEditingExistingJob && jobDetails?.targetGroupId) {
+      return {
+        id: jobDetails.targetGroupId,
+        name: jobDetails.targetGroupName,
+        type: jobDetails.targetDestinationType || DestinationType.GroupMembership,
+        channelId: jobDetails.targetChannelId,
+        channelName: jobDetails.targetChannelName,
+        endpoints: jobDetails.endpoints,
+      };
+    }
+    return undefined;
+  }, [selectedDestination, isEditingExistingJob, jobDetails]);
+
+  const effectiveEndpoints = selectedDestinationEndpoints ?? effectiveDestination?.endpoints;
+
   // Fetch group owners when we have a selected destination
   useEffect(() => {
     if (selectedDestination?.id) {
@@ -159,202 +174,150 @@ export const ConfirmationBase: React.FunctionComponent<IConfirmationProps> = (pr
     }
   };
 
+  const isTeamsDestination = effectiveDestination?.type === SourcePartType.TeamsChannelMembership;
+
+  const openInService = (): void => {
+    let url: string | undefined;
+    if (isTeamsDestination) {
+      url = `https://teams.microsoft.com/l/channel/${effectiveDestination?.channelId}`;
+    } else if (effectiveDestination?.id) {
+      url = `https://ms.portal.azure.com/#view/Microsoft_AAD_IAM/GroupDetailsMenuBlade/~/Overview/groupId/${effectiveDestination.id}`;
+    }
+    if (url) {
+      window.open(url, '_blank', 'noopener,noreferrer');
+    }
+  };
+
+  const SQL_MIN_DATE = new Date('1753-01-01T00:00:00');
+  const formatRunDate = (value?: string): string => {
+    if (!value) {
+      return '-';
+    }
+    const parsed = new Date(value);
+    if (isNaN(parsed.getTime()) || parsed <= SQL_MIN_DATE) {
+      return '-';
+    }
+    return new Intl.DateTimeFormat().format(parsed);
+  };
+
   return (
     <div className={classNames.root}>
       <PageSection>
         <div className={classNames.ConfirmationContainer}>
 
-        {!jobId && (<div>
+        {effectiveDestination && (<div>
           <div className={classNames.cardHeader}>
               <div className={classNames.cardTitle}>
                 {strings.JobDetails.labels.destination}
               </div>
-              <ActionButton
-                iconProps={{ iconName: 'Edit' }}
-                styles={{ root: { fontSize: 12, height: 14 }, icon: { fontSize: 10 }}}
-                onClick={() => onEditButtonClick(OnboardingSteps.SelectDestination)}>
-                {strings.edit}
-              </ActionButton>
+              {(isTeamsDestination || effectiveDestination?.id) &&
+                <ActionButton
+                  iconProps={{ iconName: 'OpenInNewWindow' }}
+                  styles={{ root: { fontSize: 12, height: 14 }, icon: { fontSize: 10 }}}
+                  onClick={openInService}>
+                  {isTeamsDestination ? strings.JobDetails.openInTeams : strings.JobDetails.openInAzure}
+                </ActionButton>
+              }
             </div>
-            <Separator />
             <Stack enableScopedSelectors tokens={{ childrenGap: 30 }}>
-              <Stack horizontal tokens={{ childrenGap: 30 }}>
+              <Stack horizontal tokens={{ childrenGap: 100 }}>
                 <Stack.Item align="start">
-                  <Text className={classNames.itemTitle} block>
-                    {strings.JobDetails.labels.type}
-                  </Text>
+                  <InfoLabel
+                    label={strings.JobDetails.labels.type}
+                    description={strings.JobDetails.descriptions.type}
+                  />
                   <Text className={classNames.itemData} block>
-                  {destinationTypeLocalization[selectedDestination!.type] || selectedDestination?.type}
+                  {destinationTypeLocalization[effectiveDestination!.type] || effectiveDestination?.type}
                   </Text>
                 </Stack.Item>
                 <Stack.Item align="start">
                   <Text className={classNames.itemTitle} block>
-                    {selectedDestination?.type === SourcePartType.TeamsChannelMembership ? strings.JobDetails.labels.teamName : strings.JobDetails.labels.name}
+                    {isTeamsDestination ? strings.JobDetails.labels.teamName : strings.JobDetails.labels.name}
                   </Text>
                   <Text className={classNames.itemData} block>
-                    {selectedDestination?.name ?? '-'}
+                    {effectiveDestination?.name ?? '-'}
                   </Text>
                 </Stack.Item>
                 <Stack.Item align="start">
-                  <Text className={classNames.itemTitle} block>
-                    {strings.ManageMembership.labels.objectId}
-                  </Text>
+                  <InfoLabel
+                    label={strings.ManageMembership.labels.objectId}
+                    description={strings.JobDetails.descriptions.id}
+                  />
                   <Text className={classNames.itemData} block>
-                    {selectedDestination?.id ?? '-'}
+                    {effectiveDestination?.id ?? '-'}
                   </Text>
                 </Stack.Item>
-                {selectedDestination?.channelName &&
+                {effectiveDestination?.channelName &&
                   <Stack.Item align="start">
                     <Text className={classNames.itemTitle} block>
                       {strings.JobDetails.labels.channelName}
                     </Text>
                     <Text className={classNames.itemData} block>
-                      {selectedDestination?.channelName ?? '-'}
+                      {effectiveDestination?.channelName ?? '-'}
                     </Text>
                   </Stack.Item>
                 }
-                {selectedDestination?.channelId &&
+                {effectiveDestination?.channelId &&
                   <Stack.Item align="start">
                     <Text className={classNames.itemTitle} block>
                       {strings.JobDetails.labels.channelId}
                     </Text>
                     <Text className={classNames.itemData} block>
-                      {selectedDestination?.channelId ?? '-'}
+                      {effectiveDestination?.channelId ?? '-'}
                     </Text>
                   </Stack.Item>
                 }
               </Stack>
-              {selectedDestination && selectedDestinationEndpoints &&
+              {effectiveDestination && effectiveEndpoints &&
                 <EndpointsList
-                  endpoints={selectedDestinationEndpoints}
-                  groupName={selectedDestination.name}
+                  endpoints={effectiveEndpoints}
+                  groupName={effectiveDestination.name}
+                  linksTitle={strings.JobDetails.labels.groupLinks}
+                  horizontal={true}
                 />
               }
-              {selectedDestination && selectedDestination.groupSettings &&
-                selectedDestination.groupSettings.authorizedSenders && selectedDestination.groupSettings.authorizedSenders.length > 0 &&
+              {effectiveDestination && effectiveDestination.groupSettings &&
+                effectiveDestination.groupSettings.authorizedSenders && effectiveDestination.groupSettings.authorizedSenders.length > 0 &&
                 <Stack.Item align="start">
                   <Text className={classNames.itemTitle} block>
                     {strings.ManageMembership.CreateGroup.authorizedSenders}
                   </Text>
                   <Text className={classNames.itemData} block>
-                    {selectedDestination.groupSettings.authorizedSenders.map((sender) => sender.mail).join(', ')}
+                    {effectiveDestination.groupSettings.authorizedSenders.map((sender) => sender.mail).join(', ')}
                   </Text>
                 </Stack.Item>
               }
-              {selectedDestination && selectedDestination.groupSettings &&
-                selectedDestination.groupSettings.hiddenFromExchangeClients &&
+              {effectiveDestination && effectiveDestination.groupSettings &&
+                effectiveDestination.groupSettings.hiddenFromExchangeClients &&
                 <Stack.Item align="start">
                   <Text className={classNames.itemTitle} block>
                     {strings.ManageMembership.CreateGroup.hiddenFromExchangeClients}
                   </Text>
                   <Text className={classNames.itemData} block>
-                    {selectedDestination.groupSettings.hiddenFromExchangeClients ? strings.yes : strings.no}
+                    {effectiveDestination.groupSettings.hiddenFromExchangeClients ? strings.yes : strings.no}
                   </Text>
                 </Stack.Item>
               }
-              {selectedDestination && selectedDestination.groupSettings &&
+              {effectiveDestination && effectiveDestination.groupSettings &&
                 <Stack.Item align="start">
                   <Text className={classNames.itemTitle} block>
                     {strings.ManageMembership.CreateGroup.welcomeMessageEnabled}
                   </Text>
                   <Text className={classNames.itemData} block>
-                    {selectedDestination.groupSettings.welcomeMessageEnabled ? strings.yes : strings.no}
+                    {effectiveDestination.groupSettings.welcomeMessageEnabled ? strings.yes : strings.no}
                   </Text>
                 </Stack.Item>
               }
             </Stack>
           </div>)}
 
-          <div>
-            <div className={classNames.cardHeader}>
-                <div className={classNames.cardTitle}>
-                {strings.ManageMembership.labels.sourceParts}
-                </div>
-                <ActionButton
-                  iconProps={{ iconName: 'Edit' }}
-                  styles={{ root: { fontSize: 12, height: 14 }, icon: { fontSize: 10 }}}
-                  onClick={() => onEditButtonClick(OnboardingSteps.MembershipConfiguration)}>
-                  {strings.edit}
-                </ActionButton>
-              </div>
-              <Separator />
-              {!isAdvancedView && sourceParts && sourceParts.length > 0 ? (
-                <RulesReview parts={sourceParts} />
-              ) : (
-                <Stack enableScopedSelectors tokens={{ childrenGap: 30 }}>
-                  <Stack.Item align="stretch" grow>
-                    <TextField
-                      label={strings.ManageMembership.labels.query}
-                      value={displayQuery}
-                      readOnly
-                      multiline
-                      resizable={true}
-                      autoAdjustHeight={true}
-                      styles={{
-                        field: { fontFamily: "monospace" },
-                      }}
-                    />
-                  </Stack.Item>
-                </Stack>
-              )}
-            </div>
-
-          <div>
-            <div className={classNames.cardHeader}>
-              <div className={classNames.cardTitle}>
-                {strings.JobDetails.labels.configuration}
-              </div>
-              <ActionButton
-                iconProps={{ iconName: 'Edit' }}
-                styles={{ root: { fontSize: 12, height: 14 }, icon: { fontSize: 10 }}}
-                onClick={() => onEditButtonClick(OnboardingSteps.RunConfiguration)}>
-                {strings.edit}
-              </ActionButton>
-            </div>
-            <Separator />
-            <Stack horizontal tokens={{ childrenGap: 15 }}>
-              <Stack.Item align="start">
-                <Text className={classNames.itemTitle} block>
-                  {strings.JobDetails.labels.startDate}
-                </Text>
-                <Text className={classNames.itemData} block>
-                  {new Intl.DateTimeFormat().format(Date.parse(startDate))}
-                </Text>
-              </Stack.Item>
-              <Stack.Item align="start">
-                <Text className={classNames.itemTitle} block>
-                  {strings.JobDetails.labels.frequency}
-                </Text>
-                <Text className={classNames.itemData} block>
-                  {format(strings.JobDetails.labels.frequencyDescription, period)}
-                </Text>
-              </Stack.Item>
-              <Stack.Item align="start">
-                <Text className={classNames.itemTitle} block>
-                  {strings.JobDetails.labels.increaseThreshold}
-                </Text>
-                <Text className={classNames.itemData} block>
-                  {thresholdPercentageForAdditions === -1 ? `${strings.ManageMembership.labels.noThresholdSet}`: `${thresholdPercentageForAdditions}%`}
-                </Text>
-              </Stack.Item>
-              <Stack.Item align="start">
-                <Text className={classNames.itemTitle} block>
-                  {strings.JobDetails.labels.decreaseThreshold}
-                </Text>
-                <Text className={classNames.itemData} block>
-                  {thresholdPercentageForRemovals === -1 ? `${strings.ManageMembership.labels.noThresholdSet}`: `${thresholdPercentageForRemovals}%`}
-                </Text>
-              </Stack.Item>
-            </Stack>
-          </div>
-
             <div>
+              <Separator />
               <div className={classNames.cardHeader}>
                 <div className={classNames.cardTitle}>
                   {strings.JobDetails.labels.businessJustification}
                 </div>
               </div>
-              <Separator />
               <TextField
                 multiline
                 resizable={true}
@@ -375,7 +338,7 @@ export const ConfirmationBase: React.FunctionComponent<IConfirmationProps> = (pr
                   {strings.ManageMembership.labels.hiddenMembershipConfirmationWarning}
                 </MessageBar>
               )}
-            </div>
+
             {isJobTenantWriter && (
             jobId && jobDetails && jobDetails?.status === SyncStatus.PendingReview && jobDetails.lastModifiedOnBehalfOfObjectId? (
             jobDetails && jobDetails?.status === SyncStatus.PendingReview ? (
@@ -411,12 +374,7 @@ export const ConfirmationBase: React.FunctionComponent<IConfirmationProps> = (pr
               </Stack.Item>
             ) : null
           ) : (
-            <div>
-              <div className={classNames.cardHeader}>
-                <div className={classNames.cardTitle}>
-                  <Label>{strings.ManageMembership.labels.requestedOnBehalfOf}</Label>
-                </div>
-              </div>
+            <>
               <Separator />
               <Dropdown
                 id="groupOwnersDropdown"
@@ -437,8 +395,102 @@ export const ConfirmationBase: React.FunctionComponent<IConfirmationProps> = (pr
                 required
                 data-testid="group-owners-dropdown"
               />
-            </div>
+            </>
           ))}
+            </div>
+
+          <div>
+            <Separator />
+            <div className={classNames.cardHeader}>
+              <div className={classNames.cardTitle}>
+                {strings.JobDetails.labels.configuration}
+              </div>
+              <ActionButton
+                iconProps={{ iconName: 'Edit' }}
+                styles={{ root: { fontSize: 12, height: 14 }, icon: { fontSize: 10 }}}
+                onClick={() => onEditButtonClick(OnboardingSteps.RunConfiguration)}>
+                {strings.edit}
+              </ActionButton>
+            </div>
+            <Stack horizontal tokens={{ childrenGap: 40 }}>
+              <Stack.Item align="start">
+                <InfoLabel
+                  label={strings.JobDetails.labels.startDate}
+                  description={strings.JobDetails.descriptions.startDate}
+                />
+                <Text className={classNames.itemData} block>
+                  {new Date(startDate) <= SQL_MIN_DATE
+                    ? strings.ManageMembership.labels.ASAP
+                    : new Intl.DateTimeFormat().format(Date.parse(startDate))}
+                </Text>
+              </Stack.Item>
+              {jobDetails && (
+                <Stack.Item align="start">
+                  <InfoLabel
+                    label={strings.JobDetails.labels.lastRun}
+                    description={strings.JobDetails.descriptions.lastRun}
+                  />
+                  <Text className={classNames.itemData} block>
+                    {formatRunDate(jobDetails.lastSuccessfulRunTime)}
+                  </Text>
+                </Stack.Item>
+              )}
+              {jobDetails && (
+                <Stack.Item align="start">
+                  <InfoLabel
+                    label={strings.JobDetails.labels.nextRun}
+                    description={strings.JobDetails.descriptions.nextRun}
+                  />
+                  <Text className={classNames.itemData} block>
+                    {formatRunDate(jobDetails.estimatedNextRunTime)}
+                  </Text>
+                </Stack.Item>
+              )}
+              <Stack.Item align="start">
+                <InfoLabel
+                  label={strings.JobDetails.labels.frequency}
+                  description={strings.JobDetails.descriptions.frequency}
+                />
+                <Text className={classNames.itemData} block>
+                  {format(strings.JobDetails.labels.frequencyDescription, period)}
+                </Text>
+              </Stack.Item>
+              <Stack.Item align="start">
+                <InfoLabel
+                  label={strings.JobDetails.labels.increaseThreshold}
+                  description={strings.JobDetails.descriptions.increaseThreshold}
+                />
+                <Text className={classNames.itemData} block>
+                  {thresholdPercentageForAdditions === -1 ? `${strings.ManageMembership.labels.noThresholdSet}`: `${thresholdPercentageForAdditions}%`}
+                </Text>
+              </Stack.Item>
+              <Stack.Item align="start">
+                <InfoLabel
+                  label={strings.JobDetails.labels.decreaseThreshold}
+                  description={strings.JobDetails.descriptions.decreaseThreshold}
+                />
+                <Text className={classNames.itemData} block>
+                  {thresholdPercentageForRemovals === -1 ? `${strings.ManageMembership.labels.noThresholdSet}`: `${thresholdPercentageForRemovals}%`}
+                </Text>
+              </Stack.Item>
+            </Stack>
+          </div>
+
+          <div>
+            <Separator />
+            <div className={classNames.cardHeader}>
+                <div className={classNames.cardTitle}>
+                {strings.JobDetails.labels.sourceParts}
+                </div>
+                <ActionButton
+                  iconProps={{ iconName: 'Edit' }}
+                  styles={{ root: { fontSize: 12, height: 14 }, icon: { fontSize: 10 }}}
+                  onClick={() => onEditButtonClick(OnboardingSteps.MembershipConfiguration)}>
+                  {strings.edit}
+                </ActionButton>
+              </div>
+              <MembershipConfiguration isEditable={false} />
+            </div>
 
         </div>
       </PageSection>

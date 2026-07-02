@@ -24,6 +24,7 @@ import { useStrings } from '../../store/hooks';
 import { OnboardingStep } from '../../components/OnboardingStep';
 import { SelectDestination } from '../../components/SelectDestination';
 import { Destination } from '../../models/Destination';
+import { SourcePartType } from '../../models/SourcePartType';
 import {
   manageMembershipIsGroupReadyForOnboarding,
   manageMembershipCurrentStep,
@@ -237,6 +238,11 @@ export const ManageMembershipBase: React.FunctionComponent<IManageMembershipProp
   const isJobWriter = useSelector(selectIsJobWriter);
   // Existing job
   const jobDetailsRef = useRef(useSelector(selectSelectedJobDetails));
+  // Reactive job details (the ref above is captured once and can be stale on direct
+  // navigation/refresh into the edit flow). Used to populate the header pill on steps 2–4.
+  const reactiveJobDetails = useSelector(selectSelectedJobDetails);
+  // Guards one-time initialization of edit state from the reactive job details.
+  const hasInitializedEditStateRef = useRef(false);
   const isLoading = useSelector(selectSelectedJobLoading);
   const jobWithNoTitles = useSelector(selectSelectedJobWithNoTitles);
 
@@ -245,6 +251,7 @@ export const ManageMembershipBase: React.FunctionComponent<IManageMembershipProp
     dispatch(setIsEditingExistingJob(editingExistingJob));
     if (!editingExistingJob) {
       jobDetailsRef.current = undefined;
+      hasInitializedEditStateRef.current = false;
       dispatch(resetManageMembership());
     }
 
@@ -259,10 +266,16 @@ export const ManageMembershipBase: React.FunctionComponent<IManageMembershipProp
   }, [dispatch, jobId, locationState, location]);
 
   useEffect(() => {
-    if (jobDetailsRef.current) {
-      dispatch(setJobDetailsForExistingJob(jobDetailsRef.current));
+    // Initialize edit state from the reactively-loaded job details. Using the reactive
+    // selector (rather than the once-captured jobDetailsRef) ensures the destination,
+    // source parts, and other job data are populated even on direct navigation/refresh,
+    // where the ref would still be undefined when the async fetch resolves.
+    if (reactiveJobDetails && !hasInitializedEditStateRef.current) {
+      hasInitializedEditStateRef.current = true;
+      jobDetailsRef.current = reactiveJobDetails;
+      dispatch(setJobDetailsForExistingJob(reactiveJobDetails));
     }
-  }, [dispatch, jobDetailsRef.current]);
+  }, [dispatch, reactiveJobDetails]);
 
   const groupMembers = useSelector(manageMembershipGroupMembers);
   const hasNestedGroups = groupMembers && groupMembers.groupMemberCount > 0;
@@ -297,6 +310,20 @@ export const ManageMembershipBase: React.FunctionComponent<IManageMembershipProp
   const lastModifiedOnBehalfOfObjectId = useSelector(manageMembershipLastModifiedOnBehalfOfObjectId);
   const isEditingExistingJob = useSelector(manageMembershipIsEditingExistingJob);
   const advancedViewQuery = useSelector(manageMembershipAdvancedViewQuery);
+
+  // When editing an existing job, the destination is loaded from job details rather than
+  // selected via search, so the group endpoints (e.g. Outlook/SharePoint apps) are never
+  // fetched. Fetch them here so the DESTINATION section on the Confirmation step shows the
+  // group's app links, matching the add flow and the design.
+  useEffect(() => {
+    if (
+      isEditingExistingJob &&
+      reactiveJobDetails?.targetGroupId &&
+      (reactiveJobDetails.targetDestinationType ?? DestinationType.GroupMembership) === DestinationType.GroupMembership
+    ) {
+      dispatch(getGroupEndpoints(reactiveJobDetails.targetGroupId));
+    }
+  }, [dispatch, isEditingExistingJob, reactiveJobDetails?.targetGroupId, reactiveJobDetails?.targetDestinationType]);
   const sourcePartsQuery = useSelector(manageMembershipCompositeQuery);
   const isTenantJobWriter: boolean | undefined = useSelector(selectIsJobTenantWriter);
   const isBusinessJustificationRequired = useSelector(selectIsBusinessJustificationRequired);
@@ -590,11 +617,30 @@ export const ManageMembershipBase: React.FunctionComponent<IManageMembershipProp
   } else if (currentStep === OnboardingSteps.Confirmation || !isJobWriter) {
     isNextDisabled = true;
   }
-  if (orgLeaderDataReturned === false) {
+  // The org-leader fetch flag lives in a separate slice and is never reset back to
+  // undefined, so a prior HR org-leader fetch that went pending/rejected would leave it
+  // `false` and disable "Next" for every subsequent config (including non-HR source parts
+  // like Group Ownership). Only gate on it when the current config actually has an HR
+  // source part that depends on org-leader data.
+  const hasHRSourcePart = sourceParts.some(part => part.query.type === SourcePartType.HR);
+  if (currentStep === OnboardingSteps.MembershipConfiguration && hasHRSourcePart && orgLeaderDataReturned === false) {
     isNextDisabled = true;
   }
 
   const isSubmitDisabled = isBusinessJustificationRequired && !isBusinessJustificationProvided;
+
+  // Header title + destination pill shown in the gray page-header band (matches JobDetails).
+  const pageTitle: string = isEditingExistingJob
+    ? strings.ManageMembership.labels.pageTitle
+    : strings.ManageMembership.labels.addPageTitle;
+  const headerDestinationName = selectedDestination?.name ?? (isEditingExistingJob ? reactiveJobDetails?.targetGroupName : undefined);
+  const headerDestinationInitials = (headerDestinationName ?? '')
+    .split(' ')
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((word) => word[0])
+    .join('')
+    .toUpperCase();
 
   return (
     <Page>
@@ -602,6 +648,17 @@ export const ManageMembershipBase: React.FunctionComponent<IManageMembershipProp
       {isLoading ?
         <Loader /> :
         <div className={classNames.root}>
+          <div className={classNames.pageHeaderRow}>
+            <div className={classNames.headerTitleGroup}>
+              <div className={classNames.pageTitle}>{pageTitle}</div>
+              {headerDestinationName && currentStep !== OnboardingSteps.SelectDestination && (
+                <div className={classNames.groupPill}>
+                  <div className={classNames.groupAvatar}>{headerDestinationInitials}</div>
+                  <span className={classNames.groupName}>{headerDestinationName}</span>
+                </div>
+              )}
+            </div>
+          </div>
           {currentStep === OnboardingSteps.SelectDestination && <OnboardingStep
             stepTitle={strings.ManageMembership.labels.step1title}
             stepDescription={strings.ManageMembership.labels.step1description}
@@ -617,8 +674,6 @@ export const ManageMembershipBase: React.FunctionComponent<IManageMembershipProp
           {currentStep === OnboardingSteps.MembershipConfiguration && <OnboardingStep
             stepTitle={strings.ManageMembership.labels.step2title}
             stepDescription={strings.ManageMembership.labels.step2description}
-            destinationType={selectedDestination?.type}
-            destinationName={selectedDestination?.name}
             headerAction={
               <CopilotTriggerButton />
             }
@@ -629,8 +684,6 @@ export const ManageMembershipBase: React.FunctionComponent<IManageMembershipProp
           {currentStep === OnboardingSteps.RunConfiguration && <OnboardingStep
             stepTitle={strings.ManageMembership.labels.step3title}
             stepDescription={strings.ManageMembership.labels.step3description}
-            destinationType={selectedDestination?.type}
-            destinationName={selectedDestination?.name}
             children={
               <RunConfiguration
                 thresholdExceededForAdditions={locationState?.thresholdExceededForAdditions}
@@ -640,8 +693,7 @@ export const ManageMembershipBase: React.FunctionComponent<IManageMembershipProp
           {currentStep === OnboardingSteps.Confirmation && <OnboardingStep
             stepTitle={strings.ManageMembership.labels.step4title}
             stepDescription={strings.ManageMembership.labels.step4description}
-            destinationType={selectedDestination?.type ?? jobDetailsRef.current?.targetDestinationType}
-            destinationName={selectedDestination?.name ?? jobDetailsRef.current?.targetGroupName}
+            flushWithContent={true}
             children={
               <Confirmation
                 onEditButtonClick={onEditButtonClick}
@@ -652,7 +704,8 @@ export const ManageMembershipBase: React.FunctionComponent<IManageMembershipProp
             {currentStep !== OnboardingSteps.SelectDestination && <div className={classNames.backButtonContainer}>
               {!(isEditingExistingJob && currentStep === OnboardingSteps.MembershipConfiguration) &&
                 <DefaultButton
-                  text={strings.back}
+                  text={strings.previousStep}
+                  iconProps={{ iconName: 'ChevronLeft' }}
                   onClick={onBackStepClick}
                 />}
             </div>}
@@ -668,7 +721,10 @@ export const ManageMembershipBase: React.FunctionComponent<IManageMembershipProp
             <div className={classNames.nextButtonContainer}>
               {currentStep === OnboardingSteps.Confirmation ?
                 <PrimaryButton text={strings.submit} onClick={handleSaveButtonClick} disabled={isSubmitDisabled} />
-                : <PrimaryButton text={strings.next} onClick={onNextStepClick} disabled={isNextDisabled} />}
+                : <DefaultButton onClick={onNextStepClick} disabled={isNextDisabled}>
+                    {strings.nextStep}
+                    <Icon iconName="ChevronRight" className={classNames.nextButtonIcon} />
+                  </DefaultButton>}
             </div>
           </div>
         </div >

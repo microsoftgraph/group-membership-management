@@ -16,6 +16,8 @@ export const getStyles = (props: IConfirmationStyleProps): IConfirmationStyles =
             paddingLeft: 22,
             paddingRight: 22,
             borderRadius: 10,
+            borderTopLeftRadius: 0,
+            borderTopRightRadius: 0,
             marginBottom: 12,
             backgroundColor: theme.palette.white
         }, className],
@@ -36,6 +38,12 @@ export const getStyles = (props: IConfirmationStyleProps): IConfirmationStyles =
             fontStyle: 'normal',
             fontWeight: 600,
             lineHeight: '22px',
+            color: theme.palette.themePrimary,
+        },
+        sectionDescription: {
+            fontSize: 14,
+            color: theme.palette.neutralSecondary,
+            marginBottom: 12,
         },
         itemTitle: {
             fontSize: 14,

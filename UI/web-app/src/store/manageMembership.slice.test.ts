@@ -38,6 +38,7 @@ import manageMembershipReducer, {
   manageMembershipIsToggleEnabled,
   areAllSourcePartsValid,
   manageMembershipIsGroupReadyForOnboarding,
+  manageMembershipIsMissingAndOrOperator,
   buildCompositeQuery,
   ManageMembershipState,
 } from './manageMembership.slice';
@@ -409,6 +410,28 @@ describe('manageMembership.slice — selectors', () => {
 
   it('areAllSourcePartsValid returns false for empty parts', () => {
     expect(areAllSourcePartsValid(buildRoot())).toBe(false);
+  });
+
+  it('manageMembershipIsMissingAndOrOperator is false when no HR parts have a placeholder', () => {
+    const parts = [makeSourcePart('p1', SourcePartType.GroupMembership)];
+    expect(manageMembershipIsMissingAndOrOperator(buildRoot({ sourceParts: parts }))).toBe(false);
+  });
+
+  it('manageMembershipIsMissingAndOrOperator is true when an HR part filter contains a placeholder operator', () => {
+    const hrPart: ISourcePart = {
+      id: 'hr1',
+      title: 'T',
+      isNew: false,
+      isExpanded: false,
+      query: { type: SourcePartType.HR, source: { filter: 'department = Sales placeholder' } } as any,
+    };
+    expect(manageMembershipIsMissingAndOrOperator(buildRoot({ sourceParts: [hrPart] }))).toBe(true);
+  });
+
+  it('manageMembershipIsMissingAndOrOperator ignores stale stored flag when parts are valid', () => {
+    const parts = [makeSourcePart('p1', SourcePartType.GroupMembership)];
+    const root = buildRoot({ sourceParts: parts, isMissingAndOrOperator: true });
+    expect(manageMembershipIsMissingAndOrOperator(root)).toBe(false);
   });
 
   it('manageMembershipIsToggleEnabled in regular view with valid parts', () => {

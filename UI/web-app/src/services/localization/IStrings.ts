@@ -353,6 +353,7 @@ export type IStrings = {
       pendingConfiguration: string;
       pendingConfigurationInstructions: string;
       businessJustification: string;
+      justification: string;
       approve: string;
       reject: string;
       submissionRejected: string;
@@ -378,6 +379,7 @@ export type IStrings = {
     };
     descriptions: {
       requestedBy: string;
+      justification: string;
       requestedOnBehalfOf: string;
       startDate: string;
       endDate: string;
@@ -659,6 +661,7 @@ export type IStrings = {
       alreadyOnboardedWarning: string;
       confirmAbandon: string;
       pageTitle: string;
+      addPageTitle: string;
       step1title: string;
       step1description: string;
       selectOrCreateGroup: string;
@@ -786,6 +789,8 @@ export type IStrings = {
   submit: string;
   needHelp: string;
   next: string;
+  nextStep: string;
+  previousStep: string;
   close: string;
   cancel: string;
   learnMore: string;

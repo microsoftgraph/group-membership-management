@@ -18,7 +18,7 @@ export const getClassNames = classNamesFunction<IContentContainerStyleProps, ICo
 export const ContentContainerBase: React.FunctionComponent<IContentContainerProps> = (
   props: IContentContainerProps
 ) => {
-  const { title, actionButtons, className, styles, children, hideSeparator } = props;
+  const { title, banner, actionButtons, className, styles, children, hideSeparator } = props;
   const classNames: IProcessedStyleSet<IContentContainerStyles> = getClassNames(styles, {
     className,
     theme: useTheme(),
@@ -26,6 +26,7 @@ export const ContentContainerBase: React.FunctionComponent<IContentContainerProp
 
   return (
     <div className={classNames.card}>
+      {banner}
       <div className={classNames.cardHeader}>
         <Text className={classNames.title}>{title}</Text>
         {actionButtons?.map((button, index) => {

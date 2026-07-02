@@ -13,6 +13,7 @@ import {
     ConfirmationContainer: IStyle;
     cardHeader: IStyle;
     cardTitle: IStyle;
+    sectionDescription: IStyle;
     itemTitle: IStyle;
     itemData: IStyle;
     labelContainer: IStyle;

@@ -34,6 +34,7 @@ import {
      */
     styles?: IStyleFunctionOrObject<IContentContainerStyleProps, IContentContainerStyles>;
     title: string;
+    banner?: React.ReactNode;
     actionButtons?: IActionButtonProps[];
     useLinkButton?: boolean;
     linkButtonIconName?: string;

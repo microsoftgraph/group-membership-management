@@ -499,7 +499,7 @@ export const MembershipConfigurationBase: React.FunctionComponent<MembershipConf
         {isSubmissionReviewer && jobDetails?.syncJobId && (
           <UserSpotCheck syncJobId={jobDetails.syncJobId} sourceParts={sourceParts} />
         )}
-        <RulesReview parts={sourceParts} />
+        <RulesReview parts={sourceParts} showTitle={false} />
       </>)
       ) : (<div className={classNames.card}>
         <AdvancedQuery

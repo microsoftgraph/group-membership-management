@@ -7,25 +7,21 @@ import {
   } from './OnboardingStep.types';
 
   export const getStyles = (props: IOnboardingStepStyleProps): IOnboardingStepStyles => {
-    const { className, theme } = props;
+    const { className, theme, flushWithContent } = props;
 
     return {
       root: [{
       }, className],
       titleCard: {
         paddingTop: 18,
-        paddingBottom: 18,
+        paddingBottom: flushWithContent ? 0 : 18,
         paddingLeft: 22,
         paddingRight: 22,
         borderRadius: 10,
-        marginBottom: 12,
+        borderBottomLeftRadius: flushWithContent ? 0 : 10,
+        borderBottomRightRadius: flushWithContent ? 0 : 10,
+        marginBottom: flushWithContent ? 0 : 12,
         backgroundColor: theme.palette.white
-      },
-      title: {
-        fontWeight: 600,
-        fontSize: 24,
-        fontFamily: 'Segoe UI',
-        marginBottom: 14
       },
       stepTitle: {
         fontWeight: 600,
@@ -43,11 +39,14 @@ import {
         fontSize: 16,
         fontFamily: 'Segoe UI'
       },
-      destination: {
-        fontWeight: 400,
-        fontSize: 16,
-        fontFamily: 'Segoe UI',
-        marginBottom: 14
+      headerDivider: {
+        padding: 0,
+        marginTop: flushWithContent ? 0 : 8,
+        selectors: {
+          '::before': {
+            backgroundColor: theme.palette.neutralQuaternaryAlt
+          }
+        }
       }
     };
   };

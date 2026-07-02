@@ -34,7 +34,7 @@ const hasReviewableDetails = (part: ISourcePart): boolean => {
 export const RulesReviewBase: React.FunctionComponent<RulesReviewProps> = (
   props: RulesReviewProps
 ) => {
-  const { className, styles, parts, showHeader = true } = props;
+  const { className, styles, parts, showHeader = true, showTitle = true } = props;
   const classNames: IProcessedStyleSet<RulesReviewStyles> = getClassNames(styles, {
     className,
     theme: useTheme(),
@@ -64,7 +64,7 @@ export const RulesReviewBase: React.FunctionComponent<RulesReviewProps> = (
     <div className={classNames.root}>
       {showHeader && (
         <div className={classNames.header}>
-          <div className={classNames.title}>{strings.ManageMembership.labels.rulesTitle}</div>
+          {showTitle && <div className={classNames.title}>{strings.ManageMembership.labels.rulesTitle}</div>}
           <div className={classNames.description}>{strings.ManageMembership.labels.rulesDescription}</div>
         </div>
       )}

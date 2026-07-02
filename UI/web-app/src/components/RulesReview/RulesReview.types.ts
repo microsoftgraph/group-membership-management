@@ -26,6 +26,8 @@ export type RulesReviewProps = {
   parts: ISourcePart[];
   /** When false, hides the "RULES" header and description. Defaults to true. */
   showHeader?: boolean;
+  /** When false, hides only the "RULES" title while keeping the description. Defaults to true. */
+  showTitle?: boolean;
 
   /**
    * Call to provide customized styling that will layer on top of the variant rules.

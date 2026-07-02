@@ -195,14 +195,14 @@ describe('JobDetails - Sync Now feature', () => {
     global.fetch = createFetchMock({ count: 1, limit: 3, remaining: 2 });
     renderJobDetails(createBaseState({ isSubmissionReviewer: false }));
     // Wait for page to render with job data
-    await screen.findByText('Test Group');
+    await screen.findAllByText('Test Group');
     expect(screen.queryByRole('button', { name: /run a sync now/i })).not.toBeInTheDocument();
   });
 
   it('does not render Sync Now button when job is not idle', async () => {
     global.fetch = createFetchMock({ count: 1, limit: 3, remaining: 2 }, { status: 'InProgress' });
     renderJobDetails(createBaseState({ isSubmissionReviewer: true, jobStatus: 'InProgress' }));
-    await screen.findByText('Test Group');
+    await screen.findAllByText('Test Group');
     expect(screen.queryByRole('button', { name: /run a sync now/i })).not.toBeInTheDocument();
   });
 
@@ -210,7 +210,7 @@ describe('JobDetails - Sync Now feature', () => {
     // processJob sets enabledOrNot=false for statuses other than Idle/InProgress
     global.fetch = createFetchMock({ count: 1, limit: 3, remaining: 2 }, { status: 'CustomerPaused' });
     renderJobDetails(createBaseState({ isSubmissionReviewer: true, jobStatus: 'CustomerPaused', jobEnabled: false }));
-    await screen.findByText('Test Group');
+    await screen.findAllByText('Test Group');
     expect(screen.queryByRole('button', { name: /run a sync now/i })).not.toBeInTheDocument();
   });
 

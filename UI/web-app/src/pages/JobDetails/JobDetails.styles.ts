@@ -12,8 +12,6 @@ export const getStyles = (props: IJobDetailsStyleProps): IJobDetailsStyles => {
     const isDarkMode = theme.palette.white.toLowerCase() === NeutralColors.gray220;
     const statusTextColor = theme.semanticColors.bodyText;
     const enabledTextColor = isDarkMode ? NeutralColors.white : statusTextColor;
-    const enabledBackgroundColor = isDarkMode ? theme.palette.greenDark : theme.semanticColors.successBackground;
-    const disabledBackgroundColor = theme.semanticColors.disabledBackground;
 
     return {
         root: [{
@@ -51,35 +49,109 @@ export const getStyles = (props: IJobDetailsStyleProps): IJobDetailsStyles => {
         toggleLabel: {
             paddingRight: 10
         },
+        toggleRow: {
+            display: "flex",
+            alignItems: "center"
+        },
         jobEnabled: {
             color: enabledTextColor,
-            backgroundColor: enabledBackgroundColor,
-            borderRadius: 50,
-            textAlign: 'center',
-            height: 20,
-            paddingLeft: 5,
-            paddingRight: 5,
-            marginLeft: 15,
-            fontWeight: 600
+            marginTop: 6,
+            fontSize: 14,
+            fontWeight: 400
         },
         jobDisabled: {
-            color: statusTextColor,
-            backgroundColor: disabledBackgroundColor,
-            borderRadius: 50,
-            textAlign: 'center',
-            height: 20,
-            paddingLeft: 5,
-            paddingRight: 5,
-            marginLeft: 15,
-            fontWeight: 600
+            color: theme.palette.neutralSecondary,
+            marginTop: 6,
+            fontSize: 14,
+            fontWeight: 400
         },
         membershipStatusContainer: {
             display: "flex",
-            alignItems: "flex-start"
+            flexDirection: "column",
+            alignItems: "stretch"
+        },
+        membershipStatusHeader: {
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "flex-start",
+            width: "100%"
         },
         membershipStatusControls: {
             display: "flex",
+            flexDirection: "column",
             alignItems: "flex-start"
+        },
+        syncNowButton: {
+            alignSelf: "flex-start"
+        },
+        pendingBanner: {
+            display: "flex",
+            alignItems: "center",
+            gap: 8,
+            padding: "10px 16px",
+            borderRadius: 6,
+            backgroundColor: theme.palette.neutralLighter
+        },
+        stickyBannerWrapper: {
+            position: "sticky",
+            top: 0,
+            zIndex: 100,
+            backgroundColor: theme.palette.neutralLighter,
+            paddingBottom: 12
+        },
+        pendingBannerText: {
+            fontSize: 14
+        },
+        pageHeaderRow: {
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            marginBottom: 12,
+            paddingTop: 4
+        },
+        headerTitleGroup: {
+            display: "flex",
+            alignItems: "center",
+            gap: 12
+        },
+        groupPill: {
+            display: "inline-flex",
+            alignItems: "center",
+            gap: 8,
+            backgroundColor: theme.palette.white,
+            borderRadius: 20,
+            padding: "3px 14px 3px 4px",
+            boxShadow: "0 1px 2px rgba(0, 0, 0, 0.12)"
+        },
+        groupAvatar: {
+            width: 26,
+            height: 26,
+            borderRadius: "50%",
+            backgroundColor: theme.palette.themePrimary,
+            color: theme.palette.white,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            fontSize: 11,
+            fontWeight: 600,
+            flexShrink: 0
+        },
+        groupName: {
+            fontWeight: 600,
+            fontSize: 14
+        },
+        businessJustificationColumns: {
+            display: "flex",
+            gap: 40,
+            alignItems: "flex-start",
+            marginTop: 12
+        },
+        businessJustificationRequestedBy: {
+            flex: "0 0 200px",
+            minWidth: 160
+        },
+        businessJustificationText: {
+            flex: 1
         },
         membershipStatusMessage: {
             display: "flex",
@@ -116,6 +188,13 @@ export const getStyles = (props: IJobDetailsStyleProps): IJobDetailsStyles => {
             gap: 10,
             marginTop: 8
         },
+        submissionReviewActions: {
+            display: "flex",
+            flexDirection: "row",
+            justifyContent: "flex-end",
+            gap: 10,
+            marginTop: 16
+        },
         membershipStatusPendingLabel: {
             display: "flex",
             gap: 10,
@@ -123,8 +202,10 @@ export const getStyles = (props: IJobDetailsStyleProps): IJobDetailsStyles => {
         },
         removeGMM: {
             display: "flex",
-            alignItems: "flex-end",
-            justifyContent: "flex-end"
+            alignItems: "center",
+            justifyContent: "flex-end",
+            paddingRight: 36,
+            marginTop: 12,
         },
         removeGMMNotFound: {
             display: "flex",

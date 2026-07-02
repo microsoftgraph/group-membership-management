@@ -28,7 +28,7 @@ export const getStyles = (props: IContentContainerStyleProps): IContentContainer
             fontStyle: 'normal',
             fontWeight: 600,
             lineHeight: '22px',
-            color: theme.palette.neutralSecondary
+            color: theme.palette.themePrimary
         },
         linkButton: {
             // icon

@@ -13,7 +13,7 @@ import vivaEngageLogo from '../../assets/vivaengagelogo.png';
 const getClassNames = classNamesFunction<IEndpointsListStyleProps, IEndpointsListStyles>();
 
 export const EndpointsListBase: React.FunctionComponent<IEndpointsListProps> = (props) => {
-  const { className, styles, endpoints, groupName, showOutlookWarning, vivaEngageUrl } = props;
+  const { className, styles, endpoints, groupName, showOutlookWarning, vivaEngageUrl, linksTitle, horizontal } = props;
   const classNames: IProcessedStyleSet<IEndpointsListStyles> = getClassNames(styles, {
     className,
   });
@@ -73,10 +73,10 @@ export const EndpointsListBase: React.FunctionComponent<IEndpointsListProps> = (
   ) : (
     <Stack.Item align="start">
       <Text className={classNames.itemTitle} block>
-        {strings.ManageMembership.labels.appsUsed}
+        {linksTitle ?? strings.ManageMembership.labels.appsUsed}
       </Text>
       <Text className={classNames.itemData} block>
-        <div className={classNames.endpointsContainer}>
+        <div className={mergeStyles(classNames.endpointsContainer, horizontal && { flexDirection: 'row', alignItems: 'center', gap: 24 })}>
           {endpoints?.includes('Outlook') && (
             <div className={classNames.outlookContainer}>
               <ActionButton iconProps={{ iconName: 'OutlookLogo' }} onClick={() => openOutlookLink()}>

@@ -6,17 +6,14 @@ import {
   IProcessedStyleSet,
   classNamesFunction,
   useTheme,
+  Separator,
 } from '@fluentui/react';
 import {
   IOnboardingStepProps,
   IOnboardingStepStyleProps,
   IOnboardingStepStyles,
 } from './OnboardingStep.types';
-import { useStrings } from '../../store/hooks';
 import { PageSection } from '../PageSection';
-import { useSelector } from 'react-redux';
-import { manageMembershipSelectedDestinationName, manageMembershipSelectedDestinationType } from '../../store/manageMembership.slice';
-import { destinationTypeLocalization } from '../../utils/destinationTypeUtils';
 
 const getClassNames = classNamesFunction<
   IOnboardingStepStyleProps,
@@ -24,33 +21,28 @@ const getClassNames = classNamesFunction<
 >();
 
 export const OnboardingStepBase: React.FunctionComponent<IOnboardingStepProps> = (props) => {
-  const { className, styles, children, stepTitle, stepDescription, headerAction } = props;
-  const strings = useStrings();
+  const { className, styles, children, stepTitle, stepDescription, headerAction, flushWithContent } = props;
 
   const classNames: IProcessedStyleSet<IOnboardingStepStyles> = getClassNames(
     styles,
     {
       className,
       theme: useTheme(),
+      flushWithContent,
     }
   );
-  const destinationType = useSelector(manageMembershipSelectedDestinationType);
-  const destinationName = useSelector(manageMembershipSelectedDestinationName);
-
-  const destinationTypeLabel: string = destinationTypeLocalization[destinationType!] || destinationType!
 
   return (
     <div className={classNames.root}>
       <div className={classNames.titleCard}>
         <PageSection>
-          <div className={classNames.title}>{strings.ManageMembership.labels.pageTitle}</div>
-          {(destinationType && destinationName) && (<div className={classNames.destination}>{destinationTypeLabel}: {destinationName}</div>)}
           <div className={classNames.stepTitleRow}>
             <div className={classNames.stepTitle}>{stepTitle}</div>
             {headerAction}
           </div>
           <div className={classNames.stepDescription}>{stepDescription}</div>
         </PageSection>
+        <Separator className={classNames.headerDivider} />
       </div>
       <div>
         <PageSection>

@@ -124,6 +124,8 @@ export const JobDetailsBase: React.FunctionComponent<IJobDetailsProps> = (
   const jobLoading = useSelector(selectSelectedJobLoading);
   const removeGMMPending = useSelector(selectRemoveGMMLoading);
   const isJobWriter = useSelector(selectIsJobWriter);
+  const isSubmissionReviewer = useSelector(selectIsSubmissionReviewer);
+  const isSubmissionRejector = useSelector(selectIsSubmissionRejector);
   const jobIdSet = useSelector(selectJobIdSet);
   const isJobOwnerDeleter: boolean = useSelector(selectIsJobOwnerDeleter);
   const canDeleteJob: boolean = isJobWriter || isJobOwnerDeleter;
@@ -324,7 +326,8 @@ export const JobDetailsBase: React.FunctionComponent<IJobDetailsProps> = (
           ) : ( <>
           { selectedJob && (
           <div className={classNames.root}>
-              <div className={classNames.historyButtonContainer}>
+              <div className={classNames.pageHeaderRow}>
+                <MembershipDetails job={job} classNames={classNames} />
                 <ActionButton
                   id="job-history-button"
                   iconProps={{ iconName: 'History' }}
@@ -332,18 +335,56 @@ export const JobDetailsBase: React.FunctionComponent<IJobDetailsProps> = (
                   onClick={() => setIsJobHistoryPanelOpen(true)}
                 />
               </div>
-              <MembershipDetails job={job} classNames={classNames} />
+              {(job.status === SyncStatus.PendingReview || job.status === SyncStatus.PendingConfiguration || job.status === SyncStatus.PendingAutoApproval) && (
+                <div className={classNames.stickyBannerWrapper}>
+                  <div className={classNames.pendingBanner}>
+                    <Icon
+                      iconName={job.status === SyncStatus.PendingConfiguration && (isSubmissionReviewer || isSubmissionRejector) ? 'HourGlass' : 'AlarmClock'}
+                      className={classNames.clockIcon}
+                    />
+                    <Text className={classNames.pendingBannerText}>
+                      <b>
+                        {job.status === SyncStatus.PendingConfiguration && (isSubmissionReviewer || isSubmissionRejector)
+                          ? strings.JobDetails.labels.pendingConfiguration
+                          : strings.JobDetails.labels.pendingReview}.
+                      </b>
+                      {' '}
+                      {(isSubmissionReviewer || isSubmissionRejector)
+                        ? (job.status === SyncStatus.PendingConfiguration
+                          ? strings.JobDetails.labels.pendingConfigurationInstructions
+                          : strings.JobDetails.labels.pendingReviewInstructions)
+                        : strings.JobDetails.labels.pendingReviewDescription}
+                    </Text>
+                  </div>
+                </div>
+              )}
               <ContentContainer
                 title={strings.JobDetails.labels.membershipStatus}
                 children={<MembershipStatusContent job={job} resolveReview={resolveReview} classNames={classNames} />}
                 removeButton={true}
               />
+              <MembershipBusinessJustification job={job} classNames={classNames} />
               <ContentContainer
                 title={strings.JobDetails.labels.destination}
                 actionButtons={[
                   { text: job.targetDestinationType === DestinationType.TeamsChannelMembership ? strings.JobDetails.openInTeams : strings.JobDetails.openInAzure, icon: OpenInNewWindowIcon, onClick: openInService }
                 ]}
                 children={<MembershipDestination job={job} classNames={classNames} />}
+              />
+              <ContentContainer
+                title={strings.JobDetails.labels.configuration}
+                children={<RunConfiguration job={job} classNames={classNames} />}
+                actionButtons={
+                  canEditJob
+                  ? [{
+                      text: strings.JobDetails.editButton,
+                      icon: { iconName: 'Edit' },
+                      onClick: openRunConfiguration,
+                      disabled: isJobInProgress,
+                      disabledReason: isJobInProgress ? strings.JobDetails.editDisabledInProgress : undefined
+                    }]
+                  : []
+                }
               />
               <ContentContainer
                 title={strings.JobDetails.labels.sourceParts}
@@ -359,23 +400,12 @@ export const JobDetailsBase: React.FunctionComponent<IJobDetailsProps> = (
                   : []
                 }
                 children={
-                  <MembershipConfiguration
-                    isEditable={false}
-                  />}
-              />
-              <ContentContainer
-                title={strings.JobDetails.labels.configuration}
-                children={<RunConfiguration job={job} classNames={classNames} />}
-                actionButtons={
-                  canEditJob
-                  ? [{
-                      text: strings.JobDetails.editButton,
-                      icon: { iconName: 'Edit' },
-                      onClick: openRunConfiguration,
-                      disabled: isJobInProgress,
-                      disabledReason: isJobInProgress ? strings.JobDetails.editDisabledInProgress : undefined
-                    }]
-                  : []
+                  <>
+                    <MembershipConfiguration
+                      isEditable={false}
+                    />
+                    <SubmissionReviewActions job={job} resolveReview={resolveReview} classNames={classNames} />
+                  </>
                 }
               />
             </div>
@@ -433,27 +463,108 @@ export const JobDetailsBase: React.FunctionComponent<IJobDetailsProps> = (
 const MembershipDetails: React.FunctionComponent<IContentProps> = (
   props: IContentProps
 ) => {
-  const { classNames } = props;
+  const { job, classNames } = props;
   const strings = useStrings();
 
+  const groupName = job.targetDestinationType === DestinationType.TeamsChannelMembership
+    ? `${job.targetGroupName}: ${job.targetChannelName}`
+    : job.targetGroupName;
+
+  const initials = (groupName ?? '')
+    .split(' ')
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((word) => word[0])
+    .join('')
+    .toUpperCase();
+
   return (
-    <div className={classNames.card}>
-      <div>
-        <Text className={classNames.title} block>
-          {props.job.targetDestinationType === DestinationType.GroupMembership && `${strings.JobDetails.labels.pageTitle} - ${props.job.targetGroupName}`}
-          {props.job.targetDestinationType === DestinationType.TeamsChannelMembership && `${strings.JobDetails.labels.pageTitle} - ${props.job.targetGroupName}: ${props.job.targetChannelName}`}
-        </Text>
-      </div>
-      {/* <div> // Hidden until feature is enabled
-        <Text className={classNames.subtitle}>
-          {strings.JobDetails.labels.lastModifiedby}
-          <Text variant="medium" style={{ marginLeft: 5 }}>
-            {'DATA UNAVAILABLE'}
-          </Text>
-        </Text>
-      </div> */}
+    <div className={classNames.headerTitleGroup}>
+      <Text className={classNames.title} block>
+        {strings.JobDetails.labels.pageTitle}
+      </Text>
+      {groupName && (
+        <div className={classNames.groupPill}>
+          <div className={classNames.groupAvatar}>{initials}</div>
+          <Text className={classNames.groupName}>{groupName}</Text>
+        </div>
+      )}
     </div>
   )
+}
+
+const MembershipBusinessJustification: React.FunctionComponent<IContentProps> = (
+  props: IContentProps
+) => {
+  const { job, classNames } = props;
+  const strings = useStrings();
+  const isSubmissionReviewer = useSelector(selectIsSubmissionReviewer);
+  const isSubmissionRejector = useSelector(selectIsSubmissionRejector);
+  const jobDetails = useSelector(selectSelectedJobDetails);
+  const lastModifiedUserProfile = useSelector(selectLastModifiedUserProfile);
+  const jobChanges: SyncJobChange[] | undefined = useSelector(selectSelectedJobChanges);
+  const justification = jobChanges?.[0]?.businessJustification;
+
+  const personaProps: IPersonaSharedProps = {
+    imageUrl: lastModifiedUserProfile?.photoUrl,
+    text: lastModifiedUserProfile?.displayName
+  };
+
+  // Match the existing conditions: only render while the job is pending review
+  // and an actual business justification is available to display.
+  const shouldShow = (isSubmissionReviewer || isSubmissionRejector)
+    && job?.status === SyncStatus.PendingReview
+    && !!justification;
+
+  if (!shouldShow) {
+    return null;
+  }
+
+  return (
+    <ContentContainer title={strings.JobDetails.labels.businessJustification}>
+      <div className={classNames.businessJustificationColumns}>
+        <div className={classNames.businessJustificationRequestedBy}>
+          <InfoLabel
+            label={strings.JobDetails.labels.requestedBy}
+            description={strings.JobDetails.descriptions.requestedBy}
+          />
+          <div className={classNames.itemData}>
+            {jobDetails != null ? (
+              lastModifiedUserProfile?.photoUrl === "ErrorNonExistentStorage" ? (
+                <div className={classNames.itemData}>
+                  <Text variant="medium" block>
+                    {lastModifiedUserProfile?.displayName}
+                  </Text>
+                  <Text variant="medium" block>
+                    {jobDetails.lastModifiedByObjectId}
+                  </Text>
+                </div>
+              ) : (
+                <Persona
+                  {...personaProps}
+                  text={lastModifiedUserProfile?.displayName}
+                  size={PersonaSize.size32}
+                  hidePersonaDetails={false}
+                  imageAlt={lastModifiedUserProfile?.displayName}
+                />
+              )
+            ) : (
+              <Shimmer width="100%" />
+            )}
+          </div>
+        </div>
+        <div className={classNames.businessJustificationText}>
+          <InfoLabel
+            label={strings.JobDetails.labels.justification}
+            description={strings.JobDetails.descriptions.justification}
+          />
+          <div className={classNames.itemData}>
+            {justification}
+          </div>
+        </div>
+      </div>
+    </ContentContainer>
+  );
 }
 
 const MembershipStatusContent: React.FunctionComponent<IStatusContentProps> = (
@@ -462,7 +573,7 @@ const MembershipStatusContent: React.FunctionComponent<IStatusContentProps> = (
   const dispatch = useDispatch<AppDispatch>();
   const strings = useStrings();
   const theme = useTheme();
-  const { job, resolveReview, classNames } = props;
+  const { job, classNames } = props;
   const { jobId } = useParams<{ jobId: string }>();
   const isSubmissionReviewer = useSelector(selectIsSubmissionReviewer);
   const isSubmissionRejector = useSelector(selectIsSubmissionRejector);
@@ -478,12 +589,7 @@ const MembershipStatusContent: React.FunctionComponent<IStatusContentProps> = (
   const isJobEnabler = useSelector(selectIsJobOwnerEnabler);
   const isJobWriter = useSelector(selectIsJobWriter);
   const canEnableJob = isJobEnabler || isJobWriter;
-  const lastModifiedUserProfile = useSelector(selectLastModifiedUserProfile);
   const lastModifiedOnBehalfOfUserProfile = useSelector(selectLastModifiedOnBehalfOfUserProfile);
-  const personaProps: IPersonaSharedProps = {
-    imageUrl: lastModifiedUserProfile?.photoUrl,
-    text: lastModifiedUserProfile?.displayName
-  };
   const lastModifiedOnBehalfOfUserProps: IPersonaSharedProps = {
     imageUrl: lastModifiedOnBehalfOfUserProfile?.photoUrl,
     text: lastModifiedOnBehalfOfUserProfile?.displayName
@@ -492,13 +598,6 @@ const MembershipStatusContent: React.FunctionComponent<IStatusContentProps> = (
   const lastChange = jobChanges?.[0];
   const businessJustification = useSelector(manageMembershipBusinessJustification);
   const hasHiddenMembershipSources = job?.hasHiddenMembershipSources ?? false;
-  const [loadingJobChanges, setLoadingJobChanges] = useState(true);
-  const [showRejectionDialog, setShowRejectionDialog] = useState(false);
-  const [rejectionFeedback, setRejectionFeedback] = useState('');
-  const [isSubmittingRejection, setIsSubmittingRejection] = useState(false);
-  // Double-click guard for Approve.
-  const [isSubmittingApproval, setIsSubmittingApproval] = useState(false);
-  const [rejectionError, setRejectionError] = useState<string | null>(null);
   const [showSyncNowDialog, setShowSyncNowDialog] = useState(false);
   const [ignoreThresholdOnce, setIgnoreThresholdOnce] = useState(false);
   const [isSyncingNow, setIsSyncingNow] = useState(false);
@@ -514,12 +613,7 @@ const MembershipStatusContent: React.FunctionComponent<IStatusContentProps> = (
   useEffect(() => {
     const targetSyncJobId = jobId ?? job?.syncJobId;
     if (!targetSyncJobId) return;
-    setLoadingJobChanges(true);
-    const fetchChanges = async () => {
-      await dispatch(fetchJobChanges({ syncJobId: targetSyncJobId }));
-      setLoadingJobChanges(false);
-    };
-    fetchChanges();
+    dispatch(fetchJobChanges({ syncJobId: targetSyncJobId }));
   }, [dispatch, jobId, job?.syncJobId]);
 
   useEffect(() => {
@@ -670,54 +764,6 @@ const MembershipStatusContent: React.FunctionComponent<IStatusContentProps> = (
     updateJobStatus(newStatus, SyncJobChangeReason.StatusUpdate);
   };
 
-  const handleApproveSubmission = async (approved: boolean) => {
-    if (!approved) {
-      setShowRejectionDialog(true);
-      return;
-    }
-    if (isSubmittingApproval) return;
-    setIsSubmittingApproval(true);
-    try {
-      // Await PATCH so post-nav fetchJobs sees committed state.
-      await updateJobStatus(SyncStatus.Idle, SyncJobChangeReason.SubmissionApproved, undefined, { refetch: false });
-      const targetJobId = jobId ?? job.syncJobId;
-      if (targetJobId) {
-        dispatch(removeJobFromList(targetJobId));
-      }
-      resolveReview();
-    } catch {
-      // Error surfaced via patchResponse.
-    } finally {
-      setIsSubmittingApproval(false);
-    }
-  };
-
-  const handleRejectDialogClose = () => {
-    setShowRejectionDialog(false);
-    setRejectionFeedback('');
-    setIsSubmittingRejection(false);
-    setRejectionError(null);
-  };
-
-  const handleRejectSubmission = async () => {
-    setIsSubmittingRejection(true);
-    setRejectionError(null);
-    try {
-      await updateJobStatus(SyncStatus.SubmissionRejected, SyncJobChangeReason.SubmissionRejected, rejectionFeedback, { refetch: false });
-      const targetJobId = jobId ?? job.syncJobId;
-      if (targetJobId) {
-        dispatch(removeJobFromList(targetJobId));
-      }
-      resolveReview();
-      setShowRejectionDialog(false);
-      setRejectionFeedback('');
-      setIsSubmittingRejection(false);
-    } catch (error) {
-      setIsSubmittingRejection(false);
-      setRejectionError(strings.JobDetails.Errors.rejectionError);
-    }
-  };
-
   const displayMessage = (patchResponse?: PatchJobResponse): string  => {
     if (!patchResponse) {
       return "";
@@ -751,20 +797,33 @@ const MembershipStatusContent: React.FunctionComponent<IStatusContentProps> = (
         </div>
       )}
       <div className={classNames.membershipStatusContainer}>
+      <div className={classNames.membershipStatusHeader}>
       <div className={classNames.membershipStatusControls}>
-        <label className={classNames.toggleLabel}>{strings.JobDetails.labels.sync}</label>
-        <Toggle
-          title={isJobEnabled ? strings.JobDetails.labels.enabled : strings.JobDetails.labels.disabled}
-          inlineLabel={true}
-          checked={isJobEnabled}
-          onChange={handleStatusChange}
-          disabled={!canEnableJob || jobStatus === SyncStatus.PendingReview || jobStatus === SyncStatus.PendingConfiguration || jobStatus === SyncStatus.PendingAutoApproval || jobStatus === SyncStatus.SubmissionRejected}
-        />
-        <div>
-          <div className={isJobEnabled ? classNames.jobEnabled : classNames.jobDisabled}>
-            {isJobEnabled ? strings.JobDetails.labels.enabled : strings.JobDetails.labels.disabled}
-          </div>
+        <div className={classNames.toggleRow}>
+          <label className={classNames.toggleLabel}>{strings.JobDetails.labels.sync}</label>
+          <Toggle
+            title={isJobEnabled ? strings.JobDetails.labels.enabled : strings.JobDetails.labels.disabled}
+            inlineLabel={true}
+            checked={isJobEnabled}
+            onChange={handleStatusChange}
+            disabled={!canEnableJob || jobStatus === SyncStatus.PendingReview || jobStatus === SyncStatus.PendingConfiguration || jobStatus === SyncStatus.PendingAutoApproval || jobStatus === SyncStatus.SubmissionRejected}
+          />
         </div>
+        <div className={isJobEnabled ? classNames.jobEnabled : classNames.jobDisabled}>
+          {isJobEnabled ? strings.JobDetails.labels.enabled : strings.JobDetails.labels.disabled}
+        </div>
+      </div>
+      {canScheduleNow && isJobEnabled && jobStatus === SyncStatus.Idle && (
+        <ActionButton
+          className={classNames.syncNowButton}
+          iconProps={{ iconName: 'Sync', styles: { root: { color: theme.palette.themePrimary } } }}
+          title={strings.JobDetails.labels.syncNowButtonAriaLabel}
+          ariaLabel={strings.JobDetails.labels.syncNowButtonAriaLabel}
+          text={strings.JobDetails.labels.syncNow}
+          onClick={handleSyncNowClick}
+          disabled={isSyncingNow}
+        />
+      )}
       </div>
       <div className={classNames.membershipStatusMessage}>
         <div>
@@ -780,50 +839,6 @@ const MembershipStatusContent: React.FunctionComponent<IStatusContentProps> = (
             </MessageBar>
           )}
         </div>
-        {(jobStatus === SyncStatus.PendingReview || jobStatus === SyncStatus.PendingConfiguration || jobStatus === SyncStatus.PendingAutoApproval) && (
-          <Stack>
-            {jobStatus === SyncStatus.PendingConfiguration && (isSubmissionReviewer || isSubmissionRejector) ?
-              <div className={classNames.membershipStatusPendingLabel}>
-                <Icon iconName='HourGlass' className={classNames.clockIcon} />
-                <Text>
-                  {strings.JobDetails.labels.pendingConfiguration}
-                </Text>
-              </div>
-              : <div className={classNames.membershipStatusPendingLabel}>
-                  <Icon iconName='AlarmClock' className={classNames.clockIcon} />
-                  <Text>
-                    {strings.JobDetails.labels.pendingReview}
-                  </Text>
-                </div>
-            }
-            <Text>{(isSubmissionReviewer || isSubmissionRejector) ?
-            <>
-              {jobStatus === SyncStatus.PendingConfiguration
-                ? strings.JobDetails.labels.pendingConfigurationInstructions
-                : strings.JobDetails.labels.pendingReviewInstructions}
-              {loadingJobChanges ? <Shimmer width="100%" /> :
-              <>
-              <Label>{strings.JobDetails.labels.businessJustification}</Label>
-                {lastChange?.businessJustification}
-              </>
-              }
-            </>
-              : strings.JobDetails.labels.pendingReviewDescription}</Text>
-            {(isSubmissionReviewer || isSubmissionRejector) && jobStatus === SyncStatus.PendingReview && (
-              <div className={classNames.membershipStatusActionButtons}>
-                {isSubmissionReviewer && (
-                  <DefaultButton onClick={() => handleApproveSubmission(true)} disabled={isSubmittingApproval}>
-                    {isSubmittingApproval && (
-                      <Spinner size={SpinnerSize.xSmall} style={{ marginRight: 8 }} />
-                    )}
-                    {strings.JobDetails.labels.approve}
-                  </DefaultButton>
-                )}
-                <PrimaryButton onClick={() => handleApproveSubmission(false)} text={strings.JobDetails.labels.reject} disabled={isSubmittingApproval} />
-              </div>
-            )}
-          </Stack>
-        )}
         {(jobStatus === SyncStatus.SubmissionRejected) && (
           <div>
             <>
@@ -834,54 +849,8 @@ const MembershipStatusContent: React.FunctionComponent<IStatusContentProps> = (
           </div>
         )}
       </div>
-      {canScheduleNow && isJobEnabled && jobStatus === SyncStatus.Idle && (
-        <ActionButton
-          className={classNames.syncNowButton}
-          iconProps={{ iconName: 'Sync', styles: { root: { color: theme.palette.themePrimary } } }}
-          title={strings.JobDetails.labels.syncNowButtonAriaLabel}
-          ariaLabel={strings.JobDetails.labels.syncNowButtonAriaLabel}
-          text={strings.JobDetails.labels.syncNow}
-          onClick={handleSyncNowClick}
-          disabled={isSyncingNow}
-        />
-      )}
 
       <div className={classNames.requestor}>
-      {(isSubmissionReviewer || isSubmissionRejector) && (jobStatus === SyncStatus.PendingReview) && jobDetails && jobDetails.lastModifiedByObjectId && (
-        <div>
-        <Stack.Item align="start">
-          <InfoLabel
-            label={strings.JobDetails.labels.requestedBy}
-            description={strings.JobDetails.descriptions.requestedBy}
-          />
-         <div className={classNames.itemData}>
-          {jobDetails != null ? (
-            (lastModifiedUserProfile?.photoUrl === "ErrorNonExistentStorage") ? (
-              <div className={classNames.itemData}>
-              <Text variant="medium" block>
-              {lastModifiedUserProfile?.displayName}
-              </Text>
-              <Text variant="medium" block>
-              {jobDetails.lastModifiedByObjectId}
-              </Text>
-            </div>
-            ) : (
-              <Persona
-                {...personaProps}
-                text={lastModifiedUserProfile?.displayName}
-                size={PersonaSize.size32}
-                hidePersonaDetails={false}
-                imageAlt={lastModifiedUserProfile?.displayName}
-              />
-            )
-          ) : (
-            <Shimmer width="100%" />
-          )}
-        </div>
-        </Stack.Item>
-        </div>
-        )}
-
         {(isSubmissionReviewer || isSubmissionRejector) && (jobStatus === SyncStatus.PendingReview) && jobDetails && jobDetails.lastModifiedOnBehalfOfObjectId &&
         (jobDetails.lastModifiedOnBehalfOfObjectId !== jobDetails.lastModifiedByObjectId) && (
         <div>
@@ -919,53 +888,6 @@ const MembershipStatusContent: React.FunctionComponent<IStatusContentProps> = (
         )}
         </div>
       </div>
-      {/* Rejection Dialog */}
-      <Dialog
-        hidden={!showRejectionDialog}
-        onDismiss={isSubmittingRejection ? undefined : handleRejectDialogClose}
-        dialogContentProps={{
-          type: DialogType.normal,
-          title: strings.JobDetails.labels.rejectionDialogTitle,
-          subText: strings.JobDetails.labels.rejectionDialogSubText
-        }}
-        modalProps={{
-          isBlocking: true
-        }}
-        minWidth={600}
-        maxWidth={800}
-      >
-        {rejectionError && (
-          <MessageBar
-            messageBarType={MessageBarType.error}
-            isMultiline={false}
-            onDismiss={() => setRejectionError(null)}
-            dismissButtonAriaLabel={strings.close}
-          >
-            {rejectionError}
-          </MessageBar>
-        )}
-        <TextField
-          label={strings.JobDetails.labels.rejectionReasonLabel}
-          multiline
-          rows={4}
-          value={rejectionFeedback}
-          onChange={(_, newValue) => setRejectionFeedback(newValue || '')}
-          placeholder={strings.JobDetails.labels.rejectionReasonPlaceholder}
-          required
-          disabled={isSubmittingRejection}
-        />
-        <DialogFooter>
-          <PrimaryButton
-            onClick={handleRejectSubmission}
-            disabled={!rejectionFeedback.trim() || isSubmittingRejection}
-          >
-            {isSubmittingRejection && (
-              <Spinner size={SpinnerSize.xSmall} style={{ marginRight: 8 }} />
-            )}
-            {isSubmittingRejection ? strings.JobDetails.labels.submittingRejection : strings.JobDetails.labels.submitRejection}
-          </PrimaryButton>
-        </DialogFooter>
-      </Dialog>
       {/* Sync Now Dialog */}
       <Dialog
         hidden={!showSyncNowDialog}
@@ -1019,6 +941,183 @@ const MembershipStatusContent: React.FunctionComponent<IStatusContentProps> = (
   )
 }
 
+const SubmissionReviewActions: React.FunctionComponent<IStatusContentProps> = (
+  props: IStatusContentProps
+) => {
+  const dispatch = useDispatch<AppDispatch>();
+  const strings = useStrings();
+  const { job, resolveReview, classNames } = props;
+  const { jobId } = useParams<{ jobId: string }>();
+  const isSubmissionReviewer = useSelector(selectIsSubmissionReviewer);
+  const isSubmissionRejector = useSelector(selectIsSubmissionRejector);
+  const jobStatus = job?.status ?? '';
+  const businessJustification = useSelector(manageMembershipBusinessJustification);
+  const [showRejectionDialog, setShowRejectionDialog] = useState(false);
+  const [rejectionFeedback, setRejectionFeedback] = useState('');
+  const [isSubmittingRejection, setIsSubmittingRejection] = useState(false);
+  // Double-click guard for Approve.
+  const [isSubmittingApproval, setIsSubmittingApproval] = useState(false);
+  const [rejectionError, setRejectionError] = useState<string | null>(null);
+
+  const updateJobStatus = async (
+    newStatus: string,
+    changeReason: SyncJobChangeReason,
+    rejectionBusinessJustification?: string,
+    options?: { refetch?: boolean }
+  ) => {
+    if (jobId === undefined && job.syncJobId === undefined) {
+      throw new Error('Job ID is not defined');
+    }
+
+    const patchOperation = [{
+      op: "replace",
+      path: "/Status",
+      value: newStatus
+    }];
+
+    const patchRequest: PatchJobRequest = {
+      syncJobId: jobId ?? job.syncJobId,
+      patchOperation,
+      changeReason,
+      businessJustification: rejectionBusinessJustification ?? businessJustification ?? ''
+    };
+
+    try {
+      const response = await dispatch(patchJobDetails(patchRequest)).unwrap();
+      if (response.ok) {
+        // Optimistic status so consumers see the change before refetch.
+        dispatch(setSelectedJobStatus(newStatus));
+        dispatch(setSelectedJobEnabled(newStatus === SyncStatus.Idle));
+      } else if (response.responseData && response.responseData[0] === "SubmitterNotOwner") {
+        dispatch(setSelectedJobStatus(SyncStatus.SubmissionRejected));
+        dispatch(setSelectedJobEnabled(false));
+      }
+
+      // Skip refetch when the caller is about to navigate away (Approve/Reject).
+      if (options?.refetch !== false) {
+        await dispatch(fetchJobDetails({ syncJobId: jobId ?? job.syncJobId }));
+      }
+    } catch (error) {
+      throw new Error('Failed to update job status');
+    }
+  };
+
+  const handleApproveSubmission = async (approved: boolean) => {
+    if (!approved) {
+      setShowRejectionDialog(true);
+      return;
+    }
+    if (isSubmittingApproval) return;
+    setIsSubmittingApproval(true);
+    try {
+      // Await PATCH so post-nav fetchJobs sees committed state.
+      await updateJobStatus(SyncStatus.Idle, SyncJobChangeReason.SubmissionApproved, undefined, { refetch: false });
+      const targetJobId = jobId ?? job.syncJobId;
+      if (targetJobId) {
+        dispatch(removeJobFromList(targetJobId));
+      }
+      resolveReview();
+    } catch {
+      // Error surfaced via patchResponse.
+    } finally {
+      setIsSubmittingApproval(false);
+    }
+  };
+
+  const handleRejectDialogClose = () => {
+    setShowRejectionDialog(false);
+    setRejectionFeedback('');
+    setIsSubmittingRejection(false);
+    setRejectionError(null);
+  };
+
+  const handleRejectSubmission = async () => {
+    setIsSubmittingRejection(true);
+    setRejectionError(null);
+    try {
+      await updateJobStatus(SyncStatus.SubmissionRejected, SyncJobChangeReason.SubmissionRejected, rejectionFeedback, { refetch: false });
+      const targetJobId = jobId ?? job.syncJobId;
+      if (targetJobId) {
+        dispatch(removeJobFromList(targetJobId));
+      }
+      resolveReview();
+      setShowRejectionDialog(false);
+      setRejectionFeedback('');
+      setIsSubmittingRejection(false);
+    } catch (error) {
+      setIsSubmittingRejection(false);
+      setRejectionError(strings.JobDetails.Errors.rejectionError);
+    }
+  };
+
+  if (!(isSubmissionReviewer || isSubmissionRejector) || jobStatus !== SyncStatus.PendingReview) {
+    return null;
+  }
+
+  return (
+    <>
+      <div className={classNames.submissionReviewActions}>
+        {isSubmissionReviewer && (
+          <DefaultButton onClick={() => handleApproveSubmission(true)} disabled={isSubmittingApproval}>
+            {isSubmittingApproval && (
+              <Spinner size={SpinnerSize.xSmall} style={{ marginRight: 8 }} />
+            )}
+            {strings.JobDetails.labels.approve}
+          </DefaultButton>
+        )}
+        <PrimaryButton onClick={() => handleApproveSubmission(false)} text={strings.JobDetails.labels.reject} disabled={isSubmittingApproval} />
+      </div>
+      {/* Rejection Dialog */}
+      <Dialog
+        hidden={!showRejectionDialog}
+        onDismiss={isSubmittingRejection ? undefined : handleRejectDialogClose}
+        dialogContentProps={{
+          type: DialogType.normal,
+          title: strings.JobDetails.labels.rejectionDialogTitle,
+          subText: strings.JobDetails.labels.rejectionDialogSubText
+        }}
+        modalProps={{
+          isBlocking: true
+        }}
+        minWidth={600}
+        maxWidth={800}
+      >
+        {rejectionError && (
+          <MessageBar
+            messageBarType={MessageBarType.error}
+            isMultiline={false}
+            onDismiss={() => setRejectionError(null)}
+            dismissButtonAriaLabel={strings.close}
+          >
+            {rejectionError}
+          </MessageBar>
+        )}
+        <TextField
+          label={strings.JobDetails.labels.rejectionReasonLabel}
+          multiline
+          rows={4}
+          value={rejectionFeedback}
+          onChange={(_, newValue) => setRejectionFeedback(newValue || '')}
+          placeholder={strings.JobDetails.labels.rejectionReasonPlaceholder}
+          required
+          disabled={isSubmittingRejection}
+        />
+        <DialogFooter>
+          <PrimaryButton
+            onClick={handleRejectSubmission}
+            disabled={!rejectionFeedback.trim() || isSubmittingRejection}
+          >
+            {isSubmittingRejection && (
+              <Spinner size={SpinnerSize.xSmall} style={{ marginRight: 8 }} />
+            )}
+            {isSubmittingRejection ? strings.JobDetails.labels.submittingRejection : strings.JobDetails.labels.submitRejection}
+          </PrimaryButton>
+        </DialogFooter>
+      </Dialog>
+    </>
+  );
+}
+
 const MembershipDestination: React.FunctionComponent<IContentProps> = (
   props: IContentProps
 ) => {
@@ -1027,11 +1126,11 @@ const MembershipDestination: React.FunctionComponent<IContentProps> = (
   const { job, classNames } = props;
 
   const itemAlignmentsStackTokens: IStackTokens = {
-    childrenGap: 30,
+    childrenGap: 100,
   };
 
   const mainStackTokens: IStackTokens = {
-    childrenGap: 30,
+    childrenGap: 20,
   };
 
   return (
@@ -1099,6 +1198,8 @@ const MembershipDestination: React.FunctionComponent<IContentProps> = (
           endpoints={job.endpoints}
           groupName={job.targetGroupName}
           vivaEngageUrl={job.vivaEngageUrl}
+          linksTitle={strings.JobDetails.labels.groupLinks}
+          horizontal={true}
         />
     </Stack>
   )

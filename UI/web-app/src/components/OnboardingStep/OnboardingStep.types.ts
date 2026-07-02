@@ -11,16 +11,16 @@ import {
   export interface IOnboardingStepStyles {
     root: IStyle;
     titleCard: IStyle;
-    title: IStyle;
     stepTitleRow: IStyle;
     stepTitle: IStyle;
     stepDescription: IStyle;
-    destination: IStyle;
+    headerDivider: IStyle;
   }
 
   export interface IOnboardingStepStyleProps {
     className?: string;
     theme: ITheme;
+    flushWithContent?: boolean;
   }
 
   export interface IOnboardingStepProps
@@ -38,7 +38,10 @@ import {
     stepTitle: string;
     stepDescription: string;
     headerAction?: React.ReactNode;
-    destinationType?: string;
-    destinationName?: string;
+    /**
+     * When true, the step-title card connects seamlessly to the step content (no gray gap,
+     * shared rounded corners) so the title + content read as a single card.
+     */
+    flushWithContent?: boolean;
   };
 

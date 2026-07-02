@@ -14,8 +14,15 @@ export interface IManageMembershipStyles {
     circlesContainer: IStyle;
     circleIcon: IStyle;
     nextButtonContainer: IStyle;
+    nextButtonIcon: IStyle;
     backButtonContainer: IStyle;
     overlay: IStyle;
+    pageHeaderRow: IStyle;
+    headerTitleGroup: IStyle;
+    pageTitle: IStyle;
+    groupPill: IStyle;
+    groupAvatar: IStyle;
+    groupName: IStyle;
 }
 
 export interface IManageMembershipStyleProps {

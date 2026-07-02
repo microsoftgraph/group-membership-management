@@ -523,7 +523,20 @@ export const manageMembershipGroupSettings = (state: RootState) => state.manageM
 
 // 2- Membership Configuration
 export const manageMembershipIsAdvancedView = (state: RootState) => state.manageMembership.isAdvancedView;
-export const manageMembershipIsMissingAndOrOperator = (state: RootState) => state.manageMembership.isMissingAndOrOperator;
+// Derive the "missing AND/OR operator" state from the actual HR source parts rather than
+// trusting the stored flag. The flag is set by the HR filter editor but is not scoped to a
+// specific part and is not cleared when a part's type is switched away from HR or when the part
+// is deleted. Relying on the stored flag left it stale, which incorrectly disabled the "Next"
+// button for otherwise valid configurations (e.g. a single valid Group Membership source part).
+const MISSING_AND_OR_PLACEHOLDER = 'placeholder';
+export const manageMembershipIsMissingAndOrOperator = (state: RootState): boolean =>
+    state.manageMembership.sourceParts.some(part => {
+        if (part.query.type !== SourcePartType.HR) {
+            return false;
+        }
+        const filter = (part.query.source as { filter?: string } | undefined)?.filter;
+        return typeof filter === 'string' && filter.includes(MISSING_AND_OR_PLACEHOLDER);
+    });
 export const manageMembershipisAdvancedQueryValid = (state: RootState) => state.manageMembership.isAdvancedQueryValid;
 export const manageMembershipCompositeQuery = (state: RootState) => state.manageMembership.compositeQuery;
 export const manageMembershipAdvancedViewQuery = (state: RootState) => state.manageMembership.advancedViewQuery;
