@@ -3,7 +3,7 @@
   "functionTimeout": "00:10:00",
   "extensions": {
     "durableTask": {
-      "maxConcurrentOrchestratorFunctions": 20,
+      "maxConcurrentOrchestratorFunctions": 10,
       "maxConcurrentActivityFunctions": 5,
       "extendedSessionsEnabled": true,
       "extendedSessionIdleTimeoutInSeconds": 30
