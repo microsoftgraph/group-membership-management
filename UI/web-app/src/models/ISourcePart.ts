@@ -19,4 +19,10 @@ export type ISourcePart = {
     };
     /** Depth to auto-select for org hierarchy (when useOrgStructure is true). undefined = all levels. */
     depthToAutoSelect?: number;
+    /**
+     * True when this source part was originally produced by GMM Copilot's (AIQB) transformSourcePart().
+     * Used at job submit time to compute onboardedUsingAIQB: a job is counted as AIQB-onboarded
+     * if any submitted source part still carries this tag (i.e. the user kept what Copilot produced).
+     */
+    createdViaAIQB?: boolean;
 };

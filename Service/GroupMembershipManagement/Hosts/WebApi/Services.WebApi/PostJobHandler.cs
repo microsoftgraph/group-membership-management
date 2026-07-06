@@ -2,6 +2,7 @@
 // Licensed under the MIT license.
 
 using Hosts.WebApi;
+using Microsoft.ApplicationInsights;
 using Models;
 using Models.ServiceBus;
 using Models.SyncJobChange;
@@ -31,6 +32,7 @@ namespace Services
         private readonly IDatabaseSettingsRepository _databaseSettingsRepository;
         private readonly IPendingConfigurationConfig _pendingConfigurationConfig;
         private readonly IServiceBusQueueRepository _serviceBusQueueRepository;
+        private readonly TelemetryClient _telemetryClient;
         private readonly IServiceBusQueueRepository? _autoApproverQueueRepository;
 
         public PostJobHandler(
@@ -43,6 +45,7 @@ namespace Services
             IDatabaseSettingsRepository databaseSettingsRepository,
             IPendingConfigurationConfig pendingConfigurationConfig,
             IServiceBusQueueRepository serviceBusQueueRepository,
+            TelemetryClient telemetryClient,
             [FromKeyedServices("AutoApprover")] IServiceBusQueueRepository? autoApproverQueueRepository = null) : base(logger)
         {
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
@@ -54,6 +57,7 @@ namespace Services
             _databaseSettingsRepository = databaseSettingsRepository ?? throw new ArgumentNullException(nameof(databaseSettingsRepository));
             _pendingConfigurationConfig = pendingConfigurationConfig ?? throw new ArgumentNullException(nameof(pendingConfigurationConfig));
             _serviceBusQueueRepository = serviceBusQueueRepository ?? throw new ArgumentNullException(nameof(serviceBusQueueRepository));
+            _telemetryClient = telemetryClient ?? throw new ArgumentNullException(nameof(telemetryClient));
             _autoApproverQueueRepository = autoApproverQueueRepository;
         }
 
@@ -103,6 +107,14 @@ namespace Services
                     response.NewSyncJobId = newSyncJobId;
 
                     _logger.JobCreated(newSyncJobId);
+
+                    _telemetryClient.TrackEvent("JobOnboarded", new Dictionary<string, string>
+                    {
+                        { "SyncJobId", newSyncJobId.ToString() },
+                        { "TargetOfficeGroupId", newSyncJobEntity.TargetOfficeGroupId.ToString() },
+                        { "MembershipType", newSyncJobEntity.MembershipType },
+                        { "OnboardedUsingAIQB", request.NewSyncJob.OnboardedUsingAIQB.ToString() }
+                    });
 
                     var destinationName = await _graphGroupRepository.GetGroupNameAsync(destinationId);
                     var destinationEmail = await _graphGroupRepository.GetGroupEmailAsync(destinationId);

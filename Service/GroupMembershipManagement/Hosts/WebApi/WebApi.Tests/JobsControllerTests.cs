@@ -2,6 +2,8 @@
 // Licensed under the MIT license.
 
 using Microsoft.ApplicationInsights;
+using Microsoft.ApplicationInsights.Channel;
+using Microsoft.ApplicationInsights.DataContracts;
 using Microsoft.ApplicationInsights.Extensibility;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -51,6 +53,7 @@ namespace Services.Tests
         private PostJobHandler _postJobHandler = null!;
         private GetJobDetailsHandler _getJobDetailsHandler = null!;
         private TelemetryClient _telemetryClient = null!;
+        private CapturingTelemetryChannel _capturingTelemetryChannel = null!;
         private Mock<IRequestAdapter> _requestAdapter = null!;
         private Mock<IDatabaseSyncJobsRepository> _databaseSyncJobsRepository = null!;
         private Mock<ISyncJobChangeRepository> _syncJobChangeRepository = null!;
@@ -162,6 +165,8 @@ namespace Services.Tests
             _destinationAttributesRepository.Setup(x => x.UpdateAttributes(It.IsAny<DestinationAttributes>())).Returns(Task.CompletedTask);
 
             var telemetryConfiguration = new TelemetryConfiguration();
+            _capturingTelemetryChannel = new CapturingTelemetryChannel();
+            telemetryConfiguration.TelemetryChannel = _capturingTelemetryChannel;
             _telemetryClient = new TelemetryClient(telemetryConfiguration);
 
             _groupTypes = new List<string>
@@ -257,6 +262,7 @@ namespace Services.Tests
                                                  _databaseSettingsRepository.Object,
                                                  _pendingConfigurationConfig.Object,
                                                  _serviceBusQueueRepository.Object,
+                                                 _telemetryClient,
                                                  _autoApproverQueueRepository.Object);
 
             _getJobDetailsHandler = new GetJobDetailsHandler(NullLogger<GetJobDetailsHandler>.Instance,
@@ -414,6 +420,7 @@ namespace Services.Tests
                                                  _databaseSettingsRepository.Object,
                                                  _pendingConfigurationConfig.Object,
                                                  _serviceBusQueueRepository.Object,
+                                                 _telemetryClient,
                                                  _autoApproverQueueRepository.Object);
 
             _jobsController = new JobsController(_getJobsHandler, _patchJobsHandler, _postJobHandler, _getJobDetailsHandler, _postResetRequestHandler, NullLogger<JobsController>.Instance);
@@ -449,6 +456,7 @@ namespace Services.Tests
                                                  _databaseSettingsRepository.Object,
                                                  _pendingConfigurationConfig.Object,
                                                  _serviceBusQueueRepository.Object,
+                                                 _telemetryClient,
                                                  _autoApproverQueueRepository.Object);
 
             _jobsController = new JobsController(_getJobsHandler, _patchJobsHandler, _postJobHandler, _getJobDetailsHandler, _postResetRequestHandler, NullLogger<JobsController>.Instance);
@@ -497,6 +505,7 @@ namespace Services.Tests
                                                  _databaseSettingsRepository.Object,
                                                  _pendingConfigurationConfig.Object,
                                                  _serviceBusQueueRepository.Object,
+                                                 _telemetryClient,
                                                  _autoApproverQueueRepository.Object);
 
             _jobsController = new JobsController(_getJobsHandler, _patchJobsHandler, _postJobHandler, _getJobDetailsHandler, _postResetRequestHandler, NullLogger<JobsController>.Instance);
@@ -561,6 +570,7 @@ namespace Services.Tests
                                                  _databaseSettingsRepository.Object,
                                                  _pendingConfigurationConfig.Object,
                                                  _serviceBusQueueRepository.Object,
+                                                 _telemetryClient,
                                                  _autoApproverQueueRepository.Object);
 
             _jobsController = new JobsController(_getJobsHandler, _patchJobsHandler, _postJobHandler, _getJobDetailsHandler, _postResetRequestHandler, NullLogger<JobsController>.Instance);
@@ -609,6 +619,7 @@ namespace Services.Tests
                                                  _databaseSettingsRepository.Object,
                                                  _pendingConfigurationConfig.Object,
                                                  _serviceBusQueueRepository.Object,
+                                                 _telemetryClient,
                                                  _autoApproverQueueRepository.Object);
 
             _jobsController = new JobsController(_getJobsHandler, _patchJobsHandler, _postJobHandler, _getJobDetailsHandler, _postResetRequestHandler, NullLogger<JobsController>.Instance);
@@ -650,6 +661,7 @@ namespace Services.Tests
                                                  _databaseSettingsRepository.Object,
                                                  _pendingConfigurationConfig.Object,
                                                  _serviceBusQueueRepository.Object,
+                                                 _telemetryClient,
                                                  _autoApproverQueueRepository.Object);
 
             _jobsController = new JobsController(_getJobsHandler, _patchJobsHandler, _postJobHandler, _getJobDetailsHandler, _postResetRequestHandler, NullLogger<JobsController>.Instance);
@@ -688,6 +700,7 @@ namespace Services.Tests
                                                  _databaseSettingsRepository.Object,
                                                  _pendingConfigurationConfig.Object,
                                                  _serviceBusQueueRepository.Object,
+                                                 _telemetryClient,
                                                  _autoApproverQueueRepository.Object);
 
             _jobsController = new JobsController(_getJobsHandler, _patchJobsHandler, _postJobHandler, _getJobDetailsHandler, _postResetRequestHandler, NullLogger<JobsController>.Instance);
@@ -729,6 +742,7 @@ namespace Services.Tests
                                                  _databaseSettingsRepository.Object,
                                                  _pendingConfigurationConfig.Object,
                                                  _serviceBusQueueRepository.Object,
+                                                 _telemetryClient,
                                                  _autoApproverQueueRepository.Object);
 
             _jobsController = new JobsController(_getJobsHandler, _patchJobsHandler, _postJobHandler, _getJobDetailsHandler, _postResetRequestHandler, NullLogger<JobsController>.Instance);
@@ -773,6 +787,7 @@ namespace Services.Tests
                                                  _databaseSettingsRepository.Object,
                                                  _pendingConfigurationConfig.Object,
                                                  _serviceBusQueueRepository.Object,
+                                                 _telemetryClient,
                                                  _autoApproverQueueRepository.Object);
 
             _jobsController = new JobsController(_getJobsHandler, _patchJobsHandler, _postJobHandler, _getJobDetailsHandler, _postResetRequestHandler, NullLogger<JobsController>.Instance);
@@ -1588,6 +1603,7 @@ namespace Services.Tests
                                                  _databaseSettingsRepository.Object,
                                                  _pendingConfigurationConfig.Object,
                                                  _serviceBusQueueRepository.Object,
+                                                 _telemetryClient,
                                                  _autoApproverQueueRepository.Object);
 
             _jobsController = new JobsController(_getJobsHandler, _patchJobsHandler, _postJobHandler, _getJobDetailsHandler, _postResetRequestHandler, NullLogger<JobsController>.Instance);
@@ -1646,6 +1662,7 @@ namespace Services.Tests
                                                  _databaseSettingsRepository.Object,
                                                  _pendingConfigurationConfig.Object,
                                                  _serviceBusQueueRepository.Object,
+                                                 _telemetryClient,
                                                  _autoApproverQueueRepository.Object);
 
             _jobsController = new JobsController(_getJobsHandler, _patchJobsHandler, _postJobHandler, _getJobDetailsHandler, _postResetRequestHandler, NullLogger<JobsController>.Instance);
@@ -1706,6 +1723,7 @@ namespace Services.Tests
                                                  _databaseSettingsRepository.Object,
                                                  _pendingConfigurationConfig.Object,
                                                  _serviceBusQueueRepository.Object,
+                                                 _telemetryClient,
                                                  _autoApproverQueueRepository.Object);
 
             _jobsController = new JobsController(_getJobsHandler, _patchJobsHandler, _postJobHandler, _getJobDetailsHandler, _postResetRequestHandler, NullLogger<JobsController>.Instance);
@@ -1765,6 +1783,7 @@ namespace Services.Tests
                                                  _databaseSettingsRepository.Object,
                                                  _pendingConfigurationConfig.Object,
                                                  _serviceBusQueueRepository.Object,
+                                                 _telemetryClient,
                                                  _autoApproverQueueRepository.Object);
 
             _jobsController = new JobsController(_getJobsHandler, _patchJobsHandler, _postJobHandler, _getJobDetailsHandler, _postResetRequestHandler, NullLogger<JobsController>.Instance);
@@ -1816,6 +1835,7 @@ namespace Services.Tests
                                                  _databaseSettingsRepository.Object,
                                                  _pendingConfigurationConfig.Object,
                                                  _serviceBusQueueRepository.Object,
+                                                 _telemetryClient,
                                                  _autoApproverQueueRepository.Object);
 
             _jobsController = new JobsController(_getJobsHandler, _patchJobsHandler, _postJobHandler, _getJobDetailsHandler, _postResetRequestHandler, NullLogger<JobsController>.Instance);
@@ -1882,6 +1902,7 @@ namespace Services.Tests
                                                  _databaseSettingsRepository.Object,
                                                  _pendingConfigurationConfig.Object,
                                                  _serviceBusQueueRepository.Object,
+                                                 _telemetryClient,
                                                  _autoApproverQueueRepository.Object);
 
             _jobsController = new JobsController(_getJobsHandler, _patchJobsHandler, _postJobHandler, _getJobDetailsHandler, _postResetRequestHandler, NullLogger<JobsController>.Instance);
@@ -1943,6 +1964,7 @@ namespace Services.Tests
                                                  _databaseSettingsRepository.Object,
                                                  _pendingConfigurationConfig.Object,
                                                  _serviceBusQueueRepository.Object,
+                                                 _telemetryClient,
                                                  _autoApproverQueueRepository.Object);
 
             _jobsController = new JobsController(_getJobsHandler, _patchJobsHandler, _postJobHandler, _getJobDetailsHandler, _postResetRequestHandler, NullLogger<JobsController>.Instance);
@@ -2003,6 +2025,7 @@ namespace Services.Tests
                                                  _databaseSettingsRepository.Object,
                                                  _pendingConfigurationConfig.Object,
                                                  _serviceBusQueueRepository.Object,
+                                                 _telemetryClient,
                                                  _autoApproverQueueRepository.Object);
 
             _jobsController = new JobsController(_getJobsHandler, _patchJobsHandler, _postJobHandler, _getJobDetailsHandler, _postResetRequestHandler, NullLogger<JobsController>.Instance);
@@ -2063,6 +2086,7 @@ namespace Services.Tests
                                                  _databaseSettingsRepository.Object,
                                                  _pendingConfigurationConfig.Object,
                                                  _serviceBusQueueRepository.Object,
+                                                 _telemetryClient,
                                                  _autoApproverQueueRepository.Object);
 
             _jobsController = new JobsController(_getJobsHandler, _patchJobsHandler, _postJobHandler, _getJobDetailsHandler, _postResetRequestHandler, NullLogger<JobsController>.Instance);
@@ -2124,6 +2148,7 @@ namespace Services.Tests
                                                  _databaseSettingsRepository.Object,
                                                  _pendingConfigurationConfig.Object,
                                                  _serviceBusQueueRepository.Object,
+                                                 _telemetryClient,
                                                  _autoApproverQueueRepository.Object);
 
             _jobsController = new JobsController(_getJobsHandler, _patchJobsHandler, _postJobHandler, _getJobDetailsHandler, _postResetRequestHandler, NullLogger<JobsController>.Instance);
@@ -2184,6 +2209,7 @@ namespace Services.Tests
                                                  _databaseSettingsRepository.Object,
                                                  _pendingConfigurationConfig.Object,
                                                  _serviceBusQueueRepository.Object,
+                                                 _telemetryClient,
                                                  _autoApproverQueueRepository.Object);
 
             _jobsController = new JobsController(_getJobsHandler, _patchJobsHandler, _postJobHandler, _getJobDetailsHandler, _postResetRequestHandler, NullLogger<JobsController>.Instance);
@@ -2254,6 +2280,7 @@ namespace Services.Tests
                                                  _databaseSettingsRepository.Object,
                                                  _pendingConfigurationConfig.Object,
                                                  _serviceBusQueueRepository.Object,
+                                                 _telemetryClient,
                                                  _autoApproverQueueRepository.Object);
 
             _jobsController = new JobsController(_getJobsHandler, _patchJobsHandler, _postJobHandler, _getJobDetailsHandler, _postResetRequestHandler, NullLogger<JobsController>.Instance);
@@ -2316,6 +2343,7 @@ namespace Services.Tests
                                                  _databaseSettingsRepository.Object,
                                                  _pendingConfigurationConfig.Object,
                                                  _serviceBusQueueRepository.Object,
+                                                 _telemetryClient,
                                                  _autoApproverQueueRepository.Object);
 
             _jobsController = new JobsController(_getJobsHandler, _patchJobsHandler, _postJobHandler, _getJobDetailsHandler, _postResetRequestHandler, NullLogger<JobsController>.Instance);
@@ -2370,6 +2398,7 @@ namespace Services.Tests
                                                  _databaseSettingsRepository.Object,
                                                  _pendingConfigurationConfig.Object,
                                                  _serviceBusQueueRepository.Object,
+                                                 _telemetryClient,
                                                  _autoApproverQueueRepository.Object);
 
             _jobsController = new JobsController(_getJobsHandler, _patchJobsHandler, _postJobHandler, _getJobDetailsHandler, _postResetRequestHandler, NullLogger<JobsController>.Instance);
@@ -2428,6 +2457,7 @@ namespace Services.Tests
                                                  _databaseSettingsRepository.Object,
                                                  _pendingConfigurationConfig.Object,
                                                  _serviceBusQueueRepository.Object,
+                                                 _telemetryClient,
                                                  _autoApproverQueueRepository.Object);
 
             _jobsController = new JobsController(_getJobsHandler, _patchJobsHandler, _postJobHandler, _getJobDetailsHandler, _postResetRequestHandler, NullLogger<JobsController>.Instance);
@@ -2502,6 +2532,7 @@ namespace Services.Tests
                                                  _databaseSettingsRepository.Object,
                                                  _pendingConfigurationConfig.Object,
                                                  _serviceBusQueueRepository.Object,
+                                                 _telemetryClient,
                                                  _autoApproverQueueRepository.Object);
 
             _jobsController = new JobsController(_getJobsHandler, _patchJobsHandler, _postJobHandler, _getJobDetailsHandler, _postResetRequestHandler, NullLogger<JobsController>.Instance);
@@ -2575,6 +2606,7 @@ namespace Services.Tests
                                                  _databaseSettingsRepository.Object,
                                                  _pendingConfigurationConfig.Object,
                                                  _serviceBusQueueRepository.Object,
+                                                 _telemetryClient,
                                                  _autoApproverQueueRepository.Object);
 
             _jobsController = new JobsController(_getJobsHandler, _patchJobsHandler, _postJobHandler, _getJobDetailsHandler, _postResetRequestHandler, NullLogger<JobsController>.Instance);
@@ -2638,6 +2670,7 @@ namespace Services.Tests
                                                  _databaseSettingsRepository.Object,
                                                  _pendingConfigurationConfig.Object,
                                                  _serviceBusQueueRepository.Object,
+                                                 _telemetryClient,
                                                  _autoApproverQueueRepository.Object);
 
             _jobsController = new JobsController(_getJobsHandler, _patchJobsHandler, _postJobHandler, _getJobDetailsHandler, _postResetRequestHandler, NullLogger<JobsController>.Instance);
@@ -2698,6 +2731,7 @@ namespace Services.Tests
                                                  _databaseSettingsRepository.Object,
                                                  _pendingConfigurationConfig.Object,
                                                  _serviceBusQueueRepository.Object,
+                                                 _telemetryClient,
                                                  _autoApproverQueueRepository.Object);
 
             _jobsController = new JobsController(_getJobsHandler, _patchJobsHandler, _postJobHandler, _getJobDetailsHandler, _postResetRequestHandler, NullLogger<JobsController>.Instance);
@@ -2752,6 +2786,7 @@ namespace Services.Tests
                                                  _databaseSettingsRepository.Object,
                                                  _pendingConfigurationConfig.Object,
                                                  _serviceBusQueueRepository.Object,
+                                                 _telemetryClient,
                                                  _autoApproverQueueRepository.Object);
 
             _jobsController = new JobsController(_getJobsHandler, _patchJobsHandler, _postJobHandler, _getJobDetailsHandler, _postResetRequestHandler, NullLogger<JobsController>.Instance);
@@ -2805,6 +2840,7 @@ namespace Services.Tests
                                                  _databaseSettingsRepository.Object,
                                                  _pendingConfigurationConfig.Object,
                                                  _serviceBusQueueRepository.Object,
+                                                 _telemetryClient,
                                                  _autoApproverQueueRepository.Object);
 
             _jobsController = new JobsController(_getJobsHandler, _patchJobsHandler, _postJobHandler, _getJobDetailsHandler, _postResetRequestHandler, NullLogger<JobsController>.Instance);
@@ -2864,6 +2900,7 @@ namespace Services.Tests
                                                  _databaseSettingsRepository.Object,
                                                  _pendingConfigurationConfig.Object,
                                                  _serviceBusQueueRepository.Object,
+                                                 _telemetryClient,
                                                  _autoApproverQueueRepository.Object);
 
             _jobsController = new JobsController(_getJobsHandler, _patchJobsHandler, _postJobHandler, _getJobDetailsHandler, _postResetRequestHandler, NullLogger<JobsController>.Instance);
@@ -2889,6 +2926,128 @@ namespace Services.Tests
 
             // Verify that an attempt to send a message to the service bus queue for configuration was made
             _serviceBusQueueRepository.Verify(x => x.SendMessageAsync(It.IsAny<ServiceBusMessage>()), Times.Once);
+        }
+
+        [TestMethod]
+        [DataRow(true)]
+        [DataRow(false)]
+        public async Task PostJobEmitsJobOnboardedEventOnSuccessAsync(bool onboardedUsingAIQB)
+        {
+            var claims = new List<Claim>
+            {
+                new Claim(ClaimTypes.Name, "testuser@domain.com"),
+                new Claim(ClaimTypes.Upn, "testuser@domain.com"),
+                new Claim(ClaimTypes.Role, Roles.JOB_TENANT_WRITER),
+                new Claim("http://schemas.microsoft.com/identity/claims/objectidentifier", Guid.NewGuid().ToString())
+            };
+
+            _context = CreateHttpContext(claims);
+            _httpContextAccessor.Setup(x => x.HttpContext).Returns(_context);
+
+            _newSyncJob.OnboardedUsingAIQB = onboardedUsingAIQB;
+
+            var createdJobId = Guid.NewGuid();
+            _databaseSyncJobsRepository.Setup(repo => repo.CreateSyncJobAsync(It.IsAny<SyncJob>()))
+                                       .ReturnsAsync(createdJobId);
+
+            _postJobHandler = new PostJobHandler(NullLogger<PostJobHandler>.Instance, _databaseSyncJobsRepository.Object,
+                                                 _destinationAttributesRepository.Object,
+                                                 _titlesRepository.Object,
+                                                 _graphGroupRepository.Object,
+                                                 _syncJobChangeRepository.Object,
+                                                 _databaseSettingsRepository.Object,
+                                                 _pendingConfigurationConfig.Object,
+                                                 _serviceBusQueueRepository.Object,
+                                                 _telemetryClient,
+                                                 _autoApproverQueueRepository.Object);
+
+            _jobsController = new JobsController(_getJobsHandler, _patchJobsHandler, _postJobHandler, _getJobDetailsHandler, _postResetRequestHandler, NullLogger<JobsController>.Instance);
+            _jobsController.ControllerContext = new ControllerContext
+            {
+                HttpContext = _context
+            };
+
+            var response = await _jobsController.PostJobAsync(_newSyncJob);
+            var result = response as CreatedResult;
+            Assert.IsNotNull(result);
+
+            var onboardedEvents = _capturingTelemetryChannel.GetEvents("JobOnboarded");
+            Assert.AreEqual(1, onboardedEvents.Count, "Expected exactly one JobOnboarded event to be emitted.");
+
+            var evt = onboardedEvents[0];
+            Assert.AreEqual(createdJobId.ToString(), evt.Properties["SyncJobId"]);
+            Assert.AreEqual(MembershipTypes.GroupMembership.ToString(), evt.Properties["MembershipType"]);
+            Assert.AreEqual(onboardedUsingAIQB.ToString(), evt.Properties["OnboardedUsingAIQB"]);
+            Assert.IsTrue(evt.Properties.ContainsKey("TargetOfficeGroupId"));
+            Assert.IsFalse(string.IsNullOrEmpty(evt.Properties["TargetOfficeGroupId"]));
+        }
+
+        [TestMethod]
+        public async Task PostJobDoesNotEmitJobOnboardedEventWhenCreateReturnsEmptyGuidAsync()
+        {
+            var claims = new List<Claim>
+            {
+                new Claim(ClaimTypes.Name, "testuser@domain.com"),
+                new Claim(ClaimTypes.Upn, "testuser@domain.com"),
+                new Claim(ClaimTypes.Role, Roles.JOB_TENANT_WRITER),
+                new Claim("http://schemas.microsoft.com/identity/claims/objectidentifier", Guid.NewGuid().ToString())
+            };
+
+            _context = CreateHttpContext(claims);
+            _httpContextAccessor.Setup(x => x.HttpContext).Returns(_context);
+
+            _newSyncJob.OnboardedUsingAIQB = true;
+
+            _databaseSyncJobsRepository.Setup(repo => repo.CreateSyncJobAsync(It.IsAny<SyncJob>()))
+                                       .ReturnsAsync(Guid.Empty);
+
+            _postJobHandler = new PostJobHandler(NullLogger<PostJobHandler>.Instance, _databaseSyncJobsRepository.Object,
+                                                 _destinationAttributesRepository.Object,
+                                                 _titlesRepository.Object,
+                                                 _graphGroupRepository.Object,
+                                                 _syncJobChangeRepository.Object,
+                                                 _databaseSettingsRepository.Object,
+                                                 _pendingConfigurationConfig.Object,
+                                                 _serviceBusQueueRepository.Object,
+                                                 _telemetryClient,
+                                                 _autoApproverQueueRepository.Object);
+
+            _jobsController = new JobsController(_getJobsHandler, _patchJobsHandler, _postJobHandler, _getJobDetailsHandler, _postResetRequestHandler, NullLogger<JobsController>.Instance);
+            _jobsController.ControllerContext = new ControllerContext
+            {
+                HttpContext = _context
+            };
+
+            await _jobsController.PostJobAsync(_newSyncJob);
+
+            var onboardedEvents = _capturingTelemetryChannel.GetEvents("JobOnboarded");
+            Assert.AreEqual(0, onboardedEvents.Count, "JobOnboarded event should not be emitted when job creation returns Guid.Empty.");
+        }
+
+        /// <summary>
+        /// Minimal ITelemetryChannel that captures EventTelemetry items in memory so tests
+        /// can assert which Track* events were emitted.
+        /// </summary>
+        private sealed class CapturingTelemetryChannel : ITelemetryChannel
+        {
+            private readonly List<EventTelemetry> _events = new();
+
+            public bool? DeveloperMode { get; set; }
+            public string EndpointAddress { get; set; } = string.Empty;
+
+            public void Send(ITelemetry item)
+            {
+                if (item is EventTelemetry eventTelemetry)
+                {
+                    _events.Add(eventTelemetry);
+                }
+            }
+
+            public IReadOnlyList<EventTelemetry> GetEvents(string name) =>
+                _events.Where(e => e.Name == name).ToList();
+
+            public void Flush() { }
+            public void Dispose() { }
         }
     }
 }

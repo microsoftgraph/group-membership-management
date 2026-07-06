@@ -551,6 +551,7 @@ export const ManageMembershipBase: React.FunctionComponent<IManageMembershipProp
         status: 'Idle',
         businessJustification: businessJustification,
         groupSettings: groupSettings,
+        onboardedUsingAIQB: sourceParts.some(sp => sp.createdViaAIQB === true),
         ...(allHaveTitles && {
           titles: sourceParts.map(part => ({
             partId: part.id,

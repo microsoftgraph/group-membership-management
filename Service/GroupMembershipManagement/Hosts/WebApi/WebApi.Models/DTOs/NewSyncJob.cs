@@ -21,6 +21,7 @@ namespace WebApi.Models.DTOs
         public string Destination { get; set; }
         public string BusinessJustification { get; set; }
         public GroupSettings? GroupSettings { get; set; }
+        public bool OnboardedUsingAIQB { get; set; }
 
     }
 }

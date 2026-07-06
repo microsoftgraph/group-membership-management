@@ -56,6 +56,7 @@ function transformSourcePart(apiPart: ApiSourcePart): ISourcePart {
             query: groupQuery,
             isNew: true,
             isExpanded: false,
+            createdViaAIQB: true,
         };
     }
 
@@ -82,6 +83,7 @@ function transformSourcePart(apiPart: ApiSourcePart): ISourcePart {
             email: apiPart.orgLeaderEmail || undefined,
         } : undefined,
         depthToAutoSelect: apiPart.orgLeaderDepth ?? undefined,
+        createdViaAIQB: true,
     };
 }
 

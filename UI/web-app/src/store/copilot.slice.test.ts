@@ -174,6 +174,23 @@ describe('copilot.slice', () => {
       expect(state.useOrgStructure).toBe(true);
     });
 
+    it('fulfilled preserves createdViaAIQB tag on transformed source parts', () => {
+      // Copilot-produced source parts must carry createdViaAIQB: true so the
+      // submit-time computation of newJob.onboardedUsingAIQB can detect AIQB retention.
+      const aiqbPart: ISourcePart = { ...mockSourcePart, createdViaAIQB: true };
+      const payload = {
+        message: mockAssistantMessage,
+        sourceParts: [aiqbPart],
+        useOrgStructure: false,
+      };
+      const state = copilotReducer(initialState, {
+        type: sendCopilotMessage.fulfilled.type,
+        payload,
+      });
+      expect(state.lastSourceParts).toHaveLength(1);
+      expect(state.lastSourceParts[0].createdViaAIQB).toBe(true);
+    });
+
     it('rejected should set error and stop loading', () => {
       const loadingState = { ...initialState, isLoading: true };
       const state = copilotReducer(loadingState, {

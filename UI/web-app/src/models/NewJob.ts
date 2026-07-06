@@ -19,4 +19,5 @@ export type NewJob = {
     lastModifiedOnBehalfOfDisplayName?: string;
     lastModifiedOnBehalfOfObjectId?: string;
     groupSettings?: GroupSettings | undefined;
+    onboardedUsingAIQB: boolean;
 };
