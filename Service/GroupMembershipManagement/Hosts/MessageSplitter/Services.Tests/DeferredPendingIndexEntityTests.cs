@@ -184,6 +184,56 @@ namespace Services.Tests
             Assert.IsTrue(state.Items[0].Dispatched);
             Assert.AreEqual("instance-123", state.Items[0].OrchestrationInstanceId);
         }
+
+        [TestMethod]
+        public void IsConfirmedOrphan_ReturnsTrueWithoutRemoving_WhenItemPresentAndNotDispatched()
+        {
+            var entity = new DeferredPendingIndexEntity();
+            var now = DateTimeOffset.UtcNow;
+            entity.Add(new AddDeferredPendingRequest(100, Guid.NewGuid(), now, Guid.NewGuid()));
+            entity.Add(new AddDeferredPendingRequest(200, Guid.NewGuid(), now, Guid.NewGuid()));
+
+            var result = entity.IsConfirmedOrphan(100);
+
+            // A genuine orphan is reported as such, but the entry is left in the index. The caller removes it
+            // only after the Error status update succeeds, so a failed update leaves the entry for a retry.
+            Assert.IsTrue(result);
+            var state = entity.GetState();
+            Assert.AreEqual(2, state.Items.Count);
+            Assert.IsTrue(state.Items.Exists(i => i.SequenceNumber == 100));
+        }
+
+        [TestMethod]
+        public void IsConfirmedOrphan_ReturnsFalse_WhenItemAbsent()
+        {
+            var entity = new DeferredPendingIndexEntity();
+            var now = DateTimeOffset.UtcNow;
+            entity.Add(new AddDeferredPendingRequest(100, Guid.NewGuid(), now, Guid.NewGuid()));
+
+            // Sequence 999 was already removed (dispatched) by a peer drain — not an orphan.
+            var result = entity.IsConfirmedOrphan(999);
+
+            Assert.IsFalse(result);
+            Assert.AreEqual(1, entity.GetState().Items.Count);
+        }
+
+        [TestMethod]
+        public void IsConfirmedOrphan_ReturnsFalseAndKeepsItem_WhenAlreadyDispatched()
+        {
+            var entity = new DeferredPendingIndexEntity();
+            var now = DateTimeOffset.UtcNow;
+            entity.Add(new AddDeferredPendingRequest(100, Guid.NewGuid(), now, Guid.NewGuid()));
+
+            // A peer drain dispatched this entry while the caller held a stale, never-dispatched snapshot.
+            entity.MarkDispatched(new MarkDeferredPendingDispatchedRequest(100, "peer-instance"));
+
+            var result = entity.IsConfirmedOrphan(100);
+
+            Assert.IsFalse(result);
+            var state = entity.GetState();
+            Assert.AreEqual(1, state.Items.Count);
+            Assert.IsTrue(state.Items[0].Dispatched);
+        }
         [TestMethod]
         public void TakeNextBatch_ReturnsFifoOrder()
         {

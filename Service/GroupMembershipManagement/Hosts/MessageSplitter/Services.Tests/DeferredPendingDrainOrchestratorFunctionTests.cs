@@ -88,6 +88,16 @@ namespace Services.Tests
                     It.IsAny<CallEntityOptions>()))
                 .ReturnsAsync(true);
 
+            // By default a not-found, aged entry is a genuine orphan: the entity still holds the
+            // never-dispatched item and confirms it (without removing). Tests modelling the
+            // double-drain race override this to false (a peer already dispatched/removed the entry).
+            context.Setup(x => x.Entities.CallEntityAsync<bool>(
+                    idx,
+                    nameof(DeferredPendingIndexEntity.IsConfirmedOrphan),
+                    It.IsAny<long>(),
+                    It.IsAny<CallEntityOptions>()))
+                .ReturnsAsync(true);
+
             return context;
         }
 
@@ -383,6 +393,15 @@ namespace Services.Tests
                     It.IsAny<CallEntityOptions>()))
                 .ReturnsAsync(true);
 
+            // The entity confirms this is a genuine orphan (still present, never dispatched). It does NOT remove
+            // the entry; the orchestrator removes it via the shared Remove block after the Error update succeeds.
+            context.Setup(x => x.Entities.CallEntityAsync<bool>(
+                    indexEntityId,
+                    nameof(DeferredPendingIndexEntity.IsConfirmedOrphan),
+                    It.Is<long>(s => s == sequenceNumber),
+                    It.IsAny<CallEntityOptions>()))
+                .ReturnsAsync(true);
+
             var orchestrator = new DeferredPendingDrainOrchestrator(DefaultSettings);
             await orchestrator.RunAsync(context.Object);
 
@@ -393,7 +412,14 @@ namespace Services.Tests
                     r.Status == SyncStatus.Error && r.SyncJob.Id == jobId && r.SyncJob.RunId == runId),
                 It.IsAny<TaskOptions>()), Times.Once());
 
-            // The entry is removed in the same step.
+            // The orphan is confirmed once via the authoritative (non-mutating) check, then removed once via the
+            // shared Remove block — but only after the Error status update has succeeded.
+            context.Verify(x => x.Entities.CallEntityAsync<bool>(
+                indexEntityId,
+                nameof(DeferredPendingIndexEntity.IsConfirmedOrphan),
+                It.Is<long>(s => s == sequenceNumber),
+                It.IsAny<CallEntityOptions>()), Times.Once());
+
             context.Verify(x => x.Entities.CallEntityAsync<bool>(
                 indexEntityId,
                 nameof(DeferredPendingIndexEntity.Remove),
@@ -506,6 +532,262 @@ namespace Services.Tests
         }
 
         [TestMethod]
+        public async Task RunAsync_DoesNotErrorJob_WhenOrphanGateLosesRaceToConcurrentDrain()
+        {
+            // Regression guard for the double-drain race (US 16306649): two concurrent drains can take the
+            // same index entry across the 60-second in-progress lease boundary under load. The winner
+            // dispatches the deferred message and removes the entry; the loser resumes with a STALE,
+            // never-dispatched snapshot, finds the message gone (MessageNotFound) and aged past the window,
+            // and — absent this guard — would spuriously transition the already-dispatched job to Error.
+            // The authoritative IsConfirmedOrphan check returns false (a peer already removed/dispatched the
+            // entry), so the loser must NOT error the job. It idempotently REMOVES the stale entry (Remove
+            // no-ops if the peer already removed it) so a ghost dispatcher cannot leave a permanent, later-
+            // mis-Errored row, and it continues draining.
+            var utcNow = new DateTime(2025, 12, 17, 12, 0, 0, DateTimeKind.Utc);
+            var lane = "small";
+            var runId = Guid.NewGuid();
+            var jobId = Guid.NewGuid();
+            const long sequenceNumber = 310;
+
+            // Aged 90 minutes (past the 60-minute window) with a never-dispatched local snapshot — exactly
+            // the inputs that drive the orphan gate — yet the entry has been claimed by a peer drain.
+            var context = CreateNotFoundContext(
+                utcNow, lane, sequenceNumber, runId, jobId, ageMinutes: 90,
+                out var indexEntityId, out var limiterEntityId);
+
+            var loggerMock = new Mock<ILogger>();
+            loggerMock.Setup(x => x.IsEnabled(It.IsAny<LogLevel>())).Returns(true);
+            context.Setup(x => x.CreateReplaySafeLogger(It.IsAny<string>())).Returns(loggerMock.Object);
+
+            // The authoritative entity check reports the entry is no longer a confirmed orphan: a peer drain
+            // already dispatched/removed it. (Overrides the helper's default-true confirmation.)
+            context.Setup(x => x.Entities.CallEntityAsync<bool>(
+                    indexEntityId,
+                    nameof(DeferredPendingIndexEntity.IsConfirmedOrphan),
+                    It.IsAny<long>(),
+                    It.IsAny<CallEntityOptions>()))
+                .ReturnsAsync(false);
+
+            var orchestrator = new DeferredPendingDrainOrchestrator(DefaultSettings);
+            await orchestrator.RunAsync(context.Object);
+
+            // The job is NEVER transitioned to Error — the peer drain dispatched it successfully.
+            context.Verify(x => x.CallActivityAsync(
+                nameof(JobStatusUpdaterFunction),
+                It.IsAny<object>(),
+                It.IsAny<TaskOptions>()), Times.Never());
+
+            // The confirmed-orphan signal (EventId 120077) is never emitted on the losing path.
+            loggerMock.Verify(l => l.Log(
+                LogLevel.Warning,
+                It.Is<EventId>(e => e.Id == 120077),
+                It.IsAny<It.IsAnyType>(),
+                It.IsAny<Exception>(),
+                It.IsAny<Func<It.IsAnyType, Exception?, string>>()), Times.Never());
+
+            // The superseded-by-peer signal (EventId 120078) is emitted exactly once for observability.
+            loggerMock.Verify(l => l.Log(
+                LogLevel.Information,
+                It.Is<EventId>(e => e.Id == 120078),
+                It.IsAny<It.IsAnyType>(),
+                It.IsAny<Exception>(),
+                It.IsAny<Func<It.IsAnyType, Exception?, string>>()), Times.Once());
+
+            // The entry is healed, not left for a (possibly ghost) peer: the loser REMOVES it idempotently and
+            // never re-tails it. Remove no-ops if the peer already removed it, so this is safe in the genuine
+            // two-drain race and prevents a permanent poison row (and a later purge-driven false Error) when the
+            // dispatcher crashed before MarkDispatched or lost its activity result to an at-least-once replay.
+            context.Verify(x => x.Entities.CallEntityAsync<bool>(
+                indexEntityId,
+                nameof(DeferredPendingIndexEntity.Remove),
+                It.IsAny<long>(),
+                It.IsAny<CallEntityOptions>()), Times.Once());
+            context.Verify(x => x.Entities.CallEntityAsync<bool>(
+                indexEntityId,
+                nameof(DeferredPendingIndexEntity.ReleaseInProgress),
+                It.IsAny<long>(),
+                It.IsAny<CallEntityOptions>()), Times.Never());
+
+            // The capacity lease acquired for the dispatch attempt is still released exactly once (not leaked).
+            context.Verify(x => x.Entities.CallEntityAsync<bool>(
+                limiterEntityId,
+                nameof(RunLimiter.Release),
+                It.Is<Guid>(r => r == runId),
+                It.IsAny<CallEntityOptions>()), Times.Once());
+
+            // Removing the stale entry is forward progress → the drain continues via ContinueAsNew.
+            context.Verify(x => x.ContinueAsNew(It.IsAny<object>(), It.IsAny<bool>()), Times.Once());
+        }
+
+        [TestMethod]
+        public async Task RunAsync_DoesNotErrorJob_AndSkipsEntityCheck_WhenPeerOrchestrationExists()
+        {
+            // Regression guard closing the residual double-drain window (US 16306649): a loser can observe the
+            // deferred message as "not found" AFTER the winner completed it but BEFORE the winner's MarkDispatched
+            // lands on the single-threaded entity. In that sliver the entity still reads present-and-never-
+            // dispatched, so the entity IsConfirmedOrphan check alone could still spuriously Error the job.
+            // The receive activity resolves this with a race-free signal: the winner creates the deterministic
+            // orchestration BEFORE it completes the Service Bus message (which happens-before the loser's
+            // not-found observation), so PeerOrchestrationExists=true authoritatively proves the item was
+            // dispatched. The orchestrator must then treat it as superseded WITHOUT consulting the entity at all.
+            var utcNow = new DateTime(2025, 12, 17, 12, 0, 0, DateTimeKind.Utc);
+            var lane = "small";
+            var runId = Guid.NewGuid();
+            var jobId = Guid.NewGuid();
+            const long sequenceNumber = 311;
+
+            // Aged 90 minutes (past the 60-minute window) with a never-dispatched local snapshot — the exact
+            // inputs that drive the orphan gate — but the peer's GraphUpdater orchestration already exists.
+            var context = CreateNotFoundContext(
+                utcNow, lane, sequenceNumber, runId, jobId, ageMinutes: 90,
+                out var indexEntityId, out var limiterEntityId);
+
+            var loggerMock = new Mock<ILogger>();
+            loggerMock.Setup(x => x.IsEnabled(It.IsAny<LogLevel>())).Returns(true);
+            context.Setup(x => x.CreateReplaySafeLogger(It.IsAny<string>())).Returns(loggerMock.Object);
+
+            // The receive activity reports the message gone AND that a peer already created the deterministic
+            // orchestration for this exact item. (Overrides the helper's default PeerOrchestrationExists=false.)
+            context.Setup(x => x.CallActivityAsync<ReceiveDeferredPendingResponse>(
+                    nameof(ReceiveDeferredPendingFunction),
+                    It.IsAny<ReceiveDeferredPendingRequest>(),
+                    It.IsAny<TaskOptions>()))
+                .ReturnsAsync(new ReceiveDeferredPendingResponse(
+                    Dispatched: false,
+                    ShouldRemoveFromIndex: false,
+                    OrchestrationInstanceId: null,
+                    MessageNotFound: true,
+                    PeerOrchestrationExists: true));
+
+            var orchestrator = new DeferredPendingDrainOrchestrator(DefaultSettings);
+            await orchestrator.RunAsync(context.Object);
+
+            // The authoritative instance signal short-circuits the decision: the entity IsConfirmedOrphan check
+            // is never consulted, which is precisely what removes the residual pre-MarkDispatched race.
+            context.Verify(x => x.Entities.CallEntityAsync<bool>(
+                indexEntityId,
+                nameof(DeferredPendingIndexEntity.IsConfirmedOrphan),
+                It.IsAny<long>(),
+                It.IsAny<CallEntityOptions>()), Times.Never());
+
+            // The job is NEVER transitioned to Error — a peer dispatched it successfully.
+            context.Verify(x => x.CallActivityAsync(
+                nameof(JobStatusUpdaterFunction),
+                It.IsAny<object>(),
+                It.IsAny<TaskOptions>()), Times.Never());
+
+            // The confirmed-orphan signal (EventId 120077) is never emitted on the losing path.
+            loggerMock.Verify(l => l.Log(
+                LogLevel.Warning,
+                It.Is<EventId>(e => e.Id == 120077),
+                It.IsAny<It.IsAnyType>(),
+                It.IsAny<Exception>(),
+                It.IsAny<Func<It.IsAnyType, Exception?, string>>()), Times.Never());
+
+            // The superseded-by-peer signal (EventId 120078) is emitted exactly once for observability.
+            loggerMock.Verify(l => l.Log(
+                LogLevel.Information,
+                It.Is<EventId>(e => e.Id == 120078),
+                It.IsAny<It.IsAnyType>(),
+                It.IsAny<Exception>(),
+                It.IsAny<Func<It.IsAnyType, Exception?, string>>()), Times.Once());
+
+            // The entry is healed, not left for a (possibly ghost) peer: the loser REMOVES it idempotently and
+            // never re-tails it. The authoritative instance signal proves dispatch happened, so removing the row
+            // here is what prevents a permanent poison entry and the delayed false Error that the IsConfirmedOrphan
+            // fallback would raise after the peer orchestration is eventually purged.
+            context.Verify(x => x.Entities.CallEntityAsync<bool>(
+                indexEntityId,
+                nameof(DeferredPendingIndexEntity.Remove),
+                It.IsAny<long>(),
+                It.IsAny<CallEntityOptions>()), Times.Once());
+            context.Verify(x => x.Entities.CallEntityAsync<bool>(
+                indexEntityId,
+                nameof(DeferredPendingIndexEntity.ReleaseInProgress),
+                It.IsAny<long>(),
+                It.IsAny<CallEntityOptions>()), Times.Never());
+
+            // The capacity lease acquired for the dispatch attempt is still released exactly once (not leaked).
+            context.Verify(x => x.Entities.CallEntityAsync<bool>(
+                limiterEntityId,
+                nameof(RunLimiter.Release),
+                It.Is<Guid>(r => r == runId),
+                It.IsAny<CallEntityOptions>()), Times.Once());
+
+            // Removing the stale entry is forward progress → the drain continues via ContinueAsNew.
+            context.Verify(x => x.ContinueAsNew(It.IsAny<object>(), It.IsAny<bool>()), Times.Once());
+        }
+
+        [TestMethod]
+        public async Task RunAsync_KeepsOrphanForRetry_WhenStatusUpdateThrowsAfterConfirm()
+        {
+            // Regression guard (US 16306649): the confirmed-orphan path must record the Error status BEFORE it
+            // removes the index entry. If the JobStatusUpdater activity throws, the entry must remain in the
+            // index (re-tailed via ReleaseInProgress) so a later drain retries it — the job must never be
+            // silently dropped without a status update, and the capacity lease must not be double-released.
+            var utcNow = new DateTime(2025, 12, 17, 12, 0, 0, DateTimeKind.Utc);
+            var lane = "small";
+            var runId = Guid.NewGuid();
+            var jobId = Guid.NewGuid();
+            const long sequenceNumber = 315;
+
+            // Aged 90 minutes past the window with a never-dispatched snapshot and a missing message: the
+            // helper's default IsConfirmedOrphan → true drives the orphan-Error path.
+            var context = CreateNotFoundContext(
+                utcNow, lane, sequenceNumber, runId, jobId, ageMinutes: 90,
+                out var indexEntityId, out var limiterEntityId);
+
+            // The status update fails (e.g., a transient store error) after the orphan is confirmed.
+            context.Setup(x => x.CallActivityAsync(
+                    nameof(JobStatusUpdaterFunction),
+                    It.IsAny<object>(),
+                    It.IsAny<TaskOptions>()))
+                .ThrowsAsync(new InvalidOperationException("status update failed"));
+
+            var orchestrator = new DeferredPendingDrainOrchestrator(DefaultSettings);
+
+            // The orchestrator re-throws so Durable Functions can retry the orchestration.
+            await Assert.ThrowsExceptionAsync<InvalidOperationException>(
+                () => orchestrator.RunAsync(context.Object));
+
+            // The orphan was confirmed and the Error update attempted exactly once.
+            context.Verify(x => x.Entities.CallEntityAsync<bool>(
+                indexEntityId,
+                nameof(DeferredPendingIndexEntity.IsConfirmedOrphan),
+                It.Is<long>(s => s == sequenceNumber),
+                It.IsAny<CallEntityOptions>()), Times.Once());
+            context.Verify(x => x.CallActivityAsync(
+                nameof(JobStatusUpdaterFunction),
+                It.IsAny<object>(),
+                It.IsAny<TaskOptions>()), Times.Once());
+
+            // The entry is NOT removed — the failed status update must leave it in the index for retry.
+            context.Verify(x => x.Entities.CallEntityAsync<bool>(
+                indexEntityId,
+                nameof(DeferredPendingIndexEntity.Remove),
+                It.IsAny<long>(),
+                It.IsAny<CallEntityOptions>()), Times.Never());
+
+            // The surviving entry is re-tailed once by the catch block so the next TakeNext can retry it.
+            context.Verify(x => x.Entities.CallEntityAsync<bool>(
+                indexEntityId,
+                nameof(DeferredPendingIndexEntity.ReleaseInProgress),
+                It.Is<long>(s => s == sequenceNumber),
+                It.IsAny<CallEntityOptions>()), Times.Once());
+
+            // The capacity lease is released exactly once (on the not-dispatched path); the catch block must
+            // NOT release it again now that the lease flag is cleared after the first release.
+            context.Verify(x => x.Entities.CallEntityAsync<bool>(
+                limiterEntityId,
+                nameof(RunLimiter.Release),
+                It.Is<Guid>(r => r == runId),
+                It.IsAny<CallEntityOptions>()), Times.Once());
+
+            // A failed orphan-Error is not forward progress → no ContinueAsNew.
+            context.Verify(x => x.ContinueAsNew(It.IsAny<object>(), It.IsAny<bool>()), Times.Never());
+        }
+
+        [TestMethod]
         public async Task RunAsync_RetriesWithoutError_WhenMessageNotFoundWithinWindow()
         {
             var utcNow = new DateTime(2025, 12, 17, 12, 0, 0, DateTimeKind.Utc);
@@ -605,7 +887,7 @@ namespace Services.Tests
             var orchestrator = new DeferredPendingDrainOrchestrator(SettingsWithMaxPendingAge(30));
             await orchestrator.RunAsync(context.Object);
 
-            // The job is transitioned to Error and the entry removed.
+            // The job is transitioned to Error and the entry is then removed via the shared Remove block.
             context.Verify(x => x.CallActivityAsync(
                 nameof(JobStatusUpdaterFunction),
                 It.Is<JobStatusUpdaterRequest>(r =>
@@ -614,7 +896,7 @@ namespace Services.Tests
 
             context.Verify(x => x.Entities.CallEntityAsync<bool>(
                 indexEntityId,
-                nameof(DeferredPendingIndexEntity.Remove),
+                nameof(DeferredPendingIndexEntity.IsConfirmedOrphan),
                 It.Is<long>(s => s == sequenceNumber),
                 It.IsAny<CallEntityOptions>()), Times.Once());
         }
@@ -730,14 +1012,14 @@ namespace Services.Tests
             await new DeferredPendingDrainOrchestrator(SettingsWithMaxPendingAge(30)).RunAsync(smallContext.Object);
             await new DeferredPendingDrainOrchestrator(SettingsWithMaxPendingAge(120)).RunAsync(largeContext.Object);
 
-            // Small lane: aged past its 30-minute window → Error + Remove.
+            // Small lane: aged past its 30-minute window → Error, then removal via the shared Remove block.
             smallContext.Verify(x => x.CallActivityAsync(
                 nameof(JobStatusUpdaterFunction),
                 It.Is<JobStatusUpdaterRequest>(r => r.Status == SyncStatus.Error && r.SyncJob.Id == smallJobId),
                 It.IsAny<TaskOptions>()), Times.Once());
             smallContext.Verify(x => x.Entities.CallEntityAsync<bool>(
                 smallIndexEntityId,
-                nameof(DeferredPendingIndexEntity.Remove),
+                nameof(DeferredPendingIndexEntity.IsConfirmedOrphan),
                 It.Is<long>(s => s == smallSeq),
                 It.IsAny<CallEntityOptions>()), Times.Once());
 

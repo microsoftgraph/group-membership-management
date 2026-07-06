@@ -137,6 +137,10 @@ namespace Hosts.MessageSplitter
             Message = "DeferredPendingDrain: confirmed orphan — message not found and aged past MaxPendingAgeMinutes; set job to Error. lane={LaneSize} jobId={JobId} runId={RunId} seq={SequenceNumber} age={AgeMinutes}min")]
         public static partial void DrainErroredConfirmedOrphan(this ILogger logger, string laneSize, Guid jobId, Guid runId, long sequenceNumber, string ageMinutes);
 
+        [LoggerMessage(EventId = 120078, Level = LogLevel.Information,
+            Message = "DeferredPendingDrain: item superseded by a concurrent drain (already dispatched/removed by a peer); skipped orphan-Error. lane={LaneSize} runId={RunId} seq={SequenceNumber}")]
+        public static partial void DrainItemSupersededByPeer(this ILogger logger, string laneSize, Guid runId, long sequenceNumber);
+
         // ── DeferredPendingEnqueueOrchestrator (120080-120089) ──
 
         [LoggerMessage(EventId = 120080, Level = LogLevel.Information,

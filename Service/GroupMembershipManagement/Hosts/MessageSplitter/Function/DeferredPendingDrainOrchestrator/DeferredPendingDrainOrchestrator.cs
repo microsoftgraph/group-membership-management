@@ -104,38 +104,100 @@ namespace Hosts.MessageSplitter
                 if (!received.Dispatched && leaseAcquiredForDispatch)
                 {
                     await context.Entities.CallEntityAsync<bool>(limiterEntityId, nameof(RunLimiter.Release), item.RunId);
+
+                    // The capacity lease has been released here; clear the flag so the catch block below does
+                    // not issue a second, redundant release for the same run if a later step throws.
+                    leaseAcquiredForDispatch = false;
                 }
 
                 var shouldRemove = received.ShouldRemoveFromIndex;
+                var confirmedOrphan = false;
+                var supersededByPeer = false;
 
                 if (!shouldRemove && received.MessageNotFound
                     && (utcNow - item.EnqueuedAtUtc).TotalMinutes > _runLimiterSettings.MaxPendingAgeMinutes)
                 {
-                    // The message is gone and the entry has outlived the pending-age window:
-                    // a confirmed orphan. Fail the job explicitly rather than dropping it silently,
-                    // then remove the entry in the shared removal step below.
-                    var ageMinutes = (utcNow - item.EnqueuedAtUtc).TotalMinutes;
+                    // The message is gone and the entry has outlived the pending-age window. This is EITHER a
+                    // genuine orphan OR the benign artifact of a concurrent drain that already re-took,
+                    // dispatched, and removed this entry after our 60-second in-progress lease expired under
+                    // load — leaving us a stale, never-dispatched snapshot and a "message not found". Deciding
+                    // solely on our snapshot would spuriously fail a job the peer dispatched successfully.
+                    if (received.PeerOrchestrationExists)
+                    {
+                        // Authoritative and race-free: the peer created the deterministic GraphUpdater
+                        // orchestration BEFORE it completed the Service Bus message, which happens-before our
+                        // "message not found" observation. Its existence proves a peer dispatched this exact
+                        // item, so it is never a genuine orphan — even in the narrow window before the peer's
+                        // MarkDispatched lands on the single-threaded entity. Suppress the false Error and remove
+                        // the now-redundant index entry in the shared block below, so a ghost dispatcher that
+                        // never runs MarkDispatched (crashed after completing the message, or lost its activity
+                        // result to an at-least-once replay) cannot leave a permanent row that the IsConfirmedOrphan
+                        // fallback later mis-Errors once the peer orchestration is purged.
+                        supersededByPeer = true;
+                        logger.DrainItemSupersededByPeer(lane, item.RunId, item.SequenceNumber);
+                    }
+                    else
+                    {
+                        // No peer orchestration exists for this item. It is EITHER a genuine orphan OR (rarely)
+                        // the artifact of a peer that dispatched and completed so long ago its orchestration was
+                        // already purged. IsConfirmedOrphan re-checks on the single-threaded entity and reports
+                        // an orphan only when the entry is still present and was never dispatched — the peer's
+                        // MarkDispatched clears that in the purge case — so together with the instance check the
+                        // Error fires only for a true orphan. It does NOT remove the entry — removal happens in
+                        // the shared block below, only after the Error status update has succeeded.
+                        confirmedOrphan = await context.Entities.CallEntityAsync<bool>(
+                            indexEntityId,
+                            nameof(DeferredPendingIndexEntity.IsConfirmedOrphan),
+                            item.SequenceNumber);
 
-                    await context.CallActivityAsync(
-                        nameof(JobStatusUpdaterFunction),
-                        new JobStatusUpdaterRequest
+                        if (confirmedOrphan)
                         {
-                            SyncJob = new SyncJob { Id = item.JobId, RunId = item.RunId },
-                            Status = SyncStatus.Error
-                        });
+                            var ageMinutes = (utcNow - item.EnqueuedAtUtc).TotalMinutes;
 
-                    logger.DrainErroredConfirmedOrphan(
-                        lane,
-                        item.JobId,
-                        item.RunId,
-                        item.SequenceNumber,
-                        $"{ageMinutes:F1}");
+                            // Record the Error status BEFORE removing the entry from the index. If this activity
+                            // throws, the entry is still present: the catch block re-tails it via ReleaseInProgress
+                            // and a later drain retries it, so the job is never dropped without a status update. The
+                            // removal happens in the shared block below, only after this update succeeds.
+                            await context.CallActivityAsync(
+                                nameof(JobStatusUpdaterFunction),
+                                new JobStatusUpdaterRequest
+                                {
+                                    SyncJob = new SyncJob { Id = item.JobId, RunId = item.RunId },
+                                    Status = SyncStatus.Error
+                                });
 
-                    shouldRemove = true;
+                            logger.DrainErroredConfirmedOrphan(
+                                lane,
+                                item.JobId,
+                                item.RunId,
+                                item.SequenceNumber,
+                                $"{ageMinutes:F1}");
+                        }
+                        else
+                        {
+                            // A peer / prior execution already dispatched or removed this entry — benign, NOT an
+                            // orphan. Do not fail the job; the entry is removed in the shared block below because
+                            // the dispatch is durable (the row is already dispatched or absent), so no live peer
+                            // is required to clean it up.
+                            supersededByPeer = true;
+                            logger.DrainItemSupersededByPeer(lane, item.RunId, item.SequenceNumber);
+                        }
+                    }
                 }
 
-                if (shouldRemove)
+                if (shouldRemove || confirmedOrphan || supersededByPeer)
                 {
+                    // Remove the entry whenever this drain has resolved it: the message was completed
+                    // (shouldRemove), it was a confirmed orphan we just Errored (confirmedOrphan), OR a peer /
+                    // prior execution provably dispatched it (supersededByPeer). Removing in the superseded case
+                    // is REQUIRED, not optional. The dispatching actor may be a ghost — a winner that created the
+                    // deterministic orchestration and completed the Service Bus message but then crashed before
+                    // MarkDispatched, or whose activity result was lost to an at-least-once replay — in which case
+                    // no other actor is guaranteed to remove the row. Because the Sweep no longer ages out entries,
+                    // a lingering present-and-never-dispatched row would otherwise (a) occupy the index permanently
+                    // and steal drain cycles, and (b) be mis-Errored by the IsConfirmedOrphan fallback once the peer
+                    // orchestration is purged and the instance probe can no longer see it. Remove is idempotent, so
+                    // in the genuine two-drain race the winner's own later Remove simply no-ops.
                     await context.Entities.CallEntityAsync<bool>(
                         indexEntityId,
                         nameof(DeferredPendingIndexEntity.Remove),
@@ -152,7 +214,11 @@ namespace Hosts.MessageSplitter
                         item.SequenceNumber);
                 }
 
-                var result = shouldRemove ? "removed" : received.Dispatched ? "dispatched" : "kept";
+                var result = confirmedOrphan ? "orphaned"
+                    : shouldRemove ? "removed"
+                    : supersededByPeer ? "superseded"
+                    : received.Dispatched ? "dispatched"
+                    : "kept";
                 logger.DrainItemProcessed(lane, item.SequenceNumber, result, received.MessageNotFound);
 
                 // Only continue draining when forward progress was made (item removed or

@@ -45,7 +45,8 @@ namespace Hosts.MessageSplitter
                 var shouldRemoveFromIndex = request.AlreadyDispatched;
                 _logger.DeferredMessageNotFound(shouldRemoveFromIndex ? "remove" : "retry", request.SequenceNumber, ex.Message);
 
-                return new ReceiveDeferredPendingResponse(Dispatched: request.AlreadyDispatched, ShouldRemoveFromIndex: shouldRemoveFromIndex, OrchestrationInstanceId: request.OrchestrationInstanceId, MessageNotFound: true);
+                var peerOrchestrationExists = await PeerOrchestrationExistsAsync(durableClient, request);
+                return new ReceiveDeferredPendingResponse(Dispatched: request.AlreadyDispatched, ShouldRemoveFromIndex: shouldRemoveFromIndex, OrchestrationInstanceId: request.OrchestrationInstanceId, MessageNotFound: true, PeerOrchestrationExists: peerOrchestrationExists);
             }
             catch (Exception ex)
             {
@@ -61,7 +62,8 @@ namespace Hosts.MessageSplitter
                 var shouldRemoveFromIndex = request.AlreadyDispatched;
                 _logger.DeferredMessageNull(shouldRemoveFromIndex ? "remove" : "retry", request.SequenceNumber);
 
-                return new ReceiveDeferredPendingResponse(Dispatched: request.AlreadyDispatched, ShouldRemoveFromIndex: shouldRemoveFromIndex, OrchestrationInstanceId: request.OrchestrationInstanceId, MessageNotFound: true);
+                var peerOrchestrationExists = await PeerOrchestrationExistsAsync(durableClient, request);
+                return new ReceiveDeferredPendingResponse(Dispatched: request.AlreadyDispatched, ShouldRemoveFromIndex: shouldRemoveFromIndex, OrchestrationInstanceId: request.OrchestrationInstanceId, MessageNotFound: true, PeerOrchestrationExists: peerOrchestrationExists);
             }
 
             // Step 1: Deserialize the payload. Payload errors are permanent — dead-letter and remove.
@@ -100,7 +102,7 @@ namespace Hosts.MessageSplitter
                 }
 
                 // Deterministic instance id helps eliminate duplicates if this activity is retried.
-                instanceId = $"deferredpending_{request.RunId}_{request.SequenceNumber}";
+                instanceId = DeterministicInstanceId(request.RunId, request.SequenceNumber);
 
                 // Infrastructure errors from GetInstanceAsync / ScheduleNewOrchestrationInstanceAsync
                 // propagate to the drain's catch block, which releases the lease + InProgress and throws.
@@ -132,5 +134,34 @@ namespace Hosts.MessageSplitter
                 return new ReceiveDeferredPendingResponse(Dispatched: dispatched, ShouldRemoveFromIndex: false, OrchestrationInstanceId: instanceId, MessageNotFound: false);
             }
         }
+
+        /// <summary>
+        /// Determines, without a race, whether a peer drain already dispatched this exact item when the
+        /// deferred message could not be received ("message not found"). Returns <c>true</c> only if the
+        /// deterministic GraphUpdater orchestration already exists.
+        /// </summary>
+        /// <remarks>
+        /// The deterministic instance is created (<see cref="DurableTaskClient.ScheduleNewOrchestrationInstanceAsync(string, object, StartOrchestrationOptions, System.Threading.CancellationToken)"/>)
+        /// before the peer completes the Service Bus message, which happens-before this drain can observe the
+        /// message as "not found". Its presence therefore authoritatively means a peer dispatched the item —
+        /// it is never a genuine orphan — and lets the orchestrator suppress the false-Error the age heuristic
+        /// alone cannot rule out. Infrastructure errors from GetInstanceAsync propagate exactly like the
+        /// dispatch-path lookup, so the drain retries the item rather than deciding on stale information.
+        /// </remarks>
+        private static async Task<bool> PeerOrchestrationExistsAsync(DurableTaskClient durableClient, ReceiveDeferredPendingRequest request)
+        {
+            // A drain that itself already dispatched is not a stale loser; no peer lookup is needed (and the
+            // orchestrator removes the entry rather than evaluating the orphan gate for it).
+            if (request.AlreadyDispatched)
+            {
+                return false;
+            }
+
+            var existing = await durableClient.GetInstanceAsync(DeterministicInstanceId(request.RunId, request.SequenceNumber));
+            return existing != null;
+        }
+
+        private static string DeterministicInstanceId(Guid runId, long sequenceNumber) =>
+            $"deferredpending_{runId}_{sequenceNumber}";
     }
 }

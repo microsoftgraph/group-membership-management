@@ -199,6 +199,42 @@ namespace Hosts.MessageSplitter
             return true;
         }
 
+        /// <summary>
+        /// Authoritatively reports whether the entry for <paramref name="sequenceNumber"/> is a genuine orphan.
+        /// An entry qualifies as an orphan only when it is still present in the index AND was never dispatched.
+        /// Under load a peer drain can re-take an entry whose in-progress lease expired, dispatch it, and remove
+        /// it; the losing drain is then left holding a stale snapshot and a benign "message not found".
+        /// Re-checking on this single-threaded entity — which processes the call atomically with respect to the
+        /// peer's MarkDispatched/Remove — prevents the losing drain from failing a job the peer already
+        /// dispatched successfully.
+        /// </summary>
+        /// <remarks>
+        /// This method is a pure query: it does NOT mutate the index. The caller removes the entry only after it
+        /// has durably recorded the job's Error status, so a failed status update leaves the entry in the index
+        /// to be retried instead of silently dropping the job.
+        /// </remarks>
+        /// <param name="sequenceNumber">The sequence number of the entry to confirm.</param>
+        /// <returns>
+        /// <c>true</c> only when the entry is still present and has not been dispatched (a confirmed orphan).
+        /// <c>false</c> when the entry is absent (a peer already removed it) or already dispatched (a peer
+        /// already dispatched it), in which case it is NOT an orphan.
+        /// </returns>
+        public bool IsConfirmedOrphan(long sequenceNumber)
+        {
+            State ??= new DeferredPendingIndexState();
+
+            var index = State.Items.FindIndex(i => i.SequenceNumber == sequenceNumber);
+            if (index < 0)
+            {
+                // A peer drain already removed (dispatched) this entry — not an orphan.
+                return false;
+            }
+
+            // A still-present, never-dispatched entry is a genuine orphan. A dispatched entry means a peer
+            // drain already dispatched it while we held a stale snapshot — not an orphan.
+            return !State.Items[index].Dispatched;
+        }
+
         public DeferredPendingIndexState GetState()
         {
             State ??= new DeferredPendingIndexState();
