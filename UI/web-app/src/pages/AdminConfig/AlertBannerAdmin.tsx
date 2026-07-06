@@ -76,17 +76,32 @@ export const AlertBannerAdmin: React.FunctionComponent = () => {
   }, [dispatch]);
 
   const [draft, setDraft] = useState<AlertBannerConfig>(savedConfig);
+  const [isDirty, setIsDirty] = useState(false);
 
-  // Keep the draft in sync when the stored config loads/changes.
+  // Keep the draft in sync when the stored config loads/changes, but don't
+  // overwrite unsaved local edits (e.g. a fetchAlertBanner() response arriving
+  // after the admin has started editing).
   useEffect(() => {
-    setDraft(savedConfig);
-  }, [savedConfig]);
+    const savedMatchesDraft = JSON.stringify(savedConfig) === JSON.stringify(draft);
+    if (savedMatchesDraft) {
+      // Store has caught up to our draft (e.g. successful save/reset): clear dirty.
+      if (isDirty) {
+        setIsDirty(false);
+      }
+      return;
+    }
+    // Only hydrate from the store if the user hasn't started editing yet.
+    if (!isDirty) {
+      setDraft(savedConfig);
+    }
+  }, [savedConfig, draft, isDirty]);
 
   const errors = useMemo(() => validate(draft), [draft]);
   const hasErrors = Object.keys(errors).length > 0;
   const hasChanges = JSON.stringify(draft) !== JSON.stringify(savedConfig);
 
   const update = (partial: Partial<AlertBannerConfig>) => {
+    setIsDirty(true);
     setDraft((prev) => ({ ...prev, ...partial }));
   };
 
