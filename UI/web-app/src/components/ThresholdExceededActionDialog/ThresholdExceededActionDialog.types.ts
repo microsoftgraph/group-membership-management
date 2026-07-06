@@ -10,16 +10,39 @@ import type React from 'react';
 
 export interface IThresholdExceededActionDialogStyles {
     root: IStyle;
-    warningText: IStyle;
-    detailsText: IStyle;
+    headerDivider: IStyle;
+    errorMessageBar: IStyle;
+    gracePeriodMessageBar: IStyle;
+    bodyLead: IStyle;
+    statsTable: IStyle;
+    statsTableHeaderCell: IStyle;
+    statsTableRowLabelCell: IStyle;
+    statsTableLimitCell: IStyle;
+    statsTableActualCell: IStyle;
+    statsTableActualCellBreached: IStyle;
+    statsTableBandedRow: IStyle;
+    disclosurePanel: IStyle;
+    disclosureHeader: IStyle;
+    disclosureChevron: IStyle;
+    disclosureBody: IStyle;
+    disclosureExplanation: IStyle;
+    currentSettingsLabel: IStyle;
+    currentSettingsRow: IStyle;
+    currentSettingCard: IStyle;
+    currentSettingIcon: IStyle;
+    currentSettingTitle: IStyle;
+    currentSettingSubtitle: IStyle;
+    disclosureBottomRow: IStyle;
+    disclosureInfoText: IStyle;
+    editThresholdsButton: IStyle;
+    chooseAnActionHeader: IStyle;
     actionsGrid: IStyle;
     actionCard: IStyle;
-    actionCardEnabled: IStyle;
     actionCardTitleContainer: IStyle;
     actionCardIcon: IStyle;
     actionCardTitle: IStyle;
     actionCardDescription: IStyle;
-    footer: IStyle;
+    actionCardButton: IStyle;
 }
 
 export interface IThresholdExceededActionDialogStyleProps {
@@ -32,8 +55,6 @@ export interface IThresholdExceededActionDialogProps extends React.AllHTMLAttrib
     styles?: IStyleFunctionOrObject<IThresholdExceededActionDialogStyleProps, IThresholdExceededActionDialogStyles>;
     isOpen: boolean;
     isLoading: boolean;
-    onDismiss: () => void;
-    groupName: string;
     usersToAdd: number;
     increasePercentage: number;
     thresholdPercentageForAdditions: number;
@@ -42,12 +63,10 @@ export interface IThresholdExceededActionDialogProps extends React.AllHTMLAttrib
     thresholdPercentageForRemovals: number;
     onApplyChanges: () => void;
     onEditRules: () => void;
-    onEditThreshold: () => void;
-    onPauseSync: () => void;
+    onEditAlertThresholds: () => void;
     isApplyChangesEnabled?: boolean;
     isEditRulesEnabled?: boolean;
-    isEditThresholdEnabled?: boolean;
-    isPauseSyncEnabled?: boolean;
+    isEditAlertThresholdsEnabled?: boolean;
     errorMessage?: string;
     purgeDate?: string;
 }

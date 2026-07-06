@@ -1235,24 +1235,6 @@ export const JobHistoryPanelBase: React.FunctionComponent<IJobHistoryPanelProps>
         }
     };
 
-    const handlePauseSync = async (): Promise<void> => {
-        if (!thresholdData?.notificationId) {
-            return;
-        }
-        setResolveError(null);
-        try {
-            await dispatch(resolveNotification({ notificationId: thresholdData.notificationId, resolution: 'Paused' })).unwrap();
-            setSyncPaused(true);
-            const pauseRunId = takeActionItem?.runId;
-            if (pauseRunId) {
-                setResolvedRunIds((prev) => new Set(prev).add(pauseRunId));
-            }
-            dispatch(fetchJobChanges({ syncJobId: jobId }));
-        } catch {
-            setResolveError(strings.JobDetails.Panel.resolveError);
-        }
-    };
-
     const fetchExplanationForRun = (runId: string, userObjectId: string): void => {
         const cacheKey = `${runId}-${userObjectId}`;
         if (aiExplanationCache.has(cacheKey) || aiExplanationLoading.has(cacheKey)) {
@@ -1510,8 +1492,16 @@ export const JobHistoryPanelBase: React.FunctionComponent<IJobHistoryPanelProps>
             customWidth="760px"
             isLightDismiss
             isOpen={isOpen}
-            onDismiss={dismissPanel}
-            headerText={strings.JobDetails.Panel.history}
+            onDismiss={() => {
+                if (takeActionItem !== null) {
+                    handleCloseTakeAction();
+                } else {
+                    dismissPanel();
+                }
+            }}
+            headerText={takeActionItem !== null
+                ? strings.JobDetails.Panel.ThresholdExceededActionDialog.title
+                : strings.JobDetails.Panel.history}
             closeButtonAriaLabel={strings.close}
             layerProps={{ eventBubblingEnabled: true }}
             styles={{
@@ -1540,6 +1530,36 @@ export const JobHistoryPanelBase: React.FunctionComponent<IJobHistoryPanelProps>
                     {strings.JobDetails.Panel.syncPausedSuccess}
                 </MessageBar>
             )}
+            {takeActionItem !== null ? (
+                <ThresholdExceededActionDialog
+                    isOpen={takeActionItem !== null}
+                    isLoading={isThresholdDataLoading}
+                    usersToAdd={thresholdData?.changeQuantityForAdditions ?? 0}
+                    increasePercentage={thresholdData?.changePercentageForAdditions ?? 0}
+                    thresholdPercentageForAdditions={thresholdData?.thresholdPercentageForAdditions ?? 0}
+                    usersToRemove={thresholdData?.changeQuantityForRemovals ?? 0}
+                    decreasePercentage={thresholdData?.changePercentageForRemovals ?? 0}
+                    thresholdPercentageForRemovals={thresholdData?.thresholdPercentageForRemovals ?? 0}
+                    onApplyChanges={handleApplyChanges}
+                    onEditRules={onEditRules ? () => {
+                        handleCloseTakeAction();
+                        dismissPanel();
+                        onEditRules();
+                    } : () => {}}
+                    isEditRulesEnabled={!!onEditRules}
+                    onEditAlertThresholds={onEditThreshold ? () => {
+                        const additionsExceeded = !!thresholdData && thresholdData.changePercentageForAdditions > thresholdData.thresholdPercentageForAdditions;
+                        const removalsExceeded = !!thresholdData && thresholdData.changePercentageForRemovals > thresholdData.thresholdPercentageForRemovals;
+                        handleCloseTakeAction();
+                        dismissPanel();
+                        onEditThreshold({ additionsExceeded, removalsExceeded });
+                    } : () => {}}
+                    isApplyChangesEnabled={!!thresholdData?.notificationId}
+                    isEditAlertThresholdsEnabled={!!onEditThreshold}
+                    errorMessage={resolveError ?? undefined}
+                    purgeDate={thresholdData?.purgeDate}
+                />
+            ) : (
             <Pivot>
                 <PivotItem
                     headerText={strings.JobDetails.Panel.configurationPivotHeader}
@@ -1709,6 +1729,7 @@ export const JobHistoryPanelBase: React.FunctionComponent<IJobHistoryPanelProps>
                     </PivotItem>
                 )}
             </Pivot>
+            )}
             <Modal
                 isOpen={isModalOpen}
                 onDismiss={handleCloseModal}
@@ -1747,38 +1768,6 @@ export const JobHistoryPanelBase: React.FunctionComponent<IJobHistoryPanelProps>
                     />
                 </div>
             </Modal>
-            <ThresholdExceededActionDialog
-                isOpen={takeActionItem !== null}
-                isLoading={isThresholdDataLoading}
-                onDismiss={handleCloseTakeAction}
-                groupName={selectedJob?.targetGroupName ?? ''}
-                usersToAdd={thresholdData?.changeQuantityForAdditions ?? 0}
-                increasePercentage={thresholdData?.changePercentageForAdditions ?? 0}
-                thresholdPercentageForAdditions={thresholdData?.thresholdPercentageForAdditions ?? 0}
-                usersToRemove={thresholdData?.changeQuantityForRemovals ?? 0}
-                decreasePercentage={thresholdData?.changePercentageForRemovals ?? 0}
-                thresholdPercentageForRemovals={thresholdData?.thresholdPercentageForRemovals ?? 0}
-                onApplyChanges={handleApplyChanges}
-                onEditRules={onEditRules ? () => {
-                    handleCloseTakeAction();
-                    dismissPanel();
-                    onEditRules();
-                } : () => {}}
-                isEditRulesEnabled={!!onEditRules}
-                onEditThreshold={onEditThreshold ? () => {
-                    const additionsExceeded = !!thresholdData && thresholdData.changePercentageForAdditions > thresholdData.thresholdPercentageForAdditions;
-                    const removalsExceeded = !!thresholdData && thresholdData.changePercentageForRemovals > thresholdData.thresholdPercentageForRemovals;
-                    handleCloseTakeAction();
-                    dismissPanel();
-                    onEditThreshold({ additionsExceeded, removalsExceeded });
-                } : () => {}}
-                onPauseSync={handlePauseSync}
-                isApplyChangesEnabled={!!thresholdData?.notificationId}
-                isEditThresholdEnabled={!!onEditThreshold}
-                isPauseSyncEnabled={!!thresholdData?.notificationId}
-                errorMessage={resolveError ?? undefined}
-                purgeDate={thresholdData?.purgeDate}
-            />
         </Panel>
     )
 };

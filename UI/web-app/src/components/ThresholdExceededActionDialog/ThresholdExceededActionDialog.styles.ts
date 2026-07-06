@@ -8,52 +8,219 @@ export const getStyles = (props: IThresholdExceededActionDialogStyleProps): IThr
 
     return {
         root: [{
-            padding: '0 24px 24px 24px',
+            padding: '0 0 24px 0',
         }, className],
 
-        warningText: {
-            color: theme.semanticColors.errorText,
+        headerDivider: {
+            height: 1,
+            backgroundColor: theme.palette.neutralLight,
+            marginTop: 12,
+            marginBottom: 12,
+            marginRight: -10,
+        },
+
+        errorMessageBar: {
+            marginBottom: 12,
+        },
+
+        gracePeriodMessageBar: {
+            marginBottom: 16,
+            borderRadius: 4,
+            overflow: 'hidden',
+        },
+
+        bodyLead: {
+            color: theme.palette.neutralPrimary,
             fontSize: 14,
+            marginTop: 0,
+            marginBottom: 16,
+        },
+
+        statsTable: {
+            width: '100%',
+            borderCollapse: 'collapse',
+            marginBottom: 16,
+            fontSize: 14,
+            selectors: {
+                'th, td': {
+                    textAlign: 'left',
+                    padding: '6px 12px',
+                    borderBottom: `1px solid ${theme.palette.themeLight}`,
+                },
+                'thead th': {
+                    borderBottom: `1px solid ${theme.palette.themeLight}`,
+                },
+            },
+        },
+
+        statsTableHeaderCell: {
+            fontWeight: 600,
+            color: theme.palette.neutralPrimary,
+        },
+
+        statsTableRowLabelCell: {
+            fontWeight: 600,
+            color: theme.palette.neutralPrimary,
+        },
+
+        statsTableLimitCell: {
+            color: theme.palette.neutralPrimary,
+        },
+
+        statsTableActualCell: {
+            color: theme.palette.neutralPrimary,
+        },
+
+        statsTableActualCellBreached: {
+            display: 'inline-block',
+            backgroundColor: theme.palette.themeLight,
+            padding: '2px 8px',
+            borderRadius: 4,
+            fontWeight: 600,
+        },
+
+        statsTableBandedRow: {
+            backgroundColor: theme.palette.themeLighterAlt,
+        },
+
+        disclosurePanel: {
+            backgroundColor: theme.palette.neutralLighter,
+            borderRadius: 10,
+            padding: '12px 16px',
+            marginBottom: 24,
+        },
+
+        disclosureHeader: {
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            width: '100%',
+            padding: 0,
+            border: 'none',
+            background: 'transparent',
+            cursor: 'pointer',
+            fontSize: 14,
+            fontWeight: 400,
+            color: theme.palette.neutralPrimary,
+            textAlign: 'left',
+            selectors: {
+                ':focus-visible': {
+                    outline: `2px solid ${theme.palette.themePrimary}`,
+                    outlineOffset: '2px',
+                },
+            },
+        },
+
+        disclosureChevron: {
+            fontSize: 12,
+            color: theme.palette.neutralSecondary,
+            flexShrink: 0,
+            marginLeft: 8,
+        },
+
+        disclosureBody: {
+            marginTop: 12,
+        },
+
+        disclosureExplanation: {
+            fontSize: 12,
+            color: theme.palette.neutralSecondary,
+            marginTop: 0,
+            marginBottom: 12,
+        },
+
+        currentSettingsLabel: {
+            fontSize: 14,
+            fontWeight: 600,
+            color: theme.palette.neutralPrimary,
             marginBottom: 8,
         },
 
-        detailsText: {
-            color: theme.palette.neutralPrimary,
+        currentSettingsRow: {
+            display: 'grid',
+            gridTemplateColumns: '1fr 1fr',
+            gap: 12,
+            marginBottom: 16,
+        },
+
+        currentSettingCard: {
+            display: 'flex',
+            alignItems: 'flex-start',
+            gap: 8,
+            backgroundColor: theme.palette.white,
+            border: `1px solid ${theme.palette.neutralLight}`,
+            borderRadius: 10,
+            padding: '12px',
+        },
+
+        currentSettingIcon: {
+            fontSize: 16,
+            color: theme.palette.themePrimary,
+            flexShrink: 0,
+            marginTop: 2,
+        },
+
+        currentSettingTitle: {
+            fontWeight: 600,
             fontSize: 14,
-            marginBottom: 20,
+            color: theme.palette.neutralPrimary,
+        },
+
+        currentSettingSubtitle: {
+            fontSize: 12,
+            color: theme.palette.neutralSecondary,
+        },
+
+        disclosureBottomRow: {
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: 12,
+        },
+
+        disclosureInfoText: {
+            display: 'flex',
+            alignItems: 'flex-start',
+            gap: 8,
+            fontSize: 12,
+            fontWeight: 600,
+            color: theme.palette.neutralSecondary,
+            selectors: {
+                '.ms-Icon': {
+                    fontSize: 14,
+                    color: theme.palette.neutralSecondary,
+                    flexShrink: 0,
+                    marginTop: 2,
+                },
+            },
+        },
+
+        editThresholdsButton: {
+            flexShrink: 0,
+            borderRadius: 4,
+        },
+
+        chooseAnActionHeader: {
+            fontSize: 16,
+            fontWeight: 600,
+            color: theme.palette.neutralPrimary,
+            marginTop: 0,
+            marginBottom: 12,
         },
 
         actionsGrid: {
             display: 'grid',
             gridTemplateColumns: '1fr 1fr',
             gap: 12,
-            marginBottom: 24,
         },
 
         actionCard: {
+            display: 'flex',
+            flexDirection: 'column',
             border: `1px solid ${theme.palette.neutralLight}`,
-            borderRadius: 4,
+            borderRadius: 10,
             padding: '16px',
-            cursor: 'default',
             backgroundColor: theme.palette.white,
-        },
-
-        actionCardEnabled: {
-            border: `1px solid ${theme.palette.neutralLight}`,
-            borderRadius: 4,
-            padding: '16px',
-            cursor: 'pointer',
-            backgroundColor: theme.palette.white,
-            selectors: {
-                ':hover': {
-                    backgroundColor: theme.palette.neutralLighterAlt,
-                    borderColor: theme.palette.neutralTertiary,
-                },
-                ':focus': {
-                    outline: `2px solid ${theme.palette.themePrimary}`,
-                    outlineOffset: '-2px',
-                },
-            },
         },
 
         actionCardTitleContainer: {
@@ -78,11 +245,13 @@ export const getStyles = (props: IThresholdExceededActionDialogStyleProps): IThr
         actionCardDescription: {
             fontSize: 12,
             color: theme.palette.neutralSecondary,
+            marginBottom: 16,
+            flexGrow: 1,
         },
 
-        footer: {
-            display: 'flex',
-            justifyContent: 'flex-end',
+        actionCardButton: {
+            alignSelf: 'flex-start',
+            borderRadius: 4,
         },
     };
 };

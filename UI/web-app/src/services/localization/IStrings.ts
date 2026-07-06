@@ -429,18 +429,40 @@ export type IStrings = {
       resolveError: string;
       ThresholdExceededActionDialog: {
         title: string;
-        warningText: string;
-        purgeDateText: string;
-        additionsDetailsText: string;
-        removalsDetailsText: string;
+        gracePeriodMessage: string;
+        bodyLeadIncrease: string;
+        bodyLeadDecrease: string;
+        bodyLeadBoth: string;
+        bodyLeadSyncWasPaused: string;
+        bodyLeadIncreaseThresholdExceeded: string;
+        bodyLeadDecreaseThresholdExceeded: string;
+        bodyLeadBothThresholdsExceeded: string;
+        statsTable: {
+          membersAdded: string;
+          membersRemoved: string;
+          rowLabelColumnHeader: string;
+          columnHeaderLimit: string;
+          columnHeaderActual: string;
+          cellValueFormat: string;
+          breachAriaLabel: string;
+        };
+        chooseAnActionHeader: string;
         applyChanges: string;
         applyChangesDescription: string;
-        editRules: string;
-        editRulesDescription: string;
-        editThreshold: string;
-        editThresholdDescription: string;
-        pauseSync: string;
-        pauseSyncDescription: string;
+        editMembershipRules: string;
+        editMembershipRulesDescription: string;
+        disclosure: {
+          headerCollapsed: string;
+          headerExpanded: string;
+          explanation: string;
+          infoRow: string;
+          currentSettingsLabel: string;
+          increaseThresholdTitle: string;
+          increaseThresholdSubtitle: string;
+          decreaseThresholdTitle: string;
+          decreaseThresholdSubtitle: string;
+          editAlertThresholdsButton: string;
+        };
       };
       scheduledNow: string;
       RunHistoryStatus: {
