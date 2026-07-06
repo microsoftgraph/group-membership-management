@@ -144,8 +144,8 @@ function Set-Subscription {
 }
 
 function Set-ResourceProviders {
-    foreach ($namespace in @("Microsoft.ServiceBus", "Microsoft.Insights", "Microsoft.OperationalInsights", "Microsoft.AlertsManagement", "Microsoft.Storage", "Microsoft.AppConfiguration", "Microsoft.Sql", "Microsoft.Web", "Microsoft.DataFactory", "Microsoft.SignalRService", "Microsoft.DevTestLab")) {
-        Write-DeployLog -Level Info -Message "Checking if the resource provider $namespace is registered..."
+    foreach ($namespace in @("Microsoft.ServiceBus", "Microsoft.Insights", "Microsoft.OperationalInsights", "Microsoft.AlertsManagement", "Microsoft.Storage", "Microsoft.AppConfiguration", "Microsoft.Sql", "Microsoft.Web", "Microsoft.DataFactory", "Microsoft.SignalRService", "Microsoft.DevTestLab", "Microsoft.ContainerService")) {
+        Write-Host "Checking if the resource provider $namespace is registered..."
         $provider = Invoke-WithRetry `
             -Operation { Get-AzResourceProvider -ProviderNamespace $namespace } `
             -OperationName "Get resource provider $namespace" `
@@ -786,6 +786,46 @@ function Set-ComputeResources {
     Write-DeployPhase -Name 'Creating Compute Resources' -Event End
 }
 
+function Set-AksResources {
+    param (
+        [Parameter(Mandatory = $true)]
+        [string]$SolutionAbbreviation,
+        [Parameter(Mandatory = $true)]
+        [string]$EnvironmentAbbreviation,
+        [Parameter(Mandatory = $true)]
+        [string]$SubscriptionId,
+        [Parameter(Mandatory = $true)]
+        [string]$AksTemplateDirectoryPath,
+        [Parameter(Mandatory = $true)]
+        [Hashtable]$ParameterHashtable,
+        [Parameter(Mandatory = $false)]
+        [Hashtable]$AdditionalParameters = @{ parameters = @{} }
+    )
+
+    $deployAks = Get-Default -Value $ParameterHashtable['deployAks'].value -Default $false
+
+    if ($deployAks -ne $true) {
+        Write-Host "`n  ⏭ Skipping AKS deployment (deployAks = $deployAks)" -ForegroundColor Yellow
+        return
+    }
+
+    Write-Host "`nCreating AKS resources"
+    $computeResourceGroup = "$SolutionAbbreviation-compute-$EnvironmentAbbreviation"
+    $templateFilePath = "$AksTemplateDirectoryPath/aksResources.json"
+    Invoke-WithRetry `
+        -Operation {
+            Start-ResourceDeployment `
+                -ResourceGroupName $computeResourceGroup `
+                -SubscriptionId $SubscriptionId `
+                -TemplateFilePath $templateFilePath `
+                -ParameterHashtable $ParameterHashtable `
+                -AdditionalParameters $AdditionalParameters
+        } `
+        -OperationName "Create AKS resources" `
+        -MaxAttempts $maxRetriesForDeploymentOperations `
+        -BaseDelaySeconds 2
+}
+
 function Set-ADFResources {
     param (
         [Parameter(Mandatory = $true)]
@@ -1280,6 +1320,17 @@ function Set-GMMResources {
     else {
         Write-DeployLog -Level Warn -Message "Skipping compute deployment as per configuration [skipComputeDeployment = $skipComputeDeployment]."
     }
+
+    # deploy AKS resources (no-op unless the parameters file sets deployAks = true)
+    Set-AksResources `
+        -SolutionAbbreviation           $SolutionAbbreviation `
+        -EnvironmentAbbreviation        $EnvironmentAbbreviation `
+        -SubscriptionId                 $SubscriptionId `
+        -AksTemplateDirectoryPath       $TemplateFilesDirectory `
+        -ParameterHashtable             $ParameterHashtable `
+        -AdditionalParameters           $commonParametersObject
+
+    Start-Sleep -Seconds 10
 
     # deploy ADF resources
     if ($skipAzureDataFactoryDeployment -eq $false) {
