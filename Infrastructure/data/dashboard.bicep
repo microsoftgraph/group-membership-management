@@ -881,6 +881,128 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
               }
             }
           }
+          '61': {
+            position: {
+              x: 12
+              y: 2
+              colSpan: 5
+              rowSpan: 3
+            }
+            metadata: {
+              inputs: [
+                {
+                  name: 'resourceTypeMode'
+                  isOptional: true
+                }
+                {
+                  name: 'ComponentId'
+                  isOptional: true
+                }
+                {
+                  name: 'Scope'
+                  value: {
+                    resourceIds: [
+                      '/subscriptions/${subscriptionId}/resourceGroups/${resourceGroup}/providers/microsoft.insights/components/${resourceGroup}'
+                    ]
+                  }
+                  isOptional: true
+                }
+                {
+                  name: 'PartId'
+                  value: '1c38a923-16a8-4a6b-8f25-8eb90e14df70'
+                  isOptional: true
+                }
+                {
+                  name: 'Version'
+                  value: '2.0'
+                  isOptional: true
+                }
+                {
+                  name: 'TimeRange'
+                  value: 'P1D'
+                  isOptional: true
+                }
+                {
+                  name: 'DashboardId'
+                  isOptional: true
+                }
+                {
+                  name: 'DraftRequestParameters'
+                  isOptional: true
+                }
+                {
+                  name: 'Query'
+                  value: ''
+                  isOptional: true
+                }
+                {
+                  name: 'ControlType'
+                  value: 'FrameControlChart'
+                  isOptional: true
+                }
+                {
+                  name: 'SpecificChart'
+                  value: 'StackedColumn'
+                  isOptional: true
+                }
+                {
+                  name: 'PartTitle'
+                  value: 'Onboardings: Copilot vs Manual'
+                  isOptional: true
+                }
+                {
+                  name: 'PartSubTitle'
+                  value: resourceGroup
+                  isOptional: true
+                }
+                {
+                  name: 'Dimensions'
+                  isOptional: true
+                }
+                {
+                  name: 'LegendOptions'
+                  isOptional: true
+                }
+                {
+                  name: 'IsQueryContainTimeRange'
+                  value: false
+                  isOptional: true
+                }
+              ]
+              type: 'Extension/Microsoft_OperationsManagementSuite_Workspace/PartType/LogsDashboardPart'
+              settings: {
+                content: {
+                  Query: 'customEvents\n| where name == "JobOnboarded"\n| extend Series = iff(tobool(customDimensions["OnboardedUsingAIQB"]), "Copilot", "Manual")\n| summarize count = count() by bin(timestamp, 1d), Series\n| order by timestamp asc\n'
+                  ControlType: 'FrameControlChart'
+                  SpecificChart: 'StackedColumn'
+                  PartTitle: 'Onboardings: Copilot vs Manual'
+                  Dimensions: {
+                    xAxis: {
+                      name: 'timestamp'
+                      type: 'datetime'
+                    }
+                    yAxis: [
+                      {
+                        name: 'count'
+                        type: 'long'
+                      }
+                    ]
+                    splitBy: [
+                      {
+                        name: 'Series'
+                        type: 'string'
+                      }
+                    ]
+                    aggregation: 'Sum'
+                  }
+                  LegendOptions: {
+                    isEnabled: true
+                    position: 'Bottom'
+                  }
+                }
+              }
+            }
+          }
           '11': {
             position: {
               x: 13
