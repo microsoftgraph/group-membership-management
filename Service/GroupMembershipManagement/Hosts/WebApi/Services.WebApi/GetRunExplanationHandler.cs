@@ -67,9 +67,9 @@ Prefer these patterns:
 **HARD RULE — stale config change:** If the ""Configuration history"" section contains the line ""(this change occurred BEFORE the previous run — configuration is unchanged for THIS sync..."", you MUST NOT use Patterns 1, 3, or 7 (change-based patterns). You MUST NOT invent, reconstruct, or infer a ""previous filter"" or ""previous scope"" — those values are NOT in the prompt. You MUST NOT quote the ""Last configuration change on [date]"" line as if the change is new for THIS sync. Do not say ""changed on [date]"", ""updated on [date]"", ""updated from ... to ..."". The configuration is steady-state for this sync. Pick a data-based pattern (2, 4, 5, 8, 9, 10) or fall back to pattern 6.
 
 1. **HR filter criteria changed**: ""This sync reflects an updated membership filter (changed on [date] from [old] to [new])."" Only usable when the ""Configuration history"" section contains an explicit ""Previous configuration:"" line AND a ""Current configuration:"" line AND a ""What changed:"" line — never when the stale marker is present. Do NOT use set-theory verbs like ""expanded"", ""shrunk"", ""broadened"", ""narrowed"", ""widened"" unless the new filter's set is a proven superset or subset of the old one. When the change is a shift (e.g. one bound moved, or one predicate replaced another), say ""changed"" or ""updated"". If you must describe the *direction* of the change, only use ""more restrictive"" / ""less restrictive"" when one filter is a clear subset of the other (single inequality bound tightened/loosened on the same column with the same operator family).
-2. **HR attributes changed (no config change)**: ""This sync reflects changes in HR data: some [added|removed] users had [attribute] change (e.g., [old] -> [new]), matching the membership rule."" NEVER use this pattern unless the prompt's ""HR attribute changes"" section contains actual change entries with concrete attribute names and old/new values. If that section reads ""(no HR cross-snapshot diff available)"" you MUST NOT claim any user's attribute value changed, MUST NOT invent a count, and MUST NOT name an attribute as the reason for the delta. A change to *which attribute the filter tests* (e.g. filter went from PayScaleStockLevelNbr to SupervisorInd) is NOT a change to that attribute's value — it's a Pattern 1 config change.
+2. **HR attributes changed (no config change)**: ""This sync reflects changes in HR data: some [added|removed] users had [attribute] change (e.g., [old] -> [new]), matching the membership rule."" NEVER use this pattern unless the prompt's ""HR attribute changes"" section contains actual change entries with concrete attribute names and old/new values. If that section reads ""(no HR cross-snapshot diff available)"" you MUST NOT claim any user's attribute value changed, MUST NOT invent a count, and MUST NOT name an attribute as the reason for the delta. A change to *which attribute the filter tests* (e.g. filter went from one HR attribute to a different HR attribute) is NOT a change to that attribute's value — it's a Pattern 1 config change.
 3. **New exclusionary part added**: ""This sync reflects a new exclusion rule added on [date] that excludes [criteria]."" Only usable when the ""Configuration history"" section shows an explicit ""What changed:"" line naming the new exclusionary part — never when the stale marker is present.
-4. **Threshold blocked**: ""This sync proposed changes that were blocked because the change exceeded the configured threshold."" This applies BOTH when Status is ""ThresholdExceeded"" (job hit the disable cap and was paused) AND when Status is ""Idle"" with the counts line marked ""(blocked by threshold; ThresholdViolations X -> Y)"" — that's an early violation where the proposed delta was blocked even though the job is still under the disable cap. In the Idle-with-incremented-violations case, do NOT say ""no changes were applied because the filter returned nothing"" — the filter returned candidates, the threshold blocked them.
+4. **Threshold blocked**: ""This sync proposed changes that were blocked because the change exceeded the configured threshold."" This applies BOTH when Status is ""ThresholdExceeded"" (job hit the disable cap and was paused) AND when Status is ""Idle"" with the counts line marked ""(blocked by threshold; ThresholdViolations X -> Y)"" — that's an early violation where the proposed delta was blocked even though the job is still under the disable cap. In the Idle-with-incremented-violations case, do NOT say ""no changes were applied because the filter returned nothing"" — the filter returned candidates, the threshold blocked them. When a ""Per-part attribution for removed users"" or ""for added users"" section is also present, cite the specific rule(s) from those sections (e.g., ""...blocked, and most of the proposed removals came from users leaving the source group `X`""). Do NOT invent a per-side cause (e.g., ""blocked because the removals exceeded the threshold"") unless the attribution section actually shows that split — the threshold check considers the total delta.
 5. **Group sources changed (no in-GMM signal)**: ""This sync reflects changes in upstream source group memberships.""
 6. **Insufficient signal**: ""The specific reason could not be determined from the available data.""
 7. **Manager scope changed**: ""This sync's candidate population changed because the membership rule's scope was updated on [date] from [old scope] to [new scope]"" — where ""scope"" comes from the configDiff line and looks like ""id=N (depth<=M)"", ""id=N (unbounded depth)"", or ""none (filter-only, no hierarchy scope)"". Only usable when the ""Configuration history"" section shows an explicit ""What changed:"" line naming the scope change — never when the stale marker is present.
@@ -79,6 +79,7 @@ Prefer these patterns:
    - Manager+depth-cap: ""...scoped to the management chain rooted at id=[manager.id] (depth<=[depth]) and filtered to [filter]...""
 9. **Per-rule attribution available**: When the prompt contains a ""Per-rule attribution for added users"" section, use those qualitative terms verbatim (e.g., ""most added users match the inclusionary HR rule scoped to id=100 (unbounded depth)""). Pair this with whichever change pattern (1, 7, etc.) is appropriate. NEVER translate ""most"" / ""almost all"" / ""a few"" into specific counts or percentages — the buckets are qualitative on purpose to avoid fabricated precision.
 10. **IgnoreThresholdOnce applied**: When the Configuration history section contains an explicit ""IgnoreThresholdOnce activated on [date]"" line, that's the direct cause of this sync's delta: the previous run was blocked by the configured threshold, an owner (or automation) activated IgnoreThresholdOnce, and this sync applied the previously-pending changes. Use pattern: ""This sync applied the [adds|removes|adds and removes] that were previously blocked by the threshold, because IgnoreThresholdOnce was activated on [date]."" NEVER use this pattern unless the explicit ""IgnoreThresholdOnce activated on [date]"" line is present in the prompt — the marker is emitted only when the event was activated in THIS sync's window; otherwise, the ITO event is stale and MUST NOT be cited (even if the historical event is technically still visible elsewhere). Combine with pattern 1 / 7 phrasing when a rule change also drove the previously-pending delta (e.g., ""...applied the removes that were previously blocked, following the earlier filter change from `[old]` to `[new]`"").
+11. **Per-part attribution for removed users available**: When the prompt contains a ""Per-part attribution for removed users"" section, use those qualitative terms verbatim to explain the removals (e.g., ""most removed users left the source group `TestGroupMember`"", or ""a few removed users no longer match the inclusionary HR rule""). Prefer specific attribution over generic phrasing like ""the specific reason could not be determined"". Pair with pattern 4 for threshold-blocked runs (e.g., ""...blocked by the threshold. Most of the proposed removals came from users leaving the source group `X`.""). If the section is absent and there are removed users, either omit any per-removal explanation or fall back to pattern 5 (""upstream source group changes"") — NEVER invent an attribution.
 
 When the membership rule returns no users (UsersAdded and UsersRemoved are both 0 AND the run status is MembershipDataNotFound or similar), prefer pattern 8 over saying ""HR data was unavailable"" — the HR table itself exists; what's empty is the result for this specific scope+filter combination.
 
@@ -195,12 +196,16 @@ Use only the provided data. Output 1-2 sentences only.";
                     return response;
                 }
 
-                // Fire aggregated blob find + per-part file catalog in parallel; only enumerate parts when a group-family inclusionary part exists.
+                // Fire aggregated blob find + per-part file catalog (this-run and previous-run) in parallel.
                 var targetGroupId = syncJob.TargetOfficeGroupId.ToString();
-                var hasInclusionaryGroupFamilyPart = parts.Any(p => !p.Exclusionary && IsGroupFamilyAttributionType(p.Type));
-                Task<Dictionary<string, BlobResult>>? partFilesTask = hasInclusionaryGroupFamilyPart
+                var hasAttributableInclusionaryPart = parts.Any(p => IsAttributionCandidate(p.Type));
+                Task<Dictionary<string, BlobResult>>? partFilesTask = hasAttributableInclusionaryPart
                     ? _blobStorageRepository.FindPartFilesByRunIdAsync(targetGroupId, request.RunId.ToString())
                     : null;
+                Task<Dictionary<string, BlobResult>>? previousPartFilesTask =
+                    (hasAttributableInclusionaryPart && previousRun != null && previousRun.RunId != Guid.Empty)
+                        ? _blobStorageRepository.FindPartFilesByRunIdAsync(targetGroupId, previousRun.RunId.ToString())
+                        : null;
 
                 var (added, removed) = await ReadMembershipDeltaAsync(targetGroupId, request.RunId);
                 var (cappedAdded, cappedRemoved) = CapAt150(added, removed);
@@ -248,11 +253,28 @@ Use only the provided data. Output 1-2 sentences only.";
                     }
                 }
 
+                IReadOnlyDictionary<string, BlobResult> previousPartFiles = new Dictionary<string, BlobResult>(StringComparer.OrdinalIgnoreCase);
+                if (previousPartFilesTask != null)
+                {
+                    try
+                    {
+                        previousPartFiles = await previousPartFilesTask;
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogWarning(ex, "Failed to enumerate previous-run per-part membership blobs for group {GroupId} previous run {PreviousRunId}; removes attribution will fall back for group-family parts.", targetGroupId, previousRun?.RunId);
+                    }
+                }
+
                 // Per-part attribution for added users. Silent skip on any missing data.
                 var addsAttribution = await ComputeAddsAttributionAsync(
                     parts, added, runHistory.AdfRunId, managerNames, groupNames, partFiles);
 
-                var userPrompt = BuildRunPrompt(request, runHistory, asOfRunQuery, cappedAdded, cappedRemoved, added.Count, removed.Count, isThresholdBlocked, prevThresholdViolations, thisThresholdViolations, configDiff, hrDiff, groupNames, managerNames, addsAttribution);
+                // Per-part attribution for removed users. Requires previous run's data; silent skip on any missing data.
+                var removesAttribution = await ComputeRemovesAttributionAsync(
+                    parts, removed, runHistory.AdfRunId, previousRun?.AdfRunId, managerNames, groupNames, partFiles, previousPartFiles);
+
+                var userPrompt = BuildRunPrompt(request, runHistory, asOfRunQuery, cappedAdded, cappedRemoved, added.Count, removed.Count, isThresholdBlocked, prevThresholdViolations, thisThresholdViolations, configDiff, hrDiff, groupNames, managerNames, addsAttribution, removesAttribution);
 
                 string explanation;
                 using (_logger.BeginScope(new Dictionary<string, object> { ["AIFeature"] = "RunExplanation" }))
@@ -825,7 +847,8 @@ Use only the provided data. Output 1-2 sentences only.";
             string hrDiffSummary,
             IReadOnlyDictionary<Guid, string>? groupNames,
             IReadOnlyDictionary<int, string>? managerNames,
-            string addsAttribution)
+            string addsAttribution,
+            string removesAttribution)
         {
             var endTime = runHistory.EndTime ?? runHistory.StartTime ?? runHistory.UpdatedAt;
             var status = runHistory.Status ?? "Unknown";
@@ -860,7 +883,7 @@ HR attribute changes (between previous-run and this-run snapshots, grouped by pa
 {hrSection}
 
 Configuration history:
-{configDiff}{addsAttribution}{groupNamesSection}{managerNamesSection}";
+{configDiff}{addsAttribution}{removesAttribution}{groupNamesSection}{managerNamesSection}";
         }
 
         // Inlined from GetSyncExplanationHandler for now; see plan.md follow-up to extract into a shared helper.
@@ -1495,6 +1518,206 @@ Configuration history:
             var bucket = BucketAttribution(matched, totalSampled);
             var label = FormatGroupFamilyPartLabel(part, groupNames);
             return $"- {label}: {bucket} of the added users came from this source";
+        }
+
+        // Per-part attribution for removed users. Requires previous-run data (blobs + ADF snapshot); silent skip when missing.
+        private async Task<string> ComputeRemovesAttributionAsync(
+            IReadOnlyList<QueryPartInfo> parts,
+            IReadOnlyCollection<Guid> removedUsers,
+            Guid? runAdfRunId,
+            Guid? previousAdfRunId,
+            IReadOnlyDictionary<int, string>? managerNames,
+            IReadOnlyDictionary<Guid, string>? groupNames,
+            IReadOnlyDictionary<string, BlobResult> partFiles,
+            IReadOnlyDictionary<string, BlobResult> previousPartFiles)
+        {
+            if (removedUsers == null || removedUsers.Count == 0) return string.Empty;
+
+            var candidates = (parts ?? new List<QueryPartInfo>())
+                .Where(p => IsAttributionCandidate(p.Type))
+                .ToList();
+            if (candidates.Count == 0) return string.Empty;
+
+            var sqlParts = candidates
+                .Where(p => string.Equals(p.Type, "SqlMembership", StringComparison.OrdinalIgnoreCase))
+                .Take(MaxSqlRulesToIntersect)
+                .ToList();
+            var groupFamilyParts = candidates
+                .Where(p => IsGroupFamilyAttributionType(p.Type))
+                .Take(MaxGroupPartsToAttribute)
+                .ToList();
+            if (sqlParts.Count == 0 && groupFamilyParts.Count == 0) return string.Empty;
+
+            var removedSet = new HashSet<string>(
+                removedUsers.Take(MaxAddsForRuleAttribution).Select(g => g.ToString()),
+                StringComparer.OrdinalIgnoreCase);
+            var totalSampled = removedSet.Count;
+            if (totalSampled == 0) return string.Empty;
+
+            // SQL removes need two different ADF snapshots; skip when either is missing or they're the same.
+            string? currentTable = null;
+            string? previousTable = null;
+            var sqlAvailable = false;
+            if (sqlParts.Count > 0
+                && runAdfRunId.HasValue && runAdfRunId.Value != Guid.Empty
+                && previousAdfRunId.HasValue && previousAdfRunId.Value != Guid.Empty
+                && runAdfRunId.Value != previousAdfRunId.Value)
+            {
+                currentTable = runAdfRunId.Value.ToString().Replace("-", string.Empty);
+                previousTable = previousAdfRunId.Value.ToString().Replace("-", string.Empty);
+                try
+                {
+                    var currentExists = await _sqlMembershipRepository.CheckIfTableExistsAsync(currentTable);
+                    var previousExists = await _sqlMembershipRepository.CheckIfTableExistsAsync(previousTable);
+                    sqlAvailable = currentExists && previousExists;
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Failed to probe ADF tables ({Current} / {Previous}) for removes attribution; SQL parts will be skipped.", currentTable, previousTable);
+                    sqlAvailable = false;
+                }
+            }
+
+            var orderedParts = sqlParts.Concat(groupFamilyParts).ToList();
+            var tasks = orderedParts.Select(part =>
+            {
+                if (string.Equals(part.Type, "SqlMembership", StringComparison.OrdinalIgnoreCase))
+                {
+                    return sqlAvailable && currentTable != null && previousTable != null
+                        ? AttributeSqlPartForRemovesAsync(part, removedSet, totalSampled, currentTable, previousTable, managerNames)
+                        : Task.FromResult<string?>(null);
+                }
+                return AttributeGroupFamilyPartForRemovesAsync(part, removedSet, totalSampled, partFiles, previousPartFiles, groupNames);
+            });
+            var results = await Task.WhenAll(tasks);
+            var lines = results.Where(l => !string.IsNullOrEmpty(l)).Select(l => l!).ToList();
+            if (lines.Count == 0) return string.Empty;
+
+            var sb = new StringBuilder();
+            sb.AppendLine();
+            sb.AppendLine();
+            sb.AppendLine("Per-part attribution for removed users (qualitative buckets — use these terms verbatim in your output; DO NOT translate them to exact counts or percentages):");
+            foreach (var line in lines)
+            {
+                sb.AppendLine(line);
+            }
+            return sb.ToString().TrimEnd();
+        }
+
+        // SqlMembership removes: inclusionary parts flag users who dropped out; exclusionary flag users newly caught.
+        private async Task<string?> AttributeSqlPartForRemovesAsync(
+            QueryPartInfo part,
+            HashSet<string> removedSet,
+            int totalSampled,
+            string currentTable,
+            string previousTable,
+            IReadOnlyDictionary<int, string>? managerNames)
+        {
+            try
+            {
+                var currentMembers = await FetchSqlPartMembersAsync(part, currentTable);
+                var previousMembers = await FetchSqlPartMembersAsync(part, previousTable);
+                if (currentMembers == null || previousMembers == null) return null;
+
+                var currentSet = new HashSet<string>(
+                    currentMembers.Where(m => !string.IsNullOrWhiteSpace(m)).Select(m => m!),
+                    StringComparer.OrdinalIgnoreCase);
+                var previousSet = new HashSet<string>(
+                    previousMembers.Where(m => !string.IsNullOrWhiteSpace(m)).Select(m => m!),
+                    StringComparer.OrdinalIgnoreCase);
+
+                var label = FormatSqlPartLabel(part, managerNames);
+                if (part.Exclusionary)
+                {
+                    // Newly excluded: in current, not in previous, intersected with removed.
+                    var newlyExcluded = currentSet.Count(m => !previousSet.Contains(m) && removedSet.Contains(m));
+                    if (newlyExcluded == 0) return null;
+                    var bucket = BucketAttribution(newlyExcluded, totalSampled);
+                    return $"- Exclusionary rule at part #{part.Index + 1} ({label}): {bucket} of the removed users are newly excluded by this rule";
+                }
+                else
+                {
+                    // Dropped out: in previous, not in current, intersected with removed.
+                    var droppedOut = previousSet.Count(m => !currentSet.Contains(m) && removedSet.Contains(m));
+                    if (droppedOut == 0) return null;
+                    var bucket = BucketAttribution(droppedOut, totalSampled);
+                    return $"- {label}: {bucket} of the removed users no longer match this rule";
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to compute SQL removes attribution for part #{Index}; skipping that part.", part.Index);
+                return null;
+            }
+        }
+
+        private async Task<List<string?>?> FetchSqlPartMembersAsync(QueryPartInfo part, string tableName)
+        {
+            List<SqlMembershipObtainer.Entities.PersonEntity>? members = null;
+            if (int.TryParse(part.ManagerId, out var mgrId) && mgrId > 0)
+            {
+                members = await _sqlMembershipRepository.GetChildEntitiesAsync(
+                    part.Filter, mgrId, tableName, part.ManagerDepth ?? 0);
+            }
+            else if (!string.IsNullOrWhiteSpace(part.Filter))
+            {
+                members = await _sqlMembershipRepository.FilterChildEntitiesAsync(part.Filter, tableName);
+            }
+            return members?.Select(m => m.AzureObjectId).ToList();
+        }
+
+        // Group-family removes: inclusionary parts flag users who left the source; exclusionary flag users newly in the excluded source.
+        private async Task<string?> AttributeGroupFamilyPartForRemovesAsync(
+            QueryPartInfo part,
+            HashSet<string> removedSet,
+            int totalSampled,
+            IReadOnlyDictionary<string, BlobResult> partFiles,
+            IReadOnlyDictionary<string, BlobResult> previousPartFiles,
+            IReadOnlyDictionary<Guid, string>? groupNames)
+        {
+            var tag = $"{part.Type}_{part.Index + 1}";
+            if (!partFiles.TryGetValue(tag, out var currentBlob) || currentBlob.BlobStatus != BlobStatus.Found) return null;
+            if (!previousPartFiles.TryGetValue(tag, out var previousBlob) || previousBlob.BlobStatus != BlobStatus.Found) return null;
+
+            HashSet<Guid> currentMembers;
+            HashSet<Guid> previousMembers;
+            try
+            {
+                currentMembers = await _blobStorageRepository.ExtractGroupMembershipSourceMembersAsync(currentBlob.Path);
+                previousMembers = await _blobStorageRepository.ExtractGroupMembershipSourceMembersAsync(previousBlob.Path);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to read per-part blobs for removes attribution on part #{Index} ({Type}); skipping that part.", part.Index, part.Type);
+                return null;
+            }
+            if (currentMembers == null || previousMembers == null) return null;
+
+            var label = FormatGroupFamilyPartLabel(part, groupNames);
+            if (part.Exclusionary)
+            {
+                // Newly in the excluded source: in current, not in previous, intersected with removed.
+                var newlyExcluded = 0;
+                foreach (var g in currentMembers)
+                {
+                    if (!previousMembers.Contains(g) && removedSet.Contains(g.ToString())) newlyExcluded++;
+                }
+                if (newlyExcluded == 0) return null;
+                var bucket = BucketAttribution(newlyExcluded, totalSampled);
+                return $"- Exclusionary {part.Type} part #{part.Index + 1} ({label}): {bucket} of the removed users newly appear in this excluded source";
+            }
+            else
+            {
+                // Left the source: in previous, not in current, intersected with removed.
+                var leftSource = 0;
+                foreach (var g in previousMembers)
+                {
+                    if (!currentMembers.Contains(g) && removedSet.Contains(g.ToString())) leftSource++;
+                }
+                if (leftSource == 0) return null;
+                var bucket = BucketAttribution(leftSource, totalSampled);
+                return $"- {label}: {bucket} of the removed users left this source";
+            }
         }
 
         // Qualitative bucketing for attribution ratios. The buckets are deliberately wide so the

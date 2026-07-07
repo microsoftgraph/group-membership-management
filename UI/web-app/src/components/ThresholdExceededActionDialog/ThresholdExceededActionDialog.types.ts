@@ -14,6 +14,9 @@ export interface IThresholdExceededActionDialogStyles {
     errorMessageBar: IStyle;
     gracePeriodMessageBar: IStyle;
     bodyLead: IStyle;
+    aiDescriptionPanel: IStyle;
+    aiDescriptionLabel: IStyle;
+    aiDescriptionText: IStyle;
     statsTable: IStyle;
     statsTableHeaderCell: IStyle;
     statsTableRowLabelCell: IStyle;
@@ -69,4 +72,7 @@ export interface IThresholdExceededActionDialogProps extends React.AllHTMLAttrib
     isEditAlertThresholdsEnabled?: boolean;
     errorMessage?: string;
     purgeDate?: string;
+    aiDescription?: string;
+    isAiDescriptionLoading?: boolean;
+    aiDescriptionError?: boolean;
 }

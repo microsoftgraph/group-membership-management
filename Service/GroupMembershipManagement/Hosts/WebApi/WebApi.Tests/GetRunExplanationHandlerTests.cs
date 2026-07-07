@@ -1438,6 +1438,263 @@ namespace WebApi.Tests
             _mockOpenAIService.Verify(x => x.GetCompletionAsync(It.IsAny<string>(), It.IsAny<string>()), Times.Once);
         }
 
+        [TestMethod]
+        public async Task ExecuteAsync_RemovesAttribution_WithSqlAndGroupDiffs_AddsPromptSection()
+        {
+            var currentAdfRunId = Guid.NewGuid();
+            var previousAdfRunId = Guid.NewGuid();
+            var previousRunId = Guid.NewGuid();
+            var currentTable = currentAdfRunId.ToString().Replace("-", string.Empty);
+            var previousTable = previousAdfRunId.ToString().Replace("-", string.Empty);
+            var sqlDropped = Guid.NewGuid();
+            var sqlNewlyExcluded = Guid.NewGuid();
+            var groupLeft = Guid.NewGuid();
+            var groupNewlyExcluded = Guid.NewGuid();
+            var inclusionaryGroup = Guid.NewGuid();
+            var exclusionaryGroup = Guid.NewGuid();
+            var managerObjectId = Guid.NewGuid();
+            string? capturedPrompt = null;
+
+            _mockSyncJobRepository.Setup(x => x.GetSyncJobAsync(_syncJobId))
+                .ReturnsAsync(new SyncJob
+                {
+                    Id = _syncJobId,
+                    TargetOfficeGroupId = _targetGroupId,
+                    Query = $"[" +
+                        "{\"type\":\"SqlMembership\",\"source\":{\"filter\":\"Department = 'Engineering'\"}}," +
+                        "{\"type\":\"SqlMembership\",\"source\":{\"manager\":{\"id\":42,\"depth\":2},\"filter\":\"EmployeeType = 'Vendor'\"},\"exclusionary\":true}," +
+                        $"{{\"type\":\"GroupMembership\",\"source\":\"{inclusionaryGroup}\"}}," +
+                        $"{{\"type\":\"GroupMembership\",\"source\":\"{exclusionaryGroup}\",\"exclusionary\":true}}" +
+                        "]"
+                });
+
+            SetupCurrentRunAndPreviousRun(currentAdfRunId, previousAdfRunId, previousRunId, usersRemoved: 4);
+            SetupAggregatedRemovedUsers(sqlDropped, sqlNewlyExcluded, groupLeft, groupNewlyExcluded);
+
+            _mockBlobStorageRepository.Setup(x => x.FindPartFilesByRunIdAsync(_targetGroupId.ToString(), _runId.ToString()))
+                .ReturnsAsync(new Dictionary<string, BlobResult>
+                {
+                    ["GroupMembership_3"] = new() { BlobStatus = BlobStatus.Found, Path = "current/group-inclusion.json" },
+                    ["GroupMembership_4"] = new() { BlobStatus = BlobStatus.Found, Path = "current/group-exclusion.json" }
+                });
+            _mockBlobStorageRepository.Setup(x => x.FindPartFilesByRunIdAsync(_targetGroupId.ToString(), previousRunId.ToString()))
+                .ReturnsAsync(new Dictionary<string, BlobResult>
+                {
+                    ["GroupMembership_3"] = new() { BlobStatus = BlobStatus.Found, Path = "previous/group-inclusion.json" },
+                    ["GroupMembership_4"] = new() { BlobStatus = BlobStatus.Found, Path = "previous/group-exclusion.json" }
+                });
+            _mockBlobStorageRepository.Setup(x => x.ExtractGroupMembershipSourceMembersAsync("current/group-inclusion.json"))
+                .ReturnsAsync(new HashSet<Guid>());
+            _mockBlobStorageRepository.Setup(x => x.ExtractGroupMembershipSourceMembersAsync("previous/group-inclusion.json"))
+                .ReturnsAsync(new HashSet<Guid> { groupLeft });
+            _mockBlobStorageRepository.Setup(x => x.ExtractGroupMembershipSourceMembersAsync("current/group-exclusion.json"))
+                .ReturnsAsync(new HashSet<Guid> { groupNewlyExcluded });
+            _mockBlobStorageRepository.Setup(x => x.ExtractGroupMembershipSourceMembersAsync("previous/group-exclusion.json"))
+                .ReturnsAsync(new HashSet<Guid>());
+
+            _mockSqlMembershipRepository.Setup(x => x.CheckIfTableExistsAsync(currentTable)).ReturnsAsync(true);
+            _mockSqlMembershipRepository.Setup(x => x.CheckIfTableExistsAsync(previousTable)).ReturnsAsync(true);
+            _mockSqlMembershipRepository.Setup(x => x.FilterChildEntitiesAsync("Department = 'Engineering'", currentTable))
+                .ReturnsAsync(new List<SqlMembershipObtainer.Entities.PersonEntity>());
+            _mockSqlMembershipRepository.Setup(x => x.FilterChildEntitiesAsync("Department = 'Engineering'", previousTable))
+                .ReturnsAsync(new List<SqlMembershipObtainer.Entities.PersonEntity> { Person(sqlDropped) });
+            _mockSqlMembershipRepository.Setup(x => x.GetChildEntitiesAsync("EmployeeType = 'Vendor'", 42, currentTable, 2))
+                .ReturnsAsync(new List<SqlMembershipObtainer.Entities.PersonEntity> { Person(sqlNewlyExcluded) });
+            _mockSqlMembershipRepository.Setup(x => x.GetChildEntitiesAsync("EmployeeType = 'Vendor'", 42, previousTable, 2))
+                .ReturnsAsync(new List<SqlMembershipObtainer.Entities.PersonEntity>());
+            _mockSqlMembershipRepository.Setup(x => x.GetUserAttributesBatchAsync(It.IsAny<IEnumerable<string>>(), It.IsAny<string>()))
+                .ReturnsAsync(new Dictionary<string, Dictionary<string, string>>());
+            _mockSqlMembershipRepository.Setup(x => x.GetOrgLeaderAsync(42, currentTable))
+                .ReturnsAsync((42, managerObjectId.ToString()));
+            _mockGraphGroupRepository.Setup(x => x.GetUserByUpnOrIdAsync(managerObjectId.ToString(), false))
+                .ReturnsAsync(new AzureADUser { ObjectId = managerObjectId, DisplayName = "Vendor Manager" });
+            _mockGraphGroupRepository.Setup(x => x.GetGroupNamesAsync(It.IsAny<List<Guid>>()))
+                .ReturnsAsync(new Dictionary<Guid, string>
+                {
+                    [inclusionaryGroup] = "Engineering Source",
+                    [exclusionaryGroup] = "Excluded Source"
+                });
+            _mockOpenAIService.Setup(x => x.GetCompletionAsync(It.IsAny<string>(), It.IsAny<string>()))
+                .Callback<string, string>((_, prompt) => capturedPrompt = prompt)
+                .ReturnsAsync("This sync completed successfully.");
+
+            var response = await _handler.ExecuteAsync(BuildRequest());
+
+            Assert.AreEqual(HttpStatusCode.OK, response.StatusCode);
+            _mockOpenAIService.Verify(x => x.GetCompletionAsync(It.IsAny<string>(), It.IsAny<string>()), Times.Once);
+            Assert.IsNotNull(capturedPrompt);
+            StringAssert.Contains(capturedPrompt!, "Per-part attribution for removed users");
+            StringAssert.Contains(capturedPrompt!, "no longer match this rule");
+            StringAssert.Contains(capturedPrompt!, "newly excluded by this rule");
+            StringAssert.Contains(capturedPrompt!, "left this source");
+            StringAssert.Contains(capturedPrompt!, "newly appear in this excluded source");
+        }
+
+        [TestMethod]
+        public async Task ExecuteAsync_RemovesAttribution_WhenPreviousAdfTableMissing_SkipsSqlAttribution()
+        {
+            var currentAdfRunId = Guid.NewGuid();
+            var previousAdfRunId = Guid.NewGuid();
+            var previousRunId = Guid.NewGuid();
+            var currentTable = currentAdfRunId.ToString().Replace("-", string.Empty);
+            var previousTable = previousAdfRunId.ToString().Replace("-", string.Empty);
+            var removedUser = Guid.NewGuid();
+            string? capturedPrompt = null;
+
+            SetupCurrentRunAndPreviousRun(currentAdfRunId, previousAdfRunId, previousRunId, usersRemoved: 1);
+            SetupAggregatedRemovedUsers(removedUser);
+            _mockSqlMembershipRepository.Setup(x => x.CheckIfTableExistsAsync(currentTable)).ReturnsAsync(true);
+            _mockSqlMembershipRepository.Setup(x => x.CheckIfTableExistsAsync(previousTable)).ReturnsAsync(false);
+            _mockSqlMembershipRepository.Setup(x => x.GetUserAttributesBatchAsync(It.IsAny<IEnumerable<string>>(), currentTable))
+                .ReturnsAsync(new Dictionary<string, Dictionary<string, string>>());
+            _mockOpenAIService.Setup(x => x.GetCompletionAsync(It.IsAny<string>(), It.IsAny<string>()))
+                .Callback<string, string>((_, prompt) => capturedPrompt = prompt)
+                .ReturnsAsync("This sync completed successfully.");
+
+            var response = await _handler.ExecuteAsync(BuildRequest());
+
+            Assert.AreEqual(HttpStatusCode.OK, response.StatusCode);
+            _mockOpenAIService.Verify(x => x.GetCompletionAsync(It.IsAny<string>(), It.IsAny<string>()), Times.Once);
+            Assert.IsNotNull(capturedPrompt);
+            Assert.IsFalse(capturedPrompt!.Contains("Per-part attribution for removed users", StringComparison.OrdinalIgnoreCase));
+            _mockSqlMembershipRepository.Verify(x => x.FilterChildEntitiesAsync(It.IsAny<string>(), It.IsAny<string>()), Times.Never);
+        }
+
+        [TestMethod]
+        public async Task ExecuteAsync_RemovesAttribution_WhenCurrentAndPreviousAdfRunMatchAndGroupBlobsUnavailable_SkipsAttribution()
+        {
+            var sharedAdfRunId = Guid.NewGuid();
+            var previousRunId = Guid.NewGuid();
+            var removedUser = Guid.NewGuid();
+            var missingBlobGroup = Guid.NewGuid();
+            var throwingBlobGroup = Guid.NewGuid();
+            string? capturedPrompt = null;
+
+            _mockSyncJobRepository.Setup(x => x.GetSyncJobAsync(_syncJobId))
+                .ReturnsAsync(new SyncJob
+                {
+                    Id = _syncJobId,
+                    TargetOfficeGroupId = _targetGroupId,
+                    Query = $"[" +
+                        "{\"type\":\"SqlMembership\",\"source\":{\"filter\":\"Building = 'B40'\"}}," +
+                        $"{{\"type\":\"GroupMembership\",\"source\":\"{missingBlobGroup}\"}}," +
+                        $"{{\"type\":\"GroupMembership\",\"source\":\"{throwingBlobGroup}\"}}" +
+                        "]"
+                });
+
+            SetupCurrentRunAndPreviousRun(sharedAdfRunId, sharedAdfRunId, previousRunId, usersRemoved: 1);
+            SetupAggregatedRemovedUsers(removedUser);
+            _mockBlobStorageRepository.Setup(x => x.FindPartFilesByRunIdAsync(_targetGroupId.ToString(), _runId.ToString()))
+                .ReturnsAsync(new Dictionary<string, BlobResult>
+                {
+                    ["GroupMembership_2"] = new() { BlobStatus = BlobStatus.Found, Path = "current/missing-previous.json" },
+                    ["GroupMembership_3"] = new() { BlobStatus = BlobStatus.Found, Path = "current/throws.json" }
+                });
+            _mockBlobStorageRepository.Setup(x => x.FindPartFilesByRunIdAsync(_targetGroupId.ToString(), previousRunId.ToString()))
+                .ReturnsAsync(new Dictionary<string, BlobResult>
+                {
+                    ["GroupMembership_2"] = new() { BlobStatus = BlobStatus.NotFound },
+                    ["GroupMembership_3"] = new() { BlobStatus = BlobStatus.Found, Path = "previous/throws.json" }
+                });
+            _mockBlobStorageRepository.Setup(x => x.ExtractGroupMembershipSourceMembersAsync("current/throws.json"))
+                .ThrowsAsync(new InvalidOperationException("blob read failed"));
+            _mockOpenAIService.Setup(x => x.GetCompletionAsync(It.IsAny<string>(), It.IsAny<string>()))
+                .Callback<string, string>((_, prompt) => capturedPrompt = prompt)
+                .ReturnsAsync("This sync completed successfully.");
+
+            var response = await _handler.ExecuteAsync(BuildRequest());
+
+            Assert.AreEqual(HttpStatusCode.OK, response.StatusCode);
+            _mockOpenAIService.Verify(x => x.GetCompletionAsync(It.IsAny<string>(), It.IsAny<string>()), Times.Once);
+            Assert.IsNotNull(capturedPrompt);
+            Assert.IsFalse(capturedPrompt!.Contains("Per-part attribution for removed users", StringComparison.OrdinalIgnoreCase));
+            _mockSqlMembershipRepository.Verify(x => x.FilterChildEntitiesAsync("Building = 'B40'", It.IsAny<string>()), Times.Never);
+        }
+
+        [TestMethod]
+        public async Task ExecuteAsync_RemovesAttribution_WhenAggregatedRemovedSetEmpty_SkipsAttribution()
+        {
+            var currentAdfRunId = Guid.NewGuid();
+            var previousAdfRunId = Guid.NewGuid();
+            var previousRunId = Guid.NewGuid();
+            string? capturedPrompt = null;
+
+            SetupCurrentRunAndPreviousRun(currentAdfRunId, previousAdfRunId, previousRunId, usersRemoved: 1);
+            _mockBlobStorageRepository.Setup(x => x.FindAggregatedFileByRunIdAsync(It.IsAny<string>(), It.IsAny<string>()))
+                .ReturnsAsync(new BlobResult { BlobStatus = BlobStatus.Found, Path = "test/empty-removes.json" });
+            _mockBlobStorageRepository.Setup(x => x.DownloadFileAsync("test/empty-removes.json"))
+                .ReturnsAsync(new BlobResult
+                {
+                    BlobStatus = BlobStatus.Found,
+                    Content = $"{{\"SourceMembers\":[{{\"ObjectId\":\"{Guid.NewGuid()}\",\"MembershipAction\":1}}]}}"
+                });
+            _mockOpenAIService.Setup(x => x.GetCompletionAsync(It.IsAny<string>(), It.IsAny<string>()))
+                .Callback<string, string>((_, prompt) => capturedPrompt = prompt)
+                .ReturnsAsync("This sync completed successfully.");
+
+            var response = await _handler.ExecuteAsync(BuildRequest());
+
+            Assert.AreEqual(HttpStatusCode.OK, response.StatusCode);
+            _mockOpenAIService.Verify(x => x.GetCompletionAsync(It.IsAny<string>(), It.IsAny<string>()), Times.Once);
+            Assert.IsNotNull(capturedPrompt);
+            Assert.IsFalse(capturedPrompt!.Contains("Per-part attribution for removed users", StringComparison.OrdinalIgnoreCase));
+        }
+
+        private void SetupCurrentRunAndPreviousRun(Guid currentAdfRunId, Guid previousAdfRunId, Guid previousRunId, int usersRemoved)
+        {
+            var now = DateTime.UtcNow;
+            _mockSyncJobHistoryRepository.Setup(x => x.GetByRunIdAsync(_runId))
+                .ReturnsAsync(new global::Models.SyncJobHistory.SyncJobHistory
+                {
+                    SyncJobId = _syncJobId,
+                    RunId = _runId,
+                    Status = "Idle",
+                    UpdatedAt = now,
+                    StartTime = now.AddMinutes(-5),
+                    EndTime = now,
+                    UsersAdded = 0,
+                    UsersRemoved = usersRemoved,
+                    BeforeSyncUserCount = 100,
+                    AfterSyncUserCount = 100 - usersRemoved,
+                    ThresholdViolations = 0,
+                    AdfRunId = currentAdfRunId
+                });
+
+            _mockSyncJobHistoryRepository.Setup(x => x.GetBySyncJobIdAsync(_syncJobId, It.IsAny<int>(), It.IsAny<int>()))
+                .ReturnsAsync(new List<global::Models.SyncJobHistory.SyncJobHistory>
+                {
+                    new()
+                    {
+                        SyncJobId = _syncJobId,
+                        RunId = previousRunId,
+                        Status = "Idle",
+                        UpdatedAt = now.AddHours(-1),
+                        StartTime = now.AddHours(-1).AddMinutes(-5),
+                        EndTime = now.AddHours(-1),
+                        UsersAdded = 0,
+                        UsersRemoved = 0,
+                        ThresholdViolations = 0,
+                        AdfRunId = previousAdfRunId
+                    }
+                });
+        }
+
+        private void SetupAggregatedRemovedUsers(params Guid[] removedUsers)
+        {
+            var members = string.Join(",", removedUsers.Select(id => $"{{\"ObjectId\":\"{id}\",\"MembershipAction\":2}}"));
+            _mockBlobStorageRepository.Setup(x => x.FindAggregatedFileByRunIdAsync(It.IsAny<string>(), It.IsAny<string>()))
+                .ReturnsAsync(new BlobResult { BlobStatus = BlobStatus.Found, Path = "test/removes.json" });
+            _mockBlobStorageRepository.Setup(x => x.DownloadFileAsync("test/removes.json"))
+                .ReturnsAsync(new BlobResult { BlobStatus = BlobStatus.Found, Content = $"{{\"SourceMembers\":[{members}]}}" });
+        }
+
+        private static SqlMembershipObtainer.Entities.PersonEntity Person(Guid azureObjectId) =>
+            new()
+            {
+                PersonnelNumber = string.Empty,
+                AzureObjectId = azureObjectId.ToString()
+            };
+
         // Reflection helper for private static methods so we don't have to widen visibility.
         private static T? InvokeStaticPrivate<T>(Type type, string name, object?[] args)
         {

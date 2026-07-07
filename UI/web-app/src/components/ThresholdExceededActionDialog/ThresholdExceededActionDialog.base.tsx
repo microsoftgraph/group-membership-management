@@ -63,6 +63,9 @@ export const ThresholdExceededActionDialogBase: React.FunctionComponent<IThresho
         isEditAlertThresholdsEnabled = false,
         errorMessage,
         purgeDate,
+        aiDescription,
+        isAiDescriptionLoading = false,
+        aiDescriptionError = false,
     } = props;
 
     const theme = useTheme();
@@ -157,6 +160,20 @@ export const ThresholdExceededActionDialogBase: React.FunctionComponent<IThresho
                                 <strong>{bodyLeadPhrase}</strong>
                             )}
                         </p>
+                        {(isAiDescriptionLoading || aiDescriptionError || aiDescription) && (
+                            <div className={classNames.aiDescriptionPanel}>
+                                <span className={classNames.aiDescriptionLabel}>
+                                    {strings.JobDetails.Panel.aiDescriptionLabel}
+                                </span>
+                                {isAiDescriptionLoading ? (
+                                    <Spinner size={SpinnerSize.small} label={strings.JobDetails.Panel.aiDescriptionLoading} labelPosition="right" />
+                                ) : aiDescriptionError ? (
+                                    <span className={classNames.aiDescriptionText}>{strings.JobDetails.Panel.aiDescriptionError}</span>
+                                ) : (
+                                    <span className={classNames.aiDescriptionText}>{aiDescription}</span>
+                                )}
+                            </div>
+                        )}
                         <table className={classNames.statsTable}>
                             <thead>
                                 <tr className={classNames.statsTableBandedRow}>

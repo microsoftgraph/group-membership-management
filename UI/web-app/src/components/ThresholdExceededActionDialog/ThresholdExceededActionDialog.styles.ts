@@ -36,6 +36,26 @@ export const getStyles = (props: IThresholdExceededActionDialogStyleProps): IThr
             marginBottom: 16,
         },
 
+        aiDescriptionPanel: {
+            backgroundColor: theme.palette.neutralLighter,
+            borderRadius: 10,
+            padding: '12px 16px',
+            marginBottom: 16,
+        },
+
+        aiDescriptionLabel: {
+            display: 'block',
+            fontSize: 14,
+            fontWeight: 600,
+            color: theme.palette.neutralPrimary,
+            marginBottom: 4,
+        },
+
+        aiDescriptionText: {
+            fontSize: 14,
+            color: theme.palette.neutralSecondary,
+        },
+
         statsTable: {
             width: '100%',
             borderCollapse: 'collapse',

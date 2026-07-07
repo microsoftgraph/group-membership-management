@@ -19,6 +19,8 @@ param openAIContentFilterName string = 'DefaultV2'
 @description('Base policy name for the OpenAI content filter configuration.')
 param openAIContentFilterBasePolicyName string = 'Microsoft.DefaultV2'
 
+var gpt4oCapacity = 30
+
 var ipAddressArray = empty(allowedIpAddresses) ? [] : split(allowedIpAddresses, ',')
 var trimmedIpArray = [for ip in ipAddressArray: trim(ip)]
 var uniqueIpArray = filter(trimmedIpArray, (ip, index) => indexOf(trimmedIpArray, ip) == index && !empty(ip))
@@ -191,7 +193,7 @@ resource gpt4oDeployment 'Microsoft.CognitiveServices/accounts/deployments@2023-
   }
   sku: {
     name: 'standard'
-    capacity: 1
+    capacity: gpt4oCapacity
   }
   dependsOn: [
     openAIContentFilterPolicy

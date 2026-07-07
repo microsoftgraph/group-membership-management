@@ -154,6 +154,7 @@ export const JobHistoryPanelBase: React.FunctionComponent<IJobHistoryPanelProps>
     const [runExplanationCache, setRunExplanationCache] = useState<Map<string, string>>(new Map());
     const [runExplanationLoading, setRunExplanationLoading] = useState<Set<string>>(new Set());
     const [runExplanationErrors, setRunExplanationErrors] = useState<Set<string>>(new Set());
+    const previousExpandedSyncRowIdsRef = useRef<Set<string>>(new Set());
 
     const getChangeReasonText = (changeReason: string | null): string => {
         switch (changeReason) {
@@ -1018,6 +1019,44 @@ export const JobHistoryPanelBase: React.FunctionComponent<IJobHistoryPanelProps>
         return filteredCombinedSyncItems.slice(startIndex, startIndex + syncPageSize);
     }, [filteredCombinedSyncItems, syncPageNumber, syncPageSize]);
 
+    useEffect(() => {
+        if (!isAIRunExplanationEnabled) {
+            previousExpandedSyncRowIdsRef.current = new Set(expandedSyncRowIds);
+            return;
+        }
+        const previous = previousExpandedSyncRowIdsRef.current;
+        const newlyExpanded: string[] = [];
+        expandedSyncRowIds.forEach((rowId) => {
+            if (!previous.has(rowId)) {
+                newlyExpanded.push(rowId);
+            }
+        });
+        previousExpandedSyncRowIdsRef.current = new Set(expandedSyncRowIds);
+        if (newlyExpanded.length === 0) return;
+
+        const runIdsToInvalidate: string[] = [];
+        newlyExpanded.forEach((rowId) => {
+            const item = pagedSyncItems.find((i) => i.id === rowId);
+            if (!item || item.eventType !== 'sync' || !item.syncHistory) return;
+            const runId = item.syncHistory.runId;
+            if (runExplanationCache.get(runId) === RUN_EXPLANATION_FALLBACK) {
+                runIdsToInvalidate.push(runId);
+            }
+        });
+        if (runIdsToInvalidate.length === 0) return;
+
+        setRunExplanationCache((prev) => {
+            const next = new Map(prev);
+            runIdsToInvalidate.forEach((runId) => next.delete(runId));
+            return next;
+        });
+        setRunExplanationErrors((prev) => {
+            const next = new Set(prev);
+            runIdsToInvalidate.forEach((runId) => next.delete(runId));
+            return next;
+        });
+    }, [expandedSyncRowIds, pagedSyncItems, isAIRunExplanationEnabled, runExplanationCache]);
+
     const onSyncColumnHeaderClick = (_event?: React.MouseEvent<HTMLElement>, column?: IColumn): void => {
         if (!column || column.key === 'expand') {
             return;
@@ -1331,9 +1370,7 @@ export const JobHistoryPanelBase: React.FunctionComponent<IJobHistoryPanelProps>
         dispatch(fetchRunExplanation({ syncJobId: jobId, runId }))
             .unwrap()
             .then((result) => {
-                if (result.explanation !== RUN_EXPLANATION_FALLBACK) {
-                    setRunExplanationCache((prev) => new Map(prev).set(runId, result.explanation));
-                }
+                setRunExplanationCache((prev) => new Map(prev).set(runId, result.explanation));
             })
             .catch(() => {
                 setRunExplanationErrors((prev) => new Set(prev).add(runId));
@@ -1357,7 +1394,7 @@ export const JobHistoryPanelBase: React.FunctionComponent<IJobHistoryPanelProps>
         const hasCachedEntry = runExplanationCache.has(runId);
         const explanation = runExplanationCache.get(runId);
 
-        if (!isLoading && !hasCachedEntry) {
+        if (!isLoading && !hasError && !hasCachedEntry) {
             fetchExplanationForRunOnly(runId);
             return (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
@@ -1558,6 +1595,9 @@ export const JobHistoryPanelBase: React.FunctionComponent<IJobHistoryPanelProps>
                     isEditAlertThresholdsEnabled={!!onEditThreshold}
                     errorMessage={resolveError ?? undefined}
                     purgeDate={thresholdData?.purgeDate}
+                    aiDescription={isAIRunExplanationEnabled && takeActionItem?.runId && runExplanationCache.get(takeActionItem.runId) !== RUN_EXPLANATION_FALLBACK ? runExplanationCache.get(takeActionItem.runId) : undefined}
+                    isAiDescriptionLoading={isAIRunExplanationEnabled && !!takeActionItem?.runId && runExplanationLoading.has(takeActionItem.runId)}
+                    aiDescriptionError={isAIRunExplanationEnabled && !!takeActionItem?.runId && runExplanationErrors.has(takeActionItem.runId)}
                 />
             ) : (
             <Pivot>
