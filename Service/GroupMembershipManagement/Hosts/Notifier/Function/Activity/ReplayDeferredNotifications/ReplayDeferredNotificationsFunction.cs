@@ -158,51 +158,51 @@ namespace Hosts.Notifier
                     }
                     catch (ServiceBusException ex) when (ex.Reason == ServiceBusFailureReason.MessageNotFound)
                     {
+                        // A single missing sequence number causes the entire batch receive to fail.
+                        // Fall back to receiving each message individually so that only the
+                        // genuinely-missing messages are expired and the rest are still replayed.
                         _logger.DeferredMessageNotFound(messageType.ToString(), ex.Message);
 
-                        await _deferredNotificationsRepository.UpdateStatusBatchAsync(
-                            batchDeferredIds.Values, DeferredNotificationStatus.Expired);
-                        failedCount += batchDeferredIds.Count;
+                        foreach (var sequenceNumber in batch)
+                        {
+                            ServiceBusReceivedMessage singleMessage;
+                            try
+                            {
+                                var received = await receiver.ReceiveDeferredMessagesAsync(new[] { sequenceNumber });
+                                singleMessage = received.FirstOrDefault();
+                            }
+                            catch (ServiceBusException innerEx) when (innerEx.Reason == ServiceBusFailureReason.MessageNotFound)
+                            {
+                                singleMessage = null;
+                            }
+
+                            if (singleMessage == null)
+                            {
+                                // This specific message is gone (expired/purged); mark only it as Expired.
+                                if (batchDeferredIds.TryGetValue(sequenceNumber, out var expiredId))
+                                {
+                                    await _deferredNotificationsRepository.UpdateStatusAsync(
+                                        expiredId, DeferredNotificationStatus.Expired);
+                                }
+                                failedCount++;
+                                continue;
+                            }
+
+                            if (await ReplaySingleMessageAsync(sender, receiver, singleMessage, messageType, batchDeferredIds))
+                                replayedCount++;
+                            else
+                                failedCount++;
+                        }
+
                         continue;
                     }
 
                     foreach (var msg in messages)
                     {
-                        try
-                        {
-                            // Use a stable, deterministic message ID for duplicate detection.
-                            // Format: {originalMessageId}_replay_{sequenceNumber}
-                            // This ensures the same deferred message always produces the same replay ID,
-                            // preventing duplicates if replay is retried.
-                            var replayMessage = new ServiceBusMessage(msg)
-                            {
-                                MessageId = $"{msg.MessageId}_replay_{msg.SequenceNumber}"
-                            };
-                            await sender.SendMessageAsync(replayMessage);
-                            await receiver.CompleteMessageAsync(msg);
-
-                            // Per-message status update after confirmed success
-                            if (batchDeferredIds.TryGetValue(msg.SequenceNumber, out var deferredId))
-                            {
-                                await _deferredNotificationsRepository.UpdateStatusAsync(
-                                    deferredId, DeferredNotificationStatus.Replayed);
-                            }
-
+                        if (await ReplaySingleMessageAsync(sender, receiver, msg, messageType, batchDeferredIds))
                             replayedCount++;
-                            _logger.DeferredMessageReplayed(msg.SequenceNumber, messageType.ToString());
-                        }
-                        catch (ServiceBusException ex)
-                        {
-                            _logger.DeferredMessageReplayFailed(msg.SequenceNumber, messageType.ToString(), ex.Message);
-
-                            // Reset to Deferred so it's retried on next timer run
-                            if (batchDeferredIds.TryGetValue(msg.SequenceNumber, out var failedId))
-                            {
-                                await _deferredNotificationsRepository.UpdateStatusAsync(
-                                    failedId, DeferredNotificationStatus.Deferred);
-                            }
+                        else
                             failedCount++;
-                        }
                     }
                 }
             }
@@ -255,6 +255,55 @@ namespace Hosts.Notifier
                 .TrackValue(failedCount, messageType.ToString());
 
             _logger.ReplayCompleted(messageType.ToString(), replayedCount);
+        }
+
+        /// <summary>
+        /// Replays a single deferred message: sends a copy to the topic, completes the original,
+        /// and updates the corresponding row's status. Returns true if the message was replayed,
+        /// false if it failed (and was reset to Deferred for a future retry).
+        /// </summary>
+        private async Task<bool> ReplaySingleMessageAsync(
+            ServiceBusSender sender,
+            ServiceBusReceiver receiver,
+            ServiceBusReceivedMessage msg,
+            NotificationMessageType messageType,
+            IDictionary<long, int> batchDeferredIds)
+        {
+            try
+            {
+                // Use a stable, deterministic message ID for duplicate detection.
+                // Format: {originalMessageId}_replay_{sequenceNumber}
+                // This ensures the same deferred message always produces the same replay ID,
+                // preventing duplicates if replay is retried.
+                var replayMessage = new ServiceBusMessage(msg)
+                {
+                    MessageId = $"{msg.MessageId}_replay_{msg.SequenceNumber}"
+                };
+                await sender.SendMessageAsync(replayMessage);
+                await receiver.CompleteMessageAsync(msg);
+
+                // Per-message status update after confirmed success
+                if (batchDeferredIds.TryGetValue(msg.SequenceNumber, out var deferredId))
+                {
+                    await _deferredNotificationsRepository.UpdateStatusAsync(
+                        deferredId, DeferredNotificationStatus.Replayed);
+                }
+
+                _logger.DeferredMessageReplayed(msg.SequenceNumber, messageType.ToString());
+                return true;
+            }
+            catch (ServiceBusException ex)
+            {
+                _logger.DeferredMessageReplayFailed(msg.SequenceNumber, messageType.ToString(), ex.Message);
+
+                // Reset to Deferred so it's retried on next timer run
+                if (batchDeferredIds.TryGetValue(msg.SequenceNumber, out var failedId))
+                {
+                    await _deferredNotificationsRepository.UpdateStatusAsync(
+                        failedId, DeferredNotificationStatus.Deferred);
+                }
+                return false;
+            }
         }
 
         /// <summary>

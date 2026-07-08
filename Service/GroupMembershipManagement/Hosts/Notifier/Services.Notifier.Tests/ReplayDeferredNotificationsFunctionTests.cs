@@ -252,9 +252,72 @@ namespace Services.Notifier.Tests
             // Act
             await _replayFunction.RunAsync(CreateTimerInfo());
 
-            // Assert - should mark as expired via status update
+            // Assert - the missing message should be expired individually (per-message),
+            // so a single missing sequence number doesn't expire an entire batch.
+            _deferredNotificationsRepository.Verify(x => x.UpdateStatusAsync(
+                1, DeferredNotificationStatus.Expired), Times.Once());
+        }
+
+        [TestMethod]
+        public async Task RunAsync_WhenSingleMessageMissingInBatch_ExpiresOnlyMissingAndReplaysRest()
+        {
+            // Arrange
+            var messageType = NotificationMessageType.SyncStartedNotification;
+
+            _notificationTypesRepository
+                .Setup(x => x.GetNotificationTypeByNotificationTypeNameAsync(messageType))
+                .ReturnsAsync(new NotificationType { Id = 2, Name = messageType, Disabled = false });
+
+            _notificationTypesRepository
+                .Setup(x => x.GetNotificationTypeByNotificationTypeNameAsync(It.Is<NotificationMessageType>(t => t != messageType)))
+                .ReturnsAsync((NotificationType)null);
+
+            // Two deferred messages: seq 100 still exists in Service Bus, seq 101 has been purged.
+            var deferredMessages = new List<DeferredNotification>
+            {
+                new DeferredNotification { Id = 1, SequenceNumber = 100, MessageType = messageType, Status = DeferredNotificationStatus.Deferred, DeferredAt = DateTime.UtcNow.AddMinutes(-5), MessageExpiresAt = DateTime.UtcNow.AddDays(7) },
+                new DeferredNotification { Id = 2, SequenceNumber = 101, MessageType = messageType, Status = DeferredNotificationStatus.Deferred, DeferredAt = DateTime.UtcNow.AddMinutes(-3), MessageExpiresAt = DateTime.UtcNow.AddDays(7) }
+            };
+
+            _deferredNotificationsRepository
+                .Setup(x => x.GetDeferredNotificationsByTypeAndStatusAsync(messageType, DeferredNotificationStatus.Deferred))
+                .ReturnsAsync(deferredMessages);
+
+            _deferredNotificationsRepository
+                .Setup(x => x.GetDeferredNotificationsByTypeAndStatusAsync(It.Is<NotificationMessageType>(t => t != messageType), DeferredNotificationStatus.Deferred))
+                .ReturnsAsync(new List<DeferredNotification>());
+
+            // The whole-batch receive fails because one sequence number is missing.
+            _serviceBusReceiver
+                .Setup(x => x.ReceiveDeferredMessagesAsync(It.Is<long[]>(seq => seq.Length > 1), It.IsAny<CancellationToken>()))
+                .ThrowsAsync(new ServiceBusException("Message not found", ServiceBusFailureReason.MessageNotFound));
+
+            // Individual fallback: seq 100 is found and replayable.
+            _serviceBusReceiver
+                .Setup(x => x.ReceiveDeferredMessagesAsync(It.Is<long[]>(seq => seq.Length == 1 && seq[0] == 100), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new List<ServiceBusReceivedMessage>
+                {
+                    ServiceBusModelFactory.ServiceBusReceivedMessage(new BinaryData("msg1"), sequenceNumber: 100)
+                });
+
+            // Individual fallback: seq 101 is genuinely gone.
+            _serviceBusReceiver
+                .Setup(x => x.ReceiveDeferredMessagesAsync(It.Is<long[]>(seq => seq.Length == 1 && seq[0] == 101), It.IsAny<CancellationToken>()))
+                .ThrowsAsync(new ServiceBusException("Message not found", ServiceBusFailureReason.MessageNotFound));
+
+            // Act
+            await _replayFunction.RunAsync(CreateTimerInfo());
+
+            // Assert - the existing message is replayed, only the missing one is expired.
+            _serviceBusSender.Verify(x => x.SendMessageAsync(It.IsAny<ServiceBusMessage>(), It.IsAny<CancellationToken>()), Times.Once());
+            _serviceBusReceiver.Verify(x => x.CompleteMessageAsync(It.IsAny<ServiceBusReceivedMessage>(), It.IsAny<CancellationToken>()), Times.Once());
+            _deferredNotificationsRepository.Verify(x => x.UpdateStatusAsync(
+                1, DeferredNotificationStatus.Replayed), Times.Once());
+            _deferredNotificationsRepository.Verify(x => x.UpdateStatusAsync(
+                2, DeferredNotificationStatus.Expired), Times.Once());
+            // The old behavior would have batch-expired both; ensure that no longer happens.
             _deferredNotificationsRepository.Verify(x => x.UpdateStatusBatchAsync(
-                It.IsAny<IEnumerable<int>>(), DeferredNotificationStatus.Expired), Times.Once());
+                It.IsAny<IEnumerable<int>>(), DeferredNotificationStatus.Expired), Times.Never());
         }
 
         [TestMethod]

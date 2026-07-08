@@ -189,7 +189,7 @@ param serviceBusTopicSubscriptions topicSubscription[] = [
     topicName: 'notifications'
     subscriptionName: 'notifier'
     ruleName: 'allNotifications'
-    ruleSqlExpression: '1=1'
+    ruleSqlExpression: 'EXISTS(MessageType)'
   }
 ]
 
