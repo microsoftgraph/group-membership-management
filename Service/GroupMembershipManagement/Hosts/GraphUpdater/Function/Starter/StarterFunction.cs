@@ -13,6 +13,7 @@ using Models.ServiceBus;
 using Repositories.Contracts.Helpers;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks;
@@ -55,7 +56,9 @@ namespace Hosts.GraphUpdater
             using var scope = _logger.BeginSyncJobScope(groupMembership.SyncJob, additionalProperties);
 
             _logger.FunctionStarted(SMALL_FUNCTION_NAME);
-            _logger.ProcessingMessage(message.MessageId, groupMembership.TotalMembersToAdd ?? 0, groupMembership.TotalMembersToRemove ?? 0);
+            var additionsInMessage = groupMembership.SourceMembers?.Where(x => x.MembershipAction == MembershipAction.Add).Distinct().Count() ?? 0;
+            var removalsInMessage = groupMembership.SourceMembers?.Where(x => x.MembershipAction == MembershipAction.Remove).Distinct().Count() ?? 0;
+            _logger.ProcessingMessage(message.MessageId, groupMembership.TotalMessageCount, additionsInMessage, removalsInMessage);
 
             var request = new OrchestratorMultiLaneRequest
             {
@@ -86,7 +89,9 @@ namespace Hosts.GraphUpdater
             using var scope = _logger.BeginSyncJobScope(groupMembership.SyncJob, additionalProperties);
 
             _logger.FunctionStarted(LARGE_FUNCTION_NAME);
-            _logger.ProcessingMessage(message.MessageId, groupMembership.TotalMembersToAdd ?? 0, groupMembership.TotalMembersToRemove ?? 0);
+            var additionsInMessage = groupMembership.SourceMembers?.Where(x => x.MembershipAction == MembershipAction.Add).Distinct().Count() ?? 0;
+            var removalsInMessage = groupMembership.SourceMembers?.Where(x => x.MembershipAction == MembershipAction.Remove).Distinct().Count() ?? 0;
+            _logger.ProcessingMessage(message.MessageId, groupMembership.TotalMessageCount, additionsInMessage, removalsInMessage);
 
             try
             {

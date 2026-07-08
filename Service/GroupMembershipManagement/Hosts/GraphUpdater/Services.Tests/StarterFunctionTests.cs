@@ -682,6 +682,70 @@ namespace Services.Tests
 
             // Assert
         }
+
+        [TestMethod]
+        public async Task RunSmallLaneAsync_LogsPerMessageAdditionsAndRemovals()
+        {
+            // Arrange: a single message carrying 3 add-tagged and 2 remove-tagged users.
+            // The whole-job totals are deliberately different (50000/0) to prove the log
+            // reports this message's counts, not the job totals stamped on every chunk.
+            var sourceMembers = new List<AzureADUser>();
+            for (var i = 0; i < 3; i++)
+                sourceMembers.Add(new AzureADUser { ObjectId = Guid.NewGuid(), MembershipAction = MembershipAction.Add });
+            for (var i = 0; i < 2; i++)
+                sourceMembers.Add(new AzureADUser { ObjectId = Guid.NewGuid(), MembershipAction = MembershipAction.Remove });
+
+            var groupMembership = new GroupMembership
+            {
+                RunId = Guid.NewGuid(),
+                SyncJob = _syncJob,
+                TotalMembersToAdd = 50000,
+                TotalMembersToRemove = 0,
+                TotalMessageCount = 150,
+                SourceMembers = sourceMembers
+            };
+
+            var messageBody = JsonSerializer.SerializeToUtf8Bytes(groupMembership);
+            var message = ServiceBusModelFactory.ServiceBusReceivedMessage(
+                body: BinaryData.FromBytes(messageBody),
+                messageId: "test-message-id"
+            );
+
+            _durableClientMock
+                .Setup(x => x.ScheduleNewOrchestrationInstanceAsync(It.IsAny<TaskName>(), It.IsAny<OrchestratorMultiLaneRequest>(), It.IsAny<StartOrchestrationOptions>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync("test-instance-id");
+
+            var capturingLogger = new CapturingLogger<StarterFunction>();
+            var starterFunction = new StarterFunction(capturingLogger, _membershipUpdaters, _multilaneConfig);
+
+            // Act
+            await starterFunction.RunSmallLaneAsync(message, _durableClientMock.Object);
+
+            // Assert: EventId 20010 reports THIS message's 3 adds / 2 removes, not the 50000/0 job totals.
+            var processingLog = capturingLogger.Entries.SingleOrDefault(e => e.EventId == 20010);
+            Assert.IsNotNull(processingLog.Message, "Expected the ProcessingMessage (EventId 20010) log to be emitted.");
+            StringAssert.Contains(processingLog.Message, "with 3 additions and 2 removals");
+            StringAssert.Contains(processingLog.Message, "(of 150)", "EventId 20010 must show the total message count so progress (index of total) is visible.");
+            Assert.IsFalse(processingLog.Message.Contains("50000"), "The log must report per-message counts, not the whole-job totals.");
+        }
+
+        private sealed class CapturingLogger<T> : ILogger<T>
+        {
+            public List<(int EventId, string Message)> Entries { get; } = new List<(int EventId, string Message)>();
+
+            public IDisposable BeginScope<TState>(TState state) => NullScope.Instance;
+
+            public bool IsEnabled(Microsoft.Extensions.Logging.LogLevel logLevel) => true;
+
+            public void Log<TState>(Microsoft.Extensions.Logging.LogLevel logLevel, EventId eventId, TState state, Exception exception, Func<TState, Exception, string> formatter)
+                => Entries.Add((eventId.Id, formatter(state, exception)));
+
+            private sealed class NullScope : IDisposable
+            {
+                public static readonly NullScope Instance = new NullScope();
+                public void Dispose() { }
+            }
+        }
     }
 }
 

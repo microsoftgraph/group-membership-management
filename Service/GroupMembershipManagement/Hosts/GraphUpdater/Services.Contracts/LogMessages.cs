@@ -23,8 +23,8 @@ namespace Hosts.GraphUpdater
         // ── StarterFunction (20010-20029) ──
 
         [LoggerMessage(EventId = 20010, Level = LogLevel.Information,
-            Message = "Processing message {MessageId} with {AdditionsCount} additions and {RemovalsCount} removals.")]
-        public static partial void ProcessingMessage(this ILogger logger, string messageId, int additionsCount, int removalsCount);
+            Message = "Processing message {MessageId} (of {TotalMessageCount}) with {AdditionsCount} additions and {RemovalsCount} removals.")]
+        public static partial void ProcessingMessage(this ILogger logger, string messageId, int totalMessageCount, int additionsCount, int removalsCount);
 
         [LoggerMessage(EventId = 20011, Level = LogLevel.Warning,
             Message = "Message {MessageId} ({SequenceNumber}) was already processed ended as {Status}")]

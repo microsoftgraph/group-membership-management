@@ -55,9 +55,12 @@ namespace Services.Tests
         Mock<IServiceBusQueueRepository> _mockServiceBusQueueRepository;
         GroupUpdaterResponse _groupUpdaterFunctionResponse;
         RunLimiterSettings _runLimiterSettings;
+        TestCapturingLogger _capturingLogger;
 
         int _membersAdded = 1;
         int _membersRemoved = 0;
+        bool _isComplete = true;
+        bool _completionClaimed = true;
         GraphUpdaterStatus _graphUpdaterStatus = GraphUpdaterStatus.Ok;
 
         [TestInitialize]
@@ -116,10 +119,26 @@ namespace Services.Tests
             };
 
             _context = new Mock<TaskOrchestrationContext>();
-            _context.Setup(x => x.CreateReplaySafeLogger(It.IsAny<string>())).Returns(NullLogger.Instance);
+            _capturingLogger = new TestCapturingLogger();
+            _context.Setup(x => x.CreateReplaySafeLogger(It.IsAny<string>())).Returns(_capturingLogger);
             var mockEntities = new Mock<TaskOrchestrationEntityFeature>();
             mockEntities.Setup(x => x.CallEntityAsync<JobState>(It.IsAny<EntityInstanceId>(), It.IsAny<string>(), It.IsAny<object>(), It.IsAny<CallEntityOptions>()))
                 .ReturnsAsync(() => _jobState);
+            mockEntities.Setup(x => x.CallEntityAsync<bool?>(It.IsAny<EntityInstanceId>(), It.IsAny<string>(), It.IsAny<object>(), It.IsAny<CallEntityOptions>()))
+                .ReturnsAsync(() => _jobState.IsValidGroup);
+            mockEntities.Setup(x => x.CallEntityAsync<bool>(It.IsAny<EntityInstanceId>(), It.IsAny<string>(), It.IsAny<object>(), It.IsAny<CallEntityOptions>()))
+                .ReturnsAsync((EntityInstanceId id, string operationName, object operationInput, CallEntityOptions options) =>
+                    _jobState.IsValidGroup ?? (operationInput is bool requested && requested));
+            mockEntities.Setup(x => x.CallEntityAsync<bool>(It.IsAny<EntityInstanceId>(), It.Is<string>(op => op == nameof(JobTrackerEntity.TryMarkCompletionSent)), It.IsAny<object>(), It.IsAny<CallEntityOptions>()))
+                .ReturnsAsync(() => _completionClaimed);
+            mockEntities.Setup(x => x.CallEntityAsync<JobTrackerUpdateResult>(It.IsAny<EntityInstanceId>(), It.IsAny<string>(), It.IsAny<object>(), It.IsAny<CallEntityOptions>()))
+                .ReturnsAsync(() => new JobTrackerUpdateResult
+                {
+                    IsComplete = _isComplete,
+                    MessagesProcessed = _jobState.MessagesProcessed,
+                    TotalMessageCount = _groupMembership.TotalMessageCount,
+                    State = _jobState
+                });
             mockEntities.Setup(x => x.CallEntityAsync(It.IsAny<EntityInstanceId>(), It.IsAny<string>(), It.IsAny<object>(), It.IsAny<CallEntityOptions>()))
                 .Returns(Task.CompletedTask);
             mockEntities.Setup(x => x.LockEntitiesAsync(It.IsAny<EntityInstanceId[]>()))
@@ -158,7 +177,11 @@ namespace Services.Tests
             _context.Setup(x => x.CallActivityAsync(It.Is<TaskName>(n => n.Name == nameof(MessageSplitterLeaseRenewSenderFunction)), It.IsAny<MessageSplitterLeaseRenewSignal>(), It.IsAny<TaskOptions>()))
                 .Returns(Task.CompletedTask);
 
-            _context.Setup(x => x.CreateTimer(It.IsAny<DateTime>(), It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
+            // Park the heartbeat timer until the orchestrator cancels it (via heartbeatCts in its
+            // finally). Returning a completed task here would make the large-lane while(true)
+            // heartbeat loop iterate synchronously forever and hang any test that runs it.
+            _context.Setup(x => x.CreateTimer(It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
+                .Returns((DateTime _, CancellationToken ct) => Task.Delay(Timeout.Infinite, ct));
         }
 
         [TestMethod]
@@ -300,25 +323,146 @@ namespace Services.Tests
         }
 
         [TestMethod]
-        public async Task RunOrchestratorIncompleteMessagesTest()
+        public async Task RunOrchestratorNotAllMessagesProcessedSetsErrorTest()
         {
             _mockGraphUpdaterService.Jobs.Add(_syncJob);
             _mockGraphUpdaterService.Groups.Add(_groupMembership.Destination.ObjectId, new Group { Id = _groupMembership.Destination.ObjectId.ToString() });
 
-            // Set additional expected message
-            _groupMembership.TotalMessageCount++;
+            // Terminal chunk of a multi-part run on the session-ordered LARGE lane, with the entity
+            // reporting an ACTUAL shortfall (2 of 3 parts). On the ordered large lane every earlier
+            // part must have registered before the last message, so this is a genuine lost part and
+            // the job must be stamped Error (mirroring pre-fix behavior).
+            _orchestratorMultiLaneRequest.LaneSize = "Large";
+            _isComplete = false;
+            _groupMembership.TotalMessageCount = 3;
+            _jobState.MessagesProcessed = 2;
 
             var orchestrator = new OrchestratorMultiLaneFunction(_telemetryClient, _mockGraphUpdaterService, _mailSenders, _gmmResources, _mockDeltaCachingConfig, _runLimiterSettings);
             var response = await orchestrator.RunOrchestratorAsync(_context.Object);
 
             Assert.IsTrue(response == OrchestrationRuntimeStatus.Completed);
 
+            // This message's Graph adds/removes still happen.
+            _context.Verify(x => x.CallActivityAsync<GroupUpdaterResponse>(It.IsAny<TaskName>(), It.IsAny<GroupUpdaterRequest>(), It.IsAny<TaskOptions>()), Times.Exactly(2));
+
+            // The genuine incompletion is stamped Error exactly once.
+            _context.Verify(x => x.CallActivityAsync(It.Is<TaskName>(n => n.Name == nameof(JobStatusUpdaterFunction)), It.Is<JobStatusUpdaterRequest>(y => y.Status == SyncStatus.Error), It.IsAny<TaskOptions>()), Times.Once);
+            Assert.AreEqual(SyncStatus.Error, _updateJobRequest.Status);
+
+            // The run is finalized (as Error), so the MessageSplitter completion signal is emitted.
             _context.Verify(x => x.CallActivityAsync(It.Is<TaskName>(n => n.Name == nameof(MessageSplitterCompletionSenderFunction)), It.IsAny<MessageSplitterCompletionSignal>(), It.IsAny<TaskOptions>()), Times.Once);
 
-            _context.Verify(x => x.CallActivityAsync<GroupUpdaterResponse>(It.IsAny<TaskName>(), It.IsAny<GroupUpdaterRequest>(), It.IsAny<TaskOptions>()), Times.Exactly(2));
-            _context.Verify(x => x.CallActivityAsync(It.Is<TaskName>(n => n.Name == nameof(JobStatusUpdaterFunction)), It.Is<JobStatusUpdaterRequest>(y => y.Status == SyncStatus.Error), It.IsAny<TaskOptions>()), Times.Once);
+            // The detection signal must survive the fix: a terminal message arriving with the run
+            // still incomplete emits NotAllMessagesProcessed (EventId 20054) — the same signal that
+            // originally surfaced this incident.
+            Assert.IsTrue(_capturingLogger.LoggedEvents.Any(e => e.Id == 20054),
+                "Terminal-but-incomplete run must still emit NotAllMessagesProcessed (EventId 20054) for detection.");
+        }
 
-            Assert.AreEqual(SyncStatus.Error, _updateJobRequest.Status);
+        [TestMethod]
+        public async Task RunOrchestratorDuplicateTerminalMessageOnLargeLaneDoesNotErrorTest()
+        {
+            _mockGraphUpdaterService.Jobs.Add(_syncJob);
+            _mockGraphUpdaterService.Groups.Add(_groupMembership.Destination.ObjectId, new Group { Id = _groupMembership.Destination.ObjectId.ToString() });
+
+            // Isolates the shortfall guard on the LARGE lane. A duplicate/replayed terminal message has
+            // every part present (MessagesProcessed == TotalMessageCount) but returns IsComplete=false
+            // because the completion claim was already taken. Since it is NOT a shortfall, it is an
+            // already-finalized run being re-seen and must fall through to a no-op, not a false Error.
+            _orchestratorMultiLaneRequest.LaneSize = "Large";
+            _isComplete = false;
+            _groupMembership.TotalMessageCount = 3;
+            _jobState.MessagesProcessed = 3;
+
+            var orchestrator = new OrchestratorMultiLaneFunction(_telemetryClient, _mockGraphUpdaterService, _mailSenders, _gmmResources, _mockDeltaCachingConfig, _runLimiterSettings);
+            var response = await orchestrator.RunOrchestratorAsync(_context.Object);
+
+            Assert.IsTrue(response == OrchestrationRuntimeStatus.Completed);
+
+            // No false Error: a duplicate terminal message on a complete run must not stamp Error.
+            _context.Verify(x => x.CallActivityAsync(It.Is<TaskName>(n => n.Name == nameof(JobStatusUpdaterFunction)), It.Is<JobStatusUpdaterRequest>(y => y.Status == SyncStatus.Error), It.IsAny<TaskOptions>()), Times.Never);
+
+            // No detection signal: this is not an incompletion.
+            Assert.IsFalse(_capturingLogger.LoggedEvents.Any(e => e.Id == 20054),
+                "A duplicate terminal message on a complete run must not emit NotAllMessagesProcessed (EventId 20054).");
+
+            // The run is not re-finalized, so no completion signal is re-emitted from this duplicate.
+            _context.Verify(x => x.CallActivityAsync(It.Is<TaskName>(n => n.Name == nameof(MessageSplitterCompletionSenderFunction)), It.IsAny<MessageSplitterCompletionSignal>(), It.IsAny<TaskOptions>()), Times.Never);
+        }
+
+        [TestMethod]
+        public async Task RunOrchestratorSmallLaneTerminalIncompleteDoesNotErrorTest()
+        {
+            _mockGraphUpdaterService.Jobs.Add(_syncJob);
+            _mockGraphUpdaterService.Groups.Add(_groupMembership.Destination.ObjectId, new Group { Id = _groupMembership.Destination.ObjectId.ToString() });
+
+            // Isolates the lane gate. The SMALL lane is non-session/unordered, so a terminal message can
+            // arrive before earlier parts — a shortfall at this instant (2 of 3) does NOT imply a lost
+            // part (a later message completes the run). The Error inference must never fire here.
+            _orchestratorMultiLaneRequest.LaneSize = "Small";
+            _isComplete = false;
+            _groupMembership.TotalMessageCount = 3;
+            _jobState.MessagesProcessed = 2;
+
+            var orchestrator = new OrchestratorMultiLaneFunction(_telemetryClient, _mockGraphUpdaterService, _mailSenders, _gmmResources, _mockDeltaCachingConfig, _runLimiterSettings);
+            var response = await orchestrator.RunOrchestratorAsync(_context.Object);
+
+            Assert.IsTrue(response == OrchestrationRuntimeStatus.Completed);
+
+            // No Error: the unordered small lane must not infer incompletion from a terminal message.
+            _context.Verify(x => x.CallActivityAsync(It.Is<TaskName>(n => n.Name == nameof(JobStatusUpdaterFunction)), It.Is<JobStatusUpdaterRequest>(y => y.Status == SyncStatus.Error), It.IsAny<TaskOptions>()), Times.Never);
+
+            Assert.IsFalse(_capturingLogger.LoggedEvents.Any(e => e.Id == 20054),
+                "A small-lane terminal message must not emit NotAllMessagesProcessed (EventId 20054).");
+        }
+
+        [TestMethod]
+        public async Task RunOrchestratorAsync_WhenCompletionAlreadyClaimed_DoesNotResendCompletionTest()
+        {
+            _mockGraphUpdaterService.Jobs.Add(_syncJob);
+            _mockGraphUpdaterService.Groups.Add(_groupMembership.Destination.ObjectId, new Group { Id = _groupMembership.Destination.ObjectId.ToString() });
+
+            // The run finalizes (Idle) and attempts to emit the completion signal, but another
+            // finalizer already claimed the send: the atomic TryMarkCompletionSent returns false, so
+            // this orchestration must NOT re-send the MessageSplitter completion signal. This is the
+            // exactly-once guarantee that replaced the old check-then-send-then-mark race.
+            _isComplete = true;
+            _completionClaimed = false;
+
+            var orchestrator = new OrchestratorMultiLaneFunction(_telemetryClient, _mockGraphUpdaterService, _mailSenders, _gmmResources, _mockDeltaCachingConfig, _runLimiterSettings);
+            var response = await orchestrator.RunOrchestratorAsync(_context.Object);
+
+            Assert.IsTrue(response == OrchestrationRuntimeStatus.Completed);
+
+            // The job still finalizes as Idle (the completion-send claim is separate from the status update).
+            _context.Verify(x => x.CallActivityAsync(It.Is<TaskName>(n => n.Name == nameof(JobStatusUpdaterFunction)), It.Is<JobStatusUpdaterRequest>(y => y.Status == SyncStatus.Idle), It.IsAny<TaskOptions>()), Times.Once);
+
+            // But the completion signal is NOT re-sent, because another finalizer already claimed it.
+            _context.Verify(x => x.CallActivityAsync(It.Is<TaskName>(n => n.Name == nameof(MessageSplitterCompletionSenderFunction)), It.IsAny<MessageSplitterCompletionSignal>(), It.IsAny<TaskOptions>()), Times.Never);
+        }
+
+        [TestMethod]
+        public async Task RunOrchestratorCompletingMessageFinalizesAsIdleTest()        {
+            _mockGraphUpdaterService.Jobs.Add(_syncJob);
+            _mockGraphUpdaterService.Groups.Add(_groupMembership.Destination.ObjectId, new Group { Id = _groupMembership.Destination.ObjectId.ToString() });
+
+            // The atomic entity op reports the run is complete (single-writer claim). The job must
+            // finalize exactly once as Idle and emit the completion signal.
+            _isComplete = true;
+
+            var orchestrator = new OrchestratorMultiLaneFunction(_telemetryClient, _mockGraphUpdaterService, _mailSenders, _gmmResources, _mockDeltaCachingConfig, _runLimiterSettings);
+            var response = await orchestrator.RunOrchestratorAsync(_context.Object);
+
+            Assert.IsTrue(response == OrchestrationRuntimeStatus.Completed);
+
+            _context.Verify(x => x.CallActivityAsync(It.Is<TaskName>(n => n.Name == nameof(JobStatusUpdaterFunction)), It.Is<JobStatusUpdaterRequest>(y => y.Status == SyncStatus.Idle), It.IsAny<TaskOptions>()), Times.Once);
+            _context.Verify(x => x.CallActivityAsync(It.Is<TaskName>(n => n.Name == nameof(MessageSplitterCompletionSenderFunction)), It.IsAny<MessageSplitterCompletionSignal>(), It.IsAny<TaskOptions>()), Times.Once);
+
+            Assert.AreEqual(SyncStatus.Idle, _updateJobRequest.Status);
+
+            // The completing path must NOT emit the incomplete-run signal.
+            Assert.IsFalse(_capturingLogger.LoggedEvents.Any(e => e.Id == 20054),
+                "The completing message must not emit NotAllMessagesProcessed (EventId 20054).");
         }
 
         [TestMethod]
@@ -474,6 +618,29 @@ namespace Services.Tests
         {
             var function = new JobStatusUpdaterFunction(NullLogger<JobStatusUpdaterFunction>.Instance, graphUpdaterService);
             await function.UpdateJobStatusAsync(request);
+        }
+
+        /// <summary>
+        /// Minimal ILogger that records the EventIds it is asked to log, so tests can assert a specific
+        /// signal (e.g. NotAllMessagesProcessed / EventId 20054) is or is not emitted. IsEnabled returns
+        /// true so source-generated LoggerMessage calls are not short-circuited before Log runs.
+        /// </summary>
+        private sealed class TestCapturingLogger : ILogger
+        {
+            public List<EventId> LoggedEvents { get; } = new List<EventId>();
+
+            public IDisposable BeginScope<TState>(TState state) => NullScope.Instance;
+
+            public bool IsEnabled(Microsoft.Extensions.Logging.LogLevel logLevel) => true;
+
+            public void Log<TState>(Microsoft.Extensions.Logging.LogLevel logLevel, EventId eventId, TState state, Exception exception, Func<TState, Exception, string> formatter)
+                => LoggedEvents.Add(eventId);
+
+            private sealed class NullScope : IDisposable
+            {
+                public static readonly NullScope Instance = new NullScope();
+                public void Dispose() { }
+            }
         }
     }
 }

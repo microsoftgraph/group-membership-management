@@ -153,31 +153,26 @@ namespace Hosts.GraphUpdater
                 logger.FunctionStarted(nameof(OrchestratorMultiLaneFunction));
                 logger.ReceivedMembershipMultiLane(groupMembership.MessageIndex, groupMembership.TotalMessageCount, groupMembership.SourceMembers.Distinct().Count());
 
-                JobState jobState = null;
+                // Read only the validity flag (never the whole JobState), so establishing group
+                // validity can't clobber the accumulated message totals.
+                var isValidGroup = await context.Entities.CallEntityAsync<bool?>(
+                    jobTrackerEntityId.Value, nameof(JobTrackerEntity.GetIsValidGroup));
 
-                await using (await context.Entities.LockEntitiesAsync(jobTrackerEntityId.Value))
+                if (isValidGroup == null)
                 {
-                    jobState = await context.Entities.CallEntityAsync<JobState>(jobTrackerEntityId.Value, "GetState");
-                }
-
-                if (jobState.IsValidGroup == null)
-                {
-                    var isValidGroup = await context.CallActivityAsync<bool>(nameof(GroupValidatorFunction),
+                    var validatedGroup = await context.CallActivityAsync<bool>(nameof(GroupValidatorFunction),
                                               new GroupValidatorRequest
                                               {
                                                   SyncJob = syncJob,
                                                   GroupId = groupMembership.Destination.ObjectId
                                               });
 
-                    jobState.IsValidGroup = isValidGroup;
-
-                    await using (await context.Entities.LockEntitiesAsync(jobTrackerEntityId.Value))
-                    {
-                        await context.Entities.CallEntityAsync(jobTrackerEntityId.Value, "SetState", jobState);
-                    }
+                    // First-writer-wins set of only IsValidGroup; returns the effective value.
+                    isValidGroup = await context.Entities.CallEntityAsync<bool>(
+                        jobTrackerEntityId.Value, nameof(JobTrackerEntity.SetIsValidGroupIfUnset), validatedGroup);
                 }
 
-                if (!jobState.IsValidGroup.Value)
+                if (!isValidGroup.Value)
                 {
                     await context.CallActivityAsync(nameof(JobStatusUpdaterFunction),
                                     CreateJobStatusUpdaterRequest(syncJob,
@@ -199,37 +194,45 @@ namespace Hosts.GraphUpdater
                                 CreateGroupUpdaterRequest(syncJob, membersToRemove, RequestType.Remove, isInitialSync, groupMembership.TotalMembersToRemove));
                 destinationUsersNotFound = membersRemovedResponse.UsersNotFound;
 
-                await using (await context.Entities.LockEntitiesAsync(jobTrackerEntityId.Value))
+                // Atomic fold-and-check: accumulate this message's results and learn whether the run
+                // is complete. Replaces the split GetState/increment/SetState that lost accumulated
+                // state when the entity idled past the extended-session timeout (see JobTrackerEntity).
+                var registration = new JobTrackerMessageRegistration
                 {
-                    jobState = await context.Entities.CallEntityAsync<JobState>(jobTrackerEntityId.Value, "GetState");
-                    jobState.TotalMembersToAdd += membersToAdd.Count;
-                    jobState.TotalMembersToRemove += membersToRemove.Count;
-                    jobState.TotalMembersAdded += membersAddedResponse.SuccessCount;
-                    jobState.TotalMembersToAddNotFound += sourceUsersNotFound.Count;
-                    jobState.TotalMembersToAddAlreadyExist += membersAddedResponse.UsersAlreadyExist.Count;
-                    jobState.TotalMembersRemoved += membersRemovedResponse.SuccessCount;
-                    jobState.TotalMembersToRemoveNotFound += destinationUsersNotFound.Count;
-                    jobState.MessagesProcessed++;
+                    MessageIndex = groupMembership.MessageIndex,
+                    TotalMessageCount = groupMembership.TotalMessageCount,
+                    MembersToAdd = membersToAdd.Count,
+                    MembersToRemove = membersToRemove.Count,
+                    MembersAdded = membersAddedResponse.SuccessCount,
+                    MembersRemoved = membersRemovedResponse.SuccessCount,
+                    MembersToAddNotFound = sourceUsersNotFound.Count,
+                    MembersToAddAlreadyExist = membersAddedResponse.UsersAlreadyExist.Count,
+                    MembersToRemoveNotFound = destinationUsersNotFound.Count
+                };
 
-                    await context.Entities.CallEntityAsync(jobTrackerEntityId.Value, "SetState", jobState);
+                var updateResult = await context.Entities.CallEntityAsync<JobTrackerUpdateResult>(
+                    jobTrackerEntityId.Value,
+                    nameof(JobTrackerEntity.RegisterMessageAndCheckComplete),
+                    registration);
 
-                    syncCompleteEvent.Type = destination.Type.ToString();
-                    syncCompleteEvent.SourceTypesCounts = sourceTypeCounts;
-                    syncCompleteEvent.Destination = $"[{{\"type\":\"{destination.Type}\",\"value\":{{\"objectId\":\"{groupId}\"}}}}]";
-                    syncCompleteEvent.GroupId = groupId.ToString();
-                    syncCompleteEvent.RunId = syncJob.RunId.ToString();
-                    syncCompleteEvent.IsDryRunEnabled = false.ToString();
-                    syncCompleteEvent.ProjectedMemberCount = groupMembership.ProjectedMemberCount.HasValue ? groupMembership.ProjectedMemberCount.ToString() : "Not provided";
-                    syncCompleteEvent.Identifier = request.LaneSize;
-                    syncCompleteEvent.IsInitialSync = isInitialSync.ToString();
-                    syncCompleteEvent.MembersToAdd = jobState.TotalMembersToAdd.ToString();
-                    syncCompleteEvent.MembersToRemove = jobState.TotalMembersToRemove.ToString();
-                    syncCompleteEvent.MembersAdded = jobState.TotalMembersAdded.ToString();
-                    syncCompleteEvent.MembersToAddNotFound = jobState.TotalMembersToAddNotFound.ToString();
-                    syncCompleteEvent.MembersToAddAlreadyExist = jobState.TotalMembersToAddAlreadyExist.ToString();
-                    syncCompleteEvent.MembersRemoved = jobState.TotalMembersRemoved.ToString();
-                    syncCompleteEvent.MembersToRemoveNotFound = jobState.TotalMembersToRemoveNotFound.ToString();
-                }
+                var jobState = updateResult.State;
+
+                syncCompleteEvent.Type = destination.Type.ToString();
+                syncCompleteEvent.SourceTypesCounts = sourceTypeCounts;
+                syncCompleteEvent.Destination = $"[{{\"type\":\"{destination.Type}\",\"value\":{{\"objectId\":\"{groupId}\"}}}}]";
+                syncCompleteEvent.GroupId = groupId.ToString();
+                syncCompleteEvent.RunId = syncJob.RunId.ToString();
+                syncCompleteEvent.IsDryRunEnabled = false.ToString();
+                syncCompleteEvent.ProjectedMemberCount = groupMembership.ProjectedMemberCount.HasValue ? groupMembership.ProjectedMemberCount.ToString() : "Not provided";
+                syncCompleteEvent.Identifier = request.LaneSize;
+                syncCompleteEvent.IsInitialSync = isInitialSync.ToString();
+                syncCompleteEvent.MembersToAdd = jobState.TotalMembersToAdd.ToString();
+                syncCompleteEvent.MembersToRemove = jobState.TotalMembersToRemove.ToString();
+                syncCompleteEvent.MembersAdded = jobState.TotalMembersAdded.ToString();
+                syncCompleteEvent.MembersToAddNotFound = jobState.TotalMembersToAddNotFound.ToString();
+                syncCompleteEvent.MembersToAddAlreadyExist = jobState.TotalMembersToAddAlreadyExist.ToString();
+                syncCompleteEvent.MembersRemoved = jobState.TotalMembersRemoved.ToString();
+                syncCompleteEvent.MembersToRemoveNotFound = jobState.TotalMembersToRemoveNotFound.ToString();
 
                 logger.MultiLaneProgressUpdate(jobState.TotalMembersAdded, groupMembership.TotalMembersToAdd ?? 0, jobState.TotalMembersRemoved, groupMembership.TotalMembersToRemove ?? 0);
 
@@ -280,8 +283,12 @@ namespace Hosts.GraphUpdater
                     return OrchestrationRuntimeStatus.Completed;
                 }
 
-
-                if (groupMembership.IsLastMessage)
+                // Finalize exactly once, gated on the entity's single-writer IsComplete claim (not a
+                // mutable counter), so a state-loss miscount can't finalize as a false Error. The
+                // Error path below is scoped to a genuine lost part only — the ordered large lane with
+                // an actual shortfall — so a duplicate/replayed terminal message or a small-lane
+                // message never stamps a false Error.
+                if (updateResult.IsComplete)
                 {
                     if (isInitialSync)
                     {
@@ -311,14 +318,6 @@ namespace Hosts.GraphUpdater
                     SyncStatus syncStatus = SyncStatus.Idle;
                     ResultStatus resultStatus = ResultStatus.Success;
 
-                    if (jobState.MessagesProcessed != groupMembership.TotalMessageCount)
-                    {
-                        syncStatus = SyncStatus.Error;
-                        resultStatus = ResultStatus.Failure;
-
-                        logger.NotAllMessagesProcessed(jobState.MessagesProcessed, groupMembership.TotalMessageCount);
-                    }
-
                     var message = GetUsersDataMessage(groupMembership.Destination.ObjectId, jobState.TotalMembersToAdd, jobState.TotalMembersToRemove);
                     logger.UsersDataInfo(message);
                     await context.CallActivityAsync(nameof(JobStatusUpdaterFunction),
@@ -329,11 +328,7 @@ namespace Hosts.GraphUpdater
 
                     if (!context.IsReplaying)
                     {
-                        if (syncStatus == SyncStatus.Error)
-                        {
-                            SyncCompleteTelemetryHelper.TrackSyncCompleteEventAndMetric(_telemetryClient, syncCompleteEvent, context.CurrentUtcDateTime, syncJob.LastSuccessfulStartTime, "Failure");
-                        }
-                        else if (jobState.TotalMembersAdded + jobState.TotalMembersToAddNotFound + jobState.TotalMembersToAddAlreadyExist == jobState.TotalMembersToAdd &&
+                        if (jobState.TotalMembersAdded + jobState.TotalMembersToAddNotFound + jobState.TotalMembersToAddAlreadyExist == jobState.TotalMembersToAdd &&
                              jobState.TotalMembersRemoved + jobState.TotalMembersToRemoveNotFound == jobState.TotalMembersToRemove)
                         {
                             SyncCompleteTelemetryHelper.TrackSyncCompleteEventAndMetric(_telemetryClient, syncCompleteEvent, context.CurrentUtcDateTime, syncJob.LastSuccessfulStartTime, "Success");
@@ -346,8 +341,34 @@ namespace Hosts.GraphUpdater
                         _telemetryClient.TrackMetric(nameof(Services.Entities.Metric.MembersNotFound), jobState.TotalMembersToAddNotFound + jobState.TotalMembersToRemoveNotFound);
                     }
 
-                    if (_deltaCachingConfig.DeltaCacheEnabled && syncStatus != SyncStatus.Error)
+                    if (_deltaCachingConfig.DeltaCacheEnabled)
                         await UpdateCachesAsync(context, sourceUsersNotFound, destinationUsersNotFound, syncJob, groupMembership.SourceMembers);
+
+                    shouldEmitCompletion = true;
+                }
+                else if (isLargeLane
+                         && groupMembership.IsLastMessage
+                         && updateResult.MessagesProcessed < updateResult.TotalMessageCount)
+                {
+                    // Genuine lost part: only the ordered large lane guarantees the terminal chunk
+                    // arrives after every earlier part, so a shortfall here means a part was lost.
+                    // MessagesProcessed < TotalMessageCount is a real shortfall; a duplicate/replayed
+                    // terminal message instead returns IsComplete=false with all parts present and
+                    // never reaches here. Emit the detection signal (EventId 20054) and stamp Error so
+                    // the incompletion stays visible; no completion email (a "completed" email on an
+                    // incomplete sync would mislead).
+                    logger.NotAllMessagesProcessed(updateResult.MessagesProcessed, updateResult.TotalMessageCount);
+
+                    await context.CallActivityAsync(nameof(JobStatusUpdaterFunction),
+                                        CreateJobStatusUpdaterRequest(syncJob,
+                                                                      SyncStatus.Error, 0, jobState.TotalMembersAdded, jobState.TotalMembersRemoved));
+                    await context.CallActivityAsync(nameof(TelemetryTrackerFunction),
+                                        new TelemetryTrackerRequest { JobStatus = SyncStatus.Error, ResultStatus = ResultStatus.Failure, SyncJob = syncJob });
+
+                    if (!context.IsReplaying)
+                    {
+                        SyncCompleteTelemetryHelper.TrackSyncCompleteEventAndMetric(_telemetryClient, syncCompleteEvent, context.CurrentUtcDateTime, syncJob.LastSuccessfulStartTime, "Failure");
+                    }
 
                     shouldEmitCompletion = true;
                 }
@@ -461,28 +482,19 @@ namespace Hosts.GraphUpdater
 
             if (jobTrackerEntityId.HasValue)
             {
-                JobState jobState;
-                await using (await context.Entities.LockEntitiesAsync(jobTrackerEntityId.Value))
+                // Single-writer claim: only the first finalizer to atomically flip CompletionSent
+                // sends, closing the check-then-act window of the old lock/GetState-then-mark pair.
+                // The claim is in durable history, so the send is retried after a crash (idempotent
+                // via RunLimiter.Release) — no leaked lease.
+                var claimedCompletion = await context.Entities.CallEntityAsync<bool>(
+                    jobTrackerEntityId.Value, nameof(JobTrackerEntity.TryMarkCompletionSent));
+                if (!claimedCompletion)
                 {
-                    jobState = await context.Entities.CallEntityAsync<JobState>(jobTrackerEntityId.Value, "GetState");
-                    if (jobState.CompletionSent)
-                    {
-                        return;
-                    }
+                    return;
                 }
             }
 
             await context.CallActivityAsync(nameof(MessageSplitterCompletionSenderFunction), new Models.ServiceBus.MessageSplitterCompletionSignal(runId, laneSize));
-
-            if (jobTrackerEntityId.HasValue)
-            {
-                await using (await context.Entities.LockEntitiesAsync(jobTrackerEntityId.Value))
-                {
-                    var jobState = await context.Entities.CallEntityAsync<JobState>(jobTrackerEntityId.Value, "GetState");
-                    jobState.CompletionSent = true;
-                    await context.Entities.CallEntityAsync(jobTrackerEntityId.Value, "SetState", jobState);
-                }
-            }
         }
 
         public async Task UpdateCachesAsync(TaskOrchestrationContext context,
