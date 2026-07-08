@@ -65,7 +65,9 @@ flowchart TD
 When `JobTrigger` (timer, every 5 minutes) processes a due job with `MembershipType == "TeamsChannelMembership"`:
 
 1. Resolves the destination `Channel` (group id + channel id) from `syncJob.Channel` or via `GetChannelFunction`.
-2. Verifies the channel exists and **GMM's service account is an owner** of both the team and the channel (`TeamsChannelExistsAndGMMCanWriteToItAsync` → `IsServiceAccountOwnerOfChannelAsync`).
+2. Verifies the channel exists and that GMM can write to it (`TeamsChannelExistsAndGMMCanWriteToItAsync`):
+   - If `TeamsChannel:IsChannelReadWriteApplicationPermissionGranted` is `true`, the owner check is skipped (GMM's `ChannelMember.ReadWrite.All` application permission is used).
+   - Otherwise, verifies **GMM's service account is an owner** of both the team and the channel (`IsServiceAccountOwnerOfChannelAsync`).
 3. On the **initial sync only** (`LastRunTime == MinValue`), enqueues an **onboarding "started" email** (`SyncStartedNotification`) to the Service Bus notification queue (`JobTriggerService.SendEmailAsync`); the **Notifier** sends the actual email.
 4. Standardizes the destination string: `[{"type":"TeamsChannelMembership","value":{"objectId":"<groupId>","channelId":"<channelId>"}}]`.
 5. Splits the job into its constituent source parts + the destination part and publishes them to the Service Bus topic. The destination part lands on the `TeamsChannelMembership` subscription consumed by **TeamsChannelMembershipObtainer**.
@@ -73,7 +75,7 @@ When `JobTrigger` (timer, every 5 minutes) processes a due job with `MembershipT
 ```mermaid
 flowchart LR
     JT[JobTrigger.SubOrchestrator] -->|"verify GMM is<br/>channel owner"| CHK{Can write?}
-    CHK -->|no| ERR[Mark job Error /<br/>NotOwnerOfTeamsChannel]
+    CHK -->|no| ERR[Mark job Error /<br/>NotOwnerOfDestinationGroup]
     CHK -->|yes| ROUTE[Route parts to<br/>Service Bus topic]
     ROUTE -->|source parts| SUBSRC[(sub: GroupMembership,<br/>SqlMembership, ...)]
     ROUTE -->|destination part| SUBDST[(sub: TeamsChannelMembership)]

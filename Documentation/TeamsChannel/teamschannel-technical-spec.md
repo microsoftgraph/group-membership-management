@@ -159,7 +159,7 @@ A **singleton** `QueueMessageOrchestratorFunction` (kept alive by a 30 s timer +
 | Updater | Add member | `POST /teams/{teamId}/channels/{channelId}/members` (one per user) |
 | Updater | Remove member | `DELETE /teams/{teamId}/channels/{channelId}/members/{membershipId}` (one per user) |
 
-> **Cue:** the **ownership** call is *conditional* — skipped when GMM holds `ChannelMember.ReadWrite.All` application permission (§6.2). The **add/remove** calls fire *once per user* per chunk (§6.3); all other calls fire once per run.
+> **Cue:** the **ownership** call is *conditional* — skipped when GMM holds `ChannelMember.ReadWrite.All` application permission (§6.2). The **read members** call is *paged* (one request per page). The **add/remove** calls fire *once per user* per chunk (§6.3). All remaining unpaged, non-batched calls fire once per run.
 
 ### 6.2 Required permissions
 - **Channel writes** require **delegated** auth via the **service account** (app-only is not supported for channel member writes). Credentials come from `TeamsGraphCredentials` + `teamsChannelServiceAccount*` secrets.
