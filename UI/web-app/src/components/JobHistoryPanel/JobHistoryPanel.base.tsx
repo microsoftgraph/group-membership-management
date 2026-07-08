@@ -53,6 +53,7 @@ import { getStatusDisplayText } from '../../utils/jobUtils';
 import { RunHistoryStatus } from '../../models/Status';
 import { format } from 'react-string-format';
 import { ThresholdExceededActionDialog } from '../ThresholdExceededActionDialog';
+import { MembershipLookup } from '../MembershipLookup';
 import { getPeoplePickerSuggestions } from '../../store/jobs.api';
 import { SignalRSyncHistorySearchService } from '../../services/signalR/SignalRSyncHistorySearchService';
 
@@ -1316,7 +1317,7 @@ export const JobHistoryPanelBase: React.FunctionComponent<IJobHistoryPanelProps>
         const explanation = aiExplanationCache.get(cacheKey);
 
         if (!isLoading && !hasError && !explanation) {
-            fetchExplanationForRun(runId, userObjectId);
+            queueMicrotask(() => fetchExplanationForRun(runId, userObjectId));
             return (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
                     <strong style={{ fontSize: '14px' }}>{strings.JobDetails.Panel.aiDescriptionLabel}</strong>
@@ -1395,7 +1396,7 @@ export const JobHistoryPanelBase: React.FunctionComponent<IJobHistoryPanelProps>
         const explanation = runExplanationCache.get(runId);
 
         if (!isLoading && !hasError && !hasCachedEntry) {
-            fetchExplanationForRunOnly(runId);
+            queueMicrotask(() => fetchExplanationForRunOnly(runId));
             return (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
                     <strong style={{ fontSize: '14px' }}>{strings.JobDetails.Panel.aiDescriptionLabel}</strong>
@@ -1548,6 +1549,7 @@ export const JobHistoryPanelBase: React.FunctionComponent<IJobHistoryPanelProps>
                     overflowY: 'auto',
                     overflowX: 'visible',
                     maxHeight: '100vh',
+                    scrollbarGutter: 'stable',
                 },
             }}
         >
@@ -1598,6 +1600,9 @@ export const JobHistoryPanelBase: React.FunctionComponent<IJobHistoryPanelProps>
                     aiDescription={isAIRunExplanationEnabled && takeActionItem?.runId && runExplanationCache.get(takeActionItem.runId) !== RUN_EXPLANATION_FALLBACK ? runExplanationCache.get(takeActionItem.runId) : undefined}
                     isAiDescriptionLoading={isAIRunExplanationEnabled && !!takeActionItem?.runId && runExplanationLoading.has(takeActionItem.runId)}
                     aiDescriptionError={isAIRunExplanationEnabled && !!takeActionItem?.runId && runExplanationErrors.has(takeActionItem.runId)}
+                    membershipLookup={takeActionItem?.runId ? (
+                        <MembershipLookup syncJobId={jobId} runId={takeActionItem.runId} />
+                    ) : undefined}
                 />
             ) : (
             <Pivot>

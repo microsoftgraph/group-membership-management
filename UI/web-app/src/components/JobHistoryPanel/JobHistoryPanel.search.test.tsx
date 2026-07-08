@@ -283,6 +283,10 @@ vi.mock('../ThresholdExceededActionDialog', () => ({
   ThresholdExceededActionDialog: () => null,
 }));
 
+vi.mock('../MembershipLookup', () => ({
+  MembershipLookup: () => null,
+}));
+
 const buildSyncHistoryItem = (
   runId: string,
   endTime: string,

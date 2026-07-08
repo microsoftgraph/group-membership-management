@@ -66,6 +66,7 @@ export const ThresholdExceededActionDialogBase: React.FunctionComponent<IThresho
         aiDescription,
         isAiDescriptionLoading = false,
         aiDescriptionError = false,
+        membershipLookup,
     } = props;
 
     const theme = useTheme();
@@ -288,6 +289,7 @@ export const ThresholdExceededActionDialogBase: React.FunctionComponent<IThresho
                                 </div>
                             )}
                         </div>
+                        {membershipLookup}
                         <h3 className={classNames.chooseAnActionHeader}>{modal.chooseAnActionHeader}</h3>
                         <div className={classNames.actionsGrid}>
                             <div className={classNames.actionCard}>

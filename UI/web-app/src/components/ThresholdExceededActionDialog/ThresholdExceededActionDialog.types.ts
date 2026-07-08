@@ -75,4 +75,5 @@ export interface IThresholdExceededActionDialogProps extends React.AllHTMLAttrib
     aiDescription?: string;
     isAiDescriptionLoading?: boolean;
     aiDescriptionError?: boolean;
+    membershipLookup?: React.ReactNode;
 }

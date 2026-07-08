@@ -154,6 +154,26 @@ export type IStrings = {
       sourcePartLabel: string;
       errorMessage: string;
     },
+    MembershipLookup: {
+      title: string;
+      reviewImpactedMembers: string;
+      description: string;
+      searchLabel: string;
+      suggestedText: string;
+      noResultsFoundText: string;
+      loadingText: string;
+      removeButtonAriaLabel: string;
+      selectionAriaLabel: string;
+      checking: string;
+      errorMessage: string;
+      currentStatusLabel: string;
+      afterChangesLabel: string;
+      isMember: string;
+      isNotMember: string;
+      willBeAdded: string;
+      willBeRemoved: string;
+      noChange: string;
+    },
     RuleCard: {
       inclusive: string;
       exclusive: string;
