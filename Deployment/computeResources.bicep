@@ -64,6 +64,43 @@ param networkingResourceGroupName string = ''
 @description('Name of the consolidated Resources VNET. When empty, defaults to `<solutionAbbreviation>-networking-<environmentAbbreviation>-resources-vnet` (matches the networking template).')
 param resourcesVnetName string = ''
 
+// -------------------- Per-host Flex Consumption maximumInstanceCount caps --------------------
+// Single map of per-host Flex Consumption maximumInstanceCount caps, sized for the default
+// 250-core-per-subscription-per-region quota so that no single app can monopolize the regional
+// quota while idle apps cannot waste it. Deployments with a larger quota can raise individual
+// caps by supplying a maxInstanceCountOverrides object; only the keys present there replace the
+// defaults below (union() overlay), so unspecified hosts keep their default.
+@description('Per-host Flex maximumInstanceCount overrides (host key -> cap). Only supplied keys override the defaults; unspecified hosts keep their default.')
+param maxInstanceCountOverrides object = {}
+
+var defaultMaxInstanceCounts = {
+  autoApprover: 25
+  azureMaintenance: 10
+  azureUserReader: 4
+  destinationAttributesUpdater: 6
+  graphUpdater: 45
+  graphUpdaterSmall: 15
+  graphUpdaterLarge: 45
+  groupMembershipObtainer: 45
+  groupOwnershipObtainer: 10
+  jobScheduler: 10
+  jobTrigger: 15
+  membershipAggregator: 45
+  messageSplitterS1: 50
+  messageSplitterL1: 45
+  nonProdService: 4
+  notifier: 15
+  placeMembershipObtainer: 6
+  sqlDataChecker: 6
+  sqlMembershipObtainer: 45
+  syncJobUpdater: 10
+  teamsChannelMembershipObtainer: 10
+  teamsChannelUpdater: 10
+}
+
+// Public defaults overlaid with any per-environment overrides (override keys win).
+var maxInstanceCounts = union(defaultMaxInstanceCounts, maxInstanceCountOverrides)
+
 var _resolvedNetworkingResourceGroupName = empty(networkingResourceGroupName) ? '${solutionAbbreviation}-networking-${environmentAbbreviation}' : networkingResourceGroupName
 var _resolvedResourcesVnetName = empty(resourcesVnetName) ? '${solutionAbbreviation}-networking-${environmentAbbreviation}-resources-vnet' : resourcesVnetName
 
@@ -112,6 +149,7 @@ module jobTriggerComputeResources '../Service/GroupMembershipManagement/Hosts/Jo
   name: 'jobTriggerComputeResourcesTemplate'
   scope: resourceGroup(computeResourceGroupName)
   params: {
+    maxInstanceCount: maxInstanceCounts.jobTrigger
     enableVnetIntegration: enableFunctionVnetIntegration
     virtualNetworkSubnetId: _vnetSubnetIdJobTrigger
     location: location
@@ -144,6 +182,7 @@ module destinationAttributesUpdaterComputeResources '../Service/GroupMembershipM
   name: 'destinationAttributesUpdaterComputeResourcesTemplate'
   scope: resourceGroup(computeResourceGroupName)
   params: {
+    maxInstanceCount: maxInstanceCounts.destinationAttributesUpdater
     enableVnetIntegration: enableFunctionVnetIntegration
     virtualNetworkSubnetId: _vnetSubnetIdDestinationAttributesUpdater
     location: location
@@ -176,6 +215,7 @@ module groupMembershipObtainerComputeResources '../Service/GroupMembershipManage
   name: 'groupMembershipObtainerComputeResourcesTemplate'
   scope: resourceGroup(computeResourceGroupName)
   params: {
+    maxInstanceCount: maxInstanceCounts.groupMembershipObtainer
     enableVnetIntegration: enableFunctionVnetIntegration
     virtualNetworkSubnetId: _vnetSubnetIdGroupMembershipObtainer
     location: location
@@ -207,6 +247,7 @@ module sqlMembershipObtainerComputeResources '../Service/GroupMembershipManageme
   name: 'sqlMembershipObtainerComputeResourcesTemplate'
   scope: resourceGroup(computeResourceGroupName)
   params: {
+    maxInstanceCount: maxInstanceCounts.sqlMembershipObtainer
     enableVnetIntegration: enableFunctionVnetIntegration
     virtualNetworkSubnetId: _vnetSubnetIdSqlMembershipObtainer
     location: location
@@ -241,6 +282,7 @@ module groupOwnershipObtainerComputeResources '../Service/GroupMembershipManagem
   name: 'groupOwnershipObtainerComputeResourcesTemplate'
   scope: resourceGroup(computeResourceGroupName)
   params: {
+    maxInstanceCount: maxInstanceCounts.groupOwnershipObtainer
     enableVnetIntegration: enableFunctionVnetIntegration
     virtualNetworkSubnetId: _vnetSubnetIdGroupOwnershipObtainer
     location: location
@@ -272,6 +314,7 @@ module placeMembershipObtainerComputeResources '../Service/GroupMembershipManage
   name: 'placeMembershipObtainerComputeResourcesTemplate'
   scope: resourceGroup(computeResourceGroupName)
   params: {
+    maxInstanceCount: maxInstanceCounts.placeMembershipObtainer
     enableVnetIntegration: enableFunctionVnetIntegration
     virtualNetworkSubnetId: _vnetSubnetIdPlaceMembershipObtainer
     location: location
@@ -303,6 +346,7 @@ module teamsChannelMembershipObtainerComputeResources '../Service/GroupMembershi
   name: 'teamsChannelMembershipObtainerComputeResourcesTemplate'
   scope: resourceGroup(computeResourceGroupName)
   params: {
+    maxInstanceCount: maxInstanceCounts.teamsChannelMembershipObtainer
     enableVnetIntegration: enableFunctionVnetIntegration
     virtualNetworkSubnetId: _vnetSubnetIdTeamsChannelMembershipObtainer
     location: location
@@ -334,6 +378,7 @@ module membershipAggregatorComputeResources '../Service/GroupMembershipManagemen
   name: 'membershipAggregatorComputeResourcesTemplate'
   scope: resourceGroup(computeResourceGroupName)
   params: {
+    maxInstanceCount: maxInstanceCounts.membershipAggregator
     enableVnetIntegration: enableFunctionVnetIntegration
     virtualNetworkSubnetId: _vnetSubnetIdMembershipAggregator
     location: location
@@ -373,6 +418,7 @@ module graphUpdaterComputeResources '../Service/GroupMembershipManagement/Hosts/
   name: instance == '' ? 'graphUpdaterComputeResourcesTemplate' : 'graphUpdater${instance}ComputeResourcesTemplate'
   scope: resourceGroup(computeResourceGroupName)
   params: {
+    maxInstanceCount: instance == 'large' ? maxInstanceCounts.graphUpdaterLarge : (instance == 'small' ? maxInstanceCounts.graphUpdaterSmall : maxInstanceCounts.graphUpdater)
     enableVnetIntegration: enableFunctionVnetIntegration
     virtualNetworkSubnetId: _vnetSubnetIdGraphUpdater
     location: location
@@ -409,6 +455,7 @@ module teamsChannelUpdaterComputeResources '../Service/GroupMembershipManagement
   name: 'teamsChannelUpdaterComputeResourcesTemplate'
   scope: resourceGroup(computeResourceGroupName)
   params: {
+    maxInstanceCount: maxInstanceCounts.teamsChannelUpdater
     enableVnetIntegration: enableFunctionVnetIntegration
     virtualNetworkSubnetId: _vnetSubnetIdTeamsChannelUpdater
     location: location
@@ -440,6 +487,7 @@ module nonProdServiceComputeResources '../Service/GroupMembershipManagement/Host
   name: 'nonProdServiceComputeResourcesTemplate'
   scope: resourceGroup(computeResourceGroupName)
   params: {
+    maxInstanceCount: maxInstanceCounts.nonProdService
     enableVnetIntegration: enableFunctionVnetIntegration
     virtualNetworkSubnetId: _vnetSubnetIdNonProdService
     location: location
@@ -473,6 +521,7 @@ module azureUserReaderComputeResources '../Service/GroupMembershipManagement/Hos
   name: 'azureUserReaderComputeResourcesTemplate'
   scope: resourceGroup(computeResourceGroupName)
   params: {
+    maxInstanceCount: maxInstanceCounts.azureUserReader
     enableVnetIntegration: enableFunctionVnetIntegration
     virtualNetworkSubnetId: _vnetSubnetIdAzureUserReader
     location: location
@@ -506,6 +555,7 @@ module notifierComputeResources '../Service/GroupMembershipManagement/Hosts/Noti
   name: 'notifierComputeResourcesTemplate'
   scope: resourceGroup(computeResourceGroupName)
   params: {
+    maxInstanceCount: maxInstanceCounts.notifier
     enableVnetIntegration: enableFunctionVnetIntegration
     virtualNetworkSubnetId: _vnetSubnetIdNotifier
     location: location
@@ -539,6 +589,7 @@ module autoApproverComputeResources '../Service/GroupMembershipManagement/Hosts/
   name: 'autoApproverComputeResourcesTemplate'
   scope: resourceGroup(computeResourceGroupName)
   params: {
+    maxInstanceCount: maxInstanceCounts.autoApprover
     enableVnetIntegration: enableFunctionVnetIntegration
     virtualNetworkSubnetId: _vnetSubnetIdAutoApprover
     location: location
@@ -570,6 +621,7 @@ module jobSchedulerComputeResources '../Service/GroupMembershipManagement/Hosts/
   name: 'jobSchedulerComputeResourcesTemplate'
   scope: resourceGroup(computeResourceGroupName)
   params: {
+    maxInstanceCount: maxInstanceCounts.jobScheduler
     enableVnetIntegration: enableFunctionVnetIntegration
     virtualNetworkSubnetId: _vnetSubnetIdJobScheduler
     location: location
@@ -602,6 +654,7 @@ module syncJobUpdaterComputeResources '../Service/GroupMembershipManagement/Host
   name: 'syncJobUpdaterComputeResourcesTemplate'
   scope: resourceGroup(computeResourceGroupName)
   params: {
+    maxInstanceCount: maxInstanceCounts.syncJobUpdater
     enableVnetIntegration: enableFunctionVnetIntegration
     virtualNetworkSubnetId: _vnetSubnetIdSyncJobUpdater
     location: location
@@ -639,6 +692,7 @@ module messageSplitterComputeResources '../Service/GroupMembershipManagement/Hos
   name: 'messageSplitter${instance}ComputeResources'
   scope: resourceGroup(computeResourceGroupName)
   params: {
+    maxInstanceCount: instance == 's1' ? maxInstanceCounts.messageSplitterS1 : maxInstanceCounts.messageSplitterL1
     enableVnetIntegration: enableFunctionVnetIntegration
     virtualNetworkSubnetId: _vnetSubnetIdMessageSplitter
     location: location
@@ -672,6 +726,7 @@ module azureMaintenanceComputeResources '../Service/GroupMembershipManagement/Ho
   name: 'azureMaintenanceComputeResourcesTemplate'
   scope: resourceGroup(computeResourceGroupName)
   params: {
+    maxInstanceCount: maxInstanceCounts.azureMaintenance
     enableVnetIntegration: enableFunctionVnetIntegration
     virtualNetworkSubnetId: _vnetSubnetIdAzureMaintenance
     location: location
@@ -701,6 +756,7 @@ module sqlDataCheckerComputeResources '../Service/GroupMembershipManagement/Host
   name: 'sqlDataCheckerComputeResourcesTemplate'
   scope: resourceGroup(computeResourceGroupName)
   params: {
+    maxInstanceCount: maxInstanceCounts.sqlDataChecker
     enableVnetIntegration: enableFunctionVnetIntegration
     virtualNetworkSubnetId: _vnetSubnetIdSqlDataChecker
     location: location
