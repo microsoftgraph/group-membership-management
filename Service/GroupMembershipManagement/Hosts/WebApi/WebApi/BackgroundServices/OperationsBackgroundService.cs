@@ -806,7 +806,7 @@ namespace WebApi.BackgroundServices
                 var jobSchedulerUrl = $"{_operationsSettings.JobSchedulerFunctionBaseUrl}/api/PipelineInvocationStarterFunction?code={_operationsSettings.JobSchedulerFunctionKey}";
 
                 // Acquire token for JobScheduler function app with platform authentication
-                var credential = new DefaultAzureCredential();
+                var credential = new DefaultAzureCredential(DefaultAzureCredential.DefaultEnvironmentVariableName);
                 var tokenRequestContext = new TokenRequestContext(new[] { $"api://{_operationsSettings.FunctionAuthAppClientId}/.default" });
                 var accessToken = await credential.GetTokenAsync(tokenRequestContext, cancellationToken);
                 
