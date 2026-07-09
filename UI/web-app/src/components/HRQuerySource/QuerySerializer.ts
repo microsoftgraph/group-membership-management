@@ -30,6 +30,36 @@ export function countOccurrences(str: string, subStr: string): number {
   return count;
 }
 
+// Parses the individual keys out of a filter value fragment. Handles single values
+// ('FTE') as well as IN-clause lists such as ('FTE', 'Intern') or [FTE, Intern].
+export function getSelectedKeys(input: string): string[] {
+  const matches = input.match(/'([^']+)'|([^(),\s\[\]]+)|\[(.+?)\]|\((.+?)\)/g);
+  if (matches) {
+    return matches.flatMap(match => {
+      const cleaned = match.replace(/'/g, '').trim();
+      if (cleaned.startsWith('[') || cleaned.startsWith('(')) {
+        return cleaned.slice(1, -1).split(',').map(v => v.trim());
+      }
+      return [cleaned];
+    });
+  }
+  return [];
+}
+
+// Computes the new set of selected keys for an IN / NOT IN clause when a value option is
+// toggled. The previous selections are derived exclusively from the current row's value
+// (existingValues) so that selections made on one attribute row can never leak into a
+// different attribute row. `selected` reflects the option's state AFTER the toggle.
+export function computeInClauseSelection(
+  existingValues: string | undefined,
+  itemKey: string,
+  selected: boolean | undefined
+): string[] {
+  const prevSelectedKeys = existingValues && existingValues.length > 0 ? getSelectedKeys(existingValues) : [];
+  const withoutCurrent = prevSelectedKeys.filter(key => key !== itemKey);
+  return selected ? [...withoutCurrent, itemKey] : withoutCurrent;
+}
+
 export function stringifyGroup(group: Group, isChild?: boolean, childIndex?: number, childrenLength?: number): string {
 
     let result = '(';

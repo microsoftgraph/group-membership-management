@@ -27,7 +27,7 @@ import { selectIsJobWriter } from '../../store/roles.slice';
 import { SqlMembershipAttribute, SqlMembershipAttributeMapping } from '../../models';
 import { IFilterPart } from '../../models/IFilterPart';
 import { Group } from '../../models/Group';
-import { containsSqlExpression, countOccurrences, parseGroup, stringifyGroups, stripQuotedContent } from './QuerySerializer';
+import { computeInClauseSelection, containsSqlExpression, countOccurrences, getSelectedKeys, parseGroup, stringifyGroups, stripQuotedContent } from './QuerySerializer';
 import { hasTrailingAndOrOperator, hasValidEqualityOperators, hasValueAfterOperator } from '../../utils/filterValidationHelpers';
 import { updateHRTitleWithNewLeader, updateHRTitleWithNewDepth, combineHRTitleWithAICriteria } from '../../utils/titleGenerator';
 import { getEqualityOperatorOptions, nullOptions, getOrAndOperatorOptions, getYesNoOptions } from '../../models/Options';
@@ -767,21 +767,6 @@ const getOptions = (
     }
   }, [orgLeaderDetails]);
 
-  const getSelectedKeys = (input: string): string[] => {
-    const matches = input.match(/'([^']+)'|([^(),\s\[\]]+)|\[(.+?)\]|\((.+?)\)/g);
-    if (matches) {
-        const keys = matches.flatMap(match => {
-            const cleaned = match.replace(/'/g, '').trim();
-            if (cleaned.startsWith('[') || cleaned.startsWith('(')) {
-                return cleaned.slice(1, -1).split(',').map(v => v.trim());
-            }
-            return [cleaned];
-        });
-        return keys;
-    }
-    return [];
-  };
-
   const generateTitle = async () => {
     const filterAtStart = source.filter;
     const exclusionaryAtStart = props.exclusionary || false;
@@ -1505,18 +1490,14 @@ const getOptions = (
     }
     let selectedValues = "";
     if (operator && (operator.toString().toUpperCase() === "IN" || operator.toString().toUpperCase() === "NOT IN")) {
-      let selected = item?.selected;
       if (item) {
-        setSelectedKeys(prevSelectedKeys => {
-          if (prevSelectedKeys.length === 0 && existingValues && existingValues.length > 0) {
-            prevSelectedKeys = getSelectedKeys(existingValues);
-          }
-          const newSelectedKeys = selected
-            ? [...prevSelectedKeys, item!.key as string]
-            : prevSelectedKeys.filter(k => k !== item!.key);
-          selectedValues = newSelectedKeys.map(key => `'${key}'`).join(', ');
-          return newSelectedKeys;
-        });
+        // Derive the previously selected keys from THIS row's current value rather than a
+        // shared, component-wide accumulator. The shared state was never cleared between
+        // attribute rows in grouped mode, causing selections from one attribute (e.g.
+        // EmployeeType) to leak into another attribute's IN clause (e.g. Profession).
+        const newSelectedKeys = computeInClauseSelection(existingValues, item.key as string, item.selected);
+        selectedValues = newSelectedKeys.map(key => `'${key}'`).join(', ');
+        setSelectedKeys(newSelectedKeys);
       }
     }
 
