@@ -58,7 +58,7 @@ param storageAccountName string
 param appPackageContainerName string
 
 @description('Maximum instance count.')
-param maxInstanceCount int = 500
+param maxInstanceCount int = 45
 
 @description('Instance memory in MB.')
 param instanceMemoryMB int = 2048

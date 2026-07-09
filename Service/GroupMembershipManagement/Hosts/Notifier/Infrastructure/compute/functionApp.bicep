@@ -81,7 +81,7 @@ param appPackageContainerName string
 param dataResourceGroup string
 
 @description('Maximum instance count.')
-param maxInstanceCount int = 500
+param maxInstanceCount int = 15
 
 @description('Instance memory in MB.')
 param instanceMemoryMB int = 2048
