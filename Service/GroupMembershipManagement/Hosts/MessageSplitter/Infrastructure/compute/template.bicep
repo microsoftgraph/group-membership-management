@@ -168,9 +168,13 @@ module existingLogAnalyticsWorkspace 'logAnalyticsWorkspace.bicep' = {
   }
 }
 
+@description('Maximum instance count.')
+param maxInstanceCount int = 50
+
 module functionAppTemplate_MessageSplitter 'functionApp.bicep' = {
   name: 'faTemplate-MessageSplitter-${instanceIdentifier}'
   params: {
+    maxInstanceCount: maxInstanceCount
     enableVnetIntegration: enableVnetIntegration
     virtualNetworkSubnetId: virtualNetworkSubnetId
     name: functionFullName

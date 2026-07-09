@@ -127,9 +127,13 @@ module existingLogAnalyticsWorkspace 'logAnalyticsWorkspace.bicep' = {
   }
 }
 
+@description('Maximum instance count.')
+param maxInstanceCount int = 10
+
 module functionAppTemplate_JobScheduler 'functionApp.bicep' = {
   name: 'functionAppTemplate-JobScheduler'
   params: {
+    maxInstanceCount: maxInstanceCount
     enableVnetIntegration: enableVnetIntegration
     virtualNetworkSubnetId: virtualNetworkSubnetId
     name: '${functionAppName}-JobScheduler'

@@ -170,9 +170,13 @@ module existingLogAnalyticsWorkspace 'logAnalyticsWorkspace.bicep' = {
   }
 }
 
+@description('Maximum instance count.')
+param maxInstanceCount int = 45
+
 module functionAppTemplate_MembershipAggregator 'functionApp.bicep' = {
   name: 'functionAppTemplate-MembershipAggregator'
   params: {
+    maxInstanceCount: maxInstanceCount
     enableVnetIntegration: enableVnetIntegration
     virtualNetworkSubnetId: virtualNetworkSubnetId
     name: functionAppFullName

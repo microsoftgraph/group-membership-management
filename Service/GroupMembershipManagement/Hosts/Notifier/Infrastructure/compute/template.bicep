@@ -178,9 +178,13 @@ module existingLogAnalyticsWorkspace 'logAnalyticsWorkspace.bicep' = {
   }
 }
 
+@description('Maximum instance count.')
+param maxInstanceCount int = 15
+
 module functionAppTemplate_Notifier 'functionApp.bicep' = {
   name: 'functionAppTemplate-Notifier'
   params: {
+    maxInstanceCount: maxInstanceCount
     enableVnetIntegration: enableVnetIntegration
     virtualNetworkSubnetId: virtualNetworkSubnetId
     name: '${functionAppName}-Notifier'

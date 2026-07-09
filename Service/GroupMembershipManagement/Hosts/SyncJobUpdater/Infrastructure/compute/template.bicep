@@ -170,9 +170,13 @@ module existingLogAnalyticsWorkspace 'logAnalyticsWorkspace.bicep' = {
   }
 }
 
+@description('Maximum instance count.')
+param maxInstanceCount int = 10
+
 module functionAppTemplate_SyncJobUpdater 'functionApp.bicep' = {
   name: 'functionAppTemplate-SyncJobUpdater'
   params: {
+    maxInstanceCount: maxInstanceCount
     enableVnetIntegration: enableVnetIntegration
     virtualNetworkSubnetId: virtualNetworkSubnetId
     name: '${functionAppName}-SyncJobUpdater'

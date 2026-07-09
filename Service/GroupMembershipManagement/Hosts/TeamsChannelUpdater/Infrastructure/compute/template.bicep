@@ -180,9 +180,13 @@ module existingLogAnalyticsWorkspace 'logAnalyticsWorkspace.bicep' = {
   }
 }
 
+@description('Maximum instance count.')
+param maxInstanceCount int = 10
+
 module functionAppTemplate_TeamsChannelUpdater 'functionApp.bicep' = {
   name: 'functionAppTemplate-TeamsChannelUpdater'
   params: {
+    maxInstanceCount: maxInstanceCount
     enableVnetIntegration: enableVnetIntegration
     virtualNetworkSubnetId: virtualNetworkSubnetId
     name: '${functionAppName}-TeamsChannelUpdater'

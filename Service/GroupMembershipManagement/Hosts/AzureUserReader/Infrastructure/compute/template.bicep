@@ -157,9 +157,13 @@ module existingLogAnalyticsWorkspace 'logAnalyticsWorkspace.bicep' = {
   }
 }
 
+@description('Maximum instance count.')
+param maxInstanceCount int = 4
+
 module functionAppTemplate_AzureUserReader 'functionApp.bicep' = {
   name: 'functionAppTemplate-AzureUserReader'
   params: {
+    maxInstanceCount: maxInstanceCount
     enableVnetIntegration: enableVnetIntegration
     virtualNetworkSubnetId: virtualNetworkSubnetId
     name: '${functionAppName}-AzureUserReader'

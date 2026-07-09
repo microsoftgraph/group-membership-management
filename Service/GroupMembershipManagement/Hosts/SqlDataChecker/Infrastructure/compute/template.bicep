@@ -89,7 +89,7 @@ param functionAuthAppClientId string
 param enableFunctionAuthentication bool = false
 
 @description('Maximum instance count.')
-param maxInstanceCount int = 500
+param maxInstanceCount int = 6
 
 @description('Instance memory in MB.')
 param instanceMemoryMB int = 4096

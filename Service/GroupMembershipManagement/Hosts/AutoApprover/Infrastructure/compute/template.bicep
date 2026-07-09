@@ -160,9 +160,13 @@ module existingLogAnalyticsWorkspace 'logAnalyticsWorkspace.bicep' = {
   }
 }
 
+@description('Maximum instance count.')
+param maxInstanceCount int = 25
+
 module functionAppTemplate_AutoApprover 'functionApp.bicep' = {
   name: 'functionAppTemplate-AutoApprover'
   params: {
+    maxInstanceCount: maxInstanceCount
     enableVnetIntegration: enableVnetIntegration
     virtualNetworkSubnetId: virtualNetworkSubnetId
     name: '${functionAppName}-AutoApprover'
