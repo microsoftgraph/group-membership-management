@@ -1,7 +1,7 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useDispatch } from 'react-redux';
 import {
   classNamesFunction,
@@ -76,9 +76,12 @@ export const MembershipLookupBase: React.FunctionComponent<MembershipLookupProps
 
   const [status, setStatus] = useState<LookupStatus>('idle');
   const [result, setResult] = useState<LookupResult | null>(null);
+  // Tracks the latest lookup so a slow earlier response can't overwrite a newer selection's result.
+  const activeLookupTokenRef = useRef(0);
 
   // Reset when the job/run being reviewed changes.
   useEffect(() => {
+    activeLookupTokenRef.current += 1;
     setStatus('idle');
     setResult(null);
   }, [syncJobId, runId]);
@@ -114,6 +117,8 @@ export const MembershipLookupBase: React.FunctionComponent<MembershipLookupProps
 
   const handlePickerChange = useCallback(
     async (items?: IPersonaProps[]): Promise<void> => {
+      const token = activeLookupTokenRef.current + 1;
+      activeLookupTokenRef.current = token;
       if (!items || items.length === 0 || !items[0].id) {
         setStatus('idle');
         setResult(null);
@@ -126,9 +131,16 @@ export const MembershipLookupBase: React.FunctionComponent<MembershipLookupProps
         const data = await dispatch(
           searchSyncHistoryByUser({ syncJobId, userObjectId: persona.id! })
         ).unwrap();
+        // Skip this result if the user picked someone else (or the run changed) while it was loading.
+        if (activeLookupTokenRef.current !== token) {
+          return;
+        }
         setResult(evaluate(persona, data));
         setStatus('succeeded');
       } catch {
+        if (activeLookupTokenRef.current !== token) {
+          return;
+        }
         setStatus('failed');
         setResult(null);
       }
