@@ -65,6 +65,15 @@ export const getStyles = (props: MembershipLookupStyleProps): MembershipLookupSt
     statusIcon: {
       fontSize: 16,
     },
+    dashedCircle: {
+      display: 'inline-block',
+      width: 14,
+      height: 14,
+      borderRadius: '50%',
+      border: `1.5px dashed ${theme.palette.neutralTertiary}`,
+      boxSizing: 'border-box',
+      flexShrink: 0,
+    },
     errorMessage: {
       marginTop: 12,
     },

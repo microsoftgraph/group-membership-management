@@ -150,18 +150,22 @@ export const MembershipLookupBase: React.FunctionComponent<MembershipLookupProps
 
   const renderCurrentStatus = (isMember: boolean): JSX.Element => (
     <span className={classNames.statusValue}>
-      <Icon
-        className={classNames.statusIcon}
-        iconName={isMember ? 'CompletedSolid' : 'CircleRing'}
-        style={{ color: isMember ? theme.palette.themePrimary : theme.palette.neutralSecondary }}
-      />
+      {isMember ? (
+        <Icon
+          className={classNames.statusIcon}
+          iconName="CompletedSolid"
+          style={{ color: theme.palette.themePrimary }}
+        />
+      ) : (
+        <span className={classNames.dashedCircle} aria-hidden="true" />
+      )}
       <span>{isMember ? lookupStrings.isMember : lookupStrings.isNotMember}</span>
     </span>
   );
 
   const renderAfterChanges = (pendingAction: PendingAction): JSX.Element => {
     const iconName =
-      pendingAction === 'add' ? 'CircleAdditionSolid' : pendingAction === 'remove' ? 'CompletedSolid' : 'CircleFill';
+      pendingAction === 'add' ? 'CircleAdditionSolid' : pendingAction === 'remove' ? 'SkypeCircleMinus' : 'CircleFill';
     const iconColor = pendingAction === 'none' ? theme.palette.neutralTertiary : theme.palette.themePrimary;
     const label =
       pendingAction === 'add'

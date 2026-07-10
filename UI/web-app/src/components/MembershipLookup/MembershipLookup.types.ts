@@ -15,6 +15,7 @@ export type MembershipLookupStyles = {
   statusLabel: IStyle;
   statusValue: IStyle;
   statusIcon: IStyle;
+  dashedCircle: IStyle;
   errorMessage: IStyle;
   spinnerContainer: IStyle;
 };
