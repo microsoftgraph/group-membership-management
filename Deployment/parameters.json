@@ -296,24 +296,31 @@
         "required": false
       }
     },
-    "deployBastion": {
-      "value": true,
+    "sharedBastion": {
+      "value": false,
       "metadata": {
-        "description": "When true, deploys a new Bastion VNet and Bastion Host. When false, peers to an existing Bastion VNet specified by existingBastionVnetId.",
+        "description": "When true, peers to an existing shared Bastion VNet and deploys no dedicated Bastion resources. When false, deploys a dedicated Bastion VNet/subnet/NSG (and, when deployBastionHost is true, the Bastion host + Public IP).",
+        "required": false
+      }
+    },
+    "deployBastionHost": {
+      "value": false,
+      "metadata": {
+        "description": "When true (and sharedBastion is false), also deploys the Azure Bastion host + Public IP. When false, deploys the dedicated VNet/subnet/NSG only.",
         "required": false
       }
     },
     "existingBastionVnetId": {
       "value": "",
       "metadata": {
-        "description": "Resource ID of an existing Bastion VNet to peer with. Required when deployBastion is false.",
+        "description": "Resource ID of an existing Bastion VNet to peer with. Required when sharedBastion is true.",
         "required": false
       }
     },
     "existingBastionVnetName": {
       "value": "",
       "metadata": {
-        "description": "Name of the existing Bastion VNet. Required when deployBastion is false.",
+        "description": "Name of the existing Bastion VNet. Required when sharedBastion is true.",
         "required": false
       }
     },

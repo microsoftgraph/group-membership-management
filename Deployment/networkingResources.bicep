@@ -15,13 +15,16 @@ param location string
 // Bastion Deployment Modality
 // -----------------------------------------------
 
-@description('When true, deploys a new Bastion VNet and Bastion Host. When false, peers to an existing Bastion VNet.')
-param deployBastion bool = true
+@description('When true, this environment peers to an existing shared Bastion VNet and deploys NO dedicated Bastion resources. When false, deploys a dedicated Bastion VNet/subnet/NSG (and, when deployBastionHost is true, the Bastion host + Public IP).')
+param sharedBastion bool = false
 
-@description('Resource ID of an existing Bastion VNet to peer with. Required when deployBastion is false.')
+@description('When true (and sharedBastion is false), also deploys the Azure Bastion host and its Public IP. When false, deploys the dedicated Bastion VNet/subnet/NSG only.')
+param deployBastionHost bool = false
+
+@description('Resource ID of an existing Bastion VNet to peer with. Required when sharedBastion is true.')
 param existingBastionVnetId string = ''
 
-@description('Name of the existing Bastion VNet. Required when deployBastion is false (used for peering resource names).')
+@description('Name of the existing Bastion VNet. Required when sharedBastion is true (used for peering resource names).')
 param existingBastionVnetName string = ''
 
 @description('Resource group name of the existing Bastion VNet. Required when the existing Bastion VNet is in a different resource group (e.g., a shared nonprod bastion). Defaults to the current resource group.')
@@ -84,7 +87,8 @@ module networkingInfrastructureTemplate '../Infrastructure/networking/template.b
     solutionAbbreviation: solutionAbbreviation
     environmentAbbreviation: environmentAbbreviation
     location: location
-    deployBastion: deployBastion
+    sharedBastion: sharedBastion
+    deployBastionHost: deployBastionHost
     existingBastionVnetId: existingBastionVnetId
     existingBastionVnetName: existingBastionVnetName
     existingBastionResourceGroupName: existingBastionResourceGroupName

@@ -6,13 +6,14 @@
 // VmSubnet (jumpbox + NAT-attached) and the PrivateEndpointSubnet, and reserves
 // address space for future per-ASP function-integration subnets.
 //
-// Two deployment modalities controlled by the 'deployBastion' parameter:
-//   - deployBastion = true:  Full deployment including Bastion VNet, NSG, Public IP,
-//                            and Bastion Host alongside the Resources VNet.
-//   - deployBastion = false: Deploys only the Resources VNet and peers it to an
-//                            existing Bastion VNet specified by 'existingBastionVnetId'.
+// Bastion deployment is controlled by two parameters:
+//   - sharedBastion = false (default): deploy a dedicated Bastion VNet + AzureBastionSubnet + NSG
+//       + deployBastionHost = true: also deploy the Bastion host + Public IP
+//       + deployBastionHost = false (default): dedicated VNet/subnet/NSG only (no host/PIP; cost saving)
+//   - sharedBastion = true: deploy NO dedicated Bastion resources; peer the Resources VNet to an
+//       existing shared Bastion VNet specified by 'existingBastionVnetId'.
 //
-// NOTE: When deployBastion = false, this template creates peerings on BOTH the Resources
+// NOTE: When sharedBastion = true, this template creates peerings on BOTH the Resources
 // VNet and the existing Bastion VNet (cross-RG when 'existingBastionResourceGroupName'
 // is set). The deployer must have
 // 'Microsoft.Network/virtualNetworks/virtualNetworkPeerings/write' permission on the
@@ -43,13 +44,16 @@ param location string = resourceGroup().location
 // Bastion Deployment Modality
 // -----------------------------------------------
 
-@description('When true, deploys a new Bastion VNet and Bastion Host. When false, peers to an existing Bastion VNet.')
-param deployBastion bool = true
+@description('When true, this environment peers to an existing shared Bastion VNet and deploys NO dedicated Bastion resources. When false, deploys a dedicated Bastion VNet/subnet/NSG (and, when deployBastionHost is true, the Bastion host + Public IP).')
+param sharedBastion bool = false
 
-@description('Resource ID of an existing Bastion VNet to peer with. Required when deployBastion is false.')
+@description('When true (and sharedBastion is false), also deploys the Azure Bastion host and its Public IP. When false, deploys the dedicated Bastion VNet/subnet/NSG only, so a host can be added later by setting this to true.')
+param deployBastionHost bool = false
+
+@description('Resource ID of an existing Bastion VNet to peer with. Required when sharedBastion is true.')
 param existingBastionVnetId string = ''
 
-@description('Name of the existing Bastion VNet. Required when deployBastion is false (used for peering resource names).')
+@description('Name of the existing Bastion VNet. Required when sharedBastion is true (used for peering resource names).')
 param existingBastionVnetName string = ''
 
 @description('Resource group name of the existing Bastion VNet. Required when the existing Bastion VNet is in a different resource group (e.g., a shared nonprod bastion). Defaults to the current resource group.')
@@ -242,8 +246,8 @@ resource prereqsKeyVault 'Microsoft.KeyVault/vaults@2023-07-01' existing = {
 }
 
 // Resolve which Bastion VNet ID and name to use for peering
-var resolvedBastionVnetId = deployBastion ? bastionVnet.outputs.id : existingBastionVnetId
-var resolvedBastionVnetName = deployBastion ? bastionVnet.outputs.name : existingBastionVnetName
+var resolvedBastionVnetId = sharedBastion ? existingBastionVnetId : bastionVnet.outputs.id
+var resolvedBastionVnetName = sharedBastion ? existingBastionVnetName : bastionVnet.outputs.name
 
 // Resolve the subscription and resource group for existing bastion peering (cross-subscription + cross-RG support)
 var bastionPeeringSubscriptionId = !empty(existingBastionVnetId) ? split(existingBastionVnetId, '/')[2] : subscription().subscriptionId
@@ -254,7 +258,7 @@ var bastionPeeringResourceGroupName = !empty(existingBastionResourceGroupName) ?
 // =====================================================================================
 
 // --- Bastion NSG (mandatory rules for Azure Bastion) ---
-module bastionNsg 'networkSecurityGroup.bicep' = if (deployBastion) {
+module bastionNsg 'networkSecurityGroup.bicep' = if (!sharedBastion) {
   name: 'deploy-${bastionNsgName}'
   params: {
     name: bastionNsgName
@@ -471,7 +475,7 @@ module resourcesNsg 'networkSecurityGroup.bicep' = {
 // =====================================================================================
 
 // --- Bastion VNet ---
-module bastionVnet 'virtualNetwork.bicep' = if (deployBastion) {
+module bastionVnet 'virtualNetwork.bicep' = if (!sharedBastion) {
   name: 'deploy-${bastionVnetName}'
   params: {
     name: bastionVnetName
@@ -535,7 +539,7 @@ module resourcesToBastionPeering 'vnetPeering.bicep' = {
 }
 
 // --- Bastion <-> Resources (Bastion side - new Bastion) ---
-module bastionToResourcesPeering 'vnetPeering.bicep' = if (deployBastion) {
+module bastionToResourcesPeering 'vnetPeering.bicep' = if (!sharedBastion) {
   name: 'deploy-${bastionVnetName}-to-resources-peering'
   params: {
     localVnetName: bastionVnet.outputs.name
@@ -550,7 +554,7 @@ module bastionToResourcesPeering 'vnetPeering.bicep' = if (deployBastion) {
 // existing Bastion VNet for this to succeed.
 // When 'existingBastionResourceGroupName' is set, the peering deploys into that RG
 // (cross-RG peering for shared bastion scenarios).
-module existingBastionToResourcesPeering 'vnetPeering.bicep' = if (!deployBastion) {
+module existingBastionToResourcesPeering 'vnetPeering.bicep' = if (sharedBastion) {
   name: 'deploy-existing-bastion-to-resources-peering'
   scope: resourceGroup(bastionPeeringSubscriptionId, bastionPeeringResourceGroupName)
   params: {
@@ -588,7 +592,7 @@ module natGateway 'natGateway.bicep' = {
   }
 }
 
-module bastionPip 'publicIpAddress.bicep' = if (deployBastion) {
+module bastionPip 'publicIpAddress.bicep' = if (!sharedBastion && deployBastionHost) {
   name: 'deploy-${bastionPipName}'
   params: {
     name: bastionPipName
@@ -599,7 +603,7 @@ module bastionPip 'publicIpAddress.bicep' = if (deployBastion) {
   }
 }
 
-module bastionHost 'bastion.bicep' = if (deployBastion) {
+module bastionHost 'bastion.bicep' = if (!sharedBastion && deployBastionHost) {
   name: 'deploy-${bastionHostName}'
   params: {
     name: bastionHostName
@@ -888,7 +892,7 @@ module appConfigPrivateEndpoint 'privateEndpoint.bicep' = {
 // Outputs
 // =====================================================================================
 
-output bastionVnetId string = deployBastion ? bastionVnet.outputs.id : existingBastionVnetId
+output bastionVnetId string = sharedBastion ? existingBastionVnetId : bastionVnet.outputs.id
 output resourcesVnetId string = resourcesVnet.outputs.id
 output resourcesVnetName string = resourcesVnet.outputs.name
 output privateEndpointSubnetId string = resourceId('Microsoft.Network/virtualNetworks/subnets', resourcesVnetName, 'PrivateEndpointSubnet')
