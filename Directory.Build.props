@@ -1,0 +1,12 @@
+<Project>
+  <!--
+    Central target-framework declaration for all public GMM .NET projects (.NET 10 migration).
+    Per-project <TargetFramework> lines were removed from the 127 csproj under
+    Service/GroupMembershipManagement so the runtime is declared once here (constitution
+    Principle VII, spec D2). Host-specific properties (AzureFunctionsVersion, OutputType, etc.)
+    remain in the individual csproj files.
+  -->
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+  </PropertyGroup>
+</Project>

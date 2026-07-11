@@ -93,7 +93,7 @@ resource websiteConfig 'Microsoft.Web/sites/config@2022-03-01' = {
   name: 'web'
   parent: websiteTemplate
   properties: {
-    netFrameworkVersion: 'v6.0'
+    netFrameworkVersion: 'v10.0'
     ftpsState: 'Disabled'
     minTlsVersion: '1.2'
     appSettings: appSettings

@@ -127,7 +127,7 @@ namespace Services.WebApi
 
             await GetResourceGroupsAsync(cancellationToken);
             var allWebsites = _computeResourceGroup.GetWebSites();
-            var filteredWebsites = allWebsites.Where(x => !x.Data.Name.EndsWith("-webapi", StringComparison.InvariantCultureIgnoreCase)).ToList();
+            var filteredWebsites = allWebsites.AsEnumerable().Where(x => !x.Data.Name.EndsWith("-webapi", StringComparison.InvariantCultureIgnoreCase)).ToList();
             return filteredWebsites;
         }
 

@@ -4,6 +4,7 @@
 using Entities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.ChangeTracking;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 using Models;
 using Models.AdfRun;
 using Models.Notifications;
@@ -35,6 +36,16 @@ namespace Repositories.EntityFramework.Contexts
         public DbSet<Channel> TeamsChannels { get; set; }
         public DbSet<Title> Titles { get; set; }
         public DbSet<DeferredNotification> DeferredNotifications { get; set; }
+
+        protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
+        {
+            // EF Core 9+ promotes PendingModelChangesWarning to an error thrown by Database.Migrate().
+            // GMMContext seeds non-deterministic values (e.g. Guid.NewGuid() and DateTime.UtcNow), so the
+            // model differs on every build and trips this check even though no schema/migration change is
+            // intended. Ignore the warning to preserve the pre-.NET 10 (EF Core 8) migrate-at-startup behavior.
+            optionsBuilder.ConfigureWarnings(warnings =>
+                warnings.Ignore(RelationalEventId.PendingModelChangesWarning));
+        }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {

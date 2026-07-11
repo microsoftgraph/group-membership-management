@@ -68,7 +68,7 @@ var functionAppConfig = {
   }
   runtime: {
     name: 'dotnet-isolated'
-    version: '8.0'
+    version: '10.0'
   }
 }
 @description('Storage account name.')
