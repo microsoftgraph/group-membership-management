@@ -42,8 +42,7 @@ import { setIsMissingAndOrOperator } from '../../store/manageMembership.slice';
 import { HRQueryItemColumn } from './components';
 import { SourcePartQuery } from '../../models/SourcePartQuery';
 import { SourcePartType } from '../../models/SourcePartType';
-
-const PLACEHOLDER_OPERATOR = 'placeholder';
+import { PLACEHOLDER_OPERATOR } from '../../models/HRFilterConstants';
 
 // Every row must have a non-empty attribute, operator, and value; rejects placeholder AND/OR and dangling IN ()/NOT IN ().
 function isFilterComplete(filter: string): boolean {

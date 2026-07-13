@@ -150,6 +150,9 @@ export const getStyles = (props: IJobDetailsStyleProps): IJobDetailsStyles => {
             flex: "0 0 200px",
             minWidth: 160
         },
+        requestedOnBehalfOf: {
+            marginTop: 16
+        },
         businessJustificationText: {
             flex: 1
         },

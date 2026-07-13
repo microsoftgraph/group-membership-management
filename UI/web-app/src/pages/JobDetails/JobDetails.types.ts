@@ -36,6 +36,7 @@ export interface IJobDetailsStyles {
     groupName: IStyle;
     businessJustificationColumns: IStyle;
     businessJustificationRequestedBy: IStyle;
+    requestedOnBehalfOf: IStyle;
     businessJustificationText: IStyle;
     membershipStatusMessage: IStyle;
     requestor: IStyle;

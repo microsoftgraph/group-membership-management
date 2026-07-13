@@ -18,7 +18,8 @@ import {
   Dropdown,
   IDropdownOption,
   MessageBar,
-  MessageBarType
+  MessageBarType,
+  Icon
 } from '@fluentui/react';
 import { format } from 'react-string-format';
 import {
@@ -133,12 +134,12 @@ export const ConfirmationBase: React.FunctionComponent<IConfirmationProps> = (pr
 
   const effectiveEndpoints = selectedDestinationEndpoints ?? effectiveDestination?.endpoints;
 
-  // Fetch group owners when we have a selected destination
+  // Fetch group owners when we have a destination (covers both new and edited jobs)
   useEffect(() => {
-    if (selectedDestination?.id) {
-      dispatch(getGroupOwners(selectedDestination.id));
+    if (effectiveDestination?.id) {
+      dispatch(getGroupOwners(effectiveDestination.id));
     }
-  }, [dispatch, selectedDestination?.id]);
+  }, [dispatch, effectiveDestination?.id]);
 
   // Create dropdown options from group owners
   const groupOwnerOptions: IDropdownOption[] = React.useMemo(() => {
@@ -323,7 +324,19 @@ export const ConfirmationBase: React.FunctionComponent<IConfirmationProps> = (pr
                 resizable={true}
                 autoAdjustHeight
                 required={isBusinessJustificationRequired}
-                label={`${strings.ManageMembership.labels.businessJustificationSubtitle} ${strings.ManageMembership.labels.businessJustificationPrompt}`}
+                onRenderLabel={() => (
+                  <div className={classNames.businessJustificationLabel}>
+                    <Text className={classNames.itemTitle} block>
+                      {`${strings.ManageMembership.labels.businessJustificationSubtitle} ${strings.ManageMembership.labels.businessJustificationPrompt}`}
+                    </Text>
+                    <div className={classNames.businessJustificationHelper}>
+                      <Icon iconName="Info" aria-hidden="true" />
+                      <Text block>
+                        {strings.ManageMembership.labels.businessJustificationHelperText}
+                      </Text>
+                    </div>
+                  </div>
+                )}
                 contentEditable={false}
                 value={businessJustification}
                 onChange={(_event, newValue) => onEditBusinessJustification(newValue ?? '')}

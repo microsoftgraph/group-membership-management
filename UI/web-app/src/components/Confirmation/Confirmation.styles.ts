@@ -53,6 +53,21 @@ export const getStyles = (props: IConfirmationStyleProps): IConfirmationStyles =
             paddingTop: 10,
             fontSize: 14
         },
+        businessJustificationLabel: {
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 4,
+            paddingBottom: 8,
+        },
+        businessJustificationHelper: {
+            display: 'flex',
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: 6,
+            fontSize: 13,
+            fontWeight: 400,
+            color: theme.palette.neutralSecondary,
+        },
         labelContainer: {
             display: 'flex',
             alignItems: 'center'

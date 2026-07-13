@@ -753,6 +753,7 @@ export type IStrings = {
       requestorInfo: string;
       businessJustificationSubtitle: string;
       businessJustificationPrompt: string;
+      businessJustificationHelperText: string;
       businessJustificationPlaceholder: string;
       requestedBy: string;
       requestedOnBehalfOf: string;

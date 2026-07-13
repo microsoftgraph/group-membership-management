@@ -502,6 +502,7 @@ const MembershipBusinessJustification: React.FunctionComponent<IContentProps> = 
   const isSubmissionRejector = useSelector(selectIsSubmissionRejector);
   const jobDetails = useSelector(selectSelectedJobDetails);
   const lastModifiedUserProfile = useSelector(selectLastModifiedUserProfile);
+  const lastModifiedOnBehalfOfUserProfile = useSelector(selectLastModifiedOnBehalfOfUserProfile);
   const jobChanges: SyncJobChange[] | undefined = useSelector(selectSelectedJobChanges);
   const justification = jobChanges?.[0]?.businessJustification;
 
@@ -509,6 +510,15 @@ const MembershipBusinessJustification: React.FunctionComponent<IContentProps> = 
     imageUrl: lastModifiedUserProfile?.photoUrl,
     text: lastModifiedUserProfile?.displayName
   };
+
+  const lastModifiedOnBehalfOfUserProps: IPersonaSharedProps = {
+    imageUrl: lastModifiedOnBehalfOfUserProfile?.photoUrl,
+    text: lastModifiedOnBehalfOfUserProfile?.displayName
+  };
+
+  const shouldShowRequestedOnBehalfOf = jobDetails != null
+    && !!jobDetails.lastModifiedOnBehalfOfObjectId
+    && jobDetails.lastModifiedOnBehalfOfObjectId !== jobDetails.lastModifiedByObjectId;
 
   // Match the existing conditions: only render while the job is pending review
   // and an actual business justification is available to display.
@@ -552,6 +562,34 @@ const MembershipBusinessJustification: React.FunctionComponent<IContentProps> = 
               <Shimmer width="100%" />
             )}
           </div>
+          {shouldShowRequestedOnBehalfOf && (
+            <div className={classNames.requestedOnBehalfOf}>
+              <InfoLabel
+                label={strings.JobDetails.labels.requestedOnBehalfOf}
+                description={strings.JobDetails.descriptions.requestedOnBehalfOf}
+              />
+              <div className={classNames.itemData}>
+                {(lastModifiedOnBehalfOfUserProfile?.photoUrl === "ErrorNonExistentStorage") ? (
+                  <div className={classNames.itemData}>
+                    <Text variant="medium" block>
+                      {lastModifiedOnBehalfOfUserProfile?.displayName}
+                    </Text>
+                    <Text variant="medium" block>
+                      {jobDetails?.lastModifiedOnBehalfOfObjectId}
+                    </Text>
+                  </div>
+                ) : (
+                  <Persona
+                    {...lastModifiedOnBehalfOfUserProps}
+                    text={lastModifiedOnBehalfOfUserProfile?.displayName}
+                    size={PersonaSize.size32}
+                    hidePersonaDetails={false}
+                    imageAlt={lastModifiedOnBehalfOfUserProfile?.displayName}
+                  />
+                )}
+              </div>
+            </div>
+          )}
         </div>
         <div className={classNames.businessJustificationText}>
           <InfoLabel
@@ -589,11 +627,6 @@ const MembershipStatusContent: React.FunctionComponent<IStatusContentProps> = (
   const isJobEnabler = useSelector(selectIsJobOwnerEnabler);
   const isJobWriter = useSelector(selectIsJobWriter);
   const canEnableJob = isJobEnabler || isJobWriter;
-  const lastModifiedOnBehalfOfUserProfile = useSelector(selectLastModifiedOnBehalfOfUserProfile);
-  const lastModifiedOnBehalfOfUserProps: IPersonaSharedProps = {
-    imageUrl: lastModifiedOnBehalfOfUserProfile?.photoUrl,
-    text: lastModifiedOnBehalfOfUserProfile?.displayName
-  };
   const jobChanges: SyncJobChange[] | undefined = useSelector(selectSelectedJobChanges);
   const lastChange = jobChanges?.[0];
   const businessJustification = useSelector(manageMembershipBusinessJustification);
@@ -849,44 +882,6 @@ const MembershipStatusContent: React.FunctionComponent<IStatusContentProps> = (
           </div>
         )}
       </div>
-
-      <div className={classNames.requestor}>
-        {(isSubmissionReviewer || isSubmissionRejector) && (jobStatus === SyncStatus.PendingReview) && jobDetails && jobDetails.lastModifiedOnBehalfOfObjectId &&
-        (jobDetails.lastModifiedOnBehalfOfObjectId !== jobDetails.lastModifiedByObjectId) && (
-        <div>
-        <Stack.Item align="start">
-          <InfoLabel
-            label={strings.JobDetails.labels.requestedOnBehalfOf}
-            description={strings.JobDetails.descriptions.requestedOnBehalfOf}
-          />
-         <div className={classNames.itemData}>
-          {jobDetails != null ? (
-            (lastModifiedOnBehalfOfUserProfile?.photoUrl === "ErrorNonExistentStorage") ? (
-              <div className={classNames.itemData}>
-              <Text variant="medium" block>
-              {lastModifiedOnBehalfOfUserProfile?.displayName}
-              </Text>
-              <Text variant="medium" block>
-              {jobDetails.lastModifiedOnBehalfOfObjectId}
-              </Text>
-            </div>
-            ) : (
-              <Persona
-                {...lastModifiedOnBehalfOfUserProps}
-                text={lastModifiedOnBehalfOfUserProfile?.displayName}
-                size={PersonaSize.size32}
-                hidePersonaDetails={false}
-                imageAlt={lastModifiedOnBehalfOfUserProfile?.displayName}
-              />
-            )
-          ) : (
-            <Shimmer width="100%" />
-          )}
-        </div>
-        </Stack.Item>
-        </div>
-        )}
-        </div>
       </div>
       {/* Sync Now Dialog */}
       <Dialog

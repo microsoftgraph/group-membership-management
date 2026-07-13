@@ -270,12 +270,14 @@ export const ManageMembershipBase: React.FunctionComponent<IManageMembershipProp
     // selector (rather than the once-captured jobDetailsRef) ensures the destination,
     // source parts, and other job data are populated even on direct navigation/refresh,
     // where the ref would still be undefined when the async fetch resolves.
-    if (reactiveJobDetails && !hasInitializedEditStateRef.current) {
+    // Guard on jobId so this only runs in the edit-existing-job flow: without it, a stale
+    // selectedJob left in the store could pre-populate the add flow with a previous job's data.
+    if (jobId && reactiveJobDetails && !hasInitializedEditStateRef.current) {
       hasInitializedEditStateRef.current = true;
       jobDetailsRef.current = reactiveJobDetails;
       dispatch(setJobDetailsForExistingJob(reactiveJobDetails));
     }
-  }, [dispatch, reactiveJobDetails]);
+  }, [dispatch, jobId, reactiveJobDetails]);
 
   const groupMembers = useSelector(manageMembershipGroupMembers);
   const hasNestedGroups = groupMembers && groupMembers.groupMemberCount > 0;

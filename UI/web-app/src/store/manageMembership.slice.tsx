@@ -20,6 +20,7 @@ import { DestinationPickerPersona, Job, GroupOwner } from '../models';
 import { SyncJobQuery } from '../models/SyncJobQuery';
 import { ISourcePart } from '../models/ISourcePart';
 import { SourcePartType } from '../models/SourcePartType';
+import { PLACEHOLDER_OPERATOR } from '../models/HRFilterConstants';
 import { SourcePartQuery } from '../models/SourcePartQuery';
 import { isSourcePartValid, removeUnusedProperties } from '../utils/sourcePartUtils';
 import { createGroup } from './groups.api';
@@ -528,14 +529,13 @@ export const manageMembershipIsAdvancedView = (state: RootState) => state.manage
 // specific part and is not cleared when a part's type is switched away from HR or when the part
 // is deleted. Relying on the stored flag left it stale, which incorrectly disabled the "Next"
 // button for otherwise valid configurations (e.g. a single valid Group Membership source part).
-const MISSING_AND_OR_PLACEHOLDER = 'placeholder';
 export const manageMembershipIsMissingAndOrOperator = (state: RootState): boolean =>
     state.manageMembership.sourceParts.some(part => {
         if (part.query.type !== SourcePartType.HR) {
             return false;
         }
         const filter = (part.query.source as { filter?: string } | undefined)?.filter;
-        return typeof filter === 'string' && filter.includes(MISSING_AND_OR_PLACEHOLDER);
+        return typeof filter === 'string' && filter.includes(PLACEHOLDER_OPERATOR);
     });
 export const manageMembershipisAdvancedQueryValid = (state: RootState) => state.manageMembership.isAdvancedQueryValid;
 export const manageMembershipCompositeQuery = (state: RootState) => state.manageMembership.compositeQuery;

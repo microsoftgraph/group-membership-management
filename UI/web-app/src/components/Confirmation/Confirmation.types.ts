@@ -16,6 +16,8 @@ import {
     sectionDescription: IStyle;
     itemTitle: IStyle;
     itemData: IStyle;
+    businessJustificationLabel: IStyle;
+    businessJustificationHelper: IStyle;
     labelContainer: IStyle;
     dropdownTitle: IStyle;
     valuesDropdown: IStyle;
