@@ -60,7 +60,8 @@ import {
   DefaultButton,
   IContextualMenuProps,
   IContextualMenuItem,
-  ContextualMenu
+  ContextualMenu,
+  Link
 } from '@fluentui/react';
 import { useTheme } from '@fluentui/react/lib/Theme';
 import { Text } from '@fluentui/react/lib/Text';
@@ -103,6 +104,8 @@ import Papa from 'papaparse';
 import { selectIsJobTenantWriter, selectIsJobWriter, selectIsSubmissionReviewer, selectIsSubmissionRejector } from '../../store/roles.slice';
 import { destinationTypeLocalization } from '../../utils/destinationTypeUtils';
 import { debounce, getDisplayActionRequired } from '../../utils/jobUtils';
+import { selectDashboardUrl } from '../../store/settings.slice';
+import { jsxFormat } from '../../utils/stringUtils';
 
 const getClassNames = classNamesFunction<
   IJobsListStyleProps,
@@ -141,6 +144,9 @@ export const JobsListBase: React.FunctionComponent<IJobsListProps> = (
   const isJobWriter: boolean | undefined = useSelector(selectIsJobWriter);
   const isSubmissionReviewer = useSelector(selectIsSubmissionReviewer);
   const isSubmissionRejector = useSelector(selectIsSubmissionRejector);
+  const dashboardUrl = useSelector(selectDashboardUrl);
+  const trimmedDashboardUrl = dashboardUrl?.trim() ?? '';
+  const isSafeDashboardUrl = /^https?:\/\//i.test(trimmedDashboardUrl);
   const [csvErrorMessage, setCsvErrorMessage] = useState<string>('');
   const [selectedItems, setSelectedItems] = useState<IItem[]>([]);
   const jobsToDownloadLoading = useSelector(downloadJobsLoading);
@@ -934,6 +940,27 @@ export const JobsListBase: React.FunctionComponent<IJobsListProps> = (
               }
             </div>
           </div>
+          {!isJobWriter && (
+            <MessageBar
+              messageBarType={MessageBarType.info}
+              isMultiline={true}
+              className={classNames.readOnlyAccessMessageBar}
+            >
+              {isSafeDashboardUrl
+                ? jsxFormat(
+                    strings.JobsList.readOnlyAccessGuidance,
+                    <Link
+                      href={trimmedDashboardUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      underline={true}
+                    >
+                      {strings.JobsList.readOnlyAccessTrainingLinkLabel}
+                    </Link>
+                  )
+                : strings.JobsList.readOnlyAccessGuidanceNoLink}
+            </MessageBar>
+          )}
           <div className={classNames.tabContent}>
             <ShimmeredDetailsList
               setKey="set"

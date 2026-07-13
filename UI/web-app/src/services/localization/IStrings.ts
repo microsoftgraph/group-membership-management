@@ -550,6 +550,9 @@ export type IStrings = {
   };
   JobsList: {
     listOfMemberships: string;
+    readOnlyAccessGuidance: string;
+    readOnlyAccessGuidanceNoLink: string;
+    readOnlyAccessTrainingLinkLabel: string;
     ShimmeredDetailsList: {
       toggleSelection: string;
       toggleAllSelection: string;

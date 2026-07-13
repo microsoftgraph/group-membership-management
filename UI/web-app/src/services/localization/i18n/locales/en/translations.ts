@@ -556,6 +556,9 @@ export const strings: IStrings = {
   },
   JobsList: {
     listOfMemberships: 'List of memberships',
+    readOnlyAccessGuidance: 'You have read-only access. To create or edit memberships, you must complete the required training and be added to the Job Writer group. Review the {0} to get started.',
+    readOnlyAccessGuidanceNoLink: 'You have read-only access. To create or edit memberships, you must complete the required training and be added to the Job Writer group. Contact your administrator to get started.',
+    readOnlyAccessTrainingLinkLabel: 'GMM information page',
     ShimmeredDetailsList: {
       toggleSelection: 'Toggle selection',
       toggleAllSelection: 'Toggle selection for all items',

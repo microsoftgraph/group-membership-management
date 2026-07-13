@@ -558,6 +558,9 @@ export const strings: IStrings = {
   },
   JobsList: {
     listOfMemberships: 'Membresías administradas',
+    readOnlyAccessGuidance: 'Tiene acceso de solo lectura. Para crear o editar membresías, debe completar la capacitación requerida y ser agregado al grupo de escritores de trabajos (Job Writer). Revise la {0} para comenzar.',
+    readOnlyAccessGuidanceNoLink: 'Tiene acceso de solo lectura. Para crear o editar membresías, debe completar la capacitación requerida y ser agregado al grupo de escritores de trabajos (Job Writer). Comuníquese con su administrador para comenzar.',
+    readOnlyAccessTrainingLinkLabel: 'página de información de GMM',
     ShimmeredDetailsList: {
       toggleSelection: 'Alternar selección',
       toggleAllSelection: 'Alternar selecciones para todo',

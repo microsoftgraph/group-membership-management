@@ -104,6 +104,10 @@ export const getStyles = (props: IJobsListStyleProps): IJobsListStyles => {
       borderRadius: 5,
       marginBottom: 22,
     },
+    readOnlyAccessMessageBar: {
+      borderRadius: 5,
+      marginBottom: 12,
+    },
     header: {
       display: 'flex',
       gap: 8,

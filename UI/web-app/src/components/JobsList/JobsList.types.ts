@@ -23,6 +23,7 @@ export interface IJobsListStyles {
   footer: IStyle;
   noMembershipsFoundText: IStyle;
   errorMessageBar: IStyle;
+  readOnlyAccessMessageBar: IStyle;
   header: IStyle;
   manageMembershipButton: IStyle;
   successStatus: IStyle;
