@@ -23,6 +23,18 @@ describe('getSelectedKeys', () => {
   it('parses a multi-value IN clause with brackets', () => {
     expect(getSelectedKeys('[FTE, Intern]')).toEqual(['FTE', 'Intern']);
   });
+
+  it('preserves an embedded apostrophe by decoding SQL-doubled quotes', () => {
+    expect(getSelectedKeys("('O''Brien')")).toEqual(["O'Brien"]);
+  });
+
+  it('preserves a comma inside a quoted value instead of splitting it', () => {
+    expect(getSelectedKeys("('A,B')")).toEqual(['A,B']);
+  });
+
+  it('parses a mix of a quoted apostrophe value and a plain value', () => {
+    expect(getSelectedKeys("('O''Brien', 'FTE')")).toEqual(["O'Brien", 'FTE']);
+  });
 });
 
 describe('computeInClauseSelection', () => {
@@ -66,5 +78,21 @@ describe('computeInClauseSelection', () => {
     // rather than spilling into a malformed "IN ('FTE') Or ... = 'Intern'" fragment.
     const afterSecond = computeInClauseSelection(toInClause(afterFirst), 'Intern', true);
     expect(toInClause(afterSecond)).toBe("('FTE', 'Intern')");
+  });
+
+  // Helper mirroring the component's escaped serialization (SQL-doubled apostrophes).
+  const toEscapedInClause = (keys: string[]): string =>
+    `(${keys.map(k => `'${k.replace(/'/g, "''")}'`).join(', ')})`;
+
+  it('round-trips a value containing an apostrophe without losing it', () => {
+    const afterFirst = computeInClauseSelection('', "O'Brien", true);
+    expect(afterFirst).toEqual(["O'Brien"]);
+    const serialized = toEscapedInClause(afterFirst);
+    expect(serialized).toBe("('O''Brien')");
+
+    // Re-reading the serialized row must yield the original key so a subsequent
+    // toggle does not corrupt or drop the O'Brien selection.
+    const afterSecond = computeInClauseSelection(serialized, 'FTE', true);
+    expect(afterSecond).toEqual(["O'Brien", 'FTE']);
   });
 });

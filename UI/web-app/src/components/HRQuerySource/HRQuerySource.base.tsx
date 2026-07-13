@@ -1496,7 +1496,9 @@ const getOptions = (
         // attribute rows in grouped mode, causing selections from one attribute (e.g.
         // EmployeeType) to leak into another attribute's IN clause (e.g. Profession).
         const newSelectedKeys = computeInClauseSelection(existingValues, item.key as string, item.selected);
-        selectedValues = newSelectedKeys.map(key => `'${key}'`).join(', ');
+        // Escape embedded apostrophes (SQL doubling) so values like O'Brien survive
+        // the round-trip: O'Brien -> 'O''Brien' and parse back to O'Brien.
+        selectedValues = newSelectedKeys.map(key => `'${key.replace(/'/g, "''")}'`).join(', ');
         setSelectedKeys(newSelectedKeys);
       }
     }

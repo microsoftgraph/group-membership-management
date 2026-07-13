@@ -32,18 +32,38 @@ export function countOccurrences(str: string, subStr: string): number {
 
 // Parses the individual keys out of a filter value fragment. Handles single values
 // ('FTE') as well as IN-clause lists such as ('FTE', 'Intern') or [FTE, Intern].
+// Parsing is quote-aware: commas inside a quoted value are preserved (e.g. 'A,B')
+// and SQL-escaped apostrophes are decoded (e.g. 'O''Brien' -> O'Brien) so that
+// values are never split or mangled.
 export function getSelectedKeys(input: string): string[] {
-  const matches = input.match(/'([^']+)'|([^(),\s\[\]]+)|\[(.+?)\]|\((.+?)\)/g);
-  if (matches) {
-    return matches.flatMap(match => {
-      const cleaned = match.replace(/'/g, '').trim();
-      if (cleaned.startsWith('[') || cleaned.startsWith('(')) {
-        return cleaned.slice(1, -1).split(',').map(v => v.trim());
-      }
-      return [cleaned];
-    });
+  const trimmed = input.trim();
+  if (!trimmed) {
+    return [];
   }
-  return [];
+
+  // Unwrap a single enclosing (...) or [...] list if present.
+  const isWrapped =
+    (trimmed.startsWith('(') && trimmed.endsWith(')')) ||
+    (trimmed.startsWith('[') && trimmed.endsWith(']'));
+  const content = isWrapped ? trimmed.slice(1, -1) : trimmed;
+
+  // Match either a SQL single-quoted literal (allowing doubled '' escapes) or a
+  // bare, unquoted token. Commas/whitespace outside quotes act as separators.
+  const tokens = content.match(/'(?:''|[^'])*'|[^,\s]+/g);
+  if (!tokens) {
+    return [];
+  }
+
+  return tokens
+    .map(token => token.trim())
+    .filter(token => token.length > 0)
+    .map(token => {
+      if (token.length >= 2 && token.startsWith("'") && token.endsWith("'")) {
+        // Strip the surrounding quotes and decode doubled apostrophes.
+        return token.slice(1, -1).replace(/''/g, "'");
+      }
+      return token;
+    });
 }
 
 // Computes the new set of selected keys for an IN / NOT IN clause when a value option is
