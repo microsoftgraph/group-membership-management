@@ -78,6 +78,8 @@ namespace Services
 
             _logger.RecordsRetrieved(children.Count, tableName);
 
+            ThrowIfNullIdentityColumns(children, tableName, syncJob, targetOfficeGroupId, isFilterPath: false);
+
             var profiles = children.Select(x => new GraphProfileInformation { PersonnelNumber = x.PersonnelNumber, Id = x.AzureObjectId }).ToList();
 
             var senderResponse = await UploadMembershipFileAsync(profiles, syncJob, targetOfficeGroupId, currentPart, exclusionary);
@@ -113,11 +115,34 @@ namespace Services
 
             _logger.RecordsRetrieved(filteredEntities.Count, tableName);
 
+            ThrowIfNullIdentityColumns(filteredEntities, tableName, syncJob, targetOfficeGroupId, isFilterPath: true);
+
             var profiles = filteredEntities.Select(x => new GraphProfileInformation { PersonnelNumber = x.PersonnelNumber, Id = x.AzureObjectId }).Distinct().ToList();
 
             var senderResponse = await UploadMembershipFileAsync(profiles, syncJob, targetOfficeGroupId, currentPart, exclusionary);
 
             return senderResponse;
+        }
+
+        private void ThrowIfNullIdentityColumns(
+            List<PersonEntity> entities, string tableName, SyncJob syncJob, Guid targetOfficeGroupId, bool isFilterPath)
+        {
+            ValidateColumn(entities, e => string.IsNullOrWhiteSpace(e.AzureObjectId), "AzureObjectId", tableName, syncJob, targetOfficeGroupId);
+            if (isFilterPath)
+                ValidateColumn(entities, e => string.IsNullOrWhiteSpace(e.PersonnelNumber), "EmployeeId", tableName, syncJob, targetOfficeGroupId);
+        }
+
+        private void ValidateColumn(
+            List<PersonEntity> entities, Func<PersonEntity, bool> isNull, string columnName,
+            string tableName, SyncJob syncJob, Guid targetOfficeGroupId)
+        {
+            var affectedCount = entities.Count(isNull);
+            if (affectedCount == 0) return;
+
+            _logger.NullHrColumnValuesDetected(affectedCount, tableName, columnName, syncJob.RunId, targetOfficeGroupId);
+
+            var message = $"SqlMembershipObtainer failed: {affectedCount} HR row(s) in table {tableName} have a null/empty {columnName} for RunId: {syncJob.RunId}, TargetOfficeGroupId: {targetOfficeGroupId}. This indicates bad HR source data, not a code defect.";
+            throw new InvalidOperationException(message);
         }
 
         public async Task<Guid> GetGroupIdAsync(SyncJob syncJob)

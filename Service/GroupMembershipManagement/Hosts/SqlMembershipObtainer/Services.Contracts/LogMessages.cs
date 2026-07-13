@@ -126,6 +126,10 @@ namespace Hosts.SqlMembershipObtainer
             Message = "Setting status of job {JobId} to {Status}.")]
         public static partial void SettingJobStatus(this ILogger logger, Guid jobId, string status);
 
+        [LoggerMessage(EventId = 160069, Level = LogLevel.Error,
+            Message = "SqlMembershipObtainer failed the sync because {AffectedCount} HR row(s) in table {TableName} have a null/empty {ColumnName} for RunId: {RunId}, TargetOfficeGroupId: {TargetOfficeGroupId}. This indicates bad HR source data (null {ColumnName}), not a code defect. Correct the HR data and re-run.")]
+        public static partial void NullHrColumnValuesDetected(this ILogger logger, int affectedCount, string tableName, string columnName, Guid? runId, Guid targetOfficeGroupId);
+
         // ── DataFactoryService ──
 
         [LoggerMessage(EventId = 160070, Level = LogLevel.Information,
