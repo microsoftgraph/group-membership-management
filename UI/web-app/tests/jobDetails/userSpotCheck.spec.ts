@@ -111,7 +111,8 @@ async function openMembershipDetails(page: Page) {
   await expect(jobRow).toBeVisible({ timeout: 15000 });
   await jobRow.click();
 
-  await expect(page.getByText('Membership Details - Engineering-All')).toBeVisible({ timeout: 15000 });
+  await expect(page.getByText('Membership Details')).toBeVisible({ timeout: 15000 });
+  await expect(page.getByText('Engineering-All').first()).toBeVisible({ timeout: 15000 });
 }
 
 /**

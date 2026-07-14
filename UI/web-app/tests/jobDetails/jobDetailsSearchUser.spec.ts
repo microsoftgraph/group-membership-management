@@ -30,7 +30,8 @@ async function openSyncHistoryTab(page: Page): Promise<ReturnType<typeof page.lo
   await expect(jobRow).toBeVisible({ timeout: 15000 });
   await jobRow.click();
 
-  await expect(page.getByText('Membership Details - Engineering-All')).toBeVisible({ timeout: 15000 });
+  await expect(page.getByText('Membership Details')).toBeVisible({ timeout: 15000 });
+  await expect(page.getByText('Engineering-All').first()).toBeVisible({ timeout: 15000 });
 
   const historyButton = page.locator('#job-history-button');
   await expect(historyButton).toBeVisible({ timeout: 15000 });

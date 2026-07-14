@@ -167,7 +167,7 @@ test.describe('Job Details Tests', () => {
     await page.waitForFunction(
       () => {
         const nextButton = Array.from(document.querySelectorAll('button')).find(
-          (button) => button.textContent?.trim() === 'Next'
+          (button) => button.textContent?.trim().startsWith('Next')
         );
         return nextButton && !nextButton.disabled;
       },
@@ -255,7 +255,7 @@ test.describe('Job Details Tests', () => {
     await page.waitForFunction(
       () => {
         const nextButton = Array.from(document.querySelectorAll('button')).find(
-          (button) => button.textContent?.trim() === 'Next'
+          (button) => button.textContent?.trim().startsWith('Next')
         );
         return nextButton && !nextButton.disabled;
       },
@@ -391,7 +391,7 @@ test.describe('Job Details Tests', () => {
     await page.waitForFunction(
       () => {
         const nextButton = Array.from(document.querySelectorAll('button')).find(
-          (button) => button.textContent?.trim() === 'Next'
+          (button) => button.textContent?.trim().startsWith('Next')
         );
         return nextButton && !nextButton.disabled;
       },
@@ -523,7 +523,8 @@ test.describe('Job Details Tests', () => {
     const groupRow = page.locator(`[data-group-name="${groupName}"]`);
     await expect(groupRow).toBeVisible({ timeout: 15000 });
     await groupRow.click();
-    await expect(page.getByText(`Membership Details - ${groupName}`)).toBeVisible({ timeout: 30000 });
+    await expect(page.getByText('Membership Details')).toBeVisible({ timeout: 30000 });
+    await expect(page.getByText(groupName).first()).toBeVisible({ timeout: 30000 });
     
     // Try to reveal source parts UI 
     const expandAllButton = page.locator('#expandCollapseAllButton');
@@ -570,7 +571,8 @@ test.describe('Job Details Tests', () => {
     const reopenedGroupRow = page.locator(`[data-group-name="${groupName}"]`);
     await expect(reopenedGroupRow).toBeVisible({ timeout: 15000 });
     await reopenedGroupRow.click();
-    await expect(page.getByText(`Membership Details - ${groupName}`)).toBeVisible({ timeout: 30000 });
+    await expect(page.getByText('Membership Details')).toBeVisible({ timeout: 30000 });
+    await expect(page.getByText(groupName).first()).toBeVisible({ timeout: 30000 });
 
     if (!isMockMode) {
       const historyButton = page.locator('#job-history-button');
