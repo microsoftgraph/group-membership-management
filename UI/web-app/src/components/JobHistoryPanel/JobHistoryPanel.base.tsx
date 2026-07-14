@@ -14,6 +14,8 @@ import {
     PivotItem,
     IColumn,
     Link,
+    DefaultButton,
+    PrimaryButton,
     Modal,
     IconButton,
     useTheme,
@@ -123,6 +125,7 @@ export const JobHistoryPanelBase: React.FunctionComponent<IJobHistoryPanelProps>
     const [isSyncSortDescending, setIsSyncSortDescending] = useState(true);
     const [syncPageNumber, setSyncPageNumber] = useState(1);
     const [syncPageSize, setSyncPageSize] = useState(10);
+    const [eventTypeFilter, setEventTypeFilter] = useState<'all' | 'configuration'>('all');
     const [takeActionItem, setTakeActionItem] = useState<SyncJobHistory | null>(null);
     const [thresholdData, setThresholdData] = useState<ThresholdNotificationData | null>(null);
     const [isThresholdDataLoading, setIsThresholdDataLoading] = useState(false);
@@ -174,7 +177,7 @@ export const JobHistoryPanelBase: React.FunctionComponent<IJobHistoryPanelProps>
             case SyncJobChangeReason.GroupSettings:
                 return strings.JobDetails.Panel.groupSettings;
             case SyncJobChangeReason.IgnoreThresholdOnce:
-                return strings.JobDetails.Panel.ignoreThresholdOnce;
+                return strings.JobDetails.Panel.thresholdExceededApproved;
             default:
                 return changeReason ?? '';
         }
@@ -564,7 +567,11 @@ export const JobHistoryPanelBase: React.FunctionComponent<IJobHistoryPanelProps>
         );
     };
 
-    const renderCount = (value: number | null): JSX.Element => {
+    const renderCount = (item: CombinedHistoryListItem, value: number | null): JSX.Element => {
+        if (item.eventType === 'configuration') {
+            return <></>;
+        }
+
         return <span>{value ?? strings.JobDetails.Panel.emptyValuePlaceholder}</span>;
     };
 
@@ -573,6 +580,10 @@ export const JobHistoryPanelBase: React.FunctionComponent<IJobHistoryPanelProps>
         value: number | null,
         highlightChangeType: MembershipChangeType,
     ): JSX.Element => {
+        if (item.eventType === 'configuration') {
+            return <></>;
+        }
+
         const runId = item.syncHistory?.runId;
         const changeType = runId && runMembershipChangeMap ? runMembershipChangeMap.get(runId) : undefined;
         const isHighlighted = changeType === highlightChangeType;
@@ -602,7 +613,7 @@ export const JobHistoryPanelBase: React.FunctionComponent<IJobHistoryPanelProps>
         }
 
         return (
-            <span style={{ display: 'inline-flex', flexDirection: 'column', alignItems: 'flex-start', gap: '2px' }}>
+            <span className={classNames.pendingCell}>
                 {countElement}
                 <span className={classNames.pendingMarker} aria-label={strings.JobDetails.Panel.pendingMarkerAriaLabel}>
                     {strings.JobDetails.Panel.pendingMarkerLabel}
@@ -625,14 +636,31 @@ export const JobHistoryPanelBase: React.FunctionComponent<IJobHistoryPanelProps>
         }
 
         const runId = item.syncHistory.runId;
+        const hasPendingThresholdChanges = canTakeActionOnRow(item);
+        const isDownloading = downloadingRunIds.has(runId);
+
+        if (hasPendingThresholdChanges) {
+            return (
+                <DefaultButton
+                    iconProps={{ iconName: 'Download' }}
+                    onClick={() => void handleDownload(runId)}
+                    disabled={isDownloading}
+                    aria-label={format(strings.JobDetails.Panel.downloadAriaLabel, runId)}
+                    styles={{ root: { borderRadius: 4 } }}
+                    text={isDownloading
+                        ? strings.JobDetails.Panel.downloadingText
+                        : strings.JobDetails.Panel.downloadPendingUsersLinkText}
+                />
+            );
+        }
 
         return (
             <Link
                 onClick={() => void handleDownload(runId)}
-                disabled={downloadingRunIds.has(runId)}
+                disabled={isDownloading}
                 aria-label={format(strings.JobDetails.Panel.downloadAriaLabel, runId)}
             >
-                {downloadingRunIds.has(runId)
+                {isDownloading
                     ? strings.JobDetails.Panel.downloadingText
                     : strings.JobDetails.Panel.downloadLinkText}
             </Link>
@@ -662,9 +690,11 @@ export const JobHistoryPanelBase: React.FunctionComponent<IJobHistoryPanelProps>
             setModalTitle('');
             setModalViewMode('details');
             setSyncPageNumber(1);
+            setEventTypeFilter('all');
             setTakeActionItem(null);
             setThresholdData(null);
             setIsThresholdDataLoading(false);
+            setChangesApplied(false);
             setSelectedUser([]);
             setMatchingRunIds(null);
             setRunMembershipChangeMap(null);
@@ -904,28 +934,29 @@ export const JobHistoryPanelBase: React.FunctionComponent<IJobHistoryPanelProps>
             }, { runId: null as string | null, time: 0 }).runId;
     }, [syncHistoryItems]);
 
-    const isThresholdResolved = useMemo<boolean>(() => {
+    const isThresholdAddressed = useMemo<boolean>(() => {
         if (!mostRecentThresholdRunId) return false;
 
         const thresholdItem = syncHistoryItems.find((item) => item.runId === mostRecentThresholdRunId);
         if (!thresholdItem) return false;
 
         const thresholdTime = getUtcTimestampMillis(thresholdItem.endTime ?? thresholdItem.startTime);
-
         return jobChanges.some(
             (change) =>
-                (change.changeReason === SyncJobChangeReason.StatusUpdate ||
-                    change.changeReason === SyncJobChangeReason.IgnoreThresholdOnce) &&
+                (
+                    change.changeReason === SyncJobChangeReason.StatusUpdate ||
+                    change.changeReason === SyncJobChangeReason.Update ||
+                    change.changeReason === SyncJobChangeReason.SubmissionApproved ||
+                    change.changeReason === SyncJobChangeReason.SubmissionRejected ||
+                    change.changeReason === SyncJobChangeReason.IgnoreThresholdOnce
+                ) &&
                 getUtcTimestampMillis(change.changeTime) > thresholdTime
         );
     }, [mostRecentThresholdRunId, syncHistoryItems, jobChanges]);
 
     const showPendingMarker = (item: CombinedHistoryListItem): boolean =>
         item.eventType === 'sync' &&
-        item.syncHistory?.status === RunHistoryStatus.ThresholdExceeded &&
-        item.syncHistory.runId === mostRecentThresholdRunId &&
-        !resolvedRunIds.has(item.syncHistory.runId) &&
-        !isThresholdResolved;
+        item.syncHistory?.status === RunHistoryStatus.ThresholdExceeded;
 
     const combinedSyncItems = useMemo<CombinedHistoryListItem[]>(() => {
         const configurationItems = jobChanges.map((item, index) => ({
@@ -998,14 +1029,20 @@ export const JobHistoryPanelBase: React.FunctionComponent<IJobHistoryPanelProps>
     }, [combinedSyncItems, isSyncSortDescending, syncSortKey]);
 
     const filteredCombinedSyncItems = useMemo<CombinedHistoryListItem[]>(() => {
-        if (selectedUser.length === 0 || matchingRunIds === null) {
-            return sortedSyncItems;
+        let items = sortedSyncItems;
+
+        if (eventTypeFilter !== 'all') {
+            items = items.filter((item) => item.eventType === eventTypeFilter);
         }
 
-        return sortedSyncItems.filter((item) => item.eventType === 'sync'
+        if (selectedUser.length === 0 || matchingRunIds === null) {
+            return items;
+        }
+
+        return items.filter((item) => item.eventType === 'sync'
             && item.syncHistory
             && matchingRunIds.has(item.syncHistory.runId));
-    }, [matchingRunIds, selectedUser.length, sortedSyncItems]);
+    }, [eventTypeFilter, matchingRunIds, selectedUser.length, sortedSyncItems]);
 
     const totalSyncPages = Math.max(1, Math.ceil(filteredCombinedSyncItems.length / syncPageSize));
 
@@ -1102,23 +1139,32 @@ export const JobHistoryPanelBase: React.FunctionComponent<IJobHistoryPanelProps>
         setSyncPageNumber(nextPageNumber);
     };
 
+    const canTakeActionOnRow = (item: CombinedHistoryListItem): boolean =>
+        item.syncHistory?.status === RunHistoryStatus.ThresholdExceeded &&
+        !!item.syncHistory &&
+        item.syncHistory.runId === mostRecentThresholdRunId &&
+        !resolvedRunIds.has(item.syncHistory.runId) &&
+        !isThresholdAddressed;
+
     const renderCombinedStatus = (item: CombinedHistoryListItem): JSX.Element => {
-        const isThresholdExceeded = item.syncHistory?.status === RunHistoryStatus.ThresholdExceeded;
+        const requiresThresholdAction = canTakeActionOnRow(item);
+        const isThresholdApproved =
+            item.jobChange?.changeReason === SyncJobChangeReason.IgnoreThresholdOnce;
+        const statusClassName = requiresThresholdAction
+            ? classNames.statusCellThresholdExceeded
+            : isThresholdApproved
+                ? classNames.statusCellThresholdApproved
+                : undefined;
 
         return (
             <div className={classNames.statusCellContainer}>
-                <span className={isThresholdExceeded ? classNames.statusCellThresholdExceeded : undefined}>
+                <span className={statusClassName}>
                     {item.statusText}
                 </span>
-                
-                {isThresholdExceeded && item.syncHistory && item.syncHistory.runId === mostRecentThresholdRunId && !resolvedRunIds.has(item.syncHistory.runId) && !isThresholdResolved && (
-                    item.syncHistory.customMessage ? (
-                        <TooltipHost content={strings.JobDetails.Panel.takeActionDisabledTooltip}>
-                            <Link disabled aria-disabled>{strings.JobDetails.Panel.takeAction}</Link>
-                        </TooltipHost>
-                    ) : (
-                        <Link onClick={() => handleTakeAction(item.syncHistory!)}>{strings.JobDetails.Panel.takeAction}</Link>
-                    )
+                {requiresThresholdAction && (
+                    <span style={{ fontSize: '11px', lineHeight: '14px', color: theme.palette.neutralTertiary }}>
+                        {strings.JobDetails.Panel.syncPausedUntilReviewed}
+                    </span>
                 )}
             </div>
         );
@@ -1141,21 +1187,35 @@ export const JobHistoryPanelBase: React.FunctionComponent<IJobHistoryPanelProps>
             key: 'eventType',
             name: strings.JobDetails.Panel.eventTypeColumnLabel,
             fieldName: 'eventType',
-            minWidth: 90,
+            minWidth: 140,
+            maxWidth: 170,
             isResizable: true,
             isMultiline: true,
             isSorted: syncSortKey === 'eventType',
             isSortedDescending: isSyncSortDescending,
             onColumnClick: onSyncColumnHeaderClick,
-            onRender: (item: CombinedHistoryListItem) => (
-                <span>{item.eventType === 'sync' ? strings.JobDetails.Panel.syncPivotHeader : strings.JobDetails.Panel.configurationPivotHeader}</span>
-            ),
+            onRender: (item: CombinedHistoryListItem) => {
+                const isSync = item.eventType === 'sync';
+                return (
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                        {isSync ? (
+                            <svg width="14" height="14" viewBox="0 0 20 20" fill={theme.palette.neutralPrimary} aria-hidden="true">
+                                <path d="M10 3a7 7 0 0 1 6.32 4H14a.5.5 0 0 0 0 1h3.5a.5.5 0 0 0 .5-.5V4a.5.5 0 0 0-1 0v1.68A8 8 0 0 0 2.06 9.3a.5.5 0 1 0 .99.13A7 7 0 0 1 10 3zm7.94 7.57a.5.5 0 0 0-.99-.13A7 7 0 0 1 3.68 13H6a.5.5 0 0 0 0-1H2.5a.5.5 0 0 0-.5.5V16a.5.5 0 0 0 1 0v-1.68a8 8 0 0 0 14.94-3.75z" />
+                            </svg>
+                        ) : (
+                            <Icon iconName="Settings" style={{ fontSize: '14px', color: theme.palette.neutralPrimary }} />
+                        )}
+                        <span style={{ fontWeight: 600, whiteSpace: 'nowrap' }}>{isSync ? strings.JobDetails.Panel.syncPivotHeader : strings.JobDetails.Panel.configurationPivotHeader}</span>
+                    </span>
+                );
+            },
         },
         {
             key: 'status',
             name: strings.JobDetails.Panel.statusColumnLabel,
             fieldName: 'statusText',
-            minWidth: 70,
+            minWidth: 130,
+            maxWidth: 170,
             isResizable: true,
             isMultiline: true,
             isSorted: syncSortKey === 'status',
@@ -1174,7 +1234,7 @@ export const JobHistoryPanelBase: React.FunctionComponent<IJobHistoryPanelProps>
             isSortedDescending: isSyncSortDescending,
             onColumnClick: onSyncColumnHeaderClick,
             onRenderHeader: () => renderMultilineHeader(strings.JobDetails.Panel.beforeSyncUserCountColumnLabel),
-            onRender: (item: CombinedHistoryListItem) => renderCount(item.beforeSyncUserCount),
+            onRender: (item: CombinedHistoryListItem) => renderCount(item, item.beforeSyncUserCount),
         },
         {
             key: 'usersAdded',
@@ -1208,7 +1268,7 @@ export const JobHistoryPanelBase: React.FunctionComponent<IJobHistoryPanelProps>
             isSorted: syncSortKey === 'afterSyncUserCount',
             isSortedDescending: isSyncSortDescending,
             onColumnClick: onSyncColumnHeaderClick,
-            onRender: (item: CombinedHistoryListItem) => renderCount(item.afterSyncUserCount),
+            onRender: (item: CombinedHistoryListItem) => renderCount(item, item.afterSyncUserCount),
         },
         {
             key: 'expand',
@@ -1225,6 +1285,15 @@ export const JobHistoryPanelBase: React.FunctionComponent<IJobHistoryPanelProps>
                         ariaLabel={isExpanded
                             ? strings.JobDetails.Panel.collapseRowAriaLabel
                             : strings.JobDetails.Panel.expandRowAriaLabel}
+                        styles={{
+                            root: { color: theme.palette.neutralSecondary, backgroundColor: 'transparent' },
+                            rootHovered: { color: theme.palette.neutralPrimary, backgroundColor: 'transparent' },
+                            rootPressed: { color: theme.palette.neutralPrimary, backgroundColor: 'transparent' },
+                            rootFocused: { backgroundColor: 'transparent' },
+                            icon: { color: theme.palette.neutralSecondary },
+                            iconHovered: { color: theme.palette.neutralPrimary },
+                            iconPressed: { color: theme.palette.neutralPrimary },
+                        }}
                         onClick={(event) => {
                             event.stopPropagation();
                             toggleSyncRowExpand(item.id);
@@ -1253,6 +1322,21 @@ export const JobHistoryPanelBase: React.FunctionComponent<IJobHistoryPanelProps>
         setThresholdData(null);
         setIsThresholdDataLoading(false);
         setResolveError(null);
+    };
+
+    const eventTypeFilterOptions: IDropdownOption[] = [
+        { key: 'all', text: strings.JobDetails.Panel.eventTypeAllOption },
+        { key: 'configuration', text: strings.JobDetails.Panel.eventTypeConfigurationOption },
+    ];
+
+    const hasActiveFilters = eventTypeFilter !== 'all' || selectedUser.length > 0;
+
+    const handleClearFilters = (): void => {
+        setEventTypeFilter('all');
+        if (selectedUser.length > 0) {
+            onSelectedUserChanged([]);
+        }
+        setSyncPageNumber(1);
     };
 
     const handleApplyChanges = async (): Promise<void> => {
@@ -1320,8 +1404,8 @@ export const JobHistoryPanelBase: React.FunctionComponent<IJobHistoryPanelProps>
             queueMicrotask(() => fetchExplanationForRun(runId, userObjectId));
             return (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-                    <strong style={{ fontSize: '14px' }}>{strings.JobDetails.Panel.aiDescriptionLabel}</strong>
-                    <Spinner size={SpinnerSize.small} label={strings.JobDetails.Panel.aiDescriptionLoading} />
+                    <strong style={{ fontSize: '14px', fontWeight: 600 }}>{strings.JobDetails.Panel.aiDescriptionLabel}</strong>
+                    <Spinner size={SpinnerSize.small} label={strings.JobDetails.Panel.aiDescriptionLoading} labelPosition="right" styles={{ root: { justifyContent: 'flex-start' } }} />
                 </div>
             );
         }
@@ -1329,8 +1413,8 @@ export const JobHistoryPanelBase: React.FunctionComponent<IJobHistoryPanelProps>
         if (isLoading) {
             return (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-                    <strong style={{ fontSize: '14px' }}>{strings.JobDetails.Panel.aiDescriptionLabel}</strong>
-                    <Spinner size={SpinnerSize.small} label={strings.JobDetails.Panel.aiDescriptionLoading} />
+                    <strong style={{ fontSize: '14px', fontWeight: 600 }}>{strings.JobDetails.Panel.aiDescriptionLabel}</strong>
+                    <Spinner size={SpinnerSize.small} label={strings.JobDetails.Panel.aiDescriptionLoading} labelPosition="right" styles={{ root: { justifyContent: 'flex-start' } }} />
                 </div>
             );
         }
@@ -1338,7 +1422,7 @@ export const JobHistoryPanelBase: React.FunctionComponent<IJobHistoryPanelProps>
         if (hasError) {
             return (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-                    <strong style={{ fontSize: '14px' }}>{strings.JobDetails.Panel.aiDescriptionLabel}</strong>
+                    <strong style={{ fontSize: '14px', fontWeight: 600 }}>{strings.JobDetails.Panel.aiDescriptionLabel}</strong>
                     <span style={{ fontSize: '12px', color: theme.palette.redDark }}>{strings.JobDetails.Panel.aiDescriptionError}</span>
                 </div>
             );
@@ -1347,7 +1431,7 @@ export const JobHistoryPanelBase: React.FunctionComponent<IJobHistoryPanelProps>
         if (explanation) {
             return (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-                    <strong style={{ fontSize: '14px' }}>{strings.JobDetails.Panel.aiDescriptionLabel}</strong>
+                    <strong style={{ fontSize: '14px', fontWeight: 600 }}>{strings.JobDetails.Panel.aiDescriptionLabel}</strong>
                     <span style={{ fontSize: '12px' }}>{explanation}</span>
                 </div>
             );
@@ -1399,8 +1483,8 @@ export const JobHistoryPanelBase: React.FunctionComponent<IJobHistoryPanelProps>
             queueMicrotask(() => fetchExplanationForRunOnly(runId));
             return (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-                    <strong style={{ fontSize: '14px' }}>{strings.JobDetails.Panel.aiDescriptionLabel}</strong>
-                    <Spinner size={SpinnerSize.small} label={strings.JobDetails.Panel.aiDescriptionLoading} />
+                    <strong style={{ fontSize: '14px', fontWeight: 600 }}>{strings.JobDetails.Panel.aiDescriptionLabel}</strong>
+                    <Spinner size={SpinnerSize.small} label={strings.JobDetails.Panel.aiDescriptionLoading} labelPosition="right" styles={{ root: { justifyContent: 'flex-start' } }} />
                 </div>
             );
         }
@@ -1408,8 +1492,8 @@ export const JobHistoryPanelBase: React.FunctionComponent<IJobHistoryPanelProps>
         if (isLoading) {
             return (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-                    <strong style={{ fontSize: '14px' }}>{strings.JobDetails.Panel.aiDescriptionLabel}</strong>
-                    <Spinner size={SpinnerSize.small} label={strings.JobDetails.Panel.aiDescriptionLoading} />
+                    <strong style={{ fontSize: '14px', fontWeight: 600 }}>{strings.JobDetails.Panel.aiDescriptionLabel}</strong>
+                    <Spinner size={SpinnerSize.small} label={strings.JobDetails.Panel.aiDescriptionLoading} labelPosition="right" styles={{ root: { justifyContent: 'flex-start' } }} />
                 </div>
             );
         }
@@ -1417,7 +1501,7 @@ export const JobHistoryPanelBase: React.FunctionComponent<IJobHistoryPanelProps>
         if (hasError) {
             return (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-                    <strong style={{ fontSize: '14px' }}>{strings.JobDetails.Panel.aiDescriptionLabel}</strong>
+                    <strong style={{ fontSize: '14px', fontWeight: 600 }}>{strings.JobDetails.Panel.aiDescriptionLabel}</strong>
                     <span style={{ fontSize: '12px', color: theme.palette.redDark }}>{strings.JobDetails.Panel.aiDescriptionError}</span>
                 </div>
             );
@@ -1430,7 +1514,7 @@ export const JobHistoryPanelBase: React.FunctionComponent<IJobHistoryPanelProps>
 
         return (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-                <strong style={{ fontSize: '14px' }}>{strings.JobDetails.Panel.aiDescriptionLabel}</strong>
+                <strong style={{ fontSize: '14px', fontWeight: 600 }}>{strings.JobDetails.Panel.aiDescriptionLabel}</strong>
                 <span style={{ fontSize: '12px' }}>{explanation}</span>
             </div>
         );
@@ -1443,31 +1527,53 @@ export const JobHistoryPanelBase: React.FunctionComponent<IJobHistoryPanelProps>
             const aiExplanation = renderAiExplanation(item.syncHistory.runId) ?? renderRunAiExplanation(item.syncHistory.runId);
             const customMessage = item.syncHistory.customMessage;
             const showAdfRunId = isGeneralSettingsAdministrator && !!item.syncHistory.adfRunId;
+            const showTakeAction = canTakeActionOnRow(item);
 
             return (
-                <div style={{ display: 'flex', gap: '24px' }}>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', flex: '0 0 auto' }}>
+                <div style={{ display: 'flex' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', flex: '0 0 52%' }}>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-                            <strong style={{ fontSize: '14px' }}>{strings.JobDetails.Panel.runIdColumnLabel}:</strong>
+                            <strong style={{ fontSize: '14px', fontWeight: 600 }}>{strings.JobDetails.Panel.runIdColumnLabel}:</strong>
                             <span style={{ fontSize: '12px' }}>{item.syncHistory.runId}</span>
                         </div>
                         {showAdfRunId && (
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-                                <strong style={{ fontSize: '14px' }}>{strings.JobDetails.Panel.adfRunIdColumnLabel}:</strong>
+                                <strong style={{ fontSize: '14px', fontWeight: 600 }}>{strings.JobDetails.Panel.adfRunIdColumnLabel}:</strong>
                                 <span style={{ fontSize: '12px' }}>{item.syncHistory.adfRunId}</span>
                             </div>
                         )}
                         {downloadLink && (
-                            <div>
+                            <div style={{ marginTop: 'auto' }}>
                                 {downloadLink}
                             </div>
                         )}
                     </div>
-                    {(aiExplanation || customMessage) && (
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', flex: '1 1 auto' }}>
+                    {(aiExplanation || customMessage || showTakeAction) && (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', flex: '1 1 0' }}>
                             {aiExplanation}
                             {customMessage && (
                                 <span style={{ fontSize: '12px', color: theme.palette.redDark }}>{customMessage}</span>
+                            )}
+                            {showTakeAction && (
+                                <div style={{ marginTop: 'auto' }}>
+                                    {customMessage ? (
+                                        <TooltipHost content={strings.JobDetails.Panel.takeActionDisabledTooltip}>
+                                            <PrimaryButton
+                                                iconProps={{ iconName: 'Search' }}
+                                                text={strings.JobDetails.Panel.reviewAndTakeAction}
+                                                disabled
+                                                styles={{ root: { borderRadius: 4, alignSelf: 'flex-start' } }}
+                                            />
+                                        </TooltipHost>
+                                    ) : (
+                                        <PrimaryButton
+                                            iconProps={{ iconName: 'Search' }}
+                                            text={strings.JobDetails.Panel.reviewAndTakeAction}
+                                            onClick={() => handleTakeAction(item.syncHistory!)}
+                                            styles={{ root: { borderRadius: 4, alignSelf: 'flex-start' } }}
+                                        />
+                                    )}
+                                </div>
                             )}
                         </div>
                     )}
@@ -1477,22 +1583,54 @@ export const JobHistoryPanelBase: React.FunctionComponent<IJobHistoryPanelProps>
 
         if (item.eventType === 'configuration' && item.jobChange) {
             const query = extractQueryFromChangeDetails(item.jobChange.changeDetails);
+            const showReviewThresholdCallout = !!onEditThreshold;
 
             return (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-                        <strong style={{ fontSize: '14px' }}>{strings.JobDetails.Panel.changedByColumnLabel}:</strong>
-                        <span style={{ fontSize: '12px' }}>{item.jobChange.changedByDisplayName || strings.JobDetails.Panel.emptyValuePlaceholder}</span>
+                <div style={{ display: 'flex', flexDirection: 'column' }}>
+                    <div style={{ display: 'flex' }}>
+                        <div style={{ flex: '0 0 52%' }} />
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', flex: '1 1 0' }}>
+                            <strong style={{ fontSize: '14px', fontWeight: 600 }}>{strings.JobDetails.Panel.businessJustification}:</strong>
+                            <span style={{ fontSize: '12px' }}>{item.jobChange.businessJustification || strings.JobDetails.Panel.emptyValuePlaceholder}</span>
+                        </div>
                     </div>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-                        <strong style={{ fontSize: '14px' }}>{strings.JobDetails.Panel.businessJustification}:</strong>
-                        <span style={{ fontSize: '12px' }}>{item.jobChange.businessJustification || strings.JobDetails.Panel.emptyValuePlaceholder}</span>
-                    </div>
-                    {query && (
-                        <div>
-                            <Link onClick={() => handleOpenQuery(item.jobChange!.changeDetails)}>
-                                {strings.JobDetails.Panel.openQuery}
-                            </Link>
+                    {(query || showReviewThresholdCallout) && (
+                        <div className={classNames.configurationActionsRow}>
+                            <div className={classNames.configurationQueryAction}>
+                                {query && (
+                                    <Link onClick={() => handleOpenQuery(item.jobChange!.changeDetails)}>
+                                        {strings.JobDetails.Panel.openQuery}
+                                    </Link>
+                                )}
+                            </div>
+                            {showReviewThresholdCallout && (
+                                <div className={classNames.reviewThresholdCallout}>
+                                    <span className={classNames.reviewThresholdCalloutText}>
+                                        {strings.JobDetails.Panel.reviewAlertThresholdsCallout}
+                                    </span>
+                                    <DefaultButton
+                                        text={strings.JobDetails.Panel.reviewAlertThresholdsButton}
+                                        onClick={() => onEditThreshold?.({ additionsExceeded: false, removalsExceeded: false })}
+                                        styles={{
+                                            root: {
+                                                borderRadius: 2,
+                                                flexShrink: 0,
+                                                height: 24,
+                                                minWidth: 0,
+                                                padding: '0 8px',
+                                                whiteSpace: 'nowrap',
+                                            },
+                                            label: {
+                                                fontSize: '12px',
+                                                fontWeight: 400,
+                                                lineHeight: '22px',
+                                                margin: 0,
+                                                whiteSpace: 'nowrap',
+                                            },
+                                        }}
+                                    />
+                                </div>
+                            )}
                         </div>
                     )}
                 </div>
@@ -1508,15 +1646,32 @@ export const JobHistoryPanelBase: React.FunctionComponent<IJobHistoryPanelProps>
         const item = rowProps.item as CombinedHistoryListItem;
         const isExpanded = expandedSyncRowIds.has(item.id);
         const expandedContent = isExpanded ? renderExpandedSyncContent(item) : null;
+        const modifiedBy = isExpanded && item.eventType === 'configuration' ? item.jobChange?.changedByDisplayName : undefined;
 
         return (
             <>
-                <DetailsRow
-                    {...rowProps}
-                    styles={isExpanded && expandedContent ? { root: { borderBottom: 'none' } } : undefined}
-                />
+                <div style={{ position: 'relative' }}>
+                    <DetailsRow
+                        {...rowProps}
+                        styles={{
+                            root: {
+                                ...(isExpanded && expandedContent ? { borderBottom: 'none' } : {}),
+                                backgroundColor: theme.palette.white,
+                                selectors: { ':hover': { backgroundColor: theme.palette.white } },
+                            },
+                        }}
+                    />
+                    {modifiedBy && (
+                        <div style={{ position: 'absolute', top: 0, bottom: 0, left: '52%', right: 44, display: 'flex', alignItems: 'center', pointerEvents: 'none' }}>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                                <strong style={{ fontSize: '14px', fontWeight: 600 }}>{strings.JobDetails.Panel.changedByColumnLabel}:</strong>
+                                <span style={{ fontSize: '12px' }}>{modifiedBy}</span>
+                            </div>
+                        </div>
+                    )}
+                </div>
                 {isExpanded && expandedContent && (
-                    <div style={{ padding: '4px 12px 8px 12px', backgroundColor: 'inherit', borderBottom: `1px solid ${theme.palette.neutralLight}` }}>
+                    <div style={{ padding: '4px 12px 8px 12px', backgroundColor: theme.palette.neutralLighter, borderBottom: `1px solid ${theme.palette.neutralLight}` }}>
                         {expandedContent}
                     </div>
                 )}
@@ -1527,7 +1682,7 @@ export const JobHistoryPanelBase: React.FunctionComponent<IJobHistoryPanelProps>
     return (
         <Panel
             type={PanelType.custom}
-            customWidth="760px"
+            customWidth="900px"
             isLightDismiss
             isOpen={isOpen}
             onDismiss={() => {
@@ -1553,12 +1708,19 @@ export const JobHistoryPanelBase: React.FunctionComponent<IJobHistoryPanelProps>
                 },
             }}
         >
+            {takeActionItem === null && <div className={classNames.headerDivider} />}
             {changesApplied && (
                 <MessageBar
                     messageBarType={MessageBarType.success}
-                    onDismiss={() => setChangesApplied(false)}
+                    styles={{
+                        root: {
+                            borderRadius: 10,
+                            marginBottom: 8,
+                            overflow: 'hidden',
+                        },
+                    }}
                 >
-                    {strings.JobDetails.Panel.changesAppliedSuccess}
+                    {strings.JobDetails.Panel.notificationResolved}
                 </MessageBar>
             )}
             {syncPaused && (
@@ -1636,53 +1798,143 @@ export const JobHistoryPanelBase: React.FunctionComponent<IJobHistoryPanelProps>
                                 {downloadError}
                             </MessageBar>
                         )}
-                        {isAISearchForUserEnabled && (<>
                         <div className={classNames.syncFiltersContainer}>
-                            <div className={classNames.userSearchField} style={{ gridColumn: '1 / -1' }}>
-                                <Label className={classNames.userSearchLabel}>{strings.JobDetails.Panel.searchUserLabel}</Label>
-                                <NormalPeoplePicker
-                                    componentRef={userPickerRef}
-                                    key={'normal'}
-                                    aria-label={strings.JobDetails.Panel.searchUserLabel}
-                                    onRenderSuggestionsItem={renderUserSuggestion}
-                                    onResolveSuggestions={getPickerSuggestions}
-                                    onInputChange={handleUserSearchInputChange}
-                                    onChange={onSelectedUserChanged}
-                                    selectedItems={selectedUser}
-                                    itemLimit={1}
-                                    resolveDelay={600}
-                                    inputProps={{ placeholder: strings.JobDetails.Panel.searchUserPlaceholder }}
-                                    pickerSuggestionsProps={{
-                                        suggestionsClassName: classNames.userSuggestionList,
-                                        suggestionsItemClassName: classNames.userSuggestionItem,
-                                        resultsMaximumNumber: 5,
-                                        noResultsFoundText: strings.JobDetails.Panel.searchUserNoResults,
-                                        loadingText: strings.JobDetails.Panel.searchUserLoading,
-                                        suggestionsAvailableAlertText: strings.JobDetails.Panel.searchUserLabel,
+                            <div className={classNames.eventTypeFilterField}>
+                                <Label>{strings.JobDetails.Panel.eventTypeFilterLabel}</Label>
+                                <Dropdown
+                                    ariaLabel={strings.JobDetails.Panel.eventTypeFilterLabel}
+                                    selectedKey={eventTypeFilter}
+                                    options={eventTypeFilterOptions}
+                                    onRenderTitle={(options) => {
+                                        const selectedOption = options?.[0];
+                                        return (
+                                            <span>
+                                                {selectedOption?.key === 'all'
+                                                    ? strings.JobDetails.Panel.eventTypeAllSelectedOption
+                                                    : selectedOption?.text}
+                                            </span>
+                                        );
                                     }}
-                                    styles={{
-                                        text: classNames.userSearchPicker,
-                                    }}
-                                    pickerCalloutProps={{
-                                        directionalHint: DirectionalHint.bottomLeftEdge,
-                                        directionalHintFixed: true,
-                                        alignTargetEdge: true,
-                                        target: userPickerRef.current?.input?.current?.inputElement ?? undefined,
-                                        calloutMinWidth: 220,
-                                        calloutMaxWidth: 300,
-                                        gapSpace: 4,
-                                        coverTarget: false,
-                                        doNotLayer: true,
-                                        styles: {
-                                            root: {
-                                                zIndex: 1000,
-                                            },
-                                            calloutMain: {},
-                                        },
+                                    onChange={(_event, option) => {
+                                        if (option) {
+                                            setEventTypeFilter(option.key as 'all' | 'configuration');
+                                            setSyncPageNumber(1);
+                                        }
                                     }}
                                 />
                             </div>
+                            {isAISearchForUserEnabled ? (
+                                <div className={classNames.userSearchField}>
+                                    <Label className={classNames.userSearchLabel}>{strings.JobDetails.Panel.searchUserLabel}</Label>
+                                    <div className={classNames.userSearchInputWrapper}>
+                                        <NormalPeoplePicker
+                                            componentRef={userPickerRef}
+                                            key={'normal'}
+                                            aria-label={strings.JobDetails.Panel.searchUserLabel}
+                                            onRenderSuggestionsItem={renderUserSuggestion}
+                                            onResolveSuggestions={getPickerSuggestions}
+                                            onInputChange={handleUserSearchInputChange}
+                                            onChange={onSelectedUserChanged}
+                                            selectedItems={selectedUser}
+                                            itemLimit={1}
+                                            resolveDelay={600}
+                                            inputProps={{ placeholder: strings.JobDetails.Panel.searchUserPlaceholder }}
+                                            pickerSuggestionsProps={{
+                                                suggestionsClassName: classNames.userSuggestionList,
+                                                suggestionsItemClassName: classNames.userSuggestionItem,
+                                                resultsMaximumNumber: 5,
+                                                noResultsFoundText: strings.JobDetails.Panel.searchUserNoResults,
+                                                loadingText: strings.JobDetails.Panel.searchUserLoading,
+                                                suggestionsAvailableAlertText: strings.JobDetails.Panel.searchUserLabel,
+                                            }}
+                                            styles={{
+                                                text: classNames.userSearchPicker,
+                                            }}
+                                            pickerCalloutProps={{
+                                                directionalHint: DirectionalHint.bottomLeftEdge,
+                                                directionalHintFixed: true,
+                                                alignTargetEdge: true,
+                                                target: userPickerRef.current?.input?.current?.inputElement ?? undefined,
+                                                calloutMinWidth: 220,
+                                                calloutMaxWidth: 300,
+                                                gapSpace: 4,
+                                                coverTarget: false,
+                                                doNotLayer: true,
+                                                styles: {
+                                                    root: {
+                                                        zIndex: 1000,
+                                                    },
+                                                    calloutMain: {},
+                                                },
+                                            }}
+                                        />
+                                        <Icon
+                                            iconName="Contact"
+                                            className={classNames.userSearchTrailingIcon}
+                                            aria-hidden={true}
+                                        />
+                                    </div>
+                                </div>
+                            ) : <div />}
+                            <div className={classNames.filterActionsBar}>
+                                <button
+                                    type="button"
+                                    className={hasActiveFilters
+                                        ? classNames.clearFiltersLink
+                                        : `${classNames.clearFiltersLink} ${classNames.clearFiltersLinkDisabled}`}
+                                    onClick={handleClearFilters}
+                                    disabled={!hasActiveFilters}
+                                    aria-label={strings.JobDetails.Panel.clearFilters}
+                                >
+                                    <span className={classNames.clearFiltersIconWrapper} aria-hidden={true}>
+                                        <svg
+                                            width="24"
+                                            height="20"
+                                            viewBox="0 0 24 20"
+                                            fill="none"
+                                            xmlns="http://www.w3.org/2000/svg"
+                                        >
+                                            <line x1="1" y1="8" x2="14" y2="8" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                                            <line x1="2.5" y1="13" x2="12.5" y2="13" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                                            <line x1="4" y1="18" x2="11" y2="18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                                            <circle cx="17" cy="6" r="5.5" fill="currentColor" />
+                                            <path
+                                                d="M14.7 5.15a2.55 2.55 0 0 1 4.7-.2"
+                                                stroke="#ffffff"
+                                                strokeWidth="0.9"
+                                                strokeLinecap="round"
+                                                fill="none"
+                                            />
+                                            <path
+                                                d="M19.4 4.95l0.25-1.3-1.3 0.25"
+                                                stroke="#ffffff"
+                                                strokeWidth="0.9"
+                                                strokeLinecap="round"
+                                                strokeLinejoin="round"
+                                                fill="none"
+                                            />
+                                            <path
+                                                d="M19.3 6.85a2.55 2.55 0 0 1-4.7 0.2"
+                                                stroke="#ffffff"
+                                                strokeWidth="0.9"
+                                                strokeLinecap="round"
+                                                fill="none"
+                                            />
+                                            <path
+                                                d="M14.6 7.05l-0.25 1.3 1.3-0.25"
+                                                stroke="#ffffff"
+                                                strokeWidth="0.9"
+                                                strokeLinecap="round"
+                                                strokeLinejoin="round"
+                                                fill="none"
+                                            />
+                                        </svg>
+                                    </span>
+                                    <span>{strings.JobDetails.Panel.clearFilters}</span>
+                                </button>
+                            </div>
                         </div>
+                        {isAISearchForUserEnabled && (<>
                         {isUserSearchLoading && (
                             <Spinner
                                 label={searchProgressText ?? strings.JobDetails.Panel.searchUserLoading}
@@ -1716,7 +1968,7 @@ export const JobHistoryPanelBase: React.FunctionComponent<IJobHistoryPanelProps>
                                     {userSearchInfo}
                                 </span>
                                 <span className={classNames.userSearchBannerNote}>
-                                    <strong>{strings.JobDetails.Panel.syncHistoryRetentionNoteLabel}</strong> {strings.JobDetails.Panel.syncHistoryRetentionNote}
+                                    <strong style={{ fontWeight: 600 }}>{strings.JobDetails.Panel.syncHistoryRetentionNoteLabel}</strong> {strings.JobDetails.Panel.syncHistoryRetentionNote}
                                 </span>
                                 {userManualNote && (
                                     <span className={classNames.userSearchBannerNote} style={{ fontStyle: 'italic' }}>

@@ -422,6 +422,13 @@ export type IStrings = {
       history: string;
       configurationPivotHeader: string;
       syncPivotHeader: string;
+      eventTypeFilterLabel: string;
+      eventTypeAllOption: string;
+      eventTypeAllSelectedOption: string;
+      eventTypeConfigurationOption: string;
+      clearFilters: string;
+      reviewAlertThresholdsCallout: string;
+      reviewAlertThresholdsButton: string;
       runIdColumnLabel: string;
       startTimeColumnLabel: string;
       endTimeColumnLabel: string;
@@ -442,10 +449,14 @@ export type IStrings = {
       submissionApproved: string;
       submissionRejected: string;
       ignoreThresholdOnce: string;
+      thresholdExceededApproved: string;
+      notificationResolved: string;
       businessJustification: string;
       groupSettings: string;
       syncNowJustification: string;
       takeAction: string;
+      reviewAndTakeAction: string;
+      syncPausedUntilReviewed: string;
       changesAppliedSuccess: string;
       syncPausedSuccess: string;
       resolveError: string;
@@ -501,6 +512,7 @@ export type IStrings = {
       downloadError: string;
       downloadColumnLabel: string;
       downloadLinkText: string;
+      downloadPendingUsersLinkText: string;
       downloadingText: string;
       pendingMarkerLabel: string;
       pendingMarkerAriaLabel: string;

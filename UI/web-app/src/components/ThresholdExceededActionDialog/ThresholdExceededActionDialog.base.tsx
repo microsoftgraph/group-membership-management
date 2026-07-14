@@ -289,7 +289,9 @@ export const ThresholdExceededActionDialogBase: React.FunctionComponent<IThresho
                                 </div>
                             )}
                         </div>
+                        <div className={classNames.sectionDivider} />
                         {membershipLookup}
+                        <div className={classNames.sectionDivider} />
                         <h3 className={classNames.chooseAnActionHeader}>{modal.chooseAnActionHeader}</h3>
                         <div className={classNames.actionsGrid}>
                             <div className={classNames.actionCard}>

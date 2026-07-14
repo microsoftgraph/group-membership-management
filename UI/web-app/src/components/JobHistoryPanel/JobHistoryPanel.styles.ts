@@ -12,6 +12,13 @@ export const getStyles = (props: IJobHistoryPanelStyleProps): IJobHistoryPanelSt
     return {
         root: [{}, className],
 
+        headerDivider: {
+            height: 1,
+            backgroundColor: theme.palette.neutralLight,
+            marginTop: 12,
+            marginBottom: 12,
+            marginRight: -10,
+        },
         container: {
             padding: 20,
             height: '100%',
@@ -72,18 +79,75 @@ export const getStyles = (props: IJobHistoryPanelStyleProps): IJobHistoryPanelSt
         },
         statusCellThresholdExceeded: {
             color: theme.semanticColors.errorIcon,
+            fontWeight: 600,
+            fontSize: '14px',
+        },
+        statusCellThresholdApproved: {
+            color: theme.semanticColors.successIcon,
+            fontWeight: 600,
         },
         syncFiltersContainer: {
             display: 'grid',
-            gridTemplateColumns: '220px 1fr',
-            gap: '12px',
-            alignItems: 'start',
+            gridTemplateColumns: '260px 260px 1fr',
+            gap: '16px',
+            alignItems: 'end',
             marginBottom: '12px',
             overflow: 'visible',
         },
         statusFilter: {
             minWidth: '220px',
         },
+        eventTypeFilterField: {
+            minWidth: 260,
+        },
+        filterActionsBar: {
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'flex-end',
+            paddingBottom: '4px',
+        },
+        clearFiltersLink: {
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '4px',
+            fontSize: '13px',
+            color: theme.palette.themePrimary,
+            cursor: 'pointer',
+            background: 'none',
+            border: 'none',
+            padding: '4px 0',
+            textDecoration: 'none',
+            selectors: {
+                ':hover': {
+                    color: theme.palette.themeDarker,
+                    textDecoration: 'none',
+                },
+                ':focus-visible': {
+                    outline: `1px solid ${theme.palette.themePrimary}`,
+                    outlineOffset: '2px',
+                },
+            },
+        },
+        clearFiltersLinkDisabled: {
+            color: theme.palette.neutralTertiary,
+            cursor: 'default',
+            selectors: {
+                ':hover': {
+                    color: theme.palette.neutralTertiary,
+                    textDecoration: 'none',
+                },
+            },
+        },
+        clearFiltersIconWrapper: {
+            display: 'inline-flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            width: '24px',
+            height: '20px',
+            flexShrink: 0,
+        },
+        clearFiltersBaseIcon: {},
+        clearFiltersBadgeIcon: {},
         userSearchField: {
             width: '100%',
             position: 'relative',
@@ -92,6 +156,20 @@ export const getStyles = (props: IJobHistoryPanelStyleProps): IJobHistoryPanelSt
         userSearchLabel: {
             display: 'block',
         },
+        userSearchInputWrapper: {
+            position: 'relative',
+            width: '100%',
+            selectors: {
+                '& .ms-BasePicker': {
+                    width: '100%',
+                },
+                '& .ms-BasePicker-text': {
+                    width: '100%',
+                    minWidth: 0,
+                    paddingRight: '32px',
+                },
+            },
+        },
         userSearchInputShell: {},
         userSearchPicker: {
             width: '100%',
@@ -99,6 +177,15 @@ export const getStyles = (props: IJobHistoryPanelStyleProps): IJobHistoryPanelSt
         userSearchPickerText: {},
         userSearchPickerItemsWrapper: {},
         userSearchIcon: {},
+        userSearchTrailingIcon: {
+            position: 'absolute',
+            right: '8px',
+            top: '50%',
+            transform: 'translateY(-50%)',
+            fontSize: '16px',
+            color: theme.palette.neutralSecondary,
+            pointerEvents: 'none',
+        },
         userSuggestionList: {
             maxHeight: '240px',
             overflowY: 'auto',
@@ -195,17 +282,24 @@ export const getStyles = (props: IJobHistoryPanelStyleProps): IJobHistoryPanelSt
             padding: '2px 8px',
             display: 'inline-block',
         },
+        pendingCell: {
+            display: 'inline-flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            gap: '1px',
+            width: 'fit-content',
+            padding: '2px 4px',
+            borderRadius: '4px',
+            backgroundColor: theme.palette.neutralLighter,
+            border: `1px solid ${theme.palette.neutralQuaternaryAlt}`,
+            color: theme.palette.neutralPrimary,
+        },
         pendingMarker: {
             display: 'inline-block',
-            marginTop: '2px',
-            padding: '1px 8px',
-            borderRadius: '10px',
             fontSize: '11px',
             lineHeight: '14px',
             fontWeight: 400,
-            color: theme.palette.neutralPrimary,
-            backgroundColor: theme.palette.neutralLighter,
-            border: `1px solid ${theme.palette.neutralQuaternaryAlt}`,
+            color: theme.palette.neutralSecondary,
         },
         matchingRow: {
             backgroundColor: theme.palette.themeLighterAlt,
@@ -236,6 +330,29 @@ export const getStyles = (props: IJobHistoryPanelStyleProps): IJobHistoryPanelSt
             fontWeight: 400,
             color: theme.palette.neutralSecondary,
             textAlign: 'center',
+        },
+        configurationActionsRow: {
+            display: 'flex',
+            alignItems: 'center',
+            marginTop: '8px',
+            paddingTop: '8px',
+        },
+        configurationQueryAction: {
+            display: 'flex',
+            alignItems: 'center',
+            flex: '1 1 auto',
+        },
+        reviewThresholdCallout: {
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'flex-end',
+            gap: '8px',
+            flex: '0 0 auto',
+        },
+        reviewThresholdCalloutText: {
+            fontSize: '12px',
+            color: theme.palette.neutralSecondary,
+            whiteSpace: 'nowrap',
         },
     };
 };

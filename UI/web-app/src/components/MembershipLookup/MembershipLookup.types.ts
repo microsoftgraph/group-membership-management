@@ -8,7 +8,9 @@ export type MembershipLookupStyles = {
   root: IStyle;
   title: IStyle;
   description: IStyle;
+  pickerWrapper: IStyle;
   picker: IStyle;
+  pickerTrailingIcon: IStyle;
   resultCard: IStyle;
   resultPersona: IStyle;
   resultStatuses: IStyle;

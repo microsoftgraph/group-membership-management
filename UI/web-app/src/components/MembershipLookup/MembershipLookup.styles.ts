@@ -8,7 +8,7 @@ export const getStyles = (props: MembershipLookupStyleProps): MembershipLookupSt
 
   return {
     root: {
-      marginBottom: 16,
+      marginBottom: 0,
     },
     title: {
       fontWeight: 600,
@@ -20,12 +20,35 @@ export const getStyles = (props: MembershipLookupStyleProps): MembershipLookupSt
       color: theme.palette.neutralSecondary,
       marginBottom: 12,
     },
+    pickerWrapper: {
+      position: 'relative',
+      width: '100%',
+      maxWidth: 260,
+      selectors: {
+        '& .ms-BasePicker': {
+          width: '100%',
+        },
+        '& .ms-BasePicker-text': {
+          paddingRight: 32,
+        },
+      },
+    },
     picker: {
       borderRadius: 4,
       border: '1px solid',
       borderColor: theme.palette.neutralQuaternary,
       backgroundColor: theme.palette.white,
-      maxWidth: 360,
+      width: '100%',
+      boxSizing: 'border-box',
+    },
+    pickerTrailingIcon: {
+      position: 'absolute',
+      right: 8,
+      top: '50%',
+      transform: 'translateY(-50%)',
+      fontSize: 16,
+      color: theme.palette.neutralSecondary,
+      pointerEvents: 'none',
     },
     resultCard: {
       marginTop: 12,

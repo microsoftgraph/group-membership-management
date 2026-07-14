@@ -18,7 +18,6 @@ namespace Services
     public class GetRunExplanationHandler : RequestHandlerBase<GetRunExplanationRequest, GetRunExplanationResponse>
     {
         public const string FallbackExplanation = "The specific reason could not be determined from the available data.";
-        public const string NotEnoughInformation = "Not enough information to determine a cause.";
         public const string NoMembershipChanges = "This sync completed with no membership changes.";
 
         // Cap on group-source display names resolved via Graph per row expansion; falls back to raw GUIDs on Graph failure.
@@ -79,12 +78,12 @@ Prefer these patterns:
    - Manager+depth-cap: ""...scoped to the management chain rooted at id=[manager.id] (depth<=[depth]) and filtered to [filter]...""
 9. **Per-rule attribution available**: When the prompt contains a ""Per-rule attribution for added users"" section, use those qualitative terms verbatim (e.g., ""most added users match the inclusionary HR rule scoped to id=100 (unbounded depth)""). Pair this with whichever change pattern (1, 7, etc.) is appropriate. NEVER translate ""most"" / ""almost all"" / ""a few"" into specific counts or percentages — the buckets are qualitative on purpose to avoid fabricated precision.
 10. **IgnoreThresholdOnce applied**: When the Configuration history section contains an explicit ""IgnoreThresholdOnce activated on [date]"" line, that's the direct cause of this sync's delta: the previous run was blocked by the configured threshold, an owner (or automation) activated IgnoreThresholdOnce, and this sync applied the previously-pending changes. Use pattern: ""This sync applied the [adds|removes|adds and removes] that were previously blocked by the threshold, because IgnoreThresholdOnce was activated on [date]."" NEVER use this pattern unless the explicit ""IgnoreThresholdOnce activated on [date]"" line is present in the prompt — the marker is emitted only when the event was activated in THIS sync's window; otherwise, the ITO event is stale and MUST NOT be cited (even if the historical event is technically still visible elsewhere). Combine with pattern 1 / 7 phrasing when a rule change also drove the previously-pending delta (e.g., ""...applied the removes that were previously blocked, following the earlier filter change from `[old]` to `[new]`"").
-11. **Per-part attribution for removed users available**: When the prompt contains a ""Per-part attribution for removed users"" section, use those qualitative terms verbatim to explain the removals (e.g., ""most removed users left the source group `TestGroupMember`"", or ""a few removed users no longer match the inclusionary HR rule""). Prefer specific attribution over generic phrasing like ""the specific reason could not be determined"". Pair with pattern 4 for threshold-blocked runs (e.g., ""...blocked by the threshold. Most of the proposed removals came from users leaving the source group `X`.""). If the section is absent and there are removed users, either omit any per-removal explanation or fall back to pattern 5 (""upstream source group changes"") — NEVER invent an attribution.
+11. **Per-part attribution for removed users available**: When the prompt contains a ""Per-part attribution for removed users"" section, use those qualitative terms verbatim to explain the removals (e.g., ""most removed users left the source group `TestGroupMember`"", or ""a few removed users no longer match the inclusionary HR rule"", or — when a source was dropped by a recent config update — ""all of the removed users were previously sourced from the group `X` which was removed from the query""). When the attribution line for a deleted source says ""per-part membership counts are unavailable, but this deleted source is the likely cause"", phrase it as: ""This sync's removals likely came from users who were previously sourced from the group `X`, which was removed from the query in a recent config update."" **When multiple ""Source removed from query"" attribution lines are present, you MUST name EVERY deleted source in your output — not just the first one. Combine them naturally: ""...from the groups `X` and `Y`"" for two, or ""...from the groups `X`, `Y`, and `Z`"" for three or more. Under no circumstances omit any deleted source that is cited in the attribution section.** Prefer specific attribution over generic phrasing like ""the specific reason could not be determined"". Pair with pattern 4 for threshold-blocked runs (e.g., ""...blocked by the threshold. All of the proposed removals were previously sourced from the groups `X` and `Y`, both of which were removed from the query.""). If the section is absent and there are removed users, either omit any per-removal explanation or fall back to pattern 5 (""upstream source group changes"") — NEVER invent an attribution. **CRITICAL anti-hallucination rule**: NEVER name a specific source group, HR rule, or exclusionary source as the cause of removals unless it is cited in the ""Per-part attribution for removed users"" section OR the ""Configuration history"" section shows an explicit ""What changed"" line involving that source in this window. The current query listed under ""Configuration as of this run"" is NOT proof of attribution — a source being listed as CURRENT does not mean users were removed FROM it. Removals typically come from sources that WERE in the query previously but are NO LONGER in the query, or from users who no longer match the current sources' criteria — do not conflate the two.
 
 When the membership rule returns no users (UsersAdded and UsersRemoved are both 0 AND the run status is MembershipDataNotFound or similar), prefer pattern 8 over saying ""HR data was unavailable"" — the HR table itself exists; what's empty is the result for this specific scope+filter combination.
 
 Reference specific dates, attribute names, filter expressions, source group names (or IDs when no display name is available), and manager display names (or IDs when no display name is available) when available — but NOT counts (those are in the row already). When a ""Source group display names"" or ""Manager display names"" table is provided in the prompt, use ONLY names from that table — never invent or guess a manager's name if the table is empty or missing the id. When a manager scope inline is just an ID with no name (e.g., ""id=100 (unbounded depth)""), keep it as-is — do NOT synthesize a plausible-sounding name.
-Use only the provided data. Output 1-2 sentences only.";
+Use only the provided data. Output 1-2 sentences normally, or up to 3 sentences when the ""Per-part attribution"" section names two or more sources (so every cited source can be included).";
 
         private readonly ILogger<GetRunExplanationHandler> _logger;
         private readonly IDatabaseSyncJobsRepository _databaseSyncJobsRepository;
@@ -187,15 +186,6 @@ Use only the provided data. Output 1-2 sentences only.";
                     return response;
                 }
 
-                // Skip Path B: query has no SqlMembership parts + no recent config change + NOT threshold-blocked + NOT an informative status -> in-GMM data has no signal.
-                var hasSqlPart = parts.Any(p => string.Equals(p.Type, "SqlMembership", StringComparison.OrdinalIgnoreCase));
-                if (!hasSqlPart && !hasConfigChangeInWindow && !isThresholdBlocked && !isInformativeStatus)
-                {
-                    response.Explanation = NotEnoughInformation;
-                    response.StatusCode = HttpStatusCode.OK;
-                    return response;
-                }
-
                 // Fire aggregated blob find + per-part file catalog (this-run and previous-run) in parallel.
                 var targetGroupId = syncJob.TargetOfficeGroupId.ToString();
                 var hasAttributableInclusionaryPart = parts.Any(p => IsAttributionCandidate(p.Type));
@@ -213,14 +203,39 @@ Use only the provided data. Output 1-2 sentences only.";
                 // Two EF queries against the same _readContext — MUST run sequentially (DbContext is not thread-safe).
                 var configRunTime = runHistory.EndTime ?? runHistory.StartTime ?? runHistory.UpdatedAt;
                 var recentChanges = await _syncJobChangeRepository.GetRecentConfigChangesBySyncJobIdAsync(
-                    request.SyncJobId, configRunTime, count: 2);
+                    request.SyncJobId, configRunTime, count: 10);
                 var recentIgnoreThresholdOnce = await _syncJobChangeRepository.GetRecentIgnoreThresholdOnceEventsAsync(
                     request.SyncJobId, configRunTime, count: 2);
 
-                var previousQueryForNames = recentChanges != null && recentChanges.Count > 1
-                    ? ExtractQueryFromChangeDetails(recentChanges[1].ChangeDetails)
+                // "Previous parts for names" = the union of every inclusionary source seen across recent past Updates
+                // that had a Query different from the current one. Owners frequently drop groups in successive Updates
+                // (e.g., 3-source query -> 2-source -> 1-source over multiple submits), and identical resubmits are common
+                // after a threshold block. Taking the union ensures we detect ALL removed sources, not just the last one.
+                var currentQueryForNames = recentChanges != null && recentChanges.Count > 0
+                    ? ExtractQueryFromChangeDetails(recentChanges[0].ChangeDetails)
                     : null;
-                var previousPartsForNames = ParseQueryParts(previousQueryForNames) ?? new List<QueryPartInfo>();
+                var currentQueryNormalized = NormalizeQuery(currentQueryForNames);
+                var previousPartsForNames = new List<QueryPartInfo>();
+                var seenPrevSourceKeys = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+                if (recentChanges != null)
+                {
+                    for (int i = 1; i < recentChanges.Count; i++)
+                    {
+                        var candidate = ExtractQueryFromChangeDetails(recentChanges[i].ChangeDetails);
+                        if (string.Equals(NormalizeQuery(candidate), currentQueryNormalized, StringComparison.OrdinalIgnoreCase))
+                            continue;
+                        var candidateParts = ParseQueryParts(candidate);
+                        if (candidateParts == null) continue;
+                        foreach (var p in candidateParts)
+                        {
+                            var key = $"{p.Type}|{p.Source ?? string.Empty}|{p.ManagerId ?? string.Empty}|{p.Exclusionary}";
+                            if (seenPrevSourceKeys.Add(key))
+                            {
+                                previousPartsForNames.Add(p);
+                            }
+                        }
+                    }
+                }
 
                 // Was IgnoreThresholdOnce activated between the previous run and this sync? If so
                 // that's the CAUSE for this sync (see Pattern 4b in SystemPrompt).
@@ -272,7 +287,7 @@ Use only the provided data. Output 1-2 sentences only.";
 
                 // Per-part attribution for removed users. Requires previous run's data; silent skip on any missing data.
                 var removesAttribution = await ComputeRemovesAttributionAsync(
-                    parts, removed, runHistory.AdfRunId, previousRun?.AdfRunId, managerNames, groupNames, partFiles, previousPartFiles);
+                    parts, previousPartsForNames, removed, runHistory.AdfRunId, previousRun?.AdfRunId, managerNames, groupNames, partFiles, previousPartFiles);
 
                 var userPrompt = BuildRunPrompt(request, runHistory, asOfRunQuery, cappedAdded, cappedRemoved, added.Count, removed.Count, isThresholdBlocked, prevThresholdViolations, thisThresholdViolations, configDiff, hrDiff, groupNames, managerNames, addsAttribution, removesAttribution);
 
@@ -780,9 +795,18 @@ Use only the provided data. Output 1-2 sentences only.";
                 {
                     var currentChange = recentChanges[0];
                     var currentQuery = ExtractQueryFromChangeDetails(currentChange.ChangeDetails);
-                    var previousQuery = recentChanges.Count > 1
-                        ? ExtractQueryFromChangeDetails(recentChanges[1].ChangeDetails)
-                        : null;
+                    // Walk back past identical resubmits — surface the true prior configuration for the diff.
+                    string? previousQuery = null;
+                    var currentNormalized = NormalizeQuery(currentQuery);
+                    for (int i = 1; i < recentChanges.Count; i++)
+                    {
+                        var candidate = ExtractQueryFromChangeDetails(recentChanges[i].ChangeDetails);
+                        if (!string.Equals(NormalizeQuery(candidate), currentNormalized, StringComparison.OrdinalIgnoreCase))
+                        {
+                            previousQuery = candidate;
+                            break;
+                        }
+                    }
 
                     sb.AppendLine($"Last configuration change on {currentChange.ChangeTime:yyyy-MM-dd} by {currentChange.ChangedByDisplayName ?? "system"} ({currentChange.ChangeReason}):");
 
@@ -1523,6 +1547,7 @@ Configuration history:
         // Per-part attribution for removed users. Requires previous-run data (blobs + ADF snapshot); silent skip when missing.
         private async Task<string> ComputeRemovesAttributionAsync(
             IReadOnlyList<QueryPartInfo> parts,
+            IReadOnlyList<QueryPartInfo> previousParts,
             IReadOnlyCollection<Guid> removedUsers,
             Guid? runAdfRunId,
             Guid? previousAdfRunId,
@@ -1591,6 +1616,11 @@ Configuration history:
             });
             var results = await Task.WhenAll(tasks);
             var lines = results.Where(l => !string.IsNullOrEmpty(l)).Select(l => l!).ToList();
+
+            // Deleted inclusionary group-family parts: source dropped by a recent config update, so its previous members appear as removes.
+            var deletedLines = await AttributeDeletedGroupFamilyPartsForRemovesAsync(parts, previousParts, removedSet, totalSampled, previousPartFiles, groupNames);
+            lines.AddRange(deletedLines);
+
             if (lines.Count == 0) return string.Empty;
 
             var sb = new StringBuilder();
@@ -1718,6 +1748,69 @@ Configuration history:
                 var bucket = BucketAttribution(leftSource, totalSampled);
                 return $"- {label}: {bucket} of the removed users left this source";
             }
+        }
+
+        // Detects group-family inclusionary parts present in the previous config but missing from the current config, and attributes their previous members that are now being removed.
+        private async Task<List<string>> AttributeDeletedGroupFamilyPartsForRemovesAsync(
+            IReadOnlyList<QueryPartInfo> currentParts,
+            IReadOnlyList<QueryPartInfo> previousParts,
+            HashSet<string> removedSet,
+            int totalSampled,
+            IReadOnlyDictionary<string, BlobResult> previousPartFiles,
+            IReadOnlyDictionary<Guid, string>? groupNames)
+        {
+            var lines = new List<string>();
+            if (previousParts == null || previousParts.Count == 0) return lines;
+
+            var currentSources = new HashSet<Guid>(
+                (currentParts ?? new List<QueryPartInfo>())
+                    .Where(p => IsGroupFamilyAttributionType(p.Type) && !p.Exclusionary && Guid.TryParse(p.Source, out _))
+                    .Select(p => Guid.Parse(p.Source!)));
+
+            var deletedParts = previousParts
+                .Where(pp => IsGroupFamilyAttributionType(pp.Type) && !pp.Exclusionary && Guid.TryParse(pp.Source, out var g) && !currentSources.Contains(g))
+                .Take(MaxGroupPartsToAttribute)
+                .ToList();
+            if (deletedParts.Count == 0) return lines;
+
+            foreach (var prevPart in deletedParts)
+            {
+                var label = FormatGroupFamilyPartLabel(prevPart, groupNames);
+
+                // Try the previous per-part blob for a count; fall back to a signal-only line when unavailable.
+                var tag = $"{prevPart.Type}_{prevPart.Index + 1}";
+                HashSet<Guid>? prevMembers = null;
+                if (previousPartFiles.TryGetValue(tag, out var blob) && blob.BlobStatus == BlobStatus.Found)
+                {
+                    try
+                    {
+                        prevMembers = await _blobStorageRepository.ExtractGroupMembershipSourceMembersAsync(blob.Path);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogWarning(ex, "Failed to read previous per-part blob for deleted-part removes attribution on part #{Index} ({Type}); emitting signal-only line.", prevPart.Index, prevPart.Type);
+                    }
+                }
+
+                if (prevMembers != null && prevMembers.Count > 0)
+                {
+                    var matched = 0;
+                    foreach (var g in prevMembers)
+                    {
+                        if (removedSet.Contains(g.ToString())) matched++;
+                    }
+                    if (matched > 0)
+                    {
+                        var bucket = BucketAttribution(matched, totalSampled);
+                        lines.Add($"- Source removed from query in the recent config update (previously {label}): {bucket} of the removed users were sourced from this now-deleted part");
+                        continue;
+                    }
+                }
+
+                // No previous blob (or no per-part matches) — still emit a signal so the AI can cite the deleted source as the cause without inventing one that is still in the query.
+                lines.Add($"- Source removed from query in the recent config update (previously {label}): per-part membership counts are unavailable, but this deleted source is the likely cause of this run's removals");
+            }
+            return lines;
         }
 
         // Qualitative bucketing for attribution ratios. The buckets are deliberately wide so the

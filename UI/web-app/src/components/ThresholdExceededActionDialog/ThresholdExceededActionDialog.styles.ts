@@ -19,6 +19,13 @@ export const getStyles = (props: IThresholdExceededActionDialogStyleProps): IThr
             marginRight: -10,
         },
 
+        sectionDivider: {
+            height: 1,
+            backgroundColor: theme.palette.neutralLight,
+            marginTop: 20,
+            marginBottom: 20,
+        },
+
         errorMessageBar: {
             marginBottom: 12,
         },
@@ -107,7 +114,7 @@ export const getStyles = (props: IThresholdExceededActionDialogStyleProps): IThr
             backgroundColor: theme.palette.neutralLighter,
             borderRadius: 10,
             padding: '12px 16px',
-            marginBottom: 24,
+            marginBottom: 0,
         },
 
         disclosureHeader: {
@@ -203,7 +210,7 @@ export const getStyles = (props: IThresholdExceededActionDialogStyleProps): IThr
             alignItems: 'flex-start',
             gap: 8,
             fontSize: 12,
-            fontWeight: 600,
+            fontWeight: 400,
             color: theme.palette.neutralSecondary,
             selectors: {
                 '.ms-Icon': {

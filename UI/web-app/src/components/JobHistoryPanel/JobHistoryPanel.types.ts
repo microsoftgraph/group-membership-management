@@ -10,6 +10,7 @@ import type React from 'react';
 
 export interface IJobHistoryPanelStyles {
     root: IStyle;
+    headerDivider: IStyle;
     container: IStyle;
     header: IStyle;
     dateTimeContainer: IStyle;
@@ -25,14 +26,17 @@ export interface IJobHistoryPanelStyles {
     syncFiltersContainer: IStyle;
     statusFilter: IStyle;
     statusCellThresholdExceeded: IStyle;
+    statusCellThresholdApproved: IStyle;
     statusCellContainer: IStyle;
     userSearchField: IStyle;
     userSearchLabel: IStyle;
+    userSearchInputWrapper: IStyle;
     userSearchInputShell: IStyle;
     userSearchPicker: IStyle;
     userSearchPickerText: IStyle;
     userSearchPickerItemsWrapper: IStyle;
     userSearchIcon: IStyle;
+    userSearchTrailingIcon: IStyle;
     userSuggestionList: IStyle;
     userSuggestionItem: IStyle;
     userSuggestionRow: IStyle;
@@ -41,11 +45,23 @@ export interface IJobHistoryPanelStyles {
     highlightedAddedCell: IStyle;
     highlightedRemovedCell: IStyle;
     pendingMarker: IStyle;
+    pendingCell: IStyle;
     matchingRow?: IStyle;
     userSearchBanner: IStyle;
     userSearchBannerIcon: IStyle;
     userSearchBannerText: IStyle;
     userSearchBannerNote: IStyle;
+    eventTypeFilterField: IStyle;
+    filterActionsBar: IStyle;
+    clearFiltersLink: IStyle;
+    clearFiltersLinkDisabled: IStyle;
+    clearFiltersIconWrapper: IStyle;
+    clearFiltersBaseIcon: IStyle;
+    clearFiltersBadgeIcon: IStyle;
+    configurationActionsRow: IStyle;
+    configurationQueryAction: IStyle;
+    reviewThresholdCallout: IStyle;
+    reviewThresholdCalloutText: IStyle;
 }
 
 export interface IJobHistoryPanelStyleProps {

@@ -190,23 +190,34 @@ export const MembershipLookupBase: React.FunctionComponent<MembershipLookupProps
       </div>
       <div className={classNames.description}>{lookupStrings.description}</div>
       {hasResult && <Label htmlFor="membershipLookupPicker">{lookupStrings.title}</Label>}
-      <NormalPeoplePicker
-        inputProps={{ id: 'membershipLookupPicker', 'aria-label': lookupStrings.searchLabel }}
-        onResolveSuggestions={onResolveSuggestions}
-        pickerSuggestionsProps={{
-          suggestionsHeaderText: lookupStrings.suggestedText,
-          noResultsFoundText: lookupStrings.noResultsFoundText,
-          loadingText: lookupStrings.loadingText,
-        }}
-        key="membershipLookup"
-        selectionAriaLabel={lookupStrings.selectionAriaLabel}
-        removeButtonAriaLabel={lookupStrings.removeButtonAriaLabel}
-        resolveDelay={600}
-        itemLimit={1}
-        onChange={handlePickerChange}
-        styles={{ text: classNames.picker }}
-        pickerCalloutProps={{ calloutMinWidth: 360 }}
-      />
+      <div className={classNames.pickerWrapper}>
+        <NormalPeoplePicker
+          inputProps={{
+            id: 'membershipLookupPicker',
+            'aria-label': lookupStrings.searchLabel,
+            placeholder: lookupStrings.searchLabel,
+          }}
+          onResolveSuggestions={onResolveSuggestions}
+          pickerSuggestionsProps={{
+            suggestionsHeaderText: lookupStrings.suggestedText,
+            noResultsFoundText: lookupStrings.noResultsFoundText,
+            loadingText: lookupStrings.loadingText,
+          }}
+          key="membershipLookup"
+          selectionAriaLabel={lookupStrings.selectionAriaLabel}
+          removeButtonAriaLabel={lookupStrings.removeButtonAriaLabel}
+          resolveDelay={600}
+          itemLimit={1}
+          onChange={handlePickerChange}
+          styles={{ text: classNames.picker }}
+          pickerCalloutProps={{ calloutMinWidth: 260 }}
+        />
+        <Icon
+          className={classNames.pickerTrailingIcon}
+          iconName="Contact"
+          aria-hidden={true}
+        />
+      </div>
 
       {status === 'loading' && (
         <div className={classNames.spinnerContainer}>

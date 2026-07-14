@@ -14,7 +14,7 @@ vi.mock('../../store/hooks', () => ({
     close: 'Close',
     JobDetails: {
       Panel: {
-        aiDescriptionLabel: 'Description (AI generated):',
+        aiDescriptionLabel: 'Description (AI Generated)',
         aiDescriptionLoading: 'Generating explanation...',
         aiDescriptionError: 'Unable to generate explanation.',
         ThresholdExceededActionDialog: {
@@ -317,24 +317,24 @@ describe('ThresholdExceededActionDialog (styled) row banding', () => {
 describe('ThresholdExceededActionDialogBase AI description', () => {
   it('does not render the AI description panel when no description data is provided', () => {
     render(<ThresholdExceededActionDialogBase {...defaultProps} />);
-    expect(screen.queryByText('Description (AI generated):')).not.toBeInTheDocument();
+    expect(screen.queryByText('Description (AI Generated)')).not.toBeInTheDocument();
   });
 
   it('renders the loading state while the AI description is being generated', () => {
     render(<ThresholdExceededActionDialogBase {...defaultProps} isAiDescriptionLoading />);
-    expect(screen.getByText('Description (AI generated):')).toBeInTheDocument();
+    expect(screen.getByText('Description (AI Generated)')).toBeInTheDocument();
     expect(screen.getByText('Generating explanation...')).toBeInTheDocument();
   });
 
   it('renders the error state when the AI description fails to generate', () => {
     render(<ThresholdExceededActionDialogBase {...defaultProps} aiDescriptionError />);
-    expect(screen.getByText('Description (AI generated):')).toBeInTheDocument();
+    expect(screen.getByText('Description (AI Generated)')).toBeInTheDocument();
     expect(screen.getByText('Unable to generate explanation.')).toBeInTheDocument();
   });
 
   it('renders the AI description text when provided', () => {
     render(<ThresholdExceededActionDialogBase {...defaultProps} aiDescription="This sync exceeded the threshold." />);
-    expect(screen.getByText('Description (AI generated):')).toBeInTheDocument();
+    expect(screen.getByText('Description (AI Generated)')).toBeInTheDocument();
     expect(screen.getByText('This sync exceeded the threshold.')).toBeInTheDocument();
   });
 

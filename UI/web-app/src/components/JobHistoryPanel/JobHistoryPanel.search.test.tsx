@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { JobHistoryPanelBase } from './JobHistoryPanel.base';
 import { MembershipChangeType } from '../../models/SearchSyncHistoryByUserResult';
 import { RunHistoryStatus } from '../../models/Status';
+import { SyncJobChangeReason } from '../../models/SyncJobChangeReason';
 import type { SyncJobHistory } from '../../models/SyncJobHistory';
 
 const mockTheme = {
@@ -36,6 +37,10 @@ const strings = {
       history: 'History',
       configurationPivotHeader: 'Configuration',
       syncPivotHeader: 'Sync',
+      eventTypeFilterLabel: 'Event type',
+      eventTypeAllOption: 'Sync and Configuration (Last 30 days)',
+      eventTypeAllSelectedOption: 'Sync and Configuration',
+      eventTypeConfigurationOption: 'Configuration (All time)',
       searchUserLabel: 'Search for a user',
       searchUserPlaceholder: 'Search',
       searchUserNoResults: 'No results',
@@ -53,6 +58,8 @@ const strings = {
       expandRowAriaLabel: 'Expand row',
       emptyValuePlaceholder: '-',
       takeAction: 'Take action',
+      reviewAndTakeAction: 'Review and take action',
+      syncPausedUntilReviewed: 'Sync paused until reviewed',
       changesAppliedSuccess: 'Changes applied',
       syncPausedSuccess: 'Sync paused',
       userCurrentlyInGroupMessage: 'This user is currently part of the membership.',
@@ -79,9 +86,12 @@ const strings = {
       submissionRejected: 'Submission rejected',
       groupSettings: 'Group settings',
       ignoreThresholdOnce: 'Ignore threshold once',
+      thresholdExceededApproved: 'Threshold exceeded - approved',
+      notificationResolved: 'Notification resolved.',
       downloadAriaLabel: 'Download {0}',
       downloadingText: 'Downloading',
       downloadLinkText: 'Download',
+      downloadPendingUsersLinkText: 'Download pending users',
       downloadError: 'Download error',
       pendingMarkerLabel: 'Pending',
       pendingMarkerAriaLabel: 'Pending — awaiting owner approval',
@@ -135,23 +145,40 @@ vi.mock('@fluentui/react', async () => {
   );
   const Label = ({ children, className }: any) => <label className={className}>{children}</label>;
   const Spinner = ({ label }: any) => <div>{label}</div>;
-  const MessageBar = ({ children }: any) => <div>{children}</div>;
-  const Dropdown = ({ ariaLabel, selectedKey, options, onChange }: any) => (
-    <select
-      aria-label={ariaLabel}
-      value={selectedKey}
-      onChange={(event) => {
-        const option = options.find((item: any) => String(item.key) === event.target.value);
-        onChange?.(event, option);
-      }}
-    >
-      {options.map((option: any) => (
-        <option key={option.key} value={option.key}>
-          {option.text}
-        </option>
-      ))}
-    </select>
+  const MessageBar = ({ children, onDismiss }: any) => (
+    <div>
+      {children}
+      {onDismiss && (
+        <button
+          type="button"
+          data-testid="message-bar-dismiss"
+          onClick={onDismiss}
+        />
+      )}
+    </div>
   );
+  const Dropdown = ({ ariaLabel, selectedKey, options, onChange, onRenderTitle }: any) => {
+    const selectedOption = options.find((item: any) => item.key === selectedKey);
+    return (
+      <div>
+        {onRenderTitle?.([selectedOption])}
+        <select
+          aria-label={ariaLabel}
+          value={selectedKey}
+          onChange={(event) => {
+            const option = options.find((item: any) => String(item.key) === event.target.value);
+            onChange?.(event, option);
+          }}
+        >
+          {options.map((option: any) => (
+            <option key={option.key} value={option.key}>
+              {option.text}
+            </option>
+          ))}
+        </select>
+      </div>
+    );
+  };
   const TextField = ({ ariaLabel, value, onChange, readOnly, multiline }: any) =>
     multiline ? (
       <textarea aria-label={ariaLabel} value={value} onChange={(event) => onChange?.(event, event.target.value)} readOnly={readOnly} />
@@ -167,6 +194,16 @@ vi.mock('@fluentui/react', async () => {
   const Link = ({ children, onClick, disabled, 'aria-label': ariaLabel }: any) => (
     <button type="button" onClick={onClick} disabled={disabled} aria-label={ariaLabel}>
       {children}
+    </button>
+  );
+  const DefaultButton = ({ text, onClick, disabled, 'aria-label': ariaLabel }: any) => (
+    <button type="button" onClick={onClick} disabled={disabled} aria-label={ariaLabel}>
+      {text}
+    </button>
+  );
+  const PrimaryButton = ({ text, onClick, disabled, 'aria-label': ariaLabel }: any) => (
+    <button type="button" onClick={onClick} disabled={disabled} aria-label={ariaLabel}>
+      {text}
     </button>
   );
   const Modal = ({ isOpen, children }: any) => (isOpen ? <div>{children}</div> : null);
@@ -227,6 +264,8 @@ vi.mock('@fluentui/react', async () => {
     IconButton,
     Label,
     Link,
+    DefaultButton,
+    PrimaryButton,
     MessageBar,
     MessageBarType: { success: 'success', error: 'error', info: 'info' },
     Modal,
@@ -403,6 +442,239 @@ beforeEach(() => {
   });
 });
 
+describe('JobHistoryPanelBase event type filter', () => {
+  it('offers only the combined and all-time configuration options', async () => {
+    await renderPanel();
+
+    const eventTypeFilter = screen.getByRole('combobox', {
+      name: strings.JobDetails.Panel.eventTypeFilterLabel,
+    });
+    const options = within(eventTypeFilter).getAllByRole('option');
+
+    expect(options).toHaveLength(2);
+    expect(options[0]).toHaveTextContent(
+      strings.JobDetails.Panel.eventTypeAllOption
+    );
+    expect(
+      screen.getByText(strings.JobDetails.Panel.eventTypeAllSelectedOption)
+    ).toBeInTheDocument();
+    expect(options[1]).toHaveTextContent(
+      strings.JobDetails.Panel.eventTypeConfigurationOption
+    );
+    expect(
+      within(eventTypeFilter).queryByRole('option', { name: 'Sync only' })
+    ).not.toBeInTheDocument();
+  });
+});
+
+describe('JobHistoryPanelBase threshold status highlighting', () => {
+  it('renders a divider below the History panel header', async () => {
+    await renderPanel();
+
+    expect(document.querySelector('.headerDivider')).toBeInTheDocument();
+  });
+
+  it('highlights the most recent unresolved threshold-exceeded run', async () => {
+    mockSyncHistoryItems = [
+      {
+        ...buildSyncHistoryItem('run-threshold', '2024-05-02T00:00:00Z', 3, 0),
+        status: RunHistoryStatus.ThresholdExceeded,
+      },
+    ];
+
+    await renderPanel();
+
+    const statusCell = await screen.findByTestId('cell-sync-run-threshold-status');
+    expect(statusCell.querySelector('.statusCellThresholdExceeded')).toBeInTheDocument();
+  });
+
+  it('does not highlight a threshold-exceeded run after a newer user action resolves it', async () => {
+    mockSyncHistoryItems = [
+      {
+        ...buildSyncHistoryItem('run-threshold', '2024-05-02T00:00:00Z', 3, 0),
+        status: RunHistoryStatus.ThresholdExceeded,
+      },
+    ];
+    mockState.jobs.selectedJobChanges = [
+      {
+        changeTime: '2024-05-03T00:00:00Z',
+        changedByDisplayName: 'Test Owner',
+        changedByObjectId: 'owner-1',
+        changedOnBehalfOfDisplayName: null,
+        changedOnBehalfOfObjectId: null,
+        changeReason: SyncJobChangeReason.IgnoreThresholdOnce,
+        changeSource: 'WebUI',
+        changeDetails: null,
+        businessJustification: null,
+      },
+    ];
+
+    await renderPanel();
+
+    const statusCell = await screen.findByTestId('cell-sync-run-threshold-status');
+    expect(statusCell.querySelector('.statusCellThresholdExceeded')).not.toBeInTheDocument();
+
+    const approvedStatusCell = await screen.findByTestId(
+      'cell-configuration-0-2024-05-03T00:00:00Z-status'
+    );
+    expect(approvedStatusCell).toHaveTextContent(
+      strings.JobDetails.Panel.thresholdExceededApproved
+    );
+    expect(
+      approvedStatusCell.querySelector('.statusCellThresholdApproved')
+    ).toBeInTheDocument();
+
+    const configurationRow = screen.getByTestId('row-combinedSyncSet-0');
+    fireEvent.click(
+      within(configurationRow).getByLabelText(
+        strings.JobDetails.Panel.expandRowAriaLabel
+      )
+    );
+
+    expect(
+      screen.queryByText(strings.JobDetails.Panel.notificationResolved)
+    ).not.toBeInTheDocument();
+    expect(screen.queryByTestId('message-bar-dismiss')).not.toBeInTheDocument();
+  });
+
+  it('stops highlighting a threshold-exceeded run but keeps its pending marker while a rules update is under review', async () => {
+    mockSyncHistoryItems = [
+      {
+        ...buildSyncHistoryItem('run-threshold', '2024-05-02T00:00:00Z', 3, 0),
+        status: RunHistoryStatus.ThresholdExceeded,
+      },
+    ];
+    mockState.jobs.selectedJobChanges = [
+      {
+        changeTime: '2024-05-03T00:00:00Z',
+        changedByDisplayName: 'Test Owner',
+        changedByObjectId: 'owner-1',
+        changedOnBehalfOfDisplayName: null,
+        changedOnBehalfOfObjectId: null,
+        changeReason: SyncJobChangeReason.Update,
+        changeSource: 'WebUI',
+        changeDetails: null,
+        businessJustification: null,
+      },
+    ];
+
+    await renderPanel();
+
+    const statusCell = await screen.findByTestId('cell-sync-run-threshold-status');
+    expect(statusCell.querySelector('.statusCellThresholdExceeded')).not.toBeInTheDocument();
+    expect(statusCell).not.toHaveTextContent(strings.JobDetails.Panel.syncPausedUntilReviewed);
+
+    const addedCell = await screen.findByTestId('cell-sync-run-threshold-usersAdded');
+    expect(within(addedCell).getByLabelText(strings.JobDetails.Panel.pendingMarkerAriaLabel))
+      .toHaveTextContent(strings.JobDetails.Panel.pendingMarkerLabel);
+  });
+
+  it('stops highlighting a threshold-exceeded run after the rules update is approved', async () => {
+    mockSyncHistoryItems = [
+      {
+        ...buildSyncHistoryItem('run-threshold', '2024-05-02T00:00:00Z', 3, 0),
+        status: RunHistoryStatus.ThresholdExceeded,
+      },
+    ];
+    mockState.jobs.selectedJobChanges = [
+      {
+        changeTime: '2024-05-03T00:00:00Z',
+        changedByDisplayName: 'Test Owner',
+        changedByObjectId: 'owner-1',
+        changedOnBehalfOfDisplayName: null,
+        changedOnBehalfOfObjectId: null,
+        changeReason: SyncJobChangeReason.Update,
+        changeSource: 'WebUI',
+        changeDetails: null,
+        businessJustification: null,
+      },
+      {
+        changeTime: '2024-05-04T00:00:00Z',
+        changedByDisplayName: 'Test Reviewer',
+        changedByObjectId: 'reviewer-1',
+        changedOnBehalfOfDisplayName: null,
+        changedOnBehalfOfObjectId: null,
+        changeReason: SyncJobChangeReason.SubmissionApproved,
+        changeSource: 'WebUI',
+        changeDetails: null,
+        businessJustification: null,
+      },
+    ];
+
+    await renderPanel();
+
+    const statusCell = await screen.findByTestId('cell-sync-run-threshold-status');
+    expect(statusCell.querySelector('.statusCellThresholdExceeded')).not.toBeInTheDocument();
+    expect(statusCell).not.toHaveTextContent(strings.JobDetails.Panel.syncPausedUntilReviewed);
+  });
+
+  it('keeps threshold highlighting cleared when the rules update is rejected', async () => {
+    mockSyncHistoryItems = [
+      {
+        ...buildSyncHistoryItem('run-threshold', '2024-05-02T00:00:00Z', 3, 0),
+        status: RunHistoryStatus.ThresholdExceeded,
+      },
+    ];
+    mockState.jobs.selectedJobChanges = [
+      {
+        changeTime: '2024-05-03T00:00:00Z',
+        changedByDisplayName: 'Test Owner',
+        changedByObjectId: 'owner-1',
+        changedOnBehalfOfDisplayName: null,
+        changedOnBehalfOfObjectId: null,
+        changeReason: SyncJobChangeReason.Update,
+        changeSource: 'WebUI',
+        changeDetails: null,
+        businessJustification: null,
+      },
+      {
+        changeTime: '2024-05-04T00:00:00Z',
+        changedByDisplayName: 'Test Reviewer',
+        changedByObjectId: 'reviewer-1',
+        changedOnBehalfOfDisplayName: null,
+        changedOnBehalfOfObjectId: null,
+        changeReason: SyncJobChangeReason.SubmissionRejected,
+        changeSource: 'WebUI',
+        changeDetails: null,
+        businessJustification: null,
+      },
+    ];
+
+    await renderPanel();
+
+    const statusCell = await screen.findByTestId('cell-sync-run-threshold-status');
+    expect(statusCell.querySelector('.statusCellThresholdExceeded')).not.toBeInTheDocument();
+    expect(statusCell).not.toHaveTextContent(strings.JobDetails.Panel.syncPausedUntilReviewed);
+  });
+});
+
+describe('JobHistoryPanelBase configuration row counts', () => {
+  it('leaves membership count cells blank for configuration events', async () => {
+    mockSyncHistoryItems = [];
+    mockState.jobs.selectedJobChanges = [
+      {
+        changeTime: '2024-05-03T00:00:00Z',
+        changedByDisplayName: 'Test Owner',
+        changedByObjectId: 'owner-1',
+        changedOnBehalfOfDisplayName: null,
+        changedOnBehalfOfObjectId: null,
+        changeReason: SyncJobChangeReason.IgnoreThresholdOnce,
+        changeSource: 'WebUI',
+        changeDetails: null,
+        businessJustification: null,
+      },
+    ];
+
+    await renderPanel();
+
+    const itemId = 'configuration-0-2024-05-03T00:00:00Z';
+    expect(await screen.findByTestId(`cell-${itemId}-beforeSyncUserCount`)).toBeEmptyDOMElement();
+    expect(screen.getByTestId(`cell-${itemId}-usersAdded`)).toBeEmptyDOMElement();
+    expect(screen.getByTestId(`cell-${itemId}-usersRemoved`)).toBeEmptyDOMElement();
+    expect(screen.getByTestId(`cell-${itemId}-afterSyncUserCount`)).toBeEmptyDOMElement();
+  });
+});
+
 describe('JobHistoryPanelBase search banner', () => {
   it('shows currently part of membership when the user is in the group', async () => {
     await renderPanel();
@@ -564,7 +836,7 @@ describe('JobHistoryPanelBase threshold pending counts', () => {
     expect(within(removedCell).getByLabelText(strings.JobDetails.Panel.pendingMarkerAriaLabel)).toHaveTextContent(strings.JobDetails.Panel.pendingMarkerLabel);
   });
 
-  it('does not render pending markers for older resolved ThresholdExceeded rows', async () => {
+  it('renders pending markers for older ThresholdExceeded rows', async () => {
     mockSyncHistoryItems = [
       buildThresholdHistoryItem('run-threshold-current', '2024-06-02T00:00:00Z'),
       buildThresholdHistoryItem('run-threshold-old', '2024-06-01T00:00:00Z'),
@@ -575,7 +847,8 @@ describe('JobHistoryPanelBase threshold pending counts', () => {
     const oldAddedCell = await screen.findByTestId('cell-sync-run-threshold-old-usersAdded');
 
     expect(within(oldAddedCell).getByText('30')).toBeInTheDocument();
-    expect(within(oldAddedCell).queryByText(strings.JobDetails.Panel.pendingMarkerLabel)).not.toBeInTheDocument();
+    expect(within(oldAddedCell).getByLabelText(strings.JobDetails.Panel.pendingMarkerAriaLabel))
+      .toHaveTextContent(strings.JobDetails.Panel.pendingMarkerLabel);
   });
 
   it('does not render pending markers for non-ThresholdExceeded rows', async () => {
@@ -591,7 +864,7 @@ describe('JobHistoryPanelBase threshold pending counts', () => {
     expect(within(addedCell).queryByText(strings.JobDetails.Panel.pendingMarkerLabel)).not.toBeInTheDocument();
   });
 
-  it('renders the existing Download link for tenant admins when a paused ThresholdExceeded row has pending counts', async () => {
+  it('renders Download pending users for tenant admins when a ThresholdExceeded row is unresolved', async () => {
     mockSyncHistoryItems = [
       buildThresholdHistoryItem('run-threshold-download', '2024-06-02T00:00:00Z', {
         usersAdded: 2,
@@ -603,7 +876,39 @@ describe('JobHistoryPanelBase threshold pending counts', () => {
 
     fireEvent.click(await screen.findByLabelText(strings.JobDetails.Panel.expandRowAriaLabel));
 
+    expect(await screen.findByText(strings.JobDetails.Panel.downloadPendingUsersLinkText)).toBeInTheDocument();
+  });
+
+  it('renders the standard Download link when a ThresholdExceeded row is no longer red', async () => {
+    mockSyncHistoryItems = [
+      buildThresholdHistoryItem('run-threshold-download', '2024-06-02T00:00:00Z', {
+        usersAdded: 2,
+        usersRemoved: 0,
+      }),
+    ];
+    mockState.jobs.selectedJobChanges = [
+      {
+        changeTime: '2024-06-03T00:00:00Z',
+        changedByDisplayName: 'Test Owner',
+        changedByObjectId: 'owner-1',
+        changedOnBehalfOfDisplayName: null,
+        changedOnBehalfOfObjectId: null,
+        changeReason: SyncJobChangeReason.Update,
+        changeSource: 'WebUI',
+        changeDetails: null,
+        businessJustification: null,
+      },
+    ];
+
+    await renderPanel();
+
+    const statusCell = await screen.findByTestId('cell-sync-run-threshold-download-status');
+    const thresholdRow = statusCell.closest('[data-testid^="row-combinedSyncSet-"]');
+    expect(thresholdRow).not.toBeNull();
+    fireEvent.click(within(thresholdRow as HTMLElement).getByLabelText(strings.JobDetails.Panel.expandRowAriaLabel));
+
     expect(await screen.findByText(strings.JobDetails.Panel.downloadLinkText)).toBeInTheDocument();
+    expect(screen.queryByText(strings.JobDetails.Panel.downloadPendingUsersLinkText)).not.toBeInTheDocument();
   });
 
   it('does not render the Download link for non-admins when a paused ThresholdExceeded row has pending counts', async () => {
@@ -641,7 +946,7 @@ describe('JobHistoryPanelBase custom ADF run messages', () => {
     ...overrides,
   });
 
-  it('disables the take action link and shows a tooltip when a custom message exists', async () => {
+  it('disables the review and take action button and shows a tooltip when a custom message exists', async () => {
     mockSyncHistoryItems = [
       buildThresholdItem({
         customMessage: 'This run was identified as problematic.',
@@ -650,7 +955,9 @@ describe('JobHistoryPanelBase custom ADF run messages', () => {
 
     await renderPanel();
 
-    const takeActionButton = await screen.findByText(strings.JobDetails.Panel.takeAction);
+    fireEvent.click(await screen.findByLabelText(strings.JobDetails.Panel.expandRowAriaLabel));
+
+    const takeActionButton = await screen.findByText(strings.JobDetails.Panel.reviewAndTakeAction);
     expect(takeActionButton).toBeDisabled();
     expect(takeActionButton.closest('div')).toHaveAttribute(
       'title',
@@ -658,12 +965,14 @@ describe('JobHistoryPanelBase custom ADF run messages', () => {
     );
   });
 
-  it('keeps the take action link enabled when no custom message exists', async () => {
+  it('keeps the review and take action button enabled when no custom message exists', async () => {
     mockSyncHistoryItems = [buildThresholdItem()];
 
     await renderPanel();
 
-    const takeActionButton = await screen.findByText(strings.JobDetails.Panel.takeAction);
+    fireEvent.click(await screen.findByLabelText(strings.JobDetails.Panel.expandRowAriaLabel));
+
+    const takeActionButton = await screen.findByText(strings.JobDetails.Panel.reviewAndTakeAction);
     expect(takeActionButton).toBeEnabled();
   });
 });

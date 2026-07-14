@@ -11,6 +11,7 @@ import type React from 'react';
 export interface IThresholdExceededActionDialogStyles {
     root: IStyle;
     headerDivider: IStyle;
+    sectionDivider: IStyle;
     errorMessageBar: IStyle;
     gracePeriodMessageBar: IStyle;
     bodyLead: IStyle;

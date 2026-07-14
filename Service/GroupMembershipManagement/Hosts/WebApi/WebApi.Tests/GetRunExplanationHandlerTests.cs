@@ -198,9 +198,9 @@ namespace WebApi.Tests
         }
 
         [TestMethod]
-        public async Task ExecuteAsync_SkipPathB_NoSqlPartsAndNoSignal_ReturnsNotEnoughInformation()
+        public async Task ExecuteAsync_GroupOnlySourceWithAddsAndCompletedStatus_CallsOpenAI()
         {
-            // Non-zero users so Skip Path A doesn't fire first
+            // Regression: previously "Skip Path B" (deleted) bailed with fallback text; now per-part blob attribution runs and OpenAI is called.
             _mockSyncJobHistoryRepository.Setup(x => x.GetByRunIdAsync(_runId))
                 .ReturnsAsync(new global::Models.SyncJobHistory.SyncJobHistory
                 {
@@ -224,8 +224,7 @@ namespace WebApi.Tests
             var response = await _handler.ExecuteAsync(BuildRequest());
 
             Assert.AreEqual(HttpStatusCode.OK, response.StatusCode);
-            Assert.AreEqual(GetRunExplanationHandler.NotEnoughInformation, response.Explanation);
-            _mockOpenAIService.Verify(x => x.GetCompletionAsync(It.IsAny<string>(), It.IsAny<string>()), Times.Never);
+            _mockOpenAIService.Verify(x => x.GetCompletionAsync(It.IsAny<string>(), It.IsAny<string>()), Times.Once);
         }
 
         [TestMethod]
