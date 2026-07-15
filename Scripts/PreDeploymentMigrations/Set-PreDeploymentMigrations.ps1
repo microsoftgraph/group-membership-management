@@ -21,6 +21,7 @@ function Set-PreDeploymentMigrations {
 
     . ($ScriptsDirectory + '/PreDeploymentMigrations/Remove-LegacyNotificationsQueue.ps1')
 	. ($ScriptsDirectory + '/PreDeploymentMigrations/Remove-MultiLaneResources.ps1')
+    . ($ScriptsDirectory + '/PreDeploymentMigrations/Remove-LegacyStorageAccounts.ps1')
     . ($ScriptsDirectory + '/PreDeploymentMigrations/Remove-FunctionScriptRBACRoles.ps1')
     . ($ScriptsDirectory + '/PreDeploymentMigrations/Start-FlexConsumptionMigration.ps1')
 
@@ -32,6 +33,10 @@ function Set-PreDeploymentMigrations {
         -SolutionAbbreviation $SolutionAbbreviation `
         -EnvironmentAbbreviation $EnvironmentAbbreviation `
         -SkipConfirmation
+
+    Remove-LegacyStorageAccounts `
+        -SolutionAbbreviation $SolutionAbbreviation `
+        -EnvironmentAbbreviation $EnvironmentAbbreviation
 
     if ($SetRBACPermissions) {
         Remove-FunctionScriptRBACRoles `
