@@ -2932,7 +2932,7 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
                 }
                 {
                   name: 'Query'
-                  value: 'customMetrics\n| where name == "ResourceUnitsUsed"\n| project timestamp, valueSum, operation_Name\n'
+                  value: 'let bin_t = 10s;\nlet bins = customMetrics\n| where name == "ResourceUnitsUsed"\n| extend OperationType = tostring(customDimensions["OperationType"])\n| extend customMetric_valueSum = iif(itemType == \'customMetric\', valueSum, todouble(\'\'))\n| summarize [\'customMetrics/ResourceUnitsUsed_sum\'] = sum(customMetric_valueSum) by bin(timestamp, bin_t), OperationType;\nunion\n(bins),\n(bins | summarize [\'customMetrics/ResourceUnitsUsed_sum\'] = sum([\'customMetrics/ResourceUnitsUsed_sum\']) by timestamp | extend OperationType = "Total"),\n(bins | distinct timestamp | extend [\'customMetrics/ResourceUnitsUsed_sum\'] = 8000.0, OperationType = "App+tenant L: 8K RU/10s")\n| project timestamp, [\'customMetrics/ResourceUnitsUsed_sum\'], OperationType\n'
                   isOptional: true
                 }
                 {
@@ -2971,10 +2971,10 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
               type: 'Extension/Microsoft_OperationsManagementSuite_Workspace/PartType/LogsDashboardPart'
               settings: {
                 content: {
-                  Query: 'customMetrics\n| where name in ("ResourceUnitsUsed")\n| extend OperationType = tostring(customDimensions["OperationType"])\n| extend customMetric_valueSum = iif(itemType == \'customMetric\', valueSum, todouble(\'\'))\n| summarize [\'customMetrics/ResourceUnitsUsed_sum\'] = sum(customMetric_valueSum) by bin(timestamp, 10s), OperationType\n'
+                  Query: 'let bin_t = 10s;\nlet bins = customMetrics\n| where name == "ResourceUnitsUsed"\n| extend OperationType = tostring(customDimensions["OperationType"])\n| extend customMetric_valueSum = iif(itemType == \'customMetric\', valueSum, todouble(\'\'))\n| summarize [\'customMetrics/ResourceUnitsUsed_sum\'] = sum(customMetric_valueSum) by bin(timestamp, bin_t), OperationType;\nunion\n(bins),\n(bins | summarize [\'customMetrics/ResourceUnitsUsed_sum\'] = sum([\'customMetrics/ResourceUnitsUsed_sum\']) by timestamp | extend OperationType = "Total"),\n(bins | distinct timestamp | extend [\'customMetrics/ResourceUnitsUsed_sum\'] = 8000.0, OperationType = "App+tenant L: 8K RU/10s")\n| project timestamp, [\'customMetrics/ResourceUnitsUsed_sum\'], OperationType\n'
                   ControlType: 'FrameControlChart'
-                  SpecificChart: 'StackedColumn'
-                  PartTitle: 'Entra RUUs (Reads + Writes)'
+                  SpecificChart: 'Line'
+                  PartTitle: 'Entra RUUs per 10s'
                   Dimensions: {
                     xAxis: {
                       name: 'timestamp'
@@ -3001,7 +3001,7 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
                 }
               }
               partHeader: {
-                title: 'Entra RUUs (Reads + Writes)'
+                title: 'Entra RUUs per 10s'
                 subtitle: ''
               }
             }
@@ -3056,7 +3056,7 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
                 }
                 {
                   name: 'Query'
-                  value: 'let start = now(-7d);\nrequests\n| where timestamp > start\n| project-rename Location=operation_Name, FunctionName=name, DurationInMilliseconds=duration\n| project timestamp, FunctionName, Location, DurationInMilliseconds\n| order by DurationInMilliseconds desc \n'
+                  value: 'let bin_t = 150s;\nlet bins = customMetrics\n| where name == "WriteRequests"\n| extend customMetric_valueSum = iif(itemType == \'customMetric\', valueSum, todouble(\'\'))\n| summarize [\'customMetrics/WriteRequests_sum\'] = sum(customMetric_valueSum) by bin(timestamp, bin_t);\nunion\n(bins | extend series = "WriteRequests (2m30s sum)"),\n(bins | extend [\'customMetrics/WriteRequests_sum\'] = 3000.0, series = "Application+tenant pair write quota (3K requests / 2m30s)")\n| project timestamp, [\'customMetrics/WriteRequests_sum\'], series\n'
                   isOptional: true
                 }
                 {
@@ -3095,10 +3095,10 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
               type: 'Extension/Microsoft_OperationsManagementSuite_Workspace/PartType/LogsDashboardPart'
               settings: {
                 content: {
-                  Query: 'customMetrics\n| where name == "WriteRequests"\n| extend customMetric_valueSum = iif(itemType == \'customMetric\', valueSum, todouble(\'\'))\n| summarize [\'customMetrics/WriteRequests_sum\'] = sum(customMetric_valueSum) by bin(timestamp, 150s)\n'
+                  Query: 'let bin_t = 150s;\nlet bins = customMetrics\n| where name == "WriteRequests"\n| extend customMetric_valueSum = iif(itemType == \'customMetric\', valueSum, todouble(\'\'))\n| summarize [\'customMetrics/WriteRequests_sum\'] = sum(customMetric_valueSum) by bin(timestamp, bin_t);\nunion\n(bins | extend series = "WriteRequests (2m30s sum)"),\n(bins | extend [\'customMetrics/WriteRequests_sum\'] = 3000.0, series = "Application+tenant pair write quota (3K requests / 2m30s)")\n| project timestamp, [\'customMetrics/WriteRequests_sum\'], series\n'
                   ControlType: 'FrameControlChart'
-                  SpecificChart: 'StackedColumn'
-                  PartTitle: 'HTTPWriteRequests'
+                  SpecificChart: 'Line'
+                  PartTitle: 'Graph Write Requests per 2m30s'
                   Dimensions: {
                     xAxis: {
                       name: 'timestamp'
@@ -3110,7 +3110,12 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
                         type: 'real'
                       }
                     ]
-                    splitBy: []
+                    splitBy: [
+                      {
+                        name: 'series'
+                        type: 'string'
+                      }
+                    ]
                     aggregation: 'Sum'
                   }
                   LegendOptions: {
@@ -3120,7 +3125,7 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
                 }
               }
               partHeader: {
-                title: 'HTTPWriteRequests'
+                title: 'Graph Write Requests per 2m30s'
                 subtitle: ''
               }
             }
@@ -3261,9 +3266,9 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
           }
           '45': {
             position: {
-              x: 12
-              y: 38
-              colSpan: 6
+              x: 9
+              y: 42
+              colSpan: 9
               rowSpan: 4
             }
             metadata: {
@@ -4295,9 +4300,9 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
           }
           '58': {
             position: {
-              x: 7
+              x: 9
               y: 38
-              colSpan: 5
+              colSpan: 9
               rowSpan: 4
             }
             metadata: {
@@ -4343,7 +4348,7 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
                 }
                 {
                   name: 'Query'
-                  value: 'let bin_t = 5m;\nlet bins = customMetrics\n| where name == "WriteRequests"\n| extend customMetric_valueSum = iif(itemType == \'customMetric\', valueSum, todouble(\'\'))\n| summarize [\'customMetrics/WriteRequests_sum\'] = sum(customMetric_valueSum) by bin(timestamp, bin_t);\nunion\n(bins | extend series = "WriteRequests (5-min sum)"),\n(bins | extend [\'customMetrics/WriteRequests_sum\'] = 35000.0, series = "App quota (35K / 5 min)")\n| project timestamp, [\'customMetrics/WriteRequests_sum\'], series\n'
+                  value: 'let bin_t = 5m;\nlet bins = customMetrics\n| where name == "WriteRequests"\n| extend customMetric_valueSum = iif(itemType == \'customMetric\', valueSum, todouble(\'\'))\n| summarize [\'customMetrics/WriteRequests_sum\'] = sum(customMetric_valueSum) by bin(timestamp, bin_t);\nunion\n(bins | extend series = "WriteRequests (5-min sum)"),\n(bins | extend [\'customMetrics/WriteRequests_sum\'] = 35000.0, series = "Application write quota (35K requests / 5 min)"),\n(bins | extend [\'customMetrics/WriteRequests_sum\'] = 18000.0, series = "Tenant write quota (18K requests / 5 min)")\n| project timestamp, [\'customMetrics/WriteRequests_sum\'], series\n'
                   isOptional: true
                 }
                 {
@@ -4382,10 +4387,10 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
               type: 'Extension/Microsoft_OperationsManagementSuite_Workspace/PartType/LogsDashboardPart'
               settings: {
                 content: {
-                  Query: 'let bin_t = 5m;\nlet bins = customMetrics\n| where name == "WriteRequests"\n| extend customMetric_valueSum = iif(itemType == \'customMetric\', valueSum, todouble(\'\'))\n| summarize [\'customMetrics/WriteRequests_sum\'] = sum(customMetric_valueSum) by bin(timestamp, bin_t);\nunion\n(bins | extend series = "WriteRequests (5-min sum)"),\n(bins | extend [\'customMetrics/WriteRequests_sum\'] = 35000.0, series = "App quota (35K / 5 min)")\n| project timestamp, [\'customMetrics/WriteRequests_sum\'], series\n'
+                  Query: 'let bin_t = 5m;\nlet bins = customMetrics\n| where name == "WriteRequests"\n| extend customMetric_valueSum = iif(itemType == \'customMetric\', valueSum, todouble(\'\'))\n| summarize [\'customMetrics/WriteRequests_sum\'] = sum(customMetric_valueSum) by bin(timestamp, bin_t);\nunion\n(bins | extend series = "WriteRequests (5-min sum)"),\n(bins | extend [\'customMetrics/WriteRequests_sum\'] = 35000.0, series = "Application write quota (35K requests / 5 min)"),\n(bins | extend [\'customMetrics/WriteRequests_sum\'] = 18000.0, series = "Tenant write quota (18K requests / 5 min)")\n| project timestamp, [\'customMetrics/WriteRequests_sum\'], series\n'
                   ControlType: 'FrameControlChart'
                   SpecificChart: 'Line'
-                  PartTitle: 'HTTPWriteRequests per 5 min'
+                  PartTitle: 'Graph Write Requests per 5 min'
                   Dimensions: {
                     xAxis: {
                       name: 'timestamp'
@@ -4412,7 +4417,7 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
                 }
               }
               partHeader: {
-                title: 'HTTPWriteRequests per 5 min'
+                title: 'Graph Write Requests per 5 min'
                 subtitle: ''
               }
             }
@@ -4421,7 +4426,7 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
             position: {
               x: 1
               y: 38
-              colSpan: 6
+              colSpan: 8
               rowSpan: 4
             }
             metadata: {
@@ -4509,7 +4514,7 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
                   Query: 'let bin_t = 20s;\nlet bins = customMetrics\n| where name == "ResourceUnitsUsed"\n| extend OperationType = tostring(customDimensions["OperationType"])\n| extend customMetric_valueSum = iif(itemType == \'customMetric\', valueSum, todouble(\'\'))\n| summarize [\'customMetrics/ResourceUnitsUsed_sum\'] = sum(customMetric_valueSum) by bin(timestamp, bin_t), OperationType;\nunion\n(bins),\n(bins | summarize [\'customMetrics/ResourceUnitsUsed_sum\'] = sum([\'customMetrics/ResourceUnitsUsed_sum\']) by timestamp | extend OperationType = "Total"),\n(bins | distinct timestamp | extend [\'customMetrics/ResourceUnitsUsed_sum\'] = 150000.0, OperationType = "Quota (150K/20s)")\n| project timestamp, [\'customMetrics/ResourceUnitsUsed_sum\'], OperationType\n'
                   ControlType: 'FrameControlChart'
                   SpecificChart: 'Line'
-                  PartTitle: 'Entra RUUs per 20s vs 150K quota'
+                  PartTitle: 'Entra RUUs per 20s'
                   Dimensions: {
                     xAxis: {
                       name: 'timestamp'
@@ -4536,7 +4541,7 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
                 }
               }
               partHeader: {
-                title: 'Entra RUUs per 20s vs 150K quota'
+                title: 'Entra RUUs per 20s'
                 subtitle: ''
               }
             }
@@ -4545,7 +4550,7 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
             position: {
               x: 1
               y: 42
-              colSpan: 17
+              colSpan: 8
               rowSpan: 4
             }
             metadata: {
