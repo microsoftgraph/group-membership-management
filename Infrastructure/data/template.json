@@ -900,12 +900,6 @@
         "description": "Administrators Azure AD Group Object Id"
       }
     },
-    "sqlAdministratorsGroupName": {
-      "type": "string",
-      "metadata": {
-        "description": "Administrators Azure AD Group Name"
-      }
-    },
     "notificationAlertThreshold": {
       "type": "int",
       "defaultValue": 10,
@@ -1058,9 +1052,6 @@
           "sqlAdministratorsGroupId": {
             "value": "[parameters('sqlAdministratorsGroupId')]"
           },
-          "sqlAdministratorsGroupName": {
-            "value": "[parameters('sqlAdministratorsGroupName')]"
-          },
           "tenantId": {
             "value": "[parameters('tenantId')]"
           }
@@ -1138,12 +1129,6 @@
               "type": "string",
               "metadata": {
                 "description": "Administrators Azure AD Group Object Id"
-              }
-            },
-            "sqlAdministratorsGroupName": {
-              "type": "string",
-              "metadata": {
-                "description": "Administrators Azure AD Group Name"
               }
             }
           },
@@ -1246,7 +1231,7 @@
                 "administrators": {
                   "administratorType": "ActiveDirectory",
                   "principalType": "Group",
-                  "login": "[parameters('sqlAdministratorsGroupName')]",
+                  "login": "[format('GMM SQL admin group: {0}', parameters('sqlAdministratorsGroupId'))]",
                   "sid": "[parameters('sqlAdministratorsGroupId')]",
                   "tenantId": "[parameters('tenantId')]",
                   "azureADOnlyAuthentication": true
@@ -1325,7 +1310,7 @@
                 "administrators": {
                   "administratorType": "ActiveDirectory",
                   "principalType": "Group",
-                  "login": "[parameters('sqlAdministratorsGroupName')]",
+                  "login": "[format('GMM SQL admin group: {0}', parameters('sqlAdministratorsGroupId'))]",
                   "sid": "[parameters('sqlAdministratorsGroupId')]",
                   "tenantId": "[tenant().tenantId]",
                   "azureADOnlyAuthentication": true

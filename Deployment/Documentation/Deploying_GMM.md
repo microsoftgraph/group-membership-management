@@ -131,7 +131,6 @@ Before running the deployment, update the [parameters.json](../parameters.json) 
 | `uiLocation` | Azure region for Static Web App | `eastus2` |
 | `tenantId` | Microsoft Entra ID tenant ID | `xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx` |
 | `sqlAdministratorsGroupId` | Object ID of the SQL administrators security group | `xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx` |
-| `sqlAdministratorsGroupName` | Display name of the SQL administrators group | `GMM SQL Admins` |
 | `appConfigurationDataOwners` | List of principals who will own App Configuration data | `[{"principalId": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx", "principalType": "User"}]` |
 | `authenticationType` | Authentication method for the Graph application | `UserAssignedManagedIdentity`, `ClientSecret`, or `Certificate` |
 
@@ -198,14 +197,13 @@ When set to `false` (for subsequent deployments):
 - After deployment completes, the script performs a reset operation to ensure all jobs are in a consistent state
 - This prevents issues that could arise from jobs running while infrastructure or code is being updated
 
-#### `sqlAdministratorsGroupId` and `sqlAdministratorsGroupName`
+#### `sqlAdministratorsGroupId`
 
-These parameters specify the Microsoft Entra ID security group that will be granted administrator access to the SQL Server.
+This parameter specifies the Microsoft Entra ID security group that will be granted administrator access to the SQL Server.
 
 - `sqlAdministratorsGroupId` - The Object ID of the security group
-- `sqlAdministratorsGroupName` - The display name of the security group
 
-Members of this group will have full administrative privileges on the GMM SQL databases. See [Create a SQL Administrators Security Group](#create-a-sql-administrators-security-group) for instructions on creating this group.
+Members of this group will have full administrative privileges on the GMM SQL databases. The SQL Server's Microsoft Entra admin login label is derived automatically from this Object ID, so the group's display name does not need to be supplied. See [Create a SQL Administrators Security Group](#create-a-sql-administrators-security-group) for instructions on creating this group.
 
 ---
 

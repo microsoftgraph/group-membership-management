@@ -688,9 +688,6 @@ param existingDataResources string = '[]'
 @description('Administrators Azure AD Group Object Id')
 param sqlAdministratorsGroupId string
 
-@description('Administrators Azure AD Group Name')
-param sqlAdministratorsGroupName string
-
 @description('Failed notifications alert threshold.')
 param notificationAlertThreshold int = 10
 
@@ -716,7 +713,6 @@ module sqlServer 'sqlServer.bicep' = {
     sqlSkuFamily: sqlSkuFamily
     sqlSkuCapacity: sqlSkuCapacity
     sqlAdministratorsGroupId: sqlAdministratorsGroupId
-    sqlAdministratorsGroupName: sqlAdministratorsGroupName
     tenantId: tenantId
   }
   dependsOn: [

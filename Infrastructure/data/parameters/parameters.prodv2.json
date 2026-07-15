@@ -121,9 +121,6 @@
     "sqlAdministratorsGroupId": {
       "value": ""
     },
-    "sqlAdministratorsGroupName": {
-      "value": ""
-    },
     "sqlSkuName": {
       "value": "GP_S_Gen5"
     },

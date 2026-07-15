@@ -6,7 +6,6 @@ param notifierProviderId string
 param oamEntraAppId string
 param oamEntraAppScope string
 param sqlAdministratorsGroupId string
-param sqlAdministratorsGroupName string
 param sqlSkuCapacity int = 4
 param sqlSkuFamily string = 'Gen5'
 param sqlSkuName string = 'GP_S_Gen5'
@@ -450,7 +449,6 @@ module dataInfrastructureTemplate '../Infrastructure/data/template.bicep' = {
     oamEntraAppScope: oamEntraAppScope
     serviceBusTopicSubscriptions: serviceBusTopicSubscriptions
     sqlAdministratorsGroupId: sqlAdministratorsGroupId
-    sqlAdministratorsGroupName: sqlAdministratorsGroupName
     sqlSkuCapacity: sqlSkuCapacity
     sqlSkuFamily: sqlSkuFamily
     sqlSkuName: sqlSkuName

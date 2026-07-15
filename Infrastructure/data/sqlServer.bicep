@@ -32,9 +32,6 @@ param sqlSkuCapacity int
 @description('Administrators Azure AD Group Object Id')
 param sqlAdministratorsGroupId string
 
-@description('Administrators Azure AD Group Name')
-param sqlAdministratorsGroupName string
-
 var dataKeyVaultName = '${solutionAbbreviation}-data-${environmentAbbreviation}'
 var sqlServerName = '${solutionAbbreviation}-data-${environmentAbbreviation}'
 var primaryDatabaseName = '${sqlDatabaseName}'
@@ -63,7 +60,7 @@ resource sqlServer 'Microsoft.Sql/servers@2021-02-01-preview' = {
     administrators: {
       administratorType: 'ActiveDirectory'
       principalType: 'Group'
-      login: sqlAdministratorsGroupName
+      login: 'GMM SQL admin group: ${sqlAdministratorsGroupId}'
       sid: sqlAdministratorsGroupId
       tenantId: tenantId
       azureADOnlyAuthentication: true
@@ -172,7 +169,7 @@ resource replicaSqlServer 'Microsoft.Sql/servers@2021-11-01-preview' = {
     administrators: {
       administratorType: 'ActiveDirectory'
       principalType: 'Group'
-      login: sqlAdministratorsGroupName
+      login: 'GMM SQL admin group: ${sqlAdministratorsGroupId}'
       sid: sqlAdministratorsGroupId
       tenantId: tenant().tenantId
       azureADOnlyAuthentication: true

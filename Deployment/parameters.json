@@ -51,13 +51,6 @@
         "required": true
       }
     },
-    "sqlAdministratorsGroupName": {
-      "value": "",
-      "metadata": {
-        "description": "The name of the group that will be added as an administrator to the SQL server.",
-        "required": true
-      }
-    },
     "appConfigurationDataOwners": {
       "value": [
         {
