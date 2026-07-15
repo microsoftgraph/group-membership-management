@@ -17,7 +17,7 @@ export const strings: IStrings = {
   groupIdPlaceHolder: 'ID de grupo',
   addOwnerButton: 'Agregar GMM como propietario',
   membershipManagement: 'Membership Management',
-  learnMembershipManagement: 'Aprenda cómo funciona Membership Management en su organización',
+  learnMembershipManagement: 'Aprenda cómo funciona Membership Management',
   maintenanceTitle: 'Esta aplicación está en mantenimiento',
   maintenanceMessage: 'La IU de GMM está en mantenimiento. Por favor intente de nuevo más tarde. Gracias por su paciencia.',
   permissionDenied: 'No tiene permiso para ver esta pagina. Por favor contacte a su administrador.',
@@ -108,9 +108,9 @@ export const strings: IStrings = {
     },
     Banner:{
       bannerMessageStart:
-      '¿Necesitas ayuda? Haz click aquí para aprender más sobre como Membership Management funciona en tu organización.',
+      '¿Necesitas ayuda? Haz click aquí para aprender más sobre como Membership Management funciona.',
       clickHere: 'Haz click aquí',
-      bannerMessageEnd: ' para aprender más sobre como Membership Management funciona en tu organización.',
+      bannerMessageEnd: ' para aprender más sobre como Membership Management funciona.',
       expandBanner: 'Expandir banner'
     },
     HyperlinkSetting: {
@@ -558,9 +558,9 @@ export const strings: IStrings = {
   },
   JobsList: {
     listOfMemberships: 'Membresías administradas',
-    readOnlyAccessGuidance: 'Tiene acceso de solo lectura. Para crear o editar membresías, debe completar la capacitación requerida y ser agregado al grupo de escritores de trabajos (Job Writer). Revise la {0} para comenzar.',
-    readOnlyAccessGuidanceNoLink: 'Tiene acceso de solo lectura. Para crear o editar membresías, debe completar la capacitación requerida y ser agregado al grupo de escritores de trabajos (Job Writer). Comuníquese con su administrador para comenzar.',
-    readOnlyAccessTrainingLinkLabel: 'página de información de GMM',
+    readOnlyAccessGuidance: 'Tiene acceso de solo lectura. {0} para saber cómo conseguir acceso de edición.',
+    readOnlyAccessGuidanceNoLink: 'Tiene acceso de solo lectura. Comuníquese con su administrador para saber cómo conseguir acceso de edición.',
+    readOnlyAccessLinkLabel: 'Haga clic aquí',
     ShimmeredDetailsList: {
       toggleSelection: 'Alternar selección',
       toggleAllSelection: 'Alternar selecciones para todo',

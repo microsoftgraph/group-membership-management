@@ -141,12 +141,18 @@ export const JobsListBase: React.FunctionComponent<IJobsListProps> = (
   const isSortedDescending: boolean | undefined = useSelector(selectPagingBarIsSortedDescending);
 
   const isTenantJobWriter: boolean | undefined = useSelector(selectIsJobTenantWriter);
-  const isJobWriter: boolean | undefined = useSelector(selectIsJobWriter);
+  const isJobWriter = useSelector(selectIsJobWriter);
   const isSubmissionReviewer = useSelector(selectIsSubmissionReviewer);
   const isSubmissionRejector = useSelector(selectIsSubmissionRejector);
   const dashboardUrl = useSelector(selectDashboardUrl);
   const trimmedDashboardUrl = dashboardUrl?.trim() ?? '';
-  const isSafeDashboardUrl = /^https?:\/\//i.test(trimmedDashboardUrl);
+  const isSafeDashboardUrl = (() => {
+    try {
+      return new URL(trimmedDashboardUrl).protocol === 'https:';
+    } catch {
+      return false;
+    }
+  })();
   const [csvErrorMessage, setCsvErrorMessage] = useState<string>('');
   const [selectedItems, setSelectedItems] = useState<IItem[]>([]);
   const jobsToDownloadLoading = useSelector(downloadJobsLoading);
@@ -940,7 +946,7 @@ export const JobsListBase: React.FunctionComponent<IJobsListProps> = (
               }
             </div>
           </div>
-          {!isJobWriter && (
+          {isJobWriter === false && (
             <MessageBar
               messageBarType={MessageBarType.info}
               isMultiline={true}
@@ -955,7 +961,7 @@ export const JobsListBase: React.FunctionComponent<IJobsListProps> = (
                       rel="noopener noreferrer"
                       underline={true}
                     >
-                      {strings.JobsList.readOnlyAccessTrainingLinkLabel}
+                      {strings.JobsList.readOnlyAccessLinkLabel}
                     </Link>
                   )
                 : strings.JobsList.readOnlyAccessGuidanceNoLink}

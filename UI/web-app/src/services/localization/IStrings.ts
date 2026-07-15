@@ -552,7 +552,7 @@ export type IStrings = {
     listOfMemberships: string;
     readOnlyAccessGuidance: string;
     readOnlyAccessGuidanceNoLink: string;
-    readOnlyAccessTrainingLinkLabel: string;
+    readOnlyAccessLinkLabel: string;
     ShimmeredDetailsList: {
       toggleSelection: string;
       toggleAllSelection: string;

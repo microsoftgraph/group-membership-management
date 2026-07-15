@@ -17,7 +17,7 @@ export const strings: IStrings = {
   groupIdPlaceHolder: 'Group ID',
   addOwnerButton: 'Add GMM as an owner',
   membershipManagement: 'Membership Management',
-  learnMembershipManagement:'Learn how Membership Management works in your organization',
+  learnMembershipManagement:'Learn how Membership Management works',
   maintenanceTitle: 'This application is currently under maintenance.',
   maintenanceMessage: 'The GMM UI is under maintenance. Please try again later. Thank you for your patience.',
   permissionDenied: 'You do not have permission to view this page. Please contact your administrator.',
@@ -109,7 +109,7 @@ export const strings: IStrings = {
     Banner: {
       bannerMessageStart: "Need help? ",
       clickHere: "Click here",
-      bannerMessageEnd: " to learn more about how Membership Management works in your organization.",
+      bannerMessageEnd: " to learn more about how Membership Management works.",
       expandBanner: "Expand banner",
     },
     HyperlinkSetting: {
@@ -556,9 +556,9 @@ export const strings: IStrings = {
   },
   JobsList: {
     listOfMemberships: 'List of memberships',
-    readOnlyAccessGuidance: 'You have read-only access. To create or edit memberships, you must complete the required training and be added to the Job Writer group. Review the {0} to get started.',
-    readOnlyAccessGuidanceNoLink: 'You have read-only access. To create or edit memberships, you must complete the required training and be added to the Job Writer group. Contact your administrator to get started.',
-    readOnlyAccessTrainingLinkLabel: 'GMM information page',
+    readOnlyAccessGuidance: 'You have read-only access. {0} to learn how to obtain edit access.',
+    readOnlyAccessGuidanceNoLink: 'You have read-only access. Contact your administrator to learn how to obtain edit access.',
+    readOnlyAccessLinkLabel: 'Click here',
     ShimmeredDetailsList: {
       toggleSelection: 'Toggle selection',
       toggleAllSelection: 'Toggle selection for all items',
