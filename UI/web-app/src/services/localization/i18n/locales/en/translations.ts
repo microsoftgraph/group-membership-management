@@ -452,7 +452,7 @@ export const strings: IStrings = {
       statusUpdate: 'Status Update',
       update: 'Sync Update Request',
       submissionApproved: 'Approved',
-      submissionRejected: 'Submission Rejected',
+      submissionRejected: 'Rejected',
       ignoreThresholdOnce: 'Ignore Threshold Once',
       thresholdExceededApproved: 'Threshold exceeded - approved',
       notificationResolved: 'Notification resolved.',

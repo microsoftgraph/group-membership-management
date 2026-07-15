@@ -454,7 +454,7 @@ export const strings: IStrings = {
       statusUpdate: 'Actualización de estado',
       update: 'Solicitud de Actualización de sincronización',
       submissionApproved: 'Aprobado',
-      submissionRejected: 'Solicitud rechazada',
+      submissionRejected: 'Rechazado',
       ignoreThresholdOnce: 'Ignorar umbral una vez',
       thresholdExceededApproved: 'Umbral excedido - aprobado',
       notificationResolved: 'Notificación resuelta.',

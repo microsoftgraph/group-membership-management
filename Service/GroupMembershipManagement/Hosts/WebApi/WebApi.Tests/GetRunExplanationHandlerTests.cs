@@ -1555,7 +1555,9 @@ namespace WebApi.Tests
             Assert.AreEqual(HttpStatusCode.OK, response.StatusCode);
             _mockOpenAIService.Verify(x => x.GetCompletionAsync(It.IsAny<string>(), It.IsAny<string>()), Times.Once);
             Assert.IsNotNull(capturedPrompt);
-            Assert.IsFalse(capturedPrompt!.Contains("Per-part attribution for removed users", StringComparison.OrdinalIgnoreCase));
+            // Section IS present but as a no-signal marker (no attributable source found) — enforces the anti-hallucination hard rule.
+            StringAssert.Contains(capturedPrompt!, "Per-part attribution for removed users");
+            StringAssert.Contains(capturedPrompt!, "no attributable source found");
             _mockSqlMembershipRepository.Verify(x => x.FilterChildEntitiesAsync(It.IsAny<string>(), It.IsAny<string>()), Times.Never);
         }
 
@@ -1606,7 +1608,9 @@ namespace WebApi.Tests
             Assert.AreEqual(HttpStatusCode.OK, response.StatusCode);
             _mockOpenAIService.Verify(x => x.GetCompletionAsync(It.IsAny<string>(), It.IsAny<string>()), Times.Once);
             Assert.IsNotNull(capturedPrompt);
-            Assert.IsFalse(capturedPrompt!.Contains("Per-part attribution for removed users", StringComparison.OrdinalIgnoreCase));
+            // Section IS present but as a no-signal marker — anti-hallucination enforcement.
+            StringAssert.Contains(capturedPrompt!, "Per-part attribution for removed users");
+            StringAssert.Contains(capturedPrompt!, "no attributable source found");
             _mockSqlMembershipRepository.Verify(x => x.FilterChildEntitiesAsync("Building = 'B40'", It.IsAny<string>()), Times.Never);
         }
 

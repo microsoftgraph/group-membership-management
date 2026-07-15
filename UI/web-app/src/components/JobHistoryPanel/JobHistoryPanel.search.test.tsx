@@ -83,7 +83,7 @@ const strings = {
       statusUpdate: 'Status update',
       update: 'Update',
       submissionApproved: 'Submission approved',
-      submissionRejected: 'Submission rejected',
+      submissionRejected: 'Rejected',
       groupSettings: 'Group settings',
       ignoreThresholdOnce: 'Ignore threshold once',
       thresholdExceededApproved: 'Threshold exceeded - approved',
@@ -649,6 +649,28 @@ describe('JobHistoryPanelBase threshold status highlighting', () => {
 });
 
 describe('JobHistoryPanelBase configuration row counts', () => {
+  it('displays a rejected configuration event as Rejected', async () => {
+    mockSyncHistoryItems = [];
+    mockState.jobs.selectedJobChanges = [
+      {
+        changeTime: '2024-05-03T00:00:00Z',
+        changedByDisplayName: 'Test Reviewer',
+        changedByObjectId: 'reviewer-1',
+        changedOnBehalfOfDisplayName: null,
+        changedOnBehalfOfObjectId: null,
+        changeReason: SyncJobChangeReason.SubmissionRejected,
+        changeSource: 'WebUI',
+        changeDetails: null,
+        businessJustification: null,
+      },
+    ];
+
+    await renderPanel();
+
+    expect(await screen.findByTestId('cell-configuration-0-2024-05-03T00:00:00Z-status'))
+      .toHaveTextContent('Rejected');
+  });
+
   it('leaves membership count cells blank for configuration events', async () => {
     mockSyncHistoryItems = [];
     mockState.jobs.selectedJobChanges = [
