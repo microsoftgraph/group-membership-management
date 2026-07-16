@@ -16,6 +16,7 @@ import settingsReducer, {
   selectIsAutoApprovalForRequestorIsOrgLeaderSyncsEnabled,
   selectIsAITitleEnabled,
   selectCopilotSuggestedPrompts,
+  selectIsRunHistoryOpenViewingAndUnifiedTabEnabled,
   SettingsState,
 } from './settings.slice';
 import { fetchSettings, fetchSettingByKey, patchSetting, getSupportEmailAddress } from './settings.api';
@@ -210,5 +211,21 @@ describe('settings.slice — selectors', () => {
   it('selectCopilotSuggestedPrompts returns empty string when stored as empty', () => {
     const root = buildRoot([makeSetting(SettingKey.CopilotSuggestedPrompts, '')]);
     expect(selectCopilotSuggestedPrompts(root)).toBe('');
+  });
+
+  it('selectIsRunHistoryOpenViewingAndUnifiedTabEnabled returns true when enabled', () => {
+    const root = buildRoot([
+      makeSetting(SettingKey.RunHistoryOpenViewingAndUnifiedTab, 'true'),
+    ]);
+    expect(selectIsRunHistoryOpenViewingAndUnifiedTabEnabled(root)).toBe(true);
+  });
+
+  it('selectIsRunHistoryOpenViewingAndUnifiedTabEnabled defaults to false', () => {
+    expect(selectIsRunHistoryOpenViewingAndUnifiedTabEnabled(buildRoot())).toBe(false);
+    expect(
+      selectIsRunHistoryOpenViewingAndUnifiedTabEnabled(
+        buildRoot([makeSetting(SettingKey.RunHistoryOpenViewingAndUnifiedTab, 'false')])
+      )
+    ).toBe(false);
   });
 });

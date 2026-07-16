@@ -267,6 +267,13 @@ export const selectIsAIRunExplanationEnabled = (state: RootState) => {
   return setting ? setting.settingValue === 'true' : undefined;
 }
 
+export const selectIsRunHistoryOpenViewingAndUnifiedTabEnabled = (state: RootState) => {
+  const settingsArray = state.settings.settings;
+  if (!settingsArray) return false;
+  const setting = settingsArray.find((s) => s.settingKey === SettingKey.RunHistoryOpenViewingAndUnifiedTab);
+  return setting?.settingValue === 'true';
+}
+
 export const selectPatchSettingResponse = (state: RootState) => state.settings.patchSettingResponse;
 export const selectPatchSettingError = (state: RootState) => state.settings.patchSettingError;
 

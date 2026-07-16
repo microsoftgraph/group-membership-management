@@ -44,7 +44,6 @@ using Services.Entities;
 using Services.Notifications;
 using Services.WebApi;
 using Services.WebApi.Contracts;
-using Services.WebApi;
 using WebApi.BackgroundServices;
 using WebApi.Configuration;
 using WebApi.Models;
@@ -108,6 +107,9 @@ namespace WebApi
                     .ConfigureRefresh(refreshOptions =>
                     {
                         refreshOptions.Register("WebAPI:Settings:Sentinel", refreshAll: true);
+                        refreshOptions.Register(
+                            global::Models.ConfigurationKeyNames.RunHistoryOpenViewingAndUnifiedTab,
+                            refreshAll: false);
                     })
                     .Select("Mail:*")
                     .Select("GraphAPI:*")

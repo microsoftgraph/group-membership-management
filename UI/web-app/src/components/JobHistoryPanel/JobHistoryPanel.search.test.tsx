@@ -6,6 +6,7 @@ import { MembershipChangeType } from '../../models/SearchSyncHistoryByUserResult
 import { RunHistoryStatus } from '../../models/Status';
 import { SyncJobChangeReason } from '../../models/SyncJobChangeReason';
 import type { SyncJobHistory } from '../../models/SyncJobHistory';
+import { SettingKey } from '../../models/SettingKey';
 
 const mockTheme = {
   palette: {
@@ -144,7 +145,7 @@ vi.mock('@fluentui/react', async () => {
     <section aria-label={headerText}>{children}</section>
   );
   const Label = ({ children, className }: any) => <label className={className}>{children}</label>;
-  const Spinner = ({ label }: any) => <div>{label}</div>;
+  const Spinner = ({ label }: any) => <div data-testid="spinner">{label}</div>;
   const MessageBar = ({ children, onDismiss }: any) => (
     <div>
       {children}
@@ -305,6 +306,7 @@ vi.mock('../../store/jobs.slice', () => ({
 vi.mock('../../store/roles.slice', () => ({
   selectIsJobTenantReader: (state: any) => state.roles.isJobTenantReader,
   selectIsJobTenantWriter: (state: any) => state.roles.isJobTenantWriter,
+  selectIsJobWriter: (state: any) => state.roles.isJobOwnerWriter || state.roles.isJobTenantWriter,
   selectIsGeneralSettingsAdministrator: (state: any) => state.roles.isGeneralSettingsAdministrator,
 }));
 
@@ -382,12 +384,15 @@ beforeEach(() => {
       },
     },
     roles: {
+      isJobOwnerReader: false,
+      isJobOwnerWriter: false,
       isJobTenantReader: true,
       isJobTenantWriter: true,
     },
     settings: {
       settings: [
         { settingKey: 16, settingValue: 'true' },
+        { settingKey: SettingKey.RunHistoryOpenViewingAndUnifiedTab, settingValue: 'false' },
       ],
     },
   };
@@ -464,6 +469,146 @@ describe('JobHistoryPanelBase event type filter', () => {
     expect(
       within(eventTypeFilter).queryByRole('option', { name: 'Sync only' })
     ).not.toBeInTheDocument();
+  });
+});
+
+describe('JobHistoryPanelBase Phase 2 rollout', () => {
+  it('keeps the role gate and Configuration tab while the flag is off', async () => {
+    mockState.roles.isJobTenantReader = false;
+    mockState.roles.isJobTenantWriter = false;
+    mockState.roles.isJobOwnerReader = true;
+
+    await renderPanel();
+
+    expect(screen.getByRole('region', {
+      name: strings.JobDetails.Panel.configurationPivotHeader,
+    })).toBeInTheDocument();
+    expect(screen.queryByTestId('details-list-combinedSyncSet')).not.toBeInTheDocument();
+    expect(fetchSyncJobHistoryMock).not.toHaveBeenCalled();
+  });
+
+  it('opens the unified history and removes the Configuration tab while the flag is on', async () => {
+    mockState.roles.isJobTenantReader = false;
+    mockState.roles.isJobTenantWriter = false;
+    mockState.roles.isJobOwnerReader = true;
+    mockState.settings.settings = [
+      { settingKey: SettingKey.IsAISearchForUserEnabled, settingValue: 'true' },
+      { settingKey: SettingKey.RunHistoryOpenViewingAndUnifiedTab, settingValue: 'true' },
+    ];
+    mockState.jobs.selectedJobChanges = [{
+      changeTime: '2024-05-03T00:00:00Z',
+      changedByDisplayName: 'Test Owner',
+      changedByObjectId: 'owner-1',
+      changedOnBehalfOfDisplayName: null,
+      changedOnBehalfOfObjectId: null,
+      changeReason: SyncJobChangeReason.Update,
+      changeSource: 'WebUI',
+      changeDetails: '{"someDetail":"preserved"}',
+      businessJustification: null,
+    }];
+
+    await renderPanel();
+
+    expect(screen.queryByRole('region', {
+      name: strings.JobDetails.Panel.configurationPivotHeader,
+    })).not.toBeInTheDocument();
+    expect(await screen.findByTestId('details-list-combinedSyncSet')).toBeInTheDocument();
+    expect(await screen.findByTestId(
+      'cell-configuration-0-2024-05-03T00:00:00Z-status'
+    )).toBeInTheDocument();
+    const configurationRow = await screen.findByTestId('row-combinedSyncSet-0');
+    fireEvent.click(within(configurationRow).getByLabelText(strings.JobDetails.Panel.expandRowAriaLabel));
+    fireEvent.click(within(configurationRow).getByText(strings.JobDetails.Panel.viewDetails));
+    const detailsTextArea = screen.getAllByRole('textbox')
+      .find((element) => element.tagName === 'TEXTAREA');
+    expect(detailsTextArea).toHaveValue('{\n  "someDetail": "preserved"\n}');
+    expect(fetchSyncJobHistoryMock).toHaveBeenCalledWith('job-1');
+    expect(screen.queryByLabelText(strings.JobDetails.Panel.searchUserLabel)).not.toBeInTheDocument();
+  });
+
+  it('shows a loading spinner until both history sources resolve, then reveals the unified list once', async () => {
+    mockState.settings.settings = [
+      { settingKey: SettingKey.RunHistoryOpenViewingAndUnifiedTab, settingValue: 'true' },
+    ];
+
+    let resolveJobChanges: (value: unknown) => void = () => undefined;
+    let resolveSyncHistory: (value: unknown) => void = () => undefined;
+    const pendingJobChanges = new Promise((resolve) => { resolveJobChanges = resolve; });
+    const pendingSyncHistory = new Promise((resolve) => { resolveSyncHistory = resolve; });
+
+    mockDispatch.mockImplementation((action: any) => {
+      switch (action?.__type) {
+        case 'fetchJobChanges':
+          return { unwrap: () => pendingJobChanges };
+        case 'fetchSyncJobHistory':
+          return { unwrap: () => pendingSyncHistory };
+        default:
+          return { unwrap: () => Promise.resolve([]) };
+      }
+    });
+
+    await renderPanel();
+
+    // Both sources still pending: spinner shown, unified list withheld to avoid the flash.
+    expect(screen.getByTestId('spinner')).toBeInTheDocument();
+    expect(screen.queryByTestId('details-list-combinedSyncSet')).not.toBeInTheDocument();
+
+    // Resolving only one source keeps the spinner in place.
+    await act(async () => {
+      resolveJobChanges([]);
+      await Promise.resolve();
+    });
+    expect(screen.getByTestId('spinner')).toBeInTheDocument();
+    expect(screen.queryByTestId('details-list-combinedSyncSet')).not.toBeInTheDocument();
+
+    // Resolving the second source clears the spinner and renders the sorted list.
+    await act(async () => {
+      resolveSyncHistory(mockSyncHistoryItems);
+      await Promise.resolve();
+    });
+
+    expect(await screen.findByTestId('details-list-combinedSyncSet')).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.queryByTestId('spinner')).not.toBeInTheDocument();
+    });
+  });
+
+  it('keeps threshold actions and downloads hidden for a read-only viewer', async () => {
+    mockState.roles.isJobTenantReader = false;
+    mockState.roles.isJobTenantWriter = false;
+    mockState.roles.isJobOwnerReader = true;
+    mockState.settings.settings = [
+      { settingKey: SettingKey.RunHistoryOpenViewingAndUnifiedTab, settingValue: 'true' },
+    ];
+    mockSyncHistoryItems = [{
+      ...buildSyncHistoryItem('run-threshold', '2024-05-02T00:00:00Z', 3, 0),
+      status: RunHistoryStatus.ThresholdExceeded,
+    }];
+
+    await renderPanel();
+    fireEvent.click(await screen.findByLabelText(strings.JobDetails.Panel.expandRowAriaLabel));
+
+    expect(screen.queryByText(strings.JobDetails.Panel.reviewAndTakeAction)).not.toBeInTheDocument();
+    expect(screen.queryByText(strings.JobDetails.Panel.downloadLinkText)).not.toBeInTheDocument();
+  });
+
+  it('allows a job owner writer to resolve a threshold violation', async () => {
+    mockState.roles.isJobTenantReader = false;
+    mockState.roles.isJobTenantWriter = false;
+    mockState.roles.isJobOwnerWriter = true;
+    mockState.settings.settings = [
+      { settingKey: SettingKey.RunHistoryOpenViewingAndUnifiedTab, settingValue: 'true' },
+    ];
+    mockSyncHistoryItems = [{
+      ...buildSyncHistoryItem('run-threshold', '2024-05-02T00:00:00Z', 3, 0),
+      status: RunHistoryStatus.ThresholdExceeded,
+    }];
+
+    await renderPanel();
+    fireEvent.click(await screen.findByLabelText(strings.JobDetails.Panel.expandRowAriaLabel));
+
+    expect(await screen.findByText(strings.JobDetails.Panel.reviewAndTakeAction)).toBeEnabled();
+    expect(screen.queryByText(strings.JobDetails.Panel.downloadLinkText)).not.toBeInTheDocument();
   });
 });
 

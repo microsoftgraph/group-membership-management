@@ -39,7 +39,7 @@ import {
 import { useStrings } from '../../store/hooks';
 import { useDispatch, useSelector } from 'react-redux';
 import { AppDispatch } from '../../store';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { Fragment, type ElementType, useEffect, useMemo, useRef, useState } from 'react';
 import { downloadMembershipChanges, fetchJobChanges, fetchSyncJobHistory, fetchThresholdNotification, resolveNotification, searchSyncHistoryByUser, fetchSyncExplanation, fetchRunExplanation } from '../../store/jobDetails.api';
 import { selectSelectedJobChanges, selectSelectedJobDetails, setSelectedJobEnabled } from '../../store/jobs.slice';
 import { SyncJobChange } from '../../models/SyncJobChange';
@@ -48,8 +48,8 @@ import { SyncJobHistory } from '../../models/SyncJobHistory';
 import { SyncHistorySearchProgressUpdate } from '../../models/SyncHistorySearchProgressUpdate';
 import { MembershipChangeType, SearchSyncHistoryByUserRunMembershipChange } from '../../models/SearchSyncHistoryByUserResult';
 import { ThresholdNotificationData } from '../../models/ThresholdNotificationData';
-import { selectIsJobTenantReader, selectIsJobTenantWriter, selectIsGeneralSettingsAdministrator } from '../../store/roles.slice';
-import { selectIsAISearchForUserEnabled, selectIsAIRunExplanationEnabled } from '../../store/settings.slice';
+import { selectIsJobTenantReader, selectIsJobTenantWriter, selectIsGeneralSettingsAdministrator, selectIsJobWriter } from '../../store/roles.slice';
+import { selectIsAISearchForUserEnabled, selectIsAIRunExplanationEnabled, selectIsRunHistoryOpenViewingAndUnifiedTabEnabled } from '../../store/settings.slice';
 import { renderMultilineHeader } from '../../utils/stringUtils';
 import { getStatusDisplayText } from '../../utils/jobUtils';
 import { RunHistoryStatus } from '../../models/Status';
@@ -105,15 +105,21 @@ export const JobHistoryPanelBase: React.FunctionComponent<IJobHistoryPanelProps>
     const selectedJob = useSelector(selectSelectedJobDetails);
     const isJobTenantReader = useSelector(selectIsJobTenantReader);
     const isJobTenantWriter = useSelector(selectIsJobTenantWriter);
+    const isJobWriter = useSelector(selectIsJobWriter);
     const isGeneralSettingsAdministrator = useSelector(selectIsGeneralSettingsAdministrator);
     const isAISearchForUserEnabled = useSelector(selectIsAISearchForUserEnabled);
     const isAIRunExplanationEnabled = useSelector(selectIsAIRunExplanationEnabled);
-    const showSyncTab = isJobTenantReader || isJobTenantWriter;
+    const isRunHistoryPhase2Enabled = useSelector(selectIsRunHistoryOpenViewingAndUnifiedTabEnabled);
+    const showSyncTab = isRunHistoryPhase2Enabled || isJobTenantReader || isJobTenantWriter;
+    const canSearchUserHistory = isAISearchForUserEnabled && (isJobTenantReader || isJobTenantWriter);
     const canDownloadMembershipChanges = isJobTenantWriter;
+    const HistoryContainer: ElementType = isRunHistoryPhase2Enabled ? Fragment : Pivot;
+    const SyncHistoryContainer: ElementType = isRunHistoryPhase2Enabled ? Fragment : PivotItem;
 
     const classNames: IProcessedStyleSet<IJobHistoryPanelStyles> = getClassNames(styles, { className, theme });
 
     const [syncHistoryItems, setSyncHistoryItems] = useState<SyncJobHistory[]>([]);
+    const [isHistoryLoading, setIsHistoryLoading] = useState(false);
     const [expandedSyncRowIds, setExpandedSyncRowIds] = useState<Set<string>>(new Set());
     const [downloadError, setDownloadError] = useState<string | null>(null);
     const [downloadingRunIds, setDownloadingRunIds] = useState<Set<string>>(new Set());
@@ -683,6 +689,7 @@ export const JobHistoryPanelBase: React.FunctionComponent<IJobHistoryPanelProps>
         if (!isOpen) {
             setExpandedSyncRowIds(new Set());
             setSyncHistoryItems([]);
+            setIsHistoryLoading(false);
             setDownloadError(null);
             setDownloadingRunIds(new Set());
             setIsModalOpen(false);
@@ -716,14 +723,23 @@ export const JobHistoryPanelBase: React.FunctionComponent<IJobHistoryPanelProps>
 
         setExpandedSyncRowIds(new Set());
         setSyncPageNumber(1);
-        dispatch(fetchJobChanges({ syncJobId: jobId }));
+        setIsHistoryLoading(true);
+
+        const jobChangesPromise = dispatch(fetchJobChanges({ syncJobId: jobId }))
+            .unwrap()
+            .catch((error) => {
+                console.error(error);
+            });
 
         if (!showSyncTab) {
             setSyncHistoryItems([]);
+            void jobChangesPromise.finally(() => {
+                setIsHistoryLoading(false);
+            });
             return;
         }
 
-        dispatch(fetchSyncJobHistory(jobId))
+        const syncHistoryPromise = dispatch(fetchSyncJobHistory(jobId))
             .unwrap()
             .then((history) => {
                 setSyncHistoryItems(history);
@@ -737,6 +753,10 @@ export const JobHistoryPanelBase: React.FunctionComponent<IJobHistoryPanelProps>
                 console.error(error);
                 setSyncHistoryItems([]);
             });
+
+        void Promise.all([jobChangesPromise, syncHistoryPromise]).finally(() => {
+            setIsHistoryLoading(false);
+        });
     }, [dispatch, isOpen, jobId, showSyncTab]);
 
     const handleViewDetails = (details: string | null) => {
@@ -1140,6 +1160,7 @@ export const JobHistoryPanelBase: React.FunctionComponent<IJobHistoryPanelProps>
     };
 
     const canTakeActionOnRow = (item: CombinedHistoryListItem): boolean =>
+        isJobWriter &&
         item.syncHistory?.status === RunHistoryStatus.ThresholdExceeded &&
         !!item.syncHistory &&
         item.syncHistory.runId === mostRecentThresholdRunId &&
@@ -1594,45 +1615,46 @@ export const JobHistoryPanelBase: React.FunctionComponent<IJobHistoryPanelProps>
                             <span style={{ fontSize: '12px' }}>{item.jobChange.businessJustification || strings.JobDetails.Panel.emptyValuePlaceholder}</span>
                         </div>
                     </div>
-                    {(query || showReviewThresholdCallout) && (
-                        <div className={classNames.configurationActionsRow}>
-                            <div className={classNames.configurationQueryAction}>
-                                {query && (
-                                    <Link onClick={() => handleOpenQuery(item.jobChange!.changeDetails)}>
-                                        {strings.JobDetails.Panel.openQuery}
-                                    </Link>
-                                )}
-                            </div>
-                            {showReviewThresholdCallout && (
-                                <div className={classNames.reviewThresholdCallout}>
-                                    <span className={classNames.reviewThresholdCalloutText}>
-                                        {strings.JobDetails.Panel.reviewAlertThresholdsCallout}
-                                    </span>
-                                    <DefaultButton
-                                        text={strings.JobDetails.Panel.reviewAlertThresholdsButton}
-                                        onClick={() => onEditThreshold?.({ additionsExceeded: false, removalsExceeded: false })}
-                                        styles={{
-                                            root: {
-                                                borderRadius: 2,
-                                                flexShrink: 0,
-                                                height: 24,
-                                                minWidth: 0,
-                                                padding: '0 8px',
-                                                whiteSpace: 'nowrap',
-                                            },
-                                            label: {
-                                                fontSize: '12px',
-                                                fontWeight: 400,
-                                                lineHeight: '22px',
-                                                margin: 0,
-                                                whiteSpace: 'nowrap',
-                                            },
-                                        }}
-                                    />
-                                </div>
+                    <div className={classNames.configurationActionsRow}>
+                        <div className={classNames.configurationQueryAction}>
+                            <Link onClick={() => handleViewDetails(item.jobChange!.changeDetails)}>
+                                {strings.JobDetails.Panel.viewDetails}
+                            </Link>
+                            {query && (
+                                <Link onClick={() => handleOpenQuery(item.jobChange!.changeDetails)}>
+                                    {strings.JobDetails.Panel.openQuery}
+                                </Link>
                             )}
                         </div>
-                    )}
+                        {showReviewThresholdCallout && (
+                            <div className={classNames.reviewThresholdCallout}>
+                                <span className={classNames.reviewThresholdCalloutText}>
+                                    {strings.JobDetails.Panel.reviewAlertThresholdsCallout}
+                                </span>
+                                <DefaultButton
+                                    text={strings.JobDetails.Panel.reviewAlertThresholdsButton}
+                                    onClick={() => onEditThreshold?.({ additionsExceeded: false, removalsExceeded: false })}
+                                    styles={{
+                                        root: {
+                                            borderRadius: 2,
+                                            flexShrink: 0,
+                                            height: 24,
+                                            minWidth: 0,
+                                            padding: '0 8px',
+                                            whiteSpace: 'nowrap',
+                                        },
+                                        label: {
+                                            fontSize: '12px',
+                                            fontWeight: 400,
+                                            lineHeight: '22px',
+                                            margin: 0,
+                                            whiteSpace: 'nowrap',
+                                        },
+                                    }}
+                                />
+                            </div>
+                        )}
+                    </div>
                 </div>
             );
         }
@@ -1767,8 +1789,9 @@ export const JobHistoryPanelBase: React.FunctionComponent<IJobHistoryPanelProps>
                     ) : undefined}
                 />
             ) : (
-            <Pivot>
-                <PivotItem
+            <HistoryContainer>
+                {!isRunHistoryPhase2Enabled && (
+                    <PivotItem
                     headerText={strings.JobDetails.Panel.configurationPivotHeader}
                     headerButtonProps={{
                         'data-order': 1,
@@ -1782,13 +1805,16 @@ export const JobHistoryPanelBase: React.FunctionComponent<IJobHistoryPanelProps>
                         selectionMode={0}
                     />
                 </PivotItem>
+                )}
                 {showSyncTab && (
-                    <PivotItem
-                        headerText={strings.JobDetails.Panel.syncPivotHeader}
-                        headerButtonProps={{
-                            'data-order': 2,
-                            'data-title': strings.JobDetails.Panel.syncPivotHeader,
-                        }}
+                    <SyncHistoryContainer
+                        {...(!isRunHistoryPhase2Enabled ? {
+                            headerText: strings.JobDetails.Panel.syncPivotHeader,
+                            headerButtonProps: {
+                                'data-order': 2,
+                                'data-title': strings.JobDetails.Panel.syncPivotHeader,
+                            },
+                        } : {})}
                     >
                         {downloadError && (
                             <MessageBar
@@ -1823,7 +1849,7 @@ export const JobHistoryPanelBase: React.FunctionComponent<IJobHistoryPanelProps>
                                     }}
                                 />
                             </div>
-                            {isAISearchForUserEnabled ? (
+                            {canSearchUserHistory ? (
                                 <div className={classNames.userSearchField}>
                                     <Label className={classNames.userSearchLabel}>{strings.JobDetails.Panel.searchUserLabel}</Label>
                                     <div className={classNames.userSearchInputWrapper}>
@@ -1934,7 +1960,7 @@ export const JobHistoryPanelBase: React.FunctionComponent<IJobHistoryPanelProps>
                                 </button>
                             </div>
                         </div>
-                        {isAISearchForUserEnabled && (<>
+                        {canSearchUserHistory && (<>
                         {isUserSearchLoading && (
                             <Spinner
                                 label={searchProgressText ?? strings.JobDetails.Panel.searchUserLoading}
@@ -1978,14 +2004,21 @@ export const JobHistoryPanelBase: React.FunctionComponent<IJobHistoryPanelProps>
                             </div>
                         )}
                         </>)}
-                        <DetailsList
-                            setKey="combinedSyncSet"
-                            columns={syncColumns}
-                            items={pagedSyncItems}
-                            layoutMode={DetailsListLayoutMode.justified}
-                            selectionMode={0}
-                            onRenderRow={onRenderSyncRow}
-                        />
+                        {isHistoryLoading ? (
+                            <div style={{ display: 'flex', justifyContent: 'center', padding: '40px 0' }}>
+                                <Spinner size={SpinnerSize.large} label={strings.loading} />
+                            </div>
+                        ) : (
+                            <DetailsList
+                                setKey="combinedSyncSet"
+                                columns={syncColumns}
+                                items={pagedSyncItems}
+                                layoutMode={DetailsListLayoutMode.justified}
+                                selectionMode={0}
+                                onRenderRow={onRenderSyncRow}
+                            />
+                        )}
+                        {!isHistoryLoading && (
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', marginTop: '12px', flexWrap: 'wrap' }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                                 <IconButton
@@ -2023,9 +2056,10 @@ export const JobHistoryPanelBase: React.FunctionComponent<IJobHistoryPanelProps>
                                 <span>{strings.JobsList.PagingBar.items}</span>
                             </div>
                         </div>
-                    </PivotItem>
+                        )}
+                    </SyncHistoryContainer>
                 )}
-            </Pivot>
+            </HistoryContainer>
             )}
             <Modal
                 isOpen={isModalOpen}

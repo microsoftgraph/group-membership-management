@@ -277,6 +277,7 @@ const HyperlinkSettings: React.FunctionComponent<HyperlinkSettingsProps> = (prop
     [SettingKey.IsAICopilotEnabled]: true,
     [SettingKey.IsAISearchForUserEnabled]: true,
     [SettingKey.IsAIRunExplanationEnabled]: true,
+    [SettingKey.RunHistoryOpenViewingAndUnifiedTab]: true,
     [SettingKey.CopilotTemperature]: true,
     [SettingKey.CopilotTopP]: true,
     [SettingKey.CopilotInstructions]: true,

@@ -23,6 +23,7 @@ namespace Models
         CopilotSuggestedPrompts = 15,
         IsAISearchForUserEnabled = 16,
         IsAIRunExplanationEnabled = 17,
-        AlertBannerConfig = 18
+        AlertBannerConfig = 18,
+        RunHistoryOpenViewingAndUnifiedTab = 19
     }
 }

@@ -4,6 +4,8 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.JsonPatch;
 using Microsoft.AspNetCore.JsonPatch.Operations;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Models.SyncJobChange;
 using Models.SyncJobHistory;
@@ -412,10 +414,51 @@ namespace WebApi.Controllers.v1.Jobs
             };
         }
 
-        [Authorize(Roles = Models.Roles.JOB_TENANT_READER + "," + Models.Roles.JOB_TENANT_WRITER)]
+        [Authorize(Roles = Models.Roles.JOB_OWNER_READER + "," + Models.Roles.JOB_OWNER_WRITER + "," + Models.Roles.JOB_TENANT_READER + "," + Models.Roles.JOB_TENANT_WRITER)]
         [HttpGet("history/sync/{syncJobId}")]
-        public async Task<ActionResult<IEnumerable<SyncJobHistory>>> GetSyncJobHistoryAsync(Guid syncJobId)
+        public async Task<ActionResult<IEnumerable<SyncJobHistory>>> GetSyncJobHistoryAsync(
+            Guid syncJobId,
+            [FromServices] IConfiguration configuration,
+            [FromServices] IDatabaseSyncJobsRepository syncJobsRepository)
         {
+            var hasTenantHistoryRole = User.IsInRole(Models.Roles.JOB_TENANT_READER)
+                                       || User.IsInRole(Models.Roles.JOB_TENANT_WRITER);
+
+            if (!hasTenantHistoryRole)
+            {
+                var isRunHistoryPhase2Enabled =
+                    bool.TryParse(
+                        configuration[global::Models.ConfigurationKeyNames.RunHistoryOpenViewingAndUnifiedTab],
+                        out var configuredValue)
+                    && configuredValue;
+                if (!isRunHistoryPhase2Enabled)
+                {
+                    return Forbid();
+                }
+
+                var userObjectIdClaim = User.FindFirstValue("http://schemas.microsoft.com/identity/claims/objectidentifier");
+                if (!Guid.TryParse(userObjectIdClaim, out var userObjectId))
+                {
+                    return Forbid();
+                }
+
+                var jobExists = await syncJobsRepository.GetSyncJobs(true)
+                    .AnyAsync(job => job.Id == syncJobId);
+                if (!jobExists)
+                {
+                    return NotFound();
+                }
+
+                var isDestinationOwner = await syncJobsRepository.GetSyncJobs(true)
+                    .AnyAsync(job =>
+                        job.Id == syncJobId &&
+                        job.DestinationOwners.Any(owner => owner.ObjectId == userObjectId));
+                if (!isDestinationOwner)
+                {
+                    return Forbid();
+                }
+            }
+
             var response = await _getSyncJobHistoryRequestHandler.ExecuteAsync(new GetSyncJobHistoryRequest(syncJobId));
 
             return response.StatusCode switch
@@ -457,10 +500,24 @@ namespace WebApi.Controllers.v1.Jobs
             };
         }
 
-        [Authorize(Roles = $"{Models.Roles.JOB_TENANT_READER},{Models.Roles.JOB_TENANT_WRITER},{Models.Roles.SUBMISSION_REVIEWER}")]
+        [Authorize(Roles = Models.Roles.JOB_TENANT_READER + "," + Models.Roles.JOB_TENANT_WRITER + "," + Models.Roles.SUBMISSION_REVIEWER)]
         [HttpGet("history/sync/{syncJobId}/runs/{runId}/download")]
-        public async Task<ActionResult> DownloadMembershipAsync(Guid syncJobId, Guid runId)
+        public async Task<ActionResult> DownloadMembershipAsync(
+            Guid syncJobId,
+            Guid runId,
+            [FromServices] IConfiguration configuration)
         {
+            var isRunHistoryPhase2Enabled =
+                bool.TryParse(
+                    configuration[global::Models.ConfigurationKeyNames.RunHistoryOpenViewingAndUnifiedTab],
+                    out var configuredValue)
+                && configuredValue;
+
+            if (isRunHistoryPhase2Enabled && !User.IsInRole(Models.Roles.JOB_TENANT_WRITER))
+            {
+                return Forbid();
+            }
+
             var response = await _getMembershipDownloadRequestHandler.ExecuteAsync(new GetMembershipDownloadRequest(syncJobId, runId));
 
             return response.StatusCode switch

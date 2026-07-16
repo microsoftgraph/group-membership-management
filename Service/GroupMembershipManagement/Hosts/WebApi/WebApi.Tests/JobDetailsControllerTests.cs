@@ -3,6 +3,7 @@
 
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using MockQueryable.Moq;
 using Models;
@@ -71,6 +72,7 @@ namespace Services.Tests
         private Mock<IHandleInactiveJobsConfig> _handleInactiveJobsConfig = null!;
         private bool _isGroupOwner = true;
         private Mock<IHttpContextAccessor> _httpContextAccessor = null!;
+        private IConfiguration _configuration = null!;
         private List<SyncJobHistory> _syncJobHistoryEntries = null!;
 
         private PatchJobRequestDTO CreatePatchJobRequestDTO(List<PatchOperation> operations, string changeReason, string businessJustification)
@@ -104,6 +106,12 @@ namespace Services.Tests
         public void Initialize()
         {
             _httpContextAccessor = new Mock<IHttpContextAccessor>();
+            _configuration = new ConfigurationBuilder()
+                .AddInMemoryCollection(new Dictionary<string, string?>
+                {
+                    [ConfigurationKeyNames.RunHistoryOpenViewingAndUnifiedTab] = "false"
+                })
+                .Build();
             _syncJobRepository = new Mock<IDatabaseSyncJobsRepository>();
             _groupRepository = new Mock<IDatabaseGroupsRepository>();
             _groupRepository = new Mock<IDatabaseGroupsRepository>();
@@ -1715,7 +1723,10 @@ namespace Services.Tests
             _jobDetailsController.ControllerContext = CreateControllerContext(context);
             _httpContextAccessor.Setup(x => x.HttpContext).Returns(context);
 
-            var response = await _jobDetailsController.GetSyncJobHistoryAsync(_jobEntity.Id);
+            var response = await _jobDetailsController.GetSyncJobHistoryAsync(
+                _jobEntity.Id,
+                _configuration,
+                _syncJobRepository.Object);
             var result = response.Result as OkObjectResult;
 
             Assert.IsNotNull(response);
@@ -1727,6 +1738,146 @@ namespace Services.Tests
             Assert.AreEqual(1, history.Count);
             Assert.AreEqual(_jobEntity.Id, history[0].SyncJobId);
             Assert.AreEqual(SyncStatus.Idle.ToString(), history[0].Status);
+        }
+
+        [TestMethod]
+        [DataRow(Roles.JOB_OWNER_READER)]
+        [DataRow(Roles.JOB_OWNER_WRITER)]
+        public async Task GetSyncJobHistoryWhenPhase2EnabledAllowsJobOwnerRolesAsync(string role)
+        {
+            _configuration[ConfigurationKeyNames.RunHistoryOpenViewingAndUnifiedTab] = "true";
+
+            var ownerObjectId = Guid.NewGuid();
+            _jobEntity.DestinationOwners = new List<DestinationOwner>
+            {
+                new DestinationOwner { ObjectId = ownerObjectId }
+            };
+
+            var context = CreateHttpContext(new List<Claim>
+            {
+                new Claim(ClaimTypes.Name, "owner@domain.com"),
+                new Claim(ClaimTypes.Role, role),
+                new Claim("http://schemas.microsoft.com/identity/claims/objectidentifier", ownerObjectId.ToString())
+            });
+            _jobDetailsController.ControllerContext = CreateControllerContext(context);
+
+            var response = await _jobDetailsController.GetSyncJobHistoryAsync(
+                _jobEntity.Id,
+                _configuration,
+                _syncJobRepository.Object);
+
+            Assert.IsInstanceOfType(response.Result, typeof(OkObjectResult));
+        }
+
+        [TestMethod]
+        public async Task GetSyncJobHistoryWhenPhase2EnabledForbidsNonOwnerAsync()
+        {
+            _configuration[ConfigurationKeyNames.RunHistoryOpenViewingAndUnifiedTab] = "true";
+
+            _jobEntity.DestinationOwners = new List<DestinationOwner>
+            {
+                new DestinationOwner { ObjectId = Guid.NewGuid() }
+            };
+
+            var context = CreateHttpContext(new List<Claim>
+            {
+                new Claim(ClaimTypes.Name, "nonowner@domain.com"),
+                new Claim(ClaimTypes.Role, Roles.JOB_OWNER_READER),
+                new Claim("http://schemas.microsoft.com/identity/claims/objectidentifier", Guid.NewGuid().ToString())
+            });
+            _jobDetailsController.ControllerContext = CreateControllerContext(context);
+
+            var response = await _jobDetailsController.GetSyncJobHistoryAsync(
+                _jobEntity.Id,
+                _configuration,
+                _syncJobRepository.Object);
+
+            Assert.IsInstanceOfType(response.Result, typeof(ForbidResult));
+            _syncJobHistoryRepository.Verify(
+                x => x.GetBySyncJobIdAsync(It.IsAny<Guid>(), It.IsAny<int>(), It.IsAny<int>()),
+                Times.Never);
+        }
+
+        [TestMethod]
+        public async Task GetSyncJobHistoryWhenPhase2DisabledForbidsJobOwnerRoleAsync()
+        {
+            var context = CreateHttpContext(new List<Claim>
+            {
+                new Claim(ClaimTypes.Name, "owner@domain.com"),
+                new Claim(ClaimTypes.Role, Roles.JOB_OWNER_READER)
+            });
+            _jobDetailsController.ControllerContext = CreateControllerContext(context);
+
+            var response = await _jobDetailsController.GetSyncJobHistoryAsync(
+                _jobEntity.Id,
+                _configuration,
+                _syncJobRepository.Object);
+
+            Assert.IsInstanceOfType(response.Result, typeof(ForbidResult));
+        }
+
+        [TestMethod]
+        [DataRow(Roles.JOB_TENANT_READER)]
+        [DataRow(Roles.SUBMISSION_REVIEWER)]
+        public async Task DownloadMembershipWhenPhase2EnabledForbidsNonTenantWriterAsync(string role)
+        {
+            _configuration[ConfigurationKeyNames.RunHistoryOpenViewingAndUnifiedTab] = "true";
+
+            var context = CreateHttpContext(new List<Claim>
+            {
+                new Claim(ClaimTypes.Name, "user@domain.com"),
+                new Claim(ClaimTypes.Role, role)
+            });
+            _jobDetailsController.ControllerContext = CreateControllerContext(context);
+
+            var response = await _jobDetailsController.DownloadMembershipAsync(
+                _jobEntity.Id,
+                Guid.NewGuid(),
+                _configuration);
+
+            Assert.IsInstanceOfType(response, typeof(ForbidResult));
+            _syncJobRepository.Verify(x => x.GetSyncJobAsync(It.IsAny<Guid>()), Times.Never);
+        }
+
+        [TestMethod]
+        public async Task DownloadMembershipWhenPhase2EnabledAllowsTenantWriterAsync()
+        {
+            _configuration[ConfigurationKeyNames.RunHistoryOpenViewingAndUnifiedTab] = "true";
+
+            var context = CreateHttpContext(new List<Claim>
+            {
+                new Claim(ClaimTypes.Name, "writer@domain.com"),
+                new Claim(ClaimTypes.Role, Roles.JOB_TENANT_WRITER)
+            });
+            _jobDetailsController.ControllerContext = CreateControllerContext(context);
+
+            var response = await _jobDetailsController.DownloadMembershipAsync(
+                _jobEntity.Id,
+                Guid.NewGuid(),
+                _configuration);
+
+            Assert.IsNotInstanceOfType(response, typeof(ForbidResult));
+        }
+
+        [TestMethod]
+        [DataRow(Roles.JOB_TENANT_READER)]
+        [DataRow(Roles.JOB_TENANT_WRITER)]
+        [DataRow(Roles.SUBMISSION_REVIEWER)]
+        public async Task DownloadMembershipWhenPhase2DisabledAllowsOriginalRolesAsync(string role)
+        {
+            var context = CreateHttpContext(new List<Claim>
+            {
+                new Claim(ClaimTypes.Name, "user@domain.com"),
+                new Claim(ClaimTypes.Role, role)
+            });
+            _jobDetailsController.ControllerContext = CreateControllerContext(context);
+
+            var response = await _jobDetailsController.DownloadMembershipAsync(
+                _jobEntity.Id,
+                Guid.NewGuid(),
+                _configuration);
+
+            Assert.IsNotInstanceOfType(response, typeof(ForbidResult));
         }
 
         [TestMethod]
@@ -1781,7 +1932,10 @@ namespace Services.Tests
             _jobDetailsController.ControllerContext = CreateControllerContext(context);
 
             // Act
-            var response = await _jobDetailsController.GetSyncJobHistoryAsync(_jobEntity.Id);
+            var response = await _jobDetailsController.GetSyncJobHistoryAsync(
+                _jobEntity.Id,
+                _configuration,
+                _syncJobRepository.Object);
             var result = response.Result as OkObjectResult;
 
             // Assert
@@ -1859,7 +2013,10 @@ namespace Services.Tests
             _jobDetailsController.ControllerContext = CreateControllerContext(context);
 
             // Act
-            var response = await _jobDetailsController.GetSyncJobHistoryAsync(_jobEntity.Id);
+            var response = await _jobDetailsController.GetSyncJobHistoryAsync(
+                _jobEntity.Id,
+                _configuration,
+                _syncJobRepository.Object);
             var result = response.Result as OkObjectResult;
 
             // Assert
@@ -1894,7 +2051,10 @@ namespace Services.Tests
             _jobDetailsController.ControllerContext = CreateControllerContext(context);
 
             // Act
-            var response = await _jobDetailsController.GetSyncJobHistoryAsync(_jobEntity.Id);
+            var response = await _jobDetailsController.GetSyncJobHistoryAsync(
+                _jobEntity.Id,
+                _configuration,
+                _syncJobRepository.Object);
             var result = response.Result as OkObjectResult;
 
             // Assert
@@ -2369,5 +2529,3 @@ namespace Services.Tests
         }
     }
 }
-
-

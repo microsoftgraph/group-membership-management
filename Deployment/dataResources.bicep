@@ -140,6 +140,14 @@ param serviceBusTopicSubscriptions array = [
 param appConfigurationKeyData array = []
 var defaultAppConfigurationKeyData = [
   {
+    key: 'WebAPI:Settings:RunHistoryOpenViewingAndUnifiedTab'
+    value: 'false'
+    contentType: 'boolean'
+    tag: {
+      tag1: 'WebAPI'
+    }
+  }
+  {
     key: 'JobTrigger:IsGroupReadWriteAllGranted'
     value: 'false'
     contentType: 'boolean'

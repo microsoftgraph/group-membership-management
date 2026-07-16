@@ -19,7 +19,8 @@ export const enum SettingKey {
     CopilotInstructions = 14,
     CopilotSuggestedPrompts = 15,
     IsAISearchForUserEnabled = 16,
-    IsAIRunExplanationEnabled = 17
+    IsAIRunExplanationEnabled = 17,
+    RunHistoryOpenViewingAndUnifiedTab = 19
 }
 
 export const SettingKeyMap: Record<SettingKey, string> = {
@@ -40,5 +41,6 @@ export const SettingKeyMap: Record<SettingKey, string> = {
     [SettingKey.CopilotInstructions]: 'CopilotInstructions',
     [SettingKey.CopilotSuggestedPrompts]: 'CopilotSuggestedPrompts',
     [SettingKey.IsAISearchForUserEnabled]: 'IsAISearchForUserEnabled',
-    [SettingKey.IsAIRunExplanationEnabled]: 'IsAIRunExplanationEnabled'
+    [SettingKey.IsAIRunExplanationEnabled]: 'IsAIRunExplanationEnabled',
+    [SettingKey.RunHistoryOpenViewingAndUnifiedTab]: 'RunHistoryOpenViewingAndUnifiedTab'
 };

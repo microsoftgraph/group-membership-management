@@ -340,6 +340,7 @@ export const getStyles = (props: IJobHistoryPanelStyleProps): IJobHistoryPanelSt
         configurationQueryAction: {
             display: 'flex',
             alignItems: 'center',
+            gap: '16px',
             flex: '1 1 auto',
         },
         reviewThresholdCallout: {
