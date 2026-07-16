@@ -9,6 +9,7 @@ using Microsoft.Graph.Models;
 using Microsoft.Kiota.Abstractions;
 using Models;
 using Models.AdaptiveCards;
+using Models.Helpers;
 using Polly.Wrap;
 using Repositories.Contracts;
 using Repositories.Contracts.Constants;
@@ -209,8 +210,8 @@ namespace Repositories.Mail
 
             string UIUrl = urlSetting?.SettingValue ?? "";
             string dashboardUrl = dashboardUrlSetting?.SettingValue ?? "";
-            string jobUrl = urlSetting?.SettingValue + "/jobdetails/" + emailMessage.SyncJobId.ToString() ?? "";
-            string historyUrl = urlSetting?.SettingValue + "/jobdetails/" + emailMessage.SyncJobId.ToString() + "/history" ?? "";
+            string jobUrl = UiUrlBuilder.BuildJobDetailsUrl(UIUrl, emailMessage.SyncJobId);
+            string historyUrl = UiUrlBuilder.BuildJobDetailsUrl(UIUrl, emailMessage.SyncJobId, includeHistory: true);
 
             var cardData = new DefaultCardTemplate
             {

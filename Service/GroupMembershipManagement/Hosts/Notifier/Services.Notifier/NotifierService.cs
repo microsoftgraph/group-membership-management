@@ -20,6 +20,7 @@ using Models.Entities;
 using System.Net.Http;
 using System.Net;
 using Models.ServiceBus;
+using Models.Helpers;
 using Microsoft.Extensions.Logging;
 
 namespace Services.Notifier
@@ -126,8 +127,10 @@ namespace Services.Notifier
             // generic Job Details page. Only the non-OAM fallback body uses this link; the
             // actionable adaptive card above is unchanged.
             var uiUrlSetting = await _databaseSettingsRepository.GetSettingByKeyAsync(SettingKey.UIUrl);
-            var uiUrl = uiUrlSetting?.SettingValue ?? string.Empty;
-            var runHistoryUrl = uiUrl + "/jobdetails/" + notification.SyncJobId.ToString() + "/history";
+            var runHistoryUrl = UiUrlBuilder.BuildJobDetailsUrl(
+                uiUrlSetting?.SettingValue,
+                notification.SyncJobId,
+                includeHistory: true);
 
             var fallbackHTMLContent = _localizationRepository.TranslateSetting(NotificationConstants.ThresholdNotificationFallbackBody,
                 groupName,

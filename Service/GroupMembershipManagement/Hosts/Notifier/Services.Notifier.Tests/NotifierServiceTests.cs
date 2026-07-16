@@ -350,6 +350,77 @@ namespace Services.Notifier.Tests
         }
 
         [TestMethod]
+        public async Task TestSendThresholdEmail_MissingUIUrl_DoesNotIncludeRelativeHistoryUrl()
+        {
+            EmailMessage capturedMessage = null;
+            _mailRepository.Setup(x => x.SendMailAsync(It.IsAny<EmailMessage>(), null))
+                .Callback<EmailMessage, Guid?>((m, _) => capturedMessage = m);
+            _settingsRepository.Setup(x => x.GetSettingByKeyAsync(SettingKey.UIUrl))
+                .ReturnsAsync((Setting)null);
+            _notification.SyncJobId = Guid.NewGuid();
+
+            await _notifierService.SendThresholdEmailAsync(_notification);
+
+            Assert.IsNotNull(capturedMessage);
+            Assert.IsFalse(capturedMessage.Content.Contains(
+                $"/jobdetails/{_notification.SyncJobId}/history",
+                StringComparison.Ordinal));
+        }
+
+        [TestMethod]
+        public async Task GetAdaptiveCardMessage_MissingUIUrl_PassesEmptyHistoryUrlToStyledFallback()
+        {
+            var requestAdapter = new Mock<IRequestAdapter>();
+            requestAdapter.SetupProperty(x => x.BaseUrl).SetReturnsDefault(GRAPH_API_V1_BASE_URL);
+            var graphServiceClient = new Mock<GraphServiceClient>(requestAdapter.Object, GRAPH_API_V1_BASE_URL);
+            var retryRepo = new RetryPolicyProvider(
+                NullLogger<RetryPolicyProvider>.Instance,
+                new GraphServiceAttemptsValue { MaxExceptionHandlingAttempts = 2, MaxRetryAfterAttempts = 4 });
+            var settingsRepository = new Mock<IDatabaseSettingsRepository>();
+            var mailFallbackBuilder = new Mock<IMailFallbackBuilder>();
+            string capturedHistoryUrl = null;
+            mailFallbackBuilder
+                .Setup(x => x.BuildSyncStartedFallbackAsync(
+                    It.IsAny<EmailMessage>(),
+                    It.IsAny<string>(),
+                    It.IsAny<string>(),
+                    It.IsAny<string>(),
+                    It.IsAny<string>()))
+                .Callback<EmailMessage, string, string, string, string>((_, _, _, url, _) => capturedHistoryUrl = url)
+                .ReturnsAsync("<p>Fallback</p>");
+
+            var mailRepository = new MailRepository(
+                graphServiceClient.Object,
+                new MailConfig(true, false, "not-set", false, true),
+                _localizationRepository,
+                NullLogger<MailRepository>.Instance,
+                "abc",
+                _graphGroupRepository.Object,
+                settingsRepository.Object,
+                retryRepo,
+                _telemetryClient,
+                mailFallbackBuilder.Object);
+            var emailMessage = new EmailMessage
+            {
+                Subject = "OnboardingCompleteEmailTitle",
+                Content = "SyncStartedEmailBody",
+                AdditionalContentParams = new[]
+                {
+                    Guid.NewGuid().ToString(),
+                    "Test Group",
+                    string.Empty,
+                    string.Empty,
+                    "requestor@example.com"
+                },
+                SyncJobId = Guid.NewGuid()
+            };
+
+            await mailRepository.GetAdaptiveCardMessage(emailMessage);
+
+            Assert.AreEqual(string.Empty, capturedHistoryUrl);
+        }
+
+        [TestMethod]
         public async Task TestUpdateNotificationStatus()
         {
             await _notifierService.UpdateNotificationStatusAsync(_notification, ThresholdNotificationStatus.Queued);
