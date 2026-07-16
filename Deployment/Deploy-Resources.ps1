@@ -2774,11 +2774,37 @@ function Set-PublishUICode {
             -MaxAttempts 3 -BaseDelaySeconds 2
         $webAppDeploymentToken = $webAppSecrets.apiKey
 
-        # Build UI if not already built (source-based deploys)
+        # Build UI if not already built (source-based deploys).
+        # Resolve the pinned pnpm version from package.json and invoke it via npx so we
+        # bypass pnpm's package-manager self-activation. That self-activation performs an
+        # npm registry signature check which fails on agents whose npm mirror does not
+        # proxy the signature ("Refusing to run pnpm@x: its npm registry signature could
+        # not be verified"), silently producing no build output.
         if (-not (Test-Path "build")) {
             Write-Host "Build directory not found. Restoring dependencies and building UI from source..." -ForegroundColor Yellow
-            pnpm install --frozen-lockfile
-            pnpm build
+
+            $packageJson = Get-Content -Path "package.json" -Raw | ConvertFrom-Json
+            $packageManager = $packageJson.packageManager
+            if ([string]::IsNullOrWhiteSpace($packageManager) -or $packageManager -notlike "pnpm@*") {
+                throw "Could not resolve a pinned pnpm version from package.json 'packageManager' field (value: '$packageManager')."
+            }
+            # Strip any '+sha512...' integrity suffix, leaving e.g. 'pnpm@10.34.4'.
+            $pnpmSpec = ($packageManager -split '\+')[0]
+            Write-Host "Using pinned package manager: $pnpmSpec" -ForegroundColor Yellow
+
+            npx --yes $pnpmSpec install --frozen-lockfile
+            if ($LASTEXITCODE -ne 0) {
+                throw "UI dependency install failed (npx $pnpmSpec install) with exit code $LASTEXITCODE. The UI was NOT deployed."
+            }
+
+            npx --yes $pnpmSpec build
+            if ($LASTEXITCODE -ne 0) {
+                throw "UI build failed (npx $pnpmSpec build) with exit code $LASTEXITCODE. The UI was NOT deployed."
+            }
+        }
+
+        if (-not (Test-Path "build")) {
+            throw "UI build directory 'build' does not exist after the build step. The UI was NOT deployed."
         }
 
         swa deploy "build" --env "Production" -n $webAppName -R $computeResourceGroup --deployment-token $webAppDeploymentToken
@@ -2787,11 +2813,15 @@ function Set-PublishUICode {
         Write-Host "🔍 Verifying UI deployment..." -ForegroundColor Yellow
         $buildAssetsDir = "$WebAppDirectory/build/assets"
         $expectedJsFile = if (Test-Path $buildAssetsDir) {
+            # NOTE: This "index-*.js" pattern assumes Vite/Rollup's current default asset
+            # naming (hashed "index-<hash>.js" entry bundle). If the Vite major version or the
+            # build output config (e.g. rollupOptions.output entryFileNames/assetFileNames)
+            # changes the emitted bundle name/format, this check may need to be updated.
             Get-ChildItem -Path $buildAssetsDir -Filter "index-*.js" | Select-Object -First 1
         }
 
         if (-not $expectedJsFile) {
-            Write-Host "⚠ Could not find index-*.js in build/assets — skipping deployment verification." -ForegroundColor Yellow
+            throw "No index-*.js found in build/assets after build — the UI bundle was not produced. The UI was NOT deployed."
         } else {
             Write-Host "   Expected asset: $($expectedJsFile.Name)" -ForegroundColor Yellow
 
