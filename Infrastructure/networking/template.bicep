@@ -664,8 +664,8 @@ module managementVm 'virtualMachine.bicep' = {
     location: location
     vmSize: vmSize
     computerName: managementVmComputerName
-    adminUsername: prereqsKeyVault.getSecret(vmAdminUsernameSecretName)
-    adminPassword: prereqsKeyVault.getSecret(vmAdminPasswordSecretName)
+    adminUsername: dataKeyVault.getSecret(vmAdminUsernameSecretName)
+    adminPassword: dataKeyVault.getSecret(vmAdminPasswordSecretName)
     nicId: managementNic.outputs.id
     dailyAutoShutdownTimeUTC: vmDailyAutoShutdownTimeUTC
   }
