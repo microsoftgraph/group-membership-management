@@ -1236,7 +1236,7 @@ If guest users are required, they will need to be managed outside of GMM.
 
 **{2}% increase** and **{3}% decrease** alerts are configured for this group.
 
-View in GMM UI: {4}
+&lt;a href="{4}"&gt;View in GMM UI&lt;/a&gt;
 
 Please forward this message to the CC'ed email for support and they will guide you through the actions.</value>
   </data>

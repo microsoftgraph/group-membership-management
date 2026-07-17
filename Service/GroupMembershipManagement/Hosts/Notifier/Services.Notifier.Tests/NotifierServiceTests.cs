@@ -345,9 +345,8 @@ namespace Services.Notifier.Tests
 
             _mailRepository.Verify(x => x.SendMailAsync(It.IsAny<EmailMessage>(), null), Times.Once());
             Assert.IsNotNull(capturedMessage);
-            StringAssert.Contains(capturedMessage.Content, "View in GMM UI:");
             StringAssert.Contains(capturedMessage.Content,
-                $"https://gmm.example.com/jobdetails/{_notification.SyncJobId}/history");
+                $"<a href=\"https://gmm.example.com/jobdetails/{_notification.SyncJobId}/history\">View in GMM UI</a>");
         }
 
         [TestMethod]
