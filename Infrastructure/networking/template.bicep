@@ -216,7 +216,6 @@ var dataResourceGroupId = subscriptionResourceId('Microsoft.Resources/resourceGr
 var jobsStorageAccountName = 'jobs${environmentAbbreviation}${uniqueString(dataResourceGroupId)}'
 var functionsStorageAccountName = take('fn${solutionAbbreviation}${environmentAbbreviation}${uniqueString(dataResourceGroupId)}', 24)
 var appConfigurationName = '${solutionAbbreviation}-appConfig-${environmentAbbreviation}'
-var dcrName = '${solutionAbbreviation}-data-${environmentAbbreviation}-vm-dcr'
 var namePrefix = '${solutionAbbreviation}-${resourceGroupClassification}-${environmentAbbreviation}'
 var bastionNsgName = '${namePrefix}-bastion-nsg'
 var bastionVnetName = '${namePrefix}-bastion-vnet'
@@ -674,19 +673,6 @@ module managementVm 'virtualMachine.bicep' = {
     vmAdminSecrets
   ]
 }
-
-module dcrAssociation '../data/dataCollectionRuleAssociation.bicep' = {
-  name: 'deploy-${managementVmName}-dcr-assoc'
-  params: {
-    vmName: managementVmName
-    dataCollectionRuleId: resourceId(dataResourceGroupName, 'Microsoft.Insights/dataCollectionRules', dcrName)
-    associationName: '${managementVmName}-dcr-assoc'
-  }
-  dependsOn: [
-    managementVm
-  ]
-}
-
 
 // =====================================================================================
 // Private DNS Zones + VNet Links

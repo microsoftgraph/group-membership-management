@@ -700,6 +700,8 @@ param featureFlags object = {
 
 var syncJobsTopicName = 'syncJobs'
 var dcrName = '${solutionAbbreviation}-${resourceGroupClassification}-${environmentAbbreviation}-vm-dcr'
+var managementVmName = '${solutionAbbreviation}-networking-${environmentAbbreviation}-management-vm'
+var networkingResourceGroupName = '${solutionAbbreviation}-networking-${environmentAbbreviation}'
 
 module sqlServer 'sqlServer.bicep' = {
   name: 'sqlServerTemplate'
@@ -961,6 +963,19 @@ resource dataCollectionRule 'Microsoft.Insights/dataCollectionRules@2022-06-01' 
   }
   dependsOn: [
     logAnalyticsTemplate
+  ]
+}
+
+module dcrAssociation 'dataCollectionRuleAssociation.bicep' = if (!skipNetworkingDeployment) {
+  name: 'deploy-${managementVmName}-dcr-assoc'
+  scope: resourceGroup(networkingResourceGroupName)
+  params: {
+    vmName: managementVmName
+    dataCollectionRuleId: dataCollectionRule.id
+    associationName: '${managementVmName}-dcr-assoc'
+  }
+  dependsOn: [
+    dataCollectionRule
   ]
 }
 
