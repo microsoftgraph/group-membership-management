@@ -23,10 +23,14 @@ const noop = () => undefined;
 // In read-only review, the only details rendered below the carousel for an HR/SqlMembership rule
 // are its attribute filter rows (org leader/depth are shown on the card itself). So an HR rule with
 // no attribute filter has nothing to review — skip the caret and the (otherwise empty) details panel.
-// All other rule types always render reviewable details.
+// Group rules already show their resolved name and alias on the card, so opening a disabled
+// people picker below the carousel would only repeat the same information.
 const hasReviewableDetails = (part: ISourcePart): boolean => {
   if (part.query.type === SourcePartType.HR) {
     return !!(part.query.source as HRSourcePartSource)?.filter?.toString().trim();
+  }
+  if (part.query.type === SourcePartType.GroupMembership) {
+    return false;
   }
   return true;
 };

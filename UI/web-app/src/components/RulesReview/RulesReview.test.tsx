@@ -5,6 +5,8 @@ import React from 'react';
 import { screen } from '@testing-library/react';
 import { RulesReview } from './RulesReview';
 import { renderWithProviders } from '../../testing/renderWithProviders';
+import groupPartReducer from '../../store/groupPart.slice';
+import type { RootState } from '../../store';
 import type { ISourcePart } from '../../models/ISourcePart';
 import { SourcePartType } from '../../models/SourcePartType';
 
@@ -19,6 +21,9 @@ const makePart = (id: string, title: string): ISourcePart => ({
   isNew: false,
   isExpanded: false,
 });
+
+const getGroupPartState = (): RootState['groupPart'] =>
+  groupPartReducer(undefined, { type: 'test/init' });
 
 describe('RulesReview', () => {
   it('renders the RULES header and a card for each rule', () => {
@@ -59,5 +64,30 @@ describe('RulesReview', () => {
     // The card still renders, but there is no attribute table to point at below the carousel.
     expect(screen.getByText('Rule A')).toBeInTheDocument();
     expect(screen.queryByTestId('hr-attributes-table')).not.toBeInTheDocument();
+  });
+
+  it('shows group name and alias on the card without rendering the redundant people picker', () => {
+    const groupRule: ISourcePart = {
+      ...makePart('group-rule', 'All Users in Group Test'),
+      query: {
+        type: SourcePartType.GroupMembership,
+        source: 'group-guid',
+        exclusionary: false,
+      },
+    };
+    const preloadedState: Partial<RootState> = {
+      groupPart: {
+        ...getGroupPartState(),
+        searchResults: [
+          { key: 0, text: 'Group Test', secondaryText: 'group_alias', id: 'group-guid' },
+        ],
+      },
+    };
+
+    renderWithProviders(<RulesReview parts={[groupRule]} />, { preloadedState });
+
+    expect(screen.getAllByText('Group Test').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('group_alias').length).toBeGreaterThan(0);
+    expect(screen.queryByLabelText('Search group name')).not.toBeInTheDocument();
   });
 });

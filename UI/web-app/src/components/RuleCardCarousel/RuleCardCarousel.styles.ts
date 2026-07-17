@@ -24,16 +24,14 @@ export const getStyles = (props: RuleCardCarouselStyleProps): RuleCardCarouselSt
       gap: 16,
       overflowX: 'auto',
       scrollBehavior: 'smooth',
+      scrollbarWidth: 'none',
+      msOverflowStyle: 'none',
       flex: '1 1 auto',
       padding: 4,
       alignItems: 'stretch',
       selectors: {
         '::-webkit-scrollbar': {
-          height: 8,
-        },
-        '::-webkit-scrollbar-thumb': {
-          backgroundColor: theme.palette.neutralTertiaryAlt,
-          borderRadius: 4,
+          display: 'none',
         },
       },
     },

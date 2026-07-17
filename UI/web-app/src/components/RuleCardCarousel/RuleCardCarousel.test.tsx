@@ -3,7 +3,9 @@
 
 import React from 'react';
 import { fireEvent, screen } from '@testing-library/react';
+import { createTheme } from '@fluentui/react';
 import { RuleCardCarousel } from './RuleCardCarousel';
+import { getStyles } from './RuleCardCarousel.styles';
 import { renderWithProviders } from '../../testing/renderWithProviders';
 import type { ISourcePart } from '../../models/ISourcePart';
 import { SourcePartType } from '../../models/SourcePartType';
@@ -32,13 +34,27 @@ describe('RuleCardCarousel', () => {
     expect(screen.getByText('Rule B')).toBeInTheDocument();
   });
 
-  it('renders scroll buttons', () => {
+  it('renders carousel navigation buttons', () => {
     renderWithProviders(
       <RuleCardCarousel parts={[makePart('a', 'Rule A')]} onSelectPart={() => {}} />
     );
 
     expect(screen.getByRole('button', { name: 'Scroll rules left' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Scroll rules right' })).toBeInTheDocument();
+  });
+
+  it('hides the native horizontal scrollbar', () => {
+    const styles = getStyles({ theme: createTheme() });
+
+    expect(styles.track).toMatchObject({
+      scrollbarWidth: 'none',
+      msOverflowStyle: 'none',
+      selectors: {
+        '::-webkit-scrollbar': {
+          display: 'none',
+        },
+      },
+    });
   });
 
   it('invokes onSelectPart with the rule id when a card is clicked', () => {
