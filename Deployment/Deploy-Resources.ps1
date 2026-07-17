@@ -48,6 +48,7 @@ $maxRetriesForDeploymentOperations = 10
 
 $sharedScriptsDirectory = Join-Path $PSScriptRoot "../Scripts"
 . (Join-Path $sharedScriptsDirectory 'ReusableModules/Invoke-WithRetry.ps1')
+. (Join-Path $sharedScriptsDirectory 'ReusableModules/DeploymentLogging.ps1')
 . (Join-Path $sharedScriptsDirectory 'FunctionAppCompat.ps1')
 
 function Set-PostDeploymentUpdates {
@@ -63,6 +64,7 @@ function Set-PostDeploymentUpdates {
         [string]$ConnectionString
     )
 
+    Write-DeployPhase -Name 'Running Post-Deployment Migrations' -Event Begin
     . ($ScriptsDirectory + '/PostDeploymentMigrations/Set-PostDeploymentMigrations.ps1')
     $currentContext = Get-AzContext
     Set-PostDeploymentMigrations `
@@ -70,6 +72,7 @@ function Set-PostDeploymentUpdates {
         -SolutionAbbreviation $SolutionAbbreviation `
         -SubscriptionName $currentContext.Subscription.Name `
         -ConnectionString $ConnectionString
+    Write-DeployPhase -Name 'Running Post-Deployment Migrations' -Event End
 }
 
 function Set-PreDeploymentUpdates {
@@ -89,6 +92,7 @@ function Set-PreDeploymentUpdates {
         [bool]$SetRBACPermissions = $false
     )
 
+    Write-DeployPhase -Name 'Running Pre-Deployment Migrations' -Event Begin
     . ($ScriptsDirectory + '/PreDeploymentMigrations/Set-PreDeploymentMigrations.ps1')
 
     Set-PreDeploymentMigrations `
@@ -97,6 +101,7 @@ function Set-PreDeploymentUpdates {
         -SyncJobsDBConnectionString $SyncJobsDBConnectionString `
         -ADFDBConnectionString $ADFDBConnectionString `
         -SetRBACPermissions $SetRBACPermissions
+    Write-DeployPhase -Name 'Running Pre-Deployment Migrations' -Event End
 }
 
 function Set-Subscription {
@@ -108,10 +113,9 @@ function Set-Subscription {
     )
 
     if (-not $SubscriptionId) {
-        Write-Host "`nCurrent subscription:`n"
+        Write-DeployLog -Level Info -Message "Current subscription:`n"
         $currentSubscription = (Get-AzContext).Subscription
-        Write-Host "$($currentSubscription.Name) -  $($currentSubscription.Id)"
-        Write-Host "`n"
+        Write-DeployLog -Level Info -Message "$($currentSubscription.Name) -  $($currentSubscription.Id)"
         $SubscriptionId = Read-Host -Prompt "If you would like to use other subscription than '$($currentSubscription.Name)' `nprovide the subscription id, otherwise press enter to continue."
     }
 
@@ -119,17 +123,17 @@ function Set-Subscription {
         try {
             Set-AzContext -SubscriptionId $SubscriptionId -ErrorAction Stop
             $currentSubscription = (Get-AzContext).Subscription
-            Write-Host "`n✅ Selected subscription: $($currentSubscription.Name) - $($currentSubscription.Id)"
+            Write-DeployLog -Level Info -Message "Selected subscription: $($currentSubscription.Name) - $($currentSubscription.Id)"
         }
         catch {
-            Write-Host "`n❌ Failed to set subscription context." -ForegroundColor Red
-            Write-Host "   SubscriptionId: $SubscriptionId"
-            Write-Host "   TenantId:       $((Get-AzContext).Tenant.Id)"
-            Write-Host "   Account:        $((Get-AzContext).Account)"
-            Write-Host "   Error:          $($_.Exception.Message)" -ForegroundColor Yellow
+            Write-DeployLog -Level Error -Message "Failed to set subscription context."
+            Write-DeployLog -Level Info -Message "SubscriptionId: $SubscriptionId"
+            Write-DeployLog -Level Info -Message "TenantId:       $((Get-AzContext).Tenant.Id)"
+            Write-DeployLog -Level Info -Message "Account:        $((Get-AzContext).Account)"
+            Write-DeployLog -Level Info -Message "Error:          $($_.Exception.Message)"
 
             If ($_.Exception.Message -match "Please provide a valid tenant or a valid subscription.") {
-                Write-Host "`nThis issue is sometimes caused by the user account not having any RBAC permissions on the subscription.`n" -ForegroundColor Yellow
+                Write-DeployLog -Level Info -Message "This issue is sometimes caused by the user account not having any RBAC permissions on the subscription.`n"
             }
 
             throw
@@ -141,21 +145,21 @@ function Set-Subscription {
 
 function Set-ResourceProviders {
     foreach ($namespace in @("Microsoft.ServiceBus", "Microsoft.Insights", "Microsoft.OperationalInsights", "Microsoft.AlertsManagement", "Microsoft.Storage", "Microsoft.AppConfiguration", "Microsoft.Sql", "Microsoft.Web", "Microsoft.DataFactory", "Microsoft.SignalRService", "Microsoft.DevTestLab")) {
-        Write-Host "Checking if the resource provider $namespace is registered..."
+        Write-DeployLog -Level Info -Message "Checking if the resource provider $namespace is registered..."
         $provider = Invoke-WithRetry `
             -Operation { Get-AzResourceProvider -ProviderNamespace $namespace } `
             -OperationName "Get resource provider $namespace" `
             -MaxAttempts 3 -BaseDelaySeconds 2
 
         if ($provider.Where({ $_.RegistrationState -ne "Registered" }).Count -gt 0) {
-            Write-Host "$namespace is not registered. Registering..."
+            Write-DeployLog -Level Info -Message "$namespace is not registered. Registering..."
             Invoke-WithRetry `
                 -Operation { Register-AzResourceProvider -ProviderNamespace $namespace } `
                 -OperationName "Register resource provider $namespace" `
                 -MaxAttempts 3 -BaseDelaySeconds 2
         }
 
-        Write-Host "$namespace is registered."
+        Write-DeployLog -Level Info -Message "$namespace is registered."
     }
 }
 
@@ -249,7 +253,7 @@ function Set-KeyVaultRole {
         -GetExistingOperation { Get-AzRoleAssignment -ObjectId $ObjectId -Scope $Scope -RoleDefinitionName $RoleDefinitionName } `
         -CreateOperation {
             New-AzRoleAssignment -ObjectId $ObjectId -Scope $Scope -RoleDefinitionName $RoleDefinitionName
-            Write-Host "Added role $RoleDefinitionName to $ObjectId on the $KeyVaultName keyvault."
+            Write-DeployLog -Level Info -Message "Added role $RoleDefinitionName to $ObjectId on the $KeyVaultName keyvault."
         } `
         -OperationName "Assign $RoleDefinitionName on $KeyVaultName" `
         -MaxAttempts 3 -BaseDelaySeconds 2 `
@@ -332,13 +336,13 @@ function Start-ResourceDeployment {
     }
 
     if (-not $IsResourceGroupCreation) {
-        Write-Host "Starting REST deployment to resource group: $ResourceGroupName"
+        Write-DeployLog -Level Info -Message "Starting REST deployment to resource group: $ResourceGroupName"
     }
     else {
-        Write-Host "Starting REST deployment of resource groups."
+        Write-DeployLog -Level Info -Message "Starting REST deployment of resource groups."
     }
     
-    Write-Host "Using template file: $TemplateFilePath"
+    Write-DeployLog -Level Info -Message "Using template file: $TemplateFilePath"
 
     if (-not (Test-Path $TemplateFilePath)) { throw "Template file not found at path: $TemplateFilePath" }
 
@@ -382,7 +386,7 @@ function Start-ResourceDeployment {
     }
 
     try {
-        Write-Host "Invoking deployment via REST API..."
+        Write-DeployLog -Level Info -Message "Invoking deployment via REST API..."
         $initialResponse = Invoke-RestMethod -Uri $uri -Method Put -Headers $headers -Body $body
 
         $maxAttempts = 100
@@ -394,10 +398,10 @@ function Start-ResourceDeployment {
             Start-Sleep -Seconds $delaySeconds
             $attempt++
 
-            Write-Host "Polling deployment status (Attempt $attempt/$maxAttempts)..."
+            Write-DeployLog -Level Info -Message "Polling deployment status (Attempt $attempt/$maxAttempts)..."
             $statusResponse = Invoke-RestMethod -Uri $uri -Method Get -Headers $headers
             $provisioningState = $statusResponse.properties.provisioningState
-            Write-Host "Current state: $provisioningState"
+            Write-DeployLog -Level Info -Message "Current state: $provisioningState"
 
             if ($attempt -ge $maxAttempts) {
                 throw "Deployment status check timed out after $maxAttempts attempts."
@@ -405,13 +409,14 @@ function Start-ResourceDeployment {
         }
 
         if ($provisioningState -ne "Succeeded") {
-            Write-Host "`n❌ Deployment failed. Final state: $provisioningState"
+            Write-DeployLog -Level Info -Message "Deployment failed. Final state: $provisioningState"
 
             # Log top-level error
             if ($statusResponse.properties.error) {
-                Write-Host "`n🔸 Top-Level Error details:"
-                Write-Host "    Error Code: $($statusResponse.properties.error.code)"
-                Write-Host "    Error Message: $($statusResponse.properties.error.message)"
+                Write-DeployLog -Level Info -Message "Top-Level Error details:"
+                Write-DeployLog -Level Info -Message "Error Code: $($statusResponse.properties.error.code)"
+                Write-DeployLog -Level Info -Message "Error Message: $($statusResponse.properties.error.message)"
+                Write-DeployError -Category 'ARM Deployment' -Message "$($statusResponse.properties.error.code): $($statusResponse.properties.error.message)"
             }
 
             # Fetch deployment operations
@@ -419,25 +424,27 @@ function Start-ResourceDeployment {
             $opsResponse = Invoke-RestMethod -Uri $opsUri -Method Get -Headers $headers
 
             $opsResponse.value | Where-Object { $_.properties.provisioningState -eq 'Failed' } | ForEach-Object {
-                Write-Host "`n🔸🔸 Failed operation: $($_.properties.targetResource.resourceName)"
-                Write-Host "        - Type: $($_.properties.targetResource.resourceType)"
-                Write-Host "        - Status: $($_.properties.provisioningState)"
-                Write-Host "        - Error: $($_.properties.statusMessage.error.message)"
+                Write-DeployLog -Level Info -Message "Failed operation: $($_.properties.targetResource.resourceName)"
+                Write-DeployLog -Level Info -Message "- Type: $($_.properties.targetResource.resourceType)"
+                Write-DeployLog -Level Info -Message "- Status: $($_.properties.provisioningState)"
+                Write-DeployLog -Level Info -Message "- Error: $($_.properties.statusMessage.error.message)"
+                Write-DeployError -Category 'ARM Operation' -Message "$($_.properties.targetResource.resourceName): $($_.properties.statusMessage.error.message)"
                 $_.properties.statusMessage.error.details | ForEach-Object {
-                    Write-Host "           - Error Detail:"
-                    Write-Host "               - Code: $($_.code)"
-                    Write-Host "               - Message: $($_.message)"
+                    Write-DeployLog -Level Info -Message "- Error Detail:"
+                    Write-DeployLog -Level Info -Message "- Code: $($_.code)"
+                    Write-DeployLog -Level Info -Message "- Message: $($_.message)"
                 }
             }
 
+            Write-DeployError -Category 'ARM Deployment' -Message "Deployment failed. Final state: $provisioningState"
             throw "Deployment failed. See logs above."
         }
 
-        Write-Host "`n✅ Deployment succeeded."
+        Write-DeployLog -Level Info -Message "Deployment succeeded."
         return $statusResponse
     }
     catch {
-        Write-Error "`n❌ Deployment failed unexpectedly: $_"
+        Write-DeployError -Category 'Deployment' -Message "Deployment failed unexpectedly: $_"
         throw
     }
     finally {
@@ -463,7 +470,7 @@ function Set-ResourceGroups {
         [bool] $SetRBACPermissions
     )
     
-    Write-Host "`nCreating resource groups:"
+    Write-DeployLog -Level Info -Message "Creating resource groups:"
     $templateFilePath = "$ResourceGroupTemplateDirectoryPath/resourceGroups.json"
     Invoke-WithRetry `
         -Operation {
@@ -498,7 +505,7 @@ function Set-PrereqResources {
         [bool] $SetRBACPermissions
     )
 
-    Write-Host "`nCreating prereqs resources"
+    Write-DeployPhase -Name 'Creating Prereq Resources' -Event Begin
     $prereqsResourceGroup = "$SolutionAbbreviation-prereqs-$EnvironmentAbbreviation"
     $templateFilePath = "$PrereqsTemplateDirectoryPath/prereqResources.json"
     Invoke-WithRetry `
@@ -525,6 +532,8 @@ function Set-PrereqResources {
             -KeyVaultName "$SolutionAbbreviation-prereqs-$EnvironmentAbbreviation" `
             -ResourceGroupName $prereqsResourceGroup
     }
+
+    Write-DeployPhase -Name 'Creating Prereq Resources' -Event End
 }
 
 function Set-NetworkingResources {
@@ -558,14 +567,14 @@ function Set-NetworkingResources {
         $networkingAdditionalParameters.parameters[$_] = $AdditionalParameters.parameters[$_]
     }
 
-    Write-Host "Checking VM admin secret presence in Key Vault '$dataResourceGroup'..."
+    Write-DeployLog -Level Info -Message "Checking VM admin secret presence in Key Vault '$dataResourceGroup'..."
     $usernameExists = Check-IfKeyVaultSecretExists -VaultName $dataResourceGroup -SecretName $vmAdminUsernameSecretName
     $passwordExists = Check-IfKeyVaultSecretExists -VaultName $dataResourceGroup -SecretName $vmAdminPasswordSecretName
-    Write-Host ("VM admin secret status: vmAdminUsername={0}, vmAdminPassword={1}" -f $(if ($usernameExists) { 'found' } else { 'missing' }), $(if ($passwordExists) { 'found' } else { 'missing' }))
+    Write-DeployLog -Level Info -Message ("VM admin secret status: vmAdminUsername={0}, vmAdminPassword={1}" -f $(if ($usernameExists) { 'found' } else { 'missing' }), $(if ($passwordExists) { 'found' } else { 'missing' }))
     $setVmAdminSecrets = (-not $usernameExists) -or (-not $passwordExists)
 
     if ($setVmAdminSecrets) {
-        Write-Host "One or more VM admin secrets are missing in '$dataResourceGroup'. Generating values for deployment..."
+        Write-DeployLog -Level Info -Message "One or more VM admin secrets are missing in '$dataResourceGroup'. Generating values for deployment..."
 
         # Generate cryptographically random values for password.
         $upper = -join ((65..90) | Get-Random -Count 4 | ForEach-Object { [char]$_ })
@@ -579,7 +588,7 @@ function Set-NetworkingResources {
         $networkingAdditionalParameters.parameters["vmAdminPassword"] = @{ value = -join $allPasswordChars }
     }
     else {
-        Write-Host "VM admin secrets already exist in '$dataResourceGroup'. Reusing existing values."
+        Write-DeployLog -Level Info -Message "VM admin secrets already exist in '$dataResourceGroup'. Reusing existing values."
     }
 
     # Start the jumpbox VM if it exists and is stopped/deallocated.
@@ -589,16 +598,16 @@ function Set-NetworkingResources {
     if ($null -ne $vm) {
         $powerState = ($vm.Statuses | Where-Object { $_.Code -like 'PowerState/*' }).Code
         if ($powerState -in @('PowerState/deallocated', 'PowerState/stopped')) {
-            Write-Host "Jumpbox VM '$vmName' is $($powerState -replace 'PowerState/'). Starting it before networking deployment..."
+            Write-DeployLog -Level Info -Message "Jumpbox VM '$vmName' is $($powerState -replace 'PowerState/'). Starting it before networking deployment..."
             Start-AzVM -ResourceGroupName $networkingResourceGroup -Name $vmName
-            Write-Host "Jumpbox VM '$vmName' started successfully."
+            Write-DeployLog -Level Info -Message "Jumpbox VM '$vmName' started successfully."
         }
         else {
-            Write-Host "Jumpbox VM '$vmName' is in state '$($powerState -replace 'PowerState/')'. No action needed."
+            Write-DeployLog -Level Info -Message "Jumpbox VM '$vmName' is in state '$($powerState -replace 'PowerState/')'. No action needed."
         }
     }
     else {
-        Write-Host "Jumpbox VM '$vmName' not found (first deployment). Skipping VM start."
+        Write-DeployLog -Level Info -Message "Jumpbox VM '$vmName' not found (first deployment). Skipping VM start."
     }
 
     # Start the jumpbox VM if it exists and is stopped/deallocated.
@@ -608,19 +617,19 @@ function Set-NetworkingResources {
     if ($null -ne $vm) {
         $powerState = ($vm.Statuses | Where-Object { $_.Code -like 'PowerState/*' }).Code
         if ($powerState -in @('PowerState/deallocated', 'PowerState/stopped')) {
-            Write-Host "Jumpbox VM '$vmName' is $($powerState -replace 'PowerState/'). Starting it before networking deployment..."
+            Write-DeployLog -Level Info -Message "Jumpbox VM '$vmName' is $($powerState -replace 'PowerState/'). Starting it before networking deployment..."
             Start-AzVM -ResourceGroupName $networkingResourceGroup -Name $vmName
-            Write-Host "Jumpbox VM '$vmName' started successfully."
+            Write-DeployLog -Level Info -Message "Jumpbox VM '$vmName' started successfully."
         }
         else {
-            Write-Host "Jumpbox VM '$vmName' is in state '$($powerState -replace 'PowerState/')'. No action needed."
+            Write-DeployLog -Level Info -Message "Jumpbox VM '$vmName' is in state '$($powerState -replace 'PowerState/')'. No action needed."
         }
     }
     else {
-        Write-Host "Jumpbox VM '$vmName' not found (first deployment). Skipping VM start."
+        Write-DeployLog -Level Info -Message "Jumpbox VM '$vmName' not found (first deployment). Skipping VM start."
     }
 
-    Write-Host "`nCreating networking resources"
+    Write-DeployPhase -Name 'Creating Networking Resources' -Event Begin
     $templateFilePath = "$NetworkingTemplateDirectoryPath/networkingResources.json"
     Invoke-WithRetry `
         -Operation {
@@ -639,6 +648,8 @@ function Set-NetworkingResources {
     if ($networkingAdditionalParameters.parameters.ContainsKey("vmAdminPassword")) {
         $networkingAdditionalParameters.parameters["vmAdminPassword"] = $null
     }
+
+    Write-DeployPhase -Name 'Creating Networking Resources' -Event End
 }
 
 function Set-DataResources {
@@ -659,7 +670,7 @@ function Set-DataResources {
         [bool] $SetRBACPermissions
     )
     
-    Write-Host "`nCreating data resources"
+    Write-DeployPhase -Name 'Creating Data Resources' -Event Begin
     $dataResourceGroup = "$SolutionAbbreviation-data-$EnvironmentAbbreviation"
     $templateFilePath = "$DataTemplateDirectoryPath/dataResources.json"
 
@@ -687,6 +698,8 @@ function Set-DataResources {
             -KeyVaultName "$SolutionAbbreviation-data-$EnvironmentAbbreviation" `
             -ResourceGroupName $dataResourceGroup
     }
+
+    Write-DeployPhase -Name 'Creating Data Resources' -Event End
 }
 
 function Set-ComputeResources {
@@ -705,7 +718,7 @@ function Set-ComputeResources {
         [Hashtable]$AdditionalParameters = @{ parameters = @{} }
     )
 
-    write-Host "`nEnsuring secrets are set in the Key Vault"
+    Write-DeployPhase -Name 'Setting Key Vault Secrets' -Event Begin
     
     $storageAccountSecretName  = Get-DefaultString -Value $ParameterHashtable.storageAccountSecretName.value -Default "adfStorageAccountName"
     $dataResourceGroup = "$SolutionAbbreviation-data-$EnvironmentAbbreviation"
@@ -731,13 +744,15 @@ function Set-ComputeResources {
         $ParameterHashtable["functionAuthAppClientId"] = @{ value = $functionAuthAppClientId }
     }
     else {
-        Write-Host "  ⏭ Skipping function authentication setup (enableFunctionAuthentication = false)" -ForegroundColor Yellow
+        Write-DeployLog -Level Warn -Message "Skipping function authentication setup (enableFunctionAuthentication = false)"
         $ParameterHashtable["functionAuthAppClientId"] = @{ value = '' }
     }
 
     $ParameterHashtable["enableFunctionAuthentication"] = @{ value = $enableFunctionAuthentication }
 
-    Write-Host "`nCreating compute resources"
+    Write-DeployPhase -Name 'Setting Key Vault Secrets' -Event End
+
+    Write-DeployPhase -Name 'Creating Compute Resources' -Event Begin
     $computeResourceGroup = "$SolutionAbbreviation-compute-$EnvironmentAbbreviation"
     $templateFilePath = "$ComputeTemplateDirectoryPath/computeResources.json"
     Invoke-WithRetry `
@@ -752,6 +767,8 @@ function Set-ComputeResources {
         -OperationName "Create compute resources" `
         -MaxAttempts $maxRetriesForDeploymentOperations `
         -BaseDelaySeconds 2
+
+    Write-DeployPhase -Name 'Creating Compute Resources' -Event End
 }
 
 function Set-ADFResources {
@@ -773,7 +790,7 @@ function Set-ADFResources {
     $dataResourceGroup = "$SolutionAbbreviation-data-$EnvironmentAbbreviation"
 
     # Ensure ADF secrets are set in the Key Vault
-    write-Host "`nEnsuring ADF secrets are set in the Key Vault"
+    Write-DeployPhase -Name 'Setting ADF Key Vault Secrets' -Event Begin
     $adfDataSecrets = @("azureUserReaderUrl", "azureUserReaderKey", "adfStorageAccountName")
     Set-DefaultSecretsIfMissing `
         -KeyVaultName $dataResourceGroup `
@@ -796,14 +813,16 @@ function Set-ADFResources {
         $ParameterHashtable["functionAuthAppClientId"] = @{ value = $functionAuthAppClientId }
     }
     else {
-        Write-Host "  ⏭ Skipping function authentication for ADF (enableFunctionAuthentication = false)" -ForegroundColor Yellow
+        Write-DeployLog -Level Warn -Message "Skipping function authentication for ADF (enableFunctionAuthentication = false)"
         $ParameterHashtable["functionAuthAppClientId"] = @{ value = '' }
     }
 
     $ParameterHashtable["enableFunctionAuthentication"] = @{ value = $enableFunctionAuthentication }
     
+    Write-DeployPhase -Name 'Setting ADF Key Vault Secrets' -Event End
+
     # Deploy ADF resources
-    Write-Host "`nCreating ADF resources"
+    Write-DeployPhase -Name 'Creating ADF Resources' -Event Begin
     $templateFilePath = "$ADFTemplateDirectoryPath/adfHRResources.json"
     Invoke-WithRetry `
         -Operation {
@@ -817,6 +836,8 @@ function Set-ADFResources {
         -OperationName "Create ADF resources" `
         -MaxAttempts $maxRetriesForDeploymentOperations `
         -BaseDelaySeconds 2
+
+    Write-DeployPhase -Name 'Creating ADF Resources' -Event End
 }
 
 function Set-DefaultSecretsIfMissing {
@@ -899,10 +920,7 @@ function Set-FunctionAuthenticationAllowedIdentities {
         [string[]]$AdditionalWebApiFunctionAppNames = @()
     )
 
-    Write-Host "`n" -NoNewline
-    Write-Host ("=" * 60) -ForegroundColor Cyan
-    Write-Host "  Setting Allowed Identities for Function Authentication" -ForegroundColor Cyan
-    Write-Host ("=" * 60) -ForegroundColor Cyan
+    Write-DeployLog -Level Info -Message "Setting Allowed Identities for Function Authentication"
 
     $dataResourceGroup = "$SolutionAbbreviation-data-$EnvironmentAbbreviation"
     $computeResourceGroup = "$SolutionAbbreviation-compute-$EnvironmentAbbreviation"
@@ -910,7 +928,7 @@ function Set-FunctionAuthenticationAllowedIdentities {
     # Get ADF Managed Identity Principal ID (if ADF is deployed)
     $adfMSIPrincipalId = $null
     if ($SkipAzureDataFactoryDeployment -eq $false) {
-        Write-Host "  Retrieving ADF Managed Identity..." -ForegroundColor Yellow
+        Write-DeployLog -Level Info -Message "Retrieving ADF Managed Identity..."
         $adfResourceName = "$SolutionAbbreviation-data-$EnvironmentAbbreviation-adf"
         $adfResource = Invoke-WithRetry `
             -Operation { Get-AzResource -ResourceGroupName $dataResourceGroup -ResourceType "Microsoft.DataFactory/factories" -Name $adfResourceName -ErrorAction SilentlyContinue } `
@@ -919,21 +937,21 @@ function Set-FunctionAuthenticationAllowedIdentities {
         if ($null -ne $adfResource -and $null -ne $adfResource.Identity) {
             $adfMSIPrincipalId = $adfResource.Identity.PrincipalId
             if (-not [string]::IsNullOrWhiteSpace($adfMSIPrincipalId)) {
-                Write-Host "  ✓ ADF Managed Identity: $adfMSIPrincipalId" -ForegroundColor Green
+                Write-DeployLog -Level Success -Message "ADF Managed Identity: $adfMSIPrincipalId"
             }
         }
         else {
-            Write-Host "  ⚠ ADF resource not found or has no managed identity" -ForegroundColor Yellow
+            Write-DeployLog -Level Warn -Message "ADF resource not found or has no managed identity"
         }
     }
     else {
-        Write-Host "  ⏭ Skipping ADF identity (ADF deployment was skipped)" -ForegroundColor Yellow
+        Write-DeployLog -Level Warn -Message "Skipping ADF identity (ADF deployment was skipped)"
     }
 
     # Get WebAPI Managed Identity Principal ID
     $webApiMSIPrincipalId = $null
     $webApiResourceName = "$SolutionAbbreviation-compute-$EnvironmentAbbreviation-webapi"
-    Write-Host "  Retrieving WebAPI Managed Identity..." -ForegroundColor Yellow
+    Write-DeployLog -Level Info -Message "Retrieving WebAPI Managed Identity..."
     $webApiResource = Invoke-WithRetry `
         -Operation { Get-AzWebApp -ResourceGroupName $computeResourceGroup -Name $webApiResourceName -ErrorAction SilentlyContinue } `
         -OperationName "Get WebAPI resource" `
@@ -941,11 +959,11 @@ function Set-FunctionAuthenticationAllowedIdentities {
     if ($null -ne $webApiResource -and $null -ne $webApiResource.Identity) {
         $webApiMSIPrincipalId = $webApiResource.Identity.PrincipalId
         if (-not [string]::IsNullOrWhiteSpace($webApiMSIPrincipalId)) {
-            Write-Host "  ✓ WebAPI Managed Identity: $webApiMSIPrincipalId" -ForegroundColor Green
+            Write-DeployLog -Level Success -Message "WebAPI Managed Identity: $webApiMSIPrincipalId"
         }
     }
     else {
-        Write-Host "  ⚠ WebAPI resource not found or has no managed identity" -ForegroundColor Yellow
+        Write-DeployLog -Level Warn -Message "WebAPI resource not found or has no managed identity"
     }
 
     # Define function apps that need ADF access
@@ -960,7 +978,7 @@ function Set-FunctionAuthenticationAllowedIdentities {
 
     # Update function apps that need ADF access
     if ([string]::IsNullOrWhiteSpace($adfMSIPrincipalId) -eq $false) {
-        Write-Host "`n  Updating function apps for ADF access..." -ForegroundColor Yellow
+        Write-DeployLog -Level Info -Message "Updating function apps for ADF access..."
         Update-FunctionAppAuthSettings -FunctionAppNames $adfFunctionAppNames `
             -AllowedPrincipalIds @($adfMSIPrincipalId) `
             -SolutionAbbreviation $SolutionAbbreviation `
@@ -968,12 +986,12 @@ function Set-FunctionAuthenticationAllowedIdentities {
             -SubscriptionId $SubscriptionId
     }
     else {
-        Write-Host "`n  ⚠ No ADF identities found. Skipping ADF function app updates." -ForegroundColor Yellow
+        Write-DeployLog -Level Warn -Message "No ADF identities found. Skipping ADF function app updates."
     }
 
     # Update function apps that need WebAPI access
     if ([string]::IsNullOrWhiteSpace($webApiMSIPrincipalId) -eq $false) {
-        Write-Host "`n  Updating function apps for WebAPI access..." -ForegroundColor Yellow
+        Write-DeployLog -Level Info -Message "Updating function apps for WebAPI access..."
         Update-FunctionAppAuthSettings -FunctionAppNames $webApiFunctionAppNames `
             -AllowedPrincipalIds @($webApiMSIPrincipalId) `
             -SolutionAbbreviation $SolutionAbbreviation `
@@ -981,14 +999,10 @@ function Set-FunctionAuthenticationAllowedIdentities {
             -SubscriptionId $SubscriptionId
     }
     else {
-        Write-Host "`n  ⚠ No WebAPI identities found. Skipping WebAPI function app updates." -ForegroundColor Yellow
+        Write-DeployLog -Level Warn -Message "No WebAPI identities found. Skipping WebAPI function app updates."
     }
 
-    Write-Host "`n" -NoNewline
-    Write-Host ("=" * 60) -ForegroundColor Green
-    Write-Host "  ✓ Function Authentication Identities Updated" -ForegroundColor Green
-    Write-Host ("=" * 60) -ForegroundColor Green
-    Write-Host ""
+    Write-DeployLog -Level Success -Message "Function Authentication Identities Updated"
 }
 
 function Update-FunctionAppAuthSettings {
@@ -1015,15 +1029,15 @@ function Update-FunctionAppAuthSettings {
             -MaxAttempts 3 -BaseDelaySeconds 2
         if ($null -ne $app) {
             $functionApps += $app
-            Write-Host "  ✓ Found function app: $fullFunctionName" -ForegroundColor Green
+            Write-DeployLog -Level Success -Message "Found function app: $fullFunctionName"
         }
         else {
-            Write-Host "  ⚠ Function app not found: $fullFunctionName" -ForegroundColor Yellow
+            Write-DeployLog -Level Warn -Message "Function app not found: $fullFunctionName"
         }
     }
 
     if ($null -eq $functionApps -or $functionApps.Count -eq 0) {
-        Write-Host "  ⚠ No Function Apps found." -ForegroundColor Yellow
+        Write-DeployLog -Level Warn -Message "No Function Apps found."
         return
     }
 
@@ -1040,7 +1054,7 @@ function Update-FunctionAppAuthSettings {
         $functionIndex++
         $functionAppName = $functionApp.Name
 
-        Write-Host "  [$functionIndex/$totalFunctions] Updating: $functionAppName" -ForegroundColor Gray
+        Write-DeployLog -Level Info -Message "[$functionIndex/$totalFunctions] Updating: $functionAppName"
 
         try {
             # Get current auth settings
@@ -1079,10 +1093,10 @@ function Update-FunctionAppAuthSettings {
                 -OperationName "Update auth settings for $functionAppName" `
                 -MaxAttempts 3 -BaseDelaySeconds 2
 
-            Write-Host "    ✓ Successfully updated $functionAppName" -ForegroundColor Green
+            Write-DeployLog -Level Success -Message "Successfully updated $functionAppName"
         }
         catch {
-            Write-Host "    ✗ Failed to update $($functionAppName): $($_.Exception.Message)" -ForegroundColor Red
+            Write-DeployLog -Level Error -Message "Failed to update $($functionAppName): $($_.Exception.Message)"
         }
     }
 
@@ -1110,8 +1124,6 @@ function Set-GMMResources {
     )
 
     # deploy resources
-    Write-Host "`nDeploying resources"
-
     $prereqsResourceGroup = "$SolutionAbbreviation-prereqs-$EnvironmentAbbreviation"
     $dataResourceGroup = "$SolutionAbbreviation-data-$EnvironmentAbbreviation"
 
@@ -1137,6 +1149,7 @@ function Set-GMMResources {
     
     # deploy resource groups
     if ($createResourceGroups -eq $true) {
+        Write-DeployPhase -Name 'Creating Resource Groups' -Event Begin
         Set-ResourceGroups `
             -SubscriptionId $SubscriptionId `
             -Location $Location `
@@ -1144,6 +1157,7 @@ function Set-GMMResources {
             -ParameterHashtable $ParameterHashtable `
             -AdditionalParameters $commonParametersObject `
             -SetRBACPermissions $setRBACPermissions
+        Write-DeployPhase -Name 'Creating Resource Groups' -Event End
     }
 
     # deploy prereq resources
@@ -1185,7 +1199,7 @@ function Set-GMMResources {
         Start-Sleep -Seconds 10
     }
     else {
-        Write-Host "`nSkipping app registration secret storage as per configuration [skipAppRegistrationSecretStorage = $($ParameterHashtable.skipAppRegistrationSecretStorage.value)]." -ForegroundColor Yellow
+        Write-DeployLog -Level Warn -Message "Skipping app registration secret storage as per configuration [skipAppRegistrationSecretStorage = $($ParameterHashtable.skipAppRegistrationSecretStorage.value)]."
     }
    
     # deploy data resources
@@ -1227,7 +1241,7 @@ function Set-GMMResources {
         Start-Sleep -Seconds 10
     }
     else {
-        Write-Host "`nSkipping networking deployment as per configuration [skipNetworkingDeployment = $skipNetworkingDeployment]." -ForegroundColor Yellow
+        Write-DeployLog -Level Warn -Message "Skipping networking deployment as per configuration [skipNetworkingDeployment = $skipNetworkingDeployment]."
     }
     
     # deploy compute resources
@@ -1243,7 +1257,7 @@ function Set-GMMResources {
 
     # deploy ADF resources
     if ($skipAzureDataFactoryDeployment -eq $false) {
-        Write-Host "`nCreating Azure Data Factory resources"
+        Write-DeployLog -Level Info -Message "Creating Azure Data Factory resources"
         Set-ADFResources `
             -SolutionAbbreviation       $SolutionAbbreviation `
             -EnvironmentAbbreviation    $EnvironmentAbbreviation `
@@ -1254,7 +1268,7 @@ function Set-GMMResources {
         Start-Sleep -Seconds 10
     }
     else {
-        Write-Host "`nSkipping Azure Data Factory deployment as per configuration [skipAzureDataFactoryDeployment = $skipAzureDataFactoryDeployment]."
+        Write-DeployLog -Level Info -Message "Skipping Azure Data Factory deployment as per configuration [skipAzureDataFactoryDeployment = $skipAzureDataFactoryDeployment]."
     }
 
     $enableFunctionAuthentication = Get-Default -Value $ParameterHashtable['enableFunctionAuthentication'].value -Default $false
@@ -1267,10 +1281,8 @@ function Set-GMMResources {
             -SkipAzureDataFactoryDeployment $skipAzureDataFactoryDeployment
     }
     else {
-        Write-Host "`n  ⏭ Skipping function authentication allowed identities (enableFunctionAuthentication = false)" -ForegroundColor Yellow
+        Write-DeployLog -Level Warn -Message "Skipping function authentication allowed identities (enableFunctionAuthentication = false)"
     }
-
-    Write-Host "`nResources deployed"
 }
 
 function Set-SqlServerFirewallRule {
@@ -1283,7 +1295,8 @@ function Set-SqlServerFirewallRule {
         [string]$Location
     )
 
-    Write-Host "`nSetting SQL Server firewall rule"
+    Write-DeployPhase -Name 'Configuring SQL Server Firewall' -Event Begin
+    Write-DeployLog -Level Info -Message "Setting SQL Server firewall rule"
     $dataResourceGroupName = "$SolutionAbbreviation-data-$EnvironmentAbbreviation"
     $sqlServerName = "$SolutionAbbreviation-data-$EnvironmentAbbreviation"
     $ipAddress = (Invoke-WithRetry `
@@ -1297,11 +1310,12 @@ function Set-SqlServerFirewallRule {
         } `
         -CreateOperation {
             New-AzSqlServerFirewallRule -ResourceGroupName $dataResourceGroupName -ServerName $sqlServerName -FirewallRuleName $sqlIPRuleName -StartIpAddress $ipAddress -EndIpAddress $ipAddress
-            Write-Host "Added firewall rule for SQL Server"
+            Write-DeployLog -Level Info -Message "Added firewall rule for SQL Server"
         } `
         -OperationName "Create SQL firewall rule" `
         -MaxAttempts 3 -BaseDelaySeconds 2 `
         -ExistsMessage "SQL firewall rule '$sqlIPRuleName' already exists on '$sqlServerName'. Skipping."
+    Write-DeployPhase -Name 'Configuring SQL Server Firewall' -Event End
 }
 
 function Set-SQLServerPermissions {
@@ -1317,7 +1331,8 @@ function Set-SQLServerPermissions {
     )
 
     # SQL Permissions
-    Write-Host "`nGranting permissions to SQL database"
+    Write-DeployPhase -Name 'Granting SQL Database Permissions' -Event Begin
+    Write-DeployLog -Level Info -Message "Granting permissions to SQL database"
 
     $computeResourceGroup = "$SolutionAbbreviation-compute-$EnvironmentAbbreviation"
     $dataResourceGroup = "$SolutionAbbreviation-data-$EnvironmentAbbreviation"
@@ -1340,7 +1355,7 @@ function Set-SQLServerPermissions {
     $roleCommand = $connection.CreateCommand()
     $roleCommand.CommandText = $sqlScript
 
-    Write-Host "Granting permissions to SQL database for $($context.Account.Id)"
+    Write-DeployLog -Level Info -Message "Granting permissions to SQL database for $($context.Account.Id)"
     Invoke-SqlOperationWithFirewallRetry `
         -EnvironmentAbbreviation $EnvironmentAbbreviation `
         -SolutionAbbreviation $SolutionAbbreviation `
@@ -1351,7 +1366,7 @@ function Set-SQLServerPermissions {
         }
 
     $roleCommand.Dispose()
-    Write-Host "Permissions granted to SQL database for $($context.Account.Id)" -ForegroundColor Green
+    Write-DeployLog -Level Success -Message "Permissions granted to SQL database for $($context.Account.Id)"
 
     # Set the permissions for the function apps.
     $functionApps = Invoke-WithRetry `
@@ -1372,7 +1387,7 @@ function Set-SQLServerPermissions {
             $($isWebAPI ? $adminRoleClause : '')
         END"
 
-        Write-Host "Granting permissions to SQL database for $($functionApp.Name)"
+        Write-DeployLog -Level Info -Message "Granting permissions to SQL database for $($functionApp.Name)"
 
         $roleCommand = $connection.CreateCommand()
         $roleCommand.CommandText = $functionSqlScript
@@ -1388,7 +1403,7 @@ function Set-SQLServerPermissions {
 
         $roleCommand.Dispose()
 
-        Write-Host "Permissions granted to SQL database for $($functionApp.Name)" -ForegroundColor Green
+        Write-DeployLog -Level Success -Message "Permissions granted to SQL database for $($functionApp.Name)"
     }
 
     # ADF Permissions
@@ -1413,7 +1428,7 @@ function Set-SQLServerPermissions {
             ALTER ROLE db_ddladmin ADD MEMBER [$dataFactoryName]
         END"
 
-        Write-Host "Granting permissions to SQL database for $dataFactoryName"
+        Write-DeployLog -Level Info -Message "Granting permissions to SQL database for $dataFactoryName"
 
         $roleCommandADF = $connectionADF.CreateCommand()
         $roleCommandADF.CommandText = $dataFactorySqlScript
@@ -1429,7 +1444,7 @@ function Set-SQLServerPermissions {
 
         $roleCommandADF.Dispose()
 
-        Write-Host "Permissions granted to SQL database for $dataFactoryName" -ForegroundColor Green
+        Write-DeployLog -Level Success -Message "Permissions granted to SQL database for $dataFactoryName"
 
         foreach ($functionApp in $functionAppsADF) {
 
@@ -1440,7 +1455,7 @@ function Set-SQLServerPermissions {
                 ALTER ROLE db_datawriter ADD MEMBER [$($functionApp.Name)]
             END"
 
-            Write-Host "Granting permissions to ADF database for $($functionApp.Name)"
+            Write-DeployLog -Level Info -Message "Granting permissions to ADF database for $($functionApp.Name)"
 
             $roleCommandADF = $connectionADF.CreateCommand()
             $roleCommandADF.CommandText = $functionSqlScript
@@ -1456,9 +1471,10 @@ function Set-SQLServerPermissions {
 
             $roleCommandADF.Dispose()
 
-            Write-Host "Permissions granted to ADF database for $($functionApp.Name)" -ForegroundColor Green
+            Write-DeployLog -Level Success -Message "Permissions granted to ADF database for $($functionApp.Name)"
         }
     }
+    Write-DeployPhase -Name 'Granting SQL Database Permissions' -Event End
 }
 
 function Set-RBACPermissions {
@@ -1482,7 +1498,8 @@ function Set-RBACPermissions {
     )
 
     # grant permissions to resources
-    Write-Host "`nGranting permissions to resources"
+    Write-DeployPhase -Name 'Granting Resource Permissions' -Event Begin
+    Write-DeployLog -Level Info -Message "Granting permissions to resources"
 
     . ($ScriptsDirectory + '/Set-PostDeploymentRoles.ps1')
     Set-PostDeploymentRoles `
@@ -1493,6 +1510,7 @@ function Set-RBACPermissions {
         -SkipPrivilegedDirectoryActions $SkipPrivilegedDirectoryActions `
         -SkipNetworkingDeployment $SkipNetworkingDeployment `
         -BastionVnetAddressPrefix $BastionVnetAddressPrefix
+    Write-DeployPhase -Name 'Granting Resource Permissions' -Event End
 
 }
 
@@ -1507,7 +1525,7 @@ function Set-FunctionAppCode {
     )
 
     # publish function apps code
-    Write-Host "`nPublishing function apps code"
+    Write-DeployPhase -Name 'Publishing Function Apps' -Event Begin
 
     $functionApps = Invoke-WithRetry `
         -Operation { Get-FunctionAppCompat -ResourceGroupName $ComputeResourceGroup } `
@@ -1515,13 +1533,13 @@ function Set-FunctionAppCode {
         -MaxAttempts 3 -BaseDelaySeconds 2
     foreach ($functionApp in $functionApps) {
 
-        Write-Host "Publishing code for function app $($functionApp.Name)"
+        Write-DeployLog -Level Info -Message "Publishing code for function app $($functionApp.Name)"
 
         $functionName = $functionApp.Name.Split("-")[3]
         $packageFile = "$FunctionsPackagesDirectory/$functionName.zip"
 
         if (-not (Test-Path $packageFile)) {
-            Write-Host "Package file not found: $packageFile"
+            Write-DeployLog -Level Info -Message "Package file not found: $packageFile"
             continue
         }
 
@@ -1533,10 +1551,10 @@ function Set-FunctionAppCode {
             -MaxAttempts $maxRetriesForDeploymentOperations `
             -BaseDelaySeconds 2
 
-        Write-Host "Successfully published code for function app $($functionApp.Name)`n" -ForegroundColor Green
+        Write-DeployLog -Level Success -Message "Successfully published code for function app $($functionApp.Name)`n"
 
         if ($functionApp.Kind -eq "functionapp") {
-            Write-Host "Function app $($functionApp.Name) is on Comsumption. Setting functionAppScaleLimit = 1..."
+            Write-DeployLog -Level Info -Message "Function app $($functionApp.Name) is on Comsumption. Setting functionAppScaleLimit = 1..."
             Invoke-WithRetry `
                 -Operation {
                     Set-AzResource -ResourceGroupName $ComputeResourceGroup `
@@ -1548,13 +1566,13 @@ function Set-FunctionAppCode {
                 } `
                 -OperationName "Set scale limit for $($functionApp.Name)" `
                 -MaxAttempts 3 -BaseDelaySeconds 2
-            Write-Host "Successfully set functionAppScaleLimit for $($functionApp.Name)`n" -ForegroundColor Green
+            Write-DeployLog -Level Success -Message "Successfully set functionAppScaleLimit for $($functionApp.Name)`n"
         }
         
     }
 
     # publish web api code
-    Write-Host "`nPublishing code for webapi app $ComputeResourceGroup-webapi"
+    Write-DeployLog -Level Info -Message "Publishing code for webapi app $ComputeResourceGroup-webapi"
     $webApi = Invoke-WithRetry `
         -Operation { Get-AzWebApp -ResourceGroupName $ComputeResourceGroup -Name "$ComputeResourceGroup-webapi" } `
         -OperationName "Get WebAPI app for code deploy" `
@@ -1569,7 +1587,9 @@ function Set-FunctionAppCode {
         -MaxAttempts $maxRetriesForDeploymentOperations `
         -BaseDelaySeconds 2
     
-    Write-Host "Successfully published code for web api app $($webApi.Name)`n" -ForegroundColor Green
+    Write-DeployLog -Level Success -Message "Successfully published code for web api app $($webApi.Name)`n"
+
+    Write-DeployPhase -Name 'Publishing Function Apps' -Event End
 }
 
 function Set-KeyVaultFirewallRules {
@@ -1584,7 +1604,7 @@ function Set-KeyVaultFirewallRules {
         [string]$Region
     )
 
-    Write-Host "Enabling firewall rules for key vaults"
+    Write-DeployPhase -Name 'Configuring Firewall Rules' -Event Begin
 
     # Get IP rules from script
     . ($ScriptsDirectory + '/Get-FirewallIPRules.ps1') -FolderPathToSaveIpRules $ScriptsDirectory -Regions $Region
@@ -1600,7 +1620,7 @@ function Set-KeyVaultFirewallRules {
             $keyVaultName = $keyVault.VaultName
             $keyVaultResourceGroup = $keyVault.ResourceGroupName
 
-            Write-Host "Fetching existing rules for $keyVaultName"
+            Write-DeployLog -Level Info -Message "Fetching existing rules for $keyVaultName"
             $detailedKeyVault = Invoke-WithRetry `
                 -Operation { Get-AzKeyVault -Name $keyVaultName -ResourceGroupName $keyVaultResourceGroup } `
                 -OperationName "Get key vault details '$keyVaultName'" `
@@ -1613,7 +1633,7 @@ function Set-KeyVaultFirewallRules {
             # Combine existing and new, remove duplicates
             $combinedIpRules = ($existingIps + $newIpRules) | Sort-Object -Unique
 
-            Write-Host "Applying updated firewall rules to $keyVaultName"
+            Write-DeployLog -Level Info -Message "Applying updated firewall rules to $keyVaultName"
 
             Invoke-WithRetry `
                 -Operation {
@@ -1628,6 +1648,8 @@ function Set-KeyVaultFirewallRules {
                 -MaxAttempts 3 -BaseDelaySeconds 2
         }
     }
+
+    Write-DeployPhase -Name 'Configuring Firewall Rules' -Event End
 }
 
 function Stop-FunctionApps {
@@ -1642,14 +1664,12 @@ function Stop-FunctionApps {
     }
 
     # stop function apps
-    Write-Host "`nStopping function apps"
-
     $functionApps = Invoke-WithRetry `
         -Operation { Get-FunctionAppCompat -ResourceGroupName $ResourceGroupName } `
         -OperationName "Get function apps to stop" `
         -MaxAttempts 3 -BaseDelaySeconds 2
     foreach ($functionApp in $functionApps) {
-        Write-Host "Stopping function app $($functionApp.Name)"
+        Write-DeployLog -Level Info -Message "Stopping function app $($functionApp.Name)"
         Invoke-WithRetry `
             -Operation { Stop-FunctionAppCompat -ResourceGroupName $ResourceGroupName -Name $functionApp.Name } `
             -OperationName "Stop $($functionApp.Name)" `
@@ -1672,7 +1692,7 @@ function Start-FunctionApps {
         return
     }
 
-    Write-Host "`nStarting function apps"
+    Write-DeployPhase -Name 'Starting Function Apps' -Event Begin
 
     $jobTriggerApp = $null
 
@@ -1684,10 +1704,10 @@ function Start-FunctionApps {
     foreach ($functionApp in $functionApps) {
         if ($functionApp.Name -match "JobTrigger") {
             $jobTriggerApp = $functionApp
-            Write-Host "Skipping $($functionApp.Name) (will start last)"
+            Write-DeployLog -Level Info -Message "Skipping $($functionApp.Name) (will start last)"
             continue
         }
-        Write-Host "Starting function app $($functionApp.Name)"
+        Write-DeployLog -Level Info -Message "Starting function app $($functionApp.Name)"
         Invoke-WithRetry `
             -Operation { Start-FunctionAppCompat -ResourceGroupName $ResourceGroupName -Name $functionApp.Name } `
             -OperationName "Start $($functionApp.Name)" `
@@ -1695,11 +1715,13 @@ function Start-FunctionApps {
     }
 
     if ($null -ne $jobTriggerApp -and -not $SkipJobTrigger) {
-        Write-Host "`nWaiting $JobTriggerDelaySeconds seconds before starting JobTrigger..."
+        Write-DeployLog -Level Info -Message "Waiting $JobTriggerDelaySeconds seconds before starting JobTrigger..."
         Start-Sleep -Seconds $JobTriggerDelaySeconds
-        Write-Host "Starting $($jobTriggerApp.Name)"
+        Write-DeployLog -Level Info -Message "Starting $($jobTriggerApp.Name)"
         Start-FunctionAppCompat -ResourceGroupName $ResourceGroupName -Name $jobTriggerApp.Name
     }
+
+    Write-DeployPhase -Name 'Starting Function Apps' -Event End
 }
 
 function Update-AppSettingsVersion {
@@ -1708,7 +1730,8 @@ function Update-AppSettingsVersion {
         [string]$ComputeResourceGroupName
     )
 
-    Write-Host "`nChecking function app settings"
+    Write-DeployPhase -Name 'Checking Function App Settings' -Event Begin
+    Write-DeployLog -Level Info -Message "Checking function app settings"
     $functionApps = Invoke-WithRetry `
         -Operation { Get-FunctionAppCompat -ResourceGroupName $ComputeResourceGroupName } `
         -OperationName "Get function apps for settings update" `
@@ -1728,7 +1751,7 @@ function Update-AppSettingsVersion {
             $latestSecretVersion = Get-KeyVaultSecretWithFirewallRetry -ResourceGroup $kvReference.KeyVaultName -VaultName $kvReference.KeyVaultName -SecretName $kvReference.SecretName
 
             if ($latestSecretVersion.Version -ne $kvReference.Version) {
-                Write-Host "Updating $($function.Name) -> $($kvReference.SecretName) to $($latestSecretVersion.Version)"
+                Write-DeployLog -Level Info -Message "Updating $($function.Name) -> $($kvReference.SecretName) to $($latestSecretVersion.Version)"
                 $updatedVersion = $settings[$key] -replace $kvReference.Version, $latestSecretVersion.Version
                 $updatedSettings = Invoke-WithRetry `
                     -Operation { Update-FunctionAppSettingCompat -Name $function.Name -ResourceGroupName $ComputeResourceGroupName -AppSetting @{$key = $updatedVersion } } `
@@ -1738,7 +1761,7 @@ function Update-AppSettingsVersion {
         }
     }
 
-    Write-Host "`nChecking web app settings"
+    Write-DeployLog -Level Info -Message "Checking web app settings"
     $webApps = Invoke-WithRetry `
         -Operation { Get-AzWebApp -ResourceGroupName $ComputeResourceGroupName | Where-Object { $_.Kind -eq "app" } } `
         -OperationName "Get web apps for settings update" `
@@ -1760,7 +1783,7 @@ function Update-AppSettingsVersion {
             $latestSecretVersion = Get-KeyVaultSecretWithFirewallRetry -ResourceGroup $kvReference.KeyVaultName -VaultName $kvReference.KeyVaultName -SecretName $kvReference.SecretName
 
             if ($latestSecretVersion.Version -ne $kvReference.Version) {
-                Write-Host "Updating $($webApp.Name) -> $key to $($latestSecretVersion.Version)"
+                Write-DeployLog -Level Info -Message "Updating $($webApp.Name) -> $key to $($latestSecretVersion.Version)"
                 $updatedVersion = $value -replace $kvReference.Version, $latestSecretVersion.Version
 
                 $appSettings = $webApp.SiteConfig.AppSettings
@@ -1789,6 +1812,8 @@ function Update-AppSettingsVersion {
         }
 
     }
+
+    Write-DeployPhase -Name 'Checking Function App Settings' -Event End
 }
 
 function  Get-KeyVaultReference {
@@ -1837,7 +1862,7 @@ function Set-GMMAppRegistrationsProgrammatically {
         [switch]$SkipFunctionAuthApp
     )
 
-    Write-Host "`n📝 Creating app registrations programmatically...`n" -ForegroundColor Cyan
+    Write-DeployLog -Level Info -Message "Creating app registrations programmatically...`n"
 
     . ($ScriptsDirectory + '/ApplicationSetupScripts/Set-UIAzureADApplication.ps1')
     $uiInformation = Set-UIAzureADApplication `
@@ -1896,7 +1921,7 @@ function Set-GMMAppRegistrationsProgrammatically {
             -Clean $false
     }
     else {
-        Write-Host "Skipping FunctionAuth app registration as per configuration." -ForegroundColor Yellow
+        Write-DeployLog -Level Warn -Message "Skipping FunctionAuth app registration as per configuration."
     }
 
     # determine which apps need admin consent
@@ -1954,13 +1979,12 @@ function Save-GMMAppRegistrationSecrets {
         [boolean]$EnableFunctionAuthentication = $false
     )
 
-    Write-Host "`n🔐 Saving App Registration Secrets to Key Vault" -ForegroundColor Cyan
-    Write-Host "═══════════════════════════════════════════════════════════════════════════" -ForegroundColor Cyan
-
+    Write-DeployPhase -Name 'Saving App Registration Secrets' -Event Begin
+    try {
     $applicationSetupScriptsDirectory = Join-Path $ScriptsDirectory "ApplicationSetupScripts"
 
     # Retrieve Application IDs
-    Write-Host "`n📋 Retrieving App Registration IDs..." -ForegroundColor Yellow
+    Write-DeployLog -Level Info -Message "Retrieving App Registration IDs..."
     
     $uiAppId = (Invoke-WithRetry `
         -Operation { Get-MgApplication -Filter "displayName eq '$SolutionAbbreviation-ui-$EnvironmentAbbreviation'" } `
@@ -1970,7 +1994,7 @@ function Save-GMMAppRegistrationSecrets {
         Write-Error "UI Application '$SolutionAbbreviation-ui-$EnvironmentAbbreviation' not found"
         return
     }
-    Write-Host "  ✓ UI App ID: $uiAppId" -ForegroundColor Gray
+    Write-DeployLog -Level Info -Message "UI App ID: $uiAppId"
 
     $webApiAppId = (Invoke-WithRetry `
         -Operation { Get-MgApplication -Filter "displayName eq '$SolutionAbbreviation-webapi-$EnvironmentAbbreviation'" } `
@@ -1980,7 +2004,7 @@ function Save-GMMAppRegistrationSecrets {
         Write-Error "WebAPI Application '$SolutionAbbreviation-webapi-$EnvironmentAbbreviation' not found"
         return
     }
-    Write-Host "  ✓ WebAPI App ID: $webApiAppId" -ForegroundColor Gray
+    Write-DeployLog -Level Info -Message "WebAPI App ID: $webApiAppId"
 
     $graphAppId = (Invoke-WithRetry `
         -Operation { Get-MgApplication -Filter "displayName eq '$SolutionAbbreviation-Graph-$EnvironmentAbbreviation'" } `
@@ -1990,7 +2014,7 @@ function Save-GMMAppRegistrationSecrets {
         Write-Error "Graph Application '$SolutionAbbreviation-Graph-$EnvironmentAbbreviation' not found"
         return
     }
-    Write-Host "  ✓ Graph App ID: $graphAppId" -ForegroundColor Gray
+    Write-DeployLog -Level Info -Message "Graph App ID: $graphAppId"
 
     $teamsChannelAppId = (Invoke-WithRetry `
         -Operation { Get-MgApplication -Filter "displayName eq '$SolutionAbbreviation-TeamsChannel-$EnvironmentAbbreviation'" } `
@@ -2000,7 +2024,7 @@ function Save-GMMAppRegistrationSecrets {
         Write-Error "Teams Channel Application '$SolutionAbbreviation-TeamsChannel-$EnvironmentAbbreviation' not found"
         return
     }
-    Write-Host "  ✓ Teams Channel App ID: $teamsChannelAppId" -ForegroundColor Gray
+    Write-DeployLog -Level Info -Message "Teams Channel App ID: $teamsChannelAppId"
 
     $functionAuthAppId = $null
     if ($EnableFunctionAuthentication -eq $true) {
@@ -2012,10 +2036,10 @@ function Save-GMMAppRegistrationSecrets {
             Write-Error "FunctionAuth Application '$SolutionAbbreviation-FunctionAuth-$EnvironmentAbbreviation' not found"
             return
         }
-        Write-Host "  ✓ FunctionAuth App ID: $functionAuthAppId" -ForegroundColor Gray
+        Write-DeployLog -Level Info -Message "FunctionAuth App ID: $functionAuthAppId"
     }
     else {
-        Write-Host "  ⏭ Skipping FunctionAuth app (enableFunctionAuthentication = false)" -ForegroundColor Yellow
+        Write-DeployLog -Level Warn -Message "Skipping FunctionAuth app (enableFunctionAuthentication = false)"
     }
 
     $createNewSecrets = $false
@@ -2023,22 +2047,18 @@ function Save-GMMAppRegistrationSecrets {
     if ($IsClientSecretAuth -eq $true) {
        if ($SkipPrivilegedDirectoryActions -eq $true) {
             # Ask user if they want to input secrets now
-            Write-Host "`n🔐 Application Secret Configuration" -ForegroundColor Cyan
-            Write-Host "═══════════════════════════════════════════════════════════════════════════" -ForegroundColor Cyan
-            Write-Host ""
-            Write-Host "You are using Client Secret authentication and the 'SkipPrivilegedDirectoryActions' flag is enabled. The deployment script needs the" -ForegroundColor White
-            Write-Host "client secrets for each application to store them securely in Key Vault." -ForegroundColor White
-            Write-Host ""
-            Write-Host "Would you like to input the application secrets now?" -ForegroundColor Yellow
-            Write-Host "  (Choose 'No' if you have already saved the secrets in a previous deployment)" -ForegroundColor Gray
-            Write-Host ""
+            Write-DeployLog -Level Info -Message "Application Secret Configuration"
+            Write-DeployLog -Level Info -Message "You are using Client Secret authentication and the 'SkipPrivilegedDirectoryActions' flag is enabled. The deployment script needs the"
+            Write-DeployLog -Level Info -Message "client secrets for each application to store them securely in Key Vault."
+            Write-DeployLog -Level Info -Message "Would you like to input the application secrets now?"
+            Write-DeployLog -Level Info -Message "(Choose 'No' if you have already saved the secrets in a previous deployment)"
             
             $response = Read-Host "Input application secrets now? (Y/N)"
             
             if ($response -notmatch '^[Yy]') {
-                Write-Host "`n⏭️  Skipping application secret input." -ForegroundColor Yellow
-                Write-Host "   If you need to update secrets later, you can run this deployment again" -ForegroundColor Gray
-                Write-Host "   or manually update them in the Key Vault.`n" -ForegroundColor Gray
+                Write-DeployLog -Level Warn -Message "Skipping application secret input."
+                Write-DeployLog -Level Info -Message "If you need to update secrets later, you can run this deployment again"
+                Write-DeployLog -Level Info -Message "or manually update them in the Key Vault.`n"
                 return
             }
             
@@ -2052,61 +2072,59 @@ function Save-GMMAppRegistrationSecrets {
     # If user needs to provide secrets manually
     $manualSecrets = @{}
     if ($askForSecretInput -eq $true) {
-        Write-Host "`n⚠️  MANUAL SECRET INPUT REQUIRED" -ForegroundColor Yellow
-        Write-Host "═══════════════════════════════════════════════════════════════════════════" -ForegroundColor Yellow
-        Write-Host "`nPlease provide the client secrets that you created manually for each app registration.`n" -ForegroundColor White
+        Write-DeployLog -Level Warn -Message "MANUAL SECRET INPUT REQUIRED"
+        Write-DeployLog -Level Info -Message "Please provide the client secrets that you created manually for each app registration.`n"
         
-        Write-Host "📋 Please enter the client secrets for the following applications:" -ForegroundColor Cyan
-        Write-Host "   (These secrets will be securely stored in Key Vault)`n" -ForegroundColor Gray
+        Write-DeployLog -Level Info -Message "Please enter the client secrets for the following applications:"
+        Write-DeployLog -Level Info -Message "(These secrets will be securely stored in Key Vault)`n"
         
-        Write-Host "1️⃣  UI Application ($SolutionAbbreviation-ui-$EnvironmentAbbreviation)" -ForegroundColor Green
+        Write-DeployLog -Level Success -Message "1  UI Application ($SolutionAbbreviation-ui-$EnvironmentAbbreviation)"
         do {
             $appSecret = Read-Host "   Enter UI App Client Secret"
              
             if ([string]::IsNullOrWhiteSpace($appSecret)) {
-                Write-Host "   ❌ Secret cannot be empty or contain only whitespace. Please try again." -ForegroundColor Red
+                Write-DeployLog -Level Error -Message "Secret cannot be empty or contain only whitespace. Please try again."
             }
         } while ([string]::IsNullOrWhiteSpace($appSecret))
 
         $manualSecrets['UISecret'] = $appSecret
 
-        Write-Host "`n2️⃣  WebAPI Application ($SolutionAbbreviation-webapi-$EnvironmentAbbreviation)" -ForegroundColor Green
+        Write-DeployLog -Level Success -Message "2  WebAPI Application ($SolutionAbbreviation-webapi-$EnvironmentAbbreviation)"
         do {
             $appSecret = Read-Host "   Enter WebAPI App Client Secret"
             if ([string]::IsNullOrWhiteSpace($appSecret)) {
-                Write-Host "   ❌ Secret cannot be empty or contain only whitespace. Please try again." -ForegroundColor Red
+                Write-DeployLog -Level Error -Message "Secret cannot be empty or contain only whitespace. Please try again."
             }
         } while ([string]::IsNullOrWhiteSpace($appSecret))
 
         $manualSecrets['WebApiSecret'] = $appSecret
 
-        Write-Host "`n3️⃣  Graph Application ($SolutionAbbreviation-Graph-$EnvironmentAbbreviation)" -ForegroundColor Green
+        Write-DeployLog -Level Success -Message "3  Graph Application ($SolutionAbbreviation-Graph-$EnvironmentAbbreviation)"
         do {
             $appSecret = Read-Host "   Enter Graph App Client Secret"
             if ([string]::IsNullOrWhiteSpace($appSecret)) {
-                Write-Host "   ❌ Secret cannot be empty or contain only whitespace. Please try again." -ForegroundColor Red
+                Write-DeployLog -Level Error -Message "Secret cannot be empty or contain only whitespace. Please try again."
             }
         } while ([string]::IsNullOrWhiteSpace($appSecret))
 
         $manualSecrets['GraphSecret'] = $appSecret
 
-        Write-Host "`n4️⃣  Teams Channel Application ($SolutionAbbreviation-TeamsChannel-$EnvironmentAbbreviation)" -ForegroundColor Green
+        Write-DeployLog -Level Success -Message "4  Teams Channel Application ($SolutionAbbreviation-TeamsChannel-$EnvironmentAbbreviation)"
         do {
             $appSecret = Read-Host "   Enter Teams Channel App Client Secret" 
 
             if ([string]::IsNullOrWhiteSpace($appSecret)) {
-                Write-Host "   ❌ Secret cannot be empty or contain only whitespace. Please try again." -ForegroundColor Red
+                Write-DeployLog -Level Error -Message "Secret cannot be empty or contain only whitespace. Please try again."
             }
         } while ([string]::IsNullOrWhiteSpace($appSecret))
 
         $manualSecrets['TeamsChannelSecret'] = $appSecret
 
-        Write-Host "`n✅ All secrets collected. Proceeding to save them to Key Vault...`n" -ForegroundColor Green
-        Write-Host "═══════════════════════════════════════════════════════════════════════════`n" -ForegroundColor Yellow
+        Write-DeployLog -Level Success -Message "All secrets collected. Proceeding to save them to Key Vault...`n"
     }
 
     # UI Application Secrets
-    Write-Host "`n📝 Saving UI Application secrets..." -ForegroundColor Yellow
+    Write-DeployLog -Level Info -Message "Saving UI Application secrets..."
     $uiScriptPath = Join-Path $applicationSetupScriptsDirectory "Set-UIAzureADApplication.ps1"
     . $uiScriptPath
 
@@ -2119,10 +2137,10 @@ function Save-GMMAppRegistrationSecrets {
         -CreateNewSecret $createNewSecrets `
         -AppSecret $uiSecret
 
-    Write-Host "✅ UI Application secrets saved" -ForegroundColor Green
+    Write-DeployLog -Level Success -Message "UI Application secrets saved"
 
     # WebAPI Application Secrets
-    Write-Host "`n📝 Saving WebAPI Application secrets..." -ForegroundColor Yellow
+    Write-DeployLog -Level Info -Message "Saving WebAPI Application secrets..."
     $webApiScriptPath = Join-Path $applicationSetupScriptsDirectory "Set-WebApiAzureADApplication.ps1"
     . $webApiScriptPath
 
@@ -2134,10 +2152,10 @@ function Save-GMMAppRegistrationSecrets {
         -CreateNewSecret $createNewSecrets `
         -AppSecret $webApiSecret
 
-    Write-Host "✅ WebAPI Application secrets saved" -ForegroundColor Green
+    Write-DeployLog -Level Success -Message "WebAPI Application secrets saved"
 
     # Graph Application Secrets
-    Write-Host "`n📝 Saving Graph Application secrets..." -ForegroundColor Yellow
+    Write-DeployLog -Level Info -Message "Saving Graph Application secrets..."
     $graphScriptPath = Join-Path $applicationSetupScriptsDirectory "Set-GraphCredentialsAzureADApplication.ps1"
     . $graphScriptPath
 
@@ -2151,10 +2169,10 @@ function Save-GMMAppRegistrationSecrets {
         -CertificateName $GraphAppCertificateName `
         -AppSecret $graphSecret
 
-    Write-Host "✅ Graph Application secrets saved" -ForegroundColor Green
+    Write-DeployLog -Level Success -Message "Graph Application secrets saved"
 
     # Teams Channel Application Secrets
-    Write-Host "`n📝 Saving Teams Channel Application secrets..." -ForegroundColor Yellow
+    Write-DeployLog -Level Info -Message "Saving Teams Channel Application secrets..."
 
     $teamsScriptPath = Join-Path $applicationSetupScriptsDirectory "Set-TeamsChannelAzureADApplication.ps1"
     . $teamsScriptPath
@@ -2169,11 +2187,11 @@ function Save-GMMAppRegistrationSecrets {
         -CertificateName $TeamsChannelAppCertificateName `
         -AppSecret $teamsChannelSecret
 
-    Write-Host "✅ Teams Channel Application secrets saved" -ForegroundColor Green
+    Write-DeployLog -Level Success -Message "Teams Channel Application secrets saved"
 
     # FunctionAuth Application Secrets
     if ($EnableFunctionAuthentication -eq $true -and $null -ne $functionAuthAppId) {
-        Write-Host "`n📝 Saving FunctionAuth Application secrets..." -ForegroundColor Yellow
+        Write-DeployLog -Level Info -Message "Saving FunctionAuth Application secrets..."
 
         $functionAuthScriptPath = Join-Path $applicationSetupScriptsDirectory "Set-FunctionAuthApplication.ps1"
         . $functionAuthScriptPath
@@ -2184,14 +2202,19 @@ function Save-GMMAppRegistrationSecrets {
             -AppTenantId $AppTenantId `
             -FunctionAuthAppClientId $functionAuthAppId
 
-        Write-Host "✅ FunctionAuth Application secrets saved" -ForegroundColor Green
+        Write-DeployLog -Level Success -Message "FunctionAuth Application secrets saved"
     }
     else {
-        Write-Host "`n  ⏭ Skipping FunctionAuth secrets (enableFunctionAuthentication = false)" -ForegroundColor Yellow
+        Write-DeployLog -Level Warn -Message "Skipping FunctionAuth secrets (enableFunctionAuthentication = false)"
     }
 
-    Write-Host "`n✅ All app registration secrets have been saved to Key Vault" -ForegroundColor Green
-    Write-Host "═══════════════════════════════════════════════════════════════════════════`n" -ForegroundColor Cyan
+    Write-DeployLog -Level Success -Message "All app registration secrets have been saved to Key Vault"
+    }
+    finally {
+        # Always emit the phase end, even when an early return above (e.g. an app
+        # registration not found) exits the function before this point.
+        Write-DeployPhase -Name 'Saving App Registration Secrets' -Event End
+    }
 }
 
 function Set-GMMAppRegistrationsManually {
@@ -2211,131 +2234,119 @@ function Set-GMMAppRegistrationsManually {
         [boolean]$EnableFunctionAuthentication = $false
     )
 
-    Write-Host "`n⚠️  MANUAL APP REGISTRATION SETUP REQUIRED" -ForegroundColor Yellow
-    Write-Host "═══════════════════════════════════════════════════════════════════════════" -ForegroundColor Yellow
-    Write-Host "`nYou have chosen to skip privileged directory actions. This means you need to" -ForegroundColor White
-    Write-Host "manually create the app registrations or run the setup scripts in a separate" -ForegroundColor White
-    Write-Host "PowerShell session with appropriate permissions.`n" -ForegroundColor White
+    Write-DeployLog -Level Warn -Message "MANUAL APP REGISTRATION SETUP REQUIRED"
+    Write-DeployLog -Level Info -Message "You have chosen to skip privileged directory actions. This means you need to"
+    Write-DeployLog -Level Info -Message "manually create the app registrations or run the setup scripts in a separate"
+    Write-DeployLog -Level Info -Message "PowerShell session with appropriate permissions.`n"
 
-    Write-Host "📋 Required App Registrations:" -ForegroundColor Cyan
-    Write-Host "   1. UI Application          ($SolutionAbbreviation-ui-$EnvironmentAbbreviation)" -ForegroundColor White
-    Write-Host "   2. WebAPI Application      ($SolutionAbbreviation-webapi-$EnvironmentAbbreviation)" -ForegroundColor White
-    Write-Host "   3. Graph Application       ($SolutionAbbreviation-Graph-$EnvironmentAbbreviation)" -ForegroundColor White
-    Write-Host "   4. Teams Channel App       ($SolutionAbbreviation-TeamsChannel-$EnvironmentAbbreviation)" -ForegroundColor White
+    Write-DeployLog -Level Info -Message "Required App Registrations:"
+    Write-DeployLog -Level Info -Message "1. UI Application          ($SolutionAbbreviation-ui-$EnvironmentAbbreviation)"
+    Write-DeployLog -Level Info -Message "2. WebAPI Application      ($SolutionAbbreviation-webapi-$EnvironmentAbbreviation)"
+    Write-DeployLog -Level Info -Message "3. Graph Application       ($SolutionAbbreviation-Graph-$EnvironmentAbbreviation)"
+    Write-DeployLog -Level Info -Message "4. Teams Channel App       ($SolutionAbbreviation-TeamsChannel-$EnvironmentAbbreviation)"
     if ($EnableFunctionAuthentication) {
-        Write-Host "   5. FunctionAuth App        ($SolutionAbbreviation-FunctionAuth-$EnvironmentAbbreviation)" -ForegroundColor White
+        Write-DeployLog -Level Info -Message "5. FunctionAuth App        ($SolutionAbbreviation-FunctionAuth-$EnvironmentAbbreviation)"
     }
 
-    Write-Host "`n📖 Manual Setup Documentation:" -ForegroundColor Cyan
-    Write-Host "   Please refer to the following documentation for manual setup steps:" -ForegroundColor White
-    Write-Host "   - $ScriptsDirectory/ApplicationSetupScripts/Manual Setup Documentation/UI-Application-Creation-Instructions.md" -ForegroundColor Gray
-    Write-Host "   - $ScriptsDirectory/ApplicationSetupScripts/Manual Setup Documentation/WebAPI-Application-Creation-Instructions.md" -ForegroundColor Gray
-    Write-Host "   - $ScriptsDirectory/ApplicationSetupScripts/Manual Setup Documentation/GraphCredentials-Application-Creation-Instructions.md" -ForegroundColor Gray
-    Write-Host "   - $ScriptsDirectory/ApplicationSetupScripts/Manual Setup Documentation/TeamsChannel-Application-Creation-Instructions.md" -ForegroundColor Gray
+    Write-DeployLog -Level Info -Message "Manual Setup Documentation:"
+    Write-DeployLog -Level Info -Message "Please refer to the following documentation for manual setup steps:"
+    Write-DeployLog -Level Info -Message "- $ScriptsDirectory/ApplicationSetupScripts/Manual Setup Documentation/UI-Application-Creation-Instructions.md"
+    Write-DeployLog -Level Info -Message "- $ScriptsDirectory/ApplicationSetupScripts/Manual Setup Documentation/WebAPI-Application-Creation-Instructions.md"
+    Write-DeployLog -Level Info -Message "- $ScriptsDirectory/ApplicationSetupScripts/Manual Setup Documentation/GraphCredentials-Application-Creation-Instructions.md"
+    Write-DeployLog -Level Info -Message "- $ScriptsDirectory/ApplicationSetupScripts/Manual Setup Documentation/TeamsChannel-Application-Creation-Instructions.md"
     if ($EnableFunctionAuthentication) {
-        Write-Host "   - $ScriptsDirectory/ApplicationSetupScripts/Manual Setup Documentation/FunctionAuth-Application-Creation-Instructions.md" -ForegroundColor Gray
+        Write-DeployLog -Level Info -Message "- $ScriptsDirectory/ApplicationSetupScripts/Manual Setup Documentation/FunctionAuth-Application-Creation-Instructions.md"
     }
 
-    Write-Host "`n🔧 PowerShell Script Signatures:" -ForegroundColor Cyan
-    Write-Host "   If you prefer to run the setup scripts, use these commands in a separate" -ForegroundColor White
-    Write-Host "   PowerShell session with Global Administrator or Application Administrator permissions:`n" -ForegroundColor White
+    Write-DeployLog -Level Info -Message "PowerShell Script Signatures:"
+    Write-DeployLog -Level Info -Message "If you prefer to run the setup scripts, use these commands in a separate"
+    Write-DeployLog -Level Info -Message "PowerShell session with Global Administrator or Application Administrator permissions:`n"
 
-    Write-Host "   ⚠️  IMPORTANT: Install Required Modules First!" -ForegroundColor Yellow
-    Write-Host "   Before running any of the setup scripts below, you must first install the required" -ForegroundColor White
-    Write-Host "   PowerShell modules. Run these commands in your PowerShell session:`n" -ForegroundColor White
+    Write-DeployLog -Level Warn -Message "IMPORTANT: Install Required Modules First!"
+    Write-DeployLog -Level Info -Message "Before running any of the setup scripts below, you must first install the required"
+    Write-DeployLog -Level Info -Message "PowerShell modules. Run these commands in your PowerShell session:`n"
 
-    Write-Host "   # Install Required Modules" -ForegroundColor Magenta
-    Write-Host "   . `"$ScriptsDirectory/Install-AzModuleIfNeeded.ps1`"" -ForegroundColor Gray
-    Write-Host "   Install-AzModuleIfNeeded" -ForegroundColor Gray
-    Write-Host "" -ForegroundColor Gray
-    Write-Host "   . `"$ScriptsDirectory/Install-ModuleIfNeeded.ps1`"" -ForegroundColor Gray
-    Write-Host "   Install-ModuleIfNeeded -Name `"Microsoft.Graph.Authentication`" -Version `"2.17.0`"" -ForegroundColor Gray
-    Write-Host "   Install-ModuleIfNeeded -Name `"Microsoft.Graph.Applications`" -Version `"2.17.0`"" -ForegroundColor Gray
-    Write-Host "   Install-ModuleIfNeeded -Name `"Microsoft.Graph.Identity.DirectoryManagement`" -Version `"2.17.0`"" -ForegroundColor Gray
-    Write-Host "   Install-ModuleIfNeeded -Name `"Microsoft.Graph.Users`" -Version `"2.17.0`"" -ForegroundColor Gray
-    Write-Host "" -ForegroundColor Gray
-    Write-Host "   `$global:SkipModuleInstall = `$true`n" -ForegroundColor Gray
+    Write-DeployLog -Level Info -Message "# Install Required Modules"
+    Write-DeployLog -Level Info -Message ". `"$ScriptsDirectory/Install-AzModuleIfNeeded.ps1`""
+    Write-DeployLog -Level Info -Message "Install-AzModuleIfNeeded"
+    Write-DeployLog -Level Info -Message ". `"$ScriptsDirectory/Install-ModuleIfNeeded.ps1`""
+    Write-DeployLog -Level Info -Message "Install-ModuleIfNeeded -Name `"Microsoft.Graph.Authentication`" -Version `"2.17.0`""
+    Write-DeployLog -Level Info -Message "Install-ModuleIfNeeded -Name `"Microsoft.Graph.Applications`" -Version `"2.17.0`""
+    Write-DeployLog -Level Info -Message "Install-ModuleIfNeeded -Name `"Microsoft.Graph.Identity.DirectoryManagement`" -Version `"2.17.0`""
+    Write-DeployLog -Level Info -Message "Install-ModuleIfNeeded -Name `"Microsoft.Graph.Users`" -Version `"2.17.0`""
+    Write-DeployLog -Level Info -Message "`$global:SkipModuleInstall = `$true`n"
 
-    Write-Host "   Once the modules are installed, proceed with the app registration scripts:`n" -ForegroundColor White
+    Write-DeployLog -Level Info -Message "Once the modules are installed, proceed with the app registration scripts:`n"
 
-    Write-Host "   # 1. UI Application" -ForegroundColor Green
-    Write-Host "   . `"$ScriptsDirectory/ApplicationSetupScripts/Set-UIAzureADApplication.ps1`"" -ForegroundColor Gray
-    Write-Host "   Set-UIAzureADApplication ``" -ForegroundColor Gray
-    Write-Host "       -SolutionAbbreviation `"$SolutionAbbreviation`" ``" -ForegroundColor Gray
-    Write-Host "       -EnvironmentAbbreviation `"$EnvironmentAbbreviation`" ``" -ForegroundColor Gray
-    Write-Host "       -AppTenantId `"$DirectoryTenantId`" ``" -ForegroundColor Gray
-    Write-Host "       -SaveToKeyVault `$false ``" -ForegroundColor Gray
-    Write-Host "       -SkipIfApplicationExists `$false ``" -ForegroundColor Gray
-    Write-Host "       -Clean `$false`n" -ForegroundColor Gray
+    Write-DeployLog -Level Success -Message "# 1. UI Application"
+    Write-DeployLog -Level Info -Message ". `"$ScriptsDirectory/ApplicationSetupScripts/Set-UIAzureADApplication.ps1`""
+    Write-DeployLog -Level Info -Message "Set-UIAzureADApplication ``"
+    Write-DeployLog -Level Info -Message "-SolutionAbbreviation `"$SolutionAbbreviation`" ``"
+    Write-DeployLog -Level Info -Message "-EnvironmentAbbreviation `"$EnvironmentAbbreviation`" ``"
+    Write-DeployLog -Level Info -Message "-AppTenantId `"$DirectoryTenantId`" ``"
+    Write-DeployLog -Level Info -Message "-SaveToKeyVault `$false ``"
+    Write-DeployLog -Level Info -Message "-SkipIfApplicationExists `$false ``"
+    Write-DeployLog -Level Info -Message "-Clean `$false`n"
 
-    Write-Host "   # 2. WebAPI Application" -ForegroundColor Green
-    Write-Host "   . `"$ScriptsDirectory/ApplicationSetupScripts/Set-WebApiAzureADApplication.ps1`"" -ForegroundColor Gray
-    Write-Host "   Set-WebApiAzureADApplication ``" -ForegroundColor Gray
-    Write-Host "       -SolutionAbbreviation `"$SolutionAbbreviation`" ``" -ForegroundColor Gray
-    Write-Host "       -EnvironmentAbbreviation `"$EnvironmentAbbreviation`" ``" -ForegroundColor Gray
-    Write-Host "       -AppTenantId `"$DirectoryTenantId`" ``" -ForegroundColor Gray
-    Write-Host "       -SaveToKeyVault `$false ``" -ForegroundColor Gray
-    Write-Host "       -SkipIfApplicationExists `$false ``" -ForegroundColor Gray
-    Write-Host "       -Clean `$false`n" -ForegroundColor Gray
+    Write-DeployLog -Level Success -Message "# 2. WebAPI Application"
+    Write-DeployLog -Level Info -Message ". `"$ScriptsDirectory/ApplicationSetupScripts/Set-WebApiAzureADApplication.ps1`""
+    Write-DeployLog -Level Info -Message "Set-WebApiAzureADApplication ``"
+    Write-DeployLog -Level Info -Message "-SolutionAbbreviation `"$SolutionAbbreviation`" ``"
+    Write-DeployLog -Level Info -Message "-EnvironmentAbbreviation `"$EnvironmentAbbreviation`" ``"
+    Write-DeployLog -Level Info -Message "-AppTenantId `"$DirectoryTenantId`" ``"
+    Write-DeployLog -Level Info -Message "-SaveToKeyVault `$false ``"
+    Write-DeployLog -Level Info -Message "-SkipIfApplicationExists `$false ``"
+    Write-DeployLog -Level Info -Message "-Clean `$false`n"
 
-    Write-Host "   # 3. Graph Application" -ForegroundColor Green
-    Write-Host "   . `"$ScriptsDirectory/ApplicationSetupScripts/Set-GraphCredentialsAzureADApplication.ps1`"" -ForegroundColor Gray
-    Write-Host "   Set-GraphCredentialsAzureADApplication ``" -ForegroundColor Gray
-    Write-Host "       -SolutionAbbreviation `"$SolutionAbbreviation`" ``" -ForegroundColor Gray
-    Write-Host "       -EnvironmentAbbreviation `"$EnvironmentAbbreviation`" ``" -ForegroundColor Gray
-    Write-Host "       -AppTenantId `"$DirectoryTenantId`" ``" -ForegroundColor Gray
-    Write-Host "       -SaveToKeyVault `$false ``" -ForegroundColor Gray
-    Write-Host "       -SkipIfApplicationExists `$false ``" -ForegroundColor Gray
-    Write-Host "       -Clean `$false`n" -ForegroundColor Gray
+    Write-DeployLog -Level Success -Message "# 3. Graph Application"
+    Write-DeployLog -Level Info -Message ". `"$ScriptsDirectory/ApplicationSetupScripts/Set-GraphCredentialsAzureADApplication.ps1`""
+    Write-DeployLog -Level Info -Message "Set-GraphCredentialsAzureADApplication ``"
+    Write-DeployLog -Level Info -Message "-SolutionAbbreviation `"$SolutionAbbreviation`" ``"
+    Write-DeployLog -Level Info -Message "-EnvironmentAbbreviation `"$EnvironmentAbbreviation`" ``"
+    Write-DeployLog -Level Info -Message "-AppTenantId `"$DirectoryTenantId`" ``"
+    Write-DeployLog -Level Info -Message "-SaveToKeyVault `$false ``"
+    Write-DeployLog -Level Info -Message "-SkipIfApplicationExists `$false ``"
+    Write-DeployLog -Level Info -Message "-Clean `$false`n"
 
-    Write-Host "   # 4. Teams Channel Application" -ForegroundColor Green
-    Write-Host "   . `"$ScriptsDirectory/ApplicationSetupScripts/Set-TeamsChannelAzureADApplication.ps1`"" -ForegroundColor Gray
-    Write-Host "   Set-TeamsChannelAzureADApplication ``" -ForegroundColor Gray
-    Write-Host "       -SolutionAbbreviation `"$SolutionAbbreviation`" ``" -ForegroundColor Gray
-    Write-Host "       -EnvironmentAbbreviation `"$EnvironmentAbbreviation`" ``" -ForegroundColor Gray
-    Write-Host "       -AppTenantId `"$DirectoryTenantId`" ``" -ForegroundColor Gray
-    Write-Host "       -SaveToKeyVault `$false ``" -ForegroundColor Gray
-    Write-Host "       -SkipIfApplicationExists `$false ``" -ForegroundColor Gray
-    Write-Host "       -Clean `$false`n" -ForegroundColor Gray
+    Write-DeployLog -Level Success -Message "# 4. Teams Channel Application"
+    Write-DeployLog -Level Info -Message ". `"$ScriptsDirectory/ApplicationSetupScripts/Set-TeamsChannelAzureADApplication.ps1`""
+    Write-DeployLog -Level Info -Message "Set-TeamsChannelAzureADApplication ``"
+    Write-DeployLog -Level Info -Message "-SolutionAbbreviation `"$SolutionAbbreviation`" ``"
+    Write-DeployLog -Level Info -Message "-EnvironmentAbbreviation `"$EnvironmentAbbreviation`" ``"
+    Write-DeployLog -Level Info -Message "-AppTenantId `"$DirectoryTenantId`" ``"
+    Write-DeployLog -Level Info -Message "-SaveToKeyVault `$false ``"
+    Write-DeployLog -Level Info -Message "-SkipIfApplicationExists `$false ``"
+    Write-DeployLog -Level Info -Message "-Clean `$false`n"
 
     if ($EnableFunctionAuthentication) {
-        Write-Host "   # 5. FunctionAuth Application" -ForegroundColor Green
-        Write-Host "   . `"$ScriptsDirectory/ApplicationSetupScripts/Set-FunctionAuthApplication.ps1`"" -ForegroundColor Gray
-        Write-Host "   Set-FunctionAuthApplication ``" -ForegroundColor Gray
-        Write-Host "       -SolutionAbbreviation `"$SolutionAbbreviation`" ``" -ForegroundColor Gray
-        Write-Host "       -EnvironmentAbbreviation `"$EnvironmentAbbreviation`" ``" -ForegroundColor Gray
-        Write-Host "       -AppTenantId `"$DirectoryTenantId`" ``" -ForegroundColor Gray
-        Write-Host "       -SaveToKeyVault `$false ``" -ForegroundColor Gray
-        Write-Host "       -SkipIfApplicationExists `$false ``" -ForegroundColor Gray
-        Write-Host "       -Clean `$false`n" -ForegroundColor Gray
+        Write-DeployLog -Level Success -Message "# 5. FunctionAuth Application"
+        Write-DeployLog -Level Info -Message ". `"$ScriptsDirectory/ApplicationSetupScripts/Set-FunctionAuthApplication.ps1`""
+        Write-DeployLog -Level Info -Message "Set-FunctionAuthApplication ``"
+        Write-DeployLog -Level Info -Message "-SolutionAbbreviation `"$SolutionAbbreviation`" ``"
+        Write-DeployLog -Level Info -Message "-EnvironmentAbbreviation `"$EnvironmentAbbreviation`" ``"
+        Write-DeployLog -Level Info -Message "-AppTenantId `"$DirectoryTenantId`" ``"
+        Write-DeployLog -Level Info -Message "-SaveToKeyVault `$false ``"
+        Write-DeployLog -Level Info -Message "-SkipIfApplicationExists `$false ``"
+        Write-DeployLog -Level Info -Message "-Clean `$false`n"
     }
 
     if ($IsClientSecretAuth -eq $true) {
-        Write-Host "`n═══════════════════════════════════════════════════════════════════════════" -ForegroundColor Cyan
-        Write-Host "🔐 Creating Application Secrets (Client Secret Authentication)" -ForegroundColor Yellow
-        Write-Host "═══════════════════════════════════════════════════════════════════════════" -ForegroundColor Cyan
-        Write-Host ""
-        Write-Host "You need to manually create a client secret for each application registration." -ForegroundColor White
-        Write-Host ""
-        Write-Host "⚠️  IMPORTANT: Save the secret values immediately after creation!" -ForegroundColor Yellow
-        Write-Host "   You will be prompted to input these secrets later in this deployment." -ForegroundColor Yellow
-        Write-Host "   Secret values cannot be retrieved after you navigate away from the creation screen." -ForegroundColor Yellow
-        Write-Host ""
-        Write-Host "📖 Documentation Location:" -ForegroundColor Cyan
-        Write-Host "   $ScriptsDirectory/ApplicationSetupScripts/Manual Setup Documentation" -ForegroundColor Gray
-        Write-Host ""
-        Write-Host "Each application folder contains detailed instructions on creating client secrets." -ForegroundColor White
-        Write-Host ""
+        Write-DeployLog -Level Info -Message "Creating Application Secrets (Client Secret Authentication)"
+        Write-DeployLog -Level Info -Message "You need to manually create a client secret for each application registration."
+        Write-DeployLog -Level Warn -Message "IMPORTANT: Save the secret values immediately after creation!"
+        Write-DeployLog -Level Warn -Message "You will be prompted to input these secrets later in this deployment."
+        Write-DeployLog -Level Warn -Message "Secret values cannot be retrieved after you navigate away from the creation screen."
+        Write-DeployLog -Level Info -Message "Documentation Location:"
+        Write-DeployLog -Level Info -Message "$ScriptsDirectory/ApplicationSetupScripts/Manual Setup Documentation"
+        Write-DeployLog -Level Info -Message "Each application folder contains detailed instructions on creating client secrets."
     }
 
-    Write-Host "═══════════════════════════════════════════════════════════════════════════" -ForegroundColor Yellow
-    Write-Host "`n⏸️  Once you have completed the app registrations setup, press ENTER to continue..." -ForegroundColor Cyan
-    Write-Host "   (The script will validate all app registrations before proceeding)`n" -ForegroundColor Gray
+    Write-DeployLog -Level Info -Message "Once you have completed the app registrations setup, press ENTER to continue..."
+    Write-DeployLog -Level Info -Message "(The script will validate all app registrations before proceeding)`n"
     
     $null = Read-Host
 
-    Write-Host "`n🔍 Validating App Registrations..." -ForegroundColor Cyan
-    Write-Host "═══════════════════════════════════════════════════════════════════════════`n" -ForegroundColor Cyan
+    Write-DeployLog -Level Info -Message "Validating App Registrations..."
 
     # Source the validation scripts
     . ($ScriptsDirectory + '/ApplicationSetupScripts/Set-UIAzureADApplication.ps1')
@@ -2355,26 +2366,24 @@ function Set-GMMAppRegistrationsManually {
         Test-FunctionAuthApplication -SolutionAbbreviation $SolutionAbbreviation -EnvironmentAbbreviation $EnvironmentAbbreviation
     } else { $true }
 
-    Write-Host "`n═══════════════════════════════════════════════════════════════════════════" -ForegroundColor Cyan
-    Write-Host "📊 Validation Summary:" -ForegroundColor Cyan
-    Write-Host "   UI Application:           $(if ($uiValid) { '✅ PASS' } else { '❌ FAIL' })" -ForegroundColor $(if ($uiValid) { 'Green' } else { 'Red' })
-    Write-Host "   WebAPI Application:       $(if ($webApiValid) { '✅ PASS' } else { '❌ FAIL' })" -ForegroundColor $(if ($webApiValid) { 'Green' } else { 'Red' })
-    Write-Host "   Graph Application:        $(if ($graphValid) { '✅ PASS' } else { '❌ FAIL' })" -ForegroundColor $(if ($graphValid) { 'Green' } else { 'Red' })
-    Write-Host "   Teams Channel Application: $(if ($teamsChannelValid) { '✅ PASS' } else { '❌ FAIL' })" -ForegroundColor $(if ($teamsChannelValid) { 'Green' } else { 'Red' })
+    Write-DeployLog -Level Info -Message "Validation Summary:"
+    Write-DeployLog -Level Info -Message "   UI Application:           $(if ($uiValid) { 'PASS' } else { 'FAIL' })"
+    Write-DeployLog -Level Info -Message "   WebAPI Application:       $(if ($webApiValid) { 'PASS' } else { 'FAIL' })"
+    Write-DeployLog -Level Info -Message "   Graph Application:        $(if ($graphValid) { 'PASS' } else { 'FAIL' })"
+    Write-DeployLog -Level Info -Message "   Teams Channel Application: $(if ($teamsChannelValid) { 'PASS' } else { 'FAIL' })"
     if ($EnableFunctionAuthentication) {
-        Write-Host "   FunctionAuth Application: $(if ($functionAuthValid) { '✅ PASS' } else { '❌ FAIL' })" -ForegroundColor $(if ($functionAuthValid) { 'Green' } else { 'Red' })
+        Write-DeployLog -Level Info -Message "   FunctionAuth Application: $(if ($functionAuthValid) { 'PASS' } else { 'FAIL' })"
     } else {
-        Write-Host "   FunctionAuth Application: ⏭️  SKIPPED (enableFunctionAuthentication = false)" -ForegroundColor Gray
+        Write-DeployLog -Level Info -Message "FunctionAuth Application:   SKIPPED (enableFunctionAuthentication = false)"
     }
-    Write-Host "═══════════════════════════════════════════════════════════════════════════`n" -ForegroundColor Cyan
 
     if (-not ($uiValid -and $webApiValid -and $graphValid -and $teamsChannelValid -and $functionAuthValid)) {
-        Write-Host "❌ One or more applications failed validation. Please review the errors above and fix the issues." -ForegroundColor Red
-        Write-Host "   You can re-run the validation by calling the Test-*Application functions individually.`n" -ForegroundColor Yellow
+        Write-DeployLog -Level Error -Message "One or more applications failed validation. Please review the errors above and fix the issues."
+        Write-DeployLog -Level Info -Message "You can re-run the validation by calling the Test-*Application functions individually.`n"
         throw "App registration validation failed. Please fix the issues and try again."
     }
 
-    Write-Host "✅ All app registrations validated successfully!`n" -ForegroundColor Green
+    Write-DeployLog -Level Success -Message "All app registrations validated successfully!`n"
 
     # Retrieve application details to check for admin consent requirements
     $uiApp = Invoke-WithRetry `
@@ -2448,10 +2457,7 @@ function Set-GMMAppRegistrations {
         [boolean] $EnableFunctionAuthentication = $false
     )
 
-    Write-Host "`n╔════════════════════════════════════════════════════════════════════════════╗" -ForegroundColor Cyan
-    Write-Host "║          Creating GMM App Registrations                                    ║" -ForegroundColor Cyan
-    Write-Host "╚════════════════════════════════════════════════════════════════════════════╝" -ForegroundColor Cyan
-
+    Write-DeployPhase -Name 'Creating/Updating App Registrations' -Event Begin
     $appCreationResult = $null
     if ($SkipPrivilegedDirectoryActions -eq $true) {
         # Manual flow - prompt user to create app registrations
@@ -2477,7 +2483,8 @@ function Set-GMMAppRegistrations {
             @skipFunctionAuthAppParam
     }
 
-    Write-Host "✅ App registrations created successfully!`n" -ForegroundColor Green
+    Write-DeployLog -Level Success -Message "App registrations created successfully!`n"
+    Write-DeployPhase -Name 'Creating/Updating App Registrations' -Event End
     return $appCreationResult
 }
 
@@ -2497,32 +2504,30 @@ function Show-ManualRedirectURIInstructions {
     # Construct the direct link to the app registration's Authentication blade
     $portalLink = "https://portal.azure.com/#view/Microsoft_AAD_RegisteredApps/ApplicationMenuBlade/~/Authentication/appId/$UIAppRegistrationId/isMSAApp~/false"
 
-    Write-Host "`n⚠️  MANUAL REDIRECT URI UPDATE REQUIRED" -ForegroundColor Yellow
-    Write-Host "═══════════════════════════════════════════════════════════════════════════" -ForegroundColor Yellow
-    Write-Host "`nThe following redirect URIs need to be added to the UI application:" -ForegroundColor White
-    Write-Host "Application: $SolutionAbbreviation-ui-$EnvironmentAbbreviation" -ForegroundColor Cyan
-    Write-Host "Application (client) ID: $UIAppRegistrationId`n" -ForegroundColor Cyan
+    Write-DeployLog -Level Warn -Message "MANUAL REDIRECT URI UPDATE REQUIRED"
+    Write-DeployLog -Level Info -Message "The following redirect URIs need to be added to the UI application:"
+    Write-DeployLog -Level Info -Message "Application: $SolutionAbbreviation-ui-$EnvironmentAbbreviation"
+    Write-DeployLog -Level Info -Message "Application (client) ID: $UIAppRegistrationId`n"
     
-    Write-Host "🔗 Direct link to app registration:" -ForegroundColor Cyan
-    Write-Host "   $portalLink`n" -ForegroundColor White
+    Write-DeployLog -Level Info -Message "Direct link to app registration:"
+    Write-DeployLog -Level Info -Message "$portalLink`n"
     
-    Write-Host "📋 Redirect URIs to add:" -ForegroundColor Cyan
+    Write-DeployLog -Level Info -Message "Redirect URIs to add:"
     foreach ($uri in $RedirectUris) {
-        Write-Host "   • $uri" -ForegroundColor White
+        Write-DeployLog -Level Info -Message "$uri"
     }
     
-    Write-Host "`n📖 Manual Steps:" -ForegroundColor Cyan
-    Write-Host "   1. Click the direct link above or go to: https://portal.azure.com" -ForegroundColor White
-    Write-Host "   2. If using the portal link directly:" -ForegroundColor White
-    Write-Host "      - Navigate to Microsoft Entra ID > App registrations" -ForegroundColor White
-    Write-Host "      - Find and select: $SolutionAbbreviation-ui-$EnvironmentAbbreviation" -ForegroundColor White
-    Write-Host "      - Go to 'Authentication' in the left menu" -ForegroundColor White
-    Write-Host "   3. Under 'Single-page application', click 'Add URI'" -ForegroundColor White
-    Write-Host "   4. Add each of the redirect URIs listed above" -ForegroundColor White
-    Write-Host "   5. Click 'Save' at the top of the page`n" -ForegroundColor White
+    Write-DeployLog -Level Info -Message "Manual Steps:"
+    Write-DeployLog -Level Info -Message "1. Click the direct link above or go to: https://portal.azure.com"
+    Write-DeployLog -Level Info -Message "2. If using the portal link directly:"
+    Write-DeployLog -Level Info -Message "- Navigate to Microsoft Entra ID > App registrations"
+    Write-DeployLog -Level Info -Message "- Find and select: $SolutionAbbreviation-ui-$EnvironmentAbbreviation"
+    Write-DeployLog -Level Info -Message "- Go to 'Authentication' in the left menu"
+    Write-DeployLog -Level Info -Message "3. Under 'Single-page application', click 'Add URI'"
+    Write-DeployLog -Level Info -Message "4. Add each of the redirect URIs listed above"
+    Write-DeployLog -Level Info -Message "5. Click 'Save' at the top of the page`n"
     
-    Write-Host "═══════════════════════════════════════════════════════════════════════════" -ForegroundColor Yellow
-    Write-Host "⏸️  Press ENTER once you have added the redirect URIs..." -ForegroundColor Cyan
+    Write-DeployLog -Level Info -Message "Press ENTER once you have added the redirect URIs..."
     $null = Read-Host
 }
 
@@ -2544,8 +2549,7 @@ function Set-ConfigureWebApps {
         [boolean]$SkipPrivilegedDirectoryActions        
     )
 
-    Write-Host "`n🔧 Configuring Web Apps and App Registrations for CORS..." -ForegroundColor Cyan
-
+    Write-DeployPhase -Name 'Configuring CORS' -Event Begin
     $computeResourceGroup = "$SolutionAbbreviation-compute-$EnvironmentAbbreviation"
     $webApiName = "$SolutionAbbreviation-compute-$EnvironmentAbbreviation-webapi"
     $uiWebAppName = if ([string]::IsNullOrWhiteSpace($StaticWebAppName)) { "$SolutionAbbreviation-ui" } else { $StaticWebAppName }
@@ -2579,7 +2583,7 @@ function Set-ConfigureWebApps {
             -Name "$computeResourceGroup-signalr" `
             -AllowedOrigin $allowedOrigins
 
-        Write-Host "✅ SignalR service CORS settings updated successfully" -ForegroundColor Green
+        Write-DeployLog -Level Success -Message "SignalR service CORS settings updated successfully"
     }
     catch {
         Write-Output "Unable to update SignalR service CORS settings."
@@ -2628,15 +2632,15 @@ function Set-ConfigureWebApps {
             -OperationName "Update WebAPI CORS settings" `
             -MaxAttempts 3 -BaseDelaySeconds 2
 
-        Write-Host "✅ WebAPI CORS settings updated successfully" -ForegroundColor Green
+        Write-DeployLog -Level Success -Message "WebAPI CORS settings updated successfully"
     }
     else {
-        Write-Host "No new CORS origins to add to WebAPI" -ForegroundColor Gray
+        Write-DeployLog -Level Info -Message "No new CORS origins to add to WebAPI"
     }
 
     # Retrieve UI App Registration ID from Key Vault if not provided
     if ([string]::IsNullOrWhiteSpace($UIAppRegistrationId)) {
-        Write-Host "UI App Registration ID not provided. Retrieving from Key Vault..." -ForegroundColor Yellow
+        Write-DeployLog -Level Info -Message "UI App Registration ID not provided. Retrieving from Key Vault..."
         $UIAppRegistrationId = Get-KeyVaultSecretWithFirewallRetry `
             -ResourceGroup "$SolutionAbbreviation-prereqs-$EnvironmentAbbreviation" `
             -VaultName "$SolutionAbbreviation-prereqs-$EnvironmentAbbreviation" `
@@ -2647,7 +2651,7 @@ function Set-ConfigureWebApps {
             Write-Error "Unable to retrieve UI App Registration ID from Key Vault"
             return
         }
-        Write-Host "  ✓ Retrieved UI App ID: $UIAppRegistrationId" -ForegroundColor Gray
+        Write-DeployLog -Level Info -Message "Retrieved UI App ID: $UIAppRegistrationId"
     }
 
     $uiApp = Get-MgApplication -Filter "appId eq '$UIAppRegistrationId'"
@@ -2676,13 +2680,14 @@ function Set-ConfigureWebApps {
         }
         else {
             # Automated mode - update via Microsoft Graph
-            Write-Host "Updating UI application redirect URIs..." -ForegroundColor Yellow
+            Write-DeployLog -Level Info -Message "Updating UI application redirect URIs..."
             Update-MgApplication `
                 -ApplicationId $uiApp.Id `
                 -Spa @{ RedirectUris = $newRedirectUris }
-            Write-Host "✅ Redirect URIs updated successfully" -ForegroundColor Green
+            Write-DeployLog -Level Success -Message "Redirect URIs updated successfully"
         }
     }
+    Write-DeployPhase -Name 'Configuring CORS' -Event End
 }
 function Set-PublishUICode {
     param (
@@ -2718,7 +2723,8 @@ function Set-PublishUICode {
 
     $resolvedStaticWebAppName = if ([string]::IsNullOrWhiteSpace($StaticWebAppName)) { "$SolutionAbbreviation-ui" } else { $StaticWebAppName }
 
-    Write-Host "Publishing UI code to Azure Static Web App '$resolvedStaticWebAppName'..." -ForegroundColor Yellow
+    Write-DeployPhase -Name 'Publishing UI' -Event Begin
+    Write-DeployLog -Level Info -Message "Publishing UI code to Azure Static Web App '$resolvedStaticWebAppName'..."
 
     $dataResourceGroup = "$SolutionAbbreviation-data-$EnvironmentAbbreviation"
     $computeResourceGroup = "$SolutionAbbreviation-compute-$EnvironmentAbbreviation"
@@ -2752,7 +2758,7 @@ function Set-PublishUICode {
     $appVersion = ''
     if (Test-Path -Path $appVersionFilePath) {
         $appVersion = Get-Content -Path $appVersionFilePath
-        Write-Host "App version (from appVersion.txt): $appVersion"
+        Write-DeployLog -Level Info -Message "App version (from appVersion.txt): $appVersion"
     }
 
     $envContent = "REACT_APP_AAD_UI_APP_CLIENT_ID=$UIAppClientId`n"
@@ -2789,7 +2795,7 @@ function Set-PublishUICode {
         # proxy the signature ("Refusing to run pnpm@x: its npm registry signature could
         # not be verified"), silently producing no build output.
         if (-not (Test-Path "build")) {
-            Write-Host "Build directory not found. Restoring dependencies and building UI from source..." -ForegroundColor Yellow
+            Write-DeployLog -Level Warn -Message "Build directory not found. Restoring dependencies and building UI from source..."
 
             $packageJson = Get-Content -Path "package.json" -Raw | ConvertFrom-Json
             $packageManager = $packageJson.packageManager
@@ -2798,7 +2804,7 @@ function Set-PublishUICode {
             }
             # Strip any '+sha512...' integrity suffix, leaving e.g. 'pnpm@10.34.4'.
             $pnpmSpec = ($packageManager -split '\+')[0]
-            Write-Host "Using pinned package manager: $pnpmSpec" -ForegroundColor Yellow
+            Write-DeployLog -Level Info -Message "Using pinned package manager: $pnpmSpec"
 
             npx --yes $pnpmSpec install --frozen-lockfile
             if ($LASTEXITCODE -ne 0) {
@@ -2818,7 +2824,7 @@ function Set-PublishUICode {
         swa deploy "build" --env "Production" -n $webAppName -R $computeResourceGroup --deployment-token $webAppDeploymentToken
 
         # Verify deployment actually landed
-        Write-Host "🔍 Verifying UI deployment..." -ForegroundColor Yellow
+        Write-DeployLog -Level Info -Message "Verifying UI deployment..."
         $buildAssetsDir = "$WebAppDirectory/build/assets"
         $expectedJsFile = if (Test-Path $buildAssetsDir) {
             # NOTE: This "index-*.js" pattern assumes Vite/Rollup's current default asset
@@ -2831,7 +2837,7 @@ function Set-PublishUICode {
         if (-not $expectedJsFile) {
             throw "No index-*.js found in build/assets after build — the UI bundle was not produced. The UI was NOT deployed."
         } else {
-            Write-Host "   Expected asset: $($expectedJsFile.Name)" -ForegroundColor Yellow
+            Write-DeployLog -Level Info -Message "Expected asset: $($expectedJsFile.Name)"
 
             $staticWebApp = Invoke-WithRetry `
                 -Operation { Get-AzStaticWebApp -Name $webAppName -ResourceGroupName $computeResourceGroup } `
@@ -2846,91 +2852,93 @@ function Set-PublishUICode {
 
             for ($attempt = 1; $attempt -le $maxVerifyAttempts; $attempt++) {
                 if ($attempt -gt 1) {
-                    Write-Host "   Waiting ${verifyDelaySeconds}s for CDN propagation (attempt $attempt/$maxVerifyAttempts)..." -ForegroundColor Yellow
+                    Write-DeployLog -Level Info -Message "Waiting ${verifyDelaySeconds}s for CDN propagation (attempt $attempt/$maxVerifyAttempts)..."
                     Start-Sleep -Seconds $verifyDelaySeconds
                 }
 
-                Write-Host "   Checking $swaUrl ..." -ForegroundColor Yellow
+                Write-DeployLog -Level Info -Message "Checking $swaUrl ..."
 
                 try {
                     $response = Invoke-WebRequest -Uri $swaUrl -UseBasicParsing -TimeoutSec 30 -MaximumRedirection 5 -SkipHttpErrorCheck -Headers @{ "Cache-Control" = "no-cache" }
                     if ($response.StatusCode -ne 200) {
-                        Write-Host "⚠ Site returned HTTP $($response.StatusCode) — cannot verify deployment." -ForegroundColor Yellow
+                        Write-DeployLog -Level Warn -Message "Site returned HTTP $($response.StatusCode) - cannot verify deployment."
                         $verified = $true
                         break
                     } elseif ($response.Content -match [regex]::Escape($expectedJsFile.Name)) {
-                        Write-Host "✅ Deployed site references $($expectedJsFile.Name) — deployment verified!" -ForegroundColor Green
+                        Write-DeployLog -Level Success -Message "Deployed site references $($expectedJsFile.Name) - deployment verified!"
                         $verified = $true
                         break
                     } else {
-                        Write-Host "⚠ Deployed site does not yet reference $($expectedJsFile.Name) (attempt $attempt/$maxVerifyAttempts)" -ForegroundColor Yellow
+                        Write-DeployLog -Level Warn -Message "Deployed site does not yet reference $($expectedJsFile.Name) (attempt $attempt/$maxVerifyAttempts)"
                     }
                 } catch {
-                    Write-Host "⚠ Could not reach $swaUrl to verify deployment (attempt $attempt/$maxVerifyAttempts): $_" -ForegroundColor Yellow
+                    Write-DeployLog -Level Warn -Message "Could not reach $swaUrl to verify deployment (attempt $attempt/$maxVerifyAttempts): $_"
                 }
             }
 
             if (-not $verified) {
-                Write-Host "❌ Deployed site does NOT reference $($expectedJsFile.Name) after $maxVerifyAttempts attempts!" -ForegroundColor Red
-                Write-Host "   The SWA CLI reported success but the upload may not have landed." -ForegroundColor Red
-                throw "Deployment verification FAILED — asset hash mismatch. The UI was NOT deployed successfully."
+                Write-DeployLog -Level Error -Message "Deployed site does NOT reference $($expectedJsFile.Name) after $maxVerifyAttempts attempts!"
+                Write-DeployLog -Level Error -Message "The SWA CLI reported success but the upload may not have landed."
+                throw "Deployment verification FAILED - asset hash mismatch. The UI was NOT deployed successfully."
             }
         }
     } finally {
         Set-Location -Path $currentLocation
     }
 
-    Write-Host "✅ UI code published successfully!" -ForegroundColor Green
+    Write-DeployLog -Level Success -Message "UI code published successfully!"
+    Write-DeployPhase -Name 'Publishing UI' -Event End
 }
 
 function Test-ScriptDependencies {
+    Write-DeployPhase -Name 'Verifying Dependencies' -Event Begin
     $dependenciesPresent = $true
     $scriptsDirectory = Split-Path $PSScriptRoot -Parent
 
-    Write-Host "🔍 Checking required dependencies..."
+    Write-DeployLog -Level Info -Message "Checking required dependencies..."
 
     # PowerShell Core
     if ($PSVersionTable.PSEdition -ne "Core") {
         throw "This script requires PowerShell Core (pwsh). Current edition: $($PSVersionTable.PSEdition)"
     } else {
-        Write-Host "✅ Running on PowerShell Core version $($PSVersionTable.PSVersion)" -ForegroundColor Green
+        Write-DeployLog -Level Success -Message "Running on PowerShell Core version $($PSVersionTable.PSVersion)"
     }
 
     # 64-bit
     if (-not [Environment]::Is64BitProcess) {
         throw "This script must be run in a 64-bit PowerShell session."
     } else {
-        Write-Host "✅ Running in a 64-bit PowerShell session." -ForegroundColor Green
+        Write-DeployLog -Level Success -Message "Running in a 64-bit PowerShell session."
     }
 
     # Node.js
     if (-not (Get-Command node -ErrorAction SilentlyContinue)) {
-        Write-Error "❌ Node.js is not installed. Download it from https://nodejs.org/."
+        Write-Error "Node.js is not installed. Download it from https://nodejs.org/."
         $dependenciesPresent = $false
     } else {
-        Write-Host "✅ Node.js $((node -v).Trim()) is installed." -ForegroundColor Green
+        Write-DeployLog -Level Success -Message "Node.js $((node -v).Trim()) is installed."
     }
 
     # npm
     if (-not (Get-Command npm -ErrorAction SilentlyContinue)) {
-        Write-Error "❌ npm is not installed. It should be included with Node.js."
+        Write-Error "npm is not installed. It should be included with Node.js."
         $dependenciesPresent = $false
     } else {
-        Write-Host "✅ npm $((npm -v).Trim()) is installed." -ForegroundColor Green
+        Write-DeployLog -Level Success -Message "npm $((npm -v).Trim()) is installed."
     }
 
     # pnpm
     if (-not (Get-Command pnpm -ErrorAction SilentlyContinue)) {
-        Write-Warning "⚠️ pnpm is not installed. Attempting to install..."
+        Write-Warning "pnpm is not installed. Attempting to install..."
         npm install -g pnpm
 
         if ($LASTEXITCODE -ne 0) {
             throw "pnpm installation failed."
         }
 
-        Write-Host "✅ pnpm installed successfully." -ForegroundColor Green
+        Write-DeployLog -Level Success -Message "pnpm installed successfully."
     } else {
-        Write-Host "✅ pnpm is already installed." -ForegroundColor Green
+        Write-DeployLog -Level Success -Message "pnpm is already installed."
     }
 
     # swa CLI
@@ -2943,13 +2951,13 @@ function Test-ScriptDependencies {
             ForEach-Object { $_.Matches[0].Groups[1].Value })
 
         if ($installedVersion -eq $desiredVersion) {
-            Write-Host "✅ swa version $desiredVersion is already installed." -ForegroundColor Green
+            Write-DeployLog -Level Success -Message "swa version $desiredVersion is already installed."
         } else {
-            Write-Warning "⚠️ swa version is $installedVersion, expected $desiredVersion. Updating..."
+            Write-Warning "swa version is $installedVersion, expected $desiredVersion. Updating..."
             npm install -g @azure/static-web-apps-cli@$desiredVersion
         }
     } else {
-        Write-Host "📦 Installing swa CLI version $desiredVersion..."
+        Write-DeployLog -Level Info -Message "Installing swa CLI version $desiredVersion..."
         npm install -g @azure/static-web-apps-cli@$desiredVersion
     }
 
@@ -2959,7 +2967,7 @@ function Test-ScriptDependencies {
         ForEach-Object { $_.Matches[0].Groups[1].Value })
 
     if ($installedVersion -eq $desiredVersion) {
-        Write-Host "✅ swa version $desiredVersion installed successfully." -ForegroundColor Green
+        Write-DeployLog -Level Success -Message "swa version $desiredVersion installed successfully."
     } else {
         throw "Failed to install swa version $desiredVersion."
     }
@@ -2976,10 +2984,10 @@ function Test-ScriptDependencies {
     foreach ($item in $requiredPaths.GetEnumerator()) {
         $pathType = if ($item.Key -eq "efbundle.exe") { "Leaf" } else { "Container" }
         if (-not (Test-Path -Path $item.Value -PathType $pathType)) {
-            Write-Error "❌ Missing: $($item.Key) at $($item.Value)"
+            Write-Error "Missing: $($item.Key) at $($item.Value)"
             $dependenciesPresent = $false
         } else {
-            Write-Host "✅ Found $($item.Key)." -ForegroundColor Green
+            Write-DeployLog -Level Success -Message "Found $($item.Key)."
         }
     }
 
@@ -2987,7 +2995,8 @@ function Test-ScriptDependencies {
         throw "One or more dependencies are missing. Please resolve them before continuing."
     }
 
-    Write-Host "🎉 All dependencies verified successfully!" -ForegroundColor Green
+    Write-DeployLog -Level Success -Message "All dependencies verified successfully!"
+    Write-DeployPhase -Name 'Verifying Dependencies' -Event End
 }
 
 function Install-RequiredModules {
@@ -2997,28 +3006,21 @@ function Install-RequiredModules {
         [string]$ScriptsDirectory
     )
 
-    Write-Host "`n" -NoNewline
-    Write-Host ("=" * 60) -ForegroundColor Cyan
-    Write-Host "  Installing Required PowerShell Modules" -ForegroundColor Cyan
-    Write-Host ("=" * 60) -ForegroundColor Cyan
-    Write-Host ""
-    Write-Host "  ⏳ This process may take up to 10 minutes depending on" -ForegroundColor Yellow
-    Write-Host "     your network speed and whether modules are cached." -ForegroundColor Yellow
+    Write-DeployPhase -Name 'Installing Required Modules' -Event Begin
+    Write-DeployLog -Level Warn -Message "This may take up to 10 minutes depending on network speed and whether modules are cached."
 
     $totalSteps = 3
     $stopwatch = [System.Diagnostics.Stopwatch]::StartNew()
 
     # Step 1: Install Az modules
-    Write-Host "`n  [1/$totalSteps] " -ForegroundColor Magenta -NoNewline
-    Write-Host "Az Modules" -ForegroundColor White
-    Write-Host "          Installing/Importing..." -ForegroundColor Gray
+    Write-DeployLog -Level Info -Message "[1/$totalSteps] Az Modules"
+    Write-DeployLog -Level Info -Message "Installing/Importing..."
     . ($ScriptsDirectory + '/Install-AzModuleIfNeeded.ps1')
     Install-AzModuleIfNeeded | Out-Null
-    Write-Host "          ✓ Az modules ready" -ForegroundColor Green
+    Write-DeployLog -Level Success -Message "Az modules ready"
 
     # Step 2: Install Microsoft Graph modules
-    Write-Host "`n  [2/$totalSteps] " -ForegroundColor Magenta -NoNewline
-    Write-Host "Microsoft Graph Modules" -ForegroundColor White
+    Write-DeployLog -Level Info -Message "[2/$totalSteps] Microsoft Graph Modules"
     . ($ScriptsDirectory + '/Install-ModuleIfNeeded.ps1')
 
     $requiredGraphModules = @(
@@ -3034,30 +3036,23 @@ function Install-RequiredModules {
     foreach ($module in $requiredGraphModules) {
         $moduleIndex++
         $shortName = $module -replace '^Microsoft\.Graph\.', ''
-        Write-Host "          [$moduleIndex/$totalModules] Installing " -ForegroundColor Gray -NoNewline
-        Write-Host "$shortName" -ForegroundColor White -NoNewline
-        Write-Host " (v2.17.0)..." -ForegroundColor Gray
+        Write-DeployLog -Level Info -Message "[$moduleIndex/$totalModules] Installing $shortName (v2.17.0)..."
         Install-ModuleIfNeeded -Name $module -Version "2.17.0" | Out-Null
-        Write-Host "                 ✓ $shortName ready" -ForegroundColor Green
+        Write-DeployLog -Level Success -Message "$shortName ready"
     }
 
     # Step 3: Install MSIdentityTools
-    Write-Host "`n  [3/$totalSteps] " -ForegroundColor Magenta -NoNewline
-    Write-Host "MSIdentityTools" -ForegroundColor White
-    Write-Host "          Installing " -ForegroundColor Gray -NoNewline
-    Write-Host "MSIdentityTools" -ForegroundColor White -NoNewline
-    Write-Host " (v2.0.52)..." -ForegroundColor Gray
+    Write-DeployLog -Level Info -Message "[3/$totalSteps] MSIdentityTools"
+    Write-DeployLog -Level Info -Message "Installing MSIdentityTools (v2.0.52)..."
     Install-ModuleIfNeeded -Name MSIdentityTools -Version "2.0.52" | Out-Null
-    Write-Host "          ✓ MSIdentityTools ready" -ForegroundColor Green
+    Write-DeployLog -Level Success -Message "MSIdentityTools ready"
 
     $stopwatch.Stop()
     $elapsed = $stopwatch.Elapsed.ToString("mm\:ss")
 
-    Write-Host "`n" -NoNewline
-    Write-Host ("=" * 60) -ForegroundColor Green
-    Write-Host "  ✓ All required modules installed ($elapsed)" -ForegroundColor Green
-    Write-Host ("=" * 60) -ForegroundColor Green
-    Write-Host ""
+    Write-DeployLog -Level Success -Message "All required modules installed ($elapsed)"
+
+    Write-DeployPhase -Name 'Installing Required Modules' -Event End
 }
 
 function Initialize-ScriptDependencies {
@@ -3088,7 +3083,7 @@ function Initialize-ScriptDependencies {
     Test-ScriptDependencies
 
     if ($SkipModuleInstallation -eq $true) {
-        Write-Host "Skipping module installation as per configuration [SkipModuleInstallation = $($SkipModuleInstallation)]." -ForegroundColor Yellow
+        Write-DeployLog -Level Warn -Message "Skipping module installation as per configuration [SkipModuleInstallation = $($SkipModuleInstallation)]."
     } else {
         Install-RequiredModules -ScriptsDirectory $ScriptsDirectory
     }
@@ -3110,24 +3105,25 @@ function Initialize-ScriptDependencies {
     }
 
     if ($SkipAuthentication -eq $true) {
-        Write-Host "Skipped authentication as per configuration [SkipAuthentication = $($SkipAuthentication)]." -ForegroundColor Yellow
+        Write-DeployLog -Level Warn -Message "Skipped authentication as per configuration [SkipAuthentication = $($SkipAuthentication)]."
     }
     else {
-        Write-Host "Disconnecting any existing Microsoft Graph sessions..."
+        Write-DeployPhase -Name 'Authenticating' -Event Begin
+        Write-DeployLog -Level Info -Message "Disconnecting any existing Microsoft Graph sessions..."
         Disconnect-MgGraph -ErrorAction SilentlyContinue | Out-Null
 
         # Connect to Microsoft Graph and Azure
         if ($UseDeviceAuthentication -eq $true) {
-            Write-Host "Connecting to Microsoft Graph using device code authentication..."
+            Write-DeployLog -Level Info -Message "Connecting to Microsoft Graph using device code authentication..."
             Connect-MgGraph -Scopes $requiredScopes -NoWelcome -UseDeviceCode
 
-            Write-Host "Connecting to Azure using device code authentication..."
+            Write-DeployLog -Level Info -Message "Connecting to Azure using device code authentication..."
             Connect-AzAccount -UseDeviceAuthentication
         }
         else {
-            Write-Host "Connecting to Microsoft Graph using interactive authentication..."
+            Write-DeployLog -Level Info -Message "Connecting to Microsoft Graph using interactive authentication..."
             Connect-MgGraph -Scopes $requiredScopes -NoWelcome
-            Write-Host "Connecting to Azure using interactive authentication..."
+            Write-DeployLog -Level Info -Message "Connecting to Azure using interactive authentication..."
             Connect-AzAccount
         }
 
@@ -3135,7 +3131,10 @@ function Initialize-ScriptDependencies {
                 -ScriptsDirectory $ScriptsDirectory `
                 -SubscriptionId $SubscriptionId
 
+        Write-DeployPhase -Name 'Authenticating' -Event End
+
         if ($AssertUserPermissions -eq $true) {
+            Write-DeployPhase -Name 'Verifying Permissions' -Event Begin
             if (-not $SkipPrivilegedDirectoryActions) {
                 . ($ScriptsDirectory + '/Assert-MicrosoftGraphPermissions.ps1')
                 Assert-MicrosoftGraphPermissions
@@ -3145,6 +3144,7 @@ function Initialize-ScriptDependencies {
             Assert-RbacPermissionsForDeployment `
                 -SolutionAbbreviation $SolutionAbbreviation `
                 -EnvironmentAbbreviation $EnvironmentAbbreviation
+            Write-DeployPhase -Name 'Verifying Permissions' -Event End
         }
     }
 }
@@ -3156,7 +3156,7 @@ function Assert-RequiredParameters {
         [hashtable]$ParameterHashtable
     )
 
-    Write-Host "Verifying required parameters are provided..."
+    Write-DeployLog -Level Info -Message "Verifying required parameters are provided..."
 
     foreach ($key in $ParameterHashtable.Keys) {
         $entry = $ParameterHashtable[$key]
@@ -3184,7 +3184,7 @@ function Assert-RequiredParameters {
         throw "Required parameter appConfigurationDataOwners is missing or empty. Please replace `<guid>` with a valid GUID."
     }
 
-    Write-Host "All required parameters are provided." -ForegroundColor Green
+    Write-DeployLog -Level Success -Message "All required parameters are provided."
 }
 
 function Start-EFMigrationViaWebAPI {
@@ -3197,16 +3197,19 @@ function Start-EFMigrationViaWebAPI {
 
     # Call the WebAPI to perform EF migrations. The WebAPI performs EF migrations on startup. Calling any endpoint will trigger the startup process if the app is not already running.
     # The endpoint will always return an error code, so we catch the error and ignore it.
+    Write-DeployPhase -Name 'Running EF Migrations' -Event Begin
     Try{
-        Write-Host "`nInvoking WebAPI to perform EF migrations..."
+        Write-DeployLog -Level Info -Message "Invoking WebAPI to perform EF migrations..."
         Invoke-WebRequest -Uri "https://$SolutionAbbreviation-compute-$EnvironmentAbbreviation-webapi.azurewebsites.net/" | Out-Null
     }
     Catch{
         # Ignore the error
     }
     Finally {
-       Write-Host "WebAPI invocation completed." -ForegroundColor Green
+       Write-DeployLog -Level Success -Message "WebAPI invocation completed."
     }
+
+    Write-DeployPhase -Name 'Running EF Migrations' -Event End
 }
 
 
@@ -3218,22 +3221,32 @@ function Deploy-Resources {
     )
 
     # --- Transcript logging ---
+    # Skip starting a transcript when a parent wrapper (e.g. the private deployment
+    # script) already owns a spanning transcript, signalled via
+    # $global:GmmDeployTranscriptActive. In that case the parent captures this
+    # output and is responsible for Stop-Transcript, so we leave
+    # $transcriptStarted = $false and our finally will not stop the parent's
+    # transcript. For standalone public runs the flag is unset/false and this
+    # behaves exactly as before (public owns its own transcript).
     $transcriptStarted = $false
-    try {
-        $logsDir = Join-Path $PSScriptRoot 'logs'
-        if (-not (Test-Path $logsDir)) {
-            New-Item -ItemType Directory -Path $logsDir -Force | Out-Null
+    if (-not $global:GmmDeployTranscriptActive) {
+        try {
+            $logsDir = Join-Path $PSScriptRoot 'logs'
+            if (-not (Test-Path $logsDir)) {
+                New-Item -ItemType Directory -Path $logsDir -Force | Out-Null
+            }
+            $logTimestamp = Get-Date -Format 'yyyyMMdd-HHmmss'
+            $logPath = Join-Path $logsDir "deploy-$logTimestamp.log"
+            Start-Transcript -Path $logPath -NoClobber
+            $transcriptStarted = $true
+        } catch {
+            Write-Warning "Could not start transcript logging: $_"
         }
-        $logTimestamp = Get-Date -Format 'yyyyMMdd-HHmmss'
-        $logPath = Join-Path $logsDir "deploy-$logTimestamp.log"
-        Start-Transcript -Path $logPath -NoClobber
-        $transcriptStarted = $true
-    } catch {
-        Write-Warning "Could not start transcript logging: $_"
     }
 
     try {
 
+    $global:GmmCurrentDeployPhase = $null
     $global:SkipModuleInstall = $true
     $global:SkipMSGraphLogin = $true
     $global:SkipAzLogin = $true
@@ -3285,7 +3298,9 @@ function Deploy-Resources {
         -SkipAuthentication $skipAuthentication
 
     if (!$skipResourceProvidersCheck) {
+        Write-DeployPhase -Name 'Registering Resource Providers' -Event Begin
         Set-ResourceProviders
+        Write-DeployPhase -Name 'Registering Resource Providers' -Event End
     }
 
     if ($parameterHashtable.skipAppRegistrationSetup.value -ne $true) {
@@ -3300,20 +3315,20 @@ function Deploy-Resources {
                                         -EnableFunctionAuthentication $enableFunctionAuthentication
     }
     else {
-        Write-Host "`nSkipping App Registration setup as per configuration [skipAppRegistrationSetup = $($parameterHashtable.skipAppRegistrationSetup.value)]." -ForegroundColor Yellow
+        Write-DeployLog -Level Warn -Message "Skipping App Registration setup as per configuration [skipAppRegistrationSetup = $($parameterHashtable.skipAppRegistrationSetup.value)]."
     }
 
     if(!$isInitialDeployment) {
 
         . "$scriptsDirectory/GMM-WebAPI-Operations.ps1"
 
-        Write-Host "`nStopping GMM via WebApi Stop endpoint before deployment..." -ForegroundColor Yellow
+        Write-DeployLog -Level Info -Message "Stopping GMM via WebApi Stop endpoint before deployment..."
         if($resetGMMType -eq "Credentials" -or $resetGMMType -eq "ServicePrincipal") {
             Invoke-GMMOperation -OperationName "Stop" -AuthMethod $resetGMMType `
                 -SolutionAbbreviation $solutionAbbreviation `
                 -EnvironmentAbbreviation $environmentAbbreviation
         } else {
-            Write-Host "Skipping pre-deployment stop — resetGMMType is '$resetGMMType'." -ForegroundColor Yellow
+            Write-DeployLog -Level Warn -Message "Skipping pre-deployment stop - resetGMMType is '$resetGMMType'."
         }
 
         $connectionString = Get-KeyVaultSecretWithFirewallRetry `
@@ -3409,7 +3424,7 @@ function Deploy-Resources {
             -SkipPrivilegedDirectoryActions $skipPrivilegedDirectoryActions
     }
     else {
-        Write-Host "`nSkipping Web App configuration as per configuration [skipAppRegistrationSetup = $($parameterHashtable.skipAppRegistrationSetup.value)]." -ForegroundColor Yellow
+        Write-DeployLog -Level Warn -Message "Skipping Web App configuration as per configuration [skipAppRegistrationSetup = $($parameterHashtable.skipAppRegistrationSetup.value)]."
     }
 
     $uiAppClientId = if ($appRegistrationSetupResult -ne $null) { $appRegistrationSetupResult.UIAppId } else { $null }
@@ -3440,46 +3455,57 @@ function Deploy-Resources {
         -ConnectionString $connectionString
 
     if (!$isInitialDeployment -and $resetGMMType -ne "Skip") {
-        Write-Host "`nCalling Reschedule endpoint via WebApi..." -ForegroundColor Yellow
+        Write-DeployLog -Level Info -Message "Calling Reschedule endpoint via WebApi..."
         if ($resetGMMType -eq "Credentials" -or $resetGMMType -eq "ServicePrincipal") {
             Invoke-GMMOperation -OperationName "Reschedule" -AuthMethod $resetGMMType `
                 -SolutionAbbreviation $solutionAbbreviation `
                 -EnvironmentAbbreviation $environmentAbbreviation
         }
-        Write-Host "`nStarting all remaining function apps..." -ForegroundColor Yellow
+        Write-DeployLog -Level Info -Message "Starting all remaining function apps..."
         Start-FunctionApps -ResourceGroupName $computeResourceGroup
     } elseif ($startFunctions) {
         Start-FunctionApps -ResourceGroupName $computeResourceGroup
     }
 
-    Write-Host "`nDeployment complete!" -ForegroundColor Green
+    Write-DeployPhase -Name 'Deployment Complete' -Event Begin
+    Write-DeployLog -Level Success -Message "Deployment complete!"
+    Write-DeployResult -Status SUCCESS
+    Write-DeployPhase -Name 'Deployment Complete' -Event End
 
-    if ($parameterHashtable.skipAppRegistrationSetup -ne $true -and $appRegistrationSetupResult -ne $null -and $appRegistrationSetupResult.AppsThatNeedAdminConsent.Count -gt 0) {
-        Write-Host "`n==========================================================" -ForegroundColor Yellow
-        Write-Host "The following applications might require admin consent:" -ForegroundColor Yellow
-        Write-Host "==========================================================" -ForegroundColor Yellow
+    # Post-success informational output only. Guarded in its own try/catch so a
+    # transient Azure read here cannot reach the outer catch and flip an
+    # already-successful deployment to FAILED (the LAST result marker wins).
+    try {
+        if ($parameterHashtable.skipAppRegistrationSetup -ne $true -and $appRegistrationSetupResult -ne $null -and $appRegistrationSetupResult.AppsThatNeedAdminConsent.Count -gt 0) {
+            Write-DeployLog -Level Warn -Message "The following applications might require admin consent:"
 
-        foreach ($app in $appRegistrationSetupResult.AppsThatNeedAdminConsent) {
-            $consentUrl = "https://portal.azure.com/#view/Microsoft_AAD_RegisteredApps/ApplicationMenuBlade/~/CallAnAPI/appId/$($app.ApplicationId)"
-            Write-Host ("`n{0} - {1}" -f $app.ApplicationName, $consentUrl) -ForegroundColor Cyan
+            foreach ($app in $appRegistrationSetupResult.AppsThatNeedAdminConsent) {
+                $consentUrl = "https://portal.azure.com/#view/Microsoft_AAD_RegisteredApps/ApplicationMenuBlade/~/CallAnAPI/appId/$($app.ApplicationId)"
+                Write-DeployLog -Level Info -Message ("`n{0} - {1}" -f $app.ApplicationName, $consentUrl)
+            }
+
+            Write-DeployLog -Level Warn -Message "Please use the provided URLs to open the Azure portal and grant admin consent for these applications."
         }
 
-        Write-Host "`nPlease use the provided URLs to open the Azure portal and grant admin consent for these applications." -ForegroundColor Yellow
+        Write-Host ""
+        Write-DeployLog -Level Success -Message "Access the GMM UI here:"
+
+
+        $staticWebApp = Invoke-WithRetry `
+            -Operation { Get-AzStaticWebApp -Name "$SolutionAbbreviation-ui" -ResourceGroupName $computeResourceGroup } `
+            -OperationName "Get static web app URL" `
+            -MaxAttempts 3 -BaseDelaySeconds 2
+        if ($null -ne $staticWebApp) {
+            Write-DeployLog -Level Success -Message "https://$($staticWebApp.DefaultHostname)`n"
+        }
+    }
+    catch {
+        Write-DeployLog -Level Warn -Message "Post-deployment info display failed; deployment already succeeded: $_"
     }
 
-    Write-Host "`n`n==========================================================" -ForegroundColor Yellow
-    Write-Host "Access the GMM UI here:" -ForegroundColor Yellow
-    Write-Host "==========================================================" -ForegroundColor Yellow
-
-
-    $staticWebApp = Invoke-WithRetry `
-        -Operation { Get-AzStaticWebApp -Name "$SolutionAbbreviation-ui" -ResourceGroupName $computeResourceGroup } `
-        -OperationName "Get static web app URL" `
-        -MaxAttempts 3 -BaseDelaySeconds 2
-    if ($null -ne $staticWebApp) {
-        Write-Host "`nhttps://$($staticWebApp.DefaultHostname)`n" -ForegroundColor Cyan
-    }
-
+    } catch {
+        Write-DeployResult -Status FAILED -Reason $_.Exception.Message -LastPhase $global:GmmCurrentDeployPhase
+        throw
     } finally {
         if ($transcriptStarted) {
             Stop-Transcript
