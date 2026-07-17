@@ -27,7 +27,6 @@ namespace Repositories.BlobStorage
             DefaultAzureCredential credential = new(DefaultAzureCredential.DefaultEnvironmentVariableName);
 
             _containerClient = new BlobContainerClient(new Uri(containerUrl), credential);
-            _containerClient.CreateIfNotExists();
         }
 
         public async Task DeleteFileAsync(string path)

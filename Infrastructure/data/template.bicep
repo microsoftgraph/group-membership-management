@@ -887,6 +887,7 @@ module jobsStorageAccountTemplate 'storageAccount.bicep' = {
     sku: storageAccountSku
     keyVaultName: keyVaultName
     addJobsStorageAccountPolicies: true
+    membershipContainerName: membershipContainerName
     location: location
   }
   dependsOn: [

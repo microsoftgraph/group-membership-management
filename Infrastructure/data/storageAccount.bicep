@@ -14,8 +14,12 @@ param keyVaultName string
 ])
 param sku string = 'Standard_LRS'
 
-@description('Key vault name.')
+@description('When true, adds lifecycle management policies for the jobs storage account.')
 param addJobsStorageAccountPolicies bool = false
+
+@description('Name of the membership blob container created for the jobs storage account.')
+@minLength(1)
+param membershipContainerName string
 
 @description('Specifies the Azure location where the storage account will be created.')
 param location string
@@ -36,6 +40,13 @@ resource storageAccount 'Microsoft.Storage/storageAccounts@2019-04-01' = {
   }
   identity: {
     type: 'SystemAssigned'
+  }
+}
+
+resource membershipContainer 'Microsoft.Storage/storageAccounts/blobServices/containers@2022-05-01' = {
+  name: '${storageAccount.name}/default/${membershipContainerName}'
+  properties: {
+    publicAccess: 'None'
   }
 }
 
