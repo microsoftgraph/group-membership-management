@@ -409,34 +409,39 @@ function Start-ResourceDeployment {
         }
 
         if ($provisioningState -ne "Succeeded") {
-            Write-DeployLog -Level Info -Message "Deployment failed. Final state: $provisioningState"
-
-            # Log top-level error
-            if ($statusResponse.properties.error) {
-                Write-DeployLog -Level Info -Message "Top-Level Error details:"
-                Write-DeployLog -Level Info -Message "Error Code: $($statusResponse.properties.error.code)"
-                Write-DeployLog -Level Info -Message "Error Message: $($statusResponse.properties.error.message)"
-                Write-DeployError -Category 'ARM Deployment' -Message "$($statusResponse.properties.error.code): $($statusResponse.properties.error.message)"
-            }
-
-            # Fetch deployment operations
             $opsUri = "$baseUri/operations?api-version=2025-03-01"
-            $opsResponse = Invoke-RestMethod -Uri $opsUri -Method Get -Headers $headers
+            $failedOps = @((Invoke-RestMethod -Uri $opsUri -Method Get -Headers $headers).value |
+                Where-Object { $_.properties.provisioningState -eq 'Failed' })
 
-            $opsResponse.value | Where-Object { $_.properties.provisioningState -eq 'Failed' } | ForEach-Object {
-                Write-DeployLog -Level Info -Message "Failed operation: $($_.properties.targetResource.resourceName)"
-                Write-DeployLog -Level Info -Message "- Type: $($_.properties.targetResource.resourceType)"
-                Write-DeployLog -Level Info -Message "- Status: $($_.properties.provisioningState)"
-                Write-DeployLog -Level Info -Message "- Error: $($_.properties.statusMessage.error.message)"
-                Write-DeployError -Category 'ARM Operation' -Message "$($_.properties.targetResource.resourceName): $($_.properties.statusMessage.error.message)"
-                $_.properties.statusMessage.error.details | ForEach-Object {
-                    Write-DeployLog -Level Info -Message "- Error Detail:"
-                    Write-DeployLog -Level Info -Message "- Code: $($_.code)"
-                    Write-DeployLog -Level Info -Message "- Message: $($_.message)"
+            if ($failedOps.Count -gt 0) {
+                foreach ($op in $failedOps) {
+                    $resource = $op.properties.targetResource.resourceName
+                    $type     = $op.properties.targetResource.resourceType
+                    $cause    = $op.properties.statusMessage.error.message
+
+                    $detail = $op.properties.statusMessage.error.details |
+                        Where-Object { $_.message -and $_.message -ne $cause } | Select-Object -First 1
+                    if ($detail) {
+                        $code = if ($detail.code) { "$($detail.code): " } else { "" }
+                        $cause = "$cause ($code$($detail.message))"
+                    }
+
+                    Write-DeployError -Category 'ARM Operation' -Message "$resource [$type]: $cause"
                 }
             }
+            elseif ($statusResponse.properties.error) {
+                Write-DeployError -Category 'ARM Deployment' -Message "$($statusResponse.properties.error.code): $($statusResponse.properties.error.message)"
+            }
+            else {
+                Write-DeployError -Category 'ARM Deployment' -Message "Deployment reached terminal state '$provisioningState' with no error detail."
+            }
 
-            Write-DeployError -Category 'ARM Deployment' -Message "Deployment failed. Final state: $provisioningState"
+            # Deep-link to this deployment's details blade; $baseUri is the deployment's
+            # ARM resource id under the management endpoint.
+            $deploymentResourceId = $baseUri -replace '^https://management\.azure\.com', ''
+            $portalDeploymentUrl = "https://portal.azure.com/#blade/HubsExtension/DeploymentDetailsBlade/id/$([uri]::EscapeDataString($deploymentResourceId))"
+            Write-DeployLog -Level Info -Message "Investigate in the Azure Portal: $portalDeploymentUrl"
+
             throw "Deployment failed. See logs above."
         }
 
@@ -444,7 +449,11 @@ function Start-ResourceDeployment {
         return $statusResponse
     }
     catch {
-        Write-DeployError -Category 'Deployment' -Message "Deployment failed unexpectedly: $_"
+        # The failure branch above already logged structured errors before throwing
+        # this sentinel; only log genuinely unexpected exceptions here.
+        if ($_.Exception.Message -ne 'Deployment failed. See logs above.') {
+            Write-DeployError -Category 'Deployment' -Message "Deployment failed unexpectedly: $_"
+        }
         throw
     }
     finally {
