@@ -469,6 +469,8 @@ export const strings: IStrings = {
       resolveError: 'Se produjo un error. Por favor, inténtelo de nuevo.',
       ThresholdExceededActionDialog: {
         title: 'Umbral excedido',
+        alreadyResolvedMessage: 'Esta alerta de umbral ya fue resuelta por {0} el {1}. No se requiere ninguna acción adicional.',
+        alreadyResolvedMessageNoActor: 'Esta alerta de umbral ya ha sido resuelta. No se requiere ninguna acción adicional.',
         gracePeriodMessage: 'Tiene hasta el {0} para tomar acción. Después de eso, se eliminará la afiliación de este grupo con GMM.',
         bodyLeadIncrease: 'Esta membresía {0} porque se {1} configurado. Revise los cambios pendientes a continuación y tome acción para continuar.',
         bodyLeadDecrease: 'Esta membresía {0} porque se {1} configurado. Revise los cambios pendientes a continuación y tome acción para continuar.',

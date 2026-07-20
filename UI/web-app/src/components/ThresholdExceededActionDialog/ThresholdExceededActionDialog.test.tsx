@@ -57,6 +57,8 @@ vi.mock('../../store/hooks', () => ({
             decreaseThresholdSubtitle: 'Pause sync when removals exceed {0}%.',
             editAlertThresholdsButton: 'Edit alert thresholds',
           },
+          alreadyResolvedMessage: 'This threshold alert was already resolved by {0} on {1}. No further action is required.',
+          alreadyResolvedMessageNoActor: 'This threshold alert has already been resolved. No further action is required.',
         },
       },
     },
@@ -298,6 +300,40 @@ describe('ThresholdExceededActionDialogBase', () => {
     render(<ThresholdExceededActionDialogBase {...defaultProps} isEditAlertThresholdsEnabled={false} />);
     expandDisclosure();
     expect(screen.getByRole('button', { name: 'Edit alert thresholds' })).toBeDisabled();
+  });
+
+  // jsdom doesn't render <MessageBar> text, so assert the severity class + action gating instead.
+  it('renders the green success already-resolved MessageBar when isResolved with a known resolver', () => {
+    render(
+      <ThresholdExceededActionDialogBase
+        {...defaultProps}
+        isResolved={true}
+        resolvedBy="alice@contoso.com"
+        resolvedTime="2026-06-01T00:00:00Z"
+      />
+    );
+    expect(document.querySelector('.ms-MessageBar--success')).toBeInTheDocument();
+  });
+
+  it('renders the green success already-resolved MessageBar when isResolved even without a known resolver', () => {
+    render(<ThresholdExceededActionDialogBase {...defaultProps} isResolved={true} />);
+    expect(document.querySelector('.ms-MessageBar--success')).toBeInTheDocument();
+  });
+
+  it('does not render the success already-resolved MessageBar when isResolved is false', () => {
+    render(<ThresholdExceededActionDialogBase {...defaultProps} />);
+    expect(document.querySelector('.ms-MessageBar--success')).not.toBeInTheDocument();
+  });
+
+  it('disables the Apply changes button when isResolved even if isApplyChangesEnabled is true', () => {
+    render(<ThresholdExceededActionDialogBase {...defaultProps} isApplyChangesEnabled={true} isResolved={true} />);
+    expect(screen.getByRole('button', { name: 'Apply changes' })).toBeDisabled();
+  });
+
+  it('suppresses the yellow grace-period MessageBar when isResolved even if purgeDate is supplied', () => {
+    render(<ThresholdExceededActionDialogBase {...defaultProps} isResolved={true} purgeDate="2026-06-01T00:00:00Z" />);
+    expect(document.querySelector('.ms-MessageBar--success')).toBeInTheDocument();
+    expect(document.querySelector('.ms-MessageBar--warning')).not.toBeInTheDocument();
   });
 });
 

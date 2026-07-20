@@ -16,6 +16,10 @@ namespace Services.Messages.Responses
         public double ChangePercentageForRemovals { get; set; }
         public int ThresholdPercentageForRemovals { get; set; }
         public DateTime? PurgeDate { get; set; }
+        public bool IsResolved { get; set; }
+        public string? ResolvedBy { get; set; }
+        public DateTime? ResolvedTime { get; set; }
+        public string? Resolution { get; set; }
         public HttpStatusCode StatusCode { get; set; }
     }
 }

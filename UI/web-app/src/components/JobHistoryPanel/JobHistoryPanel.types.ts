@@ -83,4 +83,6 @@ export interface IJobHistoryPanelProps extends React.AllHTMLAttributes<HTMLEleme
     jobId: string;
     onEditThreshold?: (thresholdData: { additionsExceeded: boolean; removalsExceeded: boolean }) => void;
     onEditRules?: () => void;
+    /** Auto-open the latest threshold-exceeded run's take-action panel (email deep link). */
+    autoOpenThresholdAction?: boolean;
 };

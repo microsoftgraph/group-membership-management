@@ -56,6 +56,16 @@ namespace Repositories.NotificationsRepository
             return null;
         }
 
+        public async Task<ModelNotification?> GetLatestThresholdNotificationBySyncJobIdAsync(Guid syncJobId)
+        {
+            var queryResult = await _readContext.ThresholdNotifications
+                                .Where(n => n.SyncJobId == syncJobId)
+                                .OrderByDescending(n => n.CreatedTime)
+                                .FirstOrDefaultAsync();
+
+            return queryResult != null ? ToModel(queryResult) : null;
+        }
+
         public async Task SaveNotificationAsync(ModelNotification notification)
         {
             var entityNotification = ToEntity(notification);

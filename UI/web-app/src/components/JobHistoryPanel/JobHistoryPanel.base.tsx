@@ -97,7 +97,7 @@ const RUN_EXPLANATION_FALLBACK = 'The specific reason could not be determined fr
 export const JobHistoryPanelBase: React.FunctionComponent<IJobHistoryPanelProps> = (
     props: IJobHistoryPanelProps
 ) => {
-    const { className, styles, isOpen, dismissPanel, jobId, onEditThreshold, onEditRules } = props;
+    const { className, styles, isOpen, dismissPanel, jobId, onEditThreshold, onEditRules, autoOpenThresholdAction } = props;
     const strings = useStrings();
     const theme = useTheme();
     const dispatch = useDispatch<AppDispatch>();
@@ -1345,6 +1345,19 @@ export const JobHistoryPanelBase: React.FunctionComponent<IJobHistoryPanelProps>
         setResolveError(null);
     };
 
+    // Auto-open the latest threshold-exceeded run's take-action panel once.
+    const hasAutoOpenedThresholdActionRef = useRef(false);
+    useEffect(() => {
+        if (!autoOpenThresholdAction || hasAutoOpenedThresholdActionRef.current) return;
+        if (!isOpen || isHistoryLoading || !mostRecentThresholdRunId) return;
+
+        const thresholdRun = syncHistoryItems.find((item) => item.runId === mostRecentThresholdRunId);
+        if (!thresholdRun) return;
+
+        hasAutoOpenedThresholdActionRef.current = true;
+        handleTakeAction(thresholdRun);
+    }, [autoOpenThresholdAction, isOpen, isHistoryLoading, mostRecentThresholdRunId, syncHistoryItems, handleTakeAction]);
+
     const eventTypeFilterOptions: IDropdownOption[] = [
         { key: 'all', text: strings.JobDetails.Panel.eventTypeAllOption },
         { key: 'configuration', text: strings.JobDetails.Panel.eventTypeConfigurationOption },
@@ -1777,10 +1790,13 @@ export const JobHistoryPanelBase: React.FunctionComponent<IJobHistoryPanelProps>
                         dismissPanel();
                         onEditThreshold({ additionsExceeded, removalsExceeded });
                     } : () => {}}
-                    isApplyChangesEnabled={!!thresholdData?.notificationId}
+                    isApplyChangesEnabled={!!thresholdData?.notificationId && !thresholdData?.isResolved}
                     isEditAlertThresholdsEnabled={!!onEditThreshold}
                     errorMessage={resolveError ?? undefined}
                     purgeDate={thresholdData?.purgeDate}
+                    isResolved={!!thresholdData?.isResolved}
+                    resolvedBy={thresholdData?.resolvedBy}
+                    resolvedTime={thresholdData?.resolvedTime}
                     aiDescription={isAIRunExplanationEnabled && takeActionItem?.runId && runExplanationCache.get(takeActionItem.runId) !== RUN_EXPLANATION_FALLBACK ? runExplanationCache.get(takeActionItem.runId) : undefined}
                     isAiDescriptionLoading={isAIRunExplanationEnabled && !!takeActionItem?.runId && runExplanationLoading.has(takeActionItem.runId)}
                     aiDescriptionError={isAIRunExplanationEnabled && !!takeActionItem?.runId && runExplanationErrors.has(takeActionItem.runId)}

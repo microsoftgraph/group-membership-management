@@ -99,6 +99,9 @@ const strings = {
       resolveError: 'Resolve error',
       adfRunIdColumnLabel: 'ADF Run ID',
       takeActionDisabledTooltip: 'A message has been added for this run. No action is needed.',
+      ThresholdExceededActionDialog: {
+        title: 'Threshold exceeded',
+      },
     },
   },
 } as const;
@@ -1141,5 +1144,59 @@ describe('JobHistoryPanelBase custom ADF run messages', () => {
 
     const takeActionButton = await screen.findByText(strings.JobDetails.Panel.reviewAndTakeAction);
     expect(takeActionButton).toBeEnabled();
+  });
+});
+
+describe('JobHistoryPanelBase email deep-link auto-open (FR-002)', () => {
+  it('auto-opens the take-action surface once for the most recent ThresholdExceeded run when autoOpenThresholdAction is set', async () => {
+    mockSyncHistoryItems = [
+      {
+        ...buildSyncHistoryItem('run-threshold-old', '2024-05-01T00:00:00Z', 3, 0),
+        status: RunHistoryStatus.ThresholdExceeded,
+      },
+      {
+        ...buildSyncHistoryItem('run-threshold-latest', '2024-05-02T00:00:00Z', 5, 0),
+        status: RunHistoryStatus.ThresholdExceeded,
+      },
+    ];
+
+    await act(async () => {
+      render(<JobHistoryPanelBase {...defaultProps} autoOpenThresholdAction />);
+      await Promise.resolve();
+    });
+
+    // fetchThresholdNotification fires exactly once, proving the panel auto-opened and the ref guard held.
+    await waitFor(() => {
+      expect(fetchThresholdNotificationMock).toHaveBeenCalledWith('job-1');
+    });
+    expect(fetchThresholdNotificationMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not auto-open when no ThresholdExceeded run exists', async () => {
+    await act(async () => {
+      render(<JobHistoryPanelBase {...defaultProps} autoOpenThresholdAction />);
+      await Promise.resolve();
+    });
+
+    await waitFor(() => {
+      expect(fetchSyncJobHistoryMock).toHaveBeenCalled();
+    });
+    expect(fetchThresholdNotificationMock).not.toHaveBeenCalled();
+  });
+
+  it('does not auto-open when autoOpenThresholdAction is not set even if a ThresholdExceeded run exists', async () => {
+    mockSyncHistoryItems = [
+      {
+        ...buildSyncHistoryItem('run-threshold', '2024-05-02T00:00:00Z', 3, 0),
+        status: RunHistoryStatus.ThresholdExceeded,
+      },
+    ];
+
+    await renderPanel();
+
+    await waitFor(() => {
+      expect(fetchSyncJobHistoryMock).toHaveBeenCalled();
+    });
+    expect(fetchThresholdNotificationMock).not.toHaveBeenCalled();
   });
 });

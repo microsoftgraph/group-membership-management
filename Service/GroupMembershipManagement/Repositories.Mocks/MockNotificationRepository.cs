@@ -29,6 +29,15 @@ namespace Repositories.Mocks
             return await Task.FromResult(thresholdNotification);
         }
 
+        public async Task<ThresholdNotification> GetLatestThresholdNotificationBySyncJobIdAsync(Guid syncJobId)
+        {
+            var thresholdNotification = ThresholdNotifications
+                .Where(x => x.SyncJobId == syncJobId)
+                .OrderByDescending(x => x.CreatedTime)
+                .FirstOrDefault();
+            return await Task.FromResult(thresholdNotification);
+        }
+
         public IAsyncEnumerable<ThresholdNotification> GetQueuedNotificationsAsync()
         {
             throw new NotImplementedException();

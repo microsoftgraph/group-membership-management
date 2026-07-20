@@ -4,6 +4,7 @@
 using Hosts.WebApi;
 using Microsoft.Extensions.Logging;
 using Models;
+using Models.ThresholdNotifications;
 using Repositories.Contracts;
 using Repositories.Contracts.InjectConfig;
 using Services.Contracts;
@@ -38,6 +39,12 @@ namespace Services
 
                 if (notification == null)
                 {
+                    // No open alert: return the latest (maybe already-resolved) one so the UI can show its resolved state (FR-014).
+                    notification = await _notificationRepository.GetLatestThresholdNotificationBySyncJobIdAsync(request.SyncJobId);
+                }
+
+                if (notification == null)
+                {
                     response.StatusCode = HttpStatusCode.NotFound;
                     return response;
                 }
@@ -50,6 +57,15 @@ namespace Services
                 response.ChangePercentageForRemovals = notification.ChangePercentageForRemovals;
                 response.ThresholdPercentageForRemovals = notification.ThresholdPercentageForRemovals;
                 response.PurgeDate = notification.LastUpdatedTime.AddDays(_handleInactiveJobsConfig.NumberOfDaysBeforePurging);
+
+                response.IsResolved = notification.Status == ThresholdNotificationStatus.Resolved;
+                if (response.IsResolved)
+                {
+                    response.ResolvedBy = notification.ResolvedBy;
+                    response.ResolvedTime = notification.ResolvedTime;
+                    response.Resolution = notification.Resolution.ToString();
+                }
+
                 response.StatusCode = HttpStatusCode.OK;
             }
             catch (Exception ex)

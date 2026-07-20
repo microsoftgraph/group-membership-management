@@ -73,6 +73,9 @@ export interface IThresholdExceededActionDialogProps extends React.AllHTMLAttrib
     isEditAlertThresholdsEnabled?: boolean;
     errorMessage?: string;
     purgeDate?: string;
+    isResolved?: boolean;
+    resolvedBy?: string;
+    resolvedTime?: string;
     aiDescription?: string;
     isAiDescriptionLoading?: boolean;
     aiDescriptionError?: boolean;

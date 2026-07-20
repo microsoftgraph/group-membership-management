@@ -33,7 +33,7 @@ import {
 } from '@fluentui/react/lib/Stack';
 import React, { useEffect, useState } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { InfoLabel } from '../../components/InfoLabel';
 import { PageHeader } from '../../components/PageHeader';
 import { type Job } from '../../models/Job';
@@ -116,6 +116,9 @@ export const JobDetailsBase: React.FunctionComponent<IJobDetailsProps> = (
   const { jobId } = useParams<{ jobId: string }>();
   const { groupId } = useParams<{ groupId: string }>();
   const { channelId } = useParams<{ channelId: string }>();
+  const [searchParams] = useSearchParams();
+  // Capture on mount before the URL-sync effect strips the query.
+  const [shouldAutoOpenThresholdAction] = useState(() => searchParams.get('takeAction') === 'true');
   const dispatch = useDispatch<AppDispatch>();
   const error = useSelector(selectGetJobDetailsError);
   const [showRemoveGMMDialog, setShowRemoveGMMDialog] = useState(false);
@@ -417,6 +420,7 @@ export const JobDetailsBase: React.FunctionComponent<IJobDetailsProps> = (
               jobId={jobId}
               onEditRules={openMembershipConfiguration}
               onEditThreshold={openRunConfiguration}
+              autoOpenThresholdAction={shouldAutoOpenThresholdAction}
             />
           )}
         </>

@@ -13,6 +13,10 @@ namespace Repositories.Contracts
         Task<ThresholdNotification> GetThresholdNotificationByIdAsync(Guid notificationId);
         Task SaveNotificationAsync(ThresholdNotification notification);
         Task<ThresholdNotification> GetThresholdNotificationBySyncJobIdAsync(Guid syncJobId);
+
+        /// <summary>Gets the most recent notification for a sync job (any state) so the UI can show its resolved state.</summary>
+        Task<ThresholdNotification> GetLatestThresholdNotificationBySyncJobIdAsync(Guid syncJobId);
+
         IAsyncEnumerable<ThresholdNotification> GetQueuedNotificationsAsync();
         Task UpdateNotificationStatusAsync(ThresholdNotification notification, ThresholdNotificationStatus status);
     }

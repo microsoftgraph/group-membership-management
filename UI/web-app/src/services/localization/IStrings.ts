@@ -462,6 +462,8 @@ export type IStrings = {
       resolveError: string;
       ThresholdExceededActionDialog: {
         title: string;
+        alreadyResolvedMessage: string;
+        alreadyResolvedMessageNoActor: string;
         gracePeriodMessage: string;
         bodyLeadIncrease: string;
         bodyLeadDecrease: string;
