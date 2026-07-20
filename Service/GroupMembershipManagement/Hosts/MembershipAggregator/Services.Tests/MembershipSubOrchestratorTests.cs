@@ -10,7 +10,6 @@ using Microsoft.ApplicationInsights.Extensibility;
 using Microsoft.DurableTask;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
-using Microsoft.DurableTask.Entities;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Models;
 using Models.Helpers;
@@ -44,7 +43,6 @@ namespace Services.Tests
         private int _numberOfUsersForSourcePart;
         private int _numberOfUsersForSourcePartOne;
         private int _numberOfUsersForSourcePartTwo;
-        private JobTrackerEntity _jobTrackerEntity;
         private int _numberOfUsersForDestinationPart;
         private Dictionary<string, int> _membersPerFile;
         private DeltaCalculatorService _deltaCalculatorService;
@@ -72,7 +70,6 @@ namespace Services.Tests
         private Mock<IServiceBusQueueRepository> _serviceBusQueueRepository;
         private Mock<IServiceBusQueueRepository> _notificationsQueueRepository;
         private Mock<ISyncJobStatusService> _syncJobStatusService;
-        private Mock<TaskOrchestrationEntityFeature> _entityFeature;
 
         [TestInitialize]
         public void SetupTest()
@@ -114,7 +111,6 @@ namespace Services.Tests
             _serviceBusQueueRepository = new Mock<IServiceBusQueueRepository>();
             _notificationsQueueRepository = new Mock<IServiceBusQueueRepository>();
             _syncJobStatusService = new Mock<ISyncJobStatusService>();
-            _entityFeature = new Mock<TaskOrchestrationEntityFeature>();
             _durableContext.Setup(x => x.CurrentUtcDateTime).Returns(() => DateTime.UtcNow);
             _durableContext.Setup(x => x.CreateReplaySafeLogger(It.IsAny<string>())).Returns(NullLogger.Instance);
 
@@ -185,15 +181,6 @@ namespace Services.Tests
                 Name = "groupName"
 
             };
-            _membershipSubOrchestratorRequest = new MembershipSubOrchestratorRequest
-            {
-                EntityId = new EntityInstanceId(),
-                SyncJob = _syncJob,
-                GroupId = targetGroupId,
-                CurrentPart = 1,
-                TotalParts = 2
-            };
-
             _jobState = new JobState
             {
                 CompletedParts = new Dictionary<int, string>
@@ -206,17 +193,15 @@ namespace Services.Tests
                 TotalParts = 3
             };
 
-            _jobTrackerEntity = new JobTrackerEntity();
-            foreach (var kv in _jobState.CompletedParts)
+            _membershipSubOrchestratorRequest = new MembershipSubOrchestratorRequest
             {
-                _jobTrackerEntity.RegisterPartAndCheckComplete(new JobTrackerRegistration
-                {
-                    PartNumber = kv.Key,
-                    TotalParts = _jobState.TotalParts,
-                    FilePath = kv.Value,
-                    IsDestinationPart = kv.Value == _jobState.DestinationPart
-                }).Wait();
-            }
+                SyncJob = _syncJob,
+                GroupId = targetGroupId,
+                CurrentPart = 1,
+                TotalParts = _jobState.TotalParts,
+                CompletedParts = new Dictionary<int, string>(_jobState.CompletedParts),
+                DestinationPart = _jobState.DestinationPart
+            };
 
             _blobStorageRepository.Setup(x => x.DownloadFileAsync(It.Is<string>(x => x.StartsWith("http://file-path"))))
                                     .Callback<string>(path =>
@@ -367,14 +352,6 @@ namespace Services.Tests
 
 			_durableContext.Setup(x => x.CallActivityAsync<SyncJob>(nameof(JobReaderFunction), It.IsAny<JobReaderRequest>(), It.IsAny<TaskOptions>())).ReturnsAsync(() => _syncJob);
 
-            _entityFeature.Setup(x => x.CallEntityAsync<JobState>(
-                       It.IsAny<EntityInstanceId>(),
-                       nameof(JobTrackerEntity.GetState),
-                       It.IsAny<object>(),
-                       It.IsAny<CallEntityOptions>()
-                      )).ReturnsAsync(() => _jobState);
-
-            _durableContext.Setup(x => x.Entities).Returns(() => _entityFeature.Object);
         }
 
         [TestMethod]
@@ -391,6 +368,68 @@ namespace Services.Tests
             _blobStorageRepository.Verify(x => x.DownloadFileAsync(It.IsAny<string>()), Times.AtLeast(3));
             _blobStorageRepository.Verify(x => x.UploadFileAsync(It.Is<string>(path => path.Contains("Aggregated")), It.IsAny<string>(), It.IsAny<Dictionary<string, string>>()), Times.Once());
             _syncJobStatusService.Verify(x => x.UpdateJobStatusAsync(It.IsAny<SyncJob>(), It.IsAny<SyncStatus?>(), It.IsAny<SyncJobHistory>(), It.IsAny<string>()), Times.Never());
+        }
+
+        [TestMethod]
+        public async Task MembershipSubOrchestrator_DestinationRegisteredFirst_ProcessesCompleteSnapshot()
+        {
+            _syncJob.LastRunTime = SqlDateTime.MinValue.Value;
+            _membershipSubOrchestratorRequest = new MembershipSubOrchestratorRequest
+            {
+                SyncJob = _syncJob,
+                GroupId = _group.GroupId,
+                CurrentPart = 1,
+                TotalParts = 3,
+                CompletedParts = new Dictionary<int, string>
+                {
+                    { 3, "http://file-path-3" },
+                    { 2, "http://file-path-2" },
+                    { 1, "http://file-path-1" }
+                },
+                DestinationPart = "http://file-path-3"
+            };
+
+            var orchestratorFunction = new MembershipSubOrchestratorFunction(_thresholdConfig.Object, _graphAPIService.Object, _telemetryClient, _multiLaneConfig);
+            var response = await orchestratorFunction.RunMembershipSubOrchestratorFunctionAsync(_durableContext.Object);
+
+            Assert.AreEqual(MembershipDeltaStatus.Ok, response.MembershipDeltaStatus);
+            Assert.IsNotNull(response.FilePath);
+            _blobStorageRepository.Verify(x => x.DownloadFileAsync("http://file-path-1"), Times.Once());
+            _blobStorageRepository.Verify(x => x.DownloadFileAsync("http://file-path-2"), Times.Once());
+            _blobStorageRepository.Verify(x => x.DownloadFileAsync("http://file-path-3"), Times.Once());
+        }
+
+        [TestMethod]
+        public async Task MembershipSubOrchestrator_WithPartialSnapshot_ReturnsErrorWithoutExtraction()
+        {
+            _membershipSubOrchestratorRequest = new MembershipSubOrchestratorRequest
+            {
+                SyncJob = _syncJob,
+                GroupId = _group.GroupId,
+                CurrentPart = 3,
+                TotalParts = 3,
+                CompletedParts = new Dictionary<int, string>
+                {
+                    { 1, "http://file-path-1" },
+                    { 3, "http://file-path-3" }
+                },
+                DestinationPart = "http://file-path-3"
+            };
+
+            var orchestratorFunction = new MembershipSubOrchestratorFunction(_thresholdConfig.Object, _graphAPIService.Object, _telemetryClient, _multiLaneConfig);
+            var response = await orchestratorFunction.RunMembershipSubOrchestratorFunctionAsync(_durableContext.Object);
+
+            Assert.AreEqual(MembershipDeltaStatus.Error, response.MembershipDeltaStatus);
+            _durableContext.Verify(x => x.CallActivityAsync<MembershipExtractionResponse>(
+                nameof(MembershipExtractionFunction),
+                It.IsAny<MembershipExtractionRequest>(),
+                It.IsAny<TaskOptions>()),
+                Times.Never());
+            _durableContext.Verify(x => x.CallActivityAsync<DeltaCalculatorResponse>(
+                nameof(DeltaCalculatorFunction),
+                It.IsAny<DeltaCalculatorRequest>(),
+                It.IsAny<TaskOptions>()),
+                Times.Never());
         }
 
         [TestMethod]
@@ -961,6 +1000,57 @@ namespace Services.Tests
             var response = await orchestratorFunction.RunMembershipSubOrchestratorFunctionAsync(_durableContext.Object);
 
             Assert.AreEqual(MembershipDeltaStatus.Error, response.MembershipDeltaStatus);
+        }
+
+        [TestMethod]
+        public async Task MembershipSubOrchestrator_WithMissingDestinationPath_ReturnsErrorWithoutCallingDelta()
+        {
+            _membershipSubOrchestratorRequest = new MembershipSubOrchestratorRequest
+            {
+                SyncJob = _syncJob,
+                GroupId = _group.GroupId,
+                CurrentPart = 2,
+                TotalParts = 2,
+                CompletedParts = new Dictionary<int, string>
+                {
+                    { 1, "http://file-path-1" },
+                    { 2, "http://file-path-2" }
+                },
+                DestinationPart = "http://file-path-2"
+            };
+
+            _durableContext.Setup(x => x.CallActivityAsync<MembershipExtractionResponse>(
+                nameof(MembershipExtractionFunction),
+                It.IsAny<MembershipExtractionRequest>(),
+                It.IsAny<TaskOptions>()))
+                .ReturnsAsync(new MembershipExtractionResponse
+                {
+                    IsSuccessful = true,
+                    SourceMembershipFilePath = "/source-membership.json",
+                    DestinationMembershipFilePath = null,
+                    SourceMemberCount = 10,
+                    DestinationMemberCount = 0
+                });
+
+            var orchestratorFunction = new MembershipSubOrchestratorFunction(_thresholdConfig.Object, _graphAPIService.Object, _telemetryClient, _multiLaneConfig);
+            var response = await orchestratorFunction.RunMembershipSubOrchestratorFunctionAsync(_durableContext.Object);
+
+            Assert.AreEqual(MembershipDeltaStatus.Error, response.MembershipDeltaStatus);
+            _durableContext.Verify(x => x.CallActivityAsync<MembershipExtractionResponse>(
+                nameof(MembershipExtractionFunction),
+                It.IsAny<MembershipExtractionRequest>(),
+                It.IsAny<TaskOptions>()),
+                Times.Once());
+            _durableContext.Verify(x => x.CallActivityAsync<DeltaCalculatorResponse>(
+                nameof(DeltaCalculatorFunction),
+                It.IsAny<DeltaCalculatorRequest>(),
+                It.IsAny<TaskOptions>()),
+                Times.Never());
+            _durableContext.Verify(x => x.CallActivityAsync(
+                nameof(JobStatusUpdaterFunction),
+                It.Is<JobStatusUpdaterRequest>(request => request.Status == SyncStatus.Error),
+                It.IsAny<TaskOptions>()),
+                Times.Once());
         }
 
         private async Task<MembershipExtractionResponse> CallMembershipExtractionFunctionAsync(MembershipExtractionRequest request)

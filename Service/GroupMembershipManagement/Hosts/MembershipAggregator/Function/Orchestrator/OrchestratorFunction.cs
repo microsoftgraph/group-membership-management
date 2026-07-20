@@ -64,7 +64,7 @@ namespace Hosts.MembershipAggregator
             }
 
             var entityInstanceId = new EntityInstanceId(nameof(JobTrackerEntity), $"{request.SyncJob.Id}_{runId}");
-            var hasSourceCompleted = false;
+            var allPartsCompleted = false;
 
             try
             {
@@ -95,7 +95,7 @@ namespace Hosts.MembershipAggregator
                     nameof(JobTrackerEntity.RegisterPartAndCheckComplete),
                     input: registration);
 
-                hasSourceCompleted = completion.IsComplete;
+                allPartsCompleted = completion.IsComplete;
 
                 logger.PartRegistered(
                     request.SyncJob.Id,
@@ -104,7 +104,7 @@ namespace Hosts.MembershipAggregator
                     completion.TotalParts,
                     completion.IsComplete);
 
-                if (hasSourceCompleted)
+                if (allPartsCompleted)
                 {
                     logger.FunctionStarted(nameof(OrchestratorFunction));
 
@@ -113,11 +113,14 @@ namespace Hosts.MembershipAggregator
                                                                                 nameof(MembershipSubOrchestratorFunction),
                                                                                 new MembershipSubOrchestratorRequest
                                                                                 {
-                                                                                    EntityId = entityInstanceId,
                                                                                     SyncJob = request.SyncJob,
                                                                                     GroupId = groupId,
                                                                                     CurrentPart = currentPart,
-                                                                                    TotalParts = totalParts
+                                                                                    TotalParts = completion.TotalParts,
+                                                                                    CompletedParts = completion.CompletedParts == null
+                                                                                        ? new Dictionary<int, string>()
+                                                                                        : new Dictionary<int, string>(completion.CompletedParts),
+                                                                                    DestinationPart = completion.DestinationPart
                                                                                 }
                                                                             );
 

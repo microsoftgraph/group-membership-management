@@ -1,5 +1,6 @@
 // Copyright(c) Microsoft Corporation.
 // Licensed under the MIT license.
+using System.Collections.Generic;
 using System.Threading.Tasks;
 
 namespace Hosts.MembershipAggregator
@@ -8,8 +9,6 @@ namespace Hosts.MembershipAggregator
     {
         // Atomic register-and-check.
         Task<JobTrackerCompletionResult> RegisterPartAndCheckComplete(JobTrackerRegistration registration);
-
-        Task<JobState> GetState();
     }
 
     public class JobTrackerRegistration
@@ -25,6 +24,7 @@ namespace Hosts.MembershipAggregator
         public bool IsComplete { get; set; }
         public int CompletedCount { get; set; }
         public int TotalParts { get; set; }
+        public Dictionary<int, string> CompletedParts { get; set; } = new Dictionary<int, string>();
+        public string DestinationPart { get; set; }
     }
 }
-

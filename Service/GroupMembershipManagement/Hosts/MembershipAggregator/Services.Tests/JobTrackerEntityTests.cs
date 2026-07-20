@@ -31,7 +31,8 @@ namespace Services.Tests
             {
                 PartNumber = 2,
                 TotalParts = 2,
-                FilePath = "/part2.json"
+                FilePath = "/part2.json",
+                IsDestinationPart = true
             });
 
             Assert.IsFalse(firstHalf.IsComplete, "First part should not signal completion.");
@@ -40,6 +41,47 @@ namespace Services.Tests
             Assert.IsTrue(secondHalf.IsComplete, "Final part should claim completion.");
             Assert.AreEqual(2, secondHalf.CompletedCount);
             Assert.AreEqual(2, secondHalf.TotalParts);
+            Assert.AreEqual(2, secondHalf.CompletedParts.Count);
+            Assert.AreEqual("/part1.json", secondHalf.CompletedParts[1]);
+            Assert.AreEqual("/part2.json", secondHalf.CompletedParts[2]);
+            Assert.AreEqual("/part2.json", secondHalf.DestinationPart);
+        }
+
+        [TestMethod]
+        public async Task RegisterPartAndCheckComplete_DestinationArrivesFirst_ClaimsCompletionAfterAllSources()
+        {
+            var entity = new JobTrackerEntity();
+
+            var destination = await entity.RegisterPartAndCheckComplete(new JobTrackerRegistration
+            {
+                PartNumber = 3,
+                TotalParts = 3,
+                FilePath = "/destination.json",
+                IsDestinationPart = true
+            });
+
+            var secondSource = await entity.RegisterPartAndCheckComplete(new JobTrackerRegistration
+            {
+                PartNumber = 2,
+                TotalParts = 3,
+                FilePath = "/source2.json"
+            });
+
+            var firstSource = await entity.RegisterPartAndCheckComplete(new JobTrackerRegistration
+            {
+                PartNumber = 1,
+                TotalParts = 3,
+                FilePath = "/source1.json"
+            });
+
+            Assert.IsFalse(destination.IsComplete);
+            Assert.IsFalse(secondSource.IsComplete);
+            Assert.IsTrue(firstSource.IsComplete);
+            Assert.AreEqual(3, firstSource.CompletedParts.Count);
+            Assert.AreEqual("/source1.json", firstSource.CompletedParts[1]);
+            Assert.AreEqual("/source2.json", firstSource.CompletedParts[2]);
+            Assert.AreEqual("/destination.json", firstSource.CompletedParts[3]);
+            Assert.AreEqual("/destination.json", firstSource.DestinationPart);
         }
 
         [TestMethod]
@@ -160,6 +202,40 @@ namespace Services.Tests
             Assert.IsFalse(result.IsComplete);
             Assert.AreEqual(1, result.CompletedCount);
             Assert.AreEqual(2, result.TotalParts);
+            Assert.AreEqual(0, result.CompletedParts.Count);
+            Assert.IsNull(result.DestinationPart);
+        }
+
+        [TestMethod]
+        public async Task RegisterPartAndCheckComplete_CompletionSnapshot_IsIndependentOfLaterRegistrations()
+        {
+            var entity = new JobTrackerEntity();
+
+            await entity.RegisterPartAndCheckComplete(new JobTrackerRegistration
+            {
+                PartNumber = 1,
+                TotalParts = 2,
+                FilePath = "/part1.json"
+            });
+
+            var completion = await entity.RegisterPartAndCheckComplete(new JobTrackerRegistration
+            {
+                PartNumber = 2,
+                TotalParts = 2,
+                FilePath = "/part2.json",
+                IsDestinationPart = true
+            });
+
+            await entity.RegisterPartAndCheckComplete(new JobTrackerRegistration
+            {
+                PartNumber = 3,
+                TotalParts = 2,
+                FilePath = "/part3.json"
+            });
+
+            Assert.AreEqual(2, completion.CompletedParts.Count);
+            Assert.IsFalse(completion.CompletedParts.ContainsKey(3));
+            Assert.AreEqual("/part2.json", completion.DestinationPart);
         }
     }
 }

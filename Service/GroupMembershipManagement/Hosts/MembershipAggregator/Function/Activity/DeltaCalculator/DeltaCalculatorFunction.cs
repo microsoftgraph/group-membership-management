@@ -48,6 +48,24 @@ namespace Hosts.MembershipAggregator
 
                 if (request.ReadFromBlobs)
                 {
+                    if (string.IsNullOrWhiteSpace(request.SourceMembershipFilePath))
+                    {
+                        _logger.SourceBlobNotFound();
+                        return new DeltaCalculatorResponse
+                        {
+                            MembershipDeltaStatus = MembershipDeltaStatus.Error
+                        };
+                    }
+
+                    if (string.IsNullOrWhiteSpace(request.DestinationMembershipFilePath))
+                    {
+                        _logger.DestinationBlobNotFound();
+                        return new DeltaCalculatorResponse
+                        {
+                            MembershipDeltaStatus = MembershipDeltaStatus.Error
+                        };
+                    }
+
                     var sourceBlobResult = await _blobStorageRepository.DownloadFileAsync(request.SourceMembershipFilePath);
                     _logger.SourceBlobDownloadResult(sourceBlobResult.BlobStatus.ToString(), request.SourceMembershipFilePath);
 

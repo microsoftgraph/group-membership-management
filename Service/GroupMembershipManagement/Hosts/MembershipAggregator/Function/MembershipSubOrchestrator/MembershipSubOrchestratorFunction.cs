@@ -53,24 +53,35 @@ namespace Hosts.MembershipAggregator
                 ["TotalParts"] = totalParts
             });
 
-            var state = await context.Entities.CallEntityAsync<JobState>(request.EntityId, nameof(JobTrackerEntity.GetState));
-
             var currentUtcDateTime = context.CurrentUtcDateTime;
+            var completedParts = request.CompletedParts;
+            var destinationPart = request.DestinationPart;
+            var expectedPartCount = totalParts;
 
-            var membershipExtractionRequest = new MembershipExtractionRequest
+            MembershipExtractionResponse membershipExtractionResponse;
+            if (!HasCompleteMembershipSnapshot(completedParts, destinationPart, expectedPartCount))
             {
-                CompletedParts = state.CompletedParts == null
-                    ? new List<string>()
-                    : state.CompletedParts.OrderBy(kv => kv.Key).Select(kv => kv.Value).ToList(),
-                DestinationPart = state.DestinationPart,
-                SyncJob = request.SyncJob,
-                CurrentPart = currentPart,
-                TotalParts = totalParts,
-                GroupId = request.GroupId,
-                CurrentUtcDateTime = currentUtcDateTime
-            };
+                membershipExtractionResponse = new MembershipExtractionResponse
+                {
+                    IsSuccessful = false,
+                    ErrorMessage = $"Membership snapshot is incomplete or invalid. Expected {expectedPartCount} parts and received {completedParts?.Count ?? 0}."
+                };
+            }
+            else
+            {
+                var membershipExtractionRequest = new MembershipExtractionRequest
+                {
+                    CompletedParts = completedParts.OrderBy(kv => kv.Key).Select(kv => kv.Value).ToList(),
+                    DestinationPart = destinationPart,
+                    SyncJob = request.SyncJob,
+                    CurrentPart = currentPart,
+                    TotalParts = totalParts,
+                    GroupId = request.GroupId,
+                    CurrentUtcDateTime = currentUtcDateTime
+                };
 
-            var membershipExtractionResponse = await context.CallActivityAsync<MembershipExtractionResponse>(nameof(MembershipExtractionFunction), membershipExtractionRequest);
+                membershipExtractionResponse = await context.CallActivityAsync<MembershipExtractionResponse>(nameof(MembershipExtractionFunction), membershipExtractionRequest);
+            }
 
             if (!membershipExtractionResponse.IsSuccessful)
             {
@@ -106,12 +117,10 @@ namespace Hosts.MembershipAggregator
                     MembershipDeltaStatus = MembershipDeltaStatus.Error
                 };
             }
-
             var sourceMembershipFilePath = membershipExtractionResponse.SourceMembershipFilePath;
             var destinationMembershipFilePath = membershipExtractionResponse.DestinationMembershipFilePath;
-            var destinationExpected = !string.IsNullOrWhiteSpace(state.DestinationPart);
 
-            if (string.IsNullOrWhiteSpace(sourceMembershipFilePath) || (destinationExpected && string.IsNullOrWhiteSpace(destinationMembershipFilePath)))
+            if (string.IsNullOrWhiteSpace(sourceMembershipFilePath) || string.IsNullOrWhiteSpace(destinationMembershipFilePath))
             {
                 await context.CallActivityAsync(nameof(JobStatusUpdaterFunction),
                                                 new JobStatusUpdaterRequest
@@ -517,6 +526,38 @@ namespace Hosts.MembershipAggregator
                     FilePath = request.DestinationMembershipFilePath
                 });
             }
+        }
+
+        private static bool HasCompleteMembershipSnapshot(
+            IReadOnlyDictionary<int, string> completedParts,
+            string destinationPart,
+            int expectedPartCount)
+        {
+            if (completedParts == null ||
+                completedParts.Count != expectedPartCount ||
+                expectedPartCount <= 0 ||
+                string.IsNullOrWhiteSpace(destinationPart))
+            {
+                return false;
+            }
+
+            var destinationFound = false;
+            foreach (var part in completedParts)
+            {
+                if (part.Key <= 0 ||
+                    part.Key > expectedPartCount ||
+                    string.IsNullOrWhiteSpace(part.Value))
+                {
+                    return false;
+                }
+
+                if (string.Equals(part.Value, destinationPart, StringComparison.Ordinal))
+                {
+                    destinationFound = true;
+                }
+            }
+
+            return destinationFound;
         }
     }
 }

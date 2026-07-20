@@ -2,6 +2,7 @@
 // Licensed under the MIT license.
 using Microsoft.Azure.Functions.Worker;
 using Microsoft.DurableTask.Entities;
+using System.Collections.Generic;
 using System.Threading.Tasks;
 
 namespace Hosts.MembershipAggregator
@@ -24,12 +25,7 @@ namespace Hosts.MembershipAggregator
         {
             if (registration == null)
             {
-                return Task.FromResult(new JobTrackerCompletionResult
-                {
-                    IsComplete = false,
-                    CompletedCount = State.CompletedParts.Count,
-                    TotalParts = State.TotalParts
-                });
+                return Task.FromResult(CreateCompletionResult(false));
             }
 
             if (State.TotalParts == 0)
@@ -58,17 +54,21 @@ namespace Hosts.MembershipAggregator
                 isComplete = true;
             }
 
-            return Task.FromResult(new JobTrackerCompletionResult
-            {
-                TotalParts = State.TotalParts,
-                CompletedCount = observedCount,
-                IsComplete = isComplete
-            });
+            return Task.FromResult(CreateCompletionResult(isComplete));
         }
 
-        public Task<JobState> GetState()
+        private JobTrackerCompletionResult CreateCompletionResult(bool isComplete)
         {
-            return Task.FromResult(State);
+            return new JobTrackerCompletionResult
+            {
+                TotalParts = State.TotalParts,
+                CompletedCount = State.CompletedParts.Count,
+                IsComplete = isComplete,
+                CompletedParts = isComplete
+                    ? new Dictionary<int, string>(State.CompletedParts)
+                    : new Dictionary<int, string>(),
+                DestinationPart = isComplete ? State.DestinationPart : null
+            };
         }
 
         [Function(nameof(JobTrackerEntity))]
@@ -78,4 +78,3 @@ namespace Hosts.MembershipAggregator
         }
     }
 }
-
