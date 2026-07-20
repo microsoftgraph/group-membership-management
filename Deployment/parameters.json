@@ -289,31 +289,59 @@
         "required": false
       }
     },
-    "sharedBastion": {
+    "skipPrereqsDeployment": {
       "value": false,
       "metadata": {
-        "description": "When true, peers to an existing shared Bastion VNet and deploys no dedicated Bastion resources. When false, deploys a dedicated Bastion VNet/subnet/NSG (and, when deployBastionHost is true, the Bastion host + Public IP).",
+        "description": "Flag to skip the deployment of prereqs resources. Only skip if the prereqs resources already exist; intended for iterative re-deploys.",
         "required": false
       }
     },
-    "deployBastionHost": {
+    "skipDataDeployment": {
       "value": false,
       "metadata": {
-        "description": "When true (and sharedBastion is false), also deploys the Azure Bastion host + Public IP. When false, deploys the dedicated VNet/subnet/NSG only.",
+        "description": "Flag to skip the deployment of data resources. Only skip if the data resources already exist; intended for iterative re-deploys.",
         "required": false
       }
     },
-    "existingBastionVnetId": {
-      "value": "",
+    "skipComputeDeployment": {
+      "value": false,
       "metadata": {
-        "description": "Resource ID of an existing Bastion VNet to peer with. Required when sharedBastion is true.",
+        "description": "Flag to skip the deployment of compute resources. Only skip if the compute resources already exist; intended for iterative re-deploys.",
         "required": false
       }
     },
-    "existingBastionVnetName": {
-      "value": "",
+    "skipFunctionAppCodeDeployment": {
+      "value": false,
       "metadata": {
-        "description": "Name of the existing Bastion VNet. Required when sharedBastion is true.",
+        "description": "Flag to skip publishing the function app and WebApi code packages. Only skip if the function apps already have the desired code; intended for iterative re-deploys.",
+        "required": false
+      }
+    },
+    "skipUIDeployment": {
+      "value": false,
+      "metadata": {
+        "description": "Flag to skip building and publishing the React UI. Only skip if the UI is already deployed; intended for iterative re-deploys.",
+        "required": false
+      }
+    },
+    "skipAppSettingsVersionUpdate": {
+      "value": false,
+      "metadata": {
+        "description": "Flag to skip bumping the function app settings version. Intended for iterative re-deploys.",
+        "required": false
+      }
+    },
+    "skipPostDeploymentUpdates": {
+      "value": false,
+      "metadata": {
+        "description": "Flag to skip post-deployment database updates. Only skip if the target resources already exist; intended for iterative re-deploys.",
+        "required": false
+      }
+    },
+    "skipRBACPermissions": {
+      "value": false,
+      "metadata": {
+        "description": "Flag to skip setting RBAC permissions, overriding setRBACPermissions. Only skip if RBAC is already configured; intended for iterative re-deploys.",
         "required": false
       }
     },
@@ -342,6 +370,34 @@
       "value": true,
       "metadata": {
         "description": "Flag to create resource groups. Set to true on initial deployment.",
+        "required": false
+      }
+    },
+    "sharedBastion": {
+      "value": false,
+      "metadata": {
+        "description": "When true, peers to an existing shared Bastion VNet and deploys no dedicated Bastion resources. When false, deploys a dedicated Bastion VNet/subnet/NSG (and, when deployBastionHost is true, the Bastion host + Public IP).",
+        "required": false
+      }
+    },
+    "deployBastionHost": {
+      "value": false,
+      "metadata": {
+        "description": "When true (and sharedBastion is false), also deploys the Azure Bastion host + Public IP. When false, deploys the dedicated VNet/subnet/NSG only.",
+        "required": false
+      }
+    },
+    "existingBastionVnetId": {
+      "value": "",
+      "metadata": {
+        "description": "Resource ID of an existing Bastion VNet to peer with. Required when sharedBastion is true.",
+        "required": false
+      }
+    },
+    "existingBastionVnetName": {
+      "value": "",
+      "metadata": {
+        "description": "Name of the existing Bastion VNet. Required when sharedBastion is true.",
         "required": false
       }
     },

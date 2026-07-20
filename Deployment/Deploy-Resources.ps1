@@ -1149,6 +1149,9 @@ function Set-GMMResources {
     $setRBACPermissions      = Get-Default -Value $ParameterHashtable['setRBACPermissions'].value      -Default $false
     $createResourceGroups = Get-Default -Value $ParameterHashtable['createResourceGroups'].value -Default $false
     $skipAzureDataFactoryDeployment = Get-Default -Value $ParameterHashtable['skipAzureDataFactoryDeployment'].value -Default $false
+    $skipPrereqsDeployment  = Get-Default -Value $ParameterHashtable['skipPrereqsDeployment'].value  -Default $false
+    $skipDataDeployment     = Get-Default -Value $ParameterHashtable['skipDataDeployment'].value     -Default $false
+    $skipComputeDeployment  = Get-Default -Value $ParameterHashtable['skipComputeDeployment'].value  -Default $false
     $ipRangesToWhiteList = Get-Default -Value $ParameterHashtable['IpRangesToWhiteList'].value -Default @()
 
     # strings
@@ -1176,16 +1179,21 @@ function Set-GMMResources {
     }
 
     # deploy prereq resources
-    Set-PrereqResources `
-        -SolutionAbbreviation           $SolutionAbbreviation `
-        -EnvironmentAbbreviation        $EnvironmentAbbreviation `
-        -SubscriptionId                 $SubscriptionId `
-        -PrereqsTemplateDirectoryPath   $TemplateFilesDirectory `
-        -ParameterHashtable             $ParameterHashtable `
-        -AdditionalParameters           $commonParametersObject `
-        -SetRBACPermissions             $setRBACPermissions
+    if ($skipPrereqsDeployment -eq $false) {
+        Set-PrereqResources `
+            -SolutionAbbreviation           $SolutionAbbreviation `
+            -EnvironmentAbbreviation        $EnvironmentAbbreviation `
+            -SubscriptionId                 $SubscriptionId `
+            -PrereqsTemplateDirectoryPath   $TemplateFilesDirectory `
+            -ParameterHashtable             $ParameterHashtable `
+            -AdditionalParameters           $commonParametersObject `
+            -SetRBACPermissions             $setRBACPermissions
 
-    Start-Sleep -Seconds 10
+        Start-Sleep -Seconds 10
+    }
+    else {
+        Write-DeployLog -Level Warn -Message "Skipping prereqs deployment as per configuration [skipPrereqsDeployment = $skipPrereqsDeployment]."
+    }
 
     Set-KeyVaultFirewallRules `
         -ResourceGroups @($prereqsResourceGroup) `
@@ -1218,23 +1226,28 @@ function Set-GMMResources {
     }
    
     # deploy data resources
-    Set-DataResources `
-        -SolutionAbbreviation       $SolutionAbbreviation `
-        -EnvironmentAbbreviation    $EnvironmentAbbreviation `
-        -SubscriptionId             $SubscriptionId `
-        -DataTemplateDirectoryPath  $TemplateFilesDirectory `
-        -ParameterHashtable         $ParameterHashtable `
-        -AdditionalParameters       $commonParametersObject `
-        -SetRBACPermissions         $setRBACPermissions
+    if ($skipDataDeployment -eq $false) {
+        Set-DataResources `
+            -SolutionAbbreviation       $SolutionAbbreviation `
+            -EnvironmentAbbreviation    $EnvironmentAbbreviation `
+            -SubscriptionId             $SubscriptionId `
+            -DataTemplateDirectoryPath  $TemplateFilesDirectory `
+            -ParameterHashtable         $ParameterHashtable `
+            -AdditionalParameters       $commonParametersObject `
+            -SetRBACPermissions         $setRBACPermissions
 
-    if (-not $ParameterHashtable.isInitialDeployment.value) {
-        . ($ScriptsDirectory + '/PostDataDeploymentMigrations/Set-PostDataDeploymentMigrations.ps1')
-        Set-PostDataDeploymentMigrations `
-            -SolutionAbbreviation $SolutionAbbreviation `
-            -EnvironmentAbbreviation $EnvironmentAbbreviation
+        if (-not $ParameterHashtable.isInitialDeployment.value) {
+            . ($ScriptsDirectory + '/PostDataDeploymentMigrations/Set-PostDataDeploymentMigrations.ps1')
+            Set-PostDataDeploymentMigrations `
+                -SolutionAbbreviation $SolutionAbbreviation `
+                -EnvironmentAbbreviation $EnvironmentAbbreviation
+        }
+
+        Start-Sleep -Seconds 10
     }
-
-    Start-Sleep -Seconds 10
+    else {
+        Write-DeployLog -Level Warn -Message "Skipping data deployment as per configuration [skipDataDeployment = $skipDataDeployment]."
+    }
 
     Set-KeyVaultFirewallRules `
         -ResourceGroups @($dataResourceGroup) `
@@ -1260,15 +1273,20 @@ function Set-GMMResources {
     }
     
     # deploy compute resources
-    Set-ComputeResources `
-        -SolutionAbbreviation           $SolutionAbbreviation `
-        -EnvironmentAbbreviation        $EnvironmentAbbreviation `
-        -SubscriptionId                 $SubscriptionId `
-        -ComputeTemplateDirectoryPath   $TemplateFilesDirectory `
-        -ParameterHashtable             $ParameterHashtable `
-        -AdditionalParameters           $commonParametersObject
+    if ($skipComputeDeployment -eq $false) {
+        Set-ComputeResources `
+            -SolutionAbbreviation           $SolutionAbbreviation `
+            -EnvironmentAbbreviation        $EnvironmentAbbreviation `
+            -SubscriptionId                 $SubscriptionId `
+            -ComputeTemplateDirectoryPath   $TemplateFilesDirectory `
+            -ParameterHashtable             $ParameterHashtable `
+            -AdditionalParameters           $commonParametersObject
 
-    Start-Sleep -Seconds 10
+        Start-Sleep -Seconds 10
+    }
+    else {
+        Write-DeployLog -Level Warn -Message "Skipping compute deployment as per configuration [skipComputeDeployment = $skipComputeDeployment]."
+    }
 
     # deploy ADF resources
     if ($skipAzureDataFactoryDeployment -eq $false) {
@@ -3291,6 +3309,11 @@ function Deploy-Resources {
     $enableFunctionAuthentication                   = Get-Default -Value $ParameterHashtable['enableFunctionAuthentication'].value -Default $false
 
     $setRBACPermissions             = Get-Default -Value $ParameterHashtable['setRBACPermissions'].value      -Default $false
+    $skipRBACPermissions            = Get-Default -Value $ParameterHashtable['skipRBACPermissions'].value -Default $false
+    $skipAppSettingsVersionUpdate   = Get-Default -Value $ParameterHashtable['skipAppSettingsVersionUpdate'].value -Default $false
+    $skipFunctionAppCodeDeployment  = Get-Default -Value $ParameterHashtable['skipFunctionAppCodeDeployment'].value -Default $false
+    $skipUIDeployment               = Get-Default -Value $ParameterHashtable['skipUIDeployment'].value -Default $false
+    $skipPostDeploymentUpdates      = Get-Default -Value $ParameterHashtable['skipPostDeploymentUpdates'].value -Default $false
     $skipSqlServerPermissionSetup   = Get-Default -Value $ParameterHashtable['skipSqlServerPermissionSetup'].value -Default $false
     $skipPrivilegedDirectoryActions   = Get-Default -Value $ParameterHashtable['skipPrivilegedDirectoryActions'].value -Default $false
     $tenantDomain                   = Get-DefaultString -Value $ParameterHashtable['tenantDomain'].value                   -Default 'not-set'
@@ -3382,7 +3405,12 @@ function Deploy-Resources {
 
     Start-Sleep -Seconds 30
 
-    Update-AppSettingsVersion -ComputeResourceGroupName $computeResourceGroup
+    if ($skipAppSettingsVersionUpdate -eq $false) {
+        Update-AppSettingsVersion -ComputeResourceGroupName $computeResourceGroup
+    }
+    else {
+        Write-DeployLog -Level Warn -Message "Skipping app settings version update as per configuration [skipAppSettingsVersionUpdate = $skipAppSettingsVersionUpdate]."
+    }
 
     Set-SqlServerFirewallRule `
         -SolutionAbbreviation $solutionAbbreviation `
@@ -3411,7 +3439,7 @@ function Deploy-Resources {
             -ConnectionStringADF $connectionStringADF
     }
 
-    if ($true -eq $setRBACPermissions) {
+    if (($true -eq $setRBACPermissions) -and ($false -eq $skipRBACPermissions)) {
         $isUserAssignedManagedIdentityAuth = if ($parameterHashtable.authenticationType.value -eq "UserAssignedManagedIdentity") { $true } else { $false }
         $bastionVnetAddressPrefix = Get-Default -Value $parameterHashtable['bastionVnetAddressPrefix'].value -Default '10.0.0.0/24'
         Set-RBACPermissions `
@@ -3424,11 +3452,19 @@ function Deploy-Resources {
         -SkipNetworkingDeployment $skipNetworkingDeployment `
         -BastionVnetAddressPrefix $bastionVnetAddressPrefix
     }
+    elseif ($true -eq $skipRBACPermissions) {
+        Write-DeployLog -Level Warn -Message "Skipping RBAC permissions as per configuration [skipRBACPermissions = $skipRBACPermissions]."
+    }
 
-    Set-FunctionAppCode `
-        -ComputeResourceGroup $computeResourceGroup `
-        -FunctionsPackagesDirectory "$deploymentPackageDirectory/function_packages" `
-        -WebApiPackagesDirectory "$deploymentPackageDirectory/webapi_package"
+    if ($skipFunctionAppCodeDeployment -eq $false) {
+        Set-FunctionAppCode `
+            -ComputeResourceGroup $computeResourceGroup `
+            -FunctionsPackagesDirectory "$deploymentPackageDirectory/function_packages" `
+            -WebApiPackagesDirectory "$deploymentPackageDirectory/webapi_package"
+    }
+    else {
+        Write-DeployLog -Level Warn -Message "Skipping function app code deployment as per configuration [skipFunctionAppCodeDeployment = $skipFunctionAppCodeDeployment]."
+    }
 
     # Configure web apps
     if ($parameterHashtable.skipAppRegistrationSetup.value -ne $true) {
@@ -3446,28 +3482,38 @@ function Deploy-Resources {
     $webApiAppClientId = if ($appRegistrationSetupResult -ne $null) { $appRegistrationSetupResult.WebApiAppId } else { $null }
 
     # Publish UI code
-    Set-PublishUICode `
-        -UIAppClientId $uiAppClientId `
-        -DirectoryTenantId $directoryTenantId `
-        -WebApiAppClientId $webApiAppClientId `
-        -SolutionAbbreviation $solutionAbbreviation `
-        -EnvironmentAbbreviation $environmentAbbreviation `
-        -WebAppDirectory "$deploymentPackageDirectory/webapp_package/web-app" `
-        -MainTenantId $parameterHashtable.tenantId.value `
-        -TenantDomain $tenantDomain `
-        -SharepointDomain $sharepointDomain `
-        -SubscriptionId $subscriptionId
+    if ($skipUIDeployment -eq $false) {
+        Set-PublishUICode `
+            -UIAppClientId $uiAppClientId `
+            -DirectoryTenantId $directoryTenantId `
+            -WebApiAppClientId $webApiAppClientId `
+            -SolutionAbbreviation $solutionAbbreviation `
+            -EnvironmentAbbreviation $environmentAbbreviation `
+            -WebAppDirectory "$deploymentPackageDirectory/webapp_package/web-app" `
+            -MainTenantId $parameterHashtable.tenantId.value `
+            -TenantDomain $tenantDomain `
+            -SharepointDomain $sharepointDomain `
+            -SubscriptionId $subscriptionId
+    }
+    else {
+        Write-DeployLog -Level Warn -Message "Skipping UI deployment as per configuration [skipUIDeployment = $skipUIDeployment]."
+    }
     
     # Call the WebAPI to perform EF migrations.
     Start-EFMigrationViaWebAPI `
         -SolutionAbbreviation $solutionAbbreviation `
         -EnvironmentAbbreviation $environmentAbbreviation
 
-    Set-PostDeploymentUpdates `
-        -EnvironmentAbbreviation $environmentAbbreviation `
-        -SolutionAbbreviation $solutionAbbreviation `
-        -ScriptsDirectory $scriptsDirectory `
-        -ConnectionString $connectionString
+    if ($skipPostDeploymentUpdates -eq $false) {
+        Set-PostDeploymentUpdates `
+            -EnvironmentAbbreviation $environmentAbbreviation `
+            -SolutionAbbreviation $solutionAbbreviation `
+            -ScriptsDirectory $scriptsDirectory `
+            -ConnectionString $connectionString
+    }
+    else {
+        Write-DeployLog -Level Warn -Message "Skipping post-deployment updates as per configuration [skipPostDeploymentUpdates = $skipPostDeploymentUpdates]."
+    }
 
     if (!$isInitialDeployment -and $resetGMMType -ne "Skip") {
         Write-DeployLog -Level Info -Message "Calling Reschedule endpoint via WebApi..."
