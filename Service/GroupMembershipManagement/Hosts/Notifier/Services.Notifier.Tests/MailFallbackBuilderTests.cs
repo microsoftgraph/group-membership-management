@@ -235,6 +235,7 @@ namespace Services.Notifier.Tests
         [DataRow("SyncDisabledNoOwnerEmailBody")]
         [DataRow("GuestUserFailureEmailBody")]
         [DataRow("NoDataEmailContent")]
+        [DataRow("SyncJobDisabledEmailBody")]     // Disabled-due-to-threshold renders compact-detail "membership change alert review"
         public async Task BuildSyncDisabledFallbackAsync_ReturnsNonEmptyHtml_ForAllDisableReasons(string contentType)
         {
             var email = MakeSyncDisabledEmail(contentType);
@@ -243,15 +244,51 @@ namespace Services.Notifier.Tests
         }
 
         [TestMethod]
-        [DataRow("SyncThresholdBothEmailBody")]   // Threshold -> actionable adaptive card only
+        [DataRow("SyncThresholdBothEmailBody")]   // Regular threshold notification (< NumberOfThresholdViolationsToDisableJob) keeps legacy fallback
         [DataRow("SyncDisabledNoValidGroupIds")]  // NotValidSource -> legacy adaptive card only
-        [DataRow("SyncJobDisabledEmailBody")]     // Generic
         [DataRow("UnknownContentType")]           // Generic
         public async Task BuildSyncDisabledFallbackAsync_ReturnsNull_ForThresholdAndGeneric(string contentType)
         {
             var email = MakeSyncDisabledEmail(contentType);
             var html = await _builder.BuildSyncDisabledFallbackAsync(email, GroupName, GroupId, JobUrl, SentDate);
             Assert.IsNull(html, $"Expected null fallback for contentType={contentType}");
+        }
+
+        [TestMethod]
+        public async Task BuildSyncDisabledFallbackAsync_Threshold_RendersMembershipChangeAlertReview()
+        {
+            var email = new EmailMessage
+            {
+                Content = "SyncJobDisabledEmailBody",
+                AdditionalContentParams = new[] { GroupName, GroupId, "support@contoso.com", "https://aka.ms/gmm", "" }
+            };
+
+            var html = await _builder.BuildSyncDisabledFallbackAsync(email, GroupName, GroupId, JobUrl, SentDate);
+
+            Assert.IsFalse(string.IsNullOrWhiteSpace(html));
+            StringAssert.Contains(html, "membership change alert review");
+            StringAssert.Contains(html, "Review in GMM");
+            Assert.IsFalse(html.Contains("View in GMM UI"),
+                "Threshold variant must use the per-reason 'Review in GMM' CTA, not the default 'View in GMM UI'.");
+        }
+
+        [TestMethod]
+        public async Task BuildSyncDisabledFallbackAsync_Threshold_RendersPausedAtRow_WhenProducerSetsIsoUtc()
+        {
+            var pausedAtUtc = new DateTime(2026, 06, 25, 18, 25, 00, DateTimeKind.Utc)
+                .ToString("o", System.Globalization.CultureInfo.InvariantCulture);
+            var email = new EmailMessage
+            {
+                Content = "SyncJobDisabledEmailBody",
+                AdditionalContentParams = new[] { GroupName, GroupId, "support@contoso.com", "https://aka.ms/gmm", pausedAtUtc }
+            };
+
+            var html = await _builder.BuildSyncDisabledFallbackAsync(email, GroupName, GroupId, JobUrl, SentDate);
+
+            Assert.IsFalse(string.IsNullOrWhiteSpace(html));
+            StringAssert.Contains(html, "PAUSED AT");
+            StringAssert.Contains(html, "Jun");
+            StringAssert.Contains(html, "2026");
         }
 
         [TestMethod]

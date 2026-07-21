@@ -8,6 +8,7 @@ using Microsoft.Extensions.Localization;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using Models;
+using Models.SyncJobChange;
 using Models.ThresholdNotifications;
 using Moq;
 using Repositories.Contracts;
@@ -299,7 +300,28 @@ namespace Services.Tests
         }
 
         /// <summary>
-        /// /notifications/{id}/card - An unresolved (awaiting-response) notification renders the DisabledCard for a group owner.
+        /// /notifications/{id}/resolve - Audit entry attributes the resolution to the web UI and records the resolver (FR-013)
+        /// </summary>
+        [TestMethod]
+        public async Task ResolveNotification_RecordsWebAppSourceAndResolverAsync()
+        {
+            _resolveNotificationModel.Resolution = $"{ThresholdNotificationResolution.IgnoreOnce}";
+            SyncJobChange savedChange = null!;
+            _syncJobChangeRepository.Setup(x => x.Save(It.IsAny<SyncJobChange>()))
+                .Callback<SyncJobChange>(change => savedChange = change)
+                .Returns(Task.CompletedTask);
+
+            await _notificationsController.ResolveNotificationAsync(_thresholdNotification.Id, _resolveNotificationModel);
+
+            _syncJobChangeRepository.Verify(x => x.Save(It.IsAny<SyncJobChange>()), Times.Once);
+            Assert.IsNotNull(savedChange);
+            Assert.AreEqual(SyncJobChangeSource.WebApp, savedChange.ChangeSource);
+            Assert.AreEqual(_userUPN, savedChange.ChangedByDisplayName);
+            Assert.AreEqual(_thresholdNotification.SyncJobId, savedChange.SyncJobId);
+        }
+
+        /// <summary>
+        /// /notifications/{id}/card - Get card for an unresolved notification
         /// </summary>
         [TestMethod]
         public async Task GetNotificationCard_UnresolvedNotificationRendersDisabledCardForOwnerTestAsync()

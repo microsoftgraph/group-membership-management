@@ -9,6 +9,7 @@ using System.Threading.Tasks;
 using Repositories.Contracts;
 using Services.Notifier.Contracts;
 using System;
+using System.Globalization;
 using System.Linq;
 using Repositories.Contracts.InjectConfig;
 using Models.ThresholdNotifications;
@@ -29,6 +30,7 @@ namespace Services.Notifier
     {
         private readonly ILogger<NotifierService> _logger;
         private readonly IMailRepository _mailRepository;
+        private readonly IMailConfig _mailConfig;
         private readonly IEmailSenderRecipient _emailSenderAndRecipients;
         private readonly ILocalizationRepository _localizationRepository;
         private readonly IThresholdNotificationService _thresholdNotificationService;
@@ -47,6 +49,7 @@ namespace Services.Notifier
         public NotifierService(
             ILogger<NotifierService> logger,
             IMailRepository mailRepository,
+            IMailConfig mailConfig,
             IEmailSenderRecipient emailSenderAndRecipients,
             ILocalizationRepository localizationRepository,
             IThresholdNotificationService thresholdNotificationService,
@@ -64,6 +67,7 @@ namespace Services.Notifier
         {
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _mailRepository = mailRepository ?? throw new ArgumentNullException(nameof(mailRepository));
+            _mailConfig = mailConfig ?? throw new ArgumentNullException(nameof(mailConfig));
             _emailSenderAndRecipients = emailSenderAndRecipients ?? throw new ArgumentNullException(nameof(emailSenderAndRecipients));
             _localizationRepository = localizationRepository ?? throw new ArgumentNullException(nameof(localizationRepository));
             _thresholdNotificationService = thresholdNotificationService ?? throw new ArgumentNullException(nameof(thresholdNotificationService));
@@ -122,24 +126,74 @@ namespace Services.Notifier
 
             var adaptiveCard = await _thresholdNotificationService.CreateNotificationCardAsync(notification);
 
-            // Build a Run History deep link (UI route: /JobDetails/{jobId}/history) so the
-            // fallback message directs owners to the run outcomes for this job rather than the
-            // generic Job Details page. Only the non-OAM fallback body uses this link; the
-            // actionable adaptive card above is unchanged.
-            var uiUrlSetting = await _databaseSettingsRepository.GetSettingByKeyAsync(SettingKey.UIUrl);
-            var runHistoryUrl = UiUrlBuilder.BuildJobDetailsUrl(
-                uiUrlSetting?.SettingValue,
-                notification.SyncJobId,
-                includeHistory: true);
+            var cardState = notification.CardState;
 
-            var fallbackHTMLContent = _localizationRepository.TranslateSetting(NotificationConstants.ThresholdNotificationFallbackBody,
-                groupName,
-                notification.TargetOfficeGroupId.ToString(),
-                notification.ThresholdPercentageForAdditions.ToString(),
-                notification.ThresholdPercentageForRemovals.ToString(),
-                runHistoryUrl);
-            
-            var htmlTemplate = @"<html>
+            string subjectKey = cardState == ThresholdNotificationCardState.DisabledCard
+                ? "SyncThresholdDisablingJobEmailSubject"
+                : "SyncThresholdEmailSubject";
+
+            string subject = _localizationRepository.TranslateSetting(subjectKey, groupName);
+
+            // Styled threshold email requires BOTH the styled-fallback flag and the Phase 2 run-history flag; otherwise use the OAM card.
+            var useStyledThresholdEmail = _mailConfig.EnableStyledFallbackEmails && _mailConfig.RunHistoryTabEnabled;
+
+            string emailContent = null;
+            if (cardState == ThresholdNotificationCardState.DisabledCard && useStyledThresholdEmail)
+            {
+                var additionsExceeded =
+                    notification.ThresholdPercentageForAdditions > 0
+                    && notification.ChangePercentageForAdditions >= notification.ThresholdPercentageForAdditions;
+                var removalsExceeded =
+                    notification.ThresholdPercentageForRemovals > 0
+                    && notification.ChangePercentageForRemovals >= notification.ThresholdPercentageForRemovals;
+
+                string direction;
+                if (additionsExceeded && removalsExceeded) direction = "Both";
+                else if (removalsExceeded) direction = "Decrease";
+                else direction = "Increase";
+
+                // Threshold Exceeded sends a styled informational email (no OAM card); owners resolve via the take-action dialog.
+                var routingMessage = new EmailMessage
+                {
+                    Content = NotificationConstants.SyncJobDisabledEmailBody,
+                    SyncJobId = notification.SyncJobId,
+                    DestinationGroupName = groupName,
+                    AdditionalContentParams = new[]
+                    {
+                        groupName ?? string.Empty,
+                        notification.TargetOfficeGroupId.ToString(),
+                        _emailSenderAndRecipients?.SupportEmailAddresses ?? string.Empty,
+                        _gmmResources?.LearnMoreAboutGMMUrl ?? string.Empty,
+                        DateTime.UtcNow.ToString("o", CultureInfo.InvariantCulture),
+                        notification.ChangeQuantityForAdditions.ToString(CultureInfo.InvariantCulture),
+                        notification.ChangeQuantityForRemovals.ToString(CultureInfo.InvariantCulture),
+                        notification.ChangePercentageForAdditions.ToString("0.##", CultureInfo.InvariantCulture),
+                        notification.ChangePercentageForRemovals.ToString("0.##", CultureInfo.InvariantCulture),
+                        notification.ThresholdPercentageForAdditions.ToString(CultureInfo.InvariantCulture),
+                        notification.ThresholdPercentageForRemovals.ToString(CultureInfo.InvariantCulture),
+                        direction
+                    }
+                };
+                emailContent = await _mailRepository.BuildStyledFallbackEmailHtmlAsync(routingMessage, adaptiveCardJson: null);
+            }
+
+            if (string.IsNullOrEmpty(emailContent))
+            {
+                // Legacy OAM adaptive-card wrapper for DefaultCard / ExpiredCard, and a safety net if the styled builder returns null.
+                var uiUrlSetting = await _databaseSettingsRepository.GetSettingByKeyAsync(SettingKey.UIUrl);
+                var runHistoryUrl = UiUrlBuilder.BuildJobDetailsUrl(
+                    uiUrlSetting?.SettingValue,
+                    notification.SyncJobId,
+                    includeHistory: true);
+
+                var fallbackHTMLContent = _localizationRepository.TranslateSetting(NotificationConstants.ThresholdNotificationFallbackBody,
+                    groupName,
+                    notification.TargetOfficeGroupId.ToString(),
+                    notification.ThresholdPercentageForAdditions.ToString(),
+                    notification.ThresholdPercentageForRemovals.ToString(),
+                    runHistoryUrl);
+
+                var htmlTemplate = @"<html>
                 <head
                   <meta http-equiv=""Content-Type"" content=""text/html; charset=utf-8"">
                   <script type=""application/adaptivecard+json"">
@@ -153,18 +207,13 @@ namespace Services.Notifier
                 </body>
                 </html>";
 
-            var cardState = notification.CardState; 
+                emailContent = string.Format(htmlTemplate, adaptiveCard, fallbackHTMLContent);
+            }
 
-            string subjectKey = cardState == ThresholdNotificationCardState.DisabledCard 
-                ? "SyncThresholdDisablingJobEmailSubject" 
-                : "SyncThresholdEmailSubject";
-
-            string subject = _localizationRepository.TranslateSetting(subjectKey, groupName);
-            
             var message = new EmailMessage
             {
                 Subject = subject,
-                Content = string.Format(htmlTemplate, adaptiveCard, fallbackHTMLContent),
+                Content = emailContent,
                 SenderAddress = _emailSenderAndRecipients.SenderAddress,
                 SenderPassword = _emailSenderAndRecipients.SenderPassword,
                 ToEmailAddresses = ownerEmails,
@@ -436,7 +485,8 @@ namespace Services.Notifier
                     groupName,
                     groupId.ToString(),
                     _emailSenderAndRecipients.SupportEmailAddresses,
-                    _gmmResources.LearnMoreAboutGMMUrl
+                    _gmmResources.LearnMoreAboutGMMUrl,
+                    DateTime.UtcNow.ToString("o", CultureInfo.InvariantCulture)
                 };
             }
             var message = new EmailMessage

@@ -257,13 +257,22 @@ namespace Repositories.Mail
                 else if (string.Equals(emailMessage?.Content, NotificationConstants.SyncPurgedForInactivityEmailBody, StringComparison.OrdinalIgnoreCase))
                     styledFallback = await _mailFallbackBuilder.BuildFinalNoticeFallbackAsync(emailMessage, fallbackDestinationGroupName, groupId, jobUrl, sentDate);
                 else if (IsSyncDisabledNotification(emailMessage?.Content))
-                    styledFallback = await _mailFallbackBuilder.BuildSyncDisabledFallbackAsync(emailMessage, fallbackDestinationGroupName, groupId, historyUrl, sentDate);
+                {
+                    // Threshold-disabled emails deep-link "Review in GMM" to the take-action dialog; other reasons use history.
+                    var disabledCtaUrl = string.Equals(emailMessage?.Content, NotificationConstants.SyncJobDisabledEmailBody, StringComparison.OrdinalIgnoreCase)
+                        ? UiUrlBuilder.BuildJobDetailsUrl(UIUrl, emailMessage.SyncJobId, includeHistory: true, takeAction: true)
+                        : historyUrl;
+                    styledFallback = await _mailFallbackBuilder.BuildSyncDisabledFallbackAsync(emailMessage, fallbackDestinationGroupName, groupId, disabledCtaUrl, sentDate);
+                }
                 else if (string.Equals(emailMessage?.Content, NotificationConstants.SubmissionRejectedEmailBody, StringComparison.OrdinalIgnoreCase))
                     styledFallback = await _mailFallbackBuilder.BuildSubmissionRejectedFallbackAsync(emailMessage, fallbackDestinationGroupName, groupId, jobUrl, sentDate);
 
                 if (styledFallback != null)
                 {
-                    htmlContent = WrapStyledFallback(styledFallback, fallbackDestinationGroupName, adaptiveCard);
+                    // Styled informational email: render the branded HTML body only, with no
+                    // embedded OAM actionable card. Owners act via the in-body deep-link CTAs
+                    // (e.g. "Review in GMM" / run history) baked into the styled template.
+                    htmlContent = WrapStyledBodyWithoutAdaptiveCard(styledFallback, fallbackDestinationGroupName);
                 }
                 else
                 {
@@ -350,12 +359,14 @@ namespace Repositories.Mail
         }
 
         // Most notification types put GroupId at AdditionalContentParams[0]; JobPurgingWarning
-        // (AzureMaintenanceService.SendWarningEmailAsync) puts Status at [0] and GroupId at [4].
+        // puts it at [4]; SyncJobDisabledEmailBody (threshold) puts it at [1].
         private static int GetGroupIdIndex(string? content)
         {
-            return string.Equals(content, NotificationConstants.JobPurgingWarningEmailBody, StringComparison.OrdinalIgnoreCase)
-                ? 4
-                : 0;
+            if (string.Equals(content, NotificationConstants.JobPurgingWarningEmailBody, StringComparison.OrdinalIgnoreCase))
+                return 4;
+            if (string.Equals(content, NotificationConstants.SyncJobDisabledEmailBody, StringComparison.OrdinalIgnoreCase))
+                return 1;
+            return 0;
         }
 
         private static string GetParamSafe(EmailMessage emailMessage, int index)
@@ -371,6 +382,58 @@ namespace Repositories.Mail
 
             return retryAfterPolicy.WrapAsync(exceptionHandlingPolicy);
         }
+
+        // Builds the styled threshold HTML body used by NotifierService.SendThresholdEmailAsync.
+        // Pass adaptiveCardJson to embed the actionable card; pass null to send the styled email only.
+        public async Task<string?> BuildStyledFallbackEmailHtmlAsync(EmailMessage emailMessage, string? adaptiveCardJson = null)
+        {
+            if (emailMessage is null)
+            {
+                throw new ArgumentNullException(nameof(emailMessage));
+            }
+
+            if (!_mailConfig.EnableStyledFallbackEmails)
+            {
+                return null;
+            }
+
+            await TryAssignGroupNameAsync(emailMessage, runId: null);
+
+            string groupId = GetParamSafe(emailMessage, GetGroupIdIndex(emailMessage?.Content));
+            string destinationGroupName = string.IsNullOrEmpty(emailMessage?.DestinationGroupName) ? "" : emailMessage.DestinationGroupName;
+
+            var urlSetting = await _settingsRepository.GetSettingByKeyAsync(SettingKey.UIUrl);
+            string UIUrl = urlSetting?.SettingValue ?? "";
+            // "Review in GMM" deep-links straight to the job's Threshold Exceeded take-action dialog.
+            string reviewUrl = UiUrlBuilder.BuildJobDetailsUrl(UIUrl, emailMessage.SyncJobId, includeHistory: true, takeAction: true);
+            var sentDate = DateTime.UtcNow.ToString("MMM dd, yyyy");
+
+            string styledFallback = null;
+            if (IsSyncDisabledNotification(emailMessage?.Content))
+                styledFallback = await _mailFallbackBuilder.BuildSyncDisabledFallbackAsync(emailMessage, destinationGroupName, groupId, reviewUrl, sentDate);
+
+            if (string.IsNullOrEmpty(styledFallback))
+            {
+                return null;
+            }
+
+            return string.IsNullOrEmpty(adaptiveCardJson)
+                ? WrapStyledBodyWithoutAdaptiveCard(styledFallback, destinationGroupName)
+                : WrapStyledFallback(styledFallback, destinationGroupName, adaptiveCardJson);
+        }
+
+        private static string WrapStyledBodyWithoutAdaptiveCard(string body, string groupName) =>
+            $@"<!DOCTYPE html>
+<html lang=""en"">
+<head>
+  <meta http-equiv=""Content-Type"" content=""text/html; charset=utf-8"">
+  <meta name=""viewport"" content=""width=device-width, initial-scale=1.0"">
+  <title>{System.Net.WebUtility.HtmlEncode(groupName ?? string.Empty)}</title>
+</head>
+<body style=""margin:0;padding:0;background-color:#f3f2f1;-webkit-font-smoothing:antialiased;"">
+{body}
+</body>
+</html>";
 
         private static string WrapStyledFallback(string body, string groupName, string adaptiveCard) =>
             $@"<!DOCTYPE html>

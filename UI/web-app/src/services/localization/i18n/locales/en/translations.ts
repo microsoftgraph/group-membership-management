@@ -469,6 +469,7 @@ export const strings: IStrings = {
         title: 'Threshold exceeded',
         alreadyResolvedMessage: 'This threshold alert was already resolved by {0} on {1}. No further action is required.',
         alreadyResolvedMessageNoActor: 'This threshold alert has already been resolved. No further action is required.',
+        addressedViaConfigMessage: 'This threshold alert has already been addressed by a configuration change. No further action is required here.',
         gracePeriodMessage: "You have until {0} to take action. After that, this group's affiliation with GMM will be removed.",
         bodyLeadIncrease: 'This membership {0} because the configured {1}. Review the pending changes below and take action to continue.',
         bodyLeadDecrease: 'This membership {0} because the configured {1}. Review the pending changes below and take action to continue.',

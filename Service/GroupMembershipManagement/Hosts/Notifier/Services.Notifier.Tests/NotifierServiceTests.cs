@@ -47,6 +47,7 @@ namespace Services.Notifier.Tests
         private ILocalizationRepository _localizationRepository;
         private Mock<IEmailSenderRecipient> _mailAddresses;
         private Mock<IMailRepository> _mailRepository;
+        private IMailConfig _mailConfig;
         private ThresholdNotification _notification;
         private Mock<INotificationRepository> _notificationRepository;
         private Mock<INotificationTypesRepository> _notificationTypesRepository;
@@ -179,6 +180,27 @@ namespace Services.Notifier.Tests
             _mailRepository.Verify(x => x.SendMailAsync(It.IsAny<EmailMessage>(), It.IsAny<Guid?>()), Times.Once());
 
         }
+        private NotifierService CreateNotifierService(IMailConfig mailConfig)
+        {
+            return new NotifierService(NullLogger<NotifierService>.Instance,
+                _mailRepository.Object,
+                mailConfig,
+                _mailAddresses.Object,
+                _localizationRepository,
+                _thresholdNotificationService.Object,
+                _notificationRepository.Object,
+                _graphGroupRepository.Object,
+                _notificationTypesRepository.Object,
+                _jobNotificationRepository.Object,
+                _thresholdConfig.Object,
+                _gmmResources.Object,
+                _serviceBusQueueRepository.Object,
+                _groupsRepository.Object,
+                _channelsRepository.Object,
+                _settingsRepository.Object,
+                _telemetryClient);
+        }
+
         [TestInitialize]
         public void SetupTest()
         {
@@ -238,23 +260,8 @@ namespace Services.Notifier.Tests
             var localizer = new StringLocalizer<LocalizationRepository>(factory);
             _localizationRepository = new LocalizationRepository(localizer);
 
-            _notifierService = new NotifierService(NullLogger<NotifierService>.Instance,
-                                                _mailRepository.Object,
-                                                _mailAddresses.Object,
-                                                _localizationRepository,
-                                                _thresholdNotificationService.Object,
-                                                _notificationRepository.Object,
-                                                _graphGroupRepository.Object,
-                                                _notificationTypesRepository.Object,
-                                                _jobNotificationRepository.Object,
-                                                _thresholdConfig.Object,
-                                                _gmmResources.Object,
-                                                _serviceBusQueueRepository.Object,
-                                                _groupsRepository.Object,
-                                                _channelsRepository.Object,
-                                                _settingsRepository.Object,
-                                                _telemetryClient
-                                                );
+            _mailConfig = new MailConfig(true, false, "not-set", false, enableStyledFallbackEmails: true, runHistoryTabEnabled: true);
+            _notifierService = CreateNotifierService(_mailConfig);
             _requestAdapter = new Mock<IRequestAdapter>();
             _requestAdapter.SetupProperty(x => x.BaseUrl).SetReturnsDefault(GRAPH_API_V1_BASE_URL);
 
@@ -416,6 +423,46 @@ namespace Services.Notifier.Tests
             Assert.IsFalse(capturedMessage.Content.Contains(
                 $"/jobdetails/{_notification.SyncJobId}/history",
                 StringComparison.Ordinal));
+        }
+
+        [TestMethod]
+        public async Task SendThresholdEmail_DisabledCard_UsesStyledEmail_WhenBothFlagsEnabled()
+        {
+            EmailMessage capturedMessage = null;
+            _mailRepository.Setup(x => x.SendMailAsync(It.IsAny<EmailMessage>(), null))
+                .Callback<EmailMessage, Guid?>((m, _) => capturedMessage = m);
+            _mailRepository.Setup(x => x.BuildStyledFallbackEmailHtmlAsync(It.IsAny<EmailMessage>(), null))
+                .ReturnsAsync("<p>STYLED THRESHOLD EMAIL</p>");
+
+            _notification.SyncJobId = Guid.NewGuid();
+            _notification.CardState = ThresholdNotificationCardState.DisabledCard;
+
+            var service = CreateNotifierService(new MailConfig(true, false, "not-set", false, enableStyledFallbackEmails: true, runHistoryTabEnabled: true));
+            await service.SendThresholdEmailAsync(_notification);
+
+            _mailRepository.Verify(x => x.BuildStyledFallbackEmailHtmlAsync(It.IsAny<EmailMessage>(), null), Times.Once());
+            Assert.IsNotNull(capturedMessage);
+            StringAssert.Contains(capturedMessage.Content, "STYLED THRESHOLD EMAIL");
+        }
+
+        [TestMethod]
+        public async Task SendThresholdEmail_DisabledCard_UsesOamCard_WhenRunHistoryFlagDisabled()
+        {
+            EmailMessage capturedMessage = null;
+            _mailRepository.Setup(x => x.SendMailAsync(It.IsAny<EmailMessage>(), null))
+                .Callback<EmailMessage, Guid?>((m, _) => capturedMessage = m);
+            _mailRepository.Setup(x => x.BuildStyledFallbackEmailHtmlAsync(It.IsAny<EmailMessage>(), null))
+                .ReturnsAsync("<p>STYLED THRESHOLD EMAIL</p>");
+
+            _notification.SyncJobId = Guid.NewGuid();
+            _notification.CardState = ThresholdNotificationCardState.DisabledCard;
+
+            var service = CreateNotifierService(new MailConfig(true, false, "not-set", false, enableStyledFallbackEmails: true, runHistoryTabEnabled: false));
+            await service.SendThresholdEmailAsync(_notification);
+
+            _mailRepository.Verify(x => x.BuildStyledFallbackEmailHtmlAsync(It.IsAny<EmailMessage>(), null), Times.Never());
+            Assert.IsNotNull(capturedMessage);
+            StringAssert.Contains(capturedMessage.Content, "Outlook Actionable Messages");
         }
 
         [TestMethod]
@@ -583,6 +630,7 @@ namespace Services.Notifier.Tests
 
             _notifierService = new NotifierService(NullLogger<NotifierService>.Instance,
                                     mailRepository,
+                                    mailConfig,
                                     _mailAddresses.Object,
                                     _localizationRepository,
                                     _thresholdNotificationService.Object,

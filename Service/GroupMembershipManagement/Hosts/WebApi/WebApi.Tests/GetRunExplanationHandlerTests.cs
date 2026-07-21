@@ -1643,6 +1643,209 @@ namespace WebApi.Tests
             Assert.IsFalse(capturedPrompt!.Contains("Per-part attribution for removed users", StringComparison.OrdinalIgnoreCase));
         }
 
+        // ---------------- Fix #1: New exclusionary source attribution for removes ----------------
+
+        [TestMethod]
+        public async Task ExecuteAsync_RemovesAttribution_NewExclusionarySourceAdded_EmitsAttributionLine()
+        {
+            var currentAdfRunId = Guid.NewGuid();
+            var previousAdfRunId = Guid.NewGuid();
+            var previousRunId = Guid.NewGuid();
+            var inclSource = Guid.NewGuid();
+            var newExclSource = Guid.NewGuid();
+            var removedUser = Guid.NewGuid();
+            string? capturedPrompt = null;
+
+            _mockSyncJobRepository.Setup(x => x.GetSyncJobAsync(_syncJobId))
+                .ReturnsAsync(new SyncJob
+                {
+                    Id = _syncJobId,
+                    TargetOfficeGroupId = _targetGroupId,
+                    // Current query has the incl source + a NEW exclusionary source.
+                    Query = $"[{{\"type\":\"GroupMembership\",\"source\":\"{inclSource}\"}}," +
+                            $"{{\"type\":\"GroupMembership\",\"source\":\"{newExclSource}\",\"exclusionary\":true}}]"
+                });
+
+            SetupCurrentRunAndPreviousRun(currentAdfRunId, previousAdfRunId, previousRunId, usersRemoved: 1);
+            SetupAggregatedRemovedUsers(removedUser);
+
+            // Previous config: only the inclusionary source. The newExclSource is NEW in this update.
+            _mockSyncJobChangeRepository
+                .Setup(x => x.GetRecentConfigChangesBySyncJobIdAsync(_syncJobId, It.IsAny<DateTime>(), It.IsAny<int>()))
+                .ReturnsAsync(new List<SyncJobChange>
+                {
+                    new() { Id = Guid.NewGuid(), SyncJobId = _syncJobId, ChangeReason = SyncJobChangeReason.Update.ToString(), ChangeTime = DateTime.UtcNow.AddMinutes(-2),
+                            ChangeDetails = "{\"query\":\"[{\\\"type\\\":\\\"GroupMembership\\\",\\\"source\\\":\\\"" + inclSource + "\\\"},{\\\"type\\\":\\\"GroupMembership\\\",\\\"source\\\":\\\"" + newExclSource + "\\\",\\\"exclusionary\\\":true}]\"}" },
+                    new() { Id = Guid.NewGuid(), SyncJobId = _syncJobId, ChangeReason = SyncJobChangeReason.Update.ToString(), ChangeTime = DateTime.UtcNow.AddHours(-2),
+                            ChangeDetails = "{\"query\":\"[{\\\"type\\\":\\\"GroupMembership\\\",\\\"source\\\":\\\"" + inclSource + "\\\"}]\"}" }
+                });
+
+            // Current per-part blobs: index 1 = incl source, index 2 = new excl source (contains removedUser).
+            _mockBlobStorageRepository.Setup(x => x.FindPartFilesByRunIdAsync(_targetGroupId.ToString(), _runId.ToString()))
+                .ReturnsAsync(new Dictionary<string, BlobResult>
+                {
+                    ["GroupMembership_1"] = new() { BlobStatus = BlobStatus.Found, Path = "current/incl.json" },
+                    ["GroupMembership_2"] = new() { BlobStatus = BlobStatus.Found, Path = "current/newexcl.json" }
+                });
+            _mockBlobStorageRepository.Setup(x => x.FindPartFilesByRunIdAsync(_targetGroupId.ToString(), previousRunId.ToString()))
+                .ReturnsAsync(new Dictionary<string, BlobResult>
+                {
+                    ["GroupMembership_1"] = new() { BlobStatus = BlobStatus.Found, Path = "previous/incl.json" }
+                });
+            _mockBlobStorageRepository.Setup(x => x.ExtractGroupMembershipSourceMembersAsync("current/incl.json"))
+                .ReturnsAsync(new HashSet<Guid> { removedUser });
+            _mockBlobStorageRepository.Setup(x => x.ExtractGroupMembershipSourceMembersAsync("previous/incl.json"))
+                .ReturnsAsync(new HashSet<Guid> { removedUser });
+            _mockBlobStorageRepository.Setup(x => x.ExtractGroupMembershipSourceMembersAsync("current/newexcl.json"))
+                .ReturnsAsync(new HashSet<Guid> { removedUser });
+
+            _mockGraphGroupRepository.Setup(x => x.GetGroupNamesAsync(It.IsAny<List<Guid>>()))
+                .ReturnsAsync(new Dictionary<Guid, string>
+                {
+                    [inclSource] = "IncludedSource",
+                    [newExclSource] = "NewExcludedSource"
+                });
+            _mockOpenAIService.Setup(x => x.GetCompletionAsync(It.IsAny<string>(), It.IsAny<string>()))
+                .Callback<string, string>((_, prompt) => capturedPrompt = prompt)
+                .ReturnsAsync("Done.");
+
+            var response = await _handler.ExecuteAsync(BuildRequest());
+
+            Assert.AreEqual(HttpStatusCode.OK, response.StatusCode);
+            Assert.IsNotNull(capturedPrompt);
+            StringAssert.Contains(capturedPrompt!, "New exclusionary source added in the recent config update");
+            StringAssert.Contains(capturedPrompt!, "NewExcludedSource");
+            StringAssert.Contains(capturedPrompt!, "newly-excluded source");
+        }
+
+        // ---------------- Fix #2: Deleted exclusionary source attribution for adds ----------------
+
+        [TestMethod]
+        public async Task ExecuteAsync_AddsAttribution_DeletedExclusionarySource_EmitsAttributionLine()
+        {
+            var currentAdfRunId = Guid.NewGuid();
+            var previousAdfRunId = Guid.NewGuid();
+            var previousRunId = Guid.NewGuid();
+            var inclSource = Guid.NewGuid();
+            var deletedExclSource = Guid.NewGuid();
+            var addedUser = Guid.NewGuid();
+            string? capturedPrompt = null;
+
+            _mockSyncJobRepository.Setup(x => x.GetSyncJobAsync(_syncJobId))
+                .ReturnsAsync(new SyncJob
+                {
+                    Id = _syncJobId,
+                    TargetOfficeGroupId = _targetGroupId,
+                    // Current query: ONLY the incl source. The excl source was deleted in this update.
+                    Query = $"[{{\"type\":\"GroupMembership\",\"source\":\"{inclSource}\"}}]"
+                });
+
+            _mockSyncJobHistoryRepository.Setup(x => x.GetByRunIdAsync(_runId))
+                .ReturnsAsync(new global::Models.SyncJobHistory.SyncJobHistory
+                {
+                    SyncJobId = _syncJobId,
+                    RunId = _runId,
+                    Status = "Idle",
+                    UpdatedAt = DateTime.UtcNow,
+                    StartTime = DateTime.UtcNow.AddMinutes(-5),
+                    EndTime = DateTime.UtcNow,
+                    UsersAdded = 1,
+                    UsersRemoved = 0,
+                    BeforeSyncUserCount = 100,
+                    AfterSyncUserCount = 101,
+                    ThresholdViolations = 0,
+                    AdfRunId = currentAdfRunId
+                });
+            _mockSyncJobHistoryRepository.Setup(x => x.GetBySyncJobIdAsync(_syncJobId, It.IsAny<int>(), It.IsAny<int>()))
+                .ReturnsAsync(new List<global::Models.SyncJobHistory.SyncJobHistory>
+                {
+                    new() { SyncJobId = _syncJobId, RunId = previousRunId, Status = "Idle", UpdatedAt = DateTime.UtcNow.AddHours(-1),
+                            StartTime = DateTime.UtcNow.AddHours(-1).AddMinutes(-5), EndTime = DateTime.UtcNow.AddHours(-1),
+                            UsersAdded = 0, UsersRemoved = 0, ThresholdViolations = 0, AdfRunId = previousAdfRunId }
+                });
+
+            _mockBlobStorageRepository.Setup(x => x.FindAggregatedFileByRunIdAsync(It.IsAny<string>(), It.IsAny<string>()))
+                .ReturnsAsync(new BlobResult { BlobStatus = BlobStatus.Found, Path = "test/adds.json" });
+            _mockBlobStorageRepository.Setup(x => x.DownloadFileAsync("test/adds.json"))
+                .ReturnsAsync(new BlobResult { BlobStatus = BlobStatus.Found, Content = $"{{\"SourceMembers\":[{{\"ObjectId\":\"{addedUser}\",\"MembershipAction\":1}}]}}" });
+
+            _mockSyncJobChangeRepository
+                .Setup(x => x.GetRecentConfigChangesBySyncJobIdAsync(_syncJobId, It.IsAny<DateTime>(), It.IsAny<int>()))
+                .ReturnsAsync(new List<SyncJobChange>
+                {
+                    new() { Id = Guid.NewGuid(), SyncJobId = _syncJobId, ChangeReason = SyncJobChangeReason.Update.ToString(), ChangeTime = DateTime.UtcNow.AddMinutes(-2),
+                            ChangeDetails = "{\"query\":\"[{\\\"type\\\":\\\"GroupMembership\\\",\\\"source\\\":\\\"" + inclSource + "\\\"}]\"}" },
+                    new() { Id = Guid.NewGuid(), SyncJobId = _syncJobId, ChangeReason = SyncJobChangeReason.Update.ToString(), ChangeTime = DateTime.UtcNow.AddHours(-2),
+                            ChangeDetails = "{\"query\":\"[{\\\"type\\\":\\\"GroupMembership\\\",\\\"source\\\":\\\"" + inclSource + "\\\"},{\\\"type\\\":\\\"GroupMembership\\\",\\\"source\\\":\\\"" + deletedExclSource + "\\\",\\\"exclusionary\\\":true}]\"}" }
+                });
+
+            _mockBlobStorageRepository.Setup(x => x.FindPartFilesByRunIdAsync(_targetGroupId.ToString(), _runId.ToString()))
+                .ReturnsAsync(new Dictionary<string, BlobResult>
+                {
+                    ["GroupMembership_1"] = new() { BlobStatus = BlobStatus.Found, Path = "current/incl.json" }
+                });
+            _mockBlobStorageRepository.Setup(x => x.FindPartFilesByRunIdAsync(_targetGroupId.ToString(), previousRunId.ToString()))
+                .ReturnsAsync(new Dictionary<string, BlobResult>
+                {
+                    ["GroupMembership_1"] = new() { BlobStatus = BlobStatus.Found, Path = "previous/incl.json" },
+                    ["GroupMembership_2"] = new() { BlobStatus = BlobStatus.Found, Path = "previous/deletedexcl.json" }
+                });
+            _mockBlobStorageRepository.Setup(x => x.ExtractGroupMembershipSourceMembersAsync("current/incl.json"))
+                .ReturnsAsync(new HashSet<Guid> { addedUser });
+            _mockBlobStorageRepository.Setup(x => x.ExtractGroupMembershipSourceMembersAsync("previous/incl.json"))
+                .ReturnsAsync(new HashSet<Guid> { addedUser });
+            _mockBlobStorageRepository.Setup(x => x.ExtractGroupMembershipSourceMembersAsync("previous/deletedexcl.json"))
+                .ReturnsAsync(new HashSet<Guid> { addedUser });
+
+            _mockGraphGroupRepository.Setup(x => x.GetGroupNamesAsync(It.IsAny<List<Guid>>()))
+                .ReturnsAsync(new Dictionary<Guid, string>
+                {
+                    [inclSource] = "IncludedSource",
+                    [deletedExclSource] = "DeletedExclusionarySource"
+                });
+            _mockOpenAIService.Setup(x => x.GetCompletionAsync(It.IsAny<string>(), It.IsAny<string>()))
+                .Callback<string, string>((_, prompt) => capturedPrompt = prompt)
+                .ReturnsAsync("Done.");
+
+            var response = await _handler.ExecuteAsync(BuildRequest());
+
+            Assert.AreEqual(HttpStatusCode.OK, response.StatusCode);
+            Assert.IsNotNull(capturedPrompt);
+            StringAssert.Contains(capturedPrompt!, "Exclusionary source removed from query in the recent config update");
+            StringAssert.Contains(capturedPrompt!, "DeletedExclusionarySource");
+            StringAssert.Contains(capturedPrompt!, "previously excluded by this now-removed exclusion");
+        }
+
+        // ---------------- Fix #4: StartTime-preferring config cutoff ----------------
+
+        [TestMethod]
+        public void GetRunConfigCutoff_StartTimeAvailable_ReturnsStartTime()
+        {
+            var start = new DateTime(2026, 7, 16, 23, 20, 0, DateTimeKind.Utc);
+            var end = new DateTime(2026, 7, 16, 23, 30, 55, DateTimeKind.Utc);
+            var history = new global::Models.SyncJobHistory.SyncJobHistory { StartTime = start, EndTime = end, UpdatedAt = end };
+            var result = InvokeStaticPrivate<DateTime>(typeof(GetRunExplanationHandler), "GetRunConfigCutoff", new object?[] { history });
+            Assert.AreEqual(start, result);
+        }
+
+        [TestMethod]
+        public void GetRunConfigCutoff_StartTimeNull_ReturnsEndTimeMinus30Seconds()
+        {
+            var end = new DateTime(2026, 7, 16, 23, 30, 55, DateTimeKind.Utc);
+            var history = new global::Models.SyncJobHistory.SyncJobHistory { StartTime = null, EndTime = end, UpdatedAt = end };
+            var result = InvokeStaticPrivate<DateTime>(typeof(GetRunExplanationHandler), "GetRunConfigCutoff", new object?[] { history });
+            Assert.AreEqual(end.AddSeconds(-30), result);
+        }
+
+        [TestMethod]
+        public void GetRunConfigCutoff_StartTimeAndEndTimeNull_ReturnsUpdatedAt()
+        {
+            var updated = new DateTime(2026, 7, 16, 23, 30, 0, DateTimeKind.Utc);
+            var history = new global::Models.SyncJobHistory.SyncJobHistory { StartTime = null, EndTime = null, UpdatedAt = updated };
+            var result = InvokeStaticPrivate<DateTime>(typeof(GetRunExplanationHandler), "GetRunConfigCutoff", new object?[] { history });
+            Assert.AreEqual(updated, result);
+        }
+
         private void SetupCurrentRunAndPreviousRun(Guid currentAdfRunId, Guid previousAdfRunId, Guid previousRunId, int usersRemoved)
         {
             var now = DateTime.UtcNow;

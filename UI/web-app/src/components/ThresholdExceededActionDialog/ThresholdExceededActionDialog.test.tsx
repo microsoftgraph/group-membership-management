@@ -59,6 +59,7 @@ vi.mock('../../store/hooks', () => ({
           },
           alreadyResolvedMessage: 'This threshold alert was already resolved by {0} on {1}. No further action is required.',
           alreadyResolvedMessageNoActor: 'This threshold alert has already been resolved. No further action is required.',
+          addressedViaConfigMessage: 'This threshold alert has already been addressed by a configuration change. No further action is required here.',
         },
       },
     },
@@ -334,6 +335,34 @@ describe('ThresholdExceededActionDialogBase', () => {
     render(<ThresholdExceededActionDialogBase {...defaultProps} isResolved={true} purgeDate="2026-06-01T00:00:00Z" />);
     expect(document.querySelector('.ms-MessageBar--success')).toBeInTheDocument();
     expect(document.querySelector('.ms-MessageBar--warning')).not.toBeInTheDocument();
+  });
+
+  it('renders the info addressed-via-config MessageBar when isAddressedViaConfig and not resolved', async () => {
+    render(<ThresholdExceededActionDialogBase {...defaultProps} isAddressedViaConfig={true} />);
+    expect(
+      await screen.findByText('This threshold alert has already been addressed by a configuration change. No further action is required here.')
+    ).toBeInTheDocument();
+  });
+
+  it('disables the Apply changes button when isAddressedViaConfig even if isApplyChangesEnabled is true', () => {
+    render(<ThresholdExceededActionDialogBase {...defaultProps} isApplyChangesEnabled={true} isAddressedViaConfig={true} />);
+    expect(screen.getByRole('button', { name: 'Apply changes' })).toBeDisabled();
+  });
+
+  it('suppresses the yellow grace-period MessageBar when isAddressedViaConfig even if purgeDate is supplied', async () => {
+    render(<ThresholdExceededActionDialogBase {...defaultProps} isAddressedViaConfig={true} purgeDate="2026-06-01T00:00:00Z" />);
+    expect(
+      await screen.findByText('This threshold alert has already been addressed by a configuration change. No further action is required here.')
+    ).toBeInTheDocument();
+    expect(document.querySelector('.ms-MessageBar--warning')).not.toBeInTheDocument();
+  });
+
+  it('prefers the green resolved MessageBar over the info addressed-via-config MessageBar when both are set', () => {
+    render(<ThresholdExceededActionDialogBase {...defaultProps} isResolved={true} isAddressedViaConfig={true} />);
+    expect(document.querySelector('.ms-MessageBar--success')).toBeInTheDocument();
+    expect(
+      screen.queryByText('This threshold alert has already been addressed by a configuration change. No further action is required here.')
+    ).not.toBeInTheDocument();
   });
 });
 

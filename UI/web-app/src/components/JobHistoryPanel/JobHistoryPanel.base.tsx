@@ -49,7 +49,7 @@ import { SyncHistorySearchProgressUpdate } from '../../models/SyncHistorySearchP
 import { MembershipChangeType, SearchSyncHistoryByUserRunMembershipChange } from '../../models/SearchSyncHistoryByUserResult';
 import { ThresholdNotificationData } from '../../models/ThresholdNotificationData';
 import { selectIsJobTenantReader, selectIsJobTenantWriter, selectIsGeneralSettingsAdministrator, selectIsJobWriter } from '../../store/roles.slice';
-import { selectIsAISearchForUserEnabled, selectIsAIRunExplanationEnabled, selectIsRunHistoryOpenViewingAndUnifiedTabEnabled } from '../../store/settings.slice';
+import { selectIsAISearchForUserEnabled, selectIsAIRunExplanationEnabled, selectIsRunHistoryTabEnabled } from '../../store/settings.slice';
 import { renderMultilineHeader } from '../../utils/stringUtils';
 import { getStatusDisplayText } from '../../utils/jobUtils';
 import { RunHistoryStatus } from '../../models/Status';
@@ -109,7 +109,7 @@ export const JobHistoryPanelBase: React.FunctionComponent<IJobHistoryPanelProps>
     const isGeneralSettingsAdministrator = useSelector(selectIsGeneralSettingsAdministrator);
     const isAISearchForUserEnabled = useSelector(selectIsAISearchForUserEnabled);
     const isAIRunExplanationEnabled = useSelector(selectIsAIRunExplanationEnabled);
-    const isRunHistoryPhase2Enabled = useSelector(selectIsRunHistoryOpenViewingAndUnifiedTabEnabled);
+    const isRunHistoryPhase2Enabled = useSelector(selectIsRunHistoryTabEnabled);
     const showSyncTab = isRunHistoryPhase2Enabled || isJobTenantReader || isJobTenantWriter;
     const canSearchUserHistory = isAISearchForUserEnabled && (isJobTenantReader || isJobTenantWriter);
     const canDownloadMembershipChanges = isJobTenantWriter;
@@ -1349,6 +1349,8 @@ export const JobHistoryPanelBase: React.FunctionComponent<IJobHistoryPanelProps>
     const hasAutoOpenedThresholdActionRef = useRef(false);
     useEffect(() => {
         if (!autoOpenThresholdAction || hasAutoOpenedThresholdActionRef.current) return;
+        // Only writers (group owners or tenant writers) may resolve; non-writers land on read-only history (FR-011).
+        if (!isJobWriter) return;
         if (!isOpen || isHistoryLoading || !mostRecentThresholdRunId) return;
 
         const thresholdRun = syncHistoryItems.find((item) => item.runId === mostRecentThresholdRunId);
@@ -1356,7 +1358,7 @@ export const JobHistoryPanelBase: React.FunctionComponent<IJobHistoryPanelProps>
 
         hasAutoOpenedThresholdActionRef.current = true;
         handleTakeAction(thresholdRun);
-    }, [autoOpenThresholdAction, isOpen, isHistoryLoading, mostRecentThresholdRunId, syncHistoryItems, handleTakeAction]);
+    }, [autoOpenThresholdAction, isJobWriter, isOpen, isHistoryLoading, mostRecentThresholdRunId, syncHistoryItems, handleTakeAction]);
 
     const eventTypeFilterOptions: IDropdownOption[] = [
         { key: 'all', text: strings.JobDetails.Panel.eventTypeAllOption },
@@ -1790,13 +1792,14 @@ export const JobHistoryPanelBase: React.FunctionComponent<IJobHistoryPanelProps>
                         dismissPanel();
                         onEditThreshold({ additionsExceeded, removalsExceeded });
                     } : () => {}}
-                    isApplyChangesEnabled={!!thresholdData?.notificationId && !thresholdData?.isResolved}
+                    isApplyChangesEnabled={isJobWriter && !!thresholdData?.notificationId && !thresholdData?.isResolved}
                     isEditAlertThresholdsEnabled={!!onEditThreshold}
                     errorMessage={resolveError ?? undefined}
                     purgeDate={thresholdData?.purgeDate}
                     isResolved={!!thresholdData?.isResolved}
                     resolvedBy={thresholdData?.resolvedBy}
                     resolvedTime={thresholdData?.resolvedTime}
+                    isAddressedViaConfig={isThresholdAddressed}
                     aiDescription={isAIRunExplanationEnabled && takeActionItem?.runId && runExplanationCache.get(takeActionItem.runId) !== RUN_EXPLANATION_FALLBACK ? runExplanationCache.get(takeActionItem.runId) : undefined}
                     isAiDescriptionLoading={isAIRunExplanationEnabled && !!takeActionItem?.runId && runExplanationLoading.has(takeActionItem.runId)}
                     aiDescriptionError={isAIRunExplanationEnabled && !!takeActionItem?.runId && runExplanationErrors.has(takeActionItem.runId)}

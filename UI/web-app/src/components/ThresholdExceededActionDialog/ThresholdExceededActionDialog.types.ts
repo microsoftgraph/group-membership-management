@@ -76,6 +76,7 @@ export interface IThresholdExceededActionDialogProps extends React.AllHTMLAttrib
     isResolved?: boolean;
     resolvedBy?: string;
     resolvedTime?: string;
+    isAddressedViaConfig?: boolean;
     aiDescription?: string;
     isAiDescriptionLoading?: boolean;
     aiDescriptionError?: boolean;

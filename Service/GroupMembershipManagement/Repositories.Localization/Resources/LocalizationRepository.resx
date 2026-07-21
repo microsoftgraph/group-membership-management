@@ -1210,6 +1210,9 @@ If you intentionally require nested groups, GMM will not be able to manage this 
   <data name="SyncDisabledFallback.HeaderReason.NestedGroupsFound" xml:space="preserve">
     <value>nested group in destination not supported</value>
   </data>
+  <data name="SyncDisabledFallback.HeaderReason.Threshold" xml:space="preserve">
+    <value>membership change alert review</value>
+  </data>
   <data name="SyncDisabledFallback.Description.NoDestinationGroup" xml:space="preserve">
     <value>This sync is paused because GMM could **no longer find the destination group**. The group may have been deleted. The name and email shown are from GMM&#8217;s last known record.</value>
   </data>
@@ -1228,6 +1231,28 @@ If you intentionally require nested groups, GMM will not be able to manage this 
   <data name="SyncDisabledFallback.Description.NestedGroupsFound" xml:space="preserve">
     <value>This sync is paused because the destination group **contains nested group(s)**. GMM does not support nested groups in the destination and cannot safely reconcile membership.</value>
   </data>
+  <data name="SyncDisabledFallback.Description.Threshold" xml:space="preserve">
+    <value>This sync is paused because the projected membership change **exceeds the alert threshold** configured for this group. GMM is holding the change for your review.</value>
+  </data>
+  <!-- Threshold descriptions selected by MailFallbackBuilder.BuildThresholdDescription based on
+       ExceededDirection (AdditionalContentParams[11]); falls back to the static .Threshold above
+       when no rich data is present. Args: see MailFallbackBuilder.Threshold*Index constants.
+       Single-direction violations always use .OnlyAdditions / .OnlyRemovals. -->
+  <data name="SyncDisabledFallback.Description.Threshold.Increase" xml:space="preserve">
+    <value>This sync would **add {0}** members and **remove {1}**, a **{2}% increase** to the group. Your current **increase alert** is set to **{3}%**, so GMM paused this sync for your review.</value>
+  </data>
+  <data name="SyncDisabledFallback.Description.Threshold.Increase.OnlyAdditions" xml:space="preserve">
+    <value>This sync would **add {0}** members, a **{1}% increase** to the group. Your current **increase alert** is set to **{2}%**, so GMM paused this sync for your review.</value>
+  </data>
+  <data name="SyncDisabledFallback.Description.Threshold.Decrease" xml:space="preserve">
+    <value>This sync would **add {0}** members and **remove {1}**, a **{2}% decrease** to the group. Your current **decrease alert** is set to **{3}%**, so GMM paused this sync for your review.</value>
+  </data>
+  <data name="SyncDisabledFallback.Description.Threshold.Decrease.OnlyRemovals" xml:space="preserve">
+    <value>This sync would **remove {0}** members, a **{1}% decrease** to the group. Your current **decrease alert** is set to **{2}%**, so GMM paused this sync for your review.</value>
+  </data>
+  <data name="SyncDisabledFallback.Description.Threshold.Both" xml:space="preserve">
+    <value>This sync would **add {0}** members and **remove {1}**, a **{2}% increase** and **{3}% decrease** to the group. Your current alert is set to **{4}% increase** and **{5}% decrease**, so GMM paused this sync for your review.</value>
+  </data>
   <data name="SyncDisabledFallback.CalloutTitle" xml:space="preserve">
     <value>WHAT HAPPENS IF YOU DO NOTHING</value>
   </data>
@@ -1244,6 +1269,10 @@ For paused jobs older than {0} days, the GMM affiliation will be removed. This d
   </data>
   <data name="SyncDisabledFallback.CtaLabel" xml:space="preserve">
     <value>View in GMM UI</value>
+  </data>
+  <!-- Per-reason CTA label override. Threshold variant uses "Review in GMM" instead of "View in GMM UI". -->
+  <data name="SyncDisabledFallback.CtaLabel.Threshold" xml:space="preserve">
+    <value>Review in GMM</value>
   </data>
   <data name="FallbackGroupType.M365Group" xml:space="preserve">
     <value>M365 Group</value>
@@ -1314,6 +1343,9 @@ For paused jobs older than {0} days, the GMM affiliation will be removed. This d
   <data name="SyncDisabledFallback.ActionChecklist.NestedGroupsFound.Body" xml:space="preserve">
     <value>1. Open the destination group in [Microsoft Entra](https://portal.azure.com/#view/Microsoft_AAD_IAM/GroupDetailsMenuBlade/~/Members/groupId/{0}) and remove any nested groups from its members list.
 2. Return to the GMM UI and re-enable the sync for this group.</value>
+  </data>
+  <data name="SyncDisabledFallback.ActionChecklist.Threshold.Body" xml:space="preserve">
+    <value>Select **Review in GMM** below to open the pending change. You can run a pre-approval check on specific members, then approve the changes or edit the membership rules.</value>
   </data>
   <data name="SyncDisabledFallback.NestedGroupsFound.ListHeading" xml:space="preserve">
     <value>NESTED GROUPS DETECTED &#183; {0} TOTAL</value>

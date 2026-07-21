@@ -10,5 +10,6 @@ namespace Repositories.Contracts.InjectConfig
         public string SenderAddress { get; set; }
         public bool SkipEmailNotifications { get; set; }
         public bool EnableStyledFallbackEmails { get; set; }
+        public bool RunHistoryTabEnabled { get; set; }
     }
 }

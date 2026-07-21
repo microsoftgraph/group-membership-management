@@ -25,7 +25,7 @@ import {
   selectDefaultAIPrompt,
   selectIsAISearchForUserEnabled,
   selectIsAIRunExplanationEnabled,
-  selectIsRunHistoryOpenViewingAndUnifiedTabEnabled,
+  selectIsRunHistoryTabEnabled,
 } from '../../store/settings.slice';
 import { patchSetting, fetchDefaultAIPrompt, fetchSettings } from '../../store/settings.api';
 import { AppDispatch } from '../../store';
@@ -69,7 +69,7 @@ export const AdminConfigBase: React.FunctionComponent<AdminConfigProps> = (props
   const isAICopilotEnabled = useSelector(selectIsAICopilotEnabled);
   const isAISearchForUserEnabled = useSelector(selectIsAISearchForUserEnabled);
   const isAIRunExplanationEnabled = useSelector(selectIsAIRunExplanationEnabled);
-  const isRunHistoryPhase2Enabled = useSelector(selectIsRunHistoryOpenViewingAndUnifiedTabEnabled);
+  const isRunHistoryPhase2Enabled = useSelector(selectIsRunHistoryTabEnabled);
   const copilotTemperature = useSelector(selectCopilotTemperature);
   const copilotTopP = useSelector(selectCopilotTopP);
   const copilotInstructions = useSelector(selectCopilotInstructions);

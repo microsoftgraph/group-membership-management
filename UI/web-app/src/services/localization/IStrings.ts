@@ -464,6 +464,7 @@ export type IStrings = {
         title: string;
         alreadyResolvedMessage: string;
         alreadyResolvedMessageNoActor: string;
+        addressedViaConfigMessage: string;
         gracePeriodMessage: string;
         bodyLeadIncrease: string;
         bodyLeadDecrease: string;

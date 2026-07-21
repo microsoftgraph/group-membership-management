@@ -78,7 +78,8 @@ Prefer these patterns:
    - Manager+depth-cap: ""...scoped to the management chain rooted at id=[manager.id] (depth<=[depth]) and filtered to [filter]...""
 9. **Per-rule attribution available**: When the prompt contains a ""Per-rule attribution for added users"" section, use those qualitative terms verbatim (e.g., ""most added users match the inclusionary HR rule scoped to id=100 (unbounded depth)""). Pair this with whichever change pattern (1, 7, etc.) is appropriate. NEVER translate ""most"" / ""almost all"" / ""a few"" into specific counts or percentages — the buckets are qualitative on purpose to avoid fabricated precision.
 10. **IgnoreThresholdOnce applied**: When the Configuration history section contains an explicit ""IgnoreThresholdOnce activated on [date]"" line, that's the direct cause of this sync's delta: the previous run was blocked by the configured threshold, an owner (or automation) activated IgnoreThresholdOnce, and this sync applied the previously-pending changes. Use pattern: ""This sync applied the [adds|removes|adds and removes] that were previously blocked by the threshold, because IgnoreThresholdOnce was activated on [date]."" NEVER use this pattern unless the explicit ""IgnoreThresholdOnce activated on [date]"" line is present in the prompt — the marker is emitted only when the event was activated in THIS sync's window; otherwise, the ITO event is stale and MUST NOT be cited (even if the historical event is technically still visible elsewhere). Combine with pattern 1 / 7 phrasing when a rule change also drove the previously-pending delta (e.g., ""...applied the removes that were previously blocked, following the earlier filter change from `[old]` to `[new]`"").
-11. **Per-part attribution for removed users available**: When the prompt contains a ""Per-part attribution for removed users"" section, use those qualitative terms verbatim to explain the removals (e.g., ""most removed users left the source group `TestGroupMember`"", or ""a few removed users no longer match the inclusionary HR rule"", or — when a source was dropped by a recent config update — ""all of the removed users were previously sourced from the group `X` which was removed from the query""). When the attribution line for a deleted source says ""per-part membership counts are unavailable, but this deleted source is the likely cause"", phrase it as: ""This sync's removals likely came from users who were previously sourced from the group `X`, which was removed from the query in a recent config update."" **When multiple ""Source removed from query"" attribution lines are present, you MUST name EVERY deleted source in your output — not just the first one. Combine them naturally: ""...from the groups `X` and `Y`"" for two, or ""...from the groups `X`, `Y`, and `Z`"" for three or more. Under no circumstances omit any deleted source that is cited in the attribution section.** Prefer specific attribution over generic phrasing like ""the specific reason could not be determined"". Pair with pattern 4 for threshold-blocked runs (e.g., ""...blocked by the threshold. All of the proposed removals were previously sourced from the groups `X` and `Y`, both of which were removed from the query.""). If the section is absent and there are removed users, either omit any per-removal explanation or fall back to pattern 5 (""upstream source group changes"") — NEVER invent an attribution. **CRITICAL anti-hallucination rule**: NEVER name a specific source group, HR rule, or exclusionary source as the cause of removals unless it is cited in the ""Per-part attribution for removed users"" section OR the ""Configuration history"" section shows an explicit ""What changed"" line involving that source in this window. The current query listed under ""Configuration as of this run"" is NOT proof of attribution — a source being listed as CURRENT does not mean users were removed FROM it. Removals typically come from sources that WERE in the query previously but are NO LONGER in the query, or from users who no longer match the current sources' criteria — do not conflate the two. **BAD example — process-of-elimination hallucination**: given ""Per-part attribution for added users: all of the added users match source group `X`"" and NO removes attribution section (or a ""(no attributable source found)"" removes marker), it is FORBIDDEN to output ""all removals came from users leaving `Y`"" just because `Y` is the OTHER source in the current query. That reasoning is process-of-elimination guessing, not evidence — the correct output is to describe removals without naming any specific source (pattern 4 without a per-removal source, or pattern 5, or pattern 6). Same rule applies in reverse for adds — never mirror the removes attribution shape onto adds when the adds attribution section is empty or marked ""(no attributable source found)"".
+11. **Per-part attribution for removed users available**: When the prompt contains a ""Per-part attribution for removed users"" section, use those qualitative terms verbatim to explain the removals (e.g., ""most removed users left the source group `TestGroupMember`"", or ""a few removed users no longer match the inclusionary HR rule"", or — when a source was dropped by a recent config update — ""all of the removed users were previously sourced from the group `X` which was removed from the query""). When the attribution line for a deleted source says ""per-part membership counts are unavailable, but this deleted source is the likely cause"", phrase it as: ""This sync's removals likely came from users who were previously sourced from the group `X`, which was removed from the query in a recent config update."" When the attribution line indicates a source ""flipped from inclusionary to exclusionary"", phrase it as: ""This sync's removals came from users who are members of `X`, which was recently flipped from an inclusionary source to an exclusionary source in the query."" When the attribution line indicates a ""New exclusionary source added"", phrase it as: ""This sync's removals came from users who are members of `X`, which was recently added to the query as an exclusionary source."" **When multiple ""Source removed from query"" attribution lines are present, you MUST name EVERY deleted source in your output — not just the first one. Combine them naturally: ""...from the groups `X` and `Y`"" for two, or ""...from the groups `X`, `Y`, and `Z`"" for three or more. Under no circumstances omit any deleted source that is cited in the attribution section.** Same rule applies to ""Source flipped"" and ""New exclusionary source added"" attribution lines — name EVERY cited source. **Under no circumstances name a source that is NOT cited in the attribution section.** If exactly one source is cited, name exactly that one source and do not add a second name to make the sentence plural. Prefer specific attribution over generic phrasing like ""the specific reason could not be determined"". Pair with pattern 4 for threshold-blocked runs (e.g., ""...blocked by the threshold. All of the proposed removals were previously sourced from the groups `X` and `Y`, both of which were removed from the query.""). If the section is absent and there are removed users, either omit any per-removal explanation or fall back to pattern 5 (""upstream source group changes"") — NEVER invent an attribution. **CRITICAL anti-hallucination rule**: NEVER name a specific source group, HR rule, or exclusionary source as the cause of removals unless it is cited in the ""Per-part attribution for removed users"" section OR the ""Configuration history"" section shows an explicit ""What changed"" line involving that source in this window. The current query listed under ""Configuration as of this run"" is NOT proof of attribution — a source being listed as CURRENT does not mean users were removed FROM it. Removals typically come from sources that WERE in the query previously but are NO LONGER in the query, from users who no longer match the current sources' criteria, or from sources whose role flipped from inclusionary to exclusionary, or from newly-added exclusionary sources — do not conflate these cases. **BAD example — process-of-elimination hallucination**: given ""Per-part attribution for added users: all of the added users match source group `X`"" and NO removes attribution section (or a ""(no attributable source found)"" removes marker), it is FORBIDDEN to output ""all removals came from users leaving `Y`"" just because `Y` is the OTHER source in the current query. That reasoning is process-of-elimination guessing, not evidence — the correct output is to describe removals without naming any specific source (pattern 4 without a per-removal source, or pattern 5, or pattern 6). Same rule applies in reverse for adds — never mirror the removes attribution shape onto adds when the adds attribution section is empty or marked ""(no attributable source found)"". **BAD example — inventing a second name to make a sentence plural**: given a single attribution line like ""- Source removed from query (previously group `X`): all of the removed users were sourced from this now-deleted part"", it is FORBIDDEN to output ""...came from the groups `X` and `Y`"" — you must output ""...came from the group `X`"" (singular) since only ONE source is cited. Never pluralize by inventing a second source name from the current query or from prior conversations.
+12. **Per-part attribution for added users available**: When the prompt contains a ""Per-part attribution for added users"" section, use its qualitative terms verbatim to explain the additions. In particular, when the attribution line says ""Exclusionary source removed from query in the recent config update"", phrase it as: ""This sync's additions came from users who were previously excluded by `X`, which was removed from the query in a recent config update."" When the attribution line indicates a source ""flipped from exclusionary to inclusionary"", phrase it as: ""This sync's additions came from users who are members of `X`, which was recently flipped from an exclusionary source to an inclusionary source in the query."" **When multiple attribution lines are present for adds, you MUST name EVERY cited source, combining them naturally (""...from the groups `X` and `Y`"" for two, ""...from the groups `X`, `Y`, and `Z`"" for three or more).** All the anti-hallucination rules from pattern 11 apply symmetrically to adds — never invent a second name to make a sentence plural, never process-of-elimination guess a source, never name a source that is not cited in the attribution section.
 
 When the membership rule returns no users (UsersAdded and UsersRemoved are both 0 AND the run status is MembershipDataNotFound or similar), prefer pattern 8 over saying ""HR data was unavailable"" — the HR table itself exists; what's empty is the result for this specific scope+filter combination.
 
@@ -201,7 +202,11 @@ Use only the provided data. Output 1-2 sentences normally, or up to 3 sentences 
                 var (cappedAdded, cappedRemoved) = CapAt150(added, removed);
 
                 // Two EF queries against the same _readContext — MUST run sequentially (DbContext is not thread-safe).
-                var configRunTime = runHistory.EndTime ?? runHistory.StartTime ?? runHistory.UpdatedAt;
+                // Fix #4: use StartTime as the config cutoff whenever available — a run's behavior is governed by the config
+                // in effect when it BEGAN, so any changes that happened between StartTime and EndTime must be excluded from
+                // "the query for this run". Fall back to EndTime minus a small buffer when StartTime is missing, to avoid
+                // capturing near-simultaneous SubmissionApproved / IgnoreThresholdOnce events that happened during finalization.
+                var configRunTime = GetRunConfigCutoff(runHistory);
                 var recentChanges = await _syncJobChangeRepository.GetRecentConfigChangesBySyncJobIdAsync(
                     request.SyncJobId, configRunTime, count: 10);
                 var recentIgnoreThresholdOnce = await _syncJobChangeRepository.GetRecentIgnoreThresholdOnceEventsAsync(
@@ -232,6 +237,30 @@ Use only the provided data. Output 1-2 sentences normally, or up to 3 sentences 
                             if (seenPrevSourceKeys.Add(key))
                             {
                                 previousPartsForNames.Add(p);
+                            }
+                        }
+                    }
+                }
+
+                // Fix #3: reconstruct the PREVIOUS RUN's parsed parts (with their previous-run indices) so per-part removes
+                // attribution can look up previous blobs by the SAME source's previous-run index — not by the current-run index.
+                // Reordering (or middle-of-list deletions) shift indices, and blob filenames are position-based, so using the
+                // current index to key into previousPartFiles produces wrong-source comparisons.
+                List<QueryPartInfo>? previousRunParts = null;
+                var previousRunIndexByGuid = new Dictionary<Guid, int>();
+                if (previousRun != null && recentChanges != null)
+                {
+                    var prevCutoff = GetRunConfigCutoff(previousRun);
+                    var prevRunChange = recentChanges.FirstOrDefault(c => c.ChangeTime <= prevCutoff);
+                    var prevRunQuery = prevRunChange != null ? ExtractQueryFromChangeDetails(prevRunChange.ChangeDetails) : null;
+                    previousRunParts = ParseQueryParts(prevRunQuery);
+                    if (previousRunParts != null)
+                    {
+                        foreach (var pp in previousRunParts)
+                        {
+                            if (IsGroupFamilyAttributionType(pp.Type) && Guid.TryParse(pp.Source, out var g))
+                            {
+                                previousRunIndexByGuid[g] = pp.Index;
                             }
                         }
                     }
@@ -283,11 +312,11 @@ Use only the provided data. Output 1-2 sentences normally, or up to 3 sentences 
 
                 // Per-part attribution for added users. Silent skip on any missing data.
                 var addsAttribution = await ComputeAddsAttributionAsync(
-                    parts, added, runHistory.AdfRunId, managerNames, groupNames, partFiles);
+                    parts, previousPartsForNames, added, runHistory.AdfRunId, managerNames, groupNames, partFiles, previousPartFiles, previousRunIndexByGuid);
 
                 // Per-part attribution for removed users. Requires previous run's data; silent skip on any missing data.
                 var removesAttribution = await ComputeRemovesAttributionAsync(
-                    parts, previousPartsForNames, removed, runHistory.AdfRunId, previousRun?.AdfRunId, managerNames, groupNames, partFiles, previousPartFiles);
+                    parts, previousPartsForNames, removed, runHistory.AdfRunId, previousRun?.AdfRunId, managerNames, groupNames, partFiles, previousPartFiles, previousRunIndexByGuid);
 
                 var userPrompt = BuildRunPrompt(request, runHistory, asOfRunQuery, cappedAdded, cappedRemoved, added.Count, removed.Count, isThresholdBlocked, prevThresholdViolations, thisThresholdViolations, configDiff, hrDiff, groupNames, managerNames, addsAttribution, removesAttribution);
 
@@ -336,7 +365,8 @@ Use only the provided data. Output 1-2 sentences normally, or up to 3 sentences 
         {
             try
             {
-                var asOf = runHistory.EndTime ?? runHistory.StartTime ?? runHistory.UpdatedAt;
+                // Fix #4: use StartTime-preferring cutoff so we return the config that was actually in effect when the run started.
+                var asOf = GetRunConfigCutoff(runHistory);
                 var recentChanges = await _syncJobChangeRepository.GetRecentConfigChangesBySyncJobIdAsync(syncJobId, asOf, count: 1);
                 if (recentChanges == null || recentChanges.Count == 0)
                 {
@@ -349,6 +379,17 @@ Use only the provided data. Output 1-2 sentences normally, or up to 3 sentences 
                 _logger.LogWarning(ex, "Failed to resolve as-of-run query for SyncJob {SyncJobId}, falling back to current query", syncJobId);
                 return null;
             }
+        }
+
+        // The config in effect when a run BEGAN — not when it ended — is what governed its behavior.
+        // Returns StartTime when available. When null (common for threshold-blocked / disabled runs), returns EndTime
+        // minus a 30-second buffer to avoid capturing config updates that landed alongside the run's finalization.
+        // Falls back to UpdatedAt only if both StartTime and EndTime are unavailable.
+        private static DateTime GetRunConfigCutoff(Models.SyncJobHistory.SyncJobHistory runHistory)
+        {
+            if (runHistory.StartTime.HasValue) return runHistory.StartTime.Value;
+            if (runHistory.EndTime.HasValue) return runHistory.EndTime.Value.AddSeconds(-30);
+            return runHistory.UpdatedAt;
         }
 
         private async Task<bool> HasConfigChangeInWindowAsync(Guid syncJobId, Models.SyncJobHistory.SyncJobHistory runHistory)
@@ -1372,11 +1413,14 @@ Configuration history:
         // Missing data silently skips that line — never guesses. Caller pre-fetches partFiles to overlap the two blob enumerations.
         private async Task<string> ComputeAddsAttributionAsync(
             IReadOnlyList<QueryPartInfo> parts,
+            IReadOnlyList<QueryPartInfo> previousParts,
             IReadOnlyCollection<Guid> addedUsers,
             Guid? runAdfRunId,
             IReadOnlyDictionary<int, string>? managerNames,
             IReadOnlyDictionary<Guid, string>? groupNames,
-            IReadOnlyDictionary<string, BlobResult> partFiles)
+            IReadOnlyDictionary<string, BlobResult> partFiles,
+            IReadOnlyDictionary<string, BlobResult> previousPartFiles,
+            IReadOnlyDictionary<Guid, int> previousRunIndexByGuid)
         {
             if (addedUsers == null || addedUsers.Count == 0) return string.Empty;
 
@@ -1432,6 +1476,17 @@ Configuration history:
             });
             var results = await Task.WhenAll(tasks);
             var lines = results.Where(l => !string.IsNullOrEmpty(l)).Select(l => l!).ToList();
+
+            // Fix #2: deleted exclusionary group-family parts. When a source was previously excluded and is now removed
+            // from the query, the users it was blocking are newly admitted → they show up as adds.
+            var deletedExclLines = await AttributeDeletedExclusionaryGroupFamilyPartsForAddsAsync(parts, previousParts, addedSet, totalSampled, previousPartFiles, groupNames, previousRunIndexByGuid);
+            lines.AddRange(deletedExclLines);
+
+            // Fix #5: exclusionary → inclusionary flips. A source that was blocking users but is now including them
+            // contributes adds equal to its current members that appear in the added set.
+            var flippedExclToInclLines = await AttributeFlippedGroupFamilyPartsForAddsAsync(parts, previousParts, addedSet, totalSampled, partFiles, groupNames);
+            lines.AddRange(flippedExclToInclLines);
+
             if (lines.Count == 0)
             {
                 // Mirror of the removes no-attribution marker: when adds happen but no source is attributable, forbid the AI from
@@ -1565,7 +1620,8 @@ Configuration history:
             IReadOnlyDictionary<int, string>? managerNames,
             IReadOnlyDictionary<Guid, string>? groupNames,
             IReadOnlyDictionary<string, BlobResult> partFiles,
-            IReadOnlyDictionary<string, BlobResult> previousPartFiles)
+            IReadOnlyDictionary<string, BlobResult> previousPartFiles,
+            IReadOnlyDictionary<Guid, int> previousRunIndexByGuid)
         {
             if (removedUsers == null || removedUsers.Count == 0) return string.Empty;
 
@@ -1623,7 +1679,7 @@ Configuration history:
                         ? AttributeSqlPartForRemovesAsync(part, removedSet, totalSampled, currentTable, previousTable, managerNames)
                         : Task.FromResult<string?>(null);
                 }
-                return AttributeGroupFamilyPartForRemovesAsync(part, removedSet, totalSampled, partFiles, previousPartFiles, groupNames);
+                return AttributeGroupFamilyPartForRemovesAsync(part, removedSet, totalSampled, partFiles, previousPartFiles, groupNames, previousRunIndexByGuid);
             });
             var results = await Task.WhenAll(tasks);
             var lines = results.Where(l => !string.IsNullOrEmpty(l)).Select(l => l!).ToList();
@@ -1631,6 +1687,16 @@ Configuration history:
             // Deleted inclusionary group-family parts: source dropped by a recent config update, so its previous members appear as removes.
             var deletedLines = await AttributeDeletedGroupFamilyPartsForRemovesAsync(parts, previousParts, removedSet, totalSampled, previousPartFiles, groupNames);
             lines.AddRange(deletedLines);
+
+            // Flipped group-family parts: source was inclusionary in the previous config but is now exclusionary (or vice versa).
+            // A flip from inclusionary → exclusionary causes removals of the users who were being included from that source.
+            var flippedLines = await AttributeFlippedGroupFamilyPartsForRemovesAsync(parts, previousParts, removedSet, totalSampled, previousPartFiles, partFiles, groupNames, previousRunIndexByGuid);
+            lines.AddRange(flippedLines);
+
+            // Fix #1: NEW exclusionary group-family parts added to the query in the recent config update.
+            // A newly-added exclusionary source causes removals for its current members that overlap with the destination.
+            var newExclLines = await AttributeNewExclusionaryGroupFamilyPartsForRemovesAsync(parts, previousParts, removedSet, totalSampled, partFiles, groupNames);
+            lines.AddRange(newExclLines);
 
             // When we sampled removed users but couldn't attribute any of them, emit an explicit no-signal marker so the AI does NOT
             // process-of-elimination guess a source from the adds attribution or from the sources listed in the current query.
@@ -1725,11 +1791,26 @@ Configuration history:
             int totalSampled,
             IReadOnlyDictionary<string, BlobResult> partFiles,
             IReadOnlyDictionary<string, BlobResult> previousPartFiles,
-            IReadOnlyDictionary<Guid, string>? groupNames)
+            IReadOnlyDictionary<Guid, string>? groupNames,
+            IReadOnlyDictionary<Guid, int> previousRunIndexByGuid)
         {
-            var tag = $"{part.Type}_{part.Index + 1}";
-            if (!partFiles.TryGetValue(tag, out var currentBlob) || currentBlob.BlobStatus != BlobStatus.Found) return null;
-            if (!previousPartFiles.TryGetValue(tag, out var previousBlob) || previousBlob.BlobStatus != BlobStatus.Found) return null;
+            var currentTag = $"{part.Type}_{part.Index + 1}";
+            if (!partFiles.TryGetValue(currentTag, out var currentBlob) || currentBlob.BlobStatus != BlobStatus.Found) return null;
+
+            // Fix #3: look up the previous blob by the SOURCE GUID's index in the PREVIOUS run's query, not by the current-run index.
+            // Reordering (or middle-of-list deletions) shift indices, and blob filenames are position-based; using the current
+            // index against previousPartFiles would compare against the wrong source's previous membership.
+            string? previousTag = null;
+            if (Guid.TryParse(part.Source, out var partGuid) && previousRunIndexByGuid.TryGetValue(partGuid, out var prevIndex))
+            {
+                previousTag = $"{part.Type}_{prevIndex + 1}";
+            }
+            else
+            {
+                // Fall back to same-index lookup only when we lack a previous-index map for this GUID (e.g., previous query missing).
+                previousTag = currentTag;
+            }
+            if (!previousPartFiles.TryGetValue(previousTag, out var previousBlob) || previousBlob.BlobStatus != BlobStatus.Found) return null;
 
             HashSet<Guid> currentMembers;
             HashSet<Guid> previousMembers;
@@ -1773,6 +1854,8 @@ Configuration history:
         }
 
         // Detects group-family inclusionary parts present in the previous config but missing from the current config, and attributes their previous members that are now being removed.
+        // A source that FLIPPED from inclusionary to exclusionary (still present in the query, just with the opposite role) is NOT a deletion —
+        // it's a role flip. We match on SOURCE GUID (regardless of the exclusionary flag) so flipped sources are excluded from the deleted set.
         private async Task<List<string>> AttributeDeletedGroupFamilyPartsForRemovesAsync(
             IReadOnlyList<QueryPartInfo> currentParts,
             IReadOnlyList<QueryPartInfo> previousParts,
@@ -1784,9 +1867,10 @@ Configuration history:
             var lines = new List<string>();
             if (previousParts == null || previousParts.Count == 0) return lines;
 
+            // ALL current group-family source GUIDs (inclusionary OR exclusionary). A flipped source counts as still-present.
             var currentSources = new HashSet<Guid>(
                 (currentParts ?? new List<QueryPartInfo>())
-                    .Where(p => IsGroupFamilyAttributionType(p.Type) && !p.Exclusionary && Guid.TryParse(p.Source, out _))
+                    .Where(p => IsGroupFamilyAttributionType(p.Type) && Guid.TryParse(p.Source, out _))
                     .Select(p => Guid.Parse(p.Source!)));
 
             var deletedParts = previousParts
@@ -1831,6 +1915,320 @@ Configuration history:
 
                 // No previous blob (or no per-part matches) — still emit a signal so the AI can cite the deleted source as the cause without inventing one that is still in the query.
                 lines.Add($"- Source removed from query in the recent config update (previously {label}): per-part membership counts are unavailable, but this deleted source is the likely cause of this run's removals");
+            }
+            return lines;
+        }
+
+        // Detects group-family sources whose inclusionary/exclusionary role flipped between the previous config and the current config.
+        // A flip from inclusionary → exclusionary causes removals for users who were being included from that source.
+        // A flip from exclusionary → inclusionary is not a cause of removals, so we only attribute the incl → excl direction here.
+        private async Task<List<string>> AttributeFlippedGroupFamilyPartsForRemovesAsync(
+            IReadOnlyList<QueryPartInfo> currentParts,
+            IReadOnlyList<QueryPartInfo> previousParts,
+            HashSet<string> removedSet,
+            int totalSampled,
+            IReadOnlyDictionary<string, BlobResult> previousPartFiles,
+            IReadOnlyDictionary<string, BlobResult> partFiles,
+            IReadOnlyDictionary<Guid, string>? groupNames,
+            IReadOnlyDictionary<Guid, int> previousRunIndexByGuid)
+        {
+            var lines = new List<string>();
+            if (previousParts == null || previousParts.Count == 0) return lines;
+            if (currentParts == null || currentParts.Count == 0) return lines;
+
+            // Build lookup of current group-family parts by source GUID, keyed to their current Exclusionary flag.
+            var currentByGuid = new Dictionary<Guid, QueryPartInfo>();
+            foreach (var cp in currentParts)
+            {
+                if (!IsGroupFamilyAttributionType(cp.Type)) continue;
+                if (!Guid.TryParse(cp.Source, out var g)) continue;
+                currentByGuid[g] = cp;
+            }
+
+            // Find previous inclusionary parts whose source is now exclusionary in the current config.
+            var flippedParts = new List<(QueryPartInfo previous, QueryPartInfo current)>();
+            foreach (var pp in previousParts)
+            {
+                if (!IsGroupFamilyAttributionType(pp.Type)) continue;
+                if (pp.Exclusionary) continue;
+                if (!Guid.TryParse(pp.Source, out var g)) continue;
+                if (!currentByGuid.TryGetValue(g, out var cp)) continue;
+                if (!cp.Exclusionary) continue;
+                flippedParts.Add((pp, cp));
+            }
+            if (flippedParts.Count == 0) return lines;
+
+            foreach (var (prevPart, currentPart) in flippedParts.Take(MaxGroupPartsToAttribute))
+            {
+                var label = FormatGroupFamilyPartLabel(currentPart, groupNames);
+
+                // Prefer the CURRENT per-part blob (the source still exists in the query at its new index) to count how many
+                // members of the now-exclusionary source appear in the removed set. Fall back to the previous blob when needed.
+                HashSet<Guid>? sourceMembers = null;
+                var currentTag = $"{currentPart.Type}_{currentPart.Index + 1}";
+                if (partFiles.TryGetValue(currentTag, out var currentBlob) && currentBlob.BlobStatus == BlobStatus.Found)
+                {
+                    try
+                    {
+                        sourceMembers = await _blobStorageRepository.ExtractGroupMembershipSourceMembersAsync(currentBlob.Path);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogWarning(ex, "Failed to read current per-part blob for flipped-role removes attribution on part #{Index} ({Type}); trying previous blob.", currentPart.Index, currentPart.Type);
+                    }
+                }
+                if (sourceMembers == null)
+                {
+                    var previousTag = $"{prevPart.Type}_{prevPart.Index + 1}";
+                    if (previousPartFiles.TryGetValue(previousTag, out var previousBlob) && previousBlob.BlobStatus == BlobStatus.Found)
+                    {
+                        try
+                        {
+                            sourceMembers = await _blobStorageRepository.ExtractGroupMembershipSourceMembersAsync(previousBlob.Path);
+                        }
+                        catch (Exception ex)
+                        {
+                            _logger.LogWarning(ex, "Failed to read previous per-part blob for flipped-role removes attribution on part #{Index} ({Type}); emitting signal-only line.", prevPart.Index, prevPart.Type);
+                        }
+                    }
+                }
+
+                if (sourceMembers != null && sourceMembers.Count > 0)
+                {
+                    var matched = 0;
+                    foreach (var g in sourceMembers)
+                    {
+                        if (removedSet.Contains(g.ToString())) matched++;
+                    }
+                    if (matched > 0)
+                    {
+                        var bucket = BucketAttribution(matched, totalSampled);
+                        lines.Add($"- Source flipped from inclusionary to exclusionary in the recent config update ({label}): {bucket} of the removed users are members of this now-exclusionary source");
+                        continue;
+                    }
+                }
+
+                // No blob or no per-part matches — still emit a signal-only line so the AI can cite the flip as the cause without inventing another source.
+                lines.Add($"- Source flipped from inclusionary to exclusionary in the recent config update ({label}): per-part membership counts are unavailable, but this role flip is the likely cause of this run's removals");
+            }
+            return lines;
+        }
+
+        // Fix #1: attribute removals to NEWLY-ADDED exclusionary sources.
+        // When a new exclusionary source is added in the recent config update, users who were in the destination and are also
+        // in the new excluded source are now filtered out → they show up as removes.
+        private async Task<List<string>> AttributeNewExclusionaryGroupFamilyPartsForRemovesAsync(
+            IReadOnlyList<QueryPartInfo> currentParts,
+            IReadOnlyList<QueryPartInfo> previousParts,
+            HashSet<string> removedSet,
+            int totalSampled,
+            IReadOnlyDictionary<string, BlobResult> partFiles,
+            IReadOnlyDictionary<Guid, string>? groupNames)
+        {
+            var lines = new List<string>();
+            if (currentParts == null || currentParts.Count == 0) return lines;
+
+            // Every source GUID seen in ANY prior config (across the walkback union) counts as "present before".
+            // A new exclusionary source is one whose GUID is exclusionary now AND was absent from every previous config in the union.
+            var previousSourceGuids = new HashSet<Guid>();
+            if (previousParts != null)
+            {
+                foreach (var pp in previousParts)
+                {
+                    if (!IsGroupFamilyAttributionType(pp.Type)) continue;
+                    if (!Guid.TryParse(pp.Source, out var g)) continue;
+                    previousSourceGuids.Add(g);
+                }
+            }
+
+            var newExclParts = currentParts
+                .Where(cp => IsGroupFamilyAttributionType(cp.Type)
+                             && cp.Exclusionary
+                             && Guid.TryParse(cp.Source, out var g)
+                             && !previousSourceGuids.Contains(g))
+                .Take(MaxGroupPartsToAttribute)
+                .ToList();
+            if (newExclParts.Count == 0) return lines;
+
+            foreach (var part in newExclParts)
+            {
+                var label = FormatGroupFamilyPartLabel(part, groupNames);
+                var currentTag = $"{part.Type}_{part.Index + 1}";
+                HashSet<Guid>? sourceMembers = null;
+                if (partFiles.TryGetValue(currentTag, out var blob) && blob.BlobStatus == BlobStatus.Found)
+                {
+                    try
+                    {
+                        sourceMembers = await _blobStorageRepository.ExtractGroupMembershipSourceMembersAsync(blob.Path);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogWarning(ex, "Failed to read current per-part blob for new-exclusionary removes attribution on part #{Index} ({Type}); emitting signal-only line.", part.Index, part.Type);
+                    }
+                }
+
+                if (sourceMembers != null && sourceMembers.Count > 0)
+                {
+                    var matched = 0;
+                    foreach (var g in sourceMembers)
+                    {
+                        if (removedSet.Contains(g.ToString())) matched++;
+                    }
+                    if (matched > 0)
+                    {
+                        var bucket = BucketAttribution(matched, totalSampled);
+                        lines.Add($"- New exclusionary source added in the recent config update ({label}): {bucket} of the removed users are members of this newly-excluded source");
+                        continue;
+                    }
+                }
+
+                lines.Add($"- New exclusionary source added in the recent config update ({label}): per-part membership counts are unavailable, but this newly-added exclusionary source is the likely cause of this run's removals");
+            }
+            return lines;
+        }
+
+        // Fix #2: attribute additions to DELETED exclusionary sources.
+        // When an exclusionary source is removed from the query, users it was blocking are now admitted → they show up as adds.
+        private async Task<List<string>> AttributeDeletedExclusionaryGroupFamilyPartsForAddsAsync(
+            IReadOnlyList<QueryPartInfo> currentParts,
+            IReadOnlyList<QueryPartInfo> previousParts,
+            HashSet<string> addedSet,
+            int totalSampled,
+            IReadOnlyDictionary<string, BlobResult> previousPartFiles,
+            IReadOnlyDictionary<Guid, string>? groupNames,
+            IReadOnlyDictionary<Guid, int> previousRunIndexByGuid)
+        {
+            var lines = new List<string>();
+            if (previousParts == null || previousParts.Count == 0) return lines;
+
+            // ALL current group-family source GUIDs (inclusionary OR exclusionary) — a flipped source counts as still-present.
+            var currentSources = new HashSet<Guid>(
+                (currentParts ?? new List<QueryPartInfo>())
+                    .Where(p => IsGroupFamilyAttributionType(p.Type) && Guid.TryParse(p.Source, out _))
+                    .Select(p => Guid.Parse(p.Source!)));
+
+            var deletedExclParts = previousParts
+                .Where(pp => IsGroupFamilyAttributionType(pp.Type) && pp.Exclusionary && Guid.TryParse(pp.Source, out var g) && !currentSources.Contains(g))
+                .Take(MaxGroupPartsToAttribute)
+                .ToList();
+            if (deletedExclParts.Count == 0) return lines;
+
+            foreach (var prevPart in deletedExclParts)
+            {
+                var label = FormatGroupFamilyPartLabel(prevPart, groupNames);
+
+                // Look up the previous blob by the SOURCE GUID's previous-run index (Fix #3 pattern).
+                string? previousTag = null;
+                if (Guid.TryParse(prevPart.Source, out var partGuid) && previousRunIndexByGuid.TryGetValue(partGuid, out var prevIndex))
+                {
+                    previousTag = $"{prevPart.Type}_{prevIndex + 1}";
+                }
+                else
+                {
+                    previousTag = $"{prevPart.Type}_{prevPart.Index + 1}";
+                }
+
+                HashSet<Guid>? prevMembers = null;
+                if (previousPartFiles.TryGetValue(previousTag, out var blob) && blob.BlobStatus == BlobStatus.Found)
+                {
+                    try
+                    {
+                        prevMembers = await _blobStorageRepository.ExtractGroupMembershipSourceMembersAsync(blob.Path);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogWarning(ex, "Failed to read previous per-part blob for deleted-exclusionary adds attribution on part #{Index} ({Type}); emitting signal-only line.", prevPart.Index, prevPart.Type);
+                    }
+                }
+
+                if (prevMembers != null && prevMembers.Count > 0)
+                {
+                    var matched = 0;
+                    foreach (var g in prevMembers)
+                    {
+                        if (addedSet.Contains(g.ToString())) matched++;
+                    }
+                    if (matched > 0)
+                    {
+                        var bucket = BucketAttribution(matched, totalSampled);
+                        lines.Add($"- Exclusionary source removed from query in the recent config update (previously {label}): {bucket} of the added users were previously excluded by this now-removed exclusion");
+                        continue;
+                    }
+                }
+
+                lines.Add($"- Exclusionary source removed from query in the recent config update (previously {label}): per-part membership counts are unavailable, but this deleted exclusionary source is the likely cause of this run's additions");
+            }
+            return lines;
+        }
+
+        // Fix #5: attribute additions to sources that flipped from exclusionary to inclusionary.
+        // A source that was blocking users but is now including them contributes adds equal to its current members that appear in the added set.
+        private async Task<List<string>> AttributeFlippedGroupFamilyPartsForAddsAsync(
+            IReadOnlyList<QueryPartInfo> currentParts,
+            IReadOnlyList<QueryPartInfo> previousParts,
+            HashSet<string> addedSet,
+            int totalSampled,
+            IReadOnlyDictionary<string, BlobResult> partFiles,
+            IReadOnlyDictionary<Guid, string>? groupNames)
+        {
+            var lines = new List<string>();
+            if (previousParts == null || previousParts.Count == 0) return lines;
+            if (currentParts == null || currentParts.Count == 0) return lines;
+
+            var currentByGuid = new Dictionary<Guid, QueryPartInfo>();
+            foreach (var cp in currentParts)
+            {
+                if (!IsGroupFamilyAttributionType(cp.Type)) continue;
+                if (!Guid.TryParse(cp.Source, out var g)) continue;
+                currentByGuid[g] = cp;
+            }
+
+            // Previously exclusionary, now inclusionary.
+            var flippedParts = new List<QueryPartInfo>();
+            foreach (var pp in previousParts)
+            {
+                if (!IsGroupFamilyAttributionType(pp.Type)) continue;
+                if (!pp.Exclusionary) continue;
+                if (!Guid.TryParse(pp.Source, out var g)) continue;
+                if (!currentByGuid.TryGetValue(g, out var cp)) continue;
+                if (cp.Exclusionary) continue;
+                flippedParts.Add(cp);
+            }
+            if (flippedParts.Count == 0) return lines;
+
+            foreach (var currentPart in flippedParts.Take(MaxGroupPartsToAttribute))
+            {
+                var label = FormatGroupFamilyPartLabel(currentPart, groupNames);
+                var currentTag = $"{currentPart.Type}_{currentPart.Index + 1}";
+                HashSet<Guid>? sourceMembers = null;
+                if (partFiles.TryGetValue(currentTag, out var blob) && blob.BlobStatus == BlobStatus.Found)
+                {
+                    try
+                    {
+                        sourceMembers = await _blobStorageRepository.ExtractGroupMembershipSourceMembersAsync(blob.Path);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogWarning(ex, "Failed to read current per-part blob for flipped exclusionary→inclusionary adds attribution on part #{Index} ({Type}); emitting signal-only line.", currentPart.Index, currentPart.Type);
+                    }
+                }
+
+                if (sourceMembers != null && sourceMembers.Count > 0)
+                {
+                    var matched = 0;
+                    foreach (var g in sourceMembers)
+                    {
+                        if (addedSet.Contains(g.ToString())) matched++;
+                    }
+                    if (matched > 0)
+                    {
+                        var bucket = BucketAttribution(matched, totalSampled);
+                        lines.Add($"- Source flipped from exclusionary to inclusionary in the recent config update ({label}): {bucket} of the added users are members of this newly-inclusionary source");
+                        continue;
+                    }
+                }
+
+                lines.Add($"- Source flipped from exclusionary to inclusionary in the recent config update ({label}): per-part membership counts are unavailable, but this role flip is the likely cause of this run's additions");
             }
             return lines;
         }

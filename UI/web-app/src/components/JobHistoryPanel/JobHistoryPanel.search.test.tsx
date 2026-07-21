@@ -1172,6 +1172,27 @@ describe('JobHistoryPanelBase email deep-link auto-open (FR-002)', () => {
     expect(fetchThresholdNotificationMock).toHaveBeenCalledTimes(1);
   });
 
+  it('does not auto-open for a non-writer even when autoOpenThresholdAction is set (FR-011)', async () => {
+    mockState.roles.isJobOwnerWriter = false;
+    mockState.roles.isJobTenantWriter = false;
+    mockSyncHistoryItems = [
+      {
+        ...buildSyncHistoryItem('run-threshold', '2024-05-02T00:00:00Z', 5, 0),
+        status: RunHistoryStatus.ThresholdExceeded,
+      },
+    ];
+
+    await act(async () => {
+      render(<JobHistoryPanelBase {...defaultProps} autoOpenThresholdAction />);
+      await Promise.resolve();
+    });
+
+    await waitFor(() => {
+      expect(fetchSyncJobHistoryMock).toHaveBeenCalled();
+    });
+    expect(fetchThresholdNotificationMock).not.toHaveBeenCalled();
+  });
+
   it('does not auto-open when no ThresholdExceeded run exists', async () => {
     await act(async () => {
       render(<JobHistoryPanelBase {...defaultProps} autoOpenThresholdAction />);

@@ -23,6 +23,11 @@ namespace Repositories.Mocks
             };
             return Task.FromResult(responseMessage);
 		}
+
+		public Task<string?> BuildStyledFallbackEmailHtmlAsync(EmailMessage emailMessage, string? adaptiveCardJson = null)
+		{
+			return Task.FromResult<string?>(null);
+		}
 	}
 
 	public class MockEmail<T> : IEmailSenderRecipient

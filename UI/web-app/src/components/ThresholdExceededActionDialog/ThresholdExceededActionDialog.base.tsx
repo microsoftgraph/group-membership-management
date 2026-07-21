@@ -66,6 +66,7 @@ export const ThresholdExceededActionDialogBase: React.FunctionComponent<IThresho
         isResolved = false,
         resolvedBy,
         resolvedTime,
+        isAddressedViaConfig = false,
         aiDescription,
         isAiDescriptionLoading = false,
         aiDescriptionError = false,
@@ -162,7 +163,12 @@ export const ThresholdExceededActionDialogBase: React.FunctionComponent<IThresho
                                     : modal.alreadyResolvedMessageNoActor}
                             </MessageBar>
                         )}
-                        {purgeDate && !isResolved && (
+                        {isAddressedViaConfig && !isResolved && (
+                            <MessageBar className={classNames.gracePeriodMessageBar} messageBarType={MessageBarType.info}>
+                                {modal.addressedViaConfigMessage}
+                            </MessageBar>
+                        )}
+                        {purgeDate && !isResolved && !isAddressedViaConfig && (
                             <MessageBar className={classNames.gracePeriodMessageBar} messageBarType={MessageBarType.warning}>
                                 {format(
                                     modal.gracePeriodMessage,
@@ -326,7 +332,7 @@ export const ThresholdExceededActionDialogBase: React.FunctionComponent<IThresho
                                 <PrimaryButton
                                     className={classNames.actionCardButton}
                                     text={modal.applyChanges}
-                                    disabled={!isApplyChangesEnabled || isResolved}
+                                    disabled={!isApplyChangesEnabled || isResolved || isAddressedViaConfig}
                                     onClick={onApplyChanges}
                                 />
                             </div>

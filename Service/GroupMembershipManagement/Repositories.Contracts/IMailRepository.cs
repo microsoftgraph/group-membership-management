@@ -10,5 +10,8 @@ namespace Repositories.Contracts
     public interface IMailRepository
     {
         Task<HttpResponseMessage> SendMailAsync(EmailMessage emailMessage, Guid? runId);
+
+        // Builds a styled HTML body for emailMessage. Embeds adaptiveCardJson when provided; returns null when no styled builder matches or styled fallbacks are disabled.
+        Task<string?> BuildStyledFallbackEmailHtmlAsync(EmailMessage emailMessage, string? adaptiveCardJson = null);
     }
 }

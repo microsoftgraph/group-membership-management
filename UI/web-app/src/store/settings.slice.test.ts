@@ -16,7 +16,7 @@ import settingsReducer, {
   selectIsAutoApprovalForRequestorIsOrgLeaderSyncsEnabled,
   selectIsAITitleEnabled,
   selectCopilotSuggestedPrompts,
-  selectIsRunHistoryOpenViewingAndUnifiedTabEnabled,
+  selectIsRunHistoryTabEnabled,
   SettingsState,
 } from './settings.slice';
 import { fetchSettings, fetchSettingByKey, patchSetting, getSupportEmailAddress } from './settings.api';
@@ -25,7 +25,7 @@ import type { Setting } from '../models/Setting';
 
 const initial: SettingsState = settingsReducer(undefined, { type: '@@INIT' });
 
-const makeSetting = (key: string, value: string): Setting => ({
+const makeSetting = (key: SettingKey | string, value: string): Setting => ({
   settingKey: key,
   settingValue: value,
 } as Setting);
@@ -84,7 +84,7 @@ describe('settings.slice — extraReducers', () => {
   });
 
   it('patchSetting.fulfilled clears saving', () => {
-    const state = settingsReducer(initial, patchSetting.fulfilled({}, 'req1', {} as any));
+    const state = settingsReducer(initial, patchSetting.fulfilled(makeSetting('k', 'v'), 'req1', {} as any));
     expect(state.isSaving).toBe(false);
     expect(state.patchSettingResponse).toBeDefined();
   });
@@ -213,17 +213,17 @@ describe('settings.slice — selectors', () => {
     expect(selectCopilotSuggestedPrompts(root)).toBe('');
   });
 
-  it('selectIsRunHistoryOpenViewingAndUnifiedTabEnabled returns true when enabled', () => {
+  it('selectIsRunHistoryTabEnabled returns true when enabled', () => {
     const root = buildRoot([
       makeSetting(SettingKey.RunHistoryOpenViewingAndUnifiedTab, 'true'),
     ]);
-    expect(selectIsRunHistoryOpenViewingAndUnifiedTabEnabled(root)).toBe(true);
+    expect(selectIsRunHistoryTabEnabled(root)).toBe(true);
   });
 
-  it('selectIsRunHistoryOpenViewingAndUnifiedTabEnabled defaults to false', () => {
-    expect(selectIsRunHistoryOpenViewingAndUnifiedTabEnabled(buildRoot())).toBe(false);
+  it('selectIsRunHistoryTabEnabled defaults to false', () => {
+    expect(selectIsRunHistoryTabEnabled(buildRoot())).toBe(false);
     expect(
-      selectIsRunHistoryOpenViewingAndUnifiedTabEnabled(
+      selectIsRunHistoryTabEnabled(
         buildRoot([makeSetting(SettingKey.RunHistoryOpenViewingAndUnifiedTab, 'false')])
       )
     ).toBe(false);

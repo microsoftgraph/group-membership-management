@@ -140,7 +140,8 @@ namespace Services
                 SyncJobId = notification.SyncJobId,
                 ChangeTime = notification.ResolvedTime,
                 ChangedByDisplayName = notification.ResolvedBy,
-                ChangeSource = SyncJobChangeSource.Email,
+                // Resolutions now occur in the authenticated web UI (deep link), not via OAM email.
+                ChangeSource = SyncJobChangeSource.WebApp,
                 ChangeReason = changeReason,
                 ChangeDetails = SyncJobSerializationHelper.SerializeSyncJob(job)
             };

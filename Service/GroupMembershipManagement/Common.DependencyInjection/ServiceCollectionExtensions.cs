@@ -54,7 +54,8 @@ namespace Common.DependencyInjection
                     configuration.GetValue("Mail:IsMailApplicationPermissionGranted", false),
                     configuration.GetValue<string>("senderAddress"),
                     configuration.GetValue("Mail:SkipMailNotifications", false),
-                    configuration.GetValue("Mail:EnableStyledFallbackEmails", false));
+                    configuration.GetValue("Mail:EnableStyledFallbackEmails", false),
+                    configuration.GetValue(global::Models.ConfigurationKeyNames.RunHistoryOpenViewingAndUnifiedTab, false));
             });
 
             services.AddScoped<IMailFallbackBuilder>(provider =>

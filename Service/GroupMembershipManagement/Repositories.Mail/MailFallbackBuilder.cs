@@ -64,12 +64,31 @@ namespace Repositories.Mail
         // [0]=GroupId, [1]=TargetGroupName, [2]=SourceObjectId, [3]=StatusDescription, [4]=PausedAtUtc (ISO 8601)
         private const int NoSourceGroupPausedAtIndex = 4;
 
+        // SyncDisabled Threshold AdditionalContentParams indices (set by
+        // NotifierService.SendThresholdEmailAsync when CardState == DisabledCard, and
+        // NotifierService.SendNormalThresholdEmailAsync when sendDisableJobNotification=true;
+        // content type = SyncJobDisabledEmailBody):
+        // [0]=GroupName, [1]=GroupId, [2]=SupportEmailAddresses, [3]=LearnMoreAboutGMMUrl,
+        // [4]=PausedAtUtc, [5]=ChangeQuantityForAdditions, [6]=ChangeQuantityForRemovals,
+        // [7]=ChangePercentageForAdditions, [8]=ChangePercentageForRemovals,
+        // [9]=ThresholdPercentageForAdditions, [10]=ThresholdPercentageForRemovals,
+        // [11]=ExceededDirection ("Increase" | "Decrease" | "Both"). Slots [5]–[11] are optional;
+        // when absent the description degrades to the static SyncDisabledFallback.Description.Threshold.
+        private const int ThresholdPausedAtIndex = 4;
+        private const int ThresholdAddedCountIndex = 5;
+        private const int ThresholdRemovedCountIndex = 6;
+        private const int ThresholdActualIncreasePctIndex = 7;
+        private const int ThresholdActualDecreasePctIndex = 8;
+        private const int ThresholdConfiguredIncreasePctIndex = 9;
+        private const int ThresholdConfiguredDecreasePctIndex = 10;
+        private const int ThresholdExceededDirectionIndex = 11;
+
         // SyncDisabled compact-detail reasons share the same layout: 2-3 row details table
         // (Group Email/Type when available, Paused At), suppressed requestor row, and the orange
         // "What to do" action-checklist with a PausedAt + NumberOfDaysBeforePurging deadline.
         // Add a reason here to opt into the shared rendering; per-reason knob is GetPausedAtIndex.
         private static readonly HashSet<string> _compactDetailReasons =
-            new HashSet<string>(StringComparer.Ordinal) { "NoDestinationGroup", "NoSourceGroup", "NoOwner", "NoData", "GuestUsers", "NestedGroupsFound" };
+            new HashSet<string>(StringComparer.Ordinal) { "NoDestinationGroup", "NoSourceGroup", "NoOwner", "NoData", "GuestUsers", "NestedGroupsFound", "Threshold" };
 
         private static int GetPausedAtIndex(string disableReason) => disableReason switch
         {
@@ -79,6 +98,7 @@ namespace Repositories.Mail
             "NoData" => NoDataPausedAtIndex,
             "GuestUsers" => GuestUsersPausedAtIndex,
             "NestedGroupsFound" => NestedGroupsFoundPausedAtIndex,
+            "Threshold" => ThresholdPausedAtIndex,
             _ => -1
         };
 
@@ -179,10 +199,9 @@ namespace Repositories.Mail
         {
             var disableReason = GetDisableReason(emailMessage.Content);
 
-            // Threshold (actionable adaptive card) and Generic / unknown content types fall
-            // through to the legacy adaptive-card + plain-text path rather than rendering a
-            // styled email with no useful per-reason detail.
-            if (disableReason == "Threshold" || disableReason == "Generic")
+            // Generic / unknown content types fall through to the legacy adaptive-card + plain-text path
+            // rather than rendering a styled email with no useful per-reason detail.
+            if (disableReason == "Generic")
             {
                 return null;
             }
@@ -215,9 +234,13 @@ namespace Repositories.Mail
                 ? GetParam(emailMessage, RemovedCountIndex, defaultValue: "0")
                 : string.Empty;
 
-            var description = _localizationRepository.TranslateSetting(
-                $"SyncDisabledFallback.Description.{disableReason}",
-                string.Empty, groupId ?? string.Empty, gmmOwnerName, nestedGroupsCount, addedCount, removedCount);
+            // Threshold renders a direction-aware "This sync would add N members..." sentence
+            // using the rich data from ThresholdNotification (slots [5]..[11]).
+            string description = disableReason == "Threshold"
+                ? BuildThresholdDescription(emailMessage)
+                : _localizationRepository.TranslateSetting(
+                    $"SyncDisabledFallback.Description.{disableReason}",
+                    string.Empty, groupId ?? string.Empty, gmmOwnerName, nestedGroupsCount, addedCount, removedCount);
 
             var displayGroupName = !string.IsNullOrWhiteSpace(destinationGroupName)
                 ? destinationGroupName
@@ -244,7 +267,8 @@ namespace Repositories.Mail
                 jobUrl: jobUrl,
                 sentDate: sentDate,
                 actionChecklistHtml: BuildActionChecklistHtml(disableReason, emailMessage),
-                extraCalloutHtml: BuildNestedGroupsCalloutHtml(disableReason, emailMessage)
+                extraCalloutHtml: BuildNestedGroupsCalloutHtml(disableReason, emailMessage),
+                ctaLabelOverride: ResolveSyncDisabledCtaLabelOverride(disableReason)
             );
         }
 
@@ -826,6 +850,39 @@ namespace Repositories.Mail
             return null;
         }
 
+        // Picks the direction-specific Threshold description from AdditionalContentParams[11].
+        // Falls back to the static SyncDisabledFallback.Description.Threshold when no direction is set.
+        private string BuildThresholdDescription(EmailMessage emailMessage)
+        {
+            var direction = GetParam(emailMessage, ThresholdExceededDirectionIndex, defaultValue: "");
+            if (string.IsNullOrEmpty(direction))
+            {
+                return _localizationRepository.TranslateSetting("SyncDisabledFallback.Description.Threshold");
+            }
+
+            var added = GetParam(emailMessage, ThresholdAddedCountIndex, defaultValue: "0");
+            var removed = GetParam(emailMessage, ThresholdRemovedCountIndex, defaultValue: "0");
+            var actualIncreasePct = GetParam(emailMessage, ThresholdActualIncreasePctIndex, defaultValue: "0");
+            var actualDecreasePct = GetParam(emailMessage, ThresholdActualDecreasePctIndex, defaultValue: "0");
+            var configuredIncreasePct = GetParam(emailMessage, ThresholdConfiguredIncreasePctIndex, defaultValue: "0");
+            var configuredDecreasePct = GetParam(emailMessage, ThresholdConfiguredDecreasePctIndex, defaultValue: "0");
+
+            return direction switch
+            {
+                "Both" => _localizationRepository.TranslateSetting(
+                    "SyncDisabledFallback.Description.Threshold.Both",
+                    added, removed,
+                    actualIncreasePct, actualDecreasePct,
+                    configuredIncreasePct, configuredDecreasePct),
+                "Decrease" => _localizationRepository.TranslateSetting(
+                    "SyncDisabledFallback.Description.Threshold.Decrease.OnlyRemovals",
+                    removed, actualDecreasePct, configuredDecreasePct),
+                _ /* Increase */ => _localizationRepository.TranslateSetting(
+                    "SyncDisabledFallback.Description.Threshold.Increase.OnlyAdditions",
+                    added, actualIncreasePct, configuredIncreasePct),
+            };
+        }
+
         private async Task<StringBuilder> BuildBaseRowsAsync(string groupId, string requestor)
         {
             var (groupAlias, groupType) = await FetchGroupMetaAsync(groupId);
@@ -837,9 +894,13 @@ namespace Repositories.Mail
             string headerText, string description, string calloutBody,
             StringBuilder rows, string jobUrl, string sentDate,
             string actionChecklistHtml = "",
-            string extraCalloutHtml = "")
+            string extraCalloutHtml = "",
+            string ctaLabelOverride = null)
         {
             var name = string.IsNullOrWhiteSpace(groupName) ? "N/A" : groupName;
+            var ctaLabel = !string.IsNullOrEmpty(ctaLabelOverride)
+                ? ctaLabelOverride
+                : _localizationRepository.TranslateSetting($"{prefix}.CtaLabel");
             var result = string.Format(
                 template,
                 _localizationRepository.TranslateSetting($"{prefix}.Badge"),             // {0} badge
@@ -849,7 +910,7 @@ namespace Repositories.Mail
                 rows.ToString(),                                                          // {4} details table rows
                 _localizationRepository.TranslateSetting($"{prefix}.CalloutTitle"),      // {5} callout title
                 ConvertContentToHtml(calloutBody),                                        // {6} callout body
-                _localizationRepository.TranslateSetting($"{prefix}.CtaLabel"),          // {7} CTA label
+                ctaLabel,                                                                 // {7} CTA label
                 System.Net.WebUtility.HtmlEncode(SanitizeUrl(jobUrl)),                   // {8} CTA url
                 ConvertContentToHtml(_localizationRepository.TranslateSetting("Fallback.FooterExplanation", name)), // {9} footer (shared across all variants)
                 sentDate,                                                                 // {10} sent date
@@ -862,6 +923,17 @@ namespace Repositories.Mail
                     System.Net.WebUtility.HtmlEncode(_localizationRepository.TranslateSetting("Fallback.BrandHeader.Eyebrow")))
                 .Replace("__BRAND_WORDMARK__",
                     System.Net.WebUtility.HtmlEncode(_localizationRepository.TranslateSetting("Fallback.BrandHeader.Wordmark")));
+        }
+
+        // Per-reason CTA label override (e.g. Threshold -> "Review in GMM").
+        // Returns null when no override is defined so the default "{prefix}.CtaLabel" wins.
+        private string ResolveSyncDisabledCtaLabelOverride(string disableReason)
+        {
+            var key = $"SyncDisabledFallback.CtaLabel.{disableReason}";
+            var label = _localizationRepository.TranslateSetting(key);
+            return string.IsNullOrEmpty(label) || string.Equals(label, key, StringComparison.Ordinal)
+                ? null
+                : label;
         }
 
         // Builds the gray "Nested groups detected · N total" callout that sits between the
@@ -1178,10 +1250,8 @@ namespace Repositories.Mail
             if (string.IsNullOrEmpty(contentType))
                 return "Generic";
 
-            // Map email content types to disable reason keys for context-specific descriptions
             return contentType switch
             {
-                "SyncThresholdBothEmailBody" => "Threshold",
                 "SyncDisabledNoGroupEmailBody" => "NoDestinationGroup",
                 "SyncDisabledNoSourceGroupEmailBody" => "NoSourceGroup",
                 "SyncDisabledNoOwnerEmailBody" => "NoOwner",
@@ -1189,7 +1259,7 @@ namespace Repositories.Mail
                 "NestedGroupsFoundEmailBody" => "NestedGroupsFound",
                 "SyncPurgedForInactivityEmailBody" => "PurgedForInactivity",
                 "NoDataEmailContent" => "NoData",
-                "SyncJobDisabledEmailBody" => "Generic",
+                "SyncJobDisabledEmailBody" => "Threshold",
                 _ => "Generic"
             };
         }
