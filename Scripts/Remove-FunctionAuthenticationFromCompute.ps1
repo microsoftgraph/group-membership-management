@@ -30,6 +30,8 @@ function Remove-FunctionAuthenticationFromCompute {
         [string] $SolutionAbbreviation,
         [Parameter(Mandatory = $True)]
         [string] $EnvironmentAbbreviation,
+        [Parameter(Mandatory = $True)]
+        [string] $SubscriptionName,
         [Parameter(Mandatory = $False)]
         [switch] $WhatIf,
         [Parameter(Mandatory = $False)]
@@ -58,6 +60,8 @@ function Remove-FunctionAuthenticationFromCompute {
     function Invoke-EnvironmentCleanup {
         param(
             [Parameter(Mandatory = $True)]
+            [string] $SubscriptionName,
+            [Parameter(Mandatory = $True)]
             [string] $SolutionAbbreviation,
             [Parameter(Mandatory = $True)]
             [string] $EnvironmentAbbreviation,
@@ -67,13 +71,60 @@ function Remove-FunctionAuthenticationFromCompute {
             [switch] $SkipConfirmation
         )
 
-        $subscriptionName = "MSFT-STSolution-$EnvironmentAbbreviation"
+        function Get-AuthAssessment {
+            param(
+                [Parameter(Mandatory = $True)]
+                [pscustomobject] $AuthSettings
+            )
+
+            $platformEnabled = $false
+            $globalValidation = $AuthSettings.properties.globalValidation
+            $identityProviders = $AuthSettings.properties.identityProviders
+            $requiresAuthentication = $false
+            $unauthenticatedClientAction = ""
+            $hasAadRegistrationClientId = $false
+
+            if ($null -ne $AuthSettings.properties.platform -and ($AuthSettings.properties.platform.PSObject.Properties.Name -contains "enabled")) {
+                $platformEnabled = [bool]$AuthSettings.properties.platform.enabled
+            }
+
+            if ($null -ne $globalValidation) {
+                if ($globalValidation.PSObject.Properties.Name -contains "requireAuthentication") {
+                    $requiresAuthentication = [bool]$globalValidation.requireAuthentication
+                }
+
+                if ($globalValidation.PSObject.Properties.Name -contains "unauthenticatedClientAction") {
+                    $unauthenticatedClientAction = [string]$globalValidation.unauthenticatedClientAction
+                }
+            }
+
+            if ($null -ne $identityProviders -and ($identityProviders.PSObject.Properties.Name -contains "azureActiveDirectory")) {
+                $aadProvider = $identityProviders.azureActiveDirectory
+                if ($null -ne $aadProvider -and $null -ne $aadProvider.registration -and ($aadProvider.registration.PSObject.Properties.Name -contains "clientId")) {
+                    $hasAadRegistrationClientId = -not [string]::IsNullOrWhiteSpace([string]$aadProvider.registration.clientId)
+                }
+            }
+
+            $isDesiredState = (-not $platformEnabled) -and (-not $requiresAuthentication) -and ($unauthenticatedClientAction -eq "AllowAnonymous") -and (-not $hasAadRegistrationClientId)
+
+            return [pscustomobject]@{
+                IsDesiredState               = $isDesiredState
+                HasAadRegistrationClientId   = $hasAadRegistrationClientId
+                PlatformEnabled              = $platformEnabled
+                RequiresAuthentication       = $requiresAuthentication
+                UnauthenticatedClientAction  = $unauthenticatedClientAction
+            }
+        }
+
         $subscription = Get-AzSubscription -SubscriptionName $subscriptionName -ErrorAction SilentlyContinue | Select-Object -First 1
         if ($null -eq $subscription) {
             throw "Subscription '$subscriptionName' was not found."
         }
 
-        $null = Set-AzContext -SubscriptionId $subscription.Id -ErrorAction Stop
+        $currentContext = Get-AzContext -ErrorAction SilentlyContinue
+        if ($null -eq $currentContext -or $null -eq $currentContext.Subscription -or $currentContext.Subscription.Id -ne $subscription.Id) {
+            $null = Set-AzContext -SubscriptionId $subscription.Id -ErrorAction Stop
+        }
 
         $computeResourceGroup = "$SolutionAbbreviation-compute-$EnvironmentAbbreviation"
         $resourceGroup = Get-AzResourceGroup -Name $computeResourceGroup -ErrorAction SilentlyContinue
@@ -86,7 +137,9 @@ function Remove-FunctionAuthenticationFromCompute {
             Write-Host "[$EnvironmentAbbreviation] No function apps found in $computeResourceGroup."
             return [pscustomobject]@{
                 Environment = $EnvironmentAbbreviation
+                Mode        = if ($WhatIf) { "WhatIf" } else { "Apply" }
                 Updated     = 0
+                WouldUpdate = 0
                 Skipped     = 0
                 Errors      = 0
             }
@@ -100,7 +153,9 @@ function Remove-FunctionAuthenticationFromCompute {
                 Write-Host "[$EnvironmentAbbreviation] Skipped by user."
                 return [pscustomobject]@{
                     Environment = $EnvironmentAbbreviation
+                    Mode        = if ($WhatIf) { "WhatIf" } else { "Apply" }
                     Updated     = 0
+                    WouldUpdate = 0
                     Skipped     = $functionApps.Count
                     Errors      = 0
                 }
@@ -108,6 +163,7 @@ function Remove-FunctionAuthenticationFromCompute {
         }
 
         $updated = 0
+        $wouldUpdate = 0
         $skipped = 0
         $errors = 0
 
@@ -128,30 +184,66 @@ function Remove-FunctionAuthenticationFromCompute {
                     throw
                 }
 
-                $isEnabled = $current.properties.platform.enabled
-                $identityProviders = $current.properties.identityProviders
-                $hasAadProvider = $false
-                if ($null -ne $identityProviders -and ($identityProviders.PSObject.Properties.Name -contains "azureActiveDirectory")) {
-                    $hasAadProvider = $true
-                }
+                $assessment = Get-AuthAssessment -AuthSettings $current
 
-                if ($isEnabled -ne $true -and -not $hasAadProvider) {
-                    Write-Host "[$EnvironmentAbbreviation] [$functionAppName] already cleaned."
+                if ($assessment.IsDesiredState) {
+                    Write-Host "[$EnvironmentAbbreviation] [$functionAppName] already cleaned (normalized target state)."
                     $skipped++
                     continue
                 }
 
                 if ($WhatIf) {
-                    Write-Host "[$EnvironmentAbbreviation] [$functionAppName] [WhatIf] Would disable auth and remove AAD provider config."
-                    $updated++
+                    Write-Host "[$EnvironmentAbbreviation] [$functionAppName] [WhatIf] Would set platform.enabled=false, requireAuthentication=false, unauthenticatedClientAction=AllowAnonymous, and clear AAD registration.clientId (current platformEnabled=$($assessment.PlatformEnabled), requireAuthentication=$($assessment.RequiresAuthentication), unauthenticatedClientAction='$($assessment.UnauthenticatedClientAction)', hasAadRegistrationClientId=$($assessment.HasAadRegistrationClientId))"
+                    $wouldUpdate++
                     continue
                 }
 
-                $current.properties.platform.enabled = $false
-                if ($hasAadProvider) {
-                    $null = $identityProviders.PSObject.Properties.Remove("azureActiveDirectory")
-                    if ($identityProviders.PSObject.Properties.Count -eq 0) {
-                        $null = $current.properties.PSObject.Properties.Remove("identityProviders")
+                if ($null -eq $current.properties.platform) {
+                    $current.properties | Add-Member -NotePropertyName platform -NotePropertyValue ([pscustomobject]@{})
+                }
+
+                $platform = $current.properties.platform
+                if ($platform.PSObject.Properties.Name -contains "enabled") {
+                    $platform.enabled = $false
+                }
+                else {
+                    $platform | Add-Member -NotePropertyName enabled -NotePropertyValue $false
+                }
+
+                if ($null -eq $current.properties.globalValidation) {
+                    $current.properties | Add-Member -NotePropertyName globalValidation -NotePropertyValue ([pscustomobject]@{})
+                }
+
+                $globalValidation = $current.properties.globalValidation
+
+                if ($globalValidation.PSObject.Properties.Name -contains "requireAuthentication") {
+                    $globalValidation.requireAuthentication = $false
+                }
+                else {
+                    $globalValidation | Add-Member -NotePropertyName requireAuthentication -NotePropertyValue $false
+                }
+
+                if ($globalValidation.PSObject.Properties.Name -contains "unauthenticatedClientAction") {
+                    $globalValidation.unauthenticatedClientAction = "AllowAnonymous"
+                }
+                else {
+                    $globalValidation | Add-Member -NotePropertyName unauthenticatedClientAction -NotePropertyValue "AllowAnonymous"
+                }
+
+                $identityProviders = $current.properties.identityProviders
+                if ($null -ne $identityProviders -and ($identityProviders.PSObject.Properties.Name -contains "azureActiveDirectory")) {
+                    $aadProvider = $identityProviders.azureActiveDirectory
+                    if ($null -ne $aadProvider) {
+                        if ($null -eq $aadProvider.registration) {
+                            $aadProvider | Add-Member -NotePropertyName registration -NotePropertyValue ([pscustomobject]@{})
+                        }
+
+                        if ($aadProvider.registration.PSObject.Properties.Name -contains "clientId") {
+                            $aadProvider.registration.clientId = ""
+                        }
+                        else {
+                            $aadProvider.registration | Add-Member -NotePropertyName clientId -NotePropertyValue ""
+                        }
                     }
                 }
 
@@ -172,7 +264,9 @@ function Remove-FunctionAuthenticationFromCompute {
 
         return [pscustomobject]@{
             Environment = $EnvironmentAbbreviation
+            Mode        = if ($WhatIf) { "WhatIf" } else { "Apply" }
             Updated     = $updated
+            WouldUpdate = $wouldUpdate
             Skipped     = $skipped
             Errors      = $errors
         }
@@ -181,12 +275,12 @@ function Remove-FunctionAuthenticationFromCompute {
     Write-Verbose "Remove-FunctionAuthenticationFromCompute starting..."
 
     $scriptsDirectory = Split-Path $PSScriptRoot -Parent
-    . ($scriptsDirectory + "\Scripts\Add-AzAccountIfNeeded.ps1")
     . ($scriptsDirectory + "\Scripts\ReusableModules\Invoke-WithRetry.ps1")
-    Add-AzAccountIfNeeded | Out-Null
 
     function Invoke-CleanupExecution {
         param(
+            [Parameter(Mandatory = $True)]
+            [string] $SubscriptionName,
             [Parameter(Mandatory = $True)]
             [string] $SolutionAbbreviation,
             [Parameter(Mandatory = $True)]
@@ -204,6 +298,7 @@ function Remove-FunctionAuthenticationFromCompute {
 
         Write-Host ""
         Write-Host "Ad hoc function-auth cleanup"
+        Write-Host "Subscription name: $SubscriptionName"
         Write-Host "Solution abbreviation: $SolutionAbbreviation"
         Write-Host "Environment abbreviation: $normalizedEnvironment"
         if ($WhatIf) {
@@ -211,6 +306,7 @@ function Remove-FunctionAuthenticationFromCompute {
         }
 
         $result = Invoke-EnvironmentCleanup `
+            -SubscriptionName $SubscriptionName `
             -SolutionAbbreviation $SolutionAbbreviation `
             -EnvironmentAbbreviation $normalizedEnvironment `
             -WhatIf:$WhatIf `
@@ -227,6 +323,7 @@ function Remove-FunctionAuthenticationFromCompute {
     }
 
     Invoke-CleanupExecution `
+        -SubscriptionName $SubscriptionName `
         -SolutionAbbreviation $SolutionAbbreviation `
         -EnvironmentAbbreviation $EnvironmentAbbreviation `
         -WhatIf:$WhatIf `
