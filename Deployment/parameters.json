@@ -310,6 +310,20 @@
         "required": false
       }
     },
+    "skipAppSettingsVersionUpdate": {
+      "value": false,
+      "metadata": {
+        "description": "Flag to skip bumping the function app settings version. Intended for iterative re-deploys.",
+        "required": false
+      }
+    },
+    "skipRBACPermissions": {
+      "value": false,
+      "metadata": {
+        "description": "Flag to skip setting RBAC permissions, overriding setRBACPermissions. Only skip if RBAC is already configured; intended for iterative re-deploys.",
+        "required": false
+      }
+    },
     "skipFunctionAppCodeDeployment": {
       "value": false,
       "metadata": {
@@ -324,24 +338,10 @@
         "required": false
       }
     },
-    "skipAppSettingsVersionUpdate": {
-      "value": false,
-      "metadata": {
-        "description": "Flag to skip bumping the function app settings version. Intended for iterative re-deploys.",
-        "required": false
-      }
-    },
     "skipPostDeploymentUpdates": {
       "value": false,
       "metadata": {
         "description": "Flag to skip post-deployment database updates. Only skip if the target resources already exist; intended for iterative re-deploys.",
-        "required": false
-      }
-    },
-    "skipRBACPermissions": {
-      "value": false,
-      "metadata": {
-        "description": "Flag to skip setting RBAC permissions, overriding setRBACPermissions. Only skip if RBAC is already configured; intended for iterative re-deploys.",
         "required": false
       }
     },
