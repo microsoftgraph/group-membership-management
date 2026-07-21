@@ -410,8 +410,14 @@ function Start-ResourceDeployment {
 
         if ($provisioningState -ne "Succeeded") {
             $opsUri = "$baseUri/operations?api-version=2025-03-01"
-            $failedOps = @((Invoke-RestMethod -Uri $opsUri -Method Get -Headers $headers).value |
-                Where-Object { $_.properties.provisioningState -eq 'Failed' })
+            $failedOps = @()
+            try {
+                $failedOps = @((Invoke-RestMethod -Uri $opsUri -Method Get -Headers $headers).value |
+                    Where-Object { $_.properties.provisioningState -eq 'Failed' })
+            }
+            catch {
+                Write-DeployLog -Level Warn -Message "Could not list deployment operations; continuing with deployment-level error handling: $($_.Exception.Message)"
+            }
 
             if ($failedOps.Count -gt 0) {
                 foreach ($op in $failedOps) {
