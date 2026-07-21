@@ -80,6 +80,10 @@ export function computeInClauseSelection(
   return selected ? [...withoutCurrent, itemKey] : withoutCurrent;
 }
 
+export function joinFilterSegments(segments: string[]): string {
+  return segments.map(segment => segment.trim()).join(' ');
+}
+
 export function stringifyGroup(group: Group, isChild?: boolean, childIndex?: number, childrenLength?: number): string {
 
     let result = '(';

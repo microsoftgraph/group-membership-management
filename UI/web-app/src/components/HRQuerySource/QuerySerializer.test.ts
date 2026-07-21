@@ -2,7 +2,7 @@
 // Licensed under the MIT license.
 
 import { describe, expect, it } from 'vitest';
-import { computeInClauseSelection, getSelectedKeys } from './QuerySerializer';
+import { computeInClauseSelection, getSelectedKeys, joinFilterSegments } from './QuerySerializer';
 
 // Helper mirroring how the component turns the selected keys into an IN clause value.
 const toInClause = (keys: string[]): string => `(${keys.map(k => `'${k}'`).join(', ')})`;
@@ -94,5 +94,24 @@ describe('computeInClauseSelection', () => {
     // toggle does not corrupt or drop the O'Brien selection.
     const afterSecond = computeInClauseSelection(serialized, 'FTE', true);
     expect(afterSecond).toEqual(["O'Brien", 'FTE']);
+  });
+});
+
+describe('joinFilterSegments', () => {
+  it('preserves the separator after changing a middle filter to IN', () => {
+    const segments = [
+      "LocationArea_Code IN ('AL', 'CA') And ",
+      "EmployeeType_Code IN ('FTE') And",
+      "CitySummary_Code IN ('ADELAIDE', 'AKRON')",
+    ];
+
+    expect(joinFilterSegments(segments)).toBe(
+      "LocationArea_Code IN ('AL', 'CA') And EmployeeType_Code IN ('FTE') And CitySummary_Code IN ('ADELAIDE', 'AKRON')"
+    );
+  });
+
+  it('preserves whitespace inside quoted values', () => {
+    expect(joinFilterSegments(["DisplayName = 'Ada  Lovelace' And ", "EmployeeType = 'FTE'"]))
+      .toBe("DisplayName = 'Ada  Lovelace' And EmployeeType = 'FTE'");
   });
 });

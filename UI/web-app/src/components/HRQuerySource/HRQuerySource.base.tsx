@@ -27,7 +27,7 @@ import { selectIsJobWriter } from '../../store/roles.slice';
 import { SqlMembershipAttribute, SqlMembershipAttributeMapping } from '../../models';
 import { IFilterPart } from '../../models/IFilterPart';
 import { Group } from '../../models/Group';
-import { computeInClauseSelection, containsSqlExpression, countOccurrences, getSelectedKeys, parseGroup, stringifyGroups, stripQuotedContent } from './QuerySerializer';
+import { computeInClauseSelection, containsSqlExpression, countOccurrences, getSelectedKeys, joinFilterSegments, parseGroup, stringifyGroups, stripQuotedContent } from './QuerySerializer';
 import { hasTrailingAndOrOperator, hasValidEqualityOperators, hasValueAfterOperator } from '../../utils/filterValidationHelpers';
 import { updateHRTitleWithNewLeader, updateHRTitleWithNewDepth, combineHRTitleWithAICriteria } from '../../utils/titleGenerator';
 import { getEqualityOperatorOptions, nullOptions, getOrAndOperatorOptions, getYesNoOptions } from '../../models/Options';
@@ -1396,7 +1396,7 @@ const getOptions = (
           }
         }
       segments[index] = words.join(' ');
-      const updatedFilter = segments.join('');
+      const updatedFilter = joinFilterSegments(segments);
       setSource(prevSource => {
         let filter = updatedFilter;
         const newSource = { ...prevSource, filter };
@@ -1473,7 +1473,7 @@ const getOptions = (
         words = updateFilterWords(words, item.text);
       }
       segments[index] = words.join(' ');
-      const updatedFilter = segments.join('');
+      const updatedFilter = joinFilterSegments(segments);
       setSource(prevSource => {
         let filter = updatedFilter;
         const newSource = { ...prevSource, filter };
@@ -1542,7 +1542,7 @@ const getOptions = (
           words = updateFilterWords(words, undefined, selectedValueAfterConversion || selectedValue);
         }
         segments[index] = words.join(' ');
-        const updatedFilter = segments.join('');
+        const updatedFilter = joinFilterSegments(segments);
         setSource(prevSource => {
           let filter = updatedFilter;
           const newSource = { ...prevSource, filter };
@@ -1629,7 +1629,7 @@ const getOptions = (
         words = updateFilterWords(words, undefined, selectedValueAfterConversion || selectedValue);
       }
       segments[index] = words.join(' ');
-      const updatedFilter = segments.join('');
+      const updatedFilter = joinFilterSegments(segments);
       setSource(prevSource => {
         let filter = updatedFilter;
         const newSource = { ...prevSource, filter };
