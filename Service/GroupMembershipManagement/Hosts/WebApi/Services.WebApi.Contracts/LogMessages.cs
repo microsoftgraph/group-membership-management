@@ -387,6 +387,10 @@ namespace Hosts.WebApi
             Message = "Clearing function's internal tables and queues...")]
         public static partial void ClearInternalTablesAndQueuesStarting(this ILogger logger);
 
+        [LoggerMessage(EventId = 92044, Level = LogLevel.Information,
+            Message = "Preserving notification topic {TopicName} during service stop/reset.")]
+        public static partial void NotificationTopicPreserved(this ILogger logger, string topicName);
+
         [LoggerMessage(EventId = 92033, Level = LogLevel.Information,
             Message = "Deleted table {TableName} from account {StorageAccountName} used by {FunctionName}")]
         public static partial void InternalTableDeleted(this ILogger logger, string tableName, string storageAccountName, string functionName);

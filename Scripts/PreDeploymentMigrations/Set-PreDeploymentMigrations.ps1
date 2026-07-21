@@ -19,9 +19,14 @@ function Set-PreDeploymentMigrations {
 
     $ScriptsDirectory = Split-Path $PSScriptRoot -Parent
 
+    . ($ScriptsDirectory + '/PreDeploymentMigrations/Remove-LegacyNotificationsQueue.ps1')
 	. ($ScriptsDirectory + '/PreDeploymentMigrations/Remove-MultiLaneResources.ps1')
     . ($ScriptsDirectory + '/PreDeploymentMigrations/Remove-FunctionScriptRBACRoles.ps1')
     . ($ScriptsDirectory + '/PreDeploymentMigrations/Start-FlexConsumptionMigration.ps1')
+
+    Remove-LegacyNotificationsQueue `
+        -SolutionAbbreviation $SolutionAbbreviation `
+        -EnvironmentAbbreviation $EnvironmentAbbreviation
 
     Remove-MultiLaneResources `
         -SolutionAbbreviation $SolutionAbbreviation `

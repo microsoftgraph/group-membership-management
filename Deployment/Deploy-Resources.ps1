@@ -662,6 +662,7 @@ function Set-DataResources {
     Write-Host "`nCreating data resources"
     $dataResourceGroup = "$SolutionAbbreviation-data-$EnvironmentAbbreviation"
     $templateFilePath = "$DataTemplateDirectoryPath/dataResources.json"
+
     Invoke-WithRetry `
         -Operation {
             Start-ResourceDeployment `
@@ -1196,6 +1197,13 @@ function Set-GMMResources {
         -ParameterHashtable         $ParameterHashtable `
         -AdditionalParameters       $commonParametersObject `
         -SetRBACPermissions         $setRBACPermissions
+
+    if (-not $ParameterHashtable.isInitialDeployment.value) {
+        . ($ScriptsDirectory + '/PostDataDeploymentMigrations/Set-PostDataDeploymentMigrations.ps1')
+        Set-PostDataDeploymentMigrations `
+            -SolutionAbbreviation $SolutionAbbreviation `
+            -EnvironmentAbbreviation $EnvironmentAbbreviation
+    }
 
     Start-Sleep -Seconds 10
 

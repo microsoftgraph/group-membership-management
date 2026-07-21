@@ -584,6 +584,12 @@ namespace WebApi.BackgroundServices
 
             await foreach (var topic in topics)
             {
+                if (string.Equals(topic.Name, _operationsSettings.NotificationsQueue, StringComparison.OrdinalIgnoreCase))
+                {
+                    _logger.NotificationTopicPreserved(topic.Name);
+                    continue;
+                }
+
                 var subscriptions = _sbAdministrationClient.GetSubscriptionsAsync(topic.Name);
                 await foreach (var subscription in subscriptions)
                 {

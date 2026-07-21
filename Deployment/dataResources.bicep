@@ -131,6 +131,12 @@ param serviceBusTopicSubscriptions array = [
     ruleSqlExpression: 'Type = \'groupmembership_large_1\''
     sessionEnabled: true
   }
+  {
+    topicName: 'notifications'
+    subscriptionName: 'notifier'
+    ruleName: 'allNotifications'
+    ruleSqlExpression: 'EXISTS(MessageType)'
+  }
 ]
 param appConfigurationKeyData array = []
 var defaultAppConfigurationKeyData = [
