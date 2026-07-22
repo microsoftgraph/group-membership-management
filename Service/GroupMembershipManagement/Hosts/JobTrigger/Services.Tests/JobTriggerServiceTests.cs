@@ -951,6 +951,79 @@ namespace Services.Tests
             Assert.IsTrue(updatedJob.LastSuccessfulStartTime >= beforeClaim);
         }
 
+        [TestMethod]
+        public async Task ClaimJob_InProgress_CreatesHistoryRowWithStartTime()
+        {
+            var job = SampleDataHelper.CreateSampleSyncJobs(1, Organization).First();
+            job.Status = SyncStatus.Idle.ToString();
+            job.RunId = Guid.NewGuid();
+            job.Period = 24;
+            job.LastSuccessfulStartTime = DateTime.UtcNow.AddDays(-10);
+            _syncJobRepository.Jobs.Add(job);
+
+            SyncJobHistory captured = null;
+            _syncJobStatusService
+                .Setup(s => s.CreateOrUpdateJobHistoryAsync(It.IsAny<SyncJobHistory>()))
+                .Callback<SyncJobHistory>(h => captured = h)
+                .Returns(Task.CompletedTask);
+
+            var beforeClaim = DateTime.UtcNow;
+            var claimed = await _jobTriggerService.TryClaimAndUpdateJobAsync(SyncStatus.InProgress, job);
+
+            Assert.IsNotNull(claimed);
+            Assert.IsNotNull(captured, "Claim must create the run's SyncJobHistory row.");
+            Assert.AreEqual(job.Id, captured.SyncJobId);
+            Assert.AreEqual(job.RunId, captured.RunId);
+            Assert.AreEqual(SyncStatus.InProgress.ToString(), captured.Status);
+            Assert.AreEqual("JobTrigger", captured.UpdatedByFunction);
+            Assert.IsNotNull(captured.StartTime);
+            Assert.IsTrue(captured.StartTime >= beforeClaim, "StartTime must come from the claim's LastSuccessfulStartTime.");
+            Assert.AreEqual(claimed.LastSuccessfulStartTime, captured.StartTime);
+        }
+
+        [TestMethod]
+        public async Task ClaimJob_StuckInProgress_CreatesHistoryRowWithStuckStatus()
+        {
+            var job = SampleDataHelper.CreateSampleSyncJobs(1, Organization).First();
+            job.Status = SyncStatus.InProgress.ToString();
+            job.RunId = Guid.NewGuid();
+            job.Period = 24;
+            job.LastSuccessfulStartTime = DateTime.UtcNow.AddHours(-25);
+            _syncJobRepository.Jobs.Add(job);
+
+            SyncJobHistory captured = null;
+            _syncJobStatusService
+                .Setup(s => s.CreateOrUpdateJobHistoryAsync(It.IsAny<SyncJobHistory>()))
+                .Callback<SyncJobHistory>(h => captured = h)
+                .Returns(Task.CompletedTask);
+
+            var claimed = await _jobTriggerService.TryClaimAndUpdateJobAsync(SyncStatus.StuckInProgress, job);
+
+            Assert.IsNotNull(claimed);
+            Assert.IsNotNull(captured);
+            Assert.AreEqual(SyncStatus.StuckInProgress.ToString(), captured.Status);
+            Assert.AreEqual(job.RunId, captured.RunId);
+            Assert.IsNotNull(captured.StartTime);
+        }
+
+        [TestMethod]
+        public async Task ClaimJob_RejectedClaim_DoesNotCreateHistoryRow()
+        {
+            var job = SampleDataHelper.CreateSampleSyncJobs(1, Organization).First();
+            job.Status = SyncStatus.InProgress.ToString();
+            job.RunId = Guid.NewGuid();
+            job.Period = 24;
+            job.LastSuccessfulStartTime = DateTime.UtcNow.AddHours(-1); // fresh -> claim rejected
+            _syncJobRepository.Jobs.Add(job);
+
+            var result = await _jobTriggerService.TryClaimAndUpdateJobAsync(SyncStatus.InProgress, job);
+
+            Assert.IsNull(result);
+            _syncJobStatusService.Verify(
+                s => s.CreateOrUpdateJobHistoryAsync(It.IsAny<SyncJobHistory>()),
+                Times.Never);
+        }
+
         #endregion
 
         private class MockEmail<T> : IEmailSenderRecipient

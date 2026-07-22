@@ -235,6 +235,22 @@ namespace Services
                     _logger.RestartingStuckJob();
             }
 
+            // Create the run's SyncJobHistory row here, at claim time, as the single early writer.
+            if (claimedJob.RunId.HasValue)
+            {
+                var now = DateTime.UtcNow;
+                await _syncJobStatusService.CreateOrUpdateJobHistoryAsync(new SyncJobHistory
+                {
+                    SyncJobId = claimedJob.Id,
+                    RunId = claimedJob.RunId.Value,
+                    Status = status.ToString(),
+                    UpdatedByFunction = "JobTrigger",
+                    StartTime = claimedJob.LastSuccessfulStartTime,
+                    CreatedAt = now,
+                    UpdatedAt = now
+                });
+            }
+
             return claimedJob;
         }
         public async Task SendMessageAsync(SyncJob job)
