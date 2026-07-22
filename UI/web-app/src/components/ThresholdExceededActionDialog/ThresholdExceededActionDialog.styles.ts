@@ -1,10 +1,15 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
+import { NeutralColors } from '@fluentui/react';
 import type { IThresholdExceededActionDialogStyleProps, IThresholdExceededActionDialogStyles } from './ThresholdExceededActionDialog.types';
 
 export const getStyles = (props: IThresholdExceededActionDialogStyleProps): IThresholdExceededActionDialogStyles => {
     const { className, theme } = props;
+    // The dark theme inverts only the neutral ramp (see theme/palette.ts), so accent-ramp slots like
+    // themeLight/themeLighterAlt stay light and render poorly in dark mode. Use neutral-ramp surfaces
+    // and a readable breach chip only in dark mode; keep light mode on the original accent colors.
+    const isDarkMode = theme.palette.white.toLowerCase() === NeutralColors.gray220;
 
     return {
         root: [{
@@ -72,10 +77,10 @@ export const getStyles = (props: IThresholdExceededActionDialogStyleProps): IThr
                 'th, td': {
                     textAlign: 'left',
                     padding: '6px 12px',
-                    borderBottom: `1px solid ${theme.palette.themeLight}`,
+                    borderBottom: `1px solid ${isDarkMode ? theme.palette.neutralLight : theme.palette.themeLight}`,
                 },
                 'thead th': {
-                    borderBottom: `1px solid ${theme.palette.themeLight}`,
+                    borderBottom: `1px solid ${isDarkMode ? theme.palette.neutralLight : theme.palette.themeLight}`,
                 },
             },
         },
@@ -100,14 +105,15 @@ export const getStyles = (props: IThresholdExceededActionDialogStyleProps): IThr
 
         statsTableActualCellBreached: {
             display: 'inline-block',
-            backgroundColor: theme.palette.themeLight,
+            backgroundColor: isDarkMode ? theme.palette.themeLighter : theme.palette.themeLight,
+            ...(isDarkMode ? { color: theme.palette.themeDarker } : {}),
             padding: '2px 8px',
             borderRadius: 4,
             fontWeight: 600,
         },
 
         statsTableBandedRow: {
-            backgroundColor: theme.palette.themeLighterAlt,
+            backgroundColor: isDarkMode ? theme.palette.neutralLighterAlt : theme.palette.themeLighterAlt,
         },
 
         disclosurePanel: {

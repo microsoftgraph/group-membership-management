@@ -1,6 +1,7 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
+import { NeutralColors } from '@fluentui/react';
 import {
     type IJobHistoryPanelStyleProps,
     type IJobHistoryPanelStyles,
@@ -8,6 +9,10 @@ import {
 
 export const getStyles = (props: IJobHistoryPanelStyleProps): IJobHistoryPanelStyles => {
     const { className, theme } = props;
+    // The dark theme inverts only the neutral ramp (see theme/palette.ts), so accent-ramp slots like
+    // themeLighterAlt stay near-white and render light-on-light in dark mode. Swap to neutral-ramp
+    // surfaces only in dark mode; keep the original accent colors untouched in light mode.
+    const isDarkMode = theme.palette.white.toLowerCase() === NeutralColors.gray220;
 
     return {
         root: [{}, className],
@@ -302,7 +307,7 @@ export const getStyles = (props: IJobHistoryPanelStyleProps): IJobHistoryPanelSt
             color: theme.palette.neutralSecondary,
         },
         matchingRow: {
-            backgroundColor: theme.palette.themeLighterAlt,
+            backgroundColor: isDarkMode ? theme.palette.neutralLighterAlt : theme.palette.themeLighterAlt,
         },
         userSearchBanner: {
             display: 'flex',
@@ -311,7 +316,8 @@ export const getStyles = (props: IJobHistoryPanelStyleProps): IJobHistoryPanelSt
             justifyContent: 'center',
             padding: '16px 20px',
             marginBottom: '8px',
-            backgroundColor: theme.palette.themeLighterAlt,
+            backgroundColor: isDarkMode ? theme.palette.neutralLighterAlt : theme.palette.themeLighterAlt,
+            ...(isDarkMode ? { border: `1px solid ${theme.palette.neutralLight}` } : {}),
             borderRadius: '4px',
             gap: '4px',
         },

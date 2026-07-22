@@ -1,10 +1,15 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
+import { NeutralColors } from '@fluentui/react';
 import type { MembershipLookupStyleProps, MembershipLookupStyles } from './MembershipLookup.types';
 
 export const getStyles = (props: MembershipLookupStyleProps): MembershipLookupStyles => {
   const { theme } = props;
+  // The dark theme inverts only the neutral ramp (see theme/palette.ts), so themeLighterAlt stays
+  // near-white and would render the result card's neutralPrimary text light-on-light in dark mode.
+  // Fall back to a neutral-ramp surface in dark mode only; leave light mode on the accent ramp.
+  const isDarkMode = theme.palette.white.toLowerCase() === NeutralColors.gray220;
 
   return {
     root: {
@@ -58,7 +63,10 @@ export const getStyles = (props: MembershipLookupStyleProps): MembershipLookupSt
       gap: 16,
       padding: '12px 16px',
       borderRadius: 10,
-      backgroundColor: theme.palette.themeLighterAlt,
+      backgroundColor: isDarkMode ? theme.palette.neutralLighterAlt : theme.palette.themeLighterAlt,
+      ...(isDarkMode
+        ? { border: `1px solid ${theme.palette.neutralLight}`, color: theme.palette.neutralPrimary }
+        : {}),
     },
     resultPersona: {
       flexShrink: 0,
