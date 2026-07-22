@@ -29,7 +29,6 @@ namespace Services
         private readonly IDatabaseChannelsRepository _databaseChannelsRepository;
         private readonly ILogger<DeltaCalculatorService> _logger;
         private readonly IGraphAPIService _graphAPIService;
-        private readonly IThresholdConfig _thresholdConfig;
         private readonly INotificationRepository _notificationRepository;
         private readonly bool _isDryRunEnabled;
         private readonly IThresholdNotificationConfig _thresholdNotificationConfig;
@@ -43,7 +42,6 @@ namespace Services
             ILogger<DeltaCalculatorService> logger,
             IGraphAPIService graphAPIService,
             IDryRunValue dryRun,
-            IThresholdConfig thresholdConfig,
             IThresholdNotificationConfig thresholdNotificationConfig,
             INotificationRepository notificationRepository,
             IServiceBusQueueRepository notificationsQueueRepository,
@@ -55,7 +53,6 @@ namespace Services
             _databaseChannelsRepository = databaseChannelsRepository ?? throw new ArgumentNullException(nameof(databaseChannelsRepository));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _graphAPIService = graphAPIService ?? throw new ArgumentNullException(nameof(graphAPIService));
-            _thresholdConfig = thresholdConfig ?? throw new ArgumentNullException(nameof(thresholdConfig));
             _thresholdNotificationConfig = thresholdNotificationConfig ?? throw new ArgumentNullException(nameof(thresholdNotificationConfig));
             _notificationRepository = notificationRepository ?? throw new ArgumentNullException(nameof(notificationRepository));
             _isDryRunEnabled = dryRun != null && dryRun.DryRunEnabled;
@@ -257,18 +254,10 @@ namespace Services
         }
         private async Task SendThresholdNotificationAsync(ThresholdResult threshold, SyncJob job, Guid groupId, Guid runId)
         {
-            var currentThresholdViolations = job.ThresholdViolations + 1;
-            var sendNotification = currentThresholdViolations >= _thresholdConfig.NumberOfThresholdViolationsToNotify;
-            var sendDisableJobNotification = currentThresholdViolations == _thresholdConfig.NumberOfThresholdViolationsToDisableJob;
-
             var groupName = await _graphAPIService.GetGroupNameAsync(groupId);
             _logger.ThresholdExceededNoChanges(groupName, groupId);
 
-            if (!sendNotification && !sendDisableJobNotification)
-            {
-                return;
-            }
-            await SendThresholdNotification(threshold, job, sendDisableJobNotification, groupName);
+            await SendThresholdNotification(threshold, job, sendDisableJobNotification: true, groupName);
         }
         private async Task SendThresholdNotification(ThresholdResult threshold, SyncJob job, bool sendDisableJobNotification, string groupName)
         {

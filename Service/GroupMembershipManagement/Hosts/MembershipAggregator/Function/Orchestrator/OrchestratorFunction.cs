@@ -49,7 +49,6 @@ namespace Hosts.MembershipAggregator
                     CurrentPart = currentPart,
                     TotalParts = totalParts,
                     IsDryRun = false,
-                    IncrementThresholdViolations = false,
                     IsNoOpSync = false
                 });
                 await context.CallActivityAsync(nameof(TelemetryTrackerFunction), new TelemetryTrackerRequest
@@ -160,7 +159,6 @@ namespace Hosts.MembershipAggregator
                                                     CurrentPart = currentPart,
                                                     TotalParts = totalParts,
                                                     IsDryRun = false,
-                                                    IncrementThresholdViolations = false,
                                                     IsNoOpSync = false
                                                 });
                 await context.CallActivityAsync(nameof(TelemetryTrackerFunction), new TelemetryTrackerRequest
@@ -186,7 +184,6 @@ namespace Hosts.MembershipAggregator
                                                     CurrentPart = currentPart,
                                                     TotalParts = totalParts,
                                                     IsDryRun = false,
-                                                    IncrementThresholdViolations = false,
                                                     IsNoOpSync = false
                                                 });
                 await context.CallActivityAsync(nameof(TelemetryTrackerFunction), new TelemetryTrackerRequest

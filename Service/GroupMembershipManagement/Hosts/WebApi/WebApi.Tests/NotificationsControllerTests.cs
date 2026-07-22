@@ -57,7 +57,6 @@ namespace Services.Tests
         private List<ThresholdNotification> _thresholdNotifications = null!;
         private ResolveNotification _resolveNotificationModel = null!;
         private TelemetryClient _telemetryClient = null!;
-        private Mock<IThresholdConfig> _thresholdConfig = null!;
 
         [TestInitialize]
         public void Initialize()
@@ -131,7 +130,7 @@ namespace Services.Tests
                     TargetOfficeGroupId = group.ObjectId,
                     ThresholdPercentageForAdditions = Random.Shared.Next(1, 50),
                     ThresholdPercentageForRemovals = Random.Shared.Next(1, 50),
-                    CardState = ThresholdNotificationCardState.DefaultCard
+                    CardState = ThresholdNotificationCardState.DisabledCard
                 };
 
                 _groups.Add(group);
@@ -174,10 +173,8 @@ namespace Services.Tests
                 HandleInactiveJobsEnabled = true,
                 NumberOfDaysBeforeDeletion = 30
             };
-            _thresholdConfig = new Mock<IThresholdConfig>();
-            _thresholdConfig.Setup(x => x.NumberOfThresholdViolationsToDisableJob).Returns(3);
 
-            _thresholdNotificationService = new ThresholdNotificationService(Options.Create(_thresholdNotificationServiceConfig), _graphGroupRepository.Object, _localizationRepository, _handleInactiveJobsConfig, _thresholdConfig.Object, _syncJobRepository.Object);
+            _thresholdNotificationService = new ThresholdNotificationService(Options.Create(_thresholdNotificationServiceConfig), _graphGroupRepository.Object, _localizationRepository, _handleInactiveJobsConfig);
             _gmmEmailReceivers = new GMMEmailReceivers(Guid.NewGuid());
 
             _resolveNotificationsHandler = new ResolveNotificationHandler(NullLogger<ResolveNotificationHandler>.Instance,
@@ -307,13 +304,15 @@ namespace Services.Tests
         [TestMethod]
         public async Task GetNotificationCard_HandleUnresolvedTestAsync()
         {
+            // Under immediate-disable, an unresolved threshold notification is persisted directly in the DisabledCard state.
+            _thresholdNotification.CardState = ThresholdNotificationCardState.DisabledCard;
             var response = await _notificationsController.GetCardAsync(_thresholdNotification.Id);
             var result = response.Result as ContentResult;
 
             Assert.IsNotNull(response);
             Assert.IsNotNull(result?.Content);
             Assert.AreEqual("application/json", result.ContentType);
-            ValidateUnresolvedCard(result.Content);
+            ValidateDisabledCard(result.Content);
         }
 
         /// <summary>
@@ -397,13 +396,15 @@ namespace Services.Tests
 
             _notificationsController.ControllerContext = CreateControllerContext(claims, "mockBearerToken");
 
+            // Under immediate-disable, an unresolved threshold notification is persisted directly in the DisabledCard state.
+            _thresholdNotification.CardState = ThresholdNotificationCardState.DisabledCard;
             var response = await _notificationsController.GetCardAsync(_thresholdNotification.Id);
             var result = response.Result as ContentResult;
 
             Assert.IsNotNull(response);
             Assert.IsNotNull(result?.Content);
             Assert.AreEqual("application/json", result.ContentType);
-            ValidateUnresolvedCard(result.Content);
+            ValidateDisabledCard(result.Content);
         }
 
         /// <summary>
@@ -442,22 +443,6 @@ namespace Services.Tests
             Assert.IsNotNull(result?.Content);
             Assert.AreEqual("application/json", result.ContentType);
             ValidateExpiredCard(result.Content);
-        }
-
-        private void ValidateUnresolvedCard(string cardJson)
-        {
-            Assert.IsTrue(cardJson.Contains($"The most recent attempt to update the membership of your GMM managed group '**{_groupName}**"));
-            Assert.IsTrue(cardJson.Contains($"GMM has identified **{_thresholdNotification.ChangeQuantityForAdditions}** members to be added, increasing the group size by **"));
-            Assert.IsTrue(cardJson.Contains(Math.Round(_thresholdNotification.ChangePercentageForAdditions, 1).ToString()));
-            Assert.IsTrue(cardJson.Contains($"%**, which is more than the current additions threshold of **{_thresholdNotification.ThresholdPercentageForAdditions}%**."));
-            Assert.IsTrue(cardJson.Contains($"GMM has identified **{_thresholdNotification.ChangeQuantityForRemovals}** members to be removed, decreasing the group size by **"));
-            Assert.IsTrue(cardJson.Contains(Math.Round(_thresholdNotification.ChangePercentageForRemovals, 1).ToString()));
-            Assert.IsTrue(cardJson.Contains($"%**, which is more than the current removals threshold of **{_thresholdNotification.ThresholdPercentageForRemovals}%**."));
-            Assert.IsTrue(cardJson.Contains($"https://{_hostname}/api/v1/notifications/{_thresholdNotification.Id}/resolve"));
-            Assert.IsTrue(cardJson.Contains($"\\\"resolution\\\":\\\"{ThresholdNotificationResolution.Paused}\\\""));
-            Assert.IsTrue(cardJson.Contains($"\\\"resolution\\\":\\\"{ThresholdNotificationResolution.IgnoreOnce}\\\""));
-            Assert.IsTrue(cardJson.Contains($"{_thresholdNotification.Id}"));
-            Assert.IsTrue(cardJson.Contains($"\"originator\":\"{_providerId}\""));
         }
 
         private void ValidateDisabledCard(string cardJson)

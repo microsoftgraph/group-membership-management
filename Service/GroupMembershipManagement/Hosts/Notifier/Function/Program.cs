@@ -86,19 +86,13 @@ namespace Hosts.Notifier
                     services.AddOptions<ThresholdConfig>().Configure<IConfiguration>((settings, config) =>
                     {
                         settings.MaximumNumberOfThresholdRecipients = CommonServices.GetIntSettingBase(config, "MaximumNumberOfThresholdRecipients", 10);
-                        settings.NumberOfThresholdViolationsToNotify = CommonServices.GetIntSettingBase(config, "NumberOfThresholdViolationsToNotify", 3);
-                        settings.NumberOfThresholdViolationsFollowUps = CommonServices.GetIntSettingBase(config, "NumberOfThresholdViolationsFollowUps", 3);
-                        settings.NumberOfThresholdViolationsToDisableJob = CommonServices.GetIntSettingBase(config, "NumberOfThresholdViolationsToDisableJob", 10);
                     });
 
                     services.AddSingleton<IThresholdConfig>(sp =>
                     {
                         var options = sp.GetRequiredService<IOptions<ThresholdConfig>>().Value;
                         return new ThresholdConfig(
-                            options.MaximumNumberOfThresholdRecipients,
-                            options.NumberOfThresholdViolationsToNotify,
-                            options.NumberOfThresholdViolationsFollowUps,
-                            options.NumberOfThresholdViolationsToDisableJob);
+                            options.MaximumNumberOfThresholdRecipients);
                     });
 
                     services

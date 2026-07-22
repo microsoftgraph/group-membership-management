@@ -19,7 +19,6 @@ namespace Models.AdaptiveCards
         public string ProviderId { get; set; }
         public string JobExpirationDate { get; set; }
         public DateTime CardCreatedTime { get; set; }
-        public string DisableDate { get; set; }
         public string PurgeDate { get; set; }
     }
 }

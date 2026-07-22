@@ -113,7 +113,6 @@ namespace Services.Tests
             TotalParts = 1,
             Status = status,
             IsDryRun = false,
-            IncrementThresholdViolations = false,
             IsNoOpSync = false,
             ProposedUsersAdded = proposedUsersAdded,
             ProposedUsersRemoved = proposedUsersRemoved

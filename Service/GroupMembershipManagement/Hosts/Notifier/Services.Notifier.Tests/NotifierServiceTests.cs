@@ -97,10 +97,61 @@ namespace Services.Notifier.Tests
             _notificationRepository.Setup(x => x.GetThresholdNotificationBySyncJobIdAsync(It.IsAny<Guid>()))
                 .ReturnsAsync((ThresholdNotification)null);
 
+            ThresholdNotification savedNotification = null;
+            _notificationRepository.Setup(x => x.SaveNotificationAsync(It.IsAny<ThresholdNotification>()))
+                .Callback<ThresholdNotification>(n => savedNotification = n)
+                .Returns(Task.CompletedTask);
+
             var result = await _notifierService.CreateActionableNotificationFromContentAsync(request.MessageBody);
 
             Assert.IsNotNull(result);
             _notificationRepository.Verify(x => x.SaveNotificationAsync(It.IsAny<ThresholdNotification>()), Times.Once);
+            // First violation persists the row directly in the DisabledCard state (immediate disable).
+            Assert.IsNotNull(savedNotification);
+            Assert.AreEqual(ThresholdNotificationCardState.DisabledCard, savedNotification.CardState);
+        }
+
+        [TestMethod]
+        public async Task CreateActionableNotificationFromContentAsync_InFlightFalseFlag_StillCreatesDisabledCard()
+        {
+            SyncJob job = SampleDataHelper.CreateSampleSyncJobs(1, GroupMembership).First();
+
+            var thresholdResult = new ThresholdResult
+            {
+                IncreaseThresholdPercentage = 10.0,
+                DecreaseThresholdPercentage = 5.0,
+                DeltaToAddCount = 5,
+                DeltaToRemoveCount = 5,
+                IsAdditionsThresholdExceeded = true,
+                IsRemovalsThresholdExceeded = false
+            };
+
+            // Simulates an in-flight message enqueued by an older MembershipAggregator during a rolling deploy.
+            bool sendDisableJobNotification = false;
+
+            var messageContent = new
+            {
+                ThresholdResult = thresholdResult,
+                SyncJob = job,
+                SendDisableJobNotification = sendDisableJobNotification
+            };
+            string serializedMessageContent = JsonSerializer.Serialize(messageContent);
+
+            _notificationRepository.Setup(x => x.GetThresholdNotificationBySyncJobIdAsync(It.IsAny<Guid>()))
+                .ReturnsAsync((ThresholdNotification)null);
+
+            ThresholdNotification savedNotification = null;
+            _notificationRepository.Setup(x => x.SaveNotificationAsync(It.IsAny<ThresholdNotification>()))
+                .Callback<ThresholdNotification>(n => savedNotification = n)
+                .Returns(Task.CompletedTask);
+
+            var result = await _notifierService.CreateActionableNotificationFromContentAsync(serializedMessageContent);
+
+            Assert.IsNotNull(result);
+            _notificationRepository.Verify(x => x.SaveNotificationAsync(It.IsAny<ThresholdNotification>()), Times.Once);
+            // Even a false (legacy) flag renders safely against the retained DisabledCard template.
+            Assert.IsNotNull(savedNotification);
+            Assert.AreEqual(ThresholdNotificationCardState.DisabledCard, savedNotification.CardState);
         }
 
         [TestMethod]
@@ -157,7 +208,7 @@ namespace Services.Notifier.Tests
                 ResolvedBy = string.Empty,
                 ResolvedTime = DateTime.UtcNow,
                 Status = ThresholdNotificationStatus.Unknown,
-                CardState = ThresholdNotificationCardState.DefaultCard,
+                CardState = ThresholdNotificationCardState.DisabledCard,
                 TargetOfficeGroupId = _targetOfficeGroupId,
                 ThresholdPercentageForAdditions = -1,
                 ThresholdPercentageForRemovals = -1,

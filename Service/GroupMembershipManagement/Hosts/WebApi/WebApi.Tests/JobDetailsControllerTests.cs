@@ -68,7 +68,6 @@ namespace Services.Tests
         private Mock<IGraphGroupRepository> _graphGroupRepository = null!;
         private Mock<ITeamsChannelRepository> _teamsChannelRepository = null!;
         private Mock<INotificationService> _notificationService = null!;
-        private Mock<IThresholdConfig> _thresholdConfig = null!;
         private Mock<IHandleInactiveJobsConfig> _handleInactiveJobsConfig = null!;
         private bool _isGroupOwner = true;
         private Mock<IHttpContextAccessor> _httpContextAccessor = null!;
@@ -127,7 +126,6 @@ namespace Services.Tests
             _titlesRepository = new Mock<IDatabaseTitlesRepository>();
             _settingsRepository = new Mock<IDatabaseSettingsRepository>();
             _notificationService = new Mock<INotificationService>();
-            _thresholdConfig = new Mock<IThresholdConfig>();
             _handleInactiveJobsConfig = new Mock<IHandleInactiveJobsConfig>();
             _handleInactiveJobsConfig.Setup(x => x.NumberOfDaysBeforePurging).Returns(30);
 
@@ -141,9 +139,6 @@ namespace Services.Tests
 
             _settingsRepository.Setup(x => x.GetSettingByKeyAsync(SettingKey.IsAITitleEnabled))
                                    .ReturnsAsync(new Setting { SettingKey = SettingKey.IsAITitleEnabled, SettingValue = "true" });
-
-            // Setup default threshold config
-            _thresholdConfig.Setup(x => x.NumberOfThresholdViolationsToNotify).Returns(3);
 
             _teamsChannelRepository = new Mock<ITeamsChannelRepository>();
 
@@ -298,8 +293,7 @@ namespace Services.Tests
                                                    _syncJobChangeRepository.Object,
                                                    _titlesRepository.Object,
                                                    _settingsRepository.Object,
-                                                   _notificationService.Object,
-                                                   _thresholdConfig.Object);
+                                                   _notificationService.Object);
 
             _removeGMMHandler = new RemoveGMMHandler(NullLogger<RemoveGMMHandler>.Instance,
                                                     _graphGroupRepository.Object,
@@ -987,59 +981,6 @@ namespace Services.Tests
             Assert.IsNotNull(result);
             Assert.AreEqual((int)HttpStatusCode.OK, result.StatusCode);
             Assert.AreEqual(SyncStatus.Idle.ToString(), _jobEntity.Status);
-            _syncJobChangeRepository.Verify(x => x.Save(It.IsAny<SyncJobChange>()), Times.Once);
-        }
-
-        [TestMethod]
-        [DataRow(Roles.SUBMISSION_REVIEWER)]
-        public async Task ApproveSubmissionSetsThresholdViolationsAsync(string role)
-        {
-            var userId = Guid.NewGuid().ToString();
-            var context = CreateHttpContext(new List<Claim>
-            {
-                new Claim(ClaimTypes.Name, "user@domain.com"),
-                new Claim(ClaimTypes.Role, role),
-                new Claim("http://schemas.microsoft.com/identity/claims/objectidentifier", userId)
-            });
-            _httpContextAccessor.Setup(x => x.HttpContext).Returns(context);
-
-            _graphGroupRepository.Setup(x => x.GetDestinationOwnersAsync(It.IsAny<List<Guid>>()))
-                .ReturnsAsync((List<Guid> objectIds) =>
-                {
-                    return new Dictionary<Guid, List<Guid>>
-                    {
-                        { Guid.NewGuid(), new List<Guid> { (Guid)_syncJobChange.ChangedByObjectId } }
-                    };
-                });
-            _jobEntity.Status = SyncStatus.PendingReview.ToString();
-            _jobEntity.LastRunTime = DateTime.UtcNow.AddHours(-1);
-            _jobEntity.ThresholdViolations = 0;
-            _jobDetailsController = new JobDetailsController(_getJobDetailsHandler, _removeGMMHandler, _patchJobHandler, _getGroupHandler, _getChannelHandler, _getJobChangesHandler, _getSyncJobHistoryHandler, _getMembershipDownloadHandler, _getThresholdNotificationHandlerMock.Object, _syncJobChangeRepository.Object, NullLogger<JobDetailsController>.Instance)
-            {
-                ControllerContext = CreateControllerContext(new List<Claim>
-                {
-                    new Claim(ClaimTypes.Name, "user@domain.com"),
-                    new Claim(ClaimTypes.Role, role),
-                    new Claim("http://schemas.microsoft.com/identity/claims/objectidentifier", Guid.NewGuid().ToString())
-                })
-            };
-
-            var newStatus = SyncStatus.Idle.ToString();
-            var operations = new List<PatchOperation>
-            {
-                new PatchOperation { Op = "replace", Path = "/Status", Value = ConvertToJsonElement(newStatus) },
-                new PatchOperation { Op = "replace", Path = "/ChangeReason", Value = ConvertToJsonElement(SyncJobChangeReason.SubmissionApproved.ToString()) },
-                new PatchOperation { Op = "replace", Path = "/BusinessJustification", Value = ConvertToJsonElement("Approved") }
-            };
-
-            var requestDTO = CreatePatchJobRequestDTO(operations, SyncJobChangeReason.SubmissionApproved.ToString(), "Approved");
-            var response = await _jobDetailsController.ReviewJobAsync(_jobEntity.Id, requestDTO);
-            var result = response as OkObjectResult;
-
-            Assert.IsNotNull(result);
-            Assert.AreEqual((int)HttpStatusCode.OK, result.StatusCode);
-            Assert.AreEqual(SyncStatus.Idle.ToString(), _jobEntity.Status);
-            Assert.AreEqual(2, _jobEntity.ThresholdViolations);
             _syncJobChangeRepository.Verify(x => x.Save(It.IsAny<SyncJobChange>()), Times.Once);
         }
 

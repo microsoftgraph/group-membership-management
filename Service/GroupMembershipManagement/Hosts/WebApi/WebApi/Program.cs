@@ -113,10 +113,6 @@ namespace WebApi
                     })
                     .Select("Mail:*")
                     .Select("GraphAPI:*")
-                    .Select("MaximumNumberOfThresholdRecipients")
-                    .Select("NumberOfThresholdViolationsToNotify")
-                    .Select("NumberOfThresholdViolationsFollowUps")
-                    .Select("NumberOfThresholdViolationsToDisableJob")
                     .Select("PendingConfiguration:*")
                     .Select("TeamsChannel:*")
                     .Select("AzureMaintenance:*");
@@ -438,24 +434,6 @@ namespace WebApi
             builder.Services.AddOptions<WebApiSettings>().Configure<IConfiguration>((settings, configuration) =>
             {
                 settings.KeyVaultName = configuration.GetValue<string>("Settings:GraphCredentials:KeyVaultName");
-            });
-
-            builder.Services.AddOptions<ThresholdConfig>().Configure<IConfiguration>((settings, configuration) =>
-            {
-                settings.MaximumNumberOfThresholdRecipients = GetIntSetting(configuration, "MaximumNumberOfThresholdRecipients", 10);
-                settings.NumberOfThresholdViolationsToNotify = GetIntSetting(configuration, "NumberOfThresholdViolationsToNotify", 3);
-                settings.NumberOfThresholdViolationsFollowUps = GetIntSetting(configuration, "NumberOfThresholdViolationsFollowUps", 3);
-                settings.NumberOfThresholdViolationsToDisableJob = GetIntSetting(configuration, "NumberOfThresholdViolationsToDisableJob", 10);
-            });
-            builder.Services.AddSingleton<IThresholdConfig>(services =>
-            {
-                return new ThresholdConfig
-                    (
-                        services.GetService<IOptions<ThresholdConfig>>().Value.MaximumNumberOfThresholdRecipients,
-                        services.GetService<IOptions<ThresholdConfig>>().Value.NumberOfThresholdViolationsToNotify,
-                        services.GetService<IOptions<ThresholdConfig>>().Value.NumberOfThresholdViolationsFollowUps,
-                        services.GetService<IOptions<ThresholdConfig>>().Value.NumberOfThresholdViolationsToDisableJob
-                    );
             });
 
             builder.Services.AddOptions<ThresholdNotificationServiceConfig>().Configure<IConfiguration>((settings, configuration) =>

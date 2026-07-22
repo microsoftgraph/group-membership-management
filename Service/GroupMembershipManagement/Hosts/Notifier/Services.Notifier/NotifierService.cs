@@ -365,7 +365,7 @@ namespace Services.Notifier
                     ResolvedBy = string.Empty,
                     ResolvedTime = DateTime.FromFileTimeUtc(0),
                     Status = ThresholdNotificationStatus.Triggered,
-                    CardState = ThresholdNotificationCardState.DefaultCard,
+                    CardState = ThresholdNotificationCardState.DisabledCard,
                     TargetOfficeGroupId = groupId,
                     ThresholdPercentageForAdditions = job.ThresholdPercentageForAdditions,
                     ThresholdPercentageForRemovals = job.ThresholdPercentageForRemovals
@@ -381,10 +381,7 @@ namespace Services.Notifier
                 thresholdNotification.ThresholdPercentageForRemovals = job.ThresholdPercentageForRemovals;
                 thresholdNotification.Status = ThresholdNotificationStatus.Triggered;
 
-                if (sendDisableJobNotification)
-                {
-                    thresholdNotification.CardState = ThresholdNotificationCardState.DisabledCard;
-                }
+                thresholdNotification.CardState = ThresholdNotificationCardState.DisabledCard;
             }
 
             await _notificationRepository.SaveNotificationAsync(thresholdNotification);

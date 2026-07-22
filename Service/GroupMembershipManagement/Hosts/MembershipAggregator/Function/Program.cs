@@ -56,14 +56,6 @@ namespace Hosts.MembershipAggregator
                         configuration.GetSection("MultiLane").Bind(settings);
                     });
 
-                    services.AddOptions<ThresholdConfig>().Configure<IConfiguration>((settings, configuration) =>
-                    {
-                        settings.MaximumNumberOfThresholdRecipients = CommonServices.GetIntSettingBase(configuration, "MaximumNumberOfThresholdRecipients", 10);
-                        settings.NumberOfThresholdViolationsToNotify = CommonServices.GetIntSettingBase(configuration, "NumberOfThresholdViolationsToNotify", 3);
-                        settings.NumberOfThresholdViolationsFollowUps = CommonServices.GetIntSettingBase(configuration, "NumberOfThresholdViolationsFollowUps", 3);
-                        settings.NumberOfThresholdViolationsToDisableJob = CommonServices.GetIntSettingBase(configuration, "NumberOfThresholdViolationsToDisableJob", 10);
-                    });
-
                     services
                     .AddSingleton(sp => sp.GetRequiredService<IOptions<MultiLaneConfig>>().Value)
                     .AddGraphAPIClient()
@@ -87,16 +79,6 @@ namespace Hosts.MembershipAggregator
                     })
                     .AddScoped<ISyncJobHistoryRepository, SyncJobHistoryRepository>()
                     .AddScoped<ISyncJobStatusService, SyncJobStatusService>()
-                     .AddSingleton<IThresholdConfig>(services =>
-                     {
-                         return new ThresholdConfig
-                             (
-                                 services.GetService<IOptions<ThresholdConfig>>().Value.MaximumNumberOfThresholdRecipients,
-                                 services.GetService<IOptions<ThresholdConfig>>().Value.NumberOfThresholdViolationsToNotify,
-                                 services.GetService<IOptions<ThresholdConfig>>().Value.NumberOfThresholdViolationsFollowUps,
-                                 services.GetService<IOptions<ThresholdConfig>>().Value.NumberOfThresholdViolationsToDisableJob
-                             );
-                     })
                     .AddSingleton<IBlobStorageRepository, BlobStorageRepository>((s) =>
                     {
                         var configuration = s.GetService<IConfiguration>();
@@ -138,7 +120,6 @@ namespace Hosts.MembershipAggregator
                         var graphAPIService = services.GetRequiredService<IGraphAPIService>();
                         var dryRun = services.GetRequiredService<IDryRunValue>();
                         var telemetryClient = services.GetRequiredService<TelemetryClient>();
-                        var thresholdConfig = services.GetRequiredService<IThresholdConfig>();
                         var thresholdNotificationConfig = services.GetRequiredService<IThresholdNotificationConfig>();
                         var notificationRepository = services.GetRequiredService<INotificationRepository>();
 
@@ -155,7 +136,6 @@ namespace Hosts.MembershipAggregator
                             logger,
                             graphAPIService,
                             dryRun,
-                            thresholdConfig,
                             thresholdNotificationConfig,
                             notificationRepository,
                             notificationsQueueRepository,

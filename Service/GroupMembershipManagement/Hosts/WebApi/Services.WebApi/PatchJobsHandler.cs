@@ -3,7 +3,6 @@
 
 using Models.SyncJobChange;
 using Repositories.Contracts;
-using Repositories.Contracts.InjectConfig;
 using Services.Contracts;
 using Services.Messages.Requests;
 using Services.Messages.Responses;
@@ -15,23 +14,18 @@ namespace Services
     {
         private readonly IDatabaseSyncJobsRepository _databaseSyncJobsRepository;
         private readonly ISyncJobChangeRepository _syncJobChangeRepository;
-        private readonly IThresholdConfig _thresholdConfig;
         
         public PatchJobsHandler(ILogger<PatchJobsHandler> logger,
                                 IDatabaseSyncJobsRepository databaseSyncJobsRepository,
-                                ISyncJobChangeRepository syncJobChangeRepository,
-                                IThresholdConfig thresholdConfig) : base(logger)
+                                ISyncJobChangeRepository syncJobChangeRepository) : base(logger)
         {
             _databaseSyncJobsRepository = databaseSyncJobsRepository ?? throw new ArgumentNullException(nameof(databaseSyncJobsRepository));
             _syncJobChangeRepository = syncJobChangeRepository ?? throw new ArgumentNullException(nameof(syncJobChangeRepository));
-            _thresholdConfig = thresholdConfig ?? throw new ArgumentNullException(nameof(thresholdConfig));
         }
 
         protected override async Task<PatchJobsResponse> ExecuteCoreAsync(PatchJobsRequest request)
         {
-            // Set ThresholdViolations to N-1 so notification is sent on next threshold hit
-            var thresholdViolationsToSet = _thresholdConfig.NumberOfThresholdViolationsToNotify - 1;
-            var approvedCount = await _databaseSyncJobsRepository.BulkApproveSyncJobsAsync(request.SyncJobIds.ToList(), thresholdViolationsToSet);
+            var approvedCount = await _databaseSyncJobsRepository.BulkApproveSyncJobsAsync(request.SyncJobIds.ToList());
 
             var syncJobChangeList = new List<SyncJobChange>();
 

@@ -36,17 +36,6 @@ namespace Repositories.EntityFramework
                 .Include(j => j.Channel)
                 .SingleOrDefaultAsync(job => job.Id == syncJobId);
         }
-        
-        public async Task<int> GetThresholdViolationsBySyncJobIdAsync(Guid syncJobId)
-        {
-            var syncJob = await _readContext.SyncJobs.SingleOrDefaultAsync(job => job.Id == syncJobId);
-            return syncJob.ThresholdViolations;
-        }
-        public async Task<int> GetPeriodBySyncJobIdAsync(Guid syncJobId)
-        {
-            var syncJob = await _readContext.SyncJobs.SingleOrDefaultAsync(job => job.Id == syncJobId);
-            return syncJob.Period;
-        }
         public async Task<List<SyncJob>> GetSyncJobsAsync()
         {
             return await _readContext.SyncJobs
@@ -217,7 +206,7 @@ namespace Repositories.EntityFramework
             await _writeContext.SaveChangesAsync();
         }
 
-        public async Task<int> BulkApproveSyncJobsAsync(List<string> syncJobIds, int? thresholdViolationsToSet = null)
+        public async Task<int> BulkApproveSyncJobsAsync(List<string> syncJobIds)
         {
             var existingJobs = await _writeContext.SyncJobs
                 .Where(job => syncJobIds.Contains(job.Id.ToString()))
@@ -230,10 +219,6 @@ namespace Repositories.EntityFramework
                 if (job.Status == SyncStatus.PendingReview.ToString())
                 {
                     job.Status = SyncStatus.Idle.ToString();
-                    if (thresholdViolationsToSet.HasValue && job.LastRunTime != SqlDateTime.MinValue.Value)
-                    {
-                        job.ThresholdViolations = thresholdViolationsToSet.Value;
-                    }
                     updatedToIdleCount++;
                 }
             }

@@ -25,14 +25,12 @@ namespace Hosts.MembershipAggregator
 {
     public class MembershipSubOrchestratorFunction
     {
-        private readonly IThresholdConfig _thresholdConfig = null;
         private readonly IGraphAPIService _graphAPIService = null;
         private readonly TelemetryClient _telemetryClient = null;
         private readonly MultiLaneConfig _multilaneConfig = null;
 
-        public MembershipSubOrchestratorFunction(IThresholdConfig thresholdConfig, IGraphAPIService graphAPIService, TelemetryClient telemetryClient, MultiLaneConfig multilaneConfig)
+        public MembershipSubOrchestratorFunction(IGraphAPIService graphAPIService, TelemetryClient telemetryClient, MultiLaneConfig multilaneConfig)
         {
-            _thresholdConfig = thresholdConfig ?? throw new ArgumentNullException(nameof(thresholdConfig));
             _graphAPIService = graphAPIService ?? throw new ArgumentNullException(nameof(graphAPIService));
             _telemetryClient = telemetryClient ?? throw new ArgumentNullException(nameof(telemetryClient));
             _multilaneConfig = multilaneConfig ?? throw new ArgumentNullException(nameof(multilaneConfig));
@@ -99,7 +97,6 @@ namespace Hosts.MembershipAggregator
                                                     TotalParts = totalParts,
                                                     Status = SyncStatus.Error,
                                                     IsDryRun = false,
-                                                    IncrementThresholdViolations = false,
                                                     IsNoOpSync = false
                                                 });
 
@@ -130,7 +127,6 @@ namespace Hosts.MembershipAggregator
                                                     TotalParts = totalParts,
                                                     Status = SyncStatus.Error,
                                                     IsDryRun = false,
-                                                    IncrementThresholdViolations = false,
                                                     IsNoOpSync = false
                                                 });
 
@@ -162,7 +158,6 @@ namespace Hosts.MembershipAggregator
                                                     TotalParts = totalParts,
                                                     Status = SyncStatus.MembershipDataNotFound,
                                                     IsDryRun = false,
-                                                    IncrementThresholdViolations = false,
                                                     IsNoOpSync = false
                                                 });
 
@@ -255,7 +250,6 @@ namespace Hosts.MembershipAggregator
                                                         TotalParts = totalParts,
                                                         Status = SyncStatus.Error,
                                                         IsDryRun = false,
-                                                        IncrementThresholdViolations = false,
                                                         IsNoOpSync = false
                                                     });
 
@@ -320,7 +314,6 @@ namespace Hosts.MembershipAggregator
                                                         TotalParts = totalParts,
                                                         Status = SyncStatus.Error,
                                                         IsDryRun = false,
-                                                        IncrementThresholdViolations = false,
                                                         IsNoOpSync = false
                                                     });
 
@@ -343,10 +336,7 @@ namespace Hosts.MembershipAggregator
 
                 logger.UploadedMembershipFile(aggregatedMembershipResponse.FilePath, aggregatedMembershipResponse.MemberCount);
 
-                var currentThresholdViolations = request.SyncJob.ThresholdViolations + 1;
-                SyncStatus status = currentThresholdViolations >= _thresholdConfig.NumberOfThresholdViolationsToDisableJob
-                                    ? SyncStatus.ThresholdExceeded
-                                    : SyncStatus.Idle;
+                SyncStatus status = SyncStatus.ThresholdExceeded;
 
                 await context.CallActivityAsync(nameof(JobStatusUpdaterFunction),
                                                 new JobStatusUpdaterRequest
@@ -356,7 +346,6 @@ namespace Hosts.MembershipAggregator
                                                     TotalParts = totalParts,
                                                     Status = status,
                                                     IsDryRun = false,
-                                                    IncrementThresholdViolations = true,
                                                     IsNoOpSync = false,
                                                     ProposedUsersAdded = status == SyncStatus.ThresholdExceeded ? deltaResponse.MembersToAddCount : null,
                                                     ProposedUsersRemoved = status == SyncStatus.ThresholdExceeded ? deltaResponse.MembersToRemoveCount : null
@@ -382,7 +371,6 @@ namespace Hosts.MembershipAggregator
                                                     TotalParts = totalParts,
                                                     Status = SyncStatus.Idle,
                                                     IsDryRun = true,
-                                                    IncrementThresholdViolations = false,
                                                     IsNoOpSync = false
                                                 });
                 await context.CallActivityAsync(nameof(TelemetryTrackerFunction), new TelemetryTrackerRequest
@@ -404,7 +392,6 @@ namespace Hosts.MembershipAggregator
                                                     TotalParts = totalParts,
                                                     Status = SyncStatus.Error,
                                                     IsDryRun = false,
-                                                    IncrementThresholdViolations = false,
                                                     IsNoOpSync = false
                                                 });
                 await context.CallActivityAsync(nameof(TelemetryTrackerFunction), new TelemetryTrackerRequest
@@ -483,7 +470,6 @@ namespace Hosts.MembershipAggregator
                                     TotalParts = totalParts,
                                     Status = SyncStatus.Idle,
                                     IsDryRun = false,
-                                    IncrementThresholdViolations = false,
                                     IsNoOpSync = true
                                 });
             }

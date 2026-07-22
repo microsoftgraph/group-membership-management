@@ -63,16 +63,6 @@ namespace Repositories.Mocks
             var job = Jobs.FirstOrDefault(x => x.Id == syncJobId);
             return await Task.FromResult(job);
         }
-        public async Task<int> GetThresholdViolationsBySyncJobIdAsync(Guid syncJobId)
-        {
-            var job = Jobs.FirstOrDefault(x => x.Id == syncJobId);
-            return await Task.FromResult(job.ThresholdViolations);
-        }
-        public async Task<int> GetPeriodBySyncJobIdAsync(Guid syncJobId)
-        {
-            var job = Jobs.FirstOrDefault(x => x.Id == syncJobId);
-            return await Task.FromResult(job.Period);
-        }
 
         public async Task UpdateSyncJobStatusAsync(IEnumerable<SyncJob> jobs, SyncStatus? status)
         {
@@ -92,7 +82,7 @@ namespace Repositories.Mocks
             throw new NotImplementedException();
         }
 
-        public Task<int> BulkApproveSyncJobsAsync(List<string> syncJobIds, int? thresholdViolationsToSet = null)
+        public Task<int> BulkApproveSyncJobsAsync(List<string> syncJobIds)
         {
             throw new NotImplementedException();
         }

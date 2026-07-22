@@ -6,13 +6,11 @@ using Microsoft.AspNetCore.JsonPatch;
 using Models;
 using Models.SyncJobChange;
 using Repositories.Contracts;
-using Repositories.Contracts.InjectConfig;
 using Services.Contracts;
 using Services.Messages.Requests;
 using Services.Messages.Responses;
 using Services.WebApi.Contracts;
 using Services.WebApi.Validators;
-using System.Data.SqlTypes;
 using System.Net;
 using System.Text.Json;
 using WebApi.Models.DTOs;
@@ -31,7 +29,6 @@ namespace Services.WebApi
         private readonly IDatabaseTitlesRepository _titlesRepository;
         private readonly IDatabaseSettingsRepository _databaseSettingsRepository;
         private readonly INotificationService _notificationService;
-        private readonly IThresholdConfig _thresholdConfig;
 
         public PatchJobHandler(
             ILogger<PatchJobHandler> logger,
@@ -40,8 +37,7 @@ namespace Services.WebApi
             ISyncJobChangeRepository syncJobChangeRepository,
             IDatabaseTitlesRepository titlesRepository,
             IDatabaseSettingsRepository databaseSettingsRepository,
-            INotificationService notificationService,
-            IThresholdConfig thresholdConfig)
+            INotificationService notificationService)
             : base(logger)
         {
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
@@ -51,7 +47,6 @@ namespace Services.WebApi
             _titlesRepository = titlesRepository ?? throw new ArgumentNullException(nameof(titlesRepository));
             _databaseSettingsRepository = databaseSettingsRepository ?? throw new ArgumentNullException(nameof(databaseSettingsRepository));
             _notificationService = notificationService ?? throw new ArgumentNullException(nameof(notificationService));
-            _thresholdConfig = thresholdConfig ?? throw new ArgumentNullException(nameof(thresholdConfig));
         }
 
         protected override async Task<PatchJobResponse> ExecuteCoreAsync(PatchJobRequest request)
@@ -189,14 +184,6 @@ namespace Services.WebApi
                     response.StatusCode = HttpStatusCode.BadRequest;
                     response.ErrorCode = "ValidUpdateStatusIsRequired";
                     return response;
-                }
-
-                // Set ThresholdViolations to N-1 when submission is approved, so notification is sent on next threshold hit
-                // Skip this for initial syncs to avoid sending notifications on first run
-                var isInitialSync = syncJob.LastRunTime == SqlDateTime.MinValue.Value;
-                if (newStatus == SyncStatus.Idle.ToString() && !isInitialSync)
-                {
-                    syncJob.ThresholdViolations = _thresholdConfig.NumberOfThresholdViolationsToNotify - 1;
                 }
 
                 var result = await ValidateAndUpdateSyncJob(request, syncJob, syncJobChange, newStatus);

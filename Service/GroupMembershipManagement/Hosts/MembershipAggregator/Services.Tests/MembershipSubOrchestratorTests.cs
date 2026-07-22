@@ -57,7 +57,6 @@ namespace Services.Tests
         private Mock<IDryRunValue> _dryRun;
         private Mock<IGMMResources> _gmmResources;
         private Mock<IGraphAPIService> _graphAPIService;
-        private Mock<IThresholdConfig> _thresholdConfig;
         private Mock<IThresholdNotificationConfig> _thresholdNotificationConfig;
         private Mock<IDatabaseSyncJobsRepository> _syncJobRepository;
         private Mock<IDatabaseGroupsRepository> _groupsRepository;
@@ -74,7 +73,6 @@ namespace Services.Tests
         [TestInitialize]
         public void SetupTest()
         {
-            _thresholdConfig = new Mock<IThresholdConfig>();
             _thresholdNotificationConfig = new Mock<IThresholdNotificationConfig>();
             _syncJobRepository = new Mock<IDatabaseSyncJobsRepository>();
             _groupsRepository = new Mock<IDatabaseGroupsRepository>();
@@ -131,7 +129,6 @@ namespace Services.Tests
                                                 NullLogger<DeltaCalculatorService>.Instance,
                                                 _graphAPIService.Object,
                                                 _dryRun.Object,
-                                                _thresholdConfig.Object,
                                                 _thresholdNotificationConfig.Object,
                                                 _notificationRepository.Object,
                                                 _notificationsQueueRepository.Object,
@@ -359,7 +356,7 @@ namespace Services.Tests
         {
             _syncJob.LastRunTime = SqlDateTime.MinValue.Value;
 
-            var orchestratorFunction = new MembershipSubOrchestratorFunction(_thresholdConfig.Object, _graphAPIService.Object, _telemetryClient, _multiLaneConfig);
+            var orchestratorFunction = new MembershipSubOrchestratorFunction(_graphAPIService.Object, _telemetryClient, _multiLaneConfig);
             var response = await orchestratorFunction.RunMembershipSubOrchestratorFunctionAsync(_durableContext.Object);
 
             Assert.IsNotNull(response.FilePath);
@@ -389,7 +386,7 @@ namespace Services.Tests
                 DestinationPart = "http://file-path-3"
             };
 
-            var orchestratorFunction = new MembershipSubOrchestratorFunction(_thresholdConfig.Object, _graphAPIService.Object, _telemetryClient, _multiLaneConfig);
+            var orchestratorFunction = new MembershipSubOrchestratorFunction(_graphAPIService.Object, _telemetryClient, _multiLaneConfig);
             var response = await orchestratorFunction.RunMembershipSubOrchestratorFunctionAsync(_durableContext.Object);
 
             Assert.AreEqual(MembershipDeltaStatus.Ok, response.MembershipDeltaStatus);
@@ -416,7 +413,7 @@ namespace Services.Tests
                 DestinationPart = "http://file-path-3"
             };
 
-            var orchestratorFunction = new MembershipSubOrchestratorFunction(_thresholdConfig.Object, _graphAPIService.Object, _telemetryClient, _multiLaneConfig);
+            var orchestratorFunction = new MembershipSubOrchestratorFunction(_graphAPIService.Object, _telemetryClient, _multiLaneConfig);
             var response = await orchestratorFunction.RunMembershipSubOrchestratorFunctionAsync(_durableContext.Object);
 
             Assert.AreEqual(MembershipDeltaStatus.Error, response.MembershipDeltaStatus);
@@ -436,13 +433,11 @@ namespace Services.Tests
         public async Task HitAdditionsThresholdTestAsync()
         {
             var currentThresholdViolations = 0;
-            _thresholdConfig.Setup(x => x.NumberOfThresholdViolationsToDisableJob).Returns(5);
-            _thresholdConfig.Setup(x => x.NumberOfThresholdViolationsToNotify).Returns(2);
             _numberOfUsersForDestinationPart = 5;
             _syncJob.ThresholdViolations = currentThresholdViolations;
 
 
-            var orchestratorFunction = new MembershipSubOrchestratorFunction(_thresholdConfig.Object, _graphAPIService.Object, _telemetryClient, _multiLaneConfig);
+            var orchestratorFunction = new MembershipSubOrchestratorFunction(_graphAPIService.Object, _telemetryClient, _multiLaneConfig);
             var response = await orchestratorFunction.RunMembershipSubOrchestratorFunctionAsync(_durableContext.Object);
 
             Assert.IsNull(response.FilePath);
@@ -452,11 +447,11 @@ namespace Services.Tests
             _blobStorageRepository.Verify(x => x.UploadFileAsync(It.Is<string>(path => path.Contains("Aggregated")), It.IsAny<string>(), It.IsAny<Dictionary<string, string>>()), Times.Once());
             _syncJobStatusService.Verify(x => x.UpdateJobStatusAsync(
                                                                     It.IsAny<SyncJob>(),
-                                                                    It.Is<SyncStatus?>(x => x == SyncStatus.Idle),
+                                                                    It.Is<SyncStatus?>(x => x == SyncStatus.ThresholdExceeded),
                                                                     It.IsAny<SyncJobHistory>(),
                                                                     It.IsAny<string>())
                                                                     , Times.Once());
-            _notificationsQueueRepository.Verify(x => x.SendMessageAsync(It.IsAny<ServiceBusMessage>()), Times.Exactly(0));
+            _notificationsQueueRepository.Verify(x => x.SendMessageAsync(It.IsAny<ServiceBusMessage>()), Times.Once());
 
         }
 
@@ -464,12 +459,11 @@ namespace Services.Tests
         public async Task IgnoreThresholdOnceTestAsync()
         {
             var currentThresholdViolations = 1;
-            _thresholdConfig.Setup(x => x.NumberOfThresholdViolationsToDisableJob).Returns(5);
             _numberOfUsersForDestinationPart = 5;
             _syncJob.ThresholdViolations = currentThresholdViolations;
             _syncJob.IgnoreThresholdOnce = true;
 
-            var orchestratorFunction = new MembershipSubOrchestratorFunction(_thresholdConfig.Object, _graphAPIService.Object, _telemetryClient, _multiLaneConfig);
+            var orchestratorFunction = new MembershipSubOrchestratorFunction(_graphAPIService.Object, _telemetryClient, _multiLaneConfig);
             var response = await orchestratorFunction.RunMembershipSubOrchestratorFunctionAsync(_durableContext.Object);
 
             Assert.AreEqual(MembershipDeltaStatus.Ok, response.MembershipDeltaStatus);
@@ -481,7 +475,7 @@ namespace Services.Tests
             _numberOfUsersForDestinationPart = 0;
             _syncJob.AllowEmptyDestination = true;
 
-            var orchestratorFunction = new MembershipSubOrchestratorFunction(_thresholdConfig.Object, _graphAPIService.Object, _telemetryClient, _multiLaneConfig);
+            var orchestratorFunction = new MembershipSubOrchestratorFunction(_graphAPIService.Object, _telemetryClient, _multiLaneConfig);
             var response = await orchestratorFunction.RunMembershipSubOrchestratorFunctionAsync(_durableContext.Object);
 
             Assert.AreEqual(MembershipDeltaStatus.Ok, response.MembershipDeltaStatus);
@@ -490,13 +484,10 @@ namespace Services.Tests
         [TestMethod]
         public async Task HitRemovalThresholdTestAsync()
         {
-            _thresholdConfig.Setup(x => x.NumberOfThresholdViolationsToDisableJob).Returns(5);
-            _thresholdConfig.Setup(x => x.NumberOfThresholdViolationsToNotify).Returns(2);
 
             _numberOfUsersForSourcePart = 5;
-            _syncJob.ThresholdViolations = 1;
 
-            var orchestratorFunction = new MembershipSubOrchestratorFunction(_thresholdConfig.Object, _graphAPIService.Object, _telemetryClient, _multiLaneConfig);
+            var orchestratorFunction = new MembershipSubOrchestratorFunction(_graphAPIService.Object, _telemetryClient, _multiLaneConfig);
             var response = await orchestratorFunction.RunMembershipSubOrchestratorFunctionAsync(_durableContext.Object);
 
             Assert.IsNull(response.FilePath);
@@ -506,7 +497,7 @@ namespace Services.Tests
             _blobStorageRepository.Verify(x => x.UploadFileAsync(It.Is<string>(path => path.Contains("Aggregated")), It.IsAny<string>(), It.IsAny<Dictionary<string, string>>()), Times.Once());
             _syncJobStatusService.Verify(x => x.UpdateJobStatusAsync(
                                                                     It.IsAny<SyncJob>(),
-                                                                    It.Is<SyncStatus?>(x => x == SyncStatus.Idle),
+                                                                    It.Is<SyncStatus?>(x => x == SyncStatus.ThresholdExceeded),
                                                                     It.IsAny<SyncJobHistory>(),
                                                                     It.IsAny<string>())
                                                                     , Times.Once());
@@ -515,14 +506,10 @@ namespace Services.Tests
         }
 
         [TestMethod]
-        public async Task HitMaxAddsRemovesThresholdViolationsTestAsync()
+        public async Task AdditionsAndRemovalsThresholdExceededTestAsync()
         {
-            _thresholdConfig.Setup(x => x.NumberOfThresholdViolationsToDisableJob).Returns(5);
-            _thresholdConfig.Setup(x => x.NumberOfThresholdViolationsToNotify).Returns(5);
 
-            _syncJob.ThresholdViolations = 4;
-
-            var orchestratorFunction = new MembershipSubOrchestratorFunction(_thresholdConfig.Object, _graphAPIService.Object, _telemetryClient, _multiLaneConfig);
+            var orchestratorFunction = new MembershipSubOrchestratorFunction(_graphAPIService.Object, _telemetryClient, _multiLaneConfig);
             var response = await orchestratorFunction.RunMembershipSubOrchestratorFunctionAsync(_durableContext.Object);
 
             Assert.IsNull(response.FilePath);
@@ -542,14 +529,10 @@ namespace Services.Tests
         }
 
         [TestMethod]
-        public async Task HitMaxThresholdViolations_EmitsProposedCountsOnJobStatusUpdaterRequestAsync()
+        public async Task ThresholdExceeded_EmitsProposedCountsOnJobStatusUpdaterRequestAsync()
         {
-            _thresholdConfig.Setup(x => x.NumberOfThresholdViolationsToDisableJob).Returns(5);
-            _thresholdConfig.Setup(x => x.NumberOfThresholdViolationsToNotify).Returns(5);
 
-            _syncJob.ThresholdViolations = 4;
-
-            var orchestratorFunction = new MembershipSubOrchestratorFunction(_thresholdConfig.Object, _graphAPIService.Object, _telemetryClient, _multiLaneConfig);
+            var orchestratorFunction = new MembershipSubOrchestratorFunction(_graphAPIService.Object, _telemetryClient, _multiLaneConfig);
             var response = await orchestratorFunction.RunMembershipSubOrchestratorFunctionAsync(_durableContext.Object);
 
             Assert.AreEqual(MembershipDeltaStatus.ThresholdExceeded, response.MembershipDeltaStatus);
@@ -566,15 +549,12 @@ namespace Services.Tests
         }
 
         [TestMethod]
-        public async Task HitMaxAddsThresholdViolationsTestAsync()
+        public async Task AdditionsThresholdExceededTestAsync()
         {
-            _thresholdConfig.Setup(x => x.NumberOfThresholdViolationsToDisableJob).Returns(5);
-            _thresholdConfig.Setup(x => x.NumberOfThresholdViolationsToNotify).Returns(5);
 
-            _syncJob.ThresholdViolations = 4;
             _numberOfUsersForDestinationPart = 0;
 
-            var orchestratorFunction = new MembershipSubOrchestratorFunction(_thresholdConfig.Object, _graphAPIService.Object, _telemetryClient, _multiLaneConfig);
+            var orchestratorFunction = new MembershipSubOrchestratorFunction(_graphAPIService.Object, _telemetryClient, _multiLaneConfig);
             var response = await orchestratorFunction.RunMembershipSubOrchestratorFunctionAsync(_durableContext.Object);
 
             Assert.IsNull(response.FilePath);
@@ -594,15 +574,12 @@ namespace Services.Tests
         }
 
         [TestMethod]
-        public async Task HitMaxRemovesThresholdViolationsTestAsync()
+        public async Task RemovalsThresholdExceededTestAsync()
         {
-            _thresholdConfig.Setup(x => x.NumberOfThresholdViolationsToDisableJob).Returns(5);
-            _thresholdConfig.Setup(x => x.NumberOfThresholdViolationsToNotify).Returns(5);
 
-            _syncJob.ThresholdViolations = 4;
             _numberOfUsersForSourcePart = 1;
 
-            var orchestratorFunction = new MembershipSubOrchestratorFunction(_thresholdConfig.Object, _graphAPIService.Object, _telemetryClient, _multiLaneConfig);
+            var orchestratorFunction = new MembershipSubOrchestratorFunction(_graphAPIService.Object, _telemetryClient, _multiLaneConfig);
             var response = await orchestratorFunction.RunMembershipSubOrchestratorFunctionAsync(_durableContext.Object);
 
             Assert.IsNull(response.FilePath);
@@ -635,14 +612,13 @@ namespace Services.Tests
                                     NullLogger<DeltaCalculatorService>.Instance,
                                     _graphAPIService.Object,
                                     _dryRun.Object,
-                                    _thresholdConfig.Object,
                                     _thresholdNotificationConfig.Object,
                                     _notificationRepository.Object,
                                     _notificationsQueueRepository.Object,
                                     _telemetryClient
                                 );
 
-            var orchestratorFunction = new MembershipSubOrchestratorFunction(_thresholdConfig.Object, _graphAPIService.Object, _telemetryClient, _multiLaneConfig);
+            var orchestratorFunction = new MembershipSubOrchestratorFunction(_graphAPIService.Object, _telemetryClient, _multiLaneConfig);
             var response = await orchestratorFunction.RunMembershipSubOrchestratorFunctionAsync(_durableContext.Object);
 
             Assert.IsNull(response.FilePath);
@@ -670,14 +646,13 @@ namespace Services.Tests
                                     NullLogger<DeltaCalculatorService>.Instance,
                                     _graphAPIService.Object,
                                     _dryRun.Object,
-                                    _thresholdConfig.Object,
                                     _thresholdNotificationConfig.Object,
                                     _notificationRepository.Object,
                                     _notificationsQueueRepository.Object,
                                     _telemetryClient
                                 );
 
-            var orchestratorFunction = new MembershipSubOrchestratorFunction(_thresholdConfig.Object, _graphAPIService.Object, _telemetryClient, _multiLaneConfig);
+            var orchestratorFunction = new MembershipSubOrchestratorFunction(_graphAPIService.Object, _telemetryClient, _multiLaneConfig);
             var response = await orchestratorFunction.RunMembershipSubOrchestratorFunctionAsync(_durableContext.Object);
 
             Assert.IsNull(response.FilePath);
@@ -699,14 +674,13 @@ namespace Services.Tests
                                     NullLogger<DeltaCalculatorService>.Instance,
                                     _graphAPIService.Object,
                                     _dryRun.Object,
-                                    _thresholdConfig.Object,
                                     _thresholdNotificationConfig.Object,
                                     _notificationRepository.Object,
                                     _notificationsQueueRepository.Object,
                                     _telemetryClient
                                 );
 
-            var orchestratorFunction = new MembershipSubOrchestratorFunction(_thresholdConfig.Object, _graphAPIService.Object, _telemetryClient, _multiLaneConfig);
+            var orchestratorFunction = new MembershipSubOrchestratorFunction(_graphAPIService.Object, _telemetryClient, _multiLaneConfig);
             var response = await orchestratorFunction.RunMembershipSubOrchestratorFunctionAsync(_durableContext.Object);
 
             Assert.IsNull(response.FilePath);
@@ -729,7 +703,7 @@ namespace Services.Tests
             _membersPerFile.Add(GenerateFileName(_syncJob, _group.GroupId, "SourceMembership", currentUtcDateTime), 100000);
             _membersPerFile.Add(GenerateFileName(_syncJob, _group.GroupId, "DestinationMembership", currentUtcDateTime), 0);
 
-            var orchestratorFunction = new MembershipSubOrchestratorFunction(_thresholdConfig.Object, _graphAPIService.Object, _telemetryClient, _multiLaneConfig);
+            var orchestratorFunction = new MembershipSubOrchestratorFunction(_graphAPIService.Object, _telemetryClient, _multiLaneConfig);
             var response = await orchestratorFunction.RunMembershipSubOrchestratorFunctionAsync(_durableContext.Object);
 
             _blobStorageRepository.Verify(x => x.UploadFileAsync(It.Is<string>(x => x.Contains("SourceMembership")),
@@ -795,7 +769,7 @@ namespace Services.Tests
                                     })
                                     .ReturnsAsync(() => _blobResult);
 
-            var orchestratorFunction = new MembershipSubOrchestratorFunction(_thresholdConfig.Object, _graphAPIService.Object, _telemetryClient, _multiLaneConfig);
+            var orchestratorFunction = new MembershipSubOrchestratorFunction(_graphAPIService.Object, _telemetryClient, _multiLaneConfig);
             var response = await orchestratorFunction.RunMembershipSubOrchestratorFunctionAsync(_durableContext.Object);
             Assert.AreEqual(0, response.ProjectedMemberCount);
         }
@@ -872,7 +846,7 @@ namespace Services.Tests
                                    })
                                    .ReturnsAsync(() => _blobResult);
 
-            var orchestratorFunction = new MembershipSubOrchestratorFunction(_thresholdConfig.Object, _graphAPIService.Object, _telemetryClient, _multiLaneConfig);
+            var orchestratorFunction = new MembershipSubOrchestratorFunction(_graphAPIService.Object, _telemetryClient, _multiLaneConfig);
             var response = await orchestratorFunction.RunMembershipSubOrchestratorFunctionAsync(_durableContext.Object);
             Assert.AreEqual(50000, response.ProjectedMemberCount);
         }
@@ -880,15 +854,13 @@ namespace Services.Tests
         [TestMethod]
         public async Task SendThresholdNotificationIfEnabledAsync()
         {
-            _syncJob.ThresholdViolations = 2;
             _thresholdNotificationConfig.Setup(x => x.IsThresholdNotificationEnabled).Returns(true);
-            _thresholdConfig.Setup(x => x.NumberOfThresholdViolationsFollowUps).Returns(3);
             _notificationsQueueRepository.Setup(x => x.SendMessageAsync(It.IsAny<ServiceBusMessage>()))
                                          .Returns(Task.CompletedTask);
             _syncJobStatusService.Setup(x => x.UpdateJobStatusAsync(It.IsAny<SyncJob>(), It.IsAny<SyncStatus?>(), It.IsAny<SyncJobHistory>(), It.IsAny<string>()))
                                   .Returns(Task.CompletedTask);
 
-            var orchestratorFunction = new MembershipSubOrchestratorFunction(_thresholdConfig.Object, _graphAPIService.Object, _telemetryClient, _multiLaneConfig);
+            var orchestratorFunction = new MembershipSubOrchestratorFunction(_graphAPIService.Object, _telemetryClient, _multiLaneConfig);
             var response = await orchestratorFunction.RunMembershipSubOrchestratorFunctionAsync(_durableContext.Object);
 
             Assert.AreEqual(MembershipDeltaStatus.ThresholdExceeded, response.MembershipDeltaStatus);
@@ -902,7 +874,7 @@ namespace Services.Tests
             _syncJob.AllowEmptyDestination = false;
             _numberOfUsersForSourcePart = 0;
 
-            var orchestratorFunction = new MembershipSubOrchestratorFunction(_thresholdConfig.Object, _graphAPIService.Object, _telemetryClient, _multiLaneConfig);
+            var orchestratorFunction = new MembershipSubOrchestratorFunction(_graphAPIService.Object, _telemetryClient, _multiLaneConfig);
             var response = await orchestratorFunction.RunMembershipSubOrchestratorFunctionAsync(_durableContext.Object);
 
             Assert.IsNull(response.FilePath);
@@ -919,7 +891,7 @@ namespace Services.Tests
             _numberOfUsersForSourcePart = 0;
             _numberOfUsersForDestinationPart = 0;
 
-            var orchestratorFunction = new MembershipSubOrchestratorFunction(_thresholdConfig.Object, _graphAPIService.Object, _telemetryClient, _multiLaneConfig);
+            var orchestratorFunction = new MembershipSubOrchestratorFunction(_graphAPIService.Object, _telemetryClient, _multiLaneConfig);
             var response = await orchestratorFunction.RunMembershipSubOrchestratorFunctionAsync(_durableContext.Object);
 
             Assert.AreEqual(MembershipDeltaStatus.NoChanges, response.MembershipDeltaStatus);
@@ -975,7 +947,7 @@ namespace Services.Tests
                         })
                         .ReturnsAsync(() => _blobResult);
 
-            var orchestratorFunction = new MembershipSubOrchestratorFunction(_thresholdConfig.Object, _graphAPIService.Object, _telemetryClient, _multiLaneConfig);
+            var orchestratorFunction = new MembershipSubOrchestratorFunction(_graphAPIService.Object, _telemetryClient, _multiLaneConfig);
             var response = await orchestratorFunction.RunMembershipSubOrchestratorFunctionAsync(_durableContext.Object);
 
             Assert.AreEqual(MembershipDeltaStatus.NoChanges, response.MembershipDeltaStatus);
@@ -996,7 +968,7 @@ namespace Services.Tests
                     ErrorMessage = "Failed to extract membership data"
                 });
 
-            var orchestratorFunction = new MembershipSubOrchestratorFunction(_thresholdConfig.Object, _graphAPIService.Object, _telemetryClient, _multiLaneConfig);
+            var orchestratorFunction = new MembershipSubOrchestratorFunction(_graphAPIService.Object, _telemetryClient, _multiLaneConfig);
             var response = await orchestratorFunction.RunMembershipSubOrchestratorFunctionAsync(_durableContext.Object);
 
             Assert.AreEqual(MembershipDeltaStatus.Error, response.MembershipDeltaStatus);
@@ -1032,7 +1004,7 @@ namespace Services.Tests
                     DestinationMemberCount = 0
                 });
 
-            var orchestratorFunction = new MembershipSubOrchestratorFunction(_thresholdConfig.Object, _graphAPIService.Object, _telemetryClient, _multiLaneConfig);
+            var orchestratorFunction = new MembershipSubOrchestratorFunction(_graphAPIService.Object, _telemetryClient, _multiLaneConfig);
             var response = await orchestratorFunction.RunMembershipSubOrchestratorFunctionAsync(_durableContext.Object);
 
             Assert.AreEqual(MembershipDeltaStatus.Error, response.MembershipDeltaStatus);

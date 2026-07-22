@@ -19,35 +19,25 @@ namespace Services.Notifications
         private readonly IHandleInactiveJobsConfig _handleInactiveJobsConfig;
         private readonly string _apiHostname;
         private readonly Guid _providerId;
-        private readonly IThresholdConfig _thresholdConfig;
-        private readonly IDatabaseSyncJobsRepository _databaseSyncJobsRepository;
 
         public ThresholdNotificationService(
             IOptions<ThresholdNotificationServiceConfig> config,
             IGraphGroupRepository graphGroupRepository,
             ILocalizationRepository localizationRepository,
-            IHandleInactiveJobsConfig handleInactiveJobsConfig,
-            IThresholdConfig thresholdConfig,
-            IDatabaseSyncJobsRepository databaseSyncJobsRepository)
+            IHandleInactiveJobsConfig handleInactiveJobsConfig)
         {
             _apiHostname = config.Value.ApiHostname;
             _providerId = config.Value.ActionableEmailProviderId;
             _graphGroupRepository = graphGroupRepository ?? throw new ArgumentNullException(nameof(graphGroupRepository));
             _localizationRepository = localizationRepository ?? throw new ArgumentNullException(nameof(localizationRepository));
             _handleInactiveJobsConfig = handleInactiveJobsConfig ?? throw new ArgumentNullException( nameof(handleInactiveJobsConfig));
-            _thresholdConfig = thresholdConfig ?? throw new ArgumentNullException(nameof(thresholdConfig));
-            _databaseSyncJobsRepository = databaseSyncJobsRepository ?? throw new ArgumentNullException(nameof(databaseSyncJobsRepository));
         }
 
         /// <inheritdoc />
         public async Task<string> CreateNotificationCardAsync(ThresholdNotification notification)
         {
             string cardJson;
-            if (notification.CardState == ThresholdNotificationCardState.DefaultCard)
-            {
-                cardJson = _localizationRepository.TranslateSetting(CardTemplate.ThresholdNotification);
-            }
-            else if (notification.CardState == ThresholdNotificationCardState.DisabledCard)
+            if (notification.CardState == ThresholdNotificationCardState.DisabledCard)
             {
                 cardJson = _localizationRepository.TranslateSetting(CardTemplate.ThresholdNotificationDisabled);
             }
@@ -57,15 +47,10 @@ namespace Services.Notifications
             }
             else
             {
-                throw new NotSupportedException("Currently the Notifier trigger only supports NextCardState of DefaultCard, DisabledCard, and ExpiredCard. Please check on this card");
+                throw new NotSupportedException("Currently the Notifier trigger only supports NextCardState of DisabledCard and ExpiredCard. Please check on this card");
             }
 
             var groupName = await _graphGroupRepository.GetGroupNameAsync(notification.TargetOfficeGroupId);
-            int thresholdViolations = await _databaseSyncJobsRepository.GetThresholdViolationsBySyncJobIdAsync(notification.SyncJobId); ;
-            int violationsRemaining = _thresholdConfig.NumberOfThresholdViolationsToDisableJob - thresholdViolations;
-            int period = await _databaseSyncJobsRepository.GetPeriodBySyncJobIdAsync(notification.SyncJobId);
-            double hoursUntilDisable = (violationsRemaining * period);
-            string disableDate = DateTime.UtcNow.AddHours(hoursUntilDisable).ToString("yyyy-MM-dd'T'HH:mm:ss'Z'"); ;
             string purgeDate = notification.LastUpdatedTime.AddDays(_handleInactiveJobsConfig.NumberOfDaysBeforePurging).ToString("yyyy-MM-dd'T'HH:mm:ss'Z'");
             DateTime jobExpirationDate = notification.CardState == ThresholdNotificationCardState.DisabledCard ?
                     notification.LastUpdatedTime.AddDays(_handleInactiveJobsConfig.NumberOfDaysBeforePurging) : DateTime.MinValue;
@@ -83,7 +68,6 @@ namespace Services.Notifications
                 ProviderId = $"{_providerId}",
                 CardCreatedTime = DateTime.UtcNow,
                 JobExpirationDate = jobExpirationDate.ToString("yyyy-MM-dd'T'HH:mm:ss'Z'"),
-                DisableDate = disableDate,
                 PurgeDate = purgeDate
             };
 
