@@ -1,0 +1,10 @@
+# osv-scanner configuration for the GMM web-app lockfile scan.
+# See: https://google.github.io/osv-scanner/configuration/
+#
+# Entries here should be TIME-BOXED and DOCUMENTED. The `ignoreUntil` date makes
+# each suppression auto-expire so the finding re-surfaces and forces a revisit.
+
+[[IgnoredVulns]]
+id = "GHSA-v2hh-gcrm-f6hx"          # CVE-2026-16221 - fast-uri host confusion via literal backslash authority delimiter (High, CVSS 7.5)
+ignoreUntil = 2026-08-21            # ~30 days; revisit when the fix publishes to the registry
+reason = "No installable fix yet: patched fast-uri (3.1.4 / 4.1.1 / 2.4.3) is not published to the registry as of 2026-07-22 (verified 404 on the internal feed and npmjs.org). The override is already bumped to `fast-uri: >=3.1.3 <4`, which resolves to 3.1.3 and clears the companion advisory CVE-2026-13676 (GHSA-4c8g-83qw-93j6). fast-uri is only pulled in transitively by ajv for JSON-schema URI format validation in the frontend build and is not used as a server-side SSRF/host-policy gate, so residual risk to GMM is low. ACTION: once 3.1.4 publishes, raise the override floor to `>=3.1.4` and delete this entry."
