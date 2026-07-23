@@ -257,15 +257,15 @@ namespace Services
             var groupName = await _graphAPIService.GetGroupNameAsync(groupId);
             _logger.ThresholdExceededNoChanges(groupName, groupId);
 
-            await SendThresholdNotification(threshold, job, sendDisableJobNotification: true, groupName);
+            await SendThresholdNotification(threshold, job, groupName);
         }
-        private async Task SendThresholdNotification(ThresholdResult threshold, SyncJob job, bool sendDisableJobNotification, string groupName)
+        private async Task SendThresholdNotification(ThresholdResult threshold, SyncJob job, string groupName)
         {
             var messageContent = new Dictionary<string, Object>
             {
                 { "ThresholdResult", threshold },
                 { "SyncJob", job },
-                { "SendDisableJobNotification", sendDisableJobNotification }
+                { "SendDisableJobNotification", true }
             };
 
             if (!_thresholdNotificationConfig.IsThresholdNotificationEnabled)

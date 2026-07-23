@@ -299,10 +299,10 @@ namespace Services.Tests
         }
 
         /// <summary>
-        /// /notifications/{id}/card - Get card for an unresolved notification
+        /// /notifications/{id}/card - An unresolved (awaiting-response) notification renders the DisabledCard for a group owner.
         /// </summary>
         [TestMethod]
-        public async Task GetNotificationCard_HandleUnresolvedTestAsync()
+        public async Task GetNotificationCard_UnresolvedNotificationRendersDisabledCardForOwnerTestAsync()
         {
             // Under immediate-disable, an unresolved threshold notification is persisted directly in the DisabledCard state.
             _thresholdNotification.CardState = ThresholdNotificationCardState.DisabledCard;
@@ -378,10 +378,10 @@ namespace Services.Tests
         }
 
         /// <summary>
-        /// /notifications/{id}/card - Get valid card for a notification with a user who is not an owner but is in the actionable message viewer group
+        /// /notifications/{id}/card - A viewer-group member who is not a group owner gets the DisabledCard.
         /// </summary>
         [TestMethod]
-        public async Task GetNotificationCard_HandleUserNotGroupOwnerButInViewerGroupTestAsync()
+        public async Task GetNotificationCard_ViewerGroupMemberNotOwnerRendersDisabledCardTestAsync()
         {
             var userObjectId = Guid.NewGuid();
 
