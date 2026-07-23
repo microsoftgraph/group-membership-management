@@ -236,19 +236,38 @@ namespace Services
             }
 
             // Create the run's SyncJobHistory row here, at claim time, as the single early writer.
+            // This is best-effort auxiliary telemetry: the job has already been durably claimed above,
+            // so a failure writing this row must not abort an otherwise-valid run (which would route to the
+            // SubOrchestrator's catch and strand the job in Error, a status JobTrigger never re-fetches).
+            // Swallow, log, and track the failure; the sync proceeds and downstream writers still upsert the
+            // history row on the same RunId (StartTime/Duration may be absent for that run).
             if (claimedJob.RunId.HasValue)
             {
-                var now = DateTime.UtcNow;
-                await _syncJobStatusService.CreateOrUpdateJobHistoryAsync(new SyncJobHistory
+                try
                 {
-                    SyncJobId = claimedJob.Id,
-                    RunId = claimedJob.RunId.Value,
-                    Status = status.ToString(),
-                    UpdatedByFunction = "JobTrigger",
-                    StartTime = claimedJob.LastSuccessfulStartTime,
-                    CreatedAt = now,
-                    UpdatedAt = now
-                });
+                    var now = DateTime.UtcNow;
+                    await _syncJobStatusService.CreateOrUpdateJobHistoryAsync(new SyncJobHistory
+                    {
+                        SyncJobId = claimedJob.Id,
+                        RunId = claimedJob.RunId.Value,
+                        Status = status.ToString(),
+                        UpdatedByFunction = "JobTrigger",
+                        StartTime = claimedJob.LastSuccessfulStartTime,
+                        CreatedAt = now,
+                        UpdatedAt = now
+                    });
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Failed to create SyncJobHistory row at claim time for job {SyncJobId} run {RunId}; continuing with claimed job.", claimedJob.Id, claimedJob.RunId.Value);
+                    _telemetryClient.TrackException(ex, new Dictionary<string, string>
+                    {
+                        { "SyncJobId", claimedJob.Id.ToString() },
+                        { "RunId", claimedJob.RunId.Value.ToString() },
+                        { "Status", status.ToString() },
+                        { "Operation", nameof(TryClaimAndUpdateJobAsync) }
+                    });
+                }
             }
 
             return claimedJob;

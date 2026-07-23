@@ -1024,6 +1024,30 @@ namespace Services.Tests
                 Times.Never);
         }
 
+        [TestMethod]
+        public async Task ClaimJob_HistoryWriteThrows_StillReturnsClaimedJob()
+        {
+            var job = SampleDataHelper.CreateSampleSyncJobs(1, Organization).First();
+            job.Status = SyncStatus.Idle.ToString();
+            job.RunId = Guid.NewGuid();
+            job.Period = 24;
+            job.LastSuccessfulStartTime = DateTime.UtcNow.AddDays(-10);
+            _syncJobRepository.Jobs.Add(job);
+
+            _syncJobStatusService
+                .Setup(s => s.CreateOrUpdateJobHistoryAsync(It.IsAny<SyncJobHistory>()))
+                .ThrowsAsync(new Exception("transient history-write failure"));
+
+            var claimed = await _jobTriggerService.TryClaimAndUpdateJobAsync(SyncStatus.InProgress, job);
+
+            Assert.IsNotNull(claimed, "A best-effort history-write failure must not abort an already-claimed run.");
+            Assert.AreEqual(job.Id, claimed.Id);
+            Assert.AreEqual(job.RunId, claimed.RunId);
+            _syncJobStatusService.Verify(
+                s => s.CreateOrUpdateJobHistoryAsync(It.IsAny<SyncJobHistory>()),
+                Times.Once);
+        }
+
         #endregion
 
         private class MockEmail<T> : IEmailSenderRecipient
