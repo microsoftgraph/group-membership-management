@@ -40,20 +40,48 @@ namespace SqlMembershipObtainer
 
                 var now = DateTime.UtcNow;
                 var updatedBy = nameof(Hosts.SqlMembershipObtainer);
+
+                if (!request.Status.HasValue)
+                {
+                    var runId = request.SyncJob.RunId ?? Guid.Empty;
+                    if (runId == Guid.Empty)
+                    {
+                        _logger.LogWarning(
+                            "Cannot persist AdfRunId {AdfRunId} for job {SyncJobId}: run has no RunId.",
+                            request.AdfRunId, request.SyncJob.Id);
+                    }
+                    else
+                    {
+                        var affected = await _syncJobStatusService.SaveAdfRunIdAsync(runId, request.AdfRunId);
+                        if (request.AdfRunId.HasValue && affected == 0)
+                        {
+                            _logger.LogWarning(
+                                "AdfRunId {AdfRunId} was not persisted for run {RunId} (job {SyncJobId}): " +
+                                "no SyncJobHistory row exists for the run. JobTrigger is expected to create it " +
+                                "at claim time.",
+                                request.AdfRunId, runId, request.SyncJob.Id);
+                        }
+                    }
+
+                    _logger.FunctionCompleted(nameof(JobStatusUpdaterFunction));
+                    return;
+                }
+
+                var status = request.Status.Value;
                 var history = new SyncJobHistory
                 {
                     SyncJobId = request.SyncJob.Id,
                     RunId = request.SyncJob.RunId ?? Guid.Empty,
-                    Status = request.Status.ToString(),
+                    Status = status.ToString(),
                     UpdatedByFunction = updatedBy,
-                    EndTime = request.Status != SyncStatus.InProgress ? now : null,
+                    EndTime = status != SyncStatus.InProgress ? now : null,
                     AdfRunId = request.AdfRunId,
                     UpdatedAt = now
                 };
 
-                request.SyncJob.Status = request.Status.ToString();
+                request.SyncJob.Status = status.ToString();
 
-                await _syncJobStatusService.UpdateJobStatusAsync(request.SyncJob, request.Status, history, functionName: updatedBy);
+                await _syncJobStatusService.UpdateJobStatusAsync(request.SyncJob, status, history, functionName: updatedBy);
 
                 _logger.FunctionCompleted(nameof(JobStatusUpdaterFunction));
             }

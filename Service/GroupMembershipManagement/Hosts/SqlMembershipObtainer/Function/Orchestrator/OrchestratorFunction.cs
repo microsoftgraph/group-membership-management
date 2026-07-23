@@ -129,9 +129,10 @@ namespace SqlMembershipObtainer
                         IsDestinationPart = false
                     };
 
-                    await context.CallActivityAsync(nameof(QueueMessageSenderFunction), content);
+                    // Persist AdfRunId to SyncJobHistory BEFORE handing off to MembershipAggregator,
+                    await context.CallActivityAsync(nameof(JobStatusUpdaterFunction), new JobStatusUpdaterRequest { Status = null, SyncJob = syncJob, CurrentPart = currentPart, TotalParts = totalParts, AdfRunId = adfRunId });
 
-                    await context.CallActivityAsync(nameof(JobStatusUpdaterFunction), new JobStatusUpdaterRequest { Status = SyncStatus.InProgress, SyncJob = syncJob, CurrentPart = currentPart, TotalParts = totalParts, AdfRunId = adfRunId });
+                    await context.CallActivityAsync(nameof(QueueMessageSenderFunction), content);
                 }
                 else
                 {

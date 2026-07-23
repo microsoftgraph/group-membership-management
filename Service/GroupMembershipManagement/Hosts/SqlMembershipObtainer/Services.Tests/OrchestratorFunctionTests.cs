@@ -6,8 +6,6 @@ using Microsoft.Azure.Functions.Worker;
 using Microsoft.DurableTask;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
-using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Models;
 using Models.Helpers;
@@ -275,6 +273,45 @@ namespace Services.Tests
             _context.Verify(x => x.CallActivityAsync(nameof(JobStatusUpdaterFunction),
                                                     It.Is<JobStatusUpdaterRequest>(x => x.Status == SyncStatus.Error && x.CurrentPart == 1 && x.TotalParts == 2),
                                                     It.IsAny<TaskOptions>()), Times.Once());
+        }
+
+        [TestMethod]
+        public async Task PersistsAdfRunIdWithoutStatusBeforeAggregatorHandoffAsync()
+        {
+            // The AdfRunId stash must happen BEFORE the MembershipAggregator handoff (so it creates the
+            // SyncJobHistory row carrying AdfRunId) AND must be metadata-only (Status = null). Asserting
+            // InProgress here would let this write clobber a terminal status MA can finalize first,
+            // leaving the job falsely stuck InProgress.
+            var expectedAdfRunId = Guid.NewGuid();
+            _groupMembershipSenderResponse.AdfRunId = expectedAdfRunId;
+
+            var callOrder = new List<string>();
+
+            _context.Setup(x => x.CallActivityAsync(nameof(JobStatusUpdaterFunction),
+                                                    It.Is<JobStatusUpdaterRequest>(r => r.Status == null && r.AdfRunId == expectedAdfRunId),
+                                                    It.IsAny<TaskOptions>()))
+                    .Callback<TaskName, object, TaskOptions>((name, request, options) => callOrder.Add(nameof(JobStatusUpdaterFunction)));
+
+            _context.Setup(x => x.CallActivityAsync(nameof(QueueMessageSenderFunction),
+                                                    It.IsAny<MembershipAggregatorHttpRequest>(),
+                                                    It.IsAny<TaskOptions>()))
+                    .Callback<TaskName, object, TaskOptions>((name, request, options) => callOrder.Add(nameof(QueueMessageSenderFunction)));
+
+            var orchestratorFunction = new OrchestratorFunction();
+            await orchestratorFunction.RunOrchestratorAsync(_context.Object);
+
+            var stashIndex = callOrder.IndexOf(nameof(JobStatusUpdaterFunction));
+            var handoffIndex = callOrder.IndexOf(nameof(QueueMessageSenderFunction));
+
+            Assert.AreNotEqual(-1, stashIndex, "Expected a metadata-only (Status = null) AdfRunId JobStatusUpdaterFunction call.");
+            Assert.AreNotEqual(-1, handoffIndex, "Expected a QueueMessageSenderFunction handoff call.");
+            Assert.IsTrue(stashIndex < handoffIndex,
+                "AdfRunId must be persisted before the MembershipAggregator handoff to avoid the terminal-status clobber race.");
+
+            // The happy-path handoff must never re-assert SyncJobs.Status (that caused false stuck InProgress).
+            _context.Verify(x => x.CallActivityAsync(nameof(JobStatusUpdaterFunction),
+                                                     It.Is<JobStatusUpdaterRequest>(r => r.Status == SyncStatus.InProgress),
+                                                     It.IsAny<TaskOptions>()), Times.Never());
         }
 
         public static SqlException MakeSqlException()

@@ -59,6 +59,11 @@ namespace BusinessLogic.SyncJobUpdater
             await CreateOrUpdateJobHistoryAsync(history);
         }
 
+        public Task<int> SaveAdfRunIdAsync(Guid runId, Guid? adfRunId)
+        {
+            return _syncJobHistoryRepository.SaveAdfRunIdAsync(runId, adfRunId);
+        }
+
         public async Task CreateOrUpdateJobHistoryAsync(SyncJobHistory history)
         {
             var existingHistory = await _syncJobHistoryRepository.GetByRunIdAsync(history.RunId);
