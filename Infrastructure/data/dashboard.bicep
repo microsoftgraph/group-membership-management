@@ -857,7 +857,7 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
                   Query: 'customEvents\n| where name == "SyncComplete"\n| order by timestamp desc\n| project timestamp,\n    Destination = tostring(customDimensions["Destination"]),\n    Type = tostring(customDimensions["Type"]),\n    Result = tostring(customDimensions["Result"]),\n    DryRun = tobool(customDimensions["IsDryRunEnabled"]),\n    Onboarding = tobool(customDimensions["IsInitialSync"])\n| where Result == "Success" and DryRun == false and Onboarding == true\n| summarize count() by bin(timestamp, 1d), Type\n\n'
                   ControlType: 'FrameControlChart'
                   SpecificChart: 'StackedColumn'
-                  PartTitle: 'Onboardings Per Day'
+                  PartTitle: 'Initial Syncs Completed Per Day'
                   Dimensions: {
                     xAxis: {
                       name: 'timestamp'
@@ -950,7 +950,7 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
                 }
                 {
                   name: 'PartTitle'
-                  value: 'Onboardings: Copilot vs Manual'
+                  value: 'Jobs Submitted: Copilot vs Manual'
                   isOptional: true
                 }
                 {
@@ -978,7 +978,7 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
                   Query: 'customEvents\n| where name == "JobOnboarded"\n| extend Series = iff(tobool(customDimensions["OnboardedUsingAIQB"]), "Copilot", "Manual")\n| summarize count = count() by bin(timestamp, 1d), Series\n| order by timestamp asc\n'
                   ControlType: 'FrameControlChart'
                   SpecificChart: 'StackedColumn'
-                  PartTitle: 'Onboardings: Copilot vs Manual'
+                  PartTitle: 'Jobs Submitted: Copilot vs Manual'
                   Dimensions: {
                     xAxis: {
                       name: 'timestamp'
