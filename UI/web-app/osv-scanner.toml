@@ -8,3 +8,9 @@
 id = "GHSA-v2hh-gcrm-f6hx"          # CVE-2026-16221 - fast-uri host confusion via literal backslash authority delimiter (High, CVSS 7.5)
 ignoreUntil = 2026-08-21            # ~30 days; revisit when the fix publishes to the registry
 reason = "No installable fix yet: patched fast-uri (3.1.4 / 4.1.1 / 2.4.3) is not published to the registry as of 2026-07-22 (verified 404 on the internal feed and npmjs.org). The override is already bumped to `fast-uri: >=3.1.3 <4`, which resolves to 3.1.3 and clears the companion advisory CVE-2026-13676 (GHSA-4c8g-83qw-93j6). fast-uri is only pulled in transitively by ajv for JSON-schema URI format validation in the frontend build and is not used as a server-side SSRF/host-policy gate, so residual risk to GMM is low. ACTION: once 3.1.4 publishes, raise the override floor to `>=3.1.4` and delete this entry."
+
+[[IgnoredVulns]]
+id = "GHSA-qwww-vcr4-c8h2"          # React Router RSC-mode CSRF bypass (High, CVSS 7.1, CWE-352), published 2026-07-24
+ignoreUntil = 2026-08-24            # ~30 days; revisit once react-router 8.x is available on the internal feed
+reason = "Not applicable to GMM and no installable fix. The advisory explicitly states it 'only affects your application if you are using the unstable RSC APIs'; the GMM web-app is a declarative-mode Vite SPA (BrowserRouter/Routes/Route) with zero usage of the unstable RSC/`unstable_` APIs (verified by source grep). The fix is react-router 8.3.0, a major-version bump published the same day (2026-07-24) that is not on the internal feed (tops out at react-router 8.2.0), and react-router-dom 8.x is not published at all (latest is 7.18.1), so it cannot be installed. ACTION: once react-router-dom 8.x publishes to the feed, evaluate the v7->v8 major upgrade and delete this entry."
+
