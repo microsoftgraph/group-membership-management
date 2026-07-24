@@ -11,15 +11,34 @@ test.beforeEach(async ({ page }) => {
   await setupMockPage(page);
 });
 
-async function clickFirstVisible(page: Page, selectors: Array<{ role: 'button' | 'tab'; name: string | RegExp }>) {
-  for (const selector of selectors) {
-    const locator = page.getByRole(selector.role, { name: selector.name });
-    if (await locator.count()) {
-      await locator.first().click();
-      return;
+async function clickFirstVisible(
+  page: Page,
+  selectors: Array<{ role: 'button' | 'tab'; name: string | RegExp }>,
+  timeoutMs = isMockMode ? 15000 : 30000
+) {
+  // Role-gated Fluent Pivot tabs (General, Operations, ...) and the Settings /
+  // AdminConfig surface mount asynchronously once the signed-in user's roles
+  // resolve in Redux. A single instant count() check races that hydration, which
+  // made this test flaky (intermittently "Could not find any selector: tab:/General/i").
+  // Poll for any of the selectors to render and become clickable, up to timeoutMs.
+  const deadline = Date.now() + timeoutMs;
+  do {
+    for (const selector of selectors) {
+      const locator = page.getByRole(selector.role, { name: selector.name }).first();
+      if (await locator.count()) {
+        try {
+          await locator.click({ timeout: 5000 });
+          return;
+        } catch {
+          // Element is in the DOM but not yet clickable (still animating/enabling);
+          // fall through, wait, and retry.
+        }
+      }
     }
-  }
-  throw new Error(`Could not find any selector: ${selectors.map((s) => `${s.role}:${String(s.name)}`).join(', ')}`);
+    await page.waitForTimeout(250);
+  } while (Date.now() < deadline);
+
+  throw new Error(`Could not find any selector within ${timeoutMs}ms: ${selectors.map((s) => `${s.role}:${String(s.name)}`).join(', ')}`);
 }
 
 test('Maintenance - Reset GMM (WARNING: Disables API)', { tag: '@maintenance' }, async ({ page }) => {
@@ -38,7 +57,9 @@ test('Maintenance - Reset GMM (WARNING: Disables API)', { tag: '@maintenance' },
   await clickFirstVisible(page, [{ role: 'tab', name: /Operations/i }]);
   await page.getByRole('button', { name: 'Reset GMM' }).click();
   await page.getByRole('button', { name: 'Back' }).click();
-  await expect(page.getByText('This application is currently')).toBeVisible();
+  // Entering maintenance mode is async (disable call + maintenance-status re-fetch),
+  // so give the banner more room than the default 5s assertion timeout.
+  await expect(page.getByText('This application is currently')).toBeVisible({ timeout: isMockMode ? 30000 : 120000 });
   await clickFirstVisible(page, [{ role: 'button', name: 'Settings' }]);
   await expect(page.locator('div').filter({ hasText: /^Admin Center$/ }).first()).toBeVisible();
   await clickFirstVisible(page, [{ role: 'tab', name: /Operations/i }]);
