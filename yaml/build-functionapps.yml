@@ -154,9 +154,16 @@ stages:
 
         - task: DotNetCoreCLI@2
           displayName: 'dotnet publish ${{ app.function.name }} function'
+          env:
+            # Ensure no MSBuild Server survives to hold handles on shared output DLLs (e.g. Models.dll).
+            DOTNET_CLI_USE_MSBUILD_SERVER: 0
           inputs:
             command: publish
-            arguments: '--configuration $(BuildConfiguration) --output ${{ app.function.name }} /p:AssemblyVersion=$(Build.BuildNumber)'
+            # -nr:false disables MSBuild node reuse so worker nodes shut down and release
+            # shared project-reference DLL handles immediately. On .NET 10 the reused ".NET Host"
+            # nodes hold Models.dll (and other shared libs) locked while parallel publishes copy
+            # them, causing intermittent MSB3027/MSB3021 file-lock failures in this stage.
+            arguments: '--configuration $(BuildConfiguration) --output ${{ app.function.name }} /p:AssemblyVersion=$(Build.BuildNumber) -nr:false'
             projects: 'Service/GroupMembershipManagement/Hosts/${{ app.function.name }}/Function/*.csproj'
             publishWebProjects: false
             modifyOutputPath: false
