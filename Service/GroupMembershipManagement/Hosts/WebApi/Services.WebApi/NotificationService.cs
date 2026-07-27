@@ -94,13 +94,22 @@ namespace Services.WebApi
                 customProperties.Add("BusinessJustification", businessJustification!);
             }
 
-            await SendNotificationAsync(syncJob, notificationType, customProperties);
+            // Give rejections a unique id so two rejections of the same job aren't seen as duplicates and dropped.
+            var deduplicationId = isRejection ? Guid.NewGuid().ToString("N").Substring(0, 12) : null;
+            await SendNotificationCoreAsync(syncJob, notificationType, customProperties, deduplicationId);
         }
 
-        public async Task SendNotificationAsync(
+        public Task SendNotificationAsync(
             SyncJob syncJob,
             NotificationMessageType notificationType,
             Dictionary<string, object>? customProperties = null)
+            => SendNotificationCoreAsync(syncJob, notificationType, customProperties, deduplicationId: null);
+
+        private async Task SendNotificationCoreAsync(
+            SyncJob syncJob,
+            NotificationMessageType notificationType,
+            Dictionary<string, object>? customProperties,
+            string? deduplicationId)
         {
             try
             {
@@ -126,7 +135,10 @@ namespace Services.WebApi
                 }
 
                 var body = System.Text.Encoding.UTF8.GetBytes(JsonSerializer.Serialize(messageContent));
-                var messageId = $"{syncJob.Id}_{syncJob.RunId}_{notificationType}";
+                // Rejections append a short unique suffix so distinct sends get a unique MessageId (within the 128-char limit).
+                var messageId = string.IsNullOrEmpty(deduplicationId)
+                    ? $"{syncJob.Id}_{syncJob.RunId}_{notificationType}"
+                    : $"{syncJob.Id}_{syncJob.RunId}_{notificationType}_{deduplicationId}";
 
                 var message = new ServiceBusMessage
                 {

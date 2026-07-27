@@ -75,7 +75,8 @@ namespace WebApi.Tests
             _mockServiceBusQueueRepository.Verify(x => x.SendMessageAsync(It.IsAny<ServiceBusMessage>()), Times.Once);
             
             Assert.IsNotNull(capturedMessage);
-            Assert.AreEqual($"{_testSyncJob.Id}_{_testSyncJob.RunId}_{NotificationMessageType.SubmissionRejectedNotification}", capturedMessage.MessageId);
+            StringAssert.StartsWith(capturedMessage.MessageId, $"{_testSyncJob.Id}_{_testSyncJob.RunId}_{NotificationMessageType.SubmissionRejectedNotification}_");
+            Assert.IsTrue(capturedMessage.MessageId.Length <= 128, "MessageId must stay within the Service Bus 128-char limit.");
             Assert.IsTrue(capturedMessage.ApplicationProperties.ContainsKey("MessageType"));
             Assert.AreEqual(NotificationMessageType.SubmissionRejectedNotification.ToString(), capturedMessage.ApplicationProperties["MessageType"]);
 
@@ -88,6 +89,26 @@ namespace WebApi.Tests
             Assert.IsTrue(messageContent.ContainsKey("SubmitterObjectId"));
             Assert.IsTrue(messageContent.ContainsKey("SubmitterDisplayName"));
             Assert.IsTrue(messageContent.ContainsKey("BusinessJustification"));
+        }
+
+        [TestMethod]
+        public async Task SendSubmissionRejectedNotificationAsync_UnsetChangeId_StillProducesDistinctMessageIds()
+        {
+            // Production path: SyncJobChange.Id is unset (Guid.Empty), but rejections must still get distinct MessageIds so neither email is dropped.
+            var messageIds = new List<string>();
+            _mockServiceBusQueueRepository
+                .Setup(x => x.SendMessageAsync(It.IsAny<ServiceBusMessage>()))
+                .Callback<ServiceBusMessage>(msg => messageIds.Add(msg.MessageId))
+                .Returns(Task.CompletedTask);
+
+            var firstRejection = new SyncJobChange { SyncJobId = _testSyncJob.Id, BusinessJustification = "First" };
+            var secondRejection = new SyncJobChange { SyncJobId = _testSyncJob.Id, BusinessJustification = "Second" };
+
+            await _notificationService.SendSubmissionRejectedNotificationAsync(_testSyncJob, firstRejection);
+            await _notificationService.SendSubmissionRejectedNotificationAsync(_testSyncJob, secondRejection);
+
+            Assert.AreEqual(2, messageIds.Count);
+            Assert.AreNotEqual(messageIds[0], messageIds[1], "Rejections with an unset change id must still get distinct MessageIds.");
         }
 
         [TestMethod]
