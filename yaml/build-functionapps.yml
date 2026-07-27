@@ -48,6 +48,13 @@ stages:
         - task: DotNetCoreCLI@2
           displayName: 'dotnet build ${{ app.function.name }} function'
           retryCountOnTaskFailure: 3
+          env:
+            # Disable MSBuild node reuse / server so no persistent ".NET Host" worker node
+            # survives this step holding shared output DLLs (e.g. Models.dll) locked. Without
+            # this, a leftover node from build/test locks the file and the later publish step
+            # fails with MSB3027/MSB3021 on .NET 10.
+            MSBUILDDISABLENODEREUSE: 1
+            DOTNET_CLI_USE_MSBUILD_SERVER: 0
           inputs:
             command: build
             projects: 'Service/GroupMembershipManagement/Hosts/${{ app.function.name }}/Function/*.csproj'
@@ -56,6 +63,9 @@ stages:
         - task: DotNetCoreCLI@2
           displayName: 'dotnet test ${{ app.function.name }} function'
           retryCountOnTaskFailure: 3
+          env:
+            MSBUILDDISABLENODEREUSE: 1
+            DOTNET_CLI_USE_MSBUILD_SERVER: 0
           inputs:
             command: test
             projects: 'Service/GroupMembershipManagement/Hosts/${{ app.function.name }}/Services.Tests'
@@ -155,15 +165,12 @@ stages:
         - task: DotNetCoreCLI@2
           displayName: 'dotnet publish ${{ app.function.name }} function'
           env:
-            # Ensure no MSBuild Server survives to hold handles on shared output DLLs (e.g. Models.dll).
+            # Match the build/test steps: no persistent node/server to hold shared DLL handles.
+            MSBUILDDISABLENODEREUSE: 1
             DOTNET_CLI_USE_MSBUILD_SERVER: 0
           inputs:
             command: publish
-            # -nr:false disables MSBuild node reuse so worker nodes shut down and release
-            # shared project-reference DLL handles immediately. On .NET 10 the reused ".NET Host"
-            # nodes hold Models.dll (and other shared libs) locked while parallel publishes copy
-            # them, causing intermittent MSB3027/MSB3021 file-lock failures in this stage.
-            arguments: '--configuration $(BuildConfiguration) --output ${{ app.function.name }} /p:AssemblyVersion=$(Build.BuildNumber) -nr:false'
+            arguments: '--configuration $(BuildConfiguration) --output ${{ app.function.name }} /p:AssemblyVersion=$(Build.BuildNumber)'
             projects: 'Service/GroupMembershipManagement/Hosts/${{ app.function.name }}/Function/*.csproj'
             publishWebProjects: false
             modifyOutputPath: false
