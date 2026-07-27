@@ -29,7 +29,9 @@ namespace Services
                 return response;
             }
 
-            string filter = $"startswith(tolower(displayName),tolower('{request.Query}'))";
+            // Escape single quotes for OData string literals (a single quote is escaped by doubling it).
+            var safeQuery = request.Query.Replace("'", "''");
+            string filter = $"startswith(tolower(displayName),tolower('{safeQuery}'))";
 
             var channels = await _teamsChannelRepository.SearchTeamsChannelsAsync(request.TeamId, filter);
 

@@ -176,6 +176,121 @@ namespace Services.Tests
         }
 
         [TestMethod]
+        public async Task SearchGroupsEscapesSingleQuoteAsync()
+        {
+            string? capturedFilter = null;
+            _graphGroupRepository
+                .Setup(x => x.SearchDestinationsAsync(It.IsAny<string>()))
+                .Callback<string>(f => capturedFilter = f)
+                .ReturnsAsync(() => _destinations);
+
+            var response = await _destinationController.SearchGroupsAsync("pravin's");
+            var result = response.Result as OkObjectResult;
+
+            Assert.IsNotNull(result);
+            Assert.IsNotNull(capturedFilter);
+            // The apostrophe must be doubled so the OData string literal stays valid (no Graph 400 -> 500).
+            StringAssert.Contains(capturedFilter, "startswith(displayName,'pravin''s')");
+            StringAssert.Contains(capturedFilter, "startswith(mail,'pravin''s')");
+            StringAssert.Contains(capturedFilter, "startswith(mailNickname,'pravin''s')");
+        }
+
+        [TestMethod]
+        public async Task SearchGroupsByGuidUsesDirectLookupAsync()
+        {
+            var groupId = Guid.NewGuid();
+            _graphGroupRepository
+                .Setup(x => x.GetGroupsAsync(It.Is<List<Guid>>(ids => ids.Count == 1 && ids[0] == groupId)))
+                .ReturnsAsync(new List<AzureADGroup>
+                {
+                    new AzureADGroup { ObjectId = groupId, Name = "Contoso Destination", Email = "contoso@contoso.com" }
+                });
+
+            var response = await _destinationController.SearchGroupsAsync(groupId.ToString());
+            var result = response.Result as OkObjectResult;
+
+            Assert.IsNotNull(result);
+            var destinations = result.Value as GetDestinationsModel;
+            Assert.IsNotNull(destinations);
+            Assert.AreEqual(1, destinations.Count);
+            Assert.AreEqual(groupId, destinations[0].Id);
+            // A GUID must be resolved by direct id lookup; Graph rejects "$filter=id eq '...'" with a 400.
+            _graphGroupRepository.Verify(x => x.GetGroupsAsync(It.IsAny<List<Guid>>()), Times.Once);
+            _graphGroupRepository.Verify(x => x.SearchDestinationsAsync(It.IsAny<string>()), Times.Never);
+        }
+
+        [TestMethod]
+        public async Task SearchGroupsByGuidNotFoundReturnsEmptyAsync()
+        {
+            var groupId = Guid.NewGuid();
+            // An unmatched id comes back from Graph without a name; it must not surface as a phantom result.
+            _graphGroupRepository
+                .Setup(x => x.GetGroupsAsync(It.IsAny<List<Guid>>()))
+                .ReturnsAsync(new List<AzureADGroup> { new AzureADGroup { ObjectId = groupId, Type = "Unknown" } });
+
+            var response = await _destinationController.SearchGroupsAsync(groupId.ToString());
+            var result = response.Result as OkObjectResult;
+
+            Assert.IsNotNull(result);
+            var destinations = result.Value as GetDestinationsModel;
+            Assert.IsNotNull(destinations);
+            Assert.AreEqual(0, destinations.Count);
+        }
+
+        [TestMethod]
+        public async Task SearchGroupsReturnsProblemOnGraphThrottlingAsync()
+        {
+            // Throttling (429) and other non-400 client errors must surface as a handled Problem (500),
+            // NOT be masked as an empty 200 - otherwise real throttling/outages are hidden from telemetry.
+            _graphGroupRepository
+                .Setup(x => x.SearchDestinationsAsync(It.IsAny<string>()))
+                .ThrowsAsync(new System.Net.Http.HttpRequestException(
+                    "Failed to search for groups. Status code: TooManyRequests", null, System.Net.HttpStatusCode.TooManyRequests));
+
+            var response = await _destinationController.SearchGroupsAsync("contoso");
+            var problem = response.Result as ObjectResult;
+
+            Assert.IsNotNull(problem);
+            Assert.AreEqual((int)System.Net.HttpStatusCode.InternalServerError, problem.StatusCode);
+        }
+
+        [TestMethod]
+        public async Task SearchGroupsReturnsProblemOnGraphServerErrorAsync()
+        {
+            // A Graph server/transient error (5xx) must surface as a handled Problem (500), not be swallowed
+            // by the 400-only client-error path.
+            _graphGroupRepository
+                .Setup(x => x.SearchDestinationsAsync(It.IsAny<string>()))
+                .ThrowsAsync(new System.Net.Http.HttpRequestException(
+                    "Failed to search for groups. Status code: ServiceUnavailable", null, System.Net.HttpStatusCode.ServiceUnavailable));
+
+            var response = await _destinationController.SearchGroupsAsync("contoso");
+            var problem = response.Result as ObjectResult;
+
+            Assert.IsNotNull(problem);
+            Assert.AreEqual((int)System.Net.HttpStatusCode.InternalServerError, problem.StatusCode);
+        }
+
+        [TestMethod]
+        public async Task SearchGroupsReturnsEmptyOnGraphClientErrorAsync()
+        {
+            // A Graph 400 (Bad Request) - e.g. an OData quirk on a startswith query - must degrade to an
+            // empty 200 result for the search box, not an unhandled 500. Only 400 is absorbed this way.
+            _graphGroupRepository
+                .Setup(x => x.SearchDestinationsAsync(It.IsAny<string>()))
+                .ThrowsAsync(new System.Net.Http.HttpRequestException(
+                    "Failed to search for groups. Status code: BadRequest", null, System.Net.HttpStatusCode.BadRequest));
+
+            var response = await _destinationController.SearchGroupsAsync("Gerardo Bodegas Organization (FTE)");
+            var result = response.Result as OkObjectResult;
+
+            Assert.IsNotNull(result);
+            var destinations = result.Value as GetDestinationsModel;
+            Assert.IsNotNull(destinations);
+            Assert.AreEqual(0, destinations.Count);
+        }
+
+        [TestMethod]
         public async Task SearchChannelsTestAsync()
         {
             var response = await _destinationController.SearchChannelsAsync(new Guid(), "TestChannel");
@@ -188,6 +303,39 @@ namespace Services.Tests
             var channels = result.Value as GetChannelsModel;
             Assert.IsNotNull(channels);
             Assert.AreEqual(1, channels.Count);
+        }
+
+        [TestMethod]
+        public async Task SearchChannelsEscapesSingleQuoteAsync()
+        {
+            string? capturedFilter = null;
+            _teamsChannelRepository
+                .Setup(x => x.SearchTeamsChannelsAsync(It.IsAny<Guid>(), It.IsAny<string>()))
+                .Callback<Guid, string>((_, f) => capturedFilter = f)
+                .ReturnsAsync(() => _channels);
+
+            var response = await _destinationController.SearchChannelsAsync(Guid.NewGuid(), "chan'l");
+            var result = response.Result as OkObjectResult;
+
+            Assert.IsNotNull(result);
+            Assert.IsNotNull(capturedFilter);
+            // The apostrophe must be doubled so the OData string literal stays valid (no Graph 400 -> 500).
+            StringAssert.Contains(capturedFilter, "tolower('chan''l')");
+        }
+
+        [TestMethod]
+        public async Task SearchChannelsReturnsProblemOnGraphFailureAsync()
+        {
+            // A Graph failure (e.g. throttling) must surface as a handled Problem, not an unhandled 500.
+            _teamsChannelRepository
+                .Setup(x => x.SearchTeamsChannelsAsync(It.IsAny<Guid>(), It.IsAny<string>()))
+                .ThrowsAsync(new Exception("Failed to search channels. Status code: TooManyRequests"));
+
+            var response = await _destinationController.SearchChannelsAsync(Guid.NewGuid(), "channel");
+            var problem = response.Result as ObjectResult;
+
+            Assert.IsNotNull(problem);
+            Assert.AreEqual((int)System.Net.HttpStatusCode.InternalServerError, problem.StatusCode);
         }
 
         [TestMethod]

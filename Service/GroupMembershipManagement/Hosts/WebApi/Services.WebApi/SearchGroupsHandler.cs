@@ -1,5 +1,7 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
+using System.Net;
+using System.Net.Http;
 using Microsoft.AspNetCore.OData.Query;
 using Models;
 using Repositories.Contracts;
@@ -30,18 +32,36 @@ namespace Services
                 return response;
             }
 
-            string filter;
+            List<AzureADGroup> groups;
 
-            if (Guid.TryParse(request.Query, out _))
+            try
             {
-                filter = $"id eq '{request.Query}'";
+                if (Guid.TryParse(request.Query, out var groupId))
+                {
+                    // Microsoft Graph does not support "$filter=id eq '...'" on /groups (it returns 400),
+                    // so resolve an exact group id with a direct lookup instead. Ids that don't resolve to
+                    // a group come back without a name, so filter those out to keep search results clean.
+                    var groupsById = await _graphGroupRepository.GetGroupsAsync(new List<Guid> { groupId });
+                    groups = groupsById.Where(g => !string.IsNullOrEmpty(g.Name)).ToList();
+                }
+                else
+                {
+                    // Escape single quotes for OData string literals (a single quote is escaped by doubling it).
+                    var safeQuery = request.Query.Replace("'", "''");
+                    var filter = $"startswith(displayName,'{safeQuery}') or startswith(mail,'{safeQuery}') or startswith(mailNickname,'{safeQuery}')";
+                    groups = await _graphGroupRepository.SearchDestinationsAsync(filter);
+                }
             }
-            else
+            catch (HttpRequestException ex) when (ex.StatusCode == HttpStatusCode.BadRequest)
             {
-                filter = $"startswith(displayName,'{request.Query}') or startswith(mail,'{request.Query}') or startswith(mailNickname,'{request.Query}')";
+                // A type-ahead search box should degrade to "no matches" only when Graph rejects the query
+                // itself (HTTP 400 - e.g. an OData quirk on startswith across multiple properties). Auth
+                // (401/403), throttling (429), and server/transient errors (5xx) are deliberately NOT caught
+                // here so they surface via the controller's 500 handler and stay visible to telemetry/alerting
+                // instead of being silently masked as an empty result.
+                Logger.LogWarning(ex, "Graph returned a bad request (400) while searching groups; returning no matches.");
+                return response;
             }
-
-            var groups = await _graphGroupRepository.SearchDestinationsAsync(filter);
 
             foreach (var group in groups)
             {

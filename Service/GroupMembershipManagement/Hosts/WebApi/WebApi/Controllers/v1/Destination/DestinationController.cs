@@ -50,20 +50,38 @@ namespace WebApi.Controllers.v1.Destination
         [HttpGet("searchGroups/{query}")]
         public async Task<ActionResult<IEnumerable<Models.DTOs.Destination>>> SearchGroupsAsync(string query)
         {
-            var response = await _searchGroupsRequestHandler.ExecuteAsync(new SearchGroupsRequest { Query = query });
-            return Ok(response.Model);
+            try
+            {
+                var response = await _searchGroupsRequestHandler.ExecuteAsync(new SearchGroupsRequest { Query = query });
+                return Ok(response.Model);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Unhandled exception in {Action}", nameof(SearchGroupsAsync));
+                return Problem(statusCode: (int)System.Net.HttpStatusCode.InternalServerError,
+                               detail: "An error occurred while searching for groups");
+            }
         }
 
         [Authorize()]
         [HttpGet("teams/{teamId}/searchChannels/{query}")]
         public async Task<ActionResult<IEnumerable<Models.DTOs.Channel>>> SearchChannelsAsync(Guid teamId, string query)
         {
-            var response = await _searchChannelsRequestHandler.ExecuteAsync(new SearchChannelsRequest
+            try
             {
-                TeamId = teamId,
-                Query = query
-            });
-            return Ok(response.Model);
+                var response = await _searchChannelsRequestHandler.ExecuteAsync(new SearchChannelsRequest
+                {
+                    TeamId = teamId,
+                    Query = query
+                });
+                return Ok(response.Model);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Unhandled exception in {Action}", nameof(SearchChannelsAsync));
+                return Problem(statusCode: (int)System.Net.HttpStatusCode.InternalServerError,
+                               detail: "An error occurred while searching for channels");
+            }
         }
 
         [Authorize()]

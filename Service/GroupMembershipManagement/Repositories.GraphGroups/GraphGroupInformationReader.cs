@@ -878,9 +878,18 @@ namespace Repositories.GraphGroups
                 await _graphServiceClient.Groups
                                    .GetAsync(requestConfiguration =>
                                    {
+                                       // startswith over displayName/mail/mailNickname can be routed through Graph's
+                                       // advanced-query path; sending ConsistencyLevel=eventual + $count=true is the
+                                       // documented, backward-compatible shape for these filters and mirrors
+                                       // SearchGroupsBySearchAsync. It prevents intermittent 400s on this endpoint.
+                                       requestConfiguration
+                                        .Headers.Add("ConsistencyLevel", "eventual");
                                        requestConfiguration
                                         .QueryParameters
                                         .Filter = filter;
+                                       requestConfiguration
+                                        .QueryParameters
+                                        .Count = true;
                                        requestConfiguration
                                         .QueryParameters
                                         .Top = MaxGroupResultCount;
@@ -899,7 +908,8 @@ namespace Repositories.GraphGroups
 
                 if (!nativeResponse.IsSuccessStatusCode)
                 {
-                    throw new HttpRequestException($"Failed to search for groups. Status code: {nativeResponse.StatusCode}");
+                    // Preserve the Graph status code so callers can distinguish client errors (4xx) from server/transient errors.
+                    throw new HttpRequestException($"Failed to search for groups. Status code: {nativeResponse.StatusCode}", null, nativeResponse.StatusCode);
                 }
 
                 var groupCollectionPage = await DeserializeResponseAsync(nativeResponse, GroupCollectionResponse.CreateFromDiscriminatorValue);

@@ -637,10 +637,13 @@ namespace Services.WebApi
 
                 // Search by exact id (filter) or displayName/mail (search)
                 List<AzureADGroup> groups;
-                if (Guid.TryParse(searchQuery, out _))
+                if (Guid.TryParse(searchQuery, out var groupId))
                 {
-                    var filter = $"id eq '{searchQuery}'";
-                    groups = await graphGroupRepository.SearchDestinationsAsync(filter);
+                    // Microsoft Graph does not support "$filter=id eq '...'" on /groups (it returns 400),
+                    // so resolve an exact group id with a direct lookup instead. Ids that don't resolve to
+                    // a group come back without a name, so filter those out.
+                    var groupsById = await graphGroupRepository.GetGroupsAsync(new List<Guid> { groupId });
+                    groups = groupsById.Where(g => !string.IsNullOrEmpty(g.Name)).ToList();
                 }
                 else
                 {
