@@ -313,10 +313,13 @@ export function parseGroup(input: string, hasInClause: boolean): Group[] {
     }
     else {
       groups.push(result);
-      if (groups[i] && groups[i].children && groups[i].children.length > 0 && groups[i].children[groups[i].children.length-1] && groups[i].children[groups[i].children.length-1].andOr !== null) {
-        groups[i].children[groups[i].children.length-1].andOr = allPartsWithAndOr[i].andOr;
+      // Use the just-pushed group, not groups[i]: skipped invalid segments desync i from groups and make groups[i] undefined.
+      const currentGroup = groups[groups.length - 1];
+      const lastChild = currentGroup.children.length > 0 ? currentGroup.children[currentGroup.children.length - 1] : undefined;
+      if (lastChild && lastChild.andOr !== null) {
+        lastChild.andOr = allPartsWithAndOr[i].andOr;
       }
-      else if (allPartsWithAndOr[i].andOr !== '') groups[i].andOr = allPartsWithAndOr[i].andOr;
+      else if (allPartsWithAndOr[i].andOr !== '') currentGroup.andOr = allPartsWithAndOr[i].andOr;
     }
   });
   return invalid ? [] : groups;

@@ -2,7 +2,7 @@
 // Licensed under the MIT license.
 
 import { describe, expect, it } from 'vitest';
-import { computeInClauseSelection, getSelectedKeys, joinFilterSegments } from './QuerySerializer';
+import { computeInClauseSelection, getSelectedKeys, joinFilterSegments, parseGroup } from './QuerySerializer';
 
 // Helper mirroring how the component turns the selected keys into an IN clause value.
 const toInClause = (keys: string[]): string => `(${keys.map(k => `'${k}'`).join(', ')})`;
@@ -113,5 +113,32 @@ describe('joinFilterSegments', () => {
   it('preserves whitespace inside quoted values', () => {
     expect(joinFilterSegments(["DisplayName = 'Ada  Lovelace' And ", "EmployeeType = 'FTE'"]))
       .toBe("DisplayName = 'Ada  Lovelace' And EmployeeType = 'FTE'");
+  });
+});
+
+describe('parseGroup', () => {
+  const validGroupedFilter =
+    "(JobFunction_Code = 'O4A' Or JobFunction_Code = 'O2H') And  (Vertical_Code = '104' Or Vertical_Code = '280') And  (Height = 2)  ";
+
+  it('parses a well-formed grouped filter into its groups', () => {
+    const groups = parseGroup(validGroupedFilter, false);
+    expect(groups).toHaveLength(3);
+  });
+
+  // Regression: an invalid grouped sub-filter with an empty value ("JobFunction_Code = ") must return [] (not throw) so the caller shows the raw query as text (query preserved) instead of white-screening the Job Details page.
+  it('returns [] (does not throw) when an earlier grouped sub-filter is invalid', () => {
+    const malformedFilter =
+      "(JobFunction_Code = 'O2H' Or JobFunction_Code = 'N1J' Or JobFunction_Code = ) And  (Vertical_Code = '104' Or Vertical_Code = '280') And  (Height = 2)  ";
+    let groups: unknown;
+    expect(() => { groups = parseGroup(malformedFilter, false); }).not.toThrow();
+    expect(groups).toEqual([]);
+  });
+
+  it('returns [] (does not throw) when the empty-value sub-group is not the first group', () => {
+    const malformedFilter =
+      "(Height = 2) And  (JobFunction_Code = 'O2H' Or JobFunction_Code = ) And  (Vertical_Code = '104')  ";
+    let groups: unknown;
+    expect(() => { groups = parseGroup(malformedFilter, false); }).not.toThrow();
+    expect(groups).toEqual([]);
   });
 });
