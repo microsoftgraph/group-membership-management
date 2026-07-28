@@ -278,6 +278,16 @@ namespace Services.WebApi
             }
             syncJobToPatch.Status = status;
 
+            var updatesQuery = request.ChangeReason == SyncJobChangeReason.Update.ToString()
+                && request.PatchDocument.Operations.Any(operation =>
+                    string.Equals(operation.path, "/Query", StringComparison.OrdinalIgnoreCase));
+            if (updatesQuery && IsEmptyQuery(syncJobToPatch.Query))
+            {
+                response.StatusCode = HttpStatusCode.BadRequest;
+                response.ErrorCode = "EmptyQueryIsNotAllowed";
+                return response;
+            }
+
             var validationResult = Validate(syncJobToPatch);
             if (!validationResult.IsValid)
             {
@@ -294,6 +304,26 @@ namespace Services.WebApi
 
             await _syncJobChangeRepository.Save(syncJobChange);
             return null;
+        }
+
+        private static bool IsEmptyQuery(string query)
+        {
+            if (string.IsNullOrWhiteSpace(query))
+            {
+                return true;
+            }
+
+            try
+            {
+                using var document = JsonDocument.Parse(query);
+                return document.RootElement.ValueKind == JsonValueKind.Null
+                    || document.RootElement.ValueKind == JsonValueKind.Array
+                    && document.RootElement.GetArrayLength() == 0;
+            }
+            catch (JsonException)
+            {
+                return false;
+            }
         }
 
         private ValidationResponse Validate(SyncJobPatch syncJobPatch)

@@ -272,7 +272,7 @@ export const ManageMembershipBase: React.FunctionComponent<IManageMembershipProp
     // where the ref would still be undefined when the async fetch resolves.
     // Guard on jobId so this only runs in the edit-existing-job flow: without it, a stale
     // selectedJob left in the store could pre-populate the add flow with a previous job's data.
-    if (jobId && reactiveJobDetails && !hasInitializedEditStateRef.current) {
+    if (jobId && reactiveJobDetails?.syncJobId === jobId && !hasInitializedEditStateRef.current) {
       hasInitializedEditStateRef.current = true;
       jobDetailsRef.current = reactiveJobDetails;
       dispatch(setJobDetailsForExistingJob(reactiveJobDetails));

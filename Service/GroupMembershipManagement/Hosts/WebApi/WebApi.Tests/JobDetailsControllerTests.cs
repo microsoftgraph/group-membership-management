@@ -1266,6 +1266,43 @@ namespace Services.Tests
         [TestMethod]
         [DataRow(Roles.JOB_OWNER_WRITER)]
         [DataRow(Roles.JOB_TENANT_WRITER)]
+        public async Task UpdateJobWithEmptyQueryReturnsBadRequestAsync(string role)
+        {
+            _jobEntity.Status = SyncStatus.Idle.ToString();
+            _jobEntity.Query = "[{\"type\":\"GroupMembership\",\"source\":\"group-id\"}]";
+            _jobDetailsController = new JobDetailsController(_getJobDetailsHandler, _removeGMMHandler, _patchJobHandler, _getGroupHandler, _getChannelHandler, _getJobChangesHandler, _getSyncJobHistoryHandler, _getMembershipDownloadHandler, _getThresholdNotificationHandlerMock.Object, _syncJobChangeRepository.Object, NullLogger<JobDetailsController>.Instance)
+            {
+                ControllerContext = CreateControllerContext(new List<Claim> {
+                    new Claim(ClaimTypes.Name, "user@domain.com"),
+                    new Claim(ClaimTypes.Role, role),
+                    new Claim("http://schemas.microsoft.com/identity/claims/objectidentifier", Guid.NewGuid().ToString())})
+            };
+
+            var operations = new List<PatchOperation>
+            {
+                new PatchOperation { Op = "replace", Path = "/Query", Value = ConvertToJsonElement("[]") },
+                new PatchOperation { Op = "replace", Path = "/ChangeReason", Value = ConvertToJsonElement(SyncJobChangeReason.Update.ToString()) },
+                new PatchOperation { Op = "replace", Path = "/BusinessJustification", Value = ConvertToJsonElement("Updating query") }
+            };
+
+            var requestDTO = CreatePatchJobRequestDTO(operations, SyncJobChangeReason.Update.ToString(), "Updating query");
+            var response = await _jobDetailsController.UpdateJobAsync(_jobEntity.Id, requestDTO);
+            var result = response as BadRequestObjectResult;
+            var patchResponse = result?.Value as PatchJobResponse;
+
+            Assert.IsNotNull(result);
+            Assert.IsNotNull(patchResponse);
+            Assert.AreEqual(HttpStatusCode.BadRequest, patchResponse.StatusCode);
+            Assert.AreEqual("EmptyQueryIsNotAllowed", patchResponse.ErrorCode);
+            Assert.AreEqual(SyncStatus.Idle.ToString(), _jobEntity.Status);
+            Assert.AreEqual("[{\"type\":\"GroupMembership\",\"source\":\"group-id\"}]", _jobEntity.Query);
+            _syncJobRepository.Verify(x => x.UpdateSyncJobsAsync(It.IsAny<IEnumerable<SyncJob>>(), It.IsAny<SyncStatus?>()), Times.Never);
+            _syncJobChangeRepository.Verify(x => x.Save(It.IsAny<SyncJobChange>()), Times.Never);
+        }
+
+        [TestMethod]
+        [DataRow(Roles.JOB_OWNER_WRITER)]
+        [DataRow(Roles.JOB_TENANT_WRITER)]
         public async Task UpdatePendingReviewJobFailureAsync(string role)
         {
             _jobEntity.Status = SyncStatus.PendingReview.ToString();
