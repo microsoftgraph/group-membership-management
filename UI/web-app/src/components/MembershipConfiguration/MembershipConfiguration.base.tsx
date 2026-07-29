@@ -324,8 +324,11 @@ export const MembershipConfigurationBase: React.FunctionComponent<MembershipConf
     const compositeQuery = buildCompositeQuery(sourceParts);
     dispatch(setCompositeQuery(compositeQuery));
 
-    // Only validate the composite query in non-advanced view and when we have valid source parts
-    if (!isAdvancedView && sourceParts.length > 0) {
+    // Only validate the composite query when the user can actually edit it, in
+    // non-advanced view, and when we have valid source parts. Read-only views
+    // (e.g. the source parts panel on JobDetails) never consume the result, and
+    // validation calls a writer-only WebApi endpoint that would 403 for readers.
+    if (isEditable && !isAdvancedView && sourceParts.length > 0) {
       // Wrap in try-catch to prevent crashes during validation
       try {
         validateQuery(compositeQuery);
@@ -334,7 +337,7 @@ export const MembershipConfigurationBase: React.FunctionComponent<MembershipConf
         dispatch(setIsAdvancedQueryValid(false));
       }
     }
-  }, [dispatch, sourceParts, isAdvancedView, validateQuery]);
+  }, [dispatch, sourceParts, isAdvancedView, isEditable, validateQuery]);
 
   // Initialize validation state when component mounts or when switching views
   useEffect(() => {
