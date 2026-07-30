@@ -16,6 +16,11 @@ param sku string = 'PerGB2018'
 @description('Location for the log analytics account.')
 param location string
 
+@description('Data retention in days for the workspace.')
+@minValue(30)
+@maxValue(730)
+param retentionInDays int = 365
+
 resource logAnalyticsWorkspace 'Microsoft.OperationalInsights/workspaces@2021-06-01' = {
   name: name
   location: location
@@ -23,7 +28,7 @@ resource logAnalyticsWorkspace 'Microsoft.OperationalInsights/workspaces@2021-06
     sku: {
       name: sku
     }
-    retentionInDays: 365
+    retentionInDays: retentionInDays
   }
 }
 

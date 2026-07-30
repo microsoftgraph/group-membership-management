@@ -268,6 +268,11 @@ param logAnalyticsName string = '${solutionAbbreviation}-${resourceGroupClassifi
 ])
 param logAnalyticsSku string = 'PerGB2018'
 
+@description('Data retention in days for the Log Analytics workspace.')
+@minValue(30)
+@maxValue(730)
+param logAnalyticsRetentionInDays int = 365
+
 @allowed([
   'UserAssignedManagedIdentity'
   'ClientSecret'
@@ -889,6 +894,7 @@ module logAnalyticsTemplate 'logAnalytics.bicep' = {
   params: {
     name: logAnalyticsName
     sku: logAnalyticsSku
+    retentionInDays: logAnalyticsRetentionInDays
     location: location
   }
   dependsOn: [
