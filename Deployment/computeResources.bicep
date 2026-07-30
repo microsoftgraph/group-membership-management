@@ -11,6 +11,14 @@ param isManagedApplication bool = false
 param appConfigurationName string
 param setRBACPermissions bool
 
+@description('FunctionAppLogs diagnostic export destination: workspace (default) sends logs to the Log Analytics workspace, storage sends them to a dedicated storage account this deployment provisions in the data resource group, and none disables the export.')
+@allowed([
+  'workspace'
+  'storage'
+  'none'
+])
+param functionAppLogsDestination string = 'workspace'
+
 @description('When true, networking resources (private endpoints) under \'webApiComputeResources\' are skipped.')
 param skipNetworkingDeployment bool = true
 
@@ -134,6 +142,9 @@ var prereqsResourceGroupName = isManagedApplication ? managedResourceGroupName :
 var dataResourceGroupName = isManagedApplication ? managedResourceGroupName : '${solutionAbbreviation}-data-${environmentAbbreviation}'
 var computeResourceGroupName = isManagedApplication ? managedResourceGroupName : '${solutionAbbreviation}-compute-${environmentAbbreviation}'
 
+// FunctionAppLogs storage destination
+var functionAppLogsStorageAccountName = take('logs${solutionAbbreviation}${environmentAbbreviation}${uniqueString(subscription().subscriptionId, solutionAbbreviation, environmentAbbreviation)}', 24)
+
 // function resources
 // ----------------- JobTrigger
 module jobTriggerDataResources '../Service/GroupMembershipManagement/Hosts/JobTrigger/Infrastructure/data/template.bicep' = {
@@ -149,6 +160,8 @@ module jobTriggerComputeResources '../Service/GroupMembershipManagement/Hosts/Jo
   name: 'jobTriggerComputeResourcesTemplate'
   scope: resourceGroup(computeResourceGroupName)
   params: {
+    functionAppLogsDestination: functionAppLogsDestination
+    functionAppLogsStorageAccountName: functionAppLogsStorageAccountName
     maxInstanceCount: maxInstanceCounts.jobTrigger
     enableVnetIntegration: enableFunctionVnetIntegration
     virtualNetworkSubnetId: _vnetSubnetIdJobTrigger
@@ -182,6 +195,8 @@ module destinationAttributesUpdaterComputeResources '../Service/GroupMembershipM
   name: 'destinationAttributesUpdaterComputeResourcesTemplate'
   scope: resourceGroup(computeResourceGroupName)
   params: {
+    functionAppLogsDestination: functionAppLogsDestination
+    functionAppLogsStorageAccountName: functionAppLogsStorageAccountName
     maxInstanceCount: maxInstanceCounts.destinationAttributesUpdater
     enableVnetIntegration: enableFunctionVnetIntegration
     virtualNetworkSubnetId: _vnetSubnetIdDestinationAttributesUpdater
@@ -215,6 +230,8 @@ module groupMembershipObtainerComputeResources '../Service/GroupMembershipManage
   name: 'groupMembershipObtainerComputeResourcesTemplate'
   scope: resourceGroup(computeResourceGroupName)
   params: {
+    functionAppLogsDestination: functionAppLogsDestination
+    functionAppLogsStorageAccountName: functionAppLogsStorageAccountName
     maxInstanceCount: maxInstanceCounts.groupMembershipObtainer
     enableVnetIntegration: enableFunctionVnetIntegration
     virtualNetworkSubnetId: _vnetSubnetIdGroupMembershipObtainer
@@ -247,6 +264,8 @@ module sqlMembershipObtainerComputeResources '../Service/GroupMembershipManageme
   name: 'sqlMembershipObtainerComputeResourcesTemplate'
   scope: resourceGroup(computeResourceGroupName)
   params: {
+    functionAppLogsDestination: functionAppLogsDestination
+    functionAppLogsStorageAccountName: functionAppLogsStorageAccountName
     maxInstanceCount: maxInstanceCounts.sqlMembershipObtainer
     enableVnetIntegration: enableFunctionVnetIntegration
     virtualNetworkSubnetId: _vnetSubnetIdSqlMembershipObtainer
@@ -282,6 +301,8 @@ module groupOwnershipObtainerComputeResources '../Service/GroupMembershipManagem
   name: 'groupOwnershipObtainerComputeResourcesTemplate'
   scope: resourceGroup(computeResourceGroupName)
   params: {
+    functionAppLogsDestination: functionAppLogsDestination
+    functionAppLogsStorageAccountName: functionAppLogsStorageAccountName
     maxInstanceCount: maxInstanceCounts.groupOwnershipObtainer
     enableVnetIntegration: enableFunctionVnetIntegration
     virtualNetworkSubnetId: _vnetSubnetIdGroupOwnershipObtainer
@@ -314,6 +335,8 @@ module placeMembershipObtainerComputeResources '../Service/GroupMembershipManage
   name: 'placeMembershipObtainerComputeResourcesTemplate'
   scope: resourceGroup(computeResourceGroupName)
   params: {
+    functionAppLogsDestination: functionAppLogsDestination
+    functionAppLogsStorageAccountName: functionAppLogsStorageAccountName
     maxInstanceCount: maxInstanceCounts.placeMembershipObtainer
     enableVnetIntegration: enableFunctionVnetIntegration
     virtualNetworkSubnetId: _vnetSubnetIdPlaceMembershipObtainer
@@ -346,6 +369,8 @@ module teamsChannelMembershipObtainerComputeResources '../Service/GroupMembershi
   name: 'teamsChannelMembershipObtainerComputeResourcesTemplate'
   scope: resourceGroup(computeResourceGroupName)
   params: {
+    functionAppLogsDestination: functionAppLogsDestination
+    functionAppLogsStorageAccountName: functionAppLogsStorageAccountName
     maxInstanceCount: maxInstanceCounts.teamsChannelMembershipObtainer
     enableVnetIntegration: enableFunctionVnetIntegration
     virtualNetworkSubnetId: _vnetSubnetIdTeamsChannelMembershipObtainer
@@ -378,6 +403,8 @@ module membershipAggregatorComputeResources '../Service/GroupMembershipManagemen
   name: 'membershipAggregatorComputeResourcesTemplate'
   scope: resourceGroup(computeResourceGroupName)
   params: {
+    functionAppLogsDestination: functionAppLogsDestination
+    functionAppLogsStorageAccountName: functionAppLogsStorageAccountName
     maxInstanceCount: maxInstanceCounts.membershipAggregator
     enableVnetIntegration: enableFunctionVnetIntegration
     virtualNetworkSubnetId: _vnetSubnetIdMembershipAggregator
@@ -418,6 +445,8 @@ module graphUpdaterComputeResources '../Service/GroupMembershipManagement/Hosts/
   name: instance == '' ? 'graphUpdaterComputeResourcesTemplate' : 'graphUpdater${instance}ComputeResourcesTemplate'
   scope: resourceGroup(computeResourceGroupName)
   params: {
+    functionAppLogsDestination: functionAppLogsDestination
+    functionAppLogsStorageAccountName: functionAppLogsStorageAccountName
     maxInstanceCount: instance == 'large' ? maxInstanceCounts.graphUpdaterLarge : (instance == 'small' ? maxInstanceCounts.graphUpdaterSmall : maxInstanceCounts.graphUpdater)
     enableVnetIntegration: enableFunctionVnetIntegration
     virtualNetworkSubnetId: _vnetSubnetIdGraphUpdater
@@ -455,6 +484,8 @@ module teamsChannelUpdaterComputeResources '../Service/GroupMembershipManagement
   name: 'teamsChannelUpdaterComputeResourcesTemplate'
   scope: resourceGroup(computeResourceGroupName)
   params: {
+    functionAppLogsDestination: functionAppLogsDestination
+    functionAppLogsStorageAccountName: functionAppLogsStorageAccountName
     maxInstanceCount: maxInstanceCounts.teamsChannelUpdater
     enableVnetIntegration: enableFunctionVnetIntegration
     virtualNetworkSubnetId: _vnetSubnetIdTeamsChannelUpdater
@@ -487,6 +518,8 @@ module nonProdServiceComputeResources '../Service/GroupMembershipManagement/Host
   name: 'nonProdServiceComputeResourcesTemplate'
   scope: resourceGroup(computeResourceGroupName)
   params: {
+    functionAppLogsDestination: functionAppLogsDestination
+    functionAppLogsStorageAccountName: functionAppLogsStorageAccountName
     maxInstanceCount: maxInstanceCounts.nonProdService
     enableVnetIntegration: enableFunctionVnetIntegration
     virtualNetworkSubnetId: _vnetSubnetIdNonProdService
@@ -521,6 +554,8 @@ module azureUserReaderComputeResources '../Service/GroupMembershipManagement/Hos
   name: 'azureUserReaderComputeResourcesTemplate'
   scope: resourceGroup(computeResourceGroupName)
   params: {
+    functionAppLogsDestination: functionAppLogsDestination
+    functionAppLogsStorageAccountName: functionAppLogsStorageAccountName
     maxInstanceCount: maxInstanceCounts.azureUserReader
     enableVnetIntegration: enableFunctionVnetIntegration
     virtualNetworkSubnetId: _vnetSubnetIdAzureUserReader
@@ -555,6 +590,8 @@ module notifierComputeResources '../Service/GroupMembershipManagement/Hosts/Noti
   name: 'notifierComputeResourcesTemplate'
   scope: resourceGroup(computeResourceGroupName)
   params: {
+    functionAppLogsDestination: functionAppLogsDestination
+    functionAppLogsStorageAccountName: functionAppLogsStorageAccountName
     maxInstanceCount: maxInstanceCounts.notifier
     enableVnetIntegration: enableFunctionVnetIntegration
     virtualNetworkSubnetId: _vnetSubnetIdNotifier
@@ -589,6 +626,8 @@ module autoApproverComputeResources '../Service/GroupMembershipManagement/Hosts/
   name: 'autoApproverComputeResourcesTemplate'
   scope: resourceGroup(computeResourceGroupName)
   params: {
+    functionAppLogsDestination: functionAppLogsDestination
+    functionAppLogsStorageAccountName: functionAppLogsStorageAccountName
     maxInstanceCount: maxInstanceCounts.autoApprover
     enableVnetIntegration: enableFunctionVnetIntegration
     virtualNetworkSubnetId: _vnetSubnetIdAutoApprover
@@ -621,6 +660,8 @@ module jobSchedulerComputeResources '../Service/GroupMembershipManagement/Hosts/
   name: 'jobSchedulerComputeResourcesTemplate'
   scope: resourceGroup(computeResourceGroupName)
   params: {
+    functionAppLogsDestination: functionAppLogsDestination
+    functionAppLogsStorageAccountName: functionAppLogsStorageAccountName
     maxInstanceCount: maxInstanceCounts.jobScheduler
     enableVnetIntegration: enableFunctionVnetIntegration
     virtualNetworkSubnetId: _vnetSubnetIdJobScheduler
@@ -654,6 +695,8 @@ module syncJobUpdaterComputeResources '../Service/GroupMembershipManagement/Host
   name: 'syncJobUpdaterComputeResourcesTemplate'
   scope: resourceGroup(computeResourceGroupName)
   params: {
+    functionAppLogsDestination: functionAppLogsDestination
+    functionAppLogsStorageAccountName: functionAppLogsStorageAccountName
     maxInstanceCount: maxInstanceCounts.syncJobUpdater
     enableVnetIntegration: enableFunctionVnetIntegration
     virtualNetworkSubnetId: _vnetSubnetIdSyncJobUpdater
@@ -692,6 +735,8 @@ module messageSplitterComputeResources '../Service/GroupMembershipManagement/Hos
   name: 'messageSplitter${instance}ComputeResources'
   scope: resourceGroup(computeResourceGroupName)
   params: {
+    functionAppLogsDestination: functionAppLogsDestination
+    functionAppLogsStorageAccountName: functionAppLogsStorageAccountName
     maxInstanceCount: instance == 's1' ? maxInstanceCounts.messageSplitterS1 : maxInstanceCounts.messageSplitterL1
     enableVnetIntegration: enableFunctionVnetIntegration
     virtualNetworkSubnetId: _vnetSubnetIdMessageSplitter
@@ -726,6 +771,8 @@ module azureMaintenanceComputeResources '../Service/GroupMembershipManagement/Ho
   name: 'azureMaintenanceComputeResourcesTemplate'
   scope: resourceGroup(computeResourceGroupName)
   params: {
+    functionAppLogsDestination: functionAppLogsDestination
+    functionAppLogsStorageAccountName: functionAppLogsStorageAccountName
     maxInstanceCount: maxInstanceCounts.azureMaintenance
     enableVnetIntegration: enableFunctionVnetIntegration
     virtualNetworkSubnetId: _vnetSubnetIdAzureMaintenance
@@ -756,6 +803,8 @@ module sqlDataCheckerComputeResources '../Service/GroupMembershipManagement/Host
   name: 'sqlDataCheckerComputeResourcesTemplate'
   scope: resourceGroup(computeResourceGroupName)
   params: {
+    functionAppLogsDestination: functionAppLogsDestination
+    functionAppLogsStorageAccountName: functionAppLogsStorageAccountName
     maxInstanceCount: maxInstanceCounts.sqlDataChecker
     enableVnetIntegration: enableFunctionVnetIntegration
     virtualNetworkSubnetId: _vnetSubnetIdSqlDataChecker

@@ -2,6 +2,15 @@ param location string
 param aiLocation string
 param environmentAbbreviation string
 param solutionAbbreviation string
+
+@description('FunctionAppLogs diagnostic export destination for the function apps. Only storage provisions the dedicated logs storage account.')
+@allowed([
+  'workspace'
+  'storage'
+  'none'
+])
+param functionAppLogsDestination string = 'workspace'
+
 param notifierProviderId string
 param oamEntraAppId string
 param oamEntraAppScope string
@@ -430,6 +439,7 @@ module dataInfrastructureTemplate '../Infrastructure/data/template.bicep' = {
     location: location
     environmentAbbreviation: environmentAbbreviation
     solutionAbbreviation: solutionAbbreviation
+  functionAppLogsDestination: functionAppLogsDestination
     notifierProviderId: notifierProviderId
     oamEntraAppId: oamEntraAppId
     oamEntraAppScope: oamEntraAppScope

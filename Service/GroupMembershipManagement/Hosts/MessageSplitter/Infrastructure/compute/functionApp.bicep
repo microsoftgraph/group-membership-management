@@ -33,6 +33,17 @@ var deployUserManagedIdentity = userManagedIdentities != null && userManagedIden
 @description('Log Analytics Workspace Id.')
 param logAnalyticsWorkspaceId string
 
+@description('FunctionAppLogs diagnostic export destination: workspace (default) sends logs to the Log Analytics workspace, storage sends them to a dedicated storage account this deployment provisions in the data resource group, and none disables the export.')
+@allowed([
+  'workspace'
+  'storage'
+  'none'
+])
+param functionAppLogsDestination string = 'workspace'
+
+@description('Name of the storage account that receives FunctionAppLogs when functionAppLogsDestination is storage. Set by the deployment, not a customer input.')
+param functionAppLogsStorageAccountName string = ''
+
 @description('Name of the resource group where the \'prereqs\' key vault is located.')
 param prereqsKeyVaultName string
 
@@ -143,11 +154,12 @@ resource diagnosticSettings 'Microsoft.Insights/diagnosticSettings@2021-05-01-pr
   name: 'functionApp-diagnostics'
   scope: functionApp
   properties: {
-    workspaceId:  logAnalyticsWorkspaceId
+    workspaceId: functionAppLogsDestination == 'storage' ? null : logAnalyticsWorkspaceId
+    storageAccountId: functionAppLogsDestination == 'storage' ? resourceId(subscription().subscriptionId, dataKeyVaultResourceGroup, 'Microsoft.Storage/storageAccounts', functionAppLogsStorageAccountName) : null
     logs: [
       {
         category: 'FunctionAppLogs'
-        enabled: true
+        enabled: functionAppLogsDestination != 'none'
         retentionPolicy: {
           days: 0
           enabled: false

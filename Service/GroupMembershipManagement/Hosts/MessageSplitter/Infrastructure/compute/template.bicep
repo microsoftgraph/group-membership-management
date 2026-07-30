@@ -92,6 +92,17 @@ param enableVnetIntegration bool = false
 @description('Resource ID of the delegated subnet for VNET integration. Required when enableVnetIntegration is true; ignored otherwise.')
 param virtualNetworkSubnetId string = ''
 
+@description('FunctionAppLogs diagnostic export destination: workspace (default) sends logs to the Log Analytics workspace, storage sends them to a dedicated storage account this deployment provisions in the data resource group, and none disables the export.')
+@allowed([
+  'workspace'
+  'storage'
+  'none'
+])
+param functionAppLogsDestination string = 'workspace'
+
+@description('Name of the storage account that receives FunctionAppLogs when functionAppLogsDestination is storage. Set by the deployment, not a customer input.')
+param functionAppLogsStorageAccountName string = ''
+
 module servicePlanTemplate 'servicePlan.bicep' = {
   name: 'servicePlanTemplate-MessageSplitter-${instanceIdentifier}'
   params: {
@@ -176,6 +187,8 @@ module functionAppTemplate_MessageSplitter 'functionApp.bicep' = {
   params: {
     maxInstanceCount: maxInstanceCount
     enableVnetIntegration: enableVnetIntegration
+    functionAppLogsDestination: functionAppLogsDestination
+    functionAppLogsStorageAccountName: functionAppLogsStorageAccountName
     virtualNetworkSubnetId: virtualNetworkSubnetId
     name: functionFullName
     kind: functionAppKind

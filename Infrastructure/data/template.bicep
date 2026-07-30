@@ -252,6 +252,14 @@ param jobsStorageAccountName string = 'jobs${environmentAbbreviation}${uniqueStr
 @description('Shared storage account for function apps (deployment packages and AzureWebJobsStorage).')
 param functionsStorageAccountName string = take('fn${solutionAbbreviation}${environmentAbbreviation}${uniqueString(resourceGroup().id)}', 24)
 
+@description('FunctionAppLogs diagnostic export destination for the function apps. Only storage provisions the dedicated logs storage account.')
+@allowed([
+  'workspace'
+  'storage'
+  'none'
+])
+param functionAppLogsDestination string = 'workspace'
+
 @description('Enter membership container name.')
 @minLength(1)
 param membershipContainerName string = 'membership'
@@ -887,6 +895,20 @@ module functionsStorageAccountTemplate 'functionsStorageAccount.bicep' = {
   dependsOn: [
     dataKeyVaultTemplate
   ]
+}
+
+// Dedicated storage account for FunctionAppLogs, provisioned only when functionAppLogsDestination is
+// 'storage'. The name is deterministic and globally unique from shared inputs so the compute tier resolves
+// the identical account (which lives here in the data resource group).
+var functionAppLogsStorageAccountName = take('logs${solutionAbbreviation}${environmentAbbreviation}${uniqueString(subscription().subscriptionId, solutionAbbreviation, environmentAbbreviation)}', 24)
+
+module functionAppLogsStorageAccountTemplate 'functionAppLogsStorageAccount.bicep' = if (functionAppLogsDestination == 'storage') {
+  name: 'functionAppLogsStorageAccountTemplate'
+  params: {
+    name: functionAppLogsStorageAccountName
+    sku: storageAccountSku
+    location: location
+  }
 }
 
 module logAnalyticsTemplate 'logAnalytics.bicep' = {
