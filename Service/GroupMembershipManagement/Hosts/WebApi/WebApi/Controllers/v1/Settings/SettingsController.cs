@@ -17,15 +17,34 @@ namespace WebApi.Controllers.v1.Settings
     [Route("api/v{version:apiVersion}/settings")]
     public class SettingsController : ControllerBase
     {
-        private static readonly IReadOnlySet<SettingKey> AISettingKeys = new HashSet<SettingKey>
+        /// <summary>
+        /// AI settings that AI Onboarding users need to render the Copilot chat experience
+        /// (feature flags and end-user-facing configuration). Readable by anyone holding either
+        /// the AI Settings Administrator or AI Onboarding Chat role. Authoring stays admin-only.
+        /// </summary>
+        private static readonly IReadOnlySet<SettingKey> AIOnboardingReadableSettingKeys = new HashSet<SettingKey>
         {
             SettingKey.IsAICopilotEnabled,
             SettingKey.IsAIRunExplanationEnabled,
-            SettingKey.CopilotTemperature,
-            SettingKey.CopilotTopP,
-            SettingKey.CopilotInstructions,
             SettingKey.CopilotSuggestedPrompts
         };
+
+        /// <summary>
+        /// Sensitive AI settings that only the AI Settings Administrator may read or write.
+        /// </summary>
+        private static readonly IReadOnlySet<SettingKey> AIAdminOnlySettingKeys = new HashSet<SettingKey>
+        {
+            SettingKey.CopilotTemperature,
+            SettingKey.CopilotTopP,
+            SettingKey.CopilotInstructions
+        };
+
+        /// <summary>
+        /// All AI settings. Reads/writes of any of these keys via the single-key and patch
+        /// endpoints remain restricted to the AI Settings Administrator.
+        /// </summary>
+        private static readonly IReadOnlySet<SettingKey> AISettingKeys = new HashSet<SettingKey>(
+            AIOnboardingReadableSettingKeys.Concat(AIAdminOnlySettingKeys));
 
         private static readonly IReadOnlySet<SettingKey> ReadOnlySettingKeys = new HashSet<SettingKey>
         {
@@ -83,7 +102,12 @@ namespace WebApi.Controllers.v1.Settings
                 var settings = response.Settings;
                 if (!User.IsInRole(Models.Roles.AI_SETTINGS_ADMINISTRATOR))
                 {
-                    settings = settings.Where(setting => !AISettingKeys.Contains(setting.SettingKey)).ToList();
+                    var canReadOnboardingAISettings = User.IsInRole(Models.Roles.AI_ONBOARDING_CHAT);
+                    settings = settings
+                        .Where(setting =>
+                            !AISettingKeys.Contains(setting.SettingKey) ||
+                            (canReadOnboardingAISettings && AIOnboardingReadableSettingKeys.Contains(setting.SettingKey)))
+                        .ToList();
                 }
 
                 return Ok(settings);

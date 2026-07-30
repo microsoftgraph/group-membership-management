@@ -238,6 +238,82 @@ namespace Services.Tests
         }
 
         [TestMethod]
+        public async Task GetAllSettingsWhenUserHasAIOnboardingRoleReturnsOnboardingReadableAISettingsTestAsync()
+        {
+            var mixedSettings = new List<Setting>
+            {
+                new Setting { SettingKey = SettingKey.DashboardUrl, SettingValue = "dashboard" },
+                new Setting { SettingKey = SettingKey.CopilotInstructions, SettingValue = "sensitive prompt" },
+                new Setting { SettingKey = SettingKey.CopilotTemperature, SettingValue = "0.5" },
+                new Setting { SettingKey = SettingKey.CopilotTopP, SettingValue = "0.9" },
+                new Setting { SettingKey = SettingKey.IsAICopilotEnabled, SettingValue = "true" },
+                new Setting { SettingKey = SettingKey.IsAIRunExplanationEnabled, SettingValue = "true" },
+                new Setting { SettingKey = SettingKey.CopilotSuggestedPrompts, SettingValue = "[]" }
+            };
+            _settingsRepository.Setup(x => x.GetAllSettingsAsync()).ReturnsAsync(mixedSettings);
+
+            _settingsController = new SettingsController(_getSettingHandler, _getAllSettingsHandler, _patchSettingHandler, _getSupportEmailHandler)
+            {
+                ControllerContext = CreateControllerContext(new List<Claim>
+                {
+                    new Claim(ClaimTypes.Name, "user@domain.com"),
+                    new Claim(ClaimTypes.Role, Roles.AI_ONBOARDING_CHAT)
+                })
+            };
+
+            var response = await _settingsController.GetAllSettingsAsync();
+
+            var okResult = response as OkObjectResult;
+            Assert.IsNotNull(okResult);
+            var settingsResult = okResult.Value as List<SettingDTO>;
+            Assert.IsNotNull(settingsResult);
+
+            // Onboarding-readable AI settings are delivered so the Copilot chat can render.
+            Assert.IsTrue(settingsResult.Any(setting => setting.SettingKey == SettingKey.CopilotSuggestedPrompts));
+            Assert.IsTrue(settingsResult.Any(setting => setting.SettingKey == SettingKey.IsAICopilotEnabled));
+            Assert.IsTrue(settingsResult.Any(setting => setting.SettingKey == SettingKey.IsAIRunExplanationEnabled));
+
+            // Sensitive authoring-only AI settings remain hidden from onboarding users.
+            Assert.IsFalse(settingsResult.Any(setting => setting.SettingKey == SettingKey.CopilotInstructions));
+            Assert.IsFalse(settingsResult.Any(setting => setting.SettingKey == SettingKey.CopilotTemperature));
+            Assert.IsFalse(settingsResult.Any(setting => setting.SettingKey == SettingKey.CopilotTopP));
+
+            // Non-AI settings are still returned.
+            Assert.IsTrue(settingsResult.Any(setting => setting.SettingKey == SettingKey.DashboardUrl));
+        }
+
+        [TestMethod]
+        public async Task GetAllSettingsWhenUserLacksAllAIRolesFiltersOutOnboardingReadableAISettingsTestAsync()
+        {
+            var mixedSettings = new List<Setting>
+            {
+                new Setting { SettingKey = SettingKey.DashboardUrl, SettingValue = "dashboard" },
+                new Setting { SettingKey = SettingKey.CopilotSuggestedPrompts, SettingValue = "[]" },
+                new Setting { SettingKey = SettingKey.IsAICopilotEnabled, SettingValue = "true" }
+            };
+            _settingsRepository.Setup(x => x.GetAllSettingsAsync()).ReturnsAsync(mixedSettings);
+
+            _settingsController = new SettingsController(_getSettingHandler, _getAllSettingsHandler, _patchSettingHandler, _getSupportEmailHandler)
+            {
+                ControllerContext = CreateControllerContext(new List<Claim>
+                {
+                    new Claim(ClaimTypes.Name, "user@domain.com"),
+                    new Claim(ClaimTypes.Role, Roles.HYPERLINK_ADMINISTRATOR)
+                })
+            };
+
+            var response = await _settingsController.GetAllSettingsAsync();
+
+            var okResult = response as OkObjectResult;
+            Assert.IsNotNull(okResult);
+            var settingsResult = okResult.Value as List<SettingDTO>;
+            Assert.IsNotNull(settingsResult);
+            Assert.IsFalse(settingsResult.Any(setting => setting.SettingKey == SettingKey.CopilotSuggestedPrompts));
+            Assert.IsFalse(settingsResult.Any(setting => setting.SettingKey == SettingKey.IsAICopilotEnabled));
+            Assert.IsTrue(settingsResult.Any(setting => setting.SettingKey == SettingKey.DashboardUrl));
+        }
+
+        [TestMethod]
         public async Task GetAllSettingsWhenRunHistoryPhase2EnabledReturnsEnabledValueTestAsync()
         {
             _configuration[ConfigurationKeyNames.RunHistoryOpenViewingAndUnifiedTab] = "true";
