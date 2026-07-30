@@ -422,6 +422,13 @@
         "description": "Location of AI resources. Default is westus3.",
         "required": false
       }
+    },
+    "logAnalyticsRetentionInDays": {
+      "value": 365,
+      "metadata": {
+        "description": "Data retention in days for the Log Analytics workspace. Allowed range 30-730.",
+        "required": false
+      }
     }
   }
 }

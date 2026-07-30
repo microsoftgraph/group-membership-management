@@ -13,6 +13,11 @@ param sqlSkuTier string = 'GeneralPurpose'
 param tenantId string
 param authenticationType string
 param isProduction bool = false
+
+@description('Data retention in days for the Log Analytics workspace.')
+@minValue(30)
+@maxValue(730)
+param logAnalyticsRetentionInDays int = 365
 param notificationAlertThreshold int = 10
 param skipMailNotifications bool = false
 param isMailApplicationPermissionGranted bool = false
@@ -447,5 +452,6 @@ module dataInfrastructureTemplate '../Infrastructure/data/template.bicep' = {
     aiLocation: aiLocation
     featureFlags: featureFlags
     skipNetworkingDeployment: skipNetworkingDeployment
+    logAnalyticsRetentionInDays: logAnalyticsRetentionInDays
   }
 }
