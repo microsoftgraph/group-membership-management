@@ -315,6 +315,18 @@ const manageMembershipSlice = createSlice({
             state.sourceParts.push(action.payload);
         },
 
+        insertSourcePartAfter: (state, action: PayloadAction<{ afterPartId: string; part: ISourcePart }>) => {
+            const { afterPartId, part } = action.payload;
+            const index = state.sourceParts.findIndex(p => p.id === afterPartId);
+            if (index === -1) {
+                state.sourceParts.push(part);
+            } else {
+                state.sourceParts.splice(index + 1, 0, part);
+            }
+            const compositeQuery = buildCompositeQuery(state.sourceParts);
+            state.compositeQuery = compositeQuery;
+        },
+
         deleteSourcePart: (state, action: PayloadAction<string>) => {
             state.sourceParts = state.sourceParts.filter(part => part.id !== action.payload);
             state.newJob.titles = state.newJob.titles?.filter(title => title.partId !== action.payload);
@@ -480,6 +492,7 @@ export const {
     updateSourcePartType,
     updateSourcePart,
     copySourcePart,
+    insertSourcePartAfter,
     deleteSourcePart,
     clearSourceParts,
     setJobDetailsForExistingJob,

@@ -12,10 +12,17 @@ export type RuleCardStyles = {
   exclusiveBadge: IStyle;
   typeBadge: IStyle;
   title: IStyle;
+  header: IStyle;
+  actions: IStyle;
+  actionButton: IStyle;
+  hiddenIndicator: IStyle;
+  hiddenIcon: IStyle;
+  hiddenText: IStyle;
   detailRows: IStyle;
   detailRow: IStyle;
   detailLabel: IStyle;
   detailValue: IStyle;
+  detailSpinner: IStyle;
 };
 
 export type RuleCardStyleProps = {
@@ -35,6 +42,15 @@ export type RuleCardProps = {
   selected?: boolean;
   /** Invoked with the rule id when the card is selected. */
   onSelect: (partId: string) => void;
+  /**
+   * When true, renders per-card Duplicate and Delete action buttons (edit mode).
+   * Defaults to false (read-only contexts such as the confirmation page).
+   */
+  showActions?: boolean;
+  /** Invoked with the rule id when the Duplicate action is triggered. */
+  onDuplicate?: (partId: string) => void;
+  /** Invoked with the rule id when the Delete action is triggered. */
+  onDelete?: (partId: string) => void;
 
   /**
    * Call to provide customized styling that will layer on top of the variant rules.

@@ -197,6 +197,12 @@ export const strings: IStrings = {
       scrollLeft: "Desplazar reglas a la izquierda",
       scrollRight: "Desplazar reglas a la derecha",
       selectRuleAria: "Seleccionar regla: {0}",
+      duplicateRule: "Duplicar regla",
+      deleteRule: "Eliminar regla",
+      duplicateRuleAria: "Duplicar regla: {0}",
+      deleteRuleAria: "Eliminar regla: {0}",
+      orgLeaderLoading: "Cargando líder de organización",
+      hiddenGroup: "Grupo de membresía oculta",
     }
   },
   AdminConfig: {
@@ -751,6 +757,9 @@ export const strings: IStrings = {
       rulesTitle: 'Reglas',
       rulesDescription: 'Estas reglas definen quién se incluye en la pertenencia. Seleccione una tarjeta de regla para revisar su configuración y detalles.',
       hiddenMembershipGroup: 'Este es un grupo de membresía oculta.',
+      addRule: 'Agregar',
+      rulesEmptyTitle: 'Aún no hay reglas',
+      rulesEmptyDescription: 'Agregue una regla para definir quién se incluye en esta pertenencia.',
       noThresholdSet: 'No se estableció un límite',
       savingSyncJob: 'Guardando...',
       updatingSyncJob: 'Actualizando...',

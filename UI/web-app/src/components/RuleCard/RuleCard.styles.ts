@@ -38,6 +38,45 @@ export const getStyles = (props: RuleCardStyleProps): RuleCardStyles => {
       className,
     ],
     selected: {},
+    header: {
+      display: 'flex',
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'flex-start',
+      gap: 6,
+    },
+    actions: {
+      display: 'flex',
+      flexDirection: 'row',
+      flex: '0 0 auto',
+      gap: 2,
+    },
+    actionButton: {
+      color: theme.palette.neutralSecondary,
+      height: 28,
+      width: 28,
+      selectors: {
+        ':hover': {
+          color: theme.palette.themePrimary,
+          backgroundColor: theme.palette.neutralLighter,
+        },
+      },
+    },
+    hiddenIndicator: {
+      display: 'flex',
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+    },
+    hiddenIcon: {
+      color: theme.semanticColors.errorText,
+      fontSize: 14,
+    },
+    hiddenText: {
+      color: theme.semanticColors.errorText,
+      fontSize: 12,
+      fontWeight: 600,
+    },
     badges: {
       display: 'flex',
       flexDirection: 'row',
@@ -105,6 +144,9 @@ export const getStyles = (props: RuleCardStyleProps): RuleCardStyles => {
       overflow: 'hidden',
       textOverflow: 'ellipsis',
       whiteSpace: 'nowrap',
+    },
+    detailSpinner: {
+      justifyContent: 'flex-start',
     },
   };
 };

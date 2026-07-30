@@ -25,6 +25,7 @@ import manageMembershipReducer, {
   updateSourcePartType,
   updateSourcePart,
   copySourcePart,
+  insertSourcePartAfter,
   deleteSourcePart,
   clearSourceParts,
   setIsEditingExistingJob,
@@ -182,6 +183,27 @@ describe('manageMembership.slice — source part reducers', () => {
     const seeded = { ...initial, sourceParts: [makeSourcePart('p1')] };
     const state = manageMembershipReducer(seeded, copySourcePart(makeSourcePart('p1-copy')));
     expect(state.sourceParts).toHaveLength(2);
+  });
+
+  it('insertSourcePartAfter inserts immediately after the source part', () => {
+    const seeded = {
+      ...initial,
+      sourceParts: [makeSourcePart('p1'), makeSourcePart('p2'), makeSourcePart('p3')],
+    };
+    const state = manageMembershipReducer(
+      seeded,
+      insertSourcePartAfter({ afterPartId: 'p1', part: makeSourcePart('p1-copy') })
+    );
+    expect(state.sourceParts.map((p) => p.id)).toEqual(['p1', 'p1-copy', 'p2', 'p3']);
+  });
+
+  it('insertSourcePartAfter appends when the source part id is not found', () => {
+    const seeded = { ...initial, sourceParts: [makeSourcePart('p1')] };
+    const state = manageMembershipReducer(
+      seeded,
+      insertSourcePartAfter({ afterPartId: 'missing', part: makeSourcePart('p2') })
+    );
+    expect(state.sourceParts.map((p) => p.id)).toEqual(['p1', 'p2']);
   });
 
   it('deleteSourcePart removes by id', () => {

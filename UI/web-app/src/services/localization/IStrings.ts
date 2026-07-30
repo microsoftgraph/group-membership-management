@@ -193,6 +193,12 @@ export type IStrings = {
       scrollLeft: string;
       scrollRight: string;
       selectRuleAria: string;
+      duplicateRule: string;
+      deleteRule: string;
+      duplicateRuleAria: string;
+      deleteRuleAria: string;
+      orgLeaderLoading: string;
+      hiddenGroup: string;
     }
   },
   AdminConfig: {
@@ -743,6 +749,9 @@ export type IStrings = {
       rulesTitle: string;
       rulesDescription: string;
       hiddenMembershipGroup: string;
+      addRule: string;
+      rulesEmptyTitle: string;
+      rulesEmptyDescription: string;
       noThresholdSet: string;
       savingSyncJob: string;
       updatingSyncJob: string;

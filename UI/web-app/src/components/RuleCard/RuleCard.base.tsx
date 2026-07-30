@@ -1,14 +1,18 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import {
   classNamesFunction,
   IProcessedStyleSet,
+  IconButton,
   Persona,
   PersonaSize,
+  Spinner,
+  SpinnerSize,
   Text,
+  Icon,
 } from '@fluentui/react';
 import { useTheme } from '@fluentui/react/lib/Theme';
 import { RuleCardStyleProps, RuleCardStyles, RuleCardProps } from './RuleCard.types';
@@ -23,6 +27,7 @@ import { selectObjectIdEmployeeIdMapping } from '../../store/orgLeaderDetails.sl
 import { fetchOrgLeaderDetailsUsingId } from '../../store/orgLeaderDetails.api';
 import { useSelectedGroupById } from '../../store/groupPart.slice';
 import { searchDestinations } from '../../store/manageMembership.api';
+import { selectSelectedJobDetails } from '../../store/jobs.slice';
 
 const getClassNames = classNamesFunction<RuleCardStyleProps, RuleCardStyles>();
 
@@ -30,10 +35,11 @@ type DetailRow = {
   label: string;
   value: string;
   showPersona: boolean;
+  loading?: boolean;
 };
 
 export const RuleCardBase: React.FunctionComponent<RuleCardProps> = (props: RuleCardProps) => {
-  const { className, styles, part, selected, onSelect } = props;
+  const { className, styles, part, selected, onSelect, showActions, onDuplicate, onDelete } = props;
   const classNames: IProcessedStyleSet<RuleCardStyles> = getClassNames(styles, {
     className,
     theme: useTheme(),
@@ -46,6 +52,7 @@ export const RuleCardBase: React.FunctionComponent<RuleCardProps> = (props: Rule
   const hrSource = useSelector(selectSource);
   const isSourceLoading = useSelector(selectIsSourceLoading);
   const orgLeaderMapping = useSelector(selectObjectIdEmployeeIdMapping);
+  const jobDetails = useSelector(selectSelectedJobDetails);
 
   const groupId = IsGroupMembershipSourcePartQuery(part.query) ? part.query.source : '';
   const groupPersona = useSelectedGroupById(groupId);
@@ -55,13 +62,31 @@ export const RuleCardBase: React.FunctionComponent<RuleCardProps> = (props: Rule
     ? (part.query.source as HRSourcePartSource)?.manager?.id
     : undefined;
 
+  // Whether the referenced group is a hidden-membership group (mirrors SourcePart).
+  const hiddenMembershipSourceIds = jobDetails?.hiddenMembershipSourceIds ?? [];
+  const isHiddenMembership =
+    groupId.length > 0 &&
+    hiddenMembershipSourceIds.some((id) => id.toLowerCase() === groupId.toLowerCase());
+
+  // Track whether the org leader for this HR rule is still resolving so we can show a spinner.
+  const [isOrgLeaderLoading, setIsOrgLeaderLoading] = useState(false);
+
   // Resolve the org leader display name when an HR rule references a manager.
   useEffect(() => {
     if (managerId && orgLeaderMapping[managerId] === undefined) {
-      dispatch(fetchOrgLeaderDetailsUsingId({ employeeId: managerId, partId: part.id }));
+      setIsOrgLeaderLoading(true);
+      const promise = dispatch(fetchOrgLeaderDetailsUsingId({ employeeId: managerId, partId: part.id }));
+      Promise.resolve(promise).finally(() => setIsOrgLeaderLoading(false));
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [managerId]);
+
+  // Stop showing the spinner once the org leader has been resolved into the mapping.
+  useEffect(() => {
+    if (managerId && orgLeaderMapping[managerId] !== undefined) {
+      setIsOrgLeaderLoading(false);
+    }
+  }, [managerId, orgLeaderMapping]);
 
   // Resolve the group name/alias when a Group rule references a group id.
   useEffect(() => {
@@ -121,6 +146,7 @@ export const RuleCardBase: React.FunctionComponent<RuleCardProps> = (props: Rule
             label: ruleStrings.orgLeaderLabel,
             value: orgLeaderName || ruleStrings.notSet,
             showPersona: !!orgLeaderName,
+            loading: isOrgLeaderLoading && !orgLeaderName,
           },
           {
             label: ruleStrings.depthLabel,
@@ -158,6 +184,16 @@ export const RuleCardBase: React.FunctionComponent<RuleCardProps> = (props: Rule
     }
   };
 
+  const handleDuplicate = (event: React.MouseEvent<HTMLButtonElement>) => {
+    event.stopPropagation();
+    onDuplicate?.(part.id);
+  };
+
+  const handleDelete = (event: React.MouseEvent<HTMLButtonElement>) => {
+    event.stopPropagation();
+    onDelete?.(part.id);
+  };
+
   return (
     <div
       className={classNames.root}
@@ -168,19 +204,51 @@ export const RuleCardBase: React.FunctionComponent<RuleCardProps> = (props: Rule
       onClick={handleSelect}
       onKeyDown={handleKeyDown}
     >
-      <div className={classNames.badges}>
-        <span className={isExclusionary ? classNames.exclusiveBadge : classNames.inclusiveBadge}>
-          {isExclusionary ? ruleStrings.exclusive : ruleStrings.inclusive}
-        </span>
-        <span className={classNames.typeBadge}>{getTypeLabel()}</span>
+      <div className={classNames.header}>
+        <div className={classNames.badges}>
+          <span className={isExclusionary ? classNames.exclusiveBadge : classNames.inclusiveBadge}>
+            {isExclusionary ? ruleStrings.exclusive : ruleStrings.inclusive}
+          </span>
+          <span className={classNames.typeBadge}>{getTypeLabel()}</span>
+        </div>
+        {showActions && (
+          <div className={classNames.actions}>
+            <IconButton
+              className={classNames.actionButton}
+              iconProps={{ iconName: 'Copy' }}
+              ariaLabel={ruleStrings.duplicateRuleAria.replace('{0}', part.title)}
+              title={ruleStrings.duplicateRule}
+              onClick={handleDuplicate}
+            />
+            <IconButton
+              className={classNames.actionButton}
+              iconProps={{ iconName: 'Delete' }}
+              ariaLabel={ruleStrings.deleteRuleAria.replace('{0}', part.title)}
+              title={ruleStrings.deleteRule}
+              onClick={handleDelete}
+            />
+          </div>
+        )}
       </div>
+      {isHiddenMembership && (
+        <div className={classNames.hiddenIndicator}>
+          <Icon iconName="Hide" className={classNames.hiddenIcon} />
+          <Text className={classNames.hiddenText}>{ruleStrings.hiddenGroup}</Text>
+        </div>
+      )}
       <Text className={classNames.title}>{part.title}</Text>
       {detailRows.length > 0 && (
         <div className={classNames.detailRows}>
           {detailRows.map((row) => (
             <div className={classNames.detailRow} key={row.label}>
               <Text className={classNames.detailLabel}>{row.label}:</Text>
-              {row.showPersona ? (
+              {row.loading ? (
+                <Spinner
+                  size={SpinnerSize.xSmall}
+                  className={classNames.detailSpinner}
+                  ariaLabel={ruleStrings.orgLeaderLoading}
+                />
+              ) : row.showPersona ? (
                 <Persona text={row.value} size={PersonaSize.size24} />
               ) : (
                 <Text className={classNames.detailValue}>{row.value}</Text>

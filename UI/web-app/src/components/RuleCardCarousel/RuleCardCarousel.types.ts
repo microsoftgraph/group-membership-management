@@ -29,6 +29,16 @@ export type RuleCardCarouselProps = {
   onSelectPart: (partId: string) => void;
 
   /**
+   * When true, each card renders per-card Duplicate and Delete action buttons (edit mode).
+   * Defaults to false.
+   */
+  showActions?: boolean;
+  /** Invoked with the rule id when a card's Duplicate action is triggered. */
+  onDuplicatePart?: (partId: string) => void;
+  /** Invoked with the rule id when a card's Delete action is triggered. */
+  onDeletePart?: (partId: string) => void;
+
+  /**
    * Whether to render the caret (pointer) beneath the selected card. Defaults to true.
    * Hidden when the selected rule has no reviewable details to point to below the carousel.
    */

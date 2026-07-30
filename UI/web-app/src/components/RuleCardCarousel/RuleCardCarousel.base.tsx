@@ -19,7 +19,7 @@ const SCROLL_AMOUNT = 300;
 export const RuleCardCarouselBase: React.FunctionComponent<RuleCardCarouselProps> = (
   props: RuleCardCarouselProps
 ) => {
-  const { className, styles, parts, selectedPartId, onSelectPart, showCaret = true } = props;
+  const { className, styles, parts, selectedPartId, onSelectPart, showCaret = true, showActions, onDuplicatePart, onDeletePart } = props;
   const classNames: IProcessedStyleSet<RuleCardCarouselStyles> = getClassNames(styles, {
     className,
     theme: useTheme(),
@@ -101,6 +101,9 @@ export const RuleCardCarouselBase: React.FunctionComponent<RuleCardCarouselProps
             part={part}
             selected={part.id === selectedPartId}
             onSelect={onSelectPart}
+            showActions={showActions}
+            onDuplicate={onDuplicatePart}
+            onDelete={onDeletePart}
           />
         ))}
       </div>

@@ -196,6 +196,12 @@ export const strings: IStrings = {
       scrollLeft: "Scroll rules left",
       scrollRight: "Scroll rules right",
       selectRuleAria: "Select rule: {0}",
+      duplicateRule: "Duplicate rule",
+      deleteRule: "Delete rule",
+      duplicateRuleAria: "Duplicate rule: {0}",
+      deleteRuleAria: "Delete rule: {0}",
+      orgLeaderLoading: "Loading org leader",
+      hiddenGroup: "Hidden membership group",
     }
   },
   AdminConfig: {
@@ -749,6 +755,9 @@ export const strings: IStrings = {
       rulesTitle: "Rules",
       rulesDescription: "These rules define who's included in the membership. Select a rule card to review its configuration and details.",
       hiddenMembershipGroup: 'This is a hidden membership group.',
+      addRule: 'Add',
+      rulesEmptyTitle: 'No rules yet',
+      rulesEmptyDescription: "Add a rule to define who's included in this membership.",
       noThresholdSet: 'No threshold set',
       savingSyncJob: 'Saving...',
       updatingSyncJob: 'Updating...',

@@ -3,7 +3,7 @@
 
 import React, { useCallback, useEffect, useState, useRef } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { ActionButton, classNamesFunction, DefaultButton, IProcessedStyleSet, Toggle, Spinner, SpinnerSize } from '@fluentui/react';
+import { classNamesFunction, IProcessedStyleSet, Toggle, Spinner, SpinnerSize } from '@fluentui/react';
 import { useTheme } from '@fluentui/react/lib/Theme';
 import { v4 as uuidv4 } from 'uuid';
 import { MembershipConfigurationStyleProps, MembershipConfigurationStyles, MembershipConfigurationProps } from './MembershipConfiguration.types';
@@ -14,7 +14,6 @@ import {
   addSourcePart,
   buildCompositeQuery,
   clearSourceParts,
-  deleteSourcePart,
   getSourcePartsFromState,
   manageMembershipAdvancedViewQuery,
   manageMembershipIsAdvancedView,
@@ -29,13 +28,13 @@ import {
   manageMembershipIsEditingExistingJob,
 } from '../../store/manageMembership.slice';
 import { selectAttributes, selectAreAttributeMappingsLoading } from '../../store/sqlMembershipSources.slice';
-import { SourcePart } from '../SourcePart';
+import { RulesEditor } from '../RulesEditor';
 import { RulesReview } from '../RulesReview';
 import { useStrings, useQueryValidation } from '../../store/hooks';
 import { HRSourcePartSource } from '../../models/HRSourcePart';
 import { ISourcePart } from '../../models/ISourcePart';
 import { SourcePartType } from '../../models/SourcePartType';
-import { selectIsJobTenantWriter, selectIsJobWriter } from '../../store/roles.slice';
+import { selectIsJobTenantWriter } from '../../store/roles.slice';
 import { selectIsSubmissionReviewer } from '../../store/roles.slice';
 import { UserSpotCheck } from '../UserSpotCheck';
 import { selectGeneratedTitlesYet, selectSelectedJobDetails, selectSelectedJobWithNoTitles, setGeneratedTitlesYet, setTitles} from '../../store/jobs.slice';
@@ -67,7 +66,6 @@ export const MembershipConfigurationBase: React.FunctionComponent<MembershipConf
 
   const advancedViewQuery = useSelector(manageMembershipAdvancedViewQuery) ?? '';
   const isToggleEnabled = useSelector(manageMembershipIsToggleEnabled);
-  const isJobWriter = useSelector(selectIsJobWriter);
   const isJobTenantWriter = useSelector(selectIsJobTenantWriter);
   const isSubmissionReviewer = useSelector(selectIsSubmissionReviewer);
   const orgLeaderDataReturned = useSelector(selectOrgLeaderDataReturned);
@@ -80,11 +78,6 @@ export const MembershipConfigurationBase: React.FunctionComponent<MembershipConf
   const generatedGroupParts = useSelector(selectGeneratedGroupParts);
   const hrAttributes = useSelector(selectAttributes);
 
-  const getAllSourcePartsExpanded = useCallback(() => {
-    return sourceParts.every(part => part.isExpanded);
-  }, [sourceParts]);
-
-  const [allSourcePartsExpanded, setAllSourcePartsExpanded] = useState(() => getAllSourcePartsExpanded());
   const isCopilotPanelOpen = useSelector(selectIsPanelOpen);
   const [activeSourcePartId, setActiveSourcePartId] = useState<string | null>(null);
   const [isCopilotApplying, setIsCopilotApplying] = useState(false);
@@ -214,37 +207,6 @@ export const MembershipConfigurationBase: React.FunctionComponent<MembershipConf
     }
   }, [isCopilotApplying, areAttributeMappingsLoading, orgLeaderDataReturned]);
 
-  useEffect(() => {
-    setAllSourcePartsExpanded(getAllSourcePartsExpanded());
-  }, [sourceParts, getAllSourcePartsExpanded]);
-
-  const sourcePartQuery: HRSourcePartSource = {
-    manager: {
-      id: undefined,
-      depth: undefined
-    },
-    filter: ""
-  };
-
-  const newSourcePart = () => {
-    const newPart: ISourcePart = {
-      id: uuidv4(),
-      title: "",
-      query: {
-        type: SourcePartType.HR,
-        source: sourcePartQuery,
-        exclusionary: false
-      },
-      isNew: true,
-      isExpanded: true
-    };
-    dispatch(addSourcePart(newPart));
-  };
-
-  const removeSourcePart = (partId: string) => {
-    dispatch(deleteSourcePart(partId));
-  };
-
   const handleToggleChange = () => {
     const newIsAdvancedView = !isAdvancedView;
 
@@ -310,14 +272,6 @@ export const MembershipConfigurationBase: React.FunctionComponent<MembershipConf
     dispatch(setAdvancedViewQueryRaw(newValue ?? ''));
     // Mark as invalid since content changed - let validation happen on blur/explicit validation
     dispatch(setIsAdvancedQueryValid(false));
-  };
-
-  const handleExpandCollapseAll = () => {
-    const newExpandedState = !allSourcePartsExpanded;
-    setAllSourcePartsExpanded(newExpandedState);
-    sourceParts.forEach(part => {
-      dispatch(updateSourcePart({ ...part, isExpanded: newExpandedState }));
-    });
   };
 
   useEffect(() => {
@@ -443,15 +397,6 @@ export const MembershipConfigurationBase: React.FunctionComponent<MembershipConf
       )}
       {!isAdvancedView ? (
         isEditable ? (<>
-        <div className={classNames.expandCollapseButton}>
-          <ActionButton
-              id="expandCollapseAllButton"
-              iconProps={{ iconName: allSourcePartsExpanded ? 'ChevronUp' : 'ChevronDown' }}
-              onClick={handleExpandCollapseAll}
-            >
-              {allSourcePartsExpanded ? strings.ManageMembership.labels.collapseAll : strings.ManageMembership.labels.expandAll}
-            </ActionButton>
-        </div>
         <div style={{ position: 'relative' }}>
           {/* Loading overlay when Copilot is applying filters */}
           {isCopilotApplying && (
@@ -477,26 +422,7 @@ export const MembershipConfigurationBase: React.FunctionComponent<MembershipConf
               </span>
             </div>
           )}
-          {sourceParts.map((part) => (
-            <SourcePart
-              key={part.id}
-              partId={part.id}
-              title={part.title}
-              onDelete={removeSourcePart}
-              totalSourceParts={sourceParts.length}
-              query={part.query}
-              part={part}
-              isEditable={isEditable}
-            />
-          ))}
-        </div>
-        <div className={classNames.addButtonContainer}>
-          <DefaultButton
-            iconProps={{ iconName: 'Add' }}
-            onClick={newSourcePart}
-            disabled={!isJobWriter || !isEditable}>
-            {strings.ManageMembership.labels.addSourcePart}
-          </DefaultButton>
+          <RulesEditor isEditable={isEditable} />
         </div>
       </>) : (<>
         {isSubmissionReviewer && jobDetails?.syncJobId && (
