@@ -107,6 +107,8 @@ var appSettings = {
   logAnalyticsCustomerId: 'notused'
   logAnalyticsPrimarySharedKey: 'notused'
   AZURE_TOKEN_CREDENTIALS: 'ManagedIdentityCredential'
+  // Debug for verbose troubleshooting; above Information blanks the dashboards
+  Logging__ApplicationInsights__LogLevel__Default: 'Information'
   AzureWebJobsStorage__accountName: storageAccountNameReader.outputs.value
   AzureWebJobsStorage__credential: 'managedidentity'
   APPLICATIONINSIGHTS_CONNECTION_STRING: '@Microsoft.KeyVault(SecretUri=${reference(appInsightsConnectionString, '2019-09-01').secretUriWithVersion})'

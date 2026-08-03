@@ -115,6 +115,8 @@ var appSettings = {
   logAnalyticsCustomerId: 'notused'
   logAnalyticsPrimarySharedKey: 'notused'
   AZURE_TOKEN_CREDENTIALS: 'ManagedIdentityCredential'
+  // Debug for verbose troubleshooting; above Information blanks the dashboards
+  Logging__ApplicationInsights__LogLevel__Default: 'Information'
   AzureWebJobsStorage__accountName: storageAccountNameReader.outputs.value
   AzureWebJobsStorage__credential: 'managedidentity'
   AzureFunctionsJobHost__extensions__durableTask__hubName: '${solutionAbbreviation}compute${environmentAbbreviation}PlaceMembershipObtainer'
