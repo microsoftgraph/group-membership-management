@@ -10,6 +10,7 @@ using Microsoft.AspNetCore.Localization;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.ApplicationInsights;
 using Microsoft.Extensions.Options;
 using Microsoft.Graph;
 using Repositories.Contracts;
@@ -32,7 +33,6 @@ using Azure.Core;
 using System.IO;
 using Models;
 using System.Data;
-using System.Linq;
 
 namespace Hosts.FunctionBase
 {
@@ -168,18 +168,16 @@ namespace Hosts.FunctionBase
                 options.ConnectionString = GetValueOrThrowBase(configuration, "APPLICATIONINSIGHTS_CONNECTION_STRING");
             });
 
-            // The Application Insights SDK adds a default logging filter that instructs ILogger to capture only Warning
-            // and more severe logs. Remove it so Information-level traces flow through the worker's direct App Insights
-            // path, allowing TelemetryInitializers (location, LogSource, etc.) to enrich them.
-            // See: https://learn.microsoft.com/azure/azure-functions/dotnet-isolated-process-guide#application-insights
-            services.Configure<LoggerFilterOptions>(options =>
+            // The Application Insights SDK registers its own logging filter rule that captures only Warning+ logs, so
+            // without an explicit filter no Information traces would ever reach App Insights.
+            // See: https://learn.microsoft.com/azure/azure-functions/dotnet-isolated-process-guide#managing-log-levels
+            services.AddLogging(logging =>
             {
-                var defaultRule = options.Rules.FirstOrDefault(rule =>
-                    rule.ProviderName == "Microsoft.Extensions.Logging.ApplicationInsights.ApplicationInsightsLoggerProvider");
-                if (defaultRule is not null)
-                {
-                    options.Rules.Remove(defaultRule);
-                }
+                logging.AddFilter<ApplicationInsightsLoggerProvider>(category: null, level: LogLevel.Information);
+
+                // Bind the standard "Logging" configuration section so log levels can be tuned at runtime
+                // This MUST come after AddFilter above
+                logging.AddConfiguration(configuration.GetSection("Logging"));
             });
 
             services.AddSingleton<ITelemetryInitializer>(sp => new ConstantOperationNameInitializer(functionName));

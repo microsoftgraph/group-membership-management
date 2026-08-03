@@ -2,6 +2,7 @@ using Azure.Identity;
 using Azure.Monitor.Query;
 using Common.DependencyInjection;
 using Hosts.FunctionBase;
+using Microsoft.Azure.Functions.Worker;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -40,6 +41,7 @@ namespace Hosts.JobScheduler
                     var dryRunSettingName = string.Empty;
                     var rootPath = context.HostingEnvironment.ContentRootPath;
                     CommonServices.ConfigureCommonServices(services, configuration, functionName, dryRunSettingName, rootPath);
+                    services.ConfigureFunctionsApplicationInsights();
 
                     var jobSchedulerConfigSettingName = "JobScheduler:JobSchedulerConfiguration";
 
