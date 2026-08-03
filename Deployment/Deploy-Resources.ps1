@@ -1554,7 +1554,8 @@ function Set-FunctionAppCode {
         [Parameter(Mandatory = $true)]
         [string]$FunctionsPackagesDirectory,
         [Parameter(Mandatory = $true)]
-        [string]$WebApiPackagesDirectory
+        [string]$WebApiPackagesDirectory,
+        [int]$MaxParallelPublish = 8
     )
 
     # publish function apps code
@@ -1564,44 +1565,121 @@ function Set-FunctionAppCode {
         -Operation { Get-FunctionAppCompat -ResourceGroupName $ComputeResourceGroup } `
         -OperationName "Get function apps for code deploy" `
         -MaxAttempts 3 -BaseDelaySeconds 2
-    foreach ($functionApp in $functionApps) {
 
-        Write-DeployLog -Level Info -Message "Publishing code for function app $($functionApp.Name)"
+    # Build the publish work list in the parent runspace so the missing-package skip (and its exact log message) stays here.
+    $publishWork = @()
+    $skippedApps = @()
+    foreach ($functionApp in $functionApps) {
 
         $functionName = $functionApp.Name.Split("-")[3]
         $packageFile = "$FunctionsPackagesDirectory/$functionName.zip"
 
         if (-not (Test-Path $packageFile)) {
-            Write-DeployLog -Level Info -Message "Package file not found: $packageFile"
+            Write-DeployLog -Level Warn -Message "Package file not found: $packageFile (skipping $($functionApp.Name))"
+            $skippedApps += $functionApp.Name
             continue
         }
 
-        Invoke-WithRetry `
-            -Operation {
-                Publish-AzWebApp -ResourceGroupName $ComputeResourceGroup -Name $functionApp.Name -ArchivePath $packageFile -Force
-            } `
-            -OperationName "Deploying code for $($functionApp.Name)" `
-            -MaxAttempts $maxRetriesForDeploymentOperations `
-            -BaseDelaySeconds 2
-
-        Write-DeployLog -Level Success -Message "Successfully published code for function app $($functionApp.Name)`n"
-
-        if ($functionApp.Kind -eq "functionapp") {
-            Write-DeployLog -Level Info -Message "Function app $($functionApp.Name) is on Comsumption. Setting functionAppScaleLimit = 1..."
-            Invoke-WithRetry `
-                -Operation {
-                    Set-AzResource -ResourceGroupName $ComputeResourceGroup `
-                        -ResourceType "Microsoft.Web/sites" `
-                        -ResourceName "$($functionApp.Name)/config/web" `
-                        -ApiVersion "2022-03-01" `
-                        -Properties @{ functionAppScaleLimit = 1 } `
-                        -Force
-                } `
-                -OperationName "Set scale limit for $($functionApp.Name)" `
-                -MaxAttempts 3 -BaseDelaySeconds 2
-            Write-DeployLog -Level Success -Message "Successfully set functionAppScaleLimit for $($functionApp.Name)`n"
+        $publishWork += [pscustomobject]@{
+            Name        = $functionApp.Name
+            Kind        = $functionApp.Kind
+            PackageFile = $packageFile
         }
-        
+    }
+
+    # Capture cross-runspace values in the parent; script-scope vars and dot-sourced functions are not visible inside -Parallel runspaces.
+    $publishContext = Get-AzContext
+    $retryModulePath = Join-Path $sharedScriptsDirectory 'ReusableModules/Invoke-WithRetry.ps1'
+    $maxRetries = $maxRetriesForDeploymentOperations
+    $rg = $ComputeResourceGroup
+
+    $totalToPublish = $publishWork.Count
+    $batchSize = $MaxParallelPublish
+    $batchCount = [int][math]::Ceiling($totalToPublish / $batchSize)
+    Write-DeployLog -Level Info -Message "Publishing code for $totalToPublish function app(s) in $batchCount batch(es) of up to $batchSize (skipped $($skippedApps.Count) app(s) with no package)."
+
+    $publishResults = @()
+    for ($batchIndex = 0; $batchIndex -lt $batchCount; $batchIndex++) {
+        $batchStart = $batchIndex * $batchSize
+        $batchEnd = [math]::Min($batchStart + $batchSize, $totalToPublish) - 1
+        $batch = @($publishWork[$batchStart..$batchEnd])
+        $batchAppNames = ($batch | ForEach-Object { $_.Name.Substring($ComputeResourceGroup.Length + 1) }) -join ', '
+        if (-not $global:GmmLastLineBlank) { Write-Host "" }
+        Write-DeployLog -Level Info -Message "--- Batch $($batchIndex + 1)/${batchCount}: publishing $($batch.Count) app(s) [$batchAppNames]. This wave takes ~60-70s; per-app results below stream in as each app completes. ---"
+        Write-Host ""
+        $global:GmmLastLineBlank = $true
+
+        $publishResults += $batch | ForEach-Object -ThrottleLimit $batchSize -Parallel {
+        $ErrorActionPreference = 'Stop'
+        Import-Module Az.Accounts, Az.Websites, Az.Resources -ErrorAction Stop -WarningAction SilentlyContinue
+        . $using:retryModulePath
+
+        $app = $_
+        $ctx = $using:publishContext
+        $rgLocal = $using:rg
+        $maxAttempts = $using:maxRetries
+        $sw = [System.Diagnostics.Stopwatch]::StartNew()
+        $logs = [System.Collections.Generic.List[object]]::new()
+
+        try {
+            $logs.Add([pscustomobject]@{ Level = 'Info'; Message = "Publishing code for function app $($app.Name)" })
+
+            $null = Invoke-WithRetry `
+                -Operation {
+                    Publish-AzWebApp -ResourceGroupName $rgLocal -Name $app.Name -ArchivePath $app.PackageFile -Force -DefaultProfile $ctx
+                } `
+                -OperationName "Deploying code for $($app.Name)" `
+                -MaxAttempts $maxAttempts `
+                -BaseDelaySeconds 2
+
+            $logs.Add([pscustomobject]@{ Level = 'Success'; Message = "Successfully published code for function app $($app.Name)`n" })
+
+            if ($app.Kind -eq 'functionapp') {
+                $logs.Add([pscustomobject]@{ Level = 'Info'; Message = "Function app $($app.Name) is on Comsumption. Setting functionAppScaleLimit = 1..." })
+                $null = Invoke-WithRetry `
+                    -Operation {
+                        Set-AzResource -ResourceGroupName $rgLocal `
+                            -ResourceType 'Microsoft.Web/sites' `
+                            -ResourceName "$($app.Name)/config/web" `
+                            -ApiVersion '2022-03-01' `
+                            -Properties @{ functionAppScaleLimit = 1 } `
+                            -Force -DefaultProfile $ctx
+                    } `
+                    -OperationName "Set scale limit for $($app.Name)" `
+                    -MaxAttempts 3 -BaseDelaySeconds 2
+                $logs.Add([pscustomobject]@{ Level = 'Success'; Message = "Successfully set functionAppScaleLimit for $($app.Name)`n" })
+            }
+
+            $status = 'Success'
+            $err = $null
+        }
+        catch {
+            $status = 'Failed'
+            $err = $_.Exception.Message
+        }
+
+        [pscustomobject]@{
+            Name    = $app.Name
+            Status  = $status
+            Seconds = [math]::Round($sw.Elapsed.TotalSeconds, 1)
+            Error   = $err
+            Logs    = $logs
+        }
+    } | ForEach-Object {
+        # Replay each app's buffered logs in the parent runspace (where the logging module is
+        # available) as that app completes, so progress streams instead of draining at the end.
+        foreach ($entry in $_.Logs) {
+            Write-DeployLog -Level $entry.Level -Message $entry.Message
+        }
+        $_
+    }
+    }
+
+    $publishResults = @($publishResults)
+    $failed = @($publishResults | Where-Object { $_.Status -eq 'Failed' })
+    if ($failed.Count -gt 0) {
+        $summary = ($failed | ForEach-Object { "$($_.Name): $($_.Error)" }) -join '; '
+        throw "Function app code publish failed for $($failed.Count) app(s): $summary"
     }
 
     # publish web api code
