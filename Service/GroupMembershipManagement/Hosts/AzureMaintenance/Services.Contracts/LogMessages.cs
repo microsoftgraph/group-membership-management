@@ -10,21 +10,21 @@ namespace Hosts.AzureMaintenance
     {
         // ── Generic Function Lifecycle ──
 
-        [LoggerMessage(EventId = 50000, Level = LogLevel.Information,
+        [LoggerMessage(EventId = 50000, Level = LogLevel.Debug,
             Message = "{FunctionName} function started")]
         public static partial void FunctionStarted(this ILogger logger, string functionName);
 
-        [LoggerMessage(EventId = 50001, Level = LogLevel.Information,
+        [LoggerMessage(EventId = 50001, Level = LogLevel.Debug,
             Message = "{FunctionName} function completed")]
         public static partial void FunctionCompleted(this ILogger logger, string functionName);
 
         // ── OrchestratorFunction ──
 
-        [LoggerMessage(EventId = 50010, Level = LogLevel.Information,
+        [LoggerMessage(EventId = 50010, Level = LogLevel.Debug,
             Message = "{FunctionName} function started at: {StartTime}")]
         public static partial void OrchestratorStarted(this ILogger logger, string functionName, DateTimeOffset startTime);
 
-        [LoggerMessage(EventId = 50011, Level = LogLevel.Information,
+        [LoggerMessage(EventId = 50011, Level = LogLevel.Debug,
             Message = "{FunctionName} function completed at: {CompletionTime}")]
         public static partial void OrchestratorCompleted(this ILogger logger, string functionName, DateTimeOffset completionTime);
 

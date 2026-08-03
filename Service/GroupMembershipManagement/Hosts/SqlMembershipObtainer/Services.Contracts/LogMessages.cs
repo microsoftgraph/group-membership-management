@@ -10,11 +10,11 @@ namespace Hosts.SqlMembershipObtainer
     {
         // ── Generic Function Lifecycle ──
 
-        [LoggerMessage(EventId = 160000, Level = LogLevel.Information,
+        [LoggerMessage(EventId = 160000, Level = LogLevel.Debug,
             Message = "{FunctionName} function started")]
         public static partial void FunctionStarted(this ILogger logger, string functionName);
 
-        [LoggerMessage(EventId = 160001, Level = LogLevel.Information,
+        [LoggerMessage(EventId = 160001, Level = LogLevel.Debug,
             Message = "{FunctionName} function completed")]
         public static partial void FunctionCompleted(this ILogger logger, string functionName);
 

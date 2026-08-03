@@ -10,11 +10,11 @@ namespace Hosts.JobScheduler
     {
         // ── Generic Function Lifecycle ──
 
-        [LoggerMessage(EventId = 40000, Level = LogLevel.Information,
+        [LoggerMessage(EventId = 40000, Level = LogLevel.Debug,
             Message = "{FunctionName} function started")]
         public static partial void FunctionStarted(this ILogger logger, string functionName);
 
-        [LoggerMessage(EventId = 40001, Level = LogLevel.Information,
+        [LoggerMessage(EventId = 40001, Level = LogLevel.Debug,
             Message = "{FunctionName} function completed")]
         public static partial void FunctionCompleted(this ILogger logger, string functionName);
 

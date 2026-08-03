@@ -10,11 +10,11 @@ namespace Hosts.MembershipAggregator
     {
         // ── Generic Function Lifecycle ──
 
-        [LoggerMessage(EventId = 30000, Level = LogLevel.Information,
+        [LoggerMessage(EventId = 30000, Level = LogLevel.Debug,
             Message = "{FunctionName} function started")]
         public static partial void FunctionStarted(this ILogger logger, string functionName);
 
-        [LoggerMessage(EventId = 30001, Level = LogLevel.Information,
+        [LoggerMessage(EventId = 30001, Level = LogLevel.Debug,
             Message = "{FunctionName} function completed")]
         public static partial void FunctionCompleted(this ILogger logger, string functionName);
 

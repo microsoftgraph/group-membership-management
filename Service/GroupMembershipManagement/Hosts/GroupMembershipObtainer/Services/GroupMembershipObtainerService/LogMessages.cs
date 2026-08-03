@@ -12,11 +12,11 @@ namespace Hosts.GroupMembershipObtainer
     {
         // ── Generic Function Lifecycle (150000-150001) ──
 
-        [LoggerMessage(EventId = 150000, Level = LogLevel.Information,
+        [LoggerMessage(EventId = 150000, Level = LogLevel.Debug,
             Message = "{FunctionName} function started")]
         public static partial void FunctionStarted(this ILogger logger, string functionName);
 
-        [LoggerMessage(EventId = 150001, Level = LogLevel.Information,
+        [LoggerMessage(EventId = 150001, Level = LogLevel.Debug,
             Message = "{FunctionName} function completed")]
         public static partial void FunctionCompleted(this ILogger logger, string functionName);
 

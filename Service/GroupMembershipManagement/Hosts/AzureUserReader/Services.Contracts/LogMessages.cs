@@ -12,11 +12,11 @@ namespace Hosts.AzureUserReader
     {
         // ── Generic Function Lifecycle (60000–60009) ──
 
-        [LoggerMessage(EventId = 60000, Level = LogLevel.Information,
+        [LoggerMessage(EventId = 60000, Level = LogLevel.Debug,
             Message = "{FunctionName} function started")]
         public static partial void FunctionStarted(this ILogger logger, string functionName);
 
-        [LoggerMessage(EventId = 60001, Level = LogLevel.Information,
+        [LoggerMessage(EventId = 60001, Level = LogLevel.Debug,
             Message = "{FunctionName} function completed")]
         public static partial void FunctionCompleted(this ILogger logger, string functionName);
 

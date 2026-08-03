@@ -12,11 +12,11 @@ namespace Hosts.TeamsChannelUpdater
     {
         // ── Generic Function Lifecycle ──
 
-        [LoggerMessage(EventId = 190000, Level = LogLevel.Information,
+        [LoggerMessage(EventId = 190000, Level = LogLevel.Debug,
             Message = "{FunctionName} function started")]
         public static partial void FunctionStarted(this ILogger logger, string functionName);
 
-        [LoggerMessage(EventId = 190001, Level = LogLevel.Information,
+        [LoggerMessage(EventId = 190001, Level = LogLevel.Debug,
             Message = "{FunctionName} function completed")]
         public static partial void FunctionCompleted(this ILogger logger, string functionName);
 

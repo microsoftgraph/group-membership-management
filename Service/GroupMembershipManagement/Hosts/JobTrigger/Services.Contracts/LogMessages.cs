@@ -10,11 +10,11 @@ namespace Hosts.JobTrigger
     {
         // ── Generic Function Lifecycle ──
 
-        [LoggerMessage(EventId = 10000, Level = LogLevel.Information,
+        [LoggerMessage(EventId = 10000, Level = LogLevel.Debug,
             Message = "{FunctionName} function started")]
         public static partial void FunctionStarted(this ILogger logger, string functionName);
 
-        [LoggerMessage(EventId = 10001, Level = LogLevel.Information,
+        [LoggerMessage(EventId = 10001, Level = LogLevel.Debug,
             Message = "{FunctionName} function completed")]
         public static partial void FunctionCompleted(this ILogger logger, string functionName);
 

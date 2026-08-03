@@ -10,11 +10,11 @@ namespace Hosts.Notifier
     {
         // ── Generic Function Lifecycle ──
 
-        [LoggerMessage(EventId = 80000, Level = LogLevel.Information,
+        [LoggerMessage(EventId = 80000, Level = LogLevel.Debug,
             Message = "{FunctionName} function started")]
         public static partial void FunctionStarted(this ILogger logger, string functionName);
 
-        [LoggerMessage(EventId = 80001, Level = LogLevel.Information,
+        [LoggerMessage(EventId = 80001, Level = LogLevel.Debug,
             Message = "{FunctionName} function completed")]
         public static partial void FunctionCompleted(this ILogger logger, string functionName);
 
