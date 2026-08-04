@@ -20,17 +20,26 @@ export const getStyles = (props: RulesEditorStyleProps): RulesEditorStyles => {
       fontSize: 13,
       flex: '1 1 auto',
     },
+    headerActions: {
+      display: 'flex',
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 12,
+      flex: '0 0 auto',
+    },
     addButton: {
       flex: '0 0 auto',
+      height: 32,
+      borderRadius: 4,
+      padding: '5px 12px',
+      selectors: {
+        '.ms-Button-flexContainer': {
+          gap: 4,
+        },
+      },
     },
     details: {
       marginTop: 16,
-      paddingTop: 18,
-      paddingBottom: 18,
-      paddingLeft: 22,
-      paddingRight: 22,
-      borderRadius: 10,
-      backgroundColor: theme.palette.white,
     },
     emptyState: {
       display: 'flex',

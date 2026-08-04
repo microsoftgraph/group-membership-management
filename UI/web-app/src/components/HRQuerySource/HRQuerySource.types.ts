@@ -28,6 +28,7 @@ export type HRQuerySourceStyles = {
   endOfNestedGroupDropdown: IStyle;
   expandButton: IStyle;
   separator: IStyle;
+  sectionSeparator: IStyle;
   cardHeader: IStyle;
   cardTitle: IStyle;
   comboBoxOptionCodeText: IStyle;

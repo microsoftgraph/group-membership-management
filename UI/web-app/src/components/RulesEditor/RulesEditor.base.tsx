@@ -6,7 +6,6 @@ import { useDispatch, useSelector } from 'react-redux';
 import {
   classNamesFunction,
   IProcessedStyleSet,
-  DefaultButton,
   PrimaryButton,
 } from '@fluentui/react';
 import { useTheme } from '@fluentui/react/lib/Theme';
@@ -30,6 +29,7 @@ import { useStrings } from '../../store/hooks';
 import { ISourcePart } from '../../models/ISourcePart';
 import { SourcePartType } from '../../models/SourcePartType';
 import { HRSourcePartSource } from '../../models/HRSourcePart';
+import { CopilotTriggerButton } from '../CopilotTriggerButton';
 
 const getClassNames = classNamesFunction<RulesEditorStyleProps, RulesEditorStyles>();
 
@@ -137,14 +137,17 @@ export const RulesEditorBase: React.FunctionComponent<RulesEditorProps> = (
     <div className={classNames.root}>
       <div className={classNames.headerBar}>
         <div className={classNames.description}>{labels.rulesDescription}</div>
-        <DefaultButton
-          className={classNames.addButton}
-          iconProps={{ iconName: 'Add' }}
-          onClick={handleAdd}
-          disabled={!canEdit}
-        >
-          {labels.addRule}
-        </DefaultButton>
+        <div className={classNames.headerActions}>
+          <CopilotTriggerButton />
+          <PrimaryButton
+            className={classNames.addButton}
+            iconProps={{ iconName: 'Add' }}
+            onClick={handleAdd}
+            disabled={!canEdit}
+          >
+            {labels.addRule}
+          </PrimaryButton>
+        </div>
       </div>
 
       {sourceParts.length === 0 ? (
@@ -172,8 +175,6 @@ export const RulesEditorBase: React.FunctionComponent<RulesEditorProps> = (
                 key={selectedPart.id}
                 partId={selectedPart.id}
                 title={selectedPart.title}
-                onDelete={handleDelete}
-                totalSourceParts={sourceParts.length}
                 query={selectedPart.query}
                 part={{ ...selectedPart, isExpanded: true }}
                 isEditable={isEditable}

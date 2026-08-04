@@ -17,6 +17,8 @@ export interface TitleState {
   generatedHRParts: ISourcePart[];
   isGeneratingGroupTitle: boolean;
   generatedGroupParts: ISourcePart[];
+  // Ids of the source parts whose AI title is currently being (re)calculated.
+  partsGeneratingTitle: string[];
 };
 
 const initialState: TitleState = {
@@ -28,7 +30,8 @@ const initialState: TitleState = {
   isGeneratingHRTitle: false,
   generatedHRParts: [],
   isGeneratingGroupTitle: false,
-  generatedGroupParts: []
+  generatedGroupParts: [],
+  partsGeneratingTitle: []
 };
 
 const titleSlice = createSlice({
@@ -51,6 +54,14 @@ const titleSlice = createSlice({
     },
     clearGeneratedGroupParts: (state) => {
       state.generatedGroupParts = [];
+    },
+    titleGenerationStarted: (state, action: PayloadAction<string>) => {
+      if (!state.partsGeneratingTitle.includes(action.payload)) {
+        state.partsGeneratingTitle.push(action.payload);
+      }
+    },
+    titleGenerationEnded: (state, action: PayloadAction<string>) => {
+      state.partsGeneratingTitle = state.partsGeneratingTitle.filter(id => id !== action.payload);
     }
   },
   extraReducers: (builder) => {
@@ -111,7 +122,7 @@ const titleSlice = createSlice({
   }
 });
 
-export const { clearTitles, upsertGeneratedTitle, clearGeneratedHRParts, clearGeneratedGroupParts } = titleSlice.actions;
+export const { clearTitles, upsertGeneratedTitle, clearGeneratedHRParts, clearGeneratedGroupParts, titleGenerationStarted, titleGenerationEnded } = titleSlice.actions;
 
 export const selectIsGeneratingTitle = (state: RootState) => state.title.isGeneratingTitle;
 export const selectTitle = (state: RootState) => state.title.title;
@@ -122,5 +133,8 @@ export const selectIsGeneratingHRTitle = (state: RootState) => state.title.isGen
 export const selectGeneratedHRParts = (state: RootState) => state.title.generatedHRParts;
 export const selectIsGeneratingGroupTitle = (state: RootState) => state.title.isGeneratingGroupTitle;
 export const selectGeneratedGroupParts = (state: RootState) => state.title.generatedGroupParts;
+export const selectPartsGeneratingTitle = (state: RootState) => state.title.partsGeneratingTitle;
+export const selectIsGeneratingTitleForPart = (partId: string) => (state: RootState) =>
+  state.title.partsGeneratingTitle.includes(partId);
 
 export default titleSlice.reducer;

@@ -52,7 +52,4 @@ export type OrgLeaderProps = Omit<React.AllHTMLAttributes<HTMLDivElement>, 'onCh
 
   /** Optional callout width for the suggestions. Default: 300 */
   calloutWidth?: number;
-
-  /** Optional tooltip id for accessibility. If not provided, a unique id will be generated. */
-  tooltipId?: string;
 };

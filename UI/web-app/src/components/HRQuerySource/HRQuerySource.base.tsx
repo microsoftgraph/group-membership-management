@@ -36,11 +36,12 @@ import { selectOrgLeaderDataReturned } from '../../store/orgLeaderDetails.slice'
 import { InfoWord } from '../InfoWord';
 import { OrgLeader } from '../OrgLeader';
 import { jsxFormat } from '../../utils/stringUtils';
-import { upsertGeneratedTitle } from '../../store/title.slice';
+import { upsertGeneratedTitle, titleGenerationStarted, titleGenerationEnded, selectPartsGeneratingTitle } from '../../store/title.slice';
 import { fetchOrgLeaderDetailsAndGenerateHRTitle, getTitle } from '../../store/title.api';
 import { setIsMissingAndOrOperator } from '../../store/manageMembership.slice';
 import { HRQueryItemColumn } from './components';
 import { SourcePartQuery } from '../../models/SourcePartQuery';
+import { GetOrgLeaderDetailsResponse } from '../../models/GetOrgLeaderDetailsResponse';
 import { SourcePartType } from '../../models/SourcePartType';
 import { PLACEHOLDER_OPERATOR } from '../../models/HRFilterConstants';
 
@@ -115,18 +116,24 @@ export const HRQuerySourceBase: React.FunctionComponent<HRQuerySourceProps> = (p
   const [expanded, setExpanded] = useState(true);
   const [orgLeaderUpdated, setOrgLeaderUpdated] = useState(false);
   const pendingOrgLeaderObjectIdRef = React.useRef<string | undefined>(undefined);
+  // Holds the persona the user just picked so the picker stays populated while the
+  // objectId -> employeeId lookup is in flight (manager.id is only written once resolved).
+  const [pendingOrgLeaderPersona, setPendingOrgLeaderPersona] = useState<IPersonaProps | undefined>(undefined);
   const [selectedKeys, setSelectedKeys] = React.useState<string[]>([]);
   const [localTitle, setLocalTitle] = useState<string>("");
   const orgLeaderDataReturned = useSelector(selectOrgLeaderDataReturned);
   const orgLeaderDetailsRef = React.useRef(orgLeaderDetails);
   orgLeaderDetailsRef.current = orgLeaderDetails;
   const filterRegenTimeoutRef = React.useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const pendingRegenRef = React.useRef(false);
   const lastGeneratedKeyRef = React.useRef<string | undefined>(
     (props.title && props.title.trim() !== '') ? (props.source.filter ?? '') : undefined
   );
   const sourceRef = React.useRef(props.source);
   sourceRef.current = props.source;
-  const [isManualGenerating, setIsManualGenerating] = useState(false);
+  const partsGeneratingTitle = useSelector(selectPartsGeneratingTitle);
+  // True while this rule's AI title is queued for regeneration or actively being calculated.
+  const isTitleGenerating = partsGeneratingTitle.includes(partId);
   const email = useSelector(selectSupportEmail);
   const emailLoading = useSelector(selectSupportEmailLoading);
   const emailError = useSelector(selectSupportEmailError);
@@ -162,7 +169,12 @@ export const HRQuerySourceBase: React.FunctionComponent<HRQuerySourceProps> = (p
     if (filterRegenTimeoutRef.current) {
       clearTimeout(filterRegenTimeoutRef.current);
     }
+    // Flag the rule as regenerating as soon as the debounce is scheduled so the UI gives
+    // immediate feedback instead of appearing idle for the debounce + request duration.
+    pendingRegenRef.current = true;
+    dispatch(titleGenerationStarted(partId));
     filterRegenTimeoutRef.current = setTimeout(() => {
+      pendingRegenRef.current = false;
       lastGeneratedKeyRef.current = currentFilter;
       generateTitle();
     }, 1500);
@@ -170,6 +182,12 @@ export const HRQuerySourceBase: React.FunctionComponent<HRQuerySourceProps> = (p
     return () => {
       if (filterRegenTimeoutRef.current) {
         clearTimeout(filterRegenTimeoutRef.current);
+      }
+      // Only clear the indicator if the debounced run never started; an in-flight
+      // generateTitle clears it itself once it settles.
+      if (pendingRegenRef.current) {
+        pendingRegenRef.current = false;
+        dispatch(titleGenerationEnded(partId));
       }
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps -- timer closes over latest render; only restart when filter changes
@@ -711,40 +729,48 @@ const getOptions = (
     setIsDisabled(!objectIdEmployeeIdMapping);
   }, [objectIdEmployeeIdMapping]);
 
+  // Writes the resolved employeeId into the source part. Shared by the awaited picker flow
+  // and the Copilot auto-select flow so both persist the leader the same way.
+  const applyResolvedOrgLeader = (employeeId: number, maxDepth: number, baseTitle: string) => {
+    const existingDepth = props.source.manager?.depth;
+    // Clamp the previous depth to the new leader's maxDepth; if invalid, drop it so the depth dropdown isn't blank and the title isn't stale.
+    const depth = existingDepth !== undefined && maxDepth > 0 && existingDepth > maxDepth
+      ? undefined
+      : (existingDepth ?? depthToAutoSelect ?? undefined);
+    const newSource: HRSourcePartSource = {
+      ...props.source,
+      manager: {
+        ...props.source.manager,
+        id: employeeId,
+        depth: depth
+      }
+    };
+    let updatedTitle = baseTitle;
+    if (existingDepth !== depth) {
+      updatedTitle = updateHRTitleWithNewDepth(updatedTitle, depth, {
+        excludePrefix: strings.excludePrefix,
+        orgLeaderTitle: strings.HROnboarding.orgLeaderTitle,
+        orgLeaderSingleLevelTitle: strings.HROnboarding.orgLeaderSingleLevelTitle,
+        orgLeaderMultipleLevelsTitle: strings.HROnboarding.orgLeaderMultipleLevelsTitle
+      });
+      setLocalTitle(updatedTitle);
+    }
+    setSource(newSource);
+    onSourceChange(newSource, partId, updatedTitle);
+    setOrgErrorMessage('');
+    pendingOrgLeaderObjectIdRef.current = undefined;
+    setPendingOrgLeaderPersona(undefined);
+    setOrgLeaderUpdated(false);
+  };
+
   useEffect(() => {
     if (orgLeaderUpdated && orgLeaderDetails.employeeId > 0 && partId === orgLeaderDetails.partId) {
       if (pendingOrgLeaderObjectIdRef.current && pendingOrgLeaderObjectIdRef.current !== orgLeaderDetails.objectId) {
         return;
       }
-      const id: number = orgLeaderDetails.employeeId;
-      const existingDepth = props.source.manager?.depth;
-      const maxDepth = orgLeaderDetails.maxDepth;
-      // Clamp the previous depth to the new leader's maxDepth; if invalid, drop it so the depth dropdown isn't blank and the title isn't stale.
-      const depth = existingDepth !== undefined && maxDepth > 0 && existingDepth > maxDepth
-        ? undefined
-        : (existingDepth ?? depthToAutoSelect ?? undefined);
-      const newSource = {
-        ...props.source,
-        manager: {
-          ...props.source.manager,
-          id: id,
-          depth: depth
-        }
-      };
-      let updatedTitle = localTitle || props.title || "";
-      if (existingDepth !== depth) {
-        updatedTitle = updateHRTitleWithNewDepth(updatedTitle, depth, {
-          excludePrefix: strings.excludePrefix,
-          orgLeaderTitle: strings.HROnboarding.orgLeaderTitle,
-          orgLeaderSingleLevelTitle: strings.HROnboarding.orgLeaderSingleLevelTitle,
-          orgLeaderMultipleLevelsTitle: strings.HROnboarding.orgLeaderMultipleLevelsTitle
-        });
-      }
-      setSource(newSource);
-      onSourceChange(newSource, partId, updatedTitle);
-      pendingOrgLeaderObjectIdRef.current = undefined;
-      setOrgLeaderUpdated(false);
+      applyResolvedOrgLeader(orgLeaderDetails.employeeId, orgLeaderDetails.maxDepth, localTitle || props.title || "");
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [objectIdEmployeeIdMapping, orgLeaderUpdated, orgLeaderDetails]);
 
   useEffect(() => {
@@ -770,21 +796,26 @@ const getOptions = (
     const filterAtStart = source.filter;
     const exclusionaryAtStart = props.exclusionary || false;
     const hasManagerAtStart = !!source.manager?.id;
-    const hrTitle = hasManagerAtStart
-      ? ((await dispatch(fetchOrgLeaderDetailsAndGenerateHRTitle({
-          part: { id: partId, title: props.title || '', query: { type: SourcePartType.HR, source, exclusionary: exclusionaryAtStart } as SourcePartQuery, isNew: false, isExpanded: true },
-          strings }))).payload as any)?.title || '' : '';
+    dispatch(titleGenerationStarted(partId));
+    try {
+      const hrTitle = hasManagerAtStart
+        ? ((await dispatch(fetchOrgLeaderDetailsAndGenerateHRTitle({
+            part: { id: partId, title: props.title || '', query: { type: SourcePartType.HR, source, exclusionary: exclusionaryAtStart } as SourcePartQuery, isNew: false, isExpanded: true },
+            strings }))).payload as any)?.title || '' : '';
 
-    const aiTitle = filterAtStart ? (await dispatch(getTitle(filterAtStart))).payload as string : '';
-    if (sourceRef.current.filter !== filterAtStart) return;
-    if (filterAtStart) {
-      dispatch(upsertGeneratedTitle({ partId, filter: filterAtStart, title: aiTitle }));
+      const aiTitle = filterAtStart ? (await dispatch(getTitle(filterAtStart))).payload as string : '';
+      if (sourceRef.current.filter !== filterAtStart) return;
+      if (filterAtStart) {
+        dispatch(upsertGeneratedTitle({ partId, filter: filterAtStart, title: aiTitle }));
+      }
+      const newTitle = combineHRTitleWithAICriteria(hrTitle, aiTitle, hasManagerAtStart, strings.HROnboarding.withSummarizedCriteria, exclusionaryAtStart, strings.excludePrefix);
+
+      onEnableEdit(true);
+      onSourceChange(sourceRef.current, partId, newTitle);
+      setLocalTitle(newTitle);
+    } finally {
+      dispatch(titleGenerationEnded(partId));
     }
-    const newTitle = combineHRTitleWithAICriteria(hrTitle, aiTitle, hasManagerAtStart, strings.HROnboarding.withSummarizedCriteria, exclusionaryAtStart, strings.excludePrefix);
-
-    onEnableEdit(true);
-    onSourceChange(sourceRef.current, partId, newTitle);
-    setLocalTitle(newTitle);
   };
 
   const getPickerSuggestions = async (
@@ -810,17 +841,13 @@ const getOptions = (
     return input;
   }
 
-  const handleOrgLeaderChange = (items?: IPersonaProps[] | undefined) => {
+  const handleOrgLeaderChange = async (items?: IPersonaProps[] | undefined) => {
     setIncludeOrg(true);
-    setIsDisabled(true);
     if (items !== undefined && items.length > 0) {
-      let newSource: HRSourcePartSource = {
-        ...props.source,
-        manager: {
-          ...props.source.manager,
-          id: items[0].key as number
-        }
-      };
+      setIsDisabled(true);
+      // items[0].key is the suggestion list index, NOT an employee id, so it must never be
+      // written to manager.id. The real id is stored once fetchOrgLeaderDetails resolves it.
+      setPendingOrgLeaderPersona(items[0]);
       const currentTitle = localTitle || props.title || "";
       const newTitle = updateHRTitleWithNewLeader(
         currentTitle,
@@ -834,15 +861,38 @@ const getOptions = (
         }
       );
       setLocalTitle(newTitle);
-      onSourceChange(newSource, partId, newTitle);
-      dispatch(fetchOrgLeaderDetails({
+      onSourceChange(props.source, partId, newTitle);
+      // Await the objectId -> employeeId lookup and write the result through directly.
+      // Relying on a downstream effect made persistence dependent on fragile ordering
+      // (and on Redux state that other rule cards can overwrite).
+      const result = await dispatch(fetchOrgLeaderDetails({
         objectId: items[0].id as string,
         key: items[0].key as number,
         text: items[0].text as string,
         partId: partId as string
       }));
-      pendingOrgLeaderObjectIdRef.current = items[0].id as string;
-      setOrgLeaderUpdated(true);
+      const details = result.payload as GetOrgLeaderDetailsResponse | undefined;
+      if (details && details.employeeId > 0) {
+        applyResolvedOrgLeader(details.employeeId, details.maxDepth, newTitle);
+      } else {
+        // The leader could not be resolved in the HR source, so nothing is persisted.
+        setPendingOrgLeaderPersona(undefined);
+        setOrgErrorMessage(hrSource?.name && hrSource?.name !== "" ?
+          (items[0].text ?? '') + strings.HROnboarding.customOrgLeaderMissingErrorMessage + (hrSource?.customLabel || hrSource?.name) + strings.HROnboarding.source :
+          (items[0].text ?? '') + strings.HROnboarding.orgLeaderMissingErrorMessage);
+      }
+      setIsDisabled(false);
+    } else {
+      // Picker was cleared: drop the stored leader instead of silently keeping the old one.
+      setPendingOrgLeaderPersona(undefined);
+      pendingOrgLeaderObjectIdRef.current = undefined;
+      setOrgLeaderUpdated(false);
+      const clearedSource: HRSourcePartSource = {
+        ...props.source,
+        manager: { ...props.source.manager, id: undefined, depth: undefined }
+      };
+      setSource(clearedSource);
+      onSourceChange(clearedSource, partId, localTitle || props.title);
     }
   };
 
@@ -2462,42 +2512,46 @@ const getOptions = (
 
   return (
     <div className={classNames.root} style={detailsOnly ? { maxWidth: '100%' } : undefined}>
-      {!detailsOnly && (<>
-      <Label>{strings.HROnboarding.includeOrg}</Label>
-      <ChoiceGroup
-        data-testid="hr-include-org-choice"
-        selectedKey={(includeOrg || source?.manager?.id) ? strings.yes : strings.no}
-        options={yesNoOptions}
-        onChange={handleIncludeOrgChange}
-        styles={{
-          root: classNames.horizontalChoiceGroup,
-          flexContainer: classNames.horizontalChoiceGroupContainer
-        }}
-        disabled={!isJobWriter || !isEditable}
-      />
-      </>)}
-
-{!detailsOnly && (includeOrg || (source?.manager?.id && objectIdEmployeeIdMapping[source.manager.id])) && (
-      <Stack horizontal verticalAlign="center" tokens={stackTokens}>
+      {!detailsOnly && <Separator styles={{ root: classNames.sectionSeparator }} />}
+      {!detailsOnly && (
+      <Stack horizontal styles={{ root: { gap: '10%' } }}>
         <Stack.Item align="start">
-          <OrgLeader
-            selectedItems={source?.manager?.id && objectIdEmployeeIdMapping[source.manager.id] && !isDisabled ? [
-              {
-                key: objectIdEmployeeIdMapping[source.manager.id]?.objectId?.toString() || "",
-                text: objectIdEmployeeIdMapping[source.manager.id]?.text?.toString() || ""
-              },
-            ] : undefined}
-            onResolveSuggestions={getPickerSuggestions}
-            onInputChange={handleOrgLeaderInputChange}
-            onChange={handleOrgLeaderChange}
+          <Label>{strings.HROnboarding.includeOrg}</Label>
+          <ChoiceGroup
+            data-testid="hr-include-org-choice"
+            selectedKey={(includeOrg || source?.manager?.id) ? strings.yes : strings.no}
+            options={yesNoOptions}
+            onChange={handleIncludeOrgChange}
+            styles={{
+              root: classNames.horizontalChoiceGroup,
+              flexContainer: classNames.horizontalChoiceGroupContainer
+            }}
             disabled={!isJobWriter || !isEditable}
-            showError={!!(source?.manager?.id && objectIdEmployeeIdMapping[source.manager.id]?.text == undefined)}
           />
         </Stack.Item>
 
-        <Stack.Item align="start">
+        {(includeOrg || !!(source?.manager?.id && objectIdEmployeeIdMapping[source.manager.id])) && (
+        <div style={{ display: 'flex', gap: 20 }}>
           <div>
-             <div className={classNames.labelContainer}>
+            <OrgLeader
+              selectedItems={pendingOrgLeaderPersona
+                ? [pendingOrgLeaderPersona]
+                : (source?.manager?.id && objectIdEmployeeIdMapping[source.manager.id] && !isDisabled ? [
+                {
+                  key: objectIdEmployeeIdMapping[source.manager.id]?.objectId?.toString() || "",
+                  text: objectIdEmployeeIdMapping[source.manager.id]?.text?.toString() || ""
+                },
+              ] : undefined)}
+              onResolveSuggestions={getPickerSuggestions}
+              onInputChange={handleOrgLeaderInputChange}
+              onChange={handleOrgLeaderChange}
+              disabled={!isJobWriter || !isEditable}
+              showError={!!(source?.manager?.id && objectIdEmployeeIdMapping[source.manager.id]?.text == undefined)}
+            />
+          </div>
+
+          <div>
+            <div className={classNames.labelContainer}>
               <Label>{strings.HROnboarding.depth}</Label>
               <TooltipHost content={strings.HROnboarding.depthInfo} id="toolTipDepthId" calloutProps={{ gapSpace: 0 }}>
                 <IconButton title={strings.HROnboarding.depthInfo} iconProps={{ iconName: "Info" }} aria-describedby="toolTipDepthId" />
@@ -2512,15 +2566,16 @@ const getOptions = (
               disabled={source?.manager?.id == undefined || isDisabled || !isJobWriter || !isEditable}
             />
           </div>
-        </Stack.Item>
+        </div>
+        )}
       </Stack>
-       )}
+      )}
 
       {!detailsOnly && (<>
       <div className={classNames.error} role="alert" aria-live="assertive" aria-atomic="true">
-        {orgLeaderDataReturned && orgLeaderDetails.employeeId === 0 && partId === orgLeaderDetails.partId && orgErrorMessage}
+        {orgErrorMessage}
       </div>
-      <br />
+      <Separator styles={{ root: classNames.sectionSeparator }} />
       </>)}
 
       <Stack horizontal horizontalAlign="space-between" verticalAlign="center" tokens={stackTokens}>
@@ -2550,18 +2605,13 @@ const getOptions = (
         <PrimaryButton
           text={strings.HROnboarding.generateTitle}
           onClick={async () => {
-            setIsManualGenerating(true);
-            try {
-              await generateTitle();
-            } finally {
-              setIsManualGenerating(false);
-            }
+            await generateTitle();
           }}
-          disabled={!isJobWriter || !isEditable}
+          disabled={!isJobWriter || !isEditable || isTitleGenerating}
         />
         </div>
         <div className={classNames.generateTitleSpinner}>
-        {isManualGenerating && (<Spinner size={SpinnerSize.small} label={strings.HROnboarding.generatingTitleText} />)}
+        {isTitleGenerating && (<Spinner size={SpinnerSize.small} label={strings.HROnboarding.generatingTitleText} />)}
         </div>
       </div>
       </div>

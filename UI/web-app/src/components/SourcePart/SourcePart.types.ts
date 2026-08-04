@@ -22,8 +22,6 @@ export type SourcePartStyles = {
   content: IStyle;
   controls: IStyle;
   advancedQuery: IStyle;
-  deleteButton: IStyle;
-  error: IStyle;
   dropdownTitle: IStyle;
   shimmer: IStyle;
 };
@@ -39,8 +37,6 @@ export type SourcePartProps = React.AllHTMLAttributes<HTMLDivElement> & {
    */
   className?: string;
   partId: string;
-  onDelete: (item?: any, partId?: string, ev?: React.FocusEvent<HTMLElement>) => void;
-  totalSourceParts: number;
   query: SourcePartQuery;
   part: ISourcePart;
   isNew?: boolean;

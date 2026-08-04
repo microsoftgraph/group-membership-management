@@ -17,14 +17,7 @@ import {
         fontFamily: 'Segoe UI',
         gap: 16,
         display: 'flex',
-        flexDirection: 'column',
-        paddingTop: 18,
-        paddingBottom: 18,
-        paddingLeft: 22,
-        paddingRight: 22,
-        borderRadius: 10,
-        marginBottom: 12,
-        backgroundColor: theme.palette.white
+        flexDirection: 'column'
       }, className],
       horizontalChoiceGroup: {
         display: 'flex',

@@ -47,7 +47,7 @@ export const fetchOrgLeaderDetailsUsingId = createAsyncThunk<
   GetOrgLeaderDetailsResponse,
   GetOrgLeaderDetailsUsingIdRequest,
   ThunkConfig
->('orgLeaderDetails', async (GetOrgLeaderDetailsUsingIdRequest, { extra }) => {
+>('orgLeaderDetailsUsingId', async (GetOrgLeaderDetailsUsingIdRequest, { extra }) => {
   const { graphApi } = extra.apis;
   const { authenticationService } = extra.services;
   const token = await authenticationService.getTokenAsync(TokenType.GMM);

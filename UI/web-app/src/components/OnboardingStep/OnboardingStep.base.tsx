@@ -21,7 +21,7 @@ const getClassNames = classNamesFunction<
 >();
 
 export const OnboardingStepBase: React.FunctionComponent<IOnboardingStepProps> = (props) => {
-  const { className, styles, children, stepTitle, stepDescription, headerAction, flushWithContent } = props;
+  const { className, styles, children, stepTitle, stepDescription, headerAction, flushWithContent, singleCard } = props;
 
   const classNames: IProcessedStyleSet<IOnboardingStepStyles> = getClassNames(
     styles,
@@ -29,6 +29,7 @@ export const OnboardingStepBase: React.FunctionComponent<IOnboardingStepProps> =
       className,
       theme: useTheme(),
       flushWithContent,
+      singleCard,
     }
   );
 
@@ -44,7 +45,7 @@ export const OnboardingStepBase: React.FunctionComponent<IOnboardingStepProps> =
         </PageSection>
         <Separator className={classNames.headerDivider} />
       </div>
-      <div>
+      <div className={classNames.contentCard}>
         <PageSection>
           <div>
             {children}

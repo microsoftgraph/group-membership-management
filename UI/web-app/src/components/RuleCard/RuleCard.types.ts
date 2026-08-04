@@ -12,6 +12,8 @@ export type RuleCardStyles = {
   exclusiveBadge: IStyle;
   typeBadge: IStyle;
   title: IStyle;
+  titleGenerating: IStyle;
+  titleGeneratingText: IStyle;
   header: IStyle;
   actions: IStyle;
   actionButton: IStyle;

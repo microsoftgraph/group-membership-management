@@ -7,6 +7,7 @@ export type RulesEditorStyles = {
   root: IStyle;
   headerBar: IStyle;
   description: IStyle;
+  headerActions: IStyle;
   addButton: IStyle;
   details: IStyle;
   emptyState: IStyle;

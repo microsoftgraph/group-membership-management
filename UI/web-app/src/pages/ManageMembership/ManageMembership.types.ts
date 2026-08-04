@@ -12,9 +12,8 @@ export interface IManageMembershipStyles {
     root: IStyle;
     bottomContainer: IStyle;
     circlesContainer: IStyle;
-    circleIcon: IStyle;
+    stepIndicatorText: IStyle;
     nextButtonContainer: IStyle;
-    nextButtonIcon: IStyle;
     backButtonContainer: IStyle;
     overlay: IStyle;
     pageHeaderRow: IStyle;

@@ -196,7 +196,7 @@ test.describe('Job Details Tests', () => {
     }
 
     // Select group membership - use dropdown directly to avoid depending on source part label
-    await page.getByLabel('Source Type').first().click();
+    await page.getByLabel('Select rule type').first().click();
     await page.getByRole('option', { name: 'Group Membership' }).click();
 
     // Search and select group name
@@ -344,15 +344,15 @@ test.describe('Job Details Tests', () => {
 
     // Verify it's inclusionary by default
     await page.getByRole('button', { name: 'Add Source Part' }).click();
-    const includeSourcePart = page.locator('div').filter({ hasText: /Include Source Part/i }).first();
-    await expect(includeSourcePart.getByRole('radio', { name: 'Yes' })).toBeChecked();
+    const includeSourcePart = page.locator('div').filter({ hasText: /What should happen with the people that match this rule\?/i }).first();
+    await expect(includeSourcePart.getByRole('radio', { name: 'Add people that match this rule' })).toBeChecked();
 
     // Verify updating the value updates the query correctly
-    await includeSourcePart.getByRole('radio', { name: 'No' }).click();
+    await includeSourcePart.getByRole('radio', { name: 'Remove people that match this rule' }).click();
     await page.getByLabel('Advanced View').click();
     await expect(page.locator('#advancedQueryTextField')).toContainText('"exclusionary":true');
     await page.getByLabel('Advanced View').click();
-    await includeSourcePart.getByRole('radio', { name: 'Yes' }).click();
+    await includeSourcePart.getByRole('radio', { name: 'Add people that match this rule' }).click();
     await page.getByLabel('Advanced View').click();
     await expect(page.locator('#advancedQueryTextField')).toContainText('"exclusionary":false');
     console.log('✅ Inclusionary logic correctly updates the query test completed successfully.');

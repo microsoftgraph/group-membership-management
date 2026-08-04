@@ -6,7 +6,8 @@ import { useDispatch, useSelector } from 'react-redux';
 import {
   classNamesFunction,
   IProcessedStyleSet,
-  IconButton,
+  ActionButton,
+  IButtonStyles,
   Persona,
   PersonaSize,
   Spinner,
@@ -28,6 +29,7 @@ import { fetchOrgLeaderDetailsUsingId } from '../../store/orgLeaderDetails.api';
 import { useSelectedGroupById } from '../../store/groupPart.slice';
 import { searchDestinations } from '../../store/manageMembership.api';
 import { selectSelectedJobDetails } from '../../store/jobs.slice';
+import { selectPartsGeneratingTitle } from '../../store/title.slice';
 
 const getClassNames = classNamesFunction<RuleCardStyleProps, RuleCardStyles>();
 
@@ -40,19 +42,36 @@ type DetailRow = {
 
 export const RuleCardBase: React.FunctionComponent<RuleCardProps> = (props: RuleCardProps) => {
   const { className, styles, part, selected, onSelect, showActions, onDuplicate, onDelete } = props;
+  const theme = useTheme();
   const classNames: IProcessedStyleSet<RuleCardStyles> = getClassNames(styles, {
     className,
-    theme: useTheme(),
+    theme,
     selected,
   });
   const strings = useStrings();
   const ruleStrings = strings.Components.RuleCard;
   const dispatch = useDispatch<AppDispatch>();
 
+  // Applied via the `styles` prop rather than a className so these win over Fluent's
+  // default ActionButton hover palette (which turns the label near-black).
+  const actionButtonStyles: IButtonStyles = {
+    root: { height: 24, padding: 0, backgroundColor: 'transparent' },
+    rootHovered: { backgroundColor: 'transparent', color: theme.palette.themePrimary },
+    rootPressed: { backgroundColor: 'transparent', color: theme.palette.themeDarker },
+    label: { margin: 0, fontSize: 13, fontWeight: 400, color: theme.palette.neutralPrimary },
+    labelHovered: { color: theme.palette.themePrimary },
+    icon: { margin: '0 6px 0 0', fontSize: 14, color: theme.palette.themePrimary },
+    iconHovered: { color: theme.palette.themePrimary },
+    iconPressed: { color: theme.palette.themeDarker },
+    iconDisabled: { color: theme.palette.neutralTertiary },
+  };
+
   const hrSource = useSelector(selectSource);
   const isSourceLoading = useSelector(selectIsSourceLoading);
   const orgLeaderMapping = useSelector(selectObjectIdEmployeeIdMapping);
   const jobDetails = useSelector(selectSelectedJobDetails);
+  const partsGeneratingTitle = useSelector(selectPartsGeneratingTitle);
+  const isTitleGenerating = partsGeneratingTitle.includes(part.id);
 
   const groupId = IsGroupMembershipSourcePartQuery(part.query) ? part.query.source : '';
   const groupPersona = useSelectedGroupById(groupId);
@@ -204,31 +223,11 @@ export const RuleCardBase: React.FunctionComponent<RuleCardProps> = (props: Rule
       onClick={handleSelect}
       onKeyDown={handleKeyDown}
     >
-      <div className={classNames.header}>
-        <div className={classNames.badges}>
-          <span className={isExclusionary ? classNames.exclusiveBadge : classNames.inclusiveBadge}>
-            {isExclusionary ? ruleStrings.exclusive : ruleStrings.inclusive}
-          </span>
-          <span className={classNames.typeBadge}>{getTypeLabel()}</span>
-        </div>
-        {showActions && (
-          <div className={classNames.actions}>
-            <IconButton
-              className={classNames.actionButton}
-              iconProps={{ iconName: 'Copy' }}
-              ariaLabel={ruleStrings.duplicateRuleAria.replace('{0}', part.title)}
-              title={ruleStrings.duplicateRule}
-              onClick={handleDuplicate}
-            />
-            <IconButton
-              className={classNames.actionButton}
-              iconProps={{ iconName: 'Delete' }}
-              ariaLabel={ruleStrings.deleteRuleAria.replace('{0}', part.title)}
-              title={ruleStrings.deleteRule}
-              onClick={handleDelete}
-            />
-          </div>
-        )}
+      <div className={classNames.badges}>
+        <span className={isExclusionary ? classNames.exclusiveBadge : classNames.inclusiveBadge}>
+          {isExclusionary ? ruleStrings.exclusive : ruleStrings.inclusive}
+        </span>
+        <span className={classNames.typeBadge}>{getTypeLabel()}</span>
       </div>
       {isHiddenMembership && (
         <div className={classNames.hiddenIndicator}>
@@ -237,6 +236,12 @@ export const RuleCardBase: React.FunctionComponent<RuleCardProps> = (props: Rule
         </div>
       )}
       <Text className={classNames.title}>{part.title}</Text>
+      {isTitleGenerating && (
+        <div className={classNames.titleGenerating}>
+          <Spinner size={SpinnerSize.xSmall} ariaLabel={ruleStrings.titleGenerating} />
+          <Text className={classNames.titleGeneratingText}>{ruleStrings.titleGenerating}</Text>
+        </div>
+      )}
       {detailRows.length > 0 && (
         <div className={classNames.detailRows}>
           {detailRows.map((row) => (
@@ -255,6 +260,28 @@ export const RuleCardBase: React.FunctionComponent<RuleCardProps> = (props: Rule
               )}
             </div>
           ))}
+        </div>
+      )}
+      {showActions && (
+        <div className={classNames.actions}>
+          <ActionButton
+            className={classNames.actionButton}
+            styles={actionButtonStyles}
+            iconProps={{ iconName: 'Copy' }}
+            ariaLabel={ruleStrings.duplicateRuleAria.replace('{0}', part.title)}
+            onClick={handleDuplicate}
+          >
+            {ruleStrings.duplicateRule}
+          </ActionButton>
+          <ActionButton
+            className={classNames.actionButton}
+            styles={actionButtonStyles}
+            iconProps={{ iconName: 'Delete' }}
+            ariaLabel={ruleStrings.deleteRuleAria.replace('{0}', part.title)}
+            onClick={handleDelete}
+          >
+            {ruleStrings.deleteRule}
+          </ActionButton>
         </div>
       )}
     </div>

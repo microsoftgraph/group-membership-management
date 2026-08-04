@@ -38,29 +38,17 @@ export const getStyles = (props: RuleCardStyleProps): RuleCardStyles => {
       className,
     ],
     selected: {},
-    header: {
-      display: 'flex',
-      flexDirection: 'row',
-      justifyContent: 'space-between',
-      alignItems: 'flex-start',
-      gap: 6,
-    },
+    header: {},
     actions: {
       display: 'flex',
       flexDirection: 'row',
-      flex: '0 0 auto',
-      gap: 2,
+      alignItems: 'center',
+      flexWrap: 'wrap',
+      gap: 12,
+      marginTop: 4,
     },
     actionButton: {
-      color: theme.palette.neutralSecondary,
-      height: 28,
-      width: 28,
-      selectors: {
-        ':hover': {
-          color: theme.palette.themePrimary,
-          backgroundColor: theme.palette.neutralLighter,
-        },
-      },
+      flex: '0 0 auto',
     },
     hiddenIndicator: {
       display: 'flex',
@@ -121,6 +109,17 @@ export const getStyles = (props: RuleCardStyleProps): RuleCardStyles => {
       WebkitLineClamp: 2,
       WebkitBoxOrient: 'vertical',
       overflow: 'hidden',
+    },
+    titleGenerating: {
+      display: 'flex',
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+    },
+    titleGeneratingText: {
+      fontSize: 12,
+      fontStyle: 'italic',
+      color: theme.palette.neutralSecondary,
     },
     detailRows: {
       display: 'flex',

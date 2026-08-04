@@ -4,7 +4,7 @@
 import { createSlice } from '@reduxjs/toolkit';
 import { v4 as uuidv4 } from 'uuid';
 import type { RootState } from './store';
-import { fetchOrgLeaderDetails } from './orgLeaderDetails.api';
+import { fetchOrgLeaderDetails, fetchOrgLeaderDetailsUsingId } from './orgLeaderDetails.api';
 
 type ObjectIdEmployeeIdMapping = Record<number, { objectId: string; text: string; maxDepth: number; }>;
 
@@ -59,6 +59,19 @@ export const orgLeaderDetailsSlice = createSlice({
     });
     builder.addCase(fetchOrgLeaderDetails.rejected, (state) => {
       state.orgLeaderDataReturned = false;
+    });
+    // Reverse lookups (employeeId -> leader) only enrich the mapping used for display.
+    // They must not overwrite the currently selected leader, otherwise a card resolving
+    // a different rule's leader clobbers an in-flight selection.
+    builder.addCase(fetchOrgLeaderDetailsUsingId.fulfilled, (state, action) => {
+      state.mapping = {
+        ...state.mapping,
+        [action.payload.employeeId]: {
+          objectId: action.payload.objectId,
+          text: action.payload.text,
+          maxDepth: action.payload.maxDepth
+        },
+      };
     });
   }
 });

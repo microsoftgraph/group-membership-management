@@ -19,7 +19,7 @@ export const getStyles = (props: SourcePartStyleProps): SourcePartStyles => {
             paddingRight: 22,
             borderRadius: 10,
             marginBottom: 12,
-            backgroundColor: theme.palette.white
+            backgroundColor: theme.palette.white,
         },
         header: {
             display: 'flex',
@@ -92,20 +92,6 @@ export const getStyles = (props: SourcePartStyleProps): SourcePartStyles => {
             justifyContent: 'flex-start',
             flex: '1 0 auto',
             width: '100%',
-        },
-        deleteButton: {
-            marginLeft: 'auto',
-            color: theme.semanticColors.primaryButtonBackground,
-            borderColor: theme.semanticColors.primaryButtonBackground,
-            borderRadius: 4
-        },
-        error: {
-            color: theme.semanticColors.errorText,
-            fontSize: 12,
-            fontFamily: 'Segoe UI',
-            fontWeight: 400,
-            marginTop: 4,
-            marginBottom: 4
         },
         dropdownTitle: {
             borderRadius: 4,

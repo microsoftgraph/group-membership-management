@@ -15,7 +15,6 @@ export const getStyles = (props: HRQuerySourceStyleProps): HRQuerySourceStyles =
       display: 'flex',
       flexDirection: 'column',
       width: '100%',
-      maxWidth: 600
     }, className],
     horizontalChoiceGroup: {
       display: 'flex',
@@ -33,6 +32,10 @@ export const getStyles = (props: HRQuerySourceStyleProps): HRQuerySourceStyles =
     },
     separator: {
       minWidth: 1200
+    },
+    sectionSeparator: {
+      marginTop: 0,
+      marginBottom: 0
     },
     cardHeader: {
       display: 'flex',

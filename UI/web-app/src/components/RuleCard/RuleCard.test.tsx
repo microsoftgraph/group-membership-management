@@ -6,12 +6,16 @@ import { fireEvent, screen } from '@testing-library/react';
 import { RuleCard } from './RuleCard';
 import { renderWithProviders } from '../../testing/renderWithProviders';
 import groupPartReducer from '../../store/groupPart.slice';
+import titleReducer from '../../store/title.slice';
 import type { RootState } from '../../store';
 import type { ISourcePart } from '../../models/ISourcePart';
 import { SourcePartType } from '../../models/SourcePartType';
 
 const getGroupPartState = (): RootState['groupPart'] =>
   groupPartReducer(undefined, { type: 'test/init' });
+
+const getTitleState = (): RootState['title'] =>
+  titleReducer(undefined, { type: 'test/init' });
 
 const hrPart = (overrides: Partial<ISourcePart> = {}): ISourcePart => ({
   id: 'hr-1',
@@ -149,5 +153,25 @@ describe('RuleCard', () => {
     renderWithProviders(<RuleCard part={groupPart()} onSelect={() => {}} />, { preloadedState });
 
     expect(screen.queryByText('Hidden membership group')).not.toBeInTheDocument();
+  });
+
+  it('shows the generating-title indicator while the rule title is being recalculated', () => {
+    const preloadedState: Partial<RootState> = {
+      title: { ...getTitleState(), partsGeneratingTitle: ['hr-1'] },
+    };
+
+    renderWithProviders(<RuleCard part={hrPart()} onSelect={() => {}} />, { preloadedState });
+
+    expect(screen.getAllByText('Generating title...').length).toBeGreaterThan(0);
+  });
+
+  it('does not show the generating-title indicator for other rules', () => {
+    const preloadedState: Partial<RootState> = {
+      title: { ...getTitleState(), partsGeneratingTitle: ['some-other-part'] },
+    };
+
+    renderWithProviders(<RuleCard part={hrPart()} onSelect={() => {}} />, { preloadedState });
+
+    expect(screen.queryByText('Generating title...')).not.toBeInTheDocument();
   });
 });

@@ -1,0 +1,124 @@
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT license.
+
+import * as React from 'react';
+import { useDispatch, useSelector } from 'react-redux';
+import { useLocation, useParams } from 'react-router-dom';
+import { mergeStyles, keyframes, useTheme } from '@fluentui/react';
+import { AppDispatch } from '../../store';
+import { useStrings } from '../../store/hooks';
+import { selectIsJobWriter, selectIsAIOnboardingChat } from '../../store/roles.slice';
+import { selectIsAICopilotEnabled } from '../../store/settings.slice';
+import { openPanel, selectCopilotMessages } from '../../store/copilot.slice';
+
+const sparkleAnimation1 = keyframes({
+  '0%, 100%': { opacity: 1, transform: 'scale(1)' },
+  '50%': { opacity: 0.2, transform: 'scale(0.5)' },
+});
+
+const sparkleAnimation2 = keyframes({
+  '0%, 100%': { opacity: 0.3, transform: 'scale(0.5)' },
+  '50%': { opacity: 1, transform: 'scale(1)' },
+});
+
+const sparkleClass1 = mergeStyles({
+  animationName: sparkleAnimation1,
+  animationDuration: '2s',
+  animationTimingFunction: 'ease-in-out',
+  animationIterationCount: 'infinite',
+  transformOrigin: 'center',
+  transformBox: 'fill-box',
+});
+
+const sparkleClass2 = mergeStyles({
+  animationName: sparkleAnimation2,
+  animationDuration: '2s',
+  animationTimingFunction: 'ease-in-out',
+  animationIterationCount: 'infinite',
+  transformOrigin: 'center',
+  transformBox: 'fill-box',
+});
+
+const getCopilotButtonClass = (theme: ReturnType<typeof useTheme>) => mergeStyles({
+  display: 'flex',
+  alignItems: 'center',
+  gap: '8px',
+  height: 32,
+  padding: '0 11px',
+  borderRadius: 4,
+  border: '2px solid transparent',
+  backgroundImage: `linear-gradient(#F4F4FC, #F4F4FC), linear-gradient(90deg, #0086F0, #8C90F4, #82C7FF)`,
+  backgroundOrigin: 'border-box',
+  backgroundClip: 'padding-box, border-box',
+  color: '#464775',
+  fontFamily: 'Segoe UI',
+  fontSize: 14,
+  fontWeight: 400,
+  lineHeight: '20px',
+  letterSpacing: '0%',
+  cursor: 'pointer',
+  whiteSpace: 'nowrap',
+  transition: 'box-shadow 0.2s ease, border-color 0.2s ease',
+  selectors: {
+    ':hover': {
+      backgroundImage: `linear-gradient(#ECECFA, #ECECFA), linear-gradient(90deg, #0086F0, #8C90F4, #82C7FF)`,
+    },
+    ':disabled': {
+      opacity: 0.5,
+      cursor: 'not-allowed',
+    },
+    // Respect Windows/High-contrast themes: fall back to system colors instead of
+    // hard-coded brand hex/gradients, which are not guaranteed to render in forced-colors mode.
+    '@media (forced-colors: active)': {
+      backgroundImage: 'none',
+      backgroundColor: 'ButtonFace',
+      border: '2px solid ButtonText',
+      color: 'ButtonText',
+      selectors: {
+        ':hover': {
+          backgroundColor: 'Highlight',
+          color: 'HighlightText',
+        },
+      },
+    },
+  },
+});
+
+export const CopilotTriggerButton: React.FunctionComponent = () => {
+  const dispatch = useDispatch<AppDispatch>();
+  const strings = useStrings();
+  const theme = useTheme();
+  const isJobWriter = useSelector(selectIsJobWriter);
+  const isAIOnboardingChat = useSelector(selectIsAIOnboardingChat);
+  const isAICopilotEnabled = useSelector(selectIsAICopilotEnabled);
+  const hasCopilotHistory = useSelector(selectCopilotMessages).length > 0;
+
+  // Derive edit-state synchronously from the route (mirrors the parent's jobId derivation)
+  // so the button never flashes for one render before the parent effect dispatches
+  // setIsEditingExistingJob(true) on direct navigation into the edit flow.
+  const location = useLocation();
+  const { jobId: urlJobId } = useParams<{ jobId: string }>();
+  const locationState = location.state as { jobId?: string } | undefined;
+  const isEditingExistingJob = !!(locationState?.jobId ?? urlJobId);
+
+  // Only offer Copilot during a new onboarding, never when updating an existing job.
+  if (!isAIOnboardingChat || isAICopilotEnabled === false || isEditingExistingJob) return null;
+
+  return (
+    <button
+      onClick={() => dispatch(openPanel())}
+      disabled={!isJobWriter}
+      className={getCopilotButtonClass(theme)}
+    >
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+        <path className={sparkleClass1} d="M8 4 L9 7 L12 8 L9 9 L8 12 L7 9 L4 8 L7 7 Z" fill="currentColor" />
+        <path className={sparkleClass2} d="M13 1 L13.5 2.5 L15 3 L13.5 3.5 L13 5 L12.5 3.5 L11 3 L12.5 2.5 Z" fill="currentColor" />
+      </svg>
+      <span>
+        {hasCopilotHistory
+          ? (strings.Copilot?.triggerButtonResume || 'Let Copilot resume building it for you')
+          : (strings.Copilot?.triggerButton || 'Let Copilot build it for you')}
+      </span>
+    </button>
+  );
+};

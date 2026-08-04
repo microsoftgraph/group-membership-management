@@ -1,13 +1,11 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-import React, { useId } from 'react';
+import React from 'react';
 import {
   classNamesFunction,
   type IProcessedStyleSet,
   Label,
-  IconButton,
-  TooltipHost,
   NormalPeoplePicker,
   DirectionalHint,
 } from '@fluentui/react';
@@ -35,11 +33,7 @@ export const OrgLeaderBase: React.FunctionComponent<OrgLeaderProps> = (
     showError,
     dataTestId = 'hr-org-leader-picker',
     calloutWidth = 300,
-    tooltipId,
   } = props;
-
-  const generatedId = useId();
-  const actualTooltipId = tooltipId || `toolTipOrgLeader-${generatedId}`;
 
   const strings = useStrings();
   const classNames: IProcessedStyleSet<OrgLeaderStyles> = getClassNames(styles, {
@@ -51,9 +45,6 @@ export const OrgLeaderBase: React.FunctionComponent<OrgLeaderProps> = (
     <div className={classNames.root}>
       <div className={classNames.labelContainer}>
         <Label>{strings.HROnboarding.provideOrgLeader}</Label>
-        <TooltipHost content={strings.HROnboarding.orgLeaderInfo} id={actualTooltipId} calloutProps={{ gapSpace: 0 }}>
-          <IconButton title={strings.HROnboarding.orgLeaderInfo} iconProps={{ iconName: 'Info' }} aria-describedby={actualTooltipId} />
-        </TooltipHost>
       </div>
       <NormalPeoplePicker
         data-testid={dataTestId}

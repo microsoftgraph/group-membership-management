@@ -7,6 +7,8 @@ import titleReducer, {
   upsertGeneratedTitle,
   clearGeneratedHRParts,
   clearGeneratedGroupParts,
+  titleGenerationStarted,
+  titleGenerationEnded,
   TitleState,
 } from './title.slice';
 import {
@@ -70,6 +72,25 @@ describe('title.slice — reducers', () => {
     const seeded: TitleState = { ...initial, generatedGroupParts: [makeSourcePart('s1')] };
     const state = titleReducer(seeded, clearGeneratedGroupParts());
     expect(state.generatedGroupParts).toEqual([]);
+  });
+
+  describe('title generation progress tracking', () => {
+    it('titleGenerationStarted tracks the part id', () => {
+      const state = titleReducer(initial, titleGenerationStarted('p1'));
+      expect(state.partsGeneratingTitle).toEqual(['p1']);
+    });
+
+    it('titleGenerationStarted does not duplicate an already tracked part id', () => {
+      const seeded: TitleState = { ...initial, partsGeneratingTitle: ['p1'] };
+      const state = titleReducer(seeded, titleGenerationStarted('p1'));
+      expect(state.partsGeneratingTitle).toEqual(['p1']);
+    });
+
+    it('titleGenerationEnded removes only the given part id', () => {
+      const seeded: TitleState = { ...initial, partsGeneratingTitle: ['p1', 'p2'] };
+      const state = titleReducer(seeded, titleGenerationEnded('p1'));
+      expect(state.partsGeneratingTitle).toEqual(['p2']);
+    });
   });
 });
 

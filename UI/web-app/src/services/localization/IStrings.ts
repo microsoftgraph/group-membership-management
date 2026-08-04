@@ -198,6 +198,7 @@ export type IStrings = {
       duplicateRuleAria: string;
       deleteRuleAria: string;
       orgLeaderLoading: string;
+      titleGenerating: string;
       hiddenGroup: string;
     }
   },

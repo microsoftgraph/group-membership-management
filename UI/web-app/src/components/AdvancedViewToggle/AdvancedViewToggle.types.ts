@@ -4,19 +4,16 @@
 import { type IStyle, type IStyleFunctionOrObject, type ITheme } from '@fluentui/react';
 import type React from 'react';
 
-export type MembershipConfigurationStyles = {
+export type AdvancedViewToggleStyles = {
   root: IStyle;
-  addButtonContainer: IStyle;
-  expandCollapseButton: IStyle;
-  card: IStyle;
 };
 
-export type MembershipConfigurationStyleProps = {
+export type AdvancedViewToggleStyleProps = {
   className?: string;
   theme: ITheme;
 };
 
-export type MembershipConfigurationProps = React.AllHTMLAttributes<HTMLDivElement> & {
+export type AdvancedViewToggleProps = React.AllHTMLAttributes<HTMLDivElement> & {
   /**
    * Optional className to apply to the root of the component.
    */
@@ -25,6 +22,5 @@ export type MembershipConfigurationProps = React.AllHTMLAttributes<HTMLDivElemen
   /**
    * Call to provide customized styling that will layer on top of the variant rules.
    */
-  styles?: IStyleFunctionOrObject<MembershipConfigurationStyleProps, MembershipConfigurationStyles>;
-  isEditable?: boolean;
+  styles?: IStyleFunctionOrObject<AdvancedViewToggleStyleProps, AdvancedViewToggleStyles>;
 };

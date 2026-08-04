@@ -21,19 +21,8 @@ export const getStyles = (props: MembershipConfigurationStyleProps): MembershipC
             marginBottom: 12,
             backgroundColor: theme.palette.white
         },
-        toggleContainer: {
-            display: 'flex',
-            flexDirection: 'row',
-            justifyContent: 'flex-end',
-        },
         card: {
-            paddingTop: 18,
-            paddingBottom: 18,
-            paddingLeft: 22,
-            paddingRight: 22,
-            borderRadius: 10,
-            marginBottom: 12,
-            backgroundColor: theme.palette.white
+            marginBottom: 12
         },
         expandCollapseButton: {
             display: 'flex',

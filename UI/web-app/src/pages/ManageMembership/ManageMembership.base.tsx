@@ -8,17 +8,18 @@ import {
   classNamesFunction,
   useTheme,
   DefaultButton, PrimaryButton,
-  Icon,
   IPersonaProps,
   Dialog, DialogType, DialogFooter,
   Spinner,
   IComboBoxOption,
   IComboBox,
+  Stack,
 } from '@fluentui/react';
 import { useNavigate, useLocation, useParams } from 'react-router-dom';
 import { Page } from '../../components/Page';
 import { PageHeader } from '../../components/PageHeader';
 import { IManageMembershipProps, IManageMembershipStyleProps, IManageMembershipStyles } from './ManageMembership.types';
+import { getNavButtonStyles } from './ManageMembership.styles';
 import { AppDispatch } from '../../store';
 import { useStrings } from '../../store/hooks';
 import { OnboardingStep } from '../../components/OnboardingStep';
@@ -72,137 +73,22 @@ import { Confirmation } from '../../components/Confirmation';
 import { selectAccountUsername } from '../../store/account.slice';
 import { setPagingBarVisible } from '../../store/pagingBar.slice';
 import { MembershipConfiguration } from '../../components/MembershipConfiguration';
+import { AdvancedViewToggle } from '../../components/AdvancedViewToggle';
 import { OnboardingSteps } from '../../models/OnboardingSteps';
 import { selectSelectedJobDetails, selectSelectedJobLoading, selectSelectedJobWithNoTitles } from '../../store/jobs.slice';
 import { fetchJobDetails, patchJobDetails } from '../../store/jobDetails.api';
 import { Loader } from '../../components/Loader';
-import { selectIsJobTenantWriter, selectIsJobWriter, selectIsAIOnboardingChat } from '../../store/roles.slice';
+import { selectIsJobTenantWriter, selectIsJobWriter } from '../../store/roles.slice';
 import { PostGroupResponse, SyncStatus } from '../../models';
 import { SyncJobQuery } from '../../models/SyncJobQuery';
 import { PatchJobRequest } from '../../models/PatchJobRequest';
 import { SyncJobChangeReason } from '../../models/SyncJobChangeReason';
 import { selectOrgLeaderDataReturned } from '../../store/orgLeaderDetails.slice';
 import { createGroup } from '../../store/groups.api';
-import { selectIsBusinessJustificationRequired, selectIsAICopilotEnabled } from '../../store/settings.slice';
+import { selectIsBusinessJustificationRequired } from '../../store/settings.slice';
 import { DestinationType } from '../../models/DestinationType';
 import { ChannelOnboardingStatusRequest } from '../../models/ChannelOnboardingStatusRequest';
 import { GroupSettings } from '../../models/GroupSettings';
-import { openPanel, selectIsPanelOpen, selectCopilotMessages } from '../../store/copilot.slice';
-import { mergeStyles, keyframes } from '@fluentui/react';
-
-const sparkleAnimation1 = keyframes({
-  '0%, 100%': { opacity: 1, transform: 'scale(1)' },
-  '50%': { opacity: 0.2, transform: 'scale(0.5)' },
-});
-
-const sparkleAnimation2 = keyframes({
-  '0%, 100%': { opacity: 0.3, transform: 'scale(0.5)' },
-  '50%': { opacity: 1, transform: 'scale(1)' },
-});
-
-const sparkleClass1 = mergeStyles({
-  animationName: sparkleAnimation1,
-  animationDuration: '2s',
-  animationTimingFunction: 'ease-in-out',
-  animationIterationCount: 'infinite',
-  transformOrigin: 'center',
-  transformBox: 'fill-box',
-});
-
-const sparkleClass2 = mergeStyles({
-  animationName: sparkleAnimation2,
-  animationDuration: '2s',
-  animationTimingFunction: 'ease-in-out',
-  animationIterationCount: 'infinite',
-  transformOrigin: 'center',
-  transformBox: 'fill-box',
-});
-
-const getCopilotButtonClass = (theme: ReturnType<typeof useTheme>) => mergeStyles({
-  display: 'flex',
-  alignItems: 'center',
-  gap: '10px',
-  borderRadius: '28px',
-  padding: '6px 16px 6px 6px',
-  border: `1px solid ${theme.palette.neutralLight}`,
-  cursor: 'pointer',
-  transition: 'box-shadow 0.2s ease, border-color 0.2s ease',
-  background: theme.palette.white,
-  selectors: {
-    ':hover': {
-      boxShadow: '0 2px 6px rgba(0, 0, 0, 0.12)',
-      borderColor: theme.palette.neutralTertiaryAlt,
-    },
-    ':disabled': {
-      opacity: 0.5,
-      cursor: 'not-allowed',
-    },
-  },
-});
-
-const CopilotTriggerButton: React.FunctionComponent = () => {
-  const dispatch = useDispatch<AppDispatch>();
-  const strings = useStrings();
-  const theme = useTheme();
-  const isJobWriter = useSelector(selectIsJobWriter);
-  const isAIOnboardingChat = useSelector(selectIsAIOnboardingChat);
-  const isAICopilotEnabled = useSelector(selectIsAICopilotEnabled);
-  const hasCopilotHistory = useSelector(selectCopilotMessages).length > 0;
-
-  // Derive edit-state synchronously from the route (mirrors the parent's jobId derivation)
-  // so the button never flashes for one render before the parent effect dispatches
-  // setIsEditingExistingJob(true) on direct navigation into the edit flow.
-  const location = useLocation();
-  const { jobId: urlJobId } = useParams<{ jobId: string }>();
-  const locationState = location.state as { jobId?: string } | undefined;
-  const isEditingExistingJob = !!(locationState?.jobId ?? urlJobId);
-
-  // Only offer Copilot during a new onboarding, never when updating an existing job.
-  if (!isAIOnboardingChat || isAICopilotEnabled === false || isEditingExistingJob) return null;
-
-  return (
-    <button
-      onClick={() => dispatch(openPanel())}
-      disabled={!isJobWriter}
-      className={getCopilotButtonClass(theme)}
-    >
-      <div style={{
-        width: '34px',
-        height: '34px',
-        borderRadius: '50%',
-        backgroundColor: theme.palette.themePrimary,
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        flexShrink: 0,
-        position: 'relative',
-      }}>
-        <Icon iconName="Contact" style={{ color: theme.palette.white, fontSize: '15px' }} />
-        <svg
-          width="16" height="16"
-          viewBox="0 0 16 16"
-          fill="none"
-          style={{ position: 'absolute', top: '-6px', right: '-6px' }}
-        >
-          {/* Larger 4-pointed star */}
-          <path className={sparkleClass1} d="M8 4 L9 7 L12 8 L9 9 L8 12 L7 9 L4 8 L7 7 Z" fill={theme.palette.themePrimary} />
-          {/* Smaller 4-pointed star */}
-          <path className={sparkleClass2} d="M13 1 L13.5 2.5 L15 3 L13.5 3.5 L13 5 L12.5 3.5 L11 3 L12.5 2.5 Z" fill={theme.palette.themePrimary} />
-        </svg>
-      </div>
-      <div style={{ display: 'flex', flexDirection: 'column', textAlign: 'left' }}>
-        <span style={{ color: theme.palette.neutralPrimary, fontWeight: 600, fontSize: '13px', lineHeight: '18px' }}>
-          {strings.Copilot?.title || 'GMM Copilot'}
-        </span>
-        <span style={{ color: theme.palette.neutralSecondary, fontSize: '11px', fontWeight: 400, lineHeight: '16px' }}>
-          {hasCopilotHistory
-            ? (strings.Copilot?.triggerButtonResume || 'Let GMM resume building for you')
-            : (strings.Copilot?.triggerButton || 'Let GMM build it for you')}
-        </span>
-      </div>
-    </button>
-  );
-};
 
 const getClassNames = classNamesFunction<
   IManageMembershipStyleProps,
@@ -214,11 +100,12 @@ export const ManageMembershipBase: React.FunctionComponent<IManageMembershipProp
 ) => {
   const { className, styles } = props;
 
+  const theme = useTheme();
   const classNames: IProcessedStyleSet<IManageMembershipStyles> = getClassNames(
     styles,
     {
       className,
-      theme: useTheme(),
+      theme,
     }
   );
   const strings = useStrings();
@@ -673,6 +560,7 @@ export const ManageMembershipBase: React.FunctionComponent<IManageMembershipProp
           {currentStep === OnboardingSteps.SelectDestination && <OnboardingStep
             stepTitle={strings.ManageMembership.labels.step1title}
             stepDescription={strings.ManageMembership.labels.step1description}
+            singleCard={true}
             children={
               <SelectDestination
                 selectedDestination={selectedDestination}
@@ -686,8 +574,16 @@ export const ManageMembershipBase: React.FunctionComponent<IManageMembershipProp
             stepTitle={strings.ManageMembership.labels.step2title}
             stepDescription={strings.ManageMembership.labels.step2description}
             headerAction={
-              <CopilotTriggerButton />
+              <Stack
+                horizontal
+                verticalAlign="center"
+                tokens={{ childrenGap: 16 }}
+                styles={{ root: { marginLeft: 'auto' } }}
+              >
+                <AdvancedViewToggle />
+              </Stack>
             }
+            singleCard={true}
             children={
               <MembershipConfiguration isEditable={true} />
             }
@@ -695,6 +591,7 @@ export const ManageMembershipBase: React.FunctionComponent<IManageMembershipProp
           {currentStep === OnboardingSteps.RunConfiguration && <OnboardingStep
             stepTitle={strings.ManageMembership.labels.step3title}
             stepDescription={strings.ManageMembership.labels.step3description}
+            singleCard={true}
             children={
               <RunConfiguration
                 thresholdExceededForAdditions={locationState?.thresholdExceededForAdditions}
@@ -712,30 +609,36 @@ export const ManageMembershipBase: React.FunctionComponent<IManageMembershipProp
               />}
           />}
           <div className={classNames.bottomContainer}>
-            {currentStep !== OnboardingSteps.SelectDestination && <div className={classNames.backButtonContainer}>
-              {!(isEditingExistingJob && currentStep === OnboardingSteps.MembershipConfiguration) &&
+            <div className={classNames.backButtonContainer}>
+              {currentStep !== OnboardingSteps.SelectDestination &&
+                !(isEditingExistingJob && currentStep === OnboardingSteps.MembershipConfiguration) &&
                 <DefaultButton
                   text={strings.previousStep}
                   iconProps={{ iconName: 'ChevronLeft' }}
                   onClick={onBackStepClick}
+                  styles={getNavButtonStyles(theme)}
                 />}
-            </div>}
+            </div>
             <div className={classNames.circlesContainer}>
-              {Array.from({ length: 4 }, (_, index) => (
-                <Icon
-                  key={index}
-                  iconName={index === currentStep ? 'CircleFill' : 'CircleRing'}
-                  className={classNames.circleIcon}
-                />
-              ))}
+              <span className={classNames.stepIndicatorText}>
+                {[
+                  strings.ManageMembership.labels.step1title,
+                  strings.ManageMembership.labels.step2title,
+                  strings.ManageMembership.labels.step3title,
+                  strings.ManageMembership.labels.step4title,
+                ][currentStep]}
+              </span>
             </div>
             <div className={classNames.nextButtonContainer}>
               {currentStep === OnboardingSteps.Confirmation ?
                 <PrimaryButton text={strings.submit} onClick={handleSaveButtonClick} disabled={isSubmitDisabled} />
-                : <DefaultButton onClick={onNextStepClick} disabled={isNextDisabled}>
-                    {strings.nextStep}
-                    <Icon iconName="ChevronRight" className={classNames.nextButtonIcon} />
-                  </DefaultButton>}
+                : <DefaultButton
+                    text={strings.nextStep as string}
+                    iconProps={{ iconName: 'ChevronRight' }}
+                    onClick={onNextStepClick}
+                    disabled={isNextDisabled}
+                    styles={getNavButtonStyles(theme, true)}
+                  />}
             </div>
           </div>
         </div >

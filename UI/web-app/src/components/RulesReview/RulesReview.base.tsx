@@ -18,8 +18,6 @@ import { HRSourcePartSource } from '../../models/HRSourcePart';
 
 const getClassNames = classNamesFunction<RulesReviewStyleProps, RulesReviewStyles>();
 
-const noop = () => undefined;
-
 // In read-only review, the only details rendered below the carousel for an HR/SqlMembership rule
 // are its attribute filter rows (org leader/depth are shown on the card itself). So an HR rule with
 // no attribute filter has nothing to review — skip the caret and the (otherwise empty) details panel.
@@ -86,8 +84,6 @@ export const RulesReviewBase: React.FunctionComponent<RulesReviewProps> = (
                 key={selectedPart.id}
                 partId={selectedPart.id}
                 title={selectedPart.title}
-                onDelete={noop}
-                totalSourceParts={parts.length}
                 query={selectedPart.query}
                 part={selectedPart}
                 isEditable={false}

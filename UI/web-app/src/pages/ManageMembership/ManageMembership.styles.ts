@@ -1,10 +1,57 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
+import { IButtonStyles, ITheme } from '@fluentui/react';
 import {
     type IManageMembershipStyleProps,
     type IManageMembershipStyles,
 } from './ManageMembership.types';
+
+// Secondary nav button (Previous/Next Step) styling per design spec:
+// height 32 (hug), radius 4, border 1px, padding 5px/12px, 4px icon/text gap.
+// Uses theme semantic colors so it stays responsive to theme/high-contrast changes,
+// and only grays out the text/icon when disabled (border/background stay the same).
+export const getNavButtonStyles = (theme: ITheme, reverseIconOrder?: boolean): IButtonStyles => ({
+    root: {
+        height: 32,
+        width: 150,
+        borderRadius: 4,
+        border: `1px solid ${theme.semanticColors.variantBorder}`,
+        backgroundColor: theme.semanticColors.bodyBackground,
+        padding: '5px 12px',
+        selectors: {
+            '.ms-Button-flexContainer': { gap: 4, justifyContent: 'center', flexWrap: 'nowrap' },
+            '.ms-Button-label': { whiteSpace: 'nowrap', margin: 0, order: reverseIconOrder ? 1 : undefined },
+            ...(reverseIconOrder ? {
+                '.ms-Button-icon': { order: 2 },
+            } : {}),
+        },
+    },
+    rootHovered: {
+        border: `1px solid ${theme.semanticColors.variantBorder}`,
+        backgroundColor: theme.semanticColors.bodyBackgroundHovered,
+    },
+    rootPressed: {
+        border: `1px solid ${theme.semanticColors.variantBorder}`,
+        backgroundColor: theme.semanticColors.bodyBackgroundChecked,
+    },
+    rootDisabled: {
+        border: `1px solid ${theme.semanticColors.variantBorder}`,
+        backgroundColor: theme.semanticColors.bodyBackground,
+    },
+    label: {
+        color: theme.semanticColors.bodyText,
+    },
+    labelDisabled: {
+        color: theme.semanticColors.disabledText,
+    },
+    icon: {
+        color: theme.semanticColors.bodyText,
+    },
+    iconDisabled: {
+        color: theme.semanticColors.disabledText,
+    },
+});
 
 export const getStyles = (props: IManageMembershipStyleProps): IManageMembershipStyles => {
     const { className, theme } = props;
@@ -19,24 +66,29 @@ export const getStyles = (props: IManageMembershipStyleProps): IManageMembership
             justifyContent: 'space-between',
             alignItems: 'center',
             flexDirection: 'row',
-            paddingBottom: 24
+            paddingBottom: 24,
+            position: 'relative',
         },
         circlesContainer: {
-            flex: 1,
+            position: 'absolute',
+            left: '50%',
+            top: '50%',
+            transform: 'translate(-50%, -50%)',
             display: 'flex',
             flexDirection: 'row',
             justifyContent: 'center',
-            gap: 20
+            alignItems: 'center',
         },
-        circleIcon: {
-            color: theme.palette.themePrimary,
+        stepIndicatorText: {
+            fontFamily: 'Segoe UI',
+            fontWeight: 400,
+            fontSize: 14,
+            lineHeight: '20px',
+            letterSpacing: '0%',
+            color: theme.palette.neutralPrimary,
         },
         nextButtonContainer: {
             marginLeft: 20
-        },
-        nextButtonIcon: {
-            marginLeft: 6,
-            fontSize: 12
         },
         backButtonContainer: {
             marginRight: 20
