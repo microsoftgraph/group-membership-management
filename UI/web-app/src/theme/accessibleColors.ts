@@ -14,7 +14,7 @@ import { NeutralColors, type ITheme } from '@fluentui/react';
  * keeps its original Fluent styling untouched.
  */
 export const isDarkTheme = (theme: ITheme): boolean =>
-    theme.palette.white.toLowerCase() === NeutralColors.gray220;
+    theme.palette.white.toLowerCase() === NeutralColors.gray220.toLowerCase();
 
 export interface IAccessibleStatusColors {
     /** Foreground for error/negative text and icons. */
