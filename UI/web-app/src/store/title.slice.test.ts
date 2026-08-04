@@ -77,19 +77,37 @@ describe('title.slice — reducers', () => {
   describe('title generation progress tracking', () => {
     it('titleGenerationStarted tracks the part id', () => {
       const state = titleReducer(initial, titleGenerationStarted('p1'));
-      expect(state.partsGeneratingTitle).toEqual(['p1']);
+      expect(state.partsGeneratingTitle).toEqual({ p1: 1 });
     });
 
-    it('titleGenerationStarted does not duplicate an already tracked part id', () => {
-      const seeded: TitleState = { ...initial, partsGeneratingTitle: ['p1'] };
-      const state = titleReducer(seeded, titleGenerationStarted('p1'));
-      expect(state.partsGeneratingTitle).toEqual(['p1']);
+    it('titleGenerationStarted counts overlapping generations for the same part', () => {
+      let state = titleReducer(initial, titleGenerationStarted('p1'));
+      state = titleReducer(state, titleGenerationStarted('p1'));
+      expect(state.partsGeneratingTitle).toEqual({ p1: 2 });
+    });
+
+    it('titleGenerationEnded keeps the part flagged while another generation is still active', () => {
+      let state = titleReducer(initial, titleGenerationStarted('p1'));
+      state = titleReducer(state, titleGenerationStarted('p1'));
+      state = titleReducer(state, titleGenerationEnded('p1'));
+      expect(state.partsGeneratingTitle).toEqual({ p1: 1 });
+    });
+
+    it('titleGenerationEnded clears the part once the last generation completes', () => {
+      let state = titleReducer(initial, titleGenerationStarted('p1'));
+      state = titleReducer(state, titleGenerationEnded('p1'));
+      expect(state.partsGeneratingTitle).toEqual({});
     });
 
     it('titleGenerationEnded removes only the given part id', () => {
-      const seeded: TitleState = { ...initial, partsGeneratingTitle: ['p1', 'p2'] };
+      const seeded: TitleState = { ...initial, partsGeneratingTitle: { p1: 1, p2: 1 } };
       const state = titleReducer(seeded, titleGenerationEnded('p1'));
-      expect(state.partsGeneratingTitle).toEqual(['p2']);
+      expect(state.partsGeneratingTitle).toEqual({ p2: 1 });
+    });
+
+    it('titleGenerationEnded for an untracked part does not go negative', () => {
+      const state = titleReducer(initial, titleGenerationEnded('p1'));
+      expect(state.partsGeneratingTitle).toEqual({});
     });
   });
 });

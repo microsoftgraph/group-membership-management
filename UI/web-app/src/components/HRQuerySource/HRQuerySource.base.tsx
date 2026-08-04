@@ -133,7 +133,7 @@ export const HRQuerySourceBase: React.FunctionComponent<HRQuerySourceProps> = (p
   sourceRef.current = props.source;
   const partsGeneratingTitle = useSelector(selectPartsGeneratingTitle);
   // True while this rule's AI title is queued for regeneration or actively being calculated.
-  const isTitleGenerating = partsGeneratingTitle.includes(partId);
+  const isTitleGenerating = (partsGeneratingTitle[partId] ?? 0) > 0;
   const email = useSelector(selectSupportEmail);
   const emailLoading = useSelector(selectSupportEmailLoading);
   const emailError = useSelector(selectSupportEmailError);
@@ -171,20 +171,25 @@ export const HRQuerySourceBase: React.FunctionComponent<HRQuerySourceProps> = (p
     }
     // Flag the rule as regenerating as soon as the debounce is scheduled so the UI gives
     // immediate feedback instead of appearing idle for the debounce + request duration.
+    // This reference is released either when the scheduled run takes over or if it is cancelled.
     pendingRegenRef.current = true;
     dispatch(titleGenerationStarted(partId));
     filterRegenTimeoutRef.current = setTimeout(() => {
       pendingRegenRef.current = false;
       lastGeneratedKeyRef.current = currentFilter;
-      generateTitle();
+      // generateTitle synchronously takes its own reference before its first await, so
+      // releasing the debounce's reference afterwards keeps the count above zero
+      // throughout and the indicator never flickers off during the handoff.
+      void generateTitle();
+      dispatch(titleGenerationEnded(partId));
     }, 1500);
 
     return () => {
       if (filterRegenTimeoutRef.current) {
         clearTimeout(filterRegenTimeoutRef.current);
       }
-      // Only clear the indicator if the debounced run never started; an in-flight
-      // generateTitle clears it itself once it settles.
+      // Only release here if the scheduled run never started; once it has, it owns the
+      // handoff and generateTitle clears its own reference when it settles.
       if (pendingRegenRef.current) {
         pendingRegenRef.current = false;
         dispatch(titleGenerationEnded(partId));
@@ -848,9 +853,9 @@ const getOptions = (
       // items[0].key is the suggestion list index, NOT an employee id, so it must never be
       // written to manager.id. The real id is stored once fetchOrgLeaderDetails resolves it.
       setPendingOrgLeaderPersona(items[0]);
-      const currentTitle = localTitle || props.title || "";
+      const previousTitle = localTitle || props.title || "";
       const newTitle = updateHRTitleWithNewLeader(
-        currentTitle,
+        previousTitle,
         items[0].text as string,
         {
           excludePrefix: strings.excludePrefix,
@@ -865,18 +870,31 @@ const getOptions = (
       // Await the objectId -> employeeId lookup and write the result through directly.
       // Relying on a downstream effect made persistence dependent on fragile ordering
       // (and on Redux state that other rule cards can overwrite).
+      const requestedObjectId = items[0].id as string;
+      pendingOrgLeaderObjectIdRef.current = requestedObjectId;
       const result = await dispatch(fetchOrgLeaderDetails({
-        objectId: items[0].id as string,
+        objectId: requestedObjectId,
         key: items[0].key as number,
         text: items[0].text as string,
         partId: partId as string
       }));
       const details = result.payload as GetOrgLeaderDetailsResponse | undefined;
+      // A slower response for a previously picked leader must not overwrite a newer
+      // selection (or a clear), so anything superseded while in flight is discarded.
+      const isStale = pendingOrgLeaderObjectIdRef.current !== requestedObjectId;
+      if (isStale) {
+        setIsDisabled(false);
+        return;
+      }
       if (details && details.employeeId > 0) {
         applyResolvedOrgLeader(details.employeeId, details.maxDepth, newTitle);
       } else {
-        // The leader could not be resolved in the HR source, so nothing is persisted.
+        // The leader could not be resolved in the HR source, so no manager.id is persisted.
+        // Roll the title back so it doesn't advertise a leader the rule doesn't actually have.
         setPendingOrgLeaderPersona(undefined);
+        pendingOrgLeaderObjectIdRef.current = undefined;
+        setLocalTitle(previousTitle);
+        onSourceChange(props.source, partId, previousTitle);
         setOrgErrorMessage(hrSource?.name && hrSource?.name !== "" ?
           (items[0].text ?? '') + strings.HROnboarding.customOrgLeaderMissingErrorMessage + (hrSource?.customLabel || hrSource?.name) + strings.HROnboarding.source :
           (items[0].text ?? '') + strings.HROnboarding.orgLeaderMissingErrorMessage);

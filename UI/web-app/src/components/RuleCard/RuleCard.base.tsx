@@ -71,7 +71,7 @@ export const RuleCardBase: React.FunctionComponent<RuleCardProps> = (props: Rule
   const orgLeaderMapping = useSelector(selectObjectIdEmployeeIdMapping);
   const jobDetails = useSelector(selectSelectedJobDetails);
   const partsGeneratingTitle = useSelector(selectPartsGeneratingTitle);
-  const isTitleGenerating = partsGeneratingTitle.includes(part.id);
+  const isTitleGenerating = (partsGeneratingTitle[part.id] ?? 0) > 0;
 
   const groupId = IsGroupMembershipSourcePartQuery(part.query) ? part.query.source : '';
   const groupPersona = useSelectedGroupById(groupId);

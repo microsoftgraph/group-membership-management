@@ -157,7 +157,7 @@ describe('RuleCard', () => {
 
   it('shows the generating-title indicator while the rule title is being recalculated', () => {
     const preloadedState: Partial<RootState> = {
-      title: { ...getTitleState(), partsGeneratingTitle: ['hr-1'] },
+      title: { ...getTitleState(), partsGeneratingTitle: { 'hr-1': 1 } },
     };
 
     renderWithProviders(<RuleCard part={hrPart()} onSelect={() => {}} />, { preloadedState });
@@ -167,7 +167,7 @@ describe('RuleCard', () => {
 
   it('does not show the generating-title indicator for other rules', () => {
     const preloadedState: Partial<RootState> = {
-      title: { ...getTitleState(), partsGeneratingTitle: ['some-other-part'] },
+      title: { ...getTitleState(), partsGeneratingTitle: { 'some-other-part': 1 } },
     };
 
     renderWithProviders(<RuleCard part={hrPart()} onSelect={() => {}} />, { preloadedState });

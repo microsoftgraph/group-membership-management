@@ -17,8 +17,10 @@ export interface TitleState {
   generatedHRParts: ISourcePart[];
   isGeneratingGroupTitle: boolean;
   generatedGroupParts: ISourcePart[];
-  // Ids of the source parts whose AI title is currently being (re)calculated.
-  partsGeneratingTitle: string[];
+  // Number of in-flight AI title calculations per source part id. Counted rather than a
+  // boolean so overlapping generations for the same part (e.g. a queued debounce plus an
+  // in-flight request) can't have one completion clear the other's indicator.
+  partsGeneratingTitle: Record<string, number>;
 };
 
 const initialState: TitleState = {
@@ -31,7 +33,7 @@ const initialState: TitleState = {
   generatedHRParts: [],
   isGeneratingGroupTitle: false,
   generatedGroupParts: [],
-  partsGeneratingTitle: []
+  partsGeneratingTitle: {}
 };
 
 const titleSlice = createSlice({
@@ -56,12 +58,15 @@ const titleSlice = createSlice({
       state.generatedGroupParts = [];
     },
     titleGenerationStarted: (state, action: PayloadAction<string>) => {
-      if (!state.partsGeneratingTitle.includes(action.payload)) {
-        state.partsGeneratingTitle.push(action.payload);
-      }
+      state.partsGeneratingTitle[action.payload] = (state.partsGeneratingTitle[action.payload] ?? 0) + 1;
     },
     titleGenerationEnded: (state, action: PayloadAction<string>) => {
-      state.partsGeneratingTitle = state.partsGeneratingTitle.filter(id => id !== action.payload);
+      const remaining = (state.partsGeneratingTitle[action.payload] ?? 0) - 1;
+      if (remaining > 0) {
+        state.partsGeneratingTitle[action.payload] = remaining;
+      } else {
+        delete state.partsGeneratingTitle[action.payload];
+      }
     }
   },
   extraReducers: (builder) => {
@@ -135,6 +140,6 @@ export const selectIsGeneratingGroupTitle = (state: RootState) => state.title.is
 export const selectGeneratedGroupParts = (state: RootState) => state.title.generatedGroupParts;
 export const selectPartsGeneratingTitle = (state: RootState) => state.title.partsGeneratingTitle;
 export const selectIsGeneratingTitleForPart = (partId: string) => (state: RootState) =>
-  state.title.partsGeneratingTitle.includes(partId);
+  (state.title.partsGeneratingTitle[partId] ?? 0) > 0;
 
 export default titleSlice.reducer;
