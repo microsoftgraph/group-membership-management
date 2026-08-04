@@ -260,6 +260,7 @@ vi.mock('@fluentui/react', async () => {
 
   return {
     classNamesFunction,
+    css: (...args: any[]) => args.filter(Boolean).join(' '),
     DetailsList,
     DetailsListLayoutMode: { justified: 'justified' },
     DetailsRow,
@@ -871,7 +872,7 @@ describe('JobHistoryPanelBase search banner', () => {
     ).toBeInTheDocument();
   });
 
-  it('shows warning background styling when the user is not in the group', async () => {
+  it('applies the warning banner styling when the user is not in the group', async () => {
     mockSearchResult = {
       ...mockSearchResult,
       userInCurrentGroup: false,
@@ -882,7 +883,9 @@ describe('JobHistoryPanelBase search banner', () => {
     await selectUser();
 
     const banner = (await screen.findByText(strings.JobDetails.Panel.userNotInGroupMessage)).closest('div');
-    expect(banner).toHaveStyle(`background-color: ${mockTheme.semanticColors.warningBackground}`);
+    expect(banner?.className).toContain('userSearchBannerWarning');
+    const icon = banner?.querySelector('[data-icon-name="Warning"]');
+    expect(icon?.getAttribute('class')).toContain('userSearchBannerIconWarning');
   });
 
   it('shows the retention note whenever the banner is visible', async () => {

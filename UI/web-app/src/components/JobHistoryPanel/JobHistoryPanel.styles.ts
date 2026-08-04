@@ -1,18 +1,19 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-import { NeutralColors } from '@fluentui/react';
 import {
     type IJobHistoryPanelStyleProps,
     type IJobHistoryPanelStyles,
 } from './JobHistoryPanel.types';
+import { getAccessibleStatusColors, isDarkTheme } from '../../theme/accessibleColors';
 
 export const getStyles = (props: IJobHistoryPanelStyleProps): IJobHistoryPanelStyles => {
     const { className, theme } = props;
     // The dark theme inverts only the neutral ramp (see theme/palette.ts), so accent-ramp slots like
     // themeLighterAlt stay near-white and render light-on-light in dark mode. Swap to neutral-ramp
     // surfaces only in dark mode; keep the original accent colors untouched in light mode.
-    const isDarkMode = theme.palette.white.toLowerCase() === NeutralColors.gray220;
+    const isDarkMode = isDarkTheme(theme);
+    const statusColors = getAccessibleStatusColors(theme);
 
     return {
         root: [{}, className],
@@ -63,16 +64,16 @@ export const getStyles = (props: IJobHistoryPanelStyleProps): IJobHistoryPanelSt
             flexShrink: 0,
         },
         changeTypeRejected: {
-            backgroundColor: theme.semanticColors.errorIcon,
+            backgroundColor: statusColors.errorText,
         },
         changeTypeApproved: {
-            backgroundColor: theme.semanticColors.successIcon,
+            backgroundColor: statusColors.successText,
         },
         changeTypeUpdate: {
-            backgroundColor: theme.palette.themePrimary,
+            backgroundColor: statusColors.accentText,
         },
         changeTypeGroupSettings: {
-            backgroundColor: theme.palette.themePrimary,
+            backgroundColor: statusColors.accentText,
         },
         changeTypeDefault: {
             backgroundColor: theme.palette.neutralSecondary,
@@ -83,12 +84,12 @@ export const getStyles = (props: IJobHistoryPanelStyleProps): IJobHistoryPanelSt
             gap: '2px',
         },
         statusCellThresholdExceeded: {
-            color: theme.semanticColors.errorIcon,
+            color: statusColors.errorText,
             fontWeight: 600,
             fontSize: '14px',
         },
         statusCellThresholdApproved: {
-            color: theme.semanticColors.successIcon,
+            color: statusColors.successText,
             fontWeight: 600,
         },
         syncFiltersContainer: {
@@ -116,7 +117,7 @@ export const getStyles = (props: IJobHistoryPanelStyleProps): IJobHistoryPanelSt
             alignItems: 'center',
             gap: '4px',
             fontSize: '13px',
-            color: theme.palette.themePrimary,
+            color: statusColors.accentText,
             cursor: 'pointer',
             background: 'none',
             border: 'none',
@@ -124,11 +125,11 @@ export const getStyles = (props: IJobHistoryPanelStyleProps): IJobHistoryPanelSt
             textDecoration: 'none',
             selectors: {
                 ':hover': {
-                    color: theme.palette.themeDarker,
+                    color: statusColors.accentTextHovered,
                     textDecoration: 'none',
                 },
                 ':focus-visible': {
-                    outline: `1px solid ${theme.palette.themePrimary}`,
+                    outline: `1px solid ${statusColors.accentText}`,
                     outlineOffset: '2px',
                 },
             },
@@ -273,16 +274,16 @@ export const getStyles = (props: IJobHistoryPanelStyleProps): IJobHistoryPanelSt
         },
         highlightedAddedCell: {
             fontWeight: 700,
-            color: theme.semanticColors.successIcon,
-            backgroundColor: theme.semanticColors.successBackground,
+            color: statusColors.successText,
+            backgroundColor: statusColors.successBackground,
             borderRadius: '10px',
             padding: '2px 8px',
             display: 'inline-block',
         },
         highlightedRemovedCell: {
             fontWeight: 700,
-            color: theme.semanticColors.errorIcon,
-            backgroundColor: theme.semanticColors.errorBackground,
+            color: statusColors.errorText,
+            backgroundColor: statusColors.errorBackground,
             borderRadius: '10px',
             padding: '2px 8px',
             display: 'inline-block',
@@ -321,9 +322,20 @@ export const getStyles = (props: IJobHistoryPanelStyleProps): IJobHistoryPanelSt
             borderRadius: '4px',
             gap: '4px',
         },
+        userSearchBannerWarning: {
+            backgroundColor: statusColors.warningBackground,
+            ...(isDarkMode ? { border: `1px solid ${statusColors.warningIcon}` } : {}),
+        },
         userSearchBannerIcon: {
             fontSize: '24px',
             marginBottom: '4px',
+            color: theme.palette.neutralPrimary,
+        },
+        userSearchBannerIconSuccess: {
+            color: statusColors.accentText,
+        },
+        userSearchBannerIconWarning: {
+            color: isDarkMode ? statusColors.warningIcon : theme.palette.neutralPrimary,
         },
         userSearchBannerText: {
             fontSize: '14px',
@@ -360,6 +372,10 @@ export const getStyles = (props: IJobHistoryPanelStyleProps): IJobHistoryPanelSt
             fontSize: '12px',
             color: theme.palette.neutralSecondary,
             whiteSpace: 'nowrap',
+        },
+        inlineErrorText: {
+            fontSize: '12px',
+            color: statusColors.errorText,
         },
     };
 };

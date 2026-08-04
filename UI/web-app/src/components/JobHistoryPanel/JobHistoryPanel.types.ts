@@ -48,7 +48,10 @@ export interface IJobHistoryPanelStyles {
     pendingCell: IStyle;
     matchingRow?: IStyle;
     userSearchBanner: IStyle;
+    userSearchBannerWarning: IStyle;
     userSearchBannerIcon: IStyle;
+    userSearchBannerIconSuccess: IStyle;
+    userSearchBannerIconWarning: IStyle;
     userSearchBannerText: IStyle;
     userSearchBannerNote: IStyle;
     eventTypeFilterField: IStyle;
@@ -62,6 +65,7 @@ export interface IJobHistoryPanelStyles {
     configurationQueryAction: IStyle;
     reviewThresholdCallout: IStyle;
     reviewThresholdCalloutText: IStyle;
+    inlineErrorText: IStyle;
 }
 
 export interface IJobHistoryPanelStyleProps {

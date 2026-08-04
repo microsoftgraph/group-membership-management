@@ -16,6 +16,7 @@ import { MaintenanceCheckWrapper } from './pages/Maintenance/MaintenanceCheckWra
 import { store } from './store';
 import { selectIsDarkMode } from './store/theme.slice';
 import { darkPalette } from './theme/palette';
+import { darkModeStatusColors } from './theme/accessibleColors';
 
 const connectionString = process.env.REACT_APP_APPINSIGHTS_CONNECTIONSTRING;
 if (!connectionString || connectionString === '') {
@@ -56,8 +57,15 @@ const ManageMembershipWithMaintenanceCheck = MaintenanceCheckWrapper(ManageMembe
 const NotFoundWithMaintenanceCheck = MaintenanceCheckWrapper(NotFound);
 
 const lightTheme = createTheme({});
+// The dark palette only inverts the neutral ramp, so Fluent keeps deriving link colors from
+// themePrimary (#0078d4), which only reaches ~3.2:1 against the near-black dark surface. Override
+// the link slots with Fluent's inverted-theme link colors so links stay AA readable in dark mode.
 const darkTheme = createTheme({
   palette: darkPalette,
+  semanticColors: {
+    link: darkModeStatusColors.accentText,
+    linkHovered: darkModeStatusColors.accentTextHovered,
+  },
 });
 
 const getAppTheme = (isDarkMode: boolean) => {

@@ -3,6 +3,7 @@
 
 import {
     classNamesFunction,
+    css,
     IProcessedStyleSet,
     DetailsList,
     DetailsListLayoutMode,
@@ -1459,7 +1460,7 @@ export const JobHistoryPanelBase: React.FunctionComponent<IJobHistoryPanelProps>
             return (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
                     <strong style={{ fontSize: '14px', fontWeight: 600 }}>{strings.JobDetails.Panel.aiDescriptionLabel}</strong>
-                    <span style={{ fontSize: '12px', color: theme.palette.redDark }}>{strings.JobDetails.Panel.aiDescriptionError}</span>
+                    <span className={classNames.inlineErrorText}>{strings.JobDetails.Panel.aiDescriptionError}</span>
                 </div>
             );
         }
@@ -1538,7 +1539,7 @@ export const JobHistoryPanelBase: React.FunctionComponent<IJobHistoryPanelProps>
             return (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
                     <strong style={{ fontSize: '14px', fontWeight: 600 }}>{strings.JobDetails.Panel.aiDescriptionLabel}</strong>
-                    <span style={{ fontSize: '12px', color: theme.palette.redDark }}>{strings.JobDetails.Panel.aiDescriptionError}</span>
+                    <span className={classNames.inlineErrorText}>{strings.JobDetails.Panel.aiDescriptionError}</span>
                 </div>
             );
         }
@@ -1588,7 +1589,7 @@ export const JobHistoryPanelBase: React.FunctionComponent<IJobHistoryPanelProps>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', flex: '1 1 0' }}>
                             {aiExplanation}
                             {customMessage && (
-                                <span style={{ fontSize: '12px', color: theme.palette.redDark }}>{customMessage}</span>
+                                <span className={classNames.inlineErrorText}>{customMessage}</span>
                             )}
                             {showTakeAction && (
                                 <div style={{ marginTop: 'auto' }}>
@@ -2001,13 +2002,14 @@ export const JobHistoryPanelBase: React.FunctionComponent<IJobHistoryPanelProps>
                         )}
                         {userSearchInfo && !isUserSearchLoading && (
                             <div
-                                className={classNames.userSearchBanner}
-                                style={userInGroup === false ? { backgroundColor: theme.semanticColors.warningBackground } : undefined}
+                                className={css(classNames.userSearchBanner, userInGroup === false && classNames.userSearchBannerWarning)}
                             >
                                 <Icon
                                     iconName={userInGroup ? 'CompletedSolid' : 'Warning'}
-                                    className={classNames.userSearchBannerIcon}
-                                    style={{ color: userInGroup ? theme.palette.themePrimary : theme.palette.neutralPrimary }}
+                                    className={css(
+                                        classNames.userSearchBannerIcon,
+                                        userInGroup ? classNames.userSearchBannerIconSuccess : classNames.userSearchBannerIconWarning
+                                    )}
                                 />
                                 <span className={classNames.userSearchBannerText}>
                                     {userSearchInfo}

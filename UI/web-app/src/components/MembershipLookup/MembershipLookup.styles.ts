@@ -1,15 +1,16 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-import { NeutralColors } from '@fluentui/react';
 import type { MembershipLookupStyleProps, MembershipLookupStyles } from './MembershipLookup.types';
+import { getAccessibleStatusColors, isDarkTheme } from '../../theme/accessibleColors';
 
 export const getStyles = (props: MembershipLookupStyleProps): MembershipLookupStyles => {
   const { theme } = props;
   // The dark theme inverts only the neutral ramp (see theme/palette.ts), so themeLighterAlt stays
   // near-white and would render the result card's neutralPrimary text light-on-light in dark mode.
   // Fall back to a neutral-ramp surface in dark mode only; leave light mode on the accent ramp.
-  const isDarkMode = theme.palette.white.toLowerCase() === NeutralColors.gray220;
+  const isDarkMode = isDarkTheme(theme);
+  const statusColors = getAccessibleStatusColors(theme);
 
   return {
     root: {
@@ -95,6 +96,14 @@ export const getStyles = (props: MembershipLookupStyleProps): MembershipLookupSt
     },
     statusIcon: {
       fontSize: 16,
+    },
+    statusIconAccent: {
+      fontSize: 16,
+      color: statusColors.accentText,
+    },
+    statusIconNeutral: {
+      fontSize: 16,
+      color: theme.palette.neutralTertiary,
     },
     dashedCircle: {
       display: 'inline-block',

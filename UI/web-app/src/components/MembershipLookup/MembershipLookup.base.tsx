@@ -72,7 +72,6 @@ export const MembershipLookupBase: React.FunctionComponent<MembershipLookupProps
   const strings = useStrings();
   const lookupStrings = strings.Components.MembershipLookup;
   const dispatch = useDispatch<AppDispatch>();
-  const theme = useTheme();
 
   const [status, setStatus] = useState<LookupStatus>('idle');
   const [result, setResult] = useState<LookupResult | null>(null);
@@ -152,9 +151,8 @@ export const MembershipLookupBase: React.FunctionComponent<MembershipLookupProps
     <span className={classNames.statusValue}>
       {isMember ? (
         <Icon
-          className={classNames.statusIcon}
+          className={classNames.statusIconAccent}
           iconName="CompletedSolid"
-          style={{ color: theme.palette.themePrimary }}
         />
       ) : (
         <span className={classNames.dashedCircle} aria-hidden="true" />
@@ -166,7 +164,7 @@ export const MembershipLookupBase: React.FunctionComponent<MembershipLookupProps
   const renderAfterChanges = (pendingAction: PendingAction): JSX.Element => {
     const iconName =
       pendingAction === 'add' ? 'CircleAdditionSolid' : pendingAction === 'remove' ? 'SkypeCircleMinus' : 'CircleFill';
-    const iconColor = pendingAction === 'none' ? theme.palette.neutralTertiary : theme.palette.themePrimary;
+    const iconClassName = pendingAction === 'none' ? classNames.statusIconNeutral : classNames.statusIconAccent;
     const label =
       pendingAction === 'add'
         ? lookupStrings.willBeAdded
@@ -175,7 +173,7 @@ export const MembershipLookupBase: React.FunctionComponent<MembershipLookupProps
           : lookupStrings.noChange;
     return (
       <span className={classNames.statusValue}>
-        <Icon className={classNames.statusIcon} iconName={iconName} style={{ color: iconColor }} />
+        <Icon className={iconClassName} iconName={iconName} />
         <span>{label}</span>
       </span>
     );
