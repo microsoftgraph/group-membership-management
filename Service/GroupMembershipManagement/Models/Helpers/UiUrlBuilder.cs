@@ -26,5 +26,26 @@ namespace Models.Helpers
 
             return uriBuilder.Uri.AbsoluteUri;
         }
+
+        // Builds an absolute GMM UI onboarding link. Used by notifications whose sync job no
+        // longer exists (e.g. the Final Notice sent after a job is purged), where deep-linking
+        // to /jobdetails/{syncJobId} would land the owner on a "not found" page.
+        public static string BuildOnboardingUrl(string uiUrl)
+        {
+            if (!Uri.TryCreate(uiUrl, UriKind.Absolute, out var baseUri)
+                || (baseUri.Scheme != Uri.UriSchemeHttp && baseUri.Scheme != Uri.UriSchemeHttps))
+            {
+                return string.Empty;
+            }
+
+            var uriBuilder = new UriBuilder(baseUri)
+            {
+                Path = $"{baseUri.AbsolutePath.TrimEnd('/')}/ManageMembership",
+                Query = string.Empty,
+                Fragment = string.Empty
+            };
+
+            return uriBuilder.Uri.AbsoluteUri;
+        }
     }
 }

@@ -212,6 +212,13 @@ namespace Repositories.Mail
             string dashboardUrl = dashboardUrlSetting?.SettingValue ?? "";
             string jobUrl = UiUrlBuilder.BuildJobDetailsUrl(UIUrl, emailMessage.SyncJobId);
             string historyUrl = UiUrlBuilder.BuildJobDetailsUrl(UIUrl, emailMessage.SyncJobId, includeHistory: true);
+            string onboardingUrl = UiUrlBuilder.BuildOnboardingUrl(UIUrl);
+
+            // The Final Notice is sent after the sync job has been purged, so any /jobdetails
+            // deep-link would resolve to a job that no longer exists. Point every CTA on that
+            // notification (adaptive card and styled fallback) at the onboarding page instead.
+            bool isFinalNotice = string.Equals(emailMessage?.Content, NotificationConstants.SyncPurgedForInactivityEmailBody, StringComparison.OrdinalIgnoreCase);
+            string cardJobUrl = isFinalNotice ? onboardingUrl : jobUrl;
 
             var cardData = new DefaultCardTemplate
             {
@@ -224,7 +231,7 @@ namespace Repositories.Mail
                 DestinationGroupName = destinationGroupName,
                 UIUrl = UIUrl,
                 DashboardUrl = dashboardUrl,
-                JobUrl = jobUrl
+                JobUrl = cardJobUrl
             };
 
             var template = new AdaptiveCardTemplate(adaptiveCardJson);
@@ -261,8 +268,10 @@ namespace Repositories.Mail
                         : historyUrl;
                     styledFallback = await _mailFallbackBuilder.BuildJobPurgingWarningFallbackAsync(emailMessage, fallbackDestinationGroupName, groupId, purgeWarningCtaUrl, sentDate);
                 }
-                else if (string.Equals(emailMessage?.Content, NotificationConstants.SyncPurgedForInactivityEmailBody, StringComparison.OrdinalIgnoreCase))
-                    styledFallback = await _mailFallbackBuilder.BuildFinalNoticeFallbackAsync(emailMessage, fallbackDestinationGroupName, groupId, jobUrl, sentDate);
+                else if (isFinalNotice)
+                    // The sync job is already purged, so a /jobdetails deep-link would 404.
+                    // Send owners to the onboarding page instead, matching the "Start a new onboarding" CTA.
+                    styledFallback = await _mailFallbackBuilder.BuildFinalNoticeFallbackAsync(emailMessage, fallbackDestinationGroupName, groupId, onboardingUrl, sentDate);
                 else if (IsSyncDisabledNotification(emailMessage?.Content))
                 {
                     // Threshold-disabled emails deep-link "Review in GMM" to the take-action dialog; other reasons use history.
