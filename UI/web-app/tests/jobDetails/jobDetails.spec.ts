@@ -167,7 +167,7 @@ test.describe('Job Details Tests', () => {
     await page.waitForFunction(
       () => {
         const nextButton = Array.from(document.querySelectorAll('button')).find(
-          (button) => button.textContent?.trim().startsWith('Next')
+          (button) => button.textContent?.includes('Next')
         );
         return nextButton && !nextButton.disabled;
       },
@@ -182,13 +182,13 @@ test.describe('Job Details Tests', () => {
     await page.getByRole('button', { name: 'Next' }).click();
 
     if (isMockMode) {
-      await expect(page.getByRole('button', { name: 'Add Source Part' })).toBeVisible();
+      await expect(page.getByTestId('add-rule-button')).toBeVisible();
       await expect(page.getByRole('button', { name: 'Next' })).toBeVisible();
       console.log('✅ Mock mode: create-group workflow reached source configuration and owner selection.');
       return;
     }
 
-    await page.getByRole('button', { name: 'Add Source Part' }).click();
+    await page.getByTestId('add-rule-button').click();
 
     const expandAllButtonCreate = page.locator('#expandCollapseAllButton');
     if (await expandAllButtonCreate.count()) {
@@ -255,7 +255,7 @@ test.describe('Job Details Tests', () => {
     await page.waitForFunction(
       () => {
         const nextButton = Array.from(document.querySelectorAll('button')).find(
-          (button) => button.textContent?.trim().startsWith('Next')
+          (button) => button.textContent?.includes('Next')
         );
         return nextButton && !nextButton.disabled;
       },
@@ -343,7 +343,7 @@ test.describe('Job Details Tests', () => {
     }
 
     // Verify it's inclusionary by default
-    await page.getByRole('button', { name: 'Add Source Part' }).click();
+    await page.getByTestId('add-rule-button').click();
     const includeSourcePart = page.locator('div').filter({ hasText: /What should happen with the people that match this rule\?/i }).first();
     await expect(includeSourcePart.getByRole('radio', { name: 'Add people that match this rule' })).toBeChecked();
 
@@ -391,7 +391,7 @@ test.describe('Job Details Tests', () => {
     await page.waitForFunction(
       () => {
         const nextButton = Array.from(document.querySelectorAll('button')).find(
-          (button) => button.textContent?.trim().startsWith('Next')
+          (button) => button.textContent?.includes('Next')
         );
         return nextButton && !nextButton.disabled;
       },
@@ -404,12 +404,12 @@ test.describe('Job Details Tests', () => {
     await page.getByRole('button', { name: 'Next' }).click();
 
     if (isMockMode) {
-      await expect(page.getByRole('button', { name: 'Add Source Part' })).toBeVisible();
+      await expect(page.getByTestId('add-rule-button')).toBeVisible();
       console.log('🧪 Mock mode: executing full HR onboarding workflow.');
     }
 
     // Create an HR source part
-    await page.getByRole('button', { name: 'Add Source Part' }).click();
+    await page.getByTestId('add-rule-button').click();
 
     const expandAllButtonHr = page.locator('#expandCollapseAllButton');
     if (await expandAllButtonHr.count()) {
@@ -640,14 +640,14 @@ test.describe('Job Details Tests', () => {
     await nextButton.click();
 
     if (isMockMode) {
-      await expect(page.getByRole('button', { name: 'Add Source Part' })).toBeVisible();
+      await expect(page.getByTestId('add-rule-button')).toBeVisible();
       expect(badUserResponses, 'Graph /users should not error in mock people-picker scenario').toHaveLength(0);
       console.log('✅ Mock mode: people-picker dependent flow has no Graph user endpoint failures.');
       return;
     }
 
     // Add HR source part and open Org leader picker
-    await page.getByRole('button', { name: 'Add Source Part' }).click();
+    await page.getByTestId('add-rule-button').click();
     const expandAllButtonPeoplePicker = page.locator('#expandCollapseAllButton');
     if (await expandAllButtonPeoplePicker.count()) {
       await expandAllButtonPeoplePicker.click();

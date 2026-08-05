@@ -141,6 +141,7 @@ export const RulesEditorBase: React.FunctionComponent<RulesEditorProps> = (
           <CopilotTriggerButton />
           <PrimaryButton
             className={classNames.addButton}
+            data-testid="add-rule-button"
             iconProps={{ iconName: 'Add' }}
             onClick={handleAdd}
             disabled={!canEdit}

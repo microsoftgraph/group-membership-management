@@ -89,7 +89,7 @@ async function navigateToMembershipConfiguration(page: Page) {
   await expect(nextButton).toBeEnabled({ timeout: 30000 });
   await nextButton.click();
 
-  await expect(page.getByRole('button', { name: /GMM Copilot/i })).toBeVisible();
+  await expect(page.getByTestId('copilot-trigger-button')).toBeVisible();
 }
 
 test.beforeEach(async ({ page }) => {
@@ -100,17 +100,17 @@ test.beforeEach(async ({ page }) => {
 });
 
 test('Copilot button is visible on the ManageMembership page', async ({ page }) => {
-  await expect(page.getByRole('button', { name: /GMM Copilot/i })).toBeVisible();
+  await expect(page.getByTestId('copilot-trigger-button')).toBeVisible();
 });
 
 test('clicking the Copilot button opens the panel with welcome message', async ({ page }) => {
-  await page.getByRole('button', { name: /GMM Copilot/i }).click();
+  await page.getByTestId('copilot-trigger-button').click();
 
   await expect(page.getByText(welcomeMessage)).toBeVisible();
 });
 
 test('can type a message and send it, then see assistant response', async ({ page }) => {
-  await page.getByRole('button', { name: /GMM Copilot/i }).click();
+  await page.getByTestId('copilot-trigger-button').click();
 
   const input = page.getByPlaceholder('Ask a question or describe the membership you want');
   await input.fill('Show me FTEs in my department');
@@ -120,7 +120,7 @@ test('can type a message and send it, then see assistant response', async ({ pag
 });
 
 test('panel can be closed with the close button', async ({ page }) => {
-  await page.getByRole('button', { name: /GMM Copilot/i }).click();
+  await page.getByTestId('copilot-trigger-button').click();
   await expect(page.getByText(welcomeMessage)).toBeVisible();
 
   await page.getByRole('button', { name: 'Close' }).click();
@@ -129,7 +129,7 @@ test('panel can be closed with the close button', async ({ page }) => {
 });
 
 test('suggested prompt buttons are visible when configured', async ({ page }) => {
-  await page.getByRole('button', { name: /GMM Copilot/i }).click();
+  await page.getByTestId('copilot-trigger-button').click();
   await expect(page.getByText(welcomeMessage)).toBeVisible();
 
   await expect(page.getByText('TRY ONE OF THESE TO GET STARTED')).toBeVisible();
@@ -138,7 +138,7 @@ test('suggested prompt buttons are visible when configured', async ({ page }) =>
 });
 
 test('clicking a suggested prompt sends it as a message', async ({ page }) => {
-  await page.getByRole('button', { name: /GMM Copilot/i }).click();
+  await page.getByTestId('copilot-trigger-button').click();
   await expect(page.getByText(welcomeMessage)).toBeVisible();
 
   await page.getByRole('button', { name: 'Include all reports who roll up to an employee' }).click();
