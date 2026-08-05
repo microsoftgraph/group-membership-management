@@ -93,8 +93,8 @@ async function navigateToMembershipConfiguration(page: Page) {
   await expect(nextButton).toBeEnabled({ timeout: 30000 });
   await nextButton.click();
 
-  // The Copilot button only renders once Step 2 (Membership Configuration) is shown.
-  await expect(page.getByRole('button', { name: /GMM Copilot/i })).toBeVisible();
+  // The rules header only renders once Step 2 (Membership Configuration) is shown.
+  await expect(page.getByText(rulesDescription)).toBeVisible({ timeout: 30000 });
 }
 
 // Locators scoped to the rule card carousel actions.
