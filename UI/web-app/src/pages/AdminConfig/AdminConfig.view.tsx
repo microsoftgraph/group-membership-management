@@ -540,6 +540,11 @@ const CustomSourceSettings: React.FunctionComponent<CustomSourceSettingsProps> =
         ? (b[sortKey] || '').localeCompare(a[sortKey] || '')
         : (a[sortKey] || '').localeCompare(b[sortKey] || '');
     }
+    if (sortKey === 'enabled' || sortKey === 'sensitive') {
+      const aVal = (sortKey === 'sensitive' ? a.isSensitive : a.enabled) ? 1 : 0;
+      const bVal = (sortKey === 'sensitive' ? b.isSensitive : b.enabled) ? 1 : 0;
+      return isSortedDescending ? bVal - aVal : aVal - bVal;
+    }
     return 0;
   });
 

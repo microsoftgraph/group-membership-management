@@ -240,8 +240,8 @@ describe('AdminConfigView Custom Source', () => {
   const csLabels = defaultStrings.AdminConfig.CustomSourceSettings.labels;
 
   const attributes: SqlMembershipAttribute[] = [
-    { name: 'Country', customLabel: '', type: 'nvarchar', hasMapping: false, values: [], description: '', enabled: true, isSensitive: false },
     { name: 'Salary', customLabel: '', type: 'int', hasMapping: false, values: [], description: '', enabled: false, isSensitive: true },
+    { name: 'Country', customLabel: '', type: 'nvarchar', hasMapping: false, values: [], description: '', enabled: true, isSensitive: false },
   ];
 
   const renderCustomSourceView = () =>
@@ -271,5 +271,22 @@ describe('AdminConfigView Custom Source', () => {
 
     expect(screen.getByText(csLabels.enabledColumn)).toBeInTheDocument();
     expect(screen.getByText(csLabels.sensitiveColumn)).toBeInTheDocument();
+  });
+
+  test('clicking the Sensitive header sorts rows so sensitive attributes group together', () => {
+    renderCustomSourceView();
+
+    // Unsorted initial order matches the input: Salary (sensitive) before Country (not sensitive)
+    expect(
+      screen.getByText('Salary').compareDocumentPosition(screen.getByText('Country')) & Node.DOCUMENT_POSITION_FOLLOWING
+    ).toBeTruthy();
+
+    // Click the Sensitive column header -> ascending sort by isSensitive (non-sensitive first)
+    fireEvent.click(screen.getByText(csLabels.sensitiveColumn));
+
+    // Rows reorder: Country (not sensitive) now comes before Salary (sensitive)
+    expect(
+      screen.getByText('Country').compareDocumentPosition(screen.getByText('Salary')) & Node.DOCUMENT_POSITION_FOLLOWING
+    ).toBeTruthy();
   });
 });
