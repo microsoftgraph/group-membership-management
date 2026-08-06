@@ -775,7 +775,7 @@ module serviceBusSubscriptionsTemplate 'serviceBusSubscription.bicep' = [
     name: '${topic.topicName}-${topic.subscriptionName}-Template'
     params: {
       serviceBusName: serviceBusName
-      topicSubscriptions: serviceBusTopicSubscriptions
+      topicSubscriptions: [topic]
     }
     dependsOn: [
       serviceBusTopicTemplate

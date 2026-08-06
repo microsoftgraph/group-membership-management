@@ -1236,13 +1236,6 @@ function Set-GMMResources {
             -AdditionalParameters       $commonParametersObject `
             -SetRBACPermissions         $setRBACPermissions
 
-        if (-not $ParameterHashtable.isInitialDeployment.value) {
-            . ($ScriptsDirectory + '/PostDataDeploymentMigrations/Set-PostDataDeploymentMigrations.ps1')
-            Set-PostDataDeploymentMigrations `
-                -SolutionAbbreviation $SolutionAbbreviation `
-                -EnvironmentAbbreviation $EnvironmentAbbreviation
-        }
-
         Start-Sleep -Seconds 10
     }
     else {
@@ -3298,6 +3291,47 @@ function Assert-RequiredParameters {
     Write-DeployLog -Level Success -Message "All required parameters are provided."
 }
 
+function Start-WebApiIfStopped {
+    [CmdletBinding()]
+    param (
+        [Parameter(Mandatory = $true)]
+        [string]$SolutionAbbreviation,
+        [Parameter(Mandatory = $true)]
+        [string]$EnvironmentAbbreviation
+    )
+
+    # The notifications-queue pre-deployment migration is the only step that stops the WebAPI App
+    # Service. A stopped app also stops its SCM/Kudu site, which breaks zip deploy, and returns 403
+    # to HTTP without self-starting. Start it (idempotently) before any WebAPI-dependent step
+    # (code publish, EF migrations, Reschedule).
+    $computeResourceGroup = "$SolutionAbbreviation-compute-$EnvironmentAbbreviation"
+    $webApiName = "$computeResourceGroup-webapi"
+
+    $webApi = Get-AzWebApp -ResourceGroupName $computeResourceGroup -Name $webApiName -ErrorAction SilentlyContinue
+    if ($null -eq $webApi) {
+        Write-DeployLog -Level Warn -Message "WebAPI '$webApiName' was not found in '$computeResourceGroup'. Skipping start."
+        return
+    }
+
+    if ($webApi.State -eq "Running") {
+        return
+    }
+
+    Write-DeployLog -Level Info -Message "Starting WebAPI '$webApiName' before WebAPI-dependent deployment steps..."
+    Invoke-WithRetry `
+        -Operation {
+            Start-AzWebApp -ResourceGroupName $computeResourceGroup -Name $webApiName -ErrorAction Stop | Out-Null
+            if ((Get-AzWebApp -ResourceGroupName $computeResourceGroup -Name $webApiName -ErrorAction Stop).State -ne "Running") {
+                throw "WebAPI '$webApiName' has not reached the Running state."
+            }
+        } `
+        -OperationName "Start WebAPI '$webApiName'" `
+        -MaxAttempts 5 `
+        -BaseDelaySeconds 2
+
+    Write-DeployLog -Level Success -Message "WebAPI '$webApiName' is running."
+}
+
 function Start-EFMigrationViaWebAPI {
     param (
         [Parameter(Mandatory = $true)]
@@ -3535,6 +3569,13 @@ function Deploy-Resources {
     }
 
     if ($skipFunctionAppCodeDeployment -eq $false) {
+        # The pre-deployment notifications-queue migration leaves the WebAPI stopped, which also
+        # stops its SCM site and breaks zip deploy. Ensure it is running before publishing code and
+        # before the WebAPI-dependent steps below (EF migrations, Reschedule).
+        Start-WebApiIfStopped `
+            -SolutionAbbreviation $solutionAbbreviation `
+            -EnvironmentAbbreviation $environmentAbbreviation
+
         Set-FunctionAppCode `
             -ComputeResourceGroup $computeResourceGroup `
             -FunctionsPackagesDirectory "$deploymentPackageDirectory/function_packages" `
@@ -3577,6 +3618,12 @@ function Deploy-Resources {
         Write-DeployLog -Level Warn -Message "Skipping UI deployment as per configuration [skipUIDeployment = $skipUIDeployment]."
     }
     
+    # Ensure the WebAPI is running before the WebAPI-dependent steps below (EF migrations, Reschedule).
+    # Idempotent: this is a no-op when the app is already running.
+    Start-WebApiIfStopped `
+        -SolutionAbbreviation $solutionAbbreviation `
+        -EnvironmentAbbreviation $environmentAbbreviation
+
     # Call the WebAPI to perform EF migrations.
     Start-EFMigrationViaWebAPI `
         -SolutionAbbreviation $solutionAbbreviation `
