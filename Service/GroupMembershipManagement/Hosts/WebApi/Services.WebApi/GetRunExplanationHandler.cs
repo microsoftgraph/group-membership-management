@@ -9,9 +9,11 @@ using Services.Contracts;
 using Services.Messages.Requests;
 using Services.Messages.Responses;
 using Services.WebApi.Contracts;
+using System.Globalization;
 using System.Net;
 using System.Text;
 using System.Text.Json;
+using System.Text.RegularExpressions;
 
 namespace Services
 {
@@ -47,7 +49,9 @@ GMM syncs membership from source parts into a destination group. A sync job's co
 
 Each source part may be **inclusionary** (members are added) or **exclusionary** (members are removed from the final result).
 
-When explaining, use the most specific explanation that fits the data. Write for the group owner (not an engineer): use ""membership rule"" instead of ""SqlMembership source"", ""source group"" instead of ""GroupMembership source"", ""the rule"" or ""the criteria"" instead of ""the inclusionary filter"". Keep literal filter expressions in backticks and manager IDs / depth values verbatim — those are the actual identifiers the owner needs.
+When explaining, use the most specific explanation that fits the data. Write for the group owner (not an engineer): use ""membership rule"" instead of ""SqlMembership source"", ""source group"" instead of ""GroupMembership source"", ""the rule"" or ""the criteria"" instead of ""the inclusionary filter"".
+
+**HARD RULE — owner-friendly criteria only:** The prompt's membership criteria have already been translated into plain English. Use those descriptions instead of raw implementation syntax. NEVER output raw SQL/JSON filters, comparison symbols, internal code-field suffixes, or numeric mapping codes when a mapped description is available. Use readable attribute labels, describe comparisons in words, and preserve exact mapped descriptions supplied in the prompt.
 
 OMIT from your sentence (already shown in the row the owner expanded):
 - Added count, removed count, before-sync count, after-sync count
@@ -57,7 +61,7 @@ Focus on the CAUSE. Owners can see the numbers in the row; they expanded it to l
 The CAUSE for this run comes from exactly two places in the prompt:
 1. The ""What changed:"" section under ""Configuration history"" (configuration deltas — scope changed, filter changed, source added/removed/role-flipped, etc.).
 2. The ""HR attribute changes"" section (per-user HR snapshot deltas with concrete old/new values).
-The ""Job filter:"" line and the ""Source group display names"" / ""Manager display names"" reference tables are GLOSSARY material describing what currently exists in the query — they are NOT a list of changes for this run. NEVER attribute this run's delta to source groups, manager scopes, filter clauses, or HR attributes that do not appear in one of those two sections. Do NOT add ""Additionally..."", ""In addition..."", ""The sync also reflects..."", ""members were added from..."", or ""excluded based on..."" clauses about parts that did not change — even if those parts appear in the current query or in the reference tables.
+The ""Membership rules as of this run:"" section and the ""Source group display names"" / ""Manager display names"" reference tables are GLOSSARY material describing what currently exists in the query — they are NOT a list of changes for this run. **EXCEPTION — first recorded run:** when the prompt contains a ""Run sequence: This is the FIRST recorded run for this job"" line, there is NO prior state to compare against, so the membership rules THEMSELVES are the cause for this run — describe the initial population using their owner-friendly descriptions (see pattern 13) and do NOT hedge. NEVER attribute this run's delta to source groups, manager scopes, filter clauses, or HR attributes that do not appear in one of those two sections. Do NOT add ""Additionally..."", ""In addition..."", ""The sync also reflects..."", ""members were added from..."", or ""excluded based on..."" clauses about parts that did not change — even if those parts appear in the current query or in the reference tables.
 
 When multiple changes appear in the configuration diff (e.g. scope change AND filter change AND new source), list them neutrally. Do NOT use ""primarily"", ""mainly"", ""mostly due to"", ""largely because of"" to rank one change as the primary cause unless the prompt provides explicit per-rule attribution (a ""Per-rule attribution for added users"" section is present). When that attribution section IS present, you may use those qualitative terms verbatim (e.g. ""most"", ""almost all"", ""a few"") to rank causes — but never translate them into exact counts or percentages.
 
@@ -72,18 +76,16 @@ Prefer these patterns:
 5. **Group sources changed (no in-GMM signal)**: ""This sync reflects changes in upstream source group memberships.""
 6. **Insufficient signal**: ""The specific reason could not be determined from the available data.""
 7. **Manager scope changed**: ""This sync's candidate population changed because the membership rule's scope was updated on [date] from [old scope] to [new scope]"" — where ""scope"" comes from the configDiff line and looks like ""id=N (depth<=M)"", ""id=N (unbounded depth)"", or ""none (filter-only, no hierarchy scope)"". Only usable when the ""Configuration history"" section shows an explicit ""What changed:"" line naming the scope change — never when the stale marker is present.
-8. **Empty membership rule result**: ""This sync made no membership changes because the inclusionary membership rule matched no employees in the HR snapshot for this run."" Tailor the sentence to the variant: for filter-only, mention only the filter; for manager+unbounded, mention the manager root and the filter; for manager+depth-cap, mention the manager root, the depth cap (""depth<=N""), and the filter. Examples:
-   - Filter-only: ""...filtered to [filter]...""
-   - Manager+unbounded: ""...scoped to the management chain rooted at id=[manager.id] (unbounded depth) and filtered to [filter]...""
-   - Manager+depth-cap: ""...scoped to the management chain rooted at id=[manager.id] (depth<=[depth]) and filtered to [filter]...""
+8. **Empty membership rule result**: ""This sync made no membership changes because the inclusionary membership rule matched no employees in the HR snapshot for this run."" Tailor the sentence to the variant: for filter-only, mention only the owner-friendly criteria; for manager+unbounded, mention the manager root and the criteria; for manager+depth-cap, mention the manager root, the depth cap, and the criteria. Never reconstruct the raw filter.
 9. **Per-rule attribution available**: When the prompt contains a ""Per-rule attribution for added users"" section, use those qualitative terms verbatim (e.g., ""most added users match the inclusionary HR rule scoped to id=100 (unbounded depth)""). Pair this with whichever change pattern (1, 7, etc.) is appropriate. NEVER translate ""most"" / ""almost all"" / ""a few"" into specific counts or percentages — the buckets are qualitative on purpose to avoid fabricated precision.
-10. **IgnoreThresholdOnce applied**: When the Configuration history section contains an explicit ""IgnoreThresholdOnce activated on [date]"" line, that's the direct cause of this sync's delta: the previous run was blocked by the configured threshold, an owner (or automation) activated IgnoreThresholdOnce, and this sync applied the previously-pending changes. Use pattern: ""This sync applied the [adds|removes|adds and removes] that were previously blocked by the threshold, because IgnoreThresholdOnce was activated on [date]."" NEVER use this pattern unless the explicit ""IgnoreThresholdOnce activated on [date]"" line is present in the prompt — the marker is emitted only when the event was activated in THIS sync's window; otherwise, the ITO event is stale and MUST NOT be cited (even if the historical event is technically still visible elsewhere). Combine with pattern 1 / 7 phrasing when a rule change also drove the previously-pending delta (e.g., ""...applied the removes that were previously blocked, following the earlier filter change from `[old]` to `[new]`"").
+10. **IgnoreThresholdOnce applied**: When the Configuration history section contains an explicit ""IgnoreThresholdOnce activated on [date]"" line, that's the direct cause of this sync's delta: the previous run was blocked by the configured threshold, an owner (or automation) activated IgnoreThresholdOnce, and this sync applied the previously-pending changes. Use pattern: ""This sync applied the [adds|removes|adds and removes] that were previously blocked by the threshold, because IgnoreThresholdOnce was activated on [date]."" NEVER use this pattern unless the explicit ""IgnoreThresholdOnce activated on [date]"" line is present in the prompt — the marker is emitted only when the event was activated in THIS sync's window; otherwise, the ITO event is stale and MUST NOT be cited (even if the historical event is technically still visible elsewhere). Combine with pattern 1 / 7 phrasing when a rule change also drove the previously-pending delta, using the owner-friendly old and new criteria from the prompt.
 11. **Per-part attribution for removed users available**: When the prompt contains a ""Per-part attribution for removed users"" section, use those qualitative terms verbatim to explain the removals (e.g., ""most removed users left the source group `TestGroupMember`"", or ""a few removed users no longer match the inclusionary HR rule"", or — when a source was dropped by a recent config update — ""all of the removed users were previously sourced from the group `X` which was removed from the query""). When the attribution line for a deleted source says ""per-part membership counts are unavailable, but this deleted source is the likely cause"", phrase it as: ""This sync's removals likely came from users who were previously sourced from the group `X`, which was removed from the query in a recent config update."" When the attribution line indicates a source ""flipped from inclusionary to exclusionary"", phrase it as: ""This sync's removals came from users who are members of `X`, which was recently flipped from an inclusionary source to an exclusionary source in the query."" When the attribution line indicates a ""New exclusionary source added"", phrase it as: ""This sync's removals came from users who are members of `X`, which was recently added to the query as an exclusionary source."" **When multiple ""Source removed from query"" attribution lines are present, you MUST name EVERY deleted source in your output — not just the first one. Combine them naturally: ""...from the groups `X` and `Y`"" for two, or ""...from the groups `X`, `Y`, and `Z`"" for three or more. Under no circumstances omit any deleted source that is cited in the attribution section.** Same rule applies to ""Source flipped"" and ""New exclusionary source added"" attribution lines — name EVERY cited source. **Under no circumstances name a source that is NOT cited in the attribution section.** If exactly one source is cited, name exactly that one source and do not add a second name to make the sentence plural. Prefer specific attribution over generic phrasing like ""the specific reason could not be determined"". Pair with pattern 4 for threshold-blocked runs (e.g., ""...blocked by the threshold. All of the proposed removals were previously sourced from the groups `X` and `Y`, both of which were removed from the query.""). If the section is absent and there are removed users, either omit any per-removal explanation or fall back to pattern 5 (""upstream source group changes"") — NEVER invent an attribution. **CRITICAL anti-hallucination rule**: NEVER name a specific source group, HR rule, or exclusionary source as the cause of removals unless it is cited in the ""Per-part attribution for removed users"" section OR the ""Configuration history"" section shows an explicit ""What changed"" line involving that source in this window. The current query listed under ""Configuration as of this run"" is NOT proof of attribution — a source being listed as CURRENT does not mean users were removed FROM it. Removals typically come from sources that WERE in the query previously but are NO LONGER in the query, from users who no longer match the current sources' criteria, or from sources whose role flipped from inclusionary to exclusionary, or from newly-added exclusionary sources — do not conflate these cases. **BAD example — process-of-elimination hallucination**: given ""Per-part attribution for added users: all of the added users match source group `X`"" and NO removes attribution section (or a ""(no attributable source found)"" removes marker), it is FORBIDDEN to output ""all removals came from users leaving `Y`"" just because `Y` is the OTHER source in the current query. That reasoning is process-of-elimination guessing, not evidence — the correct output is to describe removals without naming any specific source (pattern 4 without a per-removal source, or pattern 5, or pattern 6). Same rule applies in reverse for adds — never mirror the removes attribution shape onto adds when the adds attribution section is empty or marked ""(no attributable source found)"". **BAD example — inventing a second name to make a sentence plural**: given a single attribution line like ""- Source removed from query (previously group `X`): all of the removed users were sourced from this now-deleted part"", it is FORBIDDEN to output ""...came from the groups `X` and `Y`"" — you must output ""...came from the group `X`"" (singular) since only ONE source is cited. Never pluralize by inventing a second source name from the current query or from prior conversations.
 12. **Per-part attribution for added users available**: When the prompt contains a ""Per-part attribution for added users"" section, use its qualitative terms verbatim to explain the additions. In particular, when the attribution line says ""Exclusionary source removed from query in the recent config update"", phrase it as: ""This sync's additions came from users who were previously excluded by `X`, which was removed from the query in a recent config update."" When the attribution line indicates a source ""flipped from exclusionary to inclusionary"", phrase it as: ""This sync's additions came from users who are members of `X`, which was recently flipped from an exclusionary source to an inclusionary source in the query."" **When multiple attribution lines are present for adds, you MUST name EVERY cited source, combining them naturally (""...from the groups `X` and `Y`"" for two, ""...from the groups `X`, `Y`, and `Z`"" for three or more).** All the anti-hallucination rules from pattern 11 apply symmetrically to adds — never invent a second name to make a sentence plural, never process-of-elimination guess a source, never name a source that is not cited in the attribution section.
+13. **First recorded run (initial population)**: When the prompt contains a ""Run sequence: This is the FIRST recorded run for this job"" line, this run established the destination group's membership for the first time. For THIS case ONLY, the ""Membership rules as of this run:"" section IS the cause — describe the initial population using those owner-friendly rule descriptions (e.g., ""This first sync populated the group from its configured rules: employees whose Cost Center is Field Sales - West, plus members of the source group `Contoso Sales Team`.""). You MUST NOT hedge with pattern 6 on a first run that added or removed members, and you MUST NOT use change-based patterns (1, 3, 7) or claim any prior configuration or membership existed — there is no previous state. When a ""Per-rule attribution"" section is also present, you may fold in its qualitative terms. Keep it to 1-2 sentences; when many rules are configured, summarize the most relevant inclusionary rules rather than listing every part, and never emit raw filter syntax or numeric codes.
 
 When the membership rule returns no users (UsersAdded and UsersRemoved are both 0 AND the run status is MembershipDataNotFound or similar), prefer pattern 8 over saying ""HR data was unavailable"" — the HR table itself exists; what's empty is the result for this specific scope+filter combination.
 
-Reference specific dates, attribute names, filter expressions, source group names (or IDs when no display name is available), and manager display names (or IDs when no display name is available) when available — but NOT counts (those are in the row already). When a ""Source group display names"" or ""Manager display names"" table is provided in the prompt, use ONLY names from that table — never invent or guess a manager's name if the table is empty or missing the id. When a manager scope inline is just an ID with no name (e.g., ""id=100 (unbounded depth)""), keep it as-is — do NOT synthesize a plausible-sounding name.
+Reference specific dates, owner-friendly attribute names and criteria, mapped descriptions, source group names (or IDs when no display name is available), and manager display names (or IDs when no display name is available) when available — but NOT counts (those are in the row already). When a ""Source group display names"" or ""Manager display names"" table is provided in the prompt, use ONLY names from that table — never invent or guess a manager's name if the table is empty or missing the id. When a manager scope inline is just an ID with no name (e.g., ""id=100 (unbounded depth)""), keep it as-is — do NOT synthesize a plausible-sounding name.
 Use only the provided data. Output 1-2 sentences normally, or up to 3 sentences when the ""Per-part attribution"" section names two or more sources (so every cited source can be included).";
 
         private readonly ILogger<GetRunExplanationHandler> _logger;
@@ -165,6 +167,8 @@ Use only the provided data. Output 1-2 sentences normally, or up to 3 sentences 
 
                 // Detect threshold-blocked runs by comparing ThresholdViolations counters — the disable-cap Idle path leaves Status=Idle with NULL adds/removes.
                 var previousRun = await GetPreviousRunHistoryAsync(request.SyncJobId, runHistory);
+                // A job's first run has no prior run to diff against; used below for an accurate initial-population explanation instead of the generic hedge.
+                var isInitialRun = previousRun == null;
                 var prevThresholdViolations = previousRun?.ThresholdViolations ?? 0;
                 var thisThresholdViolations = runHistory.ThresholdViolations ?? 0;
                 var isThresholdBlocked = thisThresholdViolations > prevThresholdViolations
@@ -280,8 +284,32 @@ Use only the provided data. Output 1-2 sentences normally, or up to 3 sentences 
                 var managerIds = CollectManagerIds(parts, previousPartsForNames);
                 var managerNames = await ResolveManagerNamesSafelyAsync(managerIds, runHistory.AdfRunId);
 
-                var configDiff = BuildConfigurationDiff(recentChanges, groupNames, managerNames, hasConfigChangeInWindow, itoEvent, previousRun?.Status);
-                var hrDiff = await ComputeHrDiffSummaryAsync(parts, cappedAdded, cappedRemoved, runHistory.AdfRunId, previousRun?.AdfRunId);
+                var mappingDescriptions = await OwnerFriendlyFilterMappingResolver.ResolveAsync(
+                    new[] { parts, previousPartsForNames, previousRunParts }
+                        .Where(partList => partList != null)
+                        .SelectMany(partList => partList!)
+                        .Select(part => part.Filter),
+                    runHistory.AdfRunId,
+                    _sqlMembershipRepository,
+                    _dataFactoryRepository,
+                    _logger);
+                var membershipRules = DescribeMembershipRulesForOwner(parts, mappingDescriptions, groupNames, managerNames);
+
+                var configDiff = BuildConfigurationDiff(
+                    recentChanges,
+                    groupNames,
+                    managerNames,
+                    mappingDescriptions,
+                    hasConfigChangeInWindow,
+                    itoEvent,
+                    previousRun?.Status);
+                var hrDiff = await ComputeHrDiffSummaryAsync(
+                    parts,
+                    cappedAdded,
+                    cappedRemoved,
+                    runHistory.AdfRunId,
+                    previousRun?.AdfRunId,
+                    mappingDescriptions);
 
                 // Await the pre-fired part-files enumeration (already running concurrently).
                 IReadOnlyDictionary<string, BlobResult> partFiles = new Dictionary<string, BlobResult>(StringComparer.OrdinalIgnoreCase);
@@ -318,7 +346,7 @@ Use only the provided data. Output 1-2 sentences normally, or up to 3 sentences 
                 var removesAttribution = await ComputeRemovesAttributionAsync(
                     parts, previousPartsForNames, removed, runHistory.AdfRunId, previousRun?.AdfRunId, managerNames, groupNames, partFiles, previousPartFiles, previousRunIndexByGuid);
 
-                var userPrompt = BuildRunPrompt(request, runHistory, asOfRunQuery, cappedAdded, cappedRemoved, added.Count, removed.Count, isThresholdBlocked, prevThresholdViolations, thisThresholdViolations, configDiff, hrDiff, groupNames, managerNames, addsAttribution, removesAttribution);
+                var userPrompt = BuildRunPrompt(request, runHistory, membershipRules, cappedAdded, cappedRemoved, added.Count, removed.Count, isThresholdBlocked, isInitialRun, prevThresholdViolations, thisThresholdViolations, configDiff, hrDiff, groupNames, managerNames, addsAttribution, removesAttribution);
 
                 string explanation;
                 using (_logger.BeginScope(new Dictionary<string, object> { ["AIFeature"] = "RunExplanation" }))
@@ -327,6 +355,18 @@ Use only the provided data. Output 1-2 sentences normally, or up to 3 sentences 
                 }
 
                 response.Explanation = string.IsNullOrWhiteSpace(explanation) ? FallbackExplanation : explanation.Trim();
+
+                // First-run safety net: replace the generic hedge with an initial-population explanation on a first run that actually moved members (blank/timeout/rate-limited paths keep FallbackExplanation).
+                var initialAdded = Math.Max(usersAdded, added.Count);
+                var initialRemoved = Math.Max(usersRemoved, removed.Count);
+                if (isInitialRun
+                    && (initialAdded > 0 || initialRemoved > 0)
+                    && !string.IsNullOrWhiteSpace(explanation)
+                    && string.Equals(explanation.Trim(), FallbackExplanation, StringComparison.Ordinal))
+                {
+                    response.Explanation = BuildInitialRunExplanation(initialAdded, initialRemoved, membershipRules);
+                }
+
                 response.StatusCode = HttpStatusCode.OK;
             }
             catch (TimeoutException ex)
@@ -624,7 +664,8 @@ Use only the provided data. Output 1-2 sentences normally, or up to 3 sentences 
             IReadOnlyList<Guid> addedUsers,
             IReadOnlyList<Guid> removedUsers,
             Guid? currentAdfRunId,
-            Guid? previousAdfRunId)
+            Guid? previousAdfRunId,
+            IReadOnlyDictionary<string, IReadOnlyDictionary<string, string>> mappingDescriptions)
         {
             if (currentAdfRunId == null || currentAdfRunId.Value == Guid.Empty)
             {
@@ -744,19 +785,24 @@ Use only the provided data. Output 1-2 sentences normally, or up to 3 sentences 
 
                     if (addedChanged == 0 && removedChanged == 0) continue;
 
-                    sb.Append($"- Part {part.Index} ({role} SQL filter `{part.Filter}`): ");
+                    var friendlyFilter = OwnerFriendlyFilterFormatter.DescribeFilter(part.Filter, mappingDescriptions);
+                    var friendlyAttribute = OwnerFriendlyFilterFormatter.HumanizeAttributeName(attrName);
+                    var friendlyOldValue = OwnerFriendlyFilterFormatter.DescribeAttributeValue(attrName, sampleOld, mappingDescriptions);
+                    var friendlyNewValue = OwnerFriendlyFilterFormatter.DescribeAttributeValue(attrName, sampleNew, mappingDescriptions);
+
+                    sb.Append($"- Part {part.Index + 1} ({role} HR criteria: {friendlyFilter}): ");
                     if (addedChanged > 0)
                     {
-                        sb.Append($"{addedChanged} added users had {attrName} change");
+                        sb.Append($"{addedChanged} added users had {friendlyAttribute} change");
                     }
                     if (removedChanged > 0)
                     {
                         if (addedChanged > 0) sb.Append(" and ");
-                        sb.Append($"{removedChanged} removed users had {attrName} change");
+                        sb.Append($"{removedChanged} removed users had {friendlyAttribute} change");
                     }
                     if (sampleOld != null && sampleNew != null)
                     {
-                        sb.Append($" (sample: {attrName} {sampleOld} -> {sampleNew})");
+                        sb.Append($" (sample: {friendlyAttribute} changed from {friendlyOldValue} to {friendlyNewValue})");
                     }
                     sb.AppendLine();
                 }
@@ -814,12 +860,76 @@ Use only the provided data. Output 1-2 sentences normally, or up to 3 sentences 
             }
         }
 
+        public static string DescribeMembershipRulesForOwner(
+            IReadOnlyList<QueryPartInfo>? parts,
+            IReadOnlyDictionary<string, IReadOnlyDictionary<string, string>>? mappingDescriptions,
+            IReadOnlyDictionary<Guid, string>? groupNames,
+            IReadOnlyDictionary<int, string>? managerNames)
+        {
+            if (parts == null || parts.Count == 0)
+            {
+                return "No membership rules configured.";
+            }
+
+            var descriptions = new List<string>(parts.Count);
+            foreach (var part in parts)
+            {
+                var action = part.Exclusionary ? "Excludes" : "Includes";
+                var description = part.Type.ToLowerInvariant() switch
+                {
+                    "sqlmembership" => DescribeSqlMembershipRule(part, action, mappingDescriptions, managerNames),
+                    "groupmembership" => $"{action} members of source group {FormatGroupNameForOwner(part.Source, groupNames)}.",
+                    "groupownership" => $"{action} owners of source group {FormatGroupNameForOwner(part.Source, groupNames)}.",
+                    "teamschannelmembership" => $"{action} members of Teams channel {FormatGroupNameForOwner(part.Source, groupNames)}.",
+                    "placemembership" => $"{action} users returned by the configured place criteria.",
+                    _ => $"{action} users from a configured {OwnerFriendlyFilterFormatter.HumanizeAttributeName(part.Type)} source."
+                };
+
+                descriptions.Add($"- Rule {part.Index + 1}: {description}");
+            }
+
+            return string.Join(Environment.NewLine, descriptions);
+        }
+
+        private static string DescribeSqlMembershipRule(
+            QueryPartInfo part,
+            string action,
+            IReadOnlyDictionary<string, IReadOnlyDictionary<string, string>>? mappingDescriptions,
+            IReadOnlyDictionary<int, string>? managerNames)
+        {
+            var criteria = OwnerFriendlyFilterFormatter.DescribeFilter(part.Filter, mappingDescriptions);
+            if (string.IsNullOrWhiteSpace(part.ManagerId))
+            {
+                return $"{action} employees where {criteria}.";
+            }
+
+            return $"{action} employees in the management chain rooted at {FormatManagerScopeWithName(part, managerNames)} where {criteria}.";
+        }
+
+        private static string FormatGroupNameForOwner(
+            string? rawSource,
+            IReadOnlyDictionary<Guid, string>? groupNames)
+        {
+            if (groupNames != null
+                && Guid.TryParse(rawSource, out var groupId)
+                && groupNames.TryGetValue(groupId, out var groupName)
+                && !string.IsNullOrWhiteSpace(groupName))
+            {
+                return $"\"{groupName}\"";
+            }
+
+            return string.IsNullOrWhiteSpace(rawSource)
+                ? "whose name is unavailable"
+                : rawSource;
+        }
+
         // Builds the "Configuration history" prompt section. hasConfigChangeInWindow gates the structural diff;
         // ignoreThresholdOnceInWindow is populated when an ITO event fired between the previous run and this sync.
         private string BuildConfigurationDiff(
             IReadOnlyList<Models.SyncJobChange.SyncJobChange>? recentChanges,
             IReadOnlyDictionary<Guid, string>? groupNames,
             IReadOnlyDictionary<int, string>? managerNames,
+            IReadOnlyDictionary<string, IReadOnlyDictionary<string, string>> mappingDescriptions,
             bool hasConfigChangeInWindow,
             Models.SyncJobChange.SyncJobChange? ignoreThresholdOnceInWindow,
             string? previousRunStatus)
@@ -854,13 +964,28 @@ Use only the provided data. Output 1-2 sentences normally, or up to 3 sentences 
                     if (!hasConfigChangeInWindow)
                     {
                         sb.AppendLine($"(this change occurred BEFORE the previous run — configuration is unchanged for THIS sync; do not attribute this run's adds/removes to a configuration change)");
-                        sb.AppendLine($"Configuration as of this run: {currentQuery ?? "None"}");
+                        sb.AppendLine("Configuration as of this run:");
+                        sb.AppendLine(DescribeMembershipRulesForOwner(
+                            ParseQueryParts(currentQuery),
+                            mappingDescriptions,
+                            groupNames,
+                            managerNames));
                     }
                     else if (previousQuery != null && !string.Equals(NormalizeQuery(previousQuery), NormalizeQuery(currentQuery), StringComparison.OrdinalIgnoreCase))
                     {
-                        sb.AppendLine($"Previous configuration: {previousQuery}");
-                        sb.AppendLine($"Current configuration: {currentQuery ?? "None"}");
-                        var structuralDiff = DescribeQueryDiff(previousQuery, currentQuery, groupNames, managerNames);
+                        sb.AppendLine("Previous configuration:");
+                        sb.AppendLine(DescribeMembershipRulesForOwner(
+                            ParseQueryParts(previousQuery),
+                            mappingDescriptions,
+                            groupNames,
+                            managerNames));
+                        sb.AppendLine("Current configuration:");
+                        sb.AppendLine(DescribeMembershipRulesForOwner(
+                            ParseQueryParts(currentQuery),
+                            mappingDescriptions,
+                            groupNames,
+                            managerNames));
+                        var structuralDiff = DescribeQueryDiff(previousQuery, currentQuery, groupNames, managerNames, mappingDescriptions);
                         if (!string.IsNullOrWhiteSpace(structuralDiff))
                         {
                             sb.AppendLine();
@@ -870,11 +995,21 @@ Use only the provided data. Output 1-2 sentences normally, or up to 3 sentences 
                     }
                     else if (previousQuery != null)
                     {
-                        sb.AppendLine($"Configuration (unchanged): {currentQuery ?? "None"}");
+                        sb.AppendLine("Configuration (unchanged):");
+                        sb.AppendLine(DescribeMembershipRulesForOwner(
+                            ParseQueryParts(currentQuery),
+                            mappingDescriptions,
+                            groupNames,
+                            managerNames));
                     }
                     else
                     {
-                        sb.AppendLine($"Initial configuration: {currentQuery ?? "None"}");
+                        sb.AppendLine("Initial configuration:");
+                        sb.AppendLine(DescribeMembershipRulesForOwner(
+                            ParseQueryParts(currentQuery),
+                            mappingDescriptions,
+                            groupNames,
+                            managerNames));
                     }
                 }
 
@@ -900,12 +1035,13 @@ Use only the provided data. Output 1-2 sentences normally, or up to 3 sentences 
         private static string BuildRunPrompt(
             GetRunExplanationRequest request,
             Models.SyncJobHistory.SyncJobHistory runHistory,
-            string? query,
+            string membershipRules,
             IReadOnlyList<Guid> sampleAdded,
             IReadOnlyList<Guid> sampleRemoved,
             int fullAddedFromBlob,
             int fullRemovedFromBlob,
             bool isThresholdBlocked,
+            bool isInitialRun,
             int prevThresholdViolations,
             int thisThresholdViolations,
             string configDiff,
@@ -933,13 +1069,19 @@ Use only the provided data. Output 1-2 sentences normally, or up to 3 sentences 
             var groupNamesSection = BuildGroupNameReferenceTable(groupNames);
             var managerNamesSection = BuildManagerNameReferenceTable(managerNames);
 
+            // First-run marker: signals pattern 13 so the model narrates the initial population from the rules instead of hedging.
+            var runSequenceNote = isInitialRun
+                ? $"{Environment.NewLine}Run sequence: This is the FIRST recorded run for this job (initial population; there is no previous run to compare against, so per-user HR-attribute deltas and prior-membership comparisons are unavailable by design)."
+                : string.Empty;
+
             return $@"Sync Run: {request.RunId}
 Date: {endTime:u}
 Status: {status}
 Before sync: {runHistory.BeforeSyncUserCount ?? 0} members | After sync: {runHistory.AfterSyncUserCount ?? 0} members
-{countsLine}
+{countsLine}{runSequenceNote}
 
-Job filter: {query ?? "None"}
+Membership rules as of this run:
+{membershipRules}
 
 Sampled adds: {sampleAdded.Count} of {addedCount} included
 Sampled removes: {sampleRemoved.Count} of {removedCount} included
@@ -949,6 +1091,50 @@ HR attribute changes (between previous-run and this-run snapshots, grouped by pa
 
 Configuration history:
 {configDiff}{addsAttribution}{removesAttribution}{groupNamesSection}{managerNamesSection}";
+        }
+
+        // Deterministic owner-friendly explanation for a job's first run; used only as a success-path safety net when the model returns the generic hedge.
+        private static string BuildInitialRunExplanation(int added, int removed, string membershipRules)
+        {
+            var rulesInline = SummarizeRulesInline(membershipRules);
+            var rulesClause = string.IsNullOrEmpty(rulesInline)
+                ? "its configured membership rules"
+                : $"its configured rules ({rulesInline})";
+
+            if (added > 0 && removed > 0)
+            {
+                return $"This was the first sync for this job, so GMM established the destination group's membership from {rulesClause}: members matching those rules were added, and any pre-existing members of the group that did not match were removed.";
+            }
+            if (removed > 0)
+            {
+                return $"This was the first sync for this job, so GMM aligned the destination group to {rulesClause} by removing pre-existing members that did not match.";
+            }
+            return $"This was the first sync for this job, so GMM populated the destination group for the first time by adding the members that match {rulesClause}.";
+        }
+
+        // Compact one-line summary of the configured rules for inlining into the first-run explanation; returns empty when there are no rules or too many parts to fit one sentence.
+        private static string SummarizeRulesInline(string membershipRules)
+        {
+            if (string.IsNullOrWhiteSpace(membershipRules))
+            {
+                return string.Empty;
+            }
+
+            var clauses = membershipRules
+                .Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                .Select(line => Regex.Replace(line, @"^-\s*Rule\s*\d+:\s*", string.Empty).Trim().TrimEnd('.'))
+                .Where(clause => clause.Length > 0
+                    && !clause.StartsWith("No membership rules", StringComparison.OrdinalIgnoreCase))
+                .Select(clause => char.ToLowerInvariant(clause[0]) + clause.Substring(1))
+                .ToList();
+
+            // More than three parts reads as a wall of text in one sentence — fall back to the generic phrasing.
+            if (clauses.Count == 0 || clauses.Count > 3)
+            {
+                return string.Empty;
+            }
+
+            return string.Join("; ", clauses);
         }
 
         // Inlined from GetSyncExplanationHandler for now; see plan.md follow-up to extract into a shared helper.
@@ -985,11 +1171,12 @@ Configuration history:
         }
 
         // Inlined from GetSyncExplanationHandler for now; see plan.md follow-up to extract into a shared helper.
-        private static string DescribeQueryDiff(
+        public static string DescribeQueryDiff(
             string? previousQuery,
             string? currentQuery,
             IReadOnlyDictionary<Guid, string>? groupNames = null,
-            IReadOnlyDictionary<int, string>? managerNames = null)
+            IReadOnlyDictionary<int, string>? managerNames = null,
+            IReadOnlyDictionary<string, IReadOnlyDictionary<string, string>>? mappingDescriptions = null)
         {
             var previousParts = ParseQueryParts(previousQuery);
             var currentParts = ParseQueryParts(currentQuery);
@@ -1016,7 +1203,7 @@ Configuration history:
                 }
                 else if (part.Type.Equals("SqlMembership", StringComparison.OrdinalIgnoreCase))
                 {
-                    sb.AppendLine($"- New {role} HR/SQL filter source added: {part.Filter ?? "no filter"}");
+                    sb.AppendLine($"- New {role} HR membership rule added: {OwnerFriendlyFilterFormatter.DescribeFilter(part.Filter, mappingDescriptions)}");
                 }
                 else
                 {
@@ -1037,7 +1224,7 @@ Configuration history:
                 }
                 else if (part.Type.Equals("SqlMembership", StringComparison.OrdinalIgnoreCase))
                 {
-                    sb.AppendLine($"- {roleLabel} HR/SQL filter source removed: {part.Filter ?? "no filter"}");
+                    sb.AppendLine($"- {roleLabel} HR membership rule removed: {OwnerFriendlyFilterFormatter.DescribeFilter(part.Filter, mappingDescriptions)}");
                 }
                 else
                 {
@@ -1058,12 +1245,16 @@ Configuration history:
                     // Format the source as a friendly group ref when present; otherwise fall back to
                     // the filter expression / type label so the diff line still identifies the part.
                     var formattedSource = string.IsNullOrEmpty(currPart.Source) ? null : FormatGroupRef(currPart.Source, groupNames);
-                    sb.AppendLine($"- Source {formattedSource ?? currPart.Filter ?? currPart.Type} changed from {oldRole} to {newRole}");
+                    var friendlySource = formattedSource
+                        ?? OwnerFriendlyFilterFormatter.DescribeFilter(currPart.Filter, mappingDescriptions);
+                    sb.AppendLine($"- Source {friendlySource} changed from {oldRole} to {newRole}");
                 }
 
                 if (!string.Equals(prevPart.Filter?.Trim(), currPart.Filter?.Trim(), StringComparison.OrdinalIgnoreCase))
                 {
-                    sb.AppendLine($"- Filter changed from \"{prevPart.Filter ?? "none"}\" to \"{currPart.Filter ?? "none"}\"");
+                    var previousCriteria = OwnerFriendlyFilterFormatter.DescribeFilter(prevPart.Filter, mappingDescriptions);
+                    var currentCriteria = OwnerFriendlyFilterFormatter.DescribeFilter(currPart.Filter, mappingDescriptions);
+                    sb.AppendLine($"- Membership criteria changed from {previousCriteria} to {currentCriteria}");
                 }
 
                 if (!string.Equals(prevPart.ManagerId, currPart.ManagerId, StringComparison.Ordinal)
@@ -2264,6 +2455,491 @@ Configuration history:
         {
             var sourceLabel = FormatGroupRef(part.Source, groupNames);
             return $"Inclusionary {part.Type} part #{part.Index + 1} ({sourceLabel})";
+        }
+
+        private static class OwnerFriendlyFilterFormatter
+        {
+            private const string GenericCriteriaDescription = "the configured HR criteria";
+
+            private static readonly Regex _codeAttributeRegex = new(
+                @"\b(?<attribute>[A-Za-z_][A-Za-z0-9_]*_Code)\b",
+                RegexOptions.Compiled | RegexOptions.CultureInvariant | RegexOptions.IgnoreCase);
+
+            private static readonly Regex _predicateRegex = new(
+                @"(?<attribute>\[?[A-Za-z_][A-Za-z0-9_]*\]?)\s*(?<operator>IS\s+NOT\s+NULL|IS\s+NULL|NOT\s+IN|NOT\s+LIKE|IN|LIKE|>=|<=|<>|!=|=|>|<)(?:\s*(?<value>\((?:[^()']|'(?:''|[^'])*')*\)|N?'(?:''|[^'])*'|[-+]?\d+(?:\.\d+)?|[A-Za-z_][A-Za-z0-9_.-]*))?",
+                RegexOptions.Compiled | RegexOptions.CultureInvariant | RegexOptions.IgnoreCase);
+
+            private static readonly Regex _valueRegex = new(
+                @"N?'(?:''|[^'])*'|[^,]+",
+                RegexOptions.Compiled | RegexOptions.CultureInvariant | RegexOptions.IgnoreCase);
+
+            private static readonly IReadOnlyDictionary<string, string> _wordReplacements =
+                new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+                {
+                    ["Cnt"] = "Count",
+                    ["Dept"] = "Department",
+                    ["Desc"] = "Description",
+                    ["Id"] = "ID",
+                    ["Ind"] = "Indicator",
+                    ["Mgr"] = "Manager",
+                    ["Nbr"] = "Number",
+                    ["Num"] = "Number",
+                    ["Org"] = "Organization"
+                };
+
+            public static HashSet<string> CollectCodeAttributes(IEnumerable<string?> filters)
+            {
+                var attributes = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+                foreach (var filter in filters)
+                {
+                    if (string.IsNullOrWhiteSpace(filter))
+                    {
+                        continue;
+                    }
+
+                    foreach (Match match in _codeAttributeRegex.Matches(filter))
+                    {
+                        attributes.Add(match.Groups["attribute"].Value);
+                    }
+                }
+
+                return attributes;
+            }
+
+            public static string DescribeFilter(
+                string? filter,
+                IReadOnlyDictionary<string, IReadOnlyDictionary<string, string>>? mappingDescriptions = null)
+            {
+                if (string.IsNullOrWhiteSpace(filter))
+                {
+                    return GenericCriteriaDescription;
+                }
+
+                var matches = _predicateRegex.Matches(filter);
+                if (matches.Count == 0)
+                {
+                    return GenericCriteriaDescription;
+                }
+
+                var description = new StringBuilder();
+                var previousEnd = 0;
+
+                foreach (Match match in matches)
+                {
+                    if (!TryDescribeConnector(filter[previousEnd..match.Index], out var connector))
+                    {
+                        return GenericCriteriaDescription;
+                    }
+
+                    description.Append(connector);
+                    description.Append(DescribePredicate(match, mappingDescriptions));
+                    previousEnd = match.Index + match.Length;
+                }
+
+                if (!TryDescribeConnector(filter[previousEnd..], out var trailingConnector))
+                {
+                    return GenericCriteriaDescription;
+                }
+
+                description.Append(trailingConnector);
+
+                var result = Regex.Replace(description.ToString(), @"\s+", " ").Trim();
+                result = result.Replace("( ", "(", StringComparison.Ordinal)
+                    .Replace(" )", ")", StringComparison.Ordinal);
+
+                return string.IsNullOrWhiteSpace(result) ? GenericCriteriaDescription : result;
+            }
+
+            public static string HumanizeAttributeName(string attribute)
+            {
+                if (string.IsNullOrWhiteSpace(attribute))
+                {
+                    return "Attribute";
+                }
+
+                var name = attribute.Trim().Trim('[', ']');
+                if (name.EndsWith("_Code", StringComparison.OrdinalIgnoreCase))
+                {
+                    name = name[..^"_Code".Length];
+                }
+
+                name = name.Replace('_', ' ');
+                name = Regex.Replace(name, @"([a-z0-9])([A-Z])", "$1 $2");
+                name = Regex.Replace(name, @"([A-Z]+)([A-Z][a-z])", "$1 $2");
+
+                var words = name.Split(' ', StringSplitOptions.RemoveEmptyEntries)
+                    .Select(word =>
+                    {
+                        if (_wordReplacements.TryGetValue(word, out var replacement))
+                        {
+                            return replacement;
+                        }
+
+                        if (word.All(char.IsUpper))
+                        {
+                            return word;
+                        }
+
+                        return char.ToUpperInvariant(word[0]) + word[1..];
+                    });
+
+                return string.Join(" ", words);
+            }
+
+            public static string DescribeAttributeValue(
+                string attribute,
+                string? value,
+                IReadOnlyDictionary<string, IReadOnlyDictionary<string, string>>? mappingDescriptions = null)
+            {
+                return DescribeValue(attribute, value ?? string.Empty, mappingDescriptions);
+            }
+
+            private static string DescribePredicate(
+                Match match,
+                IReadOnlyDictionary<string, IReadOnlyDictionary<string, string>>? mappingDescriptions)
+            {
+                var attribute = match.Groups["attribute"].Value.Trim('[', ']');
+                var displayName = HumanizeAttributeName(attribute);
+                var normalizedOperator = Regex.Replace(match.Groups["operator"].Value, @"\s+", " ")
+                    .ToUpperInvariant();
+
+                if (normalizedOperator == "IS NULL")
+                {
+                    return $"{displayName} has no value";
+                }
+
+                if (normalizedOperator == "IS NOT NULL")
+                {
+                    return $"{displayName} has a value";
+                }
+
+                var rawValue = match.Groups["value"].Success
+                    ? match.Groups["value"].Value
+                    : string.Empty;
+
+                if (normalizedOperator is "LIKE" or "NOT LIKE")
+                {
+                    return DescribeLikePredicate(displayName, normalizedOperator, rawValue);
+                }
+
+                var values = ParseValues(rawValue)
+                    .Select(value => DescribeValue(attribute, value, mappingDescriptions))
+                    .Distinct(StringComparer.OrdinalIgnoreCase)
+                    .ToList();
+
+                if (values.Count == 0)
+                {
+                    values.Add(attribute.EndsWith("_Code", StringComparison.OrdinalIgnoreCase)
+                        ? "a configured value whose description is unavailable"
+                        : "an unspecified value");
+                }
+
+                var formattedValue = JoinValues(values);
+                var operatorText = normalizedOperator switch
+                {
+                    "=" => "is",
+                    "<>" or "!=" => "is not",
+                    ">=" => "is at least",
+                    "<=" => "is at most",
+                    ">" => "is greater than",
+                    "<" => "is less than",
+                    "IN" => "is one of",
+                    "NOT IN" => "is not one of",
+                    _ => "matches"
+                };
+
+                return $"{displayName} {operatorText} {formattedValue}";
+            }
+
+            private static string DescribeLikePredicate(string displayName, string normalizedOperator, string rawValue)
+            {
+                var value = Unquote(rawValue);
+                var startsWithWildcard = value.StartsWith('%');
+                var endsWithWildcard = value.EndsWith('%');
+                var literal = value.Trim('%');
+                var quoted = Quote(literal);
+                var negated = normalizedOperator == "NOT LIKE";
+
+                if (startsWithWildcard && endsWithWildcard)
+                {
+                    return $"{displayName} {(negated ? "does not contain" : "contains")} {quoted}";
+                }
+
+                if (startsWithWildcard)
+                {
+                    return $"{displayName} {(negated ? "does not end with" : "ends with")} {quoted}";
+                }
+
+                if (endsWithWildcard)
+                {
+                    return $"{displayName} {(negated ? "does not start with" : "starts with")} {quoted}";
+                }
+
+                return $"{displayName} {(negated ? "does not match" : "matches")} {quoted}";
+            }
+
+            private static List<string> ParseValues(string rawValue)
+            {
+                if (string.IsNullOrWhiteSpace(rawValue))
+                {
+                    return new List<string>();
+                }
+
+                var valueList = rawValue.Trim();
+                if (valueList.StartsWith('(') && valueList.EndsWith(')'))
+                {
+                    valueList = valueList[1..^1];
+                }
+
+                return _valueRegex.Matches(valueList)
+                    .Select(match => match.Value.Trim())
+                    .Where(value => !string.IsNullOrWhiteSpace(value))
+                    .ToList();
+            }
+
+            private static string DescribeValue(
+                string attribute,
+                string rawValue,
+                IReadOnlyDictionary<string, IReadOnlyDictionary<string, string>>? mappingDescriptions)
+            {
+                var value = Unquote(rawValue);
+                var isCode = attribute.EndsWith("_Code", StringComparison.OrdinalIgnoreCase);
+
+                if (isCode)
+                {
+                    var baseAttribute = attribute[..^"_Code".Length];
+                    if (TryGetMapping(mappingDescriptions, attribute, baseAttribute, out var mappings)
+                        && mappings.TryGetValue(value, out var description)
+                        && !string.IsNullOrWhiteSpace(description))
+                    {
+                        return Quote(description);
+                    }
+
+                    return "a configured value whose description is unavailable";
+                }
+
+                if (IsBooleanAttribute(attribute))
+                {
+                    if (value == "1" || value.Equals("true", StringComparison.OrdinalIgnoreCase))
+                    {
+                        return "Yes";
+                    }
+
+                    if (value == "0" || value.Equals("false", StringComparison.OrdinalIgnoreCase))
+                    {
+                        return "No";
+                    }
+                }
+
+                if (decimal.TryParse(value, NumberStyles.Number, CultureInfo.InvariantCulture, out _))
+                {
+                    return value;
+                }
+
+                return Quote(value);
+            }
+
+            private static bool TryGetMapping(
+                IReadOnlyDictionary<string, IReadOnlyDictionary<string, string>>? mappingDescriptions,
+                string attribute,
+                string baseAttribute,
+                out IReadOnlyDictionary<string, string> mappings)
+            {
+                if (mappingDescriptions != null
+                    && mappingDescriptions.TryGetValue(attribute, out var attributeMappings)
+                    && attributeMappings != null)
+                {
+                    mappings = attributeMappings;
+                    return true;
+                }
+
+                if (mappingDescriptions != null
+                    && mappingDescriptions.TryGetValue(baseAttribute, out var baseAttributeMappings)
+                    && baseAttributeMappings != null)
+                {
+                    mappings = baseAttributeMappings;
+                    return true;
+                }
+
+                mappings = new Dictionary<string, string>();
+                return false;
+            }
+
+            private static bool IsBooleanAttribute(string attribute)
+            {
+                return attribute.EndsWith("Ind", StringComparison.OrdinalIgnoreCase)
+                    || attribute.EndsWith("Indicator", StringComparison.OrdinalIgnoreCase)
+                    || attribute.EndsWith("Flag", StringComparison.OrdinalIgnoreCase);
+            }
+
+            private static string Unquote(string value)
+            {
+                var result = value.Trim();
+                if (result.StartsWith("N'", StringComparison.OrdinalIgnoreCase) && result.EndsWith('\''))
+                {
+                    result = result[2..^1];
+                }
+                else if (result.StartsWith('\'') && result.EndsWith('\''))
+                {
+                    result = result[1..^1];
+                }
+
+                return result.Replace("''", "'", StringComparison.Ordinal);
+            }
+
+            private static string Quote(string value)
+            {
+                return $"\"{value.Replace("\"", "'", StringComparison.Ordinal)}\"";
+            }
+
+            private static string JoinValues(IReadOnlyList<string> values)
+            {
+                return values.Count switch
+                {
+                    0 => string.Empty,
+                    1 => values[0],
+                    2 => $"{values[0]} or {values[1]}",
+                    _ => $"{string.Join(", ", values.Take(values.Count - 1))}, or {values[^1]}"
+                };
+            }
+
+            private static bool TryDescribeConnector(string connector, out string description)
+            {
+                var withoutLogicalOperators = Regex.Replace(connector, @"\bAND\b|\bOR\b", string.Empty, RegexOptions.IgnoreCase);
+                withoutLogicalOperators = withoutLogicalOperators
+                    .Replace("(", string.Empty, StringComparison.Ordinal)
+                    .Replace(")", string.Empty, StringComparison.Ordinal);
+
+                if (!string.IsNullOrWhiteSpace(withoutLogicalOperators))
+                {
+                    description = string.Empty;
+                    return false;
+                }
+
+                description = Regex.Replace(connector, @"\bAND\b", " and ", RegexOptions.IgnoreCase);
+                description = Regex.Replace(description, @"\bOR\b", " or ", RegexOptions.IgnoreCase);
+                return true;
+            }
+        }
+
+        private static class OwnerFriendlyFilterMappingResolver
+        {
+            public static async Task<IReadOnlyDictionary<string, IReadOnlyDictionary<string, string>>> ResolveAsync(
+                IEnumerable<string?> filters,
+                Guid? runAdfRunId,
+                ISqlMembershipRepository sqlMembershipRepository,
+                IDataFactoryRepository dataFactoryRepository,
+                ILogger logger)
+            {
+                var unresolvedAttributes = OwnerFriendlyFilterFormatter.CollectCodeAttributes(filters);
+                var resolved = new Dictionary<string, IReadOnlyDictionary<string, string>>(StringComparer.OrdinalIgnoreCase);
+
+                if (unresolvedAttributes.Count == 0)
+                {
+                    return resolved;
+                }
+
+                var historicalTable = runAdfRunId.HasValue && runAdfRunId.Value != Guid.Empty
+                    ? runAdfRunId.Value.ToString().Replace("-", string.Empty)
+                    : null;
+
+                if (!string.IsNullOrWhiteSpace(historicalTable))
+                {
+                    await LoadMappingsAsync(
+                        historicalTable,
+                        unresolvedAttributes,
+                        resolved,
+                        sqlMembershipRepository,
+                        logger);
+                }
+
+                if (unresolvedAttributes.Count > 0)
+                {
+                    try
+                    {
+                        var latestAdfRunId = await dataFactoryRepository.GetMostRecentSucceededRunIdAsync();
+                        if (!string.IsNullOrWhiteSpace(latestAdfRunId))
+                        {
+                            var latestTable = latestAdfRunId.Replace("-", string.Empty);
+                            if (!string.Equals(latestTable, historicalTable, StringComparison.OrdinalIgnoreCase))
+                            {
+                                await LoadMappingsAsync(
+                                    latestTable,
+                                    unresolvedAttributes,
+                                    resolved,
+                                    sqlMembershipRepository,
+                                    logger);
+                            }
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        logger.LogWarning(ex, "Failed to resolve the latest ADF mappings table for owner-friendly AI criteria.");
+                    }
+                }
+
+                return resolved;
+            }
+
+            private static async Task LoadMappingsAsync(
+                string tableName,
+                HashSet<string> unresolvedAttributes,
+                Dictionary<string, IReadOnlyDictionary<string, string>> resolved,
+                ISqlMembershipRepository sqlMembershipRepository,
+                ILogger logger)
+            {
+                bool tableExists;
+                try
+                {
+                    tableExists = await sqlMembershipRepository.CheckIfMappingsTableExistsAsync(tableName);
+                }
+                catch (Exception ex)
+                {
+                    logger.LogWarning(ex, "Failed to verify ADF mappings table {TableName}; mapped filter descriptions will use the next available table.", tableName);
+                    return;
+                }
+
+                if (!tableExists)
+                {
+                    return;
+                }
+
+                foreach (var codeAttribute in unresolvedAttributes.ToList())
+                {
+                    var baseAttribute = codeAttribute[..^"_Code".Length];
+                    try
+                    {
+                        var mappings = await sqlMembershipRepository.GetAttributeMappingsAsync(baseAttribute, tableName);
+                        var descriptionsByCode = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+
+                        foreach (var mapping in mappings)
+                        {
+                            if (string.IsNullOrWhiteSpace(mapping.Code)
+                                || string.IsNullOrWhiteSpace(mapping.Description))
+                            {
+                                continue;
+                            }
+
+                            descriptionsByCode.TryAdd(mapping.Code.Trim(), mapping.Description.Trim());
+                        }
+
+                        if (descriptionsByCode.Count > 0)
+                        {
+                            resolved[codeAttribute] = descriptionsByCode;
+                            unresolvedAttributes.Remove(codeAttribute);
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        logger.LogWarning(
+                            ex,
+                            "Failed to load mapping descriptions for {Attribute} from {TableName}; owner-friendly criteria will not expose the raw code.",
+                            baseAttribute,
+                            tableName);
+                    }
+                }
+            }
         }
 
         public class QueryPartInfo
