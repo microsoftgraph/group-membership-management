@@ -2,11 +2,11 @@
 // Licensed under the MIT license.
 
 import React from 'react';
-import { fireEvent, screen, within } from '@testing-library/react';
+import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { vi, beforeAll } from 'vitest';
 import { initializeIcons } from '@fluentui/react';
 import { MemoryRouter } from 'react-router-dom';
-import { AdminConfigView } from './AdminConfig.view';
+import { AdminConfigView, fractionToPercentText } from './AdminConfig.view';
 import { getStyles } from './AdminConfig.styles';
 import { SettingKey, SqlMembershipAttribute } from '../../models';
 import { defaultStrings } from '../../services/localization';
@@ -239,7 +239,7 @@ describe('SuggestedPromptsEditor', () => {
 describe('AdminConfigView Custom Source', () => {
   const csLabels = defaultStrings.AdminConfig.CustomSourceSettings.labels;
 
-  const attributes: SqlMembershipAttribute[] = [
+  const sensitiveAttributes: SqlMembershipAttribute[] = [
     { name: 'Salary', customLabel: '', type: 'int', hasMapping: false, values: [], description: '', enabled: false, isSensitive: true },
     { name: 'Country', customLabel: '', type: 'nvarchar', hasMapping: false, values: [], description: '', enabled: true, isSensitive: false },
   ];
@@ -253,7 +253,7 @@ describe('AdminConfigView Custom Source', () => {
           handleGetValues={vi.fn()}
           settings={createSettings()}
           sqlMembershipSource={undefined}
-          sqlMembershipSourceAttributes={attributes}
+          sqlMembershipSourceAttributes={sensitiveAttributes}
           strings={defaultStrings.AdminConfig}
           styles={getStyles}
           isHyperlinkAdmin={false}
@@ -288,5 +288,229 @@ describe('AdminConfigView Custom Source', () => {
     expect(
       screen.getByText('Country').compareDocumentPosition(screen.getByText('Salary')) & Node.DOCUMENT_POSITION_FOLLOWING
     ).toBeTruthy();
+  });
+});
+
+describe('AdminConfigView custom source null threshold', () => {
+  const nullThresholdLabels = defaultStrings.AdminConfig.CustomSourceSettings.labels;
+
+  const attributes: SqlMembershipAttribute[] = [
+    {
+      name: 'AssignmentType',
+      customLabel: '',
+      type: 'nvarchar',
+      hasMapping: true,
+      values: [],
+      description: '',
+      enabled: true,
+      nullThreshold: 1,
+    },
+    {
+      name: 'WorkRoom',
+      customLabel: '',
+      type: 'nvarchar',
+      hasMapping: false,
+      values: [],
+      description: '',
+      enabled: true,
+    },
+  ];
+
+  const renderCustomSource = (onSave = vi.fn()) =>
+    renderWithProviders(
+      <MemoryRouter>
+        <AdminConfigView
+          isSaving={false}
+          onSave={onSave}
+          handleGetValues={vi.fn()}
+          settings={createSettings()}
+          sqlMembershipSource={{ name: 'SqlMembership', customLabel: 'HR Data' }}
+          sqlMembershipSourceAttributes={attributes}
+          strings={defaultStrings.AdminConfig}
+          styles={getStyles}
+          isHyperlinkAdmin={false}
+          isCustomMembershipProviderAdmin={true}
+          isOperationsResetAdministrator={false}
+          isGeneralSettingsAdministrator={false}
+          isAISettingsAdministrator={false}
+          defaultAIPrompt={''}
+        />
+      </MemoryRouter>
+    );
+
+  const getThresholdInput = (attributeName: string) =>
+    screen.getByLabelText(`${nullThresholdLabels.nullThresholdColumn} ${attributeName}`) as HTMLInputElement;
+
+  test('renders the null threshold column and shows the stored fraction as a percentage', () => {
+    renderCustomSource();
+
+    expect(screen.getByText(nullThresholdLabels.nullThresholdColumn)).toBeInTheDocument();
+
+    // 1 (fraction) is displayed as 100 (percent); an unset threshold renders blank.
+    expect(getThresholdInput('AssignmentType').value).toBe('100');
+    expect(getThresholdInput('WorkRoom').value).toBe('');
+  });
+
+  test('converts an entered percentage back to a fraction on save', () => {
+    const onSave = vi.fn();
+    renderCustomSource(onSave);
+
+    fireEvent.change(getThresholdInput('WorkRoom'), { target: { value: '80' } });
+    fireEvent.click(screen.getByText(defaultStrings.AdminConfig.labels.saveButton));
+
+    expect(onSave).toHaveBeenCalled();
+    const savedAttributes = onSave.mock.calls[0][2] as SqlMembershipAttribute[];
+    expect(savedAttributes.find((a) => a.name === 'WorkRoom')?.nullThreshold).toBe(0.8);
+    // Untouched attributes keep their existing value.
+    expect(savedAttributes.find((a) => a.name === 'AssignmentType')?.nullThreshold).toBe(1);
+  });
+
+  test('clearing the field removes the override so the default applies', () => {
+    const onSave = vi.fn();
+    renderCustomSource(onSave);
+
+    fireEvent.change(getThresholdInput('AssignmentType'), { target: { value: '' } });
+    fireEvent.click(screen.getByText(defaultStrings.AdminConfig.labels.saveButton));
+
+    const savedAttributes = onSave.mock.calls[0][2] as SqlMembershipAttribute[];
+    expect(savedAttributes.find((a) => a.name === 'AssignmentType')?.nullThreshold).toBeUndefined();
+  });
+
+  test('blocks saving and shows an error for an out-of-range value', async () => {
+    const onSave = vi.fn();
+    renderCustomSource(onSave);
+
+    fireEvent.change(getThresholdInput('WorkRoom'), { target: { value: '150' } });
+
+    // Fluent renders validation messages through DelayedRender, so wait for it to appear.
+    expect(await screen.findByText(nullThresholdLabels.nullThresholdValidationError)).toBeInTheDocument();
+
+    fireEvent.click(screen.getByText(defaultStrings.AdminConfig.labels.saveButton));
+    expect(onSave).not.toHaveBeenCalled();
+  });
+
+  test('blocks saving for a non-numeric value', async () => {
+    const onSave = vi.fn();
+    renderCustomSource(onSave);
+
+    fireEvent.change(getThresholdInput('WorkRoom'), { target: { value: 'abc' } });
+
+    expect(await screen.findByText(nullThresholdLabels.nullThresholdValidationError)).toBeInTheDocument();
+
+    fireEvent.click(screen.getByText(defaultStrings.AdminConfig.labels.saveButton));
+    expect(onSave).not.toHaveBeenCalled();
+  });
+
+  test('recovers once an invalid value is corrected', async () => {
+    const onSave = vi.fn();
+    renderCustomSource(onSave);
+
+    fireEvent.change(getThresholdInput('WorkRoom'), { target: { value: '150' } });
+    expect(await screen.findByText(nullThresholdLabels.nullThresholdValidationError)).toBeInTheDocument();
+
+    fireEvent.change(getThresholdInput('WorkRoom'), { target: { value: '75' } });
+
+    await waitFor(() => {
+      expect(screen.queryByText(nullThresholdLabels.nullThresholdValidationError)).not.toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByText(defaultStrings.AdminConfig.labels.saveButton));
+
+    const savedAttributes = onSave.mock.calls[0][2] as SqlMembershipAttribute[];
+    expect(savedAttributes.find((a) => a.name === 'WorkRoom')?.nullThreshold).toBe(0.75);
+  });
+
+  test('sorts by null threshold when the column header is clicked', () => {
+    renderCustomSource();
+
+    // Unsorted order matches input: AssignmentType (100%) before WorkRoom (unset)
+    expect(
+      screen.getByText('AssignmentType').compareDocumentPosition(screen.getByText('WorkRoom')) &
+        Node.DOCUMENT_POSITION_FOLLOWING
+    ).toBeTruthy();
+
+    // Ascending sort places attributes without an override first.
+    fireEvent.click(screen.getByText(nullThresholdLabels.nullThresholdColumn));
+
+    expect(
+      screen.getByText('WorkRoom').compareDocumentPosition(screen.getByText('AssignmentType')) &
+        Node.DOCUMENT_POSITION_FOLLOWING
+    ).toBeTruthy();
+  });
+
+  test('converts values without introducing floating point artifacts', () => {
+    const onSave = vi.fn();
+    renderCustomSource(onSave);
+
+    fireEvent.change(getThresholdInput('WorkRoom'), { target: { value: '29' } });
+    fireEvent.click(screen.getByText(defaultStrings.AdminConfig.labels.saveButton));
+
+    const savedAttributes = onSave.mock.calls[0][2] as SqlMembershipAttribute[];
+    expect(savedAttributes.find((a) => a.name === 'WorkRoom')?.nullThreshold).toBe(0.29);
+  });
+
+  test('displays an awkward stored fraction as a clean percentage', () => {
+    renderCustomSource();
+
+    expect(fractionToPercentText(0.29)).toBe('29');
+    expect(fractionToPercentText(0.07)).toBe('7');
+    expect(fractionToPercentText(undefined)).toBe('');
+  });
+
+  const renderWithGeneralTab = (onSave = vi.fn()) =>
+    renderWithProviders(
+      <MemoryRouter>
+        <AdminConfigView
+          isSaving={false}
+          onSave={onSave}
+          handleGetValues={vi.fn()}
+          settings={createSettings()}
+          sqlMembershipSource={{ name: 'SqlMembership', customLabel: 'HR Data' }}
+          sqlMembershipSourceAttributes={attributes}
+          strings={defaultStrings.AdminConfig}
+          styles={getStyles}
+          isHyperlinkAdmin={false}
+          isCustomMembershipProviderAdmin={true}
+          isOperationsResetAdministrator={false}
+          isGeneralSettingsAdministrator={true}
+          isAISettingsAdministrator={false}
+          defaultAIPrompt={''}
+        />
+      </MemoryRouter>
+    );
+
+  test('does not strand the Save button when an invalid row unmounts on tab switch', async () => {
+    renderWithGeneralTab();
+
+    const saveButton = screen.getByText(defaultStrings.AdminConfig.labels.saveButton).closest('button')!;
+
+    // A valid edit enables Save.
+    fireEvent.change(getThresholdInput('AssignmentType'), { target: { value: '80' } });
+    expect(saveButton).toBeEnabled();
+
+    // An invalid edit on another row correctly blocks Save.
+    fireEvent.change(getThresholdInput('WorkRoom'), { target: { value: '150' } });
+    expect(saveButton).toBeDisabled();
+
+    // Switching tabs unmounts the invalid row, so the block must be released.
+    fireEvent.click(screen.getByText(defaultStrings.AdminConfig.GeneralSettings.labels.general));
+
+    await waitFor(() => {
+      expect(screen.queryByText(nullThresholdLabels.nullThresholdColumn)).not.toBeInTheDocument();
+    });
+
+    expect(saveButton).toBeEnabled();
+  });
+
+  test('does not leak typed text between rows when the grid is re-sorted', () => {
+    renderCustomSource();
+
+    fireEvent.change(getThresholdInput('WorkRoom'), { target: { value: '42' } });
+
+    // Re-sorting reorders rows; each row must still show its own attribute's value.
+    fireEvent.click(screen.getByText(nullThresholdLabels.nullThresholdColumn));
+
+    expect(getThresholdInput('WorkRoom').value).toBe('42');
+    expect(getThresholdInput('AssignmentType').value).toBe('100');
   });
 });

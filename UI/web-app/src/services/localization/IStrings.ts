@@ -265,6 +265,10 @@ export type IStrings = {
         sensitiveColumn: string;
         sensitiveToggleTitle: string;
         descriptionPlaceHolder: string;
+        nullThresholdColumn: string;
+        nullThresholdPlaceHolder: string;
+        nullThresholdTitle: string;
+        nullThresholdValidationError: string;
       },
     },
     GeneralSettings: {

@@ -9,6 +9,7 @@ import {
   AdminConfigStyles,
   AdminConfigViewProps,
   CustomLabelCellProps,
+  NullThresholdCellProps,
   AttributeValuesCellProps,
   CustomSourceSettingsProps,
   HyperlinkSettingsProps,
@@ -47,6 +48,7 @@ export const AdminConfigView: React.FunctionComponent<AdminConfigViewProps> = (p
   const [newSource, setNewSource] = useState<SqlMembershipSource | undefined>(sqlMembershipSource);
   const [newAttributes, setNewAttributes] = useState<SqlMembershipAttribute[] | undefined>(sqlMembershipSourceAttributes);
   const [hasUrlValidationErrors, setHasUrlValidationErrors] = useState<boolean>(false);
+  const [hasAttributeValidationErrors, setHasAttributeValidationErrors] = useState<boolean>(false);
 
   useEffect(() => {
     setNewSource(sqlMembershipSource);
@@ -117,6 +119,7 @@ export const AdminConfigView: React.FunctionComponent<AdminConfigViewProps> = (p
                     setNewAttributes={setNewAttributes}
                     setNewSource={setNewSource}
                     handleGetValues={handleGetValues}
+                    setHasValidationErrors={setHasAttributeValidationErrors}
                     strings={strings} />
                 </PivotItem>
               }
@@ -182,7 +185,7 @@ export const AdminConfigView: React.FunctionComponent<AdminConfigViewProps> = (p
           <PrimaryButton
             text={strings.labels.saveButton}
             onClick={handleOnSaveButtonClick}
-            disabled={!hasChanges() || hasUrlValidationErrors || isSaving}
+            disabled={!hasChanges() || hasUrlValidationErrors || hasAttributeValidationErrors || isSaving}
           ></PrimaryButton>
         </div>
       </div>
@@ -331,7 +334,7 @@ const HyperlinkSettings: React.FunctionComponent<HyperlinkSettingsProps> = (prop
 
 const CustomSourceSettings: React.FunctionComponent<CustomSourceSettingsProps> = (props: CustomSourceSettingsProps) => {
 
-  const { classNames, sqlMembershipSource, sqlMembershipSourceAttributes, setNewAttributes, setNewSource, handleGetValues, strings } = props;
+  const { classNames, sqlMembershipSource, sqlMembershipSourceAttributes, setNewAttributes, setNewSource, handleGetValues, setHasValidationErrors, strings } = props;
 
   const [attributeMap, setAttributeMap] = useState<{ [key: string]: SqlMembershipAttribute } | undefined>(undefined);
   const [isSortedDescending, setIsSortedDescending] = useState(false);
@@ -401,6 +404,35 @@ const CustomSourceSettings: React.FunctionComponent<CustomSourceSettingsProps> =
     [attributeMap]
   );
 
+  // The API stores the threshold as a fraction (0-1); the grid edits it as a percentage (0-100).
+  const [invalidThresholds, setInvalidThresholds] = useState<{ [key: string]: boolean }>({});
+
+  const handleNullThresholdChange = useCallback(
+    (attributeName: string, raw: string, isValid: boolean): void => {
+      setInvalidThresholds((previous) => ({ ...previous, [attributeName]: !isValid }));
+
+      if (!isValid) {
+        // Leave the stored value untouched while the entry is invalid; saving is blocked meanwhile.
+        return;
+      }
+
+      handleFieldChange(attributeName, 'nullThreshold', raw.trim() === '' ? undefined : percentTextToFraction(raw));
+    },
+    [handleFieldChange]
+  );
+
+  // Block saving while any threshold entry is invalid so a bad value can't be persisted.
+  useEffect(() => {
+    setHasValidationErrors(Object.values(invalidThresholds).some(Boolean));
+  }, [invalidThresholds, setHasValidationErrors]);
+
+  // The Pivot unmounts this tab when another is selected. Invalid entries are never written to
+  // the draft, so release the flag on the way out; otherwise the page-level Save button stays
+  // permanently disabled with no visible error to explain why.
+  useEffect(() => {
+    return () => setHasValidationErrors(false);
+  }, [setHasValidationErrors]);
+
   const onRenderItemColumn = (item?: any, index?: number, column?: IColumn): JSX.Element => {
 
     if (!item || !column || !attributeMap) {
@@ -458,6 +490,19 @@ const CustomSourceSettings: React.FunctionComponent<CustomSourceSettingsProps> =
               title={strings.CustomSourceSettings.labels.sensitiveToggleTitle}
               checked={fieldContent !== undefined ? Boolean(fieldContent) : false}
               onChange={(e, checked) => handleFieldChange(item.name, column.fieldName, checked)}
+            />
+          );
+        case 'nullThreshold':
+          return (
+            <NullThresholdCell
+              key={item.name}
+              attributeName={item.name}
+              storedValue={attributeMap[item.name].nullThreshold}
+              title={strings.CustomSourceSettings.labels.nullThresholdTitle}
+              ariaLabel={`${strings.CustomSourceSettings.labels.nullThresholdColumn} ${item.name}`}
+              placeholder={strings.CustomSourceSettings.labels.nullThresholdPlaceHolder}
+              validationErrorMessage={strings.CustomSourceSettings.labels.nullThresholdValidationError}
+              onValueChange={handleNullThresholdChange}
             />
           );
       default:
@@ -531,6 +576,17 @@ const CustomSourceSettings: React.FunctionComponent<CustomSourceSettingsProps> =
       isSorted: sortKey === 'description',
       isSortedDescending,
       showSortIconWhenUnsorted: true,
+    },
+    {
+      key: 'nullThreshold',
+      name: strings.CustomSourceSettings.labels.nullThresholdColumn,
+      fieldName: 'nullThreshold',
+      minWidth: 120,
+      maxWidth: 150,
+      isResizable: true,
+      isSorted: sortKey === 'nullThreshold',
+      isSortedDescending,
+      showSortIconWhenUnsorted: true,
     }
   ];
 
@@ -543,6 +599,12 @@ const CustomSourceSettings: React.FunctionComponent<CustomSourceSettingsProps> =
     if (sortKey === 'enabled' || sortKey === 'sensitive') {
       const aVal = (sortKey === 'sensitive' ? a.isSensitive : a.enabled) ? 1 : 0;
       const bVal = (sortKey === 'sensitive' ? b.isSensitive : b.enabled) ? 1 : 0;
+      return isSortedDescending ? bVal - aVal : aVal - bVal;
+    }
+    if (sortKey === 'nullThreshold') {
+      // Attributes without an override sort together, ahead of any explicit value.
+      const aVal = a.nullThreshold ?? -1;
+      const bVal = b.nullThreshold ?? -1;
       return isSortedDescending ? bVal - aVal : aVal - bVal;
     }
     return 0;
@@ -592,6 +654,52 @@ const CustomSourceSettings: React.FunctionComponent<CustomSourceSettingsProps> =
     </div>
   );
 }
+
+// The threshold is stored as a fraction (0-1) but edited as a percentage (0-100).
+// Both conversions round away binary floating point artifacts (e.g. 0.29 * 100 = 28.999999999999996).
+export const percentTextToFraction = (raw: string): number => Math.round((Number(raw) / 100) * 1e8) / 1e8;
+
+export const fractionToPercentText = (value: number | undefined | null): string =>
+  value === undefined || value === null ? '' : String(Math.round(value * 1e6) / 1e4);
+
+export const isValidNullThresholdInput = (raw: string): boolean => {
+  if (raw.trim() === '') {
+    return true;
+  }
+  const parsed = Number(raw);
+  return Number.isFinite(parsed) && parsed >= 0 && parsed <= 100;
+};
+
+// Owns its input text locally: DetailsList does not re-render a row when only the parent's
+// draft state changes, so keeping the raw text here guarantees typing and validation errors
+// are always reflected in the cell.
+const NullThresholdCell = React.memo((props: NullThresholdCellProps) => {
+  const { attributeName, storedValue, title, ariaLabel, placeholder, validationErrorMessage, onValueChange } = props;
+
+  const [rawValue, setRawValue] = useState(fractionToPercentText(storedValue));
+  const [errorMessage, setErrorMessage] = useState('');
+
+  const handleChange = (event: React.FormEvent<HTMLInputElement | HTMLTextAreaElement>, newValue?: string) => {
+    const raw = newValue ?? '';
+    const isValid = isValidNullThresholdInput(raw);
+
+    setRawValue(raw);
+    setErrorMessage(isValid ? '' : validationErrorMessage);
+    onValueChange(attributeName, raw, isValid);
+  };
+
+  return (
+    <TextField
+      title={title}
+      ariaLabel={ariaLabel}
+      value={rawValue}
+      placeholder={placeholder}
+      errorMessage={errorMessage}
+      suffix="%"
+      onChange={handleChange}
+    />
+  );
+});
 
 const CustomLabelCell = React.memo((props: CustomLabelCellProps) => {
   const { className, value, onChange, placeholder } = props;

@@ -269,6 +269,10 @@ export const strings: IStrings = {
         enabledToggleTitle: "Habilitar o deshabilitar este atributo",
         sensitiveColumn: "Confidencial",
         sensitiveToggleTitle: "Marcar o desmarcar este atributo como confidencial",
+        nullThresholdColumn: "Umbral de Nulos (%)",
+        nullThresholdPlaceHolder: "50",
+        nullThresholdTitle: "Porcentaje máximo de filas que pueden estar vacías para este atributo antes de que falle la comprobación diaria de calidad de datos. Déjelo en blanco para usar el valor predeterminado del 50%.",
+        nullThresholdValidationError: "Ingrese un número entre 0 y 100.",
       },
     },
     GeneralSettings: {

@@ -268,6 +268,10 @@ export const strings: IStrings = {
         enabledToggleTitle: "Toggle to enable/disable attribute",
         sensitiveColumn: "Sensitive",
         sensitiveToggleTitle: "Toggle to mark/unmark attribute as sensitive",
+        nullThresholdColumn: "Null Threshold (%)",
+        nullThresholdPlaceHolder: "50",
+        nullThresholdTitle: "Maximum percentage of rows allowed to be empty for this attribute before the daily data quality check fails. Leave blank to use the default of 50%.",
+        nullThresholdValidationError: "Enter a number between 0 and 100.",
       },
     },
     GeneralSettings: {

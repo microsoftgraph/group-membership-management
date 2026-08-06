@@ -106,7 +106,18 @@ export type CustomSourceSettingsProps = {
   strings: IStrings['AdminConfig'];
   setNewSource: React.Dispatch<React.SetStateAction<SqlMembershipSource | undefined>>;
   setNewAttributes: React.Dispatch<React.SetStateAction<SqlMembershipAttribute[] | undefined>>;
+  setHasValidationErrors: React.Dispatch<React.SetStateAction<boolean>>;
   handleGetValues: (attribute: SqlMembershipAttribute) => void;
+};
+
+export type NullThresholdCellProps = {
+  attributeName: string;
+  storedValue: number | undefined;
+  title: string;
+  ariaLabel: string;
+  placeholder: string;
+  validationErrorMessage: string;
+  onValueChange: (attributeName: string, raw: string, isValid: boolean) => void;
 };
 
 export type CustomLabelCellProps = {
