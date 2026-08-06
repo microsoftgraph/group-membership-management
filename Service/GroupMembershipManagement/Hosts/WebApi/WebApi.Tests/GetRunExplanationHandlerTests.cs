@@ -1909,5 +1909,385 @@ namespace WebApi.Tests
             var raw = method!.Invoke(null, args);
             return raw is null ? default : (T)raw;
         }
+
+        // ---------------- DescribeMembershipRulesForOwner + OwnerFriendlyFilterFormatter ----------------
+
+        private static GetRunExplanationHandler.QueryPartInfo NewSqlPart(
+            string? filter, int index = 0, bool exclusionary = false, string? managerId = null, int? depth = null)
+            => new()
+            {
+                Index = index,
+                Type = "SqlMembership",
+                Filter = filter,
+                Exclusionary = exclusionary,
+                ManagerId = managerId,
+                ManagerDepth = depth
+            };
+
+        private static string DescribeSingle(
+            GetRunExplanationHandler.QueryPartInfo part,
+            IReadOnlyDictionary<string, IReadOnlyDictionary<string, string>>? mappings = null,
+            IReadOnlyDictionary<Guid, string>? groupNames = null,
+            IReadOnlyDictionary<int, string>? managerNames = null)
+            => GetRunExplanationHandler.DescribeMembershipRulesForOwner(
+                new List<GetRunExplanationHandler.QueryPartInfo> { part }, mappings, groupNames, managerNames);
+
+        [TestMethod]
+        public void DescribeRules_NullParts_ReturnsNoRules()
+            => Assert.AreEqual("No membership rules configured.",
+                GetRunExplanationHandler.DescribeMembershipRulesForOwner(null, null, null, null));
+
+        [TestMethod]
+        public void DescribeRules_EmptyParts_ReturnsNoRules()
+            => Assert.AreEqual("No membership rules configured.",
+                GetRunExplanationHandler.DescribeMembershipRulesForOwner(
+                    new List<GetRunExplanationHandler.QueryPartInfo>(), null, null, null));
+
+        [TestMethod]
+        public void DescribeRules_Equals_StringValueQuoted()
+            => StringAssert.Contains(DescribeSingle(NewSqlPart("Building = 'B40'")), "Building is \"B40\"");
+
+        [TestMethod]
+        public void DescribeRules_GreaterOrEqual_NumericValue_HumanizesNbr()
+            => StringAssert.Contains(DescribeSingle(NewSqlPart("PayScaleStockLevelNbr >= 65")),
+                "Pay Scale Stock Level Number is at least 65");
+
+        [TestMethod]
+        public void DescribeRules_BooleanIndicator_One_YieldsYes()
+            => StringAssert.Contains(DescribeSingle(NewSqlPart("SupervisorInd = 1")), "Supervisor Indicator is Yes");
+
+        [TestMethod]
+        public void DescribeRules_BooleanFlag_Zero_YieldsNo()
+            => StringAssert.Contains(DescribeSingle(NewSqlPart("ActiveFlag = 0")), "Active Flag is No");
+
+        [TestMethod]
+        public void DescribeRules_NotEquals_YieldsIsNot()
+            => StringAssert.Contains(DescribeSingle(NewSqlPart("Status <> 'X'")), "Status is not \"X\"");
+
+        [TestMethod]
+        public void DescribeRules_LessThanOrEqual_YieldsIsAtMost()
+            => StringAssert.Contains(DescribeSingle(NewSqlPart("Level <= 5")), "Level is at most 5");
+
+        [TestMethod]
+        public void DescribeRules_GreaterThan_YieldsIsGreaterThan()
+            => StringAssert.Contains(DescribeSingle(NewSqlPart("Age > 30")), "Age is greater than 30");
+
+        [TestMethod]
+        public void DescribeRules_LessThan_YieldsIsLessThan()
+            => StringAssert.Contains(DescribeSingle(NewSqlPart("Age < 30")), "Age is less than 30");
+
+        [TestMethod]
+        public void DescribeRules_In_ThreeValues_JoinsWithOr()
+            => StringAssert.Contains(DescribeSingle(NewSqlPart("Region IN ('US', 'EU', 'APAC')")),
+                "Region is one of \"US\", \"EU\", or \"APAC\"");
+
+        [TestMethod]
+        public void DescribeRules_NotIn_YieldsIsNotOneOf()
+            => StringAssert.Contains(DescribeSingle(NewSqlPart("Region NOT IN ('US', 'EU')")),
+                "Region is not one of \"US\" or \"EU\"");
+
+        [TestMethod]
+        public void DescribeRules_LikeContains()
+            => StringAssert.Contains(DescribeSingle(NewSqlPart("Title LIKE '%manager%'")), "Title contains \"manager\"");
+
+        [TestMethod]
+        public void DescribeRules_LikeStartsWith()
+            => StringAssert.Contains(DescribeSingle(NewSqlPart("Title LIKE 'Senior%'")), "Title starts with \"Senior\"");
+
+        [TestMethod]
+        public void DescribeRules_LikeEndsWith()
+            => StringAssert.Contains(DescribeSingle(NewSqlPart("Title LIKE '%Director'")), "Title ends with \"Director\"");
+
+        [TestMethod]
+        public void DescribeRules_LikeExact_Matches()
+            => StringAssert.Contains(DescribeSingle(NewSqlPart("Title LIKE 'Exact'")), "Title matches \"Exact\"");
+
+        [TestMethod]
+        public void DescribeRules_NotLike_DoesNotContain()
+            => StringAssert.Contains(DescribeSingle(NewSqlPart("Title NOT LIKE '%temp%'")), "Title does not contain \"temp\"");
+
+        [TestMethod]
+        public void DescribeRules_IsNull_HasNoValue()
+            => StringAssert.Contains(DescribeSingle(NewSqlPart("Manager IS NULL")), "Manager has no value");
+
+        [TestMethod]
+        public void DescribeRules_IsNotNull_HasAValue()
+            => StringAssert.Contains(DescribeSingle(NewSqlPart("Manager IS NOT NULL")), "Manager has a value");
+
+        [TestMethod]
+        public void DescribeRules_AndConnector()
+            => StringAssert.Contains(DescribeSingle(NewSqlPart("Building = 'B40' AND Level >= 5")),
+                "Building is \"B40\" and Level is at least 5");
+
+        [TestMethod]
+        public void DescribeRules_OrWithParens()
+            => StringAssert.Contains(DescribeSingle(NewSqlPart("(RegionA = '1' OR RegionB = '2')")),
+                "(Region A is 1 or Region B is 2)");
+
+        [TestMethod]
+        public void DescribeRules_InvalidConnector_FallsBackToGeneric()
+            => StringAssert.Contains(DescribeSingle(NewSqlPart("Building = 'B40' XYZ Level >= 5")),
+                "the configured HR criteria");
+
+        [TestMethod]
+        public void DescribeRules_EmptyFilter_FallsBackToGeneric()
+            => StringAssert.Contains(DescribeSingle(NewSqlPart("")), "the configured HR criteria");
+
+        [TestMethod]
+        public void DescribeRules_NoPredicate_FallsBackToGeneric()
+            => StringAssert.Contains(DescribeSingle(NewSqlPart("just some words")), "the configured HR criteria");
+
+        [TestMethod]
+        public void DescribeRules_EqualsNoValue_UnspecifiedValue()
+            => StringAssert.Contains(DescribeSingle(NewSqlPart("Building =")), "Building is an unspecified value");
+
+        [TestMethod]
+        public void DescribeRules_UnicodeStringLiteral_Unquotes()
+            => StringAssert.Contains(DescribeSingle(NewSqlPart("City = N'Redmond'")), "City is \"Redmond\"");
+
+        [TestMethod]
+        public void DescribeRules_EscapedQuoteInValue_Unescaped()
+            => StringAssert.Contains(DescribeSingle(NewSqlPart("Name = 'O''Brien'")), "Name is \"O'Brien\"");
+
+        [TestMethod]
+        public void DescribeRules_CodeAttribute_NoMapping_UnavailableDescription()
+            => StringAssert.Contains(DescribeSingle(NewSqlPart("CostCenter_Code = '10181410'")),
+                "Cost Center is a configured value whose description is unavailable");
+
+        [TestMethod]
+        public void DescribeRules_CodeAttribute_WithMapping_UsesDescription()
+        {
+            var mappings = new Dictionary<string, IReadOnlyDictionary<string, string>>
+            {
+                ["CostCenter_Code"] = new Dictionary<string, string> { ["10181410"] = "Redmond HQ" }
+            };
+            StringAssert.Contains(DescribeSingle(NewSqlPart("CostCenter_Code = '10181410'"), mappings),
+                "Cost Center is \"Redmond HQ\"");
+        }
+
+        [TestMethod]
+        public void DescribeRules_CodeAttribute_BaseAttributeMappingFallback()
+        {
+            var mappings = new Dictionary<string, IReadOnlyDictionary<string, string>>
+            {
+                ["Building"] = new Dictionary<string, string> { ["24"] = "Building 24", ["25"] = "Building 25" }
+            };
+            StringAssert.Contains(DescribeSingle(NewSqlPart("Building_Code IN (24, 25)"), mappings),
+                "Building is one of \"Building 24\" or \"Building 25\"");
+        }
+
+        [TestMethod]
+        public void DescribeRules_Exclusionary_UsesExcludes()
+            => StringAssert.Contains(DescribeSingle(NewSqlPart("Building = 'B40'", exclusionary: true)),
+                "Excludes employees where");
+
+        [TestMethod]
+        public void DescribeRules_SqlWithManagerScope_ResolvesName()
+        {
+            var managers = new Dictionary<int, string> { [582877] = "Paul Daly" };
+            var result = DescribeSingle(NewSqlPart("Building = 'B40'", managerId: "582877"), managerNames: managers);
+            StringAssert.Contains(result, "management chain rooted at");
+            StringAssert.Contains(result, "Paul Daly");
+        }
+
+        [TestMethod]
+        public void DescribeRules_GroupMembership_ResolvesGroupName()
+        {
+            var g = Guid.NewGuid();
+            var part = new GetRunExplanationHandler.QueryPartInfo { Type = "GroupMembership", Source = g.ToString() };
+            var names = new Dictionary<Guid, string> { [g] = "HR Team" };
+            StringAssert.Contains(
+                GetRunExplanationHandler.DescribeMembershipRulesForOwner(new[] { part }, null, names, null),
+                "members of source group \"HR Team\"");
+        }
+
+        [TestMethod]
+        public void DescribeRules_GroupMembership_UnresolvedGuid_UsesRawSource()
+        {
+            var g = Guid.NewGuid();
+            var part = new GetRunExplanationHandler.QueryPartInfo { Type = "GroupMembership", Source = g.ToString() };
+            StringAssert.Contains(
+                GetRunExplanationHandler.DescribeMembershipRulesForOwner(new[] { part }, null, null, null),
+                g.ToString());
+        }
+
+        [TestMethod]
+        public void DescribeRules_GroupMembership_NullSource_NameUnavailable()
+        {
+            var part = new GetRunExplanationHandler.QueryPartInfo { Type = "GroupMembership", Source = null };
+            StringAssert.Contains(
+                GetRunExplanationHandler.DescribeMembershipRulesForOwner(new[] { part }, null, null, null),
+                "whose name is unavailable");
+        }
+
+        [TestMethod]
+        public void DescribeRules_GroupOwnership_UsesOwnersPhrase()
+        {
+            var part = new GetRunExplanationHandler.QueryPartInfo { Type = "GroupOwnership", Source = "not-a-guid" };
+            StringAssert.Contains(
+                GetRunExplanationHandler.DescribeMembershipRulesForOwner(new[] { part }, null, null, null),
+                "owners of source group");
+        }
+
+        [TestMethod]
+        public void DescribeRules_TeamsChannel_UsesChannelPhrase()
+        {
+            var part = new GetRunExplanationHandler.QueryPartInfo { Type = "TeamsChannelMembership", Source = "not-a-guid" };
+            StringAssert.Contains(
+                GetRunExplanationHandler.DescribeMembershipRulesForOwner(new[] { part }, null, null, null),
+                "members of Teams channel");
+        }
+
+        [TestMethod]
+        public void DescribeRules_PlaceMembership_UsesPlacePhrase()
+        {
+            var part = new GetRunExplanationHandler.QueryPartInfo { Type = "PlaceMembership" };
+            StringAssert.Contains(
+                GetRunExplanationHandler.DescribeMembershipRulesForOwner(new[] { part }, null, null, null),
+                "users returned by the configured place criteria");
+        }
+
+        [TestMethod]
+        public void DescribeRules_UnknownType_HumanizesTypeName()
+        {
+            var part = new GetRunExplanationHandler.QueryPartInfo { Type = "FooBarSource" };
+            StringAssert.Contains(
+                GetRunExplanationHandler.DescribeMembershipRulesForOwner(new[] { part }, null, null, null),
+                "configured Foo Bar Source source");
+        }
+
+        // ---------------- DescribeQueryDiff ----------------
+
+        [TestMethod]
+        public void DescribeQueryDiff_BothNull_ReturnsEmpty()
+            => Assert.AreEqual(string.Empty, GetRunExplanationHandler.DescribeQueryDiff(null, null));
+
+        [TestMethod]
+        public void DescribeQueryDiff_GroupSourceAdded()
+        {
+            var prev = "[{\"type\":\"GroupMembership\",\"source\":\"11111111-1111-1111-1111-111111111111\"}]";
+            var curr = "[{\"type\":\"GroupMembership\",\"source\":\"11111111-1111-1111-1111-111111111111\"},{\"type\":\"GroupMembership\",\"source\":\"22222222-2222-2222-2222-222222222222\"}]";
+            StringAssert.Contains(GetRunExplanationHandler.DescribeQueryDiff(prev, curr),
+                "New inclusionary group source added");
+        }
+
+        [TestMethod]
+        public void DescribeQueryDiff_SqlRuleAdded()
+        {
+            var prev = "[{\"type\":\"GroupMembership\",\"source\":\"11111111-1111-1111-1111-111111111111\"}]";
+            var curr = "[{\"type\":\"GroupMembership\",\"source\":\"11111111-1111-1111-1111-111111111111\"},{\"type\":\"SqlMembership\",\"source\":{\"filter\":\"Building = 'B40'\"}}]";
+            var result = GetRunExplanationHandler.DescribeQueryDiff(prev, curr);
+            StringAssert.Contains(result, "New inclusionary HR membership rule added");
+            StringAssert.Contains(result, "Building is \"B40\"");
+        }
+
+        [TestMethod]
+        public void DescribeQueryDiff_GroupSourceRemoved()
+        {
+            var prev = "[{\"type\":\"GroupMembership\",\"source\":\"11111111-1111-1111-1111-111111111111\"},{\"type\":\"GroupMembership\",\"source\":\"22222222-2222-2222-2222-222222222222\"}]";
+            var curr = "[{\"type\":\"GroupMembership\",\"source\":\"11111111-1111-1111-1111-111111111111\"}]";
+            StringAssert.Contains(GetRunExplanationHandler.DescribeQueryDiff(prev, curr),
+                "group source removed");
+        }
+
+        [TestMethod]
+        public void DescribeQueryDiff_FilterModified()
+        {
+            var prev = "[{\"type\":\"SqlMembership\",\"source\":{\"filter\":\"Building = 'B40'\"}}]";
+            var curr = "[{\"type\":\"SqlMembership\",\"source\":{\"filter\":\"Building = 'B41'\"}}]";
+            StringAssert.Contains(GetRunExplanationHandler.DescribeQueryDiff(prev, curr),
+                "Membership criteria changed from");
+        }
+
+        [TestMethod]
+        public void DescribeQueryDiff_ExclusionaryFlipped()
+        {
+            var prev = "[{\"type\":\"GroupMembership\",\"source\":\"11111111-1111-1111-1111-111111111111\",\"exclusionary\":false}]";
+            var curr = "[{\"type\":\"GroupMembership\",\"source\":\"11111111-1111-1111-1111-111111111111\",\"exclusionary\":true}]";
+            StringAssert.Contains(GetRunExplanationHandler.DescribeQueryDiff(prev, curr),
+                "changed from inclusionary to exclusionary");
+        }
+
+        [TestMethod]
+        public void DescribeQueryDiff_ManagerScopeChanged()
+        {
+            var prev = "[{\"type\":\"SqlMembership\",\"source\":{\"filter\":\"Building = 'B40'\",\"manager\":{\"id\":100}}}]";
+            var curr = "[{\"type\":\"SqlMembership\",\"source\":{\"filter\":\"Building = 'B40'\",\"manager\":{\"id\":200}}}]";
+            StringAssert.Contains(GetRunExplanationHandler.DescribeQueryDiff(prev, curr),
+                "Manager scope");
+        }
+
+        [TestMethod]
+        public void DescribeQueryDiff_OtherTypeSourceAdded()
+        {
+            var prev = "[{\"type\":\"GroupMembership\",\"source\":\"11111111-1111-1111-1111-111111111111\"}]";
+            var curr = "[{\"type\":\"GroupMembership\",\"source\":\"11111111-1111-1111-1111-111111111111\"},{\"type\":\"PlaceMembership\",\"source\":\"place-1\"}]";
+            StringAssert.Contains(GetRunExplanationHandler.DescribeQueryDiff(prev, curr),
+                "New inclusionary source added (type: PlaceMembership)");
+        }
+
+        // ---------------- First-run explanation (BuildInitialRunExplanation / SummarizeRulesInline) ----------------
+
+        [TestMethod]
+        public void BuildInitialRunExplanation_AddedAndRemoved_EstablishesMembership()
+        {
+            var result = InvokeStaticPrivate<string>(typeof(GetRunExplanationHandler),
+                "BuildInitialRunExplanation", new object?[] { 5, 3, string.Empty });
+            StringAssert.Contains(result!, "first sync for this job");
+            StringAssert.Contains(result!, "established");
+            StringAssert.Contains(result!, "its configured membership rules");
+        }
+
+        [TestMethod]
+        public void BuildInitialRunExplanation_RemovedOnly_AlignsByRemoving()
+        {
+            var result = InvokeStaticPrivate<string>(typeof(GetRunExplanationHandler),
+                "BuildInitialRunExplanation", new object?[] { 0, 4, string.Empty });
+            StringAssert.Contains(result!, "removing pre-existing members");
+        }
+
+        [TestMethod]
+        public void BuildInitialRunExplanation_AddedOnly_PopulatesGroup()
+        {
+            var result = InvokeStaticPrivate<string>(typeof(GetRunExplanationHandler),
+                "BuildInitialRunExplanation", new object?[] { 6, 0, string.Empty });
+            StringAssert.Contains(result!, "populated the destination group for the first time");
+        }
+
+        [TestMethod]
+        public void BuildInitialRunExplanation_WithRulesInline_IncludesRules()
+        {
+            var rules = "- Rule 1: Includes employees where Building is \"B40\".";
+            var result = InvokeStaticPrivate<string>(typeof(GetRunExplanationHandler),
+                "BuildInitialRunExplanation", new object?[] { 6, 0, rules });
+            StringAssert.Contains(result!, "its configured rules (");
+            StringAssert.Contains(result!, "includes employees where");
+        }
+
+        [TestMethod]
+        public void SummarizeRulesInline_Empty_ReturnsEmpty()
+            => Assert.AreEqual(string.Empty, InvokeStaticPrivate<string>(typeof(GetRunExplanationHandler),
+                "SummarizeRulesInline", new object?[] { "" }));
+
+        [TestMethod]
+        public void SummarizeRulesInline_TooManyRules_ReturnsEmpty()
+        {
+            var rules = string.Join("\n", new[] { "- Rule 1: A", "- Rule 2: B", "- Rule 3: C", "- Rule 4: D" });
+            Assert.AreEqual(string.Empty, InvokeStaticPrivate<string>(typeof(GetRunExplanationHandler),
+                "SummarizeRulesInline", new object?[] { rules }));
+        }
+
+        [TestMethod]
+        public void SummarizeRulesInline_NoRulesConfigured_Filtered_ReturnsEmpty()
+            => Assert.AreEqual(string.Empty, InvokeStaticPrivate<string>(typeof(GetRunExplanationHandler),
+                "SummarizeRulesInline", new object?[] { "No membership rules configured." }));
+
+        [TestMethod]
+        public void SummarizeRulesInline_SingleRule_StripsPrefixLowercases()
+        {
+            var result = InvokeStaticPrivate<string>(typeof(GetRunExplanationHandler),
+                "SummarizeRulesInline", new object?[] { "- Rule 1: Includes employees where Building is \"B40\"." });
+            Assert.AreEqual("includes employees where Building is \"B40\"", result);
+        }
     }
 }
