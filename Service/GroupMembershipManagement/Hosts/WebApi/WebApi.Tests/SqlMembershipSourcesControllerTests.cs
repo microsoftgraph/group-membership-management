@@ -293,6 +293,65 @@ namespace Services.Tests
         }
 
         [TestMethod]
+        public async Task GetDefaultSourceAttributesHydratesIsSensitiveTestAsync()
+        {
+            var storedAttributes = new List<SqlMembershipAttribute>()
+            {
+                new SqlMembershipAttribute
+                {
+                    Name = "Name1",
+                    CustomLabel = "CustomLabel1",
+                    Type = "nvarchar",
+                    IsSensitive = true
+                }
+            };
+
+            _databaseSqlMembershipSourcesRepository.Setup(x => x.GetDefaultSourceAttributesAsync()).ReturnsAsync(() => storedAttributes);
+
+            var response = await _sqlMembershipSourcesController.GetDefaultSourceAttributesAsync();
+
+            var okResult = response as OkObjectResult;
+            Assert.IsNotNull(okResult);
+
+            var attributes = okResult.Value as List<SqlMembershipAttribute>;
+            Assert.IsNotNull(attributes);
+
+            // Name1 has a stored IsSensitive = true and should be hydrated.
+            Assert.IsTrue(attributes.First(a => a.Name == "Name1").IsSensitive);
+            // Name2 has no stored setting (legacy row without the property) and should default to false.
+            Assert.IsFalse(attributes.First(a => a.Name == "Name2").IsSensitive);
+        }
+
+        [TestMethod]
+        public async Task PatchDefaultSourceAttributesPersistsIsSensitiveTestAsync()
+        {
+            _sqlMembershipSourcesController.ControllerContext = CreateControllerContext(new List<Claim>
+            {
+                new Claim(ClaimTypes.Name, "user@domain.com"),
+                new Claim(ClaimTypes.Role, Roles.CUSTOM_MEMBERSHIP_PROVIDER_ADMINISTRATOR)
+            });
+
+            var attributes = new List<SqlMembershipAttribute>()
+            {
+                new SqlMembershipAttribute
+                {
+                    Name = "Name4",
+                    CustomLabel = "CustomLabel4",
+                    Enabled = false,
+                    IsSensitive = true
+                }
+            };
+
+            var response = await _sqlMembershipSourcesController.PatchDefaultSourceAttributesAsync(attributes);
+
+            Assert.IsInstanceOfType(response, typeof(NoContentResult));
+
+            // Sensitive is persisted independently of Enabled through the existing PATCH flow.
+            _databaseSqlMembershipSourcesRepository.Verify(x => x.UpdateDefaultSourceAttributesAsync(
+                It.Is<List<SqlMembershipAttribute>>(list => list[0].Name == "Name4" && list[0].IsSensitive && !list[0].Enabled)), Times.Once());
+        }
+
+        [TestMethod]
         public async Task SuccessfulGetHRFilterattributeMappingsTestAsync()
         {
             var response = await _sqlMembershipSourcesController.GetDefaultSourceAttributeMappingsAsync("attribute");

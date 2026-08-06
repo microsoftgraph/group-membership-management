@@ -262,6 +262,8 @@ export type IStrings = {
         descriptionColumn: string;
         enabledColumn: string;
         enabledToggleTitle: string;
+        sensitiveColumn: string;
+        sensitiveToggleTitle: string;
         descriptionPlaceHolder: string;
       },
     },

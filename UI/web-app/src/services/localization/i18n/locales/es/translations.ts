@@ -267,6 +267,8 @@ export const strings: IStrings = {
         descriptionPlaceHolder: "Ingrese una etiqueta personalizada",
         enabledColumn: "Habilitado",
         enabledToggleTitle: "Habilitar o deshabilitar este atributo",
+        sensitiveColumn: "Confidencial",
+        sensitiveToggleTitle: "Marcar o desmarcar este atributo como confidencial",
       },
     },
     GeneralSettings: {

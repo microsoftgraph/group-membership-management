@@ -8,7 +8,7 @@ import { initializeIcons } from '@fluentui/react';
 import { MemoryRouter } from 'react-router-dom';
 import { AdminConfigView } from './AdminConfig.view';
 import { getStyles } from './AdminConfig.styles';
-import { SettingKey } from '../../models';
+import { SettingKey, SqlMembershipAttribute } from '../../models';
 import { defaultStrings } from '../../services/localization';
 import { renderWithProviders } from '../../testing/renderWithProviders';
 
@@ -233,5 +233,43 @@ describe('SuggestedPromptsEditor', () => {
     fireEvent.click(screen.getByText(defaultStrings.AdminConfig.AISettings.labels.suggestedPromptPopulateDefaults));
 
     expect(screen.getAllByRole('button', { name: 'Remove' })).toHaveLength(2);
+  });
+});
+
+describe('AdminConfigView Custom Source', () => {
+  const csLabels = defaultStrings.AdminConfig.CustomSourceSettings.labels;
+
+  const attributes: SqlMembershipAttribute[] = [
+    { name: 'Country', customLabel: '', type: 'nvarchar', hasMapping: false, values: [], description: '', enabled: true, isSensitive: false },
+    { name: 'Salary', customLabel: '', type: 'int', hasMapping: false, values: [], description: '', enabled: false, isSensitive: true },
+  ];
+
+  const renderCustomSourceView = () =>
+    renderWithProviders(
+      <MemoryRouter>
+        <AdminConfigView
+          isSaving={false}
+          onSave={vi.fn()}
+          handleGetValues={vi.fn()}
+          settings={createSettings()}
+          sqlMembershipSource={undefined}
+          sqlMembershipSourceAttributes={attributes}
+          strings={defaultStrings.AdminConfig}
+          styles={getStyles}
+          isHyperlinkAdmin={false}
+          isCustomMembershipProviderAdmin={true}
+          isOperationsResetAdministrator={false}
+          isGeneralSettingsAdministrator={false}
+          isAISettingsAdministrator={false}
+          defaultAIPrompt={''}
+        />
+      </MemoryRouter>
+    );
+
+  test('renders the Sensitive column alongside Enabled on the Custom Source tab', () => {
+    renderCustomSourceView();
+
+    expect(screen.getByText(csLabels.enabledColumn)).toBeInTheDocument();
+    expect(screen.getByText(csLabels.sensitiveColumn)).toBeInTheDocument();
   });
 });

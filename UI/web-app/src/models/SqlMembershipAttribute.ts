@@ -9,6 +9,7 @@ export type SqlMembershipAttribute = {
     values: string[];
     description: string;
     enabled: boolean;
+    isSensitive?: boolean;
     nullThreshold?: number;
 };
 

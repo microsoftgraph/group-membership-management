@@ -266,6 +266,8 @@ export const strings: IStrings = {
         descriptionPlaceHolder: "Enter a custom description",
         enabledColumn: "Enabled",
         enabledToggleTitle: "Toggle to enable/disable attribute",
+        sensitiveColumn: "Sensitive",
+        sensitiveToggleTitle: "Toggle to mark/unmark attribute as sensitive",
       },
     },
     GeneralSettings: {

@@ -452,6 +452,14 @@ const CustomSourceSettings: React.FunctionComponent<CustomSourceSettingsProps> =
               onChange={(e, checked) => handleFieldChange(item.name, column.fieldName, checked)}
             />
           );
+        case 'sensitive':
+          return (
+            <Toggle
+              title={strings.CustomSourceSettings.labels.sensitiveToggleTitle}
+              checked={fieldContent !== undefined ? Boolean(fieldContent) : false}
+              onChange={(e, checked) => handleFieldChange(item.name, column.fieldName, checked)}
+            />
+          );
       default:
         return (
           <div className={classNames.defaultColumnSpan}>
@@ -470,6 +478,17 @@ const CustomSourceSettings: React.FunctionComponent<CustomSourceSettingsProps> =
       maxWidth: 120,
       isResizable: true,
       isSorted: sortKey === 'enabled',
+      isSortedDescending,
+      showSortIconWhenUnsorted: true,
+    },
+    {
+      key: 'sensitive',
+      name: strings.CustomSourceSettings.labels.sensitiveColumn,
+      fieldName: 'isSensitive',
+      minWidth: 100,
+      maxWidth: 120,
+      isResizable: true,
+      isSorted: sortKey === 'sensitive',
       isSortedDescending,
       showSortIconWhenUnsorted: true,
     },
