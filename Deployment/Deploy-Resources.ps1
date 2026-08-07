@@ -145,7 +145,7 @@ function Set-Subscription {
 
 function Set-ResourceProviders {
     foreach ($namespace in @("Microsoft.ServiceBus", "Microsoft.Insights", "Microsoft.OperationalInsights", "Microsoft.AlertsManagement", "Microsoft.Storage", "Microsoft.AppConfiguration", "Microsoft.Sql", "Microsoft.Web", "Microsoft.DataFactory", "Microsoft.SignalRService", "Microsoft.DevTestLab", "Microsoft.ContainerService")) {
-        Write-Host "Checking if the resource provider $namespace is registered..."
+        Write-DeployLog -Level Info -Message "Checking if the resource provider $namespace is registered..."
         $provider = Invoke-WithRetry `
             -Operation { Get-AzResourceProvider -ProviderNamespace $namespace } `
             -OperationName "Get resource provider $namespace" `
@@ -802,14 +802,7 @@ function Set-AksResources {
         [Hashtable]$AdditionalParameters = @{ parameters = @{} }
     )
 
-    $deployAks = Get-Default -Value $ParameterHashtable['deployAks'].value -Default $false
-
-    if ($deployAks -ne $true) {
-        Write-Host "`n  ⏭ Skipping AKS deployment (deployAks = $deployAks)" -ForegroundColor Yellow
-        return
-    }
-
-    Write-Host "`nCreating AKS resources"
+    Write-DeployLog -Level Info -Message "Creating AKS resources"
     $computeResourceGroup = "$SolutionAbbreviation-compute-$EnvironmentAbbreviation"
     $templateFilePath = "$AksTemplateDirectoryPath/aksResources.json"
     Invoke-WithRetry `
@@ -1192,6 +1185,7 @@ function Set-GMMResources {
     $skipPrereqsDeployment  = Get-Default -Value $ParameterHashtable['skipPrereqsDeployment'].value  -Default $false
     $skipDataDeployment     = Get-Default -Value $ParameterHashtable['skipDataDeployment'].value     -Default $false
     $skipComputeDeployment  = Get-Default -Value $ParameterHashtable['skipComputeDeployment'].value  -Default $false
+    $deployAks              = Get-Default -Value $ParameterHashtable['deployAks'].value              -Default $false
     $ipRangesToWhiteList = Get-Default -Value $ParameterHashtable['IpRangesToWhiteList'].value -Default @()
 
     # strings
@@ -1321,16 +1315,22 @@ function Set-GMMResources {
         Write-DeployLog -Level Warn -Message "Skipping compute deployment as per configuration [skipComputeDeployment = $skipComputeDeployment]."
     }
 
-    # deploy AKS resources (no-op unless the parameters file sets deployAks = true)
-    Set-AksResources `
-        -SolutionAbbreviation           $SolutionAbbreviation `
-        -EnvironmentAbbreviation        $EnvironmentAbbreviation `
-        -SubscriptionId                 $SubscriptionId `
-        -AksTemplateDirectoryPath       $TemplateFilesDirectory `
-        -ParameterHashtable             $ParameterHashtable `
-        -AdditionalParameters           $commonParametersObject
+    # deploy AKS resources (opt-in: gated on the deployAks flag at the call site,
+    # mirroring the skipComputeDeployment / skipAzureDataFactoryDeployment gates)
+    if ($deployAks -eq $true) {
+        Set-AksResources `
+            -SolutionAbbreviation           $SolutionAbbreviation `
+            -EnvironmentAbbreviation        $EnvironmentAbbreviation `
+            -SubscriptionId                 $SubscriptionId `
+            -AksTemplateDirectoryPath       $TemplateFilesDirectory `
+            -ParameterHashtable             $ParameterHashtable `
+            -AdditionalParameters           $commonParametersObject
 
-    Start-Sleep -Seconds 10
+        Start-Sleep -Seconds 10
+    }
+    else {
+        Write-DeployLog -Level Info -Message "Skipping AKS deployment as per configuration [deployAks = $deployAks]."
+    }
 
     # deploy ADF resources
     if ($skipAzureDataFactoryDeployment -eq $false) {

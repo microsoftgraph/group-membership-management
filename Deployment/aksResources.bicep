@@ -18,12 +18,18 @@
 //     workspace created in the data stage)
 //   - Image Cleaner (weekly)
 //   - Azure network policy
+//   - Bring-your-own node subnet with defaultOutboundAccess:false + an NSG, so
+//     the cluster does NOT create an AKS-managed VNet whose subnets get flagged
+//     by S360 (SFI-NS2.6.1 "Service has Subnets with Default Outbound Access").
+//     Egress stays on the Standard LB + tagged outbound IP (explicit outbound
+//     method), so disabling default outbound access is safe.
 //
 // Explicitly deferred (add when workloads are onboarded):
 //   - ACR + AcrPull for kubelet identity
 //   - Auto-scaling on the node pool
 //   - apiServerAccessProfile.authorizedIPRanges (needs corp NAT IPs)
-//   - Private cluster / bring-your-own-VNET for private-endpoint reachability
+//   - Private cluster / private-endpoint API server (the node subnet is now
+//     BYO, but the API server is still public)
 //   - Encryption at host (requires a VM SKU that supports it — B2s does not)
 //   - Auto-upgrade channel (K8s version upgrades are currently manual)
 //   - Diagnostic settings routing control-plane logs to Log Analytics
@@ -84,6 +90,12 @@ param aksOutboundIpTags array = [
   }
 ]
 
+@description('Address space for the BYO AKS VNet. Kept under IaC control so the node subnet can set defaultOutboundAccess:false (S360 SFI-NS2.6.1) instead of relying on an AKS-managed VNet. Must not overlap any VNet this cluster is peered with.')
+param aksVnetAddressPrefix string = '10.224.0.0/16'
+
+@description('Address prefix for the AKS node subnet. Azure CNI draws pod IPs from this subnet, so size for nodes x (maxPods+1): /22 (~1000 usable) covers ~32 nodes at the default 30 pods/node.')
+param aksNodeSubnetAddressPrefix string = '10.224.0.0/22'
+
 // ----------------------------------------------------------------------------
 // Derived names (var, not expression-default param — expression-default params
 // are broken with the pipeline's parameter handling: Get-TemplateParameters in
@@ -96,6 +108,13 @@ var _dataResourceGroupName = '${solutionAbbreviation}-data-${environmentAbbrevia
 var _logAnalyticsName = '${solutionAbbreviation}-data-${environmentAbbreviation}'
 var _aksOutboundPipName = '${_resolvedAksClusterName}-outbound-pip'
 var _aksControlPlaneIdentityName = '${_resolvedAksClusterName}-identity'
+var _aksVnetName = '${_resolvedAksClusterName}-vnet'
+var _aksNodeNsgName = '${_resolvedAksClusterName}-nodes-nsg'
+var _aksNodeSubnetName = 'aks-nodes'
+// Computed resourceId string (not a symbolic ref) so the cluster can consume it
+// without ARM trying to evaluate a conditional resource property; the explicit
+// dependsOn on aksVnet below guarantees the subnet exists first.
+var _aksNodeSubnetId = resourceId('Microsoft.Network/virtualNetworks/subnets', _aksVnetName, _aksNodeSubnetName)
 // Network Contributor — the minimum role the AKS control-plane identity needs
 // to attach the BYO outbound public IP to the load balancer AKS manages.
 var _networkContributorRoleId = '4d97b98b-1d4f-4787-a291-c67834d212e7'
@@ -163,6 +182,44 @@ resource aksOutboundPipRoleAssignment 'Microsoft.Authorization/roleAssignments@2
 }
 
 // ----------------------------------------------------------------------------
+// BYO node networking (S360 SFI-NS2.6.1).
+// Owning the VNet/subnet in IaC lets us set defaultOutboundAccess:false on the
+// node subnet, so the cluster stops creating an AKS-managed VNet whose subnets
+// are flagged for default outbound access. An NSG is attached so the subnet is
+// not flagged for "subnet without NSG" either. Egress remains on the Standard
+// LB + tagged outbound IP (explicit outbound), so default outbound access is
+// unused and safe to disable.
+// ----------------------------------------------------------------------------
+resource aksNodeNsg 'Microsoft.Network/networkSecurityGroups@2024-05-01' = if (deployAks) {
+  name: _aksNodeNsgName
+  location: location
+}
+
+resource aksVnet 'Microsoft.Network/virtualNetworks@2024-05-01' = if (deployAks) {
+  name: _aksVnetName
+  location: location
+  properties: {
+    addressSpace: {
+      addressPrefixes: [
+        aksVnetAddressPrefix
+      ]
+    }
+    subnets: [
+      {
+        name: _aksNodeSubnetName
+        properties: {
+          addressPrefix: aksNodeSubnetAddressPrefix
+          defaultOutboundAccess: false
+          networkSecurityGroup: {
+            id: aksNodeNsg.id
+          }
+        }
+      }
+    ]
+  }
+}
+
+// ----------------------------------------------------------------------------
 // AKS managed cluster
 // ----------------------------------------------------------------------------
 resource aks 'Microsoft.ContainerService/managedClusters@2024-09-01' = if (deployAks) {
@@ -173,6 +230,7 @@ resource aks 'Microsoft.ContainerService/managedClusters@2024-09-01' = if (deplo
   // role assignment).
   dependsOn: [
     aksOutboundPipRoleAssignment
+    aksVnet
   ]
   sku: {
     name: 'Base'
@@ -207,6 +265,9 @@ resource aks 'Microsoft.ContainerService/managedClusters@2024-09-01' = if (deplo
         osType: 'Linux'
         osSKU: 'AzureLinux3'
         type: 'VirtualMachineScaleSets'
+        // BYO node subnet (defaultOutboundAccess:false) so AKS does not create
+        // a managed VNet whose subnets are flagged by S360 (SFI-NS2.6.1).
+        vnetSubnetID: _aksNodeSubnetId
       }
     ]
     networkProfile: {
