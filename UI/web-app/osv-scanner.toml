@@ -4,10 +4,10 @@
 # Entries here should be TIME-BOXED and DOCUMENTED. The `ignoreUntil` date makes
 # each suppression auto-expire so the finding re-surfaces and forces a revisit.
 #
-# The three previously suppressed advisories (GHSA-qwww-vcr4-c8h2 / react-router,
-# GHSA-rgw5-rvv9-x895 / brace-expansion, GHSA-7p8r-x3mc-p8w7 / fast-uri) now have
-# installable fixes on the internal feed and are resolved by the pnpm overrides in
-# package.json, documented there under `x-override-notes`.
+# Every other advisory reported against this lockfile is remediated by a real
+# version bump. Override-based remediations are documented in package.json under
+# `x-override-notes`; some fixes (e.g. react-router) are plain direct-dependency
+# bumps instead.
 #
 # Prefer fixing over suppressing. Only add an [[IgnoredVulns]] entry when there is
 # genuinely no installable fix, and always include an `ignoreUntil` date and an
