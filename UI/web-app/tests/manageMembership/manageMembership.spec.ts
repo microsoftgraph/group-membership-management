@@ -30,5 +30,10 @@ test('restores an existing job query after refreshing ManageMembership', async (
   await page.reload();
 
   await expect(page.getByText('Exclude All Users in Marketing', { exact: false })).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Expand', exact: true })).toBeVisible();
+  // The restored query must hydrate into an interactive rule card, not just render
+  // as text. This previously asserted the source-part "Expand" affordance, which the
+  // rule card carousel replaced.
+  await expect(
+    page.getByRole('button', { name: /Select rule:.*Exclude All Users in Marketing/ })
+  ).toBeVisible();
 });
