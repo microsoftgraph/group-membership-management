@@ -76,6 +76,9 @@ param aksSkuTier string = 'Free'
 @description('Master switch — set to true to deploy the AKS cluster. Defaults to false so no environment provisions AKS unless it explicitly opts in via its per-env parameters file.')
 param deployAks bool = false
 
+@description('When true, this deployment creates the Network Contributor role assignment on the outbound IP. Kept false in every GMM environment so the least-privilege deploy service principal (Contributor only) never needs Microsoft.Authorization/roleAssignments/write on the compute resource group (S360: SPNs must follow least privilege). When false, the grant is pre-provisioned out-of-band by an elevated human once per environment — mirroring how the rest of GMM grants managed-identity RBAC via Scripts/PostDeploymentRoleAssignments.')
+param setRBACPermissions bool = false
+
 @description('Enable Microsoft Defender for Containers. Recommended on for all envs; disable only during initial bootstrap.')
 param enableDefenderForContainers bool = true
 
@@ -165,16 +168,26 @@ resource aksOutboundPip 'Microsoft.Network/publicIPAddresses@2024-05-01' = if (d
 // ----------------------------------------------------------------------------
 // Grant the control-plane identity Network Contributor on the outbound IP so
 // AKS can attach it to the managed load balancer. Scoped to the IP (least
-// privilege). The cluster dependsOn this so the grant exists before creation.
+// privilege).
+//
+// Gated on `setRBACPermissions` (in addition to `deployAks`) so AKS matches
+// every other GMM host: the least-privilege deploy service principal
+// (Contributor only) never creates role assignments — doing so requires
+// Microsoft.Authorization/roleAssignments/write on the compute RG, which S360
+// flags. `setRBACPermissions` is false in every environment, so this grant is
+// instead pre-provisioned out-of-band by an elevated human once per environment
+// (before the cluster is deployed), mirroring Scripts/PostDeploymentRoleAssignments.
+// When set true (an elevated identity runs the deploy), the cluster's dependsOn
+// below ensures the grant lands before the cluster is created.
 // ----------------------------------------------------------------------------
-resource aksOutboundPipRoleAssignment 'Microsoft.Authorization/roleAssignments@2022-04-01' = if (deployAks) {
+resource aksOutboundPipRoleAssignment 'Microsoft.Authorization/roleAssignments@2022-04-01' = if (deployAks && setRBACPermissions) {
   name: guid(aksOutboundPip.id, aksControlPlaneIdentity.id, _networkContributorRoleId)
   scope: aksOutboundPip
   properties: {
     roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', _networkContributorRoleId)
-    // Safe: this role assignment and aksControlPlaneIdentity share the same
-    // `if (deployAks)` condition, so the identity always exists here (BCP318
-    // can't prove that across two resources).
+    // Safe: this role assignment is deployed only when deployAks is true, and
+    // aksControlPlaneIdentity shares the deployAks condition, so the identity
+    // always exists here (BCP318 can't prove that across two resources).
     #disable-next-line BCP318
     principalId: aksControlPlaneIdentity.properties.principalId
     principalType: 'ServicePrincipal'
@@ -225,11 +238,15 @@ resource aksVnet 'Microsoft.Network/virtualNetworks@2024-05-01' = if (deployAks)
 resource aks 'Microsoft.ContainerService/managedClusters@2024-09-01' = if (deployAks) {
   name: _resolvedAksClusterName
   location: location
-  // Explicit: the Network Contributor grant on the outbound IP must land before
-  // the cluster is created (implicit refs cover the identity + IP but not the
-  // role assignment).
-  dependsOn: [
+  // Explicit: when this deploy creates the Network Contributor grant
+  // (setRBACPermissions=true), it must land before the cluster is created
+  // (implicit refs cover the identity + IP but not the role assignment). When
+  // setRBACPermissions=false the grant is pre-provisioned out-of-band, so the
+  // cluster only needs to wait on the BYO VNet/subnet.
+  dependsOn: setRBACPermissions ? [
     aksOutboundPipRoleAssignment
+    aksVnet
+  ] : [
     aksVnet
   ]
   sku: {
