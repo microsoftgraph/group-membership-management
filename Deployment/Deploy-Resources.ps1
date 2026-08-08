@@ -1153,6 +1153,247 @@ function Update-FunctionAppAuthSettings {
     $headers = $null
 }
 
+function Set-FunctionIpRestrictions {
+    [CmdletBinding()]
+    param (
+        [Parameter(Mandatory = $true)]
+        [string]$SolutionAbbreviation,
+        [Parameter(Mandatory = $true)]
+        [string]$EnvironmentAbbreviation,
+        [Parameter(Mandatory = $true)]
+        [string]$SubscriptionId,
+        [Parameter(Mandatory = $false)]
+        [string[]]$AdditionalAdfFunctionAppNames = @(),
+        [Parameter(Mandatory = $false)]
+        [string[]]$AdditionalWebApiFunctionAppNames = @()
+    )
+
+    Write-DeployLog -Level Info -Message "Setting Function App IP Access Restrictions"
+
+    $computeResourceGroup = "$SolutionAbbreviation-compute-$EnvironmentAbbreviation"
+
+    function New-IpAllowRules {
+        param (
+            [Parameter(Mandatory = $true)]
+            [AllowEmptyCollection()]
+            [string[]]$Ranges,
+            [Parameter(Mandatory = $true)]
+            [string]$NamePrefix,
+            [Parameter(Mandatory = $true)]
+            [string]$Description,
+            [Parameter(Mandatory = $true)]
+            [int]$StartPriority
+        )
+
+        $rules = @()
+        $priority = $StartPriority
+        $index = 1
+        foreach ($range in $Ranges) {
+            if ([string]::IsNullOrWhiteSpace($range)) { continue }
+            $cidr = if ($range -match '/') { $range } else { "$range/32" }
+            $rules += @{
+                ipAddress   = $cidr
+                action      = 'Allow'
+                tag         = 'Default'
+                priority    = $priority
+                name        = "$NamePrefix-$index"
+                description = $Description
+            }
+            $priority += 10
+            $index++
+        }
+        return $rules
+    }
+
+    # ADF linked services dispatch through the MemoryOptimizedIntegrationRuntime, whose
+    # computeProperties.location is 'AutoResolve', so dispatch is not tied to the factory's
+    # region. The global DataFactory service tag covers dispatch from any region.
+    $adfRules = @(
+        @{
+            ipAddress   = 'DataFactory'
+            action      = 'Allow'
+            tag         = 'ServiceTag'
+            priority    = 100
+            name        = 'Allow-DataFactory-Global'
+            description = 'ADF service tag'
+        }
+    )
+
+    $webApiResourceName = "$SolutionAbbreviation-compute-$EnvironmentAbbreviation-webapi"
+    $webApi = Invoke-WithRetry `
+        -Operation { Get-AzWebApp -ResourceGroupName $computeResourceGroup -Name $webApiResourceName -ErrorAction SilentlyContinue } `
+        -OperationName "Get WebAPI resource" `
+        -MaxAttempts 3 -BaseDelaySeconds 2
+    if ($null -eq $webApi -or [string]::IsNullOrWhiteSpace($webApi.PossibleOutboundIpAddresses)) {
+        throw "Could not resolve possibleOutboundIpAddresses for '$webApiResourceName'."
+    }
+
+    $webApiIps = @($webApi.PossibleOutboundIpAddresses -split ',' | ForEach-Object { $_.Trim() } | Where-Object { $_ })
+    Write-DeployLog -Level Success -Message "WebAPI outbound IPs: $($webApiIps.Count)"
+
+    $adfFunctionAppNames = @("AzureUserReader", "NonProdService", "SqlDataChecker") + $AdditionalAdfFunctionAppNames
+    $webApiFunctionAppNames = @("JobScheduler") + $AdditionalWebApiFunctionAppNames
+
+    Write-DeployLog -Level Info -Message "Applying ADF caller rules..."
+    Update-FunctionAppIpRestrictions `
+        -FunctionAppNames $adfFunctionAppNames `
+        -IpSecurityRestrictions $adfRules `
+        -SolutionAbbreviation $SolutionAbbreviation `
+        -EnvironmentAbbreviation $EnvironmentAbbreviation `
+        -SubscriptionId $SubscriptionId
+
+    Write-DeployLog -Level Info -Message "Applying WebAPI caller rules..."
+    Update-FunctionAppIpRestrictions `
+        -FunctionAppNames $webApiFunctionAppNames `
+        -IpSecurityRestrictions (New-IpAllowRules -Ranges $webApiIps -NamePrefix 'Allow-WebApi-IP' -Description 'WebApi outbound IP' -StartPriority 100) `
+        -SolutionAbbreviation $SolutionAbbreviation `
+        -EnvironmentAbbreviation $EnvironmentAbbreviation `
+        -SubscriptionId $SubscriptionId
+
+    $allTargets = @($adfFunctionAppNames + $webApiFunctionAppNames | Select-Object -Unique)
+    Write-FunctionAppIpRestrictionSummary `
+        -FunctionAppNames $allTargets `
+        -SolutionAbbreviation $SolutionAbbreviation `
+        -EnvironmentAbbreviation $EnvironmentAbbreviation `
+        -SubscriptionId $SubscriptionId
+
+    Write-DeployLog -Level Success -Message "Function App IP Access Restrictions applied"
+}
+
+function Update-FunctionAppIpRestrictions {
+    [CmdletBinding()]
+    param (
+        [Parameter(Mandatory = $true)]
+        [string[]]$FunctionAppNames,
+        [Parameter(Mandatory = $true)]
+        [AllowEmptyCollection()]
+        [array]$IpSecurityRestrictions,
+        [Parameter(Mandatory = $true)]
+        [string]$SolutionAbbreviation,
+        [Parameter(Mandatory = $true)]
+        [string]$EnvironmentAbbreviation,
+        [Parameter(Mandatory = $true)]
+        [string]$SubscriptionId
+    )
+
+    $computeResourceGroup = "$SolutionAbbreviation-compute-$EnvironmentAbbreviation"
+    $functionApps = @()
+    foreach ($shortName in $FunctionAppNames) {
+        $fullFunctionName = "$SolutionAbbreviation-compute-$EnvironmentAbbreviation-$shortName"
+        $app = Invoke-WithRetry `
+            -Operation { Get-FunctionAppCompat -ResourceGroupName $computeResourceGroup -Name $fullFunctionName -ErrorAction SilentlyContinue } `
+            -OperationName "Get function app '$fullFunctionName'" `
+            -MaxAttempts 3 -BaseDelaySeconds 2
+        if ($null -ne $app) {
+            $functionApps += $app
+            Write-DeployLog -Level Success -Message "Found function app: $fullFunctionName"
+        }
+        else {
+            # A missing target here means an intended caller silently loses access to a
+            # deny-by-default surface, so this fails the deployment rather than warning.
+            throw "Function app not found: $fullFunctionName"
+        }
+    }
+
+    if ($functionApps.Count -eq 0) {
+        throw "No function apps resolved from input names: $($FunctionAppNames -join ', ')"
+    }
+
+    $token = Get-BearerToken
+    $headers = @{
+        Authorization  = "Bearer $token"
+        'Content-Type' = 'application/json'
+    }
+
+    $functionIndex = 0
+    $totalFunctions = $functionApps.Count
+
+    try {
+        foreach ($functionApp in $functionApps) {
+            $functionIndex++
+            $functionAppName = $functionApp.Name
+
+            Write-DeployLog -Level Info -Message "[$functionIndex/$totalFunctions] Updating IP restrictions: $functionAppName"
+
+            $webConfigUri = "https://management.azure.com/subscriptions/$SubscriptionId/resourceGroups/$computeResourceGroup/providers/Microsoft.Web/sites/$functionAppName/config/web?api-version=2023-12-01"
+
+            # Full GET, mutate only the IP sections, then full PUT, so no other siteConfig
+            # property (appSettings, minTlsVersion, ftpsState) is lost.
+            $currentConfig = Invoke-WithRetry `
+                -Operation { Invoke-RestMethod -Uri $webConfigUri -Method Get -Headers $headers } `
+                -OperationName "Get web config for $functionAppName" `
+                -MaxAttempts 3 -BaseDelaySeconds 2
+
+            $currentConfig.properties | Add-Member -NotePropertyName 'ipSecurityRestrictions' -NotePropertyValue @($IpSecurityRestrictions) -Force
+
+            $body = $currentConfig | ConvertTo-Json -Depth 20
+
+            $null = Invoke-WithRetry `
+                -Operation { Invoke-RestMethod -Uri $webConfigUri -Method Put -Headers $headers -Body $body } `
+                -OperationName "Update IP restrictions for $functionAppName" `
+                -MaxAttempts 3 -BaseDelaySeconds 2
+
+            $applied = Invoke-WithRetry `
+                -Operation { Invoke-RestMethod -Uri $webConfigUri -Method Get -Headers $headers } `
+                -OperationName "Verify IP restrictions for $functionAppName" `
+                -MaxAttempts 3 -BaseDelaySeconds 2
+
+            $appliedRules = @($applied.properties.ipSecurityRestrictions)
+            $ruleNames = ($appliedRules | ForEach-Object { $_.name }) -join ', '
+            Write-DeployLog -Level Success -Message "$functionAppName -> defaultAction=$($applied.properties.ipSecurityRestrictionsDefaultAction), rules=$($appliedRules.Count) [$ruleNames]"
+        }
+    }
+    finally {
+        # Clear sensitive token from memory
+        $token = $null
+        $headers = $null
+    }
+}
+
+function Write-FunctionAppIpRestrictionSummary {
+    param (
+        [Parameter(Mandatory = $true)]
+        [string[]]$FunctionAppNames,
+        [Parameter(Mandatory = $true)]
+        [string]$SolutionAbbreviation,
+        [Parameter(Mandatory = $true)]
+        [string]$EnvironmentAbbreviation,
+        [Parameter(Mandatory = $true)]
+        [string]$SubscriptionId
+    )
+
+    $computeResourceGroup = "$SolutionAbbreviation-compute-$EnvironmentAbbreviation"
+
+    $token = Get-BearerToken
+    $headers = @{
+        Authorization  = "Bearer $token"
+        'Content-Type' = 'application/json'
+    }
+
+    try {
+        Write-DeployLog -Level Info -Message "Verifying applied IP access restrictions"
+
+        foreach ($shortName in $FunctionAppNames) {
+            $fullFunctionName = "$SolutionAbbreviation-compute-$EnvironmentAbbreviation-$shortName"
+            $webConfigUri = "https://management.azure.com/subscriptions/$SubscriptionId/resourceGroups/$computeResourceGroup/providers/Microsoft.Web/sites/$fullFunctionName/config/web?api-version=2023-12-01"
+
+            $applied = Invoke-WithRetry `
+                -Operation { Invoke-RestMethod -Uri $webConfigUri -Method Get -Headers $headers } `
+                -OperationName "Get applied IP restrictions for $fullFunctionName" `
+                -MaxAttempts 3 -BaseDelaySeconds 2
+
+            $appliedRules = @($applied.properties.ipSecurityRestrictions)
+            $ruleNames = ($appliedRules | ForEach-Object { $_.name }) -join ', '
+            Write-DeployLog -Level Success -Message "$fullFunctionName -> defaultAction=$($applied.properties.ipSecurityRestrictionsDefaultAction), rules=$($appliedRules.Count) [$ruleNames]"
+        }
+    }
+    finally {
+        # Clear sensitive token from memory
+        $token = $null
+        $headers = $null
+    }
+}
+
 function Set-GMMResources {
     param (
         [Parameter(Mandatory = $true)]
@@ -1360,6 +1601,11 @@ function Set-GMMResources {
     else {
         Write-DeployLog -Level Warn -Message "Skipping function authentication allowed identities (enableFunctionAuthentication = false)"
     }
+
+    Set-FunctionIpRestrictions `
+        -SolutionAbbreviation $SolutionAbbreviation `
+        -EnvironmentAbbreviation $EnvironmentAbbreviation `
+        -SubscriptionId $SubscriptionId
 }
 
 function Set-SqlServerFirewallRule {

@@ -120,6 +120,15 @@ resource functionApp 'Microsoft.Web/sites@2023-12-01' = {
     siteConfig: {
       minTlsVersion: '1.2'
       ftpsState: 'Disabled'
+      // Deny-by-default on the main site. Allow rules are applied post-deploy by
+      // Set-FunctionIpRestrictions in Deployment/Deploy-Resources.ps1, because the
+      // caller IPs (ADF service tag regions, WebApi outbound IPs) are only knowable
+      // after the resources exist. The ipSecurityRestrictions array is deliberately
+      // not declared here so that redeploys do not wipe those post-deploy rules.
+      ipSecurityRestrictionsDefaultAction: 'Deny'
+      // SCM/Kudu must not inherit the main-site rules: code deployment uses
+      // Publish-AzWebApp (Kudu zipdeploy) from deployment agents.
+      scmIpSecurityRestrictionsUseMain: false
       appSettings: [
         for key in objectKeys(appSettings): {
           name: key
