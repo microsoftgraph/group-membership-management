@@ -814,6 +814,219 @@ namespace WebApi.Tests
             Assert.AreEqual(1, result.Count);
         }
 
+        // ---------------- ClassifyJobSourceKind ----------------
+
+        [TestMethod]
+        public void ClassifyJobSourceKind_NullList_ReturnsNone()
+        {
+            Assert.AreEqual(GetRunExplanationHandler.JobSourceKind.None,
+                GetRunExplanationHandler.ClassifyJobSourceKind(null));
+        }
+
+        [TestMethod]
+        public void ClassifyJobSourceKind_EmptyList_ReturnsNone()
+        {
+            Assert.AreEqual(GetRunExplanationHandler.JobSourceKind.None,
+                GetRunExplanationHandler.ClassifyJobSourceKind(new List<GetRunExplanationHandler.QueryPartInfo>()));
+        }
+
+        [TestMethod]
+        public void ClassifyJobSourceKind_SqlOnly_ReturnsHrData()
+        {
+            var parts = new List<GetRunExplanationHandler.QueryPartInfo>
+            {
+                new() { Type = "SqlMembership" },
+            };
+            Assert.AreEqual(GetRunExplanationHandler.JobSourceKind.HrData,
+                GetRunExplanationHandler.ClassifyJobSourceKind(parts));
+        }
+
+        [TestMethod]
+        public void ClassifyJobSourceKind_GroupMembershipOnly_ReturnsGroup()
+        {
+            var parts = new List<GetRunExplanationHandler.QueryPartInfo>
+            {
+                new() { Type = "GroupMembership" },
+            };
+            Assert.AreEqual(GetRunExplanationHandler.JobSourceKind.Group,
+                GetRunExplanationHandler.ClassifyJobSourceKind(parts));
+        }
+
+        [TestMethod]
+        public void ClassifyJobSourceKind_GroupOwnershipOnly_ReturnsGroup()
+        {
+            var parts = new List<GetRunExplanationHandler.QueryPartInfo>
+            {
+                new() { Type = "GroupOwnership" },
+            };
+            Assert.AreEqual(GetRunExplanationHandler.JobSourceKind.Group,
+                GetRunExplanationHandler.ClassifyJobSourceKind(parts));
+        }
+
+        [TestMethod]
+        public void ClassifyJobSourceKind_TeamsChannelOnly_ReturnsGroup()
+        {
+            var parts = new List<GetRunExplanationHandler.QueryPartInfo>
+            {
+                new() { Type = "TeamsChannelMembership" },
+            };
+            Assert.AreEqual(GetRunExplanationHandler.JobSourceKind.Group,
+                GetRunExplanationHandler.ClassifyJobSourceKind(parts));
+        }
+
+        [TestMethod]
+        public void ClassifyJobSourceKind_SqlAndGroup_ReturnsMixed()
+        {
+            var parts = new List<GetRunExplanationHandler.QueryPartInfo>
+            {
+                new() { Type = "SqlMembership" },
+                new() { Type = "GroupMembership" },
+            };
+            Assert.AreEqual(GetRunExplanationHandler.JobSourceKind.Mixed,
+                GetRunExplanationHandler.ClassifyJobSourceKind(parts));
+        }
+
+        [TestMethod]
+        public void ClassifyJobSourceKind_PlaceMembershipOnly_ReturnsNone()
+        {
+            // PlaceMembership is neither an HR filter nor a group-referencing source, so it maps to the generic fallback.
+            var parts = new List<GetRunExplanationHandler.QueryPartInfo>
+            {
+                new() { Type = "PlaceMembership" },
+            };
+            Assert.AreEqual(GetRunExplanationHandler.JobSourceKind.None,
+                GetRunExplanationHandler.ClassifyJobSourceKind(parts));
+        }
+
+        // ---------------- UpstreamFallbackPhrase ----------------
+
+        [TestMethod]
+        public void UpstreamFallbackPhrase_HrData_UsesHrWording()
+        {
+            var result = InvokeStaticPrivate<string>(typeof(GetRunExplanationHandler), "UpstreamFallbackPhrase",
+                new object?[] { GetRunExplanationHandler.JobSourceKind.HrData });
+            Assert.AreEqual("upstream HR data", result);
+        }
+
+        [TestMethod]
+        public void UpstreamFallbackPhrase_Group_UsesGroupWording()
+        {
+            var result = InvokeStaticPrivate<string>(typeof(GetRunExplanationHandler), "UpstreamFallbackPhrase",
+                new object?[] { GetRunExplanationHandler.JobSourceKind.Group });
+            Assert.AreEqual("upstream source group memberships", result);
+        }
+
+        [TestMethod]
+        public void UpstreamFallbackPhrase_Mixed_UsesGenericWording()
+        {
+            var result = InvokeStaticPrivate<string>(typeof(GetRunExplanationHandler), "UpstreamFallbackPhrase",
+                new object?[] { GetRunExplanationHandler.JobSourceKind.Mixed });
+            Assert.AreEqual("upstream membership sources", result);
+        }
+
+        [TestMethod]
+        public void UpstreamFallbackPhrase_None_UsesGenericWording()
+        {
+            var result = InvokeStaticPrivate<string>(typeof(GetRunExplanationHandler), "UpstreamFallbackPhrase",
+                new object?[] { GetRunExplanationHandler.JobSourceKind.None });
+            Assert.AreEqual("upstream membership sources", result);
+        }
+
+        // ---------------- Job source kind line injected into the run prompt ----------------
+
+        [TestMethod]
+        public async Task ExecuteAsync_HrDataJob_PromptIncludesHrSourceKindAndPhrase()
+        {
+            _mockSyncJobHistoryRepository.Setup(x => x.GetByRunIdAsync(_runId))
+                .ReturnsAsync(new global::Models.SyncJobHistory.SyncJobHistory
+                {
+                    SyncJobId = _syncJobId,
+                    RunId = _runId,
+                    Status = "Idle",
+                    UpdatedAt = DateTime.UtcNow,
+                    StartTime = DateTime.UtcNow.AddMinutes(-5),
+                    EndTime = DateTime.UtcNow,
+                    UsersAdded = 2,
+                    UsersRemoved = 1,
+                    BeforeSyncUserCount = 100,
+                    AfterSyncUserCount = 101,
+                    ThresholdViolations = 0
+                });
+
+            var blob = new BlobResult { BlobStatus = BlobStatus.Found, Path = "test/path.json" };
+            _mockBlobStorageRepository.Setup(x => x.FindAggregatedFileByRunIdAsync(It.IsAny<string>(), It.IsAny<string>()))
+                .ReturnsAsync(blob);
+            var fakeJson = $"{{\"SourceMembers\":[" +
+                $"{{\"ObjectId\":\"{Guid.NewGuid()}\",\"MembershipAction\":1}}," +
+                $"{{\"ObjectId\":\"{Guid.NewGuid()}\",\"MembershipAction\":2}}]}}";
+            _mockBlobStorageRepository.Setup(x => x.DownloadFileAsync(It.IsAny<string>()))
+                .ReturnsAsync(new BlobResult { BlobStatus = BlobStatus.Found, Content = fakeJson });
+
+            string? capturedPrompt = null;
+            _mockOpenAIService.Setup(x => x.GetCompletionAsync(It.IsAny<string>(), It.IsAny<string>()))
+                .Callback<string, string>((_, prompt) => capturedPrompt = prompt)
+                .ReturnsAsync("This sync reflects changes in upstream HR data.");
+
+            var response = await _handler.ExecuteAsync(BuildRequest());
+
+            Assert.AreEqual(HttpStatusCode.OK, response.StatusCode);
+            Assert.IsNotNull(capturedPrompt);
+            // The default test job's Query is a single SqlMembership part -> HrData.
+            StringAssert.Contains(capturedPrompt!, "Job source kind: HrData");
+            StringAssert.Contains(capturedPrompt!, "upstream HR data");
+            // The HR-data prompt must never direct the model to the group-source phrasing.
+            Assert.IsFalse(capturedPrompt!.Contains("upstream source group memberships"),
+                "HR-data run prompt must not offer the group-source fallback phrasing.");
+        }
+
+        [TestMethod]
+        public async Task ExecuteAsync_GroupJob_PromptIncludesGroupSourceKindAndPhrase()
+        {
+            _mockSyncJobRepository.Setup(x => x.GetSyncJobAsync(_syncJobId))
+                .ReturnsAsync(new SyncJob
+                {
+                    Id = _syncJobId,
+                    TargetOfficeGroupId = _targetGroupId,
+                    Query = "[{\"type\":\"GroupMembership\",\"source\":\"00000000-0000-0000-0000-000000000001\"}]"
+                });
+            _mockSyncJobHistoryRepository.Setup(x => x.GetByRunIdAsync(_runId))
+                .ReturnsAsync(new global::Models.SyncJobHistory.SyncJobHistory
+                {
+                    SyncJobId = _syncJobId,
+                    RunId = _runId,
+                    Status = "Idle",
+                    UpdatedAt = DateTime.UtcNow,
+                    StartTime = DateTime.UtcNow.AddMinutes(-5),
+                    EndTime = DateTime.UtcNow,
+                    UsersAdded = 2,
+                    UsersRemoved = 1,
+                    BeforeSyncUserCount = 100,
+                    AfterSyncUserCount = 101,
+                    ThresholdViolations = 0
+                });
+
+            var blob = new BlobResult { BlobStatus = BlobStatus.Found, Path = "test/path.json" };
+            _mockBlobStorageRepository.Setup(x => x.FindAggregatedFileByRunIdAsync(It.IsAny<string>(), It.IsAny<string>()))
+                .ReturnsAsync(blob);
+            var fakeJson = $"{{\"SourceMembers\":[" +
+                $"{{\"ObjectId\":\"{Guid.NewGuid()}\",\"MembershipAction\":1}}," +
+                $"{{\"ObjectId\":\"{Guid.NewGuid()}\",\"MembershipAction\":2}}]}}";
+            _mockBlobStorageRepository.Setup(x => x.DownloadFileAsync(It.IsAny<string>()))
+                .ReturnsAsync(new BlobResult { BlobStatus = BlobStatus.Found, Content = fakeJson });
+
+            string? capturedPrompt = null;
+            _mockOpenAIService.Setup(x => x.GetCompletionAsync(It.IsAny<string>(), It.IsAny<string>()))
+                .Callback<string, string>((_, prompt) => capturedPrompt = prompt)
+                .ReturnsAsync("This sync reflects changes in upstream source group memberships.");
+
+            var response = await _handler.ExecuteAsync(BuildRequest());
+
+            Assert.AreEqual(HttpStatusCode.OK, response.StatusCode);
+            Assert.IsNotNull(capturedPrompt);
+            StringAssert.Contains(capturedPrompt!, "Job source kind: Group");
+            StringAssert.Contains(capturedPrompt!, "upstream source group memberships");
+        }
+
         // ---------------- FormatGroupRef ----------------
 
         [TestMethod]
@@ -1562,6 +1775,1388 @@ namespace WebApi.Tests
         }
 
         [TestMethod]
+        public async Task ExecuteAsync_RemovesWalkBack_WhenPreviousAdfTablePruned_AttributesFromPreviousSourceBlob()
+        {
+            // Reported removes hedge (class B): previous run's ADF snapshot table is pruned so the single-step SQL diff cannot run, but its source blob still exists and the walk-back reads it to attribute the removals.
+            var currentAdfRunId = Guid.NewGuid();
+            var previousAdfRunId = Guid.NewGuid();
+            var previousRunId = Guid.NewGuid();
+            var currentTable = currentAdfRunId.ToString().Replace("-", string.Empty);
+            var previousTable = previousAdfRunId.ToString().Replace("-", string.Empty);
+            var removedUser = Guid.NewGuid();
+            string? capturedPrompt = null;
+
+            SetupCurrentRunAndPreviousRun(currentAdfRunId, previousAdfRunId, previousRunId, usersRemoved: 1);
+            SetupAggregatedRemovedUsers(removedUser);
+            _mockSqlMembershipRepository.Setup(x => x.CheckIfTableExistsAsync(currentTable)).ReturnsAsync(true);
+            _mockSqlMembershipRepository.Setup(x => x.CheckIfTableExistsAsync(previousTable)).ReturnsAsync(false); // pruned
+            _mockSqlMembershipRepository.Setup(x => x.GetUserAttributesBatchAsync(It.IsAny<IEnumerable<string>>(), It.IsAny<string>()))
+                .ReturnsAsync(new Dictionary<string, Dictionary<string, string>>());
+
+            // Previous run's SqlMembership_1 source blob still present (~30d retention) and contains the removed user.
+            _mockBlobStorageRepository.Setup(x => x.FindPartFilesByRunIdAsync(_targetGroupId.ToString(), previousRunId.ToString()))
+                .ReturnsAsync(new Dictionary<string, BlobResult>
+                {
+                    ["SqlMembership_1"] = new() { BlobStatus = BlobStatus.Found, Path = "prev/sql1.json" }
+                });
+            _mockBlobStorageRepository.Setup(x => x.ExtractGroupMembershipSourceMembersAsync("prev/sql1.json"))
+                .ReturnsAsync(new HashSet<Guid> { removedUser });
+
+            _mockOpenAIService.Setup(x => x.GetCompletionAsync(It.IsAny<string>(), It.IsAny<string>()))
+                .Callback<string, string>((_, prompt) => capturedPrompt = prompt)
+                .ReturnsAsync("This sync completed successfully.");
+
+            var response = await _handler.ExecuteAsync(BuildRequest());
+
+            Assert.AreEqual(HttpStatusCode.OK, response.StatusCode);
+            Assert.IsNotNull(capturedPrompt);
+            StringAssert.Contains(capturedPrompt!, "Per-part attribution for removed users");
+            StringAssert.Contains(capturedPrompt!, "no longer match this rule");
+            StringAssert.Contains(capturedPrompt!, "per prior-run source history");
+            Assert.IsFalse(capturedPrompt!.Contains("no attributable source found"),
+                "Walk-back should have replaced the no-signal hedge marker with a real attribution.");
+            // The walk-back reads blobs — it must NOT re-query the (pruned) ADF tables.
+            _mockSqlMembershipRepository.Verify(x => x.FilterChildEntitiesAsync(It.IsAny<string>(), It.IsAny<string>()), Times.Never);
+        }
+
+        [TestMethod]
+        public async Task ExecuteAsync_RemovesWalkBack_MultiRunBlip_AttributesFromOlderRunGroupBlob()
+        {
+            // Reported removes hedge (class D, multi-run blip): the user is absent from the immediately-previous run's source but was present two runs back, so the walk-back keeps going and attributes to the older run.
+            var previousRunId = Guid.NewGuid();
+            var olderRunId = Guid.NewGuid();
+            var inclusionaryGroup = Guid.NewGuid();
+            var removedUser = Guid.NewGuid();
+            var now = DateTime.UtcNow;
+            string? capturedPrompt = null;
+
+            _mockSyncJobRepository.Setup(x => x.GetSyncJobAsync(_syncJobId))
+                .ReturnsAsync(new SyncJob
+                {
+                    Id = _syncJobId,
+                    TargetOfficeGroupId = _targetGroupId,
+                    Query = $"[{{\"type\":\"GroupMembership\",\"source\":\"{inclusionaryGroup}\"}}]"
+                });
+
+            SetupCurrentRunAndPreviousRun(Guid.NewGuid(), Guid.NewGuid(), previousRunId, usersRemoved: 1);
+            SetupAggregatedRemovedUsers(removedUser);
+
+            // Override history so the walk-back sees TWO prior runs (previous at -1h, older at -2h).
+            _mockSyncJobHistoryRepository.Setup(x => x.GetBySyncJobIdAsync(_syncJobId, It.IsAny<int>(), It.IsAny<int>()))
+                .ReturnsAsync(new List<global::Models.SyncJobHistory.SyncJobHistory>
+                {
+                    new() { SyncJobId = _syncJobId, RunId = previousRunId, Status = "Idle", UpdatedAt = now.AddHours(-1), UsersRemoved = 0, ThresholdViolations = 0 },
+                    new() { SyncJobId = _syncJobId, RunId = olderRunId, Status = "Idle", UpdatedAt = now.AddHours(-2), UsersRemoved = 0, ThresholdViolations = 0 }
+                });
+
+            // Current + previous source blobs do NOT contain the user -> single-step finds nothing -> no-signal marker.
+            _mockBlobStorageRepository.Setup(x => x.FindPartFilesByRunIdAsync(_targetGroupId.ToString(), _runId.ToString()))
+                .ReturnsAsync(new Dictionary<string, BlobResult> { ["GroupMembership_1"] = new() { BlobStatus = BlobStatus.Found, Path = "cur/g1.json" } });
+            _mockBlobStorageRepository.Setup(x => x.FindPartFilesByRunIdAsync(_targetGroupId.ToString(), previousRunId.ToString()))
+                .ReturnsAsync(new Dictionary<string, BlobResult> { ["GroupMembership_1"] = new() { BlobStatus = BlobStatus.Found, Path = "prev/g1.json" } });
+            _mockBlobStorageRepository.Setup(x => x.FindPartFilesByRunIdAsync(_targetGroupId.ToString(), olderRunId.ToString()))
+                .ReturnsAsync(new Dictionary<string, BlobResult> { ["GroupMembership_1"] = new() { BlobStatus = BlobStatus.Found, Path = "old/g1.json" } });
+            _mockBlobStorageRepository.Setup(x => x.ExtractGroupMembershipSourceMembersAsync("cur/g1.json")).ReturnsAsync(new HashSet<Guid>());
+            _mockBlobStorageRepository.Setup(x => x.ExtractGroupMembershipSourceMembersAsync("prev/g1.json")).ReturnsAsync(new HashSet<Guid>());
+            _mockBlobStorageRepository.Setup(x => x.ExtractGroupMembershipSourceMembersAsync("old/g1.json")).ReturnsAsync(new HashSet<Guid> { removedUser });
+
+            _mockGraphGroupRepository.Setup(x => x.GetGroupNamesAsync(It.IsAny<List<Guid>>()))
+                .ReturnsAsync(new Dictionary<Guid, string> { [inclusionaryGroup] = "Engineering Source" });
+            _mockOpenAIService.Setup(x => x.GetCompletionAsync(It.IsAny<string>(), It.IsAny<string>()))
+                .Callback<string, string>((_, prompt) => capturedPrompt = prompt)
+                .ReturnsAsync("This sync completed successfully.");
+
+            var response = await _handler.ExecuteAsync(BuildRequest());
+
+            Assert.AreEqual(HttpStatusCode.OK, response.StatusCode);
+            Assert.IsNotNull(capturedPrompt);
+            StringAssert.Contains(capturedPrompt!, "Per-part attribution for removed users");
+            StringAssert.Contains(capturedPrompt!, "left this source");
+            StringAssert.Contains(capturedPrompt!, "per prior-run source history");
+            Assert.IsFalse(capturedPrompt!.Contains("no attributable source found"),
+                "Walk-back should have resolved the blip from the older run's source blob.");
+        }
+
+        [TestMethod]
+        public async Task ExecuteAsync_RemovesWalkBack_SuppressedWhenConfigChangeInWindow()
+        {
+            // Guard: a query change in the window suppresses the walk-back (part-index/blob-tag mapping may no longer hold), so config-driven removals stay with the config-diff passes instead.
+            var currentAdfRunId = Guid.NewGuid();
+            var previousAdfRunId = Guid.NewGuid();
+            var previousRunId = Guid.NewGuid();
+            var currentTable = currentAdfRunId.ToString().Replace("-", string.Empty);
+            var previousTable = previousAdfRunId.ToString().Replace("-", string.Empty);
+            var removedUser = Guid.NewGuid();
+            string? capturedPrompt = null;
+
+            SetupCurrentRunAndPreviousRun(currentAdfRunId, previousAdfRunId, previousRunId, usersRemoved: 1);
+            SetupAggregatedRemovedUsers(removedUser);
+            _mockSqlMembershipRepository.Setup(x => x.CheckIfTableExistsAsync(currentTable)).ReturnsAsync(true);
+            _mockSqlMembershipRepository.Setup(x => x.CheckIfTableExistsAsync(previousTable)).ReturnsAsync(false); // single-step yields no-signal marker
+            _mockSqlMembershipRepository.Setup(x => x.GetUserAttributesBatchAsync(It.IsAny<IEnumerable<string>>(), It.IsAny<string>()))
+                .ReturnsAsync(new Dictionary<string, Dictionary<string, string>>());
+
+            // A config change AFTER the previous run puts us inside a config-change window -> walk-back must not run.
+            _mockSyncJobChangeRepository.Setup(x => x.GetRecentConfigChangesBySyncJobIdAsync(It.IsAny<Guid>(), It.IsAny<DateTime>(), It.IsAny<int>()))
+                .ReturnsAsync(new List<SyncJobChange> { new() { SyncJobId = _syncJobId, ChangeTime = DateTime.UtcNow, ChangeDetails = null } });
+
+            // The previous SQL blob WOULD attribute the user if the walk-back ran — it must be ignored while suppressed.
+            _mockBlobStorageRepository.Setup(x => x.FindPartFilesByRunIdAsync(_targetGroupId.ToString(), previousRunId.ToString()))
+                .ReturnsAsync(new Dictionary<string, BlobResult> { ["SqlMembership_1"] = new() { BlobStatus = BlobStatus.Found, Path = "prev/sql1.json" } });
+            _mockBlobStorageRepository.Setup(x => x.ExtractGroupMembershipSourceMembersAsync("prev/sql1.json"))
+                .ReturnsAsync(new HashSet<Guid> { removedUser });
+
+            _mockOpenAIService.Setup(x => x.GetCompletionAsync(It.IsAny<string>(), It.IsAny<string>()))
+                .Callback<string, string>((_, prompt) => capturedPrompt = prompt)
+                .ReturnsAsync("This sync completed successfully.");
+
+            var response = await _handler.ExecuteAsync(BuildRequest());
+
+            Assert.AreEqual(HttpStatusCode.OK, response.StatusCode);
+            Assert.IsNotNull(capturedPrompt);
+            StringAssert.Contains(capturedPrompt!, "no attributable source found");
+            Assert.IsFalse(capturedPrompt!.Contains("per prior-run source history"),
+                "Walk-back must be suppressed while a config change is in the window.");
+        }
+
+        [TestMethod]
+        public async Task ExecuteAsync_RemovesWalkBack_WhenPreviousAdfRunIdNull_AttributesFromPreviousSourceBlob()
+        {
+            // Reported hedge where the CURRENT ADF table exists yet the cause could not be determined: the PREVIOUS run has no AdfRunId so the single-step SQL diff cannot run, but the RunId-keyed source blob still lets the walk-back attribute the removals.
+            var currentAdfRunId = Guid.NewGuid();
+            var previousRunId = Guid.NewGuid();
+            var currentTable = currentAdfRunId.ToString().Replace("-", string.Empty);
+            var removedUser = Guid.NewGuid();
+            var now = DateTime.UtcNow;
+            string? capturedPrompt = null;
+
+            SetupCurrentRunAndPreviousRun(currentAdfRunId, Guid.NewGuid(), previousRunId, usersRemoved: 1);
+            SetupAggregatedRemovedUsers(removedUser);
+
+            // Override the previous-run row so its AdfRunId is NULL (the actual root cause of the single-step hedge).
+            _mockSyncJobHistoryRepository.Setup(x => x.GetBySyncJobIdAsync(_syncJobId, It.IsAny<int>(), It.IsAny<int>()))
+                .ReturnsAsync(new List<global::Models.SyncJobHistory.SyncJobHistory>
+                {
+                    new() { SyncJobId = _syncJobId, RunId = previousRunId, Status = "Idle", UpdatedAt = now.AddHours(-1), UsersRemoved = 0, ThresholdViolations = 0, AdfRunId = null }
+                });
+
+            // The current ADF table exists, proving the hedge was not caused by the current table being pruned.
+            _mockSqlMembershipRepository.Setup(x => x.CheckIfTableExistsAsync(currentTable)).ReturnsAsync(true);
+            _mockSqlMembershipRepository.Setup(x => x.GetUserAttributesBatchAsync(It.IsAny<IEnumerable<string>>(), It.IsAny<string>()))
+                .ReturnsAsync(new Dictionary<string, Dictionary<string, string>>());
+
+            // The previous run's SqlMembership_1 source blob is still present and contains the removed user.
+            _mockBlobStorageRepository.Setup(x => x.FindPartFilesByRunIdAsync(_targetGroupId.ToString(), previousRunId.ToString()))
+                .ReturnsAsync(new Dictionary<string, BlobResult> { ["SqlMembership_1"] = new() { BlobStatus = BlobStatus.Found, Path = "prev/sql1.json" } });
+            _mockBlobStorageRepository.Setup(x => x.ExtractGroupMembershipSourceMembersAsync("prev/sql1.json"))
+                .ReturnsAsync(new HashSet<Guid> { removedUser });
+
+            _mockOpenAIService.Setup(x => x.GetCompletionAsync(It.IsAny<string>(), It.IsAny<string>()))
+                .Callback<string, string>((_, prompt) => capturedPrompt = prompt)
+                .ReturnsAsync("This sync completed successfully.");
+
+            var response = await _handler.ExecuteAsync(BuildRequest());
+
+            Assert.AreEqual(HttpStatusCode.OK, response.StatusCode);
+            Assert.IsNotNull(capturedPrompt);
+            StringAssert.Contains(capturedPrompt!, "Per-part attribution for removed users");
+            StringAssert.Contains(capturedPrompt!, "no longer match this rule");
+            StringAssert.Contains(capturedPrompt!, "per prior-run source history");
+            Assert.IsFalse(capturedPrompt!.Contains("no attributable source found"),
+                "Walk-back should attribute despite a null previous AdfRunId, since blobs are keyed by RunId not by ADF table.");
+            _mockSqlMembershipRepository.Verify(x => x.FilterChildEntitiesAsync(It.IsAny<string>(), It.IsAny<string>()), Times.Never);
+        }
+
+        [TestMethod]
+        public async Task ExecuteAsync_RemovesWalkBack_ThresholdBlockedProposedRemoves_AttributesFromPreviousSourceBlob()
+        {
+            // Reported threshold-blocked run whose proposed removals could not be determined: nothing was applied, but the walk-back still reads the previous source blob and attributes the proposed removals so the owner sees why.
+            var currentAdfRunId = Guid.NewGuid();
+            var previousAdfRunId = Guid.NewGuid();
+            var previousRunId = Guid.NewGuid();
+            var currentTable = currentAdfRunId.ToString().Replace("-", string.Empty);
+            var previousTable = previousAdfRunId.ToString().Replace("-", string.Empty);
+            var removedUser = Guid.NewGuid();
+            var now = DateTime.UtcNow;
+            string? capturedPrompt = null;
+
+            SetupCurrentRunAndPreviousRun(currentAdfRunId, previousAdfRunId, previousRunId, usersRemoved: 1);
+            SetupAggregatedRemovedUsers(removedUser);
+
+            // Mark THIS run threshold-blocked (ThresholdViolations increased over the previous run) so it takes the blocked path.
+            _mockSyncJobHistoryRepository.Setup(x => x.GetByRunIdAsync(_runId))
+                .ReturnsAsync(new global::Models.SyncJobHistory.SyncJobHistory
+                {
+                    SyncJobId = _syncJobId,
+                    RunId = _runId,
+                    Status = "ThresholdExceeded",
+                    UpdatedAt = now,
+                    StartTime = now.AddMinutes(-5),
+                    EndTime = now,
+                    UsersAdded = 0,
+                    UsersRemoved = 1,
+                    BeforeSyncUserCount = 100,
+                    AfterSyncUserCount = 100,
+                    ThresholdViolations = 1,
+                    AdfRunId = currentAdfRunId
+                });
+
+            // Previous ADF table pruned so the single-step SQL diff hedges, forcing the durable walk-back path.
+            _mockSqlMembershipRepository.Setup(x => x.CheckIfTableExistsAsync(currentTable)).ReturnsAsync(true);
+            _mockSqlMembershipRepository.Setup(x => x.CheckIfTableExistsAsync(previousTable)).ReturnsAsync(false);
+            _mockSqlMembershipRepository.Setup(x => x.GetUserAttributesBatchAsync(It.IsAny<IEnumerable<string>>(), It.IsAny<string>()))
+                .ReturnsAsync(new Dictionary<string, Dictionary<string, string>>());
+
+            // The previous run's SqlMembership_1 source blob still holds the proposed-removed user.
+            _mockBlobStorageRepository.Setup(x => x.FindPartFilesByRunIdAsync(_targetGroupId.ToString(), previousRunId.ToString()))
+                .ReturnsAsync(new Dictionary<string, BlobResult> { ["SqlMembership_1"] = new() { BlobStatus = BlobStatus.Found, Path = "prev/sql1.json" } });
+            _mockBlobStorageRepository.Setup(x => x.ExtractGroupMembershipSourceMembersAsync("prev/sql1.json"))
+                .ReturnsAsync(new HashSet<Guid> { removedUser });
+
+            _mockOpenAIService.Setup(x => x.GetCompletionAsync(It.IsAny<string>(), It.IsAny<string>()))
+                .Callback<string, string>((_, prompt) => capturedPrompt = prompt)
+                .ReturnsAsync("This sync proposed changes that were blocked because the change exceeded the configured threshold.");
+
+            var response = await _handler.ExecuteAsync(BuildRequest());
+
+            Assert.AreEqual(HttpStatusCode.OK, response.StatusCode);
+            Assert.IsNotNull(capturedPrompt);
+            StringAssert.Contains(capturedPrompt!, "Per-part attribution for removed users");
+            StringAssert.Contains(capturedPrompt!, "no longer match this rule");
+            StringAssert.Contains(capturedPrompt!, "per prior-run source history");
+            Assert.IsFalse(capturedPrompt!.Contains("no attributable source found"),
+                "Walk-back should attribute the proposed removals on a threshold-blocked run.");
+        }
+
+        [TestMethod]
+        public async Task ExecuteAsync_RemovesWalkBack_ManagerChainSqlPart_AttributesFromPreviousSourceBlob()
+        {
+            // Management-chain query shape (manager root plus an HR filter) from the reported hedges: previous ADF table pruned, and the walk-back reads the previous run's source blob to attribute the removed manager-chain members.
+            var currentAdfRunId = Guid.NewGuid();
+            var previousAdfRunId = Guid.NewGuid();
+            var previousRunId = Guid.NewGuid();
+            var currentTable = currentAdfRunId.ToString().Replace("-", string.Empty);
+            var previousTable = previousAdfRunId.ToString().Replace("-", string.Empty);
+            var removedUser = Guid.NewGuid();
+            string? capturedPrompt = null;
+
+            // Synthetic manager-rooted SQL query (no real ids): management chain under id 4242 filtered to EmployeeType FTE.
+            _mockSyncJobRepository.Setup(x => x.GetSyncJobAsync(_syncJobId))
+                .ReturnsAsync(new SyncJob
+                {
+                    Id = _syncJobId,
+                    TargetOfficeGroupId = _targetGroupId,
+                    Query = "[{\"type\":\"SqlMembership\",\"source\":{\"manager\":{\"id\":4242},\"filter\":\"EmployeeType = 'FTE'\"}}]"
+                });
+
+            SetupCurrentRunAndPreviousRun(currentAdfRunId, previousAdfRunId, previousRunId, usersRemoved: 1);
+            SetupAggregatedRemovedUsers(removedUser);
+
+            // Previous ADF table pruned so the single-step SQL diff hedges, forcing the walk-back path.
+            _mockSqlMembershipRepository.Setup(x => x.CheckIfTableExistsAsync(currentTable)).ReturnsAsync(true);
+            _mockSqlMembershipRepository.Setup(x => x.CheckIfTableExistsAsync(previousTable)).ReturnsAsync(false);
+            _mockSqlMembershipRepository.Setup(x => x.GetUserAttributesBatchAsync(It.IsAny<IEnumerable<string>>(), It.IsAny<string>()))
+                .ReturnsAsync(new Dictionary<string, Dictionary<string, string>>());
+
+            // The previous run's SqlMembership_1 source blob still contains the removed manager-chain member.
+            _mockBlobStorageRepository.Setup(x => x.FindPartFilesByRunIdAsync(_targetGroupId.ToString(), previousRunId.ToString()))
+                .ReturnsAsync(new Dictionary<string, BlobResult> { ["SqlMembership_1"] = new() { BlobStatus = BlobStatus.Found, Path = "prev/sql1.json" } });
+            _mockBlobStorageRepository.Setup(x => x.ExtractGroupMembershipSourceMembersAsync("prev/sql1.json"))
+                .ReturnsAsync(new HashSet<Guid> { removedUser });
+
+            _mockOpenAIService.Setup(x => x.GetCompletionAsync(It.IsAny<string>(), It.IsAny<string>()))
+                .Callback<string, string>((_, prompt) => capturedPrompt = prompt)
+                .ReturnsAsync("This sync completed successfully.");
+
+            var response = await _handler.ExecuteAsync(BuildRequest());
+
+            Assert.AreEqual(HttpStatusCode.OK, response.StatusCode);
+            Assert.IsNotNull(capturedPrompt);
+            StringAssert.Contains(capturedPrompt!, "Per-part attribution for removed users");
+            StringAssert.Contains(capturedPrompt!, "no longer match this rule");
+            StringAssert.Contains(capturedPrompt!, "per prior-run source history");
+            Assert.IsFalse(capturedPrompt!.Contains("no attributable source found"),
+                "Walk-back should attribute the removed manager-chain members from the previous run's source blob.");
+        }
+
+        [TestMethod]
+        public async Task ExecuteAsync_RemovesCurrentState_WhenExactSnapshotGoneAndUserAbsentFromLatestRule_EmitsCurrentStateColor()
+        {
+            // Phase 3: exact-run ADF snapshot is gone so removal-time attribution hedges; the removed user is absent from the inclusionary SQL rule in the LATEST table, so we add present-tense current-state color.
+            var currentAdfRunId = Guid.NewGuid();
+            var previousAdfRunId = Guid.NewGuid();
+            var previousRunId = Guid.NewGuid();
+            var currentTable = currentAdfRunId.ToString().Replace("-", string.Empty);
+            var previousTable = previousAdfRunId.ToString().Replace("-", string.Empty);
+            var latestRunId = Guid.NewGuid();
+            var latestTable = latestRunId.ToString().Replace("-", string.Empty);
+            var removedUser = Guid.NewGuid();
+            string? capturedPrompt = null;
+
+            SetupCurrentRunAndPreviousRun(currentAdfRunId, previousAdfRunId, previousRunId, usersRemoved: 1);
+            SetupAggregatedRemovedUsers(removedUser);
+            // Exact-run and previous ADF tables pruned so single-step and walk-back hedge, making Phase 3 eligible.
+            _mockSqlMembershipRepository.Setup(x => x.CheckIfTableExistsAsync(currentTable)).ReturnsAsync(false);
+            _mockSqlMembershipRepository.Setup(x => x.CheckIfTableExistsAsync(previousTable)).ReturnsAsync(false);
+            // Latest ADF table is available and the removed user does NOT match the rule today.
+            _mockDataFactoryRepository.Setup(x => x.GetMostRecentSucceededRunIdAsync()).ReturnsAsync(latestRunId.ToString());
+            _mockSqlMembershipRepository.Setup(x => x.FilterChildEntitiesAsync("Building = 'B40'", latestTable))
+                .ReturnsAsync(new List<SqlMembershipObtainer.Entities.PersonEntity> { Person(Guid.NewGuid()) });
+            _mockOpenAIService.Setup(x => x.GetCompletionAsync(It.IsAny<string>(), It.IsAny<string>()))
+                .Callback<string, string>((_, prompt) => capturedPrompt = prompt)
+                .ReturnsAsync("This sync completed successfully.");
+
+            var response = await _handler.ExecuteAsync(BuildRequest());
+
+            Assert.AreEqual(HttpStatusCode.OK, response.StatusCode);
+            Assert.IsNotNull(capturedPrompt);
+            StringAssert.Contains(capturedPrompt!, "Per-part attribution for removed users");
+            StringAssert.Contains(capturedPrompt!, "no longer match this rule in the latest HR data (current state, not the removal-time snapshot)");
+            Assert.IsFalse(capturedPrompt!.Contains("no attributable source found"),
+                "Phase 3 current-state color should replace the no-signal hedge marker.");
+        }
+
+        [TestMethod]
+        public async Task ExecuteAsync_RemovesCurrentState_WhenRemovedUserStillMatchesLatestRule_SuppressesColorAndKeepsHedge()
+        {
+            // Phase 3 contradiction guard (Scenario 5): the removed user STILL matches the inclusionary rule in the latest table, so we must NOT claim they no longer match and the hedge marker is preserved.
+            var currentAdfRunId = Guid.NewGuid();
+            var previousAdfRunId = Guid.NewGuid();
+            var previousRunId = Guid.NewGuid();
+            var currentTable = currentAdfRunId.ToString().Replace("-", string.Empty);
+            var previousTable = previousAdfRunId.ToString().Replace("-", string.Empty);
+            var latestRunId = Guid.NewGuid();
+            var latestTable = latestRunId.ToString().Replace("-", string.Empty);
+            var removedUser = Guid.NewGuid();
+            string? capturedPrompt = null;
+
+            SetupCurrentRunAndPreviousRun(currentAdfRunId, previousAdfRunId, previousRunId, usersRemoved: 1);
+            SetupAggregatedRemovedUsers(removedUser);
+            _mockSqlMembershipRepository.Setup(x => x.CheckIfTableExistsAsync(currentTable)).ReturnsAsync(false);
+            _mockSqlMembershipRepository.Setup(x => x.CheckIfTableExistsAsync(previousTable)).ReturnsAsync(false);
+            _mockDataFactoryRepository.Setup(x => x.GetMostRecentSucceededRunIdAsync()).ReturnsAsync(latestRunId.ToString());
+            // The removed user is still returned by the rule against the latest table, so the guard fires.
+            _mockSqlMembershipRepository.Setup(x => x.FilterChildEntitiesAsync("Building = 'B40'", latestTable))
+                .ReturnsAsync(new List<SqlMembershipObtainer.Entities.PersonEntity> { Person(removedUser) });
+            _mockOpenAIService.Setup(x => x.GetCompletionAsync(It.IsAny<string>(), It.IsAny<string>()))
+                .Callback<string, string>((_, prompt) => capturedPrompt = prompt)
+                .ReturnsAsync("This sync completed successfully.");
+
+            var response = await _handler.ExecuteAsync(BuildRequest());
+
+            Assert.AreEqual(HttpStatusCode.OK, response.StatusCode);
+            Assert.IsNotNull(capturedPrompt);
+            Assert.IsFalse(capturedPrompt!.Contains("in the latest HR data (current state, not the removal-time snapshot)"),
+                "Contradiction guard must suppress current-state color when the removed user still matches the latest rule.");
+            StringAssert.Contains(capturedPrompt!, "no attributable source found");
+        }
+
+        [TestMethod]
+        public async Task ExecuteAsync_RemovesCurrentState_ManagerChainPart_EmitsCurrentStateColorFromLatestTable()
+        {
+            // Phase 3 evaluates the WHOLE manager-rooted part against the latest table (via GetChildEntitiesAsync), so a user no longer in the chain is colored even if they still match the filter attribute.
+            var currentAdfRunId = Guid.NewGuid();
+            var previousAdfRunId = Guid.NewGuid();
+            var previousRunId = Guid.NewGuid();
+            var currentTable = currentAdfRunId.ToString().Replace("-", string.Empty);
+            var previousTable = previousAdfRunId.ToString().Replace("-", string.Empty);
+            var latestRunId = Guid.NewGuid();
+            var latestTable = latestRunId.ToString().Replace("-", string.Empty);
+            var removedUser = Guid.NewGuid();
+            string? capturedPrompt = null;
+
+            // Synthetic manager-rooted SQL query (no real ids): management chain under id 42 filtered to EmployeeType FTE.
+            _mockSyncJobRepository.Setup(x => x.GetSyncJobAsync(_syncJobId))
+                .ReturnsAsync(new SyncJob
+                {
+                    Id = _syncJobId,
+                    TargetOfficeGroupId = _targetGroupId,
+                    Query = "[{\"type\":\"SqlMembership\",\"source\":{\"manager\":{\"id\":42,\"depth\":2},\"filter\":\"EmployeeType = 'FTE'\"}}]"
+                });
+            SetupCurrentRunAndPreviousRun(currentAdfRunId, previousAdfRunId, previousRunId, usersRemoved: 1);
+            SetupAggregatedRemovedUsers(removedUser);
+            _mockSqlMembershipRepository.Setup(x => x.CheckIfTableExistsAsync(currentTable)).ReturnsAsync(false);
+            _mockSqlMembershipRepository.Setup(x => x.CheckIfTableExistsAsync(previousTable)).ReturnsAsync(false);
+            _mockDataFactoryRepository.Setup(x => x.GetMostRecentSucceededRunIdAsync()).ReturnsAsync(latestRunId.ToString());
+            // The removed user is no longer in the management chain under 42 in the latest table.
+            _mockSqlMembershipRepository.Setup(x => x.GetChildEntitiesAsync("EmployeeType = 'FTE'", 42, latestTable, 2))
+                .ReturnsAsync(new List<SqlMembershipObtainer.Entities.PersonEntity> { Person(Guid.NewGuid()) });
+            _mockOpenAIService.Setup(x => x.GetCompletionAsync(It.IsAny<string>(), It.IsAny<string>()))
+                .Callback<string, string>((_, prompt) => capturedPrompt = prompt)
+                .ReturnsAsync("This sync completed successfully.");
+
+            var response = await _handler.ExecuteAsync(BuildRequest());
+
+            Assert.AreEqual(HttpStatusCode.OK, response.StatusCode);
+            Assert.IsNotNull(capturedPrompt);
+            StringAssert.Contains(capturedPrompt!, "no longer match this rule in the latest HR data (current state, not the removal-time snapshot)");
+        }
+
+        [TestMethod]
+        public async Task ExecuteAsync_RemovesCurrentState_WhenExactSnapshotStillExists_DoesNotAddCurrentStateColor()
+        {
+            // Phase 3 is skipped when the exact-run snapshot still exists: that snapshot is the removal-time truth and the single-step diff owns the reason, so no current-state color is added.
+            var currentAdfRunId = Guid.NewGuid();
+            var previousAdfRunId = Guid.NewGuid();
+            var previousRunId = Guid.NewGuid();
+            var currentTable = currentAdfRunId.ToString().Replace("-", string.Empty);
+            var previousTable = previousAdfRunId.ToString().Replace("-", string.Empty);
+            var latestRunId = Guid.NewGuid();
+            var latestTable = latestRunId.ToString().Replace("-", string.Empty);
+            var removedUser = Guid.NewGuid();
+            string? capturedPrompt = null;
+
+            SetupCurrentRunAndPreviousRun(currentAdfRunId, previousAdfRunId, previousRunId, usersRemoved: 1);
+            SetupAggregatedRemovedUsers(removedUser);
+            // Both exact-run and previous snapshots present so the single-step diff attributes at removal time.
+            _mockSqlMembershipRepository.Setup(x => x.CheckIfTableExistsAsync(currentTable)).ReturnsAsync(true);
+            _mockSqlMembershipRepository.Setup(x => x.CheckIfTableExistsAsync(previousTable)).ReturnsAsync(true);
+            _mockSqlMembershipRepository.Setup(x => x.FilterChildEntitiesAsync("Building = 'B40'", currentTable))
+                .ReturnsAsync(new List<SqlMembershipObtainer.Entities.PersonEntity>());
+            _mockSqlMembershipRepository.Setup(x => x.FilterChildEntitiesAsync("Building = 'B40'", previousTable))
+                .ReturnsAsync(new List<SqlMembershipObtainer.Entities.PersonEntity> { Person(removedUser) });
+            _mockDataFactoryRepository.Setup(x => x.GetMostRecentSucceededRunIdAsync()).ReturnsAsync(latestRunId.ToString());
+            // If Phase 3 wrongly ran, this latest-table match would let it emit color; the guard must prevent that.
+            _mockSqlMembershipRepository.Setup(x => x.FilterChildEntitiesAsync("Building = 'B40'", latestTable))
+                .ReturnsAsync(new List<SqlMembershipObtainer.Entities.PersonEntity> { Person(Guid.NewGuid()) });
+            _mockOpenAIService.Setup(x => x.GetCompletionAsync(It.IsAny<string>(), It.IsAny<string>()))
+                .Callback<string, string>((_, prompt) => capturedPrompt = prompt)
+                .ReturnsAsync("This sync completed successfully.");
+
+            var response = await _handler.ExecuteAsync(BuildRequest());
+
+            Assert.AreEqual(HttpStatusCode.OK, response.StatusCode);
+            Assert.IsNotNull(capturedPrompt);
+            StringAssert.Contains(capturedPrompt!, "no longer match this rule");
+            Assert.IsFalse(capturedPrompt!.Contains("in the latest HR data (current state, not the removal-time snapshot)"),
+                "Phase 3 must be skipped when the exact-run snapshot still exists.");
+        }
+
+        [TestMethod]
+        public async Task ExecuteAsync_RemovesCurrentState_WhenNoLatestAdfTable_SkipsColorAndKeepsHedge()
+        {
+            // Phase 3 is skipped when there is no latest ADF run id to evaluate against, so the hedge marker is preserved and no latest-table read is attempted.
+            var currentAdfRunId = Guid.NewGuid();
+            var previousAdfRunId = Guid.NewGuid();
+            var previousRunId = Guid.NewGuid();
+            var currentTable = currentAdfRunId.ToString().Replace("-", string.Empty);
+            var previousTable = previousAdfRunId.ToString().Replace("-", string.Empty);
+            var removedUser = Guid.NewGuid();
+            string? capturedPrompt = null;
+
+            SetupCurrentRunAndPreviousRun(currentAdfRunId, previousAdfRunId, previousRunId, usersRemoved: 1);
+            SetupAggregatedRemovedUsers(removedUser);
+            _mockSqlMembershipRepository.Setup(x => x.CheckIfTableExistsAsync(currentTable)).ReturnsAsync(false);
+            _mockSqlMembershipRepository.Setup(x => x.CheckIfTableExistsAsync(previousTable)).ReturnsAsync(false);
+            // No latest ADF run id available so Phase 3 bails before any latest-table read.
+            _mockDataFactoryRepository.Setup(x => x.GetMostRecentSucceededRunIdAsync()).ReturnsAsync((string?)null);
+            _mockOpenAIService.Setup(x => x.GetCompletionAsync(It.IsAny<string>(), It.IsAny<string>()))
+                .Callback<string, string>((_, prompt) => capturedPrompt = prompt)
+                .ReturnsAsync("This sync completed successfully.");
+
+            var response = await _handler.ExecuteAsync(BuildRequest());
+
+            Assert.AreEqual(HttpStatusCode.OK, response.StatusCode);
+            Assert.IsNotNull(capturedPrompt);
+            Assert.IsFalse(capturedPrompt!.Contains("in the latest HR data (current state, not the removal-time snapshot)"),
+                "Phase 3 must be skipped when there is no latest ADF table.");
+            StringAssert.Contains(capturedPrompt!, "no attributable source found");
+            _mockSqlMembershipRepository.Verify(x => x.FilterChildEntitiesAsync(It.IsAny<string>(), It.IsAny<string>()), Times.Never);
+        }
+
+        // ---- Phase 3 confirms the residual removes hedges (exact snapshot gone AND walk-back blobs gone) are now explained by the latest-ADF current-state fallback; no real job/run/ADF ids or names are used ----
+
+        [TestMethod]
+        public async Task ExecuteAsync_RemovesCurrentState_ThresholdBlocked_ExactSnapshotGoneAndBlobsGone_LatestAdfFallbackExplainsHedge()
+        {
+            // Mirrors the reported threshold-blocked run whose proposed removals "could not be determined": here the exact-run snapshot is pruned AND the prior source blobs are gone, so only the latest-ADF current-state fallback can explain the proposed removals.
+            var currentAdfRunId = Guid.NewGuid();
+            var previousAdfRunId = Guid.NewGuid();
+            var previousRunId = Guid.NewGuid();
+            var currentTable = currentAdfRunId.ToString().Replace("-", string.Empty);
+            var previousTable = previousAdfRunId.ToString().Replace("-", string.Empty);
+            var latestRunId = Guid.NewGuid();
+            var latestTable = latestRunId.ToString().Replace("-", string.Empty);
+            var removedUser = Guid.NewGuid();
+            var now = DateTime.UtcNow;
+            string? capturedPrompt = null;
+
+            SetupCurrentRunAndPreviousRun(currentAdfRunId, previousAdfRunId, previousRunId, usersRemoved: 1);
+            SetupAggregatedRemovedUsers(removedUser);
+            // Mark THIS run threshold-blocked so it takes the blocked path with proposed (not applied) removals.
+            _mockSyncJobHistoryRepository.Setup(x => x.GetByRunIdAsync(_runId))
+                .ReturnsAsync(new global::Models.SyncJobHistory.SyncJobHistory
+                {
+                    SyncJobId = _syncJobId,
+                    RunId = _runId,
+                    Status = "ThresholdExceeded",
+                    UpdatedAt = now,
+                    StartTime = now.AddMinutes(-5),
+                    EndTime = now,
+                    UsersAdded = 0,
+                    UsersRemoved = 1,
+                    BeforeSyncUserCount = 100,
+                    AfterSyncUserCount = 100,
+                    ThresholdViolations = 1,
+                    AdfRunId = currentAdfRunId
+                });
+            // Exact-run snapshot pruned (Phase 3 eligible) and the previous snapshot pruned too (single-step hedges).
+            _mockSqlMembershipRepository.Setup(x => x.CheckIfTableExistsAsync(currentTable)).ReturnsAsync(false);
+            _mockSqlMembershipRepository.Setup(x => x.CheckIfTableExistsAsync(previousTable)).ReturnsAsync(false);
+            // Prior source blobs are gone so the walk-back also finds nothing.
+            _mockBlobStorageRepository.Setup(x => x.FindPartFilesByRunIdAsync(_targetGroupId.ToString(), previousRunId.ToString()))
+                .ReturnsAsync(new Dictionary<string, BlobResult>());
+            // Latest ADF table is available and the proposed-removed user no longer matches the rule today.
+            _mockDataFactoryRepository.Setup(x => x.GetMostRecentSucceededRunIdAsync()).ReturnsAsync(latestRunId.ToString());
+            _mockSqlMembershipRepository.Setup(x => x.FilterChildEntitiesAsync("Building = 'B40'", latestTable))
+                .ReturnsAsync(new List<SqlMembershipObtainer.Entities.PersonEntity> { Person(Guid.NewGuid()) });
+            _mockOpenAIService.Setup(x => x.GetCompletionAsync(It.IsAny<string>(), It.IsAny<string>()))
+                .Callback<string, string>((_, prompt) => capturedPrompt = prompt)
+                .ReturnsAsync("This sync proposed changes that were blocked because the change exceeded the configured threshold.");
+
+            var response = await _handler.ExecuteAsync(BuildRequest());
+
+            Assert.AreEqual(HttpStatusCode.OK, response.StatusCode);
+            Assert.IsNotNull(capturedPrompt);
+            StringAssert.Contains(capturedPrompt!, "no longer match this rule in the latest HR data (current state, not the removal-time snapshot)");
+            Assert.IsFalse(capturedPrompt!.Contains("no attributable source found"),
+                "The latest-ADF current-state fallback should replace the threshold-blocked no-signal hedge.");
+        }
+
+        [TestMethod]
+        public async Task ExecuteAsync_RemovesCurrentState_NullCurrentAdfRunIdAndBlobsGone_LatestAdfFallbackExplainsHedge()
+        {
+            // Mirrors the reported hedge caused by a missing AdfRunId: this run has NO AdfRunId (no exact-run snapshot) and the prior source blobs are gone, so the latest-ADF current-state fallback is the only remaining signal.
+            var previousAdfRunId = Guid.NewGuid();
+            var previousRunId = Guid.NewGuid();
+            var latestRunId = Guid.NewGuid();
+            var latestTable = latestRunId.ToString().Replace("-", string.Empty);
+            var removedUser = Guid.NewGuid();
+            var now = DateTime.UtcNow;
+            string? capturedPrompt = null;
+
+            SetupCurrentRunAndPreviousRun(Guid.NewGuid(), previousAdfRunId, previousRunId, usersRemoved: 1);
+            SetupAggregatedRemovedUsers(removedUser);
+            // Override the current run so its AdfRunId is NULL (root cause of the single-step hedge).
+            _mockSyncJobHistoryRepository.Setup(x => x.GetByRunIdAsync(_runId))
+                .ReturnsAsync(new global::Models.SyncJobHistory.SyncJobHistory
+                {
+                    SyncJobId = _syncJobId,
+                    RunId = _runId,
+                    Status = "Idle",
+                    UpdatedAt = now,
+                    StartTime = now.AddMinutes(-5),
+                    EndTime = now,
+                    UsersAdded = 0,
+                    UsersRemoved = 1,
+                    BeforeSyncUserCount = 100,
+                    AfterSyncUserCount = 99,
+                    ThresholdViolations = 0,
+                    AdfRunId = null
+                });
+            // Prior source blobs are gone so the walk-back finds nothing.
+            _mockBlobStorageRepository.Setup(x => x.FindPartFilesByRunIdAsync(_targetGroupId.ToString(), previousRunId.ToString()))
+                .ReturnsAsync(new Dictionary<string, BlobResult>());
+            // Latest ADF table is available and the removed user no longer matches the rule today.
+            _mockDataFactoryRepository.Setup(x => x.GetMostRecentSucceededRunIdAsync()).ReturnsAsync(latestRunId.ToString());
+            _mockSqlMembershipRepository.Setup(x => x.FilterChildEntitiesAsync("Building = 'B40'", latestTable))
+                .ReturnsAsync(new List<SqlMembershipObtainer.Entities.PersonEntity> { Person(Guid.NewGuid()) });
+            _mockOpenAIService.Setup(x => x.GetCompletionAsync(It.IsAny<string>(), It.IsAny<string>()))
+                .Callback<string, string>((_, prompt) => capturedPrompt = prompt)
+                .ReturnsAsync("This sync completed successfully.");
+
+            var response = await _handler.ExecuteAsync(BuildRequest());
+
+            Assert.AreEqual(HttpStatusCode.OK, response.StatusCode);
+            Assert.IsNotNull(capturedPrompt);
+            StringAssert.Contains(capturedPrompt!, "no longer match this rule in the latest HR data (current state, not the removal-time snapshot)");
+            Assert.IsFalse(capturedPrompt!.Contains("no attributable source found"),
+                "The latest-ADF current-state fallback should explain removals even when the current run has a null AdfRunId.");
+        }
+
+        [TestMethod]
+        public async Task ExecuteAsync_RemovesCurrentState_ManagerChainHedge_DoesNotOverClaimWhenUserStillMatchesLatestChain()
+        {
+            // Safety mirror for the management-chain shape: even under the hedge conditions, a proposed-removed user who STILL matches the whole rule (manager chain + filter) in the latest table must NOT be claimed as no-longer-matching, so the fallback stays silent and the hedge marker is preserved.
+            var previousAdfRunId = Guid.NewGuid();
+            var previousRunId = Guid.NewGuid();
+            var latestRunId = Guid.NewGuid();
+            var latestTable = latestRunId.ToString().Replace("-", string.Empty);
+            var removedUser = Guid.NewGuid();
+            var now = DateTime.UtcNow;
+            string? capturedPrompt = null;
+
+            // Synthetic management-chain query (no real ids): chain under id 42 filtered to EmployeeType FTE.
+            _mockSyncJobRepository.Setup(x => x.GetSyncJobAsync(_syncJobId))
+                .ReturnsAsync(new SyncJob
+                {
+                    Id = _syncJobId,
+                    TargetOfficeGroupId = _targetGroupId,
+                    Query = "[{\"type\":\"SqlMembership\",\"source\":{\"manager\":{\"id\":42,\"depth\":2},\"filter\":\"EmployeeType = 'FTE'\"}}]"
+                });
+            SetupCurrentRunAndPreviousRun(Guid.NewGuid(), previousAdfRunId, previousRunId, usersRemoved: 1);
+            SetupAggregatedRemovedUsers(removedUser);
+            // No exact-run snapshot (null AdfRunId) and blobs gone, so only the fallback could speak.
+            _mockSyncJobHistoryRepository.Setup(x => x.GetByRunIdAsync(_runId))
+                .ReturnsAsync(new global::Models.SyncJobHistory.SyncJobHistory
+                {
+                    SyncJobId = _syncJobId,
+                    RunId = _runId,
+                    Status = "Idle",
+                    UpdatedAt = now,
+                    StartTime = now.AddMinutes(-5),
+                    EndTime = now,
+                    UsersAdded = 0,
+                    UsersRemoved = 1,
+                    BeforeSyncUserCount = 100,
+                    AfterSyncUserCount = 99,
+                    ThresholdViolations = 0,
+                    AdfRunId = null
+                });
+            _mockBlobStorageRepository.Setup(x => x.FindPartFilesByRunIdAsync(_targetGroupId.ToString(), previousRunId.ToString()))
+                .ReturnsAsync(new Dictionary<string, BlobResult>());
+            _mockDataFactoryRepository.Setup(x => x.GetMostRecentSucceededRunIdAsync()).ReturnsAsync(latestRunId.ToString());
+            // The proposed-removed user is STILL in the management chain today, so the contradiction guard must fire.
+            _mockSqlMembershipRepository.Setup(x => x.GetChildEntitiesAsync("EmployeeType = 'FTE'", 42, latestTable, 2))
+                .ReturnsAsync(new List<SqlMembershipObtainer.Entities.PersonEntity> { Person(removedUser) });
+            _mockOpenAIService.Setup(x => x.GetCompletionAsync(It.IsAny<string>(), It.IsAny<string>()))
+                .Callback<string, string>((_, prompt) => capturedPrompt = prompt)
+                .ReturnsAsync("This sync completed successfully.");
+
+            var response = await _handler.ExecuteAsync(BuildRequest());
+
+            Assert.AreEqual(HttpStatusCode.OK, response.StatusCode);
+            Assert.IsNotNull(capturedPrompt);
+            Assert.IsFalse(capturedPrompt!.Contains("in the latest HR data (current state, not the removal-time snapshot)"),
+                "The fallback must never claim a still-matching user no longer matches the rule.");
+            StringAssert.Contains(capturedPrompt!, "no attributable source found");
+        }
+
+        // ---- Phase 4 confirms the residual hedges (all attribution layers empty) are steered to a descriptive rule-based explanation instead of "could not be determined"; no real job/run/ADF ids or names are used ----
+
+        [TestMethod]
+        public async Task ExecuteAsync_RemovesDescriptiveFallback_ThresholdBlocked_AllLayersEmpty_SteersToRuleNotHedge()
+        {
+            // Mirrors the reported threshold-blocked run whose removals "could not be determined": exact snapshot pruned, previous snapshot pruned, walk-back blobs gone, and no latest ADF table, so every attribution layer is empty and only the descriptive rule fallback remains.
+            var currentAdfRunId = Guid.NewGuid();
+            var previousAdfRunId = Guid.NewGuid();
+            var previousRunId = Guid.NewGuid();
+            var currentTable = currentAdfRunId.ToString().Replace("-", string.Empty);
+            var previousTable = previousAdfRunId.ToString().Replace("-", string.Empty);
+            var removedUser = Guid.NewGuid();
+            var now = DateTime.UtcNow;
+            string? capturedPrompt = null;
+
+            SetupCurrentRunAndPreviousRun(currentAdfRunId, previousAdfRunId, previousRunId, usersRemoved: 1);
+            SetupAggregatedRemovedUsers(removedUser);
+            // Mark THIS run threshold-blocked so it takes the blocked path with proposed (not applied) removals.
+            _mockSyncJobHistoryRepository.Setup(x => x.GetByRunIdAsync(_runId))
+                .ReturnsAsync(new global::Models.SyncJobHistory.SyncJobHistory
+                {
+                    SyncJobId = _syncJobId,
+                    RunId = _runId,
+                    Status = "ThresholdExceeded",
+                    UpdatedAt = now,
+                    StartTime = now.AddMinutes(-5),
+                    EndTime = now,
+                    UsersAdded = 0,
+                    UsersRemoved = 1,
+                    BeforeSyncUserCount = 100,
+                    AfterSyncUserCount = 100,
+                    ThresholdViolations = 1,
+                    AdfRunId = currentAdfRunId
+                });
+            // Both ADF snapshots pruned so the single-step SQL diff hedges; part blobs default empty so the walk-back finds nothing; GetMostRecentSucceededRunIdAsync left unset so Phase 3 is skipped.
+            _mockSqlMembershipRepository.Setup(x => x.CheckIfTableExistsAsync(currentTable)).ReturnsAsync(false);
+            _mockSqlMembershipRepository.Setup(x => x.CheckIfTableExistsAsync(previousTable)).ReturnsAsync(false);
+            _mockSqlMembershipRepository.Setup(x => x.GetUserAttributesBatchAsync(It.IsAny<IEnumerable<string>>(), It.IsAny<string>()))
+                .ReturnsAsync(new Dictionary<string, Dictionary<string, string>>());
+            _mockOpenAIService.Setup(x => x.GetCompletionAsync(It.IsAny<string>(), It.IsAny<string>()))
+                .Callback<string, string>((_, prompt) => capturedPrompt = prompt)
+                .ReturnsAsync("This sync proposed changes that were blocked because the change exceeded the configured threshold.");
+
+            var response = await _handler.ExecuteAsync(BuildRequest());
+
+            Assert.AreEqual(HttpStatusCode.OK, response.StatusCode);
+            Assert.IsNotNull(capturedPrompt);
+            // Every layer came up empty, so the no-signal marker is still present.
+            StringAssert.Contains(capturedPrompt!, "no attributable source found");
+            // Phase 4: the marker's HARD RULE now steers to a descriptive rule restatement and forbids the old hedge.
+            StringAssert.Contains(capturedPrompt!, "descriptive membership-rule fallback");
+            StringAssert.Contains(capturedPrompt!, "no longer match its membership rule");
+            StringAssert.Contains(capturedPrompt!, "NEVER say the reason could not be determined");
+            // The always-available plain-English rule glossary the descriptive fallback depends on is present.
+            StringAssert.Contains(capturedPrompt!, "Membership rules as of this run:");
+            // Phase 4 must not weaken the anti-hallucination guard.
+            StringAssert.Contains(capturedPrompt!, "do NOT name any specific source group");
+        }
+
+        [TestMethod]
+        public async Task ExecuteAsync_AddsDescriptiveFallback_NoPerPartAttribution_SteersToRuleNotHedge()
+        {
+            // Mirrors the reported adds-only hedge ("added N users ... could not be determined for these additions"): the run added a user but no current per-part blob attributes it, so the adds marker fires and only the descriptive rule fallback remains.
+            var currentAdfRunId = Guid.NewGuid();
+            var addedUser = Guid.NewGuid();
+            var now = DateTime.UtcNow;
+            string? capturedPrompt = null;
+
+            _mockSyncJobHistoryRepository.Setup(x => x.GetByRunIdAsync(_runId))
+                .ReturnsAsync(new global::Models.SyncJobHistory.SyncJobHistory
+                {
+                    SyncJobId = _syncJobId,
+                    RunId = _runId,
+                    Status = "Idle",
+                    UpdatedAt = now,
+                    StartTime = now.AddMinutes(-5),
+                    EndTime = now,
+                    UsersAdded = 1,
+                    UsersRemoved = 0,
+                    BeforeSyncUserCount = 100,
+                    AfterSyncUserCount = 101,
+                    ThresholdViolations = 0,
+                    AdfRunId = currentAdfRunId
+                });
+            // Aggregated blob has one added user; part blobs default empty so no source attributes the add.
+            _mockBlobStorageRepository.Setup(x => x.FindAggregatedFileByRunIdAsync(It.IsAny<string>(), It.IsAny<string>()))
+                .ReturnsAsync(new BlobResult { BlobStatus = BlobStatus.Found, Path = "test/adds.json" });
+            _mockBlobStorageRepository.Setup(x => x.DownloadFileAsync("test/adds.json"))
+                .ReturnsAsync(new BlobResult { BlobStatus = BlobStatus.Found, Content = $"{{\"SourceMembers\":[{{\"ObjectId\":\"{addedUser}\",\"MembershipAction\":1}}]}}" });
+            _mockOpenAIService.Setup(x => x.GetCompletionAsync(It.IsAny<string>(), It.IsAny<string>()))
+                .Callback<string, string>((_, prompt) => capturedPrompt = prompt)
+                .ReturnsAsync("This sync added members.");
+
+            var response = await _handler.ExecuteAsync(BuildRequest());
+
+            Assert.AreEqual(HttpStatusCode.OK, response.StatusCode);
+            Assert.IsNotNull(capturedPrompt);
+            // The adds no-signal marker is present because no per-part source attributed the addition.
+            StringAssert.Contains(capturedPrompt!, "no attributable source found");
+            // Phase 4: the adds marker now steers to a descriptive rule restatement and forbids the old hedge.
+            StringAssert.Contains(capturedPrompt!, "these users were added because they match the group's membership rule");
+            StringAssert.Contains(capturedPrompt!, "NEVER say the reason could not be determined");
+            StringAssert.Contains(capturedPrompt!, "Membership rules as of this run:");
+            // Anti-hallucination guard for adds must survive.
+            StringAssert.Contains(capturedPrompt!, "do NOT infer one by process of elimination");
+        }
+
+        [TestMethod]
+        public async Task ExecuteAsync_RemovesDescriptiveFallback_ManagerChainRule_RetainedHistoryExhausted_DescribesRuleInPlainEnglish()
+        {
+            // Mirrors the management-chain hedge where retained history is exhausted: no exact snapshot (null AdfRunId), walk-back blobs gone, no latest ADF table, so the descriptive fallback must restate the manager-chain rule the glossary already carries.
+            var previousAdfRunId = Guid.NewGuid();
+            var previousRunId = Guid.NewGuid();
+            var removedUser = Guid.NewGuid();
+            var now = DateTime.UtcNow;
+            string? capturedPrompt = null;
+
+            // Synthetic management-chain query (no real ids): chain under id 55 filtered to EmployeeType FTE.
+            _mockSyncJobRepository.Setup(x => x.GetSyncJobAsync(_syncJobId))
+                .ReturnsAsync(new SyncJob
+                {
+                    Id = _syncJobId,
+                    TargetOfficeGroupId = _targetGroupId,
+                    Query = "[{\"type\":\"SqlMembership\",\"source\":{\"manager\":{\"id\":55,\"depth\":2},\"filter\":\"EmployeeType = 'FTE'\"}}]"
+                });
+            SetupCurrentRunAndPreviousRun(Guid.NewGuid(), previousAdfRunId, previousRunId, usersRemoved: 1);
+            SetupAggregatedRemovedUsers(removedUser);
+            // Null current AdfRunId (no exact snapshot); part blobs default empty (walk-back finds nothing); GetMostRecentSucceededRunIdAsync unset (Phase 3 skipped).
+            _mockSyncJobHistoryRepository.Setup(x => x.GetByRunIdAsync(_runId))
+                .ReturnsAsync(new global::Models.SyncJobHistory.SyncJobHistory
+                {
+                    SyncJobId = _syncJobId,
+                    RunId = _runId,
+                    Status = "Idle",
+                    UpdatedAt = now,
+                    StartTime = now.AddMinutes(-5),
+                    EndTime = now,
+                    UsersAdded = 0,
+                    UsersRemoved = 1,
+                    BeforeSyncUserCount = 100,
+                    AfterSyncUserCount = 99,
+                    ThresholdViolations = 0,
+                    AdfRunId = null
+                });
+            _mockOpenAIService.Setup(x => x.GetCompletionAsync(It.IsAny<string>(), It.IsAny<string>()))
+                .Callback<string, string>((_, prompt) => capturedPrompt = prompt)
+                .ReturnsAsync("This sync removed members.");
+
+            var response = await _handler.ExecuteAsync(BuildRequest());
+
+            Assert.AreEqual(HttpStatusCode.OK, response.StatusCode);
+            Assert.IsNotNull(capturedPrompt);
+            StringAssert.Contains(capturedPrompt!, "no attributable source found");
+            StringAssert.Contains(capturedPrompt!, "no longer match its membership rule");
+            StringAssert.Contains(capturedPrompt!, "NEVER say the reason could not be determined");
+            // The glossary describes the manager-chain rule in plain English, which is what the descriptive fallback restates.
+            StringAssert.Contains(capturedPrompt!, "management chain rooted at");
+        }
+
+        // ---- Phase 4, end-to-end: each reported hedge shape (all attribution layers empty) now yields an owner-visible descriptive explanation, never the FallbackExplanation hedge; no real job/run/ADF ids or names are used ----
+
+        [TestMethod]
+        public async Task ExecuteAsync_RemovesDescriptiveFallback_NullAdfRunId_AllLayersEmpty_SteersToRuleNotHedge()
+        {
+            // Mirrors the reported hedge whose root cause was a missing AdfRunId: this run has NO AdfRunId (no exact snapshot), the walk-back blobs are gone, and there is no latest ADF table, so every attribution layer is empty and only the descriptive rule fallback remains.
+            var previousAdfRunId = Guid.NewGuid();
+            var previousRunId = Guid.NewGuid();
+            var removedUser = Guid.NewGuid();
+            var now = DateTime.UtcNow;
+            string? capturedPrompt = null;
+
+            SetupCurrentRunAndPreviousRun(Guid.NewGuid(), previousAdfRunId, previousRunId, usersRemoved: 1);
+            SetupAggregatedRemovedUsers(removedUser);
+            // Null current AdfRunId (no exact snapshot); part blobs default empty (walk-back finds nothing); GetMostRecentSucceededRunIdAsync unset (Phase 3 skipped).
+            _mockSyncJobHistoryRepository.Setup(x => x.GetByRunIdAsync(_runId))
+                .ReturnsAsync(new global::Models.SyncJobHistory.SyncJobHistory
+                {
+                    SyncJobId = _syncJobId,
+                    RunId = _runId,
+                    Status = "Idle",
+                    UpdatedAt = now,
+                    StartTime = now.AddMinutes(-5),
+                    EndTime = now,
+                    UsersAdded = 0,
+                    UsersRemoved = 1,
+                    BeforeSyncUserCount = 100,
+                    AfterSyncUserCount = 99,
+                    ThresholdViolations = 0,
+                    AdfRunId = null
+                });
+            _mockOpenAIService.Setup(x => x.GetCompletionAsync(It.IsAny<string>(), It.IsAny<string>()))
+                .Callback<string, string>((_, prompt) => capturedPrompt = prompt)
+                .ReturnsAsync("This sync removed members.");
+
+            var response = await _handler.ExecuteAsync(BuildRequest());
+
+            Assert.AreEqual(HttpStatusCode.OK, response.StatusCode);
+            Assert.IsNotNull(capturedPrompt);
+            StringAssert.Contains(capturedPrompt!, "no attributable source found");
+            StringAssert.Contains(capturedPrompt!, "no longer match its membership rule");
+            StringAssert.Contains(capturedPrompt!, "NEVER say the reason could not be determined");
+            StringAssert.Contains(capturedPrompt!, "Membership rules as of this run:");
+        }
+
+        [TestMethod]
+        public async Task ExecuteAsync_ThresholdBlockedRemoves_AllLayersEmpty_ResponseIsDescriptiveNotHedge()
+        {
+            // End-to-end proof for the reported threshold-blocked example: with every attribution layer empty, once the model follows the new descriptive instruction the owner sees a rule-based explanation and NEVER the old "could not be determined" hedge.
+            var currentAdfRunId = Guid.NewGuid();
+            var previousAdfRunId = Guid.NewGuid();
+            var previousRunId = Guid.NewGuid();
+            var currentTable = currentAdfRunId.ToString().Replace("-", string.Empty);
+            var previousTable = previousAdfRunId.ToString().Replace("-", string.Empty);
+            var removedUser = Guid.NewGuid();
+            var now = DateTime.UtcNow;
+            var descriptive = "This sync's proposed removals are people who were in the group but no longer match its membership rule.";
+            string? capturedPrompt = null;
+
+            SetupCurrentRunAndPreviousRun(currentAdfRunId, previousAdfRunId, previousRunId, usersRemoved: 1);
+            SetupAggregatedRemovedUsers(removedUser);
+            _mockSyncJobHistoryRepository.Setup(x => x.GetByRunIdAsync(_runId))
+                .ReturnsAsync(new global::Models.SyncJobHistory.SyncJobHistory
+                {
+                    SyncJobId = _syncJobId,
+                    RunId = _runId,
+                    Status = "ThresholdExceeded",
+                    UpdatedAt = now,
+                    StartTime = now.AddMinutes(-5),
+                    EndTime = now,
+                    UsersAdded = 0,
+                    UsersRemoved = 1,
+                    BeforeSyncUserCount = 100,
+                    AfterSyncUserCount = 100,
+                    ThresholdViolations = 1,
+                    AdfRunId = currentAdfRunId
+                });
+            _mockSqlMembershipRepository.Setup(x => x.CheckIfTableExistsAsync(currentTable)).ReturnsAsync(false);
+            _mockSqlMembershipRepository.Setup(x => x.CheckIfTableExistsAsync(previousTable)).ReturnsAsync(false);
+            _mockSqlMembershipRepository.Setup(x => x.GetUserAttributesBatchAsync(It.IsAny<IEnumerable<string>>(), It.IsAny<string>()))
+                .ReturnsAsync(new Dictionary<string, Dictionary<string, string>>());
+            // Model complies with the new instruction and returns a descriptive rule-based explanation.
+            _mockOpenAIService.Setup(x => x.GetCompletionAsync(It.IsAny<string>(), It.IsAny<string>()))
+                .Callback<string, string>((_, prompt) => capturedPrompt = prompt)
+                .ReturnsAsync(descriptive);
+
+            var response = await _handler.ExecuteAsync(BuildRequest());
+
+            Assert.AreEqual(HttpStatusCode.OK, response.StatusCode);
+            // The owner-visible explanation is the descriptive one, never the old hedge.
+            Assert.AreEqual(descriptive, response.Explanation);
+            Assert.AreNotEqual(GetRunExplanationHandler.FallbackExplanation, response.Explanation);
+            Assert.IsFalse(response.Explanation!.Contains("could not be determined"),
+                "The reported threshold-blocked removals hedge must no longer be surfaced.");
+            // The prompt drove it: the no-signal marker forbids the hedge and requires the descriptive rule restatement.
+            Assert.IsNotNull(capturedPrompt);
+            StringAssert.Contains(capturedPrompt!, "NEVER say the reason could not be determined");
+        }
+
+        [TestMethod]
+        public async Task ExecuteAsync_AddsOnly_NoAttribution_ResponseIsDescriptiveNotHedge()
+        {
+            // End-to-end proof for the reported adds-only example ("added N users ... could not be determined for these additions"): with no per-part attribution, the model follows the descriptive instruction and the owner sees a rule-based explanation instead of the hedge.
+            var currentAdfRunId = Guid.NewGuid();
+            var addedUser = Guid.NewGuid();
+            var now = DateTime.UtcNow;
+            var descriptive = "The added users are new people who match the group's membership rule.";
+            string? capturedPrompt = null;
+
+            _mockSyncJobHistoryRepository.Setup(x => x.GetByRunIdAsync(_runId))
+                .ReturnsAsync(new global::Models.SyncJobHistory.SyncJobHistory
+                {
+                    SyncJobId = _syncJobId,
+                    RunId = _runId,
+                    Status = "Idle",
+                    UpdatedAt = now,
+                    StartTime = now.AddMinutes(-5),
+                    EndTime = now,
+                    UsersAdded = 1,
+                    UsersRemoved = 0,
+                    BeforeSyncUserCount = 100,
+                    AfterSyncUserCount = 101,
+                    ThresholdViolations = 0,
+                    AdfRunId = currentAdfRunId
+                });
+            // Aggregated blob has one added user; part blobs default empty so no source attributes the add.
+            _mockBlobStorageRepository.Setup(x => x.FindAggregatedFileByRunIdAsync(It.IsAny<string>(), It.IsAny<string>()))
+                .ReturnsAsync(new BlobResult { BlobStatus = BlobStatus.Found, Path = "test/adds.json" });
+            _mockBlobStorageRepository.Setup(x => x.DownloadFileAsync("test/adds.json"))
+                .ReturnsAsync(new BlobResult { BlobStatus = BlobStatus.Found, Content = $"{{\"SourceMembers\":[{{\"ObjectId\":\"{addedUser}\",\"MembershipAction\":1}}]}}" });
+            _mockOpenAIService.Setup(x => x.GetCompletionAsync(It.IsAny<string>(), It.IsAny<string>()))
+                .Callback<string, string>((_, prompt) => capturedPrompt = prompt)
+                .ReturnsAsync(descriptive);
+
+            var response = await _handler.ExecuteAsync(BuildRequest());
+
+            Assert.AreEqual(HttpStatusCode.OK, response.StatusCode);
+            Assert.AreEqual(descriptive, response.Explanation);
+            Assert.AreNotEqual(GetRunExplanationHandler.FallbackExplanation, response.Explanation);
+            Assert.IsFalse(response.Explanation!.Contains("could not be determined"),
+                "The reported adds-only hedge must no longer be surfaced.");
+            // The prompt drove it: the adds marker requires the descriptive rule restatement.
+            Assert.IsNotNull(capturedPrompt);
+            StringAssert.Contains(capturedPrompt!, "these users were added because they match the group's membership rule");
+        }
+
+        // ---- PR-comment #1: the never-hedge behavior must NOT depend on model compliance. When the model DEFIES the prompt and ships the hedge (exact or a per-add/remove variant) on an established run that moved members, a deterministic override replaces it with a rule-based explanation. No real job/run/ADF ids or names are used. ----
+
+        [TestMethod]
+        public async Task ExecuteAsync_NonInitialThresholdBlockedRemoves_ModelShipsHedgeVariant_OverrideReplacesWithRuleText()
+        {
+            // Mirrors the reported LP/PROD symptom exactly: an established, threshold-blocked run where the model ignores the never-hedge prompt and returns the per-removal hedge VARIANT (not the exact FallbackExplanation constant). The deterministic override must catch the variant and surface the rule instead.
+            var currentAdfRunId = Guid.NewGuid();
+            var previousAdfRunId = Guid.NewGuid();
+            var previousRunId = Guid.NewGuid();
+            var removedUser = Guid.NewGuid();
+            var now = DateTime.UtcNow;
+            var hedgeVariant = "This sync proposed changes that were blocked because the change exceeded the configured threshold. The specific reason for the removals could not be determined from the available data.";
+
+            SetupCurrentRunAndPreviousRun(currentAdfRunId, previousAdfRunId, previousRunId, usersRemoved: 7);
+            SetupAggregatedRemovedUsers(removedUser);
+            _mockSyncJobHistoryRepository.Setup(x => x.GetByRunIdAsync(_runId))
+                .ReturnsAsync(new global::Models.SyncJobHistory.SyncJobHistory
+                {
+                    SyncJobId = _syncJobId,
+                    RunId = _runId,
+                    Status = "ThresholdExceeded",
+                    UpdatedAt = now,
+                    StartTime = now.AddMinutes(-5),
+                    EndTime = now,
+                    UsersAdded = 0,
+                    UsersRemoved = 7,
+                    BeforeSyncUserCount = 100,
+                    AfterSyncUserCount = 100,
+                    ThresholdViolations = 1,
+                    AdfRunId = currentAdfRunId
+                });
+            _mockOpenAIService.Setup(x => x.GetCompletionAsync(It.IsAny<string>(), It.IsAny<string>()))
+                .ReturnsAsync(hedgeVariant);
+
+            var response = await _handler.ExecuteAsync(BuildRequest());
+
+            Assert.AreEqual(HttpStatusCode.OK, response.StatusCode);
+            Assert.AreNotEqual(hedgeVariant, response.Explanation);
+            Assert.AreNotEqual(GetRunExplanationHandler.FallbackExplanation, response.Explanation);
+            Assert.IsFalse(response.Explanation!.Contains("could not be determined", StringComparison.OrdinalIgnoreCase),
+                "The variant hedge must be replaced, not surfaced.");
+            StringAssert.Contains(response.Explanation!, "no longer match");
+            StringAssert.Contains(response.Explanation!, "threshold");
+            // The resolved rule detail from the glossary must flow into the deterministic text.
+            StringAssert.Contains(response.Explanation!, "Building is \"B40\"");
+        }
+
+        [TestMethod]
+        public async Task ExecuteAsync_NonInitialThresholdBlockedRemoves_ModelShipsExactFallback_OverrideReplacesWithRuleText()
+        {
+            // Same established threshold-blocked scenario, but the model returns the EXACT FallbackExplanation constant; the override must catch that shape too.
+            var currentAdfRunId = Guid.NewGuid();
+            var previousAdfRunId = Guid.NewGuid();
+            var previousRunId = Guid.NewGuid();
+            var removedUser = Guid.NewGuid();
+            var now = DateTime.UtcNow;
+
+            SetupCurrentRunAndPreviousRun(currentAdfRunId, previousAdfRunId, previousRunId, usersRemoved: 4);
+            SetupAggregatedRemovedUsers(removedUser);
+            _mockSyncJobHistoryRepository.Setup(x => x.GetByRunIdAsync(_runId))
+                .ReturnsAsync(new global::Models.SyncJobHistory.SyncJobHistory
+                {
+                    SyncJobId = _syncJobId,
+                    RunId = _runId,
+                    Status = "ThresholdExceeded",
+                    UpdatedAt = now,
+                    StartTime = now.AddMinutes(-5),
+                    EndTime = now,
+                    UsersAdded = 0,
+                    UsersRemoved = 4,
+                    BeforeSyncUserCount = 100,
+                    AfterSyncUserCount = 100,
+                    ThresholdViolations = 1,
+                    AdfRunId = currentAdfRunId
+                });
+            _mockOpenAIService.Setup(x => x.GetCompletionAsync(It.IsAny<string>(), It.IsAny<string>()))
+                .ReturnsAsync(GetRunExplanationHandler.FallbackExplanation);
+
+            var response = await _handler.ExecuteAsync(BuildRequest());
+
+            Assert.AreEqual(HttpStatusCode.OK, response.StatusCode);
+            Assert.AreNotEqual(GetRunExplanationHandler.FallbackExplanation, response.Explanation);
+            Assert.IsFalse(response.Explanation!.Contains("could not be determined", StringComparison.OrdinalIgnoreCase));
+            StringAssert.Contains(response.Explanation!, "no longer match");
+            StringAssert.Contains(response.Explanation!, "threshold");
+        }
+
+        [TestMethod]
+        public async Task ExecuteAsync_NonInitialAddsOnly_ModelShipsHedge_OverrideReplacesWithRuleText()
+        {
+            // Established adds-only run where the model ships the per-addition hedge; override must describe the rule-based addition.
+            var currentAdfRunId = Guid.NewGuid();
+            var previousAdfRunId = Guid.NewGuid();
+            var previousRunId = Guid.NewGuid();
+            var addedUser = Guid.NewGuid();
+            var now = DateTime.UtcNow;
+
+            SetupCurrentRunAndPreviousRun(currentAdfRunId, previousAdfRunId, previousRunId, usersRemoved: 0);
+            _mockSyncJobHistoryRepository.Setup(x => x.GetByRunIdAsync(_runId))
+                .ReturnsAsync(new global::Models.SyncJobHistory.SyncJobHistory
+                {
+                    SyncJobId = _syncJobId,
+                    RunId = _runId,
+                    Status = "Idle",
+                    UpdatedAt = now,
+                    StartTime = now.AddMinutes(-5),
+                    EndTime = now,
+                    UsersAdded = 3,
+                    UsersRemoved = 0,
+                    BeforeSyncUserCount = 100,
+                    AfterSyncUserCount = 103,
+                    ThresholdViolations = 0,
+                    AdfRunId = currentAdfRunId
+                });
+            _mockBlobStorageRepository.Setup(x => x.FindAggregatedFileByRunIdAsync(It.IsAny<string>(), It.IsAny<string>()))
+                .ReturnsAsync(new BlobResult { BlobStatus = BlobStatus.Found, Path = "test/adds.json" });
+            _mockBlobStorageRepository.Setup(x => x.DownloadFileAsync("test/adds.json"))
+                .ReturnsAsync(new BlobResult { BlobStatus = BlobStatus.Found, Content = $"{{\"SourceMembers\":[{{\"ObjectId\":\"{addedUser}\",\"MembershipAction\":1}}]}}" });
+            _mockOpenAIService.Setup(x => x.GetCompletionAsync(It.IsAny<string>(), It.IsAny<string>()))
+                .ReturnsAsync("Added members, but the specific reason could not be determined from the available data.");
+
+            var response = await _handler.ExecuteAsync(BuildRequest());
+
+            Assert.AreEqual(HttpStatusCode.OK, response.StatusCode);
+            Assert.IsFalse(response.Explanation!.Contains("could not be determined", StringComparison.OrdinalIgnoreCase));
+            StringAssert.Contains(response.Explanation!, "added people who newly match");
+            StringAssert.Contains(response.Explanation!, "Building is \"B40\"");
+        }
+
+        [TestMethod]
+        public async Task ExecuteAsync_NonInitialMixedAddsAndRemoves_ModelShipsHedge_OverrideReplacesWithRuleText()
+        {
+            // Established mixed run (both adds and removes) where the model hedges; override must describe both directions.
+            var currentAdfRunId = Guid.NewGuid();
+            var previousAdfRunId = Guid.NewGuid();
+            var previousRunId = Guid.NewGuid();
+            var addedUser = Guid.NewGuid();
+            var removedUser = Guid.NewGuid();
+            var now = DateTime.UtcNow;
+
+            SetupCurrentRunAndPreviousRun(currentAdfRunId, previousAdfRunId, previousRunId, usersRemoved: 2);
+            _mockSyncJobHistoryRepository.Setup(x => x.GetByRunIdAsync(_runId))
+                .ReturnsAsync(new global::Models.SyncJobHistory.SyncJobHistory
+                {
+                    SyncJobId = _syncJobId,
+                    RunId = _runId,
+                    Status = "Idle",
+                    UpdatedAt = now,
+                    StartTime = now.AddMinutes(-5),
+                    EndTime = now,
+                    UsersAdded = 2,
+                    UsersRemoved = 2,
+                    BeforeSyncUserCount = 100,
+                    AfterSyncUserCount = 100,
+                    ThresholdViolations = 0,
+                    AdfRunId = currentAdfRunId
+                });
+            _mockBlobStorageRepository.Setup(x => x.FindAggregatedFileByRunIdAsync(It.IsAny<string>(), It.IsAny<string>()))
+                .ReturnsAsync(new BlobResult { BlobStatus = BlobStatus.Found, Path = "test/mixed.json" });
+            _mockBlobStorageRepository.Setup(x => x.DownloadFileAsync("test/mixed.json"))
+                .ReturnsAsync(new BlobResult { BlobStatus = BlobStatus.Found, Content = $"{{\"SourceMembers\":[{{\"ObjectId\":\"{addedUser}\",\"MembershipAction\":1}},{{\"ObjectId\":\"{removedUser}\",\"MembershipAction\":2}}]}}" });
+            _mockOpenAIService.Setup(x => x.GetCompletionAsync(It.IsAny<string>(), It.IsAny<string>()))
+                .ReturnsAsync("The specific reason could not be determined from the available data.");
+
+            var response = await _handler.ExecuteAsync(BuildRequest());
+
+            Assert.AreEqual(HttpStatusCode.OK, response.StatusCode);
+            Assert.IsFalse(response.Explanation!.Contains("could not be determined", StringComparison.OrdinalIgnoreCase));
+            StringAssert.Contains(response.Explanation!, "added people who newly match");
+            StringAssert.Contains(response.Explanation!, "removed people who were in the group but no longer match");
+        }
+
+        [TestMethod]
+        public async Task ExecuteAsync_NonInitialRemoves_ModelReturnsGoodExplanation_OverrideDoesNotFire()
+        {
+            // Guard against false positives: when the model returns a good, non-hedge explanation, the deterministic override must NOT rewrite it.
+            var currentAdfRunId = Guid.NewGuid();
+            var previousAdfRunId = Guid.NewGuid();
+            var previousRunId = Guid.NewGuid();
+            var removedUser = Guid.NewGuid();
+            var good = "GMM removed 3 people who transferred out of the engineering organization.";
+
+            SetupCurrentRunAndPreviousRun(currentAdfRunId, previousAdfRunId, previousRunId, usersRemoved: 3);
+            SetupAggregatedRemovedUsers(removedUser);
+            _mockOpenAIService.Setup(x => x.GetCompletionAsync(It.IsAny<string>(), It.IsAny<string>()))
+                .ReturnsAsync(good);
+
+            var response = await _handler.ExecuteAsync(BuildRequest());
+
+            Assert.AreEqual(HttpStatusCode.OK, response.StatusCode);
+            Assert.AreEqual(good, response.Explanation);
+        }
+
+        [TestMethod]
+        public async Task ExecuteAsync_NonInitialThresholdBlockedRemoves_UnresolvedCodeFilter_OverrideNeverSurfacesUnavailableSentinel()
+        {
+            // When the _Code filter can't be resolved to a description (mappings unavailable at explanation time), the glossary carries an internal "description is unavailable" sentinel. The override must drop that detail and fall back to the plain rule phrasing — never hedge, never leak the sentinel.
+            var currentAdfRunId = Guid.NewGuid();
+            var previousAdfRunId = Guid.NewGuid();
+            var previousRunId = Guid.NewGuid();
+            var removedUser = Guid.NewGuid();
+            var now = DateTime.UtcNow;
+
+            _mockSyncJobRepository.Setup(x => x.GetSyncJobAsync(_syncJobId))
+                .ReturnsAsync(new SyncJob
+                {
+                    Id = _syncJobId,
+                    TargetOfficeGroupId = _targetGroupId,
+                    Query = "[{\"type\":\"SqlMembership\",\"source\":{\"filter\":\"Company_Code = '8210'\"}}]"
+                });
+            SetupCurrentRunAndPreviousRun(currentAdfRunId, previousAdfRunId, previousRunId, usersRemoved: 5);
+            SetupAggregatedRemovedUsers(removedUser);
+            _mockSyncJobHistoryRepository.Setup(x => x.GetByRunIdAsync(_runId))
+                .ReturnsAsync(new global::Models.SyncJobHistory.SyncJobHistory
+                {
+                    SyncJobId = _syncJobId,
+                    RunId = _runId,
+                    Status = "ThresholdExceeded",
+                    UpdatedAt = now,
+                    StartTime = now.AddMinutes(-5),
+                    EndTime = now,
+                    UsersAdded = 0,
+                    UsersRemoved = 5,
+                    BeforeSyncUserCount = 100,
+                    AfterSyncUserCount = 100,
+                    ThresholdViolations = 1,
+                    AdfRunId = currentAdfRunId
+                });
+            // No GetMostRecentSucceededRunIdAsync / GetAttributeMappingsAsync mock => the _Code cannot be resolved.
+            _mockOpenAIService.Setup(x => x.GetCompletionAsync(It.IsAny<string>(), It.IsAny<string>()))
+                .ReturnsAsync(GetRunExplanationHandler.FallbackExplanation);
+
+            var response = await _handler.ExecuteAsync(BuildRequest());
+
+            Assert.AreEqual(HttpStatusCode.OK, response.StatusCode);
+            Assert.IsFalse(response.Explanation!.Contains("could not be determined", StringComparison.OrdinalIgnoreCase));
+            Assert.IsFalse(response.Explanation!.Contains("description is unavailable", StringComparison.OrdinalIgnoreCase),
+                "The internal unavailable-description sentinel must never reach the owner.");
+            StringAssert.Contains(response.Explanation!, "the group's configured membership rules");
+            StringAssert.Contains(response.Explanation!, "no longer match");
+        }
+
+        // ---- Direct unit tests for the deterministic never-hedge helpers ----
+
+        [TestMethod]
+        public void IsHedgeExplanation_DetectsExactVariantBlankAndNonHedge()
+        {
+            var type = typeof(GetRunExplanationHandler);
+            Assert.IsTrue(InvokeStaticPrivate<bool>(type, "IsHedgeExplanation", new object?[] { GetRunExplanationHandler.FallbackExplanation }),
+                "Exact FallbackExplanation must be detected as a hedge.");
+            Assert.IsTrue(InvokeStaticPrivate<bool>(type, "IsHedgeExplanation", new object?[] { "Blocked by threshold. The specific reason for the removals could not be determined from the available data." }),
+                "The per-removal variant must be detected as a hedge.");
+            Assert.IsFalse(InvokeStaticPrivate<bool>(type, "IsHedgeExplanation", new object?[] { "GMM removed people who no longer match the rule." }),
+                "A descriptive explanation must not be treated as a hedge.");
+            Assert.IsFalse(InvokeStaticPrivate<bool>(type, "IsHedgeExplanation", new object?[] { "   " }),
+                "Blank is an AI soft-failure, not a hedge (the honest fallback is preserved).");
+            Assert.IsFalse(InvokeStaticPrivate<bool>(type, "IsHedgeExplanation", new object?[] { null }),
+                "Null must not be treated as a hedge.");
+        }
+
+        [TestMethod]
+        public void BuildNonInitialRuleExplanation_ProducesDescriptiveRuleTextForEachDirection()
+        {
+            var type = typeof(GetRunExplanationHandler);
+            var rules = "- Rule 1: Includes employees where Building is 'B40'.";
+
+            var blockedRemoves = InvokeStaticPrivate<string>(type, "BuildNonInitialRuleExplanation", new object?[] { 0, 3, true, rules })!;
+            StringAssert.Contains(blockedRemoves, "threshold");
+            StringAssert.Contains(blockedRemoves, "no longer match");
+            StringAssert.Contains(blockedRemoves, "Building is 'B40'");
+            Assert.IsFalse(blockedRemoves.Contains("could not be determined", StringComparison.OrdinalIgnoreCase));
+
+            var addsOnly = InvokeStaticPrivate<string>(type, "BuildNonInitialRuleExplanation", new object?[] { 5, 0, false, rules })!;
+            StringAssert.Contains(addsOnly, "added people who newly match");
+
+            var mixed = InvokeStaticPrivate<string>(type, "BuildNonInitialRuleExplanation", new object?[] { 2, 3, false, rules })!;
+            StringAssert.Contains(mixed, "added people who newly match");
+            StringAssert.Contains(mixed, "removed people who were in the group but no longer match");
+        }
+
+        [TestMethod]
+        public void BuildNonInitialRuleExplanation_DropsUnavailableSentinelAndUsesPlainRulePhrasing()
+        {
+            var type = typeof(GetRunExplanationHandler);
+            var unresolved = "- Rule 1: Includes employees where Company is a configured value whose description is unavailable.";
+
+            var text = InvokeStaticPrivate<string>(type, "BuildNonInitialRuleExplanation", new object?[] { 0, 4, true, unresolved })!;
+
+            Assert.IsFalse(text.Contains("description is unavailable", StringComparison.OrdinalIgnoreCase),
+                "The internal unavailable-description sentinel must be dropped.");
+            StringAssert.Contains(text, "the group's configured membership rules");
+            StringAssert.Contains(text, "no longer match");
+        }
+
+        [TestMethod]
+        public void ComputeWalkBackFloor_AllIdenticalResubmits_ReturnsMinValue()
+        {
+            // PR-comment #2: when every recorded change kept the same query (e.g. identical resubmits after a threshold block), there is no query boundary to floor at, so the removes walk-back should scan as far back as retained runs allow.
+            var now = DateTime.UtcNow;
+            var changes = new List<SyncJobChange>
+            {
+                ChangeWithQuery(now.AddHours(-1), "Q"),
+                ChangeWithQuery(now.AddHours(-10), "Q"),
+            };
+
+            var floor = InvokeStaticPrivate<DateTime>(typeof(GetRunExplanationHandler), "ComputeWalkBackFloor", new object?[] { changes, "Q" });
+
+            Assert.AreEqual(DateTime.MinValue, floor);
+        }
+
+        [TestMethod]
+        public void ComputeWalkBackFloor_IdenticalResubmitThenDifferentQuery_FloorsAtQueryChangeNotResubmit()
+        {
+            // PR-comment #2: the most recent change is an identical resubmit; the floor must skip it and land on the older change that actually set the current query, so the whole same-query stretch stays inside the walk-back window and older removals remain attributable.
+            var now = DateTime.UtcNow;
+            var latestResubmit = now.AddHours(-1);
+            var realQueryChange = now.AddHours(-30);
+            var changes = new List<SyncJobChange>
+            {
+                ChangeWithQuery(latestResubmit, "Q"),
+                ChangeWithQuery(now.AddHours(-5), "Q"),
+                ChangeWithQuery(realQueryChange, "Q_OLD"),
+            };
+
+            var floor = InvokeStaticPrivate<DateTime>(typeof(GetRunExplanationHandler), "ComputeWalkBackFloor", new object?[] { changes, "Q" });
+
+            Assert.AreEqual(realQueryChange, floor, "Floor must be the most recent DIFFERING-query change, not an identical resubmit.");
+            Assert.AreNotEqual(latestResubmit, floor);
+        }
+
+        [TestMethod]
+        public void ComputeWalkBackFloor_MostRecentChangeIsDifferentQuery_FloorsAtThatChange()
+        {
+            var now = DateTime.UtcNow;
+            var diffChange = now.AddHours(-2);
+            var changes = new List<SyncJobChange> { ChangeWithQuery(diffChange, "Q_OLD") };
+
+            var floor = InvokeStaticPrivate<DateTime>(typeof(GetRunExplanationHandler), "ComputeWalkBackFloor", new object?[] { changes, "Q" });
+
+            Assert.AreEqual(diffChange, floor);
+        }
+
+        [TestMethod]
+        public void ComputeWalkBackFloor_NullOrEmpty_ReturnsMinValue()
+        {
+            Assert.AreEqual(DateTime.MinValue,
+                InvokeStaticPrivate<DateTime>(typeof(GetRunExplanationHandler), "ComputeWalkBackFloor", new object?[] { null, "Q" }));
+            Assert.AreEqual(DateTime.MinValue,
+                InvokeStaticPrivate<DateTime>(typeof(GetRunExplanationHandler), "ComputeWalkBackFloor", new object?[] { new List<SyncJobChange>(), "Q" }));
+        }
+
+        [TestMethod]
+        public void ComputeWalkBackFloor_SkipsStatusOnlyChangesWithoutQuery()
+        {
+            // A status-only change (e.g. an approval) carries no query snapshot, so it must not be treated as a query boundary that truncates the walk-back.
+            var now = DateTime.UtcNow;
+            var statusOnly = now.AddHours(-1);
+            var realQueryChange = now.AddHours(-20);
+            var changes = new List<SyncJobChange>
+            {
+                ChangeWithQuery(statusOnly, null),
+                ChangeWithQuery(realQueryChange, "Q_OLD"),
+            };
+
+            var floor = InvokeStaticPrivate<DateTime>(typeof(GetRunExplanationHandler), "ComputeWalkBackFloor", new object?[] { changes, "Q" });
+
+            Assert.AreEqual(realQueryChange, floor, "A status-only change without a query snapshot must not truncate the walk-back.");
+            Assert.AreNotEqual(statusOnly, floor);
+        }
+
+        [TestMethod]
+        public async Task ExecuteAsync_RemovesCurrentState_MultiPartInclusionary_OnePartReadFails_SuppressesColor()
+        {
+            // PR-comment #3: with multiple inclusionary SQL rules, if ANY part fails to read against the latest table we must NOT emit combined current-state color from the partial union — a removed user might still match the un-read part. A single read failure suppresses the whole current-state signal instead of risking a false "no longer matches" claim.
+            var currentAdfRunId = Guid.NewGuid();
+            var previousAdfRunId = Guid.NewGuid();
+            var previousRunId = Guid.NewGuid();
+            var currentTable = currentAdfRunId.ToString().Replace("-", string.Empty);
+            var previousTable = previousAdfRunId.ToString().Replace("-", string.Empty);
+            var latestRunId = Guid.NewGuid();
+            var latestTable = latestRunId.ToString().Replace("-", string.Empty);
+            var removedUser = Guid.NewGuid();
+            string? capturedPrompt = null;
+
+            _mockSyncJobRepository.Setup(x => x.GetSyncJobAsync(_syncJobId))
+                .ReturnsAsync(new SyncJob
+                {
+                    Id = _syncJobId,
+                    TargetOfficeGroupId = _targetGroupId,
+                    Query = "[" +
+                        "{\"type\":\"SqlMembership\",\"source\":{\"filter\":\"Building = 'B40'\"}}," +
+                        "{\"type\":\"SqlMembership\",\"source\":{\"filter\":\"Department = 'Sales'\"}}" +
+                        "]"
+                });
+            SetupCurrentRunAndPreviousRun(currentAdfRunId, previousAdfRunId, previousRunId, usersRemoved: 1);
+            SetupAggregatedRemovedUsers(removedUser);
+            // Exact-run and previous ADF tables pruned so single-step and walk-back hedge, making Phase 3 eligible.
+            _mockSqlMembershipRepository.Setup(x => x.CheckIfTableExistsAsync(currentTable)).ReturnsAsync(false);
+            _mockSqlMembershipRepository.Setup(x => x.CheckIfTableExistsAsync(previousTable)).ReturnsAsync(false);
+            _mockDataFactoryRepository.Setup(x => x.GetMostRecentSucceededRunIdAsync()).ReturnsAsync(latestRunId.ToString());
+            // Part 1 reads successfully (removed user absent -> would be "colored" if we trusted the partial union)...
+            _mockSqlMembershipRepository.Setup(x => x.FilterChildEntitiesAsync("Building = 'B40'", latestTable))
+                .ReturnsAsync(new List<SqlMembershipObtainer.Entities.PersonEntity> { Person(Guid.NewGuid()) });
+            // ...but part 2 FAILS to read against the latest table, so no combined current-state signal is safe.
+            _mockSqlMembershipRepository.Setup(x => x.FilterChildEntitiesAsync("Department = 'Sales'", latestTable))
+                .ThrowsAsync(new InvalidOperationException("transient read failure"));
+            _mockOpenAIService.Setup(x => x.GetCompletionAsync(It.IsAny<string>(), It.IsAny<string>()))
+                .Callback<string, string>((_, prompt) => capturedPrompt = prompt)
+                .ReturnsAsync("This sync completed successfully.");
+
+            var response = await _handler.ExecuteAsync(BuildRequest());
+
+            Assert.AreEqual(HttpStatusCode.OK, response.StatusCode);
+            Assert.IsNotNull(capturedPrompt);
+            Assert.IsFalse(capturedPrompt!.Contains("in the latest HR data (current state, not the removal-time snapshot)"),
+                "A partial inclusionary-part read must not emit combined current-state color.");
+            StringAssert.Contains(capturedPrompt!, "no attributable source found");
+        }
+
+        [TestMethod]
         public async Task ExecuteAsync_RemovesAttribution_WhenCurrentAndPreviousAdfRunMatchAndGroupBlobsUnavailable_SkipsAttribution()
         {
             var sharedAdfRunId = Guid.NewGuid();
@@ -1899,6 +3494,14 @@ namespace WebApi.Tests
             {
                 PersonnelNumber = string.Empty,
                 AzureObjectId = azureObjectId.ToString()
+            };
+
+        // Builds a SyncJobChange for ComputeWalkBackFloor tests: a config change carrying `query` in ChangeDetails, or a status-only change (no query) when query is null.
+        private static SyncJobChange ChangeWithQuery(DateTime changeTime, string? query) =>
+            new()
+            {
+                ChangeTime = changeTime,
+                ChangeDetails = query == null ? "{\"status\":\"SubmissionApproved\"}" : $"{{\"query\":\"{query}\"}}"
             };
 
         // Reflection helper for private static methods so we don't have to widen visibility.
