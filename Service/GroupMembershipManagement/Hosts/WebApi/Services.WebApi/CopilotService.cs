@@ -165,7 +165,7 @@ namespace Services.WebApi
 
             DefaultAzureCredential credential = new(DefaultAzureCredential.DefaultEnvironmentVariableName);
             var openAIClient = new AzureOpenAIClient(new Uri(endpoint), credential);
-            _chatClient = openAIClient.GetChatClient("gpt-4o");
+            _chatClient = openAIClient.GetChatClient("gpt-5.4-mini");
 
             _retryPolicy = Policy
                 .Handle<Azure.RequestFailedException>(ex =>

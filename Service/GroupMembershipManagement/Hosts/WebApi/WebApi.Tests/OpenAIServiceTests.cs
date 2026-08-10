@@ -112,7 +112,7 @@ namespace Services.Tests
         public void ServiceConfiguration_UsesCorrectDeploymentName()
         {
             var service = new OpenAIService(_mockConfiguration.Object);
-            Assert.IsNotNull(service, "Service should be configured with the correct deployment name (gpt-4o)");
+            Assert.IsNotNull(service, "Service should be configured with the correct deployment name (gpt-5.4-mini)");
         }
 
         [TestMethod]

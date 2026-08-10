@@ -15,7 +15,7 @@ namespace WebApi.BackgroundServices
     public class OpenAIService : IOpenAIService
     {
         private readonly string _endpoint;
-        private readonly string _deploymentName = "gpt-4o";
+        private readonly string _deploymentName = "gpt-5.4-mini";
         private readonly AzureOpenAIClient _openAIClient;
         private readonly ChatClient _chatClient;
         private readonly IAsyncPolicy _retryPolicy;

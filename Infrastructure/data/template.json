@@ -3455,18 +3455,18 @@
             {
               "type": "Microsoft.CognitiveServices/accounts/deployments",
               "apiVersion": "2023-05-01",
-              "name": "[format('{0}/{1}', parameters('openAIResourceName'), 'gpt-4o')]",
+              "name": "[format('{0}/{1}', parameters('openAIResourceName'), 'gpt-5.4-mini')]",
               "properties": {
                 "model": {
                   "format": "OpenAI",
-                  "name": "gpt-4o",
-                  "version": "2024-11-20"
+                  "name": "gpt-5.4-mini",
+                  "version": "2026-03-17"
                 },
                 "raiPolicyName": "[parameters('openAIContentFilterName')]",
                 "versionUpgradeOption": "NoAutoUpgrade"
               },
               "sku": {
-                "name": "standard",
+                "name": "GlobalStandard",
                 "capacity": 1
               },
               "dependsOn": [
@@ -3503,7 +3503,7 @@
                 ]
               },
               "dependsOn": [
-                "[resourceId('Microsoft.CognitiveServices/accounts/deployments', parameters('openAIResourceName'), 'gpt-4o')]",
+                "[resourceId('Microsoft.CognitiveServices/accounts/deployments', parameters('openAIResourceName'), 'gpt-5.4-mini')]",
                 "[resourceId('Microsoft.CognitiveServices/accounts', parameters('openAIResourceName'))]"
               ]
             }

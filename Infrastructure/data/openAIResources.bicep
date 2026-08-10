@@ -181,18 +181,18 @@ resource openAIContentFilterPolicy 'Microsoft.CognitiveServices/accounts/raiPoli
 
 resource gpt4oDeployment 'Microsoft.CognitiveServices/accounts/deployments@2023-05-01' = {
   parent: openAI
-  name: 'gpt-4o'
+  name: 'gpt-5.4-mini'
   properties: {
     model: {
       format: 'OpenAI'
-      name: 'gpt-4o'
-      version: '2024-11-20'
+      name: 'gpt-5.4-mini'
+      version: '2026-03-17'
     }
     raiPolicyName: openAIContentFilterPolicy.name
     versionUpgradeOption: 'NoAutoUpgrade'
   }
   sku: {
-    name: 'standard'
+    name: 'GlobalStandard'
     capacity: gpt4oCapacity
   }
   dependsOn: [
