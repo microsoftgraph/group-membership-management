@@ -149,7 +149,16 @@ const CopilotTriggerButton: React.FunctionComponent = () => {
   const isAICopilotEnabled = useSelector(selectIsAICopilotEnabled);
   const hasCopilotHistory = useSelector(selectCopilotMessages).length > 0;
 
-  if (!isAIOnboardingChat || isAICopilotEnabled === false) return null;
+  // Derive edit-state synchronously from the route (mirrors the parent's jobId derivation)
+  // so the button never flashes for one render before the parent effect dispatches
+  // setIsEditingExistingJob(true) on direct navigation into the edit flow.
+  const location = useLocation();
+  const { jobId: urlJobId } = useParams<{ jobId: string }>();
+  const locationState = location.state as { jobId?: string } | undefined;
+  const isEditingExistingJob = !!(locationState?.jobId ?? urlJobId);
+
+  // Only offer Copilot during a new onboarding, never when updating an existing job.
+  if (!isAIOnboardingChat || isAICopilotEnabled === false || isEditingExistingJob) return null;
 
   return (
     <button
