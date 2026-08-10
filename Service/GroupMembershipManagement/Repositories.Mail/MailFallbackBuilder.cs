@@ -386,10 +386,9 @@ namespace Repositories.Mail
 
             var statusKey = ResolvePurgeWarningStatusKey(status);
 
-            // ThresholdExceeded already has its own actionable adaptive card; Generic /
-            // unknown statuses also fall through to the legacy adaptive-card + plain-text
+            // Generic / unknown statuses also fall through to the legacy adaptive-card + plain-text
             // path rather than rendering a styled email with no actionable detail.
-            if (statusKey == "ThresholdExceeded" || statusKey == "Generic")
+            if (statusKey == "Generic")
             {
                 return null;
             }
@@ -453,7 +452,10 @@ namespace Repositories.Mail
                 jobUrl: jobUrl,
                 sentDate: sentDate,
                 actionChecklistHtml: BuildJobPurgingWarningActionChecklistHtml(statusKey, purgeDateDisplay, groupId, gmmOwnerAppName) + reviewerFeedbackHtml,
-                extraCalloutHtml: string.Empty
+                extraCalloutHtml: string.Empty,
+                ctaLabelOverride: statusKey == "ThresholdExceeded"
+                    ? ResolveSyncDisabledCtaLabelOverride("Threshold")
+                    : null
             );
         }
 
@@ -543,6 +545,8 @@ namespace Repositories.Mail
                     break;
                 case "SubmissionRejected":
                     bodyKey = "SubmissionRejectedFallback.ActionChecklist.Body"; break;
+                case "ThresholdExceeded":
+                    bodyKey = "SyncDisabledFallback.ActionChecklist.Threshold.Body"; break;
                 default:
                     bodyKey = $"JobPurgingWarningFallback.ActionChecklist.Body.{statusKey}"; break;
             }
@@ -585,10 +589,7 @@ namespace Repositories.Mail
             var priorStatus = GetParam(emailMessage, FinalNoticePriorStatusIndex);
             var statusKey = ResolvePurgeWarningStatusKey(priorStatus);
 
-            // ThresholdExceeded keeps its own actionable adaptive card; unknown/unsupported
-            // statuses also fall through to the legacy adaptive-card + plain-text path
-            // rather than rendering a generic styled email with no useful detail.
-            if (statusKey == "ThresholdExceeded" || statusKey == "Generic")
+            if (statusKey == "Generic")
             {
                 return null;
             }

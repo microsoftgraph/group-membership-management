@@ -253,7 +253,14 @@ namespace Repositories.Mail
                 else if (string.Equals(emailMessage?.Content, "SyncCompletedEmailBody", StringComparison.OrdinalIgnoreCase))
                     styledFallback = await _mailFallbackBuilder.BuildSyncCompletedFallbackAsync(emailMessage, fallbackDestinationGroupName, groupId, historyUrl, sentDate);
                 else if (string.Equals(emailMessage?.Content, NotificationConstants.JobPurgingWarningEmailBody, StringComparison.OrdinalIgnoreCase))
-                    styledFallback = await _mailFallbackBuilder.BuildJobPurgingWarningFallbackAsync(emailMessage, fallbackDestinationGroupName, groupId, historyUrl, sentDate);
+                {
+                    // ThresholdExceeded purge warnings deep-link to the take-action dialog (like Sync Disabled); status is AdditionalContentParams[0].
+                    var purgeWarningStatus = GetParamSafe(emailMessage, 0);
+                    var purgeWarningCtaUrl = string.Equals(purgeWarningStatus, "ThresholdExceeded", StringComparison.OrdinalIgnoreCase)
+                        ? UiUrlBuilder.BuildJobDetailsUrl(UIUrl, emailMessage.SyncJobId, includeHistory: true, takeAction: true)
+                        : historyUrl;
+                    styledFallback = await _mailFallbackBuilder.BuildJobPurgingWarningFallbackAsync(emailMessage, fallbackDestinationGroupName, groupId, purgeWarningCtaUrl, sentDate);
+                }
                 else if (string.Equals(emailMessage?.Content, NotificationConstants.SyncPurgedForInactivityEmailBody, StringComparison.OrdinalIgnoreCase))
                     styledFallback = await _mailFallbackBuilder.BuildFinalNoticeFallbackAsync(emailMessage, fallbackDestinationGroupName, groupId, jobUrl, sentDate);
                 else if (IsSyncDisabledNotification(emailMessage?.Content))

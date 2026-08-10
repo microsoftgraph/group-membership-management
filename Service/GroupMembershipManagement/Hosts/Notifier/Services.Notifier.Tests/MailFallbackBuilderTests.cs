@@ -611,12 +611,14 @@ namespace Services.Notifier.Tests
         }
 
         [TestMethod]
-        public async Task BuildJobPurgingWarningFallbackAsync_ReturnsNull_ForThresholdExceeded()
+        public async Task BuildJobPurgingWarningFallbackAsync_ReturnsStyledHtml_ForThresholdExceeded()
         {
-            // ThresholdExceeded keeps its existing actionable adaptive card; no styled HTML fallback.
+            // ThresholdExceeded now renders styled, reusing the Sync Disabled threshold body + "Review in GMM" CTA.
             var email = MakeJobPurgingWarningEmail(status: "ThresholdExceeded");
             var html = await _builder.BuildJobPurgingWarningFallbackAsync(email, GroupName, GroupId, JobUrl, SentDate);
-            Assert.IsNull(html);
+            Assert.IsFalse(string.IsNullOrWhiteSpace(html));
+            StringAssert.Contains(html, "run a pre-approval check");
+            StringAssert.Contains(html, "Review in GMM");
         }
 
         [TestMethod]
@@ -747,12 +749,13 @@ namespace Services.Notifier.Tests
         // ── FinalNotice ──────────────────────────────────────────────────────────
 
         [TestMethod]
-        public async Task BuildFinalNoticeFallbackAsync_ReturnsNull_ForThresholdExceeded()
+        public async Task BuildFinalNoticeFallbackAsync_ReturnsStyledHtml_ForThresholdExceeded()
         {
-            // ThresholdExceeded keeps its actionable adaptive card; no styled HTML fallback.
+            // ThresholdExceeded now renders the styled Final Notice (Generic variant), not the adaptive card.
             var email = MakeFinalNoticeEmail(priorStatus: "ThresholdExceeded");
             var html = await _builder.BuildFinalNoticeFallbackAsync(email, GroupName, GroupId, JobUrl, SentDate);
-            Assert.IsNull(html);
+            Assert.IsFalse(string.IsNullOrWhiteSpace(html));
+            StringAssert.Contains(html, "GMM has removed its affiliation");
         }
 
         [TestMethod]
