@@ -3301,9 +3301,8 @@ function Start-WebApiIfStopped {
     )
 
     # The notifications-queue pre-deployment migration is the only step that stops the WebAPI App
-    # Service. A stopped app also stops its SCM/Kudu site, which breaks zip deploy, and returns 403
-    # to HTTP without self-starting. Start it (idempotently) before any WebAPI-dependent step
-    # (code publish, EF migrations, Reschedule).
+    # Service. A stopped app returns 403 to HTTP without self-starting, so Reschedule fails and the
+    # EF migration call silently no-ops. Start it (idempotently) before those WebAPI-dependent steps.
     $computeResourceGroup = "$SolutionAbbreviation-compute-$EnvironmentAbbreviation"
     $webApiName = "$computeResourceGroup-webapi"
 
@@ -3569,13 +3568,6 @@ function Deploy-Resources {
     }
 
     if ($skipFunctionAppCodeDeployment -eq $false) {
-        # The pre-deployment notifications-queue migration leaves the WebAPI stopped, which also
-        # stops its SCM site and breaks zip deploy. Ensure it is running before publishing code and
-        # before the WebAPI-dependent steps below (EF migrations, Reschedule).
-        Start-WebApiIfStopped `
-            -SolutionAbbreviation $solutionAbbreviation `
-            -EnvironmentAbbreviation $environmentAbbreviation
-
         Set-FunctionAppCode `
             -ComputeResourceGroup $computeResourceGroup `
             -FunctionsPackagesDirectory "$deploymentPackageDirectory/function_packages" `
