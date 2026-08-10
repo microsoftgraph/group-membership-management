@@ -7,7 +7,9 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Moq;
+using Models;
 using Repositories.Contracts;
+using Repositories.Contracts.InjectConfig;
 using Services;
 using System;
 using System.Collections.Generic;
@@ -255,6 +257,79 @@ namespace SqlDataChecker.Tests
             await InvokeValidateColumn(request);
         }
 
+        [TestMethod]
+        public async Task GetColumnThresholdsAsync_ReadsThresholdsFromSqlMembershipSourceRepository()
+        {
+            var repository = new Mock<IDatabaseSqlMembershipSourcesRepository>();
+            repository
+                .Setup(x => x.GetSourceAttributesAsync("SqlMembership"))
+                .ReturnsAsync(new List<SqlMembershipAttribute>
+                {
+                    new() { Name = "Department", NullThreshold = 0.25 },
+                    new() { Name = "Location", NullThreshold = 0.75, HasMapping = true },
+                    new() { Name = "AboveMaximum", NullThreshold = 1.5 },
+                    new() { Name = "WithoutThreshold" }
+                });
+
+            var validatorService = CreateValidatorService(repository.Object);
+
+            var thresholds = await validatorService.GetColumnThresholdsAsync();
+
+            Assert.AreEqual(3, thresholds.Count);
+            Assert.AreEqual(0.25, thresholds["Department"]);
+            Assert.AreEqual(0.75, thresholds["Location_Code"]);
+            Assert.AreEqual(1.0, thresholds["AboveMaximum"]);
+            repository.Verify(x => x.GetSourceAttributesAsync("SqlMembership"), Times.Once);
+        }
+
+        [TestMethod]
+        public async Task GetColumnThresholdsAsync_NullAttributes_ReturnsEmptyDictionary()
+        {
+            var repository = new Mock<IDatabaseSqlMembershipSourcesRepository>();
+            repository
+                .Setup(x => x.GetSourceAttributesAsync("SqlMembership"))
+                .ReturnsAsync((List<SqlMembershipAttribute>)null);
+
+            var validatorService = CreateValidatorService(repository.Object);
+
+            var thresholds = await validatorService.GetColumnThresholdsAsync();
+
+            Assert.AreEqual(0, thresholds.Count);
+        }
+
+        [TestMethod]
+        public async Task GetColumnThresholdsAsync_MissingDefaultSourceRow_ReturnsEmptyDictionary()
+        {
+            // Reading by name returns null when the SqlMembership row itself is absent. Using the
+            // default-source overload here would throw a NullReferenceException instead, which would
+            // fail the ADF pipeline over a configuration state rather than a real data problem.
+            var repository = new Mock<IDatabaseSqlMembershipSourcesRepository>();
+            repository
+                .Setup(x => x.GetSourceAttributesAsync("SqlMembership"))
+                .ReturnsAsync((List<SqlMembershipAttribute>)null);
+
+            var validatorService = CreateValidatorService(repository.Object);
+
+            var thresholds = await validatorService.GetColumnThresholdsAsync();
+
+            Assert.AreEqual(0, thresholds.Count);
+            repository.Verify(x => x.GetDefaultSourceAttributesAsync(), Times.Never);
+        }
+
+        [TestMethod]
+        public async Task GetColumnThresholdsAsync_RepositoryFailure_PropagatesException()
+        {
+            var repository = new Mock<IDatabaseSqlMembershipSourcesRepository>();
+            repository
+                .Setup(x => x.GetSourceAttributesAsync("SqlMembership"))
+                .ThrowsAsync(new InvalidOperationException("Jobs database unavailable"));
+
+            var validatorService = CreateValidatorService(repository.Object);
+
+            await Assert.ThrowsExceptionAsync<InvalidOperationException>(
+                () => validatorService.GetColumnThresholdsAsync());
+        }
+
         /// <summary>
         /// Helper to invoke the DifferenceCheckerFunction.ValidateColumn method
         /// without needing Durable Functions infrastructure.
@@ -264,15 +339,8 @@ namespace SqlDataChecker.Tests
         {
             var telemetryClient = new TelemetryClient(new TelemetryConfiguration { DisableTelemetry = true });
 
-            var mockKvSecret = new Mock<Repositories.Contracts.InjectConfig.IKeyVaultSecret<SqlDataCheckerValidatorService>>();
-            mockKvSecret.Setup(x => x.Secret).Returns("Server=fake;Database=fake;");
-            var mockDataFactory = new Mock<Repositories.Contracts.IDataFactoryRepository>();
-
-            var validatorService = new SqlDataCheckerValidatorService(
-                NullLogger<SqlDataCheckerValidatorService>.Instance,
-                telemetryClient,
-                mockKvSecret.Object,
-                mockDataFactory.Object);
+            var mockSqlMembershipSourcesRepository = new Mock<IDatabaseSqlMembershipSourcesRepository>();
+            var validatorService = CreateValidatorService(mockSqlMembershipSourcesRepository.Object, telemetryClient);
 
             var function = new DifferenceCheckerFunction(
                 validatorService,
@@ -280,6 +348,24 @@ namespace SqlDataChecker.Tests
                 telemetryClient);
 
             await function.ValidateColumn(request);
+        }
+
+        private static SqlDataCheckerValidatorService CreateValidatorService(
+            IDatabaseSqlMembershipSourcesRepository sqlMembershipSourcesRepository,
+            TelemetryClient? telemetryClient = null)
+        {
+            telemetryClient ??= new TelemetryClient(new TelemetryConfiguration { DisableTelemetry = true });
+
+            var mockKvSecret = new Mock<IKeyVaultSecret<SqlDataCheckerValidatorService>>();
+            mockKvSecret.Setup(x => x.Secret).Returns("Server=fake;Database=fake;");
+            var mockDataFactory = new Mock<IDataFactoryRepository>();
+
+            return new SqlDataCheckerValidatorService(
+                NullLogger<SqlDataCheckerValidatorService>.Instance,
+                telemetryClient,
+                mockKvSecret.Object,
+                mockDataFactory.Object,
+                sqlMembershipSourcesRepository);
         }
     }
 }

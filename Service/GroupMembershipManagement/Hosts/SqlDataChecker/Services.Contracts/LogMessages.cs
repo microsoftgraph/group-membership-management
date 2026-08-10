@@ -46,6 +46,10 @@ namespace Hosts.SqlDataChecker
             Message = "NullThreshold for '{AttributeName}' was out of range ({OriginalValue}), clamped to {ClampedValue}.")]
         public static partial void ThresholdClamped(this ILogger logger, string attributeName, double originalValue, double clampedValue);
 
+        [LoggerMessage(EventId = 240023, Level = LogLevel.Warning,
+            Message = "No stored attributes were found for the default SQL membership source. All columns will use the default null threshold.")]
+        public static partial void NoStoredColumnThresholdsFound(this ILogger logger);
+
         // ── DifferenceChecker ──
 
         [LoggerMessage(EventId = 240030, Level = LogLevel.Information,

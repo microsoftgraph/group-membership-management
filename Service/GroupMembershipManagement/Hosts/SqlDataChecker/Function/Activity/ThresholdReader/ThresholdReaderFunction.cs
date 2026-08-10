@@ -26,17 +26,17 @@ namespace SqlDataChecker
         }
 
         [Function(nameof(ThresholdReaderFunction))]
-        public Task<Dictionary<string, double>> GetColumnThresholds([ActivityTrigger] object obj)
+        public async Task<Dictionary<string, double>> GetColumnThresholds([ActivityTrigger] object obj)
         {
             _logger.FunctionStarted(nameof(ThresholdReaderFunction));
 
             try
             {
-                var thresholds = _sqlDataCheckerValidator.GetColumnThresholds();
+                var thresholds = await _sqlDataCheckerValidator.GetColumnThresholdsAsync();
 
                 _logger.ThresholdReaderCompleted(nameof(ThresholdReaderFunction), thresholds.Count);
 
-                return Task.FromResult(thresholds);
+                return thresholds;
             }
             catch (Exception ex)
             {

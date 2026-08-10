@@ -13,6 +13,7 @@ using Microsoft.Extensions.Hosting;
 using Repositories.Contracts;
 using Repositories.Contracts.InjectConfig;
 using Repositories.DataFactory;
+using Repositories.EntityFramework;
 using Services;
 using System;
 
@@ -57,6 +58,7 @@ namespace SqlDataChecker
                         CommonServices.GetValueOrThrowBase(configuration, "dataResourceGroup")));
 
                     services.AddSingleton<IDataFactoryRepository, DataFactoryRepository>();
+                    services.AddScoped<IDatabaseSqlMembershipSourcesRepository, DatabaseSqlMembershipSourcesRepository>();
                     services.AddScoped<SqlDataCheckerValidatorService>();
                 })
                 .Build();

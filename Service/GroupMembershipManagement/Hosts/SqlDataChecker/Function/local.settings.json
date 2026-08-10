@@ -21,6 +21,7 @@
     "graphResourceUri": "https://graph.microsoft.com/",
     "serviceBusNamespace": "<serviceBusNamespace>",
     "ConnectionStrings__JobsContext": "",
+    "ConnectionStrings__JobsContextReadOnly": "",
     "shouldStopSyncIfSourceNotPresentInGraph": false,
     "maxExceptionHandlingAttempts": 2,
     "maxRetryAfterAttempts": 4,

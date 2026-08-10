@@ -10,32 +10,36 @@ using Microsoft.Extensions.Logging;
 using Models;
 using Polly;
 using Polly.Retry;
+using Repositories.Contracts;
 using Repositories.Contracts.InjectConfig;
 using Services.Entities;
 using System.Data;
-using System.Text.Json;
 using System.Text.RegularExpressions;
-using IDataFactoryRepository = Repositories.Contracts.IDataFactoryRepository;
 
 namespace Services
 {
     public class SqlDataCheckerValidatorService
     {
+        private const string DefaultSqlMembershipSourceName = "SqlMembership";
+
         private readonly ILogger<SqlDataCheckerValidatorService> _logger;
         private readonly TelemetryClient _telemetryClient;
         private readonly string _sqlServerConnectionString;
         private readonly IDataFactoryRepository _dataFactoryRepository;
+        private readonly IDatabaseSqlMembershipSourcesRepository _sqlMembershipSourcesRepository;
         private static readonly Regex _safeIdentifierRegex = new(@"^[a-zA-Z0-9_]+$", RegexOptions.Compiled);
 
         public SqlDataCheckerValidatorService(ILogger<SqlDataCheckerValidatorService> logger,
                                     TelemetryClient telemetryClient,
                                     IKeyVaultSecret<SqlDataCheckerValidatorService> sqlServerConnectionString,
-                                    IDataFactoryRepository dataFactoryRepository)
+                                    IDataFactoryRepository dataFactoryRepository,
+                                    IDatabaseSqlMembershipSourcesRepository sqlMembershipSourcesRepository)
         {
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _telemetryClient = telemetryClient ?? throw new ArgumentNullException(nameof(telemetryClient));
             _sqlServerConnectionString = sqlServerConnectionString?.Secret ?? throw new ArgumentNullException(nameof(sqlServerConnectionString));
             _dataFactoryRepository = dataFactoryRepository ?? throw new ArgumentNullException(nameof(dataFactoryRepository));
+            _sqlMembershipSourcesRepository = sqlMembershipSourcesRepository ?? throw new ArgumentNullException(nameof(sqlMembershipSourcesRepository));
         }
 
         public async Task<TableName> GetTableNamesAsync()
@@ -280,62 +284,33 @@ namespace Services
             return nullDict;
         }
 
-        public Dictionary<string, double> GetColumnThresholds()
+        public async Task<Dictionary<string, double>> GetColumnThresholdsAsync()
         {
             var thresholds = new Dictionary<string, double>();
-            var retryPolicy = GetRetryPolicy();
-            try
+            // The default source can legitimately be absent or have no attributes configured yet. Reading it
+            // by name returns null in both cases (GetDefaultSourceAttributesAsync would throw when the row is
+            // missing), and returning an empty set lets every column fall back to the default threshold
+            // instead of failing the pipeline.
+            var attributes = await _sqlMembershipSourcesRepository.GetSourceAttributesAsync(DefaultSqlMembershipSourceName);
+            if (attributes == null)
             {
-                var token = GetAccessToken();
-
-                retryPolicy.Execute(() =>
-                {
-                    using (var conn = new SqlConnection(_sqlServerConnectionString))
-                    {
-                        conn.AccessToken = token.Token;
-                        conn.Open();
-                        var selectQuery = "SELECT Attributes FROM [dbo].[SqlMembershipSources] WHERE Name = 'SqlMembership'";
-                        using (var cmd = new SqlCommand(selectQuery, conn))
-                        {
-                            var result = cmd.ExecuteScalar();
-                            if (result != null && result != DBNull.Value)
-                            {
-                                var json = result.ToString();
-                                var attributes = JsonSerializer.Deserialize<List<SqlMembershipAttribute>>(json);
-                                if (attributes != null)
-                                {
-                                    foreach (var attr in attributes)
-                                    {
-                                        if (attr.NullThreshold.HasValue && !string.IsNullOrWhiteSpace(attr.Name))
-                                        {
-                                            var clampedThreshold = Math.Max(0.0, Math.Min(1.0, attr.NullThreshold.Value));
-                                            if (clampedThreshold != attr.NullThreshold.Value)
-                                            {
-                                                _logger.ThresholdClamped(attr.Name, attr.NullThreshold.Value, clampedThreshold);
-                                            }
-                                            var columnName = attr.HasMapping ? attr.Name + "_Code" : attr.Name;
-                                            thresholds[columnName] = clampedThreshold;
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                        conn.Close();
-                    }
-                });
+                _logger.NoStoredColumnThresholdsFound();
+                return thresholds;
             }
 
-            catch (SqlException ex)
+            foreach (var attr in attributes)
             {
-                var exceptionMessage = "Sql Exception in SqlDataChecker - GetColumnThresholds()";
-                var scSQLException = new SqlDataCheckerSQLException(exceptionMessage, ex);
+                if (attr == null || !attr.NullThreshold.HasValue || string.IsNullOrWhiteSpace(attr.Name))
+                    continue;
 
-                _telemetryClient.TrackException(scSQLException, new Dictionary<string, string>()
-                    {
-                        {"Exception", ex.Message }
-                    });
+                var clampedThreshold = Math.Max(0.0, Math.Min(1.0, attr.NullThreshold.Value));
+                if (clampedThreshold != attr.NullThreshold.Value)
+                {
+                    _logger.ThresholdClamped(attr.Name, attr.NullThreshold.Value, clampedThreshold);
+                }
 
-                throw scSQLException;
+                var columnName = attr.HasMapping ? attr.Name + "_Code" : attr.Name;
+                thresholds[columnName] = clampedThreshold;
             }
 
             return thresholds;
