@@ -23,4 +23,11 @@ export type AdvancedViewToggleProps = React.AllHTMLAttributes<HTMLDivElement> & 
    * Call to provide customized styling that will layer on top of the variant rules.
    */
   styles?: IStyleFunctionOrObject<AdvancedViewToggleStyleProps, AdvancedViewToggleStyles>;
+
+  /**
+   * Forces the toggle into read-only mode, where switching views only changes what is
+   * displayed and never converts/rewrites source parts. Defaults to true for users who
+   * do not have the Job Tenant Writer role.
+   */
+  readOnly?: boolean;
 };

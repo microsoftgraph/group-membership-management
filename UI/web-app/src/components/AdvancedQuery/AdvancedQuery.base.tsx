@@ -129,6 +129,10 @@ export const AdvancedQueryBase: React.FunctionComponent<IAdvancedQueryProps> = (
   };
 
   const onValidateQuery = async () => {
+    // Read-only views never edit the query and the validation endpoint is writer-only,
+    // so skip validation entirely to avoid 403s for readers.
+    if (!isEditable || !isJobWriter) return;
+
     try {
       const parsedQuery = JSON.parse(localQuery || '[]');
       dispatch(applyAdvancedViewQuery(localQuery || '[]'));
@@ -159,7 +163,7 @@ export const AdvancedQueryBase: React.FunctionComponent<IAdvancedQueryProps> = (
         value={localQuery}
         onChange={handleQueryChange}
         onBlur={handleBlur}
-        disabled={!isJobWriter || !isEditable}
+        readOnly={!isJobWriter || !isEditable}
       />
       {validationMessage && (
         <div

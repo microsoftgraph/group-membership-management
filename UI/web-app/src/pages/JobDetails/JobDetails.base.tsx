@@ -74,10 +74,11 @@ import { selectIsJobOwnerDeleter, selectIsJobOwnerEnabler, selectIsJobWriter, se
 import { PatchJobResponse, SyncJobChange, SyncStatus } from '../../models';
 import { OnboardingSteps } from '../../models/OnboardingSteps';
 import { Loader } from '../../components/Loader';
-import { clearSourceParts, manageMembershipBusinessJustification, setIsEditingExistingJob } from '../../store/manageMembership.slice';
+import { clearSourceParts, manageMembershipBusinessJustification, setIsAdvancedViewReadOnly, setIsEditingExistingJob } from '../../store/manageMembership.slice';
 import { SyncJobChangeReason } from '../../models/SyncJobChangeReason';
 import { PatchJobRequest } from '../../models/PatchJobRequest';
 import { MembershipConfiguration } from '../../components/MembershipConfiguration';
+import { AdvancedViewToggle } from '../../components/AdvancedViewToggle';
 import { JobHistoryPanel } from '../../components/JobHistoryPanel/JobHistoryPanel';
 import { EndpointsList } from '../../components/EndpointsList';
 import { getProfilePhotoUsingId } from '../../store/profile.api';
@@ -174,6 +175,9 @@ export const JobDetailsBase: React.FunctionComponent<IJobDetailsProps> = (
 
   const openMembershipConfiguration = (): void => {
     dispatch(setIsEditingExistingJob(true));
+    // Always start the edit flow in the regular view; the read-only advanced view here
+    // is display-only and its query has not been validated for editing.
+    dispatch(setIsAdvancedViewReadOnly(false));
     navigate(`/ManageMembership/${jobId ?? job.syncJobId}`, { state: { currentStep: OnboardingSteps.MembershipConfiguration, jobId: job?.syncJobId } });
   };
 
@@ -391,6 +395,7 @@ export const JobDetailsBase: React.FunctionComponent<IJobDetailsProps> = (
               />
               <ContentContainer
                 title={strings.JobDetails.labels.sourceParts}
+                headerAction={<AdvancedViewToggle readOnly />}
                 actionButtons={
                   canEditJob
                   ? [{

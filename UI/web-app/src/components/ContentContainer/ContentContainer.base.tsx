@@ -18,7 +18,7 @@ export const getClassNames = classNamesFunction<IContentContainerStyleProps, ICo
 export const ContentContainerBase: React.FunctionComponent<IContentContainerProps> = (
   props: IContentContainerProps
 ) => {
-  const { title, banner, actionButtons, className, styles, children, hideSeparator } = props;
+  const { title, banner, actionButtons, className, styles, children, hideSeparator, headerAction } = props;
   const classNames: IProcessedStyleSet<IContentContainerStyles> = getClassNames(styles, {
     className,
     theme: useTheme(),
@@ -52,6 +52,7 @@ export const ContentContainerBase: React.FunctionComponent<IContentContainerProp
           </div>
           );
         })}
+        {headerAction}
       </div>
       {hideSeparator === true ? <></> : <Separator />}
       {children}

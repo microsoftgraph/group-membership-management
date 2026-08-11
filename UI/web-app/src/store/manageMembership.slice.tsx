@@ -215,6 +215,17 @@ const manageMembershipSlice = createSlice({
             }
             state.isAdvancedView = action.payload;
         },
+        // Read-only variant used by tenant readers (and read-only surfaces such as Job
+        // Details). It only changes what is displayed: source parts, the composite query
+        // and the pending job payload are never rewritten.
+        setIsAdvancedViewReadOnly: (state, action: PayloadAction<boolean>) => {
+            if (action.payload) {
+                state.advancedViewQuery = state.sourceParts.length === 0
+                    ? ''
+                    : JSON.stringify(buildCompositeQuery(state.sourceParts), null, 2);
+            }
+            state.isAdvancedView = action.payload;
+        },
         setAdvancedViewQueryRaw: (state, action: PayloadAction<string>) => {
             state.advancedViewQuery = action.payload ?? '';
         },
@@ -486,6 +497,7 @@ export const {
     setShowDecreaseDropdown,
     resetManageMembership,
     setIsAdvancedView,
+    setIsAdvancedViewReadOnly,
     setCompositeQuery,
     setSourceParts,
     addSourcePart,

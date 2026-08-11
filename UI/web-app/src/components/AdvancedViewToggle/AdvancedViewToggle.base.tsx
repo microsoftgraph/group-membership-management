@@ -22,8 +22,9 @@ import {
   manageMembershipIsToggleEnabled,
   applyAdvancedViewQuery,
   setIsAdvancedView,
+  setIsAdvancedViewReadOnly,
 } from '../../store/manageMembership.slice';
-import { selectIsJobTenantWriter } from '../../store/roles.slice';
+import { selectIsJobTenantReader, selectIsJobTenantWriter } from '../../store/roles.slice';
 import { selectOrgLeaderDataReturned } from '../../store/orgLeaderDetails.slice';
 import { useStrings } from '../../store/hooks';
 import { ISourcePart } from '../../models/ISourcePart';
@@ -34,7 +35,7 @@ const getClassNames = classNamesFunction<AdvancedViewToggleStyleProps, AdvancedV
 export const AdvancedViewToggleBase: React.FunctionComponent<AdvancedViewToggleProps> = (
   props: AdvancedViewToggleProps
 ) => {
-  const { className, styles } = props;
+  const { className, readOnly, styles } = props;
   const classNames: IProcessedStyleSet<AdvancedViewToggleStyles> = getClassNames(styles, {
     className,
     theme: useTheme(),
@@ -45,14 +46,25 @@ export const AdvancedViewToggleBase: React.FunctionComponent<AdvancedViewToggleP
   const isAdvancedView = useSelector(manageMembershipIsAdvancedView);
   const isToggleEnabled = useSelector(manageMembershipIsToggleEnabled);
   const isJobTenantWriter = useSelector(selectIsJobTenantWriter);
+  const isJobTenantReader = useSelector(selectIsJobTenantReader);
   const orgLeaderDataReturned = useSelector(selectOrgLeaderDataReturned);
   const sourceParts = useSelector(getSourcePartsFromState);
   const advancedViewQuery = useSelector(manageMembershipAdvancedViewQuery) ?? '';
 
-  if (!isJobTenantWriter) return null;
+  // Tenant readers get a read-only advanced view: they can inspect the JSON query
+  // but the toggle must never rewrite source parts or any other membership state.
+  const isReadOnly = readOnly ?? !isJobTenantWriter;
+
+  if (!isJobTenantWriter && !isJobTenantReader) return null;
 
   const handleToggleChange = () => {
     const newIsAdvancedView = !isAdvancedView;
+
+    if (isReadOnly) {
+      // Read-only: only project the current source parts into JSON for display.
+      dispatch(setIsAdvancedViewReadOnly(newIsAdvancedView));
+      return;
+    }
 
     if (newIsAdvancedView) {
       // Switching TO advanced view - convert source parts to JSON
@@ -119,7 +131,7 @@ export const AdvancedViewToggleBase: React.FunctionComponent<AdvancedViewToggleP
         offText={strings.ManageMembership.labels.advancedView}
         onChange={handleToggleChange}
         checked={isAdvancedView}
-        disabled={!isToggleEnabled || orgLeaderDataReturned === false}
+        disabled={isReadOnly ? false : (!isToggleEnabled || orgLeaderDataReturned === false)}
       />
     </div>
   );

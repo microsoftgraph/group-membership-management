@@ -41,6 +41,10 @@ import {
     hideSeparator?: boolean;
     removeButton?: boolean;
     editButton?: boolean;
+    /**
+     * Optional custom content rendered in the card header, after the action buttons.
+     */
+    headerAction?: React.ReactNode;
   }
 
 
