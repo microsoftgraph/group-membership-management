@@ -226,6 +226,10 @@ export const JobDetailsBase: React.FunctionComponent<IJobDetailsProps> = (
 
   useEffect(() => {
     dispatch(setPagingBarVisible(false));
+    // isAdvancedView is shared manageMembership state. Reset it whenever this page loads
+    // (including navigating between jobs, which re-runs this effect without unmounting)
+    // and on the way out, so the read-only advanced view never leaks across jobs or pages.
+    dispatch(setIsAdvancedViewReadOnly(false));
     if (jobId) {
       if (jobIdSet === "" || (jobIdSet !== "" && jobIdSet !== jobId)) {
         dispatch(clearSourceParts());
@@ -249,6 +253,10 @@ export const JobDetailsBase: React.FunctionComponent<IJobDetailsProps> = (
         dispatch(getChannelDetails({ groupId, channelId }));
       }
     }
+
+    return () => {
+      dispatch(setIsAdvancedViewReadOnly(false));
+    };
   }, [dispatch, jobId, groupId, channelId]);
 
   // Redirect to NotFound if job fetch fails (job doesn't exist)
