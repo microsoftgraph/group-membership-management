@@ -3,19 +3,8 @@
 #
 # Entries here should be TIME-BOXED and DOCUMENTED. The `ignoreUntil` date makes
 # each suppression auto-expire so the finding re-surfaces and forces a revisit.
-
-[[IgnoredVulns]]
-id = "GHSA-qwww-vcr4-c8h2"          # React Router RSC-mode CSRF bypass (High, CVSS 7.1, CWE-352), published 2026-07-24
-ignoreUntil = 2026-08-24            # ~30 days; revisit once react-router 8.x is available on the internal feed
-reason = "Not applicable to GMM and no installable fix. The advisory explicitly states it 'only affects your application if you are using the unstable RSC APIs'; the GMM web-app is a declarative-mode Vite SPA (BrowserRouter/Routes/Route) with zero usage of the unstable RSC/`unstable_` APIs (verified by source grep). The fix is react-router 8.3.0, a major-version bump published the same day (2026-07-24) that is not on the internal feed (tops out at react-router 8.2.0), and react-router-dom 8.x is not published at all (latest is 7.18.1), so it cannot be installed. ACTION: once react-router-dom 8.x publishes to the feed, evaluate the v7->v8 major upgrade and delete this entry."
-
-[[IgnoredVulns]]
-id = "GHSA-rgw5-rvv9-x895"          # brace-expansion DoS via unbounded intermediate arrays, bypassing the CVE-2026-14257 mitigation (High, CVSS 7.5), published 2026-08-03
-ignoreUntil = 2026-09-03            # ~30 days; revisit as soon as brace-expansion 5.0.9 lands on the internal feed
-reason = "No installable fix on the internal feed yet. The advisory (published 2026-08-03) fixes the 5.x line only in 5.0.9; the internal feed tops out at 5.0.8 (verified against the CFS npm upstream on 2026-08-04), because 5.0.9 is still inside the 7-day NPM Minimum Release hold and must not be bypassed. This patch already raises the override floor from >=5.0.7 to >=5.0.8, which clears the previous advisory GHSA-mh99-v99m-4gvg. brace-expansion is a transitive dev/build-time dependency (pulled in via minimatch/glob used by the Vite/test toolchain), not a runtime input surface in the shipped SPA, so the DoS exposure to GMM is low. ACTION: once brace-expansion 5.0.9 is available on the internal feed (expected on or after 2026-08-10), raise the override to `brace-expansion@5: >=5.0.9`, regenerate the lockfile, and delete this entry."
-
-[[IgnoredVulns]]
-id = "GHSA-7p8r-x3mc-p8w7"          # fast-uri host confusion via backslash authority introducer (High, CVSS 7.5), published 2026-08-03
-ignoreUntil = 2026-09-03            # ~30 days; revisit as soon as fast-uri 3.1.5 lands on the internal feed
-reason = "No installable fix on the internal feed yet. The advisory (published 2026-08-03) fixes the 3.x line only in 3.1.5; the internal feed tops out at 3.1.4 for 3.x (verified against the CFS npm upstream on 2026-08-04), because 3.1.5 is still inside the 7-day NPM Minimum Release hold and must not be bypassed. The 4.x fix (4.1.2) is also unavailable (feed tops out at 4.1.1) and is unusable regardless: the override is capped <4 to stay within ajv's ^3.0.1 range, and ajv is the only consumer. This patch already raises the override floor from >=3.1.3 to >=3.1.4, which clears the previous advisory GHSA-v2hh-gcrm-f6hx. fast-uri is only pulled in transitively by ajv for JSON-schema URI format validation in the frontend build and is not used as a server-side SSRF/host-policy gate, so residual risk to GMM is low. ACTION: once fast-uri 3.1.5 is available on the internal feed (expected on or after 2026-08-10), raise the override to `fast-uri: >=3.1.5 <4`, regenerate the lockfile, and delete this entry."
-
+#
+# There are currently no active suppressions: the three previously suppressed
+# advisories (GHSA-qwww-vcr4-c8h2 / react-router, GHSA-rgw5-rvv9-x895 /
+# brace-expansion, GHSA-7p8r-x3mc-p8w7 / fast-uri) now have installable fixes on
+# the internal feed and are resolved by the pnpm overrides in package.json.
