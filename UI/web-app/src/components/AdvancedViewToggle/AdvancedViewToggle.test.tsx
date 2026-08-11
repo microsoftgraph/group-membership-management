@@ -38,9 +38,17 @@ const buildState = (
 });
 
 describe('AdvancedViewToggle', () => {
-  it('does not render for users without a job tenant role', () => {
+  it.each([
+    ['no roles', {}],
+    ['job owner reader', { isJobOwnerReader: true }],
+    ['job owner writer', { isJobOwnerWriter: true }],
+    ['job owner enabler', { isJobOwnerEnabler: true }],
+    ['job owner deleter', { isJobOwnerDeleter: true }],
+    ['submission reviewer', { isSubmissionReviewer: true }],
+    ['general settings administrator', { isGeneralSettingsAdministrator: true }],
+  ])('does not render for %s', (_label, roles) => {
     renderWithProviders(<AdvancedViewToggle />, {
-      preloadedState: buildState({ isJobOwnerWriter: true }),
+      preloadedState: buildState(roles),
     });
 
     expect(screen.queryByRole('switch')).not.toBeInTheDocument();
@@ -141,5 +149,26 @@ describe('AdvancedViewToggle', () => {
     const state = store.getState().manageMembership;
     expect(state.isAdvancedView).toBe(false);
     expect(state.sourceParts).toEqual([part]);
+  });
+
+  it('ignores an explicit readOnly=false override for users without the writer role', () => {
+    const part = createSourcePart();
+    const { store } = renderWithProviders(<AdvancedViewToggle readOnly={false} />, {
+      preloadedState: buildState(
+        { isJobTenantReader: true },
+        {
+          sourceParts: [part],
+          isAdvancedView: true,
+          isAdvancedQueryValid: true,
+          advancedViewQuery: JSON.stringify([
+            { type: SourcePartType.GroupMembership, source: 'abc', exclusionary: false },
+          ]),
+        }
+      ),
+    });
+
+    fireEvent.click(screen.getByRole('switch'));
+
+    expect(store.getState().manageMembership.sourceParts).toEqual([part]);
   });
 });

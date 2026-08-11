@@ -32,7 +32,7 @@ import { useStrings, useQueryValidation } from '../../store/hooks';
 import { HRSourcePartSource } from '../../models/HRSourcePart';
 import { ISourcePart } from '../../models/ISourcePart';
 import { SourcePartType } from '../../models/SourcePartType';
-import { selectIsSubmissionReviewer } from '../../store/roles.slice';
+import { selectIsJobTenantReader, selectIsJobTenantWriter, selectIsSubmissionReviewer } from '../../store/roles.slice';
 import { UserSpotCheck } from '../UserSpotCheck';
 import { selectGeneratedTitlesYet, selectSelectedJobDetails, selectSelectedJobWithNoTitles, setGeneratedTitlesYet, setTitles} from '../../store/jobs.slice';
 import { SyncJobQuery } from '../../models/SyncJobQuery';
@@ -58,6 +58,13 @@ export const MembershipConfigurationBase: React.FunctionComponent<MembershipConf
   const { validateQuery } = useQueryValidation();
 
   const isAdvancedView = useSelector(manageMembershipIsAdvancedView);
+  const isJobTenantWriter = useSelector(selectIsJobTenantWriter);
+  const isJobTenantReader = useSelector(selectIsJobTenantReader);
+  // The advanced view is only reachable through the toggle, which is restricted to job
+  // tenant roles. Mirror that restriction here so stale state can never expose the raw
+  // JSON view (or strand a user in it) for anyone else.
+  const canUseAdvancedView = isJobTenantWriter || isJobTenantReader;
+  const showAdvancedView = isAdvancedView && canUseAdvancedView;
   const jobDetails = useSelector(selectSelectedJobDetails);
   const sourceParts = useSelector(getSourcePartsFromState);
 
@@ -218,7 +225,7 @@ export const MembershipConfigurationBase: React.FunctionComponent<MembershipConf
     // non-advanced view, and when we have valid source parts. Read-only views
     // (e.g. the source parts panel on JobDetails) never consume the result, and
     // validation calls a writer-only WebApi endpoint that would 403 for readers.
-    if (isEditable && !isAdvancedView && sourceParts.length > 0) {
+    if (isEditable && !showAdvancedView && sourceParts.length > 0) {
       // Wrap in try-catch to prevent crashes during validation
       try {
         validateQuery(compositeQuery);
@@ -227,15 +234,15 @@ export const MembershipConfigurationBase: React.FunctionComponent<MembershipConf
         dispatch(setIsAdvancedQueryValid(false));
       }
     }
-  }, [dispatch, sourceParts, isAdvancedView, isEditable, validateQuery]);
+  }, [dispatch, sourceParts, showAdvancedView, isEditable, validateQuery]);
 
   // Initialize validation state when component mounts or when switching views
   useEffect(() => {
-    if (!isAdvancedView && sourceParts.length === 0) {
+    if (!showAdvancedView && sourceParts.length === 0) {
       // Explicitly set validation to false when there are no source parts
       dispatch(setIsAdvancedQueryValid(false));
     }
-  }, [dispatch, isAdvancedView, sourceParts.length]);
+  }, [dispatch, showAdvancedView, sourceParts.length]);
 
   useEffect(() => {
     // Always re-initialize from DB when NOT editing
@@ -318,7 +325,7 @@ export const MembershipConfigurationBase: React.FunctionComponent<MembershipConf
 
   return (
     <div>
-      {!isAdvancedView ? (
+      {!showAdvancedView ? (
         isEditable ? (<>
         <div style={{ position: 'relative' }}>
           {/* Loading overlay when Copilot is applying filters */}

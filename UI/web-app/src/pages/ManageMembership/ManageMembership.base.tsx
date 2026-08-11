@@ -78,7 +78,7 @@ import { OnboardingSteps } from '../../models/OnboardingSteps';
 import { selectSelectedJobDetails, selectSelectedJobLoading, selectSelectedJobWithNoTitles } from '../../store/jobs.slice';
 import { fetchJobDetails, patchJobDetails } from '../../store/jobDetails.api';
 import { Loader } from '../../components/Loader';
-import { selectIsJobTenantWriter, selectIsJobWriter } from '../../store/roles.slice';
+import { selectIsJobTenantReader, selectIsJobTenantWriter, selectIsJobWriter } from '../../store/roles.slice';
 import { PostGroupResponse, SyncStatus } from '../../models';
 import { SyncJobQuery } from '../../models/SyncJobQuery';
 import { PatchJobRequest } from '../../models/PatchJobRequest';
@@ -224,6 +224,10 @@ export const ManageMembershipBase: React.FunctionComponent<IManageMembershipProp
   }, [dispatch, isEditingExistingJob, reactiveJobDetails?.targetGroupId, reactiveJobDetails?.targetDestinationType]);
   const sourcePartsQuery = useSelector(manageMembershipCompositeQuery);
   const isTenantJobWriter: boolean | undefined = useSelector(selectIsJobTenantWriter);
+  const isTenantJobReader: boolean | undefined = useSelector(selectIsJobTenantReader);
+  // The advanced view is only available to job tenant roles, so anyone else is always
+  // evaluated against the regular (source parts) view regardless of stale toggle state.
+  const isAdvancedViewActive = isAdvancedView && (isTenantJobWriter === true || isTenantJobReader === true);
   const isBusinessJustificationRequired = useSelector(selectIsBusinessJustificationRequired);
   const businessJustification: string = useSelector(manageMembershipBusinessJustification) ?? '';
   const isBusinessJustificationProvided = businessJustification !== '';
@@ -502,7 +506,7 @@ export const ManageMembershipBase: React.FunctionComponent<IManageMembershipProp
   // In advanced view, we require the advanced query itself to be valid (ignore sourceParts validity).
   // In regular view, rely solely on the composed source parts validation.
   const isMembershipConfigurationConditionsMet = (
-    isAdvancedView ? isAdvancedQueryValid : allSourcePartsValid
+    isAdvancedViewActive ? isAdvancedQueryValid : allSourcePartsValid
   ) && !isMissingAndOrOperator;
   let isNextDisabled = false;
 

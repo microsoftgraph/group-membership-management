@@ -51,9 +51,10 @@ export const AdvancedViewToggleBase: React.FunctionComponent<AdvancedViewToggleP
   const sourceParts = useSelector(getSourcePartsFromState);
   const advancedViewQuery = useSelector(manageMembershipAdvancedViewQuery) ?? '';
 
-  // Tenant readers get a read-only advanced view: they can inspect the JSON query
-  // but the toggle must never rewrite source parts or any other membership state.
-  const isReadOnly = readOnly ?? !isJobTenantWriter;
+  // Tenant readers always get a read-only advanced view: they can inspect the JSON query
+  // but the toggle must never rewrite source parts or any other membership state. Callers
+  // can force read-only for writers too, but can never opt a non-writer out of it.
+  const isReadOnly = !isJobTenantWriter || readOnly === true;
 
   if (!isJobTenantWriter && !isJobTenantReader) return null;
 

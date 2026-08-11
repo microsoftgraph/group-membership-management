@@ -26,8 +26,8 @@ export type AdvancedViewToggleProps = React.AllHTMLAttributes<HTMLDivElement> & 
 
   /**
    * Forces the toggle into read-only mode, where switching views only changes what is
-   * displayed and never converts/rewrites source parts. Defaults to true for users who
-   * do not have the Job Tenant Writer role.
+   * displayed and never converts/rewrites source parts. Read-only is always enforced for
+   * users without the Job Tenant Writer role, regardless of this value.
    */
   readOnly?: boolean;
 };
