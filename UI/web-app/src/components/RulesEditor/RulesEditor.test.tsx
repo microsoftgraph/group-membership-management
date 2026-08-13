@@ -3,6 +3,7 @@
 
 import React from 'react';
 import { fireEvent, screen } from '@testing-library/react';
+import { MemoryRouter } from 'react-router-dom';
 import { RulesEditor } from './RulesEditor';
 import { renderWithProviders } from '../../testing/renderWithProviders';
 import manageMembershipReducer from '../../store/manageMembership.slice';
@@ -35,9 +36,19 @@ const buildState = (parts: ISourcePart[], isWriter = true): Partial<RootState> =
   return { manageMembership, roles } as unknown as Partial<RootState>;
 };
 
+// RulesEditor renders CopilotTriggerButton, which reads the current route to
+// decide whether the Copilot entry point applies, so it needs router context.
+const renderEditor = (options?: Parameters<typeof renderWithProviders>[1]) =>
+  renderWithProviders(
+    <MemoryRouter>
+      <RulesEditor />
+    </MemoryRouter>,
+    options
+  );
+
 describe('RulesEditor', () => {
   it('renders the empty state with a prominent Add when there are no rules', () => {
-    renderWithProviders(<RulesEditor />, { preloadedState: buildState([]) });
+    renderEditor({ preloadedState: buildState([]) });
 
     expect(screen.getByText('No rules yet')).toBeInTheDocument();
     // No carousel is rendered in the empty state.
@@ -47,7 +58,7 @@ describe('RulesEditor', () => {
   });
 
   it('adds a rule from the empty state', () => {
-    const { store } = renderWithProviders(<RulesEditor />, { preloadedState: buildState([]) });
+    const { store } = renderEditor({ preloadedState: buildState([]) });
 
     fireEvent.click(screen.getAllByRole('button', { name: /^Add$/ })[0]);
 
@@ -55,7 +66,7 @@ describe('RulesEditor', () => {
   });
 
   it('selects the first rule by default', () => {
-    renderWithProviders(<RulesEditor />, {
+    renderEditor({
       preloadedState: buildState([makePart('a', 'Rule A'), makePart('b', 'Rule B')]),
     });
 
@@ -64,7 +75,7 @@ describe('RulesEditor', () => {
   });
 
   it('duplicates a rule immediately after its source', () => {
-    const { store } = renderWithProviders(<RulesEditor />, {
+    const { store } = renderEditor({
       preloadedState: buildState([makePart('a', 'Rule A'), makePart('b', 'Rule B')]),
     });
 
@@ -80,7 +91,7 @@ describe('RulesEditor', () => {
   });
 
   it('deletes a rule from the store', () => {
-    const { store } = renderWithProviders(<RulesEditor />, {
+    const { store } = renderEditor({
       preloadedState: buildState([makePart('a', 'Rule A'), makePart('b', 'Rule B')]),
     });
 
@@ -91,7 +102,7 @@ describe('RulesEditor', () => {
   });
 
   it('disables the Add action when the user is not a job writer', () => {
-    renderWithProviders(<RulesEditor />, { preloadedState: buildState([], false) });
+    renderEditor({ preloadedState: buildState([], false) });
 
     screen.getAllByRole('button', { name: /^Add$/ }).forEach((button) => {
       expect(button).toBeDisabled();
