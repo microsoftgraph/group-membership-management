@@ -1020,6 +1020,10 @@ namespace Services.Tests
                 }
             };
 
+            // Sorting is done on the destination name cached in SQL, so these must be populated.
+            jobs[0].DestinationName = new DestinationName { Id = jobs[0].Id, Name = "ZZZ Last Group" };
+            jobs[1].DestinationName = new DestinationName { Id = jobs[1].Id, Name = "AAA First Group" };
+
             _databaseSyncJobsRepository.Setup(x => x.GetSyncJobs(It.IsAny<bool>()))
                                        .Returns(jobs.AsQueryable());
 
@@ -1095,6 +1099,10 @@ namespace Services.Tests
                 }
             };
 
+            // Sorting is done on the destination name cached in SQL, so these must be populated.
+            jobs[0].DestinationName = new DestinationName { Id = jobs[0].Id, Name = "AAA First Group" };
+            jobs[1].DestinationName = new DestinationName { Id = jobs[1].Id, Name = "ZZZ Last Group" };
+
             _databaseSyncJobsRepository.Setup(x => x.GetSyncJobs(It.IsAny<bool>()))
                                        .Returns(jobs.AsQueryable());
 
@@ -1136,6 +1144,205 @@ namespace Services.Tests
             Assert.AreEqual(2, response.Model.Count);
             Assert.AreEqual("ZZZ Last Group", response.Model[0].TargetGroupName, "First job should be sorted reverse alphabetically first");
             Assert.AreEqual("AAA First Group", response.Model[1].TargetGroupName, "Second job should be sorted reverse alphabetically last");
+        }
+
+        private static ODataQueryOptions<SyncJob> CreatePagedQueryOptions(int top, int skip)
+        {
+            var builder = new ODataConventionModelBuilder();
+            builder.EntitySet<SyncJob>("SyncJob");
+            var edmModel = builder.GetEdmModel();
+            var odataContext = new ODataQueryContext(edmModel, typeof(SyncJob), new ODataPath());
+
+            var context = new DefaultHttpContext();
+            context.Request.QueryString = new QueryString($"?$top={top}&$skip={skip}");
+
+            return new ODataQueryOptions<SyncJob>(odataContext, context.Request);
+        }
+
+        private List<SyncJob> CreateJobsWithDestinationNames(int count)
+        {
+            return Enumerable.Range(0, count).Select(index =>
+            {
+                var jobId = Guid.NewGuid();
+                return new SyncJob
+                {
+                    Id = jobId,
+                    Status = SyncStatus.Idle.ToString(),
+                    Period = 6,
+                    LastRunTime = DateTime.UtcNow.AddHours(-5),
+                    LastSuccessfulRunTime = DateTime.UtcNow.AddHours(-6),
+                    StartDate = DateTime.UtcNow.AddDays(-2),
+                    ScheduledDate = DateTime.UtcNow.AddHours(-1),
+                    MembershipType = MembershipTypes.GroupMembership.ToString(),
+                    StatusDetails = new Status { Id = Guid.NewGuid(), Name = SyncStatus.Idle.ToString(), SortPriority = 1000 },
+                    Group = new Group { SyncJobId = jobId, GroupId = Guid.NewGuid() },
+                    DestinationName = new DestinationName { Id = jobId, Name = $"Group {index:D2}" }
+                };
+            }).ToList();
+        }
+
+        /// <summary>
+        /// Regression test for the RU exhaustion incident: sorting by target group name used to read
+        /// every destination group in the catalog from Graph before paging. Only the visible page
+        /// should ever be resolved against Graph.
+        /// </summary>
+        [TestMethod]
+        public async Task GetJobs_CustomSort_TargetGroupName_OnlyResolvesVisiblePageFromGraph()
+        {
+            var jobs = CreateJobsWithDestinationNames(50);
+
+            _databaseSyncJobsRepository.Setup(x => x.GetSyncJobs(It.IsAny<bool>()))
+                                       .Returns(() => jobs.AsQueryable());
+
+            var requestedGroupIds = new List<List<Guid>>();
+            _graphGroupRepository.Setup(x => x.GetGroupsAsync(It.IsAny<List<Guid>>()))
+                                 .Callback<List<Guid>>(ids => requestedGroupIds.Add(ids))
+                                 .ReturnsAsync((List<Guid> ids) => ids.Select(id => new AzureADGroup
+                                 {
+                                     ObjectId = id,
+                                     Name = jobs.Single(job => job.Group.GroupId == id).DestinationName.Name
+                                 }).ToList());
+
+            _syncJobChangeRepository.Setup(x => x.GetLastSyncJobRecordBySyncJobIdAsync(It.IsAny<Guid>()))
+                                     .ReturnsAsync((SyncJobChange?)null);
+
+            var userContext = CreateHttpContext(new List<Claim>
+            {
+                new Claim(ClaimTypes.Name, "user@domain.com"),
+                new Claim(ClaimTypes.Role, Roles.JOB_TENANT_READER),
+                new Claim("http://schemas.microsoft.com/identity/claims/objectidentifier", Guid.NewGuid().ToString())
+            });
+            _httpContextAccessor.Setup(x => x.HttpContext).Returns(userContext);
+
+            var request = new GetJobsRequest
+            {
+                QueryOptions = CreatePagedQueryOptions(top: 10, skip: 0),
+                CustomSortBy = "targetGroupName",
+                IsSortedDescending = false
+            };
+
+            var handler = new GetJobsHandler(NullLogger<GetJobsHandler>.Instance,
+                                             _databaseSyncJobsRepository.Object,
+                                             _graphGroupRepository.Object,
+                                             _httpContextAccessor.Object,
+                                             _syncJobChangeRepository.Object);
+
+            var response = await handler.ExecuteAsync(request);
+
+            Assert.AreEqual(10, response.Model.Count, "Only the requested page should be returned");
+            Assert.AreEqual(50, response.TotalItems, "Total items should reflect the full filtered result set");
+            Assert.AreEqual(5, response.TotalNumberOfPages);
+            Assert.AreEqual("Group 00", response.Model[0].TargetGroupName);
+            Assert.AreEqual("Group 09", response.Model[9].TargetGroupName);
+
+            Assert.AreEqual(1, requestedGroupIds.Count, "Graph should be called once");
+            Assert.AreEqual(10, requestedGroupIds[0].Count, "Graph should only be asked for the visible page, not the whole catalog");
+        }
+
+        [TestMethod]
+        public async Task GetJobs_CustomSort_TargetGroupName_SecondPage_OnlyResolvesVisiblePageFromGraph()
+        {
+            var jobs = CreateJobsWithDestinationNames(50);
+
+            _databaseSyncJobsRepository.Setup(x => x.GetSyncJobs(It.IsAny<bool>()))
+                                       .Returns(() => jobs.AsQueryable());
+
+            var requestedGroupIds = new List<List<Guid>>();
+            _graphGroupRepository.Setup(x => x.GetGroupsAsync(It.IsAny<List<Guid>>()))
+                                 .Callback<List<Guid>>(ids => requestedGroupIds.Add(ids))
+                                 .ReturnsAsync((List<Guid> ids) => ids.Select(id => new AzureADGroup
+                                 {
+                                     ObjectId = id,
+                                     Name = jobs.Single(job => job.Group.GroupId == id).DestinationName.Name
+                                 }).ToList());
+
+            _syncJobChangeRepository.Setup(x => x.GetLastSyncJobRecordBySyncJobIdAsync(It.IsAny<Guid>()))
+                                     .ReturnsAsync((SyncJobChange?)null);
+
+            var userContext = CreateHttpContext(new List<Claim>
+            {
+                new Claim(ClaimTypes.Name, "user@domain.com"),
+                new Claim(ClaimTypes.Role, Roles.JOB_TENANT_READER),
+                new Claim("http://schemas.microsoft.com/identity/claims/objectidentifier", Guid.NewGuid().ToString())
+            });
+            _httpContextAccessor.Setup(x => x.HttpContext).Returns(userContext);
+
+            var request = new GetJobsRequest
+            {
+                QueryOptions = CreatePagedQueryOptions(top: 10, skip: 20),
+                CustomSortBy = "targetGroupName",
+                IsSortedDescending = false
+            };
+
+            var handler = new GetJobsHandler(NullLogger<GetJobsHandler>.Instance,
+                                             _databaseSyncJobsRepository.Object,
+                                             _graphGroupRepository.Object,
+                                             _httpContextAccessor.Object,
+                                             _syncJobChangeRepository.Object);
+
+            var response = await handler.ExecuteAsync(request);
+
+            Assert.AreEqual(10, response.Model.Count);
+            Assert.AreEqual(3, response.CurrentPage);
+            Assert.AreEqual("Group 20", response.Model[0].TargetGroupName, "Paging must be applied to the sorted result set");
+            Assert.AreEqual("Group 29", response.Model[9].TargetGroupName);
+            Assert.AreEqual(10, requestedGroupIds.Single().Count, "Graph should only be asked for the visible page");
+        }
+
+        [TestMethod]
+        public async Task GetJobs_CustomSort_LastModifiedTime_OnlyResolvesVisiblePageFromGraph()
+        {
+            var jobs = CreateJobsWithDestinationNames(50);
+
+            _databaseSyncJobsRepository.Setup(x => x.GetSyncJobs(It.IsAny<bool>()))
+                                       .Returns(() => jobs.AsQueryable());
+
+            var requestedGroupIds = new List<List<Guid>>();
+            _graphGroupRepository.Setup(x => x.GetGroupsAsync(It.IsAny<List<Guid>>()))
+                                 .Callback<List<Guid>>(ids => requestedGroupIds.Add(ids))
+                                 .ReturnsAsync((List<Guid> ids) => ids.Select(id => new AzureADGroup
+                                 {
+                                     ObjectId = id,
+                                     Name = jobs.Single(job => job.Group.GroupId == id).DestinationName.Name
+                                 }).ToList());
+
+            // Oldest change belongs to the last job, so ascending order reverses the list.
+            var baseTime = DateTime.UtcNow.AddDays(-1);
+            _syncJobChangeRepository.Setup(x => x.GetLastSyncJobRecordBySyncJobIdAsync(It.IsAny<Guid>()))
+                                     .ReturnsAsync((Guid syncJobId) => new SyncJobChange
+                                     {
+                                         Id = Guid.NewGuid(),
+                                         SyncJobId = syncJobId,
+                                         ChangeTime = baseTime.AddMinutes(-jobs.FindIndex(job => job.Id == syncJobId))
+                                     });
+
+            var userContext = CreateHttpContext(new List<Claim>
+            {
+                new Claim(ClaimTypes.Name, "user@domain.com"),
+                new Claim(ClaimTypes.Role, Roles.JOB_TENANT_READER),
+                new Claim("http://schemas.microsoft.com/identity/claims/objectidentifier", Guid.NewGuid().ToString())
+            });
+            _httpContextAccessor.Setup(x => x.HttpContext).Returns(userContext);
+
+            var request = new GetJobsRequest
+            {
+                QueryOptions = CreatePagedQueryOptions(top: 10, skip: 0),
+                CustomSortBy = "lastModifiedTime",
+                IsSortedDescending = false
+            };
+
+            var handler = new GetJobsHandler(NullLogger<GetJobsHandler>.Instance,
+                                             _databaseSyncJobsRepository.Object,
+                                             _graphGroupRepository.Object,
+                                             _httpContextAccessor.Object,
+                                             _syncJobChangeRepository.Object);
+
+            var response = await handler.ExecuteAsync(request);
+
+            Assert.AreEqual(10, response.Model.Count);
+            Assert.AreEqual(50, response.TotalItems);
+            Assert.AreEqual("Group 49", response.Model[0].TargetGroupName, "Oldest change should sort first when ascending");
+            Assert.AreEqual(10, requestedGroupIds.Single().Count, "Graph should only be asked for the visible page");
         }
 
         [TestMethod]
@@ -1407,6 +1614,85 @@ namespace Services.Tests
             Assert.AreEqual(1, response.Model.Count);
             Assert.AreEqual(job.Channel.GroupId, response.Model[0].TargetGroupId, "Should use Channel.GroupId for Teams membership");
             Assert.AreEqual("TeamsGroup", response.Model[0].TargetGroupName);
+        }
+
+        [TestMethod]
+        public async Task GetJobs_CustomSort_TargetGroupName_TeamsChannelJobWithNullGroup_DoesNotThrow()
+        {
+            // Arrange - a Teams channel job stores its destination on Channel, so Group is null in the database.
+            // Sorting by target group name used to dereference Group.GroupId unconditionally and throw a
+            // NullReferenceException, failing the entire GetJobs request with an HTTP 500.
+            var groupJob = new SyncJob
+            {
+                Id = Guid.NewGuid(),
+                Status = SyncStatus.Idle.ToString(),
+                Period = 6,
+                LastRunTime = DateTime.UtcNow.AddHours(-5),
+                LastSuccessfulRunTime = DateTime.UtcNow.AddHours(-6),
+                StartDate = DateTime.UtcNow.AddDays(-2),
+                ScheduledDate = DateTime.UtcNow.AddHours(-1),
+                MembershipType = MembershipTypes.GroupMembership.ToString(),
+                StatusDetails = new Status { Id = Guid.NewGuid(), Name = SyncStatus.Idle.ToString(), SortPriority = 1000 },
+                Group = new Group { SyncJobId = Guid.NewGuid(), GroupId = Guid.NewGuid() }
+            };
+
+            var teamsChannelJob = new SyncJob
+            {
+                Id = Guid.NewGuid(),
+                Status = SyncStatus.Idle.ToString(),
+                Period = 6,
+                LastRunTime = DateTime.UtcNow.AddHours(-5),
+                LastSuccessfulRunTime = DateTime.UtcNow.AddHours(-6),
+                StartDate = DateTime.UtcNow.AddDays(-2),
+                ScheduledDate = DateTime.UtcNow.AddHours(-1),
+                MembershipType = MembershipTypes.TeamsChannelMembership.ToString(),
+                StatusDetails = new Status { Id = Guid.NewGuid(), Name = SyncStatus.Idle.ToString(), SortPriority = 1000 },
+                Group = null,
+                Channel = new Channel { SyncJobId = Guid.NewGuid(), GroupId = Guid.NewGuid(), ChannelId = "channel123" }
+            };
+
+            // Sorting is done on the destination name cached in SQL.
+            groupJob.DestinationName = new DestinationName { Id = groupJob.Id, Name = "ZZZ Last Group" };
+            teamsChannelJob.DestinationName = new DestinationName { Id = teamsChannelJob.Id, Name = "AAA Teams Channel Group" };
+
+            _databaseSyncJobsRepository.Setup(x => x.GetSyncJobs(It.IsAny<bool>()))
+                                       .Returns(new List<SyncJob> { groupJob, teamsChannelJob }.AsQueryable());
+
+            _graphGroupRepository.Setup(x => x.GetGroupsAsync(It.IsAny<List<Guid>>()))
+                                 .ReturnsAsync(new List<AzureADGroup>
+                                 {
+                                     new AzureADGroup { ObjectId = groupJob.Group.GroupId, Name = "ZZZ Last Group" },
+                                     new AzureADGroup { ObjectId = teamsChannelJob.Channel.GroupId, Name = "AAA Teams Channel Group" }
+                                 });
+
+            _syncJobChangeRepository.Setup(x => x.GetLastSyncJobRecordBySyncJobIdAsync(It.IsAny<Guid>()))
+                                     .ReturnsAsync((SyncJobChange?)null);
+
+            var userContext = CreateHttpContext(new List<Claim>
+            {
+                new Claim(ClaimTypes.Name, "user@domain.com"),
+                new Claim(ClaimTypes.Role, Roles.JOB_TENANT_READER),
+                new Claim("http://schemas.microsoft.com/identity/claims/objectidentifier", Guid.NewGuid().ToString())
+            });
+            _httpContextAccessor.Setup(x => x.HttpContext).Returns(userContext);
+
+            var handler = new GetJobsHandler(NullLogger<GetJobsHandler>.Instance,
+                                             _databaseSyncJobsRepository.Object,
+                                             _graphGroupRepository.Object,
+                                             _httpContextAccessor.Object,
+                                             _syncJobChangeRepository.Object);
+
+            // Act
+            var response = await handler.ExecuteAsync(new GetJobsRequest
+            {
+                CustomSortBy = "targetGroupName",
+                IsSortedDescending = false
+            });
+
+            // Assert - the full list is returned and the channel job resolves its name via Channel.GroupId
+            Assert.AreEqual(2, response.Model.Count, "A Teams channel job must not fail the whole request");
+            Assert.AreEqual("AAA Teams Channel Group", response.Model[0].TargetGroupName);
+            Assert.AreEqual("ZZZ Last Group", response.Model[1].TargetGroupName);
         }
 
         [TestMethod]
