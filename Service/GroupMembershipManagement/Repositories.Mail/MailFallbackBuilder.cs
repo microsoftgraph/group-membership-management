@@ -817,7 +817,7 @@ namespace Repositories.Mail
         }
 
         // Maps a Purging Warning statusKey to the prior fallback email's header line so the lede
-        // quotes the real subject. CustomerPaused / ThresholdExceeded return null (no system
+        // quotes the real subject. CustomerPaused return null (no system
         // email was sent) and fall back to the StatusOnly lede.
         private string ResolvePriorNotificationTitle(string statusKey)
         {
@@ -829,6 +829,7 @@ namespace Repositories.Mail
                 "MembershipDataNotFound"              => "NoData",
                 "GuestUsersCannotBeAddedToUnifiedGroup" => "GuestUsers",
                 "NestedGroupsFound"                   => "NestedGroupsFound",
+                "ThresholdExceeded"                   => "Threshold",
                 _ => null
             };
 

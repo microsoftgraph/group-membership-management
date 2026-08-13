@@ -751,10 +751,13 @@ namespace Services.Notifier.Tests
         [TestMethod]
         public async Task BuildFinalNoticeFallbackAsync_ReturnsStyledHtml_ForThresholdExceeded()
         {
-            // ThresholdExceeded now renders the styled Final Notice (Generic variant), not the adaptive card.
+            // ThresholdExceeded renders the styled Final Notice and now quotes the prior
+            // "Sync paused - membership change alert review" notification (PreviousNotification variant).
             var email = MakeFinalNoticeEmail(priorStatus: "ThresholdExceeded");
             var html = await _builder.BuildFinalNoticeFallbackAsync(email, GroupName, GroupId, JobUrl, SentDate);
             Assert.IsFalse(string.IsNullOrWhiteSpace(html));
+            StringAssert.Contains(html, "previous notification of");
+            StringAssert.Contains(html, "membership change alert review");
             StringAssert.Contains(html, "GMM has removed its affiliation");
         }
 
@@ -788,6 +791,7 @@ namespace Services.Notifier.Tests
         [DataRow("MembershipDataNotFound",            "membership rules returned no users")]
         [DataRow("GuestUsersCannotBeAddedToUnifiedGroup", "guest users not supported")]
         [DataRow("NestedGroupsFound",                 "nested group in destination not supported")]
+        [DataRow("ThresholdExceeded",                 "membership change alert review")]
         public async Task BuildFinalNoticeFallbackAsync_QuotesPriorNotificationTitle_ForKnownStatuses(
             string priorStatus, string expectedReasonFragment)
         {
