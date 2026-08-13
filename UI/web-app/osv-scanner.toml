@@ -4,7 +4,16 @@
 # Entries here should be TIME-BOXED and DOCUMENTED. The `ignoreUntil` date makes
 # each suppression auto-expire so the finding re-surfaces and forces a revisit.
 #
-# There are currently no active suppressions: the three previously suppressed
-# advisories (GHSA-qwww-vcr4-c8h2 / react-router, GHSA-rgw5-rvv9-x895 /
-# brace-expansion, GHSA-7p8r-x3mc-p8w7 / fast-uri) now have installable fixes on
-# the internal feed and are resolved by the pnpm overrides in package.json.
+# The three previously suppressed advisories (GHSA-qwww-vcr4-c8h2 / react-router,
+# GHSA-rgw5-rvv9-x895 / brace-expansion, GHSA-7p8r-x3mc-p8w7 / fast-uri) now have
+# installable fixes on the internal feed and are resolved by the pnpm overrides in
+# package.json, documented there under `x-override-notes`.
+#
+# Prefer fixing over suppressing. Only add an [[IgnoredVulns]] entry when there is
+# genuinely no installable fix, and always include an `ignoreUntil` date and an
+# ACTION describing what unblocks the real fix.
+
+[[IgnoredVulns]]
+id = "GHSA-2v37-7h3g-55p8"          # nanoid: custom generators can loop indefinitely when size is zero (High, CVSS 8.2, CVE-2026-67213), published 2026-07-29, advisory amended 2026-08-13
+ignoreUntil = 2026-09-07            # revisit as soon as nanoid 3.3.18 lands on the internal feed
+reason = "No installable fix on the internal feed yet, and the vulnerable code path is unreachable. FIX AVAILABILITY: the 2026-08-13 amendment to this advisory moved the 3.x fixed version from 3.3.17 to 3.3.18, so the 3.3.17 bump shipped on release no longer clears the scan. nanoid 3.3.18 is not resolvable from the internal feed (verified 2026-08-13: `pnpm install` with a `nanoid@3: >=3.3.18 <4` override fails with ERR_PNPM_NO_MATCHING_VERSION, and the feed's 3.3.x line tops out at 3.3.17). The advisory's other fixed version, 5.1.6, is not usable here: postcss resolves nanoid on the 3.x line, and nanoid 5.x/6.x are ESM-only (`type: module`, no `main`), which would break postcss's CommonJS `require('nanoid/non-secure')`. UNREACHABILITY: nanoid's only dependent in this lockfile is postcss@8.5.24, whose only dependent is vite (a devDependency, reached via @vitejs/plugin-react and vitest), so it is build-time tooling and is never emitted into the shipped SPA bundle. The advisory requires a CUSTOM generator invoked with size 0 - the infinite loop is in `customAlphabet`/`customRandom`, where the computed step size collapses to 0 and the `while (true)` loop can never satisfy its exit condition. postcss does not use those APIs at all: it calls the built-in generator with a hardcoded non-zero size, `require('nanoid/non-secure')` at lib/input.js:3 and `nanoid(6)` at lib/input.js:80. The GMM web-app has zero direct nanoid imports and zero `customAlphabet`/`customRandom` usage anywhere in src/ (verified by source grep on 2026-08-13). ACTION: once nanoid 3.3.18 is available on the internal feed, raise the override to `nanoid@3: >=3.3.18 <4`, regenerate the lockfile, and delete this entry."

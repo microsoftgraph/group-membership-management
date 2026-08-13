@@ -157,7 +157,7 @@
       "minimatch@3>=3.1.5": "CVE-2022-3517 - ReDoS via braceExpand",
       "minimatch@5>=5.1.9": "Security fix - ReDoS variant in 5.x branch",
       "minimatch@9>=9.0.9": "Security fix - ReDoS variant in 9.x branch",
-      "nanoid@3>=3.3.17 <4": "CVE-2026-67213 (GHSA-2v37-7h3g-55p8, CVSS 8.2, CWE-835) - infinite loop in customAlphabet/customRandom when size is 0 hangs the calling thread (DoS), fixed in 3.3.17. Pinned <4 to stay on postcss's nanoid 3.x line (postcss is the only consumer); the 4.x/5.x fix is 5.1.6.",
+      "nanoid@3>=3.3.17 <4": "CVE-2026-67213 (GHSA-2v37-7h3g-55p8, CVSS 8.2, CWE-835) - infinite loop in customAlphabet/customRandom when size is 0 hangs the calling thread (DoS). The 2026-08-13 advisory amendment moved the 3.x fixed version from 3.3.17 to 3.3.18; 3.3.18 is not yet resolvable from the internal feed, so this stays at >=3.3.17 with a time-boxed suppression in osv-scanner.toml. Pinned <4 to stay on postcss's nanoid 3.x line (postcss is the only consumer, and nanoid 4+ is ESM-only which breaks postcss's CommonJS require); the 4.x/5.x fix is 5.1.6. Raise to >=3.3.18 once the feed has it, then drop the suppression.",
       "node-forge>=1.3.2": "CVE-2022-24771/CVE-2022-24772/CVE-2022-24773 - RSA PKCS#1 v1.5 signature bypass; CVE-2025-12816 - ASN.1 validator desync",
       "nth-check>=2.0.1": "CVE-2021-3803 - Inefficient regex in CSS nth-child selector parsing",
       "path-to-regexp>=0.1.10": "CVE-2024-45296 - ReDoS via two params in one path segment",
