@@ -55,7 +55,6 @@ namespace WebApi.BackgroundServices
         {
             var requestOptions = new ChatCompletionOptions()
             {
-                MaxOutputTokenCount = 4096,
                 Temperature = 0.3f,
                 TopP = 0.8f,
                 FrequencyPenalty = 0.0f,
