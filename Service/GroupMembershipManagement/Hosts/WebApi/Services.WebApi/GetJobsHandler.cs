@@ -65,8 +65,14 @@ namespace Services
             List<SyncJob> jobs;
             var numberOfJobs = 0;
 
-            var pageSize = request.QueryOptions?.Top?.Value ?? 0;
-            var pageOffset = request.QueryOptions?.Skip?.Value ?? -1;
+            var top = request.QueryOptions?.Top?.Value;
+            var skip = request.QueryOptions?.Skip?.Value;
+
+            var pageSize = top ?? 0;
+            // A missing $skip is treated as the first page when $top is present, so that $top alone
+            // still bounds the page. Otherwise a caller passing only $top would fall through to the
+            // unpaged path and resolve every job in the catalog from Graph.
+            var pageOffset = skip ?? (top.HasValue ? 0 : -1);
             var hasPaging = pageSize > 0 && pageOffset >= 0;
 
             // Last modified times for the jobs on the page that is actually returned.
@@ -89,9 +95,14 @@ namespace Services
                     // instead of on names resolved from Graph. This lets the database do the ordering and the
                     // paging, so only the visible page is ever read from Graph. Sorting on Graph names required
                     // one group read per job in the whole catalog, which exhausted the tenant RU quota.
+                    // Id is used as a tie-breaker because DestinationName.Name is nullable and not
+                    // unique; without it SQL may order tied rows differently between requests and a
+                    // job could appear on two pages, or on none, while paging through the grid.
                     var sortedQuery = request.IsSortedDescending == true
                         ? baseQuery.OrderByDescending(job => job.DestinationName != null ? job.DestinationName.Name : null)
-                        : baseQuery.OrderBy(job => job.DestinationName != null ? job.DestinationName.Name : null);
+                                   .ThenBy(job => job.Id)
+                        : baseQuery.OrderBy(job => job.DestinationName != null ? job.DestinationName.Name : null)
+                                   .ThenBy(job => job.Id);
 
                     numberOfJobs = baseQuery.Count();
                     jobs = hasPaging
@@ -111,9 +122,11 @@ namespace Services
                         allLastModifiedTimes[job.Id] = await GetLastModifiedTimeAsync(job.Id);
                     }
 
+                    // Same tie-breaker as the name sort: many jobs can share a change time, or have
+                    // none at all, so ordering needs a deterministic secondary key to page safely.
                     var orderedJobs = request.IsSortedDescending == true
-                        ? candidateJobs.OrderByDescending(job => allLastModifiedTimes[job.Id] ?? DateTime.MinValue).ToList()
-                        : candidateJobs.OrderBy(job => allLastModifiedTimes[job.Id] ?? DateTime.MinValue).ToList();
+                        ? candidateJobs.OrderByDescending(job => allLastModifiedTimes[job.Id] ?? DateTime.MinValue).ThenBy(job => job.Id).ToList()
+                        : candidateJobs.OrderBy(job => allLastModifiedTimes[job.Id] ?? DateTime.MinValue).ThenBy(job => job.Id).ToList();
 
                     jobs = hasPaging
                             ? orderedJobs.Skip(pageOffset).Take(pageSize).ToList()

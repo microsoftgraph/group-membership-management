@@ -1148,13 +1148,18 @@ namespace Services.Tests
 
         private static ODataQueryOptions<SyncJob> CreatePagedQueryOptions(int top, int skip)
         {
+            return CreateQueryOptions($"?$top={top}&$skip={skip}");
+        }
+
+        private static ODataQueryOptions<SyncJob> CreateQueryOptions(string queryString)
+        {
             var builder = new ODataConventionModelBuilder();
             builder.EntitySet<SyncJob>("SyncJob");
             var edmModel = builder.GetEdmModel();
             var odataContext = new ODataQueryContext(edmModel, typeof(SyncJob), new ODataPath());
 
             var context = new DefaultHttpContext();
-            context.Request.QueryString = new QueryString($"?$top={top}&$skip={skip}");
+            context.Request.QueryString = new QueryString(queryString);
 
             return new ODataQueryOptions<SyncJob>(odataContext, context.Request);
         }
@@ -1237,6 +1242,128 @@ namespace Services.Tests
 
             Assert.AreEqual(1, requestedGroupIds.Count, "Graph should be called once");
             Assert.AreEqual(10, requestedGroupIds[0].Count, "Graph should only be asked for the visible page, not the whole catalog");
+        }
+
+        /// <summary>
+        /// A caller can pass $top without $skip. The page must still be bounded before the Graph
+        /// call, otherwise the whole catalog gets resolved and the RU quota is exhausted again.
+        /// </summary>
+        [TestMethod]
+        public async Task GetJobs_CustomSort_TargetGroupName_TopWithoutSkip_StillPagesBeforeGraph()
+        {
+            var jobs = CreateJobsWithDestinationNames(50);
+
+            _databaseSyncJobsRepository.Setup(x => x.GetSyncJobs(It.IsAny<bool>()))
+                                       .Returns(() => jobs.AsQueryable());
+
+            var requestedGroupIds = new List<List<Guid>>();
+            _graphGroupRepository.Setup(x => x.GetGroupsAsync(It.IsAny<List<Guid>>()))
+                                 .Callback<List<Guid>>(ids => requestedGroupIds.Add(ids))
+                                 .ReturnsAsync((List<Guid> ids) => ids.Select(id => new AzureADGroup
+                                 {
+                                     ObjectId = id,
+                                     Name = jobs.Single(job => job.Group.GroupId == id).DestinationName.Name
+                                 }).ToList());
+
+            _syncJobChangeRepository.Setup(x => x.GetLastSyncJobRecordBySyncJobIdAsync(It.IsAny<Guid>()))
+                                     .ReturnsAsync((SyncJobChange?)null);
+
+            var userContext = CreateHttpContext(new List<Claim>
+            {
+                new Claim(ClaimTypes.Name, "user@domain.com"),
+                new Claim(ClaimTypes.Role, Roles.JOB_TENANT_READER),
+                new Claim("http://schemas.microsoft.com/identity/claims/objectidentifier", Guid.NewGuid().ToString())
+            });
+            _httpContextAccessor.Setup(x => x.HttpContext).Returns(userContext);
+
+            var request = new GetJobsRequest
+            {
+                QueryOptions = CreateQueryOptions("?$top=10"),
+                CustomSortBy = "targetGroupName",
+                IsSortedDescending = false
+            };
+
+            var handler = new GetJobsHandler(NullLogger<GetJobsHandler>.Instance,
+                                             _databaseSyncJobsRepository.Object,
+                                             _graphGroupRepository.Object,
+                                             _httpContextAccessor.Object,
+                                             _syncJobChangeRepository.Object);
+
+            var response = await handler.ExecuteAsync(request);
+
+            Assert.AreEqual(10, response.Model.Count, "$top alone must still bound the page");
+            Assert.AreEqual(1, response.CurrentPage, "A missing $skip should be treated as the first page");
+            Assert.AreEqual("Group 00", response.Model[0].TargetGroupName);
+            Assert.AreEqual(10, requestedGroupIds.Single().Count, "Graph must not be asked for the whole catalog when $skip is omitted");
+        }
+
+        /// <summary>
+        /// DestinationName is nullable and not unique, so paging needs a deterministic tie-breaker.
+        /// Without one, a job can show up on two pages or be skipped entirely.
+        /// </summary>
+        [TestMethod]
+        public async Task GetJobs_CustomSort_TargetGroupName_DuplicateAndNullNames_PagesWithoutOverlapOrGaps()
+        {
+            var jobs = CreateJobsWithDestinationNames(30);
+
+            // Tie groups are deliberately 15 wide against a page size of 10, so a group of equal
+            // sort keys straddles a page boundary. Aligned groups would page consistently even
+            // without a tie-breaker and would not exercise the fix.
+            for (var i = 0; i < 15; i++)
+            {
+                jobs[i].DestinationName = null;
+            }
+            for (var i = 15; i < 30; i++)
+            {
+                jobs[i].DestinationName.Name = "Duplicate Group";
+            }
+
+            // SQL is free to return tied rows in a different order on each query. Shuffling the source
+            // per call reproduces that, so this test fails if the deterministic tie-breaker is removed.
+            var shuffleSeed = 0;
+            _databaseSyncJobsRepository.Setup(x => x.GetSyncJobs(It.IsAny<bool>()))
+                                       .Returns(() => jobs.OrderBy(_ => (shuffleSeed++ * 7919) % 31).AsQueryable());
+
+            _graphGroupRepository.Setup(x => x.GetGroupsAsync(It.IsAny<List<Guid>>()))
+                                 .ReturnsAsync((List<Guid> ids) => ids.Select(id => new AzureADGroup
+                                 {
+                                     ObjectId = id,
+                                     Name = jobs.Single(job => job.Group.GroupId == id).DestinationName?.Name
+                                 }).ToList());
+
+            _syncJobChangeRepository.Setup(x => x.GetLastSyncJobRecordBySyncJobIdAsync(It.IsAny<Guid>()))
+                                     .ReturnsAsync((SyncJobChange?)null);
+
+            var userContext = CreateHttpContext(new List<Claim>
+            {
+                new Claim(ClaimTypes.Name, "user@domain.com"),
+                new Claim(ClaimTypes.Role, Roles.JOB_TENANT_READER),
+                new Claim("http://schemas.microsoft.com/identity/claims/objectidentifier", Guid.NewGuid().ToString())
+            });
+            _httpContextAccessor.Setup(x => x.HttpContext).Returns(userContext);
+
+            var handler = new GetJobsHandler(NullLogger<GetJobsHandler>.Instance,
+                                             _databaseSyncJobsRepository.Object,
+                                             _graphGroupRepository.Object,
+                                             _httpContextAccessor.Object,
+                                             _syncJobChangeRepository.Object);
+
+            var seenJobIds = new List<Guid>();
+            for (var skip = 0; skip < 30; skip += 10)
+            {
+                var page = await handler.ExecuteAsync(new GetJobsRequest
+                {
+                    QueryOptions = CreatePagedQueryOptions(top: 10, skip: skip),
+                    CustomSortBy = "targetGroupName",
+                    IsSortedDescending = false
+                });
+
+                Assert.AreEqual(10, page.Model.Count, $"Page at skip {skip} should be full");
+                seenJobIds.AddRange(page.Model.Select(job => job.SyncJobId));
+            }
+
+            CollectionAssert.AllItemsAreUnique(seenJobIds, "Paging must not return the same job on more than one page");
+            Assert.AreEqual(30, seenJobIds.Distinct().Count(), "Paging must not skip any job");
         }
 
         [TestMethod]
