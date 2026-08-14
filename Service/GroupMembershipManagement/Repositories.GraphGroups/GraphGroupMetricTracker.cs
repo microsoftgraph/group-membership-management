@@ -36,8 +36,8 @@ namespace Repositories.GraphGroups
                 const int deltaResourceUnitCost = 5;
                 _logger.LogInformationWithRunId(runId, $"Resource unit cost of {Enum.GetName(typeof(QueryType), queryType)} - {deltaResourceUnitCost}");
                 TrackResourceUnitsUsedByTypeEvent(deltaResourceUnitCost, queryType, runId);
-                _telemetryClient.GetMetric(TelemetryConstants.ResourceUnitsMetricName, TelemetryConstants.OperationTypeDimensionName, TelemetryConstants.QueryTypeDimensionName)
-                                .TrackValue(deltaResourceUnitCost, operationType.ToString(), queryType.ToString());
+                _telemetryClient.GetMetric(TelemetryConstants.ResourceUnitsMetricName, TelemetryConstants.OperationTypeDimensionName, TelemetryConstants.QueryTypeDimensionName, TelemetryConstants.MembershipTypeDimensionName)
+                                .TrackValue(deltaResourceUnitCost, operationType.ToString(), queryType.ToString(), MembershipTypes.GroupMembership.ToString());
                 return;
             }
 
@@ -47,7 +47,7 @@ namespace Repositories.GraphGroups
                 return;
             }
 
-            var telemetryResult = await GraphTelemetryHelper.TrackResourceUnitsAsync(headers, queryType, runId, _logger, _telemetryClient, operationType);
+            var telemetryResult = await GraphTelemetryHelper.TrackResourceUnitsAsync(headers, queryType, runId, _logger, _telemetryClient, operationType, MembershipTypes.GroupMembership.ToString());
 
             // Resource unit/throttle metrics already tracked within GraphTelemetryHelper.
         }
@@ -59,7 +59,7 @@ namespace Repositories.GraphGroups
 
         public void TrackResourceUnitsUsedByTypeEvent(int ruu, QueryType queryType, Guid? runId)
         {
-            GraphTelemetryHelper.TrackResourceUnitsUsedByTypeEvent(_telemetryClient, ruu, queryType, runId);
+            GraphTelemetryHelper.TrackResourceUnitsUsedByTypeEvent(_telemetryClient, ruu, queryType, runId, MembershipTypes.GroupMembership.ToString());
         }
 
         public Task TrackRequestAsync(IDictionary<string, IEnumerable<string>> headers, Guid groupId, QueryType queryType, Guid? runId)

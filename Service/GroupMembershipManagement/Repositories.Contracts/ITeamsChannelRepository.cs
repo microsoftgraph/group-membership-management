@@ -21,6 +21,7 @@ namespace Repositories.Contracts
         public Task<List<Channel>> SearchTeamsChannelsAsync(Guid teamObjectId, string filter);
         public Task<Dictionary<string, string>> GetTeamsChannelEmailsAsync(List<AzureADTeamsChannel> channels);
         public Task<List<AzureADUser>> GetGroupOwnersAsync(Guid groupObjectId, Guid runId, int top = 0);
+        public Task<List<AzureADUser>> GetChannelOwnersAsync(AzureADTeamsChannel teamsChannel, Guid? runId);
         public Task<Dictionary<string, string>> GetTeamsChannelNamesAsync(List<AzureADTeamsChannel> channels);
         public Task<string> GetTeamsChannelNameAsync(AzureADTeamsChannel channel);
         public Task<bool> IsServiceAccountOwnerOfChannelAsync(Guid serviceAccountObjectId, AzureADTeamsChannel channel, Guid? runId);

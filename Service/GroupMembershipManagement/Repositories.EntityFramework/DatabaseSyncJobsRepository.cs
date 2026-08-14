@@ -77,6 +77,21 @@ namespace Repositories.EntityFramework
             return syncJob;
         }
 
+        public async Task<SyncJob> GetSyncJobByTeamIdAndChannelIdAsync(Guid teamId, string channelId)
+        {
+            // Return any existing TeamsChannel SyncJob row for the exact Team and channel pair.
+            if (string.IsNullOrEmpty(channelId))
+                return null;
+
+            return await _readContext.SyncJobs
+                .Include(j => j.Channel)
+                .Where(j => j.MembershipType == "TeamsChannelMembership"
+                            && j.Channel != null
+                            && j.Channel.GroupId == teamId
+                            && j.Channel.ChannelId == channelId)
+                .FirstOrDefaultAsync();
+        }
+
         public async Task<IEnumerable<SyncJob>> GetSyncJobsAsync(bool includeFutureScheduledJobs, params SyncStatus[] statusFilters)
         {
             IQueryable<SyncJob> query = _readContext.SyncJobs

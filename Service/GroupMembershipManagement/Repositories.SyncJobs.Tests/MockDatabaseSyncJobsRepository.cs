@@ -119,6 +119,11 @@ namespace Repositories.SyncJobs.Tests
             throw new NotImplementedException();
         }
 
+        public Task<SyncJob> GetSyncJobByTeamIdAndChannelIdAsync(Guid teamId, string channelId)
+        {
+            throw new NotImplementedException();
+        }
+
         public Task InsertSyncJobAsync(SyncJob job)
         {
             throw new NotImplementedException();

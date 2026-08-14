@@ -20,6 +20,7 @@ namespace Repositories.Contracts
 		Task UpdateSyncJobStatusAsync(IEnumerable<SyncJob> jobs, SyncStatus? status);
         Task<List<SyncJob>> GetSyncJobsByDestinationAsync(string destinationType);
         Task<SyncJob> GetSyncJobByObjectIdAsync(Guid objectId);
+        Task<SyncJob> GetSyncJobByTeamIdAndChannelIdAsync(Guid teamId, string channelId);
         Task<int> GetSyncJobCountAsync(params SyncStatus[] statusFilters); 
         Task UpdateSyncJobFromNotificationAsync(SyncJob job, SyncStatus status);
         Task UpdateSyncJobsAsync(IEnumerable<SyncJob> jobs, SyncStatus? status = null);

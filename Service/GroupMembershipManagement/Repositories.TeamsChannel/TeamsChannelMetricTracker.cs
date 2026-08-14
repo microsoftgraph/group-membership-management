@@ -31,15 +31,7 @@ namespace Repositories.GraphGroups
 
         public async Task TrackMetricsAsync(IDictionary<string, IEnumerable<string>> headers, QueryType queryType, Guid? runId, GraphOperationType operationType = GraphOperationType.Read)
         {
-            if (queryType == QueryType.Delta || queryType == QueryType.DeltaLink)
-            {
-                const int deltaResourceUnitCost = 5;
-                _teamsChannelMetricTrackerLogger.LogInformationWithRunId(runId, $"Resource unit cost of {Enum.GetName(typeof(QueryType), queryType)} - {deltaResourceUnitCost}");
-                GraphTelemetryHelper.TrackResourceUnitsUsedByTypeEvent(_telemetryClient, deltaResourceUnitCost, queryType, runId);
-                _telemetryClient.GetMetric(TelemetryConstants.ResourceUnitsMetricName, TelemetryConstants.OperationTypeDimensionName, TelemetryConstants.QueryTypeDimensionName)
-                                .TrackValue(deltaResourceUnitCost, operationType.ToString(), queryType.ToString());
-                return;
-            }
+            var membershipType = MembershipTypes.TeamsChannelMembership.ToString();
 
             if (headers == null)
             {
@@ -47,7 +39,8 @@ namespace Repositories.GraphGroups
                 return;
             }
 
-            var telemetryResult = await GraphTelemetryHelper.TrackResourceUnitsAsync(headers, queryType, runId, _teamsChannelMetricTrackerLogger, _telemetryClient, operationType);
+            // Record only Graph-reported channel RUU and tag it separately from group RUU.
+            var telemetryResult = await GraphTelemetryHelper.TrackResourceUnitsAsync(headers, queryType, runId, _teamsChannelMetricTrackerLogger, _telemetryClient, operationType, membershipType);
 
             // Telemetry values already recorded via GraphTelemetryHelper.
         }

@@ -58,82 +58,16 @@ namespace Repositories.TeamsChannel
 
             try
             {
-                var nativeResponseHandler = new NativeResponseHandler();
-
-                await _graphServiceClient.Teams[groupId.ToString()].Channels[channelId].Members.GetAsync(requestConfiguration =>
+                await IterateChannelMembersAsync(teamsChannel, runId, query, throwOnFailure: true, membersPage =>
                 {
-                    if (!string.IsNullOrEmpty(query))
-                    {
-                        requestConfiguration.QueryParameters.Filter = query;
-                    }
-                    requestConfiguration.Options.Add(new ResponseHandlerOption { ResponseHandler = nativeResponseHandler });
-                });
-
-                var nativeResponse = nativeResponseHandler.Value as HttpResponseMessage;
-
-                if (nativeResponse == null)
-                {
-                    return toReturn;
-                }
-
-                var headers = nativeResponse.Headers.ToImmutableDictionary(x => x.Key, x => x.Value);
-                await _teamsChannelMetricTracker.TrackMetricsAsync(headers, QueryType.Other, runId);
-
-                if (!nativeResponse.IsSuccessStatusCode)
-                {
-                    throw new HttpRequestException($"Failed to read Teams channel members. Status code: {nativeResponse.StatusCode}");
-                }
-
-                var membersPage = await DeserializeResponseAsync(nativeResponse, ConversationMemberCollectionResponse.CreateFromDiscriminatorValue);
-
-                if (membersPage?.Value != null)
-                {
-                    _teamsChannelRepositoryLogger.LogInformation($"Read {membersPage.Value.Count} Teams users from group {groupId}, channel {channelId}.");
-                    // x! uses the "null forgiving operator" to fix the nullable/non-nullable type mismatch https://stackoverflow.com/a/54724546
-                    // it's fine here because the where clause guarantees there's no nulls.
-                    toReturn.AddRange(membersPage.Value.Select((member) => ToTeamsUser(member, excludeOwners)).Where(x => x != null).Select(x => x!));
-                }
-
-                var nextLink = membersPage?.OdataNextLink;
-
-                while (!string.IsNullOrEmpty(nextLink))
-                {
-                    var request = new RequestInformation
-                    {
-                        HttpMethod = Method.GET,
-                        UrlTemplate = nextLink
-                    };
-
-                    var pageResponseHandler = new NativeResponseHandler();
-                    request.AddRequestOptions(new List<IRequestOption> { new ResponseHandlerOption { ResponseHandler = pageResponseHandler } });
-
-                    await _graphServiceClient.RequestAdapter.SendAsync<ConversationMemberCollectionResponse>(request, ConversationMemberCollectionResponse.CreateFromDiscriminatorValue);
-
-                    var pageResponse = pageResponseHandler.Value as HttpResponseMessage;
-
-                    if (pageResponse == null)
-                    {
-                        break;
-                    }
-
-                    var pageHeaders = pageResponse.Headers.ToImmutableDictionary(x => x.Key, x => x.Value);
-                    await _teamsChannelMetricTracker.TrackMetricsAsync(pageHeaders, QueryType.Other, runId);
-
-                    if (!pageResponse.IsSuccessStatusCode)
-                    {
-                        throw new HttpRequestException($"Failed to read Teams channel members page. Status code: {pageResponse.StatusCode}");
-                    }
-
-                    membersPage = await DeserializeResponseAsync(pageResponse, ConversationMemberCollectionResponse.CreateFromDiscriminatorValue);
-
                     if (membersPage?.Value != null)
                     {
-                        toReturn.AddRange(membersPage.Value.Select((member) => ToTeamsUser(member, excludeOwners)).Where(x => x != null).Select(x => x!));
                         _teamsChannelRepositoryLogger.LogInformation($"Read {membersPage.Value.Count} Teams users from group {groupId}, channel {channelId}.");
+                        // x! uses the "null forgiving operator" to fix the nullable/non-nullable type mismatch https://stackoverflow.com/a/54724546
+                        // it's fine here because the where clause guarantees there's no nulls.
+                        toReturn.AddRange(membersPage.Value.Select((member) => ToTeamsUser(member, excludeOwners)).Where(x => x != null).Select(x => x!));
                     }
-
-                    nextLink = membersPage?.OdataNextLink;
-                }
+                });
 
                 _teamsChannelRepositoryLogger.LogInformation($"Read a total of {toReturn.Count} Teams users from group {groupId}, channel {channelId}.");
 
@@ -147,6 +81,142 @@ namespace Repositories.TeamsChannel
                 throw;
             }
             
+        }
+
+        /// <summary>
+        /// Fetches the members of a Teams channel, following pagination, and invokes <paramref name="processPage"/>
+        /// for each page of results. Shared by <see cref="ReadUsersFromChannelAsync"/> and <see cref="GetChannelOwnersAsync"/>.
+        /// When <paramref name="throwOnFailure"/> is true a non-success response throws; otherwise it stops iterating.
+        /// </summary>
+        private async Task IterateChannelMembersAsync(
+            AzureADTeamsChannel teamsChannel,
+            Guid? runId,
+            string query,
+            bool throwOnFailure,
+            Action<ConversationMemberCollectionResponse> processPage)
+        {
+            var groupId = teamsChannel.ObjectId;
+            var channelId = teamsChannel.ChannelId;
+
+            var nativeResponseHandler = new NativeResponseHandler();
+
+            await _graphServiceClient.Teams[groupId.ToString()].Channels[channelId].Members.GetAsync(requestConfiguration =>
+            {
+                if (!string.IsNullOrEmpty(query))
+                {
+                    requestConfiguration.QueryParameters.Filter = query;
+                }
+                requestConfiguration.Options.Add(new ResponseHandlerOption { ResponseHandler = nativeResponseHandler });
+            });
+
+            var nativeResponse = nativeResponseHandler.Value as HttpResponseMessage;
+
+            if (nativeResponse == null)
+            {
+                return;
+            }
+
+            var headers = nativeResponse.Headers.ToImmutableDictionary(x => x.Key, x => x.Value);
+            await _teamsChannelMetricTracker.TrackMetricsAsync(headers, QueryType.Other, runId);
+
+            if (!nativeResponse.IsSuccessStatusCode)
+            {
+                if (throwOnFailure)
+                {
+                    throw new HttpRequestException($"Failed to read Teams channel members. Status code: {nativeResponse.StatusCode}");
+                }
+
+                _teamsChannelRepositoryLogger.LogInformation($"Failed to read members of group {groupId}, channel {channelId}. Status code: {nativeResponse.StatusCode}");
+                return;
+            }
+
+            var membersPage = await DeserializeResponseAsync(nativeResponse, ConversationMemberCollectionResponse.CreateFromDiscriminatorValue);
+
+            processPage(membersPage);
+
+            var nextLink = membersPage?.OdataNextLink;
+
+            while (!string.IsNullOrEmpty(nextLink))
+            {
+                var request = new RequestInformation
+                {
+                    HttpMethod = Method.GET,
+                    UrlTemplate = nextLink
+                };
+
+                var pageResponseHandler = new NativeResponseHandler();
+                request.AddRequestOptions(new List<IRequestOption> { new ResponseHandlerOption { ResponseHandler = pageResponseHandler } });
+
+                await _graphServiceClient.RequestAdapter.SendAsync<ConversationMemberCollectionResponse>(request, ConversationMemberCollectionResponse.CreateFromDiscriminatorValue);
+
+                var pageResponse = pageResponseHandler.Value as HttpResponseMessage;
+
+                if (pageResponse == null)
+                {
+                    break;
+                }
+
+                var pageHeaders = pageResponse.Headers.ToImmutableDictionary(x => x.Key, x => x.Value);
+                await _teamsChannelMetricTracker.TrackMetricsAsync(pageHeaders, QueryType.Other, runId);
+
+                if (!pageResponse.IsSuccessStatusCode)
+                {
+                    if (throwOnFailure)
+                    {
+                        throw new HttpRequestException($"Failed to read Teams channel members page. Status code: {pageResponse.StatusCode}");
+                    }
+
+                    break;
+                }
+
+                membersPage = await DeserializeResponseAsync(pageResponse, ConversationMemberCollectionResponse.CreateFromDiscriminatorValue);
+
+                processPage(membersPage);
+
+                nextLink = membersPage?.OdataNextLink;
+            }
+        }
+
+        public async Task<List<AzureADUser>> GetChannelOwnersAsync(AzureADTeamsChannel teamsChannel, Guid? runId)
+        {
+            var groupId = teamsChannel.ObjectId;
+            var channelId = teamsChannel.ChannelId;
+
+            _teamsChannelRepositoryLogger.LogInformation($"Getting owners of group {groupId}, channel {channelId}.");
+
+            var owners = new List<AzureADUser>();
+
+            try
+            {
+                await IterateChannelMembersAsync(teamsChannel, runId, query: null, throwOnFailure: false, membersPage =>
+                {
+                    AddChannelOwners(membersPage, owners);
+                });
+
+                _teamsChannelRepositoryLogger.LogInformation($"Retrieved {owners.Count} owners of group {groupId}, channel {channelId}.");
+
+                return owners;
+            }
+            catch (ODataError e)
+            {
+                _teamsChannelRepositoryLogger.LogError($"Exception reading channel owners. Code: {e.Error?.Code}, Message: {e.Error?.Message}");
+                return owners;
+            }
+        }
+
+        private static void AddChannelOwners(ConversationMemberCollectionResponse membersPage, List<AzureADUser> owners)
+        {
+            if (membersPage?.Value == null) return;
+
+            foreach (var member in membersPage.Value)
+            {
+                if (member is not AadUserConversationMember aadMember) continue;
+                var isOwner = aadMember.Roles?.Contains("Owner", StringComparer.InvariantCultureIgnoreCase) ?? false;
+                if (!isOwner) continue;
+                if (string.IsNullOrEmpty(aadMember.UserId) || !Guid.TryParse(aadMember.UserId, out var objectId)) continue;
+                if (owners.Any(o => o.ObjectId == objectId)) continue;
+                owners.Add(new AzureADUser { ObjectId = objectId, Mail = aadMember.Email });
+            }
         }
 
         public async Task<string> GetChannelTypeAsync(AzureADTeamsChannel teamsChannel, Guid runId)

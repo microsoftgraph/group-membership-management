@@ -45,6 +45,9 @@ namespace Repositories.TeamsChannel
         public Task<List<AzureADUser>> GetGroupOwnersAsync(Guid groupObjectId, Guid runId, int top = 0)
             => throw TeamsChannelDisabledException();
 
+        public Task<List<AzureADUser>> GetChannelOwnersAsync(AzureADTeamsChannel teamsChannel, Guid? runId)
+            => throw TeamsChannelDisabledException();
+
         public Task<Dictionary<string, string>> GetTeamsChannelNamesAsync(List<AzureADTeamsChannel> channels)
             => throw TeamsChannelDisabledException();
 

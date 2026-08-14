@@ -20,7 +20,8 @@ namespace Repositories.Contracts.Helpers
                                                                               Guid? runId,
                                                                               ILogger logger,
                                                                               TelemetryClient telemetryClient,
-                                                                              GraphOperationType operationType = GraphOperationType.Read)
+                                                                              GraphOperationType operationType = GraphOperationType.Read,
+                                                                              string membershipType = null)
         {
             if (response == null || logger is null || telemetryClient is null)
             {
@@ -42,7 +43,7 @@ namespace Repositories.Contracts.Helpers
                 }
             }
 
-            return await TrackResourceUnitsAsync(headers, queryType, runId, logger, telemetryClient, operationType);
+            return await TrackResourceUnitsAsync(headers, queryType, runId, logger, telemetryClient, operationType, membershipType);
         }
 
         public static async Task<GraphTelemetryResult> TrackResourceUnitsAsync(IDictionary<string, IEnumerable<string>> headers,
@@ -50,9 +51,11 @@ namespace Repositories.Contracts.Helpers
                                                                               Guid? runId,
                                                                               ILogger logger,
                                                                               TelemetryClient telemetryClient,
-                                                                              GraphOperationType operationType = GraphOperationType.Read)
+                                                                              GraphOperationType operationType = GraphOperationType.Read,
+                                                                              string membershipType = null)
         {
             var resolvedRunId = CorrelationActivity.ResolveRunId(runId);
+            var resolvedMembershipType = string.IsNullOrEmpty(membershipType) ? "Unknown" : membershipType;
 
             if (headers == null || logger is null || telemetryClient is null)
             {
@@ -76,9 +79,9 @@ namespace Repositories.Contracts.Helpers
 
             logger.LogInformation("Resource unit cost of {QueryType} is {ResourceUnitsUsed}", queryType, ruu.Value);
 
-            TrackResourceUnitsUsedByTypeEvent(telemetryClient, ruu.Value, queryType, resolvedRunId);
-            telemetryClient.GetMetric(TelemetryConstants.ResourceUnitsMetricName, TelemetryConstants.OperationTypeDimensionName, TelemetryConstants.QueryTypeDimensionName)
-                           .TrackValue(ruu.Value, operationType.ToString(), queryType.ToString());
+            TrackResourceUnitsUsedByTypeEvent(telemetryClient, ruu.Value, queryType, resolvedRunId, resolvedMembershipType);
+            telemetryClient.GetMetric(TelemetryConstants.ResourceUnitsMetricName, TelemetryConstants.OperationTypeDimensionName, TelemetryConstants.QueryTypeDimensionName, TelemetryConstants.MembershipTypeDimensionName)
+                           .TrackValue(ruu.Value, operationType.ToString(), queryType.ToString(), resolvedMembershipType);
 
             var telemetryResult = new GraphTelemetryResult
             {
@@ -101,7 +104,8 @@ namespace Repositories.Contracts.Helpers
         public static void TrackResourceUnitsUsedByTypeEvent(TelemetryClient telemetryClient,
                                                               int ruu,
                                                               QueryType queryType,
-                                                              Guid? runId)
+                                                              Guid? runId,
+                                                              string membershipType = null)
         {
             var resolvedRunId = CorrelationActivity.ResolveRunId(runId);
 
@@ -114,7 +118,8 @@ namespace Repositories.Contracts.Helpers
             {
                 { "RunId", resolvedRunId?.ToString() ?? string.Empty },
                 { "ResourceUnitsUsed", ruu.ToString() },
-                { TelemetryConstants.QueryTypeDimensionName, queryType.ToString() }
+                { TelemetryConstants.QueryTypeDimensionName, queryType.ToString() },
+                { TelemetryConstants.MembershipTypeDimensionName, string.IsNullOrEmpty(membershipType) ? "Unknown" : membershipType }
             };
 
             telemetryClient.TrackEvent(TelemetryConstants.ResourceUnitsEventName, ruuByTypeEvent);

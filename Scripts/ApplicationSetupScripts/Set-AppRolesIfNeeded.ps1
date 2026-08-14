@@ -191,6 +191,14 @@ function Set-AppRolesIfNeeded {
             Id                 = [Guid]::NewGuid().ToString()
             IsEnabled          = $True
             AllowedMemberTypes = @($memberTypes)
+        },
+        @{
+            DisplayName        = "Teams Channel Onboarder"
+            Description        = "Allows onboarding/creating TeamsChannel sync destinations for owned Teams (paired with Job.ReadWrite.OwnedBy)."
+            Value              = "TeamsChannel.Onboard.OwnedBy"
+            Id                 = [Guid]::NewGuid().ToString()
+            IsEnabled          = $True
+            AllowedMemberTypes = @($memberTypes)
         }
 
     )
