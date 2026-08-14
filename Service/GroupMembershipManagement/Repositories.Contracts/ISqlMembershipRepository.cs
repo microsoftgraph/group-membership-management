@@ -22,6 +22,7 @@ namespace Repositories.Contracts
         Task<List<string>> GetAttributeValuesAsync(string attribute, bool hasMapping, string tableName);
         Task<Dictionary<int, string>> ValidateFiltersAsync(Dictionary<int, string> sqlFilters, string tableName);
         Task<Dictionary<string, string>?> GetUserAttributesAsync(string azureObjectId, string tableName);
+        Task<int?> GetUserEmployeeIdAsync(string azureObjectId, string tableName);
         Task<Dictionary<string, Dictionary<string, string>>> GetUserAttributesBatchAsync(IEnumerable<string> userIds, string tableName);
     }
 }

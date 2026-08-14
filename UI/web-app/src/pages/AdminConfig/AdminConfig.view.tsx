@@ -313,6 +313,13 @@ const AutoApproverSettings: React.FunctionComponent<AutoApproverSettingsProps> =
         onGeneralSettingChange={handleSettingChange(SettingKey.IsAutoApprovalForRequestorIsOrgLeaderSyncsEnabled)}
         generalSettingValue={settings[SettingKey.IsAutoApprovalForRequestorIsOrgLeaderSyncsEnabled]}
       />
+      <GeneralSetting
+        id={SettingKeyMap[SettingKey.IsPerPartAutoApprovalEnabled]}
+        title={strings.AutoApproverSettings.labels.isPerPartAutoApprovalEnabledTitle}
+        description={strings.AutoApproverSettings.labels.isPerPartAutoApprovalEnabledDescription}
+        onGeneralSettingChange={handleSettingChange(SettingKey.IsPerPartAutoApprovalEnabled)}
+        generalSettingValue={settings[SettingKey.IsPerPartAutoApprovalEnabled]}
+      />
       </div>
     </SettingsSection>
   );
@@ -333,6 +340,7 @@ const UserResourcesSettings: React.FunctionComponent<UserResourcesSettingsProps>
     [SettingKey.IsDisclaimerEnabled]: true,
     [SettingKey.IsAutoApprovalForGroupBasedSyncsEnabled]: true,
     [SettingKey.IsAutoApprovalForRequestorIsOrgLeaderSyncsEnabled]: true,
+    [SettingKey.IsPerPartAutoApprovalEnabled]: true,
     [SettingKey.IsAITitleEnabled]: true,
     [SettingKey.IsAICopilotEnabled]: true,
     [SettingKey.IsAISearchForUserEnabled]: true,

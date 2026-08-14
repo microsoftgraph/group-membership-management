@@ -635,6 +635,8 @@ module autoApproverComputeResources '../Service/GroupMembershipManagement/Hosts/
     environmentAbbreviation: environmentAbbreviation
     solutionAbbreviation: solutionAbbreviation
     tenantId: tenantId
+    subscriptionId: subscription().subscriptionId
+    pipeline: pipeline
     prereqsKeyVaultResourceGroup: prereqsResourceGroupName
     dataResourceGroup: dataResourceGroupName
     setRBACPermissions: setRBACPermissions

@@ -1489,7 +1489,7 @@ function Set-SQLServerPermissions {
         -Operation { Get-AzDataFactoryV2 -ResourceGroupName $dataResourceGroup -Name $dataFactoryName -ErrorAction SilentlyContinue } `
         -OperationName "Get Data Factory" `
         -MaxAttempts 3 -BaseDelaySeconds 2
-    $functionAppsADF = $functionApps | Where-Object { $_.Name -match "-webapi" -or $_.Name -match "-SqlMembershipObtainer" -or $_.Name -match "-SqlDataChecker" }
+    $functionAppsADF = $functionApps | Where-Object { $_.Name -match "-webapi" -or $_.Name -match "-SqlMembershipObtainer" -or $_.Name -match "-SqlDataChecker" -or $_.Name -match "-AutoApprover" }
 
     if ($null -ne $dataFactory) {
 

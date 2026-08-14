@@ -303,6 +303,8 @@ export const strings: IStrings = {
         isAutoApprovalForGroupBasedSyncsEnabledDescription: "Automatically approve sync jobs when all source parts are GroupMembership type with acceptable visibility (not HiddenMembership).",
         isAutoApprovalForRequestorIsOrgLeaderSyncsEnabledTitle: "Is auto-approval for requestor as org leader syncs enabled?",
         isAutoApprovalForRequestorIsOrgLeaderSyncsEnabledDescription: "Automatically approve single SqlMembership sync jobs when the manager ID matches the requestor's onPremisesImmutableId.",
+        isPerPartAutoApprovalEnabledTitle: "Is per-part auto-approval enabled?",
+        isPerPartAutoApprovalEnabledDescription: "Automatically approve sync jobs when every source part independently qualifies \u2014 Group parts by acceptable visibility, and SQL parts when the requestor is the part's manager.",
       }
     },
     AISettings: {

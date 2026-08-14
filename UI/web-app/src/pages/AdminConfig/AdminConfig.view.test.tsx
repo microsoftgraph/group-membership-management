@@ -57,6 +57,7 @@ const createSettings = (overrides?: Partial<Record<SettingKey, string>>): { read
   [SettingKey.IsDisclaimerEnabled]: 'false',
   [SettingKey.IsAutoApprovalForGroupBasedSyncsEnabled]: 'false',
   [SettingKey.IsAutoApprovalForRequestorIsOrgLeaderSyncsEnabled]: 'false',
+  [SettingKey.IsPerPartAutoApprovalEnabled]: 'false',
   [SettingKey.IsAITitleEnabled]: 'true',
   [SettingKey.IsAICopilotEnabled]: 'true',
   [SettingKey.IsAISearchForUserEnabled]: 'false',

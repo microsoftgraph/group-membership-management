@@ -56,6 +56,15 @@ param dataKeyVaultName string = '${solutionAbbreviation}-data-${environmentAbbre
 @description('Name of the resource group where the \'data\' resources are located.')
 param dataResourceGroup string = '${solutionAbbreviation}-data-${environmentAbbreviation}'
 
+@description('Name of the \'data\' factory.')
+param dataFactoryName string = '${solutionAbbreviation}-data-${environmentAbbreviation}-adf'
+
+@description('Subscription Id for the resource group.')
+param subscriptionId string
+
+@description('Name of Azure Data Factory Pipeline.')
+param pipeline string
+
 @description('Provides the endpoint for the app configuration resource.')
 param appConfigurationEndpoint string = 'https://${solutionAbbreviation}-appconfig-${environmentAbbreviation}.azconfig.io'
 
@@ -102,6 +111,7 @@ var actionableEmailProviderId = resourceId(subscription().subscriptionId, dataRe
 var jobsMSIConnectionString = resourceId(subscription().subscriptionId, dataResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'jobsMSIConnectionString')
 var replicaJobsMSIConnectionString = resourceId(subscription().subscriptionId, dataResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'replicaJobsMSIConnectionString')
 var graphUserAssignedManagedIdentityClientId = resourceId(subscription().subscriptionId, dataResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'graphUserAssignedManagedIdentityClientId')
+var sqlServerMSIConnectionString = resourceId(subscription().subscriptionId, dataResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'sqlServerMSIConnectionString')
 
 var appSettings = {
   logAnalyticsCustomerId: 'notused'
@@ -112,6 +122,11 @@ var appSettings = {
   AzureWebJobsStorage__accountName: storageAccountNameReader.outputs.value
   AzureWebJobsStorage__credential: 'managedidentity'
   APPLICATIONINSIGHTS_CONNECTION_STRING: '@Microsoft.KeyVault(SecretUri=${reference(appInsightsConnectionString, '2019-09-01').secretUriWithVersion})'
+  dataFactoryName: dataFactoryName
+  pipeline: pipeline
+  subscriptionId: subscriptionId
+  dataResourceGroup: dataResourceGroup
+  sqlServerMSIConnectionString: '@Microsoft.KeyVault(SecretUri=${reference(sqlServerMSIConnectionString, '2019-09-01').secretUriWithVersion})'
   gmmServiceBus__fullyQualifiedNamespace: '@Microsoft.KeyVault(SecretUri=${reference(serviceBusFQN, '2019-09-01').secretUriWithVersion})'
   serviceBusAutoApproverQueue: '@Microsoft.KeyVault(SecretUri=${reference(serviceBusAutoApproverQueue, '2019-09-01').secretUriWithVersion})'
   graphCredentials__ClientCertificateName: '@Microsoft.KeyVault(SecretUri=${reference(graphAppCertificateName, '2019-09-01').secretUriWithVersion})'

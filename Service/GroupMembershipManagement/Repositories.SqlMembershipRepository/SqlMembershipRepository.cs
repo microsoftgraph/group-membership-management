@@ -713,6 +713,47 @@ namespace Repositories.SqlMembershipRepository
                          );
         }
 
+        public async Task<int?> GetUserEmployeeIdAsync(string azureObjectId, string tableName)
+        {
+            ValidateTableName(tableName);
+            int? employeeId = null;
+            var retryPolicy = GetRetryPolicyAsync();
+
+            try
+            {
+                var selectQuery = $"SELECT EmployeeId FROM [users].[{tableName}] WHERE AzureObjectId = @AzureObjectId";
+
+                await retryPolicy.ExecuteAsync(async () =>
+                {
+                    using (var conn = new SqlConnection(_sqlServerConnectionString))
+                    {
+                        await conn.OpenAsync();
+                        using (var cmd = new SqlCommand(selectQuery, conn))
+                        {
+                            cmd.Parameters.Add(new SqlParameter("@AzureObjectId", SqlDbType.NVarChar, 128) { Value = azureObjectId });
+
+                            using (var reader = await cmd.ExecuteReaderAsync(CommandBehavior.CloseConnection))
+                            {
+                                if (await reader.ReadAsync())
+                                {
+                                    int idOrdinal = reader.GetOrdinal("EmployeeId");
+                                    employeeId = reader.IsDBNull(idOrdinal) ? (int?)null : reader.GetInt32(idOrdinal);
+                                }
+                                await reader.CloseAsync();
+                            }
+                        }
+                        await conn.CloseAsync();
+                    }
+                });
+            }
+            catch (SqlException ex)
+            {
+                throw ex;
+            }
+
+            return employeeId;
+        }
+
         public async Task<Dictionary<string, string>?> GetUserAttributesAsync(string azureObjectId, string tableName)
         {
             ValidateTableName(tableName);

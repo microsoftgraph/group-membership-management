@@ -101,5 +101,72 @@ namespace Hosts.AutoApprover
         [LoggerMessage(EventId = 250115, Level = LogLevel.Error,
             Message = "Failed to revert sync job {SyncJobId} back to PendingAutoApproval after auto-approval persistence failure. Job may be left in Idle status without an audit record.")]
         public static partial void AutoApprovalRevertFailed(this ILogger logger, Guid syncJobId, Exception exception);
+
+        // ── Per-Part Rule ──
+
+        [LoggerMessage(EventId = 250116, Level = LogLevel.Information,
+            Message = "Per-Part Rule approved the submission. Approved parts — SqlMembership(manager-self): {SqlApprovedCount}, GroupMembership(public): {GroupPublicCount}, GroupMembership(owner): {GroupOwnerCount}; total parts: {TotalParts}.")]
+        public static partial void PerPartRuleApproved(this ILogger logger, int sqlApprovedCount, int groupPublicCount, int groupOwnerCount, int totalParts);
+
+        [LoggerMessage(EventId = 250118, Level = LogLevel.Error,
+            Message = "Error retrieving Per-Part Rule setting {SettingKey}.")]
+        public static partial void SettingRetrievalError(this ILogger logger, string settingKey, Exception exception);
+
+        [LoggerMessage(EventId = 250119, Level = LogLevel.Error,
+            Message = "Error retrieving requestor's EmployeeId from the users table.")]
+        public static partial void EmployeeIdRetrievalError(this ILogger logger, Exception exception);
+
+        [LoggerMessage(EventId = 250120, Level = LogLevel.Error,
+            Message = "Error retrieving the most recent succeeded run id from Data Factory.")]
+        public static partial void RunIdRetrievalError(this ILogger logger, Exception exception);
+
+        [LoggerMessage(EventId = 250121, Level = LogLevel.Error,
+            Message = "Unhandled error during Per-Part Rule evaluation.")]
+        public static partial void PerPartRuleCheckError(this ILogger logger, Exception exception);
+
+        [LoggerMessage(EventId = 250123, Level = LogLevel.Information,
+            Message = "SqlMembership part {PartIndex} approved: the manager id in the source matches the requestor's EmployeeId. Only the manager id is compared — any filter, manager depth, or exclusionary flag on this part is not evaluated. That is safe because a manager-based source resolves only within the requestor's own reporting chain, which a depth or filter can narrow but never widen.")]
+        public static partial void SqlPartApprovedByManagerSelf(this ILogger logger, int partIndex);
+
+        [LoggerMessage(EventId = 250125, Level = LogLevel.Information,
+            Message = "GroupMembership part {PartIndex} ({GroupId}) approved: group visibility is Public.")]
+        public static partial void GroupPartApprovedByPublicVisibility(this ILogger logger, int partIndex, string groupId);
+
+        [LoggerMessage(EventId = 250126, Level = LogLevel.Information,
+            Message = "GroupMembership part {PartIndex} ({GroupId}) approved: requestor is an owner (visibility {Visibility}).")]
+        public static partial void GroupPartApprovedByOwner(this ILogger logger, int partIndex, string groupId, string visibility);
+
+        [LoggerMessage(EventId = 250127, Level = LogLevel.Information,
+            Message = "{PartType} part {PartIndex} ({Source}) rejected: {Reason} — {Details}.")]
+        public static partial void SourcePartRejected(this ILogger logger, int partIndex, string partType, string source, string reason, string details);
+
+        [LoggerMessage(EventId = 250128, Level = LogLevel.Error,
+            Message = "Error retrieving visibility for group part {PartIndex} ({GroupId}).")]
+        public static partial void GroupVisibilityError(this ILogger logger, int partIndex, string groupId, Exception exception);
+
+        [LoggerMessage(EventId = 250129, Level = LogLevel.Error,
+            Message = "Error retrieving owners for group part {PartIndex} ({GroupId}).")]
+        public static partial void GroupOwnersError(this ILogger logger, int partIndex, string groupId, Exception exception);
+
+        [LoggerMessage(EventId = 250130, Level = LogLevel.Information,
+            Message = "Per-Part Rule declined the submission and is authoritative; group-based (enabled: {GroupBasedEnabled}) and org-leader (enabled: {OrgLeaderEnabled}) evaluation was skipped.")]
+        public static partial void PerPartRuleTookPrecedence(this ILogger logger, bool groupBasedEnabled, bool orgLeaderEnabled);
+
+        [LoggerMessage(EventId = 250131, Level = LogLevel.Information,
+            Message = "Auto-approval modes resolved — group-based: {GroupBasedEnabled}, org-leader: {OrgLeaderEnabled}, per-part: {PerPartEnabled}.")]
+        public static partial void AutoApprovalModesResolved(this ILogger logger, bool groupBasedEnabled, bool orgLeaderEnabled, bool perPartEnabled);
+
+        [LoggerMessage(EventId = 250132, Level = LogLevel.Information,
+            Message = "Per-Part Rule declined the submission at {PartType} part {PartIndex} ({Source}): {Reason} — {Details}. Evaluated {PartsEvaluated} of {TotalParts} parts. Approved before the failure — SqlMembership(manager-self): {SqlApprovedCount}, GroupMembership(public): {GroupPublicCount}, GroupMembership(owner): {GroupOwnerCount}.")]
+        public static partial void PerPartRuleDeclined(this ILogger logger, int partIndex, string partType, string source, string reason, string details, int partsEvaluated, int totalParts, int sqlApprovedCount, int groupPublicCount, int groupOwnerCount);
+
+        // EmployeeId is an HR identifier, so its value is never logged — only whether it resolved.
+        [LoggerMessage(EventId = 250133, Level = LogLevel.Information,
+            Message = "SqlMembership part evaluation context: users table {UsersTable}, requestor EmployeeId {EmployeeIdStatus}.")]
+        public static partial void SqlPartEvaluationContext(this ILogger logger, string usersTable, string employeeIdStatus);
+
+        [LoggerMessage(EventId = 250134, Level = LogLevel.Information,
+            Message = "Per-Part Rule declined the submission: the query has no source parts the rule can evaluate. Cause: {Cause}. This does not mean the query is invalid for GMM — a query can be perfectly valid yet use a shape the rule does not vouch for — so the submission needs manual review.")]
+        public static partial void PerPartQueryNotParsable(this ILogger logger, string cause);
     }
 }

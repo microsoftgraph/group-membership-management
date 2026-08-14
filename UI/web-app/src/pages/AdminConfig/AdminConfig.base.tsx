@@ -16,6 +16,7 @@ import {
   selectIsDisclaimerEnabled,
   selectIsAutoApprovalForGroupBasedSyncsEnabled,
   selectIsAutoApprovalForRequestorIsOrgLeaderSyncsEnabled,
+  selectIsPerPartAutoApprovalEnabled,
   selectIsAITitleEnabled,
   selectIsAICopilotEnabled,
   selectCopilotTemperature,
@@ -65,6 +66,7 @@ export const AdminConfigBase: React.FunctionComponent<AdminConfigProps> = (props
   const IsDisclaimerEnabled = useSelector(selectIsDisclaimerEnabled);
   const IsAutoApprovalForGroupBasedSyncsEnabled = useSelector(selectIsAutoApprovalForGroupBasedSyncsEnabled);
   const IsAutoApprovalForRequestorIsOrgLeaderSyncsEnabled = useSelector(selectIsAutoApprovalForRequestorIsOrgLeaderSyncsEnabled);
+  const isPerPartAutoApprovalEnabled = useSelector(selectIsPerPartAutoApprovalEnabled);
   const isAITitleEnabled = useSelector(selectIsAITitleEnabled);
   const isAICopilotEnabled = useSelector(selectIsAICopilotEnabled);
   const isAISearchForUserEnabled = useSelector(selectIsAISearchForUserEnabled);
@@ -100,6 +102,7 @@ export const AdminConfigBase: React.FunctionComponent<AdminConfigProps> = (props
     [SettingKey.IsDisclaimerEnabled]: IsDisclaimerEnabled ? 'true' : 'false',
     [SettingKey.IsAutoApprovalForGroupBasedSyncsEnabled]: IsAutoApprovalForGroupBasedSyncsEnabled ? 'true' : 'false',
     [SettingKey.IsAutoApprovalForRequestorIsOrgLeaderSyncsEnabled]: IsAutoApprovalForRequestorIsOrgLeaderSyncsEnabled ? 'true' : 'false',
+    [SettingKey.IsPerPartAutoApprovalEnabled]: isPerPartAutoApprovalEnabled ? 'true' : 'false',
     [SettingKey.IsAITitleEnabled]: isAITitleEnabled ? 'true' : 'false',
     [SettingKey.IsAICopilotEnabled]: isAICopilotEnabled ? 'true' : 'false',
     [SettingKey.IsAISearchForUserEnabled]: isAISearchForUserEnabled ? 'true' : 'false',
@@ -115,7 +118,7 @@ export const AdminConfigBase: React.FunctionComponent<AdminConfigProps> = (props
 
   useEffect(() => {
     setSettings(generateSettings())
-  }, [dashboardUrl, outlookWarningUrl, privacyPolicyUrl, canReviewOwnSubmissions, createGroupFeatureEnabled, isBusinessJustificationRequired, IsDisclaimerEnabled, IsAutoApprovalForGroupBasedSyncsEnabled, IsAutoApprovalForRequestorIsOrgLeaderSyncsEnabled, isAITitleEnabled, isAICopilotEnabled, isAISearchForUserEnabled, isAIRunExplanationEnabled, isRunHistoryPhase2Enabled, copilotTemperature, copilotTopP, copilotInstructions, copilotSuggestedPrompts]);
+  }, [dashboardUrl, outlookWarningUrl, privacyPolicyUrl, canReviewOwnSubmissions, createGroupFeatureEnabled, isBusinessJustificationRequired, IsDisclaimerEnabled, IsAutoApprovalForGroupBasedSyncsEnabled, IsAutoApprovalForRequestorIsOrgLeaderSyncsEnabled, isPerPartAutoApprovalEnabled, isAITitleEnabled, isAICopilotEnabled, isAISearchForUserEnabled, isAIRunExplanationEnabled, isRunHistoryPhase2Enabled, copilotTemperature, copilotTopP, copilotInstructions, copilotSuggestedPrompts]);
 
   const handleGetValues = (attribute: SqlMembershipAttribute) => {
     dispatch(fetchAttributeValues(attribute));
@@ -138,6 +141,7 @@ export const AdminConfigBase: React.FunctionComponent<AdminConfigProps> = (props
   const autoApproverSettingKeys: SettingKey[] = [
     SettingKey.IsAutoApprovalForGroupBasedSyncsEnabled,
     SettingKey.IsAutoApprovalForRequestorIsOrgLeaderSyncsEnabled,
+    SettingKey.IsPerPartAutoApprovalEnabled,
   ];
 
   const aiSettingKeys: SettingKey[] = [
@@ -158,6 +162,7 @@ export const AdminConfigBase: React.FunctionComponent<AdminConfigProps> = (props
     SettingKey.IsDisclaimerEnabled,
     SettingKey.IsAutoApprovalForGroupBasedSyncsEnabled,
     SettingKey.IsAutoApprovalForRequestorIsOrgLeaderSyncsEnabled,
+    SettingKey.IsPerPartAutoApprovalEnabled,
     SettingKey.IsAITitleEnabled,
     SettingKey.IsAICopilotEnabled,
     SettingKey.IsAISearchForUserEnabled,

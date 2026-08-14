@@ -304,6 +304,8 @@ export const strings: IStrings = {
         isAutoApprovalForGroupBasedSyncsEnabledDescription: "Aprobar automáticamente trabajos de sincronización cuando todas las partes de origen son del tipo GroupMembership con visibilidad aceptable (no HiddenMembership).",
         isAutoApprovalForRequestorIsOrgLeaderSyncsEnabledTitle: "¿Está habilitada la auto-aprobación para solicitante como líder organizacional?",
         isAutoApprovalForRequestorIsOrgLeaderSyncsEnabledDescription: "Aprobar automáticamente trabajos de sincronización SqlMembership únicos cuando el ID del gerente coincide con el onPremisesImmutableId del solicitante.",
+        isPerPartAutoApprovalEnabledTitle: "¿Está habilitada la auto-aprobación por partes?",
+        isPerPartAutoApprovalEnabledDescription: "Aprobar automáticamente trabajos de sincronización cuando cada parte de origen califica de forma independiente: partes de grupo por visibilidad aceptable, y partes SQL cuando el solicitante es el gerente de la parte.",
       }
     },
     AISettings: {
