@@ -71,8 +71,10 @@ namespace Hosts.TeamsChannelUpdater
 
                 syncCompleteEvent.Type = syncJob.MembershipType;
                 syncCompleteEvent.Destination = $"[{{\"type\":\"{syncJob.MembershipType}\",\"value\":{{\"objectId\":\"{groupId}\",\"channelId\":\"{channelId}\"}}}}]";
+                syncCompleteEvent.TargetOfficeGroupId = groupId.ToString();
                 syncCompleteEvent.GroupId = groupId.ToString();
                 syncCompleteEvent.ChannelId = channelId;
+                syncCompleteEvent.Identifier = channelId;
                 syncCompleteEvent.SourceTypesCounts = sourceTypesCounts;
                 syncCompleteEvent.RunId = syncJob.RunId.ToString();
                 syncCompleteEvent.IsDryRunEnabled = false.ToString();
@@ -154,27 +156,25 @@ namespace Hosts.TeamsChannelUpdater
                 {
                     await context.CallActivityAsync(nameof(JobStatusUpdaterFunction),
                                         CreateJobStatusUpdaterRequest(groupMembership.SyncJobId,
-                                                                        SyncStatus.TeamsChannelError, 0, syncJob));
+                                                                        SyncStatus.TeamsChannelError, 0, syncJob,
+                                                                        membersAddedResponse.SuccessCount, membersRemovedResponse.SuccessCount));
                 }
                 else
                 {
                     await context.CallActivityAsync(nameof(JobStatusUpdaterFunction),
                                         CreateJobStatusUpdaterRequest(groupMembership.SyncJobId,
-                                                                        SyncStatus.Idle, 0, syncJob));
+                                                                        SyncStatus.Idle, 0, syncJob,
+                                                                        membersAddedResponse.SuccessCount, membersRemovedResponse.SuccessCount));
                 }
 
                 await context.CallActivityAsync(nameof(TelemetryTrackerFunction), new TelemetryTrackerRequest { JobStatus = SyncStatus.Idle, ResultStatus = ResultStatus.Success, SyncJob = syncJob });
                 if (!context.IsReplaying)
                 {
-                    if (membersAddedResponse.SuccessCount + membersAddedResponse.UsersNotFound.Count == membersToAdd.Count &&
-                        membersRemovedResponse.SuccessCount + membersRemovedResponse.UsersNotFound.Count == membersToRemove.Count)
-                    {
-                        SyncCompleteTelemetryHelper.TrackSyncCompleteEventAndMetric(_telemetryClient, syncCompleteEvent, context.CurrentUtcDateTime, syncJob.LastSuccessfulStartTime, "Success");
-                    }
-                    else
-                    {
-                        SyncCompleteTelemetryHelper.TrackSyncCompleteEventAndMetric(_telemetryClient, syncCompleteEvent, context.CurrentUtcDateTime, syncJob.LastSuccessfulStartTime, "PartialSuccess");
-                    }
+                    var successStatus =
+                        (membersAddedResponse.SuccessCount + membersAddedResponse.UsersNotFound.Count == membersToAdd.Count &&
+                         membersRemovedResponse.SuccessCount + membersRemovedResponse.UsersNotFound.Count == membersToRemove.Count)
+                            ? "Success" : "PartialSuccess";
+                    EmitSyncCompleteSafely(logger, syncCompleteEvent, context.CurrentUtcDateTime, syncJob.LastSuccessfulStartTime, successStatus);
                 }
 
                 logger.OrchestratorCompleted(nameof(OrchestratorFunction), context.CurrentUtcDateTime);
@@ -197,10 +197,27 @@ namespace Hosts.TeamsChannelUpdater
 
                 if (!context.IsReplaying)
                 {
-                    SyncCompleteTelemetryHelper.TrackSyncCompleteEventAndMetric(_telemetryClient, syncCompleteEvent, context.CurrentUtcDateTime, syncJob.LastSuccessfulStartTime, "Failure");
+                    EmitSyncCompleteSafely(logger, syncCompleteEvent, context.CurrentUtcDateTime, syncJob.LastSuccessfulStartTime, "Failure");
                 }
 
                 throw;
+            }
+        }
+
+        // Emit terminal SyncComplete telemetry without failing orchestration or double-emitting on replay.
+        private void EmitSyncCompleteSafely(ILogger logger,
+            SyncCompleteCustomEvent syncCompleteEvent,
+            DateTime currentUtcDateTime,
+            DateTime lastSuccessfulStartTime,
+            string result)
+        {
+            try
+            {
+                SyncCompleteTelemetryHelper.TrackSyncCompleteEventAndMetric(_telemetryClient, syncCompleteEvent, currentUtcDateTime, lastSuccessfulStartTime, result);
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "Failed to emit SyncComplete telemetry (result={Result}); continuing without failing the sync.", result);
             }
         }
 
@@ -216,14 +233,16 @@ namespace Hosts.TeamsChannelUpdater
             };
         }
 
-        private JobStatusUpdaterRequest CreateJobStatusUpdaterRequest(Guid syncJobId, SyncStatus syncStatus, int thresholdViolations, SyncJob syncJob)
+        private JobStatusUpdaterRequest CreateJobStatusUpdaterRequest(Guid syncJobId, SyncStatus syncStatus, int thresholdViolations, SyncJob syncJob, int? usersAdded = null, int? usersRemoved = null)
         {
             return new JobStatusUpdaterRequest
             {
                 SyncJob = syncJob,
                 JobId = syncJobId,
                 Status = syncStatus,
-                ThresholdViolations = thresholdViolations
+                ThresholdViolations = thresholdViolations,
+                UsersAdded = usersAdded,
+                UsersRemoved = usersRemoved
             };
         }
 
@@ -245,4 +264,3 @@ namespace Hosts.TeamsChannelUpdater
         }
     }
 }
-

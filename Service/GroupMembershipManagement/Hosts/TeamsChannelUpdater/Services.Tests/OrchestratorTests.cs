@@ -132,7 +132,7 @@ namespace Services.Tests
 
             await orchestratorFunction.RunOrchestratorAsync(_mockDurableOrchestrationContext.Object);
 
-            _mockTeamsChannelUpdaterService.Verify(x => x.UpdateSyncJobStatusAsync(It.IsAny<SyncJob>(), SyncStatus.Idle, false, It.IsAny<Guid>()));
+            _mockTeamsChannelUpdaterService.Verify(x => x.UpdateSyncJobStatusAsync(It.IsAny<SyncJob>(), SyncStatus.Idle, false, It.IsAny<Guid>(), It.IsAny<int?>(), It.IsAny<int?>()));
 
             _mockTeamsChannelUpdaterService.Verify(x => x.SendEmailAsync(It.IsAny<SyncJob>(), It.IsAny<NotificationMessageType>(), It.IsAny<string[]>()), Times.Never);
         }
@@ -157,7 +157,7 @@ namespace Services.Tests
 
             await orchestratorFunction.RunOrchestratorAsync(_mockDurableOrchestrationContext.Object);
 
-            _mockTeamsChannelUpdaterService.Verify(x => x.UpdateSyncJobStatusAsync(It.IsAny<SyncJob>(), SyncStatus.Idle, false, It.IsAny<Guid>()));;
+            _mockTeamsChannelUpdaterService.Verify(x => x.UpdateSyncJobStatusAsync(It.IsAny<SyncJob>(), SyncStatus.Idle, false, It.IsAny<Guid>(), It.IsAny<int?>(), It.IsAny<int?>()));;
             _mockTeamsChannelUpdaterService.Verify(x => x.SendEmailAsync(It.IsAny<SyncJob>(), It.IsAny<NotificationMessageType>(), It.IsAny<string[]>() ));
         }
 
@@ -174,7 +174,131 @@ namespace Services.Tests
             
             await Assert.ThrowsExceptionAsync<FileNotFoundException>(async () => await orchestratorFunction.RunOrchestratorAsync(_mockDurableOrchestrationContext.Object));
 
-            _mockTeamsChannelUpdaterService.Verify(x => x.UpdateSyncJobStatusAsync(It.IsAny<SyncJob>(), SyncStatus.Error, false, It.IsAny<Guid>()));;
+            _mockTeamsChannelUpdaterService.Verify(x => x.UpdateSyncJobStatusAsync(It.IsAny<SyncJob>(), SyncStatus.Error, false, It.IsAny<Guid>(), It.IsAny<int?>(), It.IsAny<int?>()));;
+        }
+
+        // SyncComplete exactly-once and schema parity tests.
+
+        private sealed class CapturingChannel : Microsoft.ApplicationInsights.Channel.ITelemetryChannel
+        {
+            public readonly List<Microsoft.ApplicationInsights.Channel.ITelemetry> Sent = new();
+            public bool ThrowOnSend { get; set; }
+            public bool? DeveloperMode { get; set; }
+            public string EndpointAddress { get; set; } = "";
+            public void Send(Microsoft.ApplicationInsights.Channel.ITelemetry item)
+            {
+                if (ThrowOnSend) throw new InvalidOperationException("send failed");
+                Sent.Add(item);
+            }
+            public void Flush() { }
+            public void Dispose() { }
+        }
+
+        private (TelemetryClient client, CapturingChannel channel) CreateCapturingTelemetryClient()
+        {
+            var channel = new CapturingChannel();
+            var config = new TelemetryConfiguration { TelemetryChannel = channel, ConnectionString = "InstrumentationKey=00000000-0000-0000-0000-000000000000" };
+            return (new TelemetryClient(config), channel);
+        }
+
+        private void SetupSubOrchestrator(int addSuccess, int removeSuccess, List<AzureADTeamsUser> usersFailed = null)
+        {
+            _mockDurableOrchestrationContext.Setup(x => x.CallSubOrchestratorAsync<TeamsChannelUpdaterSubOrchestratorResponse>(nameof(TeamsChannelUpdaterSubOrchestratorFunction), It.Is<TeamsChannelUpdaterSubOrchestratorRequest>(r => r.Type == RequestType.Add), It.IsAny<TaskOptions>()))
+                .ReturnsAsync(new TeamsChannelUpdaterSubOrchestratorResponse { Type = RequestType.Add, SuccessCount = addSuccess, UsersNotFound = new List<AzureADTeamsUser>(), UsersFailed = usersFailed ?? new List<AzureADTeamsUser>() });
+            _mockDurableOrchestrationContext.Setup(x => x.CallSubOrchestratorAsync<TeamsChannelUpdaterSubOrchestratorResponse>(nameof(TeamsChannelUpdaterSubOrchestratorFunction), It.Is<TeamsChannelUpdaterSubOrchestratorRequest>(r => r.Type == RequestType.Remove), It.IsAny<TaskOptions>()))
+                .ReturnsAsync(new TeamsChannelUpdaterSubOrchestratorResponse { Type = RequestType.Remove, SuccessCount = removeSuccess, UsersNotFound = new List<AzureADTeamsUser>(), UsersFailed = new List<AzureADTeamsUser>() });
+        }
+
+        private static List<Microsoft.ApplicationInsights.DataContracts.EventTelemetry> SyncCompleteEvents(CapturingChannel channel)
+        {
+            return channel.Sent.OfType<Microsoft.ApplicationInsights.DataContracts.EventTelemetry>().Where(e => e.Name == "SyncComplete").ToList();
+        }
+
+        [TestMethod]
+        public async Task SyncComplete_EmittedExactlyOnce_OnSuccess()
+        {
+            var (client, channel) = CreateCapturingTelemetryClient();
+            SetupSubOrchestrator(addSuccess: 1, removeSuccess: 1);
+
+            var fn = new OrchestratorFunction(client, _mockEmailSenderAndRecipients.Object, _mockGMMResources.Object);
+            await fn.RunOrchestratorAsync(_mockDurableOrchestrationContext.Object);
+
+            var events = SyncCompleteEvents(channel);
+            Assert.AreEqual(1, events.Count, "Exactly one SyncComplete event expected on the success path.");
+            Assert.AreEqual("Success", events[0].Properties["Result"]);
+        }
+
+        [TestMethod]
+        public async Task SyncComplete_EmittedExactlyOnce_OnPartialSuccess()
+        {
+            var (client, channel) = CreateCapturingTelemetryClient();
+            SetupSubOrchestrator(addSuccess: 0, removeSuccess: 0); // fewer than membersToAdd/Remove -> PartialSuccess
+
+            var fn = new OrchestratorFunction(client, _mockEmailSenderAndRecipients.Object, _mockGMMResources.Object);
+            await fn.RunOrchestratorAsync(_mockDurableOrchestrationContext.Object);
+
+            var events = SyncCompleteEvents(channel);
+            Assert.AreEqual(1, events.Count);
+            Assert.AreEqual("PartialSuccess", events[0].Properties["Result"]);
+        }
+
+        [TestMethod]
+        public async Task SyncComplete_EmittedExactlyOnce_OnFailure()
+        {
+            var (client, channel) = CreateCapturingTelemetryClient();
+            _mockDurableOrchestrationContext.Setup(x => x.CallActivityAsync<string>(nameof(FileDownloaderFunction), It.IsAny<FileDownloaderRequest>(), It.IsAny<TaskOptions>()))
+                .ThrowsAsync(new FileNotFoundException());
+
+            var fn = new OrchestratorFunction(client, _mockEmailSenderAndRecipients.Object, _mockGMMResources.Object);
+            await Assert.ThrowsExceptionAsync<FileNotFoundException>(async () => await fn.RunOrchestratorAsync(_mockDurableOrchestrationContext.Object));
+
+            var events = SyncCompleteEvents(channel);
+            Assert.AreEqual(1, events.Count);
+            Assert.AreEqual("Failure", events[0].Properties["Result"]);
+        }
+
+        [TestMethod]
+        public async Task SyncComplete_NotEmittedDuringReplay()
+        {
+            var (client, channel) = CreateCapturingTelemetryClient();
+            _mockDurableOrchestrationContext.Setup(x => x.IsReplaying).Returns(true);
+            SetupSubOrchestrator(addSuccess: 1, removeSuccess: 1);
+
+            var fn = new OrchestratorFunction(client, _mockEmailSenderAndRecipients.Object, _mockGMMResources.Object);
+            await fn.RunOrchestratorAsync(_mockDurableOrchestrationContext.Object);
+
+            Assert.AreEqual(0, SyncCompleteEvents(channel).Count, "Replay must not re-emit SyncComplete.");
+        }
+
+        [TestMethod]
+        public async Task SyncComplete_TelemetryFailure_DoesNotFailOrchestrationOrRollBackMembership()
+        {
+            var (client, channel) = CreateCapturingTelemetryClient();
+            channel.ThrowOnSend = true;
+            SetupSubOrchestrator(addSuccess: 1, removeSuccess: 1);
+
+            var fn = new OrchestratorFunction(client, _mockEmailSenderAndRecipients.Object, _mockGMMResources.Object);
+            // Must not throw even though telemetry Send fails.
+            await fn.RunOrchestratorAsync(_mockDurableOrchestrationContext.Object);
+
+            // Membership status still committed (no rollback).
+            _mockTeamsChannelUpdaterService.Verify(x => x.UpdateSyncJobStatusAsync(It.IsAny<SyncJob>(), SyncStatus.Idle, false, It.IsAny<Guid>(), It.IsAny<int?>(), It.IsAny<int?>()));
+        }
+
+        [TestMethod]
+        public async Task SyncComplete_IncludesTypeTargetOfficeGroupIdAndIdentifier()
+        {
+            var (client, channel) = CreateCapturingTelemetryClient();
+            SetupSubOrchestrator(addSuccess: 1, removeSuccess: 1);
+
+            var fn = new OrchestratorFunction(client, _mockEmailSenderAndRecipients.Object, _mockGMMResources.Object);
+            await fn.RunOrchestratorAsync(_mockDurableOrchestrationContext.Object);
+
+            var props = SyncCompleteEvents(channel).Single().Properties;
+            Assert.AreEqual("TeamsChannelMembership", props["Type"]);
+            Assert.AreEqual(_syncJob.Channel.GroupId.ToString(), props["TargetOfficeGroupId"]);
+            Assert.IsTrue(props.ContainsKey("Identifier"));
+            Assert.AreEqual(_syncJob.Channel.ChannelId, props["Identifier"]);
         }
 
         private string _groupMembershipJson = @"

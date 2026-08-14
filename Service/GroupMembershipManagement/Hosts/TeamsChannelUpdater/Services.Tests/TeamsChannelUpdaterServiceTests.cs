@@ -27,6 +27,7 @@ namespace Services.Tests
         private Mock<IDatabaseChannelsRepository> _mockChannelsRepository = null!;
         private Mock<IServiceBusQueueRepository> _mockServiceBusQueueRepository = null!;
         private Mock<ISyncJobStatusService> _mockSyncJobStatusService = null!;
+        private Mock<ISyncJobHistoryRepository> _mockSyncJobHistoryRepository = null!;
 
         private string _groupName = "Group 1 Display Name";
 
@@ -94,11 +95,14 @@ namespace Services.Tests
                     job.Status = status?.ToString();
                 });
 
+            _mockSyncJobHistoryRepository = new Mock<ISyncJobHistoryRepository>();
+
             _teamsChannelUpdaterService = new TeamsChannelUpdaterService(NullLogger<TeamsChannelUpdaterService>.Instance,
                 _mockTeamsChannelRepository.Object, _mockSyncJobRepository.Object,
                 _mockGroupsRepository.Object, _mockChannelsRepository.Object,
                 _mockServiceBusQueueRepository.Object,
-                _mockSyncJobStatusService.Object);
+                _mockSyncJobStatusService.Object,
+                _mockSyncJobHistoryRepository.Object);
 
         }
 
@@ -114,6 +118,63 @@ namespace Services.Tests
         {
             await _teamsChannelUpdaterService.UpdateSyncJobStatusAsync(_syncInfo.SyncJob, SyncStatus.Idle, false, _syncInfo.SyncJob.RunId.GetValueOrDefault(Guid.Empty));
             Assert.AreEqual(SyncStatus.Idle.ToString(), _syncInfo.SyncJob.Status);
+        }
+
+        [TestMethod]
+        public async Task UpdateJobStatus_PopulatesCountsAndAfterSyncUserCount_OnIdle()
+        {
+            var runId = _syncInfo.SyncJob.RunId.GetValueOrDefault(Guid.Empty);
+            _mockSyncJobHistoryRepository.Setup(r => r.GetByRunIdAsync(runId))
+                .ReturnsAsync(new SyncJobHistory { RunId = runId, BeforeSyncUserCount = 100 });
+
+            SyncJobHistory captured = null;
+            _mockSyncJobStatusService
+                .Setup(s => s.UpdateJobStatusAsync(It.IsAny<SyncJob>(), It.IsAny<SyncStatus?>(), It.IsAny<SyncJobHistory?>(), It.IsAny<string>()))
+                .Callback<SyncJob, SyncStatus?, SyncJobHistory?, string>((job, status, history, fn) => captured = history);
+
+            await _teamsChannelUpdaterService.UpdateSyncJobStatusAsync(_syncInfo.SyncJob, SyncStatus.Idle, false, runId, usersAdded: 10, usersRemoved: 5);
+
+            Assert.IsNotNull(captured);
+            Assert.AreEqual(10, captured.UsersAdded);
+            Assert.AreEqual(5, captured.UsersRemoved);
+            Assert.AreEqual(105, captured.AfterSyncUserCount); // 100 + 10 - 5
+        }
+
+        [TestMethod]
+        public async Task UpdateJobStatus_AfterSyncUserCountNull_WhenNoBeforeCount()
+        {
+            var runId = _syncInfo.SyncJob.RunId.GetValueOrDefault(Guid.Empty);
+            _mockSyncJobHistoryRepository.Setup(r => r.GetByRunIdAsync(runId))
+                .ReturnsAsync(new SyncJobHistory { RunId = runId, BeforeSyncUserCount = null });
+
+            SyncJobHistory captured = null;
+            _mockSyncJobStatusService
+                .Setup(s => s.UpdateJobStatusAsync(It.IsAny<SyncJob>(), It.IsAny<SyncStatus?>(), It.IsAny<SyncJobHistory?>(), It.IsAny<string>()))
+                .Callback<SyncJob, SyncStatus?, SyncJobHistory?, string>((job, status, history, fn) => captured = history);
+
+            await _teamsChannelUpdaterService.UpdateSyncJobStatusAsync(_syncInfo.SyncJob, SyncStatus.Idle, false, runId, usersAdded: 10, usersRemoved: 5);
+
+            Assert.IsNotNull(captured);
+            Assert.AreEqual(10, captured.UsersAdded);
+            Assert.AreEqual(5, captured.UsersRemoved);
+            Assert.IsNull(captured.AfterSyncUserCount);
+        }
+
+        [TestMethod]
+        public async Task UpdateJobStatus_DoesNotComputeAfterSyncUserCount_WhenNotIdle()
+        {
+            var runId = _syncInfo.SyncJob.RunId.GetValueOrDefault(Guid.Empty);
+
+            SyncJobHistory captured = null;
+            _mockSyncJobStatusService
+                .Setup(s => s.UpdateJobStatusAsync(It.IsAny<SyncJob>(), It.IsAny<SyncStatus?>(), It.IsAny<SyncJobHistory?>(), It.IsAny<string>()))
+                .Callback<SyncJob, SyncStatus?, SyncJobHistory?, string>((job, status, history, fn) => captured = history);
+
+            await _teamsChannelUpdaterService.UpdateSyncJobStatusAsync(_syncInfo.SyncJob, SyncStatus.Error, false, runId, usersAdded: 10, usersRemoved: 5);
+
+            Assert.IsNotNull(captured);
+            Assert.IsNull(captured.AfterSyncUserCount);
+            _mockSyncJobHistoryRepository.Verify(r => r.GetByRunIdAsync(It.IsAny<Guid>()), Times.Never);
         }
 
         [TestMethod]
@@ -151,11 +212,29 @@ namespace Services.Tests
         }
 
         [TestMethod]
-        public async Task CanGetOwnersName()
+        public async Task DestinationLabelRendersTeamNameColonChannelName()
         {
-            var owners = await _teamsChannelUpdaterService.GetGroupOwnersAsync(_syncInfo.SyncJob.Channel.GroupId, _syncInfo.SyncJob.RunId.GetValueOrDefault(Guid.Empty));
-            Assert.AreEqual(owners[0].ObjectId, _mockOwnerList[0].ObjectId);
-            Assert.AreEqual(owners[1].ObjectId, _mockOwnerList[1].ObjectId);
+            // Render "TeamName: ChannelName".
+            _mockTeamsChannelRepository
+                .Setup(repo => repo.GetTeamsChannelNameAsync(It.IsAny<AzureADTeamsChannel>()))
+                .ReturnsAsync("Engineering Channel");
+
+            var label = await _teamsChannelUpdaterService.GetDestinationLabelAsync(_syncInfo.SyncJob, _syncInfo.SyncJob.RunId.GetValueOrDefault(Guid.Empty));
+
+            Assert.AreEqual($"{_groupName}: Engineering Channel", label);
+        }
+
+        [TestMethod]
+        public async Task DestinationLabelSubstitutesChannelIdWhenNameUnresolvable()
+        {
+            // Substitute the id when a name is unresolvable.
+            _mockTeamsChannelRepository
+                .Setup(repo => repo.GetTeamsChannelNameAsync(It.IsAny<AzureADTeamsChannel>()))
+                .ReturnsAsync((string)null);
+
+            var label = await _teamsChannelUpdaterService.GetDestinationLabelAsync(_syncInfo.SyncJob, _syncInfo.SyncJob.RunId.GetValueOrDefault(Guid.Empty));
+
+            Assert.AreEqual($"{_groupName}: {_syncInfo.SyncJob.Channel.ChannelId}", label);
         }
     }
 }

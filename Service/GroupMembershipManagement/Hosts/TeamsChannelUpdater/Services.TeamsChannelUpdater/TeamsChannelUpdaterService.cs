@@ -27,6 +27,7 @@ namespace Services.TeamsChannelUpdater
         private readonly IDatabaseChannelsRepository _databaseChannelsRepository;
         private readonly IServiceBusQueueRepository _serviceBusQueueRepository;
         private readonly ISyncJobStatusService _syncJobStatusService;
+        private readonly ISyncJobHistoryRepository _syncJobHistoryRepository;
 
         public TeamsChannelUpdaterService(ILogger<TeamsChannelUpdaterService> logger,
             ITeamsChannelRepository teamsChannelRepository,
@@ -34,7 +35,8 @@ namespace Services.TeamsChannelUpdater
             IDatabaseGroupsRepository databaseGroupsRepository,
             IDatabaseChannelsRepository databaseChannelsRepository,
             IServiceBusQueueRepository serviceBusQueueRepository,
-            ISyncJobStatusService syncJobStatusService)
+            ISyncJobStatusService syncJobStatusService,
+            ISyncJobHistoryRepository syncJobHistoryRepository)
         {
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _teamsChannelRepository = teamsChannelRepository ?? throw new ArgumentNullException(nameof(teamsChannelRepository));
@@ -43,6 +45,7 @@ namespace Services.TeamsChannelUpdater
             _databaseChannelsRepository = databaseChannelsRepository ?? throw new ArgumentNullException(nameof(databaseChannelsRepository));
             _serviceBusQueueRepository = serviceBusQueueRepository ?? throw new ArgumentNullException(nameof(serviceBusQueueRepository));
             _syncJobStatusService = syncJobStatusService ?? throw new ArgumentNullException(nameof(syncJobStatusService));
+            _syncJobHistoryRepository = syncJobHistoryRepository ?? throw new ArgumentNullException(nameof(syncJobHistoryRepository));
         }
 
         public async Task<Guid> GetGroupIdAsync(SyncJob syncJob)
@@ -77,7 +80,7 @@ namespace Services.TeamsChannelUpdater
         }
 
 
-        public async Task UpdateSyncJobStatusAsync(SyncJob job, SyncStatus status, bool isDryRun, Guid runId)
+        public async Task UpdateSyncJobStatusAsync(SyncJob job, SyncStatus status, bool isDryRun, Guid runId, int? usersAdded = null, int? usersRemoved = null)
         {
             _logger.SettingJobStatus(status.ToString());
 
@@ -99,8 +102,11 @@ namespace Services.TeamsChannelUpdater
             job.ScheduledDate = currentDate.AddHours(job.Period);
             job.RunId = runId;
 
-            // TeamsChannelUpdater only owns end-time + threshold violations history updates.
-            // StartTime is created by JobTrigger when the run is created.
+            // TeamsChannelUpdater records end state, deltas, and AfterSyncUserCount when a run completes.
+            var afterSyncUserCount = status == SyncStatus.Idle
+                ? await CalculateAfterSyncUserCountAsync(runId, usersAdded, usersRemoved)
+                : null;
+
             var historyPatch = new SyncJobHistory
             {
                 SyncJobId = job.Id,
@@ -108,8 +114,11 @@ namespace Services.TeamsChannelUpdater
                 Status = status.ToString(),
                 ThresholdViolations = job.ThresholdViolations,
                 UpdatedByFunction = "TeamsChannelUpdater",
+                UsersAdded = usersAdded,
+                UsersRemoved = usersRemoved,
                 EndTime = status != SyncStatus.InProgress ? currentDate : null,
-                UpdatedAt = currentDate
+                UpdatedAt = currentDate,
+                AfterSyncUserCount = afterSyncUserCount
             };
 
             await _syncJobStatusService.UpdateJobStatusAsync(job, status, historyPatch, "TeamsChannelUpdater");
@@ -121,6 +130,27 @@ namespace Services.TeamsChannelUpdater
                                 : $"Syncing to {groupId} done.";
 
             _logger.SyncStatusMessage(message);
+        }
+
+        // Calculate AfterSyncUserCount from the run's persisted BeforeSyncUserCount and membership delta.
+        private async Task<int?> CalculateAfterSyncUserCountAsync(Guid runId, int? usersAdded, int? usersRemoved)
+        {
+            var existingHistory = await _syncJobHistoryRepository.GetByRunIdAsync(runId);
+
+            if (existingHistory?.BeforeSyncUserCount.HasValue != true)
+            {
+                return null;
+            }
+
+            var usersAddedCount = usersAdded ?? 0;
+            var usersRemovedCount = usersRemoved ?? 0;
+
+            if (usersAddedCount > 0 || usersRemovedCount > 0)
+            {
+                return existingHistory.BeforeSyncUserCount.Value + usersAddedCount - usersRemovedCount;
+            }
+
+            return existingHistory.BeforeSyncUserCount.Value;
         }
 
         public async Task MarkSyncJobAsErroredAsync(SyncJob syncJob)
@@ -162,6 +192,41 @@ namespace Services.TeamsChannelUpdater
         public async Task<List<AzureADUser>> GetGroupOwnersAsync(Guid groupObjectId, Guid runId, int top = 0)
         {
             return await _teamsChannelRepository.GetGroupOwnersAsync(groupObjectId, runId, top);
+        }
+
+        // Render TeamsChannel destinations as "TeamName: ChannelName", falling back to ids as needed.
+        public async Task<string> GetDestinationLabelAsync(SyncJob job, Guid runId)
+        {
+            var groupId = await GetGroupIdAsync(job);
+            var teamName = await _teamsChannelRepository.GetGroupNameAsync(groupId, runId);
+            if (string.IsNullOrWhiteSpace(teamName))
+            {
+                teamName = groupId.ToString();
+            }
+
+            if (job.MembershipType != MembershipTypes.TeamsChannelMembership.ToString())
+            {
+                return teamName;
+            }
+
+            var channelId = await GetChannelIdAsync(job);
+            var channel = new AzureADTeamsChannel { ObjectId = groupId, ChannelId = channelId };
+            string channelName = null;
+            try
+            {
+                channelName = await _teamsChannelRepository.GetTeamsChannelNameAsync(channel);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogInformation($"Failed to resolve channel name for group {groupId}, channel {channelId}: {ex.Message}");
+            }
+
+            if (string.IsNullOrWhiteSpace(channelName))
+            {
+                channelName = channelId;
+            }
+
+            return $"{teamName}: {channelName}";
         }
 
         public async Task SendEmailAsync(SyncJob job, NotificationMessageType notificationType, string[] additionalContentParams)

@@ -40,7 +40,7 @@ namespace Hosts.TeamsChannelUpdater
                 if (request.Status == SyncStatus.Idle && syncJob.IgnoreThresholdOnce)
                     syncJob.IgnoreThresholdOnce = false;
 
-                await _teamsChannelUpdaterService.UpdateSyncJobStatusAsync(syncJob, request.Status, false, request.SyncJob.RunId.GetValueOrDefault());
+                await _teamsChannelUpdaterService.UpdateSyncJobStatusAsync(syncJob, request.Status, false, request.SyncJob.RunId.GetValueOrDefault(), request.UsersAdded, request.UsersRemoved);
             }
 
             _logger.FunctionCompleted(nameof(JobStatusUpdaterFunction));

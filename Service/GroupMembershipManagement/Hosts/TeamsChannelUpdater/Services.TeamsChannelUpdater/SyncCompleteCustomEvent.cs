@@ -7,6 +7,7 @@ namespace Hosts.TeamsChannelUpdater
 {
     public class SyncCompleteCustomEvent : ISyncCompleteCustomEvent
     {
+        public string TargetOfficeGroupId { get; set; } = "N/A";
         public string Destination { get; set; } = "N/A";
         public string GroupId { get; set; } = "N/A";
         public string ChannelId { get; set; } = "N/A";
@@ -25,5 +26,6 @@ namespace Hosts.TeamsChannelUpdater
         public string SyncJobTimeElapsedSeconds { get; set; } = "N/A";
         public string Type { get; set; } = "N/A";
         public string SourceTypesCounts { get; set; } = "N/A";
+        public string Identifier { get; set; } = "N/A";
     }
 }
