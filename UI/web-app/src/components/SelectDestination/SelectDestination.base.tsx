@@ -49,7 +49,7 @@ import { OnboardingStatus } from '../../models';
 import { EndpointsList } from '../EndpointsList';
 import { CreateGroup } from '../CreateGroup';
 import { debounce } from '../../utils/jobUtils';
-import { selectIsJobTenantWriter } from '../../store/roles.slice';
+import { selectIsJobTenantWriter, selectIsTeamsChannelOnboarder } from '../../store/roles.slice';
 import { SourcePartType } from '../../models/SourcePartType';
 import { DestinationType } from '../../models/DestinationType';
 import { GroupSetting } from '../GroupSetting/GroupSetting';
@@ -156,6 +156,7 @@ export const SelectDestinationBase: React.FunctionComponent<ISelectDestinationPr
   const [createNewGroup, setCreateNewGroup] = useState(false);
   const isCreateGroupEnabled = useSelector(selectCreateGroupFeatureEnabled);
   const isTenantJobWriter: boolean | undefined = useSelector(selectIsJobTenantWriter);
+  const isTeamsChannelOnboarder: boolean | undefined = useSelector(selectIsTeamsChannelOnboarder);
 
   const optionsDestinationType: IComboBoxOption[] = [
     {
@@ -171,7 +172,7 @@ export const SelectDestinationBase: React.FunctionComponent<ISelectDestinationPr
       data: {
         description: strings.ManageMembership.labels.channelDescription,
       },
-      disabled: !isTenantJobWriter,
+      disabled: !(isTenantJobWriter || isTeamsChannelOnboarder),
     },
   ];
 

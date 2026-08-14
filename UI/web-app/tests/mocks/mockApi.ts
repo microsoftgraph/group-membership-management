@@ -145,6 +145,7 @@ const mockRoles = {
   isAISyncJob: true,
   isAIOnboardingChat: true,
   isAISettingsAdministrator: true,
+  isTeamsChannelOnboarder: true,
   isFetchingRoles: false,
 };
 

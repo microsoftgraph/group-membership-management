@@ -17,6 +17,7 @@ export interface Roles {
   isAIOnboardingChat: boolean;
   isAISettingsAdministrator: boolean;
   isAISyncJob: boolean;
+  isTeamsChannelOnboarder: boolean;
   isFetchingRoles: boolean;
 }
 
