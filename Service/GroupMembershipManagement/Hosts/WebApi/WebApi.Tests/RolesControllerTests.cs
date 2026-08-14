@@ -35,7 +35,7 @@ namespace Services.Tests
                 new Claim(ClaimTypes.Role, Roles.JOB_TENANT_WRITER),
                 new Claim(ClaimTypes.Role, Roles.SUBMISSION_REVIEWER),
                 new Claim(ClaimTypes.Role, Roles.SUBMISSION_REJECTOR),
-                new Claim(ClaimTypes.Role, Roles.HYPERLINK_ADMINISTRATOR),
+                new Claim(ClaimTypes.Role, Roles.AUTO_APPROVER_ADMINISTRATOR),
                 new Claim(ClaimTypes.Role, Roles.CUSTOM_MEMBERSHIP_PROVIDER_ADMINISTRATOR),
                 new Claim(ClaimTypes.Role, Roles.RESET_ADMINISTRATOR),
                 new Claim(ClaimTypes.Role, Roles.GENERAL_SETTINGS_ADMINISTRATOR)
@@ -58,7 +58,7 @@ namespace Services.Tests
             Assert.IsTrue(rolesStatuses.IsJobTenantWriter);
             Assert.IsTrue(rolesStatuses.IsSubmissionReviewer);
             Assert.IsTrue(rolesStatuses.IsSubmissionRejector);
-            Assert.IsTrue(rolesStatuses.IsHyperlinkAdministrator);
+            Assert.IsTrue(rolesStatuses.IsAutoApproverAdministrator);
             Assert.IsTrue(rolesStatuses.IsCustomMembershipProviderAdministrator);
             Assert.IsTrue(rolesStatuses.IsOperationsResetAdministrator);
             Assert.IsTrue(rolesStatuses.IsGeneralSettingsAdministrator);

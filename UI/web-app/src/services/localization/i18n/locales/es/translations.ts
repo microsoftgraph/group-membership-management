@@ -210,14 +210,14 @@ export const strings: IStrings = {
     labels: {
       pageTitle: "Centro de Administrador",
       saveButton: "Guardar",
-      saveSuccess:  "Guardado exitosamente."
+      saveSuccess:  "Guardado exitosamente.",
+      alertBanner: "Banner de Alerta"
     },
     Errors:{
       forbidden: 'Prohibido'
     },
     HyperlinkSettings: {
       labels: {
-        hyperlinks: "Ligas",
         description: "Incluye ligas con información específica sobre cómo funciona XMM en tu organización para que los usuarios puedan aprovecharlo al máximo.",
       },
       dashboardLink: {
@@ -236,8 +236,11 @@ export const strings: IStrings = {
     Operations: {
       labels: {
         operations: "Operaciones",
-        title: "Panel de Control GMM",
-        description: "Utilice el botón Detener para detener las operaciones de GMM y el botón Restablecer para restablecer GMM en cualquier momento."
+        controlPanel: "Panel de Control",
+        serviceOperationTitle: "Detener GMM",
+        serviceOperationDescription: "Detiene todas las operaciones de sincronización de GMM. Mientras GMM está detenido no se agregan ni se eliminan membresías en los destinos. Inicie GMM nuevamente para reanudar el procesamiento normal.",
+        resetOperationTitle: "Restablecer GMM",
+        resetOperationDescription: "Reinicie GMM en cualquier momento. Úselo cuando GMM está en ejecución pero el procesamiento debe reiniciarse desde un estado limpio."
       },
       buttons: {
         stop: "Detener GMM",
@@ -278,6 +281,9 @@ export const strings: IStrings = {
     GeneralSettings: {
       labels: {
         general: "General",
+        featureControl: "Control de Funciones",
+        featureControlDescription: "Habilite o deshabilite la funcionalidad disponible para los usuarios en toda la experiencia de Membership Manager.",
+        userResources: "Recursos para Usuarios",
         reviewOwnSubmissionTitle: "Permisos de los Verificadores de Solicitud",
         reviewOwnSubmissionDescription: "¿Pueden los Verificadores de Solicitud aceptar o rechazar su propia solicitud?",
         createGroupTitle: "Crear grupo habilitado",
@@ -286,6 +292,12 @@ export const strings: IStrings = {
         businessJustificationDescription: "¿Debería GMM requerir una justificación de negocio para la administración de la membresía o realizar algun cambio?",
         isDisclaimerEnabledTitle: "¿Está habilitado el aviso de visita inicial?",
         isDisclaimerEnabledDescription: "Habilitar el aviso para que se muestre a los usuarios cuando visiten GMM por primera vez.",
+      }
+    },
+    AutoApproverSettings: {
+      labels: {
+        autoApprover: "Aprobación Automática",
+        description: "Elija qué solicitudes de membresía puede aprobar XMM automáticamente sin la intervención de un verificador.",
         isAutoApprovalForGroupBasedSyncsEnabledTitle: "¿Está habilitada la auto-aprobación para sincronizaciones basadas en grupos?",
         isAutoApprovalForGroupBasedSyncsEnabledDescription: "Aprobar automáticamente trabajos de sincronización cuando todas las partes de origen son del tipo GroupMembership con visibilidad aceptable (no HiddenMembership).",
         isAutoApprovalForRequestorIsOrgLeaderSyncsEnabledTitle: "¿Está habilitada la auto-aprobación para solicitante como líder organizacional?",
@@ -294,8 +306,10 @@ export const strings: IStrings = {
     },
     AISettings: {
       labels: {
-        aiSettings: "Configuración de IA",
+        aiSettings: "IA",
         description: "Configure las funciones de IA para su organización, incluyendo generación de títulos, chat de copiloto, parámetros LLM e instrucciones de prompt.",
+        copilotAvailabilityTitle: "Disponibilidad del Copiloto",
+        copilotAvailabilityDescription: "Habilite o deshabilite las capacidades de IA disponibles para los usuarios y ajuste cómo el Copiloto genera sus respuestas.",
         isAITitleEnabledTitle: "¿Está habilitado el título de IA?",
         isAITitleEnabledDescription: "Habilitar la generación de títulos de IA para ayudar a los usuarios a crear títulos descriptivos para sus sincronizaciones de membresía.",
         isAICopilotEnabledTitle: "¿Está habilitado el Copiloto de IA?",
@@ -318,6 +332,7 @@ export const strings: IStrings = {
         suggestedPromptLabelField: "Etiqueta del botón",
         suggestedPromptPromptField: "Indicación completa",
         suggestedPromptAdd: "Agregar indicación",
+        suggestedPromptRemove: "Quitar",
         suggestedPromptPopulateDefaults: "Rellenar valores predeterminados",
         suggestedPromptLabelPlaceholder: "ej., Incluir todos los reportes",
         suggestedPromptPromptPlaceholder: "ej., Incluir todos los reportes que dependen de un empleado",

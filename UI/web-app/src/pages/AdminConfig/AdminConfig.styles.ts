@@ -158,6 +158,47 @@ export const getStyles = (props: AdminConfigStyleProps): AdminConfigStyles => {
         aiSettingsSliderSection: {
             marginTop: 20,
         },
+        sectionContainer: {
+            marginTop: 24,
+            paddingTop: 24,
+            borderTop: `1px solid ${theme.palette.neutralLight}`,
+            selectors: {
+                ':first-child': {
+                    marginTop: 12,
+                    paddingTop: 0,
+                    borderTop: 'none',
+                },
+            },
+        },
+        sectionHeading: {
+            display: 'block',
+            fontWeight: 600,
+            letterSpacing: '0.06em',
+            textTransform: 'uppercase',
+            color: theme.palette.themePrimary,
+        },
+        sectionSubtitle: {
+            display: 'block',
+            marginTop: 4,
+            marginBottom: 12,
+            color: theme.palette.neutralPrimary,
+        },
+        settingsGrid: {
+            display: 'flex',
+            flexWrap: 'wrap',
+            gap: 16,
+        },
+        suggestedPromptsGrid: {
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(420px, 1fr))',
+            gap: 12,
+        },
+        operationsGrid: {
+            display: 'flex',
+            flexWrap: 'wrap',
+            gap: 16,
+            alignItems: 'stretch',
+        },
     };
 };
 

@@ -36,6 +36,12 @@ export type AdminConfigStyles = {
   aiSettingsDefaultInstructionsToggleIcon: IStyle;
   aiSettingsDefaultInstructionsContent: IStyle;
   aiSettingsSliderSection: IStyle;
+  sectionContainer: IStyle;
+  sectionHeading: IStyle;
+  sectionSubtitle: IStyle;
+  settingsGrid: IStyle;
+  suggestedPromptsGrid: IStyle;
+  operationsGrid: IStyle;
 };
 
 export type AdminConfigStyleProps = {
@@ -63,15 +69,15 @@ export type AdminConfigViewProps = AdminConfigProps & {
   sqlMembershipSource: SqlMembershipSource | undefined;
   sqlMembershipSourceAttributes: SqlMembershipAttribute[] | undefined;
   strings: IStrings['AdminConfig'];
-  isHyperlinkAdmin: boolean;
   isCustomMembershipProviderAdmin: boolean;
   isOperationsResetAdministrator: boolean;
   isGeneralSettingsAdministrator: boolean;
+  isAutoApproverAdministrator: boolean;
   isAISettingsAdministrator: boolean;
   defaultAIPrompt: string;
 };
 
-export type HyperlinkSettingsProps = {
+export type UserResourcesSettingsProps = {
   classNames: IProcessedStyleSet<AdminConfigStyles>;
   strings: IStrings['AdminConfig'];
   settings: { readonly [key in SettingKey]: string };
@@ -89,6 +95,21 @@ export type GeneralSettingsProps = {
   strings: IStrings['AdminConfig'];
   settings: { readonly [key in SettingKey]: string };
   setSettings: React.Dispatch<React.SetStateAction<{ readonly [key in SettingKey]: string }>>;
+  setHasValidationErrors: React.Dispatch<React.SetStateAction<boolean>>;
+};
+
+export type AutoApproverSettingsProps = {
+  classNames: IProcessedStyleSet<AdminConfigStyles>;
+  strings: IStrings['AdminConfig'];
+  settings: { readonly [key in SettingKey]: string };
+  setSettings: React.Dispatch<React.SetStateAction<{ readonly [key in SettingKey]: string }>>;
+};
+
+export type SettingsSectionProps = {
+  classNames: IProcessedStyleSet<AdminConfigStyles>;
+  title: string;
+  subtitle?: string;
+  children: React.ReactNode;
 };
 
 export type AISettingsProps = {

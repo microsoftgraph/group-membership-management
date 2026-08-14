@@ -28,14 +28,12 @@ describe('GeneralSetting', () => {
     expect(screen.getByRole('switch')).toBeChecked();
   });
 
-  it('toggles the value and notifies the caller when clicked', () => {
+  it('notifies the caller when clicked', () => {
     render(<GeneralSetting {...baseProps} />);
 
-    const toggle = screen.getByRole('switch');
-    fireEvent.click(toggle);
+    fireEvent.click(screen.getByRole('switch'));
 
     expect(baseProps.onGeneralSettingChange).toHaveBeenCalledWith('false');
-    expect(toggle).not.toBeChecked();
   });
 
   it('allows toggling from a disabled initial state', () => {
@@ -47,6 +45,15 @@ describe('GeneralSetting', () => {
     fireEvent.click(toggle);
 
     expect(baseProps.onGeneralSettingChange).toHaveBeenCalledWith('true');
-    expect(toggle).toBeChecked();
+  });
+
+  it('reflects the value when it arrives after the initial render', () => {
+    const { rerender } = render(<GeneralSetting {...baseProps} generalSettingValue="false" />);
+
+    expect(screen.getByRole('switch')).not.toBeChecked();
+
+    rerender(<GeneralSetting {...baseProps} generalSettingValue="true" />);
+
+    expect(screen.getByRole('switch')).toBeChecked();
   });
 });

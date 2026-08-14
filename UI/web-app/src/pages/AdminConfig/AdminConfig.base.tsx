@@ -38,9 +38,9 @@ import { SqlMembershipAttribute, SqlMembershipSource } from '../../models';
 import { fetchAttributeValues, patchDefaultSqlMembershipSourceAttributes, patchDefaultSqlMembershipSourceCustomLabel } from '../../store/sqlMembershipSources.api';
 import {
   selectIsCustomMembershipProviderAdministrator,
-  selectIsHyperlinkAdministrator,
   selectIsOperationsResetAdministrator,
   selectIsGeneralSettingsAdministrator,
+  selectIsAutoApproverAdministrator,
   selectHasAdminCenterPermissions,
   selectIsAISettingsAdministrator,
 } from '../../store/roles.slice';
@@ -80,10 +80,10 @@ export const AdminConfigBase: React.FunctionComponent<AdminConfigProps> = (props
   const isSourceSaving = useSelector(selectIsSourceSaving);
   const areAttributesSaving = useSelector(selectAreAttributesSaving);
   const areSettingsSaving = useSelector(selectIsSaving);
-  const isHyperlinkAdmin = useSelector(selectIsHyperlinkAdministrator);
   const isCustomMembershipProviderAdmin = useSelector(selectIsCustomMembershipProviderAdministrator);
   const isOperationsResetAdministrator = useSelector(selectIsOperationsResetAdministrator);
   const isGeneralSettingsAdministrator = useSelector(selectIsGeneralSettingsAdministrator);
+  const isAutoApproverAdministrator = useSelector(selectIsAutoApproverAdministrator);
   const isAISettingsAdministrator = useSelector(selectIsAISettingsAdministrator);
   const canViewSettings = useSelector(selectHasAdminCenterPermissions);
 
@@ -121,125 +121,79 @@ export const AdminConfigBase: React.FunctionComponent<AdminConfigProps> = (props
     dispatch(fetchAttributeValues(attribute));
   }
 
-  // Update boolean values to strings before dispatching patchSetting
-  const handleSave = (newSettings: { readonly [key in SettingKey]: string }, newSqlMembershipSource: SqlMembershipSource | undefined, newSqlMembershipAttributes: SqlMembershipAttribute[] | undefined) => {
-    const formattedSettings = {
-      ...newSettings,
-      [SettingKey.CanReviewOwnSubmissions]: newSettings[SettingKey.CanReviewOwnSubmissions] === 'true' ? 'true' : 'false',
-      [SettingKey.CreateGroupFeatureEnabled]: newSettings[SettingKey.CreateGroupFeatureEnabled] === 'true' ? 'true' : 'false',
-      [SettingKey.IsBusinessJustificationRequired]: newSettings[SettingKey.IsBusinessJustificationRequired] === 'true' ? 'true' : 'false',
-      [SettingKey.IsDisclaimerEnabled]: newSettings[SettingKey.IsDisclaimerEnabled] === 'true' ? 'true' : 'false',
-      [SettingKey.IsAITitleEnabled]: newSettings[SettingKey.IsAITitleEnabled] === 'true' ? 'true' : 'false',
-      [SettingKey.IsAICopilotEnabled]: newSettings[SettingKey.IsAICopilotEnabled] === 'true' ? 'true' : 'false',
-      [SettingKey.IsAISearchForUserEnabled]: newSettings[SettingKey.IsAISearchForUserEnabled] === 'true' ? 'true' : 'false',
-      [SettingKey.IsAIRunExplanationEnabled]: newSettings[SettingKey.IsAIRunExplanationEnabled] === 'true' ? 'true' : 'false',
-    };
+  // Setting keys owned by each Admin Configuration administrator role. Only changed keys within
+  // the signed-in administrator's authorized scopes are dispatched, so a user holding a single
+  // role never triggers an unauthorized PATCH. UIUrl and RunHistoryOpenViewingAndUnifiedTab are
+  // loaded for display purposes only and are intentionally excluded from every scope.
+  const generalSettingKeys: SettingKey[] = [
+    SettingKey.DashboardUrl,
+    SettingKey.OutlookWarningUrl,
+    SettingKey.PrivacyPolicyUrl,
+    SettingKey.CanReviewOwnSubmissions,
+    SettingKey.CreateGroupFeatureEnabled,
+    SettingKey.IsBusinessJustificationRequired,
+    SettingKey.IsDisclaimerEnabled,
+  ];
 
-    if (JSON.stringify(formattedSettings) !== JSON.stringify(settings)) {
+  const autoApproverSettingKeys: SettingKey[] = [
+    SettingKey.IsAutoApprovalForGroupBasedSyncsEnabled,
+    SettingKey.IsAutoApprovalForRequestorIsOrgLeaderSyncsEnabled,
+  ];
+
+  const aiSettingKeys: SettingKey[] = [
+    SettingKey.IsAITitleEnabled,
+    SettingKey.IsAICopilotEnabled,
+    SettingKey.IsAISearchForUserEnabled,
+    SettingKey.IsAIRunExplanationEnabled,
+    SettingKey.CopilotTemperature,
+    SettingKey.CopilotTopP,
+    SettingKey.CopilotInstructions,
+    SettingKey.CopilotSuggestedPrompts,
+  ];
+
+  const booleanSettingKeys: SettingKey[] = [
+    SettingKey.CanReviewOwnSubmissions,
+    SettingKey.CreateGroupFeatureEnabled,
+    SettingKey.IsBusinessJustificationRequired,
+    SettingKey.IsDisclaimerEnabled,
+    SettingKey.IsAutoApprovalForGroupBasedSyncsEnabled,
+    SettingKey.IsAutoApprovalForRequestorIsOrgLeaderSyncsEnabled,
+    SettingKey.IsAITitleEnabled,
+    SettingKey.IsAICopilotEnabled,
+    SettingKey.IsAISearchForUserEnabled,
+    SettingKey.IsAIRunExplanationEnabled,
+  ];
+
+  // Normalize boolean values to strings, then dispatch only the changed settings that the
+  // signed-in administrator is authorized to manage.
+  const handleSave = (newSettings: { readonly [key in SettingKey]: string }, newSqlMembershipSource: SqlMembershipSource | undefined, newSqlMembershipAttributes: SqlMembershipAttribute[] | undefined) => {
+    const formattedSettings = { ...newSettings };
+    booleanSettingKeys.forEach((settingKey) => {
+      formattedSettings[settingKey] = newSettings[settingKey] === 'true' ? 'true' : 'false';
+    });
+
+    const authorizedSettingKeys: SettingKey[] = [
+      ...(isGeneralSettingsAdministrator ? generalSettingKeys : []),
+      ...(isAutoApproverAdministrator ? autoApproverSettingKeys : []),
+      ...(isAISettingsAdministrator ? aiSettingKeys : []),
+    ];
+
+    const changedAuthorizedSettingKeys = authorizedSettingKeys.filter(
+      (settingKey) => formattedSettings[settingKey] !== settings[settingKey]
+    );
+
+    if (changedAuthorizedSettingKeys.length > 0) {
       setSettings(formattedSettings);
 
-      dispatch(
-        patchSetting({
-          settingKey: SettingKey.DashboardUrl,
-          settingValue: formattedSettings[SettingKey.DashboardUrl],
-        })
-      );
-      dispatch(patchSetting({
-        settingKey: SettingKey.OutlookWarningUrl,
-        settingValue: formattedSettings[SettingKey.OutlookWarningUrl]
-      }));
-      dispatch(
-        patchSetting({
-          settingKey: SettingKey.PrivacyPolicyUrl,
-          settingValue: formattedSettings[SettingKey.PrivacyPolicyUrl],
-        })
-      );
-      dispatch(
-        patchSetting({
-          settingKey: SettingKey.CanReviewOwnSubmissions,
-          settingValue: formattedSettings[SettingKey.CanReviewOwnSubmissions],
-        })
-      );
-      dispatch(
-        patchSetting({
-          settingKey: SettingKey.CreateGroupFeatureEnabled,
-          settingValue: formattedSettings[SettingKey.CreateGroupFeatureEnabled],
-        })
-      );
-      dispatch(
-        patchSetting({
-          settingKey: SettingKey.IsBusinessJustificationRequired,
-          settingValue: formattedSettings[SettingKey.IsBusinessJustificationRequired],
-        })
-      );
-      dispatch(
-        patchSetting({
-          settingKey: SettingKey.IsDisclaimerEnabled,
-          settingValue: formattedSettings[SettingKey.IsDisclaimerEnabled],
-        })
-      );
-      dispatch(
-        patchSetting({
-          settingKey: SettingKey.IsAutoApprovalForGroupBasedSyncsEnabled,
-          settingValue: formattedSettings[SettingKey.IsAutoApprovalForGroupBasedSyncsEnabled],
-        })
-      );
-      dispatch(
-        patchSetting({
-          settingKey: SettingKey.IsAutoApprovalForRequestorIsOrgLeaderSyncsEnabled,
-          settingValue: formattedSettings[SettingKey.IsAutoApprovalForRequestorIsOrgLeaderSyncsEnabled],
-        })
-      );
-      dispatch(
-        patchSetting({
-          settingKey: SettingKey.IsAITitleEnabled,
-          settingValue: formattedSettings[SettingKey.IsAITitleEnabled]
-        })
-      );
-      dispatch(
-        patchSetting({
-          settingKey: SettingKey.IsAICopilotEnabled,
-          settingValue: formattedSettings[SettingKey.IsAICopilotEnabled]
-        })
-      );
-      dispatch(
-        patchSetting({
-          settingKey: SettingKey.IsAISearchForUserEnabled,
-          settingValue: formattedSettings[SettingKey.IsAISearchForUserEnabled]
-        })
-      );
-      dispatch(
-        patchSetting({
-          settingKey: SettingKey.IsAIRunExplanationEnabled,
-          settingValue: formattedSettings[SettingKey.IsAIRunExplanationEnabled]
-        })
-      );
-      dispatch(
-        patchSetting({
-          settingKey: SettingKey.CopilotTemperature,
-          settingValue: formattedSettings[SettingKey.CopilotTemperature]
-        })
-      );
-      dispatch(
-        patchSetting({
-          settingKey: SettingKey.CopilotTopP,
-          settingValue: formattedSettings[SettingKey.CopilotTopP]
-        })
-      );
-      dispatch(
-        patchSetting({
-          settingKey: SettingKey.CopilotInstructions,
-          settingValue: formattedSettings[SettingKey.CopilotInstructions]
-        })
-      );
-      dispatch(
-        patchSetting({
-          settingKey: SettingKey.CopilotSuggestedPrompts,
-          settingValue: formattedSettings[SettingKey.CopilotSuggestedPrompts]
-        })
-      );
+      changedAuthorizedSettingKeys.forEach((settingKey) => {
+        dispatch(
+          patchSetting({
+            settingKey,
+            settingValue: formattedSettings[settingKey],
+          })
+        );
+      });
     }
-
     if (JSON.stringify(newSqlMembershipSource) !== JSON.stringify(sqlMembershipSource)) {
       dispatch(
         patchDefaultSqlMembershipSourceCustomLabel(newSqlMembershipSource?.customLabel ?? '')
@@ -284,10 +238,10 @@ export const AdminConfigBase: React.FunctionComponent<AdminConfigProps> = (props
       handleGetValues={handleGetValues}
       sqlMembershipSource={sqlMembershipSource}
       sqlMembershipSourceAttributes={sqlMembershipSourceAttributes}
-      isHyperlinkAdmin={isHyperlinkAdmin}
       isCustomMembershipProviderAdmin={isCustomMembershipProviderAdmin}
       isOperationsResetAdministrator={isOperationsResetAdministrator}
       isGeneralSettingsAdministrator={isGeneralSettingsAdministrator}
+      isAutoApproverAdministrator={isAutoApproverAdministrator}
       isAISettingsAdministrator={isAISettingsAdministrator}
       defaultAIPrompt={defaultAIPrompt}
     />

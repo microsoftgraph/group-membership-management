@@ -24,7 +24,14 @@ function Set-AppRolesIfNeeded {
         [Parameter(Mandatory = $true)]
         [string] $WebApiObjectId,
         [Parameter(Mandatory = $True)]
-        [Guid] $TenantId
+        [Guid] $TenantId,
+        # Retired app role values that must not be removed while principals are still assigned to
+        # them. Assigned principals must first be granted their replacement role.
+        [Parameter(Mandatory = $False)]
+        [hashtable] $RetiredRoleReplacements = @{ "Hyperlink.ReadWrite.All" = "GeneralSettings.ReadWrite.All" },
+        # Removes retired app roles even when principals are still assigned to them.
+        [Parameter(Mandatory = $False)]
+        [switch] $ForceRetiredRoleRemoval
     )
     Write-Host "`nSet-AppRolesIfNeeded starting...`n"
 
@@ -137,14 +144,6 @@ function Set-AppRolesIfNeeded {
             AllowedMemberTypes = @($memberTypes)
         },
         @{
-            DisplayName        = "Hyperlink Administrator"
-            Description        = "Can add, update, or remove custom URLs."
-            Value              = "Hyperlink.ReadWrite.All"
-            Id                 = [Guid]::NewGuid().ToString()
-            IsEnabled          = $True
-            AllowedMemberTypes = @($memberTypes)
-        },
-        @{
             DisplayName        = "Custom Membership Provider Administrator"
             Description        = "Can add, update, or remove custom field names."
             Value              = "CustomSource.ReadWrite.All"
@@ -164,6 +163,14 @@ function Set-AppRolesIfNeeded {
             DisplayName        = "Reset Administrator"
             Description        = "Can reset or stop GMM."
             Value              = "Operations.Reset"
+            Id                 = [Guid]::NewGuid().ToString()
+            IsEnabled          = $True
+            AllowedMemberTypes = @($memberTypes)
+        },
+        @{
+            DisplayName        = "Auto Approver Administrator"
+            Description        = "Can update automatic approval settings."
+            Value              = "AutoApprover.ReadWrite.All"
             Id                 = [Guid]::NewGuid().ToString()
             IsEnabled          = $True
             AllowedMemberTypes = @($memberTypes)
@@ -223,9 +230,40 @@ function Set-AppRolesIfNeeded {
             }
         }
 
+        # Retired roles that still have assignments are kept enabled so that administrators are not
+        # silently locked out. They must be migrated to their replacement role first.
+        $retainedRetiredRoleValues = @()
+        if (-not $ForceRetiredRoleRemoval) {
+            $servicePrincipal = Invoke-WithRetry -Operation {
+                Get-MgServicePrincipal -Filter "appId eq '$($WebApiApp.AppId)'" -ErrorAction SilentlyContinue
+            } -OperationName "Get web api service principal for retired role inventory"
+
+            if ($servicePrincipal) {
+                $assignments = Invoke-WithRetry -Operation {
+                    Get-MgServicePrincipalAppRoleAssignedTo -ServicePrincipalId $servicePrincipal.Id -All
+                } -OperationName "Get app role assignments for retired role inventory"
+
+                foreach ($retiredRoleValue in $RetiredRoleReplacements.Keys) {
+                    $retiredRole = $currentAppRoles | Where-Object { $_.Value -eq $retiredRoleValue }
+                    if (-not $retiredRole) {
+                        continue
+                    }
+
+                    $assignedPrincipals = $assignments | Where-Object { $_.AppRoleId -eq $retiredRole.Id }
+                    if ($assignedPrincipals) {
+                        $retainedRetiredRoleValues += $retiredRoleValue
+                        Write-Warning "App role '$retiredRoleValue' is retired but still assigned to $(@($assignedPrincipals).Count) principal(s). Grant '$($RetiredRoleReplacements[$retiredRoleValue])' to the following principals, remove the retired assignments, then re-run this script (or re-run with -ForceRetiredRoleRemoval):"
+                        foreach ($assignment in $assignedPrincipals) {
+                            Write-Warning "  - $($assignment.PrincipalDisplayName) ($($assignment.PrincipalId))"
+                        }
+                    }
+                }
+            }
+        }
+
         # Disable roles that aren't in the new roles list
         foreach ($role in $currentAppRoles) {
-            if (-not $newAppRolesLookup.ContainsKey($role.Value) -and $role.IsEnabled) {
+            if (-not $newAppRolesLookup.ContainsKey($role.Value) -and $role.IsEnabled -and $retainedRetiredRoleValues -notcontains $role.Value) {
                 Write-Host "Disabling role: $($role.DisplayName)"
                 $role.IsEnabled = $false
             }
@@ -242,9 +280,10 @@ function Set-AppRolesIfNeeded {
             throw
         }
 
-        # Keep only roles that are still valid (in the new roles list)
+        # Keep only roles that are still valid (in the new roles list), plus retired roles that are
+        # still assigned and therefore pending migration.
         $currentAppRoles = $currentAppRoles | Where-Object {
-            $newAppRolesLookup.ContainsKey($_.Value)
+            $newAppRolesLookup.ContainsKey($_.Value) -or $retainedRetiredRoleValues -contains $_.Value
         }
     }
 

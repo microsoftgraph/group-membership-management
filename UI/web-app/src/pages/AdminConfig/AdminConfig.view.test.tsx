@@ -8,6 +8,7 @@ import { initializeIcons } from '@fluentui/react';
 import { MemoryRouter } from 'react-router-dom';
 import { AdminConfigView, fractionToPercentText } from './AdminConfig.view';
 import { getStyles } from './AdminConfig.styles';
+import type { AdminConfigViewProps } from './AdminConfig.types';
 import { SettingKey, SqlMembershipAttribute } from '../../models';
 import { defaultStrings } from '../../services/localization';
 import { renderWithProviders } from '../../testing/renderWithProviders';
@@ -80,7 +81,7 @@ const renderAdminConfigView = (defaultAIPrompt: string, settingsOverrides?: Part
         sqlMembershipSourceAttributes={undefined}
         strings={defaultStrings.AdminConfig}
         styles={getStyles}
-        isHyperlinkAdmin={false}
+        isAutoApproverAdministrator={false}
         isCustomMembershipProviderAdmin={false}
         isOperationsResetAdministrator={false}
         isGeneralSettingsAdministrator={false}
@@ -89,6 +90,89 @@ const renderAdminConfigView = (defaultAIPrompt: string, settingsOverrides?: Part
       />
     </MemoryRouter>
   );
+
+describe('AdminConfigView tab layout', () => {
+  const renderWithRoles = (roles: {
+    isAutoApproverAdministrator: boolean;
+    isCustomMembershipProviderAdmin: boolean;
+    isOperationsResetAdministrator: boolean;
+    isGeneralSettingsAdministrator: boolean;
+    isAISettingsAdministrator: boolean;
+  }) =>
+    renderWithProviders(
+      <MemoryRouter>
+        <AdminConfigView
+          isSaving={false}
+          onSave={vi.fn()}
+          handleGetValues={vi.fn()}
+          settings={createSettings()}
+          sqlMembershipSource={undefined}
+          sqlMembershipSourceAttributes={undefined}
+          strings={defaultStrings.AdminConfig}
+          styles={getStyles}
+          defaultAIPrompt={''}
+          {...roles}
+        />
+      </MemoryRouter>
+    );
+
+  const allRoles = {
+    isAutoApproverAdministrator: true,
+    isCustomMembershipProviderAdmin: true,
+    isOperationsResetAdministrator: true,
+    isGeneralSettingsAdministrator: true,
+    isAISettingsAdministrator: true,
+  };
+
+  test('renders the six tabs in the redesigned order', () => {
+    renderWithRoles(allRoles);
+
+    const tabNames = screen.getAllByRole('tab').map((tab) => tab.textContent?.trim());
+
+    expect(tabNames).toEqual([
+      defaultStrings.AdminConfig.GeneralSettings.labels.general,
+      defaultStrings.AdminConfig.Operations.labels.operations,
+      defaultStrings.AdminConfig.CustomSourceSettings.labels.customSource,
+      defaultStrings.AdminConfig.AISettings.labels.aiSettings,
+      defaultStrings.AdminConfig.AutoApproverSettings.labels.autoApprover,
+      defaultStrings.AdminConfig.labels.alertBanner,
+    ]);
+  });
+
+  test('hides the Auto Approver tab when the user lacks the Auto Approver role', () => {
+    renderWithRoles({ ...allRoles, isAutoApproverAdministrator: false });
+
+    const tabNames = screen.getAllByRole('tab').map((tab) => tab.textContent?.trim());
+
+    expect(tabNames).not.toContain(defaultStrings.AdminConfig.AutoApproverSettings.labels.autoApprover);
+  });
+
+  test('keeps auto approval toggles off the General tab', () => {
+    renderWithRoles(allRoles);
+
+    expect(
+      screen.queryByText(defaultStrings.AdminConfig.AutoApproverSettings.labels.isAutoApprovalForGroupBasedSyncsEnabledTitle)
+    ).not.toBeInTheDocument();
+    expect(screen.getByText(defaultStrings.AdminConfig.GeneralSettings.labels.featureControl)).toBeInTheDocument();
+  });
+
+  test('shows the auto approval toggles once the Auto Approver tab is selected', () => {
+    renderWithRoles(allRoles);
+
+    fireEvent.click(
+      screen.getByRole('tab', { name: defaultStrings.AdminConfig.AutoApproverSettings.labels.autoApprover })
+    );
+
+    expect(
+      screen.getByText(defaultStrings.AdminConfig.AutoApproverSettings.labels.isAutoApprovalForGroupBasedSyncsEnabledTitle)
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        defaultStrings.AdminConfig.AutoApproverSettings.labels.isAutoApprovalForRequestorIsOrgLeaderSyncsEnabledTitle
+      )
+    ).toBeInTheDocument();
+  });
+});
 
 describe('AdminConfigView AI settings', () => {
   test('shows and toggles default instructions panel', () => {
@@ -244,19 +328,19 @@ describe('AdminConfigView Custom Source', () => {
     { name: 'Country', customLabel: '', type: 'nvarchar', hasMapping: false, values: [], description: '', enabled: true, isSensitive: false },
   ];
 
-  const renderCustomSourceView = () =>
+  const renderCustomSourceView = (onSave: ReturnType<typeof vi.fn> = vi.fn()) =>
     renderWithProviders(
       <MemoryRouter>
         <AdminConfigView
           isSaving={false}
-          onSave={vi.fn()}
+          onSave={onSave as unknown as AdminConfigViewProps['onSave']}
           handleGetValues={vi.fn()}
           settings={createSettings()}
           sqlMembershipSource={undefined}
           sqlMembershipSourceAttributes={sensitiveAttributes}
           strings={defaultStrings.AdminConfig}
           styles={getStyles}
-          isHyperlinkAdmin={false}
+          isAutoApproverAdministrator={false}
           isCustomMembershipProviderAdmin={true}
           isOperationsResetAdministrator={false}
           isGeneralSettingsAdministrator={false}
@@ -289,6 +373,7 @@ describe('AdminConfigView Custom Source', () => {
       screen.getByText('Country').compareDocumentPosition(screen.getByText('Salary')) & Node.DOCUMENT_POSITION_FOLLOWING
     ).toBeTruthy();
   });
+
 });
 
 describe('AdminConfigView custom source null threshold', () => {
@@ -328,10 +413,10 @@ describe('AdminConfigView custom source null threshold', () => {
           sqlMembershipSourceAttributes={attributes}
           strings={defaultStrings.AdminConfig}
           styles={getStyles}
-          isHyperlinkAdmin={false}
           isCustomMembershipProviderAdmin={true}
           isOperationsResetAdministrator={false}
           isGeneralSettingsAdministrator={false}
+          isAutoApproverAdministrator={false}
           isAISettingsAdministrator={false}
           defaultAIPrompt={''}
         />
@@ -469,10 +554,10 @@ describe('AdminConfigView custom source null threshold', () => {
           sqlMembershipSourceAttributes={attributes}
           strings={defaultStrings.AdminConfig}
           styles={getStyles}
-          isHyperlinkAdmin={false}
           isCustomMembershipProviderAdmin={true}
           isOperationsResetAdministrator={false}
           isGeneralSettingsAdministrator={true}
+          isAutoApproverAdministrator={false}
           isAISettingsAdministrator={false}
           defaultAIPrompt={''}
         />
@@ -481,6 +566,9 @@ describe('AdminConfigView custom source null threshold', () => {
 
   test('does not strand the Save button when an invalid row unmounts on tab switch', async () => {
     renderWithGeneralTab();
+
+    // General is the first tab after the redesign, so open Custom Source explicitly.
+    fireEvent.click(screen.getByText(defaultStrings.AdminConfig.CustomSourceSettings.labels.customSource));
 
     const saveButton = screen.getByText(defaultStrings.AdminConfig.labels.saveButton).closest('button')!;
 

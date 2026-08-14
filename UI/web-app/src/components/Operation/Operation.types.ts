@@ -25,7 +25,14 @@ export type OperationProps = React.AllHTMLAttributes<HTMLDivElement> & {
   title: string;
   description: string;
   buttonText: ButtonTexts;
+  /**
+   * Which operation actions the card renders. 'service' renders the Stop/Start action,
+   * 'reset' renders the Reset action, and 'all' (default) renders both.
+   */
+  variant?: OperationVariant;
 };
+
+export type OperationVariant = 'service' | 'reset' | 'all';
 
 export type ButtonTexts = {
   stop: string;

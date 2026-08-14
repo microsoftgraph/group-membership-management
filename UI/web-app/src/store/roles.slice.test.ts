@@ -11,7 +11,7 @@ import rolesReducer, {
   selectIsJobTenantWriter,
   selectIsSubmissionReviewer,
   selectIsSubmissionRejector,
-  selectIsHyperlinkAdministrator,
+  selectIsAutoApproverAdministrator,
   selectIsCustomMembershipProviderAdministrator,
   selectIsOperationsResetAdministrator,
   selectIsGeneralSettingsAdministrator,
@@ -80,8 +80,8 @@ describe('roles.slice — selectors', () => {
     expect(selectIsSubmissionRejector(makeRoot({ isSubmissionRejector: true }))).toBe(true);
   });
 
-  it('selectIsHyperlinkAdministrator', () => {
-    expect(selectIsHyperlinkAdministrator(makeRoot({ isHyperlinkAdministrator: true }))).toBe(true);
+  it('selectIsAutoApproverAdministrator', () => {
+    expect(selectIsAutoApproverAdministrator(makeRoot({ isAutoApproverAdministrator: true }))).toBe(true);
   });
 
   it('selectIsCustomMembershipProviderAdministrator', () => {
@@ -139,8 +139,8 @@ describe('roles.slice — selectors', () => {
     it('returns false with no admin roles', () => {
       expect(selectHasAdminCenterPermissions(makeRoot())).toBe(false);
     });
-    it('returns true for isHyperlinkAdministrator', () => {
-      expect(selectHasAdminCenterPermissions(makeRoot({ isHyperlinkAdministrator: true }))).toBe(true);
+    it('returns true for isAutoApproverAdministrator', () => {
+      expect(selectHasAdminCenterPermissions(makeRoot({ isAutoApproverAdministrator: true }))).toBe(true);
     });
     it('returns true for isCustomMembershipProviderAdministrator', () => {
       expect(selectHasAdminCenterPermissions(makeRoot({ isCustomMembershipProviderAdministrator: true }))).toBe(true);

@@ -37,10 +37,11 @@ namespace WebApi.Controllers.v1.Roles
             var isJobTenantWriter = User.IsInRole(Models.Roles.JOB_TENANT_WRITER);
             var isSubmissionReviewer = User.IsInRole(Models.Roles.SUBMISSION_REVIEWER);
             var isSubmissionRejector = User.IsInRole(Models.Roles.SUBMISSION_REJECTOR);
-            var isHyperlinkAdministrator = User.IsInRole(Models.Roles.HYPERLINK_ADMINISTRATOR);
+            var isHyperlinkAdministrator = false;
             var isCustomMembershipProviderAdministrator = User.IsInRole(Models.Roles.CUSTOM_MEMBERSHIP_PROVIDER_ADMINISTRATOR);
             var isOperationsResetAdministrator = User.IsInRole(Models.Roles.RESET_ADMINISTRATOR);
             var isGeneralSettingsAdministrator = User.IsInRole(Models.Roles.GENERAL_SETTINGS_ADMINISTRATOR);
+            var isAutoApproverAdministrator = User.IsInRole(Models.Roles.AUTO_APPROVER_ADMINISTRATOR);
             var isAIOnboardingChat = User.IsInRole(Models.Roles.AI_ONBOARDING_CHAT);
             var isAISettingsAdministrator = User.IsInRole(Models.Roles.AI_SETTINGS_ADMINISTRATOR);
             var isAISyncJob = User.IsInRole(Models.Roles.AI_SYNC_JOB);
@@ -57,10 +58,13 @@ namespace WebApi.Controllers.v1.Roles
                 IsJobTenantWriter = isJobTenantWriter,
                 IsSubmissionReviewer = isSubmissionReviewer,
                 IsSubmissionRejector = isSubmissionRejector,
+#pragma warning disable CS0618 // Deprecated always-false v1 compatibility field.
                 IsHyperlinkAdministrator = isHyperlinkAdministrator,
+#pragma warning restore CS0618
                 IsCustomMembershipProviderAdministrator = isCustomMembershipProviderAdministrator,
                 IsOperationsResetAdministrator = isOperationsResetAdministrator,
                 IsGeneralSettingsAdministrator = isGeneralSettingsAdministrator,
+                IsAutoApproverAdministrator = isAutoApproverAdministrator,
                 IsAIOnboardingChat = isAIOnboardingChat,
                 IsAISettingsAdministrator = isAISettingsAdministrator,
                 IsAISyncJob = isAISyncJob,

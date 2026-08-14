@@ -184,15 +184,7 @@ Create the following 13 application roles. For each role, click **Create app rol
 - **Do you want to enable this app role?**: ✅ **Yes**
 - Click **Apply**
 
-**Role 10: Hyperlink Administrator**
-- **Display name**: `Hyperlink Administrator`
-- **Allowed member types**: ☑️ **Users/Groups** and ☑️ **Applications**
-- **Value**: `Hyperlink.ReadWrite.All`
-- **Description**: `Can add, update, or remove custom URLs.`
-- **Do you want to enable this app role?**: ✅ **Yes**
-- Click **Apply**
-
-**Role 11: Custom Membership Provider Administrator**
+**Role 10: Custom Membership Provider Administrator**
 - **Display name**: `Custom Membership Provider Administrator`
 - **Allowed member types**: ☑️ **Users/Groups** and ☑️ **Applications**
 - **Value**: `CustomSource.ReadWrite.All`
@@ -200,7 +192,7 @@ Create the following 13 application roles. For each role, click **Create app rol
 - **Do you want to enable this app role?**: ✅ **Yes**
 - Click **Apply**
 
-**Role 12: General Settings Administrator**
+**Role 11: General Settings Administrator**
 - **Display name**: `General Settings Administrator`
 - **Allowed member types**: ☑️ **Users/Groups** and ☑️ **Applications**
 - **Value**: `GeneralSettings.ReadWrite.All`
@@ -208,13 +200,23 @@ Create the following 13 application roles. For each role, click **Create app rol
 - **Do you want to enable this app role?**: ✅ **Yes**
 - Click **Apply**
 
-**Role 13: Reset Administrator**
+**Role 12: Reset Administrator**
 - **Display name**: `Reset Administrator`
 - **Allowed member types**: ☑️ **Users/Groups** and ☑️ **Applications**
 - **Value**: `Operations.Reset`
 - **Description**: `Can reset or stop GMM.`
 - **Do you want to enable this app role?**: ✅ **Yes**
 - Click **Apply**
+
+**Role 13: Auto Approver Administrator**
+- **Display name**: `Auto Approver Administrator`
+- **Allowed member types**: ☑️ **Users/Groups** and ☑️ **Applications**
+- **Value**: `AutoApprover.ReadWrite.All`
+- **Description**: `Can update automatic approval settings.`
+- **Do you want to enable this app role?**: ✅ **Yes**
+- Click **Apply**
+
+> **Note**: The former `Hyperlink.ReadWrite.All` role has been retired. Hyperlink (User Resources) administration is now covered by `GeneralSettings.ReadWrite.All`. In existing tenants, grant `GeneralSettings.ReadWrite.All` to every principal currently assigned `Hyperlink.ReadWrite.All` before disabling or removing the retired role.
 
 #### 7.3 Verify Application Roles
 

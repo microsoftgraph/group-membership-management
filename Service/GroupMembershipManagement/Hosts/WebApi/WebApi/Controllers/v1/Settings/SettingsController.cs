@@ -46,6 +46,40 @@ namespace WebApi.Controllers.v1.Settings
         private static readonly IReadOnlySet<SettingKey> AISettingKeys = new HashSet<SettingKey>(
             AIOnboardingReadableSettingKeys.Concat(AIAdminOnlySettingKeys));
 
+        /// <summary>
+        /// Complete set of AI setting keys owned by the AI settings administrator role for writes.
+        /// Broader than <see cref="AISettingKeys"/> because the AI feature flags are readable by
+        /// everyone but must only ever be authored by the AI Settings Administrator.
+        /// </summary>
+        private static readonly IReadOnlySet<SettingKey> AIWritableSettingKeys = new HashSet<SettingKey>
+        {
+            SettingKey.IsAITitleEnabled,
+            SettingKey.IsAICopilotEnabled,
+            SettingKey.IsAISearchForUserEnabled,
+            SettingKey.IsAIRunExplanationEnabled,
+            SettingKey.CopilotTemperature,
+            SettingKey.CopilotTopP,
+            SettingKey.CopilotInstructions,
+            SettingKey.CopilotSuggestedPrompts
+        };
+
+        private static readonly IReadOnlySet<SettingKey> AutoApproverSettingKeys = new HashSet<SettingKey>
+        {
+            SettingKey.IsAutoApprovalForGroupBasedSyncsEnabled,
+            SettingKey.IsAutoApprovalForRequestorIsOrgLeaderSyncsEnabled
+        };
+
+        private static readonly IReadOnlySet<SettingKey> GeneralSettingKeys = new HashSet<SettingKey>
+        {
+            SettingKey.CanReviewOwnSubmissions,
+            SettingKey.CreateGroupFeatureEnabled,
+            SettingKey.IsBusinessJustificationRequired,
+            SettingKey.IsDisclaimerEnabled,
+            SettingKey.DashboardUrl,
+            SettingKey.OutlookWarningUrl,
+            SettingKey.PrivacyPolicyUrl
+        };
+
         private static readonly IReadOnlySet<SettingKey> ReadOnlySettingKeys = new HashSet<SettingKey>
         {
             SettingKey.RunHistoryOpenViewingAndUnifiedTab
@@ -118,7 +152,7 @@ namespace WebApi.Controllers.v1.Settings
             }
         }
 
-        [Authorize(Roles = $"{Models.Roles.HYPERLINK_ADMINISTRATOR}, {Models.Roles.GENERAL_SETTINGS_ADMINISTRATOR}, {Models.Roles.AI_SETTINGS_ADMINISTRATOR}")]
+        [Authorize(Roles = $"{Models.Roles.GENERAL_SETTINGS_ADMINISTRATOR}, {Models.Roles.AUTO_APPROVER_ADMINISTRATOR}, {Models.Roles.AI_SETTINGS_ADMINISTRATOR}")]
         [HttpPatch("{settingKey}")]
         public async Task<IActionResult> PatchSettingAsync(SettingKey settingKey, [FromBody] string settingValue)
         {
@@ -127,7 +161,7 @@ namespace WebApi.Controllers.v1.Settings
                 return BadRequest("Feature flags must be managed through Azure App Configuration.");
             }
 
-            if (AISettingKeys.Contains(settingKey) && !User.IsInRole(Models.Roles.AI_SETTINGS_ADMINISTRATOR))
+            if (!IsAuthorizedToWrite(settingKey))
             {
                 return Forbid();
             }
@@ -145,6 +179,32 @@ namespace WebApi.Controllers.v1.Settings
             {
                 return StatusCode(500);
             }
+        }
+
+        /// <summary>
+        /// Determines whether the caller holds the administrator role that owns the requested
+        /// setting key. Each mutable setting key is owned by exactly one administrator role, so a
+        /// caller holding an unrelated Admin Configuration role cannot write it. Keys outside every
+        /// ownership group are not writable through this endpoint.
+        /// </summary>
+        private bool IsAuthorizedToWrite(SettingKey settingKey)
+        {
+            if (GeneralSettingKeys.Contains(settingKey))
+            {
+                return User.IsInRole(Models.Roles.GENERAL_SETTINGS_ADMINISTRATOR);
+            }
+
+            if (AutoApproverSettingKeys.Contains(settingKey))
+            {
+                return User.IsInRole(Models.Roles.AUTO_APPROVER_ADMINISTRATOR);
+            }
+
+            if (AIWritableSettingKeys.Contains(settingKey))
+            {
+                return User.IsInRole(Models.Roles.AI_SETTINGS_ADMINISTRATOR);
+            }
+
+            return false;
         }
 
         [Authorize()]

@@ -70,7 +70,7 @@ namespace Services.Tests
                 ControllerContext = CreateControllerContext(new List<Claim>
                 {
                     new Claim(ClaimTypes.Name, "user@domain.com"),
-                    new Claim(ClaimTypes.Role, Roles.HYPERLINK_ADMINISTRATOR)
+                    new Claim(ClaimTypes.Role, Roles.GENERAL_SETTINGS_ADMINISTRATOR)
                 })
             };
             _settingKey = SettingKey.DashboardUrl;
@@ -110,7 +110,7 @@ namespace Services.Tests
                 ControllerContext = CreateControllerContext(new List<Claim>
                 {
                     new Claim(ClaimTypes.Name, "user@domain.com"),
-                    new Claim(ClaimTypes.Role, Roles.HYPERLINK_ADMINISTRATOR)
+                    new Claim(ClaimTypes.Role, Roles.GENERAL_SETTINGS_ADMINISTRATOR)
                 })
             };
 
@@ -188,7 +188,7 @@ namespace Services.Tests
                 ControllerContext = CreateControllerContext(new List<Claim>
                 {
                     new Claim(ClaimTypes.Name, "user@domain.com"),
-                    new Claim(ClaimTypes.Role, Roles.HYPERLINK_ADMINISTRATOR)
+                    new Claim(ClaimTypes.Role, Roles.GENERAL_SETTINGS_ADMINISTRATOR)
                 })
             };
 
@@ -298,7 +298,7 @@ namespace Services.Tests
                 ControllerContext = CreateControllerContext(new List<Claim>
                 {
                     new Claim(ClaimTypes.Name, "user@domain.com"),
-                    new Claim(ClaimTypes.Role, Roles.HYPERLINK_ADMINISTRATOR)
+                    new Claim(ClaimTypes.Role, Roles.GENERAL_SETTINGS_ADMINISTRATOR)
                 })
             };
 
@@ -377,8 +377,8 @@ namespace Services.Tests
         }
 
         [TestMethod]
-        [DataRow(Roles.HYPERLINK_ADMINISTRATOR)]
-        public async Task PatchSettingWhenHyperlinkAdminTestAsync(string role)
+        [DataRow(Roles.GENERAL_SETTINGS_ADMINISTRATOR)]
+        public async Task PatchSettingWhenGeneralSettingsAdminTestAsync(string role)
         {
             _settingsController = new SettingsController(_getSettingHandler, _getAllSettingsHandler, _patchSettingHandler, _getSupportEmailHandler)
             {
@@ -469,9 +469,67 @@ namespace Services.Tests
         }
 
         [TestMethod]
+        public async Task PatchAutoApproverSettingWhenUserHasAutoApproverRoleReturnsNoContentTestAsync()
+        {
+            _settingsController = new SettingsController(_getSettingHandler, _getAllSettingsHandler, _patchSettingHandler, _getSupportEmailHandler)
+            {
+                ControllerContext = CreateControllerContext(new List<Claim>
+                {
+                    new Claim(ClaimTypes.Name, "user@domain.com"),
+                    new Claim(ClaimTypes.Role, Roles.AUTO_APPROVER_ADMINISTRATOR)
+                })
+            };
+
+            _settingsRepository.Setup(x => x.PatchSettingAsync(SettingKey.IsAutoApprovalForGroupBasedSyncsEnabled, "true"))
+                               .Verifiable();
+
+            var response = await _settingsController.PatchSettingAsync(SettingKey.IsAutoApprovalForGroupBasedSyncsEnabled, "true");
+
+            Assert.IsInstanceOfType(response, typeof(NoContentResult));
+            _settingsRepository.Verify(x => x.PatchSettingAsync(SettingKey.IsAutoApprovalForGroupBasedSyncsEnabled, "true"), Times.Once());
+        }
+
+        [TestMethod]
+        public async Task PatchAutoApproverSettingWhenUserLacksAutoApproverRoleReturnsForbidTestAsync()
+        {
+            // Default controller holds only the General Settings role.
+            var response = await _settingsController.PatchSettingAsync(SettingKey.IsAutoApprovalForRequestorIsOrgLeaderSyncsEnabled, "true");
+
+            Assert.IsInstanceOfType(response, typeof(ForbidResult));
+            _settingsRepository.Verify(x => x.PatchSettingAsync(It.IsAny<SettingKey>(), It.IsAny<string>()), Times.Never());
+        }
+
+        [TestMethod]
+        public async Task PatchGeneralSettingWhenUserHasOnlyAutoApproverRoleReturnsForbidTestAsync()
+        {
+            _settingsController = new SettingsController(_getSettingHandler, _getAllSettingsHandler, _patchSettingHandler, _getSupportEmailHandler)
+            {
+                ControllerContext = CreateControllerContext(new List<Claim>
+                {
+                    new Claim(ClaimTypes.Name, "user@domain.com"),
+                    new Claim(ClaimTypes.Role, Roles.AUTO_APPROVER_ADMINISTRATOR)
+                })
+            };
+
+            var response = await _settingsController.PatchSettingAsync(SettingKey.CreateGroupFeatureEnabled, "true");
+
+            Assert.IsInstanceOfType(response, typeof(ForbidResult));
+            _settingsRepository.Verify(x => x.PatchSettingAsync(It.IsAny<SettingKey>(), It.IsAny<string>()), Times.Never());
+        }
+
+        [TestMethod]
+        public async Task PatchUnownedSettingKeyReturnsForbidTestAsync()
+        {
+            var response = await _settingsController.PatchSettingAsync(SettingKey.UIUrl, "https://example.com");
+
+            Assert.IsInstanceOfType(response, typeof(ForbidResult));
+            _settingsRepository.Verify(x => x.PatchSettingAsync(It.IsAny<SettingKey>(), It.IsAny<string>()), Times.Never());
+        }
+
+        [TestMethod]
         public async Task PatchSettingNotFoundTestAsync()
         {
-            var nonExistentSettingKey = SettingKey.UIUrl;
+            var nonExistentSettingKey = SettingKey.OutlookWarningUrl;
             _settingsRepository.Setup(x => x.PatchSettingAsync(nonExistentSettingKey, It.IsAny<string>()))
                                .ThrowsAsync(new KeyNotFoundException());
 
@@ -618,8 +676,17 @@ namespace Services.Tests
         [TestMethod]
         public async Task PatchAlertBanner_NonAdmin_ReturnsForbid()
         {
-            // Default controller has only HYPERLINK_ADMINISTRATOR role.
-            var response = await _settingsController.PatchAlertBannerAsync(CreateValidAlertConfig());
+            // Controller without any Admin Configuration role.
+            var controller = new SettingsController(_getSettingHandler, _getAllSettingsHandler, _patchSettingHandler, _getSupportEmailHandler)
+            {
+                ControllerContext = CreateControllerContext(new List<Claim>
+                {
+                    new Claim(ClaimTypes.Name, "user@domain.com"),
+                    new Claim(ClaimTypes.Role, Roles.SUBMISSION_REVIEWER)
+                })
+            };
+
+            var response = await controller.PatchAlertBannerAsync(CreateValidAlertConfig());
 
             Assert.IsInstanceOfType(response, typeof(ForbidResult));
             _settingsRepository.Verify(x => x.PatchSettingAsync(It.IsAny<SettingKey>(), It.IsAny<string>()), Times.Never());

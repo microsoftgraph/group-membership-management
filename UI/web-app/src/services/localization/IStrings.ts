@@ -207,13 +207,13 @@ export type IStrings = {
       pageTitle: string;
       saveButton: string;
       saveSuccess: string;
+      alertBanner: string;
     },
     Errors:{
       forbidden: string;
     },
     HyperlinkSettings: {
       labels: {
-        hyperlinks: string;
         description: string;
       },
       dashboardLink: {
@@ -232,8 +232,11 @@ export type IStrings = {
     Operations: {
       labels: {
         operations: string;
-        description: string;
-        title: string;
+        controlPanel: string;
+        serviceOperationTitle: string;
+        serviceOperationDescription: string;
+        resetOperationTitle: string;
+        resetOperationDescription: string;
       };
       buttons: {
         stop: string;
@@ -274,6 +277,9 @@ export type IStrings = {
     GeneralSettings: {
       labels: {
         general: string;
+        featureControl: string;
+        featureControlDescription: string;
+        userResources: string;
         reviewOwnSubmissionTitle: string;
         reviewOwnSubmissionDescription: string;
         createGroupTitle: string;
@@ -282,6 +288,12 @@ export type IStrings = {
         businessJustificationDescription: string;
         isDisclaimerEnabledTitle: string;
         isDisclaimerEnabledDescription: string;
+      }
+    },
+    AutoApproverSettings: {
+      labels: {
+        autoApprover: string;
+        description: string;
         isAutoApprovalForGroupBasedSyncsEnabledTitle: string;
         isAutoApprovalForGroupBasedSyncsEnabledDescription: string;
         isAutoApprovalForRequestorIsOrgLeaderSyncsEnabledTitle: string;
@@ -292,6 +304,8 @@ export type IStrings = {
       labels: {
         aiSettings: string;
         description: string;
+        copilotAvailabilityTitle: string;
+        copilotAvailabilityDescription: string;
         isAITitleEnabledTitle: string;
         isAITitleEnabledDescription: string;
         isAICopilotEnabledTitle: string;
@@ -314,6 +328,7 @@ export type IStrings = {
         suggestedPromptLabelField: string;
         suggestedPromptPromptField: string;
         suggestedPromptAdd: string;
+        suggestedPromptRemove: string;
         suggestedPromptPopulateDefaults: string;
         suggestedPromptLabelPlaceholder: string;
         suggestedPromptPromptPlaceholder: string;

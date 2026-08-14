@@ -210,13 +210,13 @@ export const strings: IStrings = {
       pageTitle: "Admin Center",
       saveButton: "Save",
       saveSuccess: "Saved successfully.",
+      alertBanner: "Alert Banner",
     },
     Errors:{
       forbidden: 'Forbidden'
     },
     HyperlinkSettings: {
       labels: {
-        hyperlinks: "Hyperlinks",
         description: "Provide hyperlinks to the following organization specific information so that your users are empowered to leverage XMM to its fullest.",
       },
       dashboardLink: {
@@ -235,8 +235,11 @@ export const strings: IStrings = {
     Operations: {
       labels: {
         operations: "Operations",
-        title: "GMM Control Panel",
-        description: "Use the stop button to halt GMM operations and the reset button to reboot GMM at any time.",
+        controlPanel: "Control Panel",
+        serviceOperationTitle: "Stop GMM",
+        serviceOperationDescription: "Halt all GMM sync operations. While GMM is stopped no destination memberships are added or removed. Start GMM again to resume normal processing.",
+        resetOperationTitle: "Reset GMM",
+        resetOperationDescription: "Reboot GMM at any time. Use this when GMM is running but processing needs to be restarted from a clean state.",
       },
       buttons: {
         stop: "Stop GMM",
@@ -277,6 +280,9 @@ export const strings: IStrings = {
     GeneralSettings: {
       labels: {
         general: "General",
+        featureControl: "Feature Control",
+        featureControlDescription: "Enable or disable functionality available to users throughout the Membership Manager experience.",
+        userResources: "User Resources",
         reviewOwnSubmissionTitle: "Submission Reviewers permissions",
         reviewOwnSubmissionDescription: "Can submission reviewers review their own submissions?",
         createGroupTitle: "Create Group feature enabled",
@@ -285,6 +291,12 @@ export const strings: IStrings = {
         businessJustificationDescription: "Require users to provide business justification when requesting to manage a group or perform an update?",
         isDisclaimerEnabledTitle: "Is the initial visit disclaimer enabled?",
         isDisclaimerEnabledDescription: "Enable the disclaimer to be shown to users when they first visit GMM.",
+      }
+    },
+    AutoApproverSettings: {
+      labels: {
+        autoApprover: "Auto Approver",
+        description: "Choose which membership requests XMM can approve automatically without reviewer action.",
         isAutoApprovalForGroupBasedSyncsEnabledTitle: "Is auto-approval for group-based syncs enabled?",
         isAutoApprovalForGroupBasedSyncsEnabledDescription: "Automatically approve sync jobs when all source parts are GroupMembership type with acceptable visibility (not HiddenMembership).",
         isAutoApprovalForRequestorIsOrgLeaderSyncsEnabledTitle: "Is auto-approval for requestor as org leader syncs enabled?",
@@ -293,8 +305,10 @@ export const strings: IStrings = {
     },
     AISettings: {
       labels: {
-        aiSettings: "AI Settings",
+        aiSettings: "AI",
         description: "Configure AI features for your organization, including title generation, copilot chat, LLM parameters, and instruction prompts.",
+        copilotAvailabilityTitle: "Copilot Availability",
+        copilotAvailabilityDescription: "Enable or disable the AI capabilities available to users, and tune how the Copilot generates its responses.",
         isAITitleEnabledTitle: "Is AI Title enabled?",
         isAITitleEnabledDescription: "Enable AI Title generation to help users create descriptive titles for their membership syncs.",
         isAICopilotEnabledTitle: "Is AI Copilot enabled?",
@@ -317,6 +331,7 @@ export const strings: IStrings = {
         suggestedPromptLabelField: "Button label",
         suggestedPromptPromptField: "Full prompt",
         suggestedPromptAdd: "Add prompt",
+        suggestedPromptRemove: "Remove",
         suggestedPromptPopulateDefaults: "Populate defaults",
         suggestedPromptLabelPlaceholder: "e.g., Include all reports",
         suggestedPromptPromptPlaceholder: "e.g., Include all reports who roll up to an employee",

@@ -15,7 +15,7 @@ export type Roles = {
   isJobTenantWriter: boolean;
   isSubmissionReviewer: boolean;
   isSubmissionRejector: boolean;
-  isHyperlinkAdministrator: boolean;
+  isAutoApproverAdministrator: boolean;
   isCustomMembershipProviderAdministrator: boolean;
   isOperationsResetAdministrator: boolean;
   isGeneralSettingsAdministrator: boolean;
@@ -36,7 +36,7 @@ const initialState: Roles = {
   isJobTenantWriter: false,
   isSubmissionReviewer: false,
   isSubmissionRejector: false,
-  isHyperlinkAdministrator: false,
+  isAutoApproverAdministrator: false,
   isCustomMembershipProviderAdministrator: false,
   isOperationsResetAdministrator: false,
   isGeneralSettingsAdministrator: false,
@@ -74,10 +74,10 @@ export const selectIsJobTenantReader = (state: RootState) => state.roles.isJobTe
 export const selectIsJobTenantWriter = (state: RootState) => state.roles.isJobTenantWriter;
 export const selectIsSubmissionReviewer = (state: RootState) => state.roles.isSubmissionReviewer;
 export const selectIsSubmissionRejector = (state: RootState) => state.roles.isSubmissionRejector;
-export const selectIsHyperlinkAdministrator = (state: RootState) => state.roles.isHyperlinkAdministrator;
 export const selectIsCustomMembershipProviderAdministrator = (state: RootState) => state.roles.isCustomMembershipProviderAdministrator;
 export const selectIsOperationsResetAdministrator = (state: RootState) => state.roles.isOperationsResetAdministrator;
 export const selectIsGeneralSettingsAdministrator = (state: RootState) => state.roles.isGeneralSettingsAdministrator;
+export const selectIsAutoApproverAdministrator = (state: RootState) => state.roles.isAutoApproverAdministrator;
 export const selectIsAIOnboardingChat = (state: RootState) => state.roles.isAIOnboardingChat;
 export const selectIsAISettingsAdministrator = (state: RootState) => state.roles.isAISettingsAdministrator;
 export const selectIsAISyncJob = (state: RootState) => state.roles.isAISyncJob;
@@ -96,10 +96,10 @@ export const selectIsJobWriter = (state: RootState) => {
 };
 
 export const selectHasAdminCenterPermissions = (state: RootState) => {
-  return state.roles.isHyperlinkAdministrator ||
-          state.roles.isCustomMembershipProviderAdministrator ||
+  return state.roles.isCustomMembershipProviderAdministrator ||
           state.roles.isOperationsResetAdministrator ||
           state.roles.isGeneralSettingsAdministrator ||
+          state.roles.isAutoApproverAdministrator ||
           state.roles.isAISettingsAdministrator;
 };
 

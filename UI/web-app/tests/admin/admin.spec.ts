@@ -23,6 +23,38 @@ test.describe('Admin Tests', () => {
     console.log('✅ Admin test completed successfully.');
   });
 
+  test('Admin Configuration tabs render in the redesigned order', async ({ page }) => {
+    const url = DOMAIN.startsWith('http://') || DOMAIN.startsWith('https://') ? DOMAIN : `https://${DOMAIN}`;
+    await page.goto(`${url}/Admin`);
+
+    const tabs = page.getByRole('tab');
+    await expect(tabs).toHaveCount(6, { timeout: 20000 });
+    await expect(tabs).toHaveText([
+      'General',
+      'Operations',
+      'Custom Source',
+      'AI',
+      'Auto Approver',
+      'Alert Banner',
+    ]);
+  });
+
+  test('Auto approval toggles live on the Auto Approver tab, not General', async ({ page }) => {
+    const url = DOMAIN.startsWith('http://') || DOMAIN.startsWith('https://') ? DOMAIN : `https://${DOMAIN}`;
+    await page.goto(`${url}/Admin`);
+
+    const groupBasedToggleId = SettingKeyMap[SettingKey.IsAutoApprovalForGroupBasedSyncsEnabled];
+    const orgLeaderToggleId = SettingKeyMap[SettingKey.IsAutoApprovalForRequestorIsOrgLeaderSyncsEnabled];
+
+    await page.getByRole('tab', { name: 'General', exact: true }).click();
+    await expect(page.locator(`#${groupBasedToggleId}`)).toHaveCount(0);
+    await expect(page.locator(`#${orgLeaderToggleId}`)).toHaveCount(0);
+
+    await page.getByRole('tab', { name: 'Auto Approver', exact: true }).click();
+    await expect(page.locator(`#${groupBasedToggleId}`)).toBeVisible({ timeout: 10000 });
+    await expect(page.locator(`#${orgLeaderToggleId}`)).toBeVisible();
+  });
+
   test('Initial disclaimer displays on first load', { tag: '@setup' }, async ({ page }) => {
     test.setTimeout(120000); // 2 minutes timeout for setup tests
 
@@ -217,7 +249,7 @@ test.describe('Admin Tests', () => {
     const url = DOMAIN.startsWith('http://') || DOMAIN.startsWith('https://') ? DOMAIN : `https://${DOMAIN}`;
 
     await page.goto(`${url}/Admin`);
-    await page.locator('text="AI Settings"').click();
+    await page.getByRole('tab', { name: 'AI', exact: true }).click();
 
     await expect(page.getByText('Copilot Instructions Prompt')).toBeVisible({ timeout: 10000 });
 
@@ -239,7 +271,7 @@ test.describe('Admin Tests', () => {
     const url = DOMAIN.startsWith('http://') || DOMAIN.startsWith('https://') ? DOMAIN : `https://${DOMAIN}`;
 
     await page.goto(`${url}/Admin`);
-    await page.locator('text="AI Settings"').click();
+    await page.getByRole('tab', { name: 'AI', exact: true }).click();
 
     await expect(page.getByText('Suggested Prompts')).toBeVisible({ timeout: 10000 });
 
@@ -253,7 +285,7 @@ test.describe('Admin Tests', () => {
     const url = DOMAIN.startsWith('http://') || DOMAIN.startsWith('https://') ? DOMAIN : `https://${DOMAIN}`;
 
     await page.goto(`${url}/Admin`);
-    await page.locator('text="AI Settings"').click();
+    await page.getByRole('tab', { name: 'AI', exact: true }).click();
 
     await expect(page.getByText('Suggested Prompts')).toBeVisible({ timeout: 10000 });
 
@@ -274,7 +306,7 @@ test.describe('Admin Tests', () => {
     const url = DOMAIN.startsWith('http://') || DOMAIN.startsWith('https://') ? DOMAIN : `https://${DOMAIN}`;
 
     await page.goto(`${url}/Admin`);
-    await page.locator('text="AI Settings"').click();
+    await page.getByRole('tab', { name: 'AI', exact: true }).click();
 
     await expect(page.getByText('Suggested Prompts')).toBeVisible({ timeout: 10000 });
 

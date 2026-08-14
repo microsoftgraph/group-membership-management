@@ -12,9 +12,11 @@ import {
   NullThresholdCellProps,
   AttributeValuesCellProps,
   CustomSourceSettingsProps,
-  HyperlinkSettingsProps,
+  UserResourcesSettingsProps,
   OperationsProps,
   GeneralSettingsProps,
+  AutoApproverSettingsProps,
+  SettingsSectionProps,
   AISettingsProps } from './AdminConfig.types';
 import { PageSection } from '../../components/PageSection';
 import { HyperlinkSetting } from '../../components/HyperlinkSetting';
@@ -30,10 +32,10 @@ const getClassNames = classNamesFunction<AdminConfigStyleProps, AdminConfigStyle
 export const AdminConfigView: React.FunctionComponent<AdminConfigViewProps> = (props: AdminConfigViewProps) => {
   // extract props
   const { className, isSaving, onSave, handleGetValues, settings, sqlMembershipSource, sqlMembershipSourceAttributes, strings, styles,
-    isHyperlinkAdmin,
     isCustomMembershipProviderAdmin,
     isOperationsResetAdministrator,
     isGeneralSettingsAdministrator,
+    isAutoApproverAdministrator,
     isAISettingsAdministrator,
     defaultAIPrompt } = props;
 
@@ -87,29 +89,41 @@ export const AdminConfigView: React.FunctionComponent<AdminConfigViewProps> = (p
         <div className={classNames.card}>
           <PageSection>
             <Pivot>
-              {isHyperlinkAdmin &&
+              {isGeneralSettingsAdministrator &&
                 <PivotItem
-                  headerText={strings.HyperlinkSettings.labels.hyperlinks}
+                  headerText={strings.GeneralSettings.labels.general}
                   headerButtonProps={{
                     'data-order': 1,
-                    'data-title': strings.HyperlinkSettings.labels.hyperlinks,
+                    'data-title': strings.GeneralSettings.labels.general,
                   }}
                 >
-                  <HyperlinkSettings
+                  <GeneralSettings
                     classNames={classNames}
                     strings={strings}
                     settings={newSettings}
                     setSettings={setNewSettings}
                     setHasValidationErrors={setHasUrlValidationErrors} />
-
+                </PivotItem>
+              }
+              {isOperationsResetAdministrator &&
+                <PivotItem
+                  headerText={strings.Operations.labels.operations}
+                  headerButtonProps={{
+                    'data-order': 2,
+                    'data-title': strings.Operations.labels.operations,
+                  }}
+                >
+                  <Operations
+                    classNames={classNames}
+                    strings={strings} />
                 </PivotItem>
               }
               {isCustomMembershipProviderAdmin &&
                 <PivotItem
-                  headerText={'Custom Source'}
+                  headerText={strings.CustomSourceSettings.labels.customSource}
                   headerButtonProps={{
-                    'data-order': 2,
-                    'data-title': 'Custom Source',
+                    'data-order': 3,
+                    'data-title': strings.CustomSourceSettings.labels.customSource,
                   }}
                 >
                   <CustomSourceSettings
@@ -123,39 +137,11 @@ export const AdminConfigView: React.FunctionComponent<AdminConfigViewProps> = (p
                     strings={strings} />
                 </PivotItem>
               }
-              {isOperationsResetAdministrator &&
-                <PivotItem
-                  headerText={strings.Operations.labels.operations}
-                  headerButtonProps={{
-                    'data-order': 1,
-                    'data-title': strings.Operations.labels.operations,
-                  }}
-                >
-                  <Operations
-                    classNames={classNames}
-                    strings={strings} />
-                </PivotItem>
-              }
-              {isGeneralSettingsAdministrator &&
-                <PivotItem
-                  headerText={strings.GeneralSettings.labels.general}
-                  headerButtonProps={{
-                    'data-order': 1,
-                    'data-title': strings.GeneralSettings.labels.general,
-                  }}
-                >
-                  <GeneralSettings
-                    classNames={classNames}
-                    strings={strings}
-                    settings={newSettings}
-                    setSettings={setNewSettings} />
-                </PivotItem>
-              }
               {isAISettingsAdministrator &&
                 <PivotItem
                   headerText={strings.AISettings.labels.aiSettings}
                   headerButtonProps={{
-                    'data-order': 5,
+                    'data-order': 4,
                     'data-title': strings.AISettings.labels.aiSettings,
                   }}
                 >
@@ -167,12 +153,27 @@ export const AdminConfigView: React.FunctionComponent<AdminConfigViewProps> = (p
                     defaultAIPrompt={defaultAIPrompt} />
                 </PivotItem>
               }
+              {isAutoApproverAdministrator &&
+                <PivotItem
+                  headerText={strings.AutoApproverSettings.labels.autoApprover}
+                  headerButtonProps={{
+                    'data-order': 5,
+                    'data-title': strings.AutoApproverSettings.labels.autoApprover,
+                  }}
+                >
+                  <AutoApproverSettings
+                    classNames={classNames}
+                    strings={strings}
+                    settings={newSettings}
+                    setSettings={setNewSettings} />
+                </PivotItem>
+              }
               {isGeneralSettingsAdministrator &&
                 <PivotItem
-                  headerText={'Alert Banner'}
+                  headerText={strings.labels.alertBanner}
                   headerButtonProps={{
                     'data-order': 6,
-                    'data-title': 'Alert Banner',
+                    'data-title': strings.labels.alertBanner,
                   }}
                 >
                   <AlertBannerAdmin />
@@ -193,21 +194,41 @@ export const AdminConfigView: React.FunctionComponent<AdminConfigViewProps> = (p
   );
 };
 
+const SettingsSection: React.FunctionComponent<SettingsSectionProps> = (props: SettingsSectionProps) => {
+  const { classNames, title, subtitle, children } = props;
+  return (
+    <section className={classNames.sectionContainer}>
+      <Text variant="mediumPlus" className={classNames.sectionHeading}>{title}</Text>
+      {subtitle && <Text variant="small" className={classNames.sectionSubtitle}>{subtitle}</Text>}
+      {children}
+    </section>
+  );
+}
+
 const Operations: React.FunctionComponent<OperationsProps> = (props: OperationsProps) => {
   const { classNames, strings} = props;
   return (
-    <div>
-      <Operation
-          title={strings.Operations.labels.title}
-          description={strings.Operations.labels.description}
+    <SettingsSection classNames={classNames} title={strings.Operations.labels.controlPanel}>
+      <div className={classNames.operationsGrid}>
+        <Operation
+          variant="service"
+          title={strings.Operations.labels.serviceOperationTitle}
+          description={strings.Operations.labels.serviceOperationDescription}
+          buttonText={strings.Operations.buttons}
+        ></Operation>
+        <Operation
+          variant="reset"
+          title={strings.Operations.labels.resetOperationTitle}
+          description={strings.Operations.labels.resetOperationDescription}
           buttonText={strings.Operations.buttons}
         ></Operation>
       </div>
+    </SettingsSection>
   );
 }
 
 const GeneralSettings: React.FunctionComponent<GeneralSettingsProps> = (props: GeneralSettingsProps) => {
-  const { strings, settings, setSettings } = props;
+  const { classNames, strings, settings, setSettings, setHasValidationErrors } = props;
 
   const handleSettingChange = (settingKey: SettingKey) => (newValue: string) => {
     setSettings((settings) => ({ ...settings, [settingKey]: newValue }));
@@ -215,53 +236,92 @@ const GeneralSettings: React.FunctionComponent<GeneralSettingsProps> = (props: G
 
   return (
     <div>
-      <GeneralSetting
-        id={SettingKeyMap[SettingKey.DashboardUrl]}
-        title={strings.GeneralSettings.labels.reviewOwnSubmissionTitle}
-        description={strings.GeneralSettings.labels.reviewOwnSubmissionDescription}
-        onGeneralSettingChange={handleSettingChange(SettingKey.CanReviewOwnSubmissions)}
-        generalSettingValue={settings[SettingKey.CanReviewOwnSubmissions]}
-      />
-      <GeneralSetting
-        id={SettingKeyMap[SettingKey.CreateGroupFeatureEnabled]}
-        title={strings.GeneralSettings.labels.createGroupTitle}
-        description={strings.GeneralSettings.labels.createGroupDescription}
-        onGeneralSettingChange={handleSettingChange(SettingKey.CreateGroupFeatureEnabled)}
-        generalSettingValue={settings[SettingKey.CreateGroupFeatureEnabled]}
-      />
-      <GeneralSetting
-        id={SettingKeyMap[SettingKey.IsBusinessJustificationRequired]}
-        title={strings.GeneralSettings.labels.businessJustificationTitle}
-        description={strings.GeneralSettings.labels.businessJustificationDescription}
-        onGeneralSettingChange={handleSettingChange(SettingKey.IsBusinessJustificationRequired)}
-        generalSettingValue={settings[SettingKey.IsBusinessJustificationRequired]}
-      />
-      <GeneralSetting
-        id={SettingKeyMap[SettingKey.IsDisclaimerEnabled]}
-        title={strings.GeneralSettings.labels.isDisclaimerEnabledTitle}
-        description={strings.GeneralSettings.labels.isDisclaimerEnabledDescription}
-        onGeneralSettingChange={handleSettingChange(SettingKey.IsDisclaimerEnabled)}
-        generalSettingValue={settings[SettingKey.IsDisclaimerEnabled]}
-      />
+      <SettingsSection
+        classNames={classNames}
+        title={strings.GeneralSettings.labels.featureControl}
+        subtitle={strings.GeneralSettings.labels.featureControlDescription}
+      >
+        <div className={classNames.settingsGrid}>
+        <GeneralSetting
+          id={SettingKeyMap[SettingKey.CanReviewOwnSubmissions]}
+          title={strings.GeneralSettings.labels.reviewOwnSubmissionTitle}
+          description={strings.GeneralSettings.labels.reviewOwnSubmissionDescription}
+          onGeneralSettingChange={handleSettingChange(SettingKey.CanReviewOwnSubmissions)}
+          generalSettingValue={settings[SettingKey.CanReviewOwnSubmissions]}
+        />
+        <GeneralSetting
+          id={SettingKeyMap[SettingKey.CreateGroupFeatureEnabled]}
+          title={strings.GeneralSettings.labels.createGroupTitle}
+          description={strings.GeneralSettings.labels.createGroupDescription}
+          onGeneralSettingChange={handleSettingChange(SettingKey.CreateGroupFeatureEnabled)}
+          generalSettingValue={settings[SettingKey.CreateGroupFeatureEnabled]}
+        />
+        <GeneralSetting
+          id={SettingKeyMap[SettingKey.IsBusinessJustificationRequired]}
+          title={strings.GeneralSettings.labels.businessJustificationTitle}
+          description={strings.GeneralSettings.labels.businessJustificationDescription}
+          onGeneralSettingChange={handleSettingChange(SettingKey.IsBusinessJustificationRequired)}
+          generalSettingValue={settings[SettingKey.IsBusinessJustificationRequired]}
+        />
+        <GeneralSetting
+          id={SettingKeyMap[SettingKey.IsDisclaimerEnabled]}
+          title={strings.GeneralSettings.labels.isDisclaimerEnabledTitle}
+          description={strings.GeneralSettings.labels.isDisclaimerEnabledDescription}
+          onGeneralSettingChange={handleSettingChange(SettingKey.IsDisclaimerEnabled)}
+          generalSettingValue={settings[SettingKey.IsDisclaimerEnabled]}
+        />
+        </div>
+      </SettingsSection>
+      <SettingsSection
+        classNames={classNames}
+        title={strings.GeneralSettings.labels.userResources}
+        subtitle={strings.HyperlinkSettings.labels.description}
+      >
+        <UserResourcesSettings
+          classNames={classNames}
+          strings={strings}
+          settings={settings}
+          setSettings={setSettings}
+          setHasValidationErrors={setHasValidationErrors} />
+      </SettingsSection>
+    </div>
+  );
+}
+
+const AutoApproverSettings: React.FunctionComponent<AutoApproverSettingsProps> = (props: AutoApproverSettingsProps) => {
+  const { classNames, strings, settings, setSettings } = props;
+
+  const handleSettingChange = (settingKey: SettingKey) => (newValue: string) => {
+    setSettings((settings) => ({ ...settings, [settingKey]: newValue }));
+  };
+
+  return (
+    <SettingsSection
+      classNames={classNames}
+      title={strings.AutoApproverSettings.labels.autoApprover}
+      subtitle={strings.AutoApproverSettings.labels.description}
+    >
+      <div className={classNames.settingsGrid}>
       <GeneralSetting
         id={SettingKeyMap[SettingKey.IsAutoApprovalForGroupBasedSyncsEnabled]}
-        title={strings.GeneralSettings.labels.isAutoApprovalForGroupBasedSyncsEnabledTitle}
-        description={strings.GeneralSettings.labels.isAutoApprovalForGroupBasedSyncsEnabledDescription}
+        title={strings.AutoApproverSettings.labels.isAutoApprovalForGroupBasedSyncsEnabledTitle}
+        description={strings.AutoApproverSettings.labels.isAutoApprovalForGroupBasedSyncsEnabledDescription}
         onGeneralSettingChange={handleSettingChange(SettingKey.IsAutoApprovalForGroupBasedSyncsEnabled)}
         generalSettingValue={settings[SettingKey.IsAutoApprovalForGroupBasedSyncsEnabled]}
       />
       <GeneralSetting
         id={SettingKeyMap[SettingKey.IsAutoApprovalForRequestorIsOrgLeaderSyncsEnabled]}
-        title={strings.GeneralSettings.labels.isAutoApprovalForRequestorIsOrgLeaderSyncsEnabledTitle}
-        description={strings.GeneralSettings.labels.isAutoApprovalForRequestorIsOrgLeaderSyncsEnabledDescription}
+        title={strings.AutoApproverSettings.labels.isAutoApprovalForRequestorIsOrgLeaderSyncsEnabledTitle}
+        description={strings.AutoApproverSettings.labels.isAutoApprovalForRequestorIsOrgLeaderSyncsEnabledDescription}
         onGeneralSettingChange={handleSettingChange(SettingKey.IsAutoApprovalForRequestorIsOrgLeaderSyncsEnabled)}
         generalSettingValue={settings[SettingKey.IsAutoApprovalForRequestorIsOrgLeaderSyncsEnabled]}
       />
-    </div>
+      </div>
+    </SettingsSection>
   );
 }
 
-const HyperlinkSettings: React.FunctionComponent<HyperlinkSettingsProps> = (props: HyperlinkSettingsProps) => {
+const UserResourcesSettings: React.FunctionComponent<UserResourcesSettingsProps> = (props: UserResourcesSettingsProps) => {
 
   const { classNames, strings, settings, setSettings, setHasValidationErrors } = props;
 
@@ -304,7 +364,6 @@ const HyperlinkSettings: React.FunctionComponent<HyperlinkSettingsProps> = (prop
 
   return (
     <div>
-      <div className={classNames.description}>{strings.HyperlinkSettings.labels.description}</div>
       <div className={classNames.tiles}>
         <HyperlinkSetting
           title={strings.HyperlinkSettings.dashboardLink.title}
@@ -632,7 +691,7 @@ const CustomSourceSettings: React.FunctionComponent<CustomSourceSettingsProps> =
       </div>
 
       <div className={classNames.listOfAttributesTitleDescriptionContainer}>
-        <Text variant="large" block>
+        <Text variant="mediumPlus" className={classNames.sectionHeading}>
           {strings.CustomSourceSettings.labels.listOfAttributes}
         </Text>
         <Text styles={{ root: classNames.descriptionText }} variant="medium" block>
@@ -784,37 +843,78 @@ const AISettings: React.FunctionComponent<AISettingsProps> = (props: AISettingsP
       <div className={classNames.aiSettingsIntro}>
         <Text variant="medium">{strings.AISettings.labels.description}</Text>
       </div>
-      <GeneralSetting
-        id={SettingKeyMap[SettingKey.IsAITitleEnabled]}
-        title={strings.AISettings.labels.isAITitleEnabledTitle}
-        description={strings.AISettings.labels.isAITitleEnabledDescription}
-        onGeneralSettingChange={handleSettingChange(SettingKey.IsAITitleEnabled)}
-        generalSettingValue={settings[SettingKey.IsAITitleEnabled]}
-      />
-      <GeneralSetting
-        id={SettingKeyMap[SettingKey.IsAICopilotEnabled]}
-        title={strings.AISettings.labels.isAICopilotEnabledTitle}
-        description={strings.AISettings.labels.isAICopilotEnabledDescription}
-        onGeneralSettingChange={handleSettingChange(SettingKey.IsAICopilotEnabled)}
-        generalSettingValue={settings[SettingKey.IsAICopilotEnabled]}
-      />
-      <GeneralSetting
-        id={SettingKeyMap[SettingKey.IsAISearchForUserEnabled]}
-        title={strings.AISettings.labels.isAISearchForUserEnabledTitle}
-        description={strings.AISettings.labels.isAISearchForUserEnabledDescription}
-        onGeneralSettingChange={handleSettingChange(SettingKey.IsAISearchForUserEnabled)}
-        generalSettingValue={settings[SettingKey.IsAISearchForUserEnabled]}
-      />
-      <GeneralSetting
-        id={SettingKeyMap[SettingKey.IsAIRunExplanationEnabled]}
-        title={strings.AISettings.labels.isAIRunExplanationEnabledTitle}
-        description={strings.AISettings.labels.isAIRunExplanationEnabledDescription}
-        onGeneralSettingChange={handleSettingChange(SettingKey.IsAIRunExplanationEnabled)}
-        generalSettingValue={settings[SettingKey.IsAIRunExplanationEnabled]}
-      />
-      <div className={classNames.aiSettingsInstructionsSection}>
-        <Text variant="mediumPlus" className={classNames.aiSettingsSectionTitle}>{strings.AISettings.labels.copilotInstructionsPromptTitle}</Text>
-        <Text variant="small" block className={classNames.aiSettingsSectionDescription}>{strings.AISettings.labels.copilotInstructionsPromptDescription}</Text>
+      <SettingsSection
+        classNames={classNames}
+        title={strings.AISettings.labels.copilotAvailabilityTitle}
+        subtitle={strings.AISettings.labels.copilotAvailabilityDescription}
+      >
+        <div className={classNames.settingsGrid}>
+        <GeneralSetting
+          id={SettingKeyMap[SettingKey.IsAITitleEnabled]}
+          title={strings.AISettings.labels.isAITitleEnabledTitle}
+          description={strings.AISettings.labels.isAITitleEnabledDescription}
+          onGeneralSettingChange={handleSettingChange(SettingKey.IsAITitleEnabled)}
+          generalSettingValue={settings[SettingKey.IsAITitleEnabled]}
+        />
+        <GeneralSetting
+          id={SettingKeyMap[SettingKey.IsAICopilotEnabled]}
+          title={strings.AISettings.labels.isAICopilotEnabledTitle}
+          description={strings.AISettings.labels.isAICopilotEnabledDescription}
+          onGeneralSettingChange={handleSettingChange(SettingKey.IsAICopilotEnabled)}
+          generalSettingValue={settings[SettingKey.IsAICopilotEnabled]}
+        />
+        <GeneralSetting
+          id={SettingKeyMap[SettingKey.IsAISearchForUserEnabled]}
+          title={strings.AISettings.labels.isAISearchForUserEnabledTitle}
+          description={strings.AISettings.labels.isAISearchForUserEnabledDescription}
+          onGeneralSettingChange={handleSettingChange(SettingKey.IsAISearchForUserEnabled)}
+          generalSettingValue={settings[SettingKey.IsAISearchForUserEnabled]}
+        />
+        <GeneralSetting
+          id={SettingKeyMap[SettingKey.IsAIRunExplanationEnabled]}
+          title={strings.AISettings.labels.isAIRunExplanationEnabledTitle}
+          description={strings.AISettings.labels.isAIRunExplanationEnabledDescription}
+          onGeneralSettingChange={handleSettingChange(SettingKey.IsAIRunExplanationEnabled)}
+          generalSettingValue={settings[SettingKey.IsAIRunExplanationEnabled]}
+        />
+        </div>
+        <div className={classNames.aiSettingsSliderSection}>
+          <Text variant="mediumPlus" className={classNames.aiSettingsSectionTitle}>{strings.AISettings.labels.copilotTemperatureTitle}</Text>
+          <Text variant="small" block className={classNames.aiSettingsSectionDescription}>{strings.AISettings.labels.copilotTemperatureDescription}</Text>
+          <Slider
+            min={0}
+            max={1}
+            step={0.05}
+            value={parseFloat(settings[SettingKey.CopilotTemperature]) || 0.7}
+            showValue
+            onChange={(value) => handleSettingChange(SettingKey.CopilotTemperature)(value.toString())}
+          />
+        </div>
+        <div className={classNames.aiSettingsSliderSection}>
+          <Text variant="mediumPlus" className={classNames.aiSettingsSectionTitle}>{strings.AISettings.labels.copilotTopPTitle}</Text>
+          <Text variant="small" block className={classNames.aiSettingsSectionDescription}>{strings.AISettings.labels.copilotTopPDescription}</Text>
+          <Slider
+            min={0}
+            max={1}
+            step={0.05}
+            value={parseFloat(settings[SettingKey.CopilotTopP]) || 0.9}
+            showValue
+            onChange={(value) => handleSettingChange(SettingKey.CopilotTopP)(value.toString())}
+          />
+        </div>
+      </SettingsSection>
+      <SettingsSection
+        classNames={classNames}
+        title={strings.AISettings.labels.suggestedPromptsTitle}
+        subtitle={strings.AISettings.labels.suggestedPromptsDescription}
+      >
+        <SuggestedPromptsEditor classNames={classNames} strings={strings} settings={settings} setSettings={setSettings} />
+      </SettingsSection>
+      <SettingsSection
+        classNames={classNames}
+        title={strings.AISettings.labels.copilotInstructionsPromptTitle}
+        subtitle={strings.AISettings.labels.copilotInstructionsPromptDescription}
+      >
         <Text variant="small" block className={classNames.aiSettingsLeaveEmptyNote}>
           {strings.AISettings.labels.leaveEmptyNote}
         </Text>
@@ -841,46 +941,17 @@ const AISettings: React.FunctionComponent<AISettingsProps> = (props: AISettingsP
           placeholder={strings.AISettings.labels.copilotInstructionsPromptPlaceholder}
           onChange={(_, newValue) => handleSettingChange(SettingKey.CopilotInstructions)(newValue ?? '')}
         />
-      </div>
-      <div className={classNames.aiSettingsSliderSection}>
-        <Text variant="mediumPlus" className={classNames.aiSettingsSectionTitle}>{strings.AISettings.labels.copilotTemperatureTitle}</Text>
-        <Text variant="small" block className={classNames.aiSettingsSectionDescription}>{strings.AISettings.labels.copilotTemperatureDescription}</Text>
-        <Slider
-          min={0}
-          max={1}
-          step={0.05}
-          value={parseFloat(settings[SettingKey.CopilotTemperature]) || 0.7}
-          showValue
-          onChange={(value) => handleSettingChange(SettingKey.CopilotTemperature)(value.toString())}
-        />
-      </div>
-      <div className={classNames.aiSettingsSliderSection}>
-        <Text variant="mediumPlus" className={classNames.aiSettingsSectionTitle}>{strings.AISettings.labels.copilotTopPTitle}</Text>
-        <Text variant="small" block className={classNames.aiSettingsSectionDescription}>{strings.AISettings.labels.copilotTopPDescription}</Text>
-        <Slider
-          min={0}
-          max={1}
-          step={0.05}
-          value={parseFloat(settings[SettingKey.CopilotTopP]) || 0.9}
-          showValue
-          onChange={(value) => handleSettingChange(SettingKey.CopilotTopP)(value.toString())}
-        />
-      </div>
-      <SuggestedPromptsEditor strings={strings} settings={settings} setSettings={setSettings} />
+      </SettingsSection>
     </div>
   );
 }
 
-const DEFAULT_SUGGESTED_PROMPTS = [
-  { label: 'Include all reports who roll up to an employee', prompt: 'Include all reports who roll up to an employee' },
-  { label: 'Include members of a group', prompt: 'Include all members of a specific group' },
-];
-
 const SuggestedPromptsEditor: React.FunctionComponent<{
+  classNames: IProcessedStyleSet<AdminConfigStyles>;
   strings: AdminConfigViewProps['strings'];
   settings: { readonly [key in SettingKey]: string };
   setSettings: React.Dispatch<React.SetStateAction<{ readonly [key in SettingKey]: string }>>;
-}> = ({ strings, settings, setSettings }) => {
+}> = ({ classNames, strings, settings, setSettings }) => {
 
   const defaultSuggestedPrompts = useMemo(() => [
     { label: strings.AISettings.labels.suggestedPromptDefault1Label, prompt: strings.AISettings.labels.suggestedPromptDefault1Prompt },
@@ -942,31 +1013,32 @@ const SuggestedPromptsEditor: React.FunctionComponent<{
   };
 
   return (
-    <div style={{ marginTop: '20px' }}>
-      <Text variant="mediumPlus" style={{ fontWeight: 600 }}>{strings.AISettings.labels.suggestedPromptsTitle}</Text>
-      <Text variant="small" block style={{ marginBottom: '12px' }}>{strings.AISettings.labels.suggestedPromptsDescription}</Text>
+    <div>
+      <div className={classNames.suggestedPromptsGrid}>
       {prompts.map((p) => (
-        <div key={p.id} style={{ display: 'flex', gap: '8px', alignItems: 'flex-start', marginBottom: '8px' }}>
+        <div key={p.id} style={{ display: 'flex', gap: '8px', alignItems: 'flex-start', flexWrap: 'wrap' }}>
           <TextField
-            style={{ flex: 1 }}
+            style={{ flex: '1 1 160px' }}
             placeholder={strings.AISettings.labels.suggestedPromptLabelPlaceholder}
             value={p.label}
             onChange={(_, val) => handleFieldChange(p.id, 'label', val ?? '')}
           />
           <TextField
-            style={{ flex: 2 }}
+            style={{ flex: '2 1 220px' }}
             placeholder={strings.AISettings.labels.suggestedPromptPromptPlaceholder}
             value={p.prompt}
             onChange={(_, val) => handleFieldChange(p.id, 'prompt', val ?? '')}
           />
           <IconButton
             iconProps={{ iconName: 'Delete' }}
-            title="Remove"
+            title={strings.AISettings.labels.suggestedPromptRemove}
+            ariaLabel={strings.AISettings.labels.suggestedPromptRemove}
             onClick={() => handleRemove(p.id)}
             styles={{ root: { marginTop: '2px' } }}
           />
         </div>
       ))}
+      </div>
       <div style={{ display: 'flex', gap: '8px', marginTop: '8px' }}>
         <ActionButton
           iconProps={{ iconName: 'Add' }}

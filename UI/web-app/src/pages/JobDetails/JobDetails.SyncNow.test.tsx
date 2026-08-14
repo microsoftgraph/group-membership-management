@@ -36,7 +36,7 @@ const createBaseState = (overrides: {
     isJobOwnerWriter: false,
     isJobTenantReader: false,
     isJobTenantWriter: false,
-    isHyperlinkAdministrator: false,
+    isAutoApproverAdministrator: false,
     isCustomMembershipProviderAdministrator: false,
     isOperationsResetAdministrator: false,
     isGeneralSettingsAdministrator: false,

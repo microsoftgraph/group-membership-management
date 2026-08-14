@@ -14,10 +14,10 @@ namespace WebApi.Models
         public const string JOB_TENANT_WRITER = "Job.ReadWrite.All";
         public const string SUBMISSION_REVIEWER = "Submission.ReadWrite.All";
         public const string SUBMISSION_REJECTOR = "Submission.Reject.All";
-        public const string HYPERLINK_ADMINISTRATOR = "Hyperlink.ReadWrite.All";
         public const string CUSTOM_MEMBERSHIP_PROVIDER_ADMINISTRATOR = "CustomSource.ReadWrite.All";
         public const string RESET_ADMINISTRATOR = "Operations.Reset";
         public const string GENERAL_SETTINGS_ADMINISTRATOR = "GeneralSettings.ReadWrite.All";
+        public const string AUTO_APPROVER_ADMINISTRATOR = "AutoApprover.ReadWrite.All";
         public const string AI_ONBOARDING_CHAT = "AI.Onboarding.Chat";
         public const string AI_SETTINGS_ADMINISTRATOR = "AISettings.ReadWrite.All";
         public const string AI_SYNC_JOB = "AI.SyncJob.All";

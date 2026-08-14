@@ -7,6 +7,7 @@ import type React from 'react';
 export type GeneralSettingStyles = {
   root: IStyle;
   card: IStyle;
+  titleRow: IStyle;
   title: IStyle;
   description: IStyle;
 };

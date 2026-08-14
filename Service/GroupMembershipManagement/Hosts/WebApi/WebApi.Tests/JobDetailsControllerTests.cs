@@ -1544,7 +1544,7 @@ namespace Services.Tests
         }
 
         [TestMethod]
-        [DataRow(Roles.HYPERLINK_ADMINISTRATOR)]
+        [DataRow(Roles.AUTO_APPROVER_ADMINISTRATOR)]
         public async Task RemoveGMMAsyncWhenIsAnUnauthorizedUser(string role)
         {
             var userId = Guid.NewGuid().ToString();

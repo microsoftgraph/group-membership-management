@@ -34,12 +34,13 @@ test('renders header after login', async () => {
     isJobTenantWriter: false,
     isSubmissionReviewer: false,
     isSubmissionRejector: false,
-    isHyperlinkAdministrator: false,
+    isAutoApproverAdministrator: false,
     isCustomMembershipProviderAdministrator: false,
     isOperationsResetAdministrator: false,
     isGeneralSettingsAdministrator: false,
     isAIOnboardingChat: false,
     isAISettingsAdministrator: false,
+    isAISyncJob: false,
     isFetchingRoles: false,
   };
 
@@ -143,10 +144,13 @@ const buildNoAccessRoles = (): RolesResponse => ({
   isJobTenantWriter: false,
   isSubmissionReviewer: false,
   isSubmissionRejector: false,
-  isHyperlinkAdministrator: false,
+  isAutoApproverAdministrator: false,
   isCustomMembershipProviderAdministrator: false,
   isOperationsResetAdministrator: false,
   isGeneralSettingsAdministrator: false,
+  isAIOnboardingChat: false,
+  isAISettingsAdministrator: false,
+  isAISyncJob: false,
   isFetchingRoles: false,
 });
 

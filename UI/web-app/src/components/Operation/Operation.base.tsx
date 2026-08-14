@@ -15,7 +15,7 @@ const signalRStatusService = new SignalRStatusService();
 export const getClassNames = classNamesFunction<OperationStyleProps, OperationStyles>();
 
 export const OperationBase: React.FunctionComponent<OperationProps> = (props: OperationProps) => {
-  const { title, description, className, styles, buttonText} = props;
+  const { title, description, className, styles, buttonText, variant = 'all' } = props;
   const classNames = getClassNames(styles, {
     className,
     theme: useTheme(),
@@ -52,27 +52,31 @@ export const OperationBase: React.FunctionComponent<OperationProps> = (props: Op
       <div className={classNames.title}>{title}</div>
       <div className={classNames.description}>{description}</div>
       <div className={classNames.buttonContainer}>
-        {displayStatus === ServiceStatuses.Stopped || displayStatus === ServiceStatuses.Starting ? (
+        {variant !== 'reset' && (
+          displayStatus === ServiceStatuses.Stopped || displayStatus === ServiceStatuses.Starting ? (
+            <DefaultButton
+              text={displayStatus === ServiceStatuses.Starting ? buttonText.starting : buttonText.start}
+              onClick={() => handleOperation(Operations.Start)}
+              disabled={isButtonDisabled || displayStatus === ServiceStatuses.Starting}
+              className={classNames.button}
+            />
+          ) : (
+            <DefaultButton
+              text={displayStatus === ServiceStatuses.Stopping ? buttonText.stopping : buttonText.stop}
+              onClick={() => handleOperation(Operations.Stop)}
+              disabled={isButtonDisabled || displayStatus !== ServiceStatuses.Running}
+              className={classNames.button}
+            />
+          )
+        )}
+        {variant !== 'service' && (
           <DefaultButton
-            text={displayStatus === ServiceStatuses.Starting ? buttonText.starting : buttonText.start}
-            onClick={() => handleOperation(Operations.Start)}
-            disabled={isButtonDisabled || displayStatus === ServiceStatuses.Starting}
-            className={classNames.button}
-          />
-        ) : (
-          <DefaultButton
-            text={displayStatus === ServiceStatuses.Stopping ? buttonText.stopping : buttonText.stop}
-            onClick={() => handleOperation(Operations.Stop)}
+            text={displayStatus === ServiceStatuses.Resetting ? buttonText.resetting : buttonText.reset}
+            onClick={() => handleOperation(Operations.Reset)}
             disabled={isButtonDisabled || displayStatus !== ServiceStatuses.Running}
             className={classNames.button}
           />
         )}
-        <DefaultButton
-          text={displayStatus === ServiceStatuses.Resetting ? buttonText.resetting : buttonText.reset}
-          onClick={() => handleOperation(Operations.Reset)}
-          disabled={isButtonDisabled || displayStatus !== ServiceStatuses.Running}
-          className={classNames.button}
-        />
       </div>
     </div>
   );

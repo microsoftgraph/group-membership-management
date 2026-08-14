@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { classNamesFunction, Toggle } from '@fluentui/react';
 import { useTheme } from '@fluentui/react/lib/Theme';
 import type { GeneralSettingProps, GeneralSettingStyles, GeneralSettingStyleProps } from './GeneralSetting.types';
@@ -12,26 +12,26 @@ export const GeneralSettingBase: React.FunctionComponent<GeneralSettingProps> = 
     theme: useTheme(),
   });
 
-  const isGeneralSettingEnabled = generalSettingValue === 'true';
-  const [isToggleEnabled, setIsToggleEnabled] = useState<boolean>(isGeneralSettingEnabled);
+  // Controlled by the parent so the toggle stays in sync when settings load or reset.
+  const isToggleEnabled = generalSettingValue === 'true';
 
   const handleSubmissionReviewerSettingChange = (ev: React.MouseEvent<HTMLElement>, checked?: boolean) => {
-    const wrappedValue = checked ? "true" : "false";
-    onGeneralSettingChange(wrappedValue);
-    setIsToggleEnabled(checked ?? false);
+    onGeneralSettingChange(checked ? "true" : "false");
   };
 
   return (
     <div className={classNames.card}>
-      <div className={classNames.title}>{title}</div>
-      <div className={classNames.description}>{description}</div>
-      <Toggle
+      <div className={classNames.titleRow}>
+        <div className={classNames.title}>{title}</div>
+        <Toggle
           id={id}
           title={title}
-          inlineLabel={true}
           checked={isToggleEnabled}
           onChange={handleSubmissionReviewerSettingChange}
+          styles={{ root: { marginBottom: 0 } }}
         />
+      </div>
+      <div className={classNames.description}>{description}</div>
     </div>
   );
 };
