@@ -25,5 +25,6 @@ namespace WebApi.Models.DTOs
         public bool IsAIOnboardingChat { get; set; }
         public bool IsAISettingsAdministrator { get; set; }
         public bool IsAISyncJob { get; set; }
+        public bool IsTeamsChannelOnboarder { get; set; }
     }
 }

@@ -13,6 +13,7 @@ using Microsoft.Kiota.Abstractions;
 using Microsoft.OData.ModelBuilder;
 using Microsoft.OData.UriParser;
 using Models;
+using Models.Entities;
 using Models.ServiceBus;
 using Models.SyncJobChange;
 using Moq;
@@ -239,7 +240,8 @@ namespace Services.Tests
                                                  _databaseSyncJobsRepository.Object,
                                                  _graphGroupRepository.Object,
                                                  _httpContextAccessor.Object,
-                                                 _syncJobChangeRepository.Object);
+                                                 _syncJobChangeRepository.Object,
+                                                 Mock.Of<ITeamsChannelRepository>());
 
             _patchJobsHandler = new PatchJobsHandler(NullLogger<PatchJobsHandler>.Instance,
                                                  _databaseSyncJobsRepository.Object,
@@ -346,7 +348,8 @@ namespace Services.Tests
                                      _databaseSyncJobsRepository.Object,
                                      _graphGroupRepository.Object,
                                      _httpContextAccessor.Object,
-                                     _syncJobChangeRepository.Object);
+                                     _syncJobChangeRepository.Object,
+                                     Mock.Of<ITeamsChannelRepository>());
 
             _jobsController = new JobsController(_getJobsHandler, _patchJobsHandler, _postJobHandler, _getJobDetailsHandler, _postResetRequestHandler, NullLogger<JobsController>.Instance);
             _jobsController.ControllerContext = new ControllerContext
@@ -401,7 +404,8 @@ namespace Services.Tests
                                      _databaseSyncJobsRepository.Object,
                                      _graphGroupRepository.Object,
                                      _httpContextAccessor.Object,
-                                     _syncJobChangeRepository.Object);
+                                     _syncJobChangeRepository.Object,
+                                     Mock.Of<ITeamsChannelRepository>());
 
             _postJobHandler = new PostJobHandler(NullLogger<PostJobHandler>.Instance, _databaseSyncJobsRepository.Object,
                                                  _destinationAttributesRepository.Object,
@@ -424,6 +428,175 @@ namespace Services.Tests
             var result = response as CreatedResult;
             Assert.IsNotNull(result);
             _syncJobChangeRepository.Verify(x => x.Save(It.IsAny<SyncJobChange>()), Times.Once);
+        }
+
+        private void UseTenantWriterContext()
+        {
+            _context = CreateHttpContext(new List<Claim>
+            {
+                new Claim(ClaimTypes.Name, "user@domain.com"),
+                new Claim(ClaimTypes.Role, Roles.JOB_TENANT_WRITER),
+                new Claim("http://schemas.microsoft.com/identity/claims/objectidentifier", Guid.NewGuid().ToString())
+            });
+            _httpContextAccessor.Setup(x => x.HttpContext).Returns(_context);
+            _jobsController.ControllerContext = new ControllerContext { HttpContext = _context };
+        }
+
+        [TestMethod]
+        public async Task PostTeamsChannelJob_OwnerWriterWithoutOnboarderRole_ReturnsForbidden()
+        {
+            // The controller gate rejects TeamsChannel creation when the caller lacks the onboarder role.
+            // Owner + duplicate checks are set to succeed so the Forbid can ONLY originate from the controller gate.
+            UseRolesContext(Roles.JOB_OWNER_WRITER);
+            var teamId = Guid.NewGuid();
+            _databaseSyncJobsRepository.Setup(x => x.GetSyncJobByTeamIdAndChannelIdAsync(teamId, "19:channel-A"))
+                .ReturnsAsync((SyncJob)null);
+            _graphGroupRepository.Setup(x => x.IsEmailRecipientOwnerOfGroupAsync(It.IsAny<string>(), It.IsAny<Guid>(), It.IsAny<bool>()))
+                .ReturnsAsync(true);
+
+            var response = await _jobsController.PostJobAsync(TeamsChannelSyncJob(teamId, "19:channel-A"));
+
+            Assert.IsInstanceOfType(response, typeof(ForbidResult));
+            _databaseSyncJobsRepository.Verify(x => x.CreateSyncJobAsync(It.IsAny<SyncJob>()), Times.Never);
+        }
+
+        [TestMethod]
+        public async Task PostTeamsChannelJob_WithOnboardingAuthorization_PassesGate()
+        {
+            // Owner writer + onboarder clears the controller gate and the job proceeds.
+            UseRolesContext(Roles.JOB_OWNER_WRITER, Roles.TEAMS_CHANNEL_ONBOARDER);
+            var teamId = Guid.NewGuid();
+            _databaseSyncJobsRepository.Setup(x => x.GetSyncJobByTeamIdAndChannelIdAsync(teamId, "19:channel-A"))
+                .ReturnsAsync((SyncJob)null);
+            _graphGroupRepository.Setup(x => x.IsEmailRecipientOwnerOfGroupAsync(It.IsAny<string>(), It.IsAny<Guid>(), It.IsAny<bool>()))
+                .ReturnsAsync(true);
+
+            var response = await _jobsController.PostJobAsync(TeamsChannelSyncJob(teamId, "19:channel-A"));
+
+            Assert.IsNotInstanceOfType(response, typeof(ForbidResult));
+        }
+
+        [TestMethod]
+        public async Task PostGroupMembershipJob_WithoutOnboarderRole_IsNotGated()
+        {
+            // The onboarding gate applies only to TeamsChannel creation, not group jobs.
+            UseRolesContext(Roles.JOB_OWNER_WRITER);
+            _graphGroupRepository.Setup(x => x.IsEmailRecipientOwnerOfGroupAsync(It.IsAny<string>(), It.IsAny<Guid>(), It.IsAny<bool>()))
+                .ReturnsAsync(true);
+            var groupJob = new NewSyncJobDTO
+            {
+                Destination = $"[{{\"value\":{{\"objectId\":\"{Guid.NewGuid()}\"}},\"type\":\"GroupMembership\"}}]",
+                Status = SyncStatus.Idle.ToString(),
+                Period = 24,
+                Query = "[{ \"type\": \"GroupMembership\", \"source\": \"fc8f8e1a-6d91-4965-85ff-f911944f201d\"}]",
+                Requestor = "user@domain.com",
+                StartDate = DateTime.UtcNow.AddDays(-1).ToString(),
+                ThresholdPercentageForAdditions = 100,
+                ThresholdPercentageForRemovals = 20
+            };
+
+            var response = await _jobsController.PostJobAsync(groupJob);
+
+            Assert.IsNotInstanceOfType(response, typeof(ForbidResult));
+        }
+
+        private void UseRolesContext(params string[] roles)
+        {
+            var claims = new List<Claim>
+            {
+                new Claim(ClaimTypes.Name, "user@domain.com"),
+                new Claim("http://schemas.microsoft.com/identity/claims/objectidentifier", Guid.NewGuid().ToString())
+            };
+            claims.AddRange(roles.Select(r => new Claim(ClaimTypes.Role, r)));
+            _context = CreateHttpContext(claims);
+            _httpContextAccessor.Setup(x => x.HttpContext).Returns(_context);
+            _jobsController.ControllerContext = new ControllerContext { HttpContext = _context };
+        }
+
+        private static NewSyncJobDTO TeamsChannelSyncJob(Guid teamId, string? channelId)
+        {
+            var value = channelId == null
+                ? $"{{\"objectId\":\"{teamId}\"}}"
+                : $"{{\"objectId\":\"{teamId}\",\"channelId\":\"{channelId}\"}}";
+            return new NewSyncJobDTO
+            {
+                Destination = $"[{{\"value\":{value},\"type\":\"TeamsChannelMembership\"}}]",
+                Status = SyncStatus.Idle.ToString(),
+                Period = 24,
+                Query = "[{ \"type\": \"GroupMembership\", \"source\": \"fc8f8e1a-6d91-4965-85ff-f911944f201d\"}]",
+                Requestor = "user@domain.com",
+                StartDate = DateTime.UtcNow.AddDays(-1).ToString(),
+                ThresholdPercentageForAdditions = 100,
+                ThresholdPercentageForRemovals = 20
+            };
+        }
+
+        [TestMethod]
+        public async Task PostTeamsChannelJob_DuplicateDestination_ReturnsConflict()
+        {
+            var teamId = Guid.NewGuid();
+            var channelId = "19:channel-A";
+            _databaseSyncJobsRepository.Setup(x => x.GetSyncJobByTeamIdAndChannelIdAsync(teamId, channelId))
+                .ReturnsAsync(new SyncJob { Id = Guid.NewGuid(), MembershipType = "TeamsChannelMembership", Channel = new Channel { GroupId = teamId, ChannelId = channelId } });
+            UseTenantWriterContext();
+
+            var response = await _jobsController.PostJobAsync(TeamsChannelSyncJob(teamId, channelId));
+
+            var conflict = response as ConflictObjectResult;
+            Assert.IsNotNull(conflict);
+            var body = conflict!.Value as PostJobResponse;
+            Assert.AreEqual("DuplicateDestination", body!.ErrorCode);
+            _databaseSyncJobsRepository.Verify(x => x.CreateSyncJobAsync(It.IsAny<SyncJob>()), Times.Never);
+        }
+
+        [TestMethod]
+        public async Task PostTeamsChannelJob_MissingChannelId_ReturnsBadRequest()
+        {
+            var teamId = Guid.NewGuid();
+            UseTenantWriterContext();
+
+            var response = await _jobsController.PostJobAsync(TeamsChannelSyncJob(teamId, null));
+
+            var badRequest = response as BadRequestObjectResult;
+            Assert.IsNotNull(badRequest);
+            var body = badRequest!.Value as PostJobResponse;
+            Assert.AreEqual("MissingChannelId", body!.ErrorCode);
+            _databaseSyncJobsRepository.Verify(x => x.CreateSyncJobAsync(It.IsAny<SyncJob>()), Times.Never);
+        }
+
+        [TestMethod]
+        public async Task PostTeamsChannelJob_DistinctSiblingChannel_Saves()
+        {
+            var teamId = Guid.NewGuid();
+            _databaseSyncJobsRepository.Setup(x => x.GetSyncJobByTeamIdAndChannelIdAsync(teamId, "19:channel-A"))
+                .ReturnsAsync(new SyncJob { Id = Guid.NewGuid(), MembershipType = "TeamsChannelMembership", Channel = new Channel { GroupId = teamId, ChannelId = "19:channel-A" } });
+            _databaseSyncJobsRepository.Setup(x => x.GetSyncJobByTeamIdAndChannelIdAsync(teamId, "19:channel-B"))
+                .ReturnsAsync((SyncJob)null);
+            UseTenantWriterContext();
+
+            var response = await _jobsController.PostJobAsync(TeamsChannelSyncJob(teamId, "19:channel-B"));
+
+            Assert.IsNotNull(response as CreatedResult);
+            _databaseSyncJobsRepository.Verify(x => x.CreateSyncJobAsync(It.IsAny<SyncJob>()), Times.Once);
+        }
+
+        [TestMethod]
+        public async Task PostTeamsChannelJob_WhenGroupMembershipJobExistsForTeam_Saves()
+        {
+            // A GroupMembership job on the same Team must not block a TeamsChannel save.
+            var teamId = Guid.NewGuid();
+            var channelId = "19:channel-A";
+            // Team-level (old) lookup would match the group job; channel-level lookup finds no duplicate.
+            _databaseSyncJobsRepository.Setup(x => x.GetSyncJobByObjectIdAsync(teamId))
+                .ReturnsAsync(new SyncJob { Id = Guid.NewGuid(), MembershipType = "GroupMembership", Group = new Group { GroupId = teamId } });
+            _databaseSyncJobsRepository.Setup(x => x.GetSyncJobByTeamIdAndChannelIdAsync(teamId, channelId))
+                .ReturnsAsync((SyncJob)null);
+            UseTenantWriterContext();
+
+            var response = await _jobsController.PostJobAsync(TeamsChannelSyncJob(teamId, channelId));
+
+            Assert.IsNotNull(response as CreatedResult);
+            _databaseSyncJobsRepository.Verify(x => x.CreateSyncJobAsync(It.IsAny<SyncJob>()), Times.Once);
         }
 
         [TestMethod]
@@ -486,7 +659,8 @@ namespace Services.Tests
                                      _databaseSyncJobsRepository.Object,
                                      _graphGroupRepository.Object,
                                      _httpContextAccessor.Object,
-                                     _syncJobChangeRepository.Object);
+                                     _syncJobChangeRepository.Object,
+                                     Mock.Of<ITeamsChannelRepository>());
 
             _postJobHandler = new PostJobHandler(NullLogger<PostJobHandler>.Instance, _databaseSyncJobsRepository.Object,
                                                  _destinationAttributesRepository.Object,
@@ -551,7 +725,8 @@ namespace Services.Tests
                                      _databaseSyncJobsRepository.Object,
                                      _graphGroupRepository.Object,
                                      _httpContextAccessor.Object,
-                                     _syncJobChangeRepository.Object);
+                                     _syncJobChangeRepository.Object,
+                                     Mock.Of<ITeamsChannelRepository>());
 
             _postJobHandler = new PostJobHandler(NullLogger<PostJobHandler>.Instance, _databaseSyncJobsRepository.Object,
                                                  _destinationAttributesRepository.Object,
@@ -1057,13 +1232,237 @@ namespace Services.Tests
                                              _databaseSyncJobsRepository.Object,
                                              _graphGroupRepository.Object,
                                              _httpContextAccessor.Object,
-                                             _syncJobChangeRepository.Object);
+                                             _syncJobChangeRepository.Object,
+                                             Mock.Of<ITeamsChannelRepository>());
 
             var response = await handler.ExecuteAsync(request);
 
             Assert.AreEqual(2, response.Model.Count);
             Assert.AreEqual("AAA First Group", response.Model[0].TargetGroupName, "First job should be sorted alphabetically first");
             Assert.AreEqual("ZZZ Last Group", response.Model[1].TargetGroupName, "Second job should be sorted alphabetically last");
+        }
+
+        [TestMethod]
+        public async Task GetJobs_GroupOnly_DoesNotResolveChannelNamesAndNamesAreUnchanged()
+        {
+            // A tenant with only GroupMembership jobs must behave exactly as before: no channel-name
+            // resolution call, no "| team" concatenation, and no NRE on the null Channel navigation property.
+            // Runs both the default projection path and the targetGroupName custom-sort path.
+            var group1 = Guid.NewGuid();
+            var group2 = Guid.NewGuid();
+            SyncJob GroupJob(Guid gid) => new SyncJob
+            {
+                Id = Guid.NewGuid(),
+                Status = SyncStatus.Idle.ToString(),
+                Period = 6,
+                LastSuccessfulRunTime = DateTime.UtcNow.AddHours(-6),
+                StartDate = DateTime.UtcNow.AddDays(-2),
+                ScheduledDate = DateTime.UtcNow.AddHours(-1),
+                MembershipType = MembershipTypes.GroupMembership.ToString(),
+                StatusDetails = new Status { Id = Guid.NewGuid(), Name = SyncStatus.Idle.ToString(), SortPriority = 1000 },
+                Group = new Group { SyncJobId = Guid.NewGuid(), GroupId = gid }
+            };
+            var jobA = GroupJob(group1);
+            var jobB = GroupJob(group2);
+
+            _databaseSyncJobsRepository.Setup(x => x.GetSyncJobs(It.IsAny<bool>()))
+                                       .Returns(new List<SyncJob> { jobA, jobB }.AsQueryable());
+            _graphGroupRepository.Setup(x => x.GetGroupsAsync(It.IsAny<List<Guid>>()))
+                                 .ReturnsAsync(new List<AzureADGroup>
+                                 {
+                                     new AzureADGroup { ObjectId = group1, Name = "Zulu Group" },
+                                     new AzureADGroup { ObjectId = group2, Name = "Alpha Group" }
+                                 });
+            _syncJobChangeRepository.Setup(x => x.GetLastSyncJobRecordBySyncJobIdAsync(It.IsAny<Guid>()))
+                                     .ReturnsAsync((SyncJobChange?)null);
+
+            // Teams repo is PRESENT but must never be invoked for group-only jobs.
+            var teamsRepo = new Mock<ITeamsChannelRepository>(MockBehavior.Strict);
+
+            var userContext = CreateHttpContext(new List<Claim>
+            {
+                new Claim(ClaimTypes.Name, "user@domain.com"),
+                new Claim(ClaimTypes.Role, Roles.JOB_TENANT_READER),
+                new Claim("http://schemas.microsoft.com/identity/claims/objectidentifier", Guid.NewGuid().ToString())
+            });
+            _httpContextAccessor.Setup(x => x.HttpContext).Returns(userContext);
+
+            var handler = new GetJobsHandler(NullLogger<GetJobsHandler>.Instance,
+                                             _databaseSyncJobsRepository.Object,
+                                             _graphGroupRepository.Object,
+                                             _httpContextAccessor.Object,
+                                             _syncJobChangeRepository.Object,
+                                             teamsRepo.Object);
+
+            // Default (non-custom-sort) path.
+            var defaultResponse = await handler.ExecuteAsync(new GetJobsRequest());
+            var nameA = defaultResponse.Model.Single(m => m.SyncJobId == jobA.Id).TargetGroupName;
+            var nameB = defaultResponse.Model.Single(m => m.SyncJobId == jobB.Id).TargetGroupName;
+            Assert.AreEqual("Zulu Group", nameA, "Group job name should be the plain group name (no ' | ')");
+            Assert.AreEqual("Alpha Group", nameB);
+            Assert.IsFalse(nameA.Contains("|"), "Group jobs must not have channel concatenation");
+
+            // Custom sort-by-name path.
+            var sortedResponse = await handler.ExecuteAsync(new GetJobsRequest
+            {
+                CustomSortBy = "targetGroupName",
+                IsSortedDescending = false
+            });
+            Assert.AreEqual("Alpha Group", sortedResponse.Model[0].TargetGroupName);
+            Assert.AreEqual("Zulu Group", sortedResponse.Model[1].TargetGroupName);
+
+            // The strict mock proves GetTeamsChannelNamesAsync was never called for a group-only tenant.
+            teamsRepo.VerifyNoOtherCalls();
+        }
+
+        [TestMethod]
+        public async Task GetJobs_CustomSort_TargetGroupName_SortsChannelJobsByResolvedName()
+        {
+            // A channel job must sort by its displayed "channel | team" name (not the raw team name),
+            // and must not NRE on the null Group navigation property during name-sorting.
+            var teamGroupId = Guid.NewGuid();
+            const string channelId = "19:abc123@thread.tacv2";
+            var channelJob = new SyncJob
+            {
+                Id = Guid.NewGuid(),
+                Status = SyncStatus.Idle.ToString(),
+                Period = 6,
+                LastSuccessfulRunTime = DateTime.UtcNow.AddHours(-6),
+                StartDate = DateTime.UtcNow.AddDays(-2),
+                ScheduledDate = DateTime.UtcNow.AddHours(-1),
+                MembershipType = MembershipTypes.TeamsChannelMembership.ToString(),
+                StatusDetails = new Status { Id = Guid.NewGuid(), Name = SyncStatus.Idle.ToString(), SortPriority = 1000 },
+                Channel = new Models.Channel { SyncJobId = Guid.NewGuid(), GroupId = teamGroupId, ChannelId = channelId }
+            };
+            var groupJob = new SyncJob
+            {
+                Id = Guid.NewGuid(),
+                Status = SyncStatus.Idle.ToString(),
+                Period = 6,
+                LastSuccessfulRunTime = DateTime.UtcNow.AddHours(-6),
+                StartDate = DateTime.UtcNow.AddDays(-2),
+                ScheduledDate = DateTime.UtcNow.AddHours(-1),
+                MembershipType = MembershipTypes.GroupMembership.ToString(),
+                StatusDetails = new Status { Id = Guid.NewGuid(), Name = SyncStatus.Idle.ToString(), SortPriority = 1000 },
+                Group = new Group { SyncJobId = Guid.NewGuid(), GroupId = Guid.NewGuid() }
+            };
+
+            _databaseSyncJobsRepository.Setup(x => x.GetSyncJobs(It.IsAny<bool>()))
+                                       .Returns(new List<SyncJob> { groupJob, channelJob }.AsQueryable());
+
+            _graphGroupRepository.Setup(x => x.GetGroupsAsync(It.IsAny<List<Guid>>()))
+                                 .ReturnsAsync(new List<AzureADGroup>
+                                 {
+                                     new AzureADGroup { ObjectId = teamGroupId, Name = "Banana Team" },
+                                     new AzureADGroup { ObjectId = groupJob.Group.GroupId, Name = "Mango Group" }
+                                 });
+
+            _syncJobChangeRepository.Setup(x => x.GetLastSyncJobRecordBySyncJobIdAsync(It.IsAny<Guid>()))
+                                     .ReturnsAsync((SyncJobChange?)null);
+
+            var teamsRepo = new Mock<ITeamsChannelRepository>();
+            teamsRepo.Setup(x => x.GetTeamsChannelNamesAsync(It.IsAny<List<AzureADTeamsChannel>>()))
+                     .ReturnsAsync(new Dictionary<string, string> { { channelId, "Apple Channel" } });
+
+            var userContext = CreateHttpContext(new List<Claim>
+            {
+                new Claim(ClaimTypes.Name, "user@domain.com"),
+                new Claim(ClaimTypes.Role, Roles.JOB_TENANT_READER),
+                new Claim("http://schemas.microsoft.com/identity/claims/objectidentifier", Guid.NewGuid().ToString())
+            });
+            _httpContextAccessor.Setup(x => x.HttpContext).Returns(userContext);
+
+            var handler = new GetJobsHandler(NullLogger<GetJobsHandler>.Instance,
+                                             _databaseSyncJobsRepository.Object,
+                                             _graphGroupRepository.Object,
+                                             _httpContextAccessor.Object,
+                                             _syncJobChangeRepository.Object,
+                                             teamsRepo.Object);
+
+            var response = await handler.ExecuteAsync(new GetJobsRequest
+            {
+                CustomSortBy = "targetGroupName",
+                IsSortedDescending = false
+            });
+
+            Assert.AreEqual(2, response.Model.Count);
+            // "Apple Channel | Banana Team" sorts before "Mango Group".
+            Assert.AreEqual("Apple Channel | Banana Team", response.Model[0].TargetGroupName, "Channel job should sort by its resolved 'channel | team' name");
+            Assert.AreEqual("Mango Group", response.Model[1].TargetGroupName);
+        }
+
+        [TestMethod]
+        public async Task GetJobs_TeamsChannelJob_TargetGroupNameIsChannelAndTeam()
+        {
+            // TeamsChannel jobs show "channel | team"; GroupMembership jobs stay unchanged.
+            var teamGroupId = Guid.NewGuid();
+            const string channelId = "19:abc123@thread.tacv2";
+            var channelJob = new SyncJob
+            {
+                Id = Guid.NewGuid(),
+                Status = SyncStatus.Idle.ToString(),
+                Period = 6,
+                LastRunTime = DateTime.UtcNow.AddHours(-5),
+                LastSuccessfulRunTime = DateTime.UtcNow.AddHours(-6),
+                StartDate = DateTime.UtcNow.AddDays(-2),
+                ScheduledDate = DateTime.UtcNow.AddHours(-1),
+                MembershipType = MembershipTypes.TeamsChannelMembership.ToString(),
+                StatusDetails = new Status { Id = Guid.NewGuid(), Name = SyncStatus.Idle.ToString(), SortPriority = 1000 },
+                Channel = new Models.Channel { SyncJobId = Guid.NewGuid(), GroupId = teamGroupId, ChannelId = channelId }
+            };
+            var groupJob = new SyncJob
+            {
+                Id = Guid.NewGuid(),
+                Status = SyncStatus.Idle.ToString(),
+                Period = 6,
+                LastRunTime = DateTime.UtcNow.AddHours(-5),
+                LastSuccessfulRunTime = DateTime.UtcNow.AddHours(-6),
+                StartDate = DateTime.UtcNow.AddDays(-2),
+                ScheduledDate = DateTime.UtcNow.AddHours(-1),
+                MembershipType = MembershipTypes.GroupMembership.ToString(),
+                StatusDetails = new Status { Id = Guid.NewGuid(), Name = SyncStatus.Idle.ToString(), SortPriority = 1000 },
+                Group = new Group { SyncJobId = Guid.NewGuid(), GroupId = Guid.NewGuid() }
+            };
+
+            _databaseSyncJobsRepository.Setup(x => x.GetSyncJobs(It.IsAny<bool>()))
+                                       .Returns(new List<SyncJob> { channelJob, groupJob }.AsQueryable());
+
+            _graphGroupRepository.Setup(x => x.GetGroupsAsync(It.IsAny<List<Guid>>()))
+                                 .ReturnsAsync(new List<AzureADGroup>
+                                 {
+                                     new AzureADGroup { ObjectId = teamGroupId, Name = "Parent Team Name" },
+                                     new AzureADGroup { ObjectId = groupJob.Group.GroupId, Name = "Regular Group Name" }
+                                 });
+
+            _syncJobChangeRepository.Setup(x => x.GetLastSyncJobRecordBySyncJobIdAsync(It.IsAny<Guid>()))
+                                     .ReturnsAsync((SyncJobChange?)null);
+
+            var teamsRepo = new Mock<ITeamsChannelRepository>();
+            teamsRepo.Setup(x => x.GetTeamsChannelNamesAsync(It.IsAny<List<AzureADTeamsChannel>>()))
+                     .ReturnsAsync(new Dictionary<string, string> { { channelId, "Shared Channel Display Name" } });
+
+            var userContext = CreateHttpContext(new List<Claim>
+            {
+                new Claim(ClaimTypes.Name, "user@domain.com"),
+                new Claim(ClaimTypes.Role, Roles.JOB_TENANT_READER),
+                new Claim("http://schemas.microsoft.com/identity/claims/objectidentifier", Guid.NewGuid().ToString())
+            });
+            _httpContextAccessor.Setup(x => x.HttpContext).Returns(userContext);
+
+            var handler = new GetJobsHandler(NullLogger<GetJobsHandler>.Instance,
+                                             _databaseSyncJobsRepository.Object,
+                                             _graphGroupRepository.Object,
+                                             _httpContextAccessor.Object,
+                                             _syncJobChangeRepository.Object,
+                                             teamsRepo.Object);
+
+            var response = await handler.ExecuteAsync(new GetJobsRequest());
+
+            var channelDto = response.Model.Single(m => m.SyncJobId == channelJob.Id);
+            var groupDto = response.Model.Single(m => m.SyncJobId == groupJob.Id);
+
+            Assert.AreEqual("Shared Channel Display Name | Parent Team Name", channelDto.TargetGroupName, "TeamsChannel job Name should be 'channel | team'");
+            Assert.AreEqual("Regular Group Name", groupDto.TargetGroupName, "GroupMembership job Name should be unchanged");
         }
 
         [TestMethod]
@@ -1136,7 +1535,8 @@ namespace Services.Tests
                                              _databaseSyncJobsRepository.Object,
                                              _graphGroupRepository.Object,
                                              _httpContextAccessor.Object,
-                                             _syncJobChangeRepository.Object);
+                                             _syncJobChangeRepository.Object,
+                                             Mock.Of<ITeamsChannelRepository>());
 
             var response = await handler.ExecuteAsync(request);
 
@@ -1546,7 +1946,8 @@ namespace Services.Tests
                                              _databaseSyncJobsRepository.Object,
                                              _graphGroupRepository.Object,
                                              _httpContextAccessor.Object,
-                                             _syncJobChangeRepository.Object);
+                                             _syncJobChangeRepository.Object,
+                                             Mock.Of<ITeamsChannelRepository>());
 
             // Act
             var response = await handler.ExecuteAsync(request);
@@ -1631,7 +2032,8 @@ namespace Services.Tests
                                              _databaseSyncJobsRepository.Object,
                                              _graphGroupRepository.Object,
                                              _httpContextAccessor.Object,
-                                             _syncJobChangeRepository.Object);
+                                             _syncJobChangeRepository.Object,
+                                             Mock.Of<ITeamsChannelRepository>());
 
             // Act
             var response = await handler.ExecuteAsync(request);
@@ -1682,7 +2084,8 @@ namespace Services.Tests
                                              _databaseSyncJobsRepository.Object,
                                              _graphGroupRepository.Object,
                                              _httpContextAccessor.Object,
-                                             _syncJobChangeRepository.Object);
+                                             _syncJobChangeRepository.Object,
+                                             Mock.Of<ITeamsChannelRepository>());
 
             // Act
             var response = await handler.ExecuteAsync(new GetJobsRequest());
@@ -1732,7 +2135,8 @@ namespace Services.Tests
                                              _databaseSyncJobsRepository.Object,
                                              _graphGroupRepository.Object,
                                              _httpContextAccessor.Object,
-                                             _syncJobChangeRepository.Object);
+                                             _syncJobChangeRepository.Object,
+                                             Mock.Of<ITeamsChannelRepository>());
 
             // Act
             var response = await handler.ExecuteAsync(new GetJobsRequest());
@@ -1807,7 +2211,8 @@ namespace Services.Tests
                                              _databaseSyncJobsRepository.Object,
                                              _graphGroupRepository.Object,
                                              _httpContextAccessor.Object,
-                                             _syncJobChangeRepository.Object);
+                                             _syncJobChangeRepository.Object,
+                                             Mock.Of<ITeamsChannelRepository>());
 
             // Act
             var response = await handler.ExecuteAsync(new GetJobsRequest
@@ -1861,7 +2266,8 @@ namespace Services.Tests
                                              _databaseSyncJobsRepository.Object,
                                              _graphGroupRepository.Object,
                                              _httpContextAccessor.Object,
-                                             _syncJobChangeRepository.Object);
+                                             _syncJobChangeRepository.Object,
+                                             Mock.Of<ITeamsChannelRepository>());
 
             // Act - no query options provided
             var response = await handler.ExecuteAsync(new GetJobsRequest { QueryOptions = null });
@@ -1889,7 +2295,8 @@ namespace Services.Tests
                                              _databaseSyncJobsRepository.Object,
                                              _graphGroupRepository.Object,
                                              _httpContextAccessor.Object,
-                                             _syncJobChangeRepository.Object);
+                                             _syncJobChangeRepository.Object,
+                                             Mock.Of<ITeamsChannelRepository>());
 
             var response = await handler.ExecuteAsync(new GetJobsRequest());
 
@@ -3400,4 +3807,3 @@ namespace Services.Tests
         }
     }
 }
-

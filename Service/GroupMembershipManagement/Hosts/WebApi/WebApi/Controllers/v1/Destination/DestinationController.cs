@@ -63,18 +63,41 @@ namespace WebApi.Controllers.v1.Destination
             }
         }
 
-        [Authorize()]
+        [Authorize(Roles = Models.Roles.JOB_TENANT_WRITER + "," + Models.Roles.TEAMS_CHANNEL_ONBOARDER)]
         [HttpGet("teams/{teamId}/searchChannels/{query}")]
         public async Task<ActionResult<IEnumerable<Models.DTOs.Channel>>> SearchChannelsAsync(Guid teamId, string query)
         {
             try
             {
+                // Pass the caller identity so the handler can restrict the search to Team owners (or tenant writers).
+                var claimsIdentity = User.Identity as ClaimsIdentity;
+                var userId = claimsIdentity?.Claims.FirstOrDefault(c => c.Type == "http://schemas.microsoft.com/identity/claims/objectidentifier")?.Value;
+                if (string.IsNullOrEmpty(userId))
+                {
+                    return new ForbidResult();
+                }
+
+                var isJobTenantWriter = User.IsInRole(Models.Roles.JOB_TENANT_WRITER);
+                var isJobOwnerWriter = User.IsInRole(Models.Roles.JOB_OWNER_WRITER);
+                var isTeamsChannelOnboarder = User.IsInRole(Models.Roles.TEAMS_CHANNEL_ONBOARDER);
+
+                if (!isJobTenantWriter && !(isJobOwnerWriter && isTeamsChannelOnboarder))
+                {
+                    return new ForbidResult();
+                }
+
                 var response = await _searchChannelsRequestHandler.ExecuteAsync(new SearchChannelsRequest
                 {
                     TeamId = teamId,
-                    Query = query
+                    Query = query,
+                    UserIdentity = userId,
+                    IsJobTenantWriter = isJobTenantWriter
                 });
                 return Ok(response.Model);
+            }
+            catch (UnauthorizedAccessException)
+            {
+                return new ForbidResult();
             }
             catch (Exception ex)
             {
@@ -145,25 +168,34 @@ namespace WebApi.Controllers.v1.Destination
             }
         }
 
-        [Authorize()]
+        [Authorize(Roles = Models.Roles.JOB_TENANT_WRITER + "," + Models.Roles.TEAMS_CHANNEL_ONBOARDER)]
         [HttpGet("teams/{teamId}/channel/{channelId}/onboarding-status")]
         public async Task<ActionResult<GetOnboardingStatusResponse>> GetChannelOnboardingStatusAsync(Guid teamId, string channelId)
         {
             try
             {
-                var user = User;
                 var claimsIdentity = User.Identity as ClaimsIdentity;
                 var userId = claimsIdentity?.Claims.FirstOrDefault(c => c.Type == "http://schemas.microsoft.com/identity/claims/objectidentifier")?.Value;
+                if (string.IsNullOrEmpty(userId))
+                {
+                    return new ForbidResult();
+                }
 
                 var isJobTenantWriter = User.IsInRole(Models.Roles.JOB_TENANT_WRITER);
+                var isJobOwnerWriter = User.IsInRole(Models.Roles.JOB_OWNER_WRITER);
+                var isTeamsChannelOnboarder = User.IsInRole(Models.Roles.TEAMS_CHANNEL_ONBOARDER);
 
-                if (string.IsNullOrEmpty(userId))
+                if (!isJobTenantWriter && !(isJobOwnerWriter && isTeamsChannelOnboarder))
                 {
                     return new ForbidResult();
                 }
 
                 var response = await _getChannelOnboardingStatusHandler.ExecuteAsync(new GetChannelOnboardingStatusRequest(teamId, channelId, userId, isJobTenantWriter));
                 return Ok(response);
+            }
+            catch (UnauthorizedAccessException)
+            {
+                return new ForbidResult();
             }
             catch (Exception ex)
             {
@@ -241,4 +273,3 @@ namespace WebApi.Controllers.v1.Destination
         }
     }
 }
-

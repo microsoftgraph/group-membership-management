@@ -9,5 +9,7 @@ namespace Services.Messages.Requests
     {
         public Guid TeamId { get; set; }
         public string? Query { get; set; }
+        public string? UserIdentity { get; set; }
+        public bool IsJobTenantWriter { get; set; }
     }
 }

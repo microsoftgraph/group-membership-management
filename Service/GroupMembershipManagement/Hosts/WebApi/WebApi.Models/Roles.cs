@@ -21,5 +21,6 @@ namespace WebApi.Models
         public const string AI_ONBOARDING_CHAT = "AI.Onboarding.Chat";
         public const string AI_SETTINGS_ADMINISTRATOR = "AISettings.ReadWrite.All";
         public const string AI_SYNC_JOB = "AI.SyncJob.All";
+        public const string TEAMS_CHANNEL_ONBOARDER = "TeamsChannel.Onboard.OwnedBy";
     }
 }

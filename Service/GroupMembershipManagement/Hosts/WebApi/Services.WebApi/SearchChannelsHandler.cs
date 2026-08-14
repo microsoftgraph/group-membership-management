@@ -13,15 +13,25 @@ namespace Services
     public class SearchChannelsHandler : RequestHandlerBase<SearchChannelsRequest, SearchChannelsResponse>
     {
         private readonly ITeamsChannelRepository _teamsChannelRepository;
+        private readonly IGraphGroupRepository _graphGroupRepository;
         public SearchChannelsHandler(ILogger<SearchChannelsHandler> logger,
-                              ITeamsChannelRepository teamsChannelRepository) : base(logger)
+                              ITeamsChannelRepository teamsChannelRepository,
+                              IGraphGroupRepository graphGroupRepository) : base(logger)
         {
             _teamsChannelRepository = teamsChannelRepository ?? throw new ArgumentNullException(nameof(teamsChannelRepository));
+            _graphGroupRepository = graphGroupRepository ?? throw new ArgumentNullException(nameof(graphGroupRepository));
         }
 
         protected override async Task<SearchChannelsResponse> ExecuteCoreAsync(SearchChannelsRequest request)
         {
             var response = new SearchChannelsResponse();
+
+            // Only owners of the Team (or tenant writers) may enumerate its shared channels.
+            if (!(request.IsJobTenantWriter ||
+                  await _graphGroupRepository.IsEmailRecipientOwnerOfGroupAsync(request.UserIdentity, request.TeamId)))
+            {
+                throw new UnauthorizedAccessException("Searching channels requires ownership of the Team.");
+            }
 
             int minQueryLength = 1;
             if (string.IsNullOrEmpty(request.Query) || request.Query.Length < minQueryLength)

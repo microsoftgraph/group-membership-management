@@ -68,7 +68,37 @@ namespace Services
             try
             {
                 var newSyncJobEntity = MapSyncJobDTOtoEntity(request.NewSyncJob);
-                
+
+                // Validate TeamsChannel jobs for a channel id and exact duplicate destination.
+                if (newSyncJobEntity.MembershipType == MembershipTypes.TeamsChannelMembership.ToString())
+                {
+                    var channelId = newSyncJobEntity.Channel?.ChannelId;
+                    if (string.IsNullOrEmpty(channelId))
+                    {
+                        response.StatusCode = HttpStatusCode.BadRequest;
+                        response.ErrorCode = "MissingChannelId";
+                        response.Message = "TeamsChannel sync requires a specific channel. To sync the Team itself, use the GroupMembership path.";
+                        return response;
+                    }
+
+                    var existingChannelJob = await _syncJobRepository.GetSyncJobByTeamIdAndChannelIdAsync(newSyncJobEntity.Channel.GroupId, channelId);
+                    if (existingChannelJob != null)
+                    {
+                        // Authorize ownership before returning duplicate-destination details.
+                        var isChannelGroupOwner = await _graphGroupRepository.IsEmailRecipientOwnerOfGroupAsync(request.UserIdentity, newSyncJobEntity.Channel.GroupId);
+                        if (!(isChannelGroupOwner || request.IsJobTenantWriter))
+                        {
+                            response.StatusCode = HttpStatusCode.Forbidden;
+                            return response;
+                        }
+
+                        response.StatusCode = HttpStatusCode.Conflict;
+                        response.ErrorCode = "DuplicateDestination";
+                        response.Message = "A sync job for this channel already exists.";
+                        return response;
+                    }
+                }
+
                 var isPendingConfigurationEnabled = _pendingConfigurationConfig.PendingConfigurationIsEnabled;
 
                 // Check if pending configuration feature is enabled, only works for groups

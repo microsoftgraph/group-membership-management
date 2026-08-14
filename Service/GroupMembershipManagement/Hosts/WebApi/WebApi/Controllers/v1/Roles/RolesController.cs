@@ -44,6 +44,7 @@ namespace WebApi.Controllers.v1.Roles
             var isAIOnboardingChat = User.IsInRole(Models.Roles.AI_ONBOARDING_CHAT);
             var isAISettingsAdministrator = User.IsInRole(Models.Roles.AI_SETTINGS_ADMINISTRATOR);
             var isAISyncJob = User.IsInRole(Models.Roles.AI_SYNC_JOB);
+            var isTeamsChannelOnboarder = User.IsInRole(Models.Roles.TEAMS_CHANNEL_ONBOARDER);
 
             var roleStatus = new Models.DTOs.RolesObject
             {
@@ -62,7 +63,8 @@ namespace WebApi.Controllers.v1.Roles
                 IsGeneralSettingsAdministrator = isGeneralSettingsAdministrator,
                 IsAIOnboardingChat = isAIOnboardingChat,
                 IsAISettingsAdministrator = isAISettingsAdministrator,
-                IsAISyncJob = isAISyncJob
+                IsAISyncJob = isAISyncJob,
+                IsTeamsChannelOnboarder = isTeamsChannelOnboarder
             };
 
             return Ok(roleStatus);

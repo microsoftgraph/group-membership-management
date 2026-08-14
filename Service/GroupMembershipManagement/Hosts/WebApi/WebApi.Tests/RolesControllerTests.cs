@@ -64,6 +64,28 @@ namespace Services.Tests
             Assert.IsTrue(rolesStatuses.IsGeneralSettingsAdministrator);
         }
 
+        [TestMethod]
+        public void GetAllRoles_ReflectsTeamsChannelOnboarder()
+        {
+            // getAllRoles exposes whether the user has the TeamsChannel onboarder role.
+            _rolesController.ControllerContext = CreateControllerContext(new List<Claim>
+            {
+                new Claim(ClaimTypes.Role, Roles.JOB_OWNER_WRITER),
+                new Claim(ClaimTypes.Role, Roles.TEAMS_CHANNEL_ONBOARDER)
+            });
+
+            var withRole = ((_rolesController.GetAllRoles().Result as OkObjectResult)!.Value as RolesObject)!;
+            Assert.IsTrue(withRole.IsTeamsChannelOnboarder, "Should be true when the caller holds TEAMS_CHANNEL_ONBOARDER");
+
+            _rolesController.ControllerContext = CreateControllerContext(new List<Claim>
+            {
+                new Claim(ClaimTypes.Role, Roles.JOB_OWNER_WRITER)
+            });
+
+            var withoutRole = ((_rolesController.GetAllRoles().Result as OkObjectResult)!.Value as RolesObject)!;
+            Assert.IsFalse(withoutRole.IsTeamsChannelOnboarder, "Should be false when the caller lacks TEAMS_CHANNEL_ONBOARDER");
+        }
+
         private ControllerContext CreateControllerContext(List<Claim> claims)
         {
             var identity = new ClaimsIdentity(claims, "TestAuthType");

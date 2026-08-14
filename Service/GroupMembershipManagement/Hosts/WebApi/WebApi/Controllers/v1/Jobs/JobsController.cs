@@ -9,6 +9,7 @@ using Services.Messages.Requests;
 using Services.Messages.Responses;
 using System.Net;
 using System.Security.Claims;
+using System.Text.Json;
 using WebApi.Models.DTOs;
 using NewSyncJobDTO = WebApi.Models.DTOs.NewSyncJob;
 using SyncJobModel = Models.SyncJob;
@@ -128,6 +129,18 @@ namespace WebApi.Controllers.v1.Jobs
                 }
 
                 var isJobTenantWriter = User.IsInRole(Models.Roles.JOB_TENANT_WRITER);
+
+                // TeamsChannel jobs additionally require the onboarder role unless the caller is a tenant writer.
+                if (IsTeamsChannelDestination(newSyncJob.Destination))
+                {
+                    var isJobOwnerWriter = User.IsInRole(Models.Roles.JOB_OWNER_WRITER);
+                    var isTeamsChannelOnboarder = User.IsInRole(Models.Roles.TEAMS_CHANNEL_ONBOARDER);
+                    if (!isJobTenantWriter && !(isJobOwnerWriter && isTeamsChannelOnboarder))
+                    {
+                        return new ForbidResult();
+                    }
+                }
+
                 var businessJustification = newSyncJob.BusinessJustification;
                 var response = await _postJobRequestHandler.ExecuteAsync(new PostJobRequest(userId, newSyncJob, isJobTenantWriter, displayName, businessJustification));
 
@@ -137,6 +150,8 @@ namespace WebApi.Controllers.v1.Jobs
                         return new CreatedResult($"api/jobs/{response.NewSyncJobId}", response);
                     case HttpStatusCode.BadRequest:
                         return new BadRequestObjectResult(response);
+                    case HttpStatusCode.Conflict:
+                        return new ConflictObjectResult(response);
                     case HttpStatusCode.Forbidden:
                         return new ForbidResult();
                     case HttpStatusCode.InternalServerError:
@@ -149,6 +164,36 @@ namespace WebApi.Controllers.v1.Jobs
             {
                 _logger.LogError(ex, "Unhandled exception in {Action}", nameof(PostJobAsync));
                 return Problem(statusCode: (int)System.Net.HttpStatusCode.InternalServerError, detail: "An unexpected error occurred.");
+            }
+        }
+
+        // Mirrors PostJobHandler.MapSyncJobDTOtoEntity: inspects only the first destination element's type.
+        private static bool IsTeamsChannelDestination(string destination)
+        {
+            if (string.IsNullOrWhiteSpace(destination))
+            {
+                return false;
+            }
+
+            try
+            {
+                using var document = JsonDocument.Parse(destination);
+                if (document.RootElement.ValueKind != JsonValueKind.Array || document.RootElement.GetArrayLength() == 0)
+                {
+                    return false;
+                }
+
+                var first = document.RootElement[0];
+                if (first.ValueKind != JsonValueKind.Object || !first.TryGetProperty("type", out var typeElement) || typeElement.ValueKind != JsonValueKind.String)
+                {
+                    return false;
+                }
+
+                return string.Equals(typeElement.GetString(), global::Models.MembershipTypes.TeamsChannelMembership.ToString(), StringComparison.OrdinalIgnoreCase);
+            }
+            catch (JsonException)
+            {
+                return false;
             }
         }
 

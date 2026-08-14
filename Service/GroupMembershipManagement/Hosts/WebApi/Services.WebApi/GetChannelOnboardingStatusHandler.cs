@@ -46,7 +46,8 @@ namespace Services
 
             var isServiceAccountOwner = await _teamsChannelRepository.IsServiceAccountOwnerOfChannelAsync(_teamsChannelConfig.TeamsChannelServiceAccountObjectId, azureADChannel, null);
             var isUserOwner = await _graphGroupRepository.IsEmailRecipientOwnerOfGroupAsync(request.UserIdentity, request.TeamId);
-            var syncJobExists = await _syncJobRepository.GetSyncJobByObjectIdAsync(request.TeamId);
+            // A channel is "Onboarded" only when a TeamsChannel SyncJob exists for the exact (TeamId, ChannelId) pair.
+            var syncJobExists = await _syncJobRepository.GetSyncJobByTeamIdAndChannelIdAsync(request.TeamId, request.ChannelId);
             bool isOnboarded = syncJobExists != null;
 
             var response = new GetOnboardingStatusResponse();

@@ -10,6 +10,7 @@ namespace Services.Messages.Responses
     {
         public HttpStatusCode StatusCode { get; set; } = HttpStatusCode.OK;
         public string? ErrorCode { get; set; }
+        public string? Message { get; set; }
         public List<string>? ResponseData { get; set; }
         public Guid? NewSyncJobId { get; set; }
     }

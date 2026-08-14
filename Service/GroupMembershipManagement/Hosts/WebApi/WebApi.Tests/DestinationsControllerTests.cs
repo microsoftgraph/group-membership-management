@@ -2,6 +2,7 @@
 // Licensed under the MIT license.
 
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Authorization;
 using Moq;
 using Repositories.Contracts;
 using WebApi.Controllers.v1.Destination;
@@ -63,7 +64,7 @@ namespace Services.Tests
             _teamsChannelRepository = new Mock<ITeamsChannelRepository>();
             _teamsChannelConfig = new Mock<ITeamsChannelConfig>();
             _searchGroupsHandler = new SearchGroupsHandler(NullLogger<SearchGroupsHandler>.Instance, _graphGroupRepository.Object);
-            _searchChannelsHandler = new SearchChannelsHandler(NullLogger<SearchChannelsHandler>.Instance, _teamsChannelRepository.Object);
+            _searchChannelsHandler = new SearchChannelsHandler(NullLogger<SearchChannelsHandler>.Instance, _teamsChannelRepository.Object, _graphGroupRepository.Object);
             _getGroupEndpointsHandler = new GetGroupEndpointsHandler(NullLogger<GetGroupEndpointsHandler>.Instance, _graphGroupRepository.Object);
             _getGroupOwnersHandler = new GetGroupOwnersHandler(NullLogger<GetGroupOwnersHandler>.Instance, _graphGroupRepository.Object);
             _postGroupHandler = new PostGroupHandler(NullLogger<PostGroupHandler>.Instance, _graphGroupRepository.Object);
@@ -157,6 +158,8 @@ namespace Services.Tests
                 Group = new Group { GroupId = Guid.NewGuid() }
             };
             _syncJobRepository.Setup(x => x.GetSyncJobByObjectIdAsync(It.IsAny<Guid>())).ReturnsAsync(syncJob);
+            // Channel-level lookup defaults to not onboarded unless a test opts into an exact match.
+            _syncJobRepository.Setup(x => x.GetSyncJobByTeamIdAndChannelIdAsync(It.IsAny<Guid>(), It.IsAny<string>())).ReturnsAsync((SyncJob)null);
 
         }
 
@@ -303,6 +306,69 @@ namespace Services.Tests
             var channels = result.Value as GetChannelsModel;
             Assert.IsNotNull(channels);
             Assert.AreEqual(1, channels.Count);
+        }
+
+        private DestinationController CreateControllerWithRoles(params string[] roles)
+        {
+            var claims = new List<Claim>
+            {
+                new Claim(ClaimTypes.Name, "user@domain.com"),
+                new Claim("http://schemas.microsoft.com/identity/claims/objectidentifier", Guid.NewGuid().ToString())
+            };
+            claims.AddRange(roles.Select(r => new Claim(ClaimTypes.Role, r)));
+
+            return new DestinationController(
+                _searchGroupsHandler, _searchChannelsHandler, _getGroupEndpointsHandler, _getGroupOwnersHandler,
+                _getGroupOnboardingStatusHandler, _getChannelOnboardingStatusHandler, _postGroupHandler,
+                NullLogger<DestinationController>.Instance)
+            {
+                ControllerContext = CreateControllerContext(claims)
+            };
+        }
+
+        [TestMethod]
+        public async Task SearchChannels_TeamOwnerScopingAsync()
+        {
+            // Verify handler scoping: tenant writers bypass ownership; other callers must own the Team.
+
+            // Tenant writer: allowed regardless of Team ownership.
+            var tenantWriter = await CreateControllerWithRoles(Roles.JOB_TENANT_WRITER).SearchChannelsAsync(Guid.NewGuid(), "c");
+            Assert.IsNotInstanceOfType(tenantWriter.Result, typeof(ForbidResult), "tenant writer should be allowed");
+
+            // Non-tenant-writer who owns the Team: allowed.
+            _graphGroupRepository.Setup(x => x.IsEmailRecipientOwnerOfGroupAsync(It.IsAny<string>(), It.IsAny<Guid>(), It.IsAny<bool>())).ReturnsAsync(true);
+            var teamOwner = await CreateControllerWithRoles(Roles.JOB_OWNER_WRITER, Roles.TEAMS_CHANNEL_ONBOARDER).SearchChannelsAsync(Guid.NewGuid(), "c");
+            Assert.IsNotInstanceOfType(teamOwner.Result, typeof(ForbidResult), "a Team owner should be allowed");
+
+            // Non-tenant-writer who does NOT own the Team: forbidden (403).
+            _graphGroupRepository.Setup(x => x.IsEmailRecipientOwnerOfGroupAsync(It.IsAny<string>(), It.IsAny<Guid>(), It.IsAny<bool>())).ReturnsAsync(false);
+            var nonOwner = await CreateControllerWithRoles(Roles.JOB_OWNER_WRITER, Roles.TEAMS_CHANNEL_ONBOARDER).SearchChannelsAsync(Guid.NewGuid(), "c");
+            Assert.IsInstanceOfType(nonOwner.Result, typeof(ForbidResult), "a non-owner (non-tenant-writer) should be forbidden");
+        }
+
+        [TestMethod]
+        public void SearchChannels_IsGatedByTenantWriterOrOnboarderRoles()
+        {
+            // Assert the declarative role gate pins the two channel-onboarding roles.
+            var method = typeof(DestinationController).GetMethod(nameof(DestinationController.SearchChannelsAsync));
+            var authorize = method!.GetCustomAttributes(typeof(AuthorizeAttribute), false).Cast<AuthorizeAttribute>().SingleOrDefault();
+            Assert.IsNotNull(authorize, "SearchChannelsAsync must carry an [Authorize] attribute");
+            var roles = authorize!.Roles!.Split(',').Select(r => r.Trim()).ToList();
+            CollectionAssert.AreEquivalent(new[] { Roles.JOB_TENANT_WRITER, Roles.TEAMS_CHANNEL_ONBOARDER }, roles);
+        }
+
+        [TestMethod]
+        public async Task GetChannelOnboardingStatus_EffectiveAuthorizationRule()
+        {
+            // The onboarding-status endpoint enforces the same effective authorization rule.
+            var ownerOnly = await CreateControllerWithRoles(Roles.JOB_OWNER_WRITER).GetChannelOnboardingStatusAsync(Guid.NewGuid(), "channel-A");
+            Assert.IsInstanceOfType(ownerOnly.Result, typeof(ForbidResult), "owner-writer alone should be forbidden (403)");
+
+            var ownerPlusOnboarder = await CreateControllerWithRoles(Roles.JOB_OWNER_WRITER, Roles.TEAMS_CHANNEL_ONBOARDER).GetChannelOnboardingStatusAsync(Guid.NewGuid(), "channel-A");
+            Assert.IsNotInstanceOfType(ownerPlusOnboarder.Result, typeof(ForbidResult), "owner-writer + onboarder should be allowed");
+
+            var tenantWriter = await CreateControllerWithRoles(Roles.JOB_TENANT_WRITER).GetChannelOnboardingStatusAsync(Guid.NewGuid(), "channel-A");
+            Assert.IsNotInstanceOfType(tenantWriter.Result, typeof(ForbidResult), "tenant writer should be allowed");
         }
 
         [TestMethod]
@@ -497,6 +563,14 @@ namespace Services.Tests
         [TestMethod]
         public async Task GetChannelAlreadyOnboardedStatusAsync()
         {
+            var onboardedJob = new SyncJob
+            {
+                Id = Guid.NewGuid(),
+                MembershipType = "TeamsChannelMembership",
+                Channel = new Models.Channel { GroupId = _validDestinationId, ChannelId = "TestChannelId" }
+            };
+            _syncJobRepository.Setup(x => x.GetSyncJobByTeamIdAndChannelIdAsync(_validDestinationId, "TestChannelId")).ReturnsAsync(onboardedJob);
+
             var response = await _destinationController.GetChannelOnboardingStatusAsync(_validDestinationId, "TestChannelId");
             var result = response.Result as OkObjectResult;
 
@@ -505,6 +579,56 @@ namespace Services.Tests
             Assert.IsNotNull(result?.Value);
 
             var onboardingStatus = result.Value as GetOnboardingStatusResponse;
+            Assert.IsNotNull(onboardingStatus);
+            Assert.AreEqual(OnboardingStatus.Onboarded, onboardingStatus.Status);
+        }
+
+        [TestMethod]
+        public async Task GetChannelOnboardingStatus_ChannelUnderTeamWithGroupMembershipJob_ReturnsReadyForOnboarding()
+        {
+            // A GroupMembership job on the same Team must not block a channel.
+            Guid teamId = Guid.NewGuid();
+            string channelId = "TestChannelId";
+            var teamGroupJob = new SyncJob { Id = Guid.NewGuid(), MembershipType = "GroupMembership", Group = new Group { GroupId = teamId } };
+            _syncJobRepository.Setup(x => x.GetSyncJobByObjectIdAsync(teamId)).ReturnsAsync(teamGroupJob); // old team-level match (must be ignored)
+            _syncJobRepository.Setup(x => x.GetSyncJobByTeamIdAndChannelIdAsync(teamId, channelId)).ReturnsAsync((SyncJob)null);
+            _teamsChannelRepository.Setup(x => x.IsServiceAccountOwnerOfChannelAsync(It.IsAny<Guid>(), It.IsAny<AzureADTeamsChannel>(), null)).ReturnsAsync(true);
+
+            var response = await _destinationController.GetChannelOnboardingStatusAsync(teamId, channelId);
+            var onboardingStatus = (response.Result as OkObjectResult)?.Value as GetOnboardingStatusResponse;
+
+            Assert.IsNotNull(onboardingStatus);
+            Assert.AreEqual(OnboardingStatus.ReadyForOnboarding, onboardingStatus.Status);
+        }
+
+        [TestMethod]
+        public async Task GetChannelOnboardingStatus_SameTeamDifferentChannel_ReturnsReadyForOnboarding()
+        {
+            // A sibling channel remains onboardable when another channel already has a job.
+            Guid teamId = Guid.NewGuid();
+            var existingChannelJob = new SyncJob { Id = Guid.NewGuid(), MembershipType = "TeamsChannelMembership", Channel = new Models.Channel { GroupId = teamId, ChannelId = "channel-A" } };
+            _syncJobRepository.Setup(x => x.GetSyncJobByTeamIdAndChannelIdAsync(teamId, "channel-A")).ReturnsAsync(existingChannelJob);
+            _syncJobRepository.Setup(x => x.GetSyncJobByTeamIdAndChannelIdAsync(teamId, "channel-B")).ReturnsAsync((SyncJob)null);
+            _teamsChannelRepository.Setup(x => x.IsServiceAccountOwnerOfChannelAsync(It.IsAny<Guid>(), It.IsAny<AzureADTeamsChannel>(), null)).ReturnsAsync(true);
+
+            var response = await _destinationController.GetChannelOnboardingStatusAsync(teamId, "channel-B");
+            var onboardingStatus = (response.Result as OkObjectResult)?.Value as GetOnboardingStatusResponse;
+
+            Assert.IsNotNull(onboardingStatus);
+            Assert.AreEqual(OnboardingStatus.ReadyForOnboarding, onboardingStatus.Status);
+        }
+
+        [TestMethod]
+        public async Task GetChannelOnboardingStatus_SameTeamSameChannel_ReturnsOnboarded()
+        {
+            // An exact Team and channel match is onboarded.
+            Guid teamId = Guid.NewGuid();
+            var existingChannelJob = new SyncJob { Id = Guid.NewGuid(), MembershipType = "TeamsChannelMembership", Channel = new Models.Channel { GroupId = teamId, ChannelId = "channel-A" } };
+            _syncJobRepository.Setup(x => x.GetSyncJobByTeamIdAndChannelIdAsync(teamId, "channel-A")).ReturnsAsync(existingChannelJob);
+
+            var response = await _destinationController.GetChannelOnboardingStatusAsync(teamId, "channel-A");
+            var onboardingStatus = (response.Result as OkObjectResult)?.Value as GetOnboardingStatusResponse;
+
             Assert.IsNotNull(onboardingStatus);
             Assert.AreEqual(OnboardingStatus.Onboarded, onboardingStatus.Status);
         }
@@ -617,6 +741,7 @@ namespace Services.Tests
                 {
                     new Claim(ClaimTypes.Name, "user@domain.com"),
                     new Claim(ClaimTypes.Role, Roles.JOB_OWNER_WRITER),
+                    new Claim(ClaimTypes.Role, Roles.TEAMS_CHANNEL_ONBOARDER),
                     new Claim("http://schemas.microsoft.com/identity/claims/objectidentifier", Guid.NewGuid().ToString())
                 })
             };
@@ -670,13 +795,14 @@ namespace Services.Tests
                 {
                     new Claim(ClaimTypes.Name, "user@domain.com"),
                     new Claim(ClaimTypes.Role, Roles.JOB_OWNER_WRITER),
+                    new Claim(ClaimTypes.Role, Roles.TEAMS_CHANNEL_ONBOARDER),
                     new Claim("http://schemas.microsoft.com/identity/claims/objectidentifier", Guid.NewGuid().ToString())
                 })
             };
 
             Guid teamId = Guid.NewGuid();
             string channelId = "TestChannelId";
-            _syncJobRepository.Setup(x => x.GetSyncJobByObjectIdAsync(It.IsAny<Guid>())).ThrowsAsync(new Exception("Database error"));
+            _syncJobRepository.Setup(x => x.GetSyncJobByTeamIdAndChannelIdAsync(It.IsAny<Guid>(), It.IsAny<string>())).ThrowsAsync(new Exception("Database error"));
 
             var response = await _destinationController.GetChannelOnboardingStatusAsync(teamId, channelId);
             var result = response.Result as ObjectResult;

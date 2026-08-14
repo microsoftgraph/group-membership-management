@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.OData.Query;
 using Microsoft.EntityFrameworkCore;
 using Models;
+using Models.Entities;
 using Models.SyncJobChange;
 using Repositories.Contracts;
 using Services.Contracts;
@@ -21,17 +22,20 @@ namespace Services
         private readonly IGraphGroupRepository _graphGroupRepository;
         private readonly IHttpContextAccessor _httpContextAccessor;
         private readonly ISyncJobChangeRepository _syncJobChangeRepository;
+        private readonly ITeamsChannelRepository _teamsChannelRepository;
 
         public GetJobsHandler(ILogger<GetJobsHandler> logger,
                               IDatabaseSyncJobsRepository databaseSyncJobsRepository,
                               IGraphGroupRepository graphGroupRepository,
                               IHttpContextAccessor httpContextAccessor,
-                              ISyncJobChangeRepository syncJobChangeRepository) : base(logger)
+                              ISyncJobChangeRepository syncJobChangeRepository,
+                              ITeamsChannelRepository teamsChannelRepository) : base(logger)
         {
             _databaseSyncJobsRepository = databaseSyncJobsRepository ?? throw new ArgumentNullException(nameof(databaseSyncJobsRepository));
             _graphGroupRepository = graphGroupRepository ?? throw new ArgumentNullException(nameof(graphGroupRepository));
             _httpContextAccessor = httpContextAccessor ?? throw new ArgumentNullException(nameof(httpContextAccessor));
             _syncJobChangeRepository = syncJobChangeRepository ?? throw new ArgumentNullException(nameof(syncJobChangeRepository));
+            _teamsChannelRepository = teamsChannelRepository ?? throw new ArgumentNullException(nameof(teamsChannelRepository));
         }
 
         protected override async Task<GetJobsResponse> ExecuteCoreAsync(GetJobsRequest request)
@@ -200,6 +204,42 @@ namespace Services
                 }
             }
 
+            // Resolve Teams-channel display names ("channel | team") for the current page only, so channel
+            // jobs show the channel name while preserving release's page-scoped Graph resolution (RU-quota fix).
+            var channelNames = new Dictionary<string, string>();
+            var channels = jobs
+                .Where(j => j.MembershipType == MembershipTypes.TeamsChannelMembership.ToString() && j.Channel != null)
+                .Select(j => new AzureADTeamsChannel { ObjectId = j.Channel.GroupId, ChannelId = j.Channel.ChannelId })
+                .ToList();
+
+            if (channels.Any())
+            {
+                try
+                {
+                    channelNames = await _teamsChannelRepository.GetTeamsChannelNamesAsync(channels) ?? new Dictionary<string, string>();
+                }
+                catch (Exception ex)
+                {
+                    // Fall back to the Team name when channel-name resolution fails.
+                    Logger.LogError(ex, "Failed to resolve TeamsChannel display names for the job list; falling back to Team names.");
+                }
+            }
+
+            var destinationNamesByJobId = jobs.ToDictionary(job => job.Id, job =>
+            {
+                var isTeamsChannelJob = job.MembershipType == MembershipTypes.TeamsChannelMembership.ToString() && job.Channel != null;
+                var destinationGroupId = GetDestinationGroupId(job);
+                var groupName = destinationGroupId.HasValue && targetGroups.TryGetValue(destinationGroupId.Value, out var targetGroup)
+                    ? targetGroup.Name
+                    : job.DestinationName?.Name;
+                var channelName = isTeamsChannelJob && channelNames.TryGetValue(job.Channel.ChannelId, out var resolvedChannelName)
+                    ? resolvedChannelName
+                    : null;
+                return channelName != null
+                    ? (groupName != null ? $"{channelName} | {groupName}" : channelName)
+                    : groupName;
+            });
+
             // The lastModifiedTime branch already populated these while sorting.
             if (request.CustomSortBy != "lastModifiedTime")
             {
@@ -235,6 +275,8 @@ namespace Services
                     estimatedNextRunTime = job.ScheduledDate;
                 }
 
+                var resolvedDestinationName = destinationNamesByJobId[job.Id];
+
                 var dto = new SyncJobDTO
                 (
                     job.Id,
@@ -245,7 +287,7 @@ namespace Services
                     estimatedNextRunTime
                 )
                 {
-                    TargetGroupName = targetGroups.TryGetValue(groupId, out var targetGroup) ? targetGroup.Name : job.DestinationName?.Name,
+                    TargetGroupName = resolvedDestinationName,
                     TargetGroupEmail = targetGroups.TryGetValue(groupId, out var targetGroupEmail) ? targetGroupEmail.Email : job.DestinationEmail?.Email,
                     TargetDestinationType = type,
                     LastModifiedTime = lastModifiedTimes.TryGetValue(job.Id, out var lastModifiedTime) ? lastModifiedTime : null
