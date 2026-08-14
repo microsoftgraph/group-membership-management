@@ -224,47 +224,36 @@ namespace Repositories.TeamsChannel
 
                     var nativeResponse = nativeResponseHandler.Value as HttpResponseMessage;
 
-                    if (nativeResponse != null)
+                    if (nativeResponse == null)
                     {
-                        try
-                        {
-                            await TrackResponseMetricsAsync(nativeResponse, ResolveRunId(), QueryType.Other, GraphOperationType.Write);
-                        }
-                        finally
-                        {
-                            nativeResponse.Dispose();
-                        }
+                        _teamsChannelRepositoryLogger.LogInformationWithRunId(ResolveRunId(), $"No response captured for Add of user {member.ObjectId} to group {teamsChannel.ObjectId}, channel {teamsChannel.ChannelId}; not counted as added, continuing sync.");
+                        continue;
                     }
 
-                    successCount++;
+                    try
+                    {
+                        await TrackResponseMetricsAsync(nativeResponse, ResolveRunId(), QueryType.Other, GraphOperationType.Write);
+                        await LogWriteAttemptAsync(nativeResponse, member, teamsChannel, "Add", ResolveRunId());
+
+                        if (nativeResponse.StatusCode == HttpStatusCode.Created)
+                        {
+                            successCount++;
+                        }
+                        else
+                        {
+                            var (errorCode, errorMessage) = await TryReadODataErrorAsync(nativeResponse);
+                            _teamsChannelRepositoryLogger.LogInformation($"Add for user {member.ObjectId} returned {(int)nativeResponse.StatusCode} {nativeResponse.StatusCode} (not 201 Created); not counted as added, continuing sync. Error: {errorCode} {errorMessage}");
+                        }
+                    }
+                    finally
+                    {
+                        nativeResponse.Dispose();
+                    }
                 }
-                catch (ODataError e)
+                catch (Exception ex)
                 {
-                    if (e.Error.Code == HttpStatusCode.BadRequest.ToString() && e.Error.Message!.Contains("Externally authenticated users and guest users are not allowed in shared channels"))
-                    {
-                        _teamsChannelRepositoryLogger.LogInformation($"Guest user cannot be added to channel, continuing sync. Exception Message:  {e.Error.Message}");
-                    }
-
-                    if (e.Error.Code == "NotFound" && e.Error.Message!.Contains("Unable to resolve the recipient."))
-                    {
-                        _teamsChannelRepositoryLogger.LogInformation($"User not found with Object Id: {member.ObjectId}, sync will fail. Exception Message:  {e.Error.Message}");
-                        usersNotFound.Add(member);
-
-                        continue;
-                    }
-
-                    if (e.Error.Code == "UnknownError" || e.Error.Code == HttpStatusCode.BadGateway.ToString())
-                    {
-                        _teamsChannelRepositoryLogger.LogInformation($"An unknown error occurred for user {member.ObjectId}, but continuing sync. Exception Message:  {e.Error.Message}");
-                        usersToRetry.Add(member);
-
-                        continue;
-                    }
-
-                    _teamsChannelRepositoryLogger.LogError($"Exception code:  {e.Error.Code}");
-                    _teamsChannelRepositoryLogger.LogError($"Exception Message:  {e.Error.Message}");
-
-                    throw;
+                    _teamsChannelRepositoryLogger.LogError($"Exception adding user {member.ObjectId} to group {teamsChannel.ObjectId}, channel {teamsChannel.ChannelId}; not counted as added, continuing sync. Exception: {ex.GetBaseException()}");
+                    continue;
                 }
             }
             return (successCount, usersToRetry, usersNotFound);
@@ -290,32 +279,36 @@ namespace Repositories.TeamsChannel
 
                     var nativeResponse = nativeResponseHandler.Value as HttpResponseMessage;
 
-                    if (nativeResponse != null)
+                    if (nativeResponse == null)
                     {
-                        try
-                        {
-                            await TrackResponseMetricsAsync(nativeResponse, ResolveRunId(), QueryType.Other, GraphOperationType.Write);
-                        }
-                        finally
-                        {
-                            nativeResponse.Dispose();
-                        }
-                    }
-
-                    successCount++;
-                }
-                catch (ODataError e)
-                {
-                    if(e.Error.Code == HttpStatusCode.BadRequest.ToString() && e.Error.Message!.Contains("Invalid id"))
-                    {
-                        usersNotFound.Add(member);
-                        _teamsChannelRepositoryLogger.LogInformation($"An invalid id was found for user with object id '{member.ObjectId}' and conversation id '{member.ConversationMemberId}', but continuing sync. Exception Message: {e.Error.Message}");
+                        _teamsChannelRepositoryLogger.LogInformationWithRunId(ResolveRunId(), $"No response captured for Remove of user {member.ObjectId} from group {teamsChannel.ObjectId}, channel {teamsChannel.ChannelId}; not counted as removed, continuing sync.");
                         continue;
                     }
 
-                    _teamsChannelRepositoryLogger.LogError($"Exception code:  {e.Error.Code}");
-                    _teamsChannelRepositoryLogger.LogError($"Exception Message:  {e.Error.Message}");
-                    throw;
+                    try
+                    {
+                        await TrackResponseMetricsAsync(nativeResponse, ResolveRunId(), QueryType.Other, GraphOperationType.Write);
+                        await LogWriteAttemptAsync(nativeResponse, member, teamsChannel, "Remove", ResolveRunId());
+
+                        if (nativeResponse.StatusCode == HttpStatusCode.NoContent)
+                        {
+                            successCount++;
+                        }
+                        else
+                        {
+                            var (errorCode, errorMessage) = await TryReadODataErrorAsync(nativeResponse);
+                            _teamsChannelRepositoryLogger.LogInformation($"Remove for user with object id '{member.ObjectId}' and conversation id '{member.ConversationMemberId}' returned {(int)nativeResponse.StatusCode} {nativeResponse.StatusCode} (not 204 No Content); not counted as removed, continuing sync. Error: {errorCode} {errorMessage}");
+                        }
+                    }
+                    finally
+                    {
+                        nativeResponse.Dispose();
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _teamsChannelRepositoryLogger.LogError($"Exception removing user {member.ObjectId} (conversation id '{member.ConversationMemberId}') from group {teamsChannel.ObjectId}, channel {teamsChannel.ChannelId}; not counted as removed, continuing sync. Exception: {ex.GetBaseException()}");
+                    continue;
                 }
             }
             return (successCount, usersNotFound); 
@@ -732,6 +725,44 @@ namespace Repositories.TeamsChannel
         private Guid? ResolveRunId(Guid? runId = null)
         {
             return CorrelationActivity.ResolveRunId(runId, RunId == Guid.Empty ? null : RunId);
+        }
+
+        private async Task LogWriteAttemptAsync(HttpResponseMessage response, AzureADTeamsUser member, AzureADTeamsChannel teamsChannel, string operation, Guid? runId)
+        {
+            var headers = GetResponseHeaders(response);
+            var graphRequestId = TryGetHeaderValue(headers, "request-id");
+            var clientRequestId = TryGetHeaderValue(headers, "client-request-id");
+
+            _teamsChannelRepositoryLogger.LogInformationWithRunId(runId,
+                $"TeamsChannel write attempt. Operation: {operation}, TargetUserObjectId: {member.ObjectId}, HttpStatusCode: {(int)response.StatusCode} {response.StatusCode}, GraphRequestId: {graphRequestId}, ClientRequestId: {clientRequestId}, GroupId: {teamsChannel.ObjectId}, ChannelId: {teamsChannel.ChannelId}");
+
+            if (headers != null)
+            {
+                await _teamsChannelMetricTracker.TrackRequestAsync(headers, runId);
+            }
+        }
+
+        private async Task<(string Code, string Message)> TryReadODataErrorAsync(HttpResponseMessage response)
+        {
+            try
+            {
+                var error = await DeserializeResponseAsync(response, ODataError.CreateFromDiscriminatorValue);
+                return (error?.Error?.Code ?? string.Empty, error?.Error?.Message ?? string.Empty);
+            }
+            catch (Exception ex)
+            {
+                _teamsChannelRepositoryLogger.LogInformation($"Unable to parse OData error body: {ex.Message}");
+                return (string.Empty, string.Empty);
+            }
+        }
+
+        private static string TryGetHeaderValue(IDictionary<string, IEnumerable<string>> headers, string key)
+        {
+            if (headers != null && headers.TryGetValue(key, out var values))
+            {
+                return values?.FirstOrDefault() ?? string.Empty;
+            }
+            return string.Empty;
         }
 
         private async Task TrackResponseMetricsAsync(HttpResponseMessage response, Guid? runId, QueryType queryType = QueryType.Other, GraphOperationType operationType = GraphOperationType.Read)
