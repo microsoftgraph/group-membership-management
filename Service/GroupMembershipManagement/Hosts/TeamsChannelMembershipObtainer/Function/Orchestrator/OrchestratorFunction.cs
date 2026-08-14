@@ -69,6 +69,16 @@ namespace Hosts.TeamsChannelMembershipObtainer
                         ChannelSyncInfo = channelSyncInfo
                     });
 
+                if (channelSyncInfo.IsDestinationPart)
+                {
+                    await context.CallActivityAsync(nameof(JobStatusUpdaterFunction),
+                        new JobStatusUpdaterRequest
+                        {
+                            SyncJob = channelSyncInfo.SyncJob,
+                            BeforeSyncUserCount = users.Count
+                        });
+                }
+
                 var filePath = await context.CallActivityAsync<string>(nameof(FileUploaderFunction),
                      new FileUploaderRequest
                      {

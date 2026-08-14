@@ -27,7 +27,7 @@ namespace Hosts.TeamsChannelMembershipObtainer
             using var scope = _logger.BeginSyncJobScope(request.SyncJob);
 
             _logger.FunctionStarted(nameof(JobStatusUpdaterFunction));
-            await _teamsChannelService.UpdateSyncJobStatusAsync(request.SyncJob, request.Status);
+            await _teamsChannelService.UpdateSyncJobStatusAsync(request.SyncJob, request.Status, request.BeforeSyncUserCount);
             _logger.FunctionCompleted(nameof(JobStatusUpdaterFunction));
         }
     }

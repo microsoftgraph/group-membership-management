@@ -151,16 +151,17 @@ namespace TeamsChannelMembershipObtainer.Service
             await SendMembershipAggregatorMessageAsync(aggregatorRequest);
         }
 
-        public async Task UpdateSyncJobStatusAsync(SyncJob syncJob, SyncStatus status)
+        public async Task UpdateSyncJobStatusAsync(SyncJob syncJob, SyncStatus? status, int? beforeSyncUserCount = null)
         {
             var history = new SyncJobHistory
             {
                 SyncJobId = syncJob.Id,
                 RunId = syncJob.RunId ?? Guid.Empty,
-                Status = status.ToString(),
+                Status = status?.ToString() ?? syncJob.Status,
                 UpdatedByFunction = "TeamsChannelMembershipObtainer",
-                EndTime = status != SyncStatus.InProgress ? DateTime.UtcNow : null,
-                UpdatedAt = DateTime.UtcNow
+                EndTime = status.HasValue && status.Value != SyncStatus.InProgress ? DateTime.UtcNow : null,
+                UpdatedAt = DateTime.UtcNow,
+                BeforeSyncUserCount = beforeSyncUserCount
             };
 
             await _syncJobStatusService.UpdateJobStatusAsync(syncJob, status, history, "TeamsChannelMembershipObtainer");

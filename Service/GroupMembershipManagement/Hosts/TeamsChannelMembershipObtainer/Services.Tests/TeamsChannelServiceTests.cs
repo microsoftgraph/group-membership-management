@@ -150,7 +150,6 @@ namespace Services.Tests
             Assert.IsFalse(verification.IsValid);
          }
 
-
         [TestMethod]
         public async Task VerifyAcceptsValidSync()
         {

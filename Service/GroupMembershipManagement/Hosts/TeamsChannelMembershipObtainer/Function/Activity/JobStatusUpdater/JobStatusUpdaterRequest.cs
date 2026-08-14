@@ -7,6 +7,7 @@ namespace Hosts.TeamsChannelMembershipObtainer
     public class JobStatusUpdaterRequest
     {
         public SyncJob SyncJob { get; set; }
-        public SyncStatus Status { get; set; }
+        public SyncStatus? Status { get; set; }
+        public int? BeforeSyncUserCount { get; set; }
     }
 }

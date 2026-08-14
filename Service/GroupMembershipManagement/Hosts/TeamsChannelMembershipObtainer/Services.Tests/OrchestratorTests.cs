@@ -142,13 +142,43 @@ namespace Services.Tests
             _durableOrchestrationContext.Verify(x => x.CallActivityAsync<List<AzureADTeamsUser>>(It.IsAny<TaskName>(), It.IsAny<UserReaderRequest>(), It.IsAny<TaskOptions>()), Times.Once);
             _durableOrchestrationContext.Verify(x => x.CallActivityAsync<string>(It.IsAny<TaskName>(), It.IsAny<FileUploaderRequest>(), It.IsAny<TaskOptions>()), Times.Once);
             _durableOrchestrationContext.Verify(x => x.CallActivityAsync(It.IsAny<TaskName>(), It.IsAny<QueueMessageSenderRequest>(), It.IsAny<TaskOptions>()), Times.Once);
-            _durableOrchestrationContext.Verify(x => x.CallActivityAsync(It.IsAny<TaskName>(), It.IsAny<JobStatusUpdaterRequest>(), It.IsAny<TaskOptions>()), Times.Never);
+            // Destination part persists BeforeSyncUserCount (status-less) for TeamsChannelUpdater parity.
+            _durableOrchestrationContext.Verify(x => x.CallActivityAsync(It.IsAny<TaskName>(), It.Is<JobStatusUpdaterRequest>(request => request.Status == null && request.BeforeSyncUserCount == 2), It.IsAny<TaskOptions>()), Times.Once);
             _durableOrchestrationContext.Verify(x => x.CallActivityAsync(It.IsAny<TaskName>(), It.IsAny<TelemetryTrackerRequest>(), It.IsAny<TaskOptions>()), Times.Never);
         }
 
         [TestMethod]
-        public async Task TestInvalidCurrentPartAsync()
+        public async Task SourcePart_DoesNotPersistBeforeSyncUserCount()
         {
+            _syncInfo = new ChannelSyncInfo
+            {
+                TotalParts = 2,
+                CurrentPart = 1,
+                IsDestinationPart = false,
+                SyncJob = new SyncJob
+                {
+                    RunId = Guid.Parse("00000000-0000-0000-0000-000000000012"),
+                    Status = SyncStatus.InProgress.ToString(),
+                    Timestamp = new DateTimeOffset(1995, 03, 28, 1, 2, 3, TimeSpan.Zero),
+                    Query = @"[{""type"":""GroupMembership"",""source"":""00000000-0000-0000-0000-000000000000""}]",
+                    MembershipType = "TeamsChannelMembership",
+                    Channel = new Channel
+                    {
+                        GroupId = Guid.NewGuid(),
+                        ChannelId = "some-channel"
+                    }
+                }
+            };
+
+            var orchestratorFunction = new OrchestratorFunction(_dryRunValue.Object);
+            await orchestratorFunction.RunOrchestratorAsync(_durableOrchestrationContext.Object);
+
+            // A source part must never write BeforeSyncUserCount (only the destination part does).
+            _durableOrchestrationContext.Verify(x => x.CallActivityAsync(It.IsAny<TaskName>(), It.IsAny<JobStatusUpdaterRequest>(), It.IsAny<TaskOptions>()), Times.Never);
+        }
+
+        [TestMethod]
+        public async Task TestInvalidCurrentPartAsync()        {
             _syncInfo = new ChannelSyncInfo
             {
                 TotalParts = 1,
