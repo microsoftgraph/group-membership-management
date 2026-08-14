@@ -5,7 +5,9 @@ using Azure.AI.OpenAI;
 using Azure.Core;
 using Azure.Identity;
 using OpenAI.Chat;
+using System.ClientModel.Primitives;
 using System.Diagnostics.CodeAnalysis;
+using System.Net.Http;
 using Polly;
 using Services.WebApi.Contracts;
 
@@ -31,7 +33,17 @@ namespace WebApi.BackgroundServices
 
             DefaultAzureCredential credential = new(DefaultAzureCredential.DefaultEnvironmentVariableName);
 
-            _openAIClient = new AzureOpenAIClient(new Uri(_endpoint), credential);
+            // Retire pooled connections after 1s so retries reconnect to a healthy node instead of staying pinned to a wedged one returning 403.
+            var transportHandler = new SocketsHttpHandler
+            {
+                PooledConnectionLifetime = TimeSpan.FromSeconds(1)
+            };
+            var clientOptions = new AzureOpenAIClientOptions
+            {
+                Transport = new HttpClientPipelineTransport(new HttpClient(transportHandler))
+            };
+
+            _openAIClient = new AzureOpenAIClient(new Uri(_endpoint), credential, clientOptions);
             _chatClient = _openAIClient.GetChatClient(_deploymentName);
 
             _retryPolicy = Policy

@@ -7,6 +7,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 using Models;
 using Services.WebApi.Contracts;
+using System.ClientModel;
 using System.Text.Json;
 
 namespace WebApi.Controllers.v1.OpenAI
@@ -36,6 +37,7 @@ namespace WebApi.Controllers.v1.OpenAI
                 var trimmedFilter = filter?.Trim();
                 if (string.IsNullOrEmpty(trimmedFilter))
                 {
+                    _logger.GenerateTitleEmptyFilter();
                     return BadRequest(new { error = "Filter cannot be null or empty." });
                 }
 
@@ -43,8 +45,29 @@ namespace WebApi.Controllers.v1.OpenAI
                 var result = await _openAIService.GetTitleAsync(prompt);
                 return Ok(result);
             }
+            catch (Azure.RequestFailedException ex) when (ex.Status == 429)
+            {
+                _logger.GenerateTitleRateLimited(ex);
+                return StatusCode(503, new
+                {
+                    error = "OpenAI service is temporarily unavailable due to rate limiting.",
+                    details = "Please try again in a few moments.",
+                    retryAfter = "30 seconds"
+                });
+            }
+            catch (Azure.RequestFailedException ex)
+            {
+                _logger.GenerateTitleRequestFailed(ex.Status, ex);
+                return StatusCode(500, new { error = "An error occurred while generating the title." });
+            }
+            catch (ClientResultException ex)
+            {
+                _logger.GenerateTitleRequestFailed(ex.Status, ex);
+                return StatusCode(500, new { error = "An error occurred while generating the title." });
+            }
             catch (Exception ex)
             {
+                _logger.GenerateTitleUnexpectedError(ex);
                 return StatusCode(500, new { error = "An error occurred while generating the title." });
             }
         }
@@ -167,6 +190,11 @@ namespace WebApi.Controllers.v1.OpenAI
                 });
             }
             catch (Azure.RequestFailedException ex)
+            {
+                _logger.OpenAIRequestFailed(ex.Status, ex);
+                return StatusCode(500, new { error = "OpenAI service request failed." });
+            }
+            catch (ClientResultException ex)
             {
                 _logger.OpenAIRequestFailed(ex.Status, ex);
                 return StatusCode(500, new { error = "OpenAI service request failed." });

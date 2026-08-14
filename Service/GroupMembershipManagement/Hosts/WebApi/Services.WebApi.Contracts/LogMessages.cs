@@ -181,6 +181,22 @@ namespace Hosts.WebApi
             Message = "GenerateTitles request failed with unexpected error")]
         public static partial void GenerateTitlesUnexpectedError(this ILogger logger, Exception exception);
 
+        [LoggerMessage(EventId = 91117, Level = LogLevel.Information,
+            Message = "GenerateTitle request failed: Filter cannot be null or empty")]
+        public static partial void GenerateTitleEmptyFilter(this ILogger logger);
+
+        [LoggerMessage(EventId = 91118, Level = LogLevel.Warning,
+            Message = "GenerateTitle request failed due to OpenAI rate limiting (HTTP 429)")]
+        public static partial void GenerateTitleRateLimited(this ILogger logger, Exception exception);
+
+        [LoggerMessage(EventId = 91119, Level = LogLevel.Error,
+            Message = "GenerateTitle request failed calling OpenAI (Status: {Status})")]
+        public static partial void GenerateTitleRequestFailed(this ILogger logger, int status, Exception exception);
+
+        [LoggerMessage(EventId = 91120, Level = LogLevel.Error,
+            Message = "GenerateTitle request failed with unexpected error")]
+        public static partial void GenerateTitleUnexpectedError(this ILogger logger, Exception exception);
+
         // ── CopilotChatHandler (91500-91549) ──
 
         [LoggerMessage(EventId = 91500, Level = LogLevel.Information,
