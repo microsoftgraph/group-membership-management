@@ -238,6 +238,11 @@ namespace Services.Tests.Mocks
         {
             throw new NotImplementedException();
         }
+
+        public Task<(string Email, DateTimeOffset? CreatedDateTime)> GetGroupEmailAndCreatedDateAsync(Guid objectId)
+        {
+            throw new NotImplementedException();
+        }
         
         public Task<List<AzureADGroup>> GetGroupsByFilterAsync(string query)
         {

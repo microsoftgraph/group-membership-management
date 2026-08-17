@@ -18,6 +18,7 @@ namespace Repositories.Contracts
         Task<string> GetGroupNameAsync(Guid objectId);
         Task<Dictionary<Guid, string>> GetGroupNamesAsync(List<Guid> objectIds);
         Task<string> GetGroupEmailAsync(Guid objectId);
+        Task<(string Email, DateTimeOffset? CreatedDateTime)> GetGroupEmailAndCreatedDateAsync(Guid objectId);
         Task<Dictionary<Guid, string>> GetGroupEmailsAsync(List<Guid> objectIds);
 
         Task<List<string>> GetGroupEndpointsAsync(Guid groupId);

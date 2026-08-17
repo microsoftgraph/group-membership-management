@@ -324,6 +324,42 @@ namespace Repositories.GraphGroups
             }
         }
 
+        public async Task<(string Email, DateTimeOffset? CreatedDateTime)> GetGroupEmailAndCreatedDateAsync(Guid groupId, Guid? runId)
+        {
+            try
+            {
+                var nativeResponseHandler = new NativeResponseHandler();
+                var responseHandlerOption = new ResponseHandlerOption { ResponseHandler = nativeResponseHandler };
+                Group group = null;
+
+                await _graphServiceClient.Groups[groupId.ToString()].GetAsync(requestConfiguration =>
+                {
+                    requestConfiguration.Options.Add(responseHandlerOption);
+                    requestConfiguration.QueryParameters.Select = new[] { "mail", "createdDateTime" };
+                });
+
+                var nativeResponse = nativeResponseHandler.Value as HttpResponseMessage;
+                if (nativeResponse.IsSuccessStatusCode)
+                {
+                    group = await DeserializeResponseAsync(nativeResponse, Group.CreateFromDiscriminatorValue);
+                }
+
+                var headers = nativeResponse.Headers.ToImmutableDictionary(x => x.Key, x => x.Value);
+                await _graphGroupMetricTracker.TrackMetricsAsync(headers, QueryType.Other, runId);
+
+                return group != null ? (group.Mail, group.CreatedDateTime) : (string.Empty, (DateTimeOffset?)null);
+            }
+            catch (ODataError ex)
+            {
+                if (ex.ResponseStatusCode == (int)HttpStatusCode.NotFound)
+                    return (string.Empty, null);
+
+                _graphGroupInformationRepositoryLogger.LogErrorWithRunId(runId, ex.GetBaseException().ToString(), ex);
+
+                throw;
+            }
+        }
+
         public async Task<Dictionary<Guid, string>> GetGroupEmailsAsync(List<Guid> groupIds)
         {
             var groupEmails = new Dictionary<Guid, string>();

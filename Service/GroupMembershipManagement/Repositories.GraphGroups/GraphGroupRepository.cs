@@ -115,6 +115,11 @@ namespace Repositories.GraphGroups
             return _graphGroupInformationReader.GetGroupEmailAsync(objectId, ResolveRunId());
         }
 
+        public Task<(string Email, DateTimeOffset? CreatedDateTime)> GetGroupEmailAndCreatedDateAsync(Guid objectId)
+        {
+            return _graphGroupInformationReader.GetGroupEmailAndCreatedDateAsync(objectId, ResolveRunId());
+        }
+
         public Task<Dictionary<Guid, string>> GetGroupEmailsAsync(List<Guid> objectIds)
         {
             return _graphGroupInformationReader.GetGroupEmailsAsync(objectIds);
