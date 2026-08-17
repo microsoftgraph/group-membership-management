@@ -885,7 +885,7 @@ const AISettings: React.FunctionComponent<AISettingsProps> = (props: AISettingsP
             min={0}
             max={1}
             step={0.05}
-            value={parseFloat(settings[SettingKey.CopilotTemperature]) || 0.7}
+            value={Number.isFinite(parseFloat(settings[SettingKey.CopilotTemperature])) ? parseFloat(settings[SettingKey.CopilotTemperature]) : 0.7}
             showValue
             onChange={(value) => handleSettingChange(SettingKey.CopilotTemperature)(value.toString())}
           />
@@ -897,7 +897,7 @@ const AISettings: React.FunctionComponent<AISettingsProps> = (props: AISettingsP
             min={0}
             max={1}
             step={0.05}
-            value={parseFloat(settings[SettingKey.CopilotTopP]) || 0.9}
+            value={Number.isFinite(parseFloat(settings[SettingKey.CopilotTopP])) ? parseFloat(settings[SettingKey.CopilotTopP]) : 0.9}
             showValue
             onChange={(value) => handleSettingChange(SettingKey.CopilotTopP)(value.toString())}
           />
