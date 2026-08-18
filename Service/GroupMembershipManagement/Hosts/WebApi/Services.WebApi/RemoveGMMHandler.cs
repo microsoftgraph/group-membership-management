@@ -55,12 +55,44 @@ namespace Services
             }
 
             var isOwner = await _graphGroupRepository.IsEmailRecipientOwnerOfGroupAsync(request.UserIdentity, (Guid) groupId);
-            if (!(isOwner || request.IsJobTenantWriter))
+
+            if (!isOwner && !request.IsJobTenantWriter)
             {
-                return new RemoveGMMResponse
+                // IsEmailRecipientOwnerOfGroupAsync returns false when the destination group no
+                // longer exists in Entra, which previously made orphaned sync jobs impossible for
+                // their owners to delete. Fall back to the last known owners cached in SQL so the
+                // caller is still authorized against real ownership data rather than being allowed
+                // through unconditionally.
+                var groupExists = await _graphGroupRepository.GroupExists((Guid) groupId);
+                if (groupExists)
                 {
-                    StatusCode = HttpStatusCode.Forbidden
-                };
+                    return new RemoveGMMResponse
+                    {
+                        StatusCode = HttpStatusCode.Forbidden
+                    };
+                }
+
+                if (!Guid.TryParse(request.UserIdentity, out var userObjectId))
+                {
+                    return new RemoveGMMResponse
+                    {
+                        StatusCode = HttpStatusCode.Forbidden
+                    };
+                }
+
+                var lastKnownOwners = await _syncJobRepository.GetDestinationOwnerIdsAsync(request.SyncJobId);
+                if (lastKnownOwners == null || !lastKnownOwners.Contains(userObjectId))
+                {
+                    return new RemoveGMMResponse
+                    {
+                        StatusCode = HttpStatusCode.Forbidden
+                    };
+                }
+
+                _logger.LogInformation(
+                    "Authorizing removal of sync job {SyncJobId} using cached destination owners because destination group {GroupId} no longer exists.",
+                    request.SyncJobId,
+                    groupId);
             }
 
             try

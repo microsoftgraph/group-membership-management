@@ -1624,6 +1624,95 @@ namespace Services.Tests
         }
 
         [TestMethod]
+        [DataRow(Roles.JOB_OWNER_DELETER)]
+        public async Task RemoveGMMAsyncWhenDestinationGroupDeletedAndUserIsLastKnownOwner(string role)
+        {
+            var userId = Guid.NewGuid();
+
+            var context = CreateHttpContext(new List<Claim> {
+                    new Claim(ClaimTypes.Name, "owner@domain.com"),
+                    new Claim(ClaimTypes.Role, role),
+                    new Claim("http://schemas.microsoft.com/identity/claims/objectidentifier", userId.ToString())});
+
+            _jobDetailsController = new JobDetailsController(_getJobDetailsHandler, _removeGMMHandler, _patchJobHandler, _getGroupHandler, _getChannelHandler, _getJobChangesHandler, _getSyncJobHistoryHandler, _getMembershipDownloadHandler, _getThresholdNotificationHandlerMock.Object, _syncJobChangeRepository.Object, NullLogger<JobDetailsController>.Instance)
+            {
+                ControllerContext = CreateControllerContext(context)
+            };
+
+            // Graph reports the caller as a non-owner because the destination group is gone.
+            _graphGroupRepository.Setup(x => x.IsEmailRecipientOwnerOfGroupAsync(userId.ToString(), It.IsAny<Guid>(), It.IsAny<bool>()))
+                                 .ReturnsAsync(false);
+            _graphGroupRepository.Setup(x => x.GroupExists(It.IsAny<Guid>()))
+                                 .ReturnsAsync(false);
+            _syncJobRepository.Setup(x => x.GetDestinationOwnerIdsAsync(_jobEntity.Id))
+                              .ReturnsAsync(new List<Guid> { userId });
+
+            var response = await _jobDetailsController.RemoveGMMAsync(_jobEntity.Id);
+
+            Assert.IsInstanceOfType(response, typeof(OkResult));
+            _syncJobRepository.Verify(x => x.DeleteSyncJobAsync(It.IsAny<SyncJob>()), Times.Once);
+        }
+
+        [TestMethod]
+        [DataRow(Roles.JOB_OWNER_DELETER)]
+        public async Task RemoveGMMAsyncWhenDestinationGroupDeletedAndUserIsNotLastKnownOwner(string role)
+        {
+            var userId = Guid.NewGuid();
+
+            var context = CreateHttpContext(new List<Claim> {
+                    new Claim(ClaimTypes.Name, "notowner@domain.com"),
+                    new Claim(ClaimTypes.Role, role),
+                    new Claim("http://schemas.microsoft.com/identity/claims/objectidentifier", userId.ToString())});
+
+            _jobDetailsController = new JobDetailsController(_getJobDetailsHandler, _removeGMMHandler, _patchJobHandler, _getGroupHandler, _getChannelHandler, _getJobChangesHandler, _getSyncJobHistoryHandler, _getMembershipDownloadHandler, _getThresholdNotificationHandlerMock.Object, _syncJobChangeRepository.Object, NullLogger<JobDetailsController>.Instance)
+            {
+                ControllerContext = CreateControllerContext(context)
+            };
+
+            _graphGroupRepository.Setup(x => x.IsEmailRecipientOwnerOfGroupAsync(userId.ToString(), It.IsAny<Guid>(), It.IsAny<bool>()))
+                                 .ReturnsAsync(false);
+            _graphGroupRepository.Setup(x => x.GroupExists(It.IsAny<Guid>()))
+                                 .ReturnsAsync(false);
+            _syncJobRepository.Setup(x => x.GetDestinationOwnerIdsAsync(_jobEntity.Id))
+                              .ReturnsAsync(new List<Guid> { Guid.NewGuid() });
+
+            var response = await _jobDetailsController.RemoveGMMAsync(_jobEntity.Id);
+
+            Assert.IsInstanceOfType(response, typeof(ForbidResult));
+            _syncJobRepository.Verify(x => x.DeleteSyncJobAsync(It.IsAny<SyncJob>()), Times.Never);
+        }
+
+        [TestMethod]
+        [DataRow(Roles.JOB_OWNER_DELETER)]
+        public async Task RemoveGMMAsyncWhenGroupExistsAndUserIsNotOwnerDoesNotUseCachedOwners(string role)
+        {
+            var userId = Guid.NewGuid();
+
+            var context = CreateHttpContext(new List<Claim> {
+                    new Claim(ClaimTypes.Name, "notowner@domain.com"),
+                    new Claim(ClaimTypes.Role, role),
+                    new Claim("http://schemas.microsoft.com/identity/claims/objectidentifier", userId.ToString())});
+
+            _jobDetailsController = new JobDetailsController(_getJobDetailsHandler, _removeGMMHandler, _patchJobHandler, _getGroupHandler, _getChannelHandler, _getJobChangesHandler, _getSyncJobHistoryHandler, _getMembershipDownloadHandler, _getThresholdNotificationHandlerMock.Object, _syncJobChangeRepository.Object, NullLogger<JobDetailsController>.Instance)
+            {
+                ControllerContext = CreateControllerContext(context)
+            };
+
+            _graphGroupRepository.Setup(x => x.IsEmailRecipientOwnerOfGroupAsync(userId.ToString(), It.IsAny<Guid>(), It.IsAny<bool>()))
+                                 .ReturnsAsync(false);
+            _graphGroupRepository.Setup(x => x.GroupExists(It.IsAny<Guid>()))
+                                 .ReturnsAsync(true);
+            _syncJobRepository.Setup(x => x.GetDestinationOwnerIdsAsync(_jobEntity.Id))
+                              .ReturnsAsync(new List<Guid> { userId });
+
+            var response = await _jobDetailsController.RemoveGMMAsync(_jobEntity.Id);
+
+            Assert.IsInstanceOfType(response, typeof(ForbidResult));
+            _syncJobRepository.Verify(x => x.GetDestinationOwnerIdsAsync(It.IsAny<Guid>()), Times.Never);
+            _syncJobRepository.Verify(x => x.DeleteSyncJobAsync(It.IsAny<SyncJob>()), Times.Never);
+        }
+
+        [TestMethod]
         public async Task RemoveGMMThrowsExceptionReturnsInternalServerError()
         {
             var userId = Guid.NewGuid().ToString();

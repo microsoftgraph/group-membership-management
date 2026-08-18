@@ -36,6 +36,16 @@ namespace Repositories.EntityFramework
                 .Include(j => j.Channel)
                 .SingleOrDefaultAsync(job => job.Id == syncJobId);
         }
+
+        public async Task<List<Guid>> GetDestinationOwnerIdsAsync(Guid syncJobId)
+        {
+            return await _readContext.SyncJobs
+                .Where(job => job.Id == syncJobId)
+                .SelectMany(job => job.DestinationOwners)
+                .Select(owner => owner.ObjectId)
+                .ToListAsync();
+        }
+
         public async Task<List<SyncJob>> GetSyncJobsAsync()
         {
             return await _readContext.SyncJobs

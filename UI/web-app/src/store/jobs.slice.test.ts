@@ -298,6 +298,21 @@ describe('jobs.slice — removeGMM extraReducers', () => {
     expect(state.removeGMMLoading).toBe(false);
     expect(state.removeGMMError).toBe('remove fail');
   });
+
+  it('surfaces an error when a non-2xx response resolves the thunk', () => {
+    const response = { ok: false, statusCode: 403, errorCode: 'Forbidden' } as RemoveGMMResponse;
+    const state = jobsReducer(initial, removeGMM.fulfilled(response, 'req1', { syncJobId: 'a' }));
+    expect(state.removeGMMLoading).toBe(false);
+    expect(state.removeGMMResponse).toEqual(response);
+    expect(state.removeGMMError).toBe('Forbidden');
+  });
+
+  it('clears the error on a successful fulfilled response', () => {
+    const seeded = { ...initial, removeGMMError: 'Forbidden' };
+    const response = { ok: true, statusCode: 200 } as RemoveGMMResponse;
+    const state = jobsReducer(seeded, removeGMM.fulfilled(response, 'req1', { syncJobId: 'a' }));
+    expect(state.removeGMMError).toBeUndefined();
+  });
 });
 
 describe('jobs.slice — downloadJobs extraReducers', () => {

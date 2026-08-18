@@ -221,26 +221,37 @@ export const removeGMM = createAsyncThunk<
     const response = await fetch(`${config.removeGMM(syncJobId)}`, options);
     if (response.ok) {
       return {
-        ok: response.ok,
+        ok: true,
         statusCode: response.status
       };
-    } else {
-      const errorResponse = await response.json();
-      let removeGMMResponse: RemoveGMMResponse = {
-        ok: errorResponse.ok,
-        statusCode: errorResponse.status,
-        errorCode: errorResponse?.detail,
-        responseData: errorResponse?.responseData,
-      };
-
-      if (errorResponse.status === 403) {
-        removeGMMResponse.errorCode = 'Forbidden';
-      } else if (errorResponse.status === 500) {
-        removeGMMResponse.errorCode = 'InternalError';
-      }
-
-      return removeGMMResponse;
     }
+
+    // `Forbid()` and `NotFound()` return an empty body, so `response.json()` throws.
+    // Read defensively and derive the outcome from the Response, never from the body.
+    let errorBody: any = undefined;
+    try {
+      const text = await response.text();
+      errorBody = text ? JSON.parse(text) : undefined;
+    } catch {
+      errorBody = undefined;
+    }
+
+    const removeGMMResponse: RemoveGMMResponse = {
+      ok: false,
+      statusCode: response.status,
+      errorCode: errorBody?.detail,
+      responseData: errorBody?.responseData
+    };
+
+    if (response.status === 403) {
+      removeGMMResponse.errorCode = 'Forbidden';
+    } else if (response.status === 404) {
+      removeGMMResponse.errorCode = 'NotFound';
+    } else if (response.status >= 500) {
+      removeGMMResponse.errorCode = 'InternalError';
+    }
+
+    return removeGMMResponse;
   } catch (error) {
     throw new Error(`Failed to remove GMM: ${error}`);
   }

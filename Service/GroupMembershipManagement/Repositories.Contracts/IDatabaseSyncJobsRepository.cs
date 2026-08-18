@@ -14,6 +14,7 @@ namespace Repositories.Contracts
     {
         Task<Guid> CreateSyncJobAsync(SyncJob job);
         Task<SyncJob> GetSyncJobAsync(Guid syncJobId);
+        Task<List<Guid>> GetDestinationOwnerIdsAsync(Guid syncJobId);
         IQueryable<SyncJob> GetSyncJobs(bool asNoTracking = false);
         Task<List<SyncJob>> GetSyncJobsAsync();
         Task<IEnumerable<SyncJob>> GetSyncJobsAsync(bool includeFutureScheduledJobs, params SyncStatus[] statusFilters);

@@ -195,25 +195,44 @@ export const JobDetailsBase: React.FunctionComponent<IJobDetailsProps> = (
 
   const onConfirmRemove = async () => {
     try {
-      if (jobId === undefined && job.syncJobId === undefined) {
+      const targetJobId = jobId ?? job.syncJobId;
+      if (targetJobId === undefined) {
         throw new Error('Job ID is not defined');
       }
-      await dispatch(removeGMM({ syncJobId: jobId ?? job.syncJobId }));
+      // `dispatch(thunk)` never rejects, so unwrap to observe transport failures and
+      // inspect the payload to observe non-2xx responses (e.g. 403 Forbidden). Without
+      // this the user was navigated away as if the removal had succeeded.
+      const result = await dispatch(removeGMM({ syncJobId: targetJobId })).unwrap();
+
       setShowRemoveGMMDialog(false);
 
-      let url;
-      if (job?.targetDestinationType === DestinationType.GroupMembership) {
-        url = `https://portal.azure.com/#view/Microsoft_AAD_IAM/GroupDetailsMenuBlade/~/Owners/${job?.targetGroupId}/menuId/`;
-      } else if (job?.targetDestinationType === DestinationType.TeamsChannelMembership) {
-        url = `https://teams.microsoft.com/l/channel/${job.targetChannelId}`;
-      } else {
-        console.error('Unexpected destination type:', job?.targetDestinationType);
+      if (!result?.ok) {
+        setShowRemoveGMMError(true);
+        return;
       }
-      window.open(url, '_blank', 'noopener,noreferrer');
+
+      dispatch(removeJobFromList(targetJobId));
+
+      // The destination no longer exists, so there is nothing to link the user to.
+      if (!isDestinationGroupNotFound) {
+        let url;
+        if (job?.targetDestinationType === DestinationType.GroupMembership) {
+          url = `https://portal.azure.com/#view/Microsoft_AAD_IAM/GroupDetailsMenuBlade/~/Owners/${job?.targetGroupId}/menuId/`;
+        } else if (job?.targetDestinationType === DestinationType.TeamsChannelMembership) {
+          url = `https://teams.microsoft.com/l/channel/${job.targetChannelId}`;
+        } else {
+          console.error('Unexpected destination type:', job?.targetDestinationType);
+        }
+
+        if (url) {
+          window.open(url, '_blank', 'noopener,noreferrer');
+        }
+      }
+
       navigate('/');
     } catch (error) {
+      setShowRemoveGMMDialog(false);
       setShowRemoveGMMError(true);
-      throw new Error(`Failed to remove GMM: ${error}`);
     }
   };
 

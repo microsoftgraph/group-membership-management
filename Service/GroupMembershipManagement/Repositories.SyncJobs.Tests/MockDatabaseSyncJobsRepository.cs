@@ -56,6 +56,12 @@ namespace Repositories.SyncJobs.Tests
             return await Task.FromResult(job);
         }
 
+        public async Task<List<Guid>> GetDestinationOwnerIdsAsync(Guid syncJobId)
+        {
+            var job = Jobs.FirstOrDefault(x => x.Id == syncJobId);
+            return await Task.FromResult(job?.DestinationOwners?.Select(o => o.ObjectId).ToList() ?? new List<Guid>());
+        }
+
         public async Task UpdateSyncJobStatusAsync(IEnumerable<SyncJob> jobs, SyncStatus? status)
         {
             foreach (var job in jobs)

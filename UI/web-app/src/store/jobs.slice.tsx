@@ -308,6 +308,10 @@ export const jobsSlice = createSlice({
     builder.addCase(removeGMM.fulfilled, (state, action) => {
       state.removeGMMLoading = false;
       state.removeGMMResponse = action.payload;
+      // A non-2xx response resolves the thunk, so surface the failure here too.
+      state.removeGMMError = action.payload?.ok
+        ? undefined
+        : action.payload?.errorCode ?? `HTTP ${action.payload?.statusCode}`;
     });
     builder.addCase(removeGMM.rejected, (state, action) => {
       state.removeGMMLoading = false;
