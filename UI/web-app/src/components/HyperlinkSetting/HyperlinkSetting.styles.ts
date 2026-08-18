@@ -18,15 +18,15 @@ export const getStyles = (props: HyperlinkSettingStyleProps): HyperlinkSettingSt
     ],
     card: {
       borderRadius: 10,
-      marginBottom: 10,
       backgroundColor: theme.palette.white,
-      margin: 10,
       outline: `1px solid ${theme.palette.neutralQuaternary}`,
-      width: '649px',
+      width: '100%',
+      minWidth: 0,
+      boxSizing: 'border-box',
       padding: 24,
       display: 'flex',
       flexDirection: 'column',
-      alignItems: 'flex-start',
+      alignItems: 'stretch',
       gap: '4px',
     },
     title: {
@@ -37,12 +37,15 @@ export const getStyles = (props: HyperlinkSettingStyleProps): HyperlinkSettingSt
       fontSize: 14,
       fontWeight: 400,
     },
+    fieldContainer: {
+      width: '100%',
+    },
     textFieldFieldGroup: {
       borderRadius: 4,
       border: '1px solid',
       borderColor: theme.palette.neutralQuaternary,
       backgroud: theme.palette.white,
-      width: 500,
+      width: '100%',
     },
   };
 };

@@ -207,7 +207,7 @@ export const strings: IStrings = {
   },
   AdminConfig: {
     labels: {
-      pageTitle: "Admin Center",
+      pageTitle: "Admin Configuration",
       saveButton: "Save",
       saveSuccess: "Saved successfully.",
       alertBanner: "Alert Banner",
@@ -217,11 +217,11 @@ export const strings: IStrings = {
     },
     HyperlinkSettings: {
       labels: {
-        description: "Provide hyperlinks to the following organization specific information so that your users are empowered to leverage XMM to its fullest.",
+        description: "Provide hyperlinks to the following organization specific information so that your users are empowered to leverage MM to its fullest.",
       },
       dashboardLink: {
         title: "Dashboard",
-        description: "This is the link that shows on the top right corner of the dashboard. It takes you to an internal site that has all the details on how to leverage XMM at your organization. This could include FAQs, contact information, SLAs, etc.",
+        description: "This is the link that shows on the top right corner of the dashboard. It takes you to an internal site that has all the details on how to leverage MM at your organization. This could include FAQs, contact information, SLAs, etc.",
       },
       outlookWarningLink: {
         title: "Destination Instructions",
@@ -229,38 +229,39 @@ export const strings: IStrings = {
       },
       privacyPolicyLink: {
         title: "Privacy Policy",
-        description: "This is the link that shows on the bottom left corner of the dashboard. It takes you to an internal site that has all the details on how XMM handles and stores user data.",
+        description: "This is the link that shows on the bottom left corner of the dashboard. It takes you to an internal site that has all the details on how MM handles and stores user data.",
       },
     },
     Operations: {
       labels: {
         operations: "Operations",
         controlPanel: "Control Panel",
-        serviceOperationTitle: "Stop GMM",
-        serviceOperationDescription: "Halt all GMM sync operations. While GMM is stopped no destination memberships are added or removed. Start GMM again to resume normal processing.",
-        resetOperationTitle: "Reset GMM",
-        resetOperationDescription: "Reboot GMM at any time. Use this when GMM is running but processing needs to be restarted from a clean state.",
+        serviceOperationTitle: "Stop",
+        serviceOperationDescription: "Use the stop button to halt GMM operations.",
+        resetOperationTitle: "Reset",
+        resetOperationDescription: "Use the reset button to reboot GMM at any time.",
       },
       buttons: {
-        stop: "Stop GMM",
+        stop: "Stop",
         stopping: "Stopping",
-        reset: "Reset GMM",
+        reset: "Reset",
         resetting: "Resetting",
-        start: "Start GMM",
+        start: "Start",
         starting: "Starting",
       }
     },
     CustomSourceSettings: {
       labels: {
         customSource: "Custom Source",
+        sourceLabeling: "Source Labeling",
         sourceDescription: "Assign a friendly name to the source of your organization's data so that group owners recognize it when defining the source of their membership destinations.",
         sourceCustomLabelInput: "Custom Label",
         listOfAttributes: "List of Attributes",
         listOfAttributesDescription: "Assign a friendly name to each of the attributes in your custom source so that group owners recognize them when defining the source of their membership destinations.",
         attributeColumn: "Attribute",
-        customLabelColumn: "Custom Label",
+        customLabelColumn: "Custom label",
         customLabelInputPlaceHolder: "Enter a custom label",
-        valuesColumn: "Values",
+        valuesColumn: "List of values",
         valuesDropdownSpinnerLabel: "Loading values...",
         valuesDropdownNoValuesLabel: "No values found",
         valuesDropdownPlaceholder: "View values",
@@ -271,8 +272,8 @@ export const strings: IStrings = {
         enabledToggleTitle: "Toggle to enable/disable attribute",
         sensitiveColumn: "Sensitive",
         sensitiveToggleTitle: "Toggle to mark/unmark attribute as sensitive",
-        nullThresholdColumn: "Null Threshold (%)",
-        nullThresholdPlaceHolder: "50",
+        nullThresholdColumn: "Null threshold",
+        nullThresholdPlaceHolder: "From 0 to 100%",
         nullThresholdTitle: "Maximum percentage of rows allowed to be empty for this attribute before the daily data quality check fails. Leave blank to use the default of 50%.",
         nullThresholdValidationError: "Enter a number between 0 and 100.",
       },
@@ -296,7 +297,8 @@ export const strings: IStrings = {
     AutoApproverSettings: {
       labels: {
         autoApprover: "Auto Approver",
-        description: "Choose which membership requests XMM can approve automatically without reviewer action.",
+        controlsTitle: "Auto-Approval Controls",
+        description: "Configure the conditions that determine when membership requests can be approved automatically.",
         isAutoApprovalForGroupBasedSyncsEnabledTitle: "Is auto-approval for group-based syncs enabled?",
         isAutoApprovalForGroupBasedSyncsEnabledDescription: "Automatically approve sync jobs when all source parts are GroupMembership type with acceptable visibility (not HiddenMembership).",
         isAutoApprovalForRequestorIsOrgLeaderSyncsEnabledTitle: "Is auto-approval for requestor as org leader syncs enabled?",
@@ -306,9 +308,8 @@ export const strings: IStrings = {
     AISettings: {
       labels: {
         aiSettings: "AI",
-        description: "Configure AI features for your organization, including title generation, copilot chat, LLM parameters, and instruction prompts.",
         copilotAvailabilityTitle: "Copilot Availability",
-        copilotAvailabilityDescription: "Enable or disable the AI capabilities available to users, and tune how the Copilot generates its responses.",
+        copilotAvailabilityDescription: "Configure AI features for your organization, Copilot chat, LLM parameters, and instruction prompts.",
         isAITitleEnabledTitle: "Is AI Title enabled?",
         isAITitleEnabledDescription: "Enable AI Title generation to help users create descriptive titles for their membership syncs.",
         isAICopilotEnabledTitle: "Is AI Copilot enabled?",
@@ -326,6 +327,8 @@ export const strings: IStrings = {
         copilotTopPDescription: "Controls diversity via nucleus sampling. Lower values (e.g., 0.5) limit to more likely tokens. Higher values (e.g., 0.95) allow broader token selection.",
         leaveEmptyNote: "Leave empty to use the built-in default instructions. Custom instructions will override the defaults.",
         currentDefaultInstructions: "View current default instructions",
+        modelBehaviorTitle: "Model Behavior",
+        modelBehaviorDescription: "Adjust how Copilot generates responses.",
         suggestedPromptsTitle: "Suggested Prompts",
         suggestedPromptsDescription: "Configure the suggested prompt buttons shown in the Copilot welcome message. Users can click these to quickly start a conversation. If no prompts are configured, the suggestions section will be hidden.",
         suggestedPromptLabelField: "Button label",

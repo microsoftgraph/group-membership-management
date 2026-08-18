@@ -1,6 +1,6 @@
 import React, { useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { classNamesFunction, DefaultButton } from '@fluentui/react';
+import { classNamesFunction, PrimaryButton } from '@fluentui/react';
 import { useTheme } from '@fluentui/react/lib/Theme';
 import { fetchServiceStatus, processOperation } from '../../store/operations.api';
 import { resetError, selectOperationDisplayStatus, selectOperationIsLoading, selectOperationError, selectOperationInProgress } from '../../store/operations.slice';
@@ -49,35 +49,37 @@ export const OperationBase: React.FunctionComponent<OperationProps> = (props: Op
 
   return (
     <div className={classNames.card}>
-      <div className={classNames.title}>{title}</div>
-      <div className={classNames.description}>{description}</div>
-      <div className={classNames.buttonContainer}>
-        {variant !== 'reset' && (
-          displayStatus === ServiceStatuses.Stopped || displayStatus === ServiceStatuses.Starting ? (
-            <DefaultButton
-              text={displayStatus === ServiceStatuses.Starting ? buttonText.starting : buttonText.start}
-              onClick={() => handleOperation(Operations.Start)}
-              disabled={isButtonDisabled || displayStatus === ServiceStatuses.Starting}
-              className={classNames.button}
-            />
-          ) : (
-            <DefaultButton
-              text={displayStatus === ServiceStatuses.Stopping ? buttonText.stopping : buttonText.stop}
-              onClick={() => handleOperation(Operations.Stop)}
+      <div className={classNames.titleRow}>
+        <div className={classNames.title}>{title}</div>
+        <div className={classNames.buttonContainer}>
+          {variant !== 'reset' && (
+            displayStatus === ServiceStatuses.Stopped || displayStatus === ServiceStatuses.Starting ? (
+              <PrimaryButton
+                text={displayStatus === ServiceStatuses.Starting ? buttonText.starting : buttonText.start}
+                onClick={() => handleOperation(Operations.Start)}
+                disabled={isButtonDisabled || displayStatus === ServiceStatuses.Starting}
+                className={classNames.button}
+              />
+            ) : (
+              <PrimaryButton
+                text={displayStatus === ServiceStatuses.Stopping ? buttonText.stopping : buttonText.stop}
+                onClick={() => handleOperation(Operations.Stop)}
+                disabled={isButtonDisabled || displayStatus !== ServiceStatuses.Running}
+                className={classNames.button}
+              />
+            )
+          )}
+          {variant !== 'service' && (
+            <PrimaryButton
+              text={displayStatus === ServiceStatuses.Resetting ? buttonText.resetting : buttonText.reset}
+              onClick={() => handleOperation(Operations.Reset)}
               disabled={isButtonDisabled || displayStatus !== ServiceStatuses.Running}
               className={classNames.button}
             />
-          )
-        )}
-        {variant !== 'service' && (
-          <DefaultButton
-            text={displayStatus === ServiceStatuses.Resetting ? buttonText.resetting : buttonText.reset}
-            onClick={() => handleOperation(Operations.Reset)}
-            disabled={isButtonDisabled || displayStatus !== ServiceStatuses.Running}
-            className={classNames.button}
-          />
-        )}
+          )}
+        </div>
       </div>
+      <div className={classNames.description}>{description}</div>
     </div>
   );
 };

@@ -9,6 +9,7 @@ export type HyperlinkSettingStyles = {
   card: IStyle;
   title: IStyle;
   description: IStyle;
+  fieldContainer: IStyle;
   textFieldFieldGroup: IStyle;
 };
 

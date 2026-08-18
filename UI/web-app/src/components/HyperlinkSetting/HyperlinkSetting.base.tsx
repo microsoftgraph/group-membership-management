@@ -49,7 +49,7 @@ export const HyperlinkSettingBase: React.FunctionComponent<HyperlinkSettingProps
     <div className={classNames.card}>
       <div className={classNames.title}>{title}</div>
       <div className={classNames.description}>{description}</div>
-      <div>
+      <div className={classNames.fieldContainer}>
         <TextField
           label={strings.Components.HyperlinkSetting.address}
           placeholder={strings.Components.HyperlinkSetting.addHyperlink}

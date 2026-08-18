@@ -19,7 +19,7 @@ test.describe('Admin Tests', () => {
     const url = DOMAIN.startsWith('http://') || DOMAIN.startsWith('https://') ? DOMAIN : `https://${DOMAIN}`;
     await page.goto(`${url}/Admin`);
     await page.waitForTimeout(5000);
-    await expect(page.locator('text="Admin Center"')).toBeVisible();
+    await expect(page.locator('text="Admin Configuration"')).toBeVisible();
     console.log('✅ Admin test completed successfully.');
   });
 

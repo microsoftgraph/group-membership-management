@@ -23,6 +23,7 @@ export const getStyles = (props: GeneralSettingStyleProps): GeneralSettingStyles
       flex: '1 1 420px',
       minWidth: 0,
       maxWidth: '100%',
+      boxSizing: 'border-box',
       padding: 24,
       display: 'flex',
       flexDirection: 'column',

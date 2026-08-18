@@ -250,6 +250,7 @@ export type IStrings = {
     CustomSourceSettings: {
       labels: {
         customSource: string;
+        sourceLabeling: string;
         sourceDescription: string;
         sourceCustomLabelInput: string;
         listOfAttributes: string;
@@ -293,6 +294,7 @@ export type IStrings = {
     AutoApproverSettings: {
       labels: {
         autoApprover: string;
+        controlsTitle: string;
         description: string;
         isAutoApprovalForGroupBasedSyncsEnabledTitle: string;
         isAutoApprovalForGroupBasedSyncsEnabledDescription: string;
@@ -303,7 +305,6 @@ export type IStrings = {
     AISettings: {
       labels: {
         aiSettings: string;
-        description: string;
         copilotAvailabilityTitle: string;
         copilotAvailabilityDescription: string;
         isAITitleEnabledTitle: string;
@@ -323,6 +324,8 @@ export type IStrings = {
         copilotTopPDescription: string;
         leaveEmptyNote: string;
         currentDefaultInstructions: string;
+        modelBehaviorTitle: string;
+        modelBehaviorDescription: string;
         suggestedPromptsTitle: string;
         suggestedPromptsDescription: string;
         suggestedPromptLabelField: string;

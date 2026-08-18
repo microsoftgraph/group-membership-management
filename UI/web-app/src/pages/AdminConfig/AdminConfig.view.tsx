@@ -2,7 +2,7 @@
 // Licensed under the MIT license.
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { classNamesFunction, Toggle, IProcessedStyleSet, Pivot, PivotItem, PrimaryButton, TextField, Text, IColumn, SelectionMode, ShimmeredDetailsList, Dropdown, Spinner, IRenderFunction, ISelectableDroppableTextProps, IDropdown, Slider, Icon, IconButton, ActionButton } from '@fluentui/react';
+import { classNamesFunction, Toggle, IProcessedStyleSet, Pivot, PivotItem, PrimaryButton, DefaultButton, TextField, Text, IColumn, SelectionMode, ShimmeredDetailsList, Dropdown, Spinner, IRenderFunction, ISelectableDroppableTextProps, IDropdown, Slider, Icon, IconButton, ActionButton } from '@fluentui/react';
 import { useTheme } from '@fluentui/react/lib/Theme';
 import {
   AdminConfigStyleProps,
@@ -81,10 +81,14 @@ export const AdminConfigView: React.FunctionComponent<AdminConfigViewProps> = (p
     <Page>
       <PageHeader />
       <div className={classNames.root}>
-        <div className={classNames.card}>
-          <PageSection>
-            <div className={classNames.title}>{strings.labels.pageTitle}</div>
-          </PageSection>
+        <div className={classNames.titleRow}>
+          <div className={classNames.title}>{strings.labels.pageTitle}</div>
+          <PrimaryButton
+            text={strings.labels.saveButton}
+            onClick={handleOnSaveButtonClick}
+            className={classNames.saveButton}
+            disabled={!hasChanges() || hasUrlValidationErrors || hasAttributeValidationErrors || isSaving}
+          ></PrimaryButton>
         </div>
         <div className={classNames.card}>
           <PageSection>
@@ -182,22 +186,15 @@ export const AdminConfigView: React.FunctionComponent<AdminConfigViewProps> = (p
             </Pivot>
           </PageSection>
         </div>
-        <div className={classNames.bottomContainer}>
-          <PrimaryButton
-            text={strings.labels.saveButton}
-            onClick={handleOnSaveButtonClick}
-            disabled={!hasChanges() || hasUrlValidationErrors || hasAttributeValidationErrors || isSaving}
-          ></PrimaryButton>
-        </div>
       </div>
     </Page>
   );
 };
 
 const SettingsSection: React.FunctionComponent<SettingsSectionProps> = (props: SettingsSectionProps) => {
-  const { classNames, title, subtitle, children } = props;
+  const { classNames, title, subtitle, showDivider, children } = props;
   return (
-    <section className={classNames.sectionContainer}>
+    <section className={showDivider ? classNames.sectionContainerDivided : classNames.sectionContainer}>
       <Text variant="mediumPlus" className={classNames.sectionHeading}>{title}</Text>
       {subtitle && <Text variant="small" className={classNames.sectionSubtitle}>{subtitle}</Text>}
       {children}
@@ -298,7 +295,7 @@ const AutoApproverSettings: React.FunctionComponent<AutoApproverSettingsProps> =
   return (
     <SettingsSection
       classNames={classNames}
-      title={strings.AutoApproverSettings.labels.autoApprover}
+      title={strings.AutoApproverSettings.labels.controlsTitle}
       subtitle={strings.AutoApproverSettings.labels.description}
     >
       <div className={classNames.settingsGrid}>
@@ -589,19 +586,18 @@ const CustomSourceSettings: React.FunctionComponent<CustomSourceSettingsProps> =
       key: 'sensitive',
       name: strings.CustomSourceSettings.labels.sensitiveColumn,
       fieldName: 'isSensitive',
-      minWidth: 100,
-      maxWidth: 120,
+      minWidth: 90,
+      maxWidth: 110,
       isResizable: true,
       isSorted: sortKey === 'sensitive',
       isSortedDescending,
-      showSortIconWhenUnsorted: true,
     },
     {
       key: 'name',
       name: strings.CustomSourceSettings.labels.attributeColumn,
       fieldName: 'name',
-      minWidth: 160,
-      maxWidth: 240,
+      minWidth: 180,
+      maxWidth: 280,
       isResizable: true,
       isSorted: sortKey === 'name',
       isSortedDescending,
@@ -612,7 +608,7 @@ const CustomSourceSettings: React.FunctionComponent<CustomSourceSettingsProps> =
       name: strings.CustomSourceSettings.labels.customLabelColumn,
       fieldName: 'customLabel',
       minWidth: 160,
-      maxWidth: 170,
+      maxWidth: 220,
       isResizable: true,
       isSorted: sortKey === 'customLabel',
       isSortedDescending,
@@ -623,27 +619,26 @@ const CustomSourceSettings: React.FunctionComponent<CustomSourceSettingsProps> =
       name: strings.CustomSourceSettings.labels.valuesColumn,
       fieldName: 'attributeValues',
       minWidth: 160,
-      maxWidth: 170,
-    },
-    {
-      key: 'description',
-      name: strings.CustomSourceSettings.labels.descriptionColumn,
-      fieldName: 'description',
-      minWidth: 160,
-      maxWidth: 240,
-      isResizable: true,
-      isSorted: sortKey === 'description',
-      isSortedDescending,
-      showSortIconWhenUnsorted: true,
+      maxWidth: 200,
     },
     {
       key: 'nullThreshold',
       name: strings.CustomSourceSettings.labels.nullThresholdColumn,
       fieldName: 'nullThreshold',
-      minWidth: 120,
-      maxWidth: 150,
+      minWidth: 140,
+      maxWidth: 200,
       isResizable: true,
       isSorted: sortKey === 'nullThreshold',
+      isSortedDescending,
+    },
+    {
+      key: 'description',
+      name: strings.CustomSourceSettings.labels.descriptionColumn,
+      fieldName: 'description',
+      minWidth: 260,
+      maxWidth: 520,
+      isResizable: true,
+      isSorted: sortKey === 'description',
       isSortedDescending,
       showSortIconWhenUnsorted: true,
     }
@@ -671,45 +666,41 @@ const CustomSourceSettings: React.FunctionComponent<CustomSourceSettingsProps> =
 
   return (
     <div>
-      <div className={classNames.sourceNameDescriptionContainer}>
-        <Text styles={{ root: classNames.descriptionText }} variant="medium" block>
-          {strings.CustomSourceSettings.labels.sourceDescription}
-        </Text>
-      </div>
+      <SettingsSection
+        classNames={classNames}
+        title={strings.CustomSourceSettings.labels.sourceLabeling}
+        subtitle={strings.CustomSourceSettings.labels.sourceDescription}
+      >
+        <div className={classNames.sourceNameTextFieldContainer}>
+          <TextField
+            label={strings.CustomSourceSettings.labels.sourceCustomLabelInput}
+            required={!sourceNameValue.trim()}
+            value={sourceNameValue}
+            disabled={sqlMembershipSource === undefined}
+            onChange={onSourceNameChange}
+            placeholder={strings.CustomSourceSettings.labels.customLabelInputPlaceHolder}
+            styles={{ fieldGroup: classNames.sourceNameTextField }}
+          />
+        </div>
+      </SettingsSection>
 
-      <div className={classNames.sourceNameTextFieldContainer}>
-        <TextField
-          label={strings.CustomSourceSettings.labels.sourceCustomLabelInput}
-          required={!sourceNameValue.trim()}
-          value={sourceNameValue}
-          disabled={sqlMembershipSource === undefined}
-          onChange={onSourceNameChange}
-          placeholder={strings.CustomSourceSettings.labels.customLabelInputPlaceHolder}
-
-          styles={{ fieldGroup: classNames.sourceNameTextField }}
-        />
-      </div>
-
-      <div className={classNames.listOfAttributesTitleDescriptionContainer}>
-        <Text variant="mediumPlus" className={classNames.sectionHeading}>
-          {strings.CustomSourceSettings.labels.listOfAttributes}
-        </Text>
-        <Text styles={{ root: classNames.descriptionText }} variant="medium" block>
-          {strings.CustomSourceSettings.labels.listOfAttributesDescription}
-        </Text>
-      </div>
-
-      <div className={classNames.detailsListContainer}>
-        <ShimmeredDetailsList
-          setKey="items"
-          items={sortedItems || []}
-          columns={columns}
-          selectionMode={SelectionMode.none}
-          onRenderItemColumn={onRenderItemColumn}
-          onColumnHeaderClick={onColumnHeaderClick}
-          enableShimmer={sortedItems.length === 0}
-        />
-      </div>
+      <SettingsSection
+        classNames={classNames}
+        title={strings.CustomSourceSettings.labels.listOfAttributes}
+        subtitle={strings.CustomSourceSettings.labels.listOfAttributesDescription}
+      >
+        <div className={classNames.detailsListContainer}>
+          <ShimmeredDetailsList
+            setKey="items"
+            items={sortedItems || []}
+            columns={columns}
+            selectionMode={SelectionMode.none}
+            onRenderItemColumn={onRenderItemColumn}
+            onColumnHeaderClick={onColumnHeaderClick}
+            enableShimmer={sortedItems.length === 0}
+          />
+        </div>
+      </SettingsSection>
     </div>
   );
 }
@@ -754,7 +745,6 @@ const NullThresholdCell = React.memo((props: NullThresholdCellProps) => {
       value={rawValue}
       placeholder={placeholder}
       errorMessage={errorMessage}
-      suffix="%"
       onChange={handleChange}
     />
   );
@@ -840,9 +830,6 @@ const AISettings: React.FunctionComponent<AISettingsProps> = (props: AISettingsP
 
   return (
     <div>
-      <div className={classNames.aiSettingsIntro}>
-        <Text variant="medium">{strings.AISettings.labels.description}</Text>
-      </div>
       <SettingsSection
         classNames={classNames}
         title={strings.AISettings.labels.copilotAvailabilityTitle}
@@ -878,33 +865,10 @@ const AISettings: React.FunctionComponent<AISettingsProps> = (props: AISettingsP
           generalSettingValue={settings[SettingKey.IsAIRunExplanationEnabled]}
         />
         </div>
-        <div className={classNames.aiSettingsSliderSection}>
-          <Text variant="mediumPlus" className={classNames.aiSettingsSectionTitle}>{strings.AISettings.labels.copilotTemperatureTitle}</Text>
-          <Text variant="small" block className={classNames.aiSettingsSectionDescription}>{strings.AISettings.labels.copilotTemperatureDescription}</Text>
-          <Slider
-            min={0}
-            max={1}
-            step={0.05}
-            value={Number.isFinite(parseFloat(settings[SettingKey.CopilotTemperature])) ? parseFloat(settings[SettingKey.CopilotTemperature]) : 0.7}
-            showValue
-            onChange={(value) => handleSettingChange(SettingKey.CopilotTemperature)(value.toString())}
-          />
-        </div>
-        <div className={classNames.aiSettingsSliderSection}>
-          <Text variant="mediumPlus" className={classNames.aiSettingsSectionTitle}>{strings.AISettings.labels.copilotTopPTitle}</Text>
-          <Text variant="small" block className={classNames.aiSettingsSectionDescription}>{strings.AISettings.labels.copilotTopPDescription}</Text>
-          <Slider
-            min={0}
-            max={1}
-            step={0.05}
-            value={Number.isFinite(parseFloat(settings[SettingKey.CopilotTopP])) ? parseFloat(settings[SettingKey.CopilotTopP]) : 0.9}
-            showValue
-            onChange={(value) => handleSettingChange(SettingKey.CopilotTopP)(value.toString())}
-          />
-        </div>
       </SettingsSection>
       <SettingsSection
         classNames={classNames}
+        showDivider
         title={strings.AISettings.labels.suggestedPromptsTitle}
         subtitle={strings.AISettings.labels.suggestedPromptsDescription}
       >
@@ -912,10 +876,12 @@ const AISettings: React.FunctionComponent<AISettingsProps> = (props: AISettingsP
       </SettingsSection>
       <SettingsSection
         classNames={classNames}
+        showDivider
         title={strings.AISettings.labels.copilotInstructionsPromptTitle}
         subtitle={strings.AISettings.labels.copilotInstructionsPromptDescription}
       >
         <Text variant="small" block className={classNames.aiSettingsLeaveEmptyNote}>
+          <Icon iconName="Info" className={classNames.aiSettingsLeaveEmptyNoteIcon} />
           {strings.AISettings.labels.leaveEmptyNote}
         </Text>
         {defaultAIPrompt && (
@@ -942,6 +908,80 @@ const AISettings: React.FunctionComponent<AISettingsProps> = (props: AISettingsP
           onChange={(_, newValue) => handleSettingChange(SettingKey.CopilotInstructions)(newValue ?? '')}
         />
       </SettingsSection>
+      <SettingsSection
+        classNames={classNames}
+        showDivider
+        title={strings.AISettings.labels.modelBehaviorTitle}
+        subtitle={strings.AISettings.labels.modelBehaviorDescription}
+      >
+        <div className={classNames.settingsGrid}>
+          <ModelBehaviorSetting
+            classNames={classNames}
+            title={strings.AISettings.labels.copilotTemperatureTitle}
+            description={strings.AISettings.labels.copilotTemperatureDescription}
+            value={settings[SettingKey.CopilotTemperature]}
+            fallbackValue={0.7}
+            onValueChange={handleSettingChange(SettingKey.CopilotTemperature)}
+          />
+          <ModelBehaviorSetting
+            classNames={classNames}
+            title={strings.AISettings.labels.copilotTopPTitle}
+            description={strings.AISettings.labels.copilotTopPDescription}
+            value={settings[SettingKey.CopilotTopP]}
+            fallbackValue={0.9}
+            onValueChange={handleSettingChange(SettingKey.CopilotTopP)}
+          />
+        </div>
+      </SettingsSection>
+    </div>
+  );
+}
+
+const ModelBehaviorSetting: React.FunctionComponent<{
+  classNames: IProcessedStyleSet<AdminConfigStyles>;
+  title: string;
+  description: string;
+  value: string;
+  fallbackValue: number;
+  onValueChange: (newValue: string) => void;
+}> = ({ classNames, title, description, value, fallbackValue, onValueChange }) => {
+  const theme = useTheme();
+  const parsed = parseFloat(value);
+  return (
+    <div className={classNames.modelBehaviorCard}>
+      <div className={classNames.modelBehaviorHeader}>
+        <Text variant="mediumPlus" className={classNames.modelBehaviorTitle}>{title}</Text>
+        <Slider
+          className={classNames.modelBehaviorSlider}
+          min={0}
+          max={1}
+          step={0.05}
+          value={Number.isFinite(parsed) ? parsed : fallbackValue}
+          showValue
+          ariaLabel={title}
+          onChange={(newValue) => onValueChange(newValue.toString())}
+          styles={{
+            root: { flexGrow: 1, minWidth: 0 },
+            container: { alignItems: 'center' },
+            slideBox: { flexGrow: 1, minWidth: 0 },
+            activeSection: { backgroundColor: theme.palette.themePrimary, height: 4, borderRadius: 2 },
+            inactiveSection: { backgroundColor: theme.palette.themeLighter, height: 4, borderRadius: 2 },
+            thumb: {
+              borderColor: theme.palette.themePrimary,
+              borderWidth: 2,
+              width: 16,
+              height: 16,
+              top: -6,
+            },
+            valueLabel: {
+              marginLeft: 12,
+              minWidth: 28,
+              color: theme.palette.neutralPrimary,
+            },
+          }}
+        />
+      </div>
+      <Text variant="small" block className={classNames.modelBehaviorDescription}>{description}</Text>
     </div>
   );
 }
@@ -952,6 +992,7 @@ const SuggestedPromptsEditor: React.FunctionComponent<{
   settings: { readonly [key in SettingKey]: string };
   setSettings: React.Dispatch<React.SetStateAction<{ readonly [key in SettingKey]: string }>>;
 }> = ({ classNames, strings, settings, setSettings }) => {
+  const theme = useTheme();
 
   const defaultSuggestedPrompts = useMemo(() => [
     { label: strings.AISettings.labels.suggestedPromptDefault1Label, prompt: strings.AISettings.labels.suggestedPromptDefault1Prompt },
@@ -1016,15 +1057,15 @@ const SuggestedPromptsEditor: React.FunctionComponent<{
     <div>
       <div className={classNames.suggestedPromptsGrid}>
       {prompts.map((p) => (
-        <div key={p.id} style={{ display: 'flex', gap: '8px', alignItems: 'flex-start', flexWrap: 'wrap' }}>
+        <div key={p.id} className={classNames.suggestedPromptRow}>
           <TextField
-            style={{ flex: '1 1 160px' }}
+            styles={{ root: classNames.suggestedPromptLabelField }}
             placeholder={strings.AISettings.labels.suggestedPromptLabelPlaceholder}
             value={p.label}
             onChange={(_, val) => handleFieldChange(p.id, 'label', val ?? '')}
           />
           <TextField
-            style={{ flex: '2 1 220px' }}
+            styles={{ root: classNames.suggestedPromptPromptField }}
             placeholder={strings.AISettings.labels.suggestedPromptPromptPlaceholder}
             value={p.prompt}
             onChange={(_, val) => handleFieldChange(p.id, 'prompt', val ?? '')}
@@ -1034,21 +1075,34 @@ const SuggestedPromptsEditor: React.FunctionComponent<{
             title={strings.AISettings.labels.suggestedPromptRemove}
             ariaLabel={strings.AISettings.labels.suggestedPromptRemove}
             onClick={() => handleRemove(p.id)}
-            styles={{ root: { marginTop: '2px' } }}
+            className={classNames.suggestedPromptRemoveButton}
           />
         </div>
       ))}
       </div>
-      <div style={{ display: 'flex', gap: '8px', marginTop: '8px' }}>
-        <ActionButton
+      <div className={classNames.suggestedPromptsActions}>
+        <DefaultButton
           iconProps={{ iconName: 'Add' }}
           text={strings.AISettings.labels.suggestedPromptAdd}
           onClick={handleAdd}
+          className={classNames.suggestedPromptAddButton}
+          styles={{
+            label: { color: theme.palette.neutralPrimary },
+            icon: { color: theme.palette.themePrimary },
+            iconHovered: { color: theme.palette.themePrimary },
+            iconPressed: { color: theme.palette.themePrimary },
+          }}
         />
         <ActionButton
           iconProps={{ iconName: 'Refresh' }}
           text={strings.AISettings.labels.suggestedPromptPopulateDefaults}
           onClick={handlePopulateDefaults}
+          styles={{
+            root: { color: theme.palette.neutralPrimary },
+            label: { color: theme.palette.neutralPrimary },
+            rootHovered: { color: theme.palette.neutralPrimary },
+            labelHovered: { color: theme.palette.neutralPrimary },
+          }}
         />
       </div>
     </div>

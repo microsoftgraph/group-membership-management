@@ -208,7 +208,7 @@ export const strings: IStrings = {
   },
   AdminConfig: {
     labels: {
-      pageTitle: "Centro de Administrador",
+      pageTitle: "Configuración de Administrador",
       saveButton: "Guardar",
       saveSuccess:  "Guardado exitosamente.",
       alertBanner: "Banner de Alerta"
@@ -218,11 +218,11 @@ export const strings: IStrings = {
     },
     HyperlinkSettings: {
       labels: {
-        description: "Incluye ligas con información específica sobre cómo funciona XMM en tu organización para que los usuarios puedan aprovecharlo al máximo.",
+        description: "Incluye ligas con información específica sobre cómo funciona MM en tu organización para que los usuarios puedan aprovecharlo al máximo.",
       },
       dashboardLink: {
         title: "Dashboard",
-        description: "Esta es la liga que se muestra en la esquina superior derecha del dashboard. Te lleva a un sitio interno que tiene todos los detalles sobre cómo aprovechar XMM en tu organización. Esto podría incluir preguntas frecuentes, información de contacto, SLAs, etc.",
+        description: "Esta es la liga que se muestra en la esquina superior derecha del dashboard. Te lleva a un sitio interno que tiene todos los detalles sobre cómo aprovechar MM en tu organización. Esto podría incluir preguntas frecuentes, información de contacto, SLAs, etc.",
       },
       outlookWarningLink: {
         title: "Instrucciones de destino",
@@ -230,30 +230,31 @@ export const strings: IStrings = {
       },
       privacyPolicyLink: {
         title: "Política de Privacidad",
-        description: "Esta es la liga que se muestra en la esquina inferior izquierda del dashboard. Te lleva a un sitio interno que tiene todos los detalles sobre cómo XMM maneja y almacena los datos de los usuarios.",
+        description: "Esta es la liga que se muestra en la esquina inferior izquierda del dashboard. Te lleva a un sitio interno que tiene todos los detalles sobre cómo MM maneja y almacena los datos de los usuarios.",
       },
     },
     Operations: {
       labels: {
         operations: "Operaciones",
         controlPanel: "Panel de Control",
-        serviceOperationTitle: "Detener GMM",
-        serviceOperationDescription: "Detiene todas las operaciones de sincronización de GMM. Mientras GMM está detenido no se agregan ni se eliminan membresías en los destinos. Inicie GMM nuevamente para reanudar el procesamiento normal.",
-        resetOperationTitle: "Restablecer GMM",
-        resetOperationDescription: "Reinicie GMM en cualquier momento. Úselo cuando GMM está en ejecución pero el procesamiento debe reiniciarse desde un estado limpio."
+        serviceOperationTitle: "Detener",
+        serviceOperationDescription: "Use el botón de detener para detener las operaciones de GMM.",
+        resetOperationTitle: "Restablecer",
+        resetOperationDescription: "Use el botón de restablecer para reiniciar GMM en cualquier momento."
       },
       buttons: {
-        stop: "Detener GMM",
+        stop: "Detener",
         stopping: "Deteniendo",
-        reset: "Restablecer GMM",
+        reset: "Restablecer",
         resetting: "Restableciendo",
-        start: "Iniciar GMM",
+        start: "Iniciar",
         starting: "Iniciando",
       }
     },
     CustomSourceSettings: {
       labels: {
         customSource: "Origen Personalizado",
+        sourceLabeling: "Etiquetado del Origen",
         sourceDescription: "Asigne un nombre descriptivo al origen de los datos de su organización para que los propietarios de grupos lo reconozcan al definir el origen de sus destinos de pertenencia.",
         sourceCustomLabelInput: "Nombre personalizado",
         listOfAttributes: "Lista de Atributos",
@@ -261,7 +262,7 @@ export const strings: IStrings = {
         attributeColumn: "Atributo",
         customLabelColumn: "Nombre Personalizado",
         customLabelInputPlaceHolder: "Entre un nombre personalizado",
-        valuesColumn: "Valores",
+        valuesColumn: "Lista de valores",
         valuesDropdownSpinnerLabel: "Cargando valores",
         valuesDropdownNoValuesLabel: "No se encontraron valores",
         valuesDropdownPlaceholder: "Ver valores",
@@ -272,8 +273,8 @@ export const strings: IStrings = {
         enabledToggleTitle: "Habilitar o deshabilitar este atributo",
         sensitiveColumn: "Confidencial",
         sensitiveToggleTitle: "Marcar o desmarcar este atributo como confidencial",
-        nullThresholdColumn: "Umbral de Nulos (%)",
-        nullThresholdPlaceHolder: "50",
+        nullThresholdColumn: "Umbral de nulos",
+        nullThresholdPlaceHolder: "Del 0 al 100%",
         nullThresholdTitle: "Porcentaje máximo de filas que pueden estar vacías para este atributo antes de que falle la comprobación diaria de calidad de datos. Déjelo en blanco para usar el valor predeterminado del 50%.",
         nullThresholdValidationError: "Ingrese un número entre 0 y 100.",
       },
@@ -297,7 +298,8 @@ export const strings: IStrings = {
     AutoApproverSettings: {
       labels: {
         autoApprover: "Aprobación Automática",
-        description: "Elija qué solicitudes de membresía puede aprobar XMM automáticamente sin la intervención de un verificador.",
+        controlsTitle: "Controles de Aprobación Automática",
+        description: "Configure las condiciones que determinan cuándo las solicitudes de membresía pueden aprobarse automáticamente.",
         isAutoApprovalForGroupBasedSyncsEnabledTitle: "¿Está habilitada la auto-aprobación para sincronizaciones basadas en grupos?",
         isAutoApprovalForGroupBasedSyncsEnabledDescription: "Aprobar automáticamente trabajos de sincronización cuando todas las partes de origen son del tipo GroupMembership con visibilidad aceptable (no HiddenMembership).",
         isAutoApprovalForRequestorIsOrgLeaderSyncsEnabledTitle: "¿Está habilitada la auto-aprobación para solicitante como líder organizacional?",
@@ -307,9 +309,8 @@ export const strings: IStrings = {
     AISettings: {
       labels: {
         aiSettings: "IA",
-        description: "Configure las funciones de IA para su organización, incluyendo generación de títulos, chat de copiloto, parámetros LLM e instrucciones de prompt.",
         copilotAvailabilityTitle: "Disponibilidad del Copiloto",
-        copilotAvailabilityDescription: "Habilite o deshabilite las capacidades de IA disponibles para los usuarios y ajuste cómo el Copiloto genera sus respuestas.",
+        copilotAvailabilityDescription: "Configure las funciones de IA para su organización, el chat del Copiloto, los parámetros del LLM y las instrucciones de prompt.",
         isAITitleEnabledTitle: "¿Está habilitado el título de IA?",
         isAITitleEnabledDescription: "Habilitar la generación de títulos de IA para ayudar a los usuarios a crear títulos descriptivos para sus sincronizaciones de membresía.",
         isAICopilotEnabledTitle: "¿Está habilitado el Copiloto de IA?",
@@ -327,6 +328,8 @@ export const strings: IStrings = {
         copilotTopPDescription: "Controla la diversidad mediante muestreo de núcleo. Valores más bajos (ej. 0.5) limitan a tokens más probables. Valores más altos (ej. 0.95) permiten una selección más amplia de tokens.",
         leaveEmptyNote: "Deje vacío para usar las instrucciones predeterminadas. Las instrucciones personalizadas anularán las predeterminadas.",
         currentDefaultInstructions: "Ver instrucciones predeterminadas actuales",
+        modelBehaviorTitle: "Comportamiento del Modelo",
+        modelBehaviorDescription: "Ajuste cómo el Copiloto genera sus respuestas.",
         suggestedPromptsTitle: "Indicaciones sugeridas",
         suggestedPromptsDescription: "Configure los botones de indicaciones sugeridas que se muestran en el mensaje de bienvenida del Copilot. Los usuarios pueden hacer clic en ellos para iniciar una conversación rápidamente. Si no se configuran indicaciones, la sección de sugerencias se ocultará.",
         suggestedPromptLabelField: "Etiqueta del botón",

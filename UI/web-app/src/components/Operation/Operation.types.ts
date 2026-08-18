@@ -8,6 +8,7 @@ import { IOperationsApi } from '../../apis/operations/IOperationsApi';
 export type OperationStyles = {
   root: IStyle;
   card: IStyle;
+  titleRow: IStyle;
   title: IStyle;
   description: IStyle;
   buttonContainer: IStyle;

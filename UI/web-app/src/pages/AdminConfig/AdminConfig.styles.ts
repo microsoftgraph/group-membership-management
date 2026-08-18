@@ -22,31 +22,44 @@ export const getStyles = (props: AdminConfigStyleProps): AdminConfigStyles => {
             marginBottom: 12,
             backgroundColor: theme.palette.white
         },
+        titleRow: {
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: 16,
+            padding: '4px 4px 14px 4px'
+        },
+        saveButton: {
+            borderRadius: 4,
+            minWidth: 80,
+        },
         title: {
             fontWeight: 600,
-            fontSize: 24,
+            fontSize: 28,
+            lineHeight: '36px',
+            color: theme.palette.neutralPrimary,
             fontFamily: 'Segoe UI'
         },
         description: {
             padding: '10px 13px',
         },
         tiles: {
-            display: 'flex',
-            flexBasis: '100%',
-            flexWrap: 'wrap',
-            wrapFlow: 'row'
-        },
-        bottomContainer:{
-            marginBottom: 24,
-            display: 'flex',
-            justifyContent: 'flex-end'
+            display: 'grid',
+            gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
+            gap: 16,
+            alignItems: 'start',
+            selectors: {
+                '@media (max-width: 900px)': {
+                    gridTemplateColumns: 'minmax(0, 1fr)',
+                },
+            },
         },
         customLabelTextField: {
             borderRadius: 4,
             border: '1px solid',
             borderColor: theme.palette.neutralQuaternary,
             background: theme.palette.white,
-            width: 150
+            width: '100%'
         },
         defaultColumnSpan: {
             display: 'flex',
@@ -56,22 +69,14 @@ export const getStyles = (props: AdminConfigStyleProps): AdminConfigStyles => {
             color: theme.palette.neutralPrimary
         },
         sourceNameTextFieldContainer: {
-            marginTop: 17,
-            padding: 4
+            maxWidth: 370
         },
         sourceNameTextField: {
             borderRadius: 4,
             border: '1px solid',
             borderColor: theme.palette.neutralQuaternary,
             background: theme.palette.white,
-            width: 266,
-        },
-        sourceNameDescriptionContainer: {
-            marginTop: 17
-        },
-        listOfAttributesTitleDescriptionContainer: {
-            marginTop: 17,
-            padding: '10px 0px 10px 0px'
+            width: '100%',
         },
         detailsListContainer: {
             marginTop: 4,
@@ -83,7 +88,7 @@ export const getStyles = (props: AdminConfigStyleProps): AdminConfigStyles => {
             color: theme.palette.black
         },
         valuesDropdown: {
-            maxWidth: 150
+            width: '100%'
         },
         valuesDropdownTitle: {
             borderRadius: 4,
@@ -91,37 +96,28 @@ export const getStyles = (props: AdminConfigStyleProps): AdminConfigStyles => {
             borderWidth: 1,
             borderColor: theme.palette.neutralQuaternary,
             backgroud: theme.palette.white,
-            maxWidth: 150
+            width: '100%'
         },
         valuesDropdownSpinner: {
             marginTop: 10,
             marginBottom: 10
         },
         descriptionTextField: {
-            flexBasis: '30%',
-            maxWidth: 300,
+            width: '100%',
             borderRadius: 4,
             border: '1px solid',
             borderColor: theme.palette.neutralQuaternary,
             background: theme.palette.white,
         },
-        aiSettingsIntro: {
-            marginBottom: 16,
-        },
-        aiSettingsInstructionsSection: {
-            marginTop: 20,
-            marginBottom: 20,
-        },
-        aiSettingsSectionTitle: {
-            fontWeight: 600,
-        },
-        aiSettingsSectionDescription: {
-            marginBottom: 8,
-        },
         aiSettingsLeaveEmptyNote: {
+            display: 'flex',
+            alignItems: 'center',
+            gap: 6,
             marginBottom: 12,
-            fontStyle: 'italic',
             color: theme.palette.neutralSecondary,
+        },
+        aiSettingsLeaveEmptyNoteIcon: {
+            fontSize: 14,
         },
         aiSettingsDefaultInstructionsContainer: {
             marginBottom: 12,
@@ -155,49 +151,123 @@ export const getStyles = (props: AdminConfigStyleProps): AdminConfigStyles => {
             maxHeight: 300,
             overflowY: 'auto',
         },
-        aiSettingsSliderSection: {
-            marginTop: 20,
-        },
         sectionContainer: {
-            marginTop: 24,
-            paddingTop: 24,
-            borderTop: `1px solid ${theme.palette.neutralLight}`,
+            marginTop: 32,
             selectors: {
                 ':first-child': {
-                    marginTop: 12,
-                    paddingTop: 0,
-                    borderTop: 'none',
+                    marginTop: 16,
                 },
             },
+        },
+        sectionContainerDivided: {
+            marginTop: 32,
+            paddingTop: 32,
+            borderTop: `1px solid ${theme.palette.neutralLight}`,
+        },
+        modelBehaviorCard: {
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 12,
+            padding: 24,
+            borderRadius: 8,
+            boxSizing: 'border-box',
+            border: `1px solid ${theme.palette.neutralLight}`,
+            backgroundColor: theme.palette.white,
+        },
+        modelBehaviorHeader: {
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: 16,
+        },
+        modelBehaviorTitle: {
+            fontWeight: 600,
+            whiteSpace: 'nowrap',
+        },
+        modelBehaviorSlider: {
+            flexGrow: 1,
+            minWidth: 0,
+            maxWidth: 260,
+        },
+        modelBehaviorDescription: {
+            color: theme.palette.neutralPrimary,
+            lineHeight: '20px',
         },
         sectionHeading: {
             display: 'block',
             fontWeight: 600,
-            letterSpacing: '0.06em',
+            fontSize: 14,
+            lineHeight: '20px',
+            marginBottom: 4,
             textTransform: 'uppercase',
             color: theme.palette.themePrimary,
         },
         sectionSubtitle: {
             display: 'block',
-            marginTop: 4,
-            marginBottom: 12,
+            marginTop: 0,
+            marginBottom: 16,
+            lineHeight: '20px',
             color: theme.palette.neutralPrimary,
         },
         settingsGrid: {
-            display: 'flex',
-            flexWrap: 'wrap',
+            display: 'grid',
+            gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
             gap: 16,
+            alignItems: 'stretch',
+            selectors: {
+                '@media (max-width: 900px)': {
+                    gridTemplateColumns: 'minmax(0, 1fr)',
+                },
+            },
         },
         suggestedPromptsGrid: {
             display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(420px, 1fr))',
+            gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
             gap: 12,
+            selectors: {
+                '@media (max-width: 900px)': {
+                    gridTemplateColumns: 'minmax(0, 1fr)',
+                },
+            },
+        },
+        suggestedPromptRow: {
+            display: 'flex',
+            gap: 8,
+            alignItems: 'flex-start',
+            minWidth: 0,
+        },
+        suggestedPromptLabelField: {
+            flex: '1 1 0',
+            minWidth: 0,
+        },
+        suggestedPromptPromptField: {
+            flex: '2 1 0',
+            minWidth: 0,
+        },
+        suggestedPromptRemoveButton: {
+            flexShrink: 0,
+            color: theme.palette.themePrimary,
+        },
+        suggestedPromptsActions: {
+            display: 'flex',
+            gap: 8,
+            marginTop: 8,
+            alignItems: 'center',
+        },
+        suggestedPromptAddButton: {
+            borderRadius: 4,
+            borderColor: theme.palette.neutralQuaternary,
         },
         operationsGrid: {
-            display: 'flex',
-            flexWrap: 'wrap',
+            display: 'grid',
+            gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
             gap: 16,
             alignItems: 'stretch',
+            selectors: {
+                '@media (max-width: 900px)': {
+                    gridTemplateColumns: 'minmax(0, 1fr)',
+                },
+            },
         },
     };
 };

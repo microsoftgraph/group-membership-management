@@ -55,13 +55,13 @@ test('Maintenance - Reset GMM (WARNING: Disables API)', { tag: '@maintenance' },
   await clickFirstVisible(page, [{ role: 'button', name: 'Settings' }]);
   await clickFirstVisible(page, [{ role: 'tab', name: /General/i }]);
   await clickFirstVisible(page, [{ role: 'tab', name: /Operations/i }]);
-  await page.getByRole('button', { name: 'Reset GMM' }).click();
+  await page.getByRole('button', { name: 'Reset', exact: true }).click();
   await page.getByRole('button', { name: 'Back' }).click();
   // Entering maintenance mode is async (disable call + maintenance-status re-fetch),
   // so give the banner more room than the default 5s assertion timeout.
   await expect(page.getByText('This application is currently')).toBeVisible({ timeout: isMockMode ? 30000 : 120000 });
   await clickFirstVisible(page, [{ role: 'button', name: 'Settings' }]);
-  await expect(page.locator('div').filter({ hasText: /^Admin Center$/ }).first()).toBeVisible();
+  await expect(page.locator('div').filter({ hasText: /^Admin Configuration$/ }).first()).toBeVisible();
   await clickFirstVisible(page, [{ role: 'tab', name: /Operations/i }]);
 
   let attempts = 0;
@@ -71,7 +71,7 @@ test('Maintenance - Reset GMM (WARNING: Disables API)', { tag: '@maintenance' },
   
   while (!isButtonEnabled && attempts < maxAttempts) {    
     try {
-      isButtonEnabled = await page.getByRole('button', { name: 'Reset GMM' }).isEnabled({ timeout: isMockMode ? 1000 : 2000 });
+      isButtonEnabled = await page.getByRole('button', { name: 'Reset', exact: true }).isEnabled({ timeout: isMockMode ? 1000 : 2000 });
     } catch (error) {
       // If the button is not found or not enabled within the timeout, continue with the loop
       isButtonEnabled = false;
