@@ -675,6 +675,7 @@ export const JobsListBase: React.FunctionComponent<IJobsListProps> = (
       jobIdsToApprove: uploadedJobIdsToApprove,
       totalNumberOfJobs: uploadedJobsCount ?? 0
     }));
+    dispatch(fetchJobs(pagingOptions));
   };
 
   const fileInputRef = useRef<HTMLInputElement>(null);

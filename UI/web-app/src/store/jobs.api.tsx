@@ -51,16 +51,10 @@ export const downloadJobs = createAsyncThunk<Job[], string[], ThunkConfig>(
 
 export const approveJobs = createAsyncThunk<BulkApproveResponse, BulkApproveRequest, ThunkConfig>(
   'jobs/approveJobs',
-  async (request: BulkApproveRequest, { extra , dispatch }) => {
+  async (request: BulkApproveRequest, { extra }) => {
     const { gmmApi } = extra.apis;
     try {
       const response = await gmmApi.jobs.approveJobs(request.jobIdsToApprove);
-      await dispatch(fetchJobs({
-        pageSize: 20,
-        itemsToSkip: 0,
-        orderBy: undefined,
-        filter: undefined,
-      }));
       const payload: BulkApproveResponse = {
         totalNumberOfApprovedJobs: response.data.approvedJobsCount,
         totalNumberOfJobs: request.totalNumberOfJobs
