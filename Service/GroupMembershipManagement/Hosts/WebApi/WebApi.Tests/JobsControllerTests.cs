@@ -1265,6 +1265,10 @@ namespace Services.Tests
             var jobA = GroupJob(group1);
             var jobB = GroupJob(group2);
 
+            // Sorting is done on the destination name cached in SQL, so these must be populated.
+            jobA.DestinationName = new DestinationName { Id = jobA.Id, Name = "Zulu Group" };
+            jobB.DestinationName = new DestinationName { Id = jobB.Id, Name = "Alpha Group" };
+
             _databaseSyncJobsRepository.Setup(x => x.GetSyncJobs(It.IsAny<bool>()))
                                        .Returns(new List<SyncJob> { jobA, jobB }.AsQueryable());
             _graphGroupRepository.Setup(x => x.GetGroupsAsync(It.IsAny<List<Guid>>()))
@@ -1318,8 +1322,9 @@ namespace Services.Tests
         [TestMethod]
         public async Task GetJobs_CustomSort_TargetGroupName_SortsChannelJobsByResolvedName()
         {
-            // A channel job must sort by its displayed "channel | team" name (not the raw team name),
-            // and must not NRE on the null Group navigation property during name-sorting.
+            // A channel job sorts on the destination name cached in SQL (the channel name, which is the
+            // leading token of its displayed "channel | team" name), and must not NRE on the null Group
+            // navigation property during name-sorting.
             var teamGroupId = Guid.NewGuid();
             const string channelId = "19:abc123@thread.tacv2";
             var channelJob = new SyncJob
@@ -1346,6 +1351,11 @@ namespace Services.Tests
                 StatusDetails = new Status { Id = Guid.NewGuid(), Name = SyncStatus.Idle.ToString(), SortPriority = 1000 },
                 Group = new Group { SyncJobId = Guid.NewGuid(), GroupId = Guid.NewGuid() }
             };
+
+            // Sorting is done on the destination name cached in SQL; for channel jobs that cached value
+            // is the channel name (kept fresh by DestinationAttributesUpdater), so these must be populated.
+            channelJob.DestinationName = new DestinationName { Id = channelJob.Id, Name = "Apple Channel" };
+            groupJob.DestinationName = new DestinationName { Id = groupJob.Id, Name = "Mango Group" };
 
             _databaseSyncJobsRepository.Setup(x => x.GetSyncJobs(It.IsAny<bool>()))
                                        .Returns(new List<SyncJob> { groupJob, channelJob }.AsQueryable());
@@ -1387,7 +1397,7 @@ namespace Services.Tests
 
             Assert.AreEqual(2, response.Model.Count);
             // "Apple Channel | Banana Team" sorts before "Mango Group".
-            Assert.AreEqual("Apple Channel | Banana Team", response.Model[0].TargetGroupName, "Channel job should sort by its resolved 'channel | team' name");
+            Assert.AreEqual("Apple Channel | Banana Team", response.Model[0].TargetGroupName, "Channel job sorts first by its cached destination name ('Apple Channel') and displays 'channel | team'");
             Assert.AreEqual("Mango Group", response.Model[1].TargetGroupName);
         }
 
@@ -1630,7 +1640,8 @@ namespace Services.Tests
                                              _databaseSyncJobsRepository.Object,
                                              _graphGroupRepository.Object,
                                              _httpContextAccessor.Object,
-                                             _syncJobChangeRepository.Object);
+                                             _syncJobChangeRepository.Object,
+                                             Mock.Of<ITeamsChannelRepository>());
 
             var response = await handler.ExecuteAsync(request);
 
@@ -1687,7 +1698,8 @@ namespace Services.Tests
                                              _databaseSyncJobsRepository.Object,
                                              _graphGroupRepository.Object,
                                              _httpContextAccessor.Object,
-                                             _syncJobChangeRepository.Object);
+                                             _syncJobChangeRepository.Object,
+                                             Mock.Of<ITeamsChannelRepository>());
 
             var response = await handler.ExecuteAsync(request);
 
@@ -1746,7 +1758,8 @@ namespace Services.Tests
                                              _databaseSyncJobsRepository.Object,
                                              _graphGroupRepository.Object,
                                              _httpContextAccessor.Object,
-                                             _syncJobChangeRepository.Object);
+                                             _syncJobChangeRepository.Object,
+                                             Mock.Of<ITeamsChannelRepository>());
 
             var seenJobIds = new List<Guid>();
             for (var skip = 0; skip < 30; skip += 10)
@@ -1805,7 +1818,8 @@ namespace Services.Tests
                                              _databaseSyncJobsRepository.Object,
                                              _graphGroupRepository.Object,
                                              _httpContextAccessor.Object,
-                                             _syncJobChangeRepository.Object);
+                                             _syncJobChangeRepository.Object,
+                                             Mock.Of<ITeamsChannelRepository>());
 
             var response = await handler.ExecuteAsync(request);
 
@@ -1862,7 +1876,8 @@ namespace Services.Tests
                                              _databaseSyncJobsRepository.Object,
                                              _graphGroupRepository.Object,
                                              _httpContextAccessor.Object,
-                                             _syncJobChangeRepository.Object);
+                                             _syncJobChangeRepository.Object,
+                                             Mock.Of<ITeamsChannelRepository>());
 
             var response = await handler.ExecuteAsync(request);
 
