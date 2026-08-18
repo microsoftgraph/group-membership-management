@@ -60,7 +60,7 @@ const loadPersistedState = (): Partial<PagingBarState> => {
 const persistedState = loadPersistedState();
 const initialState: PagingBarState = {
   visible: true,
-  pageSize: persistedState.pageSize || '10',
+  pageSize: persistedState.pageSize || '20',
   pageNumber: persistedState.pageNumber || 1,
   totalNumberOfPages: 0,
   sortKey: persistedState.sortKey || undefined,

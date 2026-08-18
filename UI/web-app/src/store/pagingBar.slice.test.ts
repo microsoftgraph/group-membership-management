@@ -164,7 +164,7 @@ describe('selectPagingOptions — OData filter building', () => {
     expect(result.filter).toBeUndefined();
     expect(result.orderBy).toBeUndefined();
     expect(result.itemsToSkip).toBe(0);
-    expect(result.pageSize).toBe(10);
+    expect(result.pageSize).toBe(20);
   });
 
   it('builds orderBy from sortKey', () => {

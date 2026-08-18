@@ -56,7 +56,7 @@ export const approveJobs = createAsyncThunk<BulkApproveResponse, BulkApproveRequ
     try {
       const response = await gmmApi.jobs.approveJobs(request.jobIdsToApprove);
       await dispatch(fetchJobs({
-        pageSize: 10,
+        pageSize: 20,
         itemsToSkip: 0,
         orderBy: undefined,
         filter: undefined,
