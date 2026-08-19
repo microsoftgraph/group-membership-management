@@ -4,40 +4,13 @@
 import * as React from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useLocation, useParams } from 'react-router-dom';
-import { mergeStyles, keyframes, useTheme } from '@fluentui/react';
+import { mergeStyles, useTheme } from '@fluentui/react';
+import { SparkleIcon } from '../SparkleIcon';
 import { AppDispatch } from '../../store';
 import { useStrings } from '../../store/hooks';
 import { selectIsJobWriter, selectIsAIOnboardingChat } from '../../store/roles.slice';
 import { selectIsAICopilotEnabled } from '../../store/settings.slice';
 import { openPanel, selectCopilotMessages } from '../../store/copilot.slice';
-
-const sparkleAnimation1 = keyframes({
-  '0%, 100%': { opacity: 1, transform: 'scale(1)' },
-  '50%': { opacity: 0.2, transform: 'scale(0.5)' },
-});
-
-const sparkleAnimation2 = keyframes({
-  '0%, 100%': { opacity: 0.3, transform: 'scale(0.5)' },
-  '50%': { opacity: 1, transform: 'scale(1)' },
-});
-
-const sparkleClass1 = mergeStyles({
-  animationName: sparkleAnimation1,
-  animationDuration: '2s',
-  animationTimingFunction: 'ease-in-out',
-  animationIterationCount: 'infinite',
-  transformOrigin: 'center',
-  transformBox: 'fill-box',
-});
-
-const sparkleClass2 = mergeStyles({
-  animationName: sparkleAnimation2,
-  animationDuration: '2s',
-  animationTimingFunction: 'ease-in-out',
-  animationIterationCount: 'infinite',
-  transformOrigin: 'center',
-  transformBox: 'fill-box',
-});
 
 const getCopilotButtonClass = (theme: ReturnType<typeof useTheme>) => mergeStyles({
   display: 'flex',
@@ -111,10 +84,7 @@ export const CopilotTriggerButton: React.FunctionComponent = () => {
       data-testid="copilot-trigger-button"
       className={getCopilotButtonClass(theme)}
     >
-      <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-        <path className={sparkleClass1} d="M8 4 L9 7 L12 8 L9 9 L8 12 L7 9 L4 8 L7 7 Z" fill="currentColor" />
-        <path className={sparkleClass2} d="M13 1 L13.5 2.5 L15 3 L13.5 3.5 L13 5 L12.5 3.5 L11 3 L12.5 2.5 Z" fill="currentColor" />
-      </svg>
+      <SparkleIcon />
       <span>
         {hasCopilotHistory
           ? (strings.Copilot?.triggerButtonResume || 'Let Copilot resume building it for you')

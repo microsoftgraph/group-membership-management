@@ -215,6 +215,46 @@ namespace Hosts.WebApi
             Message = "CopilotChatHandler: Error processing request")]
         public static partial void CopilotChatFailed(this ILogger logger, Exception exception);
 
+        // ── RefineFeedbackHandler / FeedbackRefinementService (91550-91599) ──
+        // Privacy: these events MUST remain content-free. Never log reviewer feedback,
+        // model output, raw exception objects, or provider messages on this path.
+
+        [LoggerMessage(EventId = 91550, Level = LogLevel.Information,
+            Message = "RefineFeedback: Started (InstanceId: {InstanceId}, InputLength: {InputLength})")]
+        public static partial void RefineFeedbackStarted(this ILogger logger, Guid instanceId, int inputLength);
+
+        [LoggerMessage(EventId = 91551, Level = LogLevel.Information,
+            Message = "RefineFeedback: Succeeded (InstanceId: {InstanceId}, InputLength: {InputLength}, OutputLength: {OutputLength}, DurationMs: {DurationMs})")]
+        public static partial void RefineFeedbackSucceeded(this ILogger logger, Guid instanceId, int inputLength, int outputLength, long durationMs);
+
+        [LoggerMessage(EventId = 91552, Level = LogLevel.Warning,
+            Message = "RefineFeedback: Rejected request (InstanceId: {InstanceId}, ErrorCode: {ErrorCode})")]
+        public static partial void RefineFeedbackInvalidRequest(this ILogger logger, Guid instanceId, string errorCode);
+
+        [LoggerMessage(EventId = 91553, Level = LogLevel.Information,
+            Message = "RefineFeedback: Feature disabled (InstanceId: {InstanceId})")]
+        public static partial void RefineFeedbackFeatureDisabled(this ILogger logger, Guid instanceId);
+
+        [LoggerMessage(EventId = 91554, Level = LogLevel.Warning,
+            Message = "RefineFeedback: Invalid model output (InstanceId: {InstanceId}, ErrorCode: {ErrorCode}, OutputLength: {OutputLength}, DurationMs: {DurationMs})")]
+        public static partial void RefineFeedbackInvalidOutput(this ILogger logger, Guid instanceId, string errorCode, int outputLength, long durationMs);
+
+        [LoggerMessage(EventId = 91555, Level = LogLevel.Warning,
+            Message = "RefineFeedback: Timed out (InstanceId: {InstanceId}, DurationMs: {DurationMs})")]
+        public static partial void RefineFeedbackTimeout(this ILogger logger, Guid instanceId, long durationMs);
+
+        [LoggerMessage(EventId = 91556, Level = LogLevel.Warning,
+            Message = "RefineFeedback: Service unavailable (InstanceId: {InstanceId}, DurationMs: {DurationMs})")]
+        public static partial void RefineFeedbackUnavailable(this ILogger logger, Guid instanceId, long durationMs);
+
+        [LoggerMessage(EventId = 91557, Level = LogLevel.Error,
+            Message = "RefineFeedback: Unexpected failure (InstanceId: {InstanceId}, FailureType: {FailureType}, DurationMs: {DurationMs})")]
+        public static partial void RefineFeedbackUnexpectedError(this ILogger logger, Guid instanceId, string failureType, long durationMs);
+
+        [LoggerMessage(EventId = 91558, Level = LogLevel.Warning,
+            Message = "RefineFeedback: Feature setting could not be read (InstanceId: {InstanceId})")]
+        public static partial void RefineFeedbackSettingReadFailed(this ILogger logger, Guid instanceId);
+
         // ── CopilotService (93100-93149) ──
 
         [LoggerMessage(EventId = 93100, Level = LogLevel.Warning,

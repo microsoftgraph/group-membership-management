@@ -60,7 +60,8 @@ namespace WebApi.Controllers.v1.Settings
             SettingKey.CopilotTemperature,
             SettingKey.CopilotTopP,
             SettingKey.CopilotInstructions,
-            SettingKey.CopilotSuggestedPrompts
+            SettingKey.CopilotSuggestedPrompts,
+            SettingKey.IsAIRejectionFeedbackRefinementEnabled
         };
 
         private static readonly IReadOnlySet<SettingKey> AutoApproverSettingKeys = new HashSet<SettingKey>

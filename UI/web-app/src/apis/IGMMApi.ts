@@ -8,6 +8,7 @@ import { ISqlMembershipSourcesApi } from './sqlMembershipSources';
 import { IOperationsApi } from './operations';
 import { IDestinationsApi } from './destinations/IDestinationsApi';
 import { ITitleApi } from './titles';
+import { IFeedbackApi } from './feedback';
 
 export interface IGMMApi {
   title: ITitleApi;
@@ -17,4 +18,5 @@ export interface IGMMApi {
   destinations: IDestinationsApi;
   sqlMembershipSources: ISqlMembershipSourcesApi;
   operationsApi: IOperationsApi;
+  feedback: IFeedbackApi;
 };

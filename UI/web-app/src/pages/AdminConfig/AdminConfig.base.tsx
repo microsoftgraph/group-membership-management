@@ -26,6 +26,7 @@ import {
   selectDefaultAIPrompt,
   selectIsAISearchForUserEnabled,
   selectIsAIRunExplanationEnabled,
+  selectIsAIRejectionFeedbackRefinementEnabled,
   selectIsRunHistoryTabEnabled,
 } from '../../store/settings.slice';
 import { patchSetting, fetchDefaultAIPrompt, fetchSettings } from '../../store/settings.api';
@@ -71,6 +72,7 @@ export const AdminConfigBase: React.FunctionComponent<AdminConfigProps> = (props
   const isAICopilotEnabled = useSelector(selectIsAICopilotEnabled);
   const isAISearchForUserEnabled = useSelector(selectIsAISearchForUserEnabled);
   const isAIRunExplanationEnabled = useSelector(selectIsAIRunExplanationEnabled);
+  const isAIRejectionFeedbackRefinementEnabled = useSelector(selectIsAIRejectionFeedbackRefinementEnabled);
   const isRunHistoryPhase2Enabled = useSelector(selectIsRunHistoryTabEnabled);
   const copilotTemperature = useSelector(selectCopilotTemperature);
   const copilotTopP = useSelector(selectCopilotTopP);
@@ -107,6 +109,7 @@ export const AdminConfigBase: React.FunctionComponent<AdminConfigProps> = (props
     [SettingKey.IsAICopilotEnabled]: isAICopilotEnabled ? 'true' : 'false',
     [SettingKey.IsAISearchForUserEnabled]: isAISearchForUserEnabled ? 'true' : 'false',
     [SettingKey.IsAIRunExplanationEnabled]: isAIRunExplanationEnabled ? 'true' : 'false',
+    [SettingKey.IsAIRejectionFeedbackRefinementEnabled]: isAIRejectionFeedbackRefinementEnabled ? 'true' : 'false',
     [SettingKey.RunHistoryOpenViewingAndUnifiedTab]: isRunHistoryPhase2Enabled ? 'true' : 'false',
     [SettingKey.CopilotTemperature]: copilotTemperature ?? '0.7',
     [SettingKey.CopilotTopP]: copilotTopP ?? '0.9',
@@ -118,7 +121,7 @@ export const AdminConfigBase: React.FunctionComponent<AdminConfigProps> = (props
 
   useEffect(() => {
     setSettings(generateSettings())
-  }, [dashboardUrl, outlookWarningUrl, privacyPolicyUrl, canReviewOwnSubmissions, createGroupFeatureEnabled, isBusinessJustificationRequired, IsDisclaimerEnabled, IsAutoApprovalForGroupBasedSyncsEnabled, IsAutoApprovalForRequestorIsOrgLeaderSyncsEnabled, isPerPartAutoApprovalEnabled, isAITitleEnabled, isAICopilotEnabled, isAISearchForUserEnabled, isAIRunExplanationEnabled, isRunHistoryPhase2Enabled, copilotTemperature, copilotTopP, copilotInstructions, copilotSuggestedPrompts]);
+  }, [dashboardUrl, outlookWarningUrl, privacyPolicyUrl, canReviewOwnSubmissions, createGroupFeatureEnabled, isBusinessJustificationRequired, IsDisclaimerEnabled, IsAutoApprovalForGroupBasedSyncsEnabled, IsAutoApprovalForRequestorIsOrgLeaderSyncsEnabled, isPerPartAutoApprovalEnabled, isAITitleEnabled, isAICopilotEnabled, isAISearchForUserEnabled, isAIRunExplanationEnabled, isAIRejectionFeedbackRefinementEnabled, isRunHistoryPhase2Enabled, copilotTemperature, copilotTopP, copilotInstructions, copilotSuggestedPrompts]);
 
   const handleGetValues = (attribute: SqlMembershipAttribute) => {
     dispatch(fetchAttributeValues(attribute));
@@ -149,6 +152,7 @@ export const AdminConfigBase: React.FunctionComponent<AdminConfigProps> = (props
     SettingKey.IsAICopilotEnabled,
     SettingKey.IsAISearchForUserEnabled,
     SettingKey.IsAIRunExplanationEnabled,
+    SettingKey.IsAIRejectionFeedbackRefinementEnabled,
     SettingKey.CopilotTemperature,
     SettingKey.CopilotTopP,
     SettingKey.CopilotInstructions,
@@ -167,6 +171,7 @@ export const AdminConfigBase: React.FunctionComponent<AdminConfigProps> = (props
     SettingKey.IsAICopilotEnabled,
     SettingKey.IsAISearchForUserEnabled,
     SettingKey.IsAIRunExplanationEnabled,
+    SettingKey.IsAIRejectionFeedbackRefinementEnabled,
   ];
 
   // Normalize boolean values to strings, then dispatch only the changed settings that the

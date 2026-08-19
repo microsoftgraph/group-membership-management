@@ -63,6 +63,8 @@ namespace WebApi.Configuration
 
             services.AddTransient<IRequestHandler<CopilotChatRequest, CopilotChatResponse>, CopilotChatHandler>();
 
+            services.AddTransient<IRequestHandler<RefineFeedbackRequest, RefineFeedbackResponse>, RefineFeedbackHandler>();
+
             return services;
         }
     }

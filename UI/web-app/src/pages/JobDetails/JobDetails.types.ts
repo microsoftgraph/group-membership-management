@@ -46,6 +46,7 @@ export interface IJobDetailsStyles {
     hiddenMembershipWarningText: IStyle;
     membershipStatusActionButtons: IStyle;
     submissionReviewActions: IStyle;
+    refineFeedbackIcon: IStyle;
     membershipStatusPendingLabel: IStyle;
     removeGMM: IStyle;
     removeGMMNotFound: IStyle;

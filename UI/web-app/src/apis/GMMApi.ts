@@ -12,6 +12,7 @@ import { ISqlMembershipSourcesApi, SqlMembershipSourcesApi } from './sqlMembersh
 import { IOperationsApi, OperationsApi} from './operations';
 import { IDestinationsApi } from './destinations/IDestinationsApi';
 import { DestinationsApi } from './destinations/DestinationsApi';
+import { IFeedbackApi, FeedbackApi } from './feedback';
 
 export class GMMApi implements IGMMApi {
   private _titleApi: ITitleApi;
@@ -21,6 +22,7 @@ export class GMMApi implements IGMMApi {
   private _sqlMembershipSourcesApi: ISqlMembershipSourcesApi;
   private _operationsApi: IOperationsApi;
   private _destinationsApi: IDestinationsApi;
+  private _feedbackApi: IFeedbackApi;
 
   constructor(options: ApiOptions) {
     const { baseUrl } = options;
@@ -31,6 +33,7 @@ export class GMMApi implements IGMMApi {
     this._sqlMembershipSourcesApi = new SqlMembershipSourcesApi({ ...options, baseUrl: `${baseUrl}/sqlMembershipSources` });
     this._operationsApi = new OperationsApi({ ...options, baseUrl: `${baseUrl}/operations` });
     this._destinationsApi = new DestinationsApi({ ...options, baseUrl: `${baseUrl}/destinations` });
+    this._feedbackApi = new FeedbackApi({ ...options, baseUrl: `${baseUrl}/feedback` });
   }
 
   public get title(): ITitleApi {
@@ -53,5 +56,8 @@ export class GMMApi implements IGMMApi {
   }
   public get destinations(): IDestinationsApi {
     return this._destinationsApi;
+  }
+  public get feedback(): IFeedbackApi {
+    return this._feedbackApi;
   }
 };

@@ -778,6 +778,74 @@ namespace Services.Tests
             Assert.AreEqual(new DateTime(2026, 6, 5, 0, 0, 0, DateTimeKind.Utc), config.EndDate);
         }
 
+        [TestMethod]
+        public async Task GetAllSettingsIncludesRejectionFeedbackRefinementFlagForNonAIAdminTestAsync()
+        {
+            _settings.Add(new Setting
+            {
+                SettingKey = SettingKey.IsAIRejectionFeedbackRefinementEnabled,
+                SettingValue = "true"
+            });
+
+            _settingsController = new SettingsController(_getSettingHandler, _getAllSettingsHandler, _patchSettingHandler, _getSupportEmailHandler)
+            {
+                ControllerContext = CreateControllerContext(new List<Claim>
+                {
+                    new Claim(ClaimTypes.Name, "reviewer@domain.com"),
+                    new Claim(ClaimTypes.Role, Roles.SUBMISSION_REVIEWER)
+                })
+            };
+
+            var response = await _settingsController.GetAllSettingsAsync();
+
+            var okResult = response as OkObjectResult;
+            Assert.IsNotNull(okResult);
+
+            var settings = okResult!.Value as List<SettingDTO>;
+            Assert.IsNotNull(settings);
+            Assert.IsTrue(settings!.Any(s => s.SettingKey == SettingKey.IsAIRejectionFeedbackRefinementEnabled));
+        }
+
+        [TestMethod]
+        public async Task PatchRejectionFeedbackRefinementFlagRequiresAISettingsAdministratorTestAsync()
+        {
+            _settingsController = new SettingsController(_getSettingHandler, _getAllSettingsHandler, _patchSettingHandler, _getSupportEmailHandler)
+            {
+                ControllerContext = CreateControllerContext(new List<Claim>
+                {
+                    new Claim(ClaimTypes.Name, "reviewer@domain.com"),
+                    new Claim(ClaimTypes.Role, Roles.GENERAL_SETTINGS_ADMINISTRATOR)
+                })
+            };
+
+            var response = await _settingsController.PatchSettingAsync(SettingKey.IsAIRejectionFeedbackRefinementEnabled, "true");
+
+            Assert.IsInstanceOfType(response, typeof(ForbidResult));
+            _settingsRepository.Verify(
+                x => x.PatchSettingAsync(SettingKey.IsAIRejectionFeedbackRefinementEnabled, It.IsAny<string>()),
+                Times.Never());
+        }
+
+        [TestMethod]
+        public async Task PatchRejectionFeedbackRefinementFlagSucceedsForAISettingsAdministratorTestAsync()
+        {
+            _settingsController = new SettingsController(_getSettingHandler, _getAllSettingsHandler, _patchSettingHandler, _getSupportEmailHandler)
+            {
+                ControllerContext = CreateControllerContext(new List<Claim>
+                {
+                    new Claim(ClaimTypes.Name, "aiadmin@domain.com"),
+                    new Claim(ClaimTypes.Role, Roles.AI_SETTINGS_ADMINISTRATOR)
+                })
+            };
+
+            var response = await _settingsController.PatchSettingAsync(SettingKey.IsAIRejectionFeedbackRefinementEnabled, "true");
+
+            Assert.IsInstanceOfType(response, typeof(NoContentResult));
+            _settingsRepository.Verify(
+                x => x.PatchSettingAsync(SettingKey.IsAIRejectionFeedbackRefinementEnabled, "true"),
+                Times.Once());
+        }
+
         private ControllerContext CreateControllerContext(HttpContext httpContext)
         {
             return new ControllerContext { HttpContext = httpContext };

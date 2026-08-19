@@ -31,7 +31,7 @@ import {
   Stack,
   type IStackTokens
 } from '@fluentui/react/lib/Stack';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { InfoLabel } from '../../components/InfoLabel';
@@ -86,6 +86,9 @@ import { selectLastModifiedOnBehalfOfUserProfile, selectLastModifiedUserProfile 
 import { DestinationType } from '../../models/DestinationType';
 import { destinationTypeLocalization } from '../../utils/destinationTypeUtils';
 import { clearGeneratedGroupParts, clearGeneratedHRParts, clearTitles } from '../../store/title.slice';
+import { refineFeedback, type RefineFeedbackFailure } from '../../store/feedbackRefinement.api';
+import { selectIsAIRejectionFeedbackRefinementEnabled } from '../../store/settings.slice';
+import { SparkleIcon } from '../../components/SparkleIcon';
 
 const getClassNames = classNamesFunction<
   IJobDetailsStyleProps,
@@ -990,6 +993,120 @@ const SubmissionReviewActions: React.FunctionComponent<IStatusContentProps> = (
   const [isSubmittingApproval, setIsSubmittingApproval] = useState(false);
   const [rejectionError, setRejectionError] = useState<string | null>(null);
 
+  const isRefinementEnabled = useSelector(selectIsAIRejectionFeedbackRefinementEnabled);
+  const [preRefinementFeedback, setPreRefinementFeedback] = useState<string | null>(null);
+  const [isRefiningFeedback, setIsRefiningFeedback] = useState(false);
+  const [refinementMessage, setRefinementMessage] = useState<{ kind: 'info' | 'error'; text: string } | null>(null);
+
+  // Synchronous race identity for refinement. A refinement result is applied only when the
+  // attempt, the edit revision, the dialog generation, the open state, and the submission state
+  // all still match the values captured when that attempt started.
+  const rejectionFeedbackRef = useRef('');
+  const feedbackRevisionRef = useRef(0);
+  const activeAttemptIdRef = useRef(0);
+  const dialogGenerationRef = useRef(0);
+  const dialogOpenRef = useRef(false);
+  const submissionStartedRef = useRef(false);
+
+  const resetRefinementState = () => {
+    setPreRefinementFeedback(null);
+    setIsRefiningFeedback(false);
+    setRefinementMessage(null);
+  };
+
+  const setFeedback = (value: string) => {
+    rejectionFeedbackRef.current = value;
+    setRejectionFeedback(value);
+  };
+
+  const handleFeedbackChange = (newValue: string) => {
+    // Every user edit invalidates any in-flight attempt, including an edit that reverts
+    // the text to an earlier value.
+    feedbackRevisionRef.current += 1;
+    setFeedback(newValue);
+  };
+
+  const openRejectionDialog = () => {
+    dialogGenerationRef.current += 1;
+    activeAttemptIdRef.current += 1;
+    dialogOpenRef.current = true;
+    submissionStartedRef.current = false;
+    feedbackRevisionRef.current += 1;
+    setFeedback('');
+    resetRefinementState();
+    setRejectionError(null);
+    setShowRejectionDialog(true);
+  };
+
+  const handleRefineFeedback = async () => {
+    const sourceFeedback = rejectionFeedbackRef.current;
+    if (!sourceFeedback.trim() || isRefiningFeedback) {
+      return;
+    }
+
+    activeAttemptIdRef.current += 1;
+    const attemptId = activeAttemptIdRef.current;
+    const revisionAtStart = feedbackRevisionRef.current;
+    const generationAtStart = dialogGenerationRef.current;
+
+    setRefinementMessage(null);
+    setIsRefiningFeedback(true);
+
+    const isInvalidated = () =>
+      attemptId !== activeAttemptIdRef.current ||
+      generationAtStart !== dialogGenerationRef.current ||
+      !dialogOpenRef.current ||
+      submissionStartedRef.current;
+
+    const isStaleEdit = () => revisionAtStart !== feedbackRevisionRef.current;
+
+    try {
+      const refinedText = await dispatch(refineFeedback(sourceFeedback)).unwrap();
+
+      if (isInvalidated()) {
+        return;
+      }
+      setIsRefiningFeedback(false);
+      if (isStaleEdit()) {
+        setRefinementMessage({ kind: 'info', text: strings.JobDetails.labels.refineFeedbackStaleEdit });
+        return;
+      }
+
+      setPreRefinementFeedback(sourceFeedback);
+      feedbackRevisionRef.current += 1;
+      setFeedback(refinedText);
+    } catch (failure) {
+      if (isInvalidated()) {
+        return;
+      }
+      setIsRefiningFeedback(false);
+      if (isStaleEdit()) {
+        setRefinementMessage({ kind: 'info', text: strings.JobDetails.labels.refineFeedbackStaleEdit });
+        return;
+      }
+
+      const code = (failure as RefineFeedbackFailure)?.code;
+      const errors = strings.JobDetails.Errors;
+      const message =
+        code === 'RefinedTextTooLong' ? errors.refineFeedbackTooLong
+          : code === 'FeedbackTooLong' ? errors.refineFeedbackInputTooLong
+            : code === 'Timeout' ? errors.refineFeedbackTimeout
+              : code === 'ServiceUnavailable' || code === 'FeatureDisabled' ? errors.refineFeedbackUnavailable
+                : errors.refineFeedbackError;
+      setRefinementMessage({ kind: 'error', text: message });
+    }
+  };
+
+  const handleRestoreFeedback = () => {
+    if (preRefinementFeedback === null) {
+      return;
+    }
+    feedbackRevisionRef.current += 1;
+    setFeedback(preRefinementFeedback);
+    setPreRefinementFeedback(null);
+    setRefinementMessage(null);
+  };
+
   const updateJobStatus = async (
     newStatus: string,
     changeReason: SyncJobChangeReason,
@@ -1035,7 +1152,7 @@ const SubmissionReviewActions: React.FunctionComponent<IStatusContentProps> = (
 
   const handleApproveSubmission = async (approved: boolean) => {
     if (!approved) {
-      setShowRejectionDialog(true);
+      openRejectionDialog();
       return;
     }
     if (isSubmittingApproval) return;
@@ -1056,26 +1173,42 @@ const SubmissionReviewActions: React.FunctionComponent<IStatusContentProps> = (
   };
 
   const handleRejectDialogClose = () => {
+    // Invalidate any in-flight attempt synchronously so a late result cannot touch
+    // this dialog or a later one.
+    activeAttemptIdRef.current += 1;
+    dialogGenerationRef.current += 1;
+    dialogOpenRef.current = false;
+    submissionStartedRef.current = false;
     setShowRejectionDialog(false);
-    setRejectionFeedback('');
+    setFeedback('');
     setIsSubmittingRejection(false);
     setRejectionError(null);
+    resetRefinementState();
   };
 
   const handleRejectSubmission = async () => {
+    // Capture the exact visible text and invalidate refinement before the first await so a
+    // fast AI result cannot race the PATCH or alter the submitted rejection reason.
+    const feedbackToSubmit = rejectionFeedbackRef.current;
+    submissionStartedRef.current = true;
+    activeAttemptIdRef.current += 1;
+    setIsRefiningFeedback(false);
     setIsSubmittingRejection(true);
     setRejectionError(null);
     try {
-      await updateJobStatus(SyncStatus.SubmissionRejected, SyncJobChangeReason.SubmissionRejected, rejectionFeedback, { refetch: false });
+      await updateJobStatus(SyncStatus.SubmissionRejected, SyncJobChangeReason.SubmissionRejected, feedbackToSubmit, { refetch: false });
       const targetJobId = jobId ?? job.syncJobId;
       if (targetJobId) {
         dispatch(removeJobFromList(targetJobId));
       }
       resolveReview();
+      dialogOpenRef.current = false;
       setShowRejectionDialog(false);
-      setRejectionFeedback('');
+      setFeedback('');
       setIsSubmittingRejection(false);
+      resetRefinementState();
     } catch (error) {
+      submissionStartedRef.current = false;
       setIsSubmittingRejection(false);
       setRejectionError(strings.JobDetails.Errors.rejectionError);
     }
@@ -1128,15 +1261,53 @@ const SubmissionReviewActions: React.FunctionComponent<IStatusContentProps> = (
           multiline
           rows={4}
           value={rejectionFeedback}
-          onChange={(_, newValue) => setRejectionFeedback(newValue || '')}
+          onChange={(_, newValue) => handleFeedbackChange(newValue || '')}
           placeholder={strings.JobDetails.labels.rejectionReasonPlaceholder}
           required
           disabled={isSubmittingRejection}
+          description={isRefinementEnabled && !rejectionFeedback.trim() ? strings.JobDetails.labels.refineFeedbackEmptyGuidance : undefined}
         />
+        {isRefinementEnabled && (
+          <Stack horizontal tokens={{ childrenGap: 8 }} verticalAlign="center" style={{ marginTop: 8 }}>
+            <DefaultButton
+              onClick={handleRefineFeedback}
+              disabled={!rejectionFeedback.trim() || isRefiningFeedback || isSubmittingRejection}
+              ariaLabel={strings.JobDetails.labels.refineFeedback}
+              styles={{ root: { borderRadius: 4 } }}
+            >
+              {isRefiningFeedback ? (
+                <Spinner size={SpinnerSize.xSmall} style={{ marginRight: 8 }} />
+              ) : (
+                <SparkleIcon animated={false} className={classNames.refineFeedbackIcon} />
+              )}
+              {isRefiningFeedback ? strings.JobDetails.labels.refiningFeedback : strings.JobDetails.labels.refineFeedback}
+            </DefaultButton>
+            {preRefinementFeedback !== null && (
+              <DefaultButton
+                onClick={handleRestoreFeedback}
+                disabled={isSubmittingRejection}
+                text={strings.JobDetails.labels.restoreFeedback}
+                styles={{ root: { borderRadius: 4 } }}
+              />
+            )}
+          </Stack>
+        )}
+        {isRefinementEnabled && refinementMessage && (
+          <MessageBar
+            messageBarType={refinementMessage.kind === 'error' ? MessageBarType.error : MessageBarType.info}
+            isMultiline={false}
+            onDismiss={() => setRefinementMessage(null)}
+            dismissButtonAriaLabel={strings.close}
+            styles={{ root: { marginTop: 8 } }}
+          >
+            {refinementMessage.text}
+          </MessageBar>
+        )}
         <DialogFooter>
           <PrimaryButton
             onClick={handleRejectSubmission}
             disabled={!rejectionFeedback.trim() || isSubmittingRejection}
+            styles={{ root: { borderRadius: 4 } }}
           >
             {isSubmittingRejection && (
               <Spinner size={SpinnerSize.xSmall} style={{ marginRight: 8 }} />

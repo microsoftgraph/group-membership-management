@@ -21,7 +21,8 @@ export const enum SettingKey {
     IsAISearchForUserEnabled = 16,
     IsAIRunExplanationEnabled = 17,
     RunHistoryOpenViewingAndUnifiedTab = 19,
-    IsPerPartAutoApprovalEnabled = 20
+    IsPerPartAutoApprovalEnabled = 20,
+    IsAIRejectionFeedbackRefinementEnabled = 21
 }
 
 export const SettingKeyMap: Record<SettingKey, string> = {
@@ -44,5 +45,6 @@ export const SettingKeyMap: Record<SettingKey, string> = {
     [SettingKey.IsAISearchForUserEnabled]: 'IsAISearchForUserEnabled',
     [SettingKey.IsAIRunExplanationEnabled]: 'IsAIRunExplanationEnabled',
     [SettingKey.RunHistoryOpenViewingAndUnifiedTab]: 'RunHistoryOpenViewingAndUnifiedTab',
-    [SettingKey.IsPerPartAutoApprovalEnabled]: 'IsPerPartAutoApprovalEnabled'
+    [SettingKey.IsPerPartAutoApprovalEnabled]: 'IsPerPartAutoApprovalEnabled',
+    [SettingKey.IsAIRejectionFeedbackRefinementEnabled]: 'IsAIRejectionFeedbackRefinementEnabled'
 };

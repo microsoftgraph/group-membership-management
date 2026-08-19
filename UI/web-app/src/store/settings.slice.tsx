@@ -276,6 +276,13 @@ export const selectIsAIRunExplanationEnabled = (state: RootState) => {
   return setting ? setting.settingValue === 'true' : undefined;
 }
 
+export const selectIsAIRejectionFeedbackRefinementEnabled = (state: RootState) => {
+  const settingsArray = state.settings.settings;
+  if (!settingsArray) return false;
+  const setting = settingsArray.find((s) => s.settingKey === SettingKey.IsAIRejectionFeedbackRefinementEnabled);
+  return setting?.settingValue === 'true';
+}
+
 export const selectIsRunHistoryTabEnabled = (state: RootState) => {
   const settingsArray = state.settings.settings;
   if (!settingsArray) return false;

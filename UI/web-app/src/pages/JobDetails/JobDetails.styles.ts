@@ -198,6 +198,11 @@ export const getStyles = (props: IJobDetailsStyleProps): IJobDetailsStyles => {
             gap: 10,
             marginTop: 16
         },
+        refineFeedbackIcon: {
+            marginRight: 8,
+            color: theme.palette.themePrimary,
+            flexShrink: 0
+        },
         membershipStatusPendingLabel: {
             display: "flex",
             gap: 10,

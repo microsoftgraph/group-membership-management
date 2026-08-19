@@ -345,6 +345,7 @@ const UserResourcesSettings: React.FunctionComponent<UserResourcesSettingsProps>
     [SettingKey.IsAICopilotEnabled]: true,
     [SettingKey.IsAISearchForUserEnabled]: true,
     [SettingKey.IsAIRunExplanationEnabled]: true,
+    [SettingKey.IsAIRejectionFeedbackRefinementEnabled]: true,
     [SettingKey.RunHistoryOpenViewingAndUnifiedTab]: true,
     [SettingKey.CopilotTemperature]: true,
     [SettingKey.CopilotTopP]: true,
@@ -871,6 +872,13 @@ const AISettings: React.FunctionComponent<AISettingsProps> = (props: AISettingsP
           description={strings.AISettings.labels.isAIRunExplanationEnabledDescription}
           onGeneralSettingChange={handleSettingChange(SettingKey.IsAIRunExplanationEnabled)}
           generalSettingValue={settings[SettingKey.IsAIRunExplanationEnabled]}
+        />
+        <GeneralSetting
+          id={SettingKeyMap[SettingKey.IsAIRejectionFeedbackRefinementEnabled]}
+          title={strings.AISettings.labels.isAIRejectionFeedbackRefinementEnabledTitle}
+          description={strings.AISettings.labels.isAIRejectionFeedbackRefinementEnabledDescription}
+          onGeneralSettingChange={handleSettingChange(SettingKey.IsAIRejectionFeedbackRefinementEnabled)}
+          generalSettingValue={settings[SettingKey.IsAIRejectionFeedbackRefinementEnabled]}
         />
         </div>
       </SettingsSection>

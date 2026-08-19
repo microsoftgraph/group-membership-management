@@ -317,6 +317,8 @@ export type IStrings = {
         isAISearchForUserEnabledDescription: string;
         isAIRunExplanationEnabledTitle: string;
         isAIRunExplanationEnabledDescription: string;
+        isAIRejectionFeedbackRefinementEnabledTitle: string;
+        isAIRejectionFeedbackRefinementEnabledDescription: string;
         copilotInstructionsPromptTitle: string;
         copilotInstructionsPromptDescription: string;
         copilotInstructionsPromptPlaceholder: string;
@@ -395,6 +397,11 @@ export type IStrings = {
       rejectionReasonPlaceholder: string;
       submitRejection: string;
       submittingRejection: string;
+      refineFeedback: string;
+      refiningFeedback: string;
+      restoreFeedback: string;
+      refineFeedbackEmptyGuidance: string;
+      refineFeedbackStaleEdit: string;
       removeGMM: string;
       removeGMMWarning: string;
       removeGMMConfirmation: string;
@@ -435,6 +442,11 @@ export type IStrings = {
       submitterNotOwner: string;
       reviewerCannotReviewOwnSubmission: string;
       rejectionError: string;
+      refineFeedbackError: string;
+      refineFeedbackTimeout: string;
+      refineFeedbackUnavailable: string;
+      refineFeedbackTooLong: string;
+      refineFeedbackInputTooLong: string;
       syncNowError: string;
       syncNowLimitExceeded: string;
     };
