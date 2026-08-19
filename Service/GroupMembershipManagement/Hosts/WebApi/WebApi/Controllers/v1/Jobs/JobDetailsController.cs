@@ -294,7 +294,10 @@ namespace WebApi.Controllers.v1.Jobs
                 {
                     System.Net.HttpStatusCode.OK => Ok(),
                     System.Net.HttpStatusCode.NotFound => NotFound(),
-                    System.Net.HttpStatusCode.BadRequest => BadRequest(response.ErrorCode),
+                    // Return the full response so the client receives a JSON object exposing
+                    // `errorCode`/`responseData`. Passing the bare string would serialize as a
+                    // top-level JSON string, leaving the client unable to read the error code.
+                    System.Net.HttpStatusCode.BadRequest => BadRequest(response),
                     System.Net.HttpStatusCode.Forbidden => Forbid(),
                     System.Net.HttpStatusCode.PreconditionFailed => Problem(statusCode: (int)System.Net.HttpStatusCode.PreconditionFailed, detail: response.ErrorCode),
                     _ => Problem(statusCode: (int)System.Net.HttpStatusCode.InternalServerError)

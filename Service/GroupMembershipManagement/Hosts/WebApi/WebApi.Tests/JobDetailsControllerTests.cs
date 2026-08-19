@@ -1597,6 +1597,34 @@ namespace Services.Tests
         }
 
         [TestMethod]
+        [DataRow(Roles.JOB_OWNER_WRITER)]
+        public async Task RemoveGMMAsyncWhenGroupIdIsMissingReturnsErrorCodeInBody(string role)
+        {
+            var context = CreateHttpContext(new List<Claim> {
+                    new Claim(ClaimTypes.Name, "user@domain.com"),
+                    new Claim(ClaimTypes.Role, role),
+                    new Claim("http://schemas.microsoft.com/identity/claims/objectidentifier", Guid.NewGuid().ToString())});
+
+            _jobDetailsController = new JobDetailsController(_getJobDetailsHandler, _removeGMMHandler, _patchJobHandler, _getGroupHandler, _getChannelHandler, _getJobChangesHandler, _getSyncJobHistoryHandler, _getMembershipDownloadHandler, _getThresholdNotificationHandlerMock.Object, _syncJobChangeRepository.Object, NullLogger<JobDetailsController>.Instance)
+            {
+                ControllerContext = CreateControllerContext(context)
+            };
+
+            _jobEntity.Group = null;
+
+            var response = await _jobDetailsController.RemoveGMMAsync(_jobEntity.Id);
+            var result = response as BadRequestObjectResult;
+
+            Assert.IsNotNull(result);
+            Assert.AreEqual(400, result.StatusCode);
+
+            var removeGMMResponse = result.Value as RemoveGMMResponse;
+            Assert.IsNotNull(removeGMMResponse);
+            Assert.AreEqual(HttpStatusCode.BadRequest, removeGMMResponse.StatusCode);
+            Assert.AreEqual("GroupIdNotFound", removeGMMResponse.ErrorCode);
+        }
+
+        [TestMethod]
         [DataRow(Roles.JOB_TENANT_WRITER)]
         public async Task RemoveGMMAsyncWhenIsClaimIsNotFound(string role)
         {

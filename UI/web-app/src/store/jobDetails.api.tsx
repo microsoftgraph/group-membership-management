@@ -239,7 +239,9 @@ export const removeGMM = createAsyncThunk<
     const removeGMMResponse: RemoveGMMResponse = {
       ok: false,
       statusCode: response.status,
-      errorCode: errorBody?.detail,
+      // 400 returns a RemoveGMMResponse body (`errorCode`); ProblemDetails responses
+      // such as 412 carry the code in `detail` instead.
+      errorCode: errorBody?.errorCode ?? errorBody?.detail,
       responseData: errorBody?.responseData
     };
 
