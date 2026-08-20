@@ -245,18 +245,6 @@ namespace Services.Notifier
             TrackSentNotificationEvent(notification.TargetOfficeGroupId);
         }
 
-        public async Task<List<Models.ThresholdNotifications.ThresholdNotification>> RetrieveQueuedNotificationsAsync()
-        {
-            var allNotifications = new List<Models.ThresholdNotifications.ThresholdNotification>();
-            var notifications = _notificationRepository.GetQueuedNotificationsAsync();
-            if (notifications == null) { return allNotifications; }
-            await foreach (var notification in notifications)
-            {
-                allNotifications.Add(notification);
-            }
-            return allNotifications;
-        }
-
         public async Task UpdateNotificationStatusAsync(Models.ThresholdNotifications.ThresholdNotification notification, ThresholdNotificationStatus status)
         {
             await _notificationRepository.UpdateNotificationStatusAsync(notification, status);

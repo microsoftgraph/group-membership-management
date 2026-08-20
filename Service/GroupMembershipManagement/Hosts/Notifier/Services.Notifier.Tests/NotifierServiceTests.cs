@@ -278,13 +278,6 @@ namespace Services.Notifier.Tests
         }
 
         [TestMethod]
-        public async Task TestRetrieveQueuedNotifications()
-        {
-            await _notifierService.RetrieveQueuedNotificationsAsync();
-            _notificationRepository.Verify(x => x.GetQueuedNotificationsAsync(), Times.Once());
-        }
-
-        [TestMethod]
         public async Task TestSendEmailAsync()
         {
             SyncJob job = SampleDataHelper.CreateSampleSyncJobs(1, GroupMembership).First();

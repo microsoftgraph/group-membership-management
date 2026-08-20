@@ -85,22 +85,6 @@ namespace Repositories.NotificationsRepository
             await _writeContext.SaveChangesAsync();
         }
 
-        public async IAsyncEnumerable<ModelNotification> GetQueuedNotificationsAsync()
-        {
-            var notifications = new List<ModelNotification>();
-
-            {
-                var query = _readContext.ThresholdNotifications
-                                    .Where(n => n.StatusName == ThresholdNotificationStatus.Queued.ToString() &&
-                                                n.ResolutionName == ThresholdNotificationResolution.Unresolved.ToString());
-
-                await foreach (var notification in query.AsAsyncEnumerable())
-                {
-                    yield return ToModel(notification);
-                }
-            }
-        }
-
         public async Task UpdateNotificationStatusAsync(ModelNotification notification, ThresholdNotificationStatus status)
         {
             var updatedNotification = ToEntity(notification);
