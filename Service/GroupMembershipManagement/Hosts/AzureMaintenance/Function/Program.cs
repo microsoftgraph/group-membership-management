@@ -105,7 +105,6 @@ namespace Hosts.AzureMaintenance
                             services.GetService<IDatabasePurgedSyncJobsRepository>(),
                             services.GetService<IGraphGroupRepository>(),
                             services.GetService<IHandleInactiveJobsConfig>(),
-                            services.GetService<INotificationRepository>(),
                             notificationsQueueRepository,
                             services.GetService<ILogger<AzureMaintenanceService>>(),
                             services.GetService<ISyncJobHistoryRepository>(),

@@ -17,15 +17,12 @@ namespace Hosts.AzureMaintenance
     public class OrchestratorFunction
     {
         private readonly IHandleInactiveJobsConfig _handleInactiveJobsConfig = null;
-        private readonly IThresholdNotificationConfig _thresholdNotificationConfig = null;
         private readonly IAzureMaintenanceService _azureMaintenanceService = null;
 
         public OrchestratorFunction(IHandleInactiveJobsConfig handleInactiveJobsConfig,
-            IThresholdNotificationConfig thresholdNotificationConfig,
             IAzureMaintenanceService azureMaintenanceService)
         {
             _handleInactiveJobsConfig = handleInactiveJobsConfig;
-            _thresholdNotificationConfig = thresholdNotificationConfig;
             _azureMaintenanceService = azureMaintenanceService;
         }
 

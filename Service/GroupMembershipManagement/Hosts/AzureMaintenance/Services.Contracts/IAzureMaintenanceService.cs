@@ -11,7 +11,6 @@ namespace Services.Contracts
         Task<List<PurgedSyncJob>> BackupInactiveJobsAsync(List<SyncJob> syncJobs);
         Task RemoveInactiveJobsAsync(IEnumerable<SyncJob> jobs);
         Task<int> RemoveBackupsAsync();
-        Task ExpireNotificationsAsync(IEnumerable<SyncJob> jobs);
         Task<string> GetGroupNameAsync(Guid groupId);
         Task SendPurgingEmailAsync(PurgedSyncJob job, NotificationMessageType notificationType, Guid originalSyncJobId = default);
         Task SendWarningEmailAsync(SyncJob job, NotificationMessageType notificationType);

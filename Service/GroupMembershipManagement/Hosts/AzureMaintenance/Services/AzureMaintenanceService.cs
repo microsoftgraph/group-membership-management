@@ -7,7 +7,6 @@ using Models;
 using Models.AzureMaintenance;
 using Models.Notifications;
 using Models.ServiceBus;
-using Models.ThresholdNotifications;
 using Repositories.Contracts;
 using Repositories.Contracts.InjectConfig;
 using Services.Contracts;
@@ -34,7 +33,6 @@ namespace Services
         private readonly IDatabasePurgedSyncJobsRepository _purgedSyncJobRepository = null;
         private readonly IGraphGroupRepository _graphGroupRepository = null;
         private readonly IHandleInactiveJobsConfig _handleInactiveJobsConfig = null;
-        private readonly INotificationRepository _notificationRepository = null;
         private readonly IServiceBusQueueRepository _notificationsQueueRepository;
         private readonly ILogger<AzureMaintenanceService> _logger;
         private readonly ISyncJobHistoryRepository _syncJobHistoryRepository;
@@ -48,7 +46,6 @@ namespace Services
             IDatabasePurgedSyncJobsRepository purgedSyncJobRepository,
             IGraphGroupRepository graphGroupRepository,
 			IHandleInactiveJobsConfig handleInactiveJobsConfig,
-            INotificationRepository notificationRepository,
             IServiceBusQueueRepository notificationQueueRepository,
             ILogger<AzureMaintenanceService> logger,
             ISyncJobHistoryRepository syncJobHistoryRepository,
@@ -61,7 +58,6 @@ namespace Services
             _purgedSyncJobRepository = purgedSyncJobRepository ?? throw new ArgumentNullException(nameof(purgedSyncJobRepository));
             _graphGroupRepository = graphGroupRepository ?? throw new ArgumentNullException(nameof(graphGroupRepository));
             _handleInactiveJobsConfig = handleInactiveJobsConfig ?? throw new ArgumentNullException(nameof(handleInactiveJobsConfig));
-			_notificationRepository = notificationRepository ?? throw new ArgumentNullException(nameof(notificationRepository));
             _notificationsQueueRepository = notificationQueueRepository ?? throw new ArgumentNullException(nameof(notificationQueueRepository));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _syncJobHistoryRepository = syncJobHistoryRepository ?? throw new ArgumentNullException(nameof(syncJobHistoryRepository));
@@ -326,20 +322,6 @@ namespace Services
             await _syncJobRepository.DeleteSyncJobsAsync(jobs);
             _logger.JobsDeleted(jobs.Count());
         }
-
-		public async Task ExpireNotificationsAsync(IEnumerable<SyncJob> jobs)
-		{
-            foreach (var job in jobs)
-			{
-                var thresholdNotification = await _notificationRepository.GetThresholdNotificationBySyncJobIdAsync(job.Id);
-				if (thresholdNotification != null)
-				{
-					thresholdNotification.Status = ThresholdNotificationStatus.Expired;
-					thresholdNotification.CardState = ThresholdNotificationCardState.ExpiredCard;
-					await _notificationRepository.SaveNotificationAsync(thresholdNotification);
-				}
-            }
-		}
 
         public async Task<List<SyncJob>> GetJobsApproachingPurgingAsync()
         {

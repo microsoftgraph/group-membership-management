@@ -77,7 +77,6 @@ namespace Services.Tests
             var purgedSyncJobRepository = new Mock<IDatabasePurgedSyncJobsRepository>();
             var graphGroupRepository = new Mock<IGraphGroupRepository>();
             var handleInactiveJobsConfig = new Mock<IHandleInactiveJobsConfig>();
-            var notificationRepository = new Mock<INotificationRepository>();
             var notificationQueueRepository = new Mock<IServiceBusQueueRepository>();
 
             purgedSyncJobRepository.Setup(x => x.InsertPurgedSyncJobsAsync(It.IsAny<IEnumerable<PurgedSyncJob>>())).ReturnsAsync(2);
@@ -88,7 +87,6 @@ namespace Services.Tests
                                                 purgedSyncJobRepository.Object,
                                                 graphGroupRepository.Object,
                                                 handleInactiveJobsConfig.Object,
-                                                notificationRepository.Object,
                                                 notificationQueueRepository.Object,
                                                 NullLogger<AzureMaintenanceService>.Instance, 
                                                 new Mock<ISyncJobHistoryRepository>().Object,
@@ -133,7 +131,6 @@ namespace Services.Tests
             var purgedSyncJobRepository = new Mock<IDatabasePurgedSyncJobsRepository>();
             var graphGroupRepository = new Mock<IGraphGroupRepository>();
             var handleInactiveJobsConfig = new Mock<IHandleInactiveJobsConfig>();
-            var notificationRepository = new Mock<INotificationRepository>();
             var notificationQueueRepository = new Mock<IServiceBusQueueRepository>();
 
             purgedSyncJobRepository.Setup(x => x.GetPurgedSyncJobsAsync(It.IsAny<DateTime>())).ReturnsAsync(tables);
@@ -145,7 +142,6 @@ namespace Services.Tests
                                                 purgedSyncJobRepository.Object,
                                                 graphGroupRepository.Object,
                                                 handleInactiveJobsConfig.Object,
-                                                notificationRepository.Object,
                                                 notificationQueueRepository.Object,
                                                 NullLogger<AzureMaintenanceService>.Instance, new Mock<ISyncJobHistoryRepository>().Object,
                                                 new Mock<ISyncJobChangeRepository>().Object);
@@ -194,7 +190,6 @@ namespace Services.Tests
             var purgedSyncJobRepository = new Mock<IDatabasePurgedSyncJobsRepository>();
             var graphGroupRepository = new Mock<IGraphGroupRepository>();
             var handleInactiveJobsConfig = new Mock<IHandleInactiveJobsConfig>();
-            var notificationRepository = new Mock<INotificationRepository>();
             var notificationQueueRepository = new Mock<IServiceBusQueueRepository>();
 
             var azureMaintenanceService = new AzureMaintenanceService(syncJobRepository.Object,
@@ -203,7 +198,6 @@ namespace Services.Tests
                                                 purgedSyncJobRepository.Object,
                                                 graphGroupRepository.Object,
                                                 handleInactiveJobsConfig.Object,
-                                                notificationRepository.Object,
                                                 notificationQueueRepository.Object,
                                                 NullLogger<AzureMaintenanceService>.Instance, new Mock<ISyncJobHistoryRepository>().Object,
                                                 new Mock<ISyncJobChangeRepository>().Object);
@@ -212,80 +206,6 @@ namespace Services.Tests
             syncJobRepository.Verify(x => x.DeleteSyncJobsAsync(It.IsAny<IEnumerable<SyncJob>>()), Times.Once());
         }
 
-        [TestMethod]
-        public async Task TestExpireNotifications()
-        {
-            var jobs = new List<SyncJob>();
-
-            for (int i = 0; i < 2; i++)
-            {
-                var job = new SyncJob
-                {
-                    Requestor = $"requestor_{i}@email.com",
-                    PartitionKey = DateTime.UtcNow.ToString("MMddyyyy"),
-                    RowKey = Guid.NewGuid().ToString(),
-                    Period = 6,
-                    Query = "[{ \"type\": \"SecurityGroup\", \"sources\": [\"da144736-962b-4879-a304-acd9f5221e78\"]}]",
-                    StartDate = DateTime.UtcNow.AddDays(-1),
-                    Status = SyncStatus.ThresholdExceeded.ToString(),
-                    LastRunTime = DateTime.FromFileTimeUtc(0),
-                    RunId = Guid.NewGuid(),
-                    MembershipType = "GroupMembership"
-                };
-
-                job.Group = new Group
-                {
-                    SyncJobId = job.Id,
-                    GroupId = Guid.NewGuid()
-                };
-                job.TargetOfficeGroupId = job.Group.GroupId;
-
-                jobs.Add(job);
-            }
-
-            var j = GetJobs(jobs);
-
-            var syncJobRepository = new Mock<IDatabaseSyncJobsRepository>();
-            var groupsRepository = new Mock<IDatabaseGroupsRepository>();
-            var channelsRepository = new Mock<IDatabaseChannelsRepository>();
-            var purgedSyncJobRepository = new Mock<IDatabasePurgedSyncJobsRepository>();
-            var graphGroupRepository = new Mock<IGraphGroupRepository>();
-            var handleInactiveJobsConfig = new Mock<IHandleInactiveJobsConfig>();
-            var notificationRepository = new Mock<INotificationRepository>();
-            var notificationQueueRepository = new Mock<IServiceBusQueueRepository>();
-
-            var notification = new ThresholdNotification
-            {
-                ChangePercentageForAdditions = Random.Shared.Next(51, 100),
-                ChangePercentageForRemovals = Random.Shared.Next(51, 100),
-                ChangeQuantityForAdditions = Random.Shared.Next(50, 1000),
-                ChangeQuantityForRemovals = Random.Shared.Next(50, 1000),
-                CreatedTime = DateTime.UtcNow,
-                Resolution = ThresholdNotificationResolution.Unresolved,
-                Id = Guid.NewGuid(),
-                ResolvedBy = string.Empty,
-                ResolvedTime = DateTime.UtcNow,
-                Status = ThresholdNotificationStatus.AwaitingResponse,
-                TargetOfficeGroupId = Guid.NewGuid(),
-                ThresholdPercentageForAdditions = Random.Shared.Next(1, 50),
-                ThresholdPercentageForRemovals = Random.Shared.Next(1, 50),
-                CardState = ThresholdNotificationCardState.DefaultCard
-            };
-            var azureMaintenanceService = new AzureMaintenanceService(syncJobRepository.Object,
-                                    groupsRepository.Object,
-                                    channelsRepository.Object,
-                                    purgedSyncJobRepository.Object,
-                                    graphGroupRepository.Object,
-                                    handleInactiveJobsConfig.Object,
-                                    notificationRepository.Object,
-                                    notificationQueueRepository.Object,
-                                    NullLogger<AzureMaintenanceService>.Instance, new Mock<ISyncJobHistoryRepository>().Object,
-                                                new Mock<ISyncJobChangeRepository>().Object);
-
-            notificationRepository.Setup(x => x.GetThresholdNotificationBySyncJobIdAsync(It.IsAny<Guid>())).Returns(() => Task.FromResult(notification));
-            await azureMaintenanceService.ExpireNotificationsAsync(j);
-            notificationRepository.Verify(x => x.SaveNotificationAsync(It.IsAny<ThresholdNotification>()), Times.Exactly(2));
-        }
 
         [TestMethod]
         public async Task TestGetGroupName()
@@ -296,7 +216,6 @@ namespace Services.Tests
             var purgedSyncJobRepository = new Mock<IDatabasePurgedSyncJobsRepository>();
             var graphGroupRepository = new Mock<IGraphGroupRepository>();
             var handleInactiveJobsConfig = new Mock<IHandleInactiveJobsConfig>();
-            var notificationRepository = new Mock<INotificationRepository>();
             var notificationQueueRepository = new Mock<IServiceBusQueueRepository>();
 
             graphGroupRepository.Setup(x => x.GetGroupNameAsync(It.IsAny<Guid>())).ReturnsAsync(() => "Test Group");
@@ -307,7 +226,6 @@ namespace Services.Tests
                                                 purgedSyncJobRepository.Object,
                                                 graphGroupRepository.Object,
                                                 handleInactiveJobsConfig.Object,
-                                                notificationRepository.Object,
                                                 notificationQueueRepository.Object,
                                                 NullLogger<AzureMaintenanceService>.Instance, new Mock<ISyncJobHistoryRepository>().Object,
                                                 new Mock<ISyncJobChangeRepository>().Object);
@@ -347,7 +265,6 @@ namespace Services.Tests
             var purgedSyncJobRepository = new Mock<IDatabasePurgedSyncJobsRepository>();
             var graphGroupRepository = new Mock<IGraphGroupRepository>();
             var handleInactiveJobsConfig = new Mock<IHandleInactiveJobsConfig>();
-            var notificationRepository = new Mock<INotificationRepository>();
             var notificationQueueRepository = new Mock<IServiceBusQueueRepository>();
 
             var azureMaintenanceService = new AzureMaintenanceService(syncJobRepository.Object,
@@ -356,7 +273,6 @@ namespace Services.Tests
                                                 purgedSyncJobRepository.Object,
                                                 graphGroupRepository.Object,
                                                 handleInactiveJobsConfig.Object,
-                                                notificationRepository.Object,
                                                 notificationQueueRepository.Object,
                                                 NullLogger<AzureMaintenanceService>.Instance, new Mock<ISyncJobHistoryRepository>().Object,
                                                 new Mock<ISyncJobChangeRepository>().Object);
@@ -424,7 +340,6 @@ namespace Services.Tests
             var purgedSyncJobRepository = new Mock<IDatabasePurgedSyncJobsRepository>();
             var graphGroupRepository = new Mock<IGraphGroupRepository>();
             var handleInactiveJobsConfig = new Mock<IHandleInactiveJobsConfig>();
-            var notificationRepository = new Mock<INotificationRepository>();
             var notificationQueueRepository = new Mock<IServiceBusQueueRepository>();
 
             _ = graphGroupRepository.Setup(x => x.GetGroupOwnersAsync(job.Group.GroupId, 0)).ReturnsAsync(users);
@@ -435,7 +350,6 @@ namespace Services.Tests
                                                 purgedSyncJobRepository.Object,
                                                 graphGroupRepository.Object,
                                                 handleInactiveJobsConfig.Object,
-                                                notificationRepository.Object,
                                                 notificationQueueRepository.Object,
                                                 NullLogger<AzureMaintenanceService>.Instance, new Mock<ISyncJobHistoryRepository>().Object,
                                                 new Mock<ISyncJobChangeRepository>().Object);
@@ -527,7 +441,6 @@ namespace Services.Tests
             var purgedSyncJobRepository = new Mock<IDatabasePurgedSyncJobsRepository>();
             var graphGroupRepository = new Mock<IGraphGroupRepository>();
             var handleInactiveJobsConfig = new Mock<IHandleInactiveJobsConfig>();
-            var notificationRepository = new Mock<INotificationRepository>();
             var notificationQueueRepository = new Mock<IServiceBusQueueRepository>();
 
             // Configure the mock to return our test data
@@ -543,7 +456,6 @@ namespace Services.Tests
                                                 purgedSyncJobRepository.Object,
                                                 graphGroupRepository.Object,
                                                 handleInactiveJobsConfig.Object,
-                                                notificationRepository.Object,
                                                 notificationQueueRepository.Object,
                                                 NullLogger<AzureMaintenanceService>.Instance, new Mock<ISyncJobHistoryRepository>().Object,
                                                 new Mock<ISyncJobChangeRepository>().Object);
@@ -567,7 +479,6 @@ namespace Services.Tests
             var purgedSyncJobRepository = new Mock<IDatabasePurgedSyncJobsRepository>();
             var graphGroupRepository = new Mock<IGraphGroupRepository>();
             var handleInactiveJobsConfig = new Mock<IHandleInactiveJobsConfig>();
-            var notificationRepository = new Mock<INotificationRepository>();
             var notificationQueueRepository = new Mock<IServiceBusQueueRepository>();
             var syncJobHistoryRepository = new Mock<ISyncJobHistoryRepository>();
 
@@ -581,7 +492,6 @@ namespace Services.Tests
                                                 purgedSyncJobRepository.Object,
                                                 graphGroupRepository.Object,
                                                 handleInactiveJobsConfig.Object,
-                                                notificationRepository.Object,
                                                 notificationQueueRepository.Object,
                                                 NullLogger<AzureMaintenanceService>.Instance,
                                                 syncJobHistoryRepository.Object,
