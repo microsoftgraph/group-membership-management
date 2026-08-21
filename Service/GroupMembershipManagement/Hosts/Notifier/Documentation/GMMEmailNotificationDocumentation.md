@@ -296,7 +296,7 @@ This email notifies the user that a notification has expired. The time period to
 ## Notification Name ThresholdNotificationFallback
 
 ### Purpose:
-This email is sent as a fallback notification when an Outlook Actionable Message fails to render. It provides users with a warning message about the failure and displays the content of the fallback message, ensuring the recipient is still informed about the threshold notification.
+This email is sent as a plain informational notification when the styled threshold email is not used. It summarizes the threshold violation and links the recipient to the run history in the GMM UI, where the notification can be reviewed and resolved.
 
 ### Email Format:
 - Adaptive Card: No
@@ -306,7 +306,7 @@ This email is sent as a fallback notification when an Outlook Actionable Message
 ![ThresholdNotificationFallback](NotificationImages/ThresholdNotificationFallback.png)
 
 ### Triggered By:
-- **Notifier**: Triggered when a Group Membership Management (GMM) notification using Outlook Actionable Messages fails to render properly. The fallback message ensures the user still receives the content of the notification.
+- **Notifier**: Triggered for a threshold notification when the styled threshold email is not produced. The recipient is still informed of the threshold violation and directed to the GMM UI to take action.
 
 ---
 

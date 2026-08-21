@@ -33,7 +33,6 @@ namespace Services.Notifier
         private readonly IMailConfig _mailConfig;
         private readonly IEmailSenderRecipient _emailSenderAndRecipients;
         private readonly ILocalizationRepository _localizationRepository;
-        private readonly IThresholdNotificationService _thresholdNotificationService;
         private readonly INotificationRepository _notificationRepository;
         private readonly IGraphGroupRepository _graphGroupRepository;
         private readonly TelemetryClient _telemetryClient;
@@ -52,7 +51,6 @@ namespace Services.Notifier
             IMailConfig mailConfig,
             IEmailSenderRecipient emailSenderAndRecipients,
             ILocalizationRepository localizationRepository,
-            IThresholdNotificationService thresholdNotificationService,
             INotificationRepository notificationRepository,
             IGraphGroupRepository graphGroupRepository,
             INotificationTypesRepository notificationTypesRepository,
@@ -70,7 +68,6 @@ namespace Services.Notifier
             _mailConfig = mailConfig ?? throw new ArgumentNullException(nameof(mailConfig));
             _emailSenderAndRecipients = emailSenderAndRecipients ?? throw new ArgumentNullException(nameof(emailSenderAndRecipients));
             _localizationRepository = localizationRepository ?? throw new ArgumentNullException(nameof(localizationRepository));
-            _thresholdNotificationService = thresholdNotificationService ?? throw new ArgumentNullException(nameof(thresholdNotificationService));
             _notificationRepository = notificationRepository ?? throw new ArgumentNullException(nameof(notificationRepository));
             _graphGroupRepository = graphGroupRepository ?? throw new ArgumentNullException(nameof(graphGroupRepository));
             _notificationTypesRepository = notificationTypesRepository ?? throw new ArgumentNullException(nameof(notificationTypesRepository));
@@ -123,8 +120,6 @@ namespace Services.Notifier
             var groupName = await _graphGroupRepository.GetGroupNameAsync(notification.TargetOfficeGroupId);
             var owners = await _graphGroupRepository.GetGroupOwnersAsync(notification.TargetOfficeGroupId);
             var ownerEmails = string.Join(";", owners.Where(x => !string.IsNullOrWhiteSpace(x.Mail)).Select(x => x.Mail));
-
-            var adaptiveCard = await _thresholdNotificationService.CreateNotificationCardAsync(notification);
 
             var cardState = notification.CardState;
 
@@ -179,7 +174,7 @@ namespace Services.Notifier
 
             if (string.IsNullOrEmpty(emailContent))
             {
-                // Legacy OAM adaptive-card wrapper for DefaultCard / ExpiredCard, and a safety net if the styled builder returns null.
+                // Plain informational fallback (no interactive card); owners resolve via the run history deep link.
                 var uiUrlSetting = await _databaseSettingsRepository.GetSettingByKeyAsync(SettingKey.UIUrl);
                 var runHistoryUrl = UiUrlBuilder.BuildJobDetailsUrl(
                     uiUrlSetting?.SettingValue,
@@ -194,20 +189,15 @@ namespace Services.Notifier
                     runHistoryUrl);
 
                 var htmlTemplate = @"<html>
-                <head
+                <head>
                   <meta http-equiv=""Content-Type"" content=""text/html; charset=utf-8"">
-                  <script type=""application/adaptivecard+json"">
-                 {0}
-                  </script>
                 </head>
                 <body>
-                <p style=""color: red;"">Warning: Group Membership Management (GMM) notifications are powered by Outlook Actionable Messages. The following is a fallback message that you will see if the Actionable Message fails to render.</p>
-                <h1>Fallback Message</h1>
-                <pre>{1}</pre>
+                <pre>{0}</pre>
                 </body>
                 </html>";
 
-                emailContent = string.Format(htmlTemplate, adaptiveCard, fallbackHTMLContent);
+                emailContent = string.Format(htmlTemplate, fallbackHTMLContent);
             }
 
             var message = new EmailMessage

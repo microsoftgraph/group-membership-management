@@ -56,7 +56,6 @@ namespace Services.Notifier.Tests
         private Guid _targetOfficeGroupId;
         private TelemetryClient _telemetryClient;
         private Mock<IThresholdConfig> _thresholdConfig;
-        private Mock<IThresholdNotificationService> _thresholdNotificationService;
         private List<AzureADUser> _users;
         private Mock<IServiceBusQueueRepository> _serviceBusQueueRepository;
         private Mock<IDatabaseGroupsRepository> _groupsRepository = null;
@@ -187,7 +186,6 @@ namespace Services.Notifier.Tests
                 mailConfig,
                 _mailAddresses.Object,
                 _localizationRepository,
-                _thresholdNotificationService.Object,
                 _notificationRepository.Object,
                 _graphGroupRepository.Object,
                 _notificationTypesRepository.Object,
@@ -208,7 +206,6 @@ namespace Services.Notifier.Tests
             _mailRepository = new Mock<IMailRepository>();
             _notificationRepository = new Mock<INotificationRepository>();
             _mailAddresses = new Mock<IEmailSenderRecipient>();
-            _thresholdNotificationService = new Mock<IThresholdNotificationService>();
             _users = new List<AzureADUser>();
             _notificationTypesRepository = new Mock<INotificationTypesRepository>();
             _jobNotificationRepository = new Mock<IJobNotificationsRepository>();
@@ -253,7 +250,6 @@ namespace Services.Notifier.Tests
             _groupsRepository.Setup(x => x.GetGroupUsingSyncJobIdAsync(It.IsAny<Guid>())).ReturnsAsync(() => _group);
             _graphGroupRepository.Setup(x => x.GetGroupOwnersAsync(_targetOfficeGroupId, 0)).Returns(() => Task.FromResult(_users));
             _graphGroupRepository.Setup(x => x.GetGroupNameAsync(It.Is<Guid>(id => id == _targetOfficeGroupId))).ReturnsAsync($"Test Group with id {_targetOfficeGroupId}");
-            _thresholdNotificationService.Setup(x => x.CreateNotificationCardAsync(It.IsAny<ThresholdNotification>())).ReturnsAsync(_notification.Id.ToString());
 
             var options = Options.Create(new LocalizationOptions { ResourcesPath = "Resources" });
             var factory = new ResourceManagerStringLocalizerFactory(options, NullLoggerFactory.Instance);
@@ -439,7 +435,7 @@ namespace Services.Notifier.Tests
         }
 
         [TestMethod]
-        public async Task SendThresholdEmail_DisabledCard_UsesOamCard_WhenRunHistoryFlagDisabled()
+        public async Task SendThresholdEmail_DisabledCard_UsesPlainFallback_WhenRunHistoryFlagDisabled()
         {
             EmailMessage capturedMessage = null;
             _mailRepository.Setup(x => x.SendMailAsync(It.IsAny<EmailMessage>(), null))
@@ -455,7 +451,9 @@ namespace Services.Notifier.Tests
 
             _mailRepository.Verify(x => x.BuildStyledFallbackEmailHtmlAsync(It.IsAny<EmailMessage>(), null), Times.Never());
             Assert.IsNotNull(capturedMessage);
-            StringAssert.Contains(capturedMessage.Content, "Outlook Actionable Messages");
+            StringAssert.Contains(capturedMessage.Content, "View in GMM UI");
+            Assert.IsFalse(capturedMessage.Content.Contains("adaptivecard+json"), "Fallback must not embed an Outlook Actionable Message card.");
+            Assert.IsFalse(capturedMessage.Content.Contains("Outlook Actionable Messages"), "Fallback must not reference Outlook Actionable Messages.");
         }
 
         [TestMethod]
@@ -626,7 +624,6 @@ namespace Services.Notifier.Tests
                                     mailConfig,
                                     _mailAddresses.Object,
                                     _localizationRepository,
-                                    _thresholdNotificationService.Object,
                                     _notificationRepository.Object,
                                     _graphGroupRepository.Object,
                                     _notificationTypesRepository.Object,
