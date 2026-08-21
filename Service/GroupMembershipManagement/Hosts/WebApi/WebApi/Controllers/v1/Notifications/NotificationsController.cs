@@ -26,12 +26,18 @@ namespace WebApi.Controllers.v1.Notifications
 
         [Route("{id}/resolve")]
         [HttpPost()]
-        public async Task<ActionResult<string>> ResolveNotificationAsync(Guid id, [FromBody] ResolveNotification model)
+        public async Task<ActionResult> ResolveNotificationAsync(Guid id, [FromBody] ResolveNotification model)
         {
             var userIdentification = GetUserEmailOrObjectId();
             var response = await _resolveNotificationHandler.ExecuteAsync(new ResolveNotificationRequest(id, userIdentification, model.Resolution));
-            Response.Headers["card-update-in-body"] = "true";
-            return Content(response.CardJson, "application/json");
+
+            return response.StatusCode switch
+            {
+                System.Net.HttpStatusCode.OK => NoContent(),
+                System.Net.HttpStatusCode.NotFound => NotFound(),
+                System.Net.HttpStatusCode.Forbidden => Forbid(),
+                _ => Problem(statusCode: (int)System.Net.HttpStatusCode.InternalServerError)
+            };
         }
 
         private string GetUserEmailOrObjectId()

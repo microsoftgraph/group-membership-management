@@ -9,9 +9,9 @@ using Models.SyncJobChange;
 using Models.ThresholdNotifications;
 using Repositories.Contracts;
 using Services.Contracts;
-using Services.Contracts.Notifications;
 using Services.Messages.Requests;
 using Services.Messages.Responses;
+using System.Net;
 
 namespace Services
 {
@@ -22,7 +22,6 @@ namespace Services
         private readonly IDatabaseSyncJobsRepository _syncJobRepository;
         private readonly ISyncJobChangeRepository _syncJobChangeRepository;
         private readonly IGraphGroupRepository _graphGroupRepository;
-        private readonly IThresholdNotificationService _thresholdNotificationService;
         private readonly TelemetryClient _telemetryClient;
         private readonly IGMMEmailReceivers _gmmEmailReceivers;
 
@@ -32,7 +31,6 @@ namespace Services
                               ISyncJobChangeRepository syncJobChangeRepository,
                               IGraphGroupRepository graphGroupRepository,
                               TelemetryClient telemetryClient,
-                              IThresholdNotificationService thresholdNotificationService,
                               IGMMEmailReceivers gmmEmailReceivers) : base(logger)
         {
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
@@ -40,7 +38,6 @@ namespace Services
             _syncJobRepository = syncJobRepository ?? throw new ArgumentNullException(nameof(syncJobRepository));
             _syncJobChangeRepository = syncJobChangeRepository ?? throw new ArgumentNullException(nameof(syncJobChangeRepository));
             _graphGroupRepository = graphGroupRepository ?? throw new ArgumentNullException(nameof(graphGroupRepository));
-            _thresholdNotificationService = thresholdNotificationService ?? throw new ArgumentNullException(nameof(thresholdNotificationService));
             _telemetryClient = telemetryClient ?? throw new ArgumentNullException(nameof(telemetryClient));
             _gmmEmailReceivers = gmmEmailReceivers ?? throw new ArgumentNullException(nameof(gmmEmailReceivers));
         }
@@ -53,7 +50,7 @@ namespace Services
             _logger.ResolveNotificationRequestReceived(request.ThresholdNotificationId, thresholdNotification?.TargetOfficeGroupId);
             if (thresholdNotification == null)
             {
-                response.CardJson = _thresholdNotificationService.CreateNotFoundNotificationCard(request.ThresholdNotificationId);
+                response.StatusCode = HttpStatusCode.NotFound;
                 return response;
             }
 
@@ -67,8 +64,7 @@ namespace Services
 
                 if (!isInAuthorizedGroup)
                 {
-                    // Unauthorized
-                    response.CardJson = await _thresholdNotificationService.CreateUnauthorizedNotificationCardAsync(thresholdNotification);
+                    response.StatusCode = HttpStatusCode.Forbidden;
                     return response;
                 }
             }
@@ -110,7 +106,7 @@ namespace Services
             var timeElapsedForResponse = ((thresholdNotification.ResolvedTime - thresholdNotification.CreatedTime).TotalSeconds).ToString();
             TrackNotificationResponseEvent(thresholdNotification.Id, timeElapsedForResponse);
 
-            response.CardJson = await _thresholdNotificationService.CreateResolvedNotificationCardAsync(thresholdNotification);
+            response.StatusCode = HttpStatusCode.OK;
             return response;
         }
 

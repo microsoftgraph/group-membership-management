@@ -4,18 +4,13 @@
 using DIConcreteTypes;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Extensions.Localization;
 using Microsoft.Extensions.Logging.Abstractions;
-using Microsoft.Extensions.Options;
 using Models;
 using Models.SyncJobChange;
 using Models.ThresholdNotifications;
 using Moq;
 using Repositories.Contracts;
 using Repositories.Contracts.InjectConfig;
-using Repositories.Localization;
-using Services.Contracts.Notifications;
-using Services.Notifications;
 using Services.WebApi;
 using System.Security.Claims;
 using WebApi.Controllers.v1.Notifications;
@@ -35,11 +30,8 @@ namespace Services.Tests
         private int _notificationCount = 10;
         private Guid _nonExistantNotificationId = Guid.Empty;
         private string _userUPN = null!;
-        private string _hostname = null!;
-        private Guid _providerId = Guid.Empty;
         private ThresholdNotification _thresholdNotification = null!;
         private Guid _groupId = Guid.Empty;
-        private string _groupName = null!;
         private List<AzureADGroup> _groups = null!;
         private Dictionary<Guid, string> _groupNames = null!;
         private List<string> _groupTypes = null!;
@@ -47,11 +39,7 @@ namespace Services.Tests
         private Mock<INotificationRepository> _notificationRepository = null!;
         private Mock<IDatabaseSyncJobsRepository> _syncJobRepository = null!;
         private Mock<ISyncJobChangeRepository> _syncJobChangeRepository = null!;
-        private ILocalizationRepository _localizationRepository = null!;
-        private IThresholdNotificationService _thresholdNotificationService = null!;
         private IGMMEmailReceivers _gmmEmailReceivers = null!;
-        private IHandleInactiveJobsConfig _handleInactiveJobsConfig = null!;
-        private ThresholdNotificationServiceConfig _thresholdNotificationServiceConfig = null!;
         private ResolveNotificationHandler _resolveNotificationsHandler = null!;
         private NotificationsController _notificationsController = null!;
         private List<ThresholdNotification> _thresholdNotifications = null!;
@@ -61,8 +49,6 @@ namespace Services.Tests
         [TestInitialize]
         public void Initialize()
         {
-            _hostname = "api.test.gmm.microsoft.com";
-            _providerId = Guid.NewGuid();
             _userUPN = "testuser@contoso.net";
             _nonExistantNotificationId = Guid.Empty;
 
@@ -71,11 +57,6 @@ namespace Services.Tests
             {
                 Resolution = "Paused"
             };
-
-            var options = Options.Create(new LocalizationOptions { ResourcesPath = "Resources" });
-            var factory = new ResourceManagerStringLocalizerFactory(options, NullLoggerFactory.Instance);
-            var localizer = new StringLocalizer<LocalizationRepository>(factory);
-            _localizationRepository = new LocalizationRepository(localizer);
 
             _graphGroupRepository = new Mock<IGraphGroupRepository>();
             _notificationRepository = new Mock<INotificationRepository>();
@@ -160,21 +141,7 @@ namespace Services.Tests
             // Items for testing
             _thresholdNotification = _thresholdNotifications[Random.Shared.Next(0, _notificationCount)];
             _groupId = _thresholdNotification.TargetOfficeGroupId;
-            _groupName = _groupNames[_groupId];
 
-            _thresholdNotificationServiceConfig = new ThresholdNotificationServiceConfig
-            {
-                ApiHostname = _hostname,
-                ActionableEmailProviderId = _providerId
-            };
-
-            _handleInactiveJobsConfig = new HandleInactiveJobsConfig
-            {
-                HandleInactiveJobsEnabled = true,
-                NumberOfDaysBeforeDeletion = 30
-            };
-
-            _thresholdNotificationService = new ThresholdNotificationService(Options.Create(_thresholdNotificationServiceConfig), _graphGroupRepository.Object, _localizationRepository, _handleInactiveJobsConfig);
             _gmmEmailReceivers = new GMMEmailReceivers(Guid.NewGuid());
 
             _resolveNotificationsHandler = new ResolveNotificationHandler(NullLogger<ResolveNotificationHandler>.Instance,
@@ -183,7 +150,6 @@ namespace Services.Tests
                 _syncJobChangeRepository.Object,
                 _graphGroupRepository.Object,
                 _telemetryClient,
-                _thresholdNotificationService,
                 _gmmEmailReceivers);
 
             var claims = new List<Claim>
@@ -202,14 +168,10 @@ namespace Services.Tests
         {
             _resolveNotificationModel.Resolution = $"{ThresholdNotificationResolution.IgnoreOnce}";
             var response = await _notificationsController.ResolveNotificationAsync(_thresholdNotification.Id, _resolveNotificationModel);
-            var result = response.Result as ContentResult;
 
             _notificationRepository.Verify(x => x.SaveNotificationAsync(_thresholdNotification), Times.Once);
 
-            Assert.IsNotNull(response);
-            Assert.IsNotNull(result?.Content);
-            Assert.AreEqual("application/json", result.ContentType);
-            ValidateResolvedCard(result.Content);
+            Assert.IsInstanceOfType(response, typeof(NoContentResult));
         }
 
         /// <summary>
@@ -220,14 +182,10 @@ namespace Services.Tests
         {
             _resolveNotificationModel.Resolution = $"{ThresholdNotificationResolution.Paused}";
             var response = await _notificationsController.ResolveNotificationAsync(_thresholdNotification.Id, _resolveNotificationModel);
-            var result = response.Result as ContentResult;
 
             _notificationRepository.Verify(x => x.SaveNotificationAsync(_thresholdNotification), Times.Once);
 
-            Assert.IsNotNull(response);
-            Assert.IsNotNull(result?.Content);
-            Assert.AreEqual("application/json", result.ContentType);
-            ValidateResolvedCard(result.Content);
+            Assert.IsInstanceOfType(response, typeof(NoContentResult));
         }
 
         /// <summary>
@@ -237,14 +195,10 @@ namespace Services.Tests
         public async Task ResolveNotification_HandleNotFoundTestAsync()
         {
             var response = await _notificationsController.ResolveNotificationAsync(_nonExistantNotificationId, _resolveNotificationModel);
-            var result = response.Result as ContentResult;
 
             _notificationRepository.Verify(x => x.SaveNotificationAsync(_thresholdNotification), Times.Never);
 
-            Assert.IsNotNull(response);
-            Assert.IsNotNull(result?.Content);
-            Assert.AreEqual("application/json", result.ContentType);
-            ValidateNotFoundCard(result.Content);
+            Assert.IsInstanceOfType(response, typeof(NotFoundResult));
         }
 
         /// <summary>
@@ -260,14 +214,10 @@ namespace Services.Tests
             _notificationsController.ControllerContext = CreateControllerContext(claims, "mockBearerToken");
 
             var response = await _notificationsController.ResolveNotificationAsync(_thresholdNotification.Id, _resolveNotificationModel);
-            var result = response.Result as ContentResult;
 
             _notificationRepository.Verify(x => x.SaveNotificationAsync(_thresholdNotification), Times.Never);
 
-            Assert.IsNotNull(response);
-            Assert.IsNotNull(result?.Content);
-            Assert.AreEqual("application/json", result.ContentType);
-            ValidateUnauthorizedCard(result.Content);
+            Assert.IsInstanceOfType(response, typeof(ForbidResult));
         }
 
         /// <summary>
@@ -283,14 +233,10 @@ namespace Services.Tests
             _thresholdNotification.ResolvedTime = resolvedTime;
 
             var response = await _notificationsController.ResolveNotificationAsync(_thresholdNotification.Id, _resolveNotificationModel);
-            var result = response.Result as ContentResult;
 
             _notificationRepository.Verify(x => x.SaveNotificationAsync(_thresholdNotification), Times.Never);
 
-            Assert.IsNotNull(response);
-            Assert.IsNotNull(result?.Content);
-            Assert.AreEqual("application/json", result.ContentType);
-            ValidateResolvedCard(result.Content);
+            Assert.IsInstanceOfType(response, typeof(NoContentResult));
         }
 
         /// <summary>
@@ -312,30 +258,6 @@ namespace Services.Tests
             Assert.AreEqual(SyncJobChangeSource.WebApp, savedChange.ChangeSource);
             Assert.AreEqual(_userUPN, savedChange.ChangedByDisplayName);
             Assert.AreEqual(_thresholdNotification.SyncJobId, savedChange.SyncJobId);
-        }
-
-        private void ValidateResolvedCard(string cardJson)
-        {
-            var resolutionString = _localizationRepository.TranslateSetting(_thresholdNotification.Resolution);
-            Assert.IsTrue(cardJson.Contains($"Notification Resolved"));
-            Assert.IsTrue(cardJson.Contains($"This notification was resolved by **{_userUPN}** on **{_thresholdNotification.ResolvedTime:U}** UTC."));
-            Assert.IsTrue(cardJson.Contains($"Action taken: **{resolutionString}**."));
-            Assert.IsTrue(cardJson.Contains($"{_thresholdNotification.Id}"));
-            Assert.IsTrue(cardJson.Contains($"\"originator\":\"{_providerId}\""));
-        }
-
-        private void ValidateUnauthorizedCard(string cardJson)
-        {
-            Assert.IsTrue(cardJson.Contains($"Error: You are no longer authorized to view notifications for **{_groupName}**"));
-            Assert.IsTrue(cardJson.Contains($"{_thresholdNotification.Id}"));
-            Assert.IsTrue(cardJson.Contains($"\"originator\":\"{_providerId}\""));
-        }
-
-        private void ValidateNotFoundCard(string cardJson)
-        {
-            Assert.IsTrue(cardJson.Contains("Notification Not Found"));
-            Assert.IsTrue(cardJson.Contains($"{_nonExistantNotificationId}"));
-            Assert.IsTrue(cardJson.Contains($"\"originator\":\"{_providerId}\""));
         }
 
         private ControllerContext CreateControllerContext(List<Claim> claims, string mockBearerToken)
