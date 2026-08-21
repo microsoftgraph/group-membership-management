@@ -130,7 +130,6 @@ namespace Services
                 RunId = runId,
                 Status = status.ToString(),
                 UpdatedByFunction = "GraphUpdater",
-                ThresholdViolations = job.ThresholdViolations,
                 UsersAdded = usersAdded,
                 UsersRemoved = usersRemoved,
                 EndTime = status != SyncStatus.InProgress ? currentDate : null,

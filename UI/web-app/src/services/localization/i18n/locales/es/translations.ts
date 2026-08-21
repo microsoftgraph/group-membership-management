@@ -377,7 +377,6 @@ export const strings: IStrings = {
       increaseThreshold: 'Límite de incremento',
       decreaseThreshold: 'Límite de decremento',
       noThresholdSet: 'No se estableció un límite',
-      thresholdViolations: 'Violaciones del límite',
       sourceParts: 'Reglas',
       membershipStatus: 'Estado de la membresía',
       hiddenMembershipWarning: 'Este trabajo incluye orígenes de grupos con membresía oculta.',
@@ -430,8 +429,6 @@ export const strings: IStrings = {
         'Si GMM detecta grandes cambios en la membresía, usted (el propietario del grupo) puede querer revisar estos cambios. Esta configuración permite a GMM suspender las actualizaciones si se supera un umbral que usted define. Este valor (expresado como un porcentaje del tamaño actual del grupo) limita el número de usuarios que pueden ser añadidos al grupo objetivo. Si se supera el número, GMM esperará su aprobación para continuar.',
       decreaseThreshold:
         'Si GMM detecta grandes cambios en la membresía, usted (el propietario del grupo) puede querer revisar estos cambios. Esta configuración permite a GMM suspender las actualizaciones si se supera un umbral que usted define. Este valor (expresado como un porcentaje del tamaño actual del grupo) limita el número de usuarios que pueden ser eliminados del grupo objetivo. Si se supera el número, GMM esperará su aprobación para continuar.',
-      thresholdViolations:
-        'Número de ocasiones en las que se han excedido los límites.',
     },
     MessageBar: {
       dismissButtonAriaLabel: 'Cerrar',
@@ -478,7 +475,6 @@ export const strings: IStrings = {
       usersAddedColumnLabel: 'Agregados',
       usersRemovedColumnLabel: 'Eliminados',
       afterSyncUserCountColumnLabel: 'Después de sincronización',
-      thresholdViolationsColumnLabel: 'Violaciones de Umbral',
       updatedByFunctionColumnLabel: 'Actualizado por Función',
       createdAtColumnLabel: 'Creado en',
       updatedAtColumnLabel: 'Actualizado en',

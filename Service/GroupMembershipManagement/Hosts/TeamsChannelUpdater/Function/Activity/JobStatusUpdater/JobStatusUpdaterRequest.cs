@@ -9,7 +9,6 @@ namespace Hosts.TeamsChannelUpdater
     {
         public Guid JobId { get; set; }
         public SyncStatus Status { get; set; }
-        public int ThresholdViolations { get; set; }
         public SyncJob SyncJob { get; set; }
         public int? UsersAdded { get; set; }
         public int? UsersRemoved { get; set; }

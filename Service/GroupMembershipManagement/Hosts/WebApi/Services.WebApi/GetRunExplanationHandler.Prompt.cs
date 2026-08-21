@@ -411,8 +411,6 @@ namespace Services
             int fullRemovedFromBlob,
             bool isThresholdBlocked,
             bool isInitialRun,
-            int prevThresholdViolations,
-            int thisThresholdViolations,
             string configDiff,
             string hrDiffSummary,
             IReadOnlyDictionary<Guid, string>? groupNames,
@@ -423,12 +421,12 @@ namespace Services
         {
             var endTime = runHistory.EndTime ?? runHistory.StartTime ?? runHistory.UpdatedAt;
             var status = runHistory.Status ?? "Unknown";
-            // Fall back to blob counts when DB columns are NULL — critical for early-violation Idle runs (ThresholdViolations++, UsersAdded/Removed NULL).
+            // Fall back to blob counts when DB columns are NULL — critical for runs where UsersAdded/Removed are NULL.
             var addedCount = runHistory.UsersAdded ?? fullAddedFromBlob;
             var removedCount = runHistory.UsersRemoved ?? fullRemovedFromBlob;
 
             var countsLine = isThresholdBlocked
-                ? $"Proposed users added: {addedCount} | Proposed users removed: {removedCount} (blocked by threshold; ThresholdViolations {prevThresholdViolations} -> {thisThresholdViolations})"
+                ? $"Proposed users added: {addedCount} | Proposed users removed: {removedCount} (blocked by threshold)"
                 : $"Users added: {addedCount} | Users removed: {removedCount}";
 
             var hrSection = string.IsNullOrWhiteSpace(hrDiffSummary)

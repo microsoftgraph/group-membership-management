@@ -376,7 +376,6 @@ export const strings: IStrings = {
       increaseThreshold: 'Increase Threshold',
       decreaseThreshold: 'Decrease Threshold',
       noThresholdSet: 'No threshold configured',
-      thresholdViolations: 'Threshold Violations',
       sourceParts: 'Rules',
       membershipStatus: 'Membership status',
       hiddenMembershipWarning: 'This job includes hidden membership group sources.',
@@ -429,7 +428,6 @@ export const strings: IStrings = {
         'If GMM detects large changes in membership, you (the group owner) may want to review these changes.  This setting allows GMM to suspend updates if a threshold you define is exceeded. This value (expressed as a percentage of the current size of the group) limits the number of users that can be added to the target group.  If the number is exceeded, GMM will wait for your approval to continue.',
       decreaseThreshold:
         'If GMM detects large changes in membership, you (the group owner) may want to review these changes.  This setting allows GMM to suspend updates if a threshold you define is exceeded. This value (expressed as a percentage of the current size of the group) limits the number of users that can be removed from the target group.  If the number is exceeded, GMM will wait for your approval to continue.',
-      thresholdViolations: 'Number of times a threshold was exceeded.',
     },
     MessageBar: {
       dismissButtonAriaLabel: 'Close',
@@ -476,7 +474,6 @@ export const strings: IStrings = {
       usersAddedColumnLabel: 'Added',
       usersRemovedColumnLabel: 'Removed',
       afterSyncUserCountColumnLabel: 'After sync',
-      thresholdViolationsColumnLabel: 'Threshold Violations',
       updatedByFunctionColumnLabel: 'Updated By Function',
       createdAtColumnLabel: 'Created At',
       updatedAtColumnLabel: 'Updated At',

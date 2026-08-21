@@ -188,7 +188,6 @@ namespace Repositories.EntityFramework.Contexts
                 entity.Property(h => h.Status);
                 entity.Property(h => h.UsersAdded);
                 entity.Property(h => h.UsersRemoved);
-                entity.Property(h => h.ThresholdViolations);
                 entity.Property(h => h.BeforeSyncUserCount);
                 entity.Property(h => h.AfterSyncUserCount);
                 entity.Property(h => h.AdfRunId);

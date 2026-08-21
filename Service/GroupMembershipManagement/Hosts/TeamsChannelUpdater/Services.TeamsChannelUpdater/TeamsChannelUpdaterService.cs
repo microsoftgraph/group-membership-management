@@ -112,7 +112,6 @@ namespace Services.TeamsChannelUpdater
                 SyncJobId = job.Id,
                 RunId = runId,
                 Status = status.ToString(),
-                ThresholdViolations = job.ThresholdViolations,
                 UpdatedByFunction = "TeamsChannelUpdater",
                 UsersAdded = usersAdded,
                 UsersRemoved = usersRemoved,
@@ -161,7 +160,6 @@ namespace Services.TeamsChannelUpdater
                 SyncJobId = syncJob.Id,
                 RunId = syncJob.RunId ?? Guid.Empty,
                 Status = SyncStatus.Error.ToString(),
-                ThresholdViolations = syncJob.ThresholdViolations,
                 UpdatedByFunction = "TeamsChannelUpdater",
                 EndTime = now,
                 UpdatedAt = now

@@ -387,7 +387,6 @@ namespace Services.WebApi
                 ThresholdPercentageForRemovals = syncJob.ThresholdPercentageForRemovals,
                 IsDryRunEnabled = syncJob.IsDryRunEnabled,
                 DryRunTimeStamp = syncJob.DryRunTimeStamp,
-                ThresholdViolations = syncJob.ThresholdViolations,
                 ScheduledDate = syncJob.ScheduledDate,
             };
         }
@@ -412,7 +411,6 @@ namespace Services.WebApi
             syncJob.ThresholdPercentageForRemovals = syncJobPatch.ThresholdPercentageForRemovals;
             syncJob.IsDryRunEnabled = syncJobPatch.IsDryRunEnabled;
             syncJob.DryRunTimeStamp = syncJobPatch.DryRunTimeStamp;
-            syncJob.ThresholdViolations = syncJobPatch.ThresholdViolations;
             syncJob.ScheduledDate = syncJobPatch.ScheduledDate;
 
             return syncJob;

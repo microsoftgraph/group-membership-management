@@ -84,7 +84,6 @@ namespace Hosts.NonProdService
                             AllowEmptyDestination = false,
                             ThresholdPercentageForAdditions = 100,
                             ThresholdPercentageForRemovals = 20,
-                            ThresholdViolations = 0,
                             StartDate = DateTime.UtcNow,
                             LastRunTime = SqlDateTime.MinValue.Value.AddDays(1),
                             ScheduledDate = nextJobTime,

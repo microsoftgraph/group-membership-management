@@ -156,14 +156,14 @@ namespace Hosts.TeamsChannelUpdater
                 {
                     await context.CallActivityAsync(nameof(JobStatusUpdaterFunction),
                                         CreateJobStatusUpdaterRequest(groupMembership.SyncJobId,
-                                                                        SyncStatus.TeamsChannelError, 0, syncJob,
+                                                                        SyncStatus.TeamsChannelError, syncJob,
                                                                         membersAddedResponse.SuccessCount, membersRemovedResponse.SuccessCount));
                 }
                 else
                 {
                     await context.CallActivityAsync(nameof(JobStatusUpdaterFunction),
                                         CreateJobStatusUpdaterRequest(groupMembership.SyncJobId,
-                                                                        SyncStatus.Idle, 0, syncJob,
+                                                                        SyncStatus.Idle, syncJob,
                                                                         membersAddedResponse.SuccessCount, membersRemovedResponse.SuccessCount));
                 }
 
@@ -192,7 +192,7 @@ namespace Hosts.TeamsChannelUpdater
 
                 await context.CallActivityAsync(nameof(JobStatusUpdaterFunction),
                                 CreateJobStatusUpdaterRequest(syncJob.Id,
-                                                                SyncStatus.Error, syncJob.ThresholdViolations, syncJob));
+                                                                SyncStatus.Error, syncJob));
                 await context.CallActivityAsync(nameof(TelemetryTrackerFunction), new TelemetryTrackerRequest { JobStatus = SyncStatus.Error, ResultStatus = ResultStatus.Failure, SyncJob = syncJob });
 
                 if (!context.IsReplaying)
@@ -233,14 +233,13 @@ namespace Hosts.TeamsChannelUpdater
             };
         }
 
-        private JobStatusUpdaterRequest CreateJobStatusUpdaterRequest(Guid syncJobId, SyncStatus syncStatus, int thresholdViolations, SyncJob syncJob, int? usersAdded = null, int? usersRemoved = null)
+        private JobStatusUpdaterRequest CreateJobStatusUpdaterRequest(Guid syncJobId, SyncStatus syncStatus, SyncJob syncJob, int? usersAdded = null, int? usersRemoved = null)
         {
             return new JobStatusUpdaterRequest
             {
                 SyncJob = syncJob,
                 JobId = syncJobId,
                 Status = syncStatus,
-                ThresholdViolations = thresholdViolations,
                 UsersAdded = usersAdded,
                 UsersRemoved = usersRemoved
             };

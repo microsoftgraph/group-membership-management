@@ -25,7 +25,6 @@ namespace WebApi.Models.DTOs
         public int ThresholdPercentageForRemovals { get; set; }
         public bool IsDryRunEnabled { get; set; }
         public DateTime DryRunTimeStamp { get; set; }
-        public int ThresholdViolations { get; set; }
         public DateTime ScheduledDate { get; set; }
         public string ChangeReason { get; set; }
         public string BusinessJustification { get; set; }

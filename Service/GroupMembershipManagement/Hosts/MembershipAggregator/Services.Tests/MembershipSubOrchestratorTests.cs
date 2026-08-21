@@ -157,7 +157,6 @@ namespace Services.Tests
                 LastRunTime = DateTime.UtcNow.AddDays(-1),
                 Requestor = "user@domail.com",
                 RunId = Guid.NewGuid(),
-                ThresholdViolations = 0,
                 MembershipType = "GroupMembership",
                 Query = $"[{{\"type\":\"GroupMembership\",\"source\":\"{sourceGroupIdOne}\"}},{{\"type\":\"GroupMembership\",\"source\":\"{sourceGroupIdTwo}\"}}]"
             };
@@ -432,9 +431,7 @@ namespace Services.Tests
         [TestMethod]
         public async Task HitAdditionsThresholdTestAsync()
         {
-            var currentThresholdViolations = 0;
             _numberOfUsersForDestinationPart = 5;
-            _syncJob.ThresholdViolations = currentThresholdViolations;
 
 
             var orchestratorFunction = new MembershipSubOrchestratorFunction(_graphAPIService.Object, _telemetryClient, _multiLaneConfig);
@@ -458,9 +455,7 @@ namespace Services.Tests
         [TestMethod]
         public async Task IgnoreThresholdOnceTestAsync()
         {
-            var currentThresholdViolations = 1;
             _numberOfUsersForDestinationPart = 5;
-            _syncJob.ThresholdViolations = currentThresholdViolations;
             _syncJob.IgnoreThresholdOnce = true;
 
             var orchestratorFunction = new MembershipSubOrchestratorFunction(_graphAPIService.Object, _telemetryClient, _multiLaneConfig);

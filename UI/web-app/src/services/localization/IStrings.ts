@@ -373,7 +373,6 @@ export type IStrings = {
       increaseThreshold: string;
       decreaseThreshold: string;
       noThresholdSet: string;
-      thresholdViolations: string;
       sourceParts: string;
       membershipStatus: string;
       hiddenMembershipWarning: string;
@@ -424,7 +423,6 @@ export type IStrings = {
       requestor: string;
       increaseThreshold: string;
       decreaseThreshold: string;
-      thresholdViolations: string;
     };
     MessageBar: {
       dismissButtonAriaLabel: string;
@@ -471,7 +469,6 @@ export type IStrings = {
       usersAddedColumnLabel: string;
       usersRemovedColumnLabel: string;
       afterSyncUserCountColumnLabel: string;
-      thresholdViolationsColumnLabel: string;
       updatedByFunctionColumnLabel: string;
       createdAtColumnLabel: string;
       updatedAtColumnLabel: string;

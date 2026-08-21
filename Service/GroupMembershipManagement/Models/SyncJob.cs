@@ -132,11 +132,6 @@ namespace Models
             }
         }
 
-        /// <summary>
-        /// Tracks how many threshold violations have occurred
-        /// </summary>
-        [IgnoreLogging]
-        public int ThresholdViolations { get; set; }
         public Group Group { get; set; }
         [IgnoreLogging]
         public Channel Channel { get; set; }

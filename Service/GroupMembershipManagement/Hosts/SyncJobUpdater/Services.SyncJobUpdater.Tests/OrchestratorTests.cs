@@ -109,7 +109,6 @@ namespace Services.Tests
                 Status = SyncStatus.InProgress.ToString(),
                 UsersAdded = message.UsersAddedCount,
                 UsersRemoved = message.UsersRemovedCount,
-                ThresholdViolations = message.ThresholdViolations,
                 UpdatedByFunction = message.UpdatedByFunction
             };
 

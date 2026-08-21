@@ -38,12 +38,6 @@ namespace Hosts.SyncJobUpdater
                 return;
             }
 
-            // Update threshold violations if provided
-            if (message.ThresholdViolations.HasValue)
-            {
-                syncJob.ThresholdViolations = message.ThresholdViolations.Value;
-            }
-
             var isDryRunSync = syncJob.IsDryRunEnabled;
             var currentDate = DateTime.UtcNow;
             if (isDryRunSync)
@@ -74,7 +68,6 @@ namespace Hosts.SyncJobUpdater
                 EndTime = message.JobEndTime,
                 UsersAdded = message.UsersAddedCount,
                 UsersRemoved = message.UsersRemovedCount,
-                ThresholdViolations = message.ThresholdViolations,
                 CreatedAt = DateTime.UtcNow,
                 UpdatedAt = DateTime.UtcNow
             };

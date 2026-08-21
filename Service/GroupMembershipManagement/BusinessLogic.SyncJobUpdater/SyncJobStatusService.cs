@@ -75,7 +75,6 @@ namespace BusinessLogic.SyncJobUpdater
                 existingHistory.Status = history.Status;
                 existingHistory.UsersAdded = history.UsersAdded ?? existingHistory.UsersAdded;
                 existingHistory.UsersRemoved = history.UsersRemoved ?? existingHistory.UsersRemoved;
-                existingHistory.ThresholdViolations = history.ThresholdViolations ?? existingHistory.ThresholdViolations;
                 existingHistory.UpdatedByFunction = !string.IsNullOrEmpty(history.UpdatedByFunction) ? history.UpdatedByFunction : existingHistory.UpdatedByFunction;
                 existingHistory.UpdatedAt = DateTime.UtcNow;
 

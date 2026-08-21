@@ -56,11 +56,6 @@ namespace Models.SyncJobHistory
         public int? UsersRemoved { get; set; }
 
         /// <summary>
-        /// Gets or sets the number of threshold violations
-        /// </summary>
-        public int? ThresholdViolations { get; set; }
-
-        /// <summary>
         /// Gets or sets the user count before the sync operation
         /// </summary>
         public int? BeforeSyncUserCount { get; set; }

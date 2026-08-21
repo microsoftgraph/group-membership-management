@@ -115,7 +115,6 @@ namespace Services.Tests
                 Status = SyncStatus.Idle.ToString(),
                 UsersAdded = 5,
                 UsersRemoved = 2,
-                ThresholdViolations = 1,
                 UpdatedByFunction = "Updater",
             };
 
@@ -129,7 +128,6 @@ namespace Services.Tests
                     history.Status == historyUpdate.Status &&
                     history.UsersAdded == historyUpdate.UsersAdded &&
                     history.UsersRemoved == historyUpdate.UsersRemoved &&
-                    history.ThresholdViolations == historyUpdate.ThresholdViolations &&
                     history.UpdatedByFunction == historyUpdate.UpdatedByFunction &&
                     history.StartTime == newStart &&
                     history.EndTime == newEnd &&

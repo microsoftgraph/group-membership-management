@@ -12,7 +12,6 @@ export interface SyncJobHistory {
   usersAdded: number | null;
   usersRemoved: number | null;
   afterSyncUserCount?: number | null;
-  thresholdViolations: number | null;
   updatedByFunction: string;
   createdAt: string;
   updatedAt: string;

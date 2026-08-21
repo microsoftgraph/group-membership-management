@@ -53,7 +53,6 @@ namespace Services.Tests
                 LastRunTime = DateTime.UtcNow.AddDays(-1),
                 Requestor = "user@domail.com",
                 RunId = Guid.NewGuid(),
-                ThresholdViolations = 0
             };
 
             _group = new Group

@@ -111,7 +111,7 @@ namespace Hosts.GraphUpdater
                 if (groupId.Equals(Guid.Empty))
                 {
                     logger.UnableToGetGroupId(groupMembership.SyncJob.Id);
-                    await context.CallActivityAsync(nameof(JobStatusUpdaterFunction), CreateJobStatusUpdaterRequest(groupMembership.SyncJob, SyncStatus.Error, groupMembership.SyncJob.ThresholdViolations));
+                    await context.CallActivityAsync(nameof(JobStatusUpdaterFunction), CreateJobStatusUpdaterRequest(groupMembership.SyncJob, SyncStatus.Error));
                     await context.CallActivityAsync(nameof(TelemetryTrackerFunction), new TelemetryTrackerRequest { JobStatus = SyncStatus.Error, ResultStatus = ResultStatus.Failure, SyncJob = groupMembership.SyncJob });
 
                     shouldEmitCompletion = true;
@@ -176,7 +176,7 @@ namespace Hosts.GraphUpdater
                 {
                     await context.CallActivityAsync(nameof(JobStatusUpdaterFunction),
                                     CreateJobStatusUpdaterRequest(syncJob,
-                                                                    SyncStatus.DestinationGroupNotFound, syncJob.ThresholdViolations));
+                                                                    SyncStatus.DestinationGroupNotFound));
                     await context.CallActivityAsync(nameof(TelemetryTrackerFunction), new TelemetryTrackerRequest { JobStatus = SyncStatus.DestinationGroupNotFound, ResultStatus = ResultStatus.Success, SyncJob = syncJob });
                     logger.MultiLaneDidNotComplete();
 
@@ -242,7 +242,7 @@ namespace Hosts.GraphUpdater
 
                     await context.CallActivityAsync(nameof(JobStatusUpdaterFunction),
                                         CreateJobStatusUpdaterRequest(syncJob,
-                                                                        SyncStatus.GuestUsersCannotBeAddedToUnifiedGroup, syncJob.ThresholdViolations));
+                                                                        SyncStatus.GuestUsersCannotBeAddedToUnifiedGroup));
 
                     await context.CallActivityAsync(nameof(TelemetryTrackerFunction), new TelemetryTrackerRequest
                     {
@@ -322,7 +322,7 @@ namespace Hosts.GraphUpdater
                     logger.UsersDataInfo(message);
                     await context.CallActivityAsync(nameof(JobStatusUpdaterFunction),
                                         CreateJobStatusUpdaterRequest(syncJob,
-                                                                      syncStatus, 0, jobState.TotalMembersAdded, jobState.TotalMembersRemoved));
+                                                                      syncStatus, jobState.TotalMembersAdded, jobState.TotalMembersRemoved));
                     await context.CallActivityAsync(nameof(TelemetryTrackerFunction),
                                         new TelemetryTrackerRequest { JobStatus = syncStatus, ResultStatus = resultStatus, SyncJob = syncJob });
 
@@ -361,7 +361,7 @@ namespace Hosts.GraphUpdater
 
                     await context.CallActivityAsync(nameof(JobStatusUpdaterFunction),
                                         CreateJobStatusUpdaterRequest(syncJob,
-                                                                      SyncStatus.Error, 0, jobState.TotalMembersAdded, jobState.TotalMembersRemoved));
+                                                                      SyncStatus.Error, jobState.TotalMembersAdded, jobState.TotalMembersRemoved));
                     await context.CallActivityAsync(nameof(TelemetryTrackerFunction),
                                         new TelemetryTrackerRequest { JobStatus = SyncStatus.Error, ResultStatus = ResultStatus.Failure, SyncJob = syncJob });
 
@@ -380,7 +380,7 @@ namespace Hosts.GraphUpdater
             catch (HttpRequestException httpEx)
             {
                 logger.OrchestratorHttpException(httpEx);
-                await context.CallActivityAsync(nameof(JobStatusUpdaterFunction), CreateJobStatusUpdaterRequest(syncJob, SyncStatus.TransientError, syncJob.ThresholdViolations));
+                await context.CallActivityAsync(nameof(JobStatusUpdaterFunction), CreateJobStatusUpdaterRequest(syncJob, SyncStatus.TransientError));
                 throw;
             }
             catch (MsalClientException msalEx)
@@ -388,7 +388,7 @@ namespace Hosts.GraphUpdater
                 if (msalEx.ErrorCode == "MULTIPLE_MATCHING_TOKENS_DETECTED")
                 {
                     logger.OrchestratorMsalException(msalEx);
-                    await context.CallActivityAsync(nameof(JobStatusUpdaterFunction), CreateJobStatusUpdaterRequest(syncJob, SyncStatus.TransientError, syncJob.ThresholdViolations));
+                    await context.CallActivityAsync(nameof(JobStatusUpdaterFunction), CreateJobStatusUpdaterRequest(syncJob, SyncStatus.TransientError));
                 }
                 throw;
             }
@@ -407,7 +407,7 @@ namespace Hosts.GraphUpdater
                 {
                     await context.CallActivityAsync(nameof(JobStatusUpdaterFunction),
                                     CreateJobStatusUpdaterRequest(syncJob,
-                                                                    SyncStatus.Error, syncJob.ThresholdViolations));
+                                                                    SyncStatus.Error));
                     await context.CallActivityAsync(nameof(TelemetryTrackerFunction), new TelemetryTrackerRequest { JobStatus = SyncStatus.Error, ResultStatus = ResultStatus.Failure, SyncJob = syncJob });
                 }
 
@@ -584,13 +584,12 @@ namespace Hosts.GraphUpdater
             _telemetryClient.TrackEvent("UsersNotFoundCount", usersNotFoundEvent);
         }
 
-        private static JobStatusUpdaterRequest CreateJobStatusUpdaterRequest(SyncJob syncJob, SyncStatus syncStatus, int thresholdViolations, int usersAdded = 0, int usersRemoved = 0)
+        private static JobStatusUpdaterRequest CreateJobStatusUpdaterRequest(SyncJob syncJob, SyncStatus syncStatus, int usersAdded = 0, int usersRemoved = 0)
         {
             return new JobStatusUpdaterRequest
             {
                 SyncJob = syncJob,
                 Status = syncStatus,
-                ThresholdViolations = thresholdViolations,
                 UsersAdded = usersAdded,
                 UsersRemoved = usersRemoved
             };

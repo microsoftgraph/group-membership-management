@@ -347,7 +347,6 @@ const buildSyncHistoryItem = (
   usersAdded,
   usersRemoved,
   afterSyncUserCount: 10 + usersAdded - usersRemoved,
-  thresholdViolations: 0,
   updatedByFunction: 'Function',
   createdAt: endTime,
   updatedAt: endTime,
@@ -986,7 +985,6 @@ describe('JobHistoryPanelBase threshold pending counts', () => {
     status: RunHistoryStatus.ThresholdExceeded,
     endTime: null,
     afterSyncUserCount: null,
-    thresholdViolations: 1,
     ...overrides,
   });
 
@@ -1112,7 +1110,6 @@ describe('JobHistoryPanelBase custom ADF run messages', () => {
     usersAdded: 90,
     usersRemoved: 0,
     afterSyncUserCount: 190,
-    thresholdViolations: 1,
     updatedByFunction: 'Function',
     createdAt: '2024-06-01T00:05:00Z',
     updatedAt: '2024-06-01T00:05:00Z',

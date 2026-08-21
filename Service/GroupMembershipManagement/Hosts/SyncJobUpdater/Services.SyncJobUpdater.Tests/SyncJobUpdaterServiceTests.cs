@@ -62,7 +62,6 @@ namespace Services.Tests
                 RunId = runId,
                 NewStatus = SyncStatus.Idle,
                 SyncJob = CloneJob(syncJob),
-                ThresholdViolations = 0,
                 UpdatedByFunction = "TestFunction"
             };
 
@@ -94,7 +93,6 @@ namespace Services.Tests
                 StartTime = DateTime.UtcNow.AddMinutes(-30),
                 UsersAdded = 10,
                 UsersRemoved = 5,
-                ThresholdViolations = 1,
                 UpdatedByFunction = "OriginalFunction"
             };
 
@@ -106,7 +104,7 @@ namespace Services.Tests
                 SyncJob = CloneJob(syncJob),
                 JobEndTime = DateTime.UtcNow,
                 UpdatedByFunction = "NewFunction"
-                // Note: UsersAddedCount, UsersRemovedCount, ThresholdViolations are not provided
+                // Note: UsersAddedCount, UsersRemovedCount are not provided
             };
 
             _mockSyncJobHistoryRepository.Setup(repo => repo.GetByRunIdAsync(runId))
@@ -117,7 +115,6 @@ namespace Services.Tests
             _mockSyncJobHistoryRepository.Verify(repo => repo.UpdateAsync(It.Is<Models.SyncJobHistory.SyncJobHistory>(h => 
                 h.UsersAdded == 10 && // Preserved
                 h.UsersRemoved == 5 && // Preserved
-                h.ThresholdViolations == 1 && // Preserved
                 h.UpdatedByFunction == "NewFunction" && // Updated
                 h.EndTime == message.JobEndTime && // Updated
                 h.Status == "Idle" // Updated
@@ -147,7 +144,6 @@ namespace Services.Tests
                 JobStartTime = DateTime.UtcNow.AddMinutes(-5),
                 UsersAddedCount = 15,
                 UsersRemovedCount = 3,
-                ThresholdViolations = 0,
                 UpdatedByFunction = "TestFunction"
             };
 
@@ -162,7 +158,6 @@ namespace Services.Tests
                 h.Status == "InProgress" &&
                 h.UsersAdded == 15 &&
                 h.UsersRemoved == 3 &&
-                h.ThresholdViolations == 0 &&
                 h.UpdatedByFunction == "TestFunction"
             )), Times.Once);
 

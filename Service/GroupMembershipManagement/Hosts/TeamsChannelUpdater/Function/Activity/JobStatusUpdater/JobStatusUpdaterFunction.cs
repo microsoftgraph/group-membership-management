@@ -35,8 +35,6 @@ namespace Hosts.TeamsChannelUpdater
 
             if (syncJob != null)
             {
-                syncJob.ThresholdViolations = request.ThresholdViolations;
-
                 if (request.Status == SyncStatus.Idle && syncJob.IgnoreThresholdOnce)
                     syncJob.IgnoreThresholdOnce = false;
 

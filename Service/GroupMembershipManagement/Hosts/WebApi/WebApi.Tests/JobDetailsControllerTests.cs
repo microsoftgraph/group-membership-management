@@ -150,7 +150,6 @@ namespace Services.Tests
                 LastSuccessfulStartTime = DateTime.UtcNow.AddHours(-5),
                 StartDate = DateTime.UtcNow.AddMonths(-1),
                 Query = "",
-                ThresholdViolations = 0,
                 ThresholdPercentageForAdditions = 10,
                 ThresholdPercentageForRemovals = 10,
                 Period = 6,
@@ -213,7 +212,6 @@ namespace Services.Tests
                     Status = SyncStatus.Idle.ToString(),
                     UsersAdded = 2,
                     UsersRemoved = 1,
-                    ThresholdViolations = 0,
                     UpdatedByFunction = "GraphUpdater",
                     CreatedAt = DateTime.UtcNow.AddMinutes(-15),
                     UpdatedAt = DateTime.UtcNow

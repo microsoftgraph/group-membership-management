@@ -300,7 +300,6 @@ namespace Services
                 Period = job.Period,
                 ThresholdPercentageForAdditions = job.ThresholdPercentageForAdditions,
                 ThresholdPercentageForRemovals = job.ThresholdPercentageForRemovals,
-                ThresholdViolations = job.ThresholdViolations,
                 Query = job.Query,
                 Requestor = job.Requestor,
                 Status = job.Status,

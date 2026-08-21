@@ -12,7 +12,6 @@ A synchronization job must have the following properties populated:
 - StartDate
 - ThresholdPercentageForAdditions
 - ThresholdPercentageForRemovals
-- ThresholdViolations
 - IsDryRunEnabled
 - DryRunTimeStamp
 
@@ -95,10 +94,6 @@ If the threshold is exceeded GMM is not going to make any changes to the destina
 The email notification will be sent to the recipients defined in the 'SyncDisabledEmailBody' setting located in the prereqs keyvault. Multiple email addresses can be specified separated by semicolon.
 To continue processing the job increase the threshold value or disable the threshold check by setting it to 0 (zero).
 - DataType: int
-
-### ThresholdViolations
-Indicates how many times the threshold has been exceeded.
-It gets reset to 0 once the job syncs successfully.
 
 ### IsDryRunEnabled
 Indicates if the job will run in DryRun (read-only) mode making no changes to the destination group.

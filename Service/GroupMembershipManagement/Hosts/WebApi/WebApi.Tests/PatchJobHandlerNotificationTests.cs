@@ -215,11 +215,10 @@ namespace WebApi.Tests
         }
 
         [TestMethod]
-        public async Task ReviewSubmission_WhenApproved_InitialSync_DoesNotSetThresholdViolationsToNotifyMinusOne()
+        public async Task ReviewSubmission_WhenApproved_InitialSync_SetsJobToIdleWithSingleUpdate()
         {
             // Arrange
             _testSyncJob.LastRunTime = SqlDateTime.MinValue.Value;
-            _testSyncJob.ThresholdViolations = 0;
 
             var patchDocument = new JsonPatchDocument<SyncJobPatch>();
             patchDocument.Replace(x => x.Status, SyncStatus.Idle.ToString());
@@ -245,10 +244,10 @@ namespace WebApi.Tests
                 x => x.UpdateSyncJobsAsync(
                     It.Is<IEnumerable<SyncJob>>(jobs =>
                         jobs.Count() == 1 &&
-                        jobs.First().ThresholdViolations == 0),
+                        jobs.First().Status == SyncStatus.Idle.ToString()),
                     It.IsAny<SyncStatus?>()),
                 Times.Once,
-                "UpdateSyncJobsAsync should not bump ThresholdViolations on approval");
+                "Approval on an initial sync should update the single job to Idle exactly once");
         }
     }
 }

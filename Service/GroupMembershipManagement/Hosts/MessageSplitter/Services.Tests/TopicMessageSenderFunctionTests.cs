@@ -71,7 +71,6 @@ namespace Services.Tests
                         LastRunTime = DateTime.UtcNow.AddDays(-1),
                         Requestor = "user@domail.com",
                         RunId = Guid.NewGuid(),
-                        ThresholdViolations = 0,
                         MembershipType = "GroupMembership",
                         Group = new Group { SyncJobId = Guid.NewGuid(), GroupId = Guid.Parse("00000000-0000-0000-0000-000000000000")}
                     },
@@ -119,7 +118,6 @@ namespace Services.Tests
                         LastRunTime = DateTime.UtcNow.AddDays(-1),
                         Requestor = "user@domail.com",
                         RunId = runId,
-                        ThresholdViolations = 0,
                         MembershipType = "GroupMembership",
                         Group = new Group { SyncJobId = Guid.NewGuid(), GroupId = Guid.Parse("00000000-0000-0000-0000-000000000000")}
                     },

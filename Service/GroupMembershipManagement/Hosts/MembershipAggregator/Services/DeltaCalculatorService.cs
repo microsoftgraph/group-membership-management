@@ -149,7 +149,7 @@ namespace Services
 
                     return deltaResponse;
                 }
-                else if (job.ThresholdViolations > 0)
+                else
                 {
                     await CloseUnresolvedThresholdNotificationAsync(job);
                 }

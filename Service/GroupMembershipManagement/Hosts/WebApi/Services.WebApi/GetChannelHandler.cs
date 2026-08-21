@@ -120,7 +120,6 @@ namespace Services
                 lastSuccessfulStartTime: job.LastSuccessfulStartTime,
                 query: job.Query,
                 requestor: job.Requestor,
-                thresholdViolations: job.ThresholdViolations,
                 thresholdPercentageForAdditions: job.ThresholdPercentageForAdditions,
                 thresholdPercentageForRemovals: job.ThresholdPercentageForRemovals,
                 endpoints: endpoints,

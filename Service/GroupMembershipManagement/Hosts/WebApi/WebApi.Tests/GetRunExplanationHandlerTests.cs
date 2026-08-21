@@ -82,7 +82,6 @@ namespace WebApi.Tests
                     UsersRemoved = 0,
                     BeforeSyncUserCount = 100,
                     AfterSyncUserCount = 100,
-                    ThresholdViolations = 0
                 });
 
             _mockGraphGroupRepository
@@ -178,7 +177,6 @@ namespace WebApi.Tests
                     UpdatedAt = DateTime.UtcNow,
                     UsersAdded = 5,
                     UsersRemoved = 3,
-                    ThresholdViolations = 0
                 });
 
             var response = await _handler.ExecuteAsync(BuildRequest());
@@ -210,7 +208,6 @@ namespace WebApi.Tests
                     UpdatedAt = DateTime.UtcNow,
                     UsersAdded = 5,
                     UsersRemoved = 0,
-                    ThresholdViolations = 0
                 });
 
             _mockSyncJobRepository.Setup(x => x.GetSyncJobAsync(_syncJobId))
@@ -239,7 +236,6 @@ namespace WebApi.Tests
                     UpdatedAt = DateTime.UtcNow,
                     UsersAdded = 0,
                     UsersRemoved = 0,
-                    ThresholdViolations = 0
                 });
 
             var response = await _handler.ExecuteAsync(BuildRequest());
@@ -249,8 +245,49 @@ namespace WebApi.Tests
             _mockOpenAIService.Verify(x => x.GetCompletionAsync(It.IsAny<string>(), It.IsAny<string>()), Times.Once);
         }
 
+        /// <summary>
+        /// FR-005a — after the threshold-violation counter column is dropped, blocked-run detection is
+        /// derived from Status alone. A run persisted as ThresholdExceeded must still be detected
+        /// as blocked and routed to OpenAI (this is the path all post-immediate-disable blocked
+        /// runs take).
+        /// </summary>
         [TestMethod]
-        public async Task ExecuteAsync_ThresholdBlockedByViolationsDelta_CallsOpenAI()
+        public async Task ExecuteAsync_ThresholdExceededStatus_CallsOpenAI()
+        {
+            _mockSyncJobHistoryRepository.Setup(x => x.GetByRunIdAsync(_runId))
+                .ReturnsAsync(new global::Models.SyncJobHistory.SyncJobHistory
+                {
+                    SyncJobId = _syncJobId,
+                    RunId = _runId,
+                    Status = "ThresholdExceeded",
+                    UpdatedAt = DateTime.UtcNow,
+                    UsersAdded = 0,
+                    UsersRemoved = 0
+                });
+
+            _mockSyncJobHistoryRepository.Setup(x => x.GetBySyncJobIdAsync(_syncJobId, It.IsAny<int>(), It.IsAny<int>()))
+                .ReturnsAsync(new List<global::Models.SyncJobHistory.SyncJobHistory>
+                {
+                    new() { RunId = Guid.NewGuid(), UpdatedAt = DateTime.UtcNow.AddHours(-1) }
+                });
+
+            var response = await _handler.ExecuteAsync(BuildRequest());
+
+            Assert.AreEqual(HttpStatusCode.OK, response.StatusCode);
+            _mockOpenAIService.Verify(x => x.GetCompletionAsync(It.IsAny<string>(), It.IsAny<string>()), Times.Once);
+        }
+
+        /// <summary>
+        /// FR-005a / D-007 — accepted, irreversible narration loss. Pre-immediate-disable early
+        /// violations were persisted as Status=Idle with NULL/zero adds-removes, and the only signal
+        /// they were threshold-blocked was the threshold-violation counter delta. With the counter
+        /// gone, such a row is no longer detectable as blocked and falls through Skip Path A.
+        ///
+        /// This asserts the accepted degradation explicitly so it is a deliberate, tested outcome
+        /// rather than a silent regression.
+        /// </summary>
+        [TestMethod]
+        public async Task ExecuteAsync_PreFeatureIdleRowFormerlyBlockedByCounter_NoLongerDetectedAsBlocked()
         {
             _mockSyncJobHistoryRepository.Setup(x => x.GetByRunIdAsync(_runId))
                 .ReturnsAsync(new global::Models.SyncJobHistory.SyncJobHistory
@@ -261,19 +298,19 @@ namespace WebApi.Tests
                     UpdatedAt = DateTime.UtcNow,
                     UsersAdded = 0,
                     UsersRemoved = 0,
-                    ThresholdViolations = 3
                 });
 
             _mockSyncJobHistoryRepository.Setup(x => x.GetBySyncJobIdAsync(_syncJobId, It.IsAny<int>(), It.IsAny<int>()))
                 .ReturnsAsync(new List<global::Models.SyncJobHistory.SyncJobHistory>
                 {
-                    new() { RunId = Guid.NewGuid(), UpdatedAt = DateTime.UtcNow.AddHours(-1), ThresholdViolations = 1 }
+                    new() { RunId = Guid.NewGuid(), UpdatedAt = DateTime.UtcNow.AddHours(-1) }
                 });
 
             var response = await _handler.ExecuteAsync(BuildRequest());
 
             Assert.AreEqual(HttpStatusCode.OK, response.StatusCode);
-            _mockOpenAIService.Verify(x => x.GetCompletionAsync(It.IsAny<string>(), It.IsAny<string>()), Times.Once);
+            Assert.AreEqual(GetRunExplanationHandler.NoMembershipChanges, response.Explanation);
+            _mockOpenAIService.Verify(x => x.GetCompletionAsync(It.IsAny<string>(), It.IsAny<string>()), Times.Never);
         }
 
         [TestMethod]
@@ -288,7 +325,6 @@ namespace WebApi.Tests
                     UpdatedAt = DateTime.UtcNow,
                     UsersAdded = 0,
                     UsersRemoved = 0,
-                    ThresholdViolations = 0
                 });
 
             var response = await _handler.ExecuteAsync(BuildRequest());
@@ -309,7 +345,6 @@ namespace WebApi.Tests
                     UpdatedAt = DateTime.UtcNow,
                     UsersAdded = 5,
                     UsersRemoved = 0,
-                    ThresholdViolations = 0
                 });
 
             var response = await _handler.ExecuteAsync(BuildRequest());
@@ -330,7 +365,6 @@ namespace WebApi.Tests
                     UpdatedAt = DateTime.UtcNow,
                     UsersAdded = 5,
                     UsersRemoved = 0,
-                    ThresholdViolations = 0
                 });
 
             _mockOpenAIService
@@ -355,7 +389,6 @@ namespace WebApi.Tests
                     UpdatedAt = DateTime.UtcNow,
                     UsersAdded = 5,
                     UsersRemoved = 0,
-                    ThresholdViolations = 0
                 });
 
             _mockOpenAIService
@@ -380,7 +413,6 @@ namespace WebApi.Tests
                     UpdatedAt = DateTime.UtcNow,
                     UsersAdded = 5,
                     UsersRemoved = 0,
-                    ThresholdViolations = 0
                 });
 
             _mockOpenAIService
@@ -950,7 +982,6 @@ namespace WebApi.Tests
                     UsersRemoved = 1,
                     BeforeSyncUserCount = 100,
                     AfterSyncUserCount = 101,
-                    ThresholdViolations = 0
                 });
 
             var blob = new BlobResult { BlobStatus = BlobStatus.Found, Path = "test/path.json" };
@@ -1002,7 +1033,6 @@ namespace WebApi.Tests
                     UsersRemoved = 1,
                     BeforeSyncUserCount = 100,
                     AfterSyncUserCount = 101,
-                    ThresholdViolations = 0
                 });
 
             var blob = new BlobResult { BlobStatus = BlobStatus.Found, Path = "test/path.json" };
@@ -1395,7 +1425,6 @@ namespace WebApi.Tests
                     UsersRemoved = 1,
                     BeforeSyncUserCount = 100,
                     AfterSyncUserCount = 102,
-                    ThresholdViolations = 0
                 });
 
             // Provide a matching blob so ReadMembershipDeltaAsync + ParseMembershipDelta + TryDecompress fire.
@@ -1433,13 +1462,12 @@ namespace WebApi.Tests
                     EndTime = DateTime.UtcNow,
                     UsersAdded = 5,
                     UsersRemoved = 0,
-                    ThresholdViolations = 0
                 });
 
             _mockSyncJobHistoryRepository.Setup(x => x.GetBySyncJobIdAsync(_syncJobId, It.IsAny<int>(), It.IsAny<int>()))
                 .ReturnsAsync(new List<global::Models.SyncJobHistory.SyncJobHistory>
                 {
-                    new() { RunId = Guid.NewGuid(), UpdatedAt = previousRunTime, ThresholdViolations = 0 }
+                    new() { RunId = Guid.NewGuid(), UpdatedAt = previousRunTime }
                 });
 
             _mockSyncJobChangeRepository
@@ -1493,7 +1521,6 @@ namespace WebApi.Tests
                     UpdatedAt = DateTime.UtcNow,
                     UsersAdded = 2,
                     UsersRemoved = 0,
-                    ThresholdViolations = 0
                 });
 
             _mockGraphGroupRepository
@@ -1527,7 +1554,6 @@ namespace WebApi.Tests
                     UpdatedAt = DateTime.UtcNow,
                     UsersAdded = 3,
                     UsersRemoved = 0,
-                    ThresholdViolations = 0,
                     AdfRunId = Guid.NewGuid()
                 });
 
@@ -1565,7 +1591,6 @@ namespace WebApi.Tests
                     UpdatedAt = DateTime.UtcNow,
                     UsersAdded = 9,
                     UsersRemoved = 0,
-                    ThresholdViolations = 0
                 });
 
             _mockSyncJobChangeRepository
@@ -1590,7 +1615,6 @@ namespace WebApi.Tests
                         RunId = Guid.NewGuid(),
                         UpdatedAt = DateTime.UtcNow.AddHours(-1),
                         Status = "ThresholdExceeded",
-                        ThresholdViolations = 0
                     }
                 });
 
@@ -1615,7 +1639,6 @@ namespace WebApi.Tests
                     UpdatedAt = DateTime.UtcNow,
                     UsersAdded = 2,
                     UsersRemoved = 1,
-                    ThresholdViolations = 0,
                     AdfRunId = currentAdfRunId
                 });
 
@@ -1627,7 +1650,6 @@ namespace WebApi.Tests
                         RunId = Guid.NewGuid(),
                         UpdatedAt = DateTime.UtcNow.AddHours(-1),
                         AdfRunId = previousAdfRunId,
-                        ThresholdViolations = 0
                     }
                 });
 
@@ -1845,8 +1867,8 @@ namespace WebApi.Tests
             _mockSyncJobHistoryRepository.Setup(x => x.GetBySyncJobIdAsync(_syncJobId, It.IsAny<int>(), It.IsAny<int>()))
                 .ReturnsAsync(new List<global::Models.SyncJobHistory.SyncJobHistory>
                 {
-                    new() { SyncJobId = _syncJobId, RunId = previousRunId, Status = "Idle", UpdatedAt = now.AddHours(-1), UsersRemoved = 0, ThresholdViolations = 0 },
-                    new() { SyncJobId = _syncJobId, RunId = olderRunId, Status = "Idle", UpdatedAt = now.AddHours(-2), UsersRemoved = 0, ThresholdViolations = 0 }
+                    new() { SyncJobId = _syncJobId, RunId = previousRunId, Status = "Idle", UpdatedAt = now.AddHours(-1), UsersRemoved = 0 },
+                    new() { SyncJobId = _syncJobId, RunId = olderRunId, Status = "Idle", UpdatedAt = now.AddHours(-2), UsersRemoved = 0 }
                 });
 
             // Current + previous source blobs do NOT contain the user -> single-step finds nothing -> no-signal marker.
@@ -1937,7 +1959,7 @@ namespace WebApi.Tests
             _mockSyncJobHistoryRepository.Setup(x => x.GetBySyncJobIdAsync(_syncJobId, It.IsAny<int>(), It.IsAny<int>()))
                 .ReturnsAsync(new List<global::Models.SyncJobHistory.SyncJobHistory>
                 {
-                    new() { SyncJobId = _syncJobId, RunId = previousRunId, Status = "Idle", UpdatedAt = now.AddHours(-1), UsersRemoved = 0, ThresholdViolations = 0, AdfRunId = null }
+                    new() { SyncJobId = _syncJobId, RunId = previousRunId, Status = "Idle", UpdatedAt = now.AddHours(-1), UsersRemoved = 0, AdfRunId = null }
                 });
 
             // The current ADF table exists, proving the hedge was not caused by the current table being pruned.
@@ -1983,7 +2005,7 @@ namespace WebApi.Tests
             SetupCurrentRunAndPreviousRun(currentAdfRunId, previousAdfRunId, previousRunId, usersRemoved: 1);
             SetupAggregatedRemovedUsers(removedUser);
 
-            // Mark THIS run threshold-blocked (ThresholdViolations increased over the previous run) so it takes the blocked path.
+            // Mark THIS run threshold-blocked (Status = ThresholdExceeded) so it takes the blocked path.
             _mockSyncJobHistoryRepository.Setup(x => x.GetByRunIdAsync(_runId))
                 .ReturnsAsync(new global::Models.SyncJobHistory.SyncJobHistory
                 {
@@ -1997,7 +2019,6 @@ namespace WebApi.Tests
                     UsersRemoved = 1,
                     BeforeSyncUserCount = 100,
                     AfterSyncUserCount = 100,
-                    ThresholdViolations = 1,
                     AdfRunId = currentAdfRunId
                 });
 
@@ -2297,7 +2318,6 @@ namespace WebApi.Tests
                     UsersRemoved = 1,
                     BeforeSyncUserCount = 100,
                     AfterSyncUserCount = 100,
-                    ThresholdViolations = 1,
                     AdfRunId = currentAdfRunId
                 });
             // Exact-run snapshot pruned (Phase 3 eligible) and the previous snapshot pruned too (single-step hedges).
@@ -2351,7 +2371,6 @@ namespace WebApi.Tests
                     UsersRemoved = 1,
                     BeforeSyncUserCount = 100,
                     AfterSyncUserCount = 99,
-                    ThresholdViolations = 0,
                     AdfRunId = null
                 });
             // Prior source blobs are gone so the walk-back finds nothing.
@@ -2410,7 +2429,6 @@ namespace WebApi.Tests
                     UsersRemoved = 1,
                     BeforeSyncUserCount = 100,
                     AfterSyncUserCount = 99,
-                    ThresholdViolations = 0,
                     AdfRunId = null
                 });
             _mockBlobStorageRepository.Setup(x => x.FindPartFilesByRunIdAsync(_targetGroupId.ToString(), previousRunId.ToString()))
@@ -2463,7 +2481,6 @@ namespace WebApi.Tests
                     UsersRemoved = 1,
                     BeforeSyncUserCount = 100,
                     AfterSyncUserCount = 100,
-                    ThresholdViolations = 1,
                     AdfRunId = currentAdfRunId
                 });
             // Both ADF snapshots pruned so the single-step SQL diff hedges; part blobs default empty so the walk-back finds nothing; GetMostRecentSucceededRunIdAsync left unset so Phase 3 is skipped.
@@ -2513,7 +2530,6 @@ namespace WebApi.Tests
                     UsersRemoved = 0,
                     BeforeSyncUserCount = 100,
                     AfterSyncUserCount = 101,
-                    ThresholdViolations = 0,
                     AdfRunId = currentAdfRunId
                 });
             // Aggregated blob has one added user; part blobs default empty so no source attributes the add.
@@ -2573,7 +2589,6 @@ namespace WebApi.Tests
                     UsersRemoved = 1,
                     BeforeSyncUserCount = 100,
                     AfterSyncUserCount = 99,
-                    ThresholdViolations = 0,
                     AdfRunId = null
                 });
             _mockOpenAIService.Setup(x => x.GetCompletionAsync(It.IsAny<string>(), It.IsAny<string>()))
@@ -2619,7 +2634,6 @@ namespace WebApi.Tests
                     UsersRemoved = 1,
                     BeforeSyncUserCount = 100,
                     AfterSyncUserCount = 99,
-                    ThresholdViolations = 0,
                     AdfRunId = null
                 });
             _mockOpenAIService.Setup(x => x.GetCompletionAsync(It.IsAny<string>(), It.IsAny<string>()))
@@ -2665,7 +2679,6 @@ namespace WebApi.Tests
                     UsersRemoved = 1,
                     BeforeSyncUserCount = 100,
                     AfterSyncUserCount = 100,
-                    ThresholdViolations = 1,
                     AdfRunId = currentAdfRunId
                 });
             _mockSqlMembershipRepository.Setup(x => x.CheckIfTableExistsAsync(currentTable)).ReturnsAsync(false);
@@ -2713,7 +2726,6 @@ namespace WebApi.Tests
                     UsersRemoved = 0,
                     BeforeSyncUserCount = 100,
                     AfterSyncUserCount = 101,
-                    ThresholdViolations = 0,
                     AdfRunId = currentAdfRunId
                 });
             // Aggregated blob has one added user; part blobs default empty so no source attributes the add.
@@ -2765,7 +2777,6 @@ namespace WebApi.Tests
                     UsersRemoved = 7,
                     BeforeSyncUserCount = 100,
                     AfterSyncUserCount = 100,
-                    ThresholdViolations = 1,
                     AdfRunId = currentAdfRunId
                 });
             _mockOpenAIService.Setup(x => x.GetCompletionAsync(It.IsAny<string>(), It.IsAny<string>()))
@@ -2809,7 +2820,6 @@ namespace WebApi.Tests
                     UsersRemoved = 4,
                     BeforeSyncUserCount = 100,
                     AfterSyncUserCount = 100,
-                    ThresholdViolations = 1,
                     AdfRunId = currentAdfRunId
                 });
             _mockOpenAIService.Setup(x => x.GetCompletionAsync(It.IsAny<string>(), It.IsAny<string>()))
@@ -2848,7 +2858,6 @@ namespace WebApi.Tests
                     UsersRemoved = 0,
                     BeforeSyncUserCount = 100,
                     AfterSyncUserCount = 103,
-                    ThresholdViolations = 0,
                     AdfRunId = currentAdfRunId
                 });
             _mockBlobStorageRepository.Setup(x => x.FindAggregatedFileByRunIdAsync(It.IsAny<string>(), It.IsAny<string>()))
@@ -2891,7 +2900,6 @@ namespace WebApi.Tests
                     UsersRemoved = 2,
                     BeforeSyncUserCount = 100,
                     AfterSyncUserCount = 100,
-                    ThresholdViolations = 0,
                     AdfRunId = currentAdfRunId
                 });
             _mockBlobStorageRepository.Setup(x => x.FindAggregatedFileByRunIdAsync(It.IsAny<string>(), It.IsAny<string>()))
@@ -2962,7 +2970,6 @@ namespace WebApi.Tests
                     UsersRemoved = 5,
                     BeforeSyncUserCount = 100,
                     AfterSyncUserCount = 100,
-                    ThresholdViolations = 1,
                     AdfRunId = currentAdfRunId
                 });
             // No GetMostRecentSucceededRunIdAsync / GetAttributeMappingsAsync mock => the _Code cannot be resolved.
@@ -3348,7 +3355,6 @@ namespace WebApi.Tests
                     UsersRemoved = 0,
                     BeforeSyncUserCount = 100,
                     AfterSyncUserCount = 101,
-                    ThresholdViolations = 0,
                     AdfRunId = currentAdfRunId
                 });
             _mockSyncJobHistoryRepository.Setup(x => x.GetBySyncJobIdAsync(_syncJobId, It.IsAny<int>(), It.IsAny<int>()))
@@ -3356,7 +3362,7 @@ namespace WebApi.Tests
                 {
                     new() { SyncJobId = _syncJobId, RunId = previousRunId, Status = "Idle", UpdatedAt = DateTime.UtcNow.AddHours(-1),
                             StartTime = DateTime.UtcNow.AddHours(-1).AddMinutes(-5), EndTime = DateTime.UtcNow.AddHours(-1),
-                            UsersAdded = 0, UsersRemoved = 0, ThresholdViolations = 0, AdfRunId = previousAdfRunId }
+                            UsersAdded = 0, UsersRemoved = 0, AdfRunId = previousAdfRunId }
                 });
 
             _mockBlobStorageRepository.Setup(x => x.FindAggregatedFileByRunIdAsync(It.IsAny<string>(), It.IsAny<string>()))
@@ -3457,7 +3463,6 @@ namespace WebApi.Tests
                     UsersRemoved = usersRemoved,
                     BeforeSyncUserCount = 100,
                     AfterSyncUserCount = 100 - usersRemoved,
-                    ThresholdViolations = 0,
                     AdfRunId = currentAdfRunId
                 });
 
@@ -3474,7 +3479,6 @@ namespace WebApi.Tests
                         EndTime = now.AddHours(-1),
                         UsersAdded = 0,
                         UsersRemoved = 0,
-                        ThresholdViolations = 0,
                         AdfRunId = previousAdfRunId
                     }
                 });

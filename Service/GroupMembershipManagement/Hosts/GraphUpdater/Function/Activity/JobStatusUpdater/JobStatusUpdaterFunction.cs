@@ -29,7 +29,6 @@ namespace Hosts.GraphUpdater
             _logger.FunctionStarted(nameof(JobStatusUpdaterFunction));
 
             var syncJob = await _graphUpdaterService.GetSyncJobAsync(request.SyncJob.Id);
-            syncJob.ThresholdViolations = request.ThresholdViolations;
             if (request.Status == SyncStatus.Idle && syncJob.IgnoreThresholdOnce) syncJob.IgnoreThresholdOnce = false;
 
             if (syncJob != null)

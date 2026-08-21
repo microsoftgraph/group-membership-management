@@ -114,11 +114,6 @@ namespace Models
             }
         }
 
-        /// <summary>
-        /// Tracks how many threshold violations have occurred
-        /// </summary>
-        [IgnoreLogging]
-        public int ThresholdViolations { get; set; }
         public DateTime PurgedAt { get; set; } = SqlDateTime.MinValue.Value;
         [NotMapped]
         public DateTimeOffset? Timestamp { get; set; }

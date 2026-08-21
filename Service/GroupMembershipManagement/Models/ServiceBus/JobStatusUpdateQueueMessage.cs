@@ -23,11 +23,6 @@ namespace Models.ServiceBus
         public required SyncStatus NewStatus { get; set; }
 
         /// <summary>
-        /// The number of threshold violations for this job
-        /// </summary>
-        public int? ThresholdViolations { get; set; }
-
-        /// <summary>
         /// The name of the function that triggered this update
         /// </summary>
         public required string UpdatedByFunction { get; set; }

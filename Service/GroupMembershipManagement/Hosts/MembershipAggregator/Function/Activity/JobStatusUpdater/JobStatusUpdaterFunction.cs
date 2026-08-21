@@ -55,7 +55,6 @@ namespace Hosts.MembershipAggregator
                         {
                             if (syncJob.IgnoreThresholdOnce) syncJob.IgnoreThresholdOnce = false;
 
-                            syncJob.ThresholdViolations = 0;
                             syncJob.LastSuccessfulRunTime = currentDate;
                         }
                     }
@@ -71,7 +70,6 @@ namespace Hosts.MembershipAggregator
                         RunId = syncJob.RunId ?? request.SyncJob.RunId ?? Guid.Empty,
                         Status = request.Status.ToString(),
                         UpdatedByFunction = "MembershipAggregator",
-                        ThresholdViolations = syncJob.ThresholdViolations,
                         EndTime = currentDate,
                         UpdatedAt = currentDate
                     };
