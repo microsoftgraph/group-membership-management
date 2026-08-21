@@ -52,7 +52,6 @@ namespace Services.Tests
         private IGMMEmailReceivers _gmmEmailReceivers = null!;
         private IHandleInactiveJobsConfig _handleInactiveJobsConfig = null!;
         private ThresholdNotificationServiceConfig _thresholdNotificationServiceConfig = null!;
-        private NotificationCardHandler _notificationCardHandler = null!;
         private ResolveNotificationHandler _resolveNotificationsHandler = null!;
         private NotificationsController _notificationsController = null!;
         private List<ThresholdNotification> _thresholdNotifications = null!;
@@ -186,18 +185,13 @@ namespace Services.Tests
                 _telemetryClient,
                 _thresholdNotificationService,
                 _gmmEmailReceivers);
-            _notificationCardHandler = new NotificationCardHandler(NullLogger<NotificationCardHandler>.Instance,
-                _notificationRepository.Object,
-                _graphGroupRepository.Object,
-                _thresholdNotificationService,
-                _gmmEmailReceivers);
 
             var claims = new List<Claim>
             {
                 new Claim("upn", _userUPN),
             };
 
-            _notificationsController = new NotificationsController(_resolveNotificationsHandler, _notificationCardHandler);
+            _notificationsController = new NotificationsController(_resolveNotificationsHandler);
             _notificationsController.ControllerContext = CreateControllerContext(claims, "mockBearerToken");
         }
         /// <summary>
@@ -320,165 +314,6 @@ namespace Services.Tests
             Assert.AreEqual(_thresholdNotification.SyncJobId, savedChange.SyncJobId);
         }
 
-        /// <summary>
-        /// /notifications/{id}/card - Get card for an unresolved notification
-        /// </summary>
-        [TestMethod]
-        public async Task GetNotificationCard_UnresolvedNotificationRendersDisabledCardForOwnerTestAsync()
-        {
-            // Under immediate-disable, an unresolved threshold notification is persisted directly in the DisabledCard state.
-            _thresholdNotification.CardState = ThresholdNotificationCardState.DisabledCard;
-            var response = await _notificationsController.GetCardAsync(_thresholdNotification.Id);
-            var result = response.Result as ContentResult;
-
-            Assert.IsNotNull(response);
-            Assert.IsNotNull(result?.Content);
-            Assert.AreEqual("application/json", result.ContentType);
-            ValidateDisabledCard(result.Content);
-        }
-
-        /// <summary>
-        /// /notifications/{id}/card - Get card for an unresolved notification that has been disabled
-        /// </summary>
-        [TestMethod]
-        public async Task GetNotificationCard_HandleDisabledTestAsync()
-        {
-            _thresholdNotification.CardState = ThresholdNotificationCardState.DisabledCard;
-            var response = await _notificationsController.GetCardAsync(_thresholdNotification.Id);
-            var result = response.Result as ContentResult;
-
-            Assert.IsNotNull(response);
-            Assert.IsNotNull(result?.Content);
-            Assert.AreEqual("application/json", result.ContentType);
-            ValidateDisabledCard(result.Content);
-        }
-
-        /// <summary>
-        /// /notifications/{id}/card - Get card for an unresolved notification that has been disabled
-        /// </summary>
-        [TestMethod]
-        public async Task GetNotificationCard_HandleNoCardStateExceptionTestAsync()
-        {
-            _thresholdNotification.CardState = ThresholdNotificationCardState.NoCard;
-            await Assert.ThrowsExceptionAsync<NotSupportedException>(async () => await _notificationsController.GetCardAsync(_thresholdNotification.Id));
-        }
-
-        /// <summary>
-        /// /notifications/{id}/card - Get card for a notification that no longer exists
-        /// </summary>
-        [TestMethod]
-        public async Task GetNotificationCard_HandleNotFoundTestAsync()
-        {
-            var response = await _notificationsController.GetCardAsync(_nonExistantNotificationId);
-            var result = response.Result as ContentResult;
-
-            Assert.IsNotNull(response);
-            Assert.IsNotNull(result?.Content);
-            Assert.AreEqual("application/json", result.ContentType);
-            ValidateNotFoundCard(result.Content);
-        }
-
-        /// <summary>
-        /// /notifications/{id}/card - Get unauthorized card for a notification with a user who is not an owner nor in the actionable message viewer group
-        /// </summary>
-        [TestMethod]
-        public async Task GetNotificationCard_HandleUserNotGroupOwnerOrInViewerGroupTestAsync()
-        {
-            var claims = new List<Claim>
-            {
-                new Claim("upn", "notAnOwner@contoso.net"),
-            };
-            _notificationsController.ControllerContext = CreateControllerContext(claims, "mockBearerToken");
-
-            var response = await _notificationsController.GetCardAsync(_thresholdNotification.Id);
-            var result = response.Result as ContentResult;
-
-            Assert.IsNotNull(response);
-            Assert.IsNotNull(result?.Content);
-            Assert.AreEqual("application/json", result.ContentType);
-            ValidateUnauthorizedCard(result.Content);
-        }
-
-        /// <summary>
-        /// /notifications/{id}/card - A viewer-group member who is not a group owner gets the DisabledCard.
-        /// </summary>
-        [TestMethod]
-        public async Task GetNotificationCard_ViewerGroupMemberNotOwnerRendersDisabledCardTestAsync()
-        {
-            var userObjectId = Guid.NewGuid();
-
-            _graphGroupRepository.Setup(x => x.IsEmailRecipientMemberOfGroupAsync(
-                It.Is<string>(s => s == userObjectId.ToString()), It.IsAny<Guid>()))
-                .ReturnsAsync(true);
-
-            var claims = new List<Claim>
-            {
-                new Claim("oid", userObjectId.ToString()),
-            };
-
-            _notificationsController.ControllerContext = CreateControllerContext(claims, "mockBearerToken");
-
-            // Under immediate-disable, an unresolved threshold notification is persisted directly in the DisabledCard state.
-            _thresholdNotification.CardState = ThresholdNotificationCardState.DisabledCard;
-            var response = await _notificationsController.GetCardAsync(_thresholdNotification.Id);
-            var result = response.Result as ContentResult;
-
-            Assert.IsNotNull(response);
-            Assert.IsNotNull(result?.Content);
-            Assert.AreEqual("application/json", result.ContentType);
-            ValidateDisabledCard(result.Content);
-        }
-
-        /// <summary>
-        /// /notifications/{id}/card - Get card for a resolved notification
-        /// </summary>
-        [TestMethod]
-        public async Task GetNotificationCard_HandleResolvedTestAsync()
-        {
-            var resolvedTime = DateTime.UtcNow.AddDays(Random.Shared.Next(-30, -1));
-            _thresholdNotification.Status = ThresholdNotificationStatus.Resolved;
-            _thresholdNotification.Resolution = ThresholdNotificationResolution.IgnoreOnce;
-            _thresholdNotification.ResolvedBy = _userUPN;
-            _thresholdNotification.ResolvedTime = resolvedTime;
-
-            var response = await _notificationsController.GetCardAsync(_thresholdNotification.Id);
-            var result = response.Result as ContentResult;
-
-            Assert.IsNotNull(response);
-            Assert.IsNotNull(result?.Content);
-            Assert.AreEqual("application/json", result.ContentType);
-            ValidateResolvedCard(result.Content);
-        }
-
-        /// <summary>
-        /// /notifications/{id}/card - Get card for an expired notification
-        /// </summary>
-        [TestMethod]
-        public async Task GetNotificationCard_HandleExpiredTestAsync()
-        {
-            _thresholdNotification.Status = ThresholdNotificationStatus.Expired;
-            _thresholdNotification.CardState = ThresholdNotificationCardState.ExpiredCard;
-            var response = await _notificationsController.GetCardAsync(_thresholdNotification.Id);
-            var result = response.Result as ContentResult;
-
-            Assert.IsNotNull(response);
-            Assert.IsNotNull(result?.Content);
-            Assert.AreEqual("application/json", result.ContentType);
-            ValidateExpiredCard(result.Content);
-        }
-
-        private void ValidateDisabledCard(string cardJson)
-        {
-            Console.WriteLine(cardJson);
-            Assert.IsTrue(cardJson.Contains($"Synchronization of your GMM group **{_groupName}** has been disabled. If no action is taken, the sync will be deleted on "));
-            Assert.IsTrue(cardJson.Contains("After this period, if you wish to reenable the sync, you will need to follow GMM's onboarding process again.")) ;
-            Assert.IsTrue(cardJson.Contains($"GMM has identified **{_thresholdNotification.ChangeQuantityForAdditions}** members to be added, increasing the group size by **"));
-            Assert.IsTrue(cardJson.Contains(Math.Round(_thresholdNotification.ChangePercentageForAdditions, 1).ToString()));
-            Assert.IsTrue(cardJson.Contains($"%**, which is more than the current additions threshold of **{_thresholdNotification.ThresholdPercentageForAdditions}%**."));
-            Assert.IsTrue(cardJson.Contains($"{_thresholdNotification.Id}"));
-            Assert.IsTrue(cardJson.Contains($"\"originator\":\"{_providerId}\""));
-        }
-
         private void ValidateResolvedCard(string cardJson)
         {
             var resolutionString = _localizationRepository.TranslateSetting(_thresholdNotification.Resolution);
@@ -500,13 +335,6 @@ namespace Services.Tests
         {
             Assert.IsTrue(cardJson.Contains("Notification Not Found"));
             Assert.IsTrue(cardJson.Contains($"{_nonExistantNotificationId}"));
-            Assert.IsTrue(cardJson.Contains($"\"originator\":\"{_providerId}\""));
-        }
-
-        private void ValidateExpiredCard(string cardJson)
-        {
-            Assert.IsTrue(cardJson.Contains("Error: Notification Expired"));
-            Assert.IsTrue(cardJson.Contains($"{_thresholdNotification.Id}"));
             Assert.IsTrue(cardJson.Contains($"\"originator\":\"{_providerId}\""));
         }
 

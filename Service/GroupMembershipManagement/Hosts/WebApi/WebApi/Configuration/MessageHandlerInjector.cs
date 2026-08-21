@@ -42,8 +42,6 @@ namespace WebApi.Configuration
             services.AddTransient<IRequestHandler<GetGroupRequest, GetGroupResponse>, GetGroupHandler>();
             services.AddTransient<IRequestHandler<GetChannelRequest, GetChannelResponse>, GetChannelHandler>();
 
-            services.AddTransient<IRequestHandler<NotificationCardRequest, NotificationCardResponse>, NotificationCardHandler>();
-
             services.AddTransient<IRequestHandler<ResolveNotificationRequest, ResolveNotificationResponse>, ResolveNotificationHandler>();
 
             services.AddTransient<IRequestHandler<GetOrgLeaderDetailsRequest, GetOrgLeaderDetailsResponse>, GetOrgLeaderDetailsHandler>();

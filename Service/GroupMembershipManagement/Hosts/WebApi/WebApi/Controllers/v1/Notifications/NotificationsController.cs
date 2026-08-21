@@ -16,25 +16,12 @@ namespace WebApi.Controllers.v1.Notifications
     [Authorize]
     public class NotificationsController : ControllerBase
     {
-        private readonly IRequestHandler<NotificationCardRequest, NotificationCardResponse> _notificationCardHandler;
         private readonly IRequestHandler<ResolveNotificationRequest, ResolveNotificationResponse> _resolveNotificationHandler;
 
         public NotificationsController(
-            IRequestHandler<ResolveNotificationRequest, ResolveNotificationResponse> resolveNotificationHandler,
-            IRequestHandler<NotificationCardRequest, NotificationCardResponse> notificationCardHandler)
+            IRequestHandler<ResolveNotificationRequest, ResolveNotificationResponse> resolveNotificationHandler)
         {
             _resolveNotificationHandler = resolveNotificationHandler ?? throw new ArgumentNullException(nameof(resolveNotificationHandler));
-            _notificationCardHandler = notificationCardHandler ?? throw new ArgumentNullException(nameof(notificationCardHandler));
-        }
-
-        [HttpPost()]
-        [Route("{id}/card")]
-        public async Task<ActionResult<string>> GetCardAsync(Guid id)
-        {
-            var userIdentification = GetUserEmailOrObjectId(); 
-            var response = await _notificationCardHandler.ExecuteAsync(new NotificationCardRequest(id, userIdentification));
-            Response.Headers["card-update-in-body"] = "true";
-            return Content(response.CardJson, "application/json");
         }
 
         [Route("{id}/resolve")]
