@@ -161,8 +161,9 @@ namespace WebApi
                     if (path != null && path.Contains("/notifications", StringComparison.OrdinalIgnoreCase))
                     {
                         var scopeClaim = context.Principal?.Claims.FirstOrDefault(c => c.Type == "scp" || c.Type == "http://schemas.microsoft.com/identity/claims/scope")?.Value;
+                        var scopes = (scopeClaim ?? string.Empty).Split(' ', StringSplitOptions.RemoveEmptyEntries);
 
-                        if (string.IsNullOrWhiteSpace(scopeClaim) || !scopeClaim.Contains("user_impersonation"))
+                        if (!scopes.Contains("user_impersonation", StringComparer.Ordinal))
                         {
                             context.Fail("Required scope 'user_impersonation' not present in token");
                             return;
