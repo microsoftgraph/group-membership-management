@@ -70,7 +70,6 @@
     <PackageVersion Include="Microsoft.Identity.Web" Version="3.0.1" />
     <PackageVersion Include="Microsoft.NET.Sdk.Functions" Version="4.4.1" />
     <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="17.10.0" />
-    <PackageVersion Include="Microsoft.O365.ActionableMessages.Utilities" Version="2.0.1" />
     <PackageVersion Include="Microsoft.Owin" Version="4.2.2" />
     <PackageVersion Include="Microsoft.SqlServer.TransactSql.ScriptDom" Version="170.28.0" />
     <PackageVersion Include="MockQueryable.Moq" Version="7.0.0" />

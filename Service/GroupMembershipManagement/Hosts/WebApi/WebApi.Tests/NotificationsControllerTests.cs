@@ -17,7 +17,6 @@ using WebApi.Controllers.v1.Notifications;
 using WebApi.Models.Requests;
 using Microsoft.ApplicationInsights;
 using Microsoft.ApplicationInsights.Extensibility;
-using Microsoft.O365.ActionableMessages.Utilities;
 using WebApi.Models;
 using WebApi.Configuration;
 using System;

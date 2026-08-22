@@ -23,7 +23,6 @@ using Microsoft.IdentityModel.Protocols;
 using Microsoft.IdentityModel.Protocols.OpenIdConnect;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.IdentityModel.Validators;
-using Microsoft.O365.ActionableMessages.Utilities;
 using Microsoft.OpenApi.Models;
 using Repositories.BlobStorage;
 using Repositories.Contracts;
@@ -128,8 +127,6 @@ namespace WebApi
             builder.Services
                 .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
                 .AddMicrosoftIdentityWebApi(azureAdConfigSection);
-
-            builder.Services.AddSingleton<ActionableMessageTokenValidator>();
 
             builder.Services.Configure<JwtBearerOptions>(JwtBearerDefaults.AuthenticationScheme, async options =>
             {
@@ -418,7 +415,6 @@ namespace WebApi
                 settings.KeyVaultName = configuration.GetValue<string>("Settings:GraphCredentials:KeyVaultName");
             });
 
-            builder.Services.AddScoped<IActionableMessageTokenValidator, ActionableMessageTokenValidator>();
             builder.Services.AddScoped<IDataFactoryRepository, DataFactoryRepository>();
             builder.Services.AddScoped<IDatabaseSyncJobsRepository, DatabaseSyncJobsRepository>();
             builder.Services.AddSingleton<IBlobStorageRepository>(sp =>
