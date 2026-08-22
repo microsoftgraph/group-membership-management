@@ -655,19 +655,6 @@ param emailReceivers array = [
   }
 ]
 
-@description('Enter actionable email notifier provider id.')
-@minLength(0)
-@maxLength(36)
-param notifierProviderId string
-
-@description('Enter OAM Entra App Id.')
-@minLength(0)
-@maxLength(36)
-param oamEntraAppId string
-
-@description('Enter OAM Entra App Expose and API Scope.')
-param oamEntraAppScope string
-
 @description('JSON string with an array listing the existing data resources [{Name: string, ResourceType: string}]')
 param existingDataResources string = '[]'
 
@@ -1092,18 +1079,6 @@ var baseSecrets = [
   {
     name: 'logAnalyticsCustomerId'
     value: logAnalyticsTemplate.outputs.customerId
-  }
-  {
-    name: 'notifierProviderId'
-    value: notifierProviderId
-  }
-  {
-    name: 'oamEntraAppId'
-    value: oamEntraAppId
-  }
-  {
-    name: 'oamEntraAppScope'
-    value: oamEntraAppScope
   }
   {
     name: 'serviceBusMembershipAggregatorQueue'

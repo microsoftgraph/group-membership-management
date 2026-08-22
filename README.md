@@ -36,7 +36,6 @@ GMM automates Microsoft Entra ID group membership synchronization at enterprise 
 | Document | Description |
 |----------|-------------|
 | [Set Sender Address](Service/GroupMembershipManagement/Hosts/Notifier/Documentation/SetSenderAddressForEmailNotification.md) | Configure email sender account |
-| [Notifier Function Setup](Service/GroupMembershipManagement/Hosts/Notifier/Documentation/NotifierSetup.md) | Configure the notifier function to send actionable messages |
 
 ### Azure Data Factory (HR Data Integration)
 

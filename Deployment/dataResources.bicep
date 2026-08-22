@@ -11,9 +11,6 @@ param solutionAbbreviation string
 ])
 param functionAppLogsDestination string = 'workspace'
 
-param notifierProviderId string
-param oamEntraAppId string
-param oamEntraAppScope string
 param sqlAdministratorsGroupId string
 param sqlSkuCapacity int = 4
 param sqlSkuFamily string = 'Gen5'
@@ -440,9 +437,6 @@ module dataInfrastructureTemplate '../Infrastructure/data/template.bicep' = {
     environmentAbbreviation: environmentAbbreviation
     solutionAbbreviation: solutionAbbreviation
   functionAppLogsDestination: functionAppLogsDestination
-    notifierProviderId: notifierProviderId
-    oamEntraAppId: oamEntraAppId
-    oamEntraAppScope: oamEntraAppScope
     serviceBusTopicSubscriptions: serviceBusTopicSubscriptions
     sqlAdministratorsGroupId: sqlAdministratorsGroupId
     sqlSkuCapacity: sqlSkuCapacity
