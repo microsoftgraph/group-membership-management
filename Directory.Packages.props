@@ -4,7 +4,6 @@
     <CentralPackageTransitivePinningEnabled>true</CentralPackageTransitivePinningEnabled>
   </PropertyGroup>
   <ItemGroup>
-    <PackageVersion Include="AdaptiveCards.Templating" Version="2.0.2" />
     <PackageVersion Include="Azure.AI.OpenAI" Version="2.1.0" />
     <PackageVersion Include="Azure.Data.Tables" Version="12.9.0" />
     <PackageVersion Include="Azure.Identity" Version="1.17.1" />

@@ -3,7 +3,6 @@
   <PropertyGroup>
   </PropertyGroup>
   <ItemGroup>
-	  <PackageReference Include="AdaptiveCards.Templating" />
 	  <PackageReference Include="Azure.Identity" />
 	  <PackageReference Include="Azure.Monitor.Query" />
 	  <PackageReference Include="Microsoft.ApplicationInsights" />

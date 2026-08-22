@@ -24,7 +24,7 @@ namespace Repositories.Mocks
             return Task.FromResult(responseMessage);
 		}
 
-		public Task<string?> BuildStyledFallbackEmailHtmlAsync(EmailMessage emailMessage, string? adaptiveCardJson = null)
+		public Task<string?> BuildStyledFallbackEmailHtmlAsync(EmailMessage emailMessage)
 		{
 			return Task.FromResult<string?>(null);
 		}

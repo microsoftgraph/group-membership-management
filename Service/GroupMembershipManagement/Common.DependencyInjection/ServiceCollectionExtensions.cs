@@ -96,7 +96,6 @@ namespace Common.DependencyInjection
                         provider.GetService<IMailConfig>(),
                         provider.GetService<ILocalizationRepository>(),
                         provider.GetRequiredService<ILogger<MailRepository>>(),
-                        GetValueOrDefault("actionableEmailProviderId"),
                         provider.GetService<IGraphGroupRepository>(),
                         provider.GetService<IDatabaseSettingsRepository>(),
                         provider.GetService<IRetryPolicyProvider>(),

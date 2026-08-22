@@ -92,7 +92,6 @@ namespace Services.Notifier.Tests
                 new MailConfig(true, false, "not-set", false, enableStyledFallbackEmails: true, runHistoryTabEnabled: true),
                 _localizationRepository,
                 NullLogger<MailRepository>.Instance,
-                "test-provider-id",
                 _graphGroupRepository.Object,
                 _settingsRepository.Object,
                 new RetryPolicyProvider(

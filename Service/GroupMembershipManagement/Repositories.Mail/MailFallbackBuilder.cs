@@ -121,7 +121,8 @@ namespace Repositories.Mail
 
         // FinalNotice (InactiveSyncJobNotification / SyncPurgedForInactivityEmailBody)
         // AdditionalContentParams indices (AzureMaintenanceService.SendPurgingEmailAsync):
-        // [0]=GroupId, [1]=GroupName, [2]=LegacyDeletionDate (kept for adaptive card),
+        // [0]=GroupId, [1]=GroupName, [2]=LegacyDeletionDate (unused by the styled email;
+        // the producer still sends it, so later indices keep their positions),
         // [3]=PriorStatus, [4]=AffiliationRemovedUtc (ISO 8601),
         // [5]=LastSuccessfulRunTimeUtc (ISO 8601, optional),
         // [6]=RejectedOnUtc (ISO 8601, SubmissionRejected variant only).

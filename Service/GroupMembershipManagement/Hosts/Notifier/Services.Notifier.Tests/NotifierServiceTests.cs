@@ -419,7 +419,7 @@ namespace Services.Notifier.Tests
             EmailMessage capturedMessage = null;
             _mailRepository.Setup(x => x.SendMailAsync(It.IsAny<EmailMessage>(), null))
                 .Callback<EmailMessage, Guid?>((m, _) => capturedMessage = m);
-            _mailRepository.Setup(x => x.BuildStyledFallbackEmailHtmlAsync(It.IsAny<EmailMessage>(), null))
+            _mailRepository.Setup(x => x.BuildStyledFallbackEmailHtmlAsync(It.IsAny<EmailMessage>()))
                 .ReturnsAsync("<p>STYLED THRESHOLD EMAIL</p>");
 
             _notification.SyncJobId = Guid.NewGuid();
@@ -428,7 +428,7 @@ namespace Services.Notifier.Tests
             var service = CreateNotifierService(new MailConfig(true, false, "not-set", false, enableStyledFallbackEmails: true, runHistoryTabEnabled: true));
             await service.SendThresholdEmailAsync(_notification);
 
-            _mailRepository.Verify(x => x.BuildStyledFallbackEmailHtmlAsync(It.IsAny<EmailMessage>(), null), Times.Once());
+            _mailRepository.Verify(x => x.BuildStyledFallbackEmailHtmlAsync(It.IsAny<EmailMessage>()), Times.Once());
             Assert.IsNotNull(capturedMessage);
             StringAssert.Contains(capturedMessage.Content, "STYLED THRESHOLD EMAIL");
         }
@@ -439,7 +439,7 @@ namespace Services.Notifier.Tests
             EmailMessage capturedMessage = null;
             _mailRepository.Setup(x => x.SendMailAsync(It.IsAny<EmailMessage>(), null))
                 .Callback<EmailMessage, Guid?>((m, _) => capturedMessage = m);
-            _mailRepository.Setup(x => x.BuildStyledFallbackEmailHtmlAsync(It.IsAny<EmailMessage>(), null))
+            _mailRepository.Setup(x => x.BuildStyledFallbackEmailHtmlAsync(It.IsAny<EmailMessage>()))
                 .ReturnsAsync("<p>STYLED THRESHOLD EMAIL</p>");
 
             _notification.SyncJobId = Guid.NewGuid();
@@ -448,7 +448,7 @@ namespace Services.Notifier.Tests
             var service = CreateNotifierService(new MailConfig(true, false, "not-set", false, enableStyledFallbackEmails: true, runHistoryTabEnabled: false));
             await service.SendThresholdEmailAsync(_notification);
 
-            _mailRepository.Verify(x => x.BuildStyledFallbackEmailHtmlAsync(It.IsAny<EmailMessage>(), null), Times.Never());
+            _mailRepository.Verify(x => x.BuildStyledFallbackEmailHtmlAsync(It.IsAny<EmailMessage>()), Times.Never());
             Assert.IsNotNull(capturedMessage);
             StringAssert.Contains(capturedMessage.Content, "View in GMM UI");
             Assert.IsFalse(capturedMessage.Content.Contains("adaptivecard+json"), "Fallback must not embed an Outlook Actionable Message card.");
@@ -482,7 +482,6 @@ namespace Services.Notifier.Tests
                 new MailConfig(true, false, "not-set", false, true),
                 _localizationRepository,
                 NullLogger<MailRepository>.Instance,
-                "abc",
                 _graphGroupRepository.Object,
                 settingsRepository.Object,
                 retryRepo,
@@ -611,7 +610,6 @@ namespace Services.Notifier.Tests
                                                     mailConfig,
                                                     _localizationRepository,
                                                     NullLogger<MailRepository>.Instance,
-                                                    "abc",
                                                     _graphGroupRepository.Object,
                                                     new Mock<IDatabaseSettingsRepository>().Object,
                                                     retryRepo,

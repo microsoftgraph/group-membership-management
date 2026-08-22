@@ -1,14 +1,12 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-using AdaptiveCards.Templating;
 using Microsoft.ApplicationInsights;
 using Microsoft.Extensions.Logging;
 using Microsoft.Graph;
 using Microsoft.Graph.Models;
 using Microsoft.Kiota.Abstractions;
 using Models;
-using Models.AdaptiveCards;
 using Models.Helpers;
 using Polly.Wrap;
 using Repositories.Contracts;
@@ -32,7 +30,6 @@ namespace Repositories.Mail
         private readonly ILocalizationRepository _localizationRepository;
         private readonly GraphServiceClient _graphClient;
         private readonly ILogger<MailRepository> _mailRepositoryLogger;
-        private readonly string _actionableEmailProviderId;
         private readonly IGraphGroupRepository _graphGroupRepository;
         private readonly IDatabaseSettingsRepository _settingsRepository;
         private readonly IRetryPolicyProvider _retryPolicyProvider;
@@ -44,7 +41,6 @@ namespace Repositories.Mail
             IMailConfig mailAdaptiveCardConfig, 
             ILocalizationRepository localizationRepository, 
             ILogger<MailRepository> mailRepositoryLogger,
-            string actionableEmailProviderId, 
             IGraphGroupRepository graphGroupRepository,
             IDatabaseSettingsRepository settingsRepository,
             IRetryPolicyProvider retryPolicyProvider,
@@ -56,7 +52,6 @@ namespace Repositories.Mail
             _mailConfig = mailAdaptiveCardConfig ?? throw new ArgumentNullException(nameof(mailAdaptiveCardConfig));
             _localizationRepository = localizationRepository ?? throw new ArgumentNullException(nameof(localizationRepository));
             _mailRepositoryLogger = mailRepositoryLogger ?? throw new ArgumentNullException(nameof(mailRepositoryLogger));
-            _actionableEmailProviderId = actionableEmailProviderId ?? throw new ArgumentNullException(nameof(actionableEmailProviderId));
             _graphGroupRepository = graphGroupRepository ?? throw new ArgumentNullException(nameof(graphGroupRepository));
             _settingsRepository = settingsRepository ?? throw new ArgumentNullException(nameof(settingsRepository));
             _retryPolicyProvider = retryPolicyProvider ?? throw new ArgumentNullException(nameof(retryPolicyProvider));
@@ -192,12 +187,7 @@ namespace Repositories.Mail
 
         public async Task<Message> GetAdaptiveCardMessage(EmailMessage emailMessage)
         {
-            var titleContent = string.IsNullOrEmpty(emailMessage?.Title) ? _localizationRepository.TranslateSetting(emailMessage?.Subject, emailMessage?.AdditionalContentParams) :
-                                                                           _localizationRepository.TranslateSetting(emailMessage?.Title, emailMessage?.AdditionalContentParams);
             var subjectContent = _localizationRepository.TranslateSetting(emailMessage?.Subject, emailMessage?.AdditionalContentParams);
-            var messageContent = _localizationRepository.TranslateSetting(emailMessage?.Content, emailMessage?.AdditionalContentParams);
-
-            string adaptiveCardJson = _localizationRepository.TranslateSetting(CardTemplate.DefaultCardTemplate);
 
             // Most notification types put the destination GroupId at AdditionalContentParams[0],
             // but JobPurgingWarning (AzureMaintenanceService.SendWarningEmailAsync) puts the
@@ -206,35 +196,11 @@ namespace Repositories.Mail
             string groupId = GetParamSafe(emailMessage, GetGroupIdIndex(emailMessage?.Content));
             string destinationGroupName = string.IsNullOrEmpty(emailMessage?.DestinationGroupName) ? "" : emailMessage.DestinationGroupName;
             var urlSetting = await _settingsRepository.GetSettingByKeyAsync(SettingKey.UIUrl);
-            var dashboardUrlSetting = await _settingsRepository.GetSettingByKeyAsync(SettingKey.DashboardUrl);
 
             string UIUrl = urlSetting?.SettingValue ?? "";
-            string dashboardUrl = dashboardUrlSetting?.SettingValue ?? "";
             string jobUrl = UiUrlBuilder.BuildJobDetailsUrl(UIUrl, emailMessage.SyncJobId);
             string historyUrl = UiUrlBuilder.BuildJobDetailsUrl(UIUrl, emailMessage.SyncJobId, includeHistory: true);
             string onboardingUrl = UiUrlBuilder.BuildOnboardingUrl(UIUrl);
-
-            // The Final Notice is sent after the sync job has been purged, so any /jobdetails
-            // deep-link would resolve to a job that no longer exists. Point every CTA on that
-            // notification (adaptive card and styled fallback) at the onboarding page instead.
-            string cardJobUrl = IsFinalNotice(emailMessage?.Content) ? onboardingUrl : jobUrl;
-
-            var cardData = new DefaultCardTemplate
-            {
-                ProviderId = _actionableEmailProviderId,
-                TitleContent = titleContent,
-                SubjectContent = subjectContent,
-                MessageContent = messageContent,
-                GroupId = groupId,
-                CardCreatedTime = DateTime.UtcNow,
-                DestinationGroupName = destinationGroupName,
-                UIUrl = UIUrl,
-                DashboardUrl = dashboardUrl,
-                JobUrl = cardJobUrl
-            };
-
-            var template = new AdaptiveCardTemplate(adaptiveCardJson);
-            var adaptiveCard = template.Expand(cardData);
 
             var sentDate = DateTime.UtcNow.ToString("MMM dd, yyyy");
             string htmlContent;
@@ -254,22 +220,20 @@ namespace Repositories.Mail
 
                 if (styledFallback != null)
                 {
-                    // Styled informational email: render the branded HTML body only, with no
-                    // embedded OAM actionable card. Owners act via the in-body deep-link CTAs
+                    // Styled informational email. Owners act via the in-body deep-link CTAs
                     // (e.g. "Review in GMM" / run history) baked into the styled template.
                     htmlContent = WrapStyledBodyWithoutAdaptiveCard(styledFallback, styledContext.DestinationGroupName);
                 }
                 else
                 {
-                    // No styled template for this type yet: send the message as a plain HTML
-                    // body with no actionable card and no OAM fallback warning.
+                    // No styled template for this type yet: send the message as a plain HTML body.
                     htmlContent = BuildPlainFallback(emailMessage);
                 }
             }
             else
             {
-                // Feature disabled: use legacy adaptive-card + plain-text fallback for all notification types.
-                htmlContent = BuildLegacyFallback(emailMessage, adaptiveCard);
+                // Styled emails disabled: send every notification as a plain HTML body.
+                htmlContent = BuildPlainFallback(emailMessage);
             }
 
             var message = new Message
@@ -369,8 +333,7 @@ namespace Repositories.Mail
         }
 
         // Builds the styled threshold HTML body used by NotifierService.SendThresholdEmailAsync.
-        // Pass adaptiveCardJson to embed the actionable card; pass null to send the styled email only.
-        public async Task<string?> BuildStyledFallbackEmailHtmlAsync(EmailMessage emailMessage, string? adaptiveCardJson = null)
+        public async Task<string?> BuildStyledFallbackEmailHtmlAsync(EmailMessage emailMessage)
         {
             if (emailMessage is null)
             {
@@ -402,9 +365,7 @@ namespace Repositories.Mail
                 return null;
             }
 
-            return string.IsNullOrEmpty(adaptiveCardJson)
-                ? WrapStyledBodyWithoutAdaptiveCard(styledFallback, destinationGroupName)
-                : WrapStyledFallback(styledFallback, destinationGroupName, adaptiveCardJson);
+            return WrapStyledBodyWithoutAdaptiveCard(styledFallback, destinationGroupName);
         }
 
         // Context shared by every styled notification template: the resolved destination group
@@ -496,22 +457,6 @@ namespace Repositories.Mail
 </body>
 </html>";
 
-        private static string WrapStyledFallback(string body, string groupName, string adaptiveCard) =>
-            $@"<!DOCTYPE html>
-<html lang=""en"">
-<head>
-  <meta http-equiv=""Content-Type"" content=""text/html; charset=utf-8"">
-  <meta name=""viewport"" content=""width=device-width, initial-scale=1.0"">
-  <title>{System.Net.WebUtility.HtmlEncode(groupName)}</title>
-  <script type=""application/adaptivecard+json"">
-{adaptiveCard}
-  </script>
-</head>
-<body style=""margin:0;padding:0;background-color:#f3f2f1;-webkit-font-smoothing:antialiased;"">
-{body}
-</body>
-</html>";
-
         // Notification types with no styled template are sent as a plain HTML body. The <pre>
         // wrapper preserves the line breaks of multi-line message bodies, such as the normal
         // threshold email's numbered "Reply All" option list.
@@ -529,28 +474,6 @@ namespace Repositories.Mail
                 </html>";
 
             return string.Format(plainHtmlTemplate, simpleMessage.Body.Content);
-        }
-
-        private string BuildLegacyFallback(EmailMessage emailMessage, string adaptiveCard)
-        {
-            var simpleMessage = GetSimpleMessage(emailMessage);
-            var fallbackHTMLContent = simpleMessage.Body.Content;
-
-            var legacyHtmlTemplate = @"<html>
-                <head
-                  <meta http-equiv=""Content-Type"" content=""text/html; charset=utf-8"">
-                  <script type=""application/adaptivecard+json"">
-                 {0}
-                  </script>
-                </head>
-                <body>
-                <p style=""color: red;"">Warning: Group Membership Management (GMM) notifications are powered by Outlook Actionable Messages. The following is a fallback message that you will see if the Actionable Message fails to render.</p>
-                <h1>Original Message</h1>
-                <pre>{1}</pre>
-                </body>
-                </html>";
-
-            return string.Format(legacyHtmlTemplate, adaptiveCard, fallbackHTMLContent);
         }
 
         private bool IsSyncDisabledNotification(string? contentType)

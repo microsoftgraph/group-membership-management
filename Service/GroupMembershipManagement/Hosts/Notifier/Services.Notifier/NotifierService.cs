@@ -168,7 +168,7 @@ namespace Services.Notifier
                         direction
                     }
                 };
-                emailContent = await _mailRepository.BuildStyledFallbackEmailHtmlAsync(routingMessage, adaptiveCardJson: null);
+                emailContent = await _mailRepository.BuildStyledFallbackEmailHtmlAsync(routingMessage);
             }
 
             if (string.IsNullOrEmpty(emailContent))

@@ -5,7 +5,6 @@
 
   <ItemGroup>
     <PackageReference Include="Microsoft.ApplicationInsights" />
-    <PackageReference Include="AdaptiveCards.Templating" />
     <PackageReference Include="Microsoft.Graph" />
   </ItemGroup>
 
