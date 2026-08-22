@@ -30,7 +30,7 @@ param logAnalyticsRetentionInDays int = 365
 param notificationAlertThreshold int = 10
 param skipMailNotifications bool = false
 param isMailApplicationPermissionGranted bool = false
-param enableStyledFallbackEmails bool = false
+param enableStyledFallbackEmails bool = true
 param isTeamsChannelApplicationPermissionGranted bool = false
 param featureFlags object = {
   enableOpenAI: false

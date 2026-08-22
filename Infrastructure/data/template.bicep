@@ -289,7 +289,7 @@ param logAnalyticsRetentionInDays int = 365
 param authenticationType string = 'ClientSecret'
 param skipMailNotifications bool = false
 param isMailApplicationPermissionGranted bool = false
-param enableStyledFallbackEmails bool = false
+param enableStyledFallbackEmails bool = true
 param isTeamsChannelApplicationPermissionGranted bool = false
 
 @description('Enter app configuration name.')
