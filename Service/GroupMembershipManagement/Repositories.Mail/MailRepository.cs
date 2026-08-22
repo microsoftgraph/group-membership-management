@@ -217,8 +217,7 @@ namespace Repositories.Mail
             // The Final Notice is sent after the sync job has been purged, so any /jobdetails
             // deep-link would resolve to a job that no longer exists. Point every CTA on that
             // notification (adaptive card and styled fallback) at the onboarding page instead.
-            bool isFinalNotice = string.Equals(emailMessage?.Content, NotificationConstants.SyncPurgedForInactivityEmailBody, StringComparison.OrdinalIgnoreCase);
-            string cardJobUrl = isFinalNotice ? onboardingUrl : jobUrl;
+            string cardJobUrl = IsFinalNotice(emailMessage?.Content) ? onboardingUrl : jobUrl;
 
             var cardData = new DefaultCardTemplate
             {
@@ -242,53 +241,23 @@ namespace Repositories.Mail
 
             if (_mailConfig.EnableStyledFallbackEmails)
             {
-                string styledFallback = null;
+                var styledContext = new StyledEmailContext(
+                    GroupId: groupId,
+                    DestinationGroupName: ResolveStyledDestinationGroupName(emailMessage, destinationGroupName),
+                    UIUrl: UIUrl,
+                    JobUrl: jobUrl,
+                    HistoryUrl: historyUrl,
+                    OnboardingUrl: onboardingUrl,
+                    SentDate: sentDate);
 
-                string fallbackDestinationGroupName = destinationGroupName;
-                if (string.IsNullOrEmpty(fallbackDestinationGroupName)
-                    && string.Equals(emailMessage?.Content, NotificationConstants.DestinationNotExistContent, StringComparison.OrdinalIgnoreCase))
-                {
-                    var cachedName = GetParamSafe(emailMessage, 1);
-                    if (!string.IsNullOrEmpty(cachedName) && !string.Equals(cachedName, "NAME NOT FOUND", StringComparison.OrdinalIgnoreCase))
-                    {
-                        fallbackDestinationGroupName = cachedName;
-                    }
-                }
-
-                if (string.Equals(emailMessage?.Content, "SyncStartedEmailBody", StringComparison.OrdinalIgnoreCase))
-                    styledFallback = await _mailFallbackBuilder.BuildSyncStartedFallbackAsync(emailMessage, fallbackDestinationGroupName, groupId, historyUrl, sentDate);
-                else if (string.Equals(emailMessage?.Content, "SyncCompletedEmailBody", StringComparison.OrdinalIgnoreCase))
-                    styledFallback = await _mailFallbackBuilder.BuildSyncCompletedFallbackAsync(emailMessage, fallbackDestinationGroupName, groupId, historyUrl, sentDate);
-                else if (string.Equals(emailMessage?.Content, NotificationConstants.JobPurgingWarningEmailBody, StringComparison.OrdinalIgnoreCase))
-                {
-                    // ThresholdExceeded purge warnings deep-link to the take-action dialog (like Sync Disabled); status is AdditionalContentParams[0].
-                    var purgeWarningStatus = GetParamSafe(emailMessage, 0);
-                    var purgeWarningCtaUrl = string.Equals(purgeWarningStatus, "ThresholdExceeded", StringComparison.OrdinalIgnoreCase)
-                        ? UiUrlBuilder.BuildJobDetailsUrl(UIUrl, emailMessage.SyncJobId, includeHistory: true, takeAction: true)
-                        : historyUrl;
-                    styledFallback = await _mailFallbackBuilder.BuildJobPurgingWarningFallbackAsync(emailMessage, fallbackDestinationGroupName, groupId, purgeWarningCtaUrl, sentDate);
-                }
-                else if (isFinalNotice)
-                    // The sync job is already purged, so a /jobdetails deep-link would 404.
-                    // Send owners to the onboarding page instead, matching the "Start a new onboarding" CTA.
-                    styledFallback = await _mailFallbackBuilder.BuildFinalNoticeFallbackAsync(emailMessage, fallbackDestinationGroupName, groupId, onboardingUrl, sentDate);
-                else if (IsSyncDisabledNotification(emailMessage?.Content))
-                {
-                    // Threshold-disabled emails deep-link "Review in GMM" to the take-action dialog; other reasons use history.
-                    var disabledCtaUrl = string.Equals(emailMessage?.Content, NotificationConstants.SyncJobDisabledEmailBody, StringComparison.OrdinalIgnoreCase)
-                        ? UiUrlBuilder.BuildJobDetailsUrl(UIUrl, emailMessage.SyncJobId, includeHistory: true, takeAction: true)
-                        : historyUrl;
-                    styledFallback = await _mailFallbackBuilder.BuildSyncDisabledFallbackAsync(emailMessage, fallbackDestinationGroupName, groupId, disabledCtaUrl, sentDate);
-                }
-                else if (string.Equals(emailMessage?.Content, NotificationConstants.SubmissionRejectedEmailBody, StringComparison.OrdinalIgnoreCase))
-                    styledFallback = await _mailFallbackBuilder.BuildSubmissionRejectedFallbackAsync(emailMessage, fallbackDestinationGroupName, groupId, jobUrl, sentDate);
+                var styledFallback = await TryBuildStyledBodyAsync(emailMessage, styledContext);
 
                 if (styledFallback != null)
                 {
                     // Styled informational email: render the branded HTML body only, with no
                     // embedded OAM actionable card. Owners act via the in-body deep-link CTAs
                     // (e.g. "Review in GMM" / run history) baked into the styled template.
-                    htmlContent = WrapStyledBodyWithoutAdaptiveCard(styledFallback, fallbackDestinationGroupName);
+                    htmlContent = WrapStyledBodyWithoutAdaptiveCard(styledFallback, styledContext.DestinationGroupName);
                 }
                 else
                 {
@@ -436,6 +405,82 @@ namespace Repositories.Mail
             return string.IsNullOrEmpty(adaptiveCardJson)
                 ? WrapStyledBodyWithoutAdaptiveCard(styledFallback, destinationGroupName)
                 : WrapStyledFallback(styledFallback, destinationGroupName, adaptiveCardJson);
+        }
+
+        // Context shared by every styled notification template: the resolved destination group
+        // and the set of UI deep-links each template can use for its call-to-action button.
+        private sealed record StyledEmailContext(
+            string GroupId,
+            string DestinationGroupName,
+            string UIUrl,
+            string JobUrl,
+            string HistoryUrl,
+            string OnboardingUrl,
+            string SentDate);
+
+        private static bool IsFinalNotice(string? content) =>
+            string.Equals(content, NotificationConstants.SyncPurgedForInactivityEmailBody, StringComparison.OrdinalIgnoreCase);
+
+        // DestinationNotExist emails describe a group that Graph can no longer resolve, so when no
+        // live name was found fall back to the cached name captured in AdditionalContentParams[1].
+        private static string ResolveStyledDestinationGroupName(EmailMessage emailMessage, string destinationGroupName)
+        {
+            if (!string.IsNullOrEmpty(destinationGroupName)
+                || !string.Equals(emailMessage?.Content, NotificationConstants.DestinationNotExistContent, StringComparison.OrdinalIgnoreCase))
+            {
+                return destinationGroupName;
+            }
+
+            var cachedName = GetParamSafe(emailMessage, 1);
+            return !string.IsNullOrEmpty(cachedName) && !string.Equals(cachedName, "NAME NOT FOUND", StringComparison.OrdinalIgnoreCase)
+                ? cachedName
+                : destinationGroupName;
+        }
+
+        // Returns the branded HTML body for notification types that have a styled template.
+        // Types with no template return null and are rendered by the legacy adaptive-card path.
+        // Order matters: IsSyncDisabledNotification is a broad substring match, so the more
+        // specific content types above it must be tested first.
+        private async Task<string?> TryBuildStyledBodyAsync(EmailMessage emailMessage, StyledEmailContext context)
+        {
+            var content = emailMessage?.Content;
+
+            if (string.Equals(content, "SyncStartedEmailBody", StringComparison.OrdinalIgnoreCase))
+                return await _mailFallbackBuilder.BuildSyncStartedFallbackAsync(emailMessage, context.DestinationGroupName, context.GroupId, context.HistoryUrl, context.SentDate);
+
+            if (string.Equals(content, "SyncCompletedEmailBody", StringComparison.OrdinalIgnoreCase))
+                return await _mailFallbackBuilder.BuildSyncCompletedFallbackAsync(emailMessage, context.DestinationGroupName, context.GroupId, context.HistoryUrl, context.SentDate);
+
+            if (string.Equals(content, NotificationConstants.JobPurgingWarningEmailBody, StringComparison.OrdinalIgnoreCase))
+            {
+                // ThresholdExceeded purge warnings deep-link to the take-action dialog (like Sync Disabled); status is AdditionalContentParams[0].
+                var purgeWarningStatus = GetParamSafe(emailMessage, 0);
+                var purgeWarningCtaUrl = string.Equals(purgeWarningStatus, "ThresholdExceeded", StringComparison.OrdinalIgnoreCase)
+                    ? UiUrlBuilder.BuildJobDetailsUrl(context.UIUrl, emailMessage.SyncJobId, includeHistory: true, takeAction: true)
+                    : context.HistoryUrl;
+                return await _mailFallbackBuilder.BuildJobPurgingWarningFallbackAsync(emailMessage, context.DestinationGroupName, context.GroupId, purgeWarningCtaUrl, context.SentDate);
+            }
+
+            if (IsFinalNotice(content))
+            {
+                // The sync job is already purged, so a /jobdetails deep-link would 404.
+                // Send owners to the onboarding page instead, matching the "Start a new onboarding" CTA.
+                return await _mailFallbackBuilder.BuildFinalNoticeFallbackAsync(emailMessage, context.DestinationGroupName, context.GroupId, context.OnboardingUrl, context.SentDate);
+            }
+
+            if (IsSyncDisabledNotification(content))
+            {
+                // Threshold-disabled emails deep-link "Review in GMM" to the take-action dialog; other reasons use history.
+                var disabledCtaUrl = string.Equals(content, NotificationConstants.SyncJobDisabledEmailBody, StringComparison.OrdinalIgnoreCase)
+                    ? UiUrlBuilder.BuildJobDetailsUrl(context.UIUrl, emailMessage.SyncJobId, includeHistory: true, takeAction: true)
+                    : context.HistoryUrl;
+                return await _mailFallbackBuilder.BuildSyncDisabledFallbackAsync(emailMessage, context.DestinationGroupName, context.GroupId, disabledCtaUrl, context.SentDate);
+            }
+
+            if (string.Equals(content, NotificationConstants.SubmissionRejectedEmailBody, StringComparison.OrdinalIgnoreCase))
+                return await _mailFallbackBuilder.BuildSubmissionRejectedFallbackAsync(emailMessage, context.DestinationGroupName, context.GroupId, context.JobUrl, context.SentDate);
+
+            return null;
         }
 
         private static string WrapStyledBodyWithoutAdaptiveCard(string body, string groupName) =>
