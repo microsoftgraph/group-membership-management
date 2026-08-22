@@ -159,7 +159,6 @@ namespace Services.Notifier.Tests
         [DataRow(NotificationConstants.SubmissionRejectedEmailBody, NotificationConstants.SubmissionRejectedEmailSubject)]
         [DataRow(NotificationConstants.JobPurgingWarningEmailBody, NotificationConstants.JobPurgingWarningEmailSubject)]
         [DataRow(NotificationConstants.SyncPurgedForInactivityEmailBody, NotificationConstants.SyncPurgedForInactivityEmailSubject)]
-        [DataRow(NotificationConstants.NoValidGroupIdsContent, NotificationConstants.NotValidSourceSubject)]
         [DataRow(NotificationConstants.SyncThresholdBothEmailBody, NotificationConstants.SyncThresholdEmailSubject)]
         public async Task AllNotificationTypes_ProduceHtmlBodyAndResolvedSubject(string content, string subject)
         {
@@ -174,7 +173,7 @@ namespace Services.Notifier.Tests
 
         /// <summary>
         /// Locks in which notification types render the styled HTML template and which still
-        /// fall back to the legacy adaptive-card wrapper. Only the two legacy types below may
+        /// fall back to the legacy adaptive-card wrapper. Only the single legacy type below may
         /// change when the OAM path is removed.
         /// </summary>
         [DataTestMethod]
@@ -190,7 +189,6 @@ namespace Services.Notifier.Tests
         [DataRow(NotificationConstants.SubmissionRejectedEmailBody, NotificationConstants.SubmissionRejectedEmailSubject, false)]
         [DataRow(NotificationConstants.JobPurgingWarningEmailBody, NotificationConstants.JobPurgingWarningEmailSubject, false)]
         [DataRow(NotificationConstants.SyncPurgedForInactivityEmailBody, NotificationConstants.SyncPurgedForInactivityEmailSubject, false)]
-        [DataRow(NotificationConstants.NoValidGroupIdsContent, NotificationConstants.NotValidSourceSubject, true)]
         [DataRow(NotificationConstants.SyncThresholdBothEmailBody, NotificationConstants.SyncThresholdEmailSubject, true)]
         public async Task NotificationTypes_UseExpectedStyledOrLegacyTemplate(string content, string subject, bool expectLegacy)
         {

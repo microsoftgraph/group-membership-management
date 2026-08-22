@@ -72,13 +72,6 @@ namespace Hosts.Notifier
                     await context.CallActivityAsync(nameof(SendNotification), message);
                     break;
 
-                case nameof(NotificationMessageType.NotValidSourceNotification):
-                    message.MessageTitle = NotificationConstants.NotValidSourceTitle;
-                    message.SubjectTemplate = NotificationConstants.NotValidSourceSubject;
-                    message.ContentTemplate = NotificationConstants.NoValidGroupIdsContent;
-                    await context.CallActivityAsync(nameof(SendNotification), message);
-                    break;
-
                 case nameof(NotificationMessageType.SourceNotExistNotification):
                     message.MessageTitle = NotificationConstants.SourceNotExistTitle;
                     message.SubjectTemplate = NotificationConstants.DisabledNotificationSubject;

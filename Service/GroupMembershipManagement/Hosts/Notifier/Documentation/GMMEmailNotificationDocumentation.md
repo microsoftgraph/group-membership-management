@@ -11,18 +11,17 @@
    - [3. DestinationNotExistNotification](#notification-name-destinationnotexistnotification)
    - [4. NoDataNotification](#notification-name-nodatanotification)
    - [5. NotOwnerNotification](#notification-name-notownernotification)
-   - [6. NotValidSourceNotification](#notification-name-notvalidsourcenotification)
-   - [7. SourceNotExistNotification](#notification-name-sourcenotexistnotification)
-   - [8. InactiveSyncJobNotification](#notification-name-inactivesyncjobnotification)
-   - [9. GuestUserFailureNotification](#notification-name-guestuserfailurenotification)
-   - [10. ThresholdNotification](#notification-name-thresholdnotification)
-   - [11. ThresholdNotificationDisabled](#notification-name-thresholdnotificationdisabled)
-   - [12. ThresholdNotificationNotFound](#notification-name-thresholdnotificationnotfound)
-   - [13. ThresholdNotificationResolved](#notification-name-thresholdnotificationresolved)
-   - [14. ThresholdNotificationUnauthorized](#notification-name-thresholdnotificationunauthorized)
-   - [15. ThresholdNotificationExpired](#notification-name-thresholdnotificationexpired)
-   - [16. ThresholdNotificationFallback](#notification-name-thresholdnotificationfallback)
-   - [17. SubmissionRejectedNotification](#notification-name-submissionrejectednotification)
+   - [6. SourceNotExistNotification](#notification-name-sourcenotexistnotification)
+   - [7. InactiveSyncJobNotification](#notification-name-inactivesyncjobnotification)
+   - [8. GuestUserFailureNotification](#notification-name-guestuserfailurenotification)
+   - [9. ThresholdNotification](#notification-name-thresholdnotification)
+   - [10. ThresholdNotificationDisabled](#notification-name-thresholdnotificationdisabled)
+   - [11. ThresholdNotificationNotFound](#notification-name-thresholdnotificationnotfound)
+   - [12. ThresholdNotificationResolved](#notification-name-thresholdnotificationresolved)
+   - [13. ThresholdNotificationUnauthorized](#notification-name-thresholdnotificationunauthorized)
+   - [14. ThresholdNotificationExpired](#notification-name-thresholdnotificationexpired)
+   - [15. ThresholdNotificationFallback](#notification-name-thresholdnotificationfallback)
+   - [16. SubmissionRejectedNotification](#notification-name-submissionrejectednotification)
 4. [Conclusion](#conclusion)
 ---
 
@@ -121,23 +120,6 @@ Alerts the user that a synchronization job has been paused due to GMM is not an 
 
 ### Triggered By:
 - **JobTrigger Function**: This function triggers the email after checking whether GMM is an owner of the group.
-
----
-
-## Notification Name NotValidSourceNotification
-
-### Purpose:
-This email informs the user that synchronization was disabled because the source group is a not valid guid. It helps in troubleshooting group-based issues during sync.
-
-### Email Format:
-- Adaptive Card: Yes
-- ActionableMessage: Yes
-- Visual Example: 
-
-![NotValidSourceNotification](NotificationImages/NotValidSourceNotification.png)
-
-### Triggered By:
-- **GroupMembershipObtainer Function**: This function triggers the email after checking whether source group is a valid guid.
 
 ---
 

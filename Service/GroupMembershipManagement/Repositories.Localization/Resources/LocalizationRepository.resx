@@ -998,18 +998,6 @@ Please review your membership definition by visiting the GMM UI.
   <data name="NoDataEmailSubject" xml:space="preserve">
     <value>[Action Required] No Data Found for {1}</value>
   </data>
-   <data name="NotValidSourceTitle" xml:space="preserve">
-    <value>Sync Disabled with Status {3}</value>
-  </data>
-  <data name="NotValidSourceSubject" xml:space="preserve">
-    <value>[Action Required] Sync Disabled for {0}</value>
-  </data>
-  <data name="SyncDisabledNoValidGroupIds" xml:space="preserve">
-    <value>You received this notification because you are listed as an owner of **{0}**.
-
-    Membership syncs for **{0}** with Id {1} have been disabled because its following source group object ID(s) are not valid:
-{2}</value>
-  </data>
   <data name="SyncJobDisabledEmailBody" xml:space="preserve">
     <value>You received this notification because you are listed as a GMM onboarding requestor or as owner of **{0}**. Please visit {3} to learn more about GMM.
 
