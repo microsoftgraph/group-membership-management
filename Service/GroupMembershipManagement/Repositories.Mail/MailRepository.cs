@@ -473,7 +473,8 @@ namespace Repositories.Mail
                 </body>
                 </html>";
 
-            return string.Format(plainHtmlTemplate, simpleMessage.Body.Content);
+            var encodedContent = System.Net.WebUtility.HtmlEncode(simpleMessage.Body.Content ?? string.Empty);
+            return string.Format(plainHtmlTemplate, encodedContent);
         }
 
         private bool IsSyncDisabledNotification(string? contentType)
