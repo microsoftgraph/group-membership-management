@@ -155,7 +155,7 @@ param appConfigurationKeyData array = []
 var defaultAppConfigurationKeyData = [
   {
     key: 'WebAPI:Settings:RunHistoryOpenViewingAndUnifiedTab'
-    value: 'false'
+    value: 'true'
     contentType: 'boolean'
     tag: {
       tag1: 'WebAPI'
