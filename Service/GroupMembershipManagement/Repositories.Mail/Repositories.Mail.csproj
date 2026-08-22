@@ -13,10 +13,4 @@
     <ProjectReference Include="..\Services.Contracts\Services.Contracts.csproj" />
   </ItemGroup>
 
-  <ItemGroup>
-    <None Update="Templates\DefaultCard.html">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
-  </ItemGroup>
-
 </Project>
