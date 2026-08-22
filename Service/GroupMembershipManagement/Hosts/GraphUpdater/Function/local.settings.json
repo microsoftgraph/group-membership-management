@@ -19,7 +19,6 @@
     "supportEmailAddresses": "",
     "membershipStorageAccountName": "",
     "membershipContainerName": "",
-    "actionableEmailProviderId": "",
     "gmmServiceBus__fullyQualifiedNamespace": "<service_bus_namespace>.servicebus.windows.net",
     "serviceBusMembershipUpdatersTopic": "",
     "serviceBusNotificationsQueue": "",

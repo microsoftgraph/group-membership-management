@@ -31,7 +31,6 @@
     "appConfigurationEndpoint": "https://gmm-appconfig-<env>.azconfig.io",
     "APPLICATIONINSIGHTS_CONNECTION_STRING": "",
     "dryRunEnabled": false,
-    "actionableEmailProviderId": "",
     "serviceBusMembershipAggregatorQueue": ""
   }
 }

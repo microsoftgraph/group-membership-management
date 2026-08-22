@@ -18,7 +18,6 @@
     "senderAddress": "",
     "senderPassword": "",
     "supportEmailAddresses": "",
-    "actionableEmailProviderId": "",
     "apiHostname": "",
     "serviceBusNotificationsTopic": "notifications",
     "serviceBusNotificationsSubscription": "notifier",

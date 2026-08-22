@@ -22,7 +22,6 @@
     "supportEmailAddresses": "",
     "membershipStorageAccountName": "",
     "membershipContainerName": "",
-    "actionableEmailProviderId": "",
     "serviceBusMembershipAggregatorQueue": ""
   },
   "ConnectionStrings": {}

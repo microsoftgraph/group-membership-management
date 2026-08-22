@@ -22,7 +22,6 @@
     "serviceBusSyncJobTopic": "",
     "serviceBusNotificationsQueue": "",
     "serviceBusSyncJobUpdaterQueue": "",
-    "actionableEmailProviderId": "",
     "supportEmailAddresses": "",
     "senderAddress": "",
     "senderPassword": "",

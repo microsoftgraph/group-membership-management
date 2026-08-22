@@ -21,7 +21,6 @@
     "senderAddress": "",
     "senderPassword": "",
     "supportEmailAddresses": "",
-    "actionableEmailProviderId": "",
     "serviceBusMembershipAggregatorQueue": "",
     "serviceBusNotificationsQueue": "",
     "gmmServiceBus__fullyQualifiedNamespace": "<service_bus_namespace>.servicebus.windows.net"

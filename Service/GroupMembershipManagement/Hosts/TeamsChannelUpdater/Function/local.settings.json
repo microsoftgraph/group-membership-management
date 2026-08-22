@@ -17,7 +17,6 @@
     "senderAddress": "",
     "senderPassword": "",
     "supportEmailAddresses": "",
-    "actionableEmailProviderId": "",
     "apiHostname": "",
     "serviceBusMembershipUpdatersTopic": "",
     "gmmServiceBus__fullyQualifiedNamespace": "<service_bus_namespace>.servicebus.windows.net",

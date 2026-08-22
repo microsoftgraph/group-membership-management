@@ -25,6 +25,5 @@
   "teamsChannelServiceAccountUsername": "",
   "teamsChannelServiceAccountPassword": "",
   "supportEmailAddresses": "",
-  "appConfigurationEndpoint": "https://gmm-appconfig-<env>.azconfig.io",
-  "actionableEmailProviderId": ""
+  "appConfigurationEndpoint": "https://gmm-appconfig-<env>.azconfig.io"
 }

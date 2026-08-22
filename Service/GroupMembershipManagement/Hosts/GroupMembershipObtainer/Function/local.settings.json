@@ -22,7 +22,6 @@
     "membershipContainerName": "",
     "graphUpdaterUrl": "",
     "graphUpdaterFunctionKey": "",
-    "actionableEmailProviderId": "",
     "serviceBusMembershipAggregatorQueue": "",
     "serviceBusNotificationsQueue": ""
   }
