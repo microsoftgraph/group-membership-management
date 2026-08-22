@@ -287,12 +287,6 @@ The group sync will be PAUSED until your response is received.
   <data name="SyncThresholdEmailSubject" xml:space="preserve">
     <value>[Action Required] Membership Change Alert Review for {0}</value>
   </data>
-  <data name="ThresholdNotificationResolution.IgnoreOnce" xml:space="preserve">
-    <value>Ignore Thresholds Once</value>
-  </data>
-  <data name="ThresholdNotificationResolution.Paused" xml:space="preserve">
-    <value>Sync Job Paused</value>
-  </data>
   <data name="GuestUserFailureTitle" xml:space="preserve">
     <value>Sync Disabled: Guest Users Not Supported</value>
   </data>
