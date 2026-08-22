@@ -199,7 +199,7 @@ namespace Repositories.Mail
         {
             var disableReason = GetDisableReason(emailMessage.Content);
 
-            // Generic / unknown content types fall through to the legacy adaptive-card + plain-text path
+            // Generic / unknown content types fall through to the plain HTML path
             // rather than rendering a styled email with no useful per-reason detail.
             if (disableReason == "Generic")
             {
@@ -386,7 +386,7 @@ namespace Repositories.Mail
 
             var statusKey = ResolvePurgeWarningStatusKey(status);
 
-            // Generic / unknown statuses also fall through to the legacy adaptive-card + plain-text
+            // Generic / unknown statuses also fall through to the plain HTML
             // path rather than rendering a styled email with no actionable detail.
             if (statusKey == "Generic")
             {

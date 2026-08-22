@@ -48,6 +48,9 @@ namespace Services.Notifier.Tests
         // Marker emitted only by the legacy OAM wrapper (MailRepository.BuildLegacyFallback).
         private const string LegacyMarker = "Outlook Actionable Messages";
 
+        // Marker emitted only by the styled wrapper (MailRepository.WrapStyledBodyWithoutAdaptiveCard).
+        private const string StyledMarker = "background-color:#f3f2f1";
+
         private Mock<IGraphGroupRepository> _graphGroupRepository;
         private Mock<IDatabaseSettingsRepository> _settingsRepository;
         private ILocalizationRepository _localizationRepository;
@@ -172,36 +175,40 @@ namespace Services.Notifier.Tests
         }
 
         /// <summary>
-        /// Locks in which notification types render the styled HTML template and which still
-        /// fall back to the legacy adaptive-card wrapper. Only the single legacy type below may
-        /// change when the OAM path is removed.
+        /// Locks in which notification types render the styled HTML template and which fall back
+        /// to the plain HTML body. No type may emit an actionable card or the legacy OAM warning.
         /// </summary>
         [DataTestMethod]
-        [DataRow(NotificationConstants.SyncStartedContent, NotificationConstants.OnboardingCompleteEmailSubject, false)]
-        [DataRow(NotificationConstants.SyncCompletedContent, NotificationConstants.OnboardingCompleteEmailSubject, false)]
-        [DataRow(NotificationConstants.NotOwnerContent, NotificationConstants.DisabledNotificationSubject, false)]
-        [DataRow(NotificationConstants.DestinationNotExistContent, NotificationConstants.DestinationNotExistSubject, false)]
-        [DataRow(NotificationConstants.SyncDisabledNoGroupContent, NotificationConstants.DisabledNotificationSubject, false)]
-        [DataRow(NotificationConstants.NoDataContent, NotificationConstants.NoDataSubject, false)]
-        [DataRow(NotificationConstants.GuestUserFailureEmailBody, NotificationConstants.DisabledNotificationSubject, false)]
-        [DataRow(NotificationConstants.NestedGroupsFoundContent, NotificationConstants.NestedGroupsFoundSubject, false)]
-        [DataRow(NotificationConstants.SyncJobDisabledEmailBody, NotificationConstants.SyncThresholdDisablingJobEmailSubject, false)]
-        [DataRow(NotificationConstants.SubmissionRejectedEmailBody, NotificationConstants.SubmissionRejectedEmailSubject, false)]
-        [DataRow(NotificationConstants.JobPurgingWarningEmailBody, NotificationConstants.JobPurgingWarningEmailSubject, false)]
-        [DataRow(NotificationConstants.SyncPurgedForInactivityEmailBody, NotificationConstants.SyncPurgedForInactivityEmailSubject, false)]
-        [DataRow(NotificationConstants.SyncThresholdBothEmailBody, NotificationConstants.SyncThresholdEmailSubject, true)]
-        public async Task NotificationTypes_UseExpectedStyledOrLegacyTemplate(string content, string subject, bool expectLegacy)
+        [DataRow(NotificationConstants.SyncStartedContent, NotificationConstants.OnboardingCompleteEmailSubject, true)]
+        [DataRow(NotificationConstants.SyncCompletedContent, NotificationConstants.OnboardingCompleteEmailSubject, true)]
+        [DataRow(NotificationConstants.NotOwnerContent, NotificationConstants.DisabledNotificationSubject, true)]
+        [DataRow(NotificationConstants.DestinationNotExistContent, NotificationConstants.DestinationNotExistSubject, true)]
+        [DataRow(NotificationConstants.SyncDisabledNoGroupContent, NotificationConstants.DisabledNotificationSubject, true)]
+        [DataRow(NotificationConstants.NoDataContent, NotificationConstants.NoDataSubject, true)]
+        [DataRow(NotificationConstants.GuestUserFailureEmailBody, NotificationConstants.DisabledNotificationSubject, true)]
+        [DataRow(NotificationConstants.NestedGroupsFoundContent, NotificationConstants.NestedGroupsFoundSubject, true)]
+        [DataRow(NotificationConstants.SyncJobDisabledEmailBody, NotificationConstants.SyncThresholdDisablingJobEmailSubject, true)]
+        [DataRow(NotificationConstants.SubmissionRejectedEmailBody, NotificationConstants.SubmissionRejectedEmailSubject, true)]
+        [DataRow(NotificationConstants.JobPurgingWarningEmailBody, NotificationConstants.JobPurgingWarningEmailSubject, true)]
+        [DataRow(NotificationConstants.SyncPurgedForInactivityEmailBody, NotificationConstants.SyncPurgedForInactivityEmailSubject, true)]
+        [DataRow(NotificationConstants.SyncThresholdBothEmailBody, NotificationConstants.SyncThresholdEmailSubject, false)]
+        public async Task NotificationTypes_UseExpectedStyledOrPlainTemplate(string content, string subject, bool expectStyled)
         {
             var message = await _mailRepository.GetAdaptiveCardMessage(MakeEmail(content, subject));
 
-            var isLegacy = message.Body.Content.Contains(LegacyMarker);
+            Assert.IsFalse(message.Body.Content.Contains(LegacyMarker),
+                $"{content}: no notification may still emit the legacy Outlook Actionable Message fallback.");
+            Assert.IsFalse(message.Body.Content.Contains("adaptivecard+json"),
+                $"{content}: no notification may embed an actionable card payload.");
+
+            var isStyled = message.Body.Content.Contains(StyledMarker);
 
             Assert.AreEqual(
-                expectLegacy,
-                isLegacy,
-                expectLegacy
-                    ? $"{content} is expected to still use the legacy adaptive-card fallback."
-                    : $"{content} must render the styled HTML email, not the legacy adaptive-card fallback.");
+                expectStyled,
+                isStyled,
+                expectStyled
+                    ? $"{content} must render the styled HTML email."
+                    : $"{content} is expected to render the plain HTML body, not the styled template.");
         }
 
         /// <summary>

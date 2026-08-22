@@ -261,9 +261,9 @@ namespace Repositories.Mail
                 }
                 else
                 {
-                    // Legacy adaptive-card + plain-text fallback for notification types
-                    // that have not yet been migrated to a styled HTML template.
-                    htmlContent = BuildLegacyFallback(emailMessage, adaptiveCard);
+                    // No styled template for this type yet: send the message as a plain HTML
+                    // body with no actionable card and no OAM fallback warning.
+                    htmlContent = BuildPlainFallback(emailMessage);
                 }
             }
             else
@@ -438,7 +438,7 @@ namespace Repositories.Mail
         }
 
         // Returns the branded HTML body for notification types that have a styled template.
-        // Types with no template return null and are rendered by the legacy adaptive-card path.
+        // Types with no template return null and are rendered as plain HTML.
         // Order matters: IsSyncDisabledNotification is a broad substring match, so the more
         // specific content types above it must be tested first.
         private async Task<string?> TryBuildStyledBodyAsync(EmailMessage emailMessage, StyledEmailContext context)
@@ -511,6 +511,25 @@ namespace Repositories.Mail
 {body}
 </body>
 </html>";
+
+        // Notification types with no styled template are sent as a plain HTML body. The <pre>
+        // wrapper preserves the line breaks of multi-line message bodies, such as the normal
+        // threshold email's numbered "Reply All" option list.
+        private string BuildPlainFallback(EmailMessage emailMessage)
+        {
+            var simpleMessage = GetSimpleMessage(emailMessage);
+
+            var plainHtmlTemplate = @"<html>
+                <head>
+                  <meta http-equiv=""Content-Type"" content=""text/html; charset=utf-8"">
+                </head>
+                <body>
+                <pre>{0}</pre>
+                </body>
+                </html>";
+
+            return string.Format(plainHtmlTemplate, simpleMessage.Body.Content);
+        }
 
         private string BuildLegacyFallback(EmailMessage emailMessage, string adaptiveCard)
         {
