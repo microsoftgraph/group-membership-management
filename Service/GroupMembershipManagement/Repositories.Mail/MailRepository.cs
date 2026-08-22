@@ -86,7 +86,7 @@ namespace Repositories.Mail
             }
             else if (_mailConfig.IsAdaptiveCardEnabled)
             {
-                message = await GetAdaptiveCardMessage(emailMessage);
+                message = await GetStyledMessageAsync(emailMessage);
             }
             else
             {
@@ -185,7 +185,7 @@ namespace Repositories.Mail
             return message;
         }
 
-        public async Task<Message> GetAdaptiveCardMessage(EmailMessage emailMessage)
+        public async Task<Message> GetStyledMessageAsync(EmailMessage emailMessage)
         {
             var subjectContent = _localizationRepository.TranslateSetting(emailMessage?.Subject, emailMessage?.AdditionalContentParams);
 

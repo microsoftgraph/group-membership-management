@@ -164,7 +164,7 @@ namespace Services.Notifier.Tests
         [DataRow(NotificationConstants.SyncThresholdBothEmailBody, NotificationConstants.SyncThresholdEmailSubject)]
         public async Task AllNotificationTypes_ProduceHtmlBodyAndResolvedSubject(string content, string subject)
         {
-            var message = await _mailRepository.GetAdaptiveCardMessage(MakeEmail(content, subject));
+            var message = await _mailRepository.GetStyledMessageAsync(MakeEmail(content, subject));
 
             Assert.AreEqual(BodyType.Html, message.Body.ContentType, $"{content}: body content type changed.");
             Assert.IsFalse(string.IsNullOrWhiteSpace(message.Body.Content), $"{content}: body was empty.");
@@ -193,7 +193,7 @@ namespace Services.Notifier.Tests
         [DataRow(NotificationConstants.SyncThresholdBothEmailBody, NotificationConstants.SyncThresholdEmailSubject, false)]
         public async Task NotificationTypes_UseExpectedStyledOrPlainTemplate(string content, string subject, bool expectStyled)
         {
-            var message = await _mailRepository.GetAdaptiveCardMessage(MakeEmail(content, subject));
+            var message = await _mailRepository.GetStyledMessageAsync(MakeEmail(content, subject));
 
             Assert.IsFalse(message.Body.Content.Contains(LegacyMarker),
                 $"{content}: no notification may still emit the legacy Outlook Actionable Message fallback.");
@@ -216,7 +216,7 @@ namespace Services.Notifier.Tests
         [TestMethod]
         public async Task StyledNotification_DoesNotEmbedAdaptiveCardPayload()
         {
-            var message = await _mailRepository.GetAdaptiveCardMessage(
+            var message = await _mailRepository.GetStyledMessageAsync(
                 MakeEmail(NotificationConstants.SyncStartedContent, NotificationConstants.OnboardingCompleteEmailSubject));
 
             Assert.IsFalse(message.Body.Content.Contains("adaptivecard+json"),
@@ -231,7 +231,7 @@ namespace Services.Notifier.Tests
         [TestMethod]
         public async Task NormalThresholdEmail_PreservesNumberedActionList()
         {
-            var message = await _mailRepository.GetAdaptiveCardMessage(
+            var message = await _mailRepository.GetStyledMessageAsync(
                 MakeEmail(NotificationConstants.SyncThresholdBothEmailBody, NotificationConstants.SyncThresholdEmailSubject));
 
             StringAssert.Contains(message.Body.Content, "Actions needed");
@@ -251,7 +251,7 @@ namespace Services.Notifier.Tests
         [TestMethod]
         public async Task FinalNotice_LinksToOnboardingRatherThanPurgedJob()
         {
-            var message = await _mailRepository.GetAdaptiveCardMessage(
+            var message = await _mailRepository.GetStyledMessageAsync(
                 MakeEmail(NotificationConstants.SyncPurgedForInactivityEmailBody, NotificationConstants.SyncPurgedForInactivityEmailSubject));
 
             StringAssert.Contains(message.Body.Content, "ManageMembership",
@@ -261,7 +261,7 @@ namespace Services.Notifier.Tests
         [TestMethod]
         public async Task ThresholdDisabledEmail_LinksToTakeActionDialog()
         {
-            var message = await _mailRepository.GetAdaptiveCardMessage(
+            var message = await _mailRepository.GetStyledMessageAsync(
                 MakeEmail(NotificationConstants.SyncJobDisabledEmailBody, NotificationConstants.SyncThresholdDisablingJobEmailSubject));
 
             StringAssert.Contains(message.Body.Content, "takeAction",

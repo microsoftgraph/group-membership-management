@@ -128,7 +128,7 @@ namespace Services.Notifier
 
             string subject = _localizationRepository.TranslateSetting(subjectKey, groupName);
 
-            // Styled threshold email requires BOTH the styled-fallback flag and the Phase 2 run-history flag; otherwise use the OAM card.
+            // Styled threshold email requires BOTH the styled-fallback flag and the Phase 2 run-history flag; otherwise use the plain fallback below.
             var useStyledThresholdEmail = _mailConfig.EnableStyledFallbackEmails && _mailConfig.RunHistoryTabEnabled;
 
             string emailContent = null;

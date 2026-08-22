@@ -456,7 +456,7 @@ namespace Services.Notifier.Tests
         }
 
         [TestMethod]
-        public async Task GetAdaptiveCardMessage_MissingUIUrl_PassesEmptyHistoryUrlToStyledFallback()
+        public async Task GetStyledMessageAsync_MissingUIUrl_PassesEmptyHistoryUrlToStyledFallback()
         {
             var requestAdapter = new Mock<IRequestAdapter>();
             requestAdapter.SetupProperty(x => x.BaseUrl).SetReturnsDefault(GRAPH_API_V1_BASE_URL);
@@ -502,7 +502,7 @@ namespace Services.Notifier.Tests
                 SyncJobId = Guid.NewGuid()
             };
 
-            await mailRepository.GetAdaptiveCardMessage(emailMessage);
+            await mailRepository.GetStyledMessageAsync(emailMessage);
 
             Assert.AreEqual(string.Empty, capturedHistoryUrl);
         }
