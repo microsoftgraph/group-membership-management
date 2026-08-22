@@ -39,9 +39,7 @@ using Repositories.ServiceStatus;
 using Repositories.SqlMembershipRepository;
 using Repositories.TeamsChannel;
 using Services.Contracts;
-using Services.Contracts.Notifications;
 using Services.Entities;
-using Services.Notifications;
 using Services.WebApi;
 using Services.WebApi.Contracts;
 using WebApi.BackgroundServices;
@@ -436,14 +434,7 @@ namespace WebApi
                 settings.KeyVaultName = configuration.GetValue<string>("Settings:GraphCredentials:KeyVaultName");
             });
 
-            builder.Services.AddOptions<ThresholdNotificationServiceConfig>().Configure<IConfiguration>((settings, configuration) =>
-            {
-                settings.ActionableEmailProviderId = actionableEmailProviderId;
-                settings.ApiHostname = apiHostName;
-            });
-
             builder.Services.AddScoped<IActionableMessageTokenValidator, ActionableMessageTokenValidator>();
-            builder.Services.AddScoped<IThresholdNotificationService, ThresholdNotificationService>();
             builder.Services.AddScoped<IDataFactoryRepository, DataFactoryRepository>();
             builder.Services.AddScoped<IDatabaseSyncJobsRepository, DatabaseSyncJobsRepository>();
             builder.Services.AddSingleton<IBlobStorageRepository>(sp =>

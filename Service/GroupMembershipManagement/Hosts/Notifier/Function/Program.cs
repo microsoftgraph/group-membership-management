@@ -17,8 +17,6 @@ using Repositories.Contracts.InjectConfig;
 using Repositories.EntityFramework;
 using Repositories.GraphGroups;
 using Repositories.ServiceBusQueue;
-using Services.Contracts.Notifications;
-using Services.Notifications;
 using Services.Notifier;
 using Services.Notifier.Contracts;
 using System;
@@ -77,12 +75,6 @@ namespace Hosts.Notifier
                             options.JobHistoryRetentionDays);
                     });
 
-                    services.AddOptions<ThresholdNotificationServiceConfig>().Configure<IConfiguration>((settings, config) =>
-                    {
-                        settings.ActionableEmailProviderId = config.GetValue<Guid>("actionableEmailProviderId");
-                        settings.ApiHostname = config.GetValue<string>("apiHostname");
-                    });
-
                     services.AddOptions<ThresholdConfig>().Configure<IConfiguration>((settings, config) =>
                     {
                         settings.MaximumNumberOfThresholdRecipients = CommonServices.GetIntSettingBase(config, "MaximumNumberOfThresholdRecipients", 10);
@@ -113,7 +105,6 @@ namespace Hosts.Notifier
                     });
 
                     services.AddSingleton<IThresholdNotificationConfig>(_ => new ThresholdNotificationConfig(true));
-                    services.AddScoped<IThresholdNotificationService, ThresholdNotificationService>();
                     services.AddHttpClient();
                 })
                 .Build();

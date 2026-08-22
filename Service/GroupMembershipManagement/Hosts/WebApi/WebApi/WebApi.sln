@@ -1,4 +1,4 @@
-
+﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 18
 VisualStudioVersion = 18.0.10827.20
@@ -30,8 +30,6 @@ EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Repositories.GraphAzureADGroups", "..\..\..\Repositories.GraphGroups\Repositories.GraphAzureADGroups.csproj", "{C0E5E034-BD93-4371-82B9-D38AA36F9B9B}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Services.Contracts", "..\..\..\Services.Contracts\Services.Contracts.csproj", "{6F3A955E-C109-4041-8FF9-CB9BD04FAE61}"
-EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Services.Notifications", "..\..\..\Services.Notifications\Services.Notifications.csproj", "{83648C3D-303F-4292-9228-84598B84B334}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Repositories.Localization", "..\..\..\Repositories.Localization\Repositories.Localization.csproj", "{EF7436BD-26A1-49D8-AFCB-1803EB24C4CB}"
 EndProject
@@ -121,10 +119,6 @@ Global
 		{6F3A955E-C109-4041-8FF9-CB9BD04FAE61}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{6F3A955E-C109-4041-8FF9-CB9BD04FAE61}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{6F3A955E-C109-4041-8FF9-CB9BD04FAE61}.Release|Any CPU.Build.0 = Release|Any CPU
-		{83648C3D-303F-4292-9228-84598B84B334}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{83648C3D-303F-4292-9228-84598B84B334}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{83648C3D-303F-4292-9228-84598B84B334}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{83648C3D-303F-4292-9228-84598B84B334}.Release|Any CPU.Build.0 = Release|Any CPU
 		{EF7436BD-26A1-49D8-AFCB-1803EB24C4CB}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{EF7436BD-26A1-49D8-AFCB-1803EB24C4CB}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{EF7436BD-26A1-49D8-AFCB-1803EB24C4CB}.Release|Any CPU.ActiveCfg = Release|Any CPU

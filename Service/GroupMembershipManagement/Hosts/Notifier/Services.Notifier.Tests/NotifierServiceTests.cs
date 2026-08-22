@@ -20,7 +20,6 @@ using Repositories.Contracts.InjectConfig;
 using Repositories.Localization;
 using Repositories.Mail;
 using Repositories.RetryPolicyProvider;
-using Services.Contracts.Notifications;
 using Services.Tests;
 using System;
 using System.Collections.Generic;

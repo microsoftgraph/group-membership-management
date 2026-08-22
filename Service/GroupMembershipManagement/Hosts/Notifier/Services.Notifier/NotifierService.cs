@@ -13,7 +13,6 @@ using System.Globalization;
 using System.Linq;
 using Repositories.Contracts.InjectConfig;
 using Models.ThresholdNotifications;
-using Services.Contracts.Notifications;
 using Services.Contracts;
 using Microsoft.ApplicationInsights;
 using System.Text.Json;
