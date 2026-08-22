@@ -1,6 +1,8 @@
 # Notifier Setup
 
-The GMM Notifier uses adaptive cards to send Outlook Actionable Emails (OAM). OAM requires that a special id, called a `provider id`, be included in each adaptive card payload in order to validate the sender, content, and recipients of the message.
+Most GMM notifications are sent as styled HTML emails, which need no provider id. The remaining legacy notifications are still sent as Outlook Actionable Emails (OAM), and the WebApi still validates action tokens posted back by actionable cards that are already sitting in mailboxes. Both of those require a special id, called a `provider id`, which is included in each adaptive card payload in order to validate the sender, content, and recipients of the message.
+
+Until the legacy path is retired, the setup below is still required for a new environment.
 
 If an actionable message is sent from an email address that is not part of the approved senders list, the adaptive card will not be rendered.
 

@@ -16,23 +16,19 @@
    - [8. GuestUserFailureNotification](#notification-name-guestuserfailurenotification)
    - [9. ThresholdNotification](#notification-name-thresholdnotification)
    - [10. ThresholdNotificationDisabled](#notification-name-thresholdnotificationdisabled)
-   - [11. ThresholdNotificationNotFound](#notification-name-thresholdnotificationnotfound)
-   - [12. ThresholdNotificationResolved](#notification-name-thresholdnotificationresolved)
-   - [13. ThresholdNotificationUnauthorized](#notification-name-thresholdnotificationunauthorized)
-   - [14. ThresholdNotificationExpired](#notification-name-thresholdnotificationexpired)
-   - [15. ThresholdNotificationFallback](#notification-name-thresholdnotificationfallback)
-   - [16. SubmissionRejectedNotification](#notification-name-submissionrejectednotification)
+   - [11. ThresholdNotificationFallback](#notification-name-thresholdnotificationfallback)
+   - [12. SubmissionRejectedNotification](#notification-name-submissionrejectednotification)
 4. [Conclusion](#conclusion)
 ---
 
 ## Introduction
 
-This document provides a detailed overview of all notifications sent by GMM. It includes information on each notification type, the purpose behind each message, the format used (adaptive card or basic email), and a visual example. This will serve as a comprehensive guide for understanding the structure and role of notifications within the GMM product.
+This document provides a detailed overview of all notifications sent by GMM. It includes information on each notification type, the purpose behind each message, the format used, and a visual example. This will serve as a comprehensive guide for understanding the structure and role of notifications within the GMM product.
 
 ## Key Areas of Focus
 
 - **Purpose of Notification**: Why the notification is being sent and to whom.
-- **Email Format**: Whether the notification uses adaptive card format or standard email format.
+- **Email Format**: Whether the notification uses the styled HTML template or a plain HTML body.
 - **Triggered By**: The function or service that triggers this notification.
 - **Example**: A visual representation of the notification 
 
@@ -44,8 +40,7 @@ This document provides a detailed overview of all notifications sent by GMM. It 
 This email notifies the user that a synchronization job has started. It ensures the user is aware of the process initiation.
 
 ### Email Format:
-- Adaptive Card: Yes
-- ActionableMessage: Yes
+- Format: Styled HTML email
 - Visual Example: 
 
 ![SyncStartedNotification](NotificationImages/SyncStartedNotification.png)
@@ -61,8 +56,7 @@ This email notifies the user that a synchronization job has started. It ensures 
 Sent to inform the user when a synchronization job is successfully completed. It helps the user know when their job has finished processing.
 
 ### Email Format:
-- Adaptive Card: Yes
-- ActionableMessage: Yes
+- Format: Styled HTML email
 - Visual Example: 
 
 ![SyncCompletedNotification](NotificationImages/SyncCompletedNotification.png)
@@ -78,8 +72,7 @@ Sent to inform the user when a synchronization job is successfully completed. It
 This email informs the user that synchronization was disabled because the destination group does not exist. It helps in troubleshooting group-based issues during sync.
 
 ### Email Format:
-- Adaptive Card: Yes
-- ActionableMessage: Yes
+- Format: Styled HTML email
 - Visual Example: 
 
 ![DestinationNotExistNotification](NotificationImages/DestinationNotExistNotification.png)
@@ -95,8 +88,7 @@ This email informs the user that synchronization was disabled because the destin
 Informs the user that no data was found for the requested sync, providing clarity on the results of the sync operation.
 
 ### Email Format:
-- Adaptive Card: Yes
-- ActionableMessage: Yes
+- Format: Styled HTML email
 - Visual Example: 
 
 ![NoDataNotification](NotificationImages/NoDataNotification.png)
@@ -112,8 +104,7 @@ Informs the user that no data was found for the requested sync, providing clarit
 Alerts the user that a synchronization job has been paused due to GMM is not an owner of the group, helping keep users informed about the status of their jobs.
 
 ### Email Format:
-- Adaptive Card: Yes
-- ActionableMessage: Yes
+- Format: Styled HTML email
 - Visual Example: 
 
 ![NotOwnerNotification](NotificationImages/NotOwnerNotification.png)
@@ -129,8 +120,7 @@ Alerts the user that a synchronization job has been paused due to GMM is not an 
 This email informs the user that synchronization was disabled because the source group no longer exist. It helps in troubleshooting group-based issues during sync.
 
 ### Email Format:
-- Adaptive Card: Yes
-- ActionableMessage: Yes
+- Format: Styled HTML email
 - Visual Example:
 
 ![SourceNotExistNotification](NotificationImages/SourceNotExistNotification.png)
@@ -146,8 +136,7 @@ This email informs the user that synchronization was disabled because the source
 This email informs the user that their group’s synchronization with GMM has been disabled due to inactivity. It helps the user understand that their group no longer syncs with GMM and provides reasons for the inactivity, including the possibility that the source or destination group no longer exists, or that syncs were paused for too long.
 
 ### Email Format:
-- Adaptive Card: Yes
-- ActionableMessage: Yes
+- Format: Styled HTML email
 - Visual Example:
 
 ![InactiveSyncJobNotification](NotificationImages/InactiveSyncJobNotification.png)
@@ -163,8 +152,7 @@ This email informs the user that their group’s synchronization with GMM has be
 This email informs the user that GMM was unable to add guest users to the destination group due to restrictions in the destination group’s settings, but it still processed the remaining user changes. It helps the user identify configuration issues related to guest user addition and informs them of actions that were still successfully performed by GMM.
 
 ### Email Format:
-- Adaptive Card: Yes
-- ActionableMessage: Yes
+- Format: Styled HTML email
 - Visual Example:
 
 ![GuestUserFailureNotification](NotificationImages/GuestUserFailureNotification.png)
@@ -180,8 +168,7 @@ This email informs the user that GMM was unable to add guest users to the destin
 This email informs the user that the most recent attempt to update the membership of their GMM-managed group exceeded the configured alert threshold, prompting the user to either approve the changes or pause the sync job.
 
 ### Email Format:
-- Adaptive Card: Yes
-- ActionableMessage: Yes
+- Format: Styled HTML email
 - Visual Example:
 
 ![ThresholdNotification](NotificationImages/ThresholdNotification.png)
@@ -196,8 +183,7 @@ This email informs the user that the most recent attempt to update the membershi
 This email informs the user that synchronization of their GMM group has been disabled. If no action is taken, the sync job will be deleted on the specified expiration date. The user is prompted to either proceed with pausing or re-enabling the sync.
 
 ### Email Format:
-- Adaptive Card: Yes
-- ActionableMessage: Yes
+- Format: Styled HTML email
 - Visual Example:
 
 ![ThresholdNotificationDisabled](NotificationImages/ThresholdNotificationDisabled.png)
@@ -207,82 +193,13 @@ This email informs the user that synchronization of their GMM group has been dis
 
 ---
 
-## Notification Name ThresholdNotificationNotFound
-
-### Purpose:
-This email notifies the user that the notification no longer exists in the system. This typically occurs when an older notification is pruned and is no longer available.
-
-### Email Format:
-- Adaptive Card: Yes
-- ActionableMessage: No
-- Visual Example:
-
-![ThresholdNotificationNotFound](NotificationImages/ThresholdNotificationNotFound.png)
-
-### Triggered By:
-- **WebApi**: Triggered when a user attempts to access a notification that has already been pruned or is no longer valid in the system.
-
----
-
-## Notification Name ThresholdNotificationResolved
-
-### Purpose:
-This email informs the user that a previously sent threshold notification has been resolved. It provides details on who resolved the issue and when the action was taken.
-
-### Email Format:
-- Adaptive Card: Yes
-- ActionableMessage: No
-- Visual Example:
-
-![ThresholdNotificationResolved](NotificationImages/ThresholdNotificationResolved.png)
-
-### Triggered By:
-- **WebApi**: Triggered after a threshold alert has been addressed and resolved, informing the user of the outcome
-
----
-
-## Notification Name ThresholdNotificationUnauthorized
-
-### Purpose:
-This email informs the user that they are no longer authorized to view the notifications for a particular group, as they are no longer an owner of the group.
-
-### Email Format:
-- Adaptive Card: Yes
-- ActionableMessage: No
-- Visual Example:
-
-![ThresholdNotificationUnauthorized](NotificationImages/ThresholdNotificationUnauthorized.png)
-
-### Triggered By:
-- **WebApi**: Triggered when the user loses ownership of the group and therefore no longer has the necessary permissions to view group notifications.
-
----
-
-## Notification Name ThresholdNotificationExpired
-
-### Purpose:
-This email notifies the user that a notification has expired. The time period to address a threshold violation has passed, and the sync has been purged. The email also prompts the user to re-onboard if necessary.
-
-### Email Format:
-- Adaptive Card: Yes
-- ActionableMessage: No
-- Visual Example:
-
-![ThresholdNotificationExpired](NotificationImages/ThresholdNotificationExpired.png)
-
-### Triggered By:
-- **WebApi**: Triggered when a threshold violation is not addressed within the allotted time, resulting in the sync being purged and the notification expiring.
-
----
-
 ## Notification Name ThresholdNotificationFallback
 
 ### Purpose:
 This email is sent as a plain informational notification when the styled threshold email is not used. It summarizes the threshold violation and links the recipient to the run history in the GMM UI, where the notification can be reviewed and resolved.
 
 ### Email Format:
-- Adaptive Card: No
-- ActionableMessage: No
+- Format: Plain HTML email
 - Visual Example:
 
 ![ThresholdNotificationFallback](NotificationImages/ThresholdNotificationFallback.png)
@@ -298,8 +215,7 @@ This email is sent as a plain informational notification when the styled thresho
 This email informs the user that their submission to onboard a new or modify an existing sync job has been rejected. It provides the reason for rejection and guides the user on next steps, including how to contact support or submit a new request if needed.
 
 ### Email Format:
-- Adaptive Card: Yes
-- ActionableMessage: Yes
+- Format: Styled HTML email
 - Visual Example:
 
 ![SubmissionRejectedNotification](NotificationImages/SubmissionRejectedNotification.png)
@@ -311,4 +227,4 @@ This email informs the user that their submission to onboard a new or modify an 
 
 ## Conclusion
 
-This document outlines the notifications sent by GMM, detailing the purpose, handling logic, and customization options for each. By centralizing email notifications under the Notifier function and using a consistent approach with adaptive cards, we aim to streamline communication and enhance the user experience.
+This document outlines the notifications sent by GMM, detailing the purpose, handling logic, and customization options for each. By centralizing email notifications under the Notifier function and using a consistent styled HTML template, we aim to streamline communication and enhance the user experience.
