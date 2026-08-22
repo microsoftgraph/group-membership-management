@@ -78,10 +78,6 @@ namespace WebApi
             var apiHostName = builder.Configuration.GetValue<string>("Settings:ApiHostname");
             var secureApiHostName = $"https://{apiHostName}";
 
-            var actionableEmailProviderId = builder.Configuration.GetValue<Guid>("Settings:ActionableEmailProviderId");
-            var oamEntraAppId = builder.Configuration.GetValue<string>("Settings:oamEntraAppId");
-            var oamEntraAppScope = builder.Configuration.GetValue<string>("Settings:oamEntraAppScope");
-
             builder.Services.AddDbContext<GMMContext>(options =>
                 options.UseSqlServer(builder.Configuration.GetConnectionString("JobsContext"), sqlServerOptions =>
                 {
@@ -139,21 +135,12 @@ namespace WebApi
             {
                 var tenantSigningKeys = await GetSigningKeysFromUrlAsync($"{azureAdInstanceUrl}{azureAdTenantId}/.well-known/openid-configuration");
                 var tenantSigningKeysv2 = await GetSigningKeysFromUrlAsync($"{azureAdInstanceUrl}{azureAdTenantId}/v2.0/.well-known/openid-configuration");
-                var officeSigningKeys = await GetSigningKeysFromUrlAsync("https://substrate.office.com/sts/common/.well-known/openid-configuration");
 
                 var validAudiences = new[] {
                         $"api://{azureAdClientId}",
                         azureAdClientId,
                         secureApiHostName
                     };
-
-                if (!string.IsNullOrWhiteSpace(oamEntraAppId))
-                {
-                    validAudiences = validAudiences.Concat(new[] {
-                        $"api://auth-am-{actionableEmailProviderId}/{oamEntraAppId}",
-                        oamEntraAppId
-                    }).ToArray();
-                }
 
                 options.TokenValidationParameters = new TokenValidationParameters
                 {
@@ -162,28 +149,25 @@ namespace WebApi
                     ValidateIssuer = true,
                     ValidIssuers = new[] {
                         $"https://sts.windows.net/{azureAdTenantId}/",
-                        $"https://login.microsoftonline.com/{azureAdTenantId}/v2.0",
-                        "https://substrate.office.com/sts/"
+                        $"https://login.microsoftonline.com/{azureAdTenantId}/v2.0"
                     },
                     ValidateIssuerSigningKey = true,
-                    IssuerSigningKeys = tenantSigningKeys.Concat(tenantSigningKeysv2).Concat(officeSigningKeys)
+                    IssuerSigningKeys = tenantSigningKeys.Concat(tenantSigningKeysv2)
                 };
 
                 options.TokenValidationParameters.EnableAadSigningKeyIssuerValidation();
                 
                 options.Events.OnTokenValidated = async context =>
                 {
-                    // Validate scope for OAM (Outlook Actionable Messages) endpoints
+                    // Notification endpoints are reached with a delegated user token from the GMM UI
                     var path = context.HttpContext.Request.Path.Value;
                     if (path != null && path.Contains("/notifications", StringComparison.OrdinalIgnoreCase))
                     {
                         var scopeClaim = context.Principal?.Claims.FirstOrDefault(c => c.Type == "scp" || c.Type == "http://schemas.microsoft.com/identity/claims/scope")?.Value;
-                        var hasOamScope = !string.IsNullOrWhiteSpace(scopeClaim) && scopeClaim.Contains(oamEntraAppScope);
-                        var hasUiScope = !string.IsNullOrWhiteSpace(scopeClaim) && scopeClaim.Contains("user_impersonation");
 
-                        if (!hasOamScope && !hasUiScope)
+                        if (string.IsNullOrWhiteSpace(scopeClaim) || !scopeClaim.Contains("user_impersonation"))
                         {
-                            context.Fail($"Required scope '{oamEntraAppScope}' or 'user_impersonation' not present in token");
+                            context.Fail("Required scope 'user_impersonation' not present in token");
                             return;
                         }
                     }

@@ -96,9 +96,6 @@ var teamsChannelAppTenantId = resourceId(subscription().subscriptionId, prereqsR
 var teamsChannelServiceAccountObjectId = resourceId(subscription().subscriptionId, prereqsResourceGroup, 'Microsoft.KeyVault/vaults/secrets', prereqsKeyVaultName, 'teamsChannelServiceAccountObjectId')
 var teamsChannelServiceAccountUsername = resourceId(subscription().subscriptionId, prereqsResourceGroup, 'Microsoft.KeyVault/vaults/secrets', prereqsKeyVaultName, 'teamsChannelServiceAccountUsername')
 var teamsChannelServiceAccountPassword = resourceId(subscription().subscriptionId, prereqsResourceGroup, 'Microsoft.KeyVault/vaults/secrets', prereqsKeyVaultName, 'teamsChannelServiceAccountPassword')
-var actionableEmailProviderId = resourceId(subscription().subscriptionId, dataResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'notifierProviderId')
-var oamEntraAppId = resourceId(subscription().subscriptionId, dataResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'oamEntraAppId')
-var oamEntraAppScope = resourceId(subscription().subscriptionId, dataResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'oamEntraAppScope')
 var replicaJobsMSIConnectionString = resourceId(subscription().subscriptionId, dataResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'replicaJobsMSIConnectionString')
 var jobsMSIConnectionString = resourceId(subscription().subscriptionId, dataResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'jobsMSIConnectionString')
 var sqlServerMSIConnectionString = resourceId(subscription().subscriptionId, dataResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'sqlServerMSIConnectionString')
@@ -222,18 +219,6 @@ var appSettings = [
   {
     name: 'Settings:TeamsGraphCredentials:AppName'
     value: '${solutionAbbreviation}-TeamsChannel-${environmentAbbreviation}'
-  }
-  {
-    name: 'Settings:ActionableEmailProviderId'
-    value: '@Microsoft.KeyVault(SecretUri=${reference(actionableEmailProviderId, '2019-09-01').secretUriWithVersion})'
-  }
-  {
-    name: 'Settings:oamEntraAppId'
-    value: '@Microsoft.KeyVault(SecretUri=${reference(oamEntraAppId, '2019-09-01').secretUriWithVersion})'
-  }
-  {
-    name: 'Settings:oamEntraAppScope'
-    value: '@Microsoft.KeyVault(SecretUri=${reference(oamEntraAppScope, '2019-09-01').secretUriWithVersion})'
   }
   {
     name: 'Settings:ApiHostname'
