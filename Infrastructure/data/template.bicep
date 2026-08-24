@@ -634,6 +634,9 @@ param notificationAlertThreshold int = 10
 @description('Location for the OpenAI resource.')
 param aiLocation string = location
 
+@description('Provisioned throughput for the GPT deployment, in units of 1,000 tokens per minute (TPM). Drives both the deployed capacity and the quota line on the dashboard tile.')
+param openAIDeploymentCapacity int = 150
+
 param featureFlags object = {
   enableOpenAI: false
 }
@@ -957,6 +960,7 @@ module openAIResources 'openAIResources.bicep' = if (featureFlags.enableOpenAI) 
     solutionAbbreviation: solutionAbbreviation
     environmentAbbreviation: environmentAbbreviation
     allowedIpAddresses: ''
+    gptDeploymentCapacity: openAIDeploymentCapacity
   }
   dependsOn: [
     logAnalyticsTemplate
@@ -1130,6 +1134,7 @@ module dashboardTemplate 'dashboard.bicep' = {
     prereqsResourceGroup: '${solutionAbbreviation}-${prereqsResourceGroupClassification}-${environmentAbbreviation}'
     subscriptionId: subscriptionId
     jobsStorageAccountName: jobsStorageAccountName
+    openAITpmCapacity: openAIDeploymentCapacity * 1000
   }
   dependsOn: [
     jobsStorageAccountTemplate

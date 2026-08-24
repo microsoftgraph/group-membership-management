@@ -19,6 +19,9 @@ param subscriptionId string
 @description('Enter storage account name.')
 param jobsStorageAccountName string
 
+@description('Azure OpenAI tokens-per-minute (TPM) quota for the GPT deployment. Drawn as the flat limit line on the Copilot token usage tile.')
+param openAITpmCapacity int = 150000
+
 resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
   name: resourceGroup
   location: location
@@ -4542,6 +4545,151 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
               }
               partHeader: {
                 title: 'Entra RUUs per 20s'
+                subtitle: ''
+              }
+            }
+          }
+          '62': {
+            position: {
+              x: 1
+              y: 66
+              colSpan: 17
+              rowSpan: 2
+            }
+            metadata: {
+              inputs: []
+              type: 'Extension/HubsExtension/PartType/MarkdownPart'
+              settings: {
+                content: {
+                  content: '# <span style="color:DarkOrange">Copilot Dashboard</span>\r\n\r\n## <span style="color:DarkOrange">Summary</span>\r\n\r\nUse this dashboard to view Azure OpenAI consumption for the Copilot feature against its configured capacity.'
+                  title: ''
+                  subtitle: ''
+                  markdownSource: 1
+                  markdownUri: null
+                }
+              }
+            }
+          }
+          '63': {
+            position: {
+              x: 1
+              y: 68
+              colSpan: 8
+              rowSpan: 4
+            }
+            metadata: {
+              inputs: [
+                {
+                  name: 'resourceTypeMode'
+                  isOptional: true
+                }
+                {
+                  name: 'ComponentId'
+                  isOptional: true
+                }
+                {
+                  name: 'Scope'
+                  value: {
+                    resourceIds: [
+                      '/subscriptions/${subscriptionId}/resourceGroups/${resourceGroup}/providers/microsoft.insights/components/${resourceGroup}'
+                    ]
+                  }
+                  isOptional: true
+                }
+                {
+                  name: 'PartId'
+                  value: '5e5f1234-0001-4b5e-a5e5-b1c2d3e4f063'
+                  isOptional: true
+                }
+                {
+                  name: 'Version'
+                  value: '2.0'
+                  isOptional: true
+                }
+                {
+                  name: 'TimeRange'
+                  isOptional: true
+                }
+                {
+                  name: 'DashboardId'
+                  isOptional: true
+                }
+                {
+                  name: 'DraftRequestParameters'
+                  isOptional: true
+                }
+                {
+                  name: 'Query'
+                  value: 'let bin_t = 1m;\nlet tpmQuota = todouble(${openAITpmCapacity});\nlet bins = traces\n| where customDimensions["EventId"] == "93112" or message startswith "CopilotChat token usage"\n| extend TokensPerMinute = todouble(toint(customDimensions["InputTokens"]) + toint(customDimensions["OutputTokens"]))\n| summarize TokensPerMinute = sum(TokensPerMinute) by bin(timestamp, bin_t);\nunion\n(bins | extend Series = "Tokens per minute"),\n(bins | distinct timestamp | extend TokensPerMinute = tpmQuota, Series = "Quota (${openAITpmCapacity / 1000}K/min)")\n| project timestamp, TokensPerMinute, Series\n'
+                  isOptional: true
+                }
+                {
+                  name: 'ControlType'
+                  value: 'AnalyticsGrid'
+                  isOptional: true
+                }
+                {
+                  name: 'SpecificChart'
+                  isOptional: true
+                }
+                {
+                  name: 'PartTitle'
+                  value: 'Analytics'
+                  isOptional: true
+                }
+                {
+                  name: 'PartSubTitle'
+                  value: resourceGroup
+                  isOptional: true
+                }
+                {
+                  name: 'Dimensions'
+                  isOptional: true
+                }
+                {
+                  name: 'LegendOptions'
+                  isOptional: true
+                }
+                {
+                  name: 'IsQueryContainTimeRange'
+                  value: false
+                  isOptional: true
+                }
+              ]
+              type: 'Extension/Microsoft_OperationsManagementSuite_Workspace/PartType/LogsDashboardPart'
+              settings: {
+                content: {
+                  Query: 'let bin_t = 1m;\nlet tpmQuota = todouble(${openAITpmCapacity});\nlet bins = traces\n| where customDimensions["EventId"] == "93112" or message startswith "CopilotChat token usage"\n| extend TokensPerMinute = todouble(toint(customDimensions["InputTokens"]) + toint(customDimensions["OutputTokens"]))\n| summarize TokensPerMinute = sum(TokensPerMinute) by bin(timestamp, bin_t);\nunion\n(bins | extend Series = "Tokens per minute"),\n(bins | distinct timestamp | extend TokensPerMinute = tpmQuota, Series = "Quota (${openAITpmCapacity / 1000}K/min)")\n| project timestamp, TokensPerMinute, Series\n'
+                  ControlType: 'FrameControlChart'
+                  SpecificChart: 'Line'
+                  PartTitle: 'Copilot TPM Usage vs Configured Cap'
+                  Dimensions: {
+                    xAxis: {
+                      name: 'timestamp'
+                      type: 'datetime'
+                    }
+                    yAxis: [
+                      {
+                        name: 'TokensPerMinute'
+                        type: 'real'
+                      }
+                    ]
+                    splitBy: [
+                      {
+                        name: 'Series'
+                        type: 'string'
+                      }
+                    ]
+                    aggregation: 'Sum'
+                  }
+                  LegendOptions: {
+                    isEnabled: true
+                    position: 'Bottom'
+                  }
+                }
+              }
+              partHeader: {
+                title: 'Copilot TPM Usage vs Configured Cap'
                 subtitle: ''
               }
             }

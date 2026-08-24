@@ -19,7 +19,8 @@ param openAIContentFilterName string = 'DefaultV2'
 @description('Base policy name for the OpenAI content filter configuration.')
 param openAIContentFilterBasePolicyName string = 'Microsoft.DefaultV2'
 
-var gptDeploymentCapacity = 150
+@description('Provisioned throughput for the GPT deployment, in units of 1,000 tokens per minute (TPM).')
+param gptDeploymentCapacity int = 150
 
 var ipAddressArray = empty(allowedIpAddresses) ? [] : split(allowedIpAddresses, ',')
 var trimmedIpArray = [for ip in ipAddressArray: trim(ip)]
