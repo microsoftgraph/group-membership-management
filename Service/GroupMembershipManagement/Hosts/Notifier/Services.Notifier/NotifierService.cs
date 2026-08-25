@@ -181,11 +181,11 @@ namespace Services.Notifier
                     includeHistory: true);
 
                 var fallbackHTMLContent = _localizationRepository.TranslateSetting(NotificationConstants.ThresholdNotificationFallbackBody,
-                    groupName,
-                    notification.TargetOfficeGroupId.ToString(),
-                    notification.ThresholdPercentageForAdditions.ToString(),
-                    notification.ThresholdPercentageForRemovals.ToString(),
-                    runHistoryUrl);
+                    WebUtility.HtmlEncode(groupName ?? string.Empty),
+                    WebUtility.HtmlEncode(notification.TargetOfficeGroupId.ToString()),
+                    WebUtility.HtmlEncode(notification.ThresholdPercentageForAdditions.ToString()),
+                    WebUtility.HtmlEncode(notification.ThresholdPercentageForRemovals.ToString()),
+                    WebUtility.HtmlEncode(runHistoryUrl ?? string.Empty));
 
                 var htmlTemplate = @"<html>
                 <head>

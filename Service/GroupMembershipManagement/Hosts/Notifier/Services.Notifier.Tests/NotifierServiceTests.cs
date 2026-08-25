@@ -456,6 +456,28 @@ namespace Services.Notifier.Tests
         }
 
         [TestMethod]
+        public async Task SendThresholdEmail_PlainFallback_EncodesGroupNameAndKeepsLink()
+        {
+            EmailMessage capturedMessage = null;
+            _mailRepository.Setup(x => x.SendMailAsync(It.IsAny<EmailMessage>(), null))
+                .Callback<EmailMessage, Guid?>((m, _) => capturedMessage = m);
+            _graphGroupRepository.Setup(x => x.GetGroupNameAsync(It.IsAny<Guid>()))
+                .ReturnsAsync("<img src=x onerror=alert(1)>");
+
+            _notification.SyncJobId = Guid.NewGuid();
+            _notification.CardState = ThresholdNotificationCardState.DisabledCard;
+
+            var service = CreateNotifierService(new MailConfig(true, false, "not-set", false, enableStyledFallbackEmails: true, runHistoryTabEnabled: false));
+            await service.SendThresholdEmailAsync(_notification);
+
+            Assert.IsNotNull(capturedMessage);
+            Assert.IsFalse(capturedMessage.Content.Contains("<img src=x", StringComparison.Ordinal), "Group name markup must be HTML-encoded.");
+            StringAssert.Contains(capturedMessage.Content, "&lt;img src=x");
+            StringAssert.Contains(capturedMessage.Content, "<a href=");
+            StringAssert.Contains(capturedMessage.Content, "View in GMM UI");
+        }
+
+        [TestMethod]
         public async Task GetStyledMessageAsync_MissingUIUrl_PassesEmptyHistoryUrlToStyledFallback()
         {
             var requestAdapter = new Mock<IRequestAdapter>();
