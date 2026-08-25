@@ -95,32 +95,5 @@ namespace Services.Notifier.Tests
                 It.IsAny<UpdateNotificationStatusRequest>(),
                 It.IsAny<TaskOptions>()), Times.Once);
         }
-
-        /// <summary>
-        /// These notification types are still enqueued by their producers but the orchestrator
-        /// deliberately has no case for them, so they fall through to the default branch, are
-        /// logged as an unhandled message type, and are dropped without sending any email.
-        /// </summary>
-        [DataTestMethod]
-        [DataRow(nameof(NotificationMessageType.NotValidSourceNotification))]
-        [DataRow(nameof(NotificationMessageType.SubmissionApprovedNotification))]
-        public async Task RunOrchestratorAsync_UnhandledNotificationType_SendsNoEmail(string messageType)
-        {
-            SyncJob job = SampleDataHelper.CreateSampleSyncJobs(1, GroupMembership).First();
-
-            var orchestratorRequest = new OrchestratorRequest
-            {
-                MessageType = messageType,
-                MessageBody = JsonSerializer.Serialize(new Dictionary<string, object> { { "SyncJob", job } })
-            };
-            _durableContext.Setup(x => x.GetInput<OrchestratorRequest>()).Returns(orchestratorRequest);
-
-            await _orchestratorFunction.RunOrchestratorAsync(_durableContext.Object);
-
-            _durableContext.Verify(x => x.CallActivityAsync(
-                It.IsAny<TaskName>(),
-                It.IsAny<object>(),
-                It.IsAny<TaskOptions>()), Times.Never);
-        }
     }
 }

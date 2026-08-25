@@ -245,6 +245,7 @@ namespace Services.Notifier.Tests
 
         [TestMethod]
         [DataRow("SyncThresholdBothEmailBody")]   // Regular threshold notification (< NumberOfThresholdViolationsToDisableJob) keeps legacy fallback
+        [DataRow("SyncDisabledNoValidGroupIds")]  // NotValidSource -> no styled template, sent as plain HTML
         [DataRow("UnknownContentType")]           // Generic
         public async Task BuildSyncDisabledFallbackAsync_ReturnsNull_ForThresholdAndGeneric(string contentType)
         {

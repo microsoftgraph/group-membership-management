@@ -14,6 +14,8 @@ namespace Services.Contracts
         public const string OnboardingCompleteEmailSubject = "OnboardingCompleteEmailSubject";
         public const string SyncStartedContent = "SyncStartedEmailBody";
         public const string NotOwnerTitle = "NotOwnerTitle";
+        public const string NotValidSourceTitle = "NotValidSourceTitle";
+        public const string NotValidSourceSubject = "NotValidSourceSubject";
         public const string SourceNotExistTitle = "SourceNotExistTitle";
         public const string GuestUserFailureTitle = "GuestUserFailureTitle";
         public const string DestinationNotExistTitle = "DestinationNotExistTitle";
@@ -22,6 +24,7 @@ namespace Services.Contracts
         public const string DestinationNotExistContent = "SyncDisabledNoGroupEmailBody";
         public const string DestinationNotExistSubject = "DestinationNotExistSubject";
         public const string SyncCompletedContent = "SyncCompletedEmailBody";
+        public const string NoValidGroupIdsContent = "SyncDisabledNoValidGroupIds";
         public const string SyncDisabledNoGroupContent = "SyncDisabledNoSourceGroupEmailBody";
         public const string NoDataTitle = "NoDataEmailTitle";
         public const string NoDataSubject = "NoDataEmailSubject";

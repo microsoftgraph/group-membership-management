@@ -161,6 +161,7 @@ namespace Services.Notifier.Tests
         [DataRow(NotificationConstants.SubmissionRejectedEmailBody, NotificationConstants.SubmissionRejectedEmailSubject)]
         [DataRow(NotificationConstants.JobPurgingWarningEmailBody, NotificationConstants.JobPurgingWarningEmailSubject)]
         [DataRow(NotificationConstants.SyncPurgedForInactivityEmailBody, NotificationConstants.SyncPurgedForInactivityEmailSubject)]
+        [DataRow(NotificationConstants.NoValidGroupIdsContent, NotificationConstants.NotValidSourceSubject)]
         [DataRow(NotificationConstants.SyncThresholdBothEmailBody, NotificationConstants.SyncThresholdEmailSubject)]
         public async Task AllNotificationTypes_ProduceHtmlBodyAndResolvedSubject(string content, string subject)
         {
@@ -190,6 +191,7 @@ namespace Services.Notifier.Tests
         [DataRow(NotificationConstants.SubmissionRejectedEmailBody, NotificationConstants.SubmissionRejectedEmailSubject, true)]
         [DataRow(NotificationConstants.JobPurgingWarningEmailBody, NotificationConstants.JobPurgingWarningEmailSubject, true)]
         [DataRow(NotificationConstants.SyncPurgedForInactivityEmailBody, NotificationConstants.SyncPurgedForInactivityEmailSubject, true)]
+        [DataRow(NotificationConstants.NoValidGroupIdsContent, NotificationConstants.NotValidSourceSubject, false)]
         [DataRow(NotificationConstants.SyncThresholdBothEmailBody, NotificationConstants.SyncThresholdEmailSubject, false)]
         public async Task NotificationTypes_UseExpectedStyledOrPlainTemplate(string content, string subject, bool expectStyled)
         {
