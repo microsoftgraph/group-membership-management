@@ -121,6 +121,7 @@ resource functionApp 'Microsoft.Web/sites@2023-12-01' = {
   kind: kind
   properties: {
     serverFarmId: resourceId('Microsoft.Web/serverfarms', servicePlanName)
+    publicNetworkAccess: 'Enabled'
     clientAffinityEnabled: false
     httpsOnly: true
     siteConfig: {
