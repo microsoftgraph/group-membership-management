@@ -28,13 +28,18 @@ export const fetchOrgLeaderDetails = createAsyncThunk<
       config.getOrgLeaderDetails +
         `/ObjectId/${encodeURIComponent(orgLeaderDetailsDetailsRequest.objectId)}`,
       options
-    ).then(async (response) => await response.json());
+    );
+    if (!response.ok) {
+      console.error('Failed to fetch orgLeaderDetails details data!', response.statusText);
+      throw new Error('Failed to fetch orgLeaderDetails details data!');
+    }
+    const body = await response.json();
 
     const payload: GetOrgLeaderDetailsResponse = {
-      employeeId: response["employeeId"],
+      employeeId: body["employeeId"],
       objectId: orgLeaderDetailsDetailsRequest.objectId,
       text: orgLeaderDetailsDetailsRequest.text,
-      maxDepth: response["maxDepth"],
+      maxDepth: body["maxDepth"],
       partId: orgLeaderDetailsDetailsRequest.partId
     };
     return payload;
@@ -64,14 +69,24 @@ export const fetchOrgLeaderDetailsUsingId = createAsyncThunk<
       config.getOrgLeaderDetails +
         `/EmployeeId/${encodeURIComponent(GetOrgLeaderDetailsUsingIdRequest.employeeId)}`,
       options
-    ).then(async (response) => await response.json());
-    const displayName = await graphApi.getUser(response["azureObjectId"]);
+    );
+    if (!response.ok) {
+      console.error('Failed to fetch orgLeaderDetails details data!', response.statusText);
+      throw new Error('Failed to fetch orgLeaderDetails details data!');
+    }
+    const body = await response.json();
+    const azureObjectId = body["azureObjectId"];
+    if (!azureObjectId) {
+      console.error('Failed to fetch orgLeaderDetails details data!', 'No azureObjectId was returned.');
+      throw new Error('Failed to fetch orgLeaderDetails details data!');
+    }
+    const displayName = await graphApi.getUser(azureObjectId);
 
     const payload: GetOrgLeaderDetailsResponse = {
       employeeId: GetOrgLeaderDetailsUsingIdRequest.employeeId,
-      objectId: response["azureObjectId"],
+      objectId: azureObjectId,
       text: displayName,
-      maxDepth: response["maxDepth"],
+      maxDepth: body["maxDepth"],
       partId: GetOrgLeaderDetailsUsingIdRequest.partId
     };
     return payload;

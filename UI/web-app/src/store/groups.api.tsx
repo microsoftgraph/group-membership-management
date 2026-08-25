@@ -29,10 +29,14 @@ export const searchGroups = createAsyncThunk<IPersonaProps[], string, ThunkConfi
         };
 
         try {
-            const response = await fetch(`${config.searchDestinations}/${encodeURIComponent(query)}`, options)
-                .then(response => response.json());
+            const response = await fetch(`${config.searchDestinations}/${encodeURIComponent(query)}`, options);
+            if (!response.ok) {
+                console.error('Failed to search destinations!', response.statusText);
+                return [];
+            }
+            const body = await response.json();
 
-            const payload: IPersonaProps[] = response.map((destination: Destination, index: number) => ({
+            const payload: IPersonaProps[] = body.map((destination: Destination, index: number) => ({
                 key: index.toString(),
                 text: destination.name,
                 secondaryText: destination.email,

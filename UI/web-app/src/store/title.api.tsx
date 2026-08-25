@@ -124,7 +124,11 @@ export const fetchOrgLeaderDetailsAndGenerateHRTitle = createAsyncThunk<
       partId: part.id as string
     }));
 
-    const response = results.payload as GetOrgLeaderDetailsResponse;
+    const response = results.payload as GetOrgLeaderDetailsResponse | undefined;
+    if (!response?.text) {
+      console.error('Failed to fetch org leader details!', 'No org leader name was returned.');
+      return part;
+    }
     const orgLeaderName = response.text;
 
     // Use the utility function to generate the title
