@@ -86,6 +86,7 @@ export const MembershipConfigurationBase: React.FunctionComponent<MembershipConf
   const [copilotUsedPartIds, setCopilotUsedPartIds] = useState<Set<string>>(new Set());
   const copilotApplyStartTimeRef = useRef<number>(0);
   const copilotNeedsOrgLeaderRef = useRef(false);
+  const titlesRequestedForJobIdRef = useRef<string | undefined>(undefined);
   const areAttributeMappingsLoading = useSelector(selectAreAttributeMappingsLoading);
 
   // Reset panel state on mount (prevents auto-open from stale Redux state)
@@ -268,7 +269,11 @@ export const MembershipConfigurationBase: React.FunctionComponent<MembershipConf
           dispatch(setTitles(initialTitles));
         }
 
-        if (isAITitleEnabled && jobWithNoTitles && !generatedTitlesYet) {
+        const jobId = jobDetails.syncJobId;
+        if (isAITitleEnabled && jobWithNoTitles && !generatedTitlesYet
+          && jobId
+          && titlesRequestedForJobIdRef.current !== jobId) {
+          titlesRequestedForJobIdRef.current = jobId;
 
           const groupMembershipParts = updatedSourceParts.filter((part) => part.query.type === SourcePartType.GroupMembership);
           groupMembershipParts.forEach(part => {
