@@ -104,7 +104,6 @@ namespace Hosts.Notifier
                         return new ServiceBusQueueRepository(sender);
                     });
 
-                    services.AddSingleton<IThresholdNotificationConfig>(_ => new ThresholdNotificationConfig(true));
                     services.AddHttpClient();
                 })
                 .Build();

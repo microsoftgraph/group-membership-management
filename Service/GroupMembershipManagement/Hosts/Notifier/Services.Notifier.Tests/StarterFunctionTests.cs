@@ -29,7 +29,6 @@ namespace Services.Notifier.Tests
     public class StarterFunctionTests
     {
         private Mock<IMailConfig> _mailConfig;
-        private Mock<IThresholdNotificationConfig> _thresholdNotificationConfig;
         private Mock<INotificationTypesRepository> _notificationTypesRepository;
         private Mock<IDeferredNotificationsRepository> _deferredNotificationsRepository;
         private Mock<ServiceBusMessageActions> _messageActions;
@@ -42,7 +41,6 @@ namespace Services.Notifier.Tests
         public void SetupTest()
         {
             _mailConfig = new Mock<IMailConfig>();
-            _thresholdNotificationConfig = new Mock<IThresholdNotificationConfig>();
             _notificationTypesRepository = new Mock<INotificationTypesRepository>();
             _deferredNotificationsRepository = new Mock<IDeferredNotificationsRepository>();
             _messageActions = new Mock<ServiceBusMessageActions>();
@@ -61,7 +59,6 @@ namespace Services.Notifier.Tests
 
             _starterFunction = new StarterFunction(
                 NullLogger<StarterFunction>.Instance,
-                _thresholdNotificationConfig.Object,
                 _mailConfig.Object,
                 _notificationTypesRepository.Object,
                 _deferredNotificationsRepository.Object,

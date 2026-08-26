@@ -34,7 +34,6 @@ namespace Services.Tests
         private SettingsController _settingsController = null!;
         private List<Setting> _settings = null!;
         private Mock<IDatabaseSettingsRepository> _settingsRepository = null!;
-        private IConfiguration _configuration = null!;
         private GetAllSettingsHandler _getAllSettingsHandler = null!;
         private GetSettingHandler _getSettingHandler = null!;
         private PatchSettingHandler _patchSettingHandler = null!;
@@ -48,12 +47,6 @@ namespace Services.Tests
         {
             _context = new DefaultHttpContext();
             _settingsRepository = new Mock<IDatabaseSettingsRepository>();
-            _configuration = new ConfigurationBuilder()
-                .AddInMemoryCollection(new Dictionary<string, string?>
-                {
-                    [ConfigurationKeyNames.RunHistoryOpenViewingAndUnifiedTab] = "false"
-                })
-                .Build();
             _getSupportEmailHandlerMock = new Mock<IRequestHandler<GetSupportEmailRequest, GetSupportEmailResponse>>();
             _getSupportEmailHandlerMock.Setup(h => h.ExecuteAsync(It.IsAny<GetSupportEmailRequest>()))
                                        .ReturnsAsync(new GetSupportEmailResponse { SupportEmailAddress = "support@example.com" });
@@ -61,8 +54,7 @@ namespace Services.Tests
             _getSupportEmailHandler = _getSupportEmailHandlerMock.Object;
             _getAllSettingsHandler = new GetAllSettingsHandler(
                 NullLogger<GetAllSettingsHandler>.Instance,
-                _settingsRepository.Object,
-                _configuration);
+                _settingsRepository.Object);
             _getSettingHandler = new GetSettingHandler(NullLogger<GetSettingHandler>.Instance, _settingsRepository.Object);
             _patchSettingHandler = new PatchSettingHandler(NullLogger<PatchSettingHandler>.Instance, _settingsRepository.Object);
             _settingsController = new SettingsController(_getSettingHandler, _getAllSettingsHandler, _patchSettingHandler, _getSupportEmailHandler)
@@ -166,10 +158,7 @@ namespace Services.Tests
 
             var settingsResult = okResult.Value as List<SettingDTO>;
             Assert.IsNotNull(settingsResult);
-            Assert.AreEqual(_settings.Count + 1, settingsResult.Count);
-            var phase2Setting = settingsResult.Single(
-                setting => setting.SettingKey == SettingKey.RunHistoryOpenViewingAndUnifiedTab);
-            Assert.AreEqual("false", phase2Setting.SettingValue);
+            Assert.AreEqual(_settings.Count, settingsResult.Count);
         }
 
         [TestMethod]
@@ -198,10 +187,8 @@ namespace Services.Tests
             Assert.IsNotNull(okResult);
             var settingsResult = okResult.Value as List<SettingDTO>;
             Assert.IsNotNull(settingsResult);
-            Assert.AreEqual(2, settingsResult.Count);
+            Assert.AreEqual(1, settingsResult.Count);
             Assert.AreEqual(SettingKey.DashboardUrl, settingsResult[0].SettingKey);
-            Assert.IsTrue(settingsResult.Any(
-                setting => setting.SettingKey == SettingKey.RunHistoryOpenViewingAndUnifiedTab));
         }
 
         [TestMethod]
@@ -230,11 +217,9 @@ namespace Services.Tests
             Assert.IsNotNull(okResult);
             var settingsResult = okResult.Value as List<SettingDTO>;
             Assert.IsNotNull(settingsResult);
-            Assert.AreEqual(4, settingsResult.Count);
+            Assert.AreEqual(3, settingsResult.Count);
             Assert.IsTrue(settingsResult.Any(setting => setting.SettingKey == SettingKey.CopilotInstructions));
             Assert.IsTrue(settingsResult.Any(setting => setting.SettingKey == SettingKey.IsAICopilotEnabled));
-            Assert.IsTrue(settingsResult.Any(
-                setting => setting.SettingKey == SettingKey.RunHistoryOpenViewingAndUnifiedTab));
         }
 
         [TestMethod]
@@ -311,37 +296,6 @@ namespace Services.Tests
             Assert.IsFalse(settingsResult.Any(setting => setting.SettingKey == SettingKey.CopilotSuggestedPrompts));
             Assert.IsFalse(settingsResult.Any(setting => setting.SettingKey == SettingKey.IsAICopilotEnabled));
             Assert.IsTrue(settingsResult.Any(setting => setting.SettingKey == SettingKey.DashboardUrl));
-        }
-
-        [TestMethod]
-        public async Task GetAllSettingsWhenRunHistoryPhase2EnabledReturnsEnabledValueTestAsync()
-        {
-            _configuration[ConfigurationKeyNames.RunHistoryOpenViewingAndUnifiedTab] = "true";
-
-            var response = await _settingsController.GetAllSettingsAsync();
-
-            var okResult = response as OkObjectResult;
-            Assert.IsNotNull(okResult);
-            var settingsResult = okResult.Value as List<SettingDTO>;
-            Assert.IsNotNull(settingsResult);
-            var phase2Setting = settingsResult.Single(
-                setting => setting.SettingKey == SettingKey.RunHistoryOpenViewingAndUnifiedTab);
-            Assert.AreEqual("true", phase2Setting.SettingValue);
-        }
-
-        [TestMethod]
-        public async Task PatchRunHistoryPhase2SettingReturnsBadRequestTestAsync()
-        {
-            var response = await _settingsController.PatchSettingAsync(
-                SettingKey.RunHistoryOpenViewingAndUnifiedTab,
-                "true");
-
-            Assert.IsInstanceOfType(response, typeof(BadRequestObjectResult));
-            _settingsRepository.Verify(
-                x => x.PatchSettingAsync(
-                    SettingKey.RunHistoryOpenViewingAndUnifiedTab,
-                    It.IsAny<string>()),
-                Times.Never);
         }
 
         [TestMethod]

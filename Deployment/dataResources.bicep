@@ -27,7 +27,6 @@ param logAnalyticsRetentionInDays int = 365
 param notificationAlertThreshold int = 10
 param skipMailNotifications bool = false
 param isMailApplicationPermissionGranted bool = false
-param enableStyledFallbackEmails bool = true
 param isTeamsChannelApplicationPermissionGranted bool = false
 param featureFlags object = {
   enableOpenAI: false
@@ -150,14 +149,6 @@ param serviceBusTopicSubscriptions array = [
 ]
 param appConfigurationKeyData array = []
 var defaultAppConfigurationKeyData = [
-  {
-    key: 'WebAPI:Settings:RunHistoryOpenViewingAndUnifiedTab'
-    value: 'true'
-    contentType: 'boolean'
-    tag: {
-      tag1: 'WebAPI'
-    }
-  }
   {
     key: 'JobTrigger:IsGroupReadWriteAllGranted'
     value: 'false'
@@ -312,30 +303,6 @@ var defaultAppConfigurationKeyData = [
     }
   }
   {
-    key: 'Mail:IsAdaptiveCardEnabled'
-    value: 'true'
-    contentType: 'boolean'
-    tag: {
-      tag1: 'Mail'
-    }
-  }
-  {
-    key: 'Mail:ActionableMessageViewerGroupId'
-    value: ''
-    contentType: 'string'
-    tag: {
-      tag1: 'Mail'
-    }
-  }
-  {
-    key: 'ThresholdNotification:IsThresholdNotificationEnabled'
-    value: 'false'
-    contentType: 'boolean'
-    tag: {
-      tag1: 'ThresholdNotification'
-    }
-  }
-  {
     key: 'GraphAPI:AuthenticationType'
     value: authenticationType
     contentType: 'string'
@@ -355,14 +322,6 @@ var defaultAppConfigurationKeyData = [
   {
     key: 'Mail:SkipMailNotifications'
     value: skipMailNotifications
-    contentType: 'boolean'
-    tag: {
-      tag1: 'Mail'
-    }
-  }
-  {
-    key: 'Mail:EnableStyledFallbackEmails'
-    value: string(enableStyledFallbackEmails)
     contentType: 'boolean'
     tag: {
       tag1: 'Mail'

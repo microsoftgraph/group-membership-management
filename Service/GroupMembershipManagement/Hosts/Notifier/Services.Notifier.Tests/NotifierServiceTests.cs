@@ -255,7 +255,7 @@ namespace Services.Notifier.Tests
             var localizer = new StringLocalizer<LocalizationRepository>(factory);
             _localizationRepository = new LocalizationRepository(localizer);
 
-            _mailConfig = new MailConfig(true, false, "not-set", false, enableStyledFallbackEmails: true, runHistoryTabEnabled: true);
+            _mailConfig = new MailConfig(false, "not-set", false);
             _notifierService = CreateNotifierService(_mailConfig);
             _requestAdapter = new Mock<IRequestAdapter>();
             _requestAdapter.SetupProperty(x => x.BaseUrl).SetReturnsDefault(GRAPH_API_V1_BASE_URL);
@@ -414,7 +414,7 @@ namespace Services.Notifier.Tests
         }
 
         [TestMethod]
-        public async Task SendThresholdEmail_DisabledCard_UsesStyledEmail_WhenBothFlagsEnabled()
+        public async Task SendThresholdEmail_DisabledCard_UsesStyledEmail()
         {
             EmailMessage capturedMessage = null;
             _mailRepository.Setup(x => x.SendMailAsync(It.IsAny<EmailMessage>(), null))
@@ -425,7 +425,7 @@ namespace Services.Notifier.Tests
             _notification.SyncJobId = Guid.NewGuid();
             _notification.CardState = ThresholdNotificationCardState.DisabledCard;
 
-            var service = CreateNotifierService(new MailConfig(true, false, "not-set", false, enableStyledFallbackEmails: true, runHistoryTabEnabled: true));
+            var service = CreateNotifierService(new MailConfig(false, "not-set", false));
             await service.SendThresholdEmailAsync(_notification);
 
             _mailRepository.Verify(x => x.BuildStyledFallbackEmailHtmlAsync(It.IsAny<EmailMessage>()), Times.Once());
@@ -434,21 +434,21 @@ namespace Services.Notifier.Tests
         }
 
         [TestMethod]
-        public async Task SendThresholdEmail_DisabledCard_UsesPlainFallback_WhenRunHistoryFlagDisabled()
+        public async Task SendThresholdEmail_DisabledCard_UsesPlainFallback_WhenStyledBuilderReturnsNull()
         {
             EmailMessage capturedMessage = null;
             _mailRepository.Setup(x => x.SendMailAsync(It.IsAny<EmailMessage>(), null))
                 .Callback<EmailMessage, Guid?>((m, _) => capturedMessage = m);
             _mailRepository.Setup(x => x.BuildStyledFallbackEmailHtmlAsync(It.IsAny<EmailMessage>()))
-                .ReturnsAsync("<p>STYLED THRESHOLD EMAIL</p>");
+                .ReturnsAsync((string)null);
 
             _notification.SyncJobId = Guid.NewGuid();
             _notification.CardState = ThresholdNotificationCardState.DisabledCard;
 
-            var service = CreateNotifierService(new MailConfig(true, false, "not-set", false, enableStyledFallbackEmails: true, runHistoryTabEnabled: false));
+            var service = CreateNotifierService(new MailConfig(false, "not-set", false));
             await service.SendThresholdEmailAsync(_notification);
 
-            _mailRepository.Verify(x => x.BuildStyledFallbackEmailHtmlAsync(It.IsAny<EmailMessage>()), Times.Never());
+            _mailRepository.Verify(x => x.BuildStyledFallbackEmailHtmlAsync(It.IsAny<EmailMessage>()), Times.Once());
             Assert.IsNotNull(capturedMessage);
             StringAssert.Contains(capturedMessage.Content, "View in GMM UI");
             Assert.IsFalse(capturedMessage.Content.Contains("adaptivecard+json"), "Fallback must not embed an Outlook Actionable Message card.");
@@ -501,7 +501,7 @@ namespace Services.Notifier.Tests
 
             var mailRepository = new MailRepository(
                 graphServiceClient.Object,
-                new MailConfig(true, false, "not-set", false, true),
+                new MailConfig(false, "not-set", false),
                 _localizationRepository,
                 NullLogger<MailRepository>.Instance,
                 _graphGroupRepository.Object,
@@ -627,7 +627,7 @@ namespace Services.Notifier.Tests
             var graphServiceClient = new Mock<GraphServiceClient>(requestAdapter.Object, "https://graph.microsoft.com/v1.0");
             var retryRepo = new RetryPolicyProvider(NullLogger<RetryPolicyProvider>.Instance, new GraphServiceAttemptsValue { MaxExceptionHandlingAttempts = 2, MaxRetryAfterAttempts = 4 });
 
-            var mailConfig = new MailConfig(true, false, "not-set", true, true);
+            var mailConfig = new MailConfig(false, "not-set", true);
             var mailRepository = new MailRepository(graphServiceClient.Object,
                                                     mailConfig,
                                                     _localizationRepository,

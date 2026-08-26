@@ -50,12 +50,9 @@ namespace Common.DependencyInjection
             services.AddSingleton<IMailConfig>(services =>
             {
                 var configuration = services.GetService<IConfiguration>();
-                return new MailConfig(configuration.GetValue<bool>("Mail:IsAdaptiveCardEnabled"),
-                    configuration.GetValue("Mail:IsMailApplicationPermissionGranted", false),
+                return new MailConfig(configuration.GetValue("Mail:IsMailApplicationPermissionGranted", false),
                     configuration.GetValue<string>("senderAddress"),
-                    configuration.GetValue("Mail:SkipMailNotifications", false),
-                    configuration.GetValue("Mail:EnableStyledFallbackEmails", true),
-                    configuration.GetValue(global::Models.ConfigurationKeyNames.RunHistoryOpenViewingAndUnifiedTab, false));
+                    configuration.GetValue("Mail:SkipMailNotifications", false));
             });
 
             services.AddScoped<IMailFallbackBuilder>(provider =>

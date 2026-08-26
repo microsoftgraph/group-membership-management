@@ -3,6 +3,7 @@
 
 using Hosts.WebApi;
 using Microsoft.ApplicationInsights;
+using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
 using Models;
 using Models.SyncJobChange;
@@ -12,6 +13,7 @@ using Services.Contracts;
 using Services.Messages.Requests;
 using Services.Messages.Responses;
 using System.Net;
+using WebApi.Models;
 
 namespace Services
 {
@@ -23,7 +25,7 @@ namespace Services
         private readonly ISyncJobChangeRepository _syncJobChangeRepository;
         private readonly IGraphGroupRepository _graphGroupRepository;
         private readonly TelemetryClient _telemetryClient;
-        private readonly IGMMEmailReceivers _gmmEmailReceivers;
+        private readonly IHttpContextAccessor _httpContextAccessor;
 
         public ResolveNotificationHandler(ILogger<ResolveNotificationHandler> logger,
                               INotificationRepository notificationRepository,
@@ -31,7 +33,7 @@ namespace Services
                               ISyncJobChangeRepository syncJobChangeRepository,
                               IGraphGroupRepository graphGroupRepository,
                               TelemetryClient telemetryClient,
-                              IGMMEmailReceivers gmmEmailReceivers) : base(logger)
+                              IHttpContextAccessor httpContextAccessor) : base(logger)
         {
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _notificationRepository = notificationRepository ?? throw new ArgumentNullException(nameof(notificationRepository));
@@ -39,7 +41,7 @@ namespace Services
             _syncJobChangeRepository = syncJobChangeRepository ?? throw new ArgumentNullException(nameof(syncJobChangeRepository));
             _graphGroupRepository = graphGroupRepository ?? throw new ArgumentNullException(nameof(graphGroupRepository));
             _telemetryClient = telemetryClient ?? throw new ArgumentNullException(nameof(telemetryClient));
-            _gmmEmailReceivers = gmmEmailReceivers ?? throw new ArgumentNullException(nameof(gmmEmailReceivers));
+            _httpContextAccessor = httpContextAccessor ?? throw new ArgumentNullException(nameof(httpContextAccessor));
         }
 
         protected override async Task<ResolveNotificationResponse> ExecuteCoreAsync(ResolveNotificationRequest request)
@@ -54,15 +56,14 @@ namespace Services
                 return response;
             }
 
-            var isInAuthorizedGroup = false;
+            // Role check is in-memory, so it runs before the Graph ownership lookup.
+            var isTenantWriter = _httpContextAccessor.HttpContext?.User?.IsInRole(Roles.JOB_TENANT_WRITER) ?? false;
 
-            var isGroupOwner = await _graphGroupRepository.IsEmailRecipientOwnerOfGroupAsync(request.UserIdentifier, thresholdNotification.TargetOfficeGroupId);
-            if (!isGroupOwner)
+            if (!isTenantWriter)
             {
-                // Check if user is in the list of GMM Support / Actionable Message Viewer Group
-                isInAuthorizedGroup = await _graphGroupRepository.IsEmailRecipientMemberOfGroupAsync(request.UserIdentifier, _gmmEmailReceivers.ActionableMessageViewerGroupId);
+                var isGroupOwner = await _graphGroupRepository.IsEmailRecipientOwnerOfGroupAsync(request.UserIdentifier, thresholdNotification.TargetOfficeGroupId);
 
-                if (!isInAuthorizedGroup)
+                if (!isGroupOwner)
                 {
                     response.StatusCode = HttpStatusCode.Forbidden;
                     return response;
@@ -72,22 +73,8 @@ namespace Services
             if (thresholdNotification.Status != ThresholdNotificationStatus.Resolved)
             {
                 var resolvedByValue = request.UserIdentifier;
-                Guid userId;
 
-                if (isInAuthorizedGroup)
-                {
-                    try
-                    {
-                        var groupName = await _graphGroupRepository.GetGroupNameAsync(_gmmEmailReceivers.ActionableMessageViewerGroupId);
-                        resolvedByValue = groupName;
-                    }
-                    catch(Exception e)
-                    {
-                        _logger.GroupNameRetrievalFailed(_gmmEmailReceivers.ActionableMessageViewerGroupId, e);
-                        resolvedByValue = "GMM Support";
-                    }
-                }
-                else if (Guid.TryParse(resolvedByValue, out userId))
+                if (Guid.TryParse(resolvedByValue, out var userId))
                 {
                     var user = await _graphGroupRepository.GetUserByUpnOrIdAsync(userId.ToString(), true);
                     resolvedByValue = user != null ?  user.Mail : request.UserIdentifier;

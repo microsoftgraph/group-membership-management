@@ -17,7 +17,6 @@ import settingsReducer, {
   selectIsPerPartAutoApprovalEnabled,
   selectIsAITitleEnabled,
   selectCopilotSuggestedPrompts,
-  selectIsRunHistoryTabEnabled,
   SettingsState,
 } from './settings.slice';
 import { fetchSettings, fetchSettingByKey, patchSetting, getSupportEmailAddress } from './settings.api';
@@ -219,19 +218,4 @@ describe('settings.slice — selectors', () => {
     expect(selectCopilotSuggestedPrompts(root)).toBe('');
   });
 
-  it('selectIsRunHistoryTabEnabled returns true when enabled', () => {
-    const root = buildRoot([
-      makeSetting(SettingKey.RunHistoryOpenViewingAndUnifiedTab, 'true'),
-    ]);
-    expect(selectIsRunHistoryTabEnabled(root)).toBe(true);
-  });
-
-  it('selectIsRunHistoryTabEnabled defaults to false', () => {
-    expect(selectIsRunHistoryTabEnabled(buildRoot())).toBe(false);
-    expect(
-      selectIsRunHistoryTabEnabled(
-        buildRoot([makeSetting(SettingKey.RunHistoryOpenViewingAndUnifiedTab, 'false')])
-      )
-    ).toBe(false);
-  });
 });

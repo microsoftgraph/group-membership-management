@@ -11,8 +11,6 @@ import {
     IDetailsRowProps,
     Panel,
     PanelType,
-    Pivot,
-    PivotItem,
     IColumn,
     Link,
     DefaultButton,
@@ -40,7 +38,7 @@ import {
 import { useStrings } from '../../store/hooks';
 import { useDispatch, useSelector } from 'react-redux';
 import { AppDispatch } from '../../store';
-import { Fragment, type ElementType, useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { downloadMembershipChanges, fetchJobChanges, fetchSyncJobHistory, fetchThresholdNotification, resolveNotification, searchSyncHistoryByUser, fetchSyncExplanation, fetchRunExplanation } from '../../store/jobDetails.api';
 import { selectSelectedJobChanges, selectSelectedJobDetails, setSelectedJobEnabled } from '../../store/jobs.slice';
 import { SyncJobChange } from '../../models/SyncJobChange';
@@ -50,7 +48,7 @@ import { SyncHistorySearchProgressUpdate } from '../../models/SyncHistorySearchP
 import { MembershipChangeType, SearchSyncHistoryByUserRunMembershipChange } from '../../models/SearchSyncHistoryByUserResult';
 import { ThresholdNotificationData } from '../../models/ThresholdNotificationData';
 import { selectIsJobTenantReader, selectIsJobTenantWriter, selectIsGeneralSettingsAdministrator, selectIsJobWriter } from '../../store/roles.slice';
-import { selectIsAISearchForUserEnabled, selectIsAIRunExplanationEnabled, selectIsRunHistoryTabEnabled } from '../../store/settings.slice';
+import { selectIsAISearchForUserEnabled, selectIsAIRunExplanationEnabled } from '../../store/settings.slice';
 import { renderMultilineHeader } from '../../utils/stringUtils';
 import { getStatusDisplayText } from '../../utils/jobUtils';
 import { RunHistoryStatus } from '../../models/Status';
@@ -110,12 +108,8 @@ export const JobHistoryPanelBase: React.FunctionComponent<IJobHistoryPanelProps>
     const isGeneralSettingsAdministrator = useSelector(selectIsGeneralSettingsAdministrator);
     const isAISearchForUserEnabled = useSelector(selectIsAISearchForUserEnabled);
     const isAIRunExplanationEnabled = useSelector(selectIsAIRunExplanationEnabled);
-    const isRunHistoryPhase2Enabled = useSelector(selectIsRunHistoryTabEnabled);
-    const showSyncTab = isRunHistoryPhase2Enabled || isJobTenantReader || isJobTenantWriter;
     const canSearchUserHistory = isAISearchForUserEnabled && (isJobTenantReader || isJobTenantWriter);
     const canDownloadMembershipChanges = isJobTenantWriter;
-    const HistoryContainer: ElementType = isRunHistoryPhase2Enabled ? Fragment : Pivot;
-    const SyncHistoryContainer: ElementType = isRunHistoryPhase2Enabled ? Fragment : PivotItem;
 
     const classNames: IProcessedStyleSet<IJobHistoryPanelStyles> = getClassNames(styles, { className, theme });
 
@@ -732,14 +726,6 @@ export const JobHistoryPanelBase: React.FunctionComponent<IJobHistoryPanelProps>
                 console.error(error);
             });
 
-        if (!showSyncTab) {
-            setSyncHistoryItems([]);
-            void jobChangesPromise.finally(() => {
-                setIsHistoryLoading(false);
-            });
-            return;
-        }
-
         const syncHistoryPromise = dispatch(fetchSyncJobHistory(jobId))
             .unwrap()
             .then((history) => {
@@ -758,7 +744,7 @@ export const JobHistoryPanelBase: React.FunctionComponent<IJobHistoryPanelProps>
         void Promise.all([jobChangesPromise, syncHistoryPromise]).finally(() => {
             setIsHistoryLoading(false);
         });
-    }, [dispatch, isOpen, jobId, showSyncTab]);
+    }, [dispatch, isOpen, jobId]);
 
     const handleViewDetails = (details: string | null) => {
         setModalTitle(strings.JobDetails.Panel.changeDetailsColumnLabel);
@@ -889,62 +875,6 @@ export const JobHistoryPanelBase: React.FunctionComponent<IJobHistoryPanelProps>
         }
     }
 
-    const configurationColumns: IColumn[] = [
-        {
-            key: 'changeTime',
-            name: strings.JobDetails.Panel.changeTimeColumnLabel,
-            fieldName: 'changeTime',
-            minWidth: 100,
-            maxWidth: 150,
-            isResizable: true,
-            isMultiline: true,
-            onRender: (item: SyncJobChange) => renderTimestamp(item.changeTime),
-        },
-        {
-            key: 'changedByDisplayName',
-            name: strings.JobDetails.Panel.changedByColumnLabel,
-            fieldName: 'changedByDisplayName',
-            minWidth: 120,
-            maxWidth: 200,
-            isResizable: true,
-            isMultiline: true,
-            onRender: (item: SyncJobChange) => <span>{item.changedByDisplayName ?? ''}</span>,
-        },
-        {
-            key: 'changeReason',
-            name: strings.JobDetails.Panel.changeReasonColumnLabel,
-            fieldName: 'changeReason',
-            minWidth: 150,
-            maxWidth: 250,
-            isResizable: true,
-            isMultiline: true,
-            onRender: (item: SyncJobChange) => <span>{getChangeReasonText(item.changeReason)}</span>,
-        },
-        {
-            key: 'businessJustification',
-            name: strings.JobDetails.Panel.businessJustification,
-            fieldName: 'businessJustification',
-            minWidth: 150,
-            maxWidth: 300,
-            isResizable: true,
-            isMultiline: true,
-            onRender: (item: SyncJobChange) => <span>{item.businessJustification}</span>,
-        },
-        {
-            key: 'changeDetails',
-            name: strings.JobDetails.Panel.changeDetailsColumnLabel,
-            fieldName: 'changeDetails',
-            minWidth: 100,
-            maxWidth: 150,
-            isResizable: true,
-            isMultiline: true,
-            onRender: (item: SyncJobChange) => (
-                <Link onClick={() => handleViewDetails(item.changeDetails)}>
-                    {strings.JobDetails.Panel.viewDetails}
-                </Link>
-            ),
-        }
-    ];
 
     const mostRecentThresholdRunId = useMemo<string | null>(() => {
         return syncHistoryItems
@@ -1809,33 +1739,7 @@ export const JobHistoryPanelBase: React.FunctionComponent<IJobHistoryPanelProps>
                     ) : undefined}
                 />
             ) : (
-            <HistoryContainer>
-                {!isRunHistoryPhase2Enabled && (
-                    <PivotItem
-                    headerText={strings.JobDetails.Panel.configurationPivotHeader}
-                    headerButtonProps={{
-                        'data-order': 1,
-                        'data-title': strings.JobDetails.Panel.configurationPivotHeader,
-                    }}
-                >
-                    <DetailsList
-                        setKey="configurationSet"
-                        columns={configurationColumns}
-                        items={jobChanges}
-                        selectionMode={0}
-                    />
-                </PivotItem>
-                )}
-                {showSyncTab && (
-                    <SyncHistoryContainer
-                        {...(!isRunHistoryPhase2Enabled ? {
-                            headerText: strings.JobDetails.Panel.syncPivotHeader,
-                            headerButtonProps: {
-                                'data-order': 2,
-                                'data-title': strings.JobDetails.Panel.syncPivotHeader,
-                            },
-                        } : {})}
-                    >
+            <>
                         {downloadError && (
                             <MessageBar
                                 messageBarType={MessageBarType.error}
@@ -2078,9 +1982,7 @@ export const JobHistoryPanelBase: React.FunctionComponent<IJobHistoryPanelProps>
                             </div>
                         </div>
                         )}
-                    </SyncHistoryContainer>
-                )}
-            </HistoryContainer>
+            </>
             )}
             <Modal
                 isOpen={isModalOpen}

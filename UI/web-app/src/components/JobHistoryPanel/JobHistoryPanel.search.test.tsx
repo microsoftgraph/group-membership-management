@@ -395,7 +395,6 @@ beforeEach(() => {
     settings: {
       settings: [
         { settingKey: 16, settingValue: 'true' },
-        { settingKey: SettingKey.RunHistoryOpenViewingAndUnifiedTab, settingValue: 'false' },
       ],
     },
   };
@@ -475,28 +474,13 @@ describe('JobHistoryPanelBase event type filter', () => {
   });
 });
 
-describe('JobHistoryPanelBase Phase 2 rollout', () => {
-  it('keeps the role gate and Configuration tab while the flag is off', async () => {
-    mockState.roles.isJobTenantReader = false;
-    mockState.roles.isJobTenantWriter = false;
-    mockState.roles.isJobOwnerReader = true;
-
-    await renderPanel();
-
-    expect(screen.getByRole('region', {
-      name: strings.JobDetails.Panel.configurationPivotHeader,
-    })).toBeInTheDocument();
-    expect(screen.queryByTestId('details-list-combinedSyncSet')).not.toBeInTheDocument();
-    expect(fetchSyncJobHistoryMock).not.toHaveBeenCalled();
-  });
-
-  it('opens the unified history and removes the Configuration tab while the flag is on', async () => {
+describe('JobHistoryPanelBase unified history', () => {
+  it('opens the unified history without a separate Configuration tab', async () => {
     mockState.roles.isJobTenantReader = false;
     mockState.roles.isJobTenantWriter = false;
     mockState.roles.isJobOwnerReader = true;
     mockState.settings.settings = [
       { settingKey: SettingKey.IsAISearchForUserEnabled, settingValue: 'true' },
-      { settingKey: SettingKey.RunHistoryOpenViewingAndUnifiedTab, settingValue: 'true' },
     ];
     mockState.jobs.selectedJobChanges = [{
       changeTime: '2024-05-03T00:00:00Z',
@@ -531,7 +515,6 @@ describe('JobHistoryPanelBase Phase 2 rollout', () => {
 
   it('shows a loading spinner until both history sources resolve, then reveals the unified list once', async () => {
     mockState.settings.settings = [
-      { settingKey: SettingKey.RunHistoryOpenViewingAndUnifiedTab, settingValue: 'true' },
     ];
 
     let resolveJobChanges: (value: unknown) => void = () => undefined;
@@ -581,7 +564,6 @@ describe('JobHistoryPanelBase Phase 2 rollout', () => {
     mockState.roles.isJobTenantWriter = false;
     mockState.roles.isJobOwnerReader = true;
     mockState.settings.settings = [
-      { settingKey: SettingKey.RunHistoryOpenViewingAndUnifiedTab, settingValue: 'true' },
     ];
     mockSyncHistoryItems = [{
       ...buildSyncHistoryItem('run-threshold', '2024-05-02T00:00:00Z', 3, 0),
@@ -600,7 +582,6 @@ describe('JobHistoryPanelBase Phase 2 rollout', () => {
     mockState.roles.isJobTenantWriter = false;
     mockState.roles.isJobOwnerWriter = true;
     mockState.settings.settings = [
-      { settingKey: SettingKey.RunHistoryOpenViewingAndUnifiedTab, settingValue: 'true' },
     ];
     mockSyncHistoryItems = [{
       ...buildSyncHistoryItem('run-threshold', '2024-05-02T00:00:00Z', 3, 0),

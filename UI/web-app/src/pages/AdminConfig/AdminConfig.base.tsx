@@ -26,8 +26,6 @@ import {
   selectDefaultAIPrompt,
   selectIsAISearchForUserEnabled,
   selectIsAIRunExplanationEnabled,
-  selectIsAIRejectionFeedbackRefinementEnabled,
-  selectIsRunHistoryTabEnabled,
 } from '../../store/settings.slice';
 import { patchSetting, fetchDefaultAIPrompt, fetchSettings } from '../../store/settings.api';
 import { AppDispatch } from '../../store';
@@ -72,8 +70,6 @@ export const AdminConfigBase: React.FunctionComponent<AdminConfigProps> = (props
   const isAICopilotEnabled = useSelector(selectIsAICopilotEnabled);
   const isAISearchForUserEnabled = useSelector(selectIsAISearchForUserEnabled);
   const isAIRunExplanationEnabled = useSelector(selectIsAIRunExplanationEnabled);
-  const isAIRejectionFeedbackRefinementEnabled = useSelector(selectIsAIRejectionFeedbackRefinementEnabled);
-  const isRunHistoryPhase2Enabled = useSelector(selectIsRunHistoryTabEnabled);
   const copilotTemperature = useSelector(selectCopilotTemperature);
   const copilotTopP = useSelector(selectCopilotTopP);
   const copilotInstructions = useSelector(selectCopilotInstructions);
@@ -109,8 +105,6 @@ export const AdminConfigBase: React.FunctionComponent<AdminConfigProps> = (props
     [SettingKey.IsAICopilotEnabled]: isAICopilotEnabled ? 'true' : 'false',
     [SettingKey.IsAISearchForUserEnabled]: isAISearchForUserEnabled ? 'true' : 'false',
     [SettingKey.IsAIRunExplanationEnabled]: isAIRunExplanationEnabled ? 'true' : 'false',
-    [SettingKey.IsAIRejectionFeedbackRefinementEnabled]: isAIRejectionFeedbackRefinementEnabled ? 'true' : 'false',
-    [SettingKey.RunHistoryOpenViewingAndUnifiedTab]: isRunHistoryPhase2Enabled ? 'true' : 'false',
     [SettingKey.CopilotTemperature]: copilotTemperature ?? '0.7',
     [SettingKey.CopilotTopP]: copilotTopP ?? '0.9',
     [SettingKey.CopilotInstructions]: copilotInstructions ?? '',
@@ -121,7 +115,7 @@ export const AdminConfigBase: React.FunctionComponent<AdminConfigProps> = (props
 
   useEffect(() => {
     setSettings(generateSettings())
-  }, [dashboardUrl, outlookWarningUrl, privacyPolicyUrl, canReviewOwnSubmissions, createGroupFeatureEnabled, isBusinessJustificationRequired, IsDisclaimerEnabled, IsAutoApprovalForGroupBasedSyncsEnabled, IsAutoApprovalForRequestorIsOrgLeaderSyncsEnabled, isPerPartAutoApprovalEnabled, isAITitleEnabled, isAICopilotEnabled, isAISearchForUserEnabled, isAIRunExplanationEnabled, isAIRejectionFeedbackRefinementEnabled, isRunHistoryPhase2Enabled, copilotTemperature, copilotTopP, copilotInstructions, copilotSuggestedPrompts]);
+  }, [dashboardUrl, outlookWarningUrl, privacyPolicyUrl, canReviewOwnSubmissions, createGroupFeatureEnabled, isBusinessJustificationRequired, IsDisclaimerEnabled, IsAutoApprovalForGroupBasedSyncsEnabled, IsAutoApprovalForRequestorIsOrgLeaderSyncsEnabled, isPerPartAutoApprovalEnabled, isAITitleEnabled, isAICopilotEnabled, isAISearchForUserEnabled, isAIRunExplanationEnabled, copilotTemperature, copilotTopP, copilotInstructions, copilotSuggestedPrompts]);
 
   const handleGetValues = (attribute: SqlMembershipAttribute) => {
     dispatch(fetchAttributeValues(attribute));
@@ -129,8 +123,8 @@ export const AdminConfigBase: React.FunctionComponent<AdminConfigProps> = (props
 
   // Setting keys owned by each Admin Configuration administrator role. Only changed keys within
   // the signed-in administrator's authorized scopes are dispatched, so a user holding a single
-  // role never triggers an unauthorized PATCH. UIUrl and RunHistoryOpenViewingAndUnifiedTab are
-  // loaded for display purposes only and are intentionally excluded from every scope.
+  // role never triggers an unauthorized PATCH. UIUrl is loaded for display
+  // purposes only and is intentionally excluded from every scope.
   const generalSettingKeys: SettingKey[] = [
     SettingKey.DashboardUrl,
     SettingKey.OutlookWarningUrl,

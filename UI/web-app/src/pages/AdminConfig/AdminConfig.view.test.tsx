@@ -62,8 +62,6 @@ const createSettings = (overrides?: Partial<Record<SettingKey, string>>): { read
   [SettingKey.IsAICopilotEnabled]: 'true',
   [SettingKey.IsAISearchForUserEnabled]: 'false',
   [SettingKey.IsAIRunExplanationEnabled]: 'false',
-  [SettingKey.IsAIRejectionFeedbackRefinementEnabled]: 'false',
-  [SettingKey.RunHistoryOpenViewingAndUnifiedTab]: 'false',
   [SettingKey.CopilotTemperature]: '0.7',
   [SettingKey.CopilotTopP]: '0.9',
   [SettingKey.CopilotInstructions]: '',

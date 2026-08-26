@@ -38,7 +38,7 @@ namespace Services.Tests
         private Mock<INotificationRepository> _notificationRepository = null!;
         private Mock<IDatabaseSyncJobsRepository> _syncJobRepository = null!;
         private Mock<ISyncJobChangeRepository> _syncJobChangeRepository = null!;
-        private IGMMEmailReceivers _gmmEmailReceivers = null!;
+        private Mock<IHttpContextAccessor> _httpContextAccessor = null!;
         private ResolveNotificationHandler _resolveNotificationsHandler = null!;
         private NotificationsController _notificationsController = null!;
         private List<ThresholdNotification> _thresholdNotifications = null!;
@@ -141,7 +141,7 @@ namespace Services.Tests
             _thresholdNotification = _thresholdNotifications[Random.Shared.Next(0, _notificationCount)];
             _groupId = _thresholdNotification.TargetOfficeGroupId;
 
-            _gmmEmailReceivers = new GMMEmailReceivers(Guid.NewGuid());
+            _httpContextAccessor = new Mock<IHttpContextAccessor>();
 
             _resolveNotificationsHandler = new ResolveNotificationHandler(NullLogger<ResolveNotificationHandler>.Instance,
                 _notificationRepository.Object,
@@ -149,7 +149,7 @@ namespace Services.Tests
                 _syncJobChangeRepository.Object,
                 _graphGroupRepository.Object,
                 _telemetryClient,
-                _gmmEmailReceivers);
+                _httpContextAccessor.Object);
 
             var claims = new List<Claim>
             {
@@ -259,6 +259,65 @@ namespace Services.Tests
             Assert.AreEqual(_thresholdNotification.SyncJobId, savedChange.SyncJobId);
         }
 
+        /// <summary>
+        /// /notifications/{id}/resolve - A tenant writer who does not own the group can resolve (FR-022)
+        /// </summary>
+        [TestMethod]
+        public async Task ResolveNotification_TenantWriterWhoIsNotOwnerCanResolveAsync()
+        {
+            var claims = new List<Claim>
+            {
+                new Claim("upn", "notAnOwner@contoso.net"),
+                new Claim(ClaimTypes.Role, Roles.JOB_TENANT_WRITER)
+            };
+            _notificationsController.ControllerContext = CreateControllerContext(claims, "mockBearerToken");
+
+            var response = await _notificationsController.ResolveNotificationAsync(_thresholdNotification.Id, _resolveNotificationModel);
+
+            _notificationRepository.Verify(x => x.SaveNotificationAsync(_thresholdNotification), Times.Once);
+
+            Assert.IsInstanceOfType(response, typeof(NoContentResult));
+        }
+
+        /// <summary>
+        /// /notifications/{id}/resolve - A non-owner without the tenant writer role is denied (FR-022)
+        /// </summary>
+        [TestMethod]
+        public async Task ResolveNotification_NonOwnerWithoutTenantWriterIsForbiddenAsync()
+        {
+            var claims = new List<Claim>
+            {
+                new Claim("upn", "notAnOwner@contoso.net"),
+                new Claim(ClaimTypes.Role, Roles.JOB_TENANT_READER)
+            };
+            _notificationsController.ControllerContext = CreateControllerContext(claims, "mockBearerToken");
+
+            var response = await _notificationsController.ResolveNotificationAsync(_thresholdNotification.Id, _resolveNotificationModel);
+
+            _notificationRepository.Verify(x => x.SaveNotificationAsync(_thresholdNotification), Times.Never);
+
+            Assert.IsInstanceOfType(response, typeof(ForbidResult));
+        }
+
+        /// <summary>
+        /// /notifications/{id}/resolve - The resolution is attributed to the acting user, never a support group (FR-022)
+        /// </summary>
+        [TestMethod]
+        public async Task ResolveNotification_AttributesResolutionToActingUserAsync()
+        {
+            var claims = new List<Claim>
+            {
+                new Claim("upn", "notAnOwner@contoso.net"),
+                new Claim(ClaimTypes.Role, Roles.JOB_TENANT_WRITER)
+            };
+            _notificationsController.ControllerContext = CreateControllerContext(claims, "mockBearerToken");
+
+            await _notificationsController.ResolveNotificationAsync(_thresholdNotification.Id, _resolveNotificationModel);
+
+            Assert.AreEqual("notAnOwner@contoso.net", _thresholdNotification.ResolvedBy);
+            _graphGroupRepository.Verify(x => x.GetGroupNameAsync(It.IsAny<Guid>()), Times.Never);
+        }
+
         private ControllerContext CreateControllerContext(List<Claim> claims, string mockBearerToken)
         {
             var identity = new ClaimsIdentity(claims, "TestAuthType");
@@ -267,6 +326,9 @@ namespace Services.Tests
 
             httpContext.Request.Headers["Authorization"] = "Bearer " + mockBearerToken;
             httpContext.User = principal;
+
+            // The handler reads roles through IHttpContextAccessor, so keep it on the same context.
+            _httpContextAccessor.Setup(x => x.HttpContext).Returns(httpContext);
 
             return new ControllerContext { HttpContext = httpContext };
         }

@@ -81,11 +81,6 @@ namespace WebApi.Controllers.v1.Settings
             SettingKey.PrivacyPolicyUrl
         };
 
-        private static readonly IReadOnlySet<SettingKey> ReadOnlySettingKeys = new HashSet<SettingKey>
-        {
-            SettingKey.RunHistoryOpenViewingAndUnifiedTab
-        };
-
         private readonly IRequestHandler<GetSettingRequest, GetSettingResponse> _getSettingRequestHandler;
         private readonly IRequestHandler<GetAllSettingsRequest, GetAllSettingsResponse> _getAllSettingsRequestHandler;
         private readonly IRequestHandler<PatchSettingRequest, NullResponse> _patchSettingRequestHandler;
@@ -157,11 +152,6 @@ namespace WebApi.Controllers.v1.Settings
         [HttpPatch("{settingKey}")]
         public async Task<IActionResult> PatchSettingAsync(SettingKey settingKey, [FromBody] string settingValue)
         {
-            if (ReadOnlySettingKeys.Contains(settingKey))
-            {
-                return BadRequest("Feature flags must be managed through Azure App Configuration.");
-            }
-
             if (!IsAuthorizedToWrite(settingKey))
             {
                 return Forbid();

@@ -22,21 +22,18 @@ namespace Hosts.Notifier
     {
         private readonly ILogger<StarterFunction> _logger;
         private readonly IMailConfig _mailConfig;
-        private readonly IThresholdNotificationConfig _thresholdNotificationConfig;
         private readonly INotificationTypesRepository _notificationTypesRepository;
         private readonly IDeferredNotificationsRepository _deferredNotificationsRepository;
         private readonly TelemetryClient _telemetryClient;
 
         public StarterFunction(
             ILogger<StarterFunction> logger,
-            IThresholdNotificationConfig thresholdNotificationConfig,
             IMailConfig mailConfig,
             INotificationTypesRepository notificationTypesRepository,
             IDeferredNotificationsRepository deferredNotificationsRepository,
             TelemetryClient telemetryClient)
         {
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-            _thresholdNotificationConfig = thresholdNotificationConfig ?? throw new ArgumentNullException(nameof(thresholdNotificationConfig));
             _mailConfig = mailConfig ?? throw new ArgumentNullException(nameof(mailConfig));
             _notificationTypesRepository = notificationTypesRepository ?? throw new ArgumentNullException(nameof(notificationTypesRepository));
             _deferredNotificationsRepository = deferredNotificationsRepository ?? throw new ArgumentNullException(nameof(deferredNotificationsRepository));

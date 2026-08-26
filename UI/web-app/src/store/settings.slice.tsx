@@ -283,13 +283,6 @@ export const selectIsAIRejectionFeedbackRefinementEnabled = (state: RootState) =
   return setting?.settingValue === 'true';
 }
 
-export const selectIsRunHistoryTabEnabled = (state: RootState) => {
-  const settingsArray = state.settings.settings;
-  if (!settingsArray) return false;
-  const setting = settingsArray.find((s) => s.settingKey === SettingKey.RunHistoryOpenViewingAndUnifiedTab);
-  return setting?.settingValue === 'true';
-}
-
 export const selectPatchSettingResponse = (state: RootState) => state.settings.patchSettingResponse;
 export const selectPatchSettingError = (state: RootState) => state.settings.patchSettingError;
 

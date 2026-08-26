@@ -289,7 +289,6 @@ param logAnalyticsRetentionInDays int = 365
 param authenticationType string = 'ClientSecret'
 param skipMailNotifications bool = false
 param isMailApplicationPermissionGranted bool = false
-param enableStyledFallbackEmails bool = true
 param isTeamsChannelApplicationPermissionGranted bool = false
 
 @description('Enter app configuration name.')
@@ -458,30 +457,6 @@ param appConfigurationKeyData array = [
     }
   }
   {
-    key: 'Mail:IsAdaptiveCardEnabled'
-    value: 'true'
-    contentType: 'boolean'
-    tag: {
-      tag1: 'Mail'
-    }
-  }
-  {
-    key: 'Mail:ActionableMessageViewerGroupId'
-    value: ''
-    contentType: 'string'
-    tag: {
-      tag1: 'Mail'
-    }
-  }
-  {
-    key: 'ThresholdNotification:IsThresholdNotificationEnabled'
-    value: 'false'
-    contentType: 'boolean'
-    tag: {
-      tag1: 'ThresholdNotification'
-    }
-  }
-  {
     key: 'GraphAPI:AuthenticationType'
     value: authenticationType
     contentType: 'string'
@@ -501,14 +476,6 @@ param appConfigurationKeyData array = [
   {
     key: 'Mail:SkipMailNotifications'
     value: skipMailNotifications
-    contentType: 'boolean'
-    tag: {
-      tag1: 'Mail'
-    }
-  }
-  {
-    key: 'Mail:EnableStyledFallbackEmails'
-    value: string(enableStyledFallbackEmails)
     contentType: 'boolean'
     tag: {
       tag1: 'Mail'

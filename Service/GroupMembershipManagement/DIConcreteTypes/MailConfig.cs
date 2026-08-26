@@ -7,21 +7,15 @@ namespace DIConcreteTypes
 {
     public class MailConfig : IMailConfig
     {
-        public bool IsAdaptiveCardEnabled { get; set; }
         public bool GMMHasSendMailApplicationPermissions { get; set; }
         public string SenderAddress { get; set; }
         public bool SkipEmailNotifications { get; set; }
-        public bool EnableStyledFallbackEmails { get; set; }
-        public bool RunHistoryTabEnabled { get; set; }
 
-        public MailConfig(bool isAdaptiveCardEnabled, bool gmmHasSendMailApplicationPermissions, string senderAddress, bool skipEmailNotifications, bool enableStyledFallbackEmails = true, bool runHistoryTabEnabled = false)
+        public MailConfig(bool gmmHasSendMailApplicationPermissions, string senderAddress, bool skipEmailNotifications)
         {
-            IsAdaptiveCardEnabled = isAdaptiveCardEnabled;
             GMMHasSendMailApplicationPermissions = gmmHasSendMailApplicationPermissions;
             SenderAddress = senderAddress;
             SkipEmailNotifications = skipEmailNotifications;
-            EnableStyledFallbackEmails = enableStyledFallbackEmails;
-            RunHistoryTabEnabled = runHistoryTabEnabled;
         }
 
         public MailConfig()

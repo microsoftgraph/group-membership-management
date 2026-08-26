@@ -421,7 +421,6 @@ namespace WebApi.Controllers.v1.Jobs
         [HttpGet("history/sync/{syncJobId}")]
         public async Task<ActionResult<IEnumerable<SyncJobHistory>>> GetSyncJobHistoryAsync(
             Guid syncJobId,
-            [FromServices] IConfiguration configuration,
             [FromServices] IDatabaseSyncJobsRepository syncJobsRepository)
         {
             var hasTenantHistoryRole = User.IsInRole(Models.Roles.JOB_TENANT_READER)
@@ -429,16 +428,6 @@ namespace WebApi.Controllers.v1.Jobs
 
             if (!hasTenantHistoryRole)
             {
-                var isRunHistoryPhase2Enabled =
-                    bool.TryParse(
-                        configuration[global::Models.ConfigurationKeyNames.RunHistoryOpenViewingAndUnifiedTab],
-                        out var configuredValue)
-                    && configuredValue;
-                if (!isRunHistoryPhase2Enabled)
-                {
-                    return Forbid();
-                }
-
                 var userObjectIdClaim = User.FindFirstValue("http://schemas.microsoft.com/identity/claims/objectidentifier");
                 if (!Guid.TryParse(userObjectIdClaim, out var userObjectId))
                 {
@@ -507,16 +496,9 @@ namespace WebApi.Controllers.v1.Jobs
         [HttpGet("history/sync/{syncJobId}/runs/{runId}/download")]
         public async Task<ActionResult> DownloadMembershipAsync(
             Guid syncJobId,
-            Guid runId,
-            [FromServices] IConfiguration configuration)
+            Guid runId)
         {
-            var isRunHistoryPhase2Enabled =
-                bool.TryParse(
-                    configuration[global::Models.ConfigurationKeyNames.RunHistoryOpenViewingAndUnifiedTab],
-                    out var configuredValue)
-                && configuredValue;
-
-            if (isRunHistoryPhase2Enabled && !User.IsInRole(Models.Roles.JOB_TENANT_WRITER))
+            if (!User.IsInRole(Models.Roles.JOB_TENANT_WRITER))
             {
                 return Forbid();
             }

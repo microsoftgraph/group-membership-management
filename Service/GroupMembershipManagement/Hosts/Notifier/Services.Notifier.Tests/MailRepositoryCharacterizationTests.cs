@@ -89,7 +89,7 @@ namespace Services.Notifier.Tests
 
             _mailRepository = new MailRepository(
                 graphServiceClient.Object,
-                new MailConfig(true, false, "not-set", false, enableStyledFallbackEmails: true, runHistoryTabEnabled: true),
+                new MailConfig(false, "not-set", false),
                 _localizationRepository,
                 NullLogger<MailRepository>.Instance,
                 _graphGroupRepository.Object,

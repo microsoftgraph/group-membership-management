@@ -73,16 +73,6 @@ namespace Hosts.AzureMaintenance
                             services.GetService<IOptions<HandleInactiveJobsConfig>>().Value.JobHistoryRetentionDays);
                     });
 
-                    services.AddOptions<ThresholdNotificationConfig>().Configure<IConfiguration>((settings, configuration) =>
-                    {
-                        settings.IsThresholdNotificationEnabled = GetBoolSetting(configuration, "ThresholdNotification:IsThresholdNotificationEnabled", false);
-                    });
-                    services.AddSingleton<IThresholdNotificationConfig>(services =>
-                    {
-                        return new ThresholdNotificationConfig(
-                            services.GetService<IOptions<ThresholdNotificationConfig>>().Value.IsThresholdNotificationEnabled);
-                    });
-
                     services.AddScoped<INotificationRepository, NotificationRepository>();
                     services.AddScoped<ISyncJobChangeRepository, SyncJobChangeRepository>();
 

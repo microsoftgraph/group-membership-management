@@ -38,7 +38,7 @@ namespace Repositories.Mail
 
         public MailRepository(
             GraphServiceClient graphClient, 
-            IMailConfig mailAdaptiveCardConfig, 
+            IMailConfig mailConfig, 
             ILocalizationRepository localizationRepository, 
             ILogger<MailRepository> mailRepositoryLogger,
             IGraphGroupRepository graphGroupRepository,
@@ -49,7 +49,7 @@ namespace Repositories.Mail
             )
         {
             _graphClient = graphClient ?? throw new ArgumentNullException(nameof(graphClient));
-            _mailConfig = mailAdaptiveCardConfig ?? throw new ArgumentNullException(nameof(mailAdaptiveCardConfig));
+            _mailConfig = mailConfig ?? throw new ArgumentNullException(nameof(mailConfig));
             _localizationRepository = localizationRepository ?? throw new ArgumentNullException(nameof(localizationRepository));
             _mailRepositoryLogger = mailRepositoryLogger ?? throw new ArgumentNullException(nameof(mailRepositoryLogger));
             _graphGroupRepository = graphGroupRepository ?? throw new ArgumentNullException(nameof(graphGroupRepository));
@@ -84,13 +84,9 @@ namespace Repositories.Mail
             {
                 message = GetHTMLMessage(emailMessage);
             }
-            else if (_mailConfig.IsAdaptiveCardEnabled)
-            {
-                message = await GetStyledMessageAsync(emailMessage);
-            }
             else
             {
-                message = GetSimpleMessage(emailMessage);
+                message = await GetStyledMessageAsync(emailMessage);
             }
 
             if (!string.IsNullOrEmpty(emailMessage?.ToEmailAddresses))
@@ -205,34 +201,26 @@ namespace Repositories.Mail
             var sentDate = DateTime.UtcNow.ToString("MMM dd, yyyy");
             string htmlContent;
 
-            if (_mailConfig.EnableStyledFallbackEmails)
+            var styledContext = new StyledEmailContext(
+                GroupId: groupId,
+                DestinationGroupName: ResolveStyledDestinationGroupName(emailMessage, destinationGroupName),
+                UIUrl: UIUrl,
+                JobUrl: jobUrl,
+                HistoryUrl: historyUrl,
+                OnboardingUrl: onboardingUrl,
+                SentDate: sentDate);
+
+            var styledFallback = await TryBuildStyledBodyAsync(emailMessage, styledContext);
+
+            if (styledFallback != null)
             {
-                var styledContext = new StyledEmailContext(
-                    GroupId: groupId,
-                    DestinationGroupName: ResolveStyledDestinationGroupName(emailMessage, destinationGroupName),
-                    UIUrl: UIUrl,
-                    JobUrl: jobUrl,
-                    HistoryUrl: historyUrl,
-                    OnboardingUrl: onboardingUrl,
-                    SentDate: sentDate);
-
-                var styledFallback = await TryBuildStyledBodyAsync(emailMessage, styledContext);
-
-                if (styledFallback != null)
-                {
-                    // Styled informational email. Owners act via the in-body deep-link CTAs
-                    // (e.g. "Review in GMM" / run history) baked into the styled template.
-                    htmlContent = WrapStyledBodyWithoutAdaptiveCard(styledFallback, styledContext.DestinationGroupName);
-                }
-                else
-                {
-                    // No styled template for this type yet: send the message as a plain HTML body.
-                    htmlContent = BuildPlainFallback(emailMessage);
-                }
+                // Styled informational email. Owners act via the in-body deep-link CTAs
+                // (e.g. "Review in GMM" / run history) baked into the styled template.
+                htmlContent = WrapStyledBodyWithoutAdaptiveCard(styledFallback, styledContext.DestinationGroupName);
             }
             else
             {
-                // Styled emails disabled: send every notification as a plain HTML body.
+                // No styled template for this type yet: send the message as a plain HTML body.
                 htmlContent = BuildPlainFallback(emailMessage);
             }
 
@@ -338,11 +326,6 @@ namespace Repositories.Mail
             if (emailMessage is null)
             {
                 throw new ArgumentNullException(nameof(emailMessage));
-            }
-
-            if (!_mailConfig.EnableStyledFallbackEmails)
-            {
-                return null;
             }
 
             await TryAssignGroupNameAsync(emailMessage, runId: null);

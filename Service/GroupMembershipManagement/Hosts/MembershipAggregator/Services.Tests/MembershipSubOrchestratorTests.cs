@@ -57,7 +57,6 @@ namespace Services.Tests
         private Mock<IDryRunValue> _dryRun;
         private Mock<IGMMResources> _gmmResources;
         private Mock<IGraphAPIService> _graphAPIService;
-        private Mock<IThresholdNotificationConfig> _thresholdNotificationConfig;
         private Mock<IDatabaseSyncJobsRepository> _syncJobRepository;
         private Mock<IDatabaseGroupsRepository> _groupsRepository;
         private Mock<IDatabaseChannelsRepository> _channelsRepository;
@@ -73,7 +72,6 @@ namespace Services.Tests
         [TestInitialize]
         public void SetupTest()
         {
-            _thresholdNotificationConfig = new Mock<IThresholdNotificationConfig>();
             _syncJobRepository = new Mock<IDatabaseSyncJobsRepository>();
             _groupsRepository = new Mock<IDatabaseGroupsRepository>();
             _channelsRepository = new Mock<IDatabaseChannelsRepository>();
@@ -129,7 +127,6 @@ namespace Services.Tests
                                                 NullLogger<DeltaCalculatorService>.Instance,
                                                 _graphAPIService.Object,
                                                 _dryRun.Object,
-                                                _thresholdNotificationConfig.Object,
                                                 _notificationRepository.Object,
                                                 _notificationsQueueRepository.Object,
                                                 _telemetryClient
@@ -607,7 +604,6 @@ namespace Services.Tests
                                     NullLogger<DeltaCalculatorService>.Instance,
                                     _graphAPIService.Object,
                                     _dryRun.Object,
-                                    _thresholdNotificationConfig.Object,
                                     _notificationRepository.Object,
                                     _notificationsQueueRepository.Object,
                                     _telemetryClient
@@ -641,7 +637,6 @@ namespace Services.Tests
                                     NullLogger<DeltaCalculatorService>.Instance,
                                     _graphAPIService.Object,
                                     _dryRun.Object,
-                                    _thresholdNotificationConfig.Object,
                                     _notificationRepository.Object,
                                     _notificationsQueueRepository.Object,
                                     _telemetryClient
@@ -669,7 +664,6 @@ namespace Services.Tests
                                     NullLogger<DeltaCalculatorService>.Instance,
                                     _graphAPIService.Object,
                                     _dryRun.Object,
-                                    _thresholdNotificationConfig.Object,
                                     _notificationRepository.Object,
                                     _notificationsQueueRepository.Object,
                                     _telemetryClient
@@ -849,7 +843,6 @@ namespace Services.Tests
         [TestMethod]
         public async Task SendThresholdNotificationIfEnabledAsync()
         {
-            _thresholdNotificationConfig.Setup(x => x.IsThresholdNotificationEnabled).Returns(true);
             _notificationsQueueRepository.Setup(x => x.SendMessageAsync(It.IsAny<ServiceBusMessage>()))
                                          .Returns(Task.CompletedTask);
             _syncJobStatusService.Setup(x => x.UpdateJobStatusAsync(It.IsAny<SyncJob>(), It.IsAny<SyncStatus?>(), It.IsAny<SyncJobHistory>(), It.IsAny<string>()))

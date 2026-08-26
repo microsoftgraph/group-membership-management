@@ -143,16 +143,6 @@ namespace Hosts.FunctionBase
 
             services.AddScoped<INotificationRepository, NotificationRepository>();
 
-            services.AddOptions<ThresholdNotificationConfig>().Configure<IConfiguration>((settings, config) =>
-            {
-                settings.IsThresholdNotificationEnabled = GetBoolSettingBase(config, "ThresholdNotification:IsThresholdNotificationEnabled", false);
-            });
-            services.AddSingleton<IThresholdNotificationConfig>(services =>
-            {
-                var creds = services.GetService<IOptions<ThresholdNotificationConfig>>();
-                return new ThresholdNotificationConfig(creds.Value.IsThresholdNotificationEnabled);
-            });
-
             services.AddOptions<TelemetryInitializerConfig>().Configure<IConfiguration>((settings, config) =>
             {
                 config.GetSection("Settings:TelemetryInitializer").Bind(settings);

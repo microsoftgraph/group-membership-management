@@ -24,8 +24,6 @@ namespace Models
         IsAISearchForUserEnabled = 16,
         IsAIRunExplanationEnabled = 17,
         AlertBannerConfig = 18,
-        RunHistoryOpenViewingAndUnifiedTab = 19,
-        IsPerPartAutoApprovalEnabled = 20,
-        IsAIRejectionFeedbackRefinementEnabled = 21
+        IsPerPartAutoApprovalEnabled = 20
     }
 }

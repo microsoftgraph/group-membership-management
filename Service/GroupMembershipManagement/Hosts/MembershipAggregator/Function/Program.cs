@@ -120,7 +120,6 @@ namespace Hosts.MembershipAggregator
                         var graphAPIService = services.GetRequiredService<IGraphAPIService>();
                         var dryRun = services.GetRequiredService<IDryRunValue>();
                         var telemetryClient = services.GetRequiredService<TelemetryClient>();
-                        var thresholdNotificationConfig = services.GetRequiredService<IThresholdNotificationConfig>();
                         var notificationRepository = services.GetRequiredService<INotificationRepository>();
 
                         var configuration = services.GetRequiredService<IConfiguration>();
@@ -136,7 +135,6 @@ namespace Hosts.MembershipAggregator
                             logger,
                             graphAPIService,
                             dryRun,
-                            thresholdNotificationConfig,
                             notificationRepository,
                             notificationsQueueRepository,
                             telemetryClient

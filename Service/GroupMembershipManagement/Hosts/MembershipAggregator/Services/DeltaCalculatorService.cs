@@ -31,7 +31,6 @@ namespace Services
         private readonly IGraphAPIService _graphAPIService;
         private readonly INotificationRepository _notificationRepository;
         private readonly bool _isDryRunEnabled;
-        private readonly IThresholdNotificationConfig _thresholdNotificationConfig;
         private readonly TelemetryClient _telemetryClient;
         private readonly IServiceBusQueueRepository _notificationsQueueRepository;
 
@@ -42,7 +41,6 @@ namespace Services
             ILogger<DeltaCalculatorService> logger,
             IGraphAPIService graphAPIService,
             IDryRunValue dryRun,
-            IThresholdNotificationConfig thresholdNotificationConfig,
             INotificationRepository notificationRepository,
             IServiceBusQueueRepository notificationsQueueRepository,
             TelemetryClient telemetryClient
@@ -53,7 +51,6 @@ namespace Services
             _databaseChannelsRepository = databaseChannelsRepository ?? throw new ArgumentNullException(nameof(databaseChannelsRepository));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _graphAPIService = graphAPIService ?? throw new ArgumentNullException(nameof(graphAPIService));
-            _thresholdNotificationConfig = thresholdNotificationConfig ?? throw new ArgumentNullException(nameof(thresholdNotificationConfig));
             _notificationRepository = notificationRepository ?? throw new ArgumentNullException(nameof(notificationRepository));
             _isDryRunEnabled = dryRun != null && dryRun.DryRunEnabled;
             _notificationsQueueRepository = notificationsQueueRepository ?? throw new ArgumentNullException(nameof(notificationsQueueRepository));
@@ -257,9 +254,9 @@ namespace Services
             var groupName = await _graphAPIService.GetGroupNameAsync(groupId);
             _logger.ThresholdExceededNoChanges(groupName, groupId);
 
-            await SendThresholdNotification(threshold, job, groupName);
+            await SendThresholdNotification(threshold, job);
         }
-        private async Task SendThresholdNotification(ThresholdResult threshold, SyncJob job, string groupName)
+        private async Task SendThresholdNotification(ThresholdResult threshold, SyncJob job)
         {
             var messageContent = new Dictionary<string, Object>
             {
@@ -268,15 +265,9 @@ namespace Services
                 { "SendDisableJobNotification", true }
             };
 
-            if (!_thresholdNotificationConfig.IsThresholdNotificationEnabled)
-            {
-                messageContent.Add("GroupName", groupName);
-            }
             var body = System.Text.Encoding.UTF8.GetBytes(System.Text.Json.JsonSerializer.Serialize(messageContent));
 
-            var messageType = _thresholdNotificationConfig.IsThresholdNotificationEnabled
-                ? NotificationMessageType.ThresholdNotification
-                : NotificationMessageType.NormalThresholdNotification;
+            var messageType = NotificationMessageType.ThresholdNotification;
 
             var messageId = $"{job.Id}_{job.RunId}_{messageType}";
 
@@ -291,18 +282,15 @@ namespace Services
         }
         private async Task CloseUnresolvedThresholdNotificationAsync(SyncJob job)
         {
-            if (_thresholdNotificationConfig.IsThresholdNotificationEnabled)
+            var thresholdNotification = await _notificationRepository.GetThresholdNotificationBySyncJobIdAsync(job.Id);
+            if (thresholdNotification != null && thresholdNotification.Status != ThresholdNotificationStatus.Resolved)
             {
-                var thresholdNotification = await _notificationRepository.GetThresholdNotificationBySyncJobIdAsync(job.Id);
-                if (thresholdNotification != null && thresholdNotification.Status != ThresholdNotificationStatus.Resolved)
-                {
-                    thresholdNotification.Resolution = ThresholdNotificationResolution.SelfCorrected;
-                    thresholdNotification.ResolvedBy = "N/A";
-                    thresholdNotification.ResolvedTime = DateTime.UtcNow;
-                    thresholdNotification.Status = ThresholdNotificationStatus.Resolved;
+                thresholdNotification.Resolution = ThresholdNotificationResolution.SelfCorrected;
+                thresholdNotification.ResolvedBy = "N/A";
+                thresholdNotification.ResolvedTime = DateTime.UtcNow;
+                thresholdNotification.Status = ThresholdNotificationStatus.Resolved;
 
-                    await _notificationRepository.SaveNotificationAsync(thresholdNotification);
-                }
+                await _notificationRepository.SaveNotificationAsync(thresholdNotification);
             }
         }
         private void TrackThresholdViolationEvent(Guid groupId)

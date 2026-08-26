@@ -20,7 +20,6 @@
     "AzureMaintenance:NumberOfDaysBeforeDeletion": 30,
     "AzureMaintenance:JobHistoryRetentionDays": 30,
     "AzureMaintenance:HandleInactiveJobsEnabled": true,
-    "ThresholdNotification:IsThresholdNotificationEnabled": false,
     "serviceBusNotificationsQueue": ""
   }
 }

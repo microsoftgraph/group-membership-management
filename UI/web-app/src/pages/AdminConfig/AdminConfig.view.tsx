@@ -345,8 +345,6 @@ const UserResourcesSettings: React.FunctionComponent<UserResourcesSettingsProps>
     [SettingKey.IsAICopilotEnabled]: true,
     [SettingKey.IsAISearchForUserEnabled]: true,
     [SettingKey.IsAIRunExplanationEnabled]: true,
-    [SettingKey.IsAIRejectionFeedbackRefinementEnabled]: true,
-    [SettingKey.RunHistoryOpenViewingAndUnifiedTab]: true,
     [SettingKey.CopilotTemperature]: true,
     [SettingKey.CopilotTopP]: true,
     [SettingKey.CopilotInstructions]: true,
