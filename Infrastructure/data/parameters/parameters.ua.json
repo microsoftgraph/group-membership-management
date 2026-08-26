@@ -127,7 +127,7 @@
     "sqlSkuCapacity": {
       "value": 4
     },
-    "openAIDeploymentCapacity": {
+    "openAIkTPMCapacity": {
       "value": 1000
     }
   }

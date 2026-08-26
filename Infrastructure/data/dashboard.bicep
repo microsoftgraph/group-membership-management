@@ -19,9 +19,10 @@ param subscriptionId string
 @description('Enter storage account name.')
 param jobsStorageAccountName string
 
-@description('Azure OpenAI tokens-per-minute (TPM) quota for the GPT deployment. Drawn as the flat limit line on the Copilot token usage tile.')
-param openAITpmCapacity int = 150000
+@description('Azure OpenAI deployment capacity for the GPT deployment, expressed in kTPM (thousands of tokens per minute). Multiplied by 1,000 to draw the flat TPM limit line on the Copilot token usage tile.')
+param openAIkTPMCapacity int = 150
 
+var openAITpmCapacity = openAIkTPMCapacity * 1000
 var openAITpmCapacityLabel = openAITpmCapacity >= 1000000 ? '${openAITpmCapacity / 1000000}M' : '${openAITpmCapacity / 1000}K'
 
 resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
