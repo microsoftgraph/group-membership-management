@@ -4,6 +4,8 @@
 using DIConcreteTypes;
 using Hosts.Notifier;
 using Microsoft.ApplicationInsights;
+using Microsoft.ApplicationInsights.Channel;
+using Microsoft.ApplicationInsights.DataContracts;
 using Microsoft.ApplicationInsights.Extensibility;
 using Microsoft.Extensions.Localization;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -54,6 +56,7 @@ namespace Services.Notifier.Tests
         private Mock<IRequestAdapter> _requestAdapter;
         private Guid _targetOfficeGroupId;
         private TelemetryClient _telemetryClient;
+        private CapturingTelemetryChannel _telemetryChannel;
         private Mock<IThresholdConfig> _thresholdConfig;
         private List<AzureADUser> _users;
         private Mock<IServiceBusQueueRepository> _serviceBusQueueRepository;
@@ -236,7 +239,12 @@ namespace Services.Notifier.Tests
                 GroupId = Guid.NewGuid(),
                 SyncJobId = Guid.NewGuid()
             };
-            _telemetryClient = new TelemetryClient(new TelemetryConfiguration());
+            _telemetryChannel = new CapturingTelemetryChannel();
+            _telemetryClient = new TelemetryClient(new TelemetryConfiguration
+            {
+                TelemetryChannel = _telemetryChannel,
+                ConnectionString = "InstrumentationKey=00000000-0000-0000-0000-000000000000"
+            });
 
             for (int i = 0; i < 2; i++)
             {
@@ -467,7 +475,7 @@ namespace Services.Notifier.Tests
             _notification.SyncJobId = Guid.NewGuid();
             _notification.CardState = ThresholdNotificationCardState.DisabledCard;
 
-            var service = CreateNotifierService(new MailConfig(true, false, "not-set", false, enableStyledFallbackEmails: true, runHistoryTabEnabled: false));
+            var service = CreateNotifierService(new MailConfig(true, "not-set", false));
             await service.SendThresholdEmailAsync(_notification);
 
             Assert.IsNotNull(capturedMessage);
@@ -683,6 +691,72 @@ namespace Services.Notifier.Tests
             };
 
             await _notifierService.SendEmailAsync(request.MessageType, request.MessageBody, request.MessageTitle, request.SubjectTemplate, request.ContentTemplate);
+        }
+
+        [TestMethod]
+        public async Task SendThresholdEmail_Accepted_TracksNotificationSentOnce()
+        {
+            _mailRepository.Setup(x => x.SendMailAsync(It.IsAny<EmailMessage>(), null))
+                .ReturnsAsync(new HttpResponseMessage(HttpStatusCode.Accepted));
+
+            await _notifierService.SendThresholdEmailAsync(_notification);
+
+            var events = _telemetryChannel.GetEvents("NotificationSent");
+            Assert.AreEqual(1, events.Count, "A single accepted send must emit exactly one NotificationSent event.");
+            Assert.AreEqual(_notification.TargetOfficeGroupId.ToString(), events[0].Properties["TargetGroupId"]);
+            _serviceBusQueueRepository.Verify(x => x.SendMessageAsync(It.IsAny<Models.ServiceBus.ServiceBusMessage>()), Times.Never());
+        }
+
+        [TestMethod]
+        public async Task SendThresholdEmail_NotAccepted_DoesNotTrackNotificationSent()
+        {
+            _mailRepository.Setup(x => x.SendMailAsync(It.IsAny<EmailMessage>(), null))
+                .ReturnsAsync(new HttpResponseMessage(HttpStatusCode.InternalServerError) { ReasonPhrase = "boom" });
+
+            await _notifierService.SendThresholdEmailAsync(_notification);
+
+            Assert.AreEqual(0, _telemetryChannel.GetEvents("NotificationSent").Count,
+                "A failed send must not be counted as a sent notification.");
+            _serviceBusQueueRepository.Verify(x => x.SendMessageAsync(It.IsAny<Models.ServiceBus.ServiceBusMessage>()), Times.Once());
+        }
+
+        [TestMethod]
+        public async Task SendThresholdEmail_SkipEmailNotifications_DoesNotTrackNotificationSent()
+        {
+            _mailRepository.Setup(x => x.SendMailAsync(It.IsAny<EmailMessage>(), null))
+                .ReturnsAsync(new HttpResponseMessage(HttpStatusCode.Accepted));
+
+            var service = CreateNotifierService(new MailConfig(false, "not-set", true));
+            await service.SendThresholdEmailAsync(_notification);
+
+            Assert.AreEqual(0, _telemetryChannel.GetEvents("NotificationSent").Count,
+                "No email leaves the system when notifications are skipped, so nothing must be counted as sent.");
+        }
+
+        /// <summary>
+        /// Minimal ITelemetryChannel that captures EventTelemetry items in memory so tests
+        /// can assert which Track* events fired.
+        /// </summary>
+        private sealed class CapturingTelemetryChannel : ITelemetryChannel
+        {
+            private readonly List<EventTelemetry> _events = new();
+
+            public bool? DeveloperMode { get; set; }
+            public string EndpointAddress { get; set; }
+
+            public void Send(ITelemetry item)
+            {
+                if (item is EventTelemetry eventTelemetry)
+                {
+                    _events.Add(eventTelemetry);
+                }
+            }
+
+            public IReadOnlyList<EventTelemetry> GetEvents(string name) =>
+                _events.Where(e => e.Name == name).ToList();
+
+            public void Flush() { }
+            public void Dispose() { }
         }
     }
 }

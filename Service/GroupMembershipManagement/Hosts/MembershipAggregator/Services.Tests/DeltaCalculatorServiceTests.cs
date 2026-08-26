@@ -29,7 +29,6 @@ namespace Services.Tests
         private Mock<IGraphAPIService> _graphAPIService = null!;
         private Mock<INotificationRepository> _notificationRepository = null!;
         private Mock<IServiceBusQueueRepository> _notificationsQueueRepository = null!;
-        private Mock<IThresholdNotificationConfig> _thresholdNotificationConfig = null!;
         private Mock<IDryRunValue> _dryRunValue = null!;
 
         private SyncJob _syncJob = null!;
@@ -68,9 +67,6 @@ namespace Services.Tests
             _notificationRepository = new Mock<INotificationRepository>();
             _notificationsQueueRepository = new Mock<IServiceBusQueueRepository>();
 
-            _thresholdNotificationConfig = new Mock<IThresholdNotificationConfig>();
-            _thresholdNotificationConfig.Setup(x => x.IsThresholdNotificationEnabled).Returns(true);
-
             _dryRunValue = new Mock<IDryRunValue>();
             _dryRunValue.Setup(x => x.DryRunEnabled).Returns(false);
         }
@@ -84,7 +80,6 @@ namespace Services.Tests
                 NullLogger<DeltaCalculatorService>.Instance,
                 _graphAPIService.Object,
                 _dryRunValue.Object,
-                _thresholdNotificationConfig.Object,
                 _notificationRepository.Object,
                 _notificationsQueueRepository.Object,
                 new TelemetryClient(new TelemetryConfiguration()));
@@ -199,23 +194,6 @@ namespace Services.Tests
             _notificationRepository
                 .Setup(x => x.GetThresholdNotificationBySyncJobIdAsync(_syncJob.Id))
                 .ReturnsAsync(alreadyResolved);
-
-            var (source, destination) = BuildUnderThresholdMembership();
-
-            await CreateService().CalculateDifferenceAsync(source, destination);
-
-            _notificationRepository.Verify(
-                x => x.SaveNotificationAsync(It.IsAny<ThresholdNotification>()),
-                Times.Never());
-        }
-
-        /// <summary>
-        /// FR-006 — when threshold notifications are disabled, the close path must not run at all.
-        /// </summary>
-        [TestMethod]
-        public async Task CalculateDifferenceAsync_NotificationsDisabled_DoesNotQueryOrSaveNotification()
-        {
-            _thresholdNotificationConfig.Setup(x => x.IsThresholdNotificationEnabled).Returns(false);
 
             var (source, destination) = BuildUnderThresholdMembership();
 

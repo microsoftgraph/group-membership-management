@@ -208,8 +208,6 @@ namespace Services.Notifier
             };
 
             var response = await _mailRepository.SendMailAsync(message, null);
-            TrackSentNotificationEvent(notification.TargetOfficeGroupId);
-            _logger.SentEmail();
 
             if (response != null && response.StatusCode != HttpStatusCode.Accepted)
             {
@@ -228,7 +226,12 @@ namespace Services.Notifier
                 };
                 await _serviceBusQueueRepository.SendMessageAsync(failedMessage);
             }
-            TrackSentNotificationEvent(notification.TargetOfficeGroupId);
+            else if (response != null && !_mailConfig.SkipEmailNotifications)
+            {
+                // Only count the notification as sent when the mail was accepted and delivery was not skipped.
+                TrackSentNotificationEvent(notification.TargetOfficeGroupId);
+                _logger.SentEmail();
+            }
         }
 
         public async Task UpdateNotificationStatusAsync(Models.ThresholdNotifications.ThresholdNotification notification, ThresholdNotificationStatus status)
