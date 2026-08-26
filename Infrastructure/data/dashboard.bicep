@@ -22,6 +22,8 @@ param jobsStorageAccountName string
 @description('Azure OpenAI tokens-per-minute (TPM) quota for the GPT deployment. Drawn as the flat limit line on the Copilot token usage tile.')
 param openAITpmCapacity int = 150000
 
+var openAITpmCapacityLabel = openAITpmCapacity >= 1000000 ? '${openAITpmCapacity / 1000000}M' : '${openAITpmCapacity / 1000}K'
+
 resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
   name: resourceGroup
   location: location
@@ -4620,7 +4622,7 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
                 }
                 {
                   name: 'Query'
-                  value: 'let bin_t = 1m;\nlet tpmQuota = todouble(${openAITpmCapacity});\nlet bins = traces\n| where customDimensions["EventId"] == "93112" or message startswith "CopilotChat token usage"\n| extend TokensPerMinute = todouble(toint(customDimensions["InputTokens"]) + toint(customDimensions["OutputTokens"]))\n| summarize TokensPerMinute = sum(TokensPerMinute) by bin(timestamp, bin_t);\nunion\n(bins | extend Series = "Tokens per minute"),\n(bins | distinct timestamp | extend TokensPerMinute = tpmQuota, Series = "Quota (${openAITpmCapacity / 1000}K/min)")\n| project timestamp, TokensPerMinute, Series\n'
+                  value: 'let bin_t = 1m;\nlet tpmQuota = todouble(${openAITpmCapacity});\nlet bins = traces\n| where customDimensions["EventId"] == "93112" or message startswith "CopilotChat token usage"\n| extend TokensPerMinute = todouble(toint(customDimensions["InputTokens"]) + toint(customDimensions["OutputTokens"]))\n| summarize TokensPerMinute = sum(TokensPerMinute) by bin(timestamp, bin_t);\nunion\n(bins | extend Series = "Tokens per minute"),\n(bins | distinct timestamp | extend TokensPerMinute = tpmQuota, Series = "Quota (${openAITpmCapacityLabel}/min)")\n| project timestamp, TokensPerMinute, Series\n'
                   isOptional: true
                 }
                 {
@@ -4659,7 +4661,7 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
               type: 'Extension/Microsoft_OperationsManagementSuite_Workspace/PartType/LogsDashboardPart'
               settings: {
                 content: {
-                  Query: 'let bin_t = 1m;\nlet tpmQuota = todouble(${openAITpmCapacity});\nlet bins = traces\n| where customDimensions["EventId"] == "93112" or message startswith "CopilotChat token usage"\n| extend TokensPerMinute = todouble(toint(customDimensions["InputTokens"]) + toint(customDimensions["OutputTokens"]))\n| summarize TokensPerMinute = sum(TokensPerMinute) by bin(timestamp, bin_t);\nunion\n(bins | extend Series = "Tokens per minute"),\n(bins | distinct timestamp | extend TokensPerMinute = tpmQuota, Series = "Quota (${openAITpmCapacity / 1000}K/min)")\n| project timestamp, TokensPerMinute, Series\n'
+                  Query: 'let bin_t = 1m;\nlet tpmQuota = todouble(${openAITpmCapacity});\nlet bins = traces\n| where customDimensions["EventId"] == "93112" or message startswith "CopilotChat token usage"\n| extend TokensPerMinute = todouble(toint(customDimensions["InputTokens"]) + toint(customDimensions["OutputTokens"]))\n| summarize TokensPerMinute = sum(TokensPerMinute) by bin(timestamp, bin_t);\nunion\n(bins | extend Series = "Tokens per minute"),\n(bins | distinct timestamp | extend TokensPerMinute = tpmQuota, Series = "Quota (${openAITpmCapacityLabel}/min)")\n| project timestamp, TokensPerMinute, Series\n'
                   ControlType: 'FrameControlChart'
                   SpecificChart: 'Line'
                   PartTitle: 'Copilot TPM Usage vs Configured Cap'
