@@ -9,8 +9,18 @@ Web Api App object Id.
 .PARAMETER TenantId
 Azure tenant id where the app registration is located.
 
+.PARAMETER RetiredRoleReplacements
+Map of retired app role values to the role that replaces them. A retired role is kept enabled
+while principals are still assigned to it, and the script warns which principals must be granted
+the replacement role first.
+
+.PARAMETER ForceRetiredRoleRemoval
+Removes retired app roles even when principals are still assigned to them. Assigned principals
+lose access immediately, so only use this after migrating them to the replacement role.
+
 .DESCRIPTION
-Creates the app registration's app roles if it is needed.
+Creates the app registration's app roles if it is needed. Roles that are no longer defined in this
+script are disabled and then removed from the app registration.
 
 .EXAMPLE
 Set-AppRolesIfNeeded	-WebApiObjectId "<web-api-app-registration-id>"  `
@@ -131,14 +141,6 @@ function Set-AppRolesIfNeeded {
             DisplayName        = "Submission Reviewer"
             Description        = "Can view and manage Submission Requests for all groups."
             Value              = "Submission.ReadWrite.All"
-            Id                 = [Guid]::NewGuid().ToString()
-            IsEnabled          = $True
-            AllowedMemberTypes = @($memberTypes)
-        },
-        @{
-            DisplayName        = "Submission Rejector"
-            Description        = "Can view and reject Submission Requests for all groups."
-            Value              = "Submission.Reject.All"
             Id                 = [Guid]::NewGuid().ToString()
             IsEnabled          = $True
             AllowedMemberTypes = @($memberTypes)

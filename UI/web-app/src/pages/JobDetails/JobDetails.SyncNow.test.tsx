@@ -29,7 +29,6 @@ const createBaseState = (overrides: {
 } = {}) => ({
   roles: {
     isSubmissionReviewer: overrides.isSubmissionReviewer ?? true,
-    isSubmissionRejector: false,
     isJobOwnerEnabler: false,
     isJobOwnerDeleter: false,
     isJobOwnerReader: false,

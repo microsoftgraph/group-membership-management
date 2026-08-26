@@ -67,7 +67,6 @@ describe('AppHeader', () => {
             isJobTenantReader: false,
             isJobTenantWriter: false,
             isSubmissionReviewer: false,
-            isSubmissionRejector: false,
             isAutoApproverAdministrator: false,
             isCustomMembershipProviderAdministrator: false,
             isOperationsResetAdministrator: false,

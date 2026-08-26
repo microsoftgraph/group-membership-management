@@ -70,7 +70,7 @@ import {
 } from './JobDetails.types';
 import { useStrings } from '../../store/hooks';
 import { setPagingBarVisible } from '../../store/pagingBar.slice';
-import { selectIsJobOwnerDeleter, selectIsJobOwnerEnabler, selectIsJobWriter, selectIsSubmissionReviewer, selectIsSubmissionRejector } from '../../store/roles.slice';
+import { selectIsJobOwnerDeleter, selectIsJobOwnerEnabler, selectIsJobWriter, selectIsSubmissionReviewer } from '../../store/roles.slice';
 import { PatchJobResponse, SyncJobChange, SyncStatus } from '../../models';
 import { OnboardingSteps } from '../../models/OnboardingSteps';
 import { Loader } from '../../components/Loader';
@@ -132,7 +132,6 @@ export const JobDetailsBase: React.FunctionComponent<IJobDetailsProps> = (
   const removeGMMPending = useSelector(selectRemoveGMMLoading);
   const isJobWriter = useSelector(selectIsJobWriter);
   const isSubmissionReviewer = useSelector(selectIsSubmissionReviewer);
-  const isSubmissionRejector = useSelector(selectIsSubmissionRejector);
   const jobIdSet = useSelector(selectJobIdSet);
   const isJobOwnerDeleter: boolean = useSelector(selectIsJobOwnerDeleter);
   const canDeleteJob: boolean = isJobWriter || isJobOwnerDeleter;
@@ -376,17 +375,17 @@ export const JobDetailsBase: React.FunctionComponent<IJobDetailsProps> = (
                 <div className={classNames.stickyBannerWrapper}>
                   <div className={classNames.pendingBanner}>
                     <Icon
-                      iconName={job.status === SyncStatus.PendingConfiguration && (isSubmissionReviewer || isSubmissionRejector) ? 'HourGlass' : 'AlarmClock'}
+                      iconName={job.status === SyncStatus.PendingConfiguration && isSubmissionReviewer ? 'HourGlass' : 'AlarmClock'}
                       className={classNames.clockIcon}
                     />
                     <Text className={classNames.pendingBannerText}>
                       <b>
-                        {job.status === SyncStatus.PendingConfiguration && (isSubmissionReviewer || isSubmissionRejector)
+                        {job.status === SyncStatus.PendingConfiguration && isSubmissionReviewer
                           ? strings.JobDetails.labels.pendingConfiguration
                           : strings.JobDetails.labels.pendingReview}.
                       </b>
                       {' '}
-                      {(isSubmissionReviewer || isSubmissionRejector)
+                      {isSubmissionReviewer
                         ? (job.status === SyncStatus.PendingConfiguration
                           ? strings.JobDetails.labels.pendingConfigurationInstructions
                           : strings.JobDetails.labels.pendingReviewInstructions)
@@ -538,7 +537,6 @@ const MembershipBusinessJustification: React.FunctionComponent<IContentProps> = 
   const { job, classNames } = props;
   const strings = useStrings();
   const isSubmissionReviewer = useSelector(selectIsSubmissionReviewer);
-  const isSubmissionRejector = useSelector(selectIsSubmissionRejector);
   const jobDetails = useSelector(selectSelectedJobDetails);
   const lastModifiedUserProfile = useSelector(selectLastModifiedUserProfile);
   const lastModifiedOnBehalfOfUserProfile = useSelector(selectLastModifiedOnBehalfOfUserProfile);
@@ -561,7 +559,7 @@ const MembershipBusinessJustification: React.FunctionComponent<IContentProps> = 
 
   // Match the existing conditions: only render while the job is pending review
   // and an actual business justification is available to display.
-  const shouldShow = (isSubmissionReviewer || isSubmissionRejector)
+  const shouldShow = isSubmissionReviewer
     && job?.status === SyncStatus.PendingReview
     && !!justification;
 
@@ -653,7 +651,6 @@ const MembershipStatusContent: React.FunctionComponent<IStatusContentProps> = (
   const { job, classNames } = props;
   const { jobId } = useParams<{ jobId: string }>();
   const isSubmissionReviewer = useSelector(selectIsSubmissionReviewer);
-  const isSubmissionRejector = useSelector(selectIsSubmissionRejector);
   const patchError = useSelector(selectPatchJobDetailsError);
   const patchResponse = useSelector(selectPatchJobDetailsResponse);
   // Status & enabled are derived directly from the Redux-backed `job` prop;
@@ -983,7 +980,6 @@ const SubmissionReviewActions: React.FunctionComponent<IStatusContentProps> = (
   const { job, resolveReview, classNames } = props;
   const { jobId } = useParams<{ jobId: string }>();
   const isSubmissionReviewer = useSelector(selectIsSubmissionReviewer);
-  const isSubmissionRejector = useSelector(selectIsSubmissionRejector);
   const jobStatus = job?.status ?? '';
   const businessJustification = useSelector(manageMembershipBusinessJustification);
   const [showRejectionDialog, setShowRejectionDialog] = useState(false);
@@ -1214,7 +1210,7 @@ const SubmissionReviewActions: React.FunctionComponent<IStatusContentProps> = (
     }
   };
 
-  if (!(isSubmissionReviewer || isSubmissionRejector) || jobStatus !== SyncStatus.PendingReview) {
+  if (!isSubmissionReviewer || jobStatus !== SyncStatus.PendingReview) {
     return null;
   }
 

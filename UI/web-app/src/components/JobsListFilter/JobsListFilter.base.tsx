@@ -21,7 +21,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { useStrings } from '../../store/hooks';
 import { IPersonaProps } from '@fluentui/react/lib/Persona';
 import { useDispatch, useSelector } from 'react-redux';
-import { selectIsJobTenantWriter, selectIsSubmissionReviewer, selectIsSubmissionRejector } from '../../store/roles.slice';
+import { selectIsJobTenantWriter, selectIsSubmissionReviewer } from '../../store/roles.slice';
 import { AppDispatch } from '../../store';
 import { selectPeoplePickerSuggestions } from '../../store/jobs.slice';
 import { getPeoplePickerSuggestions } from '../../store/jobs.api';
@@ -58,7 +58,6 @@ export const JobsListFilterBase: React.FunctionComponent<IJobsListFilterProps> =
   const dispatch = useDispatch<AppDispatch>();
   const isTenantJobWriter = useSelector(selectIsJobTenantWriter);
   const isSubmissionReviewer = useSelector(selectIsSubmissionReviewer);
-  const isSubmissionRejector = useSelector(selectIsSubmissionRejector);
   const ownerPickerSuggestions = useSelector(selectPeoplePickerSuggestions);
 
   // Get persisted filter states from Redux store
@@ -136,11 +135,11 @@ export const JobsListFilterBase: React.FunctionComponent<IJobsListFilterProps> =
       key: SyncStatus.PendingReview,
       text: strings.JobsList.JobsListFilter.filters.actionRequired.options.pendingReview,
     },
-    ...(isSubmissionReviewer || isSubmissionRejector ? [{
+    ...(isSubmissionReviewer ? [{
       key: SyncStatus.PendingConfiguration,
       text: strings.JobsList.JobsListFilter.filters.actionRequired.options.pendingConfiguration,
     }] : []),
-    ...(isSubmissionReviewer || isSubmissionRejector ? [{
+    ...(isSubmissionReviewer ? [{
       key: SyncStatus.PendingAutoApproval,
       text: strings.JobsList.JobsListFilter.filters.actionRequired.options.pendingAutoApproval,
     }] : []),

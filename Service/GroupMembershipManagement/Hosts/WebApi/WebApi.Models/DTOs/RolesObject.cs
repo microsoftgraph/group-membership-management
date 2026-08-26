@@ -17,7 +17,6 @@ namespace WebApi.Models.DTOs
         public bool IsJobTenantReader { get; set; }
         public bool IsJobTenantWriter { get; set; }
         public bool IsSubmissionReviewer { get; set; }
-        public bool IsSubmissionRejector { get; set; }
         /// <summary>
         /// Deprecated. The Hyperlink.ReadWrite.All app role has been retired and hyperlink
         /// administration is covered by GeneralSettings.ReadWrite.All. This property is retained

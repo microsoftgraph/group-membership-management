@@ -9,7 +9,6 @@ export interface Roles {
   isJobTenantReader: boolean;
   isJobTenantWriter: boolean;
   isSubmissionReviewer: boolean;
-  isSubmissionRejector: boolean;
   isAutoApproverAdministrator: boolean;
   isCustomMembershipProviderAdministrator: boolean;
   isOperationsResetAdministrator: boolean;

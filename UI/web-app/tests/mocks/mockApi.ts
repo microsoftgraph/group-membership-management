@@ -136,7 +136,6 @@ const mockRoles = {
   isJobTenantReader: true,
   isJobTenantWriter: true,
   isSubmissionReviewer: true,
-  isSubmissionRejector: true,
   isAutoApproverAdministrator: true,
   isCustomMembershipProviderAdministrator: true,
   isOperationsResetAdministrator: true,

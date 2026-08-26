@@ -24,9 +24,9 @@ namespace WebApi.Controllers.v1.Feedback
         }
 
         // Must match the roles on the rejection submission endpoint
-        // (JobDetailsController.ReviewJobAsync). A SUBMISSION_REJECTOR sees the rejection
-        // dialog, and therefore the Refine action, so it must be able to call this endpoint.
-        [Authorize(Roles = $"{Models.Roles.SUBMISSION_REVIEWER}, {Models.Roles.SUBMISSION_REJECTOR}")]
+        // (JobDetailsController.ReviewJobAsync), since the Refine action is only surfaced
+        // from the rejection dialog shown to submission reviewers.
+        [Authorize(Roles = Models.Roles.SUBMISSION_REVIEWER)]
         [HttpPost("refine")]
         [ProducesResponseType(typeof(RefineFeedbackResponseDto), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]

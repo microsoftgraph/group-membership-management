@@ -977,7 +977,6 @@ namespace Services.Tests
 
         [TestMethod]
         [DataRow(Roles.SUBMISSION_REVIEWER)]
-        [DataRow(Roles.SUBMISSION_REJECTOR)]
         public async Task RejectSubmissionAsync(string role)
         {
             var userId = Guid.NewGuid().ToString();
@@ -1021,54 +1020,6 @@ namespace Services.Tests
             Assert.AreEqual((int)HttpStatusCode.OK, result.StatusCode);
             Assert.AreEqual(SyncStatus.SubmissionRejected.ToString(), _jobEntity.Status);
             _syncJobChangeRepository.Verify(x => x.Save(It.IsAny<SyncJobChange>()), Times.Once);
-        }
-
-        [TestMethod]
-        [DataRow(Roles.SUBMISSION_REJECTOR)]
-        public async Task FailSubmissionRejectorApprovalAsync(string role)
-        {
-            var userId = Guid.NewGuid().ToString();
-            var context = CreateHttpContext(new List<Claim>
-            {
-                new Claim(ClaimTypes.Name, "user@domain.com"),
-                new Claim(ClaimTypes.Role, role),
-                new Claim("http://schemas.microsoft.com/identity/claims/objectidentifier", userId)
-            });
-            _httpContextAccessor.Setup(x => x.HttpContext).Returns(context);
-
-            _graphGroupRepository.Setup(x => x.GetDestinationOwnersAsync(It.IsAny<List<Guid>>()))
-                .ReturnsAsync((List<Guid> objectIds) =>
-                {
-                    return new Dictionary<Guid, List<Guid>>
-                    {
-                        { Guid.NewGuid(), new List<Guid> { (Guid)_syncJobChange.ChangedByObjectId } }
-                    };
-                });
-            _jobEntity.Status = SyncStatus.PendingReview.ToString();
-            _jobDetailsController = new JobDetailsController(_getJobDetailsHandler, _removeGMMHandler, _patchJobHandler, _getGroupHandler, _getChannelHandler, _getJobChangesHandler, _getSyncJobHistoryHandler, _getMembershipDownloadHandler, _getThresholdNotificationHandlerMock.Object, _syncJobChangeRepository.Object, NullLogger<JobDetailsController>.Instance)
-            {
-                ControllerContext = CreateControllerContext(new List<Claim> {
-                    new Claim(ClaimTypes.Name, "user@domain.com"),
-                    new Claim(ClaimTypes.Role, role),
-                    new Claim("http://schemas.microsoft.com/identity/claims/objectidentifier", Guid.NewGuid().ToString())})
-            };
-
-            var operations = new List<PatchOperation>
-            {
-                new PatchOperation { Op = "replace", Path = "/Status", Value = ConvertToJsonElement("Idle") },
-                new PatchOperation { Op = "replace", Path = "/ChangeReason", Value = ConvertToJsonElement(SyncJobChangeReason.SubmissionApproved.ToString()) },
-                new PatchOperation { Op = "replace", Path = "/BusinessJustification", Value = ConvertToJsonElement("Approved attempt by rejector") }
-            };
-
-            var requestDTO = CreatePatchJobRequestDTO(operations, SyncJobChangeReason.SubmissionApproved.ToString(), "Approved attempt by rejector");
-            var response = await _jobDetailsController.ReviewJobAsync(_jobEntity.Id, requestDTO);
-            var result = response as BadRequestObjectResult;
-
-            var patchResponse = result.Value as PatchJobResponse;
-            Assert.IsNotNull(patchResponse);
-            Assert.AreEqual("OnlySubmissionReviewerCanApproveSubmission", patchResponse.ErrorCode);
-            Assert.AreEqual(SyncStatus.PendingReview.ToString(), _jobEntity.Status);
-            _syncJobChangeRepository.Verify(x => x.Save(It.IsAny<SyncJobChange>()), Times.Never);
         }
 
         [TestMethod]

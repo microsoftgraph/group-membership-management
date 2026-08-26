@@ -53,7 +53,6 @@ const defaultJob = {
 const createState = (isRefinementEnabled: boolean) => ({
   roles: {
     isSubmissionReviewer: true,
-    isSubmissionRejector: false,
     isJobOwnerEnabler: false,
     isJobOwnerDeleter: false,
     isJobOwnerReader: false,

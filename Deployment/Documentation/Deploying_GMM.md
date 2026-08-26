@@ -315,7 +315,6 @@ To grant a user access to the GMM UI, you must assign the appropriate WebAPI app
    | Job Tenant Reader | Can read all destinations in the tenant |
    | Job Tenant Writer | Can create, view, and update all destinations in the tenant |
    | Submission Reviewer | Can view and manage Submission Requests for all groups |
-   | Submission Rejector | Can view and reject Submission Requests for all groups |
    | Hyperlink Administrator | Can add, update, or remove custom URLs |
    | Custom Membership Provider Administrator | Can add, update, or remove custom field names |
    | General Settings Administrator | Can update general settings |

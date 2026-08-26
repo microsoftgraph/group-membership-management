@@ -14,7 +14,6 @@ export type Roles = {
   isJobTenantReader: boolean;
   isJobTenantWriter: boolean;
   isSubmissionReviewer: boolean;
-  isSubmissionRejector: boolean;
   isAutoApproverAdministrator: boolean;
   isCustomMembershipProviderAdministrator: boolean;
   isOperationsResetAdministrator: boolean;
@@ -35,7 +34,6 @@ const initialState: Roles = {
   isJobTenantReader: false,
   isJobTenantWriter: false,
   isSubmissionReviewer: false,
-  isSubmissionRejector: false,
   isAutoApproverAdministrator: false,
   isCustomMembershipProviderAdministrator: false,
   isOperationsResetAdministrator: false,
@@ -73,7 +71,6 @@ export const selectIsJobOwnerDeleter = (state: RootState) => state.roles.isJobOw
 export const selectIsJobTenantReader = (state: RootState) => state.roles.isJobTenantReader;
 export const selectIsJobTenantWriter = (state: RootState) => state.roles.isJobTenantWriter;
 export const selectIsSubmissionReviewer = (state: RootState) => state.roles.isSubmissionReviewer;
-export const selectIsSubmissionRejector = (state: RootState) => state.roles.isSubmissionRejector;
 export const selectIsCustomMembershipProviderAdministrator = (state: RootState) => state.roles.isCustomMembershipProviderAdministrator;
 export const selectIsOperationsResetAdministrator = (state: RootState) => state.roles.isOperationsResetAdministrator;
 export const selectIsGeneralSettingsAdministrator = (state: RootState) => state.roles.isGeneralSettingsAdministrator;

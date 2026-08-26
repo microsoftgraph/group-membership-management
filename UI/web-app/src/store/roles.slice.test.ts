@@ -10,7 +10,6 @@ import rolesReducer, {
   selectIsJobTenantReader,
   selectIsJobTenantWriter,
   selectIsSubmissionReviewer,
-  selectIsSubmissionRejector,
   selectIsAutoApproverAdministrator,
   selectIsCustomMembershipProviderAdministrator,
   selectIsOperationsResetAdministrator,
@@ -74,10 +73,6 @@ describe('roles.slice — selectors', () => {
 
   it('selectIsSubmissionReviewer', () => {
     expect(selectIsSubmissionReviewer(makeRoot({ isSubmissionReviewer: true }))).toBe(true);
-  });
-
-  it('selectIsSubmissionRejector', () => {
-    expect(selectIsSubmissionRejector(makeRoot({ isSubmissionRejector: true }))).toBe(true);
   });
 
   it('selectIsAutoApproverAdministrator', () => {

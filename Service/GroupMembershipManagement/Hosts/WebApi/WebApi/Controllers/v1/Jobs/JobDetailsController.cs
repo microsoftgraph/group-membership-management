@@ -109,7 +109,7 @@ namespace WebApi.Controllers.v1.Jobs
             };
         }
 
-        [Authorize(Roles = $"{Models.Roles.SUBMISSION_REVIEWER}, {Models.Roles.SUBMISSION_REJECTOR}")]
+        [Authorize(Roles = Models.Roles.SUBMISSION_REVIEWER)]
         [HttpPatch("{syncJobId}/review")]
         [Consumes("application/json")]
         public async Task<ActionResult> ReviewJobAsync(Guid syncJobId, [FromBody] PatchJobRequestDTO requestDTO)

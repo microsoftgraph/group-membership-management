@@ -13,7 +13,6 @@ namespace WebApi.Models
         public const string JOB_TENANT_READER = "Job.Read.All";
         public const string JOB_TENANT_WRITER = "Job.ReadWrite.All";
         public const string SUBMISSION_REVIEWER = "Submission.ReadWrite.All";
-        public const string SUBMISSION_REJECTOR = "Submission.Reject.All";
         public const string CUSTOM_MEMBERSHIP_PROVIDER_ADMINISTRATOR = "CustomSource.ReadWrite.All";
         public const string RESET_ADMINISTRATOR = "Operations.Reset";
         public const string GENERAL_SETTINGS_ADMINISTRATOR = "GeneralSettings.ReadWrite.All";

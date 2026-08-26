@@ -176,15 +176,7 @@ Create the following 13 application roles. For each role, click **Create app rol
 - **Do you want to enable this app role?**: ✅ **Yes**
 - Click **Apply**
 
-**Role 9: Submission Rejector**
-- **Display name**: `Submission Rejector`
-- **Allowed member types**: ☑️ **Users/Groups** and ☑️ **Applications**
-- **Value**: `Submission.Reject.All`
-- **Description**: `Can view and reject Submission Requests for all groups.`
-- **Do you want to enable this app role?**: ✅ **Yes**
-- Click **Apply**
-
-**Role 10: Custom Membership Provider Administrator**
+**Role 9: Custom Membership Provider Administrator**
 - **Display name**: `Custom Membership Provider Administrator`
 - **Allowed member types**: ☑️ **Users/Groups** and ☑️ **Applications**
 - **Value**: `CustomSource.ReadWrite.All`
@@ -192,7 +184,7 @@ Create the following 13 application roles. For each role, click **Create app rol
 - **Do you want to enable this app role?**: ✅ **Yes**
 - Click **Apply**
 
-**Role 11: General Settings Administrator**
+**Role 10: General Settings Administrator**
 - **Display name**: `General Settings Administrator`
 - **Allowed member types**: ☑️ **Users/Groups** and ☑️ **Applications**
 - **Value**: `GeneralSettings.ReadWrite.All`
@@ -200,7 +192,7 @@ Create the following 13 application roles. For each role, click **Create app rol
 - **Do you want to enable this app role?**: ✅ **Yes**
 - Click **Apply**
 
-**Role 12: Reset Administrator**
+**Role 11: Reset Administrator**
 - **Display name**: `Reset Administrator`
 - **Allowed member types**: ☑️ **Users/Groups** and ☑️ **Applications**
 - **Value**: `Operations.Reset`
@@ -208,7 +200,7 @@ Create the following 13 application roles. For each role, click **Create app rol
 - **Do you want to enable this app role?**: ✅ **Yes**
 - Click **Apply**
 
-**Role 13: Auto Approver Administrator**
+**Role 12: Auto Approver Administrator**
 - **Display name**: `Auto Approver Administrator`
 - **Allowed member types**: ☑️ **Users/Groups** and ☑️ **Applications**
 - **Value**: `AutoApprover.ReadWrite.All`
@@ -218,11 +210,13 @@ Create the following 13 application roles. For each role, click **Create app rol
 
 > **Note**: The former `Hyperlink.ReadWrite.All` role has been retired. Hyperlink (User Resources) administration is now covered by `GeneralSettings.ReadWrite.All`. In existing tenants, grant `GeneralSettings.ReadWrite.All` to every principal currently assigned `Hyperlink.ReadWrite.All` before disabling or removing the retired role.
 
+> **Note**: The former `Submission.Reject.All` (Submission Rejector) role has been retired and is removed from the app registration, with no replacement role granted automatically. Principals still assigned it lose submission access when it is removed. Do **not** migrate them to `Submission.ReadWrite.All` by default: that role also grants the ability to **approve** submissions, which Submission Rejector deliberately withheld. Grant `Submission.ReadWrite.All` only to principals who should be full Submission Reviewers.
+
 #### 7.3 Verify Application Roles
 
 After creating all roles, verify:
 1. Go to **App roles** tab
-2. Confirm all 13 roles are listed and **Enabled**
+2. Confirm all 12 roles are listed and **Enabled**
 3. Each role should show:
    - Correct **Display name**
    - Correct **Value**

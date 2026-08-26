@@ -101,7 +101,7 @@ import {
 import { resetManageMembership } from '../../store/manageMembership.slice';
 
 import Papa from 'papaparse';
-import { selectIsJobTenantWriter, selectIsJobWriter, selectIsSubmissionReviewer, selectIsSubmissionRejector } from '../../store/roles.slice';
+import { selectIsJobTenantWriter, selectIsJobWriter, selectIsSubmissionReviewer } from '../../store/roles.slice';
 import { destinationTypeLocalization } from '../../utils/destinationTypeUtils';
 import { debounce, getDisplayActionRequired } from '../../utils/jobUtils';
 import { selectDashboardUrl } from '../../store/settings.slice';
@@ -143,7 +143,6 @@ export const JobsListBase: React.FunctionComponent<IJobsListProps> = (
   const isTenantJobWriter: boolean | undefined = useSelector(selectIsJobTenantWriter);
   const isJobWriter = useSelector(selectIsJobWriter);
   const isSubmissionReviewer = useSelector(selectIsSubmissionReviewer);
-  const isSubmissionRejector = useSelector(selectIsSubmissionRejector);
   const dashboardUrl = useSelector(selectDashboardUrl);
   const trimmedDashboardUrl = dashboardUrl?.trim() ?? '';
   const isSafeDashboardUrl = (() => {
@@ -621,7 +620,7 @@ export const JobsListBase: React.FunctionComponent<IJobsListProps> = (
         );
 
       case 'actionRequired': {
-        const displayActionRequired = getDisplayActionRequired(item, isSubmissionReviewer || isSubmissionRejector);
+        const displayActionRequired = getDisplayActionRequired(item, isSubmissionReviewer);
         return (
           displayActionRequired ?
             (displayActionRequired === ActionRequired.PendingReview ?
