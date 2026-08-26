@@ -307,6 +307,82 @@ resource Pipeline_PopulateDestinationPipeline 'Microsoft.DataFactory/factories/p
               type: 'NonQuery'
               text: 'IF NOT EXISTS (SELECT * FROM sys.schemas WHERE name = \'mappings\')\nBEGIN\n   EXEC(\'CREATE SCHEMA mappings\')\nEND'
             }
+            {
+              type: 'NonQuery'
+              text: 'IF NOT EXISTS (SELECT * FROM sys.schemas WHERE name = \'agents\')\nBEGIN\n   EXEC(\'CREATE SCHEMA agents\')\nEND'
+            }
+          ]
+          scriptBlockExecutionTimeout: '02:00:00'
+        }
+      }
+      {
+        name: 'Create Agents Table'
+        type: 'Script'
+        dependsOn: [
+          {
+            activity: 'CreateSchemas'
+            dependencyConditions: [
+              'Succeeded'
+            ]
+          }
+        ]
+        policy: {
+          timeout: '7.00:00:00'
+          retry: 0
+          retryIntervalInSeconds: 30
+          secureOutput: false
+          secureInput: false
+        }
+        userProperties: []
+        linkedServiceName: {
+          referenceName: destinationDatabaseLinkedService
+          type: 'LinkedServiceReference'
+        }
+        typeProperties: {
+          scripts: [
+            {
+              type: 'Query'
+              text: {
+                value: '@concat(\'CREATE TABLE agents.[\',replace(pipeline().RunId,\'-\',\'\'),\'] (AgentObjectId nvarchar(36) NOT NULL, ManagerId int NOT NULL, BlueprintId nvarchar(200) NULL, AccountEnabled bit NOT NULL)\')'
+                type: 'Expression'
+              }
+            }
+          ]
+          scriptBlockExecutionTimeout: '02:00:00'
+        }
+      }
+      {
+        name: 'Create Agents Index'
+        type: 'Script'
+        dependsOn: [
+          {
+            activity: 'Create Agents Table'
+            dependencyConditions: [
+              'Succeeded'
+            ]
+          }
+        ]
+        policy: {
+          timeout: '7.00:00:00'
+          retry: 0
+          retryIntervalInSeconds: 30
+          secureOutput: false
+          secureInput: false
+        }
+        userProperties: []
+        linkedServiceName: {
+          referenceName: destinationDatabaseLinkedService
+          type: 'LinkedServiceReference'
+        }
+        typeProperties: {
+          scripts: [
+            {
+              type: 'Query'
+              text: {
+                value: '@concat(\'CREATE CLUSTERED INDEX IDX_Agents_ManagerId ON agents.[\',replace(pipeline().RunId,\'-\',\'\'),\'](ManagerId)\')'
+                type: 'Expression'
+              }
+            }
           ]
           scriptBlockExecutionTimeout: '02:00:00'
         }
