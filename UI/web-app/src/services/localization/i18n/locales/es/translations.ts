@@ -214,7 +214,8 @@ export const strings: IStrings = {
       alertBanner: "Banner de Alerta"
     },
     Errors:{
-      forbidden: 'Prohibido'
+      forbidden: 'Prohibido',
+      loadFailed: 'No pudimos cargar la configuración de administrador. Actualice la página e inténtelo de nuevo.'
     },
     HyperlinkSettings: {
       labels: {

@@ -211,6 +211,7 @@ export type IStrings = {
     },
     Errors:{
       forbidden: string;
+      loadFailed: string;
     },
     HyperlinkSettings: {
       labels: {

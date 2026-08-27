@@ -118,6 +118,11 @@ export const { setSettings } = settingsSlice.actions;
 
 export const selectAllSettings = (state: RootState) => state.settings.settings;
 export const selectError = (state: RootState) => state.settings.error;
+export const selectIsLoading = (state: RootState) => state.settings.isLoading;
+
+// Distinguishes "settings have not been fetched yet" from "settings were fetched and are off/empty".
+// Consumers must not treat an unloaded store as a set of falsy values.
+export const selectAreSettingsLoaded = (state: RootState) => state.settings.settings !== undefined;
 
 export const selectDashboardUrl = (state: RootState) => {
   const settingsArray = state.settings.settings;

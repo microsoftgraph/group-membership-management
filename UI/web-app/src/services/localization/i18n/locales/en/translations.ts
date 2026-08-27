@@ -213,7 +213,8 @@ export const strings: IStrings = {
       alertBanner: "Alert Banner",
     },
     Errors:{
-      forbidden: 'Forbidden'
+      forbidden: 'Forbidden',
+      loadFailed: 'We couldn\'t load the admin settings. Please refresh the page and try again.'
     },
     HyperlinkSettings: {
       labels: {

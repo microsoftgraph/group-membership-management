@@ -26,6 +26,8 @@ import {
   selectDefaultAIPrompt,
   selectIsAISearchForUserEnabled,
   selectIsAIRunExplanationEnabled,
+  selectAreSettingsLoaded,
+  selectError,
 } from '../../store/settings.slice';
 import { patchSetting, fetchDefaultAIPrompt, fetchSettings } from '../../store/settings.api';
 import { AppDispatch } from '../../store';
@@ -45,6 +47,7 @@ import {
   selectIsAISettingsAdministrator,
 } from '../../store/roles.slice';
 import { MessageBar, MessageBarType } from '@fluentui/react';
+import { Loader } from '../../components/Loader';
 
 export const AdminConfigBase: React.FunctionComponent<AdminConfigProps> = (props: AdminConfigProps) => {
   // get the store's dispatch function
@@ -52,6 +55,9 @@ export const AdminConfigBase: React.FunctionComponent<AdminConfigProps> = (props
   useEffect(() => {
     dispatch(setPagingBarVisible(false));
     dispatch(fetchDefaultAIPrompt());
+    // Fetched by App on login, but re-requested here so a direct navigation or refresh to this
+    // page never renders against an empty settings store.
+    dispatch(fetchSettings());
   }, [dispatch]);
 
   // get the settings data from the store
@@ -86,6 +92,8 @@ export const AdminConfigBase: React.FunctionComponent<AdminConfigProps> = (props
   const isAutoApproverAdministrator = useSelector(selectIsAutoApproverAdministrator);
   const isAISettingsAdministrator = useSelector(selectIsAISettingsAdministrator);
   const canViewSettings = useSelector(selectHasAdminCenterPermissions);
+  const areSettingsLoaded = useSelector(selectAreSettingsLoaded);
+  const settingsError = useSelector(selectError);
 
   const strings = useStrings().AdminConfig;
 
@@ -231,6 +239,21 @@ export const AdminConfigBase: React.FunctionComponent<AdminConfigProps> = (props
     {strings.Errors.forbidden}
   </MessageBar>);
 }
+
+  // Until the settings have been fetched every selector resolves to undefined, which
+  // generateSettings would render as an unchecked toggle or an empty field. Showing a loader
+  // instead prevents an unloaded store from being mistaken for settings that are turned off.
+  if (!areSettingsLoaded) {
+    if (settingsError) {
+      return (<MessageBar
+        messageBarType={MessageBarType.error}
+        isMultiline={false}
+      >
+        {strings.Errors.loadFailed}
+      </MessageBar>);
+    }
+    return <Loader />;
+  }
   // render the view with the data from the store and the event handler
   return (
     <AdminConfigView

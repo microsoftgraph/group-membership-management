@@ -17,6 +17,7 @@ import settingsReducer, {
   selectIsPerPartAutoApprovalEnabled,
   selectIsAITitleEnabled,
   selectCopilotSuggestedPrompts,
+  selectAreSettingsLoaded,
   SettingsState,
 } from './settings.slice';
 import { fetchSettings, fetchSettingByKey, patchSetting, getSupportEmailAddress } from './settings.api';
@@ -216,6 +217,22 @@ describe('settings.slice — selectors', () => {
   it('selectCopilotSuggestedPrompts returns empty string when stored as empty', () => {
     const root = buildRoot([makeSetting(SettingKey.CopilotSuggestedPrompts, '')]);
     expect(selectCopilotSuggestedPrompts(root)).toBe('');
+  });
+
+  it('selectAreSettingsLoaded is false before the fetch completes', () => {
+    expect(selectAreSettingsLoaded(buildRoot(undefined))).toBe(false);
+    const pending = settingsReducer(initial, fetchSettings.pending('req1', undefined as any));
+    expect(selectAreSettingsLoaded({ settings: pending } as any)).toBe(false);
+  });
+
+  it('selectAreSettingsLoaded is true once the fetch resolves, even when empty', () => {
+    const fulfilled = settingsReducer(initial, fetchSettings.fulfilled([], 'req1', undefined as any));
+    expect(selectAreSettingsLoaded({ settings: fulfilled } as any)).toBe(true);
+  });
+
+  it('selectAreSettingsLoaded stays false when the fetch fails', () => {
+    const rejected = settingsReducer(initial, fetchSettings.rejected(new Error('fail'), 'req1', undefined as any));
+    expect(selectAreSettingsLoaded({ settings: rejected } as any)).toBe(false);
   });
 
 });
