@@ -1,14 +1,17 @@
 {
   "version": "2.0",
   "functionTimeout": "00:10:00",
-  "concurrency": {
-    "dynamicConcurrencyEnabled": true,
-    "snapshotPersistenceEnabled": true
-  },
   "extensions": {
     "durableTask": {
       "extendedSessionsEnabled": true,
       "extendedSessionIdleTimeoutInSeconds": 30
+    },
+    "serviceBus": {
+      "maxConcurrentCalls": 8,
+      "prefetchCount": 0,
+      "maxAutoLockRenewalDuration": "00:10:00",
+      "autoCompleteMessages": true,
+      "maxMessageBatchSize": 1
     }
   },
 "logging": {

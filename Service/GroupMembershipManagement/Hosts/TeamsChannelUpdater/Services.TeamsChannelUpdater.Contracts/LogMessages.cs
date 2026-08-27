@@ -26,15 +26,25 @@ namespace Hosts.TeamsChannelUpdater
             Message = "Calling {InstanceId}")]
         public static partial void CallingOrchestrator(this ILogger logger, string instanceId);
 
-        // ── QueueMessageOrchestratorFunction ──
-
-        [LoggerMessage(EventId = 190020, Level = LogLevel.Information,
-            Message = "There are no more messages to process at this time.")]
-        public static partial void NoMoreMessages(this ILogger logger);
-
-        [LoggerMessage(EventId = 190021, Level = LogLevel.Information,
+        [LoggerMessage(EventId = 190011, Level = LogLevel.Information,
             Message = "Processing message for group {GroupId}")]
         public static partial void ProcessingMessage(this ILogger logger, Guid groupId);
+
+        [LoggerMessage(EventId = 190012, Level = LogLevel.Information,
+            Message = "Received an empty or unparseable membership updaters message {MessageId}; nothing to process.")]
+        public static partial void EmptyMessageReceived(this ILogger logger, string messageId);
+
+        [LoggerMessage(EventId = 190013, Level = LogLevel.Information,
+            Message = "Orchestration {InstanceId} is already {RuntimeStatus}; skipping duplicate Service Bus delivery.")]
+        public static partial void DuplicateOrchestrationInFlight(this ILogger logger, string instanceId, string runtimeStatus);
+
+        [LoggerMessage(EventId = 190014, Level = LogLevel.Information,
+            Message = "Message {MessageId} (sequence {SequenceNumber}) was already processed by an orchestration in state {RuntimeStatus}; skipping.")]
+        public static partial void MessageAlreadyProcessed(this ILogger logger, string messageId, long sequenceNumber, string runtimeStatus);
+
+        [LoggerMessage(EventId = 190015, Level = LogLevel.Error,
+            Message = "Error starting the orchestration from the Service Bus trigger: {ErrorMessage}")]
+        public static partial void StarterServiceBusError(this ILogger logger, Exception exception, string errorMessage);
 
         // ── OrchestratorFunction ──
 

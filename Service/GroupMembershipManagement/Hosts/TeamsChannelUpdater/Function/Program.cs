@@ -84,14 +84,6 @@ namespace Hosts.TeamsChannelUpdater
                         return new BlobStorageRepository($"https://{storageAccountName}.blob.core.windows.net/{containerName}");
                     })
                     .AddTransient<ITeamsChannelRepository, TeamsChannelRepository>()
-                    .AddSingleton<ServiceBusReceiver>(serviceProvider =>
-                    {
-                        var client = serviceProvider.GetRequiredService<ServiceBusClient>();
-                        var config = serviceProvider.GetRequiredService<IConfiguration>();
-                        var serviceBusMembershipUpdatersTopic = config["serviceBusMembershipUpdatersTopic"];
-                        var receiver = client.CreateReceiver(serviceBusMembershipUpdatersTopic, "TeamsChannelUpdater");
-                        return receiver;
-                    })
                     .AddSingleton<IServiceBusQueueRepository, ServiceBusQueueRepository>(serviceProvider =>
                     {
                         var config = serviceProvider.GetRequiredService<IConfiguration>();

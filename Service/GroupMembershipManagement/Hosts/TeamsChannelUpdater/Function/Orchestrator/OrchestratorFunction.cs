@@ -105,22 +105,35 @@ namespace Hosts.TeamsChannelUpdater
                 var membersToRemove = groupMembership.SourceMembers.Where(x => x.MembershipAction == MembershipAction.Remove).Distinct().ToList();
                 syncCompleteEvent.MembersToRemove = membersToRemove.Count.ToString();
 
-
-                var membersAddedResponse = await context.CallSubOrchestratorAsync<TeamsChannelUpdaterSubOrchestratorResponse>(nameof(TeamsChannelUpdaterSubOrchestratorFunction),
+                // Run the add and remove sub-orchestrations concurrently. Channel-member POST (add) and
+                // DELETE (remove) are governed by independent Microsoft Graph throttling buckets
+                // (each ~1 request/second per channel), so overlapping the two phases roughly halves the
+                // wall-clock for a large channel without exceeding the per-channel limit. Do NOT fan out
+                // batches within a single phase to the same channel: they share one ~1 rps/channel bucket
+                // and would only produce 429s. Cross-job parallelism (multiple channels at once) is bounded
+                // separately by the Service Bus trigger concurrency and the 30 rps POST / 15 rps DELETE
+                // per-app-per-tenant limits.
+                var membersAddedTask = context.CallSubOrchestratorAsync<TeamsChannelUpdaterSubOrchestratorResponse>(nameof(TeamsChannelUpdaterSubOrchestratorFunction),
                                 CreateTeamsGroupUpdaterRequest(isInitialSync,
                                 syncJob,
                                 membersToAdd,
                                 destination,
                                 RequestType.Add));
-                syncCompleteEvent.MembersAdded = membersAddedResponse.SuccessCount.ToString();
-                syncCompleteEvent.MembersToAddNotFound = membersAddedResponse.UsersNotFound.Count.ToString();
 
-                var membersRemovedResponse = await context.CallSubOrchestratorAsync<TeamsChannelUpdaterSubOrchestratorResponse>(nameof(TeamsChannelUpdaterSubOrchestratorFunction),
+                var membersRemovedTask = context.CallSubOrchestratorAsync<TeamsChannelUpdaterSubOrchestratorResponse>(nameof(TeamsChannelUpdaterSubOrchestratorFunction),
                                 CreateTeamsGroupUpdaterRequest(isInitialSync,
                                 syncJob,
                                 membersToRemove,
                                 destination,
                                 RequestType.Remove));
+
+                await Task.WhenAll(membersAddedTask, membersRemovedTask);
+
+                var membersAddedResponse = membersAddedTask.Result;
+                syncCompleteEvent.MembersAdded = membersAddedResponse.SuccessCount.ToString();
+                syncCompleteEvent.MembersToAddNotFound = membersAddedResponse.UsersNotFound.Count.ToString();
+
+                var membersRemovedResponse = membersRemovedTask.Result;
                 syncCompleteEvent.MembersRemoved = membersRemovedResponse.SuccessCount.ToString();
                 syncCompleteEvent.MembersToRemoveNotFound = membersRemovedResponse.UsersNotFound.Count.ToString();
 
