@@ -818,7 +818,23 @@ export async function registerMockApiRoutes(page: Page): Promise<void> {
     const attributeMappingsMatch = path.match(/\/api\/v1\/sqlMembershipSources\/attributeMappings\/([^\/]+)$/);
     if (method === 'GET' && attributeMappingsMatch) {
       const attributeName = decodeURIComponent(attributeMappingsMatch[1]);
-      await fulfillJson(route, mockAttributeMappingsByAttribute[attributeName] ?? []);
+      const allMappings = mockAttributeMappingsByAttribute[attributeName] ?? [];
+      const search = (requestUrl.searchParams.get('search') ?? '').toLowerCase();
+      const top = Number(requestUrl.searchParams.get('top')) || 100;
+      const filtered = search
+        ? allMappings.filter((mapping: { code: string; description: string }) =>
+            (mapping.description ?? '').toLowerCase().startsWith(search) || (mapping.code ?? '').toLowerCase().startsWith(search))
+        : allMappings;
+      await fulfillJson(route, { mappings: filtered.slice(0, top), hasMore: filtered.length > top });
+      return;
+    }
+
+    const resolveAttributeMappingsMatch = path.match(/\/api\/v1\/sqlMembershipSources\/attributeMappings\/([^\/]+)\/resolve$/);
+    if (method === 'POST' && resolveAttributeMappingsMatch) {
+      const attributeName = decodeURIComponent(resolveAttributeMappingsMatch[1]);
+      const allMappings = mockAttributeMappingsByAttribute[attributeName] ?? [];
+      const codes: string[] = route.request().postDataJSON() ?? [];
+      await fulfillJson(route, allMappings.filter((mapping: { code: string }) => codes.includes(mapping.code)));
       return;
     }
 

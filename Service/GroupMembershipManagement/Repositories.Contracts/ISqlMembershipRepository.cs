@@ -19,6 +19,8 @@ namespace Repositories.Contracts
         Task<List<(string Name, string Type)>> GetColumnDetailsAsync(string tableName);
         Task<bool> CheckIfMappingsTableExistsAsync(string tableName);
         Task<List<(string Code, string Description)>> GetAttributeMappingsAsync(string attribute, string tableName);
+        Task<(List<(string Code, string Description)> Mappings, bool HasMore)> GetAttributeMappingsPageAsync(string attribute, string tableName, string? search = null, int top = 500);
+        Task<List<(string Code, string Description)>> GetAttributeMappingsByCodesAsync(string attribute, string tableName, IEnumerable<string> codes);
         Task<List<string>> GetAttributeValuesAsync(string attribute, bool hasMapping, string tableName);
         Task<Dictionary<int, string>> ValidateFiltersAsync(Dictionary<int, string> sqlFilters, string tableName);
         Task<Dictionary<string, string>?> GetUserAttributesAsync(string azureObjectId, string tableName);

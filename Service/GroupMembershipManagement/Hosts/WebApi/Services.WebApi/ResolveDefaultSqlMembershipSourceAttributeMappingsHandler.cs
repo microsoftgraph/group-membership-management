@@ -12,13 +12,18 @@ using SqlMembershipAttributeValueDTO = WebApi.Models.DTOs.SqlMembershipAttribute
 
 namespace Services
 {
-    public class GetDefaultSqlMembershipSourceAttributeMappingsHandler : RequestHandlerBase<GetDefaultSqlMembershipSourceAttributeMappingsRequest, GetDefaultSqlMembershipSourceAttributeMappingsResponse>
+    /// <summary>
+    /// Resolves an explicit set of attribute codes to their descriptions. The browse endpoint returns only a
+    /// capped page, so values already saved on a sync job are resolved here to guarantee they always render
+    /// with their real description rather than a bare code.
+    /// </summary>
+    public class ResolveDefaultSqlMembershipSourceAttributeMappingsHandler : RequestHandlerBase<ResolveDefaultSqlMembershipSourceAttributeMappingsRequest, ResolveDefaultSqlMembershipSourceAttributeMappingsResponse>
     {
-        private readonly ILogger<GetDefaultSqlMembershipSourceAttributeMappingsHandler> _logger;
+        private readonly ILogger<ResolveDefaultSqlMembershipSourceAttributeMappingsHandler> _logger;
         private readonly IDataFactoryRepository _dataFactoryRepository;
         private readonly ISqlMembershipRepository _sqlMembershipRepository;
 
-        public GetDefaultSqlMembershipSourceAttributeMappingsHandler(ILogger<GetDefaultSqlMembershipSourceAttributeMappingsHandler> logger,
+        public ResolveDefaultSqlMembershipSourceAttributeMappingsHandler(ILogger<ResolveDefaultSqlMembershipSourceAttributeMappingsHandler> logger,
                               IDataFactoryRepository dataFactoryRepository,
                               ISqlMembershipRepository sqlMembershipRepository) : base(logger)
         {
@@ -27,48 +32,44 @@ namespace Services
             _sqlMembershipRepository = sqlMembershipRepository ?? throw new ArgumentNullException(nameof(sqlMembershipRepository));
         }
 
-        protected override async Task<GetDefaultSqlMembershipSourceAttributeMappingsResponse> ExecuteCoreAsync(GetDefaultSqlMembershipSourceAttributeMappingsRequest request)
+        protected override async Task<ResolveDefaultSqlMembershipSourceAttributeMappingsResponse> ExecuteCoreAsync(ResolveDefaultSqlMembershipSourceAttributeMappingsRequest request)
         {
+            var response = new ResolveDefaultSqlMembershipSourceAttributeMappingsResponse();
+
+            if (request.Codes == null || request.Codes.Count == 0)
+            {
+                return response;
+            }
+
             try
             {
-                var response = new GetDefaultSqlMembershipSourceAttributeMappingsResponse();
-                var (attributeMappings, hasMore) = await GetSqlAttributeMappingsAsync(request.Attribute, request.Search, request.Top);
-                foreach (var attributeValue in attributeMappings)
-                {
-                    var dto = new SqlMembershipAttributeValueDTO(attributeValue.Code, attributeValue.Description);
+                var tableName = await GetTableNameAsync();
+                var attributeMappings = await GetAttributeMappingsByCodesAsync(request.Attribute, tableName, request.Codes);
 
-                    response.Model.Mappings.Add(dto);
+                foreach (var attributeMapping in attributeMappings)
+                {
+                    response.Mappings.Add(new SqlMembershipAttributeValueDTO(attributeMapping.Code, attributeMapping.Description));
                 }
-                response.Model.HasMore = hasMore;
+
                 return response;
             }
             catch (Exception ex)
             {
                 _logger.SqlFilterAttributeMappingsRetrievalFailed(ex);
-                throw ex;
+                throw;
             }
         }
 
-        private async Task<(List<(string Code, string Description)> Mappings, bool HasMore)> GetSqlAttributeMappingsAsync(string attribute, string? search, int? top)
-        {
-            var tableName = await GetTableNameAsync();
-            var attributes = await GetAttributeMappingsAsync(attribute, tableName, search, top);
-            return attributes;
-        }
-
-        private async Task<(List<(string Code, string Description)> Mappings, bool HasMore)> GetAttributeMappingsAsync(string attribute, string tableName, string? search, int? top)
+        private async Task<List<(string Code, string Description)>> GetAttributeMappingsByCodesAsync(string attribute, string tableName, IReadOnlyList<string> codes)
         {
             try
             {
-                // Omitting top lets the repository apply its own default page size.
-                return top.HasValue
-                    ? await _sqlMembershipRepository.GetAttributeMappingsPageAsync(attribute, tableName, search, top.Value)
-                    : await _sqlMembershipRepository.GetAttributeMappingsPageAsync(attribute, tableName, search);
+                return await _sqlMembershipRepository.GetAttributeMappingsByCodesAsync(attribute, tableName, codes);
             }
             catch (SqlException ex)
             {
                 _logger.SqlAttributeMappingsRetrievalFailed(tableName, ex);
-                throw ex;
+                throw;
             }
         }
 
@@ -92,7 +93,7 @@ namespace Services
             catch (SqlException ex)
             {
                 _logger.SqlMappingsTableExistsCheckFailed(tableName, ex);
-                throw ex;
+                throw;
             }
 
             return tableExists;

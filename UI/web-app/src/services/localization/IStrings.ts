@@ -91,6 +91,7 @@ export type IStrings = {
     generateTitle: string;
     generatingTitleText: string;
     multipleItemsSelected: string;
+    valueSearchNoResults: string;
     selectionColumnAriaLabel: string;
     selectRowAriaLabel: string;
     comboBoxCaretAriaLabel: string;

@@ -9,6 +9,7 @@ import {
   Label,
   Spinner,
   SpinnerSize,
+  Stack,
   Text,
   TextField,
   VirtualizedComboBox,
@@ -107,6 +108,16 @@ export const HRQueryItemColumnBase: React.FunctionComponent<HRQueryItemColumnPro
       : filteredOptions[index] || getOptions(attributes, currentAttributeKey);
 
     const selectedKeys = getSelectedKeys(items[index].value);
+    const valueMappingEntry = attributeMappings?.[currentAttributeKey];
+    // The search term/page live on the per-attribute entry, which every row using that
+    // attribute shares. Only the row actually typing may narrow itself to the raw server
+    // page - otherwise a search on one row would strip a sibling row's selected value from
+    // its options and render it blank. Non-searching rows keep the pinned union so their
+    // saved value always resolves to a description.
+    const rowOwnsValueSearch = isFocused && searchText.length > 0;
+    const valueOptionSource = valueMappingEntry?.search && rowOwnsValueSearch
+      ? (valueMappingEntry.page ?? [])
+      : valueMappingEntry?.mappings;
     const sortValueOptionsSelectedFirst = (opts: IComboBoxOption[] | undefined): IComboBoxOption[] | undefined => {
       if (!opts) return opts;
       const sel = opts.filter(o => selectedKeys.includes(String(o.key)));
@@ -118,16 +129,25 @@ export const HRQueryItemColumnBase: React.FunctionComponent<HRQueryItemColumnPro
         (groupIndex === undefined && groupIndexForAttributeValue === -1 ? true : groupIndex === groupIndexForAttributeValue) &&
         (childIndex === undefined && childIndexForAttributeValue === -1 ? true : childIndex === childIndexForAttributeValue) &&
         (index === undefined && itemIndexForAttributeValue === -1 ? true : index === itemIndexForAttributeValue))
-        ? sortValueOptionsSelectedFirst(filteredValueOptions[index]) || getValueOptions(attributeMappings[currentAttributeKey]?.mappings, selectedKeys)
-        : getValueOptions(attributeMappings[currentAttributeKey]?.mappings, selectedKeys)
-      : sortValueOptionsSelectedFirst(filteredValueOptions[index]) || getValueOptions(attributeMappings[currentAttributeKey]?.mappings, selectedKeys);
+        ? sortValueOptionsSelectedFirst(filteredValueOptions[index]) || getValueOptions(valueOptionSource, selectedKeys)
+        : getValueOptions(valueOptionSource, selectedKeys)
+      : sortValueOptionsSelectedFirst(filteredValueOptions[index]) || getValueOptions(valueOptionSource, selectedKeys);
 
     const isMulti = (op?: string) => op === 'IN' || op === 'NOT IN';
     const multi = isMulti(item.equalityOperator);
     const hasMultiple = multi && selectedKeys.length > 1;
     const menuOpen = isOpen;
-    const userTyping = isFocused && searchText.length > 0;
+    const userTyping = rowOwnsValueSearch;
     const readOnly = !isJobWriter || !isEditable;
+
+    // Transient feedback for the row that is typing: only surfaced when a completed search
+    // matched nothing. In-flight searches stay silent, and the server-side cap is deliberately
+    // not surfaced as a persistent hint.
+    const mappingEntry = valueMappingEntry;
+    const activeValueSearch = rowOwnsValueSearch ? mappingEntry?.search : undefined;
+    const valueSearchHint = (activeValueSearch && !mappingEntry?.isSearching && mappingEntry?.page?.length === 0)
+      ? strings.HROnboarding.valueSearchNoResults.replace('{0}', activeValueSearch)
+      : undefined;
 
     const handleRowArrowNavigation = (event: React.KeyboardEvent<HTMLElement>) => {
       if (event.altKey || event.ctrlKey || event.metaKey) return;
@@ -253,11 +273,12 @@ export const HRQueryItemColumnBase: React.FunctionComponent<HRQueryItemColumnPro
           );
         }
         else {
-          if(areAttributeMappingsLoading && attribute?.hasMapping && (!attributeMappings[items[index].attribute] || attributeMappings[items[index].attribute].mappings.length == 0)) {
+          if(areAttributeMappingsLoading && attribute?.hasMapping && !attributeMappings[items[index].attribute]) {
             return <Spinner size={SpinnerSize.small} label={strings.HROnboarding.loadingText} />
           }
-          else if (attributeMappings && attributeMappings[items[index].attribute] && attributeMappings[items[index].attribute].mappings.length > 0) {
+          else if (attributeMappings && mappingEntry && (mappingEntry.mappings.length > 0 || mappingEntry.hasMore || !!mappingEntry.search)) {
             return (
+              <Stack>
               <VirtualizedComboBox
                 data-testid="hr-value-virtualized-combobox"
                 componentRef={valueCbRef}
@@ -299,7 +320,9 @@ export const HRQueryItemColumnBase: React.FunctionComponent<HRQueryItemColumnPro
                   if (readOnly) return;
                   handleAttributeValueChange(item.attribute, event, items[index].value, option, index, item.equalityOperator, groupIndex, childIndex);
                   if (isMulti(item.equalityOperator)) setSearchText('');
-                  setShouldReopen(isOpen && userTyping); // reopen only if the pick was search-driven
+                  // Only multi-select keeps picking after a search-driven pick; a single-select
+                  // operator (=, <>) is done once a value is chosen, so let the menu close.
+                  setShouldReopen(multi && isOpen && userTyping);
                 }}
                 onRenderOption={onRenderValueComboBoxOptions}
                 onRenderList={onRenderValueComboBoxList}
@@ -351,6 +374,10 @@ export const HRQueryItemColumnBase: React.FunctionComponent<HRQueryItemColumnPro
                     : undefined
                 }
               />
+              {!readOnly && valueSearchHint && (
+                <Text data-testid="hr-value-search-hint" variant="tiny" block>{valueSearchHint}</Text>
+              )}
+              </Stack>
             );
           } else {
             return (

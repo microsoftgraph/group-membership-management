@@ -98,7 +98,8 @@ test('renders header after login', async () => {
       fetchDefaultSqlMembershipSourceAttributes: jest
         .fn()
         .mockResolvedValue(defaultSqlAttributes),
-      fetchDefaultSqlMembershipSourceAttributeMappings: jest.fn().mockResolvedValue([]),
+      fetchDefaultSqlMembershipSourceAttributeMappings: jest.fn().mockResolvedValue({ mappings: [], hasMore: false }),
+      resolveDefaultSqlMembershipSourceAttributeMappings: jest.fn().mockResolvedValue([]),
       fetchDefaultSqlMembershipSourceAttributeValues: jest.fn().mockResolvedValue([]),
       patchDefaultSqlMembershipSourceCustomLabel: jest.fn().mockResolvedValue(undefined),
       patchDefaultSqlMembershipSourceAttributes: jest.fn().mockResolvedValue(undefined),
@@ -208,7 +209,8 @@ const buildGmmApiMock = (
     fetchDefaultSqlMembershipSourceAttributes: jest
       .fn()
       .mockResolvedValue([] as SqlMembershipAttribute[]),
-    fetchDefaultSqlMembershipSourceAttributeMappings: jest.fn().mockResolvedValue([]),
+    fetchDefaultSqlMembershipSourceAttributeMappings: jest.fn().mockResolvedValue({ mappings: [], hasMore: false }),
+    resolveDefaultSqlMembershipSourceAttributeMappings: jest.fn().mockResolvedValue([]),
     fetchDefaultSqlMembershipSourceAttributeValues: jest.fn().mockResolvedValue([]),
     patchDefaultSqlMembershipSourceCustomLabel: jest.fn().mockResolvedValue(undefined),
     patchDefaultSqlMembershipSourceAttributes: jest.fn().mockResolvedValue(undefined),

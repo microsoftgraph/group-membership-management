@@ -28,6 +28,7 @@ namespace Services.Tests
         private GetDefaultSqlMembershipSourceHandler _getDefaultSqlMembershipSourceHandler = null!;
         private GetDefaultSqlMembershipSourceAttributesHandler _getDefaultSqlMembershipSourceAttributesHandler = null!;
         private GetDefaultSqlMembershipSourceAttributeMappingsHandler _getDefaultSqlMembershipSourceAttributeMappingsHandler = null!;
+        private ResolveDefaultSqlMembershipSourceAttributeMappingsHandler _resolveDefaultSqlMembershipSourceAttributeMappingsHandler = null!;
         private GetDefaultSqlMembershipSourceAttributeValuesHandler _getDefaultSqlMembershipSourceAttributeValuesHandler = null!;
         private PatchDefaultSqlMembershipSourceCustomLabelHandler _patchDefaultSqlMembershipSourceCustomLabelHandler = null!;
         private PatchDefaultSqlMembershipSourceAttributesHandler _patchDefaultSqlMembershipSourceAttributesHandler = null!;
@@ -44,6 +45,7 @@ namespace Services.Tests
             _getDefaultSqlMembershipSourceHandler = new GetDefaultSqlMembershipSourceHandler(NullLogger<GetDefaultSqlMembershipSourceHandler>.Instance, _databaseSqlMembershipSourcesRepository.Object);
             _getDefaultSqlMembershipSourceAttributesHandler = new GetDefaultSqlMembershipSourceAttributesHandler(NullLogger<GetDefaultSqlMembershipSourceAttributesHandler>.Instance, _databaseSqlMembershipSourcesRepository.Object, _dataFactoryRepository.Object, _sqlMembershipRepository.Object);
             _getDefaultSqlMembershipSourceAttributeMappingsHandler = new GetDefaultSqlMembershipSourceAttributeMappingsHandler(NullLogger<GetDefaultSqlMembershipSourceAttributeMappingsHandler>.Instance, _dataFactoryRepository.Object, _sqlMembershipRepository.Object);
+            _resolveDefaultSqlMembershipSourceAttributeMappingsHandler = new ResolveDefaultSqlMembershipSourceAttributeMappingsHandler(NullLogger<ResolveDefaultSqlMembershipSourceAttributeMappingsHandler>.Instance, _dataFactoryRepository.Object, _sqlMembershipRepository.Object);
             _getDefaultSqlMembershipSourceAttributeValuesHandler = new GetDefaultSqlMembershipSourceAttributeValuesHandler(NullLogger<GetDefaultSqlMembershipSourceAttributeValuesHandler>.Instance, _dataFactoryRepository.Object, _sqlMembershipRepository.Object);
             _patchDefaultSqlMembershipSourceCustomLabelHandler = new PatchDefaultSqlMembershipSourceCustomLabelHandler(NullLogger<PatchDefaultSqlMembershipSourceCustomLabelHandler>.Instance, _databaseSqlMembershipSourcesRepository.Object);
             _patchDefaultSqlMembershipSourceAttributesHandler = new PatchDefaultSqlMembershipSourceAttributesHandler(NullLogger<PatchDefaultSqlMembershipSourceAttributesHandler>.Instance, _databaseSqlMembershipSourcesRepository.Object);
@@ -52,6 +54,7 @@ namespace Services.Tests
             _sqlMembershipSourcesController = new SqlMembershipSourcesController(_getDefaultSqlMembershipSourceHandler,
                 _getDefaultSqlMembershipSourceAttributesHandler,
                 _getDefaultSqlMembershipSourceAttributeMappingsHandler,
+                _resolveDefaultSqlMembershipSourceAttributeMappingsHandler,
                 _getDefaultSqlMembershipSourceAttributeValuesHandler,
                 _patchDefaultSqlMembershipSourceCustomLabelHandler,
                 _patchDefaultSqlMembershipSourceAttributesHandler,
@@ -84,6 +87,10 @@ namespace Services.Tests
             _databaseSqlMembershipSourcesRepository.Setup(x => x.GetDefaultSourceAttributesAsync()).ReturnsAsync(() => _storedAttributeSettings);
             _sqlMembershipRepository.Setup(x => x.GetColumnDetailsAsync(It.IsAny<string>())).ReturnsAsync(new List<(string Name, string Type)> { ("Name1", "nvarchar"), ("Name2", "int"), ("Name3_Code", "nvarchar") });
             _sqlMembershipRepository.Setup(x => x.GetAttributeMappingsAsync(It.IsAny<string>(), It.IsAny<string>())).ReturnsAsync(new List<(string Code, string Description)> { ("Code1", "Description1"), ("Code2", "Description2"), ("Code3", "Description3") });
+            _sqlMembershipRepository.Setup(x => x.GetAttributeMappingsPageAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<int>()))
+                .ReturnsAsync((Mappings: new List<(string Code, string Description)> { ("Code1", "Description1"), ("Code2", "Description2"), ("Code3", "Description3") }, HasMore: false));
+            _sqlMembershipRepository.Setup(x => x.GetAttributeMappingsByCodesAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<IEnumerable<string>>()))
+                .ReturnsAsync(new List<(string Code, string Description)> { ("Code2", "Description2") });
             _sqlMembershipRepository.Setup(x => x.GetAttributeValuesAsync(It.IsAny<string>(), It.IsAny<bool>(), It.IsAny<string>())).ReturnsAsync(new List<string> { "Value1", "Value2", "Value3" });
             _sqlMembershipRepository.Setup(x => x.CheckIfTableExistsAsync(It.IsAny<string>())).ReturnsAsync(true);
             _sqlMembershipRepository.Setup(x => x.CheckIfMappingsTableExistsAsync(It.IsAny<string>())).ReturnsAsync(true);
@@ -363,16 +370,83 @@ namespace Services.Tests
 
             var attributeMappings = okResult.Value as GetAttributeMappingsModel;
             Assert.IsNotNull(attributeMappings);
-            Assert.AreEqual(attributeMappings.Count, 3);
-            Assert.AreEqual(attributeMappings[0].Code, "Code1");
-            Assert.AreEqual(attributeMappings[0].Description, "Description1");
+            Assert.AreEqual(attributeMappings.Mappings.Count, 3);
+            Assert.AreEqual(attributeMappings.Mappings[0].Code, "Code1");
+            Assert.AreEqual(attributeMappings.Mappings[0].Description, "Description1");
+            Assert.IsFalse(attributeMappings.HasMore);
+        }
+
+        [TestMethod]
+        public async Task GetHRFilterattributeMappingsReportsHasMoreTestAsync()
+        {
+            _sqlMembershipRepository.Setup(x => x.GetAttributeMappingsPageAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<int>()))
+                .ReturnsAsync((Mappings: new List<(string Code, string Description)> { ("Code1", "Description1") }, HasMore: true));
+
+            var response = await _sqlMembershipSourcesController.GetDefaultSourceAttributeMappingsAsync("attribute");
+
+            var attributeMappings = (response as OkObjectResult)?.Value as GetAttributeMappingsModel;
+
+            Assert.IsNotNull(attributeMappings);
+            Assert.AreEqual(1, attributeMappings.Mappings.Count);
+            Assert.IsTrue(attributeMappings.HasMore);
+        }
+
+        [TestMethod]
+        public async Task GetHRFilterattributeMappingsPassesSearchAndTopTestAsync()
+        {
+            await _sqlMembershipSourcesController.GetDefaultSourceAttributeMappingsAsync("attribute", "Man", 25);
+
+            _sqlMembershipRepository.Verify(x => x.GetAttributeMappingsPageAsync("attribute", It.IsAny<string>(), "Man", 25), Times.Once());
+        }
+
+        [TestMethod]
+        public async Task SuccessfulResolveHRFilterattributeMappingsTestAsync()
+        {
+            var response = await _sqlMembershipSourcesController.ResolveDefaultSourceAttributeMappingsAsync("attribute", new List<string> { "Code2" });
+
+            Assert.IsNotNull(response);
+            var okResult = response as OkObjectResult;
+
+            Assert.IsNotNull(okResult);
+
+            var mappings = okResult.Value as List<global::WebApi.Models.DTOs.SqlMembershipAttributeMapping>;
+            Assert.IsNotNull(mappings);
+            Assert.AreEqual(1, mappings.Count);
+            Assert.AreEqual("Code2", mappings[0].Code);
+            Assert.AreEqual("Description2", mappings[0].Description);
+        }
+
+        [TestMethod]
+        public async Task ResolveHRFilterattributeMappingsWithNoCodesSkipsLookupTestAsync()
+        {
+            var response = await _sqlMembershipSourcesController.ResolveDefaultSourceAttributeMappingsAsync("attribute", new List<string>());
+
+            var mappings = (response as OkObjectResult)?.Value as List<global::WebApi.Models.DTOs.SqlMembershipAttributeMapping>;
+
+            Assert.IsNotNull(mappings);
+            Assert.AreEqual(0, mappings.Count);
+            _sqlMembershipRepository.Verify(x => x.GetAttributeMappingsByCodesAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<IEnumerable<string>>()), Times.Never());
+        }
+
+        [TestMethod]
+        public async Task ExceptionResolveHRFilterattributeMappingsTestAsync()
+        {
+            _sqlMembershipRepository.Setup(x => x.GetAttributeMappingsByCodesAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<IEnumerable<string>>()))
+                .Throws(new Exception("Unexpected exception triggered for testing"));
+
+            var response = await _sqlMembershipSourcesController.ResolveDefaultSourceAttributeMappingsAsync("attribute", new List<string> { "Code2" });
+
+            var internalServerErrorResponse = response as StatusCodeResult;
+
+            Assert.IsNotNull(internalServerErrorResponse);
+            Assert.AreEqual(internalServerErrorResponse.StatusCode, (int)HttpStatusCode.InternalServerError);
         }
 
         [TestMethod]
         public async Task ExceptionGetHRFilterattributeMappingsTestAsync()
         {
             _sqlMembershipRepository.Setup(x => x.CheckIfMappingsTableExistsAsync(It.IsAny<string>())).ReturnsAsync(false);
-            _sqlMembershipRepository.Setup(x => x.GetAttributeMappingsAsync(It.IsAny<string>(), It.IsAny<string>())).Throws(new Exception("Unexpected exception triggered for testing"));
+            _sqlMembershipRepository.Setup(x => x.GetAttributeMappingsPageAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<int>())).Throws(new Exception("Unexpected exception triggered for testing"));
 
             var response = await _sqlMembershipSourcesController.GetDefaultSourceAttributeMappingsAsync("attribute");
 

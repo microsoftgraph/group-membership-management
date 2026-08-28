@@ -94,6 +94,7 @@ export const strings: IStrings = {
     generateTitle: "Generar título de IA",
     generatingTitleText: "Generando...",
     multipleItemsSelected: "Varios elementos seleccionados",
+    valueSearchNoResults: "Ningún valor coincide con \"{0}\".",
     selectionColumnAriaLabel: "Selección",
     selectRowAriaLabel: "Seleccionar fila",
     comboBoxCaretAriaLabel: "Abrir opciones"

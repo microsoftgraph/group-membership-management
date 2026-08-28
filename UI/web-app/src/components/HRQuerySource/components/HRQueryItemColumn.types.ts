@@ -60,7 +60,7 @@ export type HRQueryItemColumnProps = React.AllHTMLAttributes<HTMLDivElement> & {
 
   // State dependencies
   attributes?: SqlMembershipAttribute[];
-  attributeMappings: Record<string, { mappings: SqlMembershipAttributeMapping[]; type?: string }>;
+  attributeMappings: Record<string, { mappings: SqlMembershipAttributeMapping[]; type?: string; hasMore?: boolean; search?: string; isSearching?: boolean; page?: SqlMembershipAttributeMapping[] }>;
   areAttributeMappingsLoading: boolean;
   groupingEnabled: boolean;
   groups: any[];

@@ -1,7 +1,7 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { classNamesFunction, Stack, type IProcessedStyleSet, IStackTokens, Label, IconButton, TooltipHost, Text, ChoiceGroup, IChoiceGroupOption, IDropdownOption, ActionButton, DetailsList, DetailsListLayoutMode, Dropdown, Selection, IColumn, ComboBox, IComboBoxOption, IComboBox, Separator, ISelectableOption, ISelectableDroppableTextProps, format, IDetailsHeaderProps, DetailsHeader, IRenderFunction, IDetailsColumnRenderTooltipProps, VirtualizedComboBox, Spinner, SpinnerSize, PrimaryButton } from '@fluentui/react';
 import { useTheme } from '@fluentui/react/lib/Theme';
 import { TextField } from '@fluentui/react/lib/TextField';
@@ -21,8 +21,8 @@ import { getPeoplePickerSuggestions } from '../../store/jobs.api';
 import { updateOrgLeaderDetails, selectOrgLeaderDetails, selectObjectIdEmployeeIdMapping } from '../../store/orgLeaderDetails.slice';
 import { selectPeoplePickerSuggestions, updateJobOwnerFilterSuggestions } from '../../store/jobs.slice';
 import { fetchDefaultSqlMembershipSourceAttributes } from '../../store/sqlMembershipSources.api';
-import { fetchAttributeMappings } from '../../store/sqlMembershipSources.api';
-import { selectAttributes, selectSource, selectAttributeMappings, setAttributeMappings, selectAreAttributeMappingsLoading } from '../../store/sqlMembershipSources.slice';
+import { fetchAttributeMappings, resolveAttributeMappings } from '../../store/sqlMembershipSources.api';
+import { selectAttributes, selectSource, selectAttributeMappings, setAttributeMappings, pinAttributeMappings, selectAreAttributeMappingsLoading } from '../../store/sqlMembershipSources.slice';
 import { selectIsJobWriter } from '../../store/roles.slice';
 import { SqlMembershipAttribute, SqlMembershipAttributeMapping } from '../../models';
 import { IFilterPart } from '../../models/IFilterPart';
@@ -45,6 +45,11 @@ import { SourcePartQuery } from '../../models/SourcePartQuery';
 import { GetOrgLeaderDetailsResponse } from '../../models/GetOrgLeaderDetailsResponse';
 import { SourcePartType } from '../../models/SourcePartType';
 import { PLACEHOLDER_OPERATOR } from '../../models/HRFilterConstants';
+
+// Mirrors the server-side cap on the attribute mapping resolve endpoint.
+const MAX_RESOLVE_CODES_PER_REQUEST = 1000;
+// Delay before a typed search is sent to the server for capped (large) attributes.
+const VALUE_SEARCH_DEBOUNCE_MS = 300;
 
 // Every row must have a non-empty attribute, operator, and value; rejects placeholder AND/OR and dangling IN ()/NOT IN ().
 function isFilterComplete(filter: string): boolean {
@@ -261,6 +266,79 @@ export const HRQuerySourceBase: React.FunctionComponent<HRQuerySourceProps> = (p
     }
   }, [children, attributes]);
 
+  // Tracks codes already sent to the resolve endpoint so repeated `items` updates don't re-request them.
+  const requestedResolveCodesRef = useRef<Record<string, Set<string>>>({});
+  const valueSearchTimersRef = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
+  // Last search term actually dispatched per attribute; guards against re-issuing an in-flight term.
+  const lastRequestedSearchRef = useRef<Record<string, string>>({});
+  const itemsRef = useRef<IFilterPart[]>(items);
+  itemsRef.current = items;
+
+  const resolveSelectedCodes = (mappedItems: { attribute: string; value: string }[]) => {
+    if (!attributes || attributes.length === 0) {
+      return;
+    }
+
+    const pendingByAttribute: Record<string, { codes: string[]; type: string | undefined }> = {};
+    const pinnableByAttribute: Record<string, { mappings: SqlMembershipAttributeMapping[]; type: string | undefined }> = {};
+
+    mappedItems.forEach((item) => {
+      if (!item.attribute || !item.value) {
+        return;
+      }
+      const selectedAttribute = attributes.find(({ hasMapping, name }) => hasMapping && `${name}_Code` === item.attribute);
+      if (!selectedAttribute) {
+        return;
+      }
+
+      const alreadyRequested = requestedResolveCodesRef.current[item.attribute] ?? new Set<string>();
+      requestedResolveCodesRef.current[item.attribute] = alreadyRequested;
+      const loadedByCode = new Map((attributeMappings[item.attribute]?.mappings ?? []).map(mapping => [mapping.code, mapping]));
+
+      getSelectedKeys(item.value).forEach((code) => {
+        if (!code || alreadyRequested.has(code)) {
+          return;
+        }
+        alreadyRequested.add(code);
+
+        const loaded = loadedByCode.get(code);
+        if (loaded) {
+          // Already in the browse page: pin it locally instead of paying for a round trip.
+          const pinnable = pinnableByAttribute[item.attribute] ?? { mappings: [], type: selectedAttribute.type };
+          pinnable.mappings.push(loaded);
+          pinnableByAttribute[item.attribute] = pinnable;
+          return;
+        }
+
+        const pending = pendingByAttribute[item.attribute] ?? { codes: [], type: selectedAttribute.type };
+        pending.codes.push(code);
+        pendingByAttribute[item.attribute] = pending;
+      });
+    });
+
+    Object.entries(pinnableByAttribute).forEach(([attribute, pinnable]) => {
+      dispatch(pinAttributeMappings({ attribute, type: pinnable.type, mappings: pinnable.mappings }));
+    });
+
+    Object.entries(pendingByAttribute).forEach(([attribute, pending]) => {
+      // Matches the server-side cap; anything beyond is already an unusable query.
+      for (let i = 0; i < pending.codes.length; i += MAX_RESOLVE_CODES_PER_REQUEST) {
+        dispatch(resolveAttributeMappings({
+          attribute,
+          type: pending.type,
+          hasMapping: true,
+          codes: pending.codes.slice(i, i + MAX_RESOLVE_CODES_PER_REQUEST)
+        }));
+      }
+    });
+  };
+
+  useEffect(() => {
+    return () => {
+      Object.values(valueSearchTimersRef.current).forEach(timer => clearTimeout(timer));
+    };
+  }, []);
+
   useEffect(() => {
     let mappedItems = items.map((item) => ({ attribute: item.attribute, equalityOperator: item.equalityOperator, value: item.value, andOr: item.andOr }));
     let att = mappedItems.map(item => item.attribute);
@@ -271,6 +349,9 @@ export const HRQuerySourceBase: React.FunctionComponent<HRQuerySourceProps> = (p
         dispatch(fetchAttributeMappings({attribute: distinctAttributes[i] as string, type: selectedAttribute?.type, hasMapping: selectedAttribute?.hasMapping }));
       }
     }
+    // The browse list is capped, so codes already saved on the job are resolved explicitly.
+    // Without this a selected value would render as a bare code, or disappear entirely for reviewers.
+    resolveSelectedCodes(mappedItems);
     if (!groupingEnabled) {
       const newGroups = [{ name: "", items: mappedItems, children: [], andOr: "" }];
       setGroups(newGroups);
@@ -1616,6 +1697,16 @@ const getOptions = (
 
     if (item) {
       const attributeType = attributeMappings[attribute]?.type;
+      // The per-attribute entry is shared by every row using that attribute, and its browse
+      // page is replaced whenever any row searches. Pin the freshly picked code so the value
+      // always keeps a description to render, instead of blanking out when the page moves on.
+      if (item.selected !== false && item.key != null) {
+        dispatch(pinAttributeMappings({
+          attribute,
+          type: attributeType,
+          mappings: [{ code: item.key.toString(), description: item.text }]
+        }));
+      }
       const selectedValue = operator && (operator.toString().toUpperCase() === "IN" || operator.toString().toUpperCase() === "NOT IN")
         ? ensureInClauseFormat(selectedValues)
         : item.key.toString();
@@ -1838,12 +1929,63 @@ const getOptions = (
       setGroupIndexForAttributeValue(groupIndex);
       setChildIndexForAttributeValue(childIndex ?? -1);
     }
-    const currentAttributeMappings = attributeMappings[currentAttributeKey].mappings || [];
-    if (currentAttributeMappings.length > 0) {
+    const entry = attributeMappings[currentAttributeKey];
+    const currentAttributeMappings = entry?.mappings || [];
+    // For server-paged attributes the loaded list is only a slice of the real data, so filtering it
+    // locally would hide matches the server can still return - and an empty list makes the combobox
+    // auto-dismiss, which resets the search. Let the server own the filtering instead.
+    const isServerPaged = !!(entry?.hasMore || entry?.search);
+    if (isServerPaged) {
+      delete newFilteredValueOptions[index];
+      setFilteredValueOptions(newFilteredValueOptions);
+    } else if (currentAttributeMappings.length > 0) {
       let valueOptions = getValueOptions(currentAttributeMappings);
       newFilteredValueOptions[index] = (!text) ? valueOptions : valueOptions.filter(opt => opt.text.toLowerCase().startsWith(text.toLowerCase()) || opt.key.toString().toLowerCase().startsWith(text.toLowerCase()));
       setFilteredValueOptions(newFilteredValueOptions);
     }
+    queueServerValueSearch(text, currentAttributeKey, index);
+  };
+
+  // Large attributes (e.g. CostCenter_Code) are capped server-side, so the local list is only a slice.
+  // Push the search term to the server instead of filtering an incomplete list.
+  const queueServerValueSearch = (text: string, currentAttributeKey: string, index: number) => {
+    const entry = attributeMappings[currentAttributeKey];
+    if (!entry?.hasMore && !entry?.search) {
+      return;
+    }
+
+    const selectedAttribute = attributes?.find(({ hasMapping, name }) => hasMapping && `${name}_Code` === currentAttributeKey);
+    if (!selectedAttribute) {
+      return;
+    }
+
+    const search = (text ?? '').trim();
+    // Compare against the last term actually sent, not the last one that came back, so a
+    // backspace to a previously completed term still supersedes an in-flight request.
+    const lastRequested = lastRequestedSearchRef.current[currentAttributeKey] ?? entry.search ?? '';
+    if (lastRequested === search) {
+      return;
+    }
+
+    clearTimeout(valueSearchTimersRef.current[currentAttributeKey]);
+    valueSearchTimersRef.current[currentAttributeKey] = setTimeout(() => {
+      lastRequestedSearchRef.current[currentAttributeKey] = search;
+      dispatch(fetchAttributeMappings({
+        attribute: currentAttributeKey,
+        type: selectedAttribute.type,
+        hasMapping: selectedAttribute.hasMapping,
+        search: search || undefined
+      })).then(() => {
+        // Drop this row's stale client-side filter so it renders the fresh server page.
+        // filteredValueOptions is keyed by the DetailsList row index, which is group-local
+        // when grouping is enabled, so only the originating index may be touched.
+        setFilteredValueOptions(previous => {
+          const next = { ...previous };
+          delete next[index];
+          return next;
+        });
+      });
+    }, VALUE_SEARCH_DEBOUNCE_MS);
   };
 
   const columns = [

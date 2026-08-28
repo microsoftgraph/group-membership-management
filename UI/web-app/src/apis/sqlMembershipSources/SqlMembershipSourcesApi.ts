@@ -4,7 +4,7 @@
 import { SqlMembershipAttribute, SqlMembershipAttributeMapping, SqlMembershipSource } from '../../models';
 import { ValidateSqlFiltersResponse } from '../../models/ValidateSqlFiltersResponse';
 import { ApiBase } from '../ApiBase';
-import { ISqlMembershipSourcesApi } from './ISqlMembershipSourcesApi';
+import { ISqlMembershipSourcesApi, AttributeMappingsPage } from './ISqlMembershipSourcesApi';
 
 
 export class SqlMembershipSourcesApi extends ApiBase implements ISqlMembershipSourcesApi {
@@ -21,10 +21,24 @@ export class SqlMembershipSourcesApi extends ApiBase implements ISqlMembershipSo
     return response.data;
   }
 
-  public async fetchDefaultSqlMembershipSourceAttributeMappings(attribute: string): Promise<SqlMembershipAttributeMapping[]> {
-    const response = await this.httpClient.get<SqlMembershipAttributeMapping[]>('/attributeMappings/' + attribute);
+  public async fetchDefaultSqlMembershipSourceAttributeMappings(attribute: string, search?: string, top?: number): Promise<AttributeMappingsPage> {
+    const params: { search?: string; top?: number } = {};
+    if (search) {
+      params.search = search;
+    }
+    if (top) {
+      params.top = top;
+    }
+
+    const response = await this.httpClient.get<AttributeMappingsPage>('/attributeMappings/' + attribute, { params });
     this.ensureSuccessStatusCode(response);
-    return response.data;
+    return { mappings: response.data?.mappings ?? [], hasMore: response.data?.hasMore ?? false };
+  }
+
+  public async resolveDefaultSqlMembershipSourceAttributeMappings(attribute: string, codes: string[]): Promise<SqlMembershipAttributeMapping[]> {
+    const response = await this.httpClient.post<SqlMembershipAttributeMapping[]>('/attributeMappings/' + attribute + '/resolve', codes);
+    this.ensureSuccessStatusCode(response);
+    return response.data ?? [];
   }
 
   public async fetchDefaultSqlMembershipSourceAttributeValues(attribute: SqlMembershipAttribute): Promise<string[]> {

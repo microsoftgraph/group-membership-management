@@ -1,10 +1,9 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-export interface GetAttributeMappingsRequest {
+export interface ResolveAttributeMappingsRequest {
   attribute: string;
   type: string | undefined;
   hasMapping: boolean | undefined;
-  search?: string;
-  top?: number;
+  codes: string[];
 };

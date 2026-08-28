@@ -28,6 +28,13 @@ namespace Repositories.SqlMembershipRepository
         // Attribute names must start with a letter or underscore (standard SQL column identifiers)
         private static readonly Regex ValidAttributeNamePattern = new(@"^[A-Za-z_][A-Za-z0-9_\-]*$", RegexOptions.Compiled);
 
+        // Caps the browse/search page for attribute mappings. Large attributes (CostCenter is ~300K rows)
+        // must never be returned to the UI in a single response.
+        public const int DefaultAttributeMappingsPageSize = 500;
+        public const int MaxAttributeMappingsPageSize = 500;
+        // Upper bound of codes accepted by a single resolve call, well under SQL Server's 2100 parameter limit.
+        public const int MaxAttributeMappingCodesPerRequest = 1000;
+
         public SqlMembershipRepository(IKeyVaultSecret<ISqlMembershipRepository> sqlServerConnectionString)
         {
             _sqlServerConnectionString = sqlServerConnectionString?.Secret ?? throw new ArgumentNullException(nameof(sqlServerConnectionString));
@@ -566,6 +573,159 @@ namespace Repositories.SqlMembershipRepository
             }
 
             return attributeMappings;
+        }
+
+        /// <summary>
+        /// Returns a capped page of attribute mappings, optionally filtered by a prefix search on Code or Description.
+        /// <paramref name="search"/> matches the client-side behavior it replaces (starts-with, case-insensitive by collation).
+        /// HasMore reports whether more rows matched than were returned, so the caller can offer server-side search.
+        /// </summary>
+        public async Task<(List<(string Code, string Description)> Mappings, bool HasMore)> GetAttributeMappingsPageAsync(string attribute, string tableName, string? search = null, int top = DefaultAttributeMappingsPageSize)
+        {
+            ValidateTableName(tableName);
+            ValidateAttributeName(attribute);
+
+            if (top < 1)
+            {
+                top = DefaultAttributeMappingsPageSize;
+            }
+            else if (top > MaxAttributeMappingsPageSize)
+            {
+                top = MaxAttributeMappingsPageSize;
+            }
+
+            var attributeMappings = new List<(string Code, string Description)>();
+            var hasMore = false;
+            var retryPolicy = GetRetryPolicyAsync();
+            var hasSearch = !string.IsNullOrWhiteSpace(search);
+
+            var searchClause = hasSearch
+                ? @" AND (Code LIKE @Search ESCAPE '\' OR Description LIKE @Search ESCAPE '\')"
+                : string.Empty;
+            var selectQuery = $"SELECT DISTINCT TOP (@Top) Code, Description FROM [mappings].[{tableName}] WHERE ColumnName = @Attribute{searchClause} ORDER BY Description, Code";
+
+            await retryPolicy.ExecuteAsync(async () =>
+            {
+                attributeMappings.Clear();
+
+                using (var conn = new SqlConnection(_sqlServerConnectionString))
+                {
+                    await conn.OpenAsync();
+                    using (var cmd = new SqlCommand(selectQuery, conn))
+                    {
+                        cmd.Parameters.Add(new SqlParameter("@Attribute", SqlDbType.NVarChar, 128) { Value = attribute });
+                        // Request one extra row so we can tell whether more matches exist beyond this page.
+                        cmd.Parameters.Add(new SqlParameter("@Top", SqlDbType.Int) { Value = top + 1 });
+
+                        if (hasSearch)
+                        {
+                            cmd.Parameters.Add(new SqlParameter("@Search", SqlDbType.NVarChar, 256) { Value = EscapeLikePattern(search.Trim()) + "%" });
+                        }
+
+                        using (var reader = await cmd.ExecuteReaderAsync(CommandBehavior.CloseConnection))
+                        {
+                            int codeOrdinal = reader.GetOrdinal("Code");
+                            int descriptionOrdinal = reader.GetOrdinal("Description");
+
+                            while (await reader.ReadAsync())
+                            {
+                                var code = reader.IsDBNull(codeOrdinal) ? null : reader.GetString(codeOrdinal).Trim();
+                                var description = reader.IsDBNull(descriptionOrdinal) ? null : reader.GetString(descriptionOrdinal).Trim();
+                                attributeMappings.Add((code, description));
+                            }
+                            await reader.CloseAsync();
+                        }
+                    }
+                    await conn.CloseAsync();
+                }
+            });
+
+            if (attributeMappings.Count > top)
+            {
+                hasMore = true;
+                attributeMappings.RemoveRange(top, attributeMappings.Count - top);
+            }
+
+            return (attributeMappings, hasMore);
+        }
+
+        /// <summary>
+        /// Resolves an explicit set of codes to their descriptions. Used so values already saved on a sync job
+        /// always display their real description, regardless of what the capped browse page happened to return.
+        /// </summary>
+        public async Task<List<(string Code, string Description)>> GetAttributeMappingsByCodesAsync(string attribute, string tableName, IEnumerable<string> codes)
+        {
+            ValidateTableName(tableName);
+            ValidateAttributeName(attribute);
+
+            var attributeMappings = new List<(string Code, string Description)>();
+
+            if (codes == null)
+            {
+                return attributeMappings;
+            }
+
+            var distinctCodes = codes
+                .Where(code => !string.IsNullOrWhiteSpace(code))
+                .Select(code => code.Trim())
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .Take(MaxAttributeMappingCodesPerRequest)
+                .ToList();
+
+            if (distinctCodes.Count == 0)
+            {
+                return attributeMappings;
+            }
+
+            var retryPolicy = GetRetryPolicyAsync();
+            var parameterNames = distinctCodes.Select((_, index) => "@Code" + index).ToList();
+            var selectQuery = $"SELECT DISTINCT Code, Description FROM [mappings].[{tableName}] WHERE ColumnName = @Attribute AND Code IN ({string.Join(", ", parameterNames)})";
+
+            await retryPolicy.ExecuteAsync(async () =>
+            {
+                attributeMappings.Clear();
+
+                using (var conn = new SqlConnection(_sqlServerConnectionString))
+                {
+                    await conn.OpenAsync();
+                    using (var cmd = new SqlCommand(selectQuery, conn))
+                    {
+                        cmd.Parameters.Add(new SqlParameter("@Attribute", SqlDbType.NVarChar, 128) { Value = attribute });
+
+                        for (var index = 0; index < distinctCodes.Count; index++)
+                        {
+                            cmd.Parameters.Add(new SqlParameter(parameterNames[index], SqlDbType.NVarChar, 256) { Value = distinctCodes[index] });
+                        }
+
+                        using (var reader = await cmd.ExecuteReaderAsync(CommandBehavior.CloseConnection))
+                        {
+                            int codeOrdinal = reader.GetOrdinal("Code");
+                            int descriptionOrdinal = reader.GetOrdinal("Description");
+
+                            while (await reader.ReadAsync())
+                            {
+                                var code = reader.IsDBNull(codeOrdinal) ? null : reader.GetString(codeOrdinal).Trim();
+                                var description = reader.IsDBNull(descriptionOrdinal) ? null : reader.GetString(descriptionOrdinal).Trim();
+                                attributeMappings.Add((code, description));
+                            }
+                            await reader.CloseAsync();
+                        }
+                    }
+                    await conn.CloseAsync();
+                }
+            });
+
+            return attributeMappings;
+        }
+
+        // Escapes LIKE metacharacters so a user's search text is always treated as a literal prefix.
+        private static string EscapeLikePattern(string value)
+        {
+            return value
+                .Replace(@"\", @"\\")
+                .Replace("%", @"\%")
+                .Replace("_", @"\_")
+                .Replace("[", @"\[");
         }
 
         public async Task<List<string>> GetAttributeValuesAsync(string attribute, bool hasMapping, string tableName)

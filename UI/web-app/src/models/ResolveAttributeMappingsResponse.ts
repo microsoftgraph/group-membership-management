@@ -3,10 +3,8 @@
 
 import { SqlMembershipAttributeMapping } from './SqlMembershipAttributeMapping';
 
-export interface GetAttributeMappingsResponse {
+export interface ResolveAttributeMappingsResponse {
     mappings: SqlMembershipAttributeMapping[];
     attribute: string;
     type: string | undefined;
-    hasMore: boolean;
-    search?: string;
 };

@@ -19,6 +19,7 @@ namespace WebApi.Controllers.v1.SqlMembershipSources
         private readonly IRequestHandler<GetDefaultSqlMembershipSourceRequest, GetDefaultSqlMembershipSourceResponse> _getDefaultSqlMembershipSourceHandler;
         private readonly IRequestHandler<GetDefaultSqlMembershipSourceAttributesRequest, GetDefaultSqlMembershipSourceAttributesResponse> _getDefaultSqlMembershipSourceAttributesHandler;
         private readonly IRequestHandler<GetDefaultSqlMembershipSourceAttributeMappingsRequest, GetDefaultSqlMembershipSourceAttributeMappingsResponse> _getDefaultSqlMembershipSourceAttributeMappingsHandler;
+        private readonly IRequestHandler<ResolveDefaultSqlMembershipSourceAttributeMappingsRequest, ResolveDefaultSqlMembershipSourceAttributeMappingsResponse> _resolveDefaultSqlMembershipSourceAttributeMappingsHandler;
         private readonly IRequestHandler<GetDefaultSqlMembershipSourceAttributeValuesRequest, GetDefaultSqlMembershipSourceAttributeValuesResponse> _getDefaultSqlMembershipSourceAttributeValuesHandler;
         private readonly IRequestHandler<PatchDefaultSqlMembershipSourceCustomLabelRequest, NullResponse> _patchDefaultSqlMembershipSourceCustomLabelHandler;
         private readonly IRequestHandler<PatchDefaultSqlMembershipSourceAttributesRequest, NullResponse> _patchDefaultSqlMembershipSourceAttributesHandler;
@@ -28,6 +29,7 @@ namespace WebApi.Controllers.v1.SqlMembershipSources
             IRequestHandler<GetDefaultSqlMembershipSourceRequest, GetDefaultSqlMembershipSourceResponse> getDefaultSqlMembershipSourceHandler,
             IRequestHandler<GetDefaultSqlMembershipSourceAttributesRequest, GetDefaultSqlMembershipSourceAttributesResponse> getDefaultSqlMembershipSourceAttributesHandler,
             IRequestHandler<GetDefaultSqlMembershipSourceAttributeMappingsRequest, GetDefaultSqlMembershipSourceAttributeMappingsResponse> getDefaultSqlMembershipSourceAttributeMappingsHandler,
+            IRequestHandler<ResolveDefaultSqlMembershipSourceAttributeMappingsRequest, ResolveDefaultSqlMembershipSourceAttributeMappingsResponse> resolveDefaultSqlMembershipSourceAttributeMappingsHandler,
             IRequestHandler<GetDefaultSqlMembershipSourceAttributeValuesRequest, GetDefaultSqlMembershipSourceAttributeValuesResponse> getDefaultSqlMembershipSourceAttributeValuesHandler,
             IRequestHandler<PatchDefaultSqlMembershipSourceCustomLabelRequest, NullResponse> patchDefaultSqlMembershipSourceCustomLabelHandler,
             IRequestHandler<PatchDefaultSqlMembershipSourceAttributesRequest, NullResponse> patchDefaultSqlMembershipSourceAttributesHandler,
@@ -36,6 +38,7 @@ namespace WebApi.Controllers.v1.SqlMembershipSources
             _getDefaultSqlMembershipSourceHandler = getDefaultSqlMembershipSourceHandler ?? throw new ArgumentNullException(nameof(getDefaultSqlMembershipSourceHandler));
             _getDefaultSqlMembershipSourceAttributesHandler = getDefaultSqlMembershipSourceAttributesHandler ?? throw new ArgumentNullException(nameof(getDefaultSqlMembershipSourceAttributesHandler));
             _getDefaultSqlMembershipSourceAttributeMappingsHandler = getDefaultSqlMembershipSourceAttributeMappingsHandler ?? throw new ArgumentNullException(nameof(getDefaultSqlMembershipSourceAttributeMappingsHandler));
+            _resolveDefaultSqlMembershipSourceAttributeMappingsHandler = resolveDefaultSqlMembershipSourceAttributeMappingsHandler ?? throw new ArgumentNullException(nameof(resolveDefaultSqlMembershipSourceAttributeMappingsHandler));
             _getDefaultSqlMembershipSourceAttributeValuesHandler = getDefaultSqlMembershipSourceAttributeValuesHandler ?? throw new ArgumentNullException(nameof(getDefaultSqlMembershipSourceAttributeValuesHandler));
             _patchDefaultSqlMembershipSourceCustomLabelHandler = patchDefaultSqlMembershipSourceCustomLabelHandler ?? throw new ArgumentNullException(nameof(patchDefaultSqlMembershipSourceCustomLabelHandler));
             _patchDefaultSqlMembershipSourceAttributesHandler = patchDefaultSqlMembershipSourceAttributesHandler ?? throw new ArgumentNullException(nameof(patchDefaultSqlMembershipSourceAttributesHandler));
@@ -74,14 +77,34 @@ namespace WebApi.Controllers.v1.SqlMembershipSources
 
         [Authorize()]
         [HttpGet("attributeMappings/{attribute}")]
-        public async Task<IActionResult> GetDefaultSourceAttributeMappingsAsync(string attribute)
+        public async Task<IActionResult> GetDefaultSourceAttributeMappingsAsync([FromRoute] string attribute, [FromQuery] string? search = null, [FromQuery] int? top = null)
         {
             try
             {
-                var response = await _getDefaultSqlMembershipSourceAttributeMappingsHandler.ExecuteAsync(new GetDefaultSqlMembershipSourceAttributeMappingsRequest(attribute));
+                var response = await _getDefaultSqlMembershipSourceAttributeMappingsHandler.ExecuteAsync(new GetDefaultSqlMembershipSourceAttributeMappingsRequest(attribute, search, top));
                 return Ok(response.Model);
             }
             catch (Exception ex)
+            {
+                return StatusCode((int)HttpStatusCode.InternalServerError);
+            }
+        }
+
+        /// <summary>
+        /// Resolves specific attribute codes to their descriptions. Codes travel in the body so a job with
+        /// many saved values cannot exceed URL length limits.
+        /// </summary>
+        [Authorize()]
+        [HttpPost("attributeMappings/{attribute}/resolve")]
+        public async Task<IActionResult> ResolveDefaultSourceAttributeMappingsAsync([FromRoute] string attribute, [FromBody] List<string> codes)
+        {
+            try
+            {
+                var response = await _resolveDefaultSqlMembershipSourceAttributeMappingsHandler.ExecuteAsync(
+                    new ResolveDefaultSqlMembershipSourceAttributeMappingsRequest(attribute, codes ?? new List<string>()));
+                return Ok(response.Mappings);
+            }
+            catch (Exception)
             {
                 return StatusCode((int)HttpStatusCode.InternalServerError);
             }

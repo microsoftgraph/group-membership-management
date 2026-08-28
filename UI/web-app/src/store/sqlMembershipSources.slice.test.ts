@@ -6,6 +6,7 @@ import sqlReducer, {
   setSource,
   setAttributes,
   setAttributeMappings,
+  pinAttributeMappings,
   selectSource,
   selectAttributes,
   selectAttributeMappings,
@@ -19,6 +20,7 @@ import {
   fetchDefaultSqlMembershipSource,
   fetchDefaultSqlMembershipSourceAttributes,
   fetchAttributeMappings,
+  resolveAttributeMappings,
   fetchAttributeValues,
   patchDefaultSqlMembershipSourceCustomLabel,
   patchDefaultSqlMembershipSourceAttributes,
@@ -38,8 +40,38 @@ describe('sqlMembershipSources.slice — reducers', () => {
   });
 
   it('setAttributeMappings sets mapping for attribute', () => {
-    const state = sqlReducer(initial, setAttributeMappings({ attribute: 'dept', type: 'string', mappings: [{ value: 'eng' }] }));
-    expect(state.attributeMappings['dept']).toEqual({ mappings: [{ value: 'eng' }], type: 'string' });
+    const state = sqlReducer(initial, setAttributeMappings({ attribute: 'dept', type: 'string', mappings: [{ code: 'eng', description: 'Engineering' }] }));
+    expect(state.attributeMappings['dept']).toEqual({
+      mappings: [{ code: 'eng', description: 'Engineering' }],
+      page: [{ code: 'eng', description: 'Engineering' }],
+      pinned: [],
+      type: 'string',
+      hasMore: false,
+      search: undefined,
+      isSearching: false,
+    });
+  });
+  it('pinAttributeMappings keeps codes across a later search', () => {
+    const loaded = sqlReducer(initial, fetchAttributeMappings.fulfilled({ attribute: 'CostCenter_Code', type: 'nvarchar', mappings: [{ code: '1', description: 'Alpha' }], hasMore: true } as any, 'r', {} as any));
+    const pinned = sqlReducer(loaded, pinAttributeMappings({ attribute: 'CostCenter_Code', type: 'nvarchar', mappings: [{ code: '1', description: 'Alpha' }] }));
+    const searched = sqlReducer(pinned, fetchAttributeMappings.fulfilled({ attribute: 'CostCenter_Code', type: 'nvarchar', mappings: [{ code: '2', description: 'Beta' }], hasMore: false, search: 'B' } as any, 'r', {} as any));
+    expect(searched.attributeMappings['CostCenter_Code'].mappings.map(m => m.code).sort()).toEqual(['1', '2']);
+  });
+  // Regression: re-pinning an unchanged code must not hand the combobox a new `options` array.
+  // A fresh array identity mid-interaction closes an open multi-select (IN) dropdown, so the
+  // owner could only ever check one value before the menu snapped shut.
+  it('pinAttributeMappings keeps mappings referentially stable when nothing changed', () => {
+    const loaded = sqlReducer(initial, fetchAttributeMappings.fulfilled({ attribute: 'EmployeeType_Code', type: 'nvarchar', mappings: [{ code: 'Vendor', description: 'Vendor' }, { code: 'FTE', description: 'FTE' }], hasMore: false } as any, 'r', {} as any));
+    const first = sqlReducer(loaded, pinAttributeMappings({ attribute: 'EmployeeType_Code', type: 'nvarchar', mappings: [{ code: 'Vendor', description: 'Vendor' }] }));
+    const second = sqlReducer(first, pinAttributeMappings({ attribute: 'EmployeeType_Code', type: 'nvarchar', mappings: [{ code: 'Vendor', description: 'Vendor' }] }));
+    expect(second.attributeMappings['EmployeeType_Code'].mappings).toBe(first.attributeMappings['EmployeeType_Code'].mappings);
+    expect(second.attributeMappings['EmployeeType_Code'].mappings.map(m => m.code).sort()).toEqual(['FTE', 'Vendor']);
+  });
+  it('pinAttributeMappings still records a code that is not yet in the page', () => {
+    const loaded = sqlReducer(initial, fetchAttributeMappings.fulfilled({ attribute: 'CostCenter_Code', type: 'nvarchar', mappings: [{ code: '1', description: 'Alpha' }], hasMore: true } as any, 'r', {} as any));
+    const pinned = sqlReducer(loaded, pinAttributeMappings({ attribute: 'CostCenter_Code', type: 'nvarchar', mappings: [{ code: '9', description: 'Zeta' }] }));
+    expect(pinned.attributeMappings['CostCenter_Code'].pinned.map(m => m.code)).toEqual(['9']);
+    expect(pinned.attributeMappings['CostCenter_Code'].mappings.map(m => m.code).sort()).toEqual(['1', '9']);
   });
 });
 
@@ -85,10 +117,55 @@ describe('sqlMembershipSources.slice — fetchAttributeMappings', () => {
     expect(state.areAttributeMappingsLoading).toBe(true);
   });
   it('fulfilled sets mapping', () => {
-    const payload = { attribute: 'dept', type: 'string', mappings: [{ v: 1 }] };
+    const payload = { attribute: 'dept', type: 'string', mappings: [{ code: '1', description: 'Eng' }], hasMore: false };
     const state = sqlReducer(initial, fetchAttributeMappings.fulfilled(payload as any, 'r', {} as any));
     expect(state.areAttributeMappingsLoading).toBe(false);
-    expect(state.attributeMappings['dept']).toEqual({ mappings: [{ v: 1 }], type: 'string' });
+    expect(state.attributeMappings['dept'].mappings).toEqual([{ code: '1', description: 'Eng' }]);
+    expect(state.attributeMappings['dept'].type).toBe('string');
+    expect(state.attributeMappings['dept'].hasMore).toBe(false);
+  });
+  it('fulfilled records hasMore and the search term for capped attributes', () => {
+    const payload = { attribute: 'CostCenter_Code', type: 'nvarchar', mappings: [{ code: '1', description: 'A' }], hasMore: true, search: 'A' };
+    const state = sqlReducer(initial, fetchAttributeMappings.fulfilled(payload as any, 'r', {} as any));
+    expect(state.attributeMappings['CostCenter_Code'].hasMore).toBe(true);
+    expect(state.attributeMappings['CostCenter_Code'].search).toBe('A');
+    expect(state.attributeMappings['CostCenter_Code'].isSearching).toBe(false);
+  });
+  it('pending flags an existing attribute as searching', () => {
+    const loaded = sqlReducer(initial, fetchAttributeMappings.fulfilled({ attribute: 'dept', type: 'string', mappings: [], hasMore: true } as any, 'r', {} as any));
+    const state = sqlReducer(loaded, fetchAttributeMappings.pending('r', { attribute: 'dept' } as any));
+    expect(state.attributeMappings['dept'].isSearching).toBe(true);
+  });
+  it('keeps resolved codes when a later search does not return them', () => {
+    const loaded = sqlReducer(initial, fetchAttributeMappings.fulfilled({ attribute: 'CostCenter_Code', type: 'nvarchar', mappings: [{ code: '1', description: 'Alpha' }], hasMore: true } as any, 'r', {} as any));
+    const resolved = sqlReducer(loaded, resolveAttributeMappings.fulfilled({ attribute: 'CostCenter_Code', type: 'nvarchar', mappings: [{ code: '99', description: 'Saved Cost Center' }] } as any, 'r', {} as any));
+    expect(resolved.attributeMappings['CostCenter_Code'].mappings.map(m => m.code).sort()).toEqual(['1', '99']);
+
+    const searched = sqlReducer(resolved, fetchAttributeMappings.fulfilled({ attribute: 'CostCenter_Code', type: 'nvarchar', mappings: [{ code: '2', description: 'Beta' }], hasMore: false, search: 'B' } as any, 'r', {} as any));
+    expect(searched.attributeMappings['CostCenter_Code'].mappings.map(m => m.code).sort()).toEqual(['2', '99']);
+    expect(searched.attributeMappings['CostCenter_Code'].page.map(m => m.code)).toEqual(['2']);
+  });
+  it('ignores a stale fulfilled that lands after a newer request started', () => {
+    const arg = { attribute: 'CostCenter_Code' } as any;
+    let state = sqlReducer(initial, fetchAttributeMappings.pending('req-1', arg));
+    state = sqlReducer(state, fetchAttributeMappings.pending('req-2', arg));
+
+    // "AL" was typed first but its response arrives last; it must not clobber "ALP".
+    state = sqlReducer(state, fetchAttributeMappings.fulfilled({ attribute: 'CostCenter_Code', type: 'nvarchar', mappings: [{ code: '2', description: 'Alpha Two' }], hasMore: false, search: 'ALP' } as any, 'req-2', arg));
+    state = sqlReducer(state, fetchAttributeMappings.fulfilled({ attribute: 'CostCenter_Code', type: 'nvarchar', mappings: [{ code: '1', description: 'Alpha One' }], hasMore: true, search: 'AL' } as any, 'req-1', arg));
+
+    expect(state.attributeMappings['CostCenter_Code'].search).toBe('ALP');
+    expect(state.attributeMappings['CostCenter_Code'].mappings.map(m => m.code)).toEqual(['2']);
+    expect(state.attributeMappings['CostCenter_Code'].hasMore).toBe(false);
+  });
+  it('ignores a stale rejected that lands after a newer request started', () => {
+    const arg = { attribute: 'CostCenter_Code' } as any;
+    let state = sqlReducer(initial, fetchAttributeMappings.pending('req-1', arg));
+    state = sqlReducer(state, fetchAttributeMappings.pending('req-2', arg));
+    state = sqlReducer(state, fetchAttributeMappings.rejected(new Error('stale'), 'req-1', arg));
+
+    expect(state.error).toBeUndefined();
+    expect(state.areAttributeMappingsLoading).toBe(true);
   });
   it('rejected sets error', () => {
     const state = sqlReducer(initial, fetchAttributeMappings.rejected(new Error('x'), 'r', {} as any));
