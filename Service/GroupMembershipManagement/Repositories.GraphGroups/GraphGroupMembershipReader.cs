@@ -18,6 +18,7 @@ using System.Diagnostics;
 using System.Linq;
 using System.Net;
 using System.Net.Http;
+using System.Text.Json;
 using System.Threading.Tasks;
 using static Microsoft.Graph.Chats.Item.Members.MembersRequestBuilder;
 using static Microsoft.Graph.Groups.Item.TransitiveMembers.TransitiveMembersRequestBuilder;
@@ -27,6 +28,8 @@ namespace Repositories.GraphGroups
 {
     internal class GraphGroupMembershipReader : GraphGroupRepositoryBase
     {
+        private const string AgentUserODataType = "microsoft.graph.agentUser";
+
         private readonly ILogger<GraphGroupMembershipReader> _graphGroupMembershipReaderLogger;
 
         public GraphGroupMembershipReader(GraphServiceClient graphServiceClient,
@@ -108,6 +111,92 @@ namespace Repositories.GraphGroups
             _graphGroupMembershipReaderLogger.LogInformationWithRunId(runId, $"From group {groupId}, transitive user count {count}\n");
 
             return count;
+        }
+
+        /// <summary>
+        /// Counts the Entra <c>agentUser</c> directory objects reachable transitively from a group.
+        /// This is telemetry only: it issues a dedicated query and never touches the membership read,
+        /// so a failure here reports zero rather than failing the sync.
+        /// </summary>
+        /// <remarks>
+        /// The <c>agentUser</c> subtype cannot be recovered from the membership payload - the groups delta
+        /// endpoint reports agents as <c>#microsoft.graph.user</c> - so a dedicated query is required.
+        /// Two type-cast primitives were measured against Graph and are unusable because both return wrong
+        /// numbers with HTTP 200 and no error:
+        /// <list type="number">
+        /// <item><c>GET /groups/{id}/transitiveMembers/microsoft.graph.agentUser/$count</c> silently ignores the
+        /// cast segment and returns the group's <b>total</b> member count.</item>
+        /// <item><c>GET /groups/{id}/transitiveMembers/microsoft.graph.agentUser</c> returns an OData error object
+        /// embedded inside <c>value[]</c> on any group holding both agents and users, so paging it yields <b>0</b>.</item>
+        /// </list>
+        /// Only <c>$filter=isof('microsoft.graph.agentUser')</c> is evaluated server-side and stays correct on mixed
+        /// groups. <c>$count=true</c> is mandatory (Graph rejects the filter with HTTP 400 without it) and
+        /// <c>ConsistencyLevel: eventual</c> is required. <c>$top=1</c> keeps the payload minimal because only
+        /// <c>@odata.count</c> is read, making the call O(1) - one request regardless of group size.
+        /// </remarks>
+        public async Task<int> GetAgentUserCountAsync(Guid groupId, Guid? runId)
+        {
+            SetCustomActivityProperty("RunId", Convert.ToString(runId));
+
+            try
+            {
+                var count = await ReadAgentUserCountAsync(groupId, runId);
+
+                _graphGroupMembershipReaderLogger.LogInformationWithRunId(runId, $"From group {groupId}, transitive agent count {count}\n");
+
+                return count;
+            }
+            catch (Exception ex)
+            {
+                // Telemetry must never fail a sync; report zero and continue.
+                _graphGroupMembershipReaderLogger.LogErrorWithRunId(runId, $"Unable to read the agent count for group {groupId}, reporting 0. {ex.GetBaseException()}", ex);
+                return 0;
+            }
+        }
+
+        private async Task<int> ReadAgentUserCountAsync(Guid groupId, Guid? runId)
+        {
+            var nativeResponseHandler = new NativeResponseHandler();
+            var responseHandlerOption = new ResponseHandlerOption { ResponseHandler = nativeResponseHandler };
+
+            var requestInformation = new RequestInformation
+            {
+                HttpMethod = Method.GET,
+                UrlTemplate = $"{_graphServiceClient.RequestAdapter.BaseUrl}/groups/{groupId}/transitiveMembers?$count=true&$top=1&$filter=isof('{AgentUserODataType}')"
+            };
+
+            requestInformation.AddRequestOptions(new List<IRequestOption> { responseHandlerOption });
+            requestInformation.Headers.Add("Accept", "application/json");
+            requestInformation.Headers.Add("ConsistencyLevel", "eventual");
+
+            // When using the native response handler it sets the return value to null.
+            // So we need to extract the response from the native response handler.
+            await _graphServiceClient.RequestAdapter.SendPrimitiveAsync<int?>(requestInformation);
+
+            var nativeHttpResponse = nativeResponseHandler.Value as HttpResponseMessage;
+
+            if (nativeHttpResponse == null)
+            {
+                return 0;
+            }
+
+            var headers = nativeHttpResponse.Headers.ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
+            await _graphGroupMetricTracker.TrackMetricsAsync(headers, QueryType.Other, runId);
+
+            if (!nativeHttpResponse.IsSuccessStatusCode)
+            {
+                _graphGroupMembershipReaderLogger.LogInformationWithRunId(runId, $"Agent count query for group {groupId} returned {(int)nativeHttpResponse.StatusCode}, reporting 0.\n");
+                return 0;
+            }
+
+            var responseContent = await nativeHttpResponse.Content.ReadAsStringAsync();
+
+            using var document = JsonDocument.Parse(responseContent);
+            var root = document.RootElement;
+
+            return root.TryGetProperty("@odata.count", out var odataCount) && odataCount.TryGetInt32(out var count)
+                ? count
+                : 0;
         }
 
         public async Task<(List<AzureADUser> users,

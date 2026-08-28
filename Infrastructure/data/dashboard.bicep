@@ -4697,6 +4697,108 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
               }
             }
           }
+          '64': {
+            position: {
+              x: 1
+              y: 72
+              colSpan: 17
+              rowSpan: 4
+            }
+            metadata: {
+              inputs: [
+                {
+                  name: 'resourceTypeMode'
+                  isOptional: true
+                }
+                {
+                  name: 'ComponentId'
+                  isOptional: true
+                }
+                {
+                  name: 'Scope'
+                  value: {
+                    resourceIds: [
+                      '/subscriptions/${subscriptionId}/resourceGroups/${resourceGroup}/providers/microsoft.insights/components/${resourceGroup}'
+                    ]
+                  }
+                  isOptional: true
+                }
+                {
+                  name: 'PartId'
+                  value: '5e5f1234-0001-4b5e-a5e5-b1c2d3e4f064'
+                  isOptional: true
+                }
+                {
+                  name: 'Version'
+                  value: '2.0'
+                  isOptional: true
+                }
+                {
+                  name: 'TimeRange'
+                  value: 'P1D'
+                  isOptional: true
+                }
+                {
+                  name: 'DashboardId'
+                  isOptional: true
+                }
+                {
+                  name: 'DraftRequestParameters'
+                  isOptional: true
+                }
+                {
+                  name: 'Query'
+                  value: 'customEvents\n| where name == "AgentMembersRead"\n| project timestamp,\n    RunId = tostring(customDimensions["RunId"]),\n    GroupObjectId = tostring(customDimensions["GroupObjectId"]),\n    DestinationGroupId = tostring(customDimensions["TargetGroupObjectId"]),\n    GroupRole = tostring(customDimensions["GroupRole"]),\n    ReadPath = tostring(customDimensions["ReadPath"]),\n    AgentCount = toint(customDimensions["AgentCount"])\n| summarize arg_max(timestamp, *) by GroupObjectId, DestinationGroupId, GroupRole\n| project timestamp, RunId, GroupObjectId, DestinationGroupId, GroupRole, ReadPath, AgentCount\n| order by AgentCount desc, timestamp desc\n| take 100\n'
+                  isOptional: true
+                }
+                {
+                  name: 'ControlType'
+                  value: 'AnalyticsGrid'
+                  isOptional: true
+                }
+                {
+                  name: 'SpecificChart'
+                  isOptional: true
+                }
+                {
+                  name: 'PartTitle'
+                  value: 'Analytics'
+                  isOptional: true
+                }
+                {
+                  name: 'PartSubTitle'
+                  value: resourceGroup
+                  isOptional: true
+                }
+                {
+                  name: 'Dimensions'
+                  isOptional: true
+                }
+                {
+                  name: 'LegendOptions'
+                  isOptional: true
+                }
+                {
+                  name: 'IsQueryContainTimeRange'
+                  value: false
+                  isOptional: true
+                }
+              ]
+              type: 'Extension/Microsoft_OperationsManagementSuite_Workspace/PartType/LogsDashboardPart'
+              settings: {
+                content: {
+                  Query: 'customEvents\n| where name == "AgentMembersRead"\n| project timestamp,\n    RunId = tostring(customDimensions["RunId"]),\n    GroupObjectId = tostring(customDimensions["GroupObjectId"]),\n    DestinationGroupId = tostring(customDimensions["TargetGroupObjectId"]),\n    GroupRole = tostring(customDimensions["GroupRole"]),\n    ReadPath = tostring(customDimensions["ReadPath"]),\n    AgentCount = toint(customDimensions["AgentCount"])\n| summarize arg_max(timestamp, *) by GroupObjectId, DestinationGroupId, GroupRole\n| project timestamp, RunId, GroupObjectId, DestinationGroupId, GroupRole, ReadPath, AgentCount\n| order by AgentCount desc, timestamp desc\n| take 100\n'
+                  ControlType: 'AnalyticsGrid'
+                  PartTitle: 'Agents Read Per Group (GroupMembershipObtainer)'
+                  PartSubTitle: 'Latest reading per group and role; do not sum AgentCount across roles'
+                }
+              }
+              partHeader: {
+                title: 'Agents Read Per Group (GroupMembershipObtainer)'
+                subtitle: ''
+              }
+            }
+          }
         }
       }
     }

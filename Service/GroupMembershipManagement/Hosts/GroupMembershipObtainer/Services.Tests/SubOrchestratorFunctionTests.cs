@@ -2,6 +2,8 @@
 // Licensed under the MIT license.
 using Hosts.GroupMembershipObtainer;
 using Microsoft.ApplicationInsights;
+using Microsoft.ApplicationInsights.Channel;
+using Microsoft.ApplicationInsights.DataContracts;
 using Microsoft.ApplicationInsights.Extensibility;
 using Microsoft.DurableTask;
 using Microsoft.Extensions.Logging;
@@ -1284,6 +1286,135 @@ namespace Tests.Services
         {
             await Task.CompletedTask;
             yield break;
+        }
+
+        [TestMethod]
+        public async Task TransitivePathTracksAgentMembersReadEventAsync()
+        {
+            _groupCount = 2;
+            SetupTransitiveGroupCount();
+            SetupAgentUserCount(7);
+
+            var channel = new CapturingTelemetryChannel();
+            var subOrchestratorFunction = new SubOrchestratorFunction(_deltaCachingConfig, CreateCapturingTelemetryClient(channel));
+
+            await subOrchestratorFunction.RunSubOrchestratorAsync(_durableOrchestrationContext.Object);
+
+            _durableOrchestrationContext.Verify(x => x.CallActivityAsync<int>(
+                It.Is<TaskName>(n => n.Name == nameof(GetAgentUserCountFunction)),
+                It.IsAny<GetAgentUserCountRequest>(),
+                It.IsAny<TaskOptions>()), Times.Once);
+
+            var agentEvent = GetAgentMembersReadEvent(channel);
+            Assert.AreEqual("7", agentEvent.Properties["AgentCount"]);
+            Assert.AreEqual("Transitive", agentEvent.Properties["ReadPath"]);
+            Assert.AreEqual("Source", agentEvent.Properties["GroupRole"]);
+            Assert.AreEqual(_groupMembershipRequest.SourceGroup.ObjectId.ToString(), agentEvent.Properties["GroupObjectId"]);
+            Assert.AreEqual(_groupMembershipRequest.GroupId.ToString(), agentEvent.Properties["TargetGroupObjectId"]);
+        }
+
+        [TestMethod]
+        public async Task DeltaPathTracksAgentMembersReadEventAsync()
+        {
+            // The delta endpoint reports agents as #microsoft.graph.user, so the count cannot come from the
+            // membership payload - it must come from the dedicated agent $count call on this path too.
+            _groupCount = 0;
+            SetupTransitiveGroupCount();
+            SetupAgentUserCount(7);
+
+            var channel = new CapturingTelemetryChannel();
+            var subOrchestratorFunction = new SubOrchestratorFunction(_deltaCachingConfig, CreateCapturingTelemetryClient(channel));
+
+            await subOrchestratorFunction.RunSubOrchestratorAsync(_durableOrchestrationContext.Object);
+
+            _durableOrchestrationContext.Verify(x => x.CallActivityAsync<int>(
+                It.Is<TaskName>(n => n.Name == nameof(GetAgentUserCountFunction)),
+                It.IsAny<GetAgentUserCountRequest>(),
+                It.IsAny<TaskOptions>()), Times.Once);
+
+            var agentEvent = GetAgentMembersReadEvent(channel);
+            Assert.AreEqual("7", agentEvent.Properties["AgentCount"]);
+            Assert.AreEqual("Delta", agentEvent.Properties["ReadPath"]);
+        }
+
+        [TestMethod]
+        public async Task AgentMembersReadEventIsNotTrackedWhenReplayingAsync()
+        {
+            _groupCount = 2;
+            SetupTransitiveGroupCount();
+            SetupAgentUserCount(7);
+            _durableOrchestrationContext.SetupGet(x => x.IsReplaying).Returns(true);
+
+            var channel = new CapturingTelemetryChannel();
+            var subOrchestratorFunction = new SubOrchestratorFunction(_deltaCachingConfig, CreateCapturingTelemetryClient(channel));
+
+            await subOrchestratorFunction.RunSubOrchestratorAsync(_durableOrchestrationContext.Object);
+
+            Assert.AreEqual(0, channel.GetEvents("AgentMembersRead").Count);
+        }
+
+        private void SetupTransitiveGroupCount()
+        {
+            _durableOrchestrationContext.Setup(x => x.CallActivityAsync<int>(It.IsAny<TaskName>(), It.IsAny<GetTransitiveGroupCountRequest>(), It.IsAny<TaskOptions>()))
+                                        .ReturnsAsync(() => _groupCount);
+        }
+
+        private void SetupAgentUserCount(int agentCount)
+        {
+            _graphGroupRepository.Setup(x => x.GetAgentUserCountAsync(It.IsAny<Guid>())).ReturnsAsync(agentCount);
+            _durableOrchestrationContext.Setup(x => x.CallActivityAsync<int>(It.IsAny<TaskName>(), It.IsAny<GetAgentUserCountRequest>(), It.IsAny<TaskOptions>()))
+                                        .Returns<TaskName, object, TaskOptions>(async (name, request, options) =>
+                                            await CallGetAgentUserCountFunctionAsync(request as GetAgentUserCountRequest));
+        }
+
+        private async Task<int> CallGetAgentUserCountFunctionAsync(GetAgentUserCountRequest request)
+        {
+            var function = new GetAgentUserCountFunction(NullLogger<GetAgentUserCountFunction>.Instance, _membershipCalculator);
+            return await function.GetAgentUserCountAsync(request);
+        }
+
+        private static TelemetryClient CreateCapturingTelemetryClient(CapturingTelemetryChannel channel)
+        {
+            var configuration = TelemetryConfiguration.CreateDefault();
+            configuration.TelemetryChannel = channel;
+            return new TelemetryClient(configuration);
+        }
+
+        /// <summary>
+        /// Asserts that exactly one AgentMembersRead event was emitted, which also guards the
+        /// one-event-per-group-per-run invariant, and returns it.
+        /// </summary>
+        private static EventTelemetry GetAgentMembersReadEvent(CapturingTelemetryChannel channel)
+        {
+            var events = channel.GetEvents("AgentMembersRead");
+            Assert.AreEqual(1, events.Count, "Expected exactly one AgentMembersRead event per group per run.");
+            return events[0];
+        }
+
+        /// <summary>
+        /// Minimal ITelemetryChannel that captures EventTelemetry items in memory so tests
+        /// can assert which Track* events fired during a SubOrchestrator run.
+        /// </summary>
+        private sealed class CapturingTelemetryChannel : ITelemetryChannel
+        {
+            private readonly List<EventTelemetry> _events = new();
+
+            public bool? DeveloperMode { get; set; }
+            public string EndpointAddress { get; set; }
+
+            public void Send(ITelemetry item)
+            {
+                if (item is EventTelemetry eventTelemetry)
+                {
+                    _events.Add(eventTelemetry);
+                }
+            }
+
+            public IReadOnlyList<EventTelemetry> GetEvents(string name) =>
+                _events.Where(e => e.Name == name).ToList();
+
+            public void Flush() { }
+            public void Dispose() { }
         }
     }
 }

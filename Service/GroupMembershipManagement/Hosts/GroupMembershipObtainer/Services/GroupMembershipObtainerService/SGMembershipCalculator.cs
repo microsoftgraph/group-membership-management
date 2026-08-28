@@ -106,6 +106,11 @@ namespace Hosts.GroupMembershipObtainer
             return await _graphGroupRepository.GetUsersCountAsync(objectId);
         }
 
+        public async Task<int> GetAgentUserCountAsync(Guid objectId)
+        {
+            return await _graphGroupRepository.GetAgentUserCountAsync(objectId);
+        }
+
         public async Task<DeltaGroupInformation> GetFirstDeltaUsersPageAsync(Guid objectId, Guid runId, int numberOfPages)
         {
             _logger.ReadingUsersFromGroup(objectId);

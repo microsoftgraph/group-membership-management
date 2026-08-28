@@ -319,6 +319,11 @@ namespace Repositories.GraphGroups
             return await _graphGroupMembershipReader.GetUsersCountAsync(objectId, ResolveRunId());
         }
 
+        public async Task<int> GetAgentUserCountAsync(Guid objectId)
+        {
+            return await _graphGroupMembershipReader.GetAgentUserCountAsync(objectId, ResolveRunId());
+        }
+
         public async Task<List<AzureADGroup>> GetGroupsAsync(List<Guid> groupIds)
         {
             return await _graphGroupInformationReader.GetGroupsAsync(groupIds, ResolveRunId());

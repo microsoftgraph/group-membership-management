@@ -56,6 +56,12 @@ namespace Repositories.Contracts
         Task<(List<AzureADUser> users, string nextPageUrl, string deltaUrl)> GetNextDeltaUsersPagesAsync(Guid objectId, string nextPageUrl, int numberOfPages);
         Task<int> GetGroupsCountAsync(Guid objectId);
         Task<int> GetUsersCountAsync(Guid objectId);
+
+        /// <summary>
+        /// Counts the Entra agentUser directory objects reachable transitively from the group.
+        /// Telemetry only - never used to determine membership. Returns 0 if the count cannot be read.
+        /// </summary>
+        Task<int> GetAgentUserCountAsync(Guid objectId);
         Task<List<AzureADGroup>> GetGroupsAsync(List<Guid> groupIds);
         Task<List<AzureADGroup>> SearchDestinationsAsync(string query);
         Task<List<AzureADGroup>> SearchDestinationsBySearchAsync(string search);

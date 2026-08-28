@@ -24,6 +24,8 @@ namespace Hosts.GroupMembershipObtainer
     {
         private const int DELTAQUERY_PAGECOUNT = 5;
         private const int DELTALINKQUERY_PAGECOUNT = 5;
+        private const string ReadPathTransitive = "Transitive";
+        private const string ReadPathDelta = "Delta";
         private readonly IDeltaCachingConfig _deltaCachingConfig;
         private readonly TelemetryClient _telemetryClient;
 
@@ -116,6 +118,7 @@ namespace Hosts.GroupMembershipObtainer
 
                         if (transitiveGroupCount > 0 || !_deltaCachingConfig.DeltaCacheEnabled)
                         {
+                            await TrackAgentMembersReadEventAsync(context, request, ReadPathTransitive);
                             logger.RunTransitiveMembersQuery(request.SourceGroup.ObjectId);
                             await GetTransitiveMembers(context, request, logger);
                             var membershipFilePath = await ProcessGroupMembershipChangesAsync(context, request);
@@ -127,6 +130,8 @@ namespace Hosts.GroupMembershipObtainer
                         }
                         else
                         {
+                            await TrackAgentMembersReadEventAsync(context, request, ReadPathDelta);
+
                             // first check if delta file exists in cache folder
                             var deltaFilePath = $"cache/delta_{request.SourceGroup.ObjectId}";
                             var compressedDeltaFileContent = await GetFileDownloaderFunction(context, deltaFilePath, request, true);
@@ -311,6 +316,35 @@ namespace Hosts.GroupMembershipObtainer
                     logger.FunctionCompleted(nameof(SubOrchestratorFunction));
                 }
             }
+        }
+
+        /// <summary>
+        /// Emits exactly one <c>AgentMembersRead</c> telemetry event for the group being read in this run.
+        /// Observability only - the count never influences which members are added or removed.
+        /// </summary>
+        private async Task TrackAgentMembersReadEventAsync(TaskOrchestrationContext context, GroupMembershipRequest request, string readPath)
+        {
+            var agentCount = await context.CallActivityAsync<int>(nameof(GetAgentUserCountFunction),
+                                                new GetAgentUserCountRequest
+                                                {
+                                                    SyncJob = request.SyncJob,
+                                                    CurrentPart = request.CurrentPart,
+                                                    TotalParts = request.TotalParts,
+                                                    GroupId = request.SourceGroup.ObjectId
+                                                });
+
+            if (context.IsReplaying) return;
+
+            var agentMembersReadEvent = new Dictionary<string, string>
+            {
+                { "RunId", request.SyncJob.RunId.GetValueOrDefault().ToString() },
+                { "GroupObjectId", request.SourceGroup.ObjectId.ToString() },
+                { "TargetGroupObjectId", request.GroupId.ToString() },
+                { "GroupRole", request.SourceGroup.ObjectId == request.GroupId ? "Destination" : "Source" },
+                { "ReadPath", readPath },
+                { "AgentCount", agentCount.ToString() }
+            };
+            _telemetryClient.TrackEvent("AgentMembersRead", agentMembersReadEvent);
         }
 
         private void TrackCachedUsersEvent(Guid runId, int cachedUsersCount, Guid groupId)

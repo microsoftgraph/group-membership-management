@@ -161,6 +161,10 @@ namespace Services.Tests.Mocks
         {
             throw new NotImplementedException();
         }
+        public Task<int> GetAgentUserCountAsync(Guid objectId)
+        {
+            throw new NotImplementedException();
+        }
 
         public Task<List<string>> GetGroupEndpointsAsync(Guid groupId)
         {
