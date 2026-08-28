@@ -103,7 +103,7 @@ namespace WebApi.Controllers.v1.Settings
         [HttpGet("{settingKey}")]
         public async Task<IActionResult> GetSettingByKeyAsync(SettingKey settingKey)
         {
-            if (AISettingKeys.Contains(settingKey) && !User.IsInRole(Models.Roles.AI_SETTINGS_ADMINISTRATOR))
+            if (AISettingKeys.Contains(settingKey) && !CanReadAISettings())
             {
                 return Forbid();
             }
@@ -131,7 +131,7 @@ namespace WebApi.Controllers.v1.Settings
             {
                 var response = await _getAllSettingsRequestHandler.ExecuteAsync(new GetAllSettingsRequest());
                 var settings = response.Settings;
-                if (!User.IsInRole(Models.Roles.AI_SETTINGS_ADMINISTRATOR))
+                if (!CanReadAISettings())
                 {
                     var canReadOnboardingAISettings = User.IsInRole(Models.Roles.AI_ONBOARDING_CHAT);
                     settings = settings
@@ -199,6 +199,17 @@ namespace WebApi.Controllers.v1.Settings
             return false;
         }
 
+        /// <summary>
+        /// Whether the caller may read AI settings. Read-write implies read, so an administrator
+        /// qualifies without holding the reader role. This gates reads only; every AI settings
+        /// write remains administrator-only via <see cref="IsAuthorizedToWrite"/>.
+        /// </summary>
+        private bool CanReadAISettings()
+        {
+            return User.IsInRole(Models.Roles.AI_SETTINGS_ADMINISTRATOR)
+                || User.IsInRole(Models.Roles.AI_SETTINGS_READER);
+        }
+
         [Authorize()]
         [HttpGet("supportEmail")]
         public async Task<IActionResult> GetSupportEmailAddressAsync()
@@ -208,7 +219,7 @@ namespace WebApi.Controllers.v1.Settings
             return Ok(response.SupportEmailAddress);
         }
 
-        [Authorize(Roles = Models.Roles.AI_SETTINGS_ADMINISTRATOR)]
+        [Authorize(Roles = $"{Models.Roles.AI_SETTINGS_ADMINISTRATOR}, {Models.Roles.AI_SETTINGS_READER}")]
         [HttpGet("aiPrompt/defaults")]
         public IActionResult GetDefaultAIPrompt()
         {

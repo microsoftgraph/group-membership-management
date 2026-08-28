@@ -40,6 +40,11 @@ test('renders header after login', async () => {
     isAIOnboardingChat: false,
     isAISettingsAdministrator: false,
     isAISyncJob: false,
+    isTeamsChannelOnboarder: false,
+    isGeneralSettingsReader: false,
+    isAutoApproverReader: false,
+    isAISettingsReader: false,
+    isCustomMembershipProviderReader: false,
     isFetchingRoles: false,
   };
 
@@ -150,6 +155,11 @@ const buildNoAccessRoles = (): RolesResponse => ({
   isAIOnboardingChat: false,
   isAISettingsAdministrator: false,
   isAISyncJob: false,
+  isTeamsChannelOnboarder: false,
+  isGeneralSettingsReader: false,
+  isAutoApproverReader: false,
+  isAISettingsReader: false,
+  isCustomMembershipProviderReader: false,
   isFetchingRoles: false,
 });
 

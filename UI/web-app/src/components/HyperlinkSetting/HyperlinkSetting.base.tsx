@@ -15,7 +15,7 @@ import { useStrings } from '../../store/hooks';
 export const getClassNames = classNamesFunction<HyperlinkSettingStyleProps, HyperlinkSettingStyles>();
 
 export const HyperlinkSettingBase: React.FunctionComponent<HyperlinkSettingProps> = (props: HyperlinkSettingProps) => {
-  const { title, description, link, required, onLinkChange, onValidation, className, styles } = props;
+  const { title, description, link, required, onLinkChange, onValidation, className, styles, disabled } = props;
   const classNames: IProcessedStyleSet<HyperlinkSettingStyles> = getClassNames(styles, {
     className,
     theme: useTheme(),
@@ -54,6 +54,7 @@ export const HyperlinkSettingBase: React.FunctionComponent<HyperlinkSettingProps
           label={strings.Components.HyperlinkSetting.address}
           placeholder={strings.Components.HyperlinkSetting.addHyperlink}
           value={link}
+          disabled={disabled}
           onChange={handleChange}
           styles={{
             fieldGroup: classNames.textFieldFieldGroup,

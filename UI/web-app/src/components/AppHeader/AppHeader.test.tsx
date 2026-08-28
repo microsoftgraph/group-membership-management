@@ -74,6 +74,11 @@ describe('AppHeader', () => {
             isAIOnboardingChat: false,
             isAISettingsAdministrator: false,
             isAISyncJob: false,
+            isTeamsChannelOnboarder: false,
+            isGeneralSettingsReader: false,
+            isAutoApproverReader: false,
+            isAISettingsReader: false,
+            isCustomMembershipProviderReader: false,
             isFetchingRoles: false,
           },
           settings: {

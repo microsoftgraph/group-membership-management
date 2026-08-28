@@ -91,6 +91,13 @@ export type AdminConfigViewProps = AdminConfigProps & {
   isGeneralSettingsAdministrator: boolean;
   isAutoApproverAdministrator: boolean;
   isAISettingsAdministrator: boolean;
+  // Visibility is separate from editability: a reader-only holder sees the tab with every
+  // control disabled. The *Administrator flags above remain the "can edit" signal.
+  canViewGeneralSettings: boolean;
+  canViewAutoApproverSettings: boolean;
+  canViewAISettings: boolean;
+  canViewCustomSourceSettings: boolean;
+  isReadOnly: boolean;
   defaultAIPrompt: string;
 };
 
@@ -100,6 +107,7 @@ export type UserResourcesSettingsProps = {
   settings: { readonly [key in SettingKey]: string };
   setSettings: React.Dispatch<React.SetStateAction<{ readonly [key in SettingKey]: string }>>;
   setHasValidationErrors: React.Dispatch<React.SetStateAction<boolean>>;
+  canEdit: boolean;
 };
 
 export type OperationsProps = {
@@ -117,6 +125,7 @@ export type GeneralSettingsProps = {
   setServiceNotification: React.Dispatch<React.SetStateAction<AlertBannerConfig>>;
   serviceNotificationErrors: Record<string, string>;
   serviceNotificationSaveError?: string;
+  canEdit: boolean;
 };
 
 export type ServiceNotificationSettingsProps = {
@@ -126,6 +135,7 @@ export type ServiceNotificationSettingsProps = {
   setConfig: React.Dispatch<React.SetStateAction<AlertBannerConfig>>;
   errors: Record<string, string>;
   saveError?: string;
+  canEdit: boolean;
 };
 
 export type AutoApproverSettingsProps = {
@@ -133,6 +143,7 @@ export type AutoApproverSettingsProps = {
   strings: IStrings['AdminConfig'];
   settings: { readonly [key in SettingKey]: string };
   setSettings: React.Dispatch<React.SetStateAction<{ readonly [key in SettingKey]: string }>>;
+  canEdit: boolean;
 };
 
 export type SettingsSectionProps = {
@@ -149,6 +160,7 @@ export type AISettingsProps = {
   settings: { readonly [key in SettingKey]: string };
   setSettings: React.Dispatch<React.SetStateAction<{ readonly [key in SettingKey]: string }>>;
   defaultAIPrompt: string;
+  canEdit: boolean;
 };
 
 export type CustomSourceSettingsProps = {
@@ -160,6 +172,7 @@ export type CustomSourceSettingsProps = {
   setNewAttributes: React.Dispatch<React.SetStateAction<SqlMembershipAttribute[] | undefined>>;
   setHasValidationErrors: React.Dispatch<React.SetStateAction<boolean>>;
   handleGetValues: (attribute: SqlMembershipAttribute) => void;
+  canEdit: boolean;
 };
 
 export type NullThresholdCellProps = {
@@ -169,12 +182,14 @@ export type NullThresholdCellProps = {
   ariaLabel: string;
   placeholder: string;
   validationErrorMessage: string;
+  disabled?: boolean;
   onValueChange: (attributeName: string, raw: string, isValid: boolean) => void;
 };
 
 export type CustomLabelCellProps = {
   value: string;
   placeholder: string;
+  disabled?: boolean;
   onChange: ((event: React.FormEvent<HTMLInputElement | HTMLTextAreaElement>, newValue?: string | undefined) => void) | undefined;
   className: string;
 };

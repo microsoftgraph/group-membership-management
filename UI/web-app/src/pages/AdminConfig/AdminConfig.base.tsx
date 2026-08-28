@@ -44,7 +44,12 @@ import {
   selectIsGeneralSettingsAdministrator,
   selectIsAutoApproverAdministrator,
   selectHasAdminCenterPermissions,
+  selectHasReadOnlyAdminCenterAccess,
   selectIsAISettingsAdministrator,
+  selectIsGeneralSettingsReader,
+  selectIsAutoApproverReader,
+  selectIsAISettingsReader,
+  selectIsCustomMembershipProviderReader,
 } from '../../store/roles.slice';
 import { MessageBar, MessageBarType } from '@fluentui/react';
 import { Loader } from '../../components/Loader';
@@ -111,6 +116,11 @@ export const AdminConfigBase: React.FunctionComponent<AdminConfigProps> = (props
   const canViewSettings = useSelector(selectHasAdminCenterPermissions);
   const areSettingsLoaded = useSelector(selectAreSettingsLoaded);
   const settingsError = useSelector(selectError);
+  const canViewGeneralSettings = useSelector(selectIsGeneralSettingsReader);
+  const canViewAutoApproverSettings = useSelector(selectIsAutoApproverReader);
+  const canViewAISettings = useSelector(selectIsAISettingsReader);
+  const canViewCustomSourceSettings = useSelector(selectIsCustomMembershipProviderReader);
+  const isReadOnly = useSelector(selectHasReadOnlyAdminCenterAccess);
 
   const strings = useStrings().AdminConfig;
 
@@ -302,6 +312,11 @@ export const AdminConfigBase: React.FunctionComponent<AdminConfigProps> = (props
       isGeneralSettingsAdministrator={isGeneralSettingsAdministrator}
       isAutoApproverAdministrator={isAutoApproverAdministrator}
       isAISettingsAdministrator={isAISettingsAdministrator}
+      canViewGeneralSettings={canViewGeneralSettings}
+      canViewAutoApproverSettings={canViewAutoApproverSettings}
+      canViewAISettings={canViewAISettings}
+      canViewCustomSourceSettings={canViewCustomSourceSettings}
+      isReadOnly={isReadOnly}
       defaultAIPrompt={defaultAIPrompt}
     />
   );

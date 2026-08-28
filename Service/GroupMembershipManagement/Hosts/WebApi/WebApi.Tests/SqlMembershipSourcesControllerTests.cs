@@ -2,6 +2,7 @@
 // Licensed under the MIT license.
 
 using Azure.Messaging.EventGrid.SystemEvents;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Models;
@@ -562,6 +563,41 @@ namespace Services.Tests
 
             Assert.IsNotNull(internalServerErrorResponse);
             Assert.AreEqual(internalServerErrorResponse.StatusCode, (int)HttpStatusCode.InternalServerError);
+        }
+
+        [TestMethod]
+        public void AttributeValuesReadAcceptsBothCustomSourceRoles()
+        {
+            // FR-017: this read is write-gated today and deliberately widens to accept the read role.
+            var roles = GetAuthorizeRoles(nameof(SqlMembershipSourcesController.GetDefaultSourceAttributeValuesAsync));
+
+            CollectionAssert.Contains(roles, Roles.CUSTOM_MEMBERSHIP_PROVIDER_ADMINISTRATOR);
+            CollectionAssert.Contains(roles, Roles.CUSTOM_MEMBERSHIP_PROVIDER_READER);
+        }
+
+        [TestMethod]
+        public void PatchRoutesRemainCustomSourceAdministratorOnly()
+        {
+            var patchDefaultRoles = GetAuthorizeRoles(nameof(SqlMembershipSourcesController.PatchDefaultSourceCustomLabelAsync));
+            CollectionAssert.Contains(patchDefaultRoles, Roles.CUSTOM_MEMBERSHIP_PROVIDER_ADMINISTRATOR);
+            CollectionAssert.DoesNotContain(patchDefaultRoles, Roles.CUSTOM_MEMBERSHIP_PROVIDER_READER);
+
+            var patchAttributesRoles = GetAuthorizeRoles(nameof(SqlMembershipSourcesController.PatchDefaultSourceAttributesAsync));
+            CollectionAssert.Contains(patchAttributesRoles, Roles.CUSTOM_MEMBERSHIP_PROVIDER_ADMINISTRATOR);
+            CollectionAssert.DoesNotContain(patchAttributesRoles, Roles.CUSTOM_MEMBERSHIP_PROVIDER_READER);
+        }
+
+        private static string[] GetAuthorizeRoles(string methodName)
+        {
+            var method = typeof(SqlMembershipSourcesController).GetMethod(methodName)!;
+            var attribute = method.GetCustomAttributes(typeof(AuthorizeAttribute), true)
+                                  .Cast<AuthorizeAttribute>()
+                                  .Single();
+
+            return (attribute.Roles ?? string.Empty)
+                .Split(',', StringSplitOptions.RemoveEmptyEntries)
+                .Select(role => role.Trim())
+                .ToArray();
         }
 
         private ControllerContext CreateControllerContext(List<Claim> claims)

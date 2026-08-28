@@ -110,7 +110,7 @@ namespace WebApi.Controllers.v1.SqlMembershipSources
             }
         }
 
-        [Authorize(Roles = Models.Roles.CUSTOM_MEMBERSHIP_PROVIDER_ADMINISTRATOR)]
+        [Authorize(Roles = $"{Models.Roles.CUSTOM_MEMBERSHIP_PROVIDER_ADMINISTRATOR}, {Models.Roles.CUSTOM_MEMBERSHIP_PROVIDER_READER}")]
         [HttpGet("attributeValues/{attribute}")]
         public async Task<IActionResult> GetDefaultSourceAttributeValuesAsync([FromRoute] string attribute, [FromQuery] bool hasMapping)
         {

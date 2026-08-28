@@ -21,5 +21,9 @@ namespace WebApi.Models
         public const string AI_SETTINGS_ADMINISTRATOR = "AISettings.ReadWrite.All";
         public const string AI_SYNC_JOB = "AI.SyncJob.All";
         public const string TEAMS_CHANNEL_ONBOARDER = "TeamsChannel.Onboard.OwnedBy";
+        public const string GENERAL_SETTINGS_READER = "GeneralSettings.Read.All";
+        public const string AUTO_APPROVER_READER = "AutoApprover.Read.All";
+        public const string AI_SETTINGS_READER = "AISettings.Read.All";
+        public const string CUSTOM_MEMBERSHIP_PROVIDER_READER = "CustomSource.Read.All";
     }
 }

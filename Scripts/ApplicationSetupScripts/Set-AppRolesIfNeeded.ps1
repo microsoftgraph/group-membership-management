@@ -208,6 +208,38 @@ function Set-AppRolesIfNeeded {
             Id                 = [Guid]::NewGuid().ToString()
             IsEnabled          = $True
             AllowedMemberTypes = @($memberTypes)
+        },
+        @{
+            DisplayName        = "General Settings Reader"
+            Description        = "Can view general settings. Cannot change them."
+            Value              = "GeneralSettings.Read.All"
+            Id                 = [Guid]::NewGuid().ToString()
+            IsEnabled          = $True
+            AllowedMemberTypes = @($memberTypes)
+        },
+        @{
+            DisplayName        = "AI Settings Reader"
+            Description        = "Can view AI settings including prompts, temperature, and feature toggles. Cannot change them."
+            Value              = "AISettings.Read.All"
+            Id                 = [Guid]::NewGuid().ToString()
+            IsEnabled          = $True
+            AllowedMemberTypes = @($memberTypes)
+        },
+        @{
+            DisplayName        = "Auto Approver Reader"
+            Description        = "Can view automatic approval settings. Cannot change them."
+            Value              = "AutoApprover.Read.All"
+            Id                 = [Guid]::NewGuid().ToString()
+            IsEnabled          = $True
+            AllowedMemberTypes = @($memberTypes)
+        },
+        @{
+            DisplayName        = "Custom Membership Provider Reader"
+            Description        = "Can view custom membership source configuration and attribute metadata. Cannot change them."
+            Value              = "CustomSource.Read.All"
+            Id                 = [Guid]::NewGuid().ToString()
+            IsEnabled          = $True
+            AllowedMemberTypes = @($memberTypes)
         }
 
     )

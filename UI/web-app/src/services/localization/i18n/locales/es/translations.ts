@@ -212,6 +212,8 @@ export const strings: IStrings = {
       pageTitle: "Configuración de Administrador",
       saveButton: "Guardar",
       saveSuccess:  "Guardado exitosamente.",
+      readOnlyBanner: "Tiene acceso de solo lectura a esta configuración. Comuníquese con un administrador de GMM para solicitar permiso para realizar cambios.",
+      readOnlyTooltip: "Tiene acceso de solo lectura a esta configuración.",
     },
     Errors:{
       forbidden: 'Prohibido',

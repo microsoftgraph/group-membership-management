@@ -144,6 +144,10 @@ const mockRoles = {
   isAIOnboardingChat: true,
   isAISettingsAdministrator: true,
   isTeamsChannelOnboarder: true,
+  isGeneralSettingsReader: true,
+  isAutoApproverReader: true,
+  isAISettingsReader: true,
+  isCustomMembershipProviderReader: true,
   isFetchingRoles: false,
 };
 

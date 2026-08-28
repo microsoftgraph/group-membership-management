@@ -51,11 +51,13 @@ export const validateServiceNotification = (
  * Service notification (site-wide alert banner) settings, rendered within the General tab.
  * The draft configuration lives in the parent view so that the page level Save button
  * persists it alongside the other Admin Configuration settings.
+ * Visible to GENERAL_SETTINGS readers; canEdit is false for view-only holders, which disables
+ * every control here. The API rejects the write regardless.
  */
 export const ServiceNotificationSettings: React.FunctionComponent<ServiceNotificationSettingsProps> = (
   props: ServiceNotificationSettingsProps
 ) => {
-  const { classNames, strings, config, setConfig, errors, saveError } = props;
+  const { classNames, strings, config, setConfig, errors, saveError, canEdit } = props;
   const labels = strings.ServiceNotifications.labels;
 
   const update = (partial: Partial<AlertBannerConfig>) => {
@@ -84,6 +86,7 @@ export const ServiceNotificationSettings: React.FunctionComponent<ServiceNotific
         onText={labels.enabledOn}
         offText={labels.enabledOff}
         inlineLabel={false}
+        disabled={!canEdit}
         onChange={(_event, checked) => update({ isEnabled: !!checked })}
       />
 
@@ -94,6 +97,7 @@ export const ServiceNotificationSettings: React.FunctionComponent<ServiceNotific
         maxLength={MAX_NOTIFICATION_MESSAGE_LENGTH}
         errorMessage={errors.message}
         styles={{ fieldGroup: classNames.serviceNotificationTextFieldGroup }}
+        disabled={!canEdit}
         onChange={(_event, newValue) => update({ message: newValue ?? '' })}
       />
 
@@ -103,6 +107,7 @@ export const ServiceNotificationSettings: React.FunctionComponent<ServiceNotific
           placeholder={labels.linkLabelPlaceholder}
           value={config.linkText ?? ''}
           styles={{ fieldGroup: classNames.serviceNotificationTextFieldGroup }}
+          disabled={!canEdit}
           onChange={(_event, newValue) => update({ linkText: newValue ?? '' })}
         />
         <TextField
@@ -111,6 +116,7 @@ export const ServiceNotificationSettings: React.FunctionComponent<ServiceNotific
           value={config.linkUrl ?? ''}
           errorMessage={errors.linkUrl}
           styles={{ fieldGroup: classNames.serviceNotificationTextFieldGroup }}
+          disabled={!canEdit}
           onChange={(_event, newValue) => update({ linkUrl: newValue ?? '' })}
         />
       </div>
@@ -121,6 +127,7 @@ export const ServiceNotificationSettings: React.FunctionComponent<ServiceNotific
           placeholder={labels.startDatePlaceholder}
           value={toDate(config.startDate)}
           textField={{ styles: { fieldGroup: classNames.serviceNotificationTextFieldGroup } }}
+          disabled={!canEdit}
           onSelectDate={(date) => date && update({ startDate: date.toISOString() })}
         />
         <DatePicker
@@ -128,6 +135,7 @@ export const ServiceNotificationSettings: React.FunctionComponent<ServiceNotific
           placeholder={labels.endDatePlaceholder}
           value={toDate(config.endDate)}
           textField={{ styles: { fieldGroup: classNames.serviceNotificationTextFieldGroup } }}
+          disabled={!canEdit}
           onSelectDate={(date) => date && update({ endDate: date.toISOString() })}
         />
       </div>

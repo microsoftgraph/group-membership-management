@@ -6,7 +6,7 @@ import type { GeneralSettingProps, GeneralSettingStyles, GeneralSettingStyleProp
 export const getClassNames = classNamesFunction<GeneralSettingStyleProps, GeneralSettingStyles>();
 
 export const GeneralSettingBase: React.FunctionComponent<GeneralSettingProps> = (props: GeneralSettingProps) => {
-  const { title, description, className, generalSettingValue, onGeneralSettingChange, styles, id} = props;
+  const { title, description, className, generalSettingValue, onGeneralSettingChange, styles, id, disabled } = props;
   const classNames = getClassNames(styles, {
     className,
     theme: useTheme(),
@@ -27,6 +27,7 @@ export const GeneralSettingBase: React.FunctionComponent<GeneralSettingProps> = 
           id={id}
           title={title}
           checked={isToggleEnabled}
+          disabled={disabled}
           onChange={handleSubmissionReviewerSettingChange}
           styles={{ root: { marginBottom: 0 } }}
         />

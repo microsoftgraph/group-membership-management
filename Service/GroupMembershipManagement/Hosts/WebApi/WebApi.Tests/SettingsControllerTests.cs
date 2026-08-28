@@ -1,6 +1,7 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Configuration;
 using Moq;
@@ -829,6 +830,116 @@ namespace Services.Tests
             _settingsRepository.Verify(
                 x => x.PatchSettingAsync(SettingKey.IsAIRejectionFeedbackRefinementEnabled, "true"),
                 Times.Once());
+        }
+
+        [TestMethod]
+        public async Task GetSettingByKeyWhenAISettingAndUserHasAISettingsReaderRoleReturnsOkTestAsync()
+        {
+            var aiSettingKey = SettingKey.CopilotInstructions;
+            var aiSettingEntity = new Setting { SettingKey = aiSettingKey, SettingValue = "ai prompt" };
+            _settingsRepository.Setup(x => x.GetSettingByKeyAsync(aiSettingKey)).ReturnsAsync(aiSettingEntity);
+
+            _settingsController = new SettingsController(_getSettingHandler, _getAllSettingsHandler, _patchSettingHandler, _getSupportEmailHandler)
+            {
+                ControllerContext = CreateControllerContext(new List<Claim>
+                {
+                    new Claim(ClaimTypes.Name, "user@domain.com"),
+                    new Claim(ClaimTypes.Role, Roles.AI_SETTINGS_READER)
+                })
+            };
+
+            var response = await _settingsController.GetSettingByKeyAsync(aiSettingKey);
+
+            Assert.IsInstanceOfType(response, typeof(OkObjectResult));
+            _settingsRepository.Verify(x => x.GetSettingByKeyAsync(aiSettingKey), Times.Once());
+        }
+
+        [TestMethod]
+        public async Task PatchAISettingWhenUserHasOnlyAISettingsReaderRoleReturnsForbidTestAsync()
+        {
+            _settingsController = new SettingsController(_getSettingHandler, _getAllSettingsHandler, _patchSettingHandler, _getSupportEmailHandler)
+            {
+                ControllerContext = CreateControllerContext(new List<Claim>
+                {
+                    new Claim(ClaimTypes.Name, "user@domain.com"),
+                    new Claim(ClaimTypes.Role, Roles.AI_SETTINGS_READER)
+                })
+            };
+
+            var response = await _settingsController.PatchSettingAsync(SettingKey.CopilotInstructions, "updatedValue");
+
+            Assert.IsInstanceOfType(response, typeof(ForbidResult));
+            _settingsRepository.Verify(x => x.PatchSettingAsync(It.IsAny<SettingKey>(), It.IsAny<string>()), Times.Never());
+        }
+
+        [TestMethod]
+        public async Task PatchAlertBannerWhenUserHasOnlyGeneralSettingsReaderRoleReturnsForbidTestAsync()
+        {
+            var controller = new SettingsController(_getSettingHandler, _getAllSettingsHandler, _patchSettingHandler, _getSupportEmailHandler)
+            {
+                ControllerContext = CreateControllerContext(new List<Claim>
+                {
+                    new Claim(ClaimTypes.Name, "user@domain.com"),
+                    new Claim(ClaimTypes.Role, Roles.GENERAL_SETTINGS_READER)
+                })
+            };
+
+            var response = await controller.PatchAlertBannerAsync(CreateValidAlertConfig());
+
+            Assert.IsInstanceOfType(response, typeof(ForbidResult));
+            _settingsRepository.Verify(x => x.PatchSettingAsync(It.IsAny<SettingKey>(), It.IsAny<string>()), Times.Never());
+        }
+
+        [TestMethod]
+        public async Task PatchAutoApproverSettingWhenUserHasOnlyAutoApproverReaderRoleReturnsForbidTestAsync()
+        {
+            _settingsController = new SettingsController(_getSettingHandler, _getAllSettingsHandler, _patchSettingHandler, _getSupportEmailHandler)
+            {
+                ControllerContext = CreateControllerContext(new List<Claim>
+                {
+                    new Claim(ClaimTypes.Name, "user@domain.com"),
+                    new Claim(ClaimTypes.Role, Roles.AUTO_APPROVER_READER)
+                })
+            };
+
+            var response = await _settingsController.PatchSettingAsync(SettingKey.IsAutoApprovalForGroupBasedSyncsEnabled, "true");
+
+            Assert.IsInstanceOfType(response, typeof(ForbidResult));
+            _settingsRepository.Verify(x => x.PatchSettingAsync(It.IsAny<SettingKey>(), It.IsAny<string>()), Times.Never());
+        }
+
+        [TestMethod]
+        public void GetDefaultAIPromptAcceptsBothAISettingsRoles()
+        {
+            var roles = GetAuthorizeRoles(typeof(SettingsController), nameof(SettingsController.GetDefaultAIPrompt));
+
+            CollectionAssert.Contains(roles, Roles.AI_SETTINGS_ADMINISTRATOR);
+            CollectionAssert.Contains(roles, Roles.AI_SETTINGS_READER);
+        }
+
+        [TestMethod]
+        public void PatchRoutesRemainAdministratorOnly()
+        {
+            var patchSettingRoles = GetAuthorizeRoles(typeof(SettingsController), nameof(SettingsController.PatchSettingAsync));
+            CollectionAssert.DoesNotContain(patchSettingRoles, Roles.AI_SETTINGS_READER);
+            CollectionAssert.DoesNotContain(patchSettingRoles, Roles.GENERAL_SETTINGS_READER);
+            CollectionAssert.DoesNotContain(patchSettingRoles, Roles.AUTO_APPROVER_READER);
+
+            var patchAlertBannerRoles = GetAuthorizeRoles(typeof(SettingsController), nameof(SettingsController.PatchAlertBannerAsync));
+            CollectionAssert.DoesNotContain(patchAlertBannerRoles, Roles.GENERAL_SETTINGS_READER);
+        }
+
+        private static string[] GetAuthorizeRoles(Type controllerType, string methodName)
+        {
+            var method = controllerType.GetMethod(methodName)!;
+            var attribute = method.GetCustomAttributes(typeof(AuthorizeAttribute), true)
+                                  .Cast<AuthorizeAttribute>()
+                                  .Single();
+
+            return (attribute.Roles ?? string.Empty)
+                .Split(',', StringSplitOptions.RemoveEmptyEntries)
+                .Select(role => role.Trim())
+                .ToArray();
         }
 
         private ControllerContext CreateControllerContext(HttpContext httpContext)

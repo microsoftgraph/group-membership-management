@@ -46,6 +46,13 @@ namespace WebApi.Controllers.v1.Roles
             var isAISyncJob = User.IsInRole(Models.Roles.AI_SYNC_JOB);
             var isTeamsChannelOnboarder = User.IsInRole(Models.Roles.TEAMS_CHANNEL_ONBOARDER);
 
+            // Read-write implies read, so an existing administrator reports as a reader without
+            // being granted the new role. The administrator flags above stay ReadWrite-only.
+            var isGeneralSettingsReader = User.IsInRole(Models.Roles.GENERAL_SETTINGS_READER) || isGeneralSettingsAdministrator;
+            var isAutoApproverReader = User.IsInRole(Models.Roles.AUTO_APPROVER_READER) || isAutoApproverAdministrator;
+            var isAISettingsReader = User.IsInRole(Models.Roles.AI_SETTINGS_READER) || isAISettingsAdministrator;
+            var isCustomMembershipProviderReader = User.IsInRole(Models.Roles.CUSTOM_MEMBERSHIP_PROVIDER_READER) || isCustomMembershipProviderAdministrator;
+
             var roleStatus = new Models.DTOs.RolesObject
             {
                 IsJobOwnerReader = isJobOwnerReader,
@@ -66,7 +73,11 @@ namespace WebApi.Controllers.v1.Roles
                 IsAIOnboardingChat = isAIOnboardingChat,
                 IsAISettingsAdministrator = isAISettingsAdministrator,
                 IsAISyncJob = isAISyncJob,
-                IsTeamsChannelOnboarder = isTeamsChannelOnboarder
+                IsTeamsChannelOnboarder = isTeamsChannelOnboarder,
+                IsGeneralSettingsReader = isGeneralSettingsReader,
+                IsAutoApproverReader = isAutoApproverReader,
+                IsAISettingsReader = isAISettingsReader,
+                IsCustomMembershipProviderReader = isCustomMembershipProviderReader
             };
 
             return Ok(roleStatus);

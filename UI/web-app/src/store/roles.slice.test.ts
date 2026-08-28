@@ -18,6 +18,11 @@ import rolesReducer, {
   selectHasJobWritePermissions,
   selectIsJobWriter,
   selectHasAdminCenterPermissions,
+  selectHasReadOnlyAdminCenterAccess,
+  selectIsGeneralSettingsReader,
+  selectIsAutoApproverReader,
+  selectIsAISettingsReader,
+  selectIsCustomMembershipProviderReader,
 } from './roles.slice';
 import { getAllRoles } from './roles.api';
 
@@ -145,6 +150,37 @@ describe('roles.slice — selectors', () => {
     });
     it('returns true for isGeneralSettingsAdministrator', () => {
       expect(selectHasAdminCenterPermissions(makeRoot({ isGeneralSettingsAdministrator: true }))).toBe(true);
+    });
+    it('returns true for each read-only settings role', () => {
+      expect(selectHasAdminCenterPermissions(makeRoot({ isGeneralSettingsReader: true }))).toBe(true);
+      expect(selectHasAdminCenterPermissions(makeRoot({ isAutoApproverReader: true }))).toBe(true);
+      expect(selectHasAdminCenterPermissions(makeRoot({ isAISettingsReader: true }))).toBe(true);
+      expect(selectHasAdminCenterPermissions(makeRoot({ isCustomMembershipProviderReader: true }))).toBe(true);
+    });
+  });
+
+  describe('read-only settings roles', () => {
+    it('exposes a selector per read-only area', () => {
+      expect(selectIsGeneralSettingsReader(makeRoot({ isGeneralSettingsReader: true }))).toBe(true);
+      expect(selectIsAutoApproverReader(makeRoot({ isAutoApproverReader: true }))).toBe(true);
+      expect(selectIsAISettingsReader(makeRoot({ isAISettingsReader: true }))).toBe(true);
+      expect(selectIsCustomMembershipProviderReader(makeRoot({ isCustomMembershipProviderReader: true }))).toBe(true);
+    });
+
+    it('selectHasReadOnlyAdminCenterAccess is false without any admin center role', () => {
+      expect(selectHasReadOnlyAdminCenterAccess(makeRoot())).toBe(false);
+    });
+
+    it('selectHasReadOnlyAdminCenterAccess is true for a reader-only holder', () => {
+      expect(selectHasReadOnlyAdminCenterAccess(makeRoot({ isAISettingsReader: true }))).toBe(true);
+    });
+
+    it('selectHasReadOnlyAdminCenterAccess is false when any administrator role is held', () => {
+      expect(
+        selectHasReadOnlyAdminCenterAccess(
+          makeRoot({ isAISettingsReader: true, isGeneralSettingsAdministrator: true })
+        )
+      ).toBe(false);
     });
   });
 });

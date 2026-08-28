@@ -17,6 +17,10 @@ export interface Roles {
   isAISettingsAdministrator: boolean;
   isAISyncJob: boolean;
   isTeamsChannelOnboarder: boolean;
+  isGeneralSettingsReader: boolean;
+  isAutoApproverReader: boolean;
+  isAISettingsReader: boolean;
+  isCustomMembershipProviderReader: boolean;
   isFetchingRoles: boolean;
 }
 

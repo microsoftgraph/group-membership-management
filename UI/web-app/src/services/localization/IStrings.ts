@@ -208,6 +208,8 @@ export type IStrings = {
       pageTitle: string;
       saveButton: string;
       saveSuccess: string;
+      readOnlyBanner: string;
+      readOnlyTooltip: string;
     },
     Errors:{
       forbidden: string;

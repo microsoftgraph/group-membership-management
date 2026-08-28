@@ -88,6 +88,11 @@ const renderAdminConfigView = (defaultAIPrompt: string, settingsOverrides?: Part
         isOperationsResetAdministrator={false}
         isGeneralSettingsAdministrator={false}
         isAISettingsAdministrator={true}
+        canViewGeneralSettings={false}
+        canViewAutoApproverSettings={false}
+        canViewAISettings={true}
+        canViewCustomSourceSettings={false}
+        isReadOnly={false}
         defaultAIPrompt={defaultAIPrompt}
       />
     </MemoryRouter>
@@ -114,6 +119,11 @@ describe('AdminConfigView tab layout', () => {
           strings={defaultStrings.AdminConfig}
           styles={getStyles}
           defaultAIPrompt={''}
+          canViewGeneralSettings={roles.isGeneralSettingsAdministrator}
+          canViewAutoApproverSettings={roles.isAutoApproverAdministrator}
+          canViewAISettings={roles.isAISettingsAdministrator}
+          canViewCustomSourceSettings={roles.isCustomMembershipProviderAdmin}
+          isReadOnly={false}
           {...roles}
         />
       </MemoryRouter>
@@ -359,6 +369,11 @@ describe('AdminConfigView Custom Source', () => {
           isOperationsResetAdministrator={false}
           isGeneralSettingsAdministrator={false}
           isAISettingsAdministrator={false}
+          canViewGeneralSettings={false}
+          canViewAutoApproverSettings={false}
+          canViewAISettings={false}
+          canViewCustomSourceSettings={true}
+          isReadOnly={false}
           defaultAIPrompt={''}
         />
       </MemoryRouter>
@@ -433,6 +448,11 @@ describe('AdminConfigView custom source null threshold', () => {
           isGeneralSettingsAdministrator={false}
           isAutoApproverAdministrator={false}
           isAISettingsAdministrator={false}
+          canViewGeneralSettings={false}
+          canViewAutoApproverSettings={false}
+          canViewAISettings={false}
+          canViewCustomSourceSettings={true}
+          isReadOnly={false}
           defaultAIPrompt={''}
         />
       </MemoryRouter>
@@ -575,6 +595,11 @@ describe('AdminConfigView custom source null threshold', () => {
           isGeneralSettingsAdministrator={true}
           isAutoApproverAdministrator={false}
           isAISettingsAdministrator={false}
+          canViewGeneralSettings={true}
+          canViewAutoApproverSettings={false}
+          canViewAISettings={false}
+          canViewCustomSourceSettings={true}
+          isReadOnly={false}
           defaultAIPrompt={''}
         />
       </MemoryRouter>
@@ -616,5 +641,83 @@ describe('AdminConfigView custom source null threshold', () => {
 
     expect(getThresholdInput('WorkRoom').value).toBe('42');
     expect(getThresholdInput('AssignmentType').value).toBe('100');
+  });
+});
+
+describe('AdminConfigView read-only access', () => {
+  const renderReadOnlyView = () =>
+    renderWithProviders(
+      <MemoryRouter>
+        <AdminConfigView
+          isSaving={false}
+          onSave={vi.fn()}
+          handleGetValues={vi.fn()}
+          settings={createSettings()}
+          sqlMembershipSource={undefined}
+          sqlMembershipSourceAttributes={undefined}
+          serviceNotification={getDefaultAlertBannerConfig()}
+          strings={defaultStrings.AdminConfig}
+          styles={getStyles}
+          isAutoApproverAdministrator={false}
+          isCustomMembershipProviderAdmin={false}
+          isOperationsResetAdministrator={false}
+          isGeneralSettingsAdministrator={false}
+          isAISettingsAdministrator={false}
+          canViewGeneralSettings={true}
+          canViewAutoApproverSettings={true}
+          canViewAISettings={true}
+          canViewCustomSourceSettings={true}
+          isReadOnly={true}
+          defaultAIPrompt={''}
+        />
+      </MemoryRouter>
+    );
+
+  test('shows the tabs a reader can view rather than hiding them', () => {
+    renderReadOnlyView();
+
+    const tabNames = screen.getAllByRole('tab').map((tab) => tab.textContent?.trim());
+
+    expect(tabNames).toContain(defaultStrings.AdminConfig.GeneralSettings.labels.general);
+    expect(tabNames).toContain(defaultStrings.AdminConfig.AISettings.labels.aiSettings);
+    expect(tabNames).toContain(defaultStrings.AdminConfig.AutoApproverSettings.labels.autoApprover);
+    expect(tabNames).toContain(defaultStrings.AdminConfig.CustomSourceSettings.labels.customSource);
+    // Operations has no read-only counterpart, so it stays hidden without the admin role.
+    expect(tabNames).not.toContain(defaultStrings.AdminConfig.Operations.labels.operations);
+  });
+
+  test('surfaces the read-only banner and disables Save', async () => {
+    renderReadOnlyView();
+
+    // Fluent's MessageBar renders its content through DelayedRender, so the text appears asynchronously.
+    expect(await screen.findByText(defaultStrings.AdminConfig.labels.readOnlyBanner)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: defaultStrings.AdminConfig.labels.saveButton })).toBeDisabled();
+  });
+
+  test('disables the editable controls on a viewable tab', () => {
+    renderReadOnlyView();
+
+    fireEvent.click(screen.getByRole('tab', { name: defaultStrings.AdminConfig.AISettings.labels.aiSettings }));
+
+    expect(
+      screen.getByRole('button', { name: defaultStrings.AdminConfig.AISettings.labels.suggestedPromptAdd })
+    ).toBeDisabled();
+    expect(
+      screen.getByPlaceholderText(defaultStrings.AdminConfig.AISettings.labels.copilotInstructionsPromptPlaceholder)
+    ).toBeDisabled();
+  });
+
+  test('disables the Service Notifications controls in the General tab', () => {
+    renderReadOnlyView();
+
+    const notificationLabels = defaultStrings.AdminConfig.ServiceNotifications.labels;
+
+    // The General tab is the default, so the Service Notifications section is already mounted.
+    expect(screen.getByRole('switch', { name: notificationLabels.enabled })).toBeDisabled();
+    expect(screen.getByPlaceholderText(notificationLabels.messagePlaceholder)).toBeDisabled();
+    expect(screen.getByPlaceholderText(notificationLabels.linkUrlPlaceholder)).toBeDisabled();
+    expect(screen.getByPlaceholderText(notificationLabels.linkLabelPlaceholder)).toBeDisabled();
+    expect(screen.getByPlaceholderText(notificationLabels.startDatePlaceholder)).toBeDisabled();
+    expect(screen.getByPlaceholderText(notificationLabels.endDatePlaceholder)).toBeDisabled();
   });
 });

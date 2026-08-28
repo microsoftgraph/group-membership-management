@@ -211,6 +211,8 @@ export const strings: IStrings = {
       pageTitle: "Admin Configuration",
       saveButton: "Save",
       saveSuccess: "Saved successfully.",
+      readOnlyBanner: "You have view-only access to these settings. Contact a GMM administrator to request permission to make changes.",
+      readOnlyTooltip: "You have view-only access to these settings.",
     },
     Errors:{
       forbidden: 'Forbidden',

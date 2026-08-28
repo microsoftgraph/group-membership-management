@@ -2,7 +2,7 @@
 // Licensed under the MIT license.
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { classNamesFunction, Toggle, IProcessedStyleSet, Pivot, PivotItem, PrimaryButton, DefaultButton, TextField, Text, IColumn, SelectionMode, ShimmeredDetailsList, Dropdown, Spinner, IRenderFunction, ISelectableDroppableTextProps, IDropdown, Slider, Icon, IconButton, ActionButton } from '@fluentui/react';
+import { classNamesFunction, Toggle, IProcessedStyleSet, Pivot, PivotItem, PrimaryButton, DefaultButton, TextField, Text, IColumn, SelectionMode, ShimmeredDetailsList, Dropdown, Spinner, IRenderFunction, ISelectableDroppableTextProps, IDropdown, Slider, Icon, IconButton, ActionButton, MessageBar, MessageBarType } from '@fluentui/react';
 import { useTheme } from '@fluentui/react/lib/Theme';
 import {
   AdminConfigStyleProps,
@@ -40,6 +40,11 @@ export const AdminConfigView: React.FunctionComponent<AdminConfigViewProps> = (p
     isGeneralSettingsAdministrator,
     isAutoApproverAdministrator,
     isAISettingsAdministrator,
+    canViewGeneralSettings,
+    canViewAutoApproverSettings,
+    canViewAISettings,
+    canViewCustomSourceSettings,
+    isReadOnly,
     defaultAIPrompt } = props;
 
   // generate class names
@@ -102,13 +107,19 @@ export const AdminConfigView: React.FunctionComponent<AdminConfigViewProps> = (p
             text={strings.labels.saveButton}
             onClick={handleOnSaveButtonClick}
             className={classNames.saveButton}
-            disabled={!hasChanges() || hasUrlValidationErrors || hasAttributeValidationErrors || hasServiceNotificationErrors || isSaving}
+            title={isReadOnly ? strings.labels.readOnlyTooltip : undefined}
+            disabled={isReadOnly || !hasChanges() || hasUrlValidationErrors || hasAttributeValidationErrors || hasServiceNotificationErrors || isSaving}
           ></PrimaryButton>
         </div>
+        {isReadOnly &&
+          <MessageBar messageBarType={MessageBarType.info}>
+            {strings.labels.readOnlyBanner}
+          </MessageBar>
+        }
         <div className={classNames.card}>
           <PageSection>
             <Pivot>
-              {isGeneralSettingsAdministrator &&
+              {canViewGeneralSettings &&
                 <PivotItem
                   headerText={strings.GeneralSettings.labels.general}
                   headerButtonProps={{
@@ -122,6 +133,7 @@ export const AdminConfigView: React.FunctionComponent<AdminConfigViewProps> = (p
                     settings={newSettings}
                     setSettings={setNewSettings}
                     setHasValidationErrors={setHasUrlValidationErrors}
+                    canEdit={isGeneralSettingsAdministrator}
                     serviceNotification={newServiceNotification}
                     setServiceNotification={setNewServiceNotification}
                     serviceNotificationErrors={serviceNotificationErrors}
@@ -141,7 +153,7 @@ export const AdminConfigView: React.FunctionComponent<AdminConfigViewProps> = (p
                     strings={strings} />
                 </PivotItem>
               }
-              {isCustomMembershipProviderAdmin &&
+              {canViewCustomSourceSettings &&
                 <PivotItem
                   headerText={strings.CustomSourceSettings.labels.customSource}
                   headerButtonProps={{
@@ -156,11 +168,12 @@ export const AdminConfigView: React.FunctionComponent<AdminConfigViewProps> = (p
                     setNewAttributes={setNewAttributes}
                     setNewSource={setNewSource}
                     handleGetValues={handleGetValues}
+                    canEdit={isCustomMembershipProviderAdmin}
                     setHasValidationErrors={setHasAttributeValidationErrors}
                     strings={strings} />
                 </PivotItem>
               }
-              {isAISettingsAdministrator &&
+              {canViewAISettings &&
                 <PivotItem
                   headerText={strings.AISettings.labels.aiSettings}
                   headerButtonProps={{
@@ -173,10 +186,11 @@ export const AdminConfigView: React.FunctionComponent<AdminConfigViewProps> = (p
                     strings={strings}
                     settings={newSettings}
                     setSettings={setNewSettings}
+                    canEdit={isAISettingsAdministrator}
                     defaultAIPrompt={defaultAIPrompt} />
                 </PivotItem>
               }
-              {isAutoApproverAdministrator &&
+              {canViewAutoApproverSettings &&
                 <PivotItem
                   headerText={strings.AutoApproverSettings.labels.autoApprover}
                   headerButtonProps={{
@@ -188,6 +202,7 @@ export const AdminConfigView: React.FunctionComponent<AdminConfigViewProps> = (p
                     classNames={classNames}
                     strings={strings}
                     settings={newSettings}
+                    canEdit={isAutoApproverAdministrator}
                     setSettings={setNewSettings} />
                 </PivotItem>
               }
@@ -233,7 +248,7 @@ const Operations: React.FunctionComponent<OperationsProps> = (props: OperationsP
 }
 
 const GeneralSettings: React.FunctionComponent<GeneralSettingsProps> = (props: GeneralSettingsProps) => {
-  const { classNames, strings, settings, setSettings, setHasValidationErrors, serviceNotification, setServiceNotification, serviceNotificationErrors, serviceNotificationSaveError } = props;
+  const { classNames, strings, settings, setSettings, setHasValidationErrors, canEdit, serviceNotification, setServiceNotification, serviceNotificationErrors, serviceNotificationSaveError } = props;
 
   const handleSettingChange = (settingKey: SettingKey) => (newValue: string) => {
     setSettings((settings) => ({ ...settings, [settingKey]: newValue }));
@@ -253,6 +268,7 @@ const GeneralSettings: React.FunctionComponent<GeneralSettingsProps> = (props: G
           description={strings.GeneralSettings.labels.reviewOwnSubmissionDescription}
           onGeneralSettingChange={handleSettingChange(SettingKey.CanReviewOwnSubmissions)}
           generalSettingValue={settings[SettingKey.CanReviewOwnSubmissions]}
+          disabled={!canEdit}
         />
         <GeneralSetting
           id={SettingKeyMap[SettingKey.CreateGroupFeatureEnabled]}
@@ -260,6 +276,7 @@ const GeneralSettings: React.FunctionComponent<GeneralSettingsProps> = (props: G
           description={strings.GeneralSettings.labels.createGroupDescription}
           onGeneralSettingChange={handleSettingChange(SettingKey.CreateGroupFeatureEnabled)}
           generalSettingValue={settings[SettingKey.CreateGroupFeatureEnabled]}
+          disabled={!canEdit}
         />
         <GeneralSetting
           id={SettingKeyMap[SettingKey.IsBusinessJustificationRequired]}
@@ -267,6 +284,7 @@ const GeneralSettings: React.FunctionComponent<GeneralSettingsProps> = (props: G
           description={strings.GeneralSettings.labels.businessJustificationDescription}
           onGeneralSettingChange={handleSettingChange(SettingKey.IsBusinessJustificationRequired)}
           generalSettingValue={settings[SettingKey.IsBusinessJustificationRequired]}
+          disabled={!canEdit}
         />
         <GeneralSetting
           id={SettingKeyMap[SettingKey.IsDisclaimerEnabled]}
@@ -274,6 +292,7 @@ const GeneralSettings: React.FunctionComponent<GeneralSettingsProps> = (props: G
           description={strings.GeneralSettings.labels.isDisclaimerEnabledDescription}
           onGeneralSettingChange={handleSettingChange(SettingKey.IsDisclaimerEnabled)}
           generalSettingValue={settings[SettingKey.IsDisclaimerEnabled]}
+          disabled={!canEdit}
         />
         </div>
       </SettingsSection>
@@ -287,6 +306,7 @@ const GeneralSettings: React.FunctionComponent<GeneralSettingsProps> = (props: G
           strings={strings}
           settings={settings}
           setSettings={setSettings}
+          canEdit={canEdit}
           setHasValidationErrors={setHasValidationErrors} />
       </SettingsSection>
       <SettingsSection
@@ -300,14 +320,15 @@ const GeneralSettings: React.FunctionComponent<GeneralSettingsProps> = (props: G
           config={serviceNotification}
           setConfig={setServiceNotification}
           errors={serviceNotificationErrors}
-          saveError={serviceNotificationSaveError} />
+          saveError={serviceNotificationSaveError}
+          canEdit={canEdit} />
       </SettingsSection>
     </div>
   );
 }
 
 const AutoApproverSettings: React.FunctionComponent<AutoApproverSettingsProps> = (props: AutoApproverSettingsProps) => {
-  const { classNames, strings, settings, setSettings } = props;
+  const { classNames, strings, settings, setSettings, canEdit } = props;
 
   const handleSettingChange = (settingKey: SettingKey) => (newValue: string) => {
     setSettings((settings) => ({ ...settings, [settingKey]: newValue }));
@@ -326,6 +347,7 @@ const AutoApproverSettings: React.FunctionComponent<AutoApproverSettingsProps> =
         description={strings.AutoApproverSettings.labels.isAutoApprovalForGroupBasedSyncsEnabledDescription}
         onGeneralSettingChange={handleSettingChange(SettingKey.IsAutoApprovalForGroupBasedSyncsEnabled)}
         generalSettingValue={settings[SettingKey.IsAutoApprovalForGroupBasedSyncsEnabled]}
+        disabled={!canEdit}
       />
       <GeneralSetting
         id={SettingKeyMap[SettingKey.IsAutoApprovalForRequestorIsOrgLeaderSyncsEnabled]}
@@ -333,6 +355,7 @@ const AutoApproverSettings: React.FunctionComponent<AutoApproverSettingsProps> =
         description={strings.AutoApproverSettings.labels.isAutoApprovalForRequestorIsOrgLeaderSyncsEnabledDescription}
         onGeneralSettingChange={handleSettingChange(SettingKey.IsAutoApprovalForRequestorIsOrgLeaderSyncsEnabled)}
         generalSettingValue={settings[SettingKey.IsAutoApprovalForRequestorIsOrgLeaderSyncsEnabled]}
+        disabled={!canEdit}
       />
       <GeneralSetting
         id={SettingKeyMap[SettingKey.IsPerPartAutoApprovalEnabled]}
@@ -340,6 +363,7 @@ const AutoApproverSettings: React.FunctionComponent<AutoApproverSettingsProps> =
         description={strings.AutoApproverSettings.labels.isPerPartAutoApprovalEnabledDescription}
         onGeneralSettingChange={handleSettingChange(SettingKey.IsPerPartAutoApprovalEnabled)}
         generalSettingValue={settings[SettingKey.IsPerPartAutoApprovalEnabled]}
+        disabled={!canEdit}
       />
       </div>
     </SettingsSection>
@@ -348,7 +372,7 @@ const AutoApproverSettings: React.FunctionComponent<AutoApproverSettingsProps> =
 
 const UserResourcesSettings: React.FunctionComponent<UserResourcesSettingsProps> = (props: UserResourcesSettingsProps) => {
 
-  const { classNames, strings, settings, setSettings, setHasValidationErrors } = props;
+  const { classNames, strings, settings, setSettings, setHasValidationErrors, canEdit } = props;
 
   const [urlValidations, setUrlValidations] = useState<{ readonly [key in SettingKey]: boolean }>({
     [SettingKey.DashboardUrl]: true,
@@ -396,6 +420,7 @@ const UserResourcesSettings: React.FunctionComponent<UserResourcesSettingsProps>
           link={settings[SettingKey.DashboardUrl]}
           onLinkChange={handleSettingChange(SettingKey.DashboardUrl)}
           onValidation={handleUrlSettingValidation(SettingKey.DashboardUrl)}
+          disabled={!canEdit}
         ></HyperlinkSetting>
         <HyperlinkSetting
           title={strings.HyperlinkSettings.outlookWarningLink.title}
@@ -403,6 +428,7 @@ const UserResourcesSettings: React.FunctionComponent<UserResourcesSettingsProps>
           link={settings[SettingKey.OutlookWarningUrl]}
           onLinkChange={handleSettingChange(SettingKey.OutlookWarningUrl)}
           onValidation={handleUrlSettingValidation(SettingKey.OutlookWarningUrl)}
+          disabled={!canEdit}
         ></HyperlinkSetting>
         <HyperlinkSetting
           title={strings.HyperlinkSettings.privacyPolicyLink.title}
@@ -410,6 +436,7 @@ const UserResourcesSettings: React.FunctionComponent<UserResourcesSettingsProps>
           link={settings[SettingKey.PrivacyPolicyUrl]}
           onLinkChange={handleSettingChange(SettingKey.PrivacyPolicyUrl)}
           onValidation={handleUrlSettingValidation(SettingKey.PrivacyPolicyUrl)}
+          disabled={!canEdit}
         ></HyperlinkSetting>
       </div>
     </div>
@@ -418,7 +445,7 @@ const UserResourcesSettings: React.FunctionComponent<UserResourcesSettingsProps>
 
 const CustomSourceSettings: React.FunctionComponent<CustomSourceSettingsProps> = (props: CustomSourceSettingsProps) => {
 
-  const { classNames, sqlMembershipSource, sqlMembershipSourceAttributes, setNewAttributes, setNewSource, handleGetValues, setHasValidationErrors, strings } = props;
+  const { classNames, sqlMembershipSource, sqlMembershipSourceAttributes, setNewAttributes, setNewSource, handleGetValues, setHasValidationErrors, strings, canEdit } = props;
 
   const [attributeMap, setAttributeMap] = useState<{ [key: string]: SqlMembershipAttribute } | undefined>(undefined);
   const [isSortedDescending, setIsSortedDescending] = useState(false);
@@ -535,6 +562,7 @@ const CustomSourceSettings: React.FunctionComponent<CustomSourceSettingsProps> =
               handleFieldChange(item.name, column.fieldName, newValue);
             }}
             className={classNames.customLabelTextField}
+            disabled={!canEdit}
           />
         );
       case 'attributeValues':
@@ -557,6 +585,7 @@ const CustomSourceSettings: React.FunctionComponent<CustomSourceSettingsProps> =
                 handleFieldChange(item.name, column.fieldName, newValue);
               }}
               multiline rows={3}
+              disabled={!canEdit}
               styles={{ fieldGroup: classNames.descriptionTextField }}
             />
           );
@@ -564,6 +593,7 @@ const CustomSourceSettings: React.FunctionComponent<CustomSourceSettingsProps> =
           return (
             <Toggle
               title={strings.CustomSourceSettings.labels.enabledToggleTitle}
+              disabled={!canEdit}
               checked={fieldContent !== undefined ? Boolean(fieldContent) : true}
               onChange={(e, checked) => handleFieldChange(item.name, column.fieldName, checked)}
             />
@@ -572,6 +602,7 @@ const CustomSourceSettings: React.FunctionComponent<CustomSourceSettingsProps> =
           return (
             <Toggle
               title={strings.CustomSourceSettings.labels.sensitiveToggleTitle}
+              disabled={!canEdit}
               checked={fieldContent !== undefined ? Boolean(fieldContent) : false}
               onChange={(e, checked) => handleFieldChange(item.name, column.fieldName, checked)}
             />
@@ -587,6 +618,7 @@ const CustomSourceSettings: React.FunctionComponent<CustomSourceSettingsProps> =
               placeholder={strings.CustomSourceSettings.labels.nullThresholdPlaceHolder}
               validationErrorMessage={strings.CustomSourceSettings.labels.nullThresholdValidationError}
               onValueChange={handleNullThresholdChange}
+              disabled={!canEdit}
             />
           );
       default:
@@ -704,7 +736,7 @@ const CustomSourceSettings: React.FunctionComponent<CustomSourceSettingsProps> =
             label={strings.CustomSourceSettings.labels.sourceCustomLabelInput}
             required={!sourceNameValue.trim()}
             value={sourceNameValue}
-            disabled={sqlMembershipSource === undefined}
+            disabled={!canEdit || sqlMembershipSource === undefined}
             onChange={onSourceNameChange}
             placeholder={strings.CustomSourceSettings.labels.customLabelInputPlaceHolder}
             styles={{ fieldGroup: classNames.sourceNameTextField }}
@@ -752,7 +784,7 @@ export const isValidNullThresholdInput = (raw: string): boolean => {
 // draft state changes, so keeping the raw text here guarantees typing and validation errors
 // are always reflected in the cell.
 const NullThresholdCell = React.memo((props: NullThresholdCellProps) => {
-  const { attributeName, storedValue, title, ariaLabel, placeholder, validationErrorMessage, onValueChange } = props;
+  const { attributeName, storedValue, title, ariaLabel, placeholder, validationErrorMessage, disabled, onValueChange } = props;
 
   const [rawValue, setRawValue] = useState(fractionToPercentText(storedValue));
   const [errorMessage, setErrorMessage] = useState('');
@@ -773,18 +805,20 @@ const NullThresholdCell = React.memo((props: NullThresholdCellProps) => {
       value={rawValue}
       placeholder={placeholder}
       errorMessage={errorMessage}
+      disabled={disabled}
       onChange={handleChange}
     />
   );
 });
 
 const CustomLabelCell = React.memo((props: CustomLabelCellProps) => {
-  const { className, value, onChange, placeholder } = props;
+  const { className, value, onChange, placeholder, disabled } = props;
   return (
     <TextField
       value={value}
       styles={{ fieldGroup: className }}
       placeholder={placeholder}
+      disabled={disabled}
       onChange={onChange}
     />
   );
@@ -849,7 +883,7 @@ const AttributeValuesCell = React.memo((props: AttributeValuesCellProps) => {
 });
 
 const AISettings: React.FunctionComponent<AISettingsProps> = (props: AISettingsProps) => {
-  const { classNames, strings, settings, setSettings, defaultAIPrompt } = props;
+  const { classNames, strings, settings, setSettings, defaultAIPrompt, canEdit } = props;
   const [showDefaults, setShowDefaults] = useState(false);
 
   const handleSettingChange = (settingKey: SettingKey) => (newValue: string) => {
@@ -870,6 +904,7 @@ const AISettings: React.FunctionComponent<AISettingsProps> = (props: AISettingsP
           description={strings.AISettings.labels.isAITitleEnabledDescription}
           onGeneralSettingChange={handleSettingChange(SettingKey.IsAITitleEnabled)}
           generalSettingValue={settings[SettingKey.IsAITitleEnabled]}
+          disabled={!canEdit}
         />
         <GeneralSetting
           id={SettingKeyMap[SettingKey.IsAICopilotEnabled]}
@@ -877,6 +912,7 @@ const AISettings: React.FunctionComponent<AISettingsProps> = (props: AISettingsP
           description={strings.AISettings.labels.isAICopilotEnabledDescription}
           onGeneralSettingChange={handleSettingChange(SettingKey.IsAICopilotEnabled)}
           generalSettingValue={settings[SettingKey.IsAICopilotEnabled]}
+          disabled={!canEdit}
         />
         <GeneralSetting
           id={SettingKeyMap[SettingKey.IsAISearchForUserEnabled]}
@@ -884,6 +920,7 @@ const AISettings: React.FunctionComponent<AISettingsProps> = (props: AISettingsP
           description={strings.AISettings.labels.isAISearchForUserEnabledDescription}
           onGeneralSettingChange={handleSettingChange(SettingKey.IsAISearchForUserEnabled)}
           generalSettingValue={settings[SettingKey.IsAISearchForUserEnabled]}
+          disabled={!canEdit}
         />
         <GeneralSetting
           id={SettingKeyMap[SettingKey.IsAIRunExplanationEnabled]}
@@ -891,6 +928,7 @@ const AISettings: React.FunctionComponent<AISettingsProps> = (props: AISettingsP
           description={strings.AISettings.labels.isAIRunExplanationEnabledDescription}
           onGeneralSettingChange={handleSettingChange(SettingKey.IsAIRunExplanationEnabled)}
           generalSettingValue={settings[SettingKey.IsAIRunExplanationEnabled]}
+          disabled={!canEdit}
         />
         <GeneralSetting
           id={SettingKeyMap[SettingKey.IsAIRejectionFeedbackRefinementEnabled]}
@@ -898,6 +936,7 @@ const AISettings: React.FunctionComponent<AISettingsProps> = (props: AISettingsP
           description={strings.AISettings.labels.isAIRejectionFeedbackRefinementEnabledDescription}
           onGeneralSettingChange={handleSettingChange(SettingKey.IsAIRejectionFeedbackRefinementEnabled)}
           generalSettingValue={settings[SettingKey.IsAIRejectionFeedbackRefinementEnabled]}
+          disabled={!canEdit}
         />
         </div>
       </SettingsSection>
@@ -907,7 +946,7 @@ const AISettings: React.FunctionComponent<AISettingsProps> = (props: AISettingsP
         title={strings.AISettings.labels.suggestedPromptsTitle}
         subtitle={strings.AISettings.labels.suggestedPromptsDescription}
       >
-        <SuggestedPromptsEditor classNames={classNames} strings={strings} settings={settings} setSettings={setSettings} />
+        <SuggestedPromptsEditor classNames={classNames} strings={strings} settings={settings} setSettings={setSettings} canEdit={canEdit} />
       </SettingsSection>
       <SettingsSection
         classNames={classNames}
@@ -940,6 +979,7 @@ const AISettings: React.FunctionComponent<AISettingsProps> = (props: AISettingsP
           rows={12}
           value={settings[SettingKey.CopilotInstructions]}
           placeholder={strings.AISettings.labels.copilotInstructionsPromptPlaceholder}
+          disabled={!canEdit}
           onChange={(_, newValue) => handleSettingChange(SettingKey.CopilotInstructions)(newValue ?? '')}
         />
       </SettingsSection>
@@ -956,6 +996,7 @@ const AISettings: React.FunctionComponent<AISettingsProps> = (props: AISettingsP
             description={strings.AISettings.labels.copilotTemperatureDescription}
             value={settings[SettingKey.CopilotTemperature]}
             fallbackValue={0.7}
+            canEdit={canEdit}
             onValueChange={handleSettingChange(SettingKey.CopilotTemperature)}
           />
           <ModelBehaviorSetting
@@ -964,6 +1005,7 @@ const AISettings: React.FunctionComponent<AISettingsProps> = (props: AISettingsP
             description={strings.AISettings.labels.copilotTopPDescription}
             value={settings[SettingKey.CopilotTopP]}
             fallbackValue={0.9}
+            canEdit={canEdit}
             onValueChange={handleSettingChange(SettingKey.CopilotTopP)}
           />
         </div>
@@ -978,8 +1020,9 @@ const ModelBehaviorSetting: React.FunctionComponent<{
   description: string;
   value: string;
   fallbackValue: number;
+  canEdit: boolean;
   onValueChange: (newValue: string) => void;
-}> = ({ classNames, title, description, value, fallbackValue, onValueChange }) => {
+}> = ({ classNames, title, description, value, fallbackValue, canEdit, onValueChange }) => {
   const theme = useTheme();
   const parsed = parseFloat(value);
   return (
@@ -993,6 +1036,7 @@ const ModelBehaviorSetting: React.FunctionComponent<{
           step={0.05}
           value={Number.isFinite(parsed) ? parsed : fallbackValue}
           showValue
+          disabled={!canEdit}
           ariaLabel={title}
           onChange={(newValue) => onValueChange(newValue.toString())}
           styles={{
@@ -1026,7 +1070,8 @@ const SuggestedPromptsEditor: React.FunctionComponent<{
   strings: AdminConfigViewProps['strings'];
   settings: { readonly [key in SettingKey]: string };
   setSettings: React.Dispatch<React.SetStateAction<{ readonly [key in SettingKey]: string }>>;
-}> = ({ classNames, strings, settings, setSettings }) => {
+  canEdit: boolean;
+}> = ({ classNames, strings, settings, setSettings, canEdit }) => {
   const theme = useTheme();
 
   const defaultSuggestedPrompts = useMemo(() => [
@@ -1097,18 +1142,21 @@ const SuggestedPromptsEditor: React.FunctionComponent<{
             styles={{ root: classNames.suggestedPromptLabelField }}
             placeholder={strings.AISettings.labels.suggestedPromptLabelPlaceholder}
             value={p.label}
+            disabled={!canEdit}
             onChange={(_, val) => handleFieldChange(p.id, 'label', val ?? '')}
           />
           <TextField
             styles={{ root: classNames.suggestedPromptPromptField }}
             placeholder={strings.AISettings.labels.suggestedPromptPromptPlaceholder}
             value={p.prompt}
+            disabled={!canEdit}
             onChange={(_, val) => handleFieldChange(p.id, 'prompt', val ?? '')}
           />
           <IconButton
             iconProps={{ iconName: 'Delete' }}
             title={strings.AISettings.labels.suggestedPromptRemove}
             ariaLabel={strings.AISettings.labels.suggestedPromptRemove}
+            disabled={!canEdit}
             onClick={() => handleRemove(p.id)}
             className={classNames.suggestedPromptRemoveButton}
           />
@@ -1119,6 +1167,7 @@ const SuggestedPromptsEditor: React.FunctionComponent<{
         <DefaultButton
           iconProps={{ iconName: 'Add' }}
           text={strings.AISettings.labels.suggestedPromptAdd}
+          disabled={!canEdit}
           onClick={handleAdd}
           className={classNames.suggestedPromptAddButton}
           styles={{
@@ -1131,6 +1180,7 @@ const SuggestedPromptsEditor: React.FunctionComponent<{
         <ActionButton
           iconProps={{ iconName: 'Refresh' }}
           text={strings.AISettings.labels.suggestedPromptPopulateDefaults}
+          disabled={!canEdit}
           onClick={handlePopulateDefaults}
           styles={{
             root: { color: theme.palette.neutralPrimary },
