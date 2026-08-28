@@ -28,15 +28,28 @@ test.describe('Admin Tests', () => {
     await page.goto(`${url}/Admin`);
 
     const tabs = page.getByRole('tab');
-    await expect(tabs).toHaveCount(6, { timeout: 20000 });
+    await expect(tabs).toHaveCount(5, { timeout: 20000 });
     await expect(tabs).toHaveText([
       'General',
       'Operations',
       'Custom Source',
       'AI',
       'Auto Approver',
-      'Alert Banner',
     ]);
+  });
+
+  test('Service notification settings render on the General tab', async ({ page }) => {
+    const url = DOMAIN.startsWith('http://') || DOMAIN.startsWith('https://') ? DOMAIN : `https://${DOMAIN}`;
+    await page.goto(`${url}/Admin`);
+
+    await page.getByRole('tab', { name: 'General', exact: true }).click();
+
+    await expect(page.getByText('Service Disruption Notification')).toBeVisible({ timeout: 20000 });
+    await expect(page.getByLabel('Notification Message')).toBeVisible();
+    await expect(page.getByLabel('Link Label')).toBeVisible();
+    await expect(page.getByLabel('Link URL')).toBeVisible();
+    await expect(page.getByLabel('Start Date (UTC)')).toBeVisible();
+    await expect(page.getByLabel('End Date (UTC)')).toBeVisible();
   });
 
   test('Auto approval toggles live on the Auto Approver tab, not General', async ({ page }) => {

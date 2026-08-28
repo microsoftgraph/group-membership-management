@@ -269,6 +269,52 @@ export const getStyles = (props: AdminConfigStyleProps): AdminConfigStyles => {
                 },
             },
         },
+        serviceNotificationCard: {
+            borderRadius: 10,
+            backgroundColor: theme.palette.white,
+            outline: `1px solid ${theme.palette.neutralQuaternary}`,
+            width: '100%',
+            minWidth: 0,
+            boxSizing: 'border-box',
+            padding: 24,
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'stretch',
+            gap: 4,
+        },
+        serviceNotificationTitle: {
+            fontWeight: 600,
+            fontSize: 16,
+        },
+        serviceNotificationDescription: {
+            fontSize: 14,
+            fontWeight: 400,
+        },
+        serviceNotificationToggle: {
+            marginTop: 12,
+            marginBottom: 0,
+        },
+        serviceNotificationFieldRow: {
+            display: 'grid',
+            gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
+            gap: 16,
+            alignItems: 'start',
+            selectors: {
+                '@media (max-width: 900px)': {
+                    gridTemplateColumns: 'minmax(0, 1fr)',
+                },
+            },
+        },
+        serviceNotificationTextFieldGroup: {
+            borderRadius: 4,
+            border: '1px solid',
+            borderColor: theme.palette.neutralQuaternary,
+            background: theme.palette.white,
+            width: '100%',
+        },
+        serviceNotificationErrorMessage: {
+            marginTop: 8,
+        },
     };
 };
 

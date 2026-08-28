@@ -10,6 +10,7 @@ import { AdminConfigView, fractionToPercentText } from './AdminConfig.view';
 import { getStyles } from './AdminConfig.styles';
 import type { AdminConfigViewProps } from './AdminConfig.types';
 import { SettingKey, SqlMembershipAttribute } from '../../models';
+import { getDefaultAlertBannerConfig } from '../../models/AlertBannerConfig';
 import { defaultStrings } from '../../services/localization';
 import { renderWithProviders } from '../../testing/renderWithProviders';
 
@@ -79,6 +80,7 @@ const renderAdminConfigView = (defaultAIPrompt: string, settingsOverrides?: Part
         settings={createSettings(settingsOverrides)}
         sqlMembershipSource={undefined}
         sqlMembershipSourceAttributes={undefined}
+        serviceNotification={getDefaultAlertBannerConfig()}
         strings={defaultStrings.AdminConfig}
         styles={getStyles}
         isAutoApproverAdministrator={false}
@@ -108,6 +110,7 @@ describe('AdminConfigView tab layout', () => {
           settings={createSettings()}
           sqlMembershipSource={undefined}
           sqlMembershipSourceAttributes={undefined}
+          serviceNotification={getDefaultAlertBannerConfig()}
           strings={defaultStrings.AdminConfig}
           styles={getStyles}
           defaultAIPrompt={''}
@@ -124,7 +127,7 @@ describe('AdminConfigView tab layout', () => {
     isAISettingsAdministrator: true,
   };
 
-  test('renders the six tabs in the redesigned order', () => {
+  test('renders the five tabs in the redesigned order', () => {
     renderWithRoles(allRoles);
 
     const tabNames = screen.getAllByRole('tab').map((tab) => tab.textContent?.trim());
@@ -135,8 +138,18 @@ describe('AdminConfigView tab layout', () => {
       defaultStrings.AdminConfig.CustomSourceSettings.labels.customSource,
       defaultStrings.AdminConfig.AISettings.labels.aiSettings,
       defaultStrings.AdminConfig.AutoApproverSettings.labels.autoApprover,
-      defaultStrings.AdminConfig.labels.alertBanner,
     ]);
+  });
+
+  test('renders the service notification settings inside the General tab', () => {
+    renderWithRoles(allRoles);
+
+    expect(
+      screen.getByText(defaultStrings.AdminConfig.ServiceNotifications.labels.serviceDisruptionTitle)
+    ).toBeInTheDocument();
+    expect(
+      screen.getByLabelText(defaultStrings.AdminConfig.ServiceNotifications.labels.message)
+    ).toBeInTheDocument();
   });
 
   test('hides the Auto Approver tab when the user lacks the Auto Approver role', () => {
@@ -338,6 +351,7 @@ describe('AdminConfigView Custom Source', () => {
           settings={createSettings()}
           sqlMembershipSource={undefined}
           sqlMembershipSourceAttributes={sensitiveAttributes}
+          serviceNotification={getDefaultAlertBannerConfig()}
           strings={defaultStrings.AdminConfig}
           styles={getStyles}
           isAutoApproverAdministrator={false}
@@ -411,6 +425,7 @@ describe('AdminConfigView custom source null threshold', () => {
           settings={createSettings()}
           sqlMembershipSource={{ name: 'SqlMembership', customLabel: 'HR Data' }}
           sqlMembershipSourceAttributes={attributes}
+          serviceNotification={getDefaultAlertBannerConfig()}
           strings={defaultStrings.AdminConfig}
           styles={getStyles}
           isCustomMembershipProviderAdmin={true}
@@ -552,6 +567,7 @@ describe('AdminConfigView custom source null threshold', () => {
           settings={createSettings()}
           sqlMembershipSource={{ name: 'SqlMembership', customLabel: 'HR Data' }}
           sqlMembershipSourceAttributes={attributes}
+          serviceNotification={getDefaultAlertBannerConfig()}
           strings={defaultStrings.AdminConfig}
           styles={getStyles}
           isCustomMembershipProviderAdmin={true}

@@ -25,13 +25,16 @@ import { Page } from '../../components/Page';
 import { PageHeader } from '../../components/PageHeader';
 import { SettingKey, SettingKeyMap, SqlMembershipAttribute, SqlMembershipSource } from '../../models';
 import { GeneralSetting } from '../../components/GeneralSetting';
-import { AlertBannerAdmin } from './AlertBannerAdmin';
+import { ServiceNotificationSettings, validateServiceNotification } from './ServiceNotificationSettings';
+import type { AlertBannerConfig } from '../../models/AlertBannerConfig';
 
 const getClassNames = classNamesFunction<AdminConfigStyleProps, AdminConfigStyles>();
 
 export const AdminConfigView: React.FunctionComponent<AdminConfigViewProps> = (props: AdminConfigViewProps) => {
   // extract props
   const { className, isSaving, onSave, handleGetValues, settings, sqlMembershipSource, sqlMembershipSourceAttributes, strings, styles,
+    serviceNotification,
+    serviceNotificationSaveError,
     isCustomMembershipProviderAdmin,
     isOperationsResetAdministrator,
     isGeneralSettingsAdministrator,
@@ -51,6 +54,17 @@ export const AdminConfigView: React.FunctionComponent<AdminConfigViewProps> = (p
   const [newAttributes, setNewAttributes] = useState<SqlMembershipAttribute[] | undefined>(sqlMembershipSourceAttributes);
   const [hasUrlValidationErrors, setHasUrlValidationErrors] = useState<boolean>(false);
   const [hasAttributeValidationErrors, setHasAttributeValidationErrors] = useState<boolean>(false);
+  const [newServiceNotification, setNewServiceNotification] = useState<AlertBannerConfig>(serviceNotification);
+
+  useEffect(() => {
+    setNewServiceNotification(serviceNotification);
+  }, [serviceNotification]);
+
+  const serviceNotificationErrors = useMemo(
+    () => validateServiceNotification(newServiceNotification, strings),
+    [newServiceNotification, strings]
+  );
+  const hasServiceNotificationErrors = Object.keys(serviceNotificationErrors).length > 0;
 
   useEffect(() => {
     setNewSource(sqlMembershipSource);
@@ -69,12 +83,13 @@ export const AdminConfigView: React.FunctionComponent<AdminConfigViewProps> = (p
     const hasSettingsChanges = Object.entries(newSettings).some(([key, value]) => value !== settings[Number(key) as SettingKey]);
     const hasSourceChanges = JSON.stringify(newSource) !== JSON.stringify(sqlMembershipSource);
     const hasAttributesChanges = JSON.stringify(newAttributes) !== JSON.stringify(sqlMembershipSourceAttributes);
-    return hasSettingsChanges || hasSourceChanges || hasAttributesChanges;
+    const hasServiceNotificationChanges = JSON.stringify(newServiceNotification) !== JSON.stringify(serviceNotification);
+    return hasSettingsChanges || hasSourceChanges || hasAttributesChanges || hasServiceNotificationChanges;
   };
 
   // setup ui event handlers
   const handleOnSaveButtonClick = () => {
-    onSave(newSettings, newSource, newAttributes);
+    onSave(newSettings, newSource, newAttributes, newServiceNotification);
   };
 
   return (
@@ -87,7 +102,7 @@ export const AdminConfigView: React.FunctionComponent<AdminConfigViewProps> = (p
             text={strings.labels.saveButton}
             onClick={handleOnSaveButtonClick}
             className={classNames.saveButton}
-            disabled={!hasChanges() || hasUrlValidationErrors || hasAttributeValidationErrors || isSaving}
+            disabled={!hasChanges() || hasUrlValidationErrors || hasAttributeValidationErrors || hasServiceNotificationErrors || isSaving}
           ></PrimaryButton>
         </div>
         <div className={classNames.card}>
@@ -106,7 +121,11 @@ export const AdminConfigView: React.FunctionComponent<AdminConfigViewProps> = (p
                     strings={strings}
                     settings={newSettings}
                     setSettings={setNewSettings}
-                    setHasValidationErrors={setHasUrlValidationErrors} />
+                    setHasValidationErrors={setHasUrlValidationErrors}
+                    serviceNotification={newServiceNotification}
+                    setServiceNotification={setNewServiceNotification}
+                    serviceNotificationErrors={serviceNotificationErrors}
+                    serviceNotificationSaveError={serviceNotificationSaveError} />
                 </PivotItem>
               }
               {isOperationsResetAdministrator &&
@@ -172,17 +191,6 @@ export const AdminConfigView: React.FunctionComponent<AdminConfigViewProps> = (p
                     setSettings={setNewSettings} />
                 </PivotItem>
               }
-              {isGeneralSettingsAdministrator &&
-                <PivotItem
-                  headerText={strings.labels.alertBanner}
-                  headerButtonProps={{
-                    'data-order': 6,
-                    'data-title': strings.labels.alertBanner,
-                  }}
-                >
-                  <AlertBannerAdmin />
-                </PivotItem>
-              }
             </Pivot>
           </PageSection>
         </div>
@@ -225,7 +233,7 @@ const Operations: React.FunctionComponent<OperationsProps> = (props: OperationsP
 }
 
 const GeneralSettings: React.FunctionComponent<GeneralSettingsProps> = (props: GeneralSettingsProps) => {
-  const { classNames, strings, settings, setSettings, setHasValidationErrors } = props;
+  const { classNames, strings, settings, setSettings, setHasValidationErrors, serviceNotification, setServiceNotification, serviceNotificationErrors, serviceNotificationSaveError } = props;
 
   const handleSettingChange = (settingKey: SettingKey) => (newValue: string) => {
     setSettings((settings) => ({ ...settings, [settingKey]: newValue }));
@@ -280,6 +288,19 @@ const GeneralSettings: React.FunctionComponent<GeneralSettingsProps> = (props: G
           settings={settings}
           setSettings={setSettings}
           setHasValidationErrors={setHasValidationErrors} />
+      </SettingsSection>
+      <SettingsSection
+        classNames={classNames}
+        title={strings.ServiceNotifications.labels.serviceNotifications}
+        subtitle={strings.ServiceNotifications.labels.description}
+      >
+        <ServiceNotificationSettings
+          classNames={classNames}
+          strings={strings}
+          config={serviceNotification}
+          setConfig={setServiceNotification}
+          errors={serviceNotificationErrors}
+          saveError={serviceNotificationSaveError} />
       </SettingsSection>
     </div>
   );

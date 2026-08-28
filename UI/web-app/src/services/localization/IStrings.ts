@@ -207,7 +207,6 @@ export type IStrings = {
       pageTitle: string;
       saveButton: string;
       saveSuccess: string;
-      alertBanner: string;
     },
     Errors:{
       forbidden: string;
@@ -290,6 +289,34 @@ export type IStrings = {
         businessJustificationDescription: string;
         isDisclaimerEnabledTitle: string;
         isDisclaimerEnabledDescription: string;
+      }
+    },
+    ServiceNotifications: {
+      labels: {
+        serviceNotifications: string;
+        description: string;
+        serviceDisruptionTitle: string;
+        serviceDisruptionDescription: string;
+        enabled: string;
+        enabledOn: string;
+        enabledOff: string;
+        message: string;
+        messagePlaceholder: string;
+        linkLabel: string;
+        linkLabelPlaceholder: string;
+        linkUrl: string;
+        linkUrlPlaceholder: string;
+        startDate: string;
+        startDatePlaceholder: string;
+        endDate: string;
+        endDatePlaceholder: string;
+      },
+      errors: {
+        messageRequired: string;
+        messageTooLong: string;
+        datesRequired: string;
+        dateOrder: string;
+        linkUrlInvalid: string;
       }
     },
     AutoApproverSettings: {

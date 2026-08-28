@@ -48,6 +48,9 @@ import {
 } from '../../store/roles.slice';
 import { MessageBar, MessageBarType } from '@fluentui/react';
 import { Loader } from '../../components/Loader';
+import { fetchAlertBanner, patchAlertBanner } from '../../store/alertBanner.api';
+import { selectAlertBannerConfig, selectAlertBannerIsSaving, selectAlertBannerSaveError } from '../../store/alertBanner.slice';
+import { AlertBannerConfig } from '../../models/AlertBannerConfig';
 
 export const AdminConfigBase: React.FunctionComponent<AdminConfigProps> = (props: AdminConfigProps) => {
   // get the store's dispatch function
@@ -58,6 +61,9 @@ export const AdminConfigBase: React.FunctionComponent<AdminConfigProps> = (props
     // Fetched by App on login, but re-requested here so a direct navigation or refresh to this
     // page never renders against an empty settings store.
     dispatch(fetchSettings());
+    // Load the current service notification (alert banner) configuration so the General tab
+    // renders the persisted values instead of the disabled default.
+    dispatch(fetchAlertBanner());
   }, [dispatch]);
 
   // get the settings data from the store
@@ -86,6 +92,9 @@ export const AdminConfigBase: React.FunctionComponent<AdminConfigProps> = (props
   const isSourceSaving = useSelector(selectIsSourceSaving);
   const areAttributesSaving = useSelector(selectAreAttributesSaving);
   const areSettingsSaving = useSelector(selectIsSaving);
+  const serviceNotification = useSelector(selectAlertBannerConfig);
+  const isServiceNotificationSaving = useSelector(selectAlertBannerIsSaving);
+  const serviceNotificationSaveError = useSelector(selectAlertBannerSaveError);
   const isCustomMembershipProviderAdmin = useSelector(selectIsCustomMembershipProviderAdministrator);
   const isOperationsResetAdministrator = useSelector(selectIsOperationsResetAdministrator);
   const isGeneralSettingsAdministrator = useSelector(selectIsGeneralSettingsAdministrator);
@@ -178,7 +187,7 @@ export const AdminConfigBase: React.FunctionComponent<AdminConfigProps> = (props
 
   // Normalize boolean values to strings, then dispatch only the changed settings that the
   // signed-in administrator is authorized to manage.
-  const handleSave = (newSettings: { readonly [key in SettingKey]: string }, newSqlMembershipSource: SqlMembershipSource | undefined, newSqlMembershipAttributes: SqlMembershipAttribute[] | undefined) => {
+  const handleSave = (newSettings: { readonly [key in SettingKey]: string }, newSqlMembershipSource: SqlMembershipSource | undefined, newSqlMembershipAttributes: SqlMembershipAttribute[] | undefined, newServiceNotification: AlertBannerConfig) => {
     const formattedSettings = { ...newSettings };
     booleanSettingKeys.forEach((settingKey) => {
       formattedSettings[settingKey] = newSettings[settingKey] === 'true' ? 'true' : 'false';
@@ -225,6 +234,19 @@ export const AdminConfigBase: React.FunctionComponent<AdminConfigProps> = (props
         setAttributes(newSqlMembershipAttributes)
       );
     }
+    // The service notification (alert banner) is persisted through its own endpoint, which is
+    // restricted to General Settings administrators. Only dispatch when it actually changed.
+    if (isGeneralSettingsAdministrator && JSON.stringify(newServiceNotification) !== JSON.stringify(serviceNotification)) {
+      dispatch(
+        patchAlertBanner({
+          ...newServiceNotification,
+          message: newServiceNotification.message.trim(),
+          linkUrl: newServiceNotification.linkUrl && newServiceNotification.linkUrl.trim().length > 0 ? newServiceNotification.linkUrl.trim() : null,
+          linkText: newServiceNotification.linkText && newServiceNotification.linkText.trim().length > 0 ? newServiceNotification.linkText.trim() : null,
+        })
+      );
+    }
+
     // there is a Toast notification in fluent/react-components (v9) that we should be using for save notifications.
 
     // Refetch settings so Redux store reflects saved values
@@ -258,13 +280,15 @@ export const AdminConfigBase: React.FunctionComponent<AdminConfigProps> = (props
   return (
     <AdminConfigView
       {...props}
-      isSaving={areSettingsSaving || isSourceSaving || areAttributesSaving}
+      isSaving={areSettingsSaving || isSourceSaving || areAttributesSaving || isServiceNotificationSaving}
       settings={settings}
       strings={strings}
       onSave={handleSave}
       handleGetValues={handleGetValues}
       sqlMembershipSource={sqlMembershipSource}
       sqlMembershipSourceAttributes={sqlMembershipSourceAttributes}
+      serviceNotification={serviceNotification}
+      serviceNotificationSaveError={serviceNotificationSaveError}
       isCustomMembershipProviderAdmin={isCustomMembershipProviderAdmin}
       isOperationsResetAdministrator={isOperationsResetAdministrator}
       isGeneralSettingsAdministrator={isGeneralSettingsAdministrator}

@@ -210,7 +210,6 @@ export const strings: IStrings = {
       pageTitle: "Admin Configuration",
       saveButton: "Save",
       saveSuccess: "Saved successfully.",
-      alertBanner: "Alert Banner",
     },
     Errors:{
       forbidden: 'Forbidden',
@@ -293,6 +292,34 @@ export const strings: IStrings = {
         businessJustificationDescription: "Require users to provide business justification when requesting to manage a group or perform an update?",
         isDisclaimerEnabledTitle: "Is the initial visit disclaimer enabled?",
         isDisclaimerEnabledDescription: "Enable the disclaimer to be shown to users when they first visit GMM.",
+      }
+    },
+    ServiceNotifications: {
+      labels: {
+        serviceNotifications: "Service Notifications",
+        description: "Configure notifications displayed to users during service disruptions, outages, or other events that may affect Membership Manager availability.",
+        serviceDisruptionTitle: "Service Disruption Notification",
+        serviceDisruptionDescription: "Configure the notification displayed on the home page when a service disruption or outage occurs. Use this message to inform users about the issue and direct them to additional information.",
+        enabled: "Enabled",
+        enabledOn: "On",
+        enabledOff: "Off",
+        message: "Notification Message",
+        messagePlaceholder: "Enter the message that will be displayed in the notification banner.",
+        linkLabel: "Link Label",
+        linkLabelPlaceholder: "Enter the text users will click to access additional information.",
+        linkUrl: "Link URL",
+        linkUrlPlaceholder: "Enter the URL where users can view status updates, issue details, or recovery progress.",
+        startDate: "Start Date (UTC)",
+        startDatePlaceholder: "Select the date the notification starts displaying.",
+        endDate: "End Date (UTC)",
+        endDatePlaceholder: "Select the date the notification stops displaying.",
+      },
+      errors: {
+        messageRequired: "Notification message is required when the notification is enabled.",
+        messageTooLong: "Notification message must be 250 characters or fewer.",
+        datesRequired: "Valid start and end dates are required.",
+        dateOrder: "Start date must be earlier than end date.",
+        linkUrlInvalid: "Link URL must start with https://.",
       }
     },
     AutoApproverSettings: {

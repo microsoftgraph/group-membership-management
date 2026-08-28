@@ -332,7 +332,7 @@ export async function registerMockApiRoutes(page: Page): Promise<void> {
     message: '',
     isEnabled: false,
     startDate: new Date().toISOString(),
-    endDate: new Date().toISOString(),
+    endDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
     linkUrl: null as string | null,
     linkText: null as string | null,
   };

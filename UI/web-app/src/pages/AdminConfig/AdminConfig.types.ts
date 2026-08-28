@@ -4,6 +4,7 @@
 import { IProcessedStyleSet, type IStyle, type IStyleFunctionOrObject, type ITheme } from '@fluentui/react';
 import type React from 'react';
 import type { SettingKey, SqlMembershipAttribute, SqlMembershipSource } from '../../models';
+import type { AlertBannerConfig } from '../../models/AlertBannerConfig';
 import type { IStrings } from '../../services/localization';
 import { MouseEventHandler } from 'react';
 
@@ -49,6 +50,13 @@ export type AdminConfigStyles = {
   suggestedPromptsActions: IStyle;
   suggestedPromptAddButton: IStyle;
   operationsGrid: IStyle;
+  serviceNotificationCard: IStyle;
+  serviceNotificationTitle: IStyle;
+  serviceNotificationDescription: IStyle;
+  serviceNotificationToggle: IStyle;
+  serviceNotificationFieldRow: IStyle;
+  serviceNotificationTextFieldGroup: IStyle;
+  serviceNotificationErrorMessage: IStyle;
 };
 
 export type AdminConfigStyleProps = {
@@ -70,11 +78,13 @@ export type AdminConfigProps = React.AllHTMLAttributes<HTMLDivElement> & {
 
 export type AdminConfigViewProps = AdminConfigProps & {
   isSaving: boolean;
-  onSave: (settings: { readonly [key in SettingKey]: string }, sqlMembershipSource: SqlMembershipSource | undefined, sqlMembershipAttributes: SqlMembershipAttribute[] | undefined) => void;
+  onSave: (settings: { readonly [key in SettingKey]: string }, sqlMembershipSource: SqlMembershipSource | undefined, sqlMembershipAttributes: SqlMembershipAttribute[] | undefined, serviceNotification: AlertBannerConfig) => void;
   handleGetValues: (attribute: SqlMembershipAttribute) => void;
   settings: { readonly [key in SettingKey]: string };
   sqlMembershipSource: SqlMembershipSource | undefined;
   sqlMembershipSourceAttributes: SqlMembershipAttribute[] | undefined;
+  serviceNotification: AlertBannerConfig;
+  serviceNotificationSaveError?: string;
   strings: IStrings['AdminConfig'];
   isCustomMembershipProviderAdmin: boolean;
   isOperationsResetAdministrator: boolean;
@@ -103,6 +113,19 @@ export type GeneralSettingsProps = {
   settings: { readonly [key in SettingKey]: string };
   setSettings: React.Dispatch<React.SetStateAction<{ readonly [key in SettingKey]: string }>>;
   setHasValidationErrors: React.Dispatch<React.SetStateAction<boolean>>;
+  serviceNotification: AlertBannerConfig;
+  setServiceNotification: React.Dispatch<React.SetStateAction<AlertBannerConfig>>;
+  serviceNotificationErrors: Record<string, string>;
+  serviceNotificationSaveError?: string;
+};
+
+export type ServiceNotificationSettingsProps = {
+  classNames: IProcessedStyleSet<AdminConfigStyles>;
+  strings: IStrings['AdminConfig'];
+  config: AlertBannerConfig;
+  setConfig: React.Dispatch<React.SetStateAction<AlertBannerConfig>>;
+  errors: Record<string, string>;
+  saveError?: string;
 };
 
 export type AutoApproverSettingsProps = {

@@ -211,7 +211,6 @@ export const strings: IStrings = {
       pageTitle: "Configuración de Administrador",
       saveButton: "Guardar",
       saveSuccess:  "Guardado exitosamente.",
-      alertBanner: "Banner de Alerta"
     },
     Errors:{
       forbidden: 'Prohibido',
@@ -294,6 +293,34 @@ export const strings: IStrings = {
         businessJustificationDescription: "¿Debería GMM requerir una justificación de negocio para la administración de la membresía o realizar algun cambio?",
         isDisclaimerEnabledTitle: "¿Está habilitado el aviso de visita inicial?",
         isDisclaimerEnabledDescription: "Habilitar el aviso para que se muestre a los usuarios cuando visiten GMM por primera vez.",
+      }
+    },
+    ServiceNotifications: {
+      labels: {
+        serviceNotifications: "Notificaciones de Servicio",
+        description: "Configure las notificaciones que se muestran a los usuarios durante interrupciones del servicio, cortes u otros eventos que puedan afectar la disponibilidad de Membership Manager.",
+        serviceDisruptionTitle: "Notificación de Interrupción del Servicio",
+        serviceDisruptionDescription: "Configure la notificación que se muestra en la página principal cuando ocurre una interrupción o corte del servicio. Use este mensaje para informar a los usuarios sobre el problema y dirigirlos a información adicional.",
+        enabled: "Habilitado",
+        enabledOn: "Sí",
+        enabledOff: "No",
+        message: "Mensaje de la Notificación",
+        messagePlaceholder: "Escriba el mensaje que se mostrará en el banner de notificación.",
+        linkLabel: "Texto del Enlace",
+        linkLabelPlaceholder: "Escriba el texto en el que los usuarios harán clic para acceder a información adicional.",
+        linkUrl: "URL del Enlace",
+        linkUrlPlaceholder: "Escriba la URL donde los usuarios pueden ver actualizaciones de estado, detalles del problema o el progreso de la recuperación.",
+        startDate: "Fecha de Inicio (UTC)",
+        startDatePlaceholder: "Seleccione la fecha en la que la notificación comienza a mostrarse.",
+        endDate: "Fecha de Fin (UTC)",
+        endDatePlaceholder: "Seleccione la fecha en la que la notificación deja de mostrarse.",
+      },
+      errors: {
+        messageRequired: "El mensaje de la notificación es obligatorio cuando la notificación está habilitada.",
+        messageTooLong: "El mensaje de la notificación debe tener 250 caracteres o menos.",
+        datesRequired: "Se requieren fechas de inicio y fin válidas.",
+        dateOrder: "La fecha de inicio debe ser anterior a la fecha de fin.",
+        linkUrlInvalid: "La URL del enlace debe comenzar con https://.",
       }
     },
     AutoApproverSettings: {
