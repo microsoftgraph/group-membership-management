@@ -6,6 +6,8 @@ import { v4 as uuidv4 } from 'uuid';
 import { RootState } from './store';
 import { IChatMessage } from '../components/CopilotPanel/CopilotPanel.types';
 import { ISourcePart } from '../models/ISourcePart';
+import { HRSourcePart } from '../models/HRSourcePart';
+import { SourcePartType } from '../models/SourcePartType';
 import { sendCopilotMessage } from './copilot.api';
 
 /**
@@ -19,11 +21,43 @@ export function mergeResultingParts(existing: ISourcePart[], resulting: ISourceP
     const existingById = new Map(existing.map(p => [p.id, p]));
     return resulting.map(part => {
         const prev = existingById.get(part.id);
-        if (prev) {
-            // Preserve transient UI state and existing "new" status for parts that already existed.
-            return { ...part, isExpanded: prev.isExpanded, isNew: prev.isNew ?? false };
+        if (!prev) {
+            return part;
         }
-        return part;
+        // Preserve transient UI state and existing "new" status for parts that already existed.
+        const merged: ISourcePart = { ...part, isExpanded: prev.isExpanded, isNew: prev.isNew ?? false };
+
+        // Carry forward a previously-resolved org leader (query.source.manager) when a matched HR part
+        // comes back without one. Copilot never edits the HR manager id directly — it is resolved
+        // client-side — so a matched HR part that still intends org structure but has no manager.id
+        // means the leader was unchanged. Without this, a filter-only refine (or an existing DB-loaded
+        // org rule) would silently lose its resolved org leader on apply.
+        //
+        // Guards against reintroducing a leader the refine intentionally changed or removed:
+        //   - merged.useOrgStructure must still be true (a refine that turned org structure off keeps
+        //     manager dropped);
+        //   - no new leader may be named this turn (managerToAutoSelect absent) — a named leader,
+        //     whether or not it resolved to an objectId, must not be overwritten by the stale one.
+        const namedNewLeader = merged.managerToAutoSelect != null;
+        if (
+            merged.query?.type === SourcePartType.HR &&
+            prev.query?.type === SourcePartType.HR &&
+            merged.useOrgStructure === true &&
+            !namedNewLeader
+        ) {
+            const newSource = (merged.query as HRSourcePart).source;
+            const prevSource = (prev.query as HRSourcePart).source;
+            if (newSource?.manager?.id == null && prevSource?.manager?.id != null) {
+                merged.query = {
+                    ...(merged.query as HRSourcePart),
+                    source: {
+                        ...newSource,
+                        manager: { ...prevSource.manager },
+                    },
+                };
+            }
+        }
+        return merged;
     });
 }
 

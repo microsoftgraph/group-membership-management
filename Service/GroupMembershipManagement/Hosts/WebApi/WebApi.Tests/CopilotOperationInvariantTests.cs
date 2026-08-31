@@ -87,6 +87,51 @@ namespace WebApi.Tests
         }
 
         [TestMethod]
+        public void SafetyGate_RemoveUnsupportedPart_RejectsAndPreservesIt()
+        {
+            var working = new List<CopilotSourcePartResult>
+            {
+                Part("hr", "SqlMembership", "A = 1"),
+                Part("owners", "GroupOwnership")
+            };
+            var ops = new List<EditOperation>
+            {
+                new() { Op = "remove", PartId = "owners" }
+            };
+
+            var result = CopilotOperationApplier.Apply(working, ops, Ids());
+
+            // The unsupported part's id is a real inbound id, but it is not an editable target:
+            // the whole set is rejected atomically and the unsupported part survives untouched.
+            Assert.AreEqual("UnknownPartTarget", result.ErrorCode);
+            Assert.AreEqual(2, result.ResultingQuery.Count);
+            CollectionAssert.AreEquivalent(
+                new[] { "hr", "owners" },
+                result.ResultingQuery.Select(p => p.PartId).ToArray());
+        }
+
+        [TestMethod]
+        public void SafetyGate_ReplaceUnsupportedPart_RejectsAndPreservesIt()
+        {
+            var working = new List<CopilotSourcePartResult>
+            {
+                Part("hr", "SqlMembership", "A = 1"),
+                Part("place", "PlaceMembership")
+            };
+            var ops = new List<EditOperation>
+            {
+                new() { Op = "replace", PartId = "place", Part = new CopilotSourcePartResult { SourceType = "SqlMembership", Filter = "X = 1" } }
+            };
+
+            var result = CopilotOperationApplier.Apply(working, ops, Ids());
+
+            Assert.AreEqual("UnknownPartTarget", result.ErrorCode);
+            Assert.AreEqual(2, result.ResultingQuery.Count);
+            var place = result.ResultingQuery.Single(p => p.PartId == "place");
+            Assert.AreEqual("PlaceMembership", place.SourceType);
+        }
+
+        [TestMethod]
         public void EmptyResult_SetsWarningAndSucceeds()
         {
             var working = new List<CopilotSourcePartResult> { Part("a", "SqlMembership", "A = 1") };

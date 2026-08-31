@@ -203,6 +203,22 @@ namespace Services.WebApi
                 };
             }
 
+            // Seed validated org leaders from the inbound working query. A refine turn that does not
+            // re-validate an unchanged leader (because it only edits, say, a SQL filter on the same
+            // part) would otherwise leave EnrichOrgLeaderObjectIds unable to recover the leader's
+            // objectId, silently dropping the resolved org leader. Any inbound part that already
+            // carries both an email and an objectId is treated as previously validated.
+            if (workingQuery != null)
+            {
+                foreach (var part in workingQuery)
+                {
+                    if (!string.IsNullOrEmpty(part.OrgLeaderEmail) && !string.IsNullOrEmpty(part.OrgLeaderObjectId))
+                    {
+                        _validatedOrgLeaders.TryAdd(part.OrgLeaderEmail, part.OrgLeaderObjectId);
+                    }
+                }
+            }
+
             // Load dynamic temperature and topP
             var temperature = 0.7f;
             var topP = 0.9f;

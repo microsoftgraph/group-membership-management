@@ -301,5 +301,124 @@ describe('copilot.slice', () => {
       expect(merged.every(p => p.isNew === false)).toBe(true);
       expect(merged.map(p => p.id)).toEqual(['b', 'a']); // resulting order is authoritative
     });
+
+    it('carries forward a resolved org leader when the refined part comes back without one', () => {
+      const existing: ISourcePart[] = [
+        {
+          id: 'a',
+          title: 'A = 1',
+          query: { type: SourcePartType.HR, source: { filter: 'A = 1', manager: { id: 4242, depth: 2 } }, exclusionary: false },
+          isNew: false,
+          isExpanded: false,
+          useOrgStructure: true,
+        },
+      ];
+      // Server returned a filter-only refine of the same part: still org-structure, no manager present.
+      const resulting: ISourcePart[] = [
+        {
+          id: 'a',
+          title: 'A = 1 AND B = 2',
+          query: { type: SourcePartType.HR, source: { filter: 'A = 1 AND B = 2' }, exclusionary: false },
+          isNew: false,
+          isExpanded: false,
+          useOrgStructure: true,
+        },
+      ];
+
+      const merged = mergeResultingParts(existing, resulting);
+
+      const source = (merged[0].query as { source: { filter: string; manager?: { id?: number; depth?: number } } }).source;
+      expect(source.filter).toBe('A = 1 AND B = 2'); // refined filter wins
+      expect(source.manager?.id).toBe(4242); // resolved leader preserved
+      expect(source.manager?.depth).toBe(2);
+    });
+
+    it('does not overwrite a newly resolved org leader on the refined part', () => {
+      const existing: ISourcePart[] = [
+        {
+          id: 'a',
+          title: 'A = 1',
+          query: { type: SourcePartType.HR, source: { filter: 'A = 1', manager: { id: 1111, depth: 1 } }, exclusionary: false },
+          isNew: false,
+          isExpanded: false,
+          useOrgStructure: true,
+        },
+      ];
+      const resulting: ISourcePart[] = [
+        {
+          id: 'a',
+          title: 'A = 1',
+          query: { type: SourcePartType.HR, source: { filter: 'A = 1', manager: { id: 9999, depth: 3 } }, exclusionary: false },
+          isNew: false,
+          isExpanded: false,
+          useOrgStructure: true,
+        },
+      ];
+
+      const merged = mergeResultingParts(existing, resulting);
+
+      const source = (merged[0].query as { source: { manager?: { id?: number } } }).source;
+      expect(source.manager?.id).toBe(9999); // new leader is authoritative, not carried-over
+    });
+
+    it('does NOT resurrect an org leader that the refine intentionally removed', () => {
+      const existing: ISourcePart[] = [
+        {
+          id: 'a',
+          title: 'A = 1',
+          query: { type: SourcePartType.HR, source: { filter: 'A = 1', manager: { id: 4242, depth: 2 } }, exclusionary: false },
+          isNew: false,
+          isExpanded: false,
+          useOrgStructure: true,
+        },
+      ];
+      // Refine turned org structure OFF for this part — the leader must not come back.
+      const resulting: ISourcePart[] = [
+        {
+          id: 'a',
+          title: 'A = 1',
+          query: { type: SourcePartType.HR, source: { filter: 'A = 1' }, exclusionary: false },
+          isNew: false,
+          isExpanded: false,
+          useOrgStructure: false,
+        },
+      ];
+
+      const merged = mergeResultingParts(existing, resulting);
+
+      const source = (merged[0].query as { source: { manager?: { id?: number } } }).source;
+      expect(source.manager?.id).toBeUndefined();
+    });
+
+    it('does NOT overwrite a newly named (but unresolved) org leader with the stale one', () => {
+      const existing: ISourcePart[] = [
+        {
+          id: 'a',
+          title: 'A = 1',
+          query: { type: SourcePartType.HR, source: { filter: 'A = 1', manager: { id: 4242, depth: 2 } }, exclusionary: false },
+          isNew: false,
+          isExpanded: false,
+          useOrgStructure: true,
+        },
+      ];
+      // Refine named a different leader that did not resolve to an employeeId this turn: manager.id is
+      // absent, but managerToAutoSelect carries the new intent — the old leader must not be carried over.
+      const resulting: ISourcePart[] = [
+        {
+          id: 'a',
+          title: 'A = 1',
+          query: { type: SourcePartType.HR, source: { filter: 'A = 1' }, exclusionary: false },
+          isNew: false,
+          isExpanded: false,
+          useOrgStructure: true,
+          managerToAutoSelect: { displayName: 'New Leader' },
+        },
+      ];
+
+      const merged = mergeResultingParts(existing, resulting);
+
+      const source = (merged[0].query as { source: { manager?: { id?: number } } }).source;
+      expect(source.manager?.id).toBeUndefined();
+    });
   });
 });

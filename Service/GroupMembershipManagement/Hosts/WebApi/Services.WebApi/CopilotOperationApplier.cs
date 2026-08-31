@@ -37,10 +37,13 @@ namespace Services.WebApi
             var ops = operations?.ToList() ?? new List<EditOperation>();
             var result = new CopilotOperationApplyResult();
 
-            // Safety gate (atomic): every remove/replace target partId MUST exist in the inbound query.
-            // If any is unknown, reject the whole set — apply nothing, return the unchanged query.
+            // Safety gate (atomic): every remove/replace target partId MUST exist in the inbound query
+            // AND belong to a SUPPORTED part. Building knownIds from supported parts only means a
+            // targeted op against an unsupported part (GroupOwnership, PlaceMembership,
+            // TeamsChannelMembership) fails the gate and the whole set is rejected — preserving the
+            // invariant that Copilot never deletes or mutates parts it cannot edit.
             var knownIds = new HashSet<string>(
-                inbound.Where(p => !string.IsNullOrEmpty(p.PartId)).Select(p => p.PartId),
+                inbound.Where(p => IsSupported(p) && !string.IsNullOrEmpty(p.PartId)).Select(p => p.PartId),
                 StringComparer.OrdinalIgnoreCase);
 
             int rejected = 0;
