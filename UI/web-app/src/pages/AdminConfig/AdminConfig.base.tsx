@@ -1,7 +1,7 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { AdminConfigProps } from './AdminConfig.types';
 import {
@@ -50,7 +50,7 @@ import { MessageBar, MessageBarType } from '@fluentui/react';
 import { Loader } from '../../components/Loader';
 import { fetchAlertBanner, patchAlertBanner } from '../../store/alertBanner.api';
 import { selectAlertBannerConfig, selectAlertBannerIsSaving, selectAlertBannerSaveError } from '../../store/alertBanner.slice';
-import { AlertBannerConfig } from '../../models/AlertBannerConfig';
+import { AlertBannerConfig, normalizeAlertBannerWindow } from '../../models/AlertBannerConfig';
 
 export const AdminConfigBase: React.FunctionComponent<AdminConfigProps> = (props: AdminConfigProps) => {
   // get the store's dispatch function
@@ -92,9 +92,17 @@ export const AdminConfigBase: React.FunctionComponent<AdminConfigProps> = (props
   const isSourceSaving = useSelector(selectIsSourceSaving);
   const areAttributesSaving = useSelector(selectAreAttributesSaving);
   const areSettingsSaving = useSelector(selectIsSaving);
-  const serviceNotification = useSelector(selectAlertBannerConfig);
+  const storedServiceNotification = useSelector(selectAlertBannerConfig);
   const isServiceNotificationSaving = useSelector(selectAlertBannerIsSaving);
   const serviceNotificationSaveError = useSelector(selectAlertBannerSaveError);
+
+  // Normalize before the value reaches the view so it acts as both the form's initial value and
+  // its unchanged baseline. A backend that still returns start == end therefore neither shows a
+  // validation error on load nor marks the page dirty before the admin edits anything.
+  const serviceNotification = useMemo(
+    () => normalizeAlertBannerWindow(storedServiceNotification),
+    [storedServiceNotification]
+  );
   const isCustomMembershipProviderAdmin = useSelector(selectIsCustomMembershipProviderAdministrator);
   const isOperationsResetAdministrator = useSelector(selectIsOperationsResetAdministrator);
   const isGeneralSettingsAdministrator = useSelector(selectIsGeneralSettingsAdministrator);
