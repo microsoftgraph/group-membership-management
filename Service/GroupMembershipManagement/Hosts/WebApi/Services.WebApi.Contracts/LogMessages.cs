@@ -309,6 +309,10 @@ namespace Hosts.WebApi
             Message = "CopilotChat token usage: InputTokens={InputTokens}, OutputTokens={OutputTokens}, ApiCalls={ApiCalls}, ConversationId={ConversationId}")]
         public static partial void CopilotChatTokenUsage(this ILogger logger, int inputTokens, int outputTokens, int apiCalls, string conversationId);
 
+        [LoggerMessage(EventId = 93113, Level = LogLevel.Information,
+            Message = "Copilot operations applied: Added={Added}, Removed={Removed}, Replaced={Replaced}, RejectedTargets={RejectedTargets}, PreservedUnsupported={PreservedUnsupported}, ConversationId={ConversationId}")]
+        public static partial void CopilotOperationsApplied(this ILogger logger, int added, int removed, int replaced, int rejectedTargets, int preservedUnsupported, string conversationId);
+
         // ── OperationsBackgroundService (92000-92099) ──
 
         [LoggerMessage(EventId = 92000, Level = LogLevel.Information,

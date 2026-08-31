@@ -19,6 +19,21 @@ namespace Services.Messages.Responses
         /// </summary>
         public List<CopilotSourcePartResult> SourceParts { get; set; } = new();
 
+        /// <summary>
+        /// v2 operation engine: the complete resulting query after operations applied.
+        /// </summary>
+        public List<CopilotSourcePartResult> ResultingQuery { get; set; } = new();
+
+        /// <summary>
+        /// v2 operation engine: machine-readable summary of applied operations.
+        /// </summary>
+        public List<CopilotOperationSummary> AppliedOperations { get; set; } = new();
+
+        /// <summary>
+        /// Soft warning (e.g., the resulting query is empty). Not a block.
+        /// </summary>
+        public string? Warning { get; set; }
+
         // Backward-compat convenience properties
         public CopilotSourcePartResult? SourcePart => SourceParts.Count > 0 ? SourceParts[0] : null;
         public bool UseOrgStructure => SourceParts.Any(p => p.UseOrgStructure);

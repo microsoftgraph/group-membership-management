@@ -188,7 +188,7 @@ namespace Services.WebApi
             string userMessage,
             List<CopilotChatMessage> conversationHistory,
             CopilotUserContext? userContext = null,
-            string? currentFilter = null,
+            List<CopilotSourcePartResult>? workingQuery = null,
             string? conversationId = null)
         {
             // Check kill switch
@@ -217,7 +217,11 @@ namespace Services.WebApi
                 TopP = topP,
                 FrequencyPenalty = 0.3f,
                 PresencePenalty = 0.0f,
-                ResponseFormat = ChatResponseFormat.CreateJsonObjectFormat()
+                ResponseFormat = ChatResponseFormat.CreateJsonSchemaFormat(
+                    jsonSchemaFormatName: "copilot_operations",
+                    jsonSchema: BinaryData.FromString(CopilotPrompts.OperationResponseJsonSchema),
+                    jsonSchemaFormatDescription: "A natural-language message plus an ordered set of membership-query edit operations (set/add/remove/replace).",
+                    jsonSchemaIsStrict: true)
             };
 
             // Add the tool for fetching attribute values
@@ -248,10 +252,11 @@ namespace Services.WebApi
                 }
             }
 
-            // Add current filter context if available
-            if (!string.IsNullOrEmpty(currentFilter))
+            // Add the full working query context (v2) or legacy current-filter context (v1).
+            var workingQueryContext = BuildWorkingQueryContext(workingQuery);
+            if (!string.IsNullOrEmpty(workingQueryContext))
             {
-                systemPrompt += CopilotPrompts.CurrentFilterContextTemplate.Replace("{0}", currentFilter);
+                systemPrompt += workingQueryContext;
             }
 
             // Build messages
@@ -334,46 +339,37 @@ namespace Services.WebApi
                         // Final response - no more tool calls
                         var responseText = chatCompletion.Content[0].Text;
 
-                        // Parse structured JSON response with sourceParts
-                        var (parsedResponse, sourceParts) = ParseStructuredResponseWithSourcePart(responseText);
+                        // Parse the strict-schema operation set { message, operations[] }.
+                        var (message, operations) = ParseOperationResponse(responseText);
 
-                        // Fix orgLeaderName if it was incorrectly extracted as "Organization Structure"
-                        foreach (var sp in sourceParts.Where(p => p.UseOrgStructure))
-                        {
-                            if (string.IsNullOrEmpty(sp.OrgLeaderName) || sp.OrgLeaderName.Equals("Organization Structure", StringComparison.OrdinalIgnoreCase))
-                            {
-                                var nameInText = Regex.Match(responseText, @"\*\*([^*]+)\*\*\s*\([^)]+@[^)]+\)", RegexOptions.IgnoreCase);
-                                if (nameInText.Success && !nameInText.Groups[1].Value.Equals("Organization Structure", StringComparison.OrdinalIgnoreCase))
-                                {
-                                    sp.OrgLeaderName = nameInText.Groups[1].Value;
-                                }
-                                else if (!string.IsNullOrEmpty(userContext?.ManagerName))
-                                {
-                                    sp.OrgLeaderName = userContext.ManagerName;
-                                }
-                            }
+                        // Enrich model-emitted org-leader parts with the validated Graph objectId
+                        // captured during the tool-calling loop (kept out of the strict model schema).
+                        EnrichOrgLeaderObjectIds(operations);
 
-                            if (string.IsNullOrEmpty(sp.OrgLeaderEmail))
-                            {
-                                var emailInText = Regex.Match(responseText, @"\*\*[^*]+\*\*\s*\([^,]+,\s*([^\s)]+@[^\s)]+)\)", RegexOptions.IgnoreCase);
-                                if (emailInText.Success)
-                                {
-                                    sp.OrgLeaderEmail = emailInText.Groups[1].Value;
-                                }
-                                else if (!string.IsNullOrEmpty(userContext?.ManagerEmail))
-                                {
-                                    sp.OrgLeaderEmail = userContext.ManagerEmail;
-                                }
-                            }
-                        }
+                        // Apply the operations server-side to the inbound working query, keyed by partId.
+                        var applyResult = CopilotOperationApplier.Apply(workingQuery, operations);
 
-                        _logger.CopilotChatLoopCompleted(toolCallCount, sourceParts.Count);
+                        _logger.CopilotOperationsApplied(
+                            applyResult.AddCount,
+                            applyResult.RemoveCount,
+                            applyResult.ReplaceCount,
+                            applyResult.RejectedTargetCount,
+                            applyResult.PreservedUnsupportedCount,
+                            conversationId ?? "unknown");
+
+                        _logger.CopilotChatLoopCompleted(toolCallCount, applyResult.ResultingQuery.Count);
                         _logger.CopilotChatTokenUsage(totalInputTokens, totalOutputTokens, toolCallCount + 1, conversationId ?? "unknown");
 
                         return new CopilotChatResult
                         {
-                            ResponseMessage = parsedResponse,
-                            SourceParts = sourceParts
+                            ResponseMessage = message,
+                            // v1 backward-compat: SourceParts carries the resulting query (for an empty
+                            // working query this equals the newly generated parts — the old append result).
+                            SourceParts = applyResult.ResultingQuery,
+                            ResultingQuery = applyResult.ResultingQuery,
+                            AppliedOperations = applyResult.AppliedOperations,
+                            Warning = applyResult.Warning,
+                            ErrorCode = applyResult.ErrorCode
                         };
                     }
                 }
@@ -791,214 +787,101 @@ namespace Services.WebApi
             return null;
         }
 
-        private (string response, List<CopilotSourcePartResult> sourceParts) ParseStructuredResponseWithSourcePart(string responseText)
+        /// <summary>
+        /// Parses the strict-schema operation response { message, operations[] }. Because the response
+        /// format is a strict json_schema, the payload is well-formed JSON — no markdown/regex repair needed.
+        /// </summary>
+        private (string message, List<EditOperation> operations) ParseOperationResponse(string responseText)
         {
             var jsonOptions = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
-            var trimmed = responseText.Trim();
-
-            // Try to extract JSON from markdown code blocks
-            var jsonBlockMatch = Regex.Match(trimmed, @"```json\s*([\s\S]*?)\s*```", RegexOptions.IgnoreCase);
-            if (jsonBlockMatch.Success)
+            try
             {
-                trimmed = jsonBlockMatch.Groups[1].Value.Trim();
+                var parsed = JsonSerializer.Deserialize<CopilotOperationResponse>(responseText, jsonOptions);
+                if (parsed != null)
+                {
+                    return (parsed.Message ?? string.Empty, parsed.Operations ?? new List<EditOperation>());
+                }
+            }
+            catch (JsonException ex)
+            {
+                _logger.CopilotLlmResponseJsonParseError(ex);
             }
 
-            // Handle duplicate JSON objects (LLM sometimes outputs {...}{...})
-            // Try to parse as-is first; on failure, take everything up to the first "}\n{" split
-            if (trimmed.StartsWith("{"))
+            // The strict schema guarantees a message; if deserialization somehow fails, surface the raw text
+            // as a message with no operations (the working query is returned unchanged).
+            return (responseText, new List<EditOperation>());
+        }
+
+        /// <summary>
+        /// Fills OrgLeaderObjectId on model-emitted org-leader parts using the Graph objectIds validated
+        /// during the tool-calling loop (validate_org_leader). Keeps objectId resolution server-side and
+        /// out of the model's strict schema.
+        /// </summary>
+        private void EnrichOrgLeaderObjectIds(List<EditOperation> operations)
+        {
+            foreach (var op in operations)
             {
-                try
+                var candidates = new List<CopilotSourcePartResult?>();
+                if (op.Part != null) candidates.Add(op.Part);
+                if (op.Parts != null) candidates.AddRange(op.Parts);
+
+                foreach (var part in candidates)
                 {
-                    using var _ = JsonDocument.Parse(trimmed);
-                }
-                catch (JsonException)
-                {
-                    // Likely trailing duplicate — take first object by splitting on }{ boundary
-                    var splitIndex = trimmed.IndexOf("}\n{", StringComparison.Ordinal);
-                    if (splitIndex < 0) splitIndex = trimmed.IndexOf("}{", StringComparison.Ordinal);
-                    if (splitIndex > 0)
+                    if (part == null || !part.UseOrgStructure) continue;
+                    if (!string.IsNullOrEmpty(part.OrgLeaderObjectId)) continue;
+                    if (!string.IsNullOrEmpty(part.OrgLeaderEmail)
+                        && _validatedOrgLeaders.TryGetValue(part.OrgLeaderEmail, out var oid))
                     {
-                        trimmed = trimmed.Substring(0, splitIndex + 1);
-                        _logger.LogWarning("LLM returned duplicate JSON objects — using first object only");
+                        part.OrgLeaderObjectId = oid;
                     }
                 }
             }
+        }
 
-            if (trimmed.StartsWith("{"))
+        /// <summary>
+        /// Renders the inbound working query (v2) — every part's partId and source type plus a plain-language
+        /// hint — as the model's context block. Falls back to a minimal legacy current-filter block for v1.
+        /// Never emits secrets/PII; renders only the query's own configured values.
+        /// </summary>
+        private static string BuildWorkingQueryContext(List<CopilotSourcePartResult>? workingQuery)
+        {
+            if (workingQuery != null)
             {
-                try
+                if (workingQuery.Count == 0)
                 {
-                    var structured = JsonSerializer.Deserialize<StructuredChatResponseWithSourceParts>(trimmed, jsonOptions);
-                    if (structured != null && !string.IsNullOrEmpty(structured.Response))
+                    return CopilotPrompts.WorkingQueryContextTemplate.Replace("{0}", "(empty — the user is starting a brand-new query)");
+                }
+
+                var lines = new List<string>();
+                foreach (var part in workingQuery)
+                {
+                    var sourceType = string.IsNullOrWhiteSpace(part.SourceType) ? "SqlMembership" : part.SourceType;
+                    var editable = CopilotOperationApplier.IsSupported(part) ? "editable" : "NOT editable by Copilot — preserve unchanged";
+                    var descriptor = new List<string>
                     {
-                        var sourceParts = new List<CopilotSourcePartResult>();
-
-                        if (structured.SourceParts != null && structured.SourceParts.Count > 0)
-                        {
-                            // New format: sourceParts array with per-part org leader info
-                            foreach (var sp in structured.SourceParts)
-                            {
-                                var isGroupMembership = string.Equals(sp.SourceType, "GroupMembership", StringComparison.OrdinalIgnoreCase);
-
-                                if (isGroupMembership && !string.IsNullOrEmpty(sp.GroupId))
-                                {
-                                    sourceParts.Add(new CopilotSourcePartResult
-                                    {
-                                        PartId = Guid.NewGuid().ToString(),
-                                        SourceType = "GroupMembership",
-                                        Filter = string.Empty,
-                                        Title = sp.Title ?? sp.GroupName ?? "Group Source",
-                                        IsExclusion = sp.IsExclusion,
-                                        UseOrgStructure = false,
-                                        GroupId = sp.GroupId,
-                                        GroupName = sp.GroupName
-                                    });
-                                }
-                                else if (!string.IsNullOrEmpty(sp.Filter) || sp.UseOrgStructure)
-                                {
-                                    var objectId = !string.IsNullOrEmpty(sp.OrgLeaderEmail) && _validatedOrgLeaders.TryGetValue(sp.OrgLeaderEmail, out var oid) ? oid : null;
-                                    sourceParts.Add(new CopilotSourcePartResult
-                                    {
-                                        PartId = Guid.NewGuid().ToString(),
-                                        SourceType = "SqlMembership",
-                                        Filter = sp.Filter ?? "",
-                                        Title = sp.Title ?? "HR Filter",
-                                        IsExclusion = sp.IsExclusion,
-                                        UseOrgStructure = sp.UseOrgStructure,
-                                        OrgLeaderName = sp.OrgLeaderName,
-                                        OrgLeaderEmail = sp.OrgLeaderEmail,
-                                        OrgLeaderObjectId = objectId,
-                                        OrgLeaderDepth = sp.OrgLeaderDepth
-                                    });
-                                }
-                            }
-                        }
-                        else if (structured.SourcePart != null)
-                        {
-                            // Legacy format: single sourcePart with top-level org leader fields
-                            if (!string.IsNullOrEmpty(structured.SourcePart.Filter) || structured.UseOrgStructure)
-                            {
-                                var objectId = !string.IsNullOrEmpty(structured.OrgLeaderEmail) && _validatedOrgLeaders.TryGetValue(structured.OrgLeaderEmail, out var oid) ? oid : _validatedOrgLeaders.Values.LastOrDefault();
-                                sourceParts.Add(new CopilotSourcePartResult
-                                {
-                                    PartId = Guid.NewGuid().ToString(),
-                                    Filter = structured.SourcePart.Filter ?? "",
-                                    Title = structured.SourcePart.Title ?? "HR Filter",
-                                    IsExclusion = structured.SourcePart.IsExclusion,
-                                    UseOrgStructure = structured.UseOrgStructure,
-                                    OrgLeaderName = structured.OrgLeaderName,
-                                    OrgLeaderEmail = structured.OrgLeaderEmail,
-                                    OrgLeaderObjectId = objectId,
-                                    OrgLeaderDepth = structured.OrgLeaderDepth
-                                });
-                            }
-                        }
-                        else if (structured.UseOrgStructure)
-                        {
-                            // Fallback: AI set useOrgStructure:true but forgot sourceParts, create default
-                            string? extractedFilter = null;
-                            var filterMatch = Regex.Match(structured.Response, @"`([^`]+_Code[^`]*)`");
-                            if (filterMatch.Success)
-                            {
-                                extractedFilter = filterMatch.Groups[1].Value;
-                            }
-                            var objectId = !string.IsNullOrEmpty(structured.OrgLeaderEmail) && _validatedOrgLeaders.TryGetValue(structured.OrgLeaderEmail, out var oid) ? oid : _validatedOrgLeaders.Values.LastOrDefault();
-                            sourceParts.Add(new CopilotSourcePartResult
-                            {
-                                PartId = Guid.NewGuid().ToString(),
-                                Filter = extractedFilter ?? "",
-                                Title = structured.OrgLeaderName != null ? $"{structured.OrgLeaderName}'s Org" : "Org Filter",
-                                IsExclusion = false,
-                                UseOrgStructure = true,
-                                OrgLeaderName = structured.OrgLeaderName,
-                                OrgLeaderEmail = structured.OrgLeaderEmail,
-                                OrgLeaderObjectId = objectId,
-                                OrgLeaderDepth = structured.OrgLeaderDepth
-                            });
-                        }
-                        return (structured.Response, sourceParts);
+                        $"partId: {part.PartId}",
+                        $"sourceType: {sourceType} ({editable})"
+                    };
+                    if (!string.IsNullOrEmpty(part.Title)) descriptor.Add($"title: {part.Title}");
+                    if (!string.IsNullOrEmpty(part.Filter)) descriptor.Add($"filter: {part.Filter}");
+                    if (part.IsExclusion) descriptor.Add("exclusionary: true");
+                    if (part.UseOrgStructure)
+                    {
+                        descriptor.Add("orgStructure: enabled");
+                        if (!string.IsNullOrEmpty(part.OrgLeaderName)) descriptor.Add($"orgLeader: {part.OrgLeaderName}");
+                        if (part.OrgLeaderDepth.HasValue) descriptor.Add($"depth: {part.OrgLeaderDepth.Value}");
                     }
+                    if (!string.IsNullOrEmpty(part.GroupName)) descriptor.Add($"group: {part.GroupName}");
+                    if (!string.IsNullOrEmpty(part.GroupId)) descriptor.Add($"groupId: {part.GroupId}");
+                    lines.Add("- " + string.Join(" | ", descriptor));
                 }
-                catch (JsonException ex)
-                {
-                    _logger.CopilotLlmResponseJsonParseError(ex);
-                }
+
+                return CopilotPrompts.WorkingQueryContextTemplate.Replace("{0}", string.Join("\n", lines));
             }
 
-            // Fallback: AI returned plain text instead of JSON
-            var hasOrgStructure = responseText.Contains("Organization Structure", StringComparison.OrdinalIgnoreCase);
-            var hasAcceptApply = responseText.Contains("Accept & Apply", StringComparison.OrdinalIgnoreCase) || responseText.Contains("Accept &amp; Apply", StringComparison.OrdinalIgnoreCase);
-            
-            if (hasOrgStructure && hasAcceptApply)
-            {
-                string? extractedFilter = null;
-                var filterMatch = Regex.Match(responseText, @"`([^`]*_Code[^`]*)`");
-                if (filterMatch.Success)
-                {
-                    extractedFilter = filterMatch.Groups[1].Value;
-                }
-
-                string? extractedLeaderName = null;
-                var leaderMatch = Regex.Match(responseText, @"\*\*([^*]+)\*\*\s*\([^)]*\)\s*as the org leader", RegexOptions.IgnoreCase);
-                if (!leaderMatch.Success)
-                {
-                    leaderMatch = Regex.Match(responseText, @"with\s+\*\*([^*]+)\*\*.*?as the org leader", RegexOptions.IgnoreCase);
-                }
-                if (leaderMatch.Success)
-                {
-                    extractedLeaderName = leaderMatch.Groups[1].Value;
-                }
-
-                _logger.CopilotPlainTextFallbackExtracted(extractedFilter, extractedLeaderName);
-
-                var fallbackPart = new CopilotSourcePartResult
-                {
-                    PartId = Guid.NewGuid().ToString(),
-                    Filter = extractedFilter ?? "",
-                    Title = extractedLeaderName != null ? $"{extractedLeaderName}'s Org" : "Org Filter",
-                    IsExclusion = false,
-                    UseOrgStructure = true,
-                    OrgLeaderName = extractedLeaderName
-                };
-                return (responseText, new List<CopilotSourcePartResult> { fallbackPart });
-            }
-
-            return (responseText, new List<CopilotSourcePartResult>());
+            return string.Empty;
         }
 
-        // New format: sourceParts array with per-part org leader info
-        private class StructuredChatResponseWithSourceParts
-        {
-            public string Response { get; set; } = string.Empty;
-            public List<SourcePartWithLeaderJson>? SourceParts { get; set; }
-            // Legacy support: single sourcePart with top-level org leader fields
-            public SourcePartJson? SourcePart { get; set; }
-            public bool UseOrgStructure { get; set; }
-            public string? OrgLeaderName { get; set; }
-            public string? OrgLeaderEmail { get; set; }
-            public int? OrgLeaderDepth { get; set; }
-        }
-
-        private class SourcePartWithLeaderJson
-        {
-            public string? Filter { get; set; }
-            public string? Title { get; set; }
-            public bool IsExclusion { get; set; }
-            public bool UseOrgStructure { get; set; }
-            public string? OrgLeaderName { get; set; }
-            public string? OrgLeaderEmail { get; set; }
-            public int? OrgLeaderDepth { get; set; }
-            public string? SourceType { get; set; }
-            public string? GroupId { get; set; }
-            public string? GroupName { get; set; }
-        }
-
-        private class SourcePartJson
-        {
-            public string? Filter { get; set; }
-            public string? Title { get; set; }
-            public bool IsExclusion { get; set; }
-        }
 
         private string BuildAttributesText(List<HrAttributeInfo>? hrAttributes)
         {

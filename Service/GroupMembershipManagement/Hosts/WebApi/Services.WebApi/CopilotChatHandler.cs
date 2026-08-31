@@ -44,14 +44,35 @@ namespace Services.WebApi
                     request.UserMessage, 
                     request.ConversationHistory, 
                     request.UserContext,
-                    request.CurrentFilter,
+                    request.WorkingQuery,
                     request.ConversationId);
+
+                // Atomic reject from the operation engine (e.g., a remove/replace targeting an
+                // unknown partId) surfaces as a 400 with the unchanged query.
+                if (!string.IsNullOrEmpty(result.ErrorCode))
+                {
+                    response.StatusCode = HttpStatusCode.BadRequest;
+                    response.ErrorCode = result.ErrorCode;
+                    response.ResponseMessage = string.IsNullOrEmpty(result.ResponseMessage)
+                        ? "The requested change targeted a part that is not part of the current query."
+                        : result.ResponseMessage;
+                    response.SourceParts = result.SourceParts;
+                    response.ResultingQuery = result.ResultingQuery;
+                    response.AppliedOperations = result.AppliedOperations;
+                    return response;
+                }
 
                 response.StatusCode = HttpStatusCode.OK;
                 response.ResponseMessage = result.ResponseMessage;
                 response.SourceParts = result.SourceParts;
+                response.ResultingQuery = result.ResultingQuery;
+                response.AppliedOperations = result.AppliedOperations;
+                response.Warning = result.Warning;
 
-                _logger.CopilotChatResponseGenerated(result.SourcePart != null);
+                // Report whether any resulting parts were produced (was previously a misleading
+                // convenience-property check that misreported when parts came from a different parse path).
+                var partsProduced = (result.ResultingQuery?.Count ?? 0) > 0 || result.SourceParts.Count > 0;
+                _logger.CopilotChatResponseGenerated(partsProduced);
             }
             catch (TimeoutException ex)
             {

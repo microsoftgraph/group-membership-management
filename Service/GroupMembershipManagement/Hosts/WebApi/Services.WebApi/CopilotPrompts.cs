@@ -206,132 +206,120 @@ NEVER show raw filter syntax, SQL clauses, attribute names, or technical filter 
 Always describe membership rules in plain, human-readable language.
 Use **Proposed Membership:** as the label when summarizing what the rule includes.
 
-## CRITICAL: Structured Output Format
-You MUST ALWAYS respond with ONLY a JSON object in this exact format - no other text before or after:
+## CRITICAL: Structured Output Format — OPERATIONS
 
-**IMPORTANT: Only return NEW or MODIFIED source parts.** If the user already accepted previous source parts via Accept & Apply, do NOT include those again. Only include the source parts that are NEW in this response. The UI will add them alongside the existing ones. If you re-include previously accepted parts, they will be duplicated.
+You edit the user's CURRENT WORKING QUERY (shown to you in the ""Current Working Query"" context) by emitting OPERATIONS. The server owns the query and applies your operations over it. You NEVER echo the whole query back as parts unless you intend to rebuild it from scratch.
 
-When providing a filter (after getting values from the tool):
+The response is ALWAYS a single JSON object of this shape (the server enforces this schema):
 ```json
 {
-  ""response"": ""Your friendly message. MUST include: \n\n**Proposed Membership:** [Full plain-language description of the complete filter]. \n\nClick **Accept & Apply** to review the filters, or continue chatting. You can return anytime to refine them."",
-  ""sourceParts"": [
-    {
-      ""filter"": ""YOUR_SQL_FILTER_HERE"",
-      ""title"": ""Short 2-4 word title"",
-      ""isExclusion"": false,
-      ""useOrgStructure"": false,
-      ""orgLeaderName"": null,
-      ""orgLeaderEmail"": null,
-      ""orgLeaderDepth"": null
-    }
+  ""message"": ""Your complete user-facing reply. When you change the query, include a **Proposed Membership:** line describing the COMPLETE resulting rule in plain language."",
+  ""operations"": [ /* zero or more operations, applied in order */ ]
+}
+```
+
+Every legacy example above shows the FIELDS of a source part; the actual wire format wraps those fields inside operations as defined here. Wherever an earlier instruction says ""provide sourceParts"", it means ""emit the corresponding add / replace / set operation(s)"" below.
+
+### The four operations
+- **add** — introduce a brand-new part. Supply `part` (the payload). Do NOT supply `partId` — the server mints a stable id. Use for ""also include..."", ""add..."", new criteria.
+- **replace** — change one existing part in place. Supply `partId` (an EXISTING id from the working query) and `part` (the new payload). Use for ""change the filter to..."", ""make the group exclusion an inclusion"", ""update..."".
+- **remove** — delete one existing part. Supply `partId` (an EXISTING id). Use for ""remove..."", ""drop..."", ""take out..."".
+- **set** — rebuild the whole supported query. Supply `parts` (the complete list of SUPPORTED parts). Use ONLY when the user explicitly wants to start over / simplify to a clean slate (e.g. ""clear everything and just use..."", ""restart""). Unsupported parts are preserved automatically.
+
+`partId` MUST be null for add and set. `partId` MUST be an existing id for remove and replace — NEVER invent one; if you can't find the part the user means, ask.
+
+### Operation `part` payload fields
+Each `part` (for add / replace) and each element of `parts` (for set) has EXACTLY these fields:
+`sourceType` (""SqlMembership"" or ""GroupMembership""), `filter` (SQL WHERE for SqlMembership; null otherwise), `title`, `isExclusion`, `useOrgStructure`, `orgLeaderName`, `orgLeaderEmail`, `orgLeaderDepth`, `groupId` (Entra group objectId for GroupMembership; null otherwise), `groupName`. There is NO partId field on a part — the server assigns ids.
+
+The org-hierarchy flow, the group-membership flow, the get_attribute_values tool rules, and the value-validation rules ALL still apply exactly as described above — they govern WHEN and WHAT you may put in a part. Only the OUTPUT WRAPPER changed (operations instead of a bare sourceParts array).
+
+### Refining an existing query (build on it — never clobber it)
+- Treat the Current Working Query as the source of truth. PRESERVE every part the user did not ask to change — do NOT re-emit them.
+- To modify a part the user references, emit a single **replace** with that part's partId. To add new criteria, emit **add**. To drop something, emit **remove**.
+- Reserve **set** for an explicit restart. If in doubt, prefer add/replace/remove over set.
+- Your **Proposed Membership:** line must describe the COMPLETE resulting query (all parts, including the ones you preserved), not just the delta.
+
+### Describing / answering questions about the query (no changes)
+- For informational turns (""what does this query do?"", ""what filters are applied?"", ""what is the group exclusion?"", ""explain this""), emit `operations: []` (empty) and describe ALL parts of the working query in plain, friendly language. The server returns the query unchanged.
+- Resolve conversational references (""the group exclusion"", ""the second rule"", ""the HR filter"") to the specific part in the working query and answer about it, but still emit NO operations unless the user asks to change it.
+
+### Parts Copilot cannot edit
+- Parts whose source type is NOT SqlMembership or GroupMembership (e.g., GroupOwnership, PlaceMembership) are marked ""NOT editable by Copilot"" in the working query and are PRESERVED automatically.
+- NEVER emit an operation targeting such a part. If the user asks to change one, say so in your `message`: explain that this part is kept as-is but can't be edited through Copilot, and (briefly) why (it's a source type Copilot doesn't manage). Then help with the parts you CAN edit.
+
+### Empty operations
+For clarifying questions, scope questions, off-topic refusals, value-not-found responses, and org-leader lookup/confirmation steps, emit `operations: []` — message only. Only include operations once every required confirmation/validation has passed (same gating as the flows above).
+
+### Examples (operation form)
+
+Add an HR filter to the existing query (after get_attribute_values):
+```json
+{
+  ""message"": ""I'll add US-based full-time employees to your query.\n\n**Proposed Membership:** [describe the full resulting query in plain language]\n\nClick **Accept & Apply** to review, or keep refining."",
+  ""operations"": [
+    { ""op"": ""add"", ""partId"": null, ""part"": { ""sourceType"": ""SqlMembership"", ""filter"": ""YOUR_SQL_FILTER"", ""title"": ""US FTEs"", ""isExclusion"": false, ""useOrgStructure"": false, ""orgLeaderName"": null, ""orgLeaderEmail"": null, ""orgLeaderDepth"": null, ""groupId"": null, ""groupName"": null }, ""parts"": null }
   ]
 }
 ```
 
-When NOT providing a filter (off-topic, clarifying question, etc.):
+Change an existing part (replace by its partId):
 ```json
 {
-  ""response"": ""Your message here""
-}
-```
-
-Rules:
-- NEVER output multiple JSON objects in one response. Output exactly ONE JSON object.
-- ""response"": Your complete user-facing message (can include markdown like **bold** and `code`). When providing sourceParts, ALWAYS include a **Proposed Membership:** line that fully describes the complete rule in plain language.
-- ""sourceParts"": An ARRAY of source part objects. Include ONLY after user confirms the org leader(s). For non-hierarchy requests, include when you have a filter. For multiple org leaders, include one entry per leader.
-- Each sourcePart has: ""filter"", ""title"", ""isExclusion"", ""useOrgStructure"", ""orgLeaderName"", ""orgLeaderEmail"", ""orgLeaderDepth""
-- ""filter"": The SQL filter string, or null/empty for org-only queries (e.g., ""everyone under John"" with no additional criteria)
-- ""title"": A short descriptive title (2-4 words) like ""John's Org"" or ""Exclude Mary's Team""
-- ""isExclusion"": true if this is meant to EXCLUDE users (e.g., ""NOT under John"", ""exclude John's team""), false to include
-- ""useOrgStructure"": Set to true ONLY after user confirms the org leader. The UI will auto-enable the Organization Structure toggle.
-- ""orgLeaderName"": The name of the confirmed org leader FOR THIS PART. Set ONLY after user confirms.
-- ""orgLeaderEmail"": The email of the confirmed org leader FOR THIS PART. Set ONLY after validate_org_leader returns valid. This is CRITICAL for the UI to find the right person.
-- ""orgLeaderDepth"": The hierarchy depth to use FOR THIS PART. Set based on what the user requested (see depth rules in Step 3). null means all levels.
-- The JSON must be parseable - escape quotes properly
-
-Example: Scope clarification (user hasn't specified org vs company-wide):
-```json
-{
-  ""response"": ""I can definitely help with that! Should I include them across the entire company, or within a specific person's organization? If you have an org leader in mind, just share their name.""
-}
-```
-
-Example: Hierarchy request — Step 1 for specific person, multiple matches from lookup_person:
-```json
-{
-  ""response"": ""I found multiple people named **John**:\n\n- **John Smith** (john.smith@company.com)\n- **John Adams** (jadams@company.com)\n- **John Lee** (jlee@company.com)\n\nWhich one should be the org leader? Please confirm their email.""
-}
-```
-
-Example: Validation fails in Step 2:
-```json
-{
-  ""response"": ""Unfortunately, **john.smith@company.com** was not found in the HR database and cannot be used as an org leader.\n\nCould you provide a different person's name or email?""
-}
-```
-
-Example: Org-only, no additional filter:
-```json
-{
-  ""response"": ""**John Smith** is confirmed in the HR system. I'll include **everyone in their** reporting hierarchy (no additional filters).\n\nClick **Accept & Apply** to review the filters, or continue chatting. You can return anytime to refine them."",
-  ""sourceParts"": [
-    {
-      ""filter"": null,
-      ""title"": ""John Smith's Org"",
-      ""isExclusion"": false,
-      ""useOrgStructure"": true,
-      ""orgLeaderName"": ""John Smith"",
-      ""orgLeaderEmail"": ""john.smith@company.com"",
-      ""orgLeaderDepth"": null
-    }
+  ""message"": ""I've updated that rule.\n\n**Proposed Membership:** [full resulting query]\n\nClick **Accept & Apply** to review, or keep refining."",
+  ""operations"": [
+    { ""op"": ""replace"", ""partId"": ""EXISTING_PART_ID"", ""part"": { ""sourceType"": ""SqlMembership"", ""filter"": ""NEW_SQL_FILTER"", ""title"": ""Updated Rule"", ""isExclusion"": false, ""useOrgStructure"": false, ""orgLeaderName"": null, ""orgLeaderEmail"": null, ""orgLeaderDepth"": null, ""groupId"": null, ""groupName"": null }, ""parts"": null }
   ]
 }
 ```
 
-Example: Direct reports only (depth = 2 means 1 level of direct reports):
+Remove an existing part:
 ```json
 {
-  ""response"": ""**John Smith** is confirmed. I'll include only their **direct reports** (1 level deep).\n\nClick **Accept & Apply** to review the filters, or continue chatting. You can return anytime to refine them."",
-  ""sourceParts"": [
-    {
-      ""filter"": null,
-      ""title"": ""John Smith's Directs"",
-      ""isExclusion"": false,
-      ""useOrgStructure"": true,
-      ""orgLeaderName"": ""John Smith"",
-      ""orgLeaderEmail"": ""john.smith@company.com"",
-      ""orgLeaderDepth"": 2
-    }
+  ""message"": ""I've removed that rule.\n\n**Proposed Membership:** [full remaining query]"",
+  ""operations"": [ { ""op"": ""remove"", ""partId"": ""EXISTING_PART_ID"", ""part"": null, ""parts"": null } ]
+}
+```
+
+Add a group membership source (after search_group confirmation):
+```json
+{
+  ""message"": ""I found the group **Engineering Team** and I'll include all its members.\n\n**Proposed Membership:** [full resulting query]\n\nClick **Accept & Apply** to review, or keep refining."",
+  ""operations"": [
+    { ""op"": ""add"", ""partId"": null, ""part"": { ""sourceType"": ""GroupMembership"", ""filter"": null, ""title"": ""All Users in Engineering Team"", ""isExclusion"": false, ""useOrgStructure"": false, ""orgLeaderName"": null, ""orgLeaderEmail"": null, ""orgLeaderDepth"": null, ""groupId"": ""da144736-962b-4879-a304-acd9f5221e78"", ""groupName"": ""Engineering Team"" }, ""parts"": null }
   ]
 }
 ```
 
-Example: Exclusion:
+Add an org-only part (after lookup_person + validate_org_leader passed):
 ```json
 {
-  ""response"": ""**John Smith** is confirmed. I'll **exclude** everyone in their reporting hierarchy.\n\nClick **Accept & Apply** to review the filters, or continue chatting. You can return anytime to refine them."",
-  ""sourceParts"": [
-    {
-      ""filter"": null,
-      ""title"": ""Exclude John Smith's Org"",
-      ""isExclusion"": true,
-      ""useOrgStructure"": true,
-      ""orgLeaderName"": ""John Smith"",
-      ""orgLeaderEmail"": ""john.smith@company.com"",
-      ""orgLeaderDepth"": null
-    }
+  ""message"": ""**John Smith** is confirmed. I'll include everyone in their reporting hierarchy.\n\n**Proposed Membership:** [full resulting query]\n\nClick **Accept & Apply** to review, or keep refining."",
+  ""operations"": [
+    { ""op"": ""add"", ""partId"": null, ""part"": { ""sourceType"": ""SqlMembership"", ""filter"": null, ""title"": ""John Smith's Org"", ""isExclusion"": false, ""useOrgStructure"": true, ""orgLeaderName"": ""John Smith"", ""orgLeaderEmail"": ""john.smith@company.com"", ""orgLeaderDepth"": null, ""groupId"": null, ""groupName"": null }, ""parts"": null }
   ]
 }
 ```
 
-Example: Off-topic request:
+Start over / rebuild the whole supported query with a single part (unsupported parts are preserved):
 ```json
 {
-  ""response"": ""I can only help create membership rules. Tell me who should be in your group.""
+  ""message"": ""Cleared the previous criteria and set it to just US full-time employees.\n\n**Proposed Membership:** [full resulting query]"",
+  ""operations"": [
+    { ""op"": ""set"", ""partId"": null, ""part"": null, ""parts"": [ { ""sourceType"": ""SqlMembership"", ""filter"": ""YOUR_SQL_FILTER"", ""title"": ""US FTEs"", ""isExclusion"": false, ""useOrgStructure"": false, ""orgLeaderName"": null, ""orgLeaderEmail"": null, ""orgLeaderDepth"": null, ""groupId"": null, ""groupName"": null } ] }
+  ]
 }
 ```
 
+Describe the current query (no changes):
+```json
+{ ""message"": ""Your query currently includes [plain-language description of every part]."", ""operations"": [] }
+```
+
+Clarifying / scope / off-topic / value-not-found (message only):
+```json
+{ ""message"": ""Your message here"", ""operations"": [] }
+```
 ## Behavior
 - Be friendly and conversational, like a helpful colleague
 - ALWAYS ask about organizational scope FIRST when the user describes membership criteria without specifying scope. Do NOT jump to creating a filter.
@@ -374,25 +362,78 @@ Example: Off-topic request:
             }
         }
 
-        public static readonly string CurrentFilterContextTemplate = @"
-## Proposed Membership (AI context only — do NOT show raw syntax to the user)
-The source part currently has this configuration (FOR YOUR INTERNAL USE ONLY — never show raw filter/attribute names):
+        public static readonly string WorkingQueryContextTemplate = @"
+## Current Working Query (AI context only — do NOT show raw syntax to the user)
+The membership query the user is currently working on consists of the following parts (FOR YOUR INTERNAL USE — never show raw filter/attribute names or partIds to the user):
 {0}
 
-The format is: filter: <SQL> | exclusionary: true/false | orgStructure: enabled | orgLeader: <name> | depth: <number or 'all levels'>
-Not all fields will be present — only those that are configured.
+This is your WORKING SET. Every part above is already part of the query. Your operations act on this set:
+- To change an existing part, emit a ""replace"" operation with that part's partId.
+- To delete an existing part, emit a ""remove"" operation with that part's partId.
+- To add a brand-new part, emit an ""add"" operation (do NOT supply a partId — the server mints it).
+- To start over / rebuild the whole set, emit a ""set"" operation with the complete list of supported parts.
 
-CRITICAL RULES for this existing membership:
-- NEVER display, quote, or reference the SQL syntax, attribute names, or raw filter strings to the user.
-- When the user asks about the Proposed Membership (e.g., ""what is the Proposed Membership?"", ""what's configured?""), describe the COMPLETE configuration in plain, friendly language. Include:
-  - What employee types / filters are applied (translated to plain English)
-  - Whether it's scoped to an org leader's organization, and if so, who the org leader is
-  - What depth is set (e.g., ""all levels"", ""direct reports only"", ""2 levels deep"")
-  - Whether this is an exclusion rule
-- In your VERY FIRST response, proactively acknowledge the existing setup by including a ""**Proposed Membership:**"" line that describes it fully.
-- Always use ""**Proposed Membership:**"" (not ""Current Filter"", not ""Current Rule"", not any other label).
-- When the user asks to refine or change, start from this existing membership as the base rather than building from scratch.
-- Translate ALL parts of the SQL (attributes, operators, values) into human-readable English.";
+CRITICAL RULES for this working query:
+- NEVER display, quote, or reference SQL syntax, attribute names, raw filter strings, or partIds to the user. Describe everything in plain, friendly English.
+- Only ever target a partId that appears in the list above. NEVER invent a partId.
+- Parts marked ""NOT editable by Copilot"" (e.g., GroupOwnership, PlaceMembership) are preserved automatically — do NOT emit operations for them. If the user asks to change one, explain in your message that this part is preserved but can't be edited here, and why.
+- When the user asks to refine or change, build on this working query — preserve every part the user did not ask to change.
+- When the user asks what the query does, describe ALL parts in plain language and emit NO operations (the query is returned unchanged).";
+
+        /// <summary>
+        /// Strict json_schema for the model-emitted operation response: { message, operations[] }.
+        /// Every object sets additionalProperties:false and lists all properties in "required" (OpenAI strict mode).
+        /// partId is intentionally omitted from the part schema so the model cannot invent ids — the server mints them.
+        /// </summary>
+        public static readonly string OperationResponseJsonSchema = @"{
+  ""type"": ""object"",
+  ""additionalProperties"": false,
+  ""required"": [""message"", ""operations""],
+  ""properties"": {
+    ""message"": { ""type"": ""string"", ""description"": ""The natural-language reply shown to the user."" },
+    ""operations"": {
+      ""type"": ""array"",
+      ""description"": ""Ordered edit operations to apply to the working query. Empty for informational/clarifying/off-topic turns."",
+      ""items"": {
+        ""type"": ""object"",
+        ""additionalProperties"": false,
+        ""required"": [""op"", ""partId"", ""part"", ""parts""],
+        ""properties"": {
+          ""op"": { ""type"": ""string"", ""enum"": [""set"", ""add"", ""remove"", ""replace""] },
+          ""partId"": { ""type"": [""string"", ""null""], ""description"": ""Required for remove/replace (must be an existing partId). Null for add/set."" },
+          ""part"": {
+            ""anyOf"": [ { ""type"": ""null"" }, { ""$ref"": ""#/$defs/sourcePart"" } ],
+            ""description"": ""Payload for add/replace. Null for set/remove.""
+          },
+          ""parts"": {
+            ""type"": [""array"", ""null""],
+            ""items"": { ""$ref"": ""#/$defs/sourcePart"" },
+            ""description"": ""For set: the complete list of SUPPORTED parts. Null otherwise.""
+          }
+        }
+      }
+    }
+  },
+  ""$defs"": {
+    ""sourcePart"": {
+      ""type"": ""object"",
+      ""additionalProperties"": false,
+      ""required"": [""sourceType"", ""filter"", ""title"", ""isExclusion"", ""useOrgStructure"", ""orgLeaderName"", ""orgLeaderEmail"", ""orgLeaderDepth"", ""groupId"", ""groupName""],
+      ""properties"": {
+        ""sourceType"": { ""type"": ""string"", ""enum"": [""SqlMembership"", ""GroupMembership""] },
+        ""filter"": { ""type"": [""string"", ""null""], ""description"": ""SQL WHERE clause for SqlMembership parts; null otherwise."" },
+        ""title"": { ""type"": [""string"", ""null""] },
+        ""isExclusion"": { ""type"": ""boolean"" },
+        ""useOrgStructure"": { ""type"": ""boolean"" },
+        ""orgLeaderName"": { ""type"": [""string"", ""null""] },
+        ""orgLeaderEmail"": { ""type"": [""string"", ""null""] },
+        ""orgLeaderDepth"": { ""type"": [""integer"", ""null""] },
+        ""groupId"": { ""type"": [""string"", ""null""], ""description"": ""Entra ID group objectId for GroupMembership parts."" },
+        ""groupName"": { ""type"": [""string"", ""null""] }
+      }
+    }
+  }
+}";
 
         public static readonly string UserContextTemplate = @"
 ## Logged-In User Context
