@@ -184,6 +184,63 @@ namespace Services.Tests
             _mockBlobStorageRepository.Verify(mock => mock.UploadFileAsync(ExpectedFilename, It.IsNotNull<string>(), It.IsAny<Dictionary<string, string>>()));
         }
 
+        private static readonly string[] _conformanceCorpus =
+        {
+            "f0e1d2c3-b4a5-9687-7869-5a4b3c2d1e0f",
+            "00000100-0000-0000-0000-000000000000",
+            "00000001-0000-0000-0000-000000000000",
+            "80000000-0000-0000-0000-000000000000",
+            "7fffffff-ffff-ffff-ffff-ffffffffffff",
+            "00000000-8000-0000-0000-000000000000",
+            "00000000-7fff-0000-0000-000000000000",
+            "00000000-0000-8000-0000-000000000000",
+            "00000000-0000-7fff-0000-000000000000",
+            "00000000-0000-0000-8000-000000000000",
+            "00000000-0000-0000-7f00-000000000000",
+            "00000000-0000-0000-0000-000080000000",
+            "00000000-0000-0000-0000-00007f000000",
+            "00000000-0000-0000-0000-000000000080",
+            "00000000-0000-0000-0000-00000000007f",
+            "ffffffff-ffff-ffff-ffff-ffffffffffff",
+            "00000000-0000-0000-0000-000000000000",
+        };
+
+        [TestMethod]
+        public async Task UploadMembershipAsync_StagesMembersInCanonicalOrder()
+        {
+            GroupMembership? staged = null;
+            _mockBlobStorageRepository
+                .Setup(x => x.UploadFileAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<Dictionary<string, string>>()))
+                .Callback<string, string, Dictionary<string, string>>((path, content, metadata) =>
+                {
+                    staged = System.Text.Json.JsonSerializer.Deserialize<GroupMembership>(content);
+                })
+                .Returns(Task.CompletedTask);
+
+            // Deliberately unsorted input, so a missing sort cannot pass by accident.
+            var members = _conformanceCorpus
+                .Select((id, index) => new AzureADTeamsUser
+                {
+                    ObjectId = Guid.Parse(id),
+                    DisplayName = $"member-{index}",
+                    ConversationMemberId = $"conversation-{index}"
+                })
+                .ToList();
+            var expected = members.OrderBy(member => member.ObjectId.ToString("D"), StringComparer.Ordinal)
+                                  .Select(member => System.Text.Json.JsonSerializer.Serialize<AzureADUser>(member))
+                                  .ToList();
+
+            await _service.UploadMembershipAsync(members, _syncInfo, false, _targetOfficeGroupId);
+
+            var actual = staged!.SourceMembers
+                                .Select(member => System.Text.Json.JsonSerializer.Serialize(member))
+                                .ToList();
+
+            CollectionAssert.AreEqual(expected, actual,
+                "TeamsChannelMembershipObtainer changed member order or content while staging.");
+
+        }
+
         [TestMethod]
         public async Task CanMarkJobsAsError()
         {

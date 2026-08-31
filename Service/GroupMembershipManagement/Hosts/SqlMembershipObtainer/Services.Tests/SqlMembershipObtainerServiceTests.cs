@@ -85,6 +85,72 @@ namespace Services.Tests
             Assert.AreEqual(profiles.Count, groupMembership.SourceMembers.Count);
         }
 
+        private static readonly string[] _conformanceCorpus =
+        {
+            "f0e1d2c3-b4a5-9687-7869-5a4b3c2d1e0f",
+            "00000100-0000-0000-0000-000000000000",
+            "00000001-0000-0000-0000-000000000000",
+            "80000000-0000-0000-0000-000000000000",
+            "7fffffff-ffff-ffff-ffff-ffffffffffff",
+            "00000000-8000-0000-0000-000000000000",
+            "00000000-7fff-0000-0000-000000000000",
+            "00000000-0000-8000-0000-000000000000",
+            "00000000-0000-7fff-0000-000000000000",
+            "00000000-0000-0000-8000-000000000000",
+            "00000000-0000-0000-7f00-000000000000",
+            "00000000-0000-0000-0000-000080000000",
+            "00000000-0000-0000-0000-00007f000000",
+            "00000000-0000-0000-0000-000000000080",
+            "00000000-0000-0000-0000-00000000007f",
+            "ffffffff-ffff-ffff-ffff-ffffffffffff",
+            "00000000-0000-0000-0000-000000000000",
+        };
+
+        private static List<Guid> ExpectedCanonicalOrder() =>
+            _conformanceCorpus.Select(Guid.Parse)
+                             .OrderBy(g => g.ToString("D"), StringComparer.Ordinal)
+                             .ToList();
+
+        [TestMethod]
+        public async Task UploadMembershipFileAsync_StagesMembersInCanonicalOrder()
+        {
+            var blobStorageRepository = new Mock<IBlobStorageRepository>();
+            var groupMembership = default(GroupMembership);
+            blobStorageRepository.Setup(x => x.UploadFileAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<Dictionary<string, string>>()))
+                                 .Callback<string, string, Dictionary<string, string>>((path, content, metadata) =>
+                                 {
+                                     groupMembership = JsonSerializer.Deserialize<GroupMembership>(content);
+                                 });
+
+            var service = new SqlMembershipObtainerService(
+                                new Mock<ISqlMembershipRepository>().Object,
+                                blobStorageRepository.Object,
+                                new Mock<ISyncJobStatusService>().Object,
+                                new MockDestinationResolver(
+                                    new Mock<IDatabaseGroupsRepository>().Object,
+                                    new Mock<IDatabaseChannelsRepository>().Object),
+                                NullLogger<SqlMembershipObtainerService>.Instance,
+                                new TelemetryClient(new TelemetryConfiguration()),
+                                new Mock<IDryRunValue>().Object,
+                                new Mock<IDataFactoryService>().Object);
+
+            var syncJob = new SyncJob { Id = Guid.NewGuid(), RunId = Guid.NewGuid(), MembershipType = "GroupMembership" };
+            syncJob.Group = new Group { SyncJobId = syncJob.Id, GroupId = Guid.NewGuid() };
+
+            // Deliberately unsorted input, so a missing sort cannot pass by accident.
+            var profiles = _conformanceCorpus
+                .Select((id, i) => new GraphProfileInformation { Id = id, PersonnelNumber = i.ToString() })
+                .ToList();
+
+            await service.UploadMembershipFileAsync(profiles, syncJob, syncJob.Group.GroupId, 1, false);
+
+            var staged = groupMembership.SourceMembers.Select(x => x.ObjectId).ToList();
+
+            CollectionAssert.AreEqual(ExpectedCanonicalOrder(), staged,
+                "SqlMembershipObtainer staged members in an order other than the canonical one.");
+
+        }
+
         [TestMethod]
         public async Task GetChildEntitiesAsync_ReturnsExpectedResponse_AndProfilesCount()
         {

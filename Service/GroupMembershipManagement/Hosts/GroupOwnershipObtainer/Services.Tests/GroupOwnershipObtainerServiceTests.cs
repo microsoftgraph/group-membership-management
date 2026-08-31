@@ -4,12 +4,14 @@
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Models;
+using Models.ServiceBus;
 using Moq;
 using Repositories.Contracts;
 using Repositories.Contracts.InjectConfig;
 using Repositories.Mocks;
 using Services;
 using Services.Entities;
+using System.Text.Json;
 using System.Text.Json.Nodes;
 
 namespace Tests.Services
@@ -293,6 +295,56 @@ namespace Tests.Services
             var fileName = await _groupOwnershipObtainerService.SendMembershipAsync(syncJob, groupId, null, 2, true);
 
             Assert.IsTrue(fileName.EndsWith("_GroupOwnershipObtainer_2.json"));
+        }
+
+        private static readonly string[] _conformanceCorpus =
+        {
+            "f0e1d2c3-b4a5-9687-7869-5a4b3c2d1e0f",
+            "00000100-0000-0000-0000-000000000000",
+            "00000001-0000-0000-0000-000000000000",
+            "80000000-0000-0000-0000-000000000000",
+            "7fffffff-ffff-ffff-ffff-ffffffffffff",
+            "00000000-8000-0000-0000-000000000000",
+            "00000000-7fff-0000-0000-000000000000",
+            "00000000-0000-8000-0000-000000000000",
+            "00000000-0000-7fff-0000-000000000000",
+            "00000000-0000-0000-8000-000000000000",
+            "00000000-0000-0000-7f00-000000000000",
+            "00000000-0000-0000-0000-000080000000",
+            "00000000-0000-0000-0000-00007f000000",
+            "00000000-0000-0000-0000-000000000080",
+            "00000000-0000-0000-0000-00000000007f",
+            "ffffffff-ffff-ffff-ffff-ffffffffffff",
+            "00000000-0000-0000-0000-000000000000",
+        };
+
+        [TestMethod]
+        public async Task SendMembershipAsync_StagesMembersInCanonicalOrder()
+        {
+            var groupId = Guid.NewGuid();
+            var syncJob = new SyncJob { Id = Guid.NewGuid(), RunId = Guid.NewGuid(), Query = "[]" };
+            var users = _conformanceCorpus.Select(Guid.Parse).ToList();
+            var expected = _conformanceCorpus.Select(Guid.Parse)
+                                            .OrderBy(g => g.ToString("D"), StringComparer.Ordinal)
+                                            .ToList();
+
+            GroupMembership? staged = null;
+            _dryRunSettings.SetupGet(x => x.DryRunEnabled).Returns(false);
+            _blobStorageRepository
+                .Setup(x => x.UploadFileAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<Dictionary<string, string>>()))
+                .Callback<string, string, Dictionary<string, string>>((path, content, metadata) =>
+                {
+                    staged = JsonSerializer.Deserialize<GroupMembership>(content);
+                })
+                .Returns(Task.CompletedTask);
+
+            await _groupOwnershipObtainerService.SendMembershipAsync(syncJob, groupId, users, 1, false);
+
+            var actual = staged!.SourceMembers.Select(x => x.ObjectId).ToList();
+
+            CollectionAssert.AreEqual(expected, actual,
+                "GroupOwnershipObtainer staged members in an order other than the canonical one.");
+
         }
 
         private List<JobsFilterSyncJob> GenerateSampleJobs(IEnumerable<string> sourceTypes)

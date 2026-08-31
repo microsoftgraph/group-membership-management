@@ -18,6 +18,8 @@ using Tests.FunctionApps.Mocks;
 using Tests.Services;
 using Models;
 using Models.Notifications;
+using Models.ServiceBus;
+using System.Text.Json;
 using Repositories.ServiceBusQueue;
 using Moq;
 using Repositories.Contracts;
@@ -62,6 +64,76 @@ namespace Tests.FunctionApps
             _syncJobStatusService = new Mock<ISyncJobStatusService>();
             _destinationGroup = Guid.NewGuid();
             _allUsers = new List<AzureADUser>();
+
+        }
+
+        private static readonly string[] _conformanceCorpus =
+        {
+            "f0e1d2c3-b4a5-9687-7869-5a4b3c2d1e0f",
+            "00000100-0000-0000-0000-000000000000",
+            "00000001-0000-0000-0000-000000000000",
+            "80000000-0000-0000-0000-000000000000",
+            "7fffffff-ffff-ffff-ffff-ffffffffffff",
+            "00000000-8000-0000-0000-000000000000",
+            "00000000-7fff-0000-0000-000000000000",
+            "00000000-0000-8000-0000-000000000000",
+            "00000000-0000-7fff-0000-000000000000",
+            "00000000-0000-0000-8000-000000000000",
+            "00000000-0000-0000-7f00-000000000000",
+            "00000000-0000-0000-0000-000080000000",
+            "00000000-0000-0000-0000-00007f000000",
+            "00000000-0000-0000-0000-000000000080",
+            "00000000-0000-0000-0000-00000000007f",
+            "ffffffff-ffff-ffff-ffff-ffffffffffff",
+            "00000000-0000-0000-0000-000000000000",
+        };
+
+        [TestMethod]
+        public async Task SendMembershipAsync_StagesMembersInCanonicalOrder()
+        {
+            var graphRepo = new MockGraphGroupRepository { GroupsToUsers = _groupsToUsers };
+            var calc = new SGMembershipCalculator(
+                graphRepo,
+                _blobRepository,
+                _syncJobs,
+                new MockDestinationResolver(_groupsRepository.Object, _channelsRepository.Object),
+                _notificationsQueueRepository.Object,
+                _databaseDestinationAttributesRepository.Object,
+                NullLogger<SGMembershipCalculator>.Instance,
+                _dryRun,
+                _syncJobStatusService.Object);
+
+            var testJob = new SyncJob
+            {
+                Id = Guid.NewGuid(),
+                Query = _querySample.GetQuery(),
+                Status = "InProgress"
+            };
+            _syncJobs.Jobs.Add(testJob);
+
+            // Deliberately unsorted input, so a missing sort cannot pass by accident.
+            var users = _conformanceCorpus.Select((id, index) => new AzureADUser
+            {
+                ObjectId = Guid.Parse(id),
+                DisplayName = $"member-{index}",
+                Properties = new Dictionary<string, object> { ["marker"] = index },
+                MembershipAction = MembershipAction.Add,
+                SourceGroup = new Guid(index + 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0),
+                SourceGroups = new List<Guid> { new Guid(index + 20, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0) }
+            }).ToList();
+            var expected = users.OrderBy(user => user.ObjectId.ToString("D"), StringComparer.Ordinal)
+                                .Select(user => JsonSerializer.Serialize(user))
+                                .ToList();
+
+            await calc.SendMembershipAsync(testJob, users, _partIndex, true);
+
+            var content = _blobRepository.Sent.Last().Content;
+            var actual = JsonSerializer.Deserialize<GroupMembership>(content).SourceMembers
+                                       .Select(user => JsonSerializer.Serialize(user))
+                                       .ToList();
+
+            CollectionAssert.AreEqual(expected, actual,
+                "SGMembershipCalculator changed member order or content while staging.");
 
         }
 
