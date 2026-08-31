@@ -11,6 +11,7 @@ using Models.ThresholdNotifications;
 using Moq;
 using Repositories.Contracts;
 using Repositories.Contracts.InjectConfig;
+using Repositories.Mocks;
 using Services.Contracts;
 using System;
 using System.Collections.Generic;
@@ -82,8 +83,7 @@ namespace Services.Tests
             purgedSyncJobRepository.Setup(x => x.InsertPurgedSyncJobsAsync(It.IsAny<IEnumerable<PurgedSyncJob>>())).ReturnsAsync(2);
 
             var azureMaintenanceService = new AzureMaintenanceService(syncJobRepository.Object,
-                                                groupsRepository.Object,
-                                                channelsRepository.Object,
+                                                new MockDestinationResolver(groupsRepository.Object, channelsRepository.Object),
                                                 purgedSyncJobRepository.Object,
                                                 graphGroupRepository.Object,
                                                 handleInactiveJobsConfig.Object,
@@ -137,8 +137,7 @@ namespace Services.Tests
             purgedSyncJobRepository.Setup(x => x.DeletePurgedSyncJobsAsync(It.IsAny<IEnumerable<PurgedSyncJob>>())).ReturnsAsync(2);
 
             var azureMaintenanceService = new AzureMaintenanceService(syncJobRepository.Object,
-                                                groupsRepository.Object,
-                                                channelsRepository.Object,
+                                                new MockDestinationResolver(groupsRepository.Object, channelsRepository.Object),
                                                 purgedSyncJobRepository.Object,
                                                 graphGroupRepository.Object,
                                                 handleInactiveJobsConfig.Object,
@@ -193,8 +192,7 @@ namespace Services.Tests
             var notificationQueueRepository = new Mock<IServiceBusQueueRepository>();
 
             var azureMaintenanceService = new AzureMaintenanceService(syncJobRepository.Object,
-                                                groupsRepository.Object,
-                                                channelsRepository.Object,
+                                                new MockDestinationResolver(groupsRepository.Object, channelsRepository.Object),
                                                 purgedSyncJobRepository.Object,
                                                 graphGroupRepository.Object,
                                                 handleInactiveJobsConfig.Object,
@@ -221,8 +219,7 @@ namespace Services.Tests
             graphGroupRepository.Setup(x => x.GetGroupNameAsync(It.IsAny<Guid>())).ReturnsAsync(() => "Test Group");
 
             var azureMaintenanceService = new AzureMaintenanceService(syncJobRepository.Object,
-                                                groupsRepository.Object,
-                                                channelsRepository.Object,
+                                                new MockDestinationResolver(groupsRepository.Object, channelsRepository.Object),
                                                 purgedSyncJobRepository.Object,
                                                 graphGroupRepository.Object,
                                                 handleInactiveJobsConfig.Object,
@@ -268,8 +265,7 @@ namespace Services.Tests
             var notificationQueueRepository = new Mock<IServiceBusQueueRepository>();
 
             var azureMaintenanceService = new AzureMaintenanceService(syncJobRepository.Object,
-                                                groupsRepository.Object,
-                                                channelsRepository.Object,
+                                                new MockDestinationResolver(groupsRepository.Object, channelsRepository.Object),
                                                 purgedSyncJobRepository.Object,
                                                 graphGroupRepository.Object,
                                                 handleInactiveJobsConfig.Object,
@@ -345,8 +341,7 @@ namespace Services.Tests
             _ = graphGroupRepository.Setup(x => x.GetGroupOwnersAsync(job.Group.GroupId, 0)).ReturnsAsync(users);
 
             var azureMaintenanceService = new AzureMaintenanceService(syncJobRepository.Object,
-                                                groupsRepository.Object,
-                                                channelsRepository.Object,
+                                                new MockDestinationResolver(groupsRepository.Object, channelsRepository.Object),
                                                 purgedSyncJobRepository.Object,
                                                 graphGroupRepository.Object,
                                                 handleInactiveJobsConfig.Object,
@@ -451,8 +446,7 @@ namespace Services.Tests
             handleInactiveJobsConfig.Setup(x => x.NumberOfDaysBeforePurgingToSendWarning).Returns(7);
 
             var azureMaintenanceService = new AzureMaintenanceService(syncJobRepository.Object,
-                                                groupsRepository.Object,
-                                                channelsRepository.Object,
+                                                new MockDestinationResolver(groupsRepository.Object, channelsRepository.Object),
                                                 purgedSyncJobRepository.Object,
                                                 graphGroupRepository.Object,
                                                 handleInactiveJobsConfig.Object,
@@ -487,8 +481,7 @@ namespace Services.Tests
 
             var azureMaintenanceService = new AzureMaintenanceService(
                                                 syncJobRepository.Object,
-                                                groupsRepository.Object,
-                                                channelsRepository.Object,
+                                                new MockDestinationResolver(groupsRepository.Object, channelsRepository.Object),
                                                 purgedSyncJobRepository.Object,
                                                 graphGroupRepository.Object,
                                                 handleInactiveJobsConfig.Object,

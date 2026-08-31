@@ -8,6 +8,7 @@ using Models;
 using Models.ServiceBus;
 using Models.SyncJobHistory;
 using Repositories.Contracts;
+using Repositories.Contracts.DestinationResolution;
 using Repositories.Contracts.InjectConfig;
 using Services.Contracts;
 using SqlMembershipObtainer.Entities;
@@ -21,8 +22,7 @@ namespace Services
         private readonly ISqlMembershipRepository _sqlMembershipRepository;
         private readonly IBlobStorageRepository _blobStorageRepository;
         private readonly ISyncJobStatusService _syncJobStatusService;
-        private readonly IDatabaseGroupsRepository _databaseGroupsRepository;
-        private readonly IDatabaseChannelsRepository _databaseChannelsRepository;
+        private readonly IDestinationResolver _destinationResolver;
         private readonly ILogger<SqlMembershipObtainerService> _logger;
         private readonly TelemetryClient _telemetryClient;
         private readonly bool _isSqlMembershipObtainerDryRunEnabled;
@@ -36,8 +36,7 @@ namespace Services
         public SqlMembershipObtainerService(ISqlMembershipRepository sqlMembershipRepository,
                                     IBlobStorageRepository blobStorageRepository,
                                     ISyncJobStatusService syncJobStatusService,
-                                    IDatabaseGroupsRepository databaseGroupsRepository,
-                                    IDatabaseChannelsRepository databaseChannelsRepository,
+                                    IDestinationResolver destinationResolver,
                                     ILogger<SqlMembershipObtainerService> logger,
                                     TelemetryClient telemetryClient,
                                     IDryRunValue dryRun,
@@ -45,8 +44,7 @@ namespace Services
         {
             _blobStorageRepository = blobStorageRepository ?? throw new ArgumentNullException(nameof(blobStorageRepository));
             _syncJobStatusService = syncJobStatusService ?? throw new ArgumentNullException(nameof(syncJobStatusService));
-            _databaseGroupsRepository = databaseGroupsRepository ?? throw new ArgumentNullException(nameof(databaseGroupsRepository));
-            _databaseChannelsRepository = databaseChannelsRepository ?? throw new ArgumentNullException(nameof(databaseChannelsRepository));
+            _destinationResolver = destinationResolver ?? throw new ArgumentNullException(nameof(destinationResolver));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _telemetryClient = telemetryClient ?? throw new ArgumentNullException(nameof(telemetryClient));
             _sqlMembershipRepository = sqlMembershipRepository ?? throw new ArgumentNullException(nameof(sqlMembershipRepository));
@@ -147,17 +145,13 @@ namespace Services
 
         public async Task<Guid> GetGroupIdAsync(SyncJob syncJob)
         {
-            if (syncJob.MembershipType == MembershipTypes.TeamsChannelMembership.ToString())
+            var destination = await _destinationResolver.ResolveAsync(syncJob);
+            return destination switch
             {
-                var channel = syncJob.Channel ?? await _databaseChannelsRepository.GetChannelUsingSyncJobIdAsync(syncJob.Id);
-                return channel.GroupId;
-            }
-            else if (syncJob.MembershipType == MembershipTypes.GroupMembership.ToString())
-            {
-                var group = syncJob.Group ?? await _databaseGroupsRepository.GetGroupUsingSyncJobIdAsync(syncJob.Id);
-                return group.GroupId;
-            }
-            return Guid.Empty;
+                ResolvedGroupDestination groupDestination => groupDestination.ObjectId,
+                ResolvedTeamsChannelDestination channelDestination => channelDestination.TeamObjectId,
+                _ => Guid.Empty
+            };
         }
 
         public async Task<MembershipFileResult> UploadMembershipFileAsync(List<GraphProfileInformation> profiles, SyncJob syncJob, Guid groupId, int currentPart, bool exclusionary)

@@ -8,6 +8,7 @@ using Models.ServiceBus;
 using Models.Notifications;
 using Models.SyncJobHistory;
 using Repositories.Contracts;
+using Repositories.Contracts.DestinationResolution;
 using Repositories.Contracts.InjectConfig;
 using Services.Contracts;
 using Services.Entities;
@@ -30,7 +31,7 @@ namespace Services
         private readonly IMailRepository _mailRepository;
         private readonly IEmailSenderRecipient _emailSenderAndRecipients;
         private readonly IDatabaseSyncJobsRepository _syncJobRepository;
-        private readonly IDatabaseGroupsRepository _databaseGroupsRepository;
+        private readonly IDestinationResolver _destinationResolver;
         private readonly INotificationTypesRepository _notificationTypesRepository;
 		private readonly IJobNotificationsRepository _jobNotificationRepository;
         private readonly IServiceBusQueueRepository _serviceBusQueueRepository;
@@ -44,7 +45,7 @@ namespace Services
                 IMailRepository mailRepository,
                 IEmailSenderRecipient emailSenderAndRecipients,
                 IDatabaseSyncJobsRepository syncJobRepository,
-                IDatabaseGroupsRepository databaseGroupsRepository,
+                IDestinationResolver destinationResolver,
                 INotificationTypesRepository notificationTypesRepository,
 			    IJobNotificationsRepository jobNotificationRepository,
                 IServiceBusQueueRepository serviceBusQueueRepository,
@@ -57,7 +58,7 @@ namespace Services
             _mailRepository = mailRepository ?? throw new ArgumentNullException(nameof(mailRepository));
             _emailSenderAndRecipients = emailSenderAndRecipients ?? throw new ArgumentNullException(nameof(emailSenderAndRecipients));
             _syncJobRepository = syncJobRepository ?? throw new ArgumentNullException(nameof(syncJobRepository));
-            _databaseGroupsRepository = databaseGroupsRepository ?? throw new ArgumentNullException(nameof(databaseGroupsRepository));
+            _destinationResolver = destinationResolver ?? throw new ArgumentNullException(nameof(destinationResolver));
             _jobNotificationRepository = jobNotificationRepository ?? throw new ArgumentNullException(nameof(jobNotificationRepository));
 			_notificationTypesRepository = notificationTypesRepository ?? throw new ArgumentNullException(nameof(notificationTypesRepository));
             _serviceBusQueueRepository = serviceBusQueueRepository ?? throw new ArgumentNullException(nameof(_serviceBusQueueRepository));
@@ -72,12 +73,8 @@ namespace Services
 
         public async Task<Guid> GetGroupIdAsync(SyncJob syncJob)
         {
-            if (syncJob.MembershipType == MembershipTypes.GroupMembership.ToString())
-            {
-                var group = syncJob.Group ?? await _databaseGroupsRepository.GetGroupUsingSyncJobIdAsync(syncJob.Id);
-                return group.GroupId;
-            }
-            return Guid.Empty;
+            var destination = await _destinationResolver.ResolveAsync(syncJob);
+            return destination is ResolvedGroupDestination groupDestination ? groupDestination.ObjectId : Guid.Empty;
         }
 
         public async Task SendEmailAsync(SyncJob job, NotificationMessageType notificationType, string[] additionalContentParameters)

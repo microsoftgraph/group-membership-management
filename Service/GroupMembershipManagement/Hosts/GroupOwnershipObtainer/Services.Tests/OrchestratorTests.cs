@@ -13,6 +13,7 @@ using Models.ServiceBus;
 using Moq;
 using Repositories.Contracts;
 using Repositories.Contracts.InjectConfig;
+using Repositories.Mocks;
 using Services;
 using Services.Contracts;
 using Services.Entities;
@@ -67,8 +68,7 @@ namespace Services.Tests
                         _dryRunSettings.Object,
                         NullLogger<GroupOwnershipObtainerService>.Instance,
                         _syncJobRepository.Object,
-                        _groupsRepository.Object,
-                        _channelsRepository.Object,
+                        new MockDestinationResolver(_groupsRepository.Object, _channelsRepository.Object),
                         _graphGroupRepository.Object,
                         _blobStorageRepository.Object);
 

@@ -5,6 +5,7 @@ using Models;
 using Models.Entities;
 using Models.SyncJobHistory;
 using Repositories.Contracts;
+using Repositories.Contracts.DestinationResolution;
 using Services.Contracts;
 using Services.TeamsChannelUpdater.Contracts;
 using Hosts.TeamsChannelUpdater;
@@ -23,8 +24,7 @@ namespace Services.TeamsChannelUpdater
         private readonly ILogger<TeamsChannelUpdaterService> _logger;
         private readonly ITeamsChannelRepository _teamsChannelRepository;
         private readonly IDatabaseSyncJobsRepository _syncJobRepository;
-        private readonly IDatabaseGroupsRepository _databaseGroupsRepository;
-        private readonly IDatabaseChannelsRepository _databaseChannelsRepository;
+        private readonly IDestinationResolver _destinationResolver;
         private readonly IServiceBusQueueRepository _serviceBusQueueRepository;
         private readonly ISyncJobStatusService _syncJobStatusService;
         private readonly ISyncJobHistoryRepository _syncJobHistoryRepository;
@@ -32,8 +32,7 @@ namespace Services.TeamsChannelUpdater
         public TeamsChannelUpdaterService(ILogger<TeamsChannelUpdaterService> logger,
             ITeamsChannelRepository teamsChannelRepository,
             IDatabaseSyncJobsRepository syncJobRepository, 
-            IDatabaseGroupsRepository databaseGroupsRepository,
-            IDatabaseChannelsRepository databaseChannelsRepository,
+            IDestinationResolver destinationResolver,
             IServiceBusQueueRepository serviceBusQueueRepository,
             ISyncJobStatusService syncJobStatusService,
             ISyncJobHistoryRepository syncJobHistoryRepository)
@@ -41,8 +40,7 @@ namespace Services.TeamsChannelUpdater
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _teamsChannelRepository = teamsChannelRepository ?? throw new ArgumentNullException(nameof(teamsChannelRepository));
             _syncJobRepository = syncJobRepository ?? throw new ArgumentNullException(nameof(syncJobRepository));
-            _databaseGroupsRepository = databaseGroupsRepository ?? throw new ArgumentNullException(nameof(databaseGroupsRepository));
-            _databaseChannelsRepository = databaseChannelsRepository ?? throw new ArgumentNullException(nameof(databaseChannelsRepository));
+            _destinationResolver = destinationResolver ?? throw new ArgumentNullException(nameof(destinationResolver));
             _serviceBusQueueRepository = serviceBusQueueRepository ?? throw new ArgumentNullException(nameof(serviceBusQueueRepository));
             _syncJobStatusService = syncJobStatusService ?? throw new ArgumentNullException(nameof(syncJobStatusService));
             _syncJobHistoryRepository = syncJobHistoryRepository ?? throw new ArgumentNullException(nameof(syncJobHistoryRepository));
@@ -50,28 +48,19 @@ namespace Services.TeamsChannelUpdater
 
         public async Task<Guid> GetGroupIdAsync(SyncJob syncJob)
         {
-            if (syncJob.MembershipType == MembershipTypes.TeamsChannelMembership.ToString())
+            var destination = await _destinationResolver.ResolveAsync(syncJob);
+            return destination switch
             {
-                var channel = syncJob.Channel ?? await _databaseChannelsRepository.GetChannelUsingSyncJobIdAsync(syncJob.Id);
-                return channel.GroupId;
-
-            }
-            else if (syncJob.MembershipType == MembershipTypes.GroupMembership.ToString())
-            {
-                var group = syncJob.Group ?? await _databaseGroupsRepository.GetGroupUsingSyncJobIdAsync(syncJob.Id);
-                return group.GroupId;
-            }
-            return Guid.Empty;
+                ResolvedGroupDestination groupDestination => groupDestination.ObjectId,
+                ResolvedTeamsChannelDestination channelDestination => channelDestination.TeamObjectId,
+                _ => Guid.Empty
+            };
         }
 
         public async Task<string> GetChannelIdAsync(SyncJob syncJob)
         {
-            if (syncJob.MembershipType == MembershipTypes.TeamsChannelMembership.ToString())
-            {
-                var channel = syncJob.Channel ?? await _databaseChannelsRepository.GetChannelUsingSyncJobIdAsync(syncJob.Id);
-                return channel.ChannelId;
-            }
-            return string.Empty;
+            var destination = await _destinationResolver.ResolveAsync(syncJob);
+            return destination is ResolvedTeamsChannelDestination channelDestination ? channelDestination.ChannelId : string.Empty;
         }
 
         public async Task<SyncJob> GetSyncJobAsync(Guid syncJobId)

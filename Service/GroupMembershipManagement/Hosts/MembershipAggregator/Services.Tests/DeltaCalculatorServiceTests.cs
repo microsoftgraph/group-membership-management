@@ -13,6 +13,7 @@ using Moq;
 using Polly;
 using Repositories.Contracts;
 using Repositories.Contracts.InjectConfig;
+using Repositories.Mocks;
 using Services.Contracts;
 using System;
 using System.Collections.Generic;
@@ -75,8 +76,7 @@ namespace Services.Tests
         {
             return new DeltaCalculatorService(
                 _syncJobRepository.Object,
-                _databaseGroupsRepository.Object,
-                _databaseChannelsRepository.Object,
+                new MockDestinationResolver(_databaseGroupsRepository.Object, _databaseChannelsRepository.Object),
                 NullLogger<DeltaCalculatorService>.Instance,
                 _graphAPIService.Object,
                 _dryRunValue.Object,

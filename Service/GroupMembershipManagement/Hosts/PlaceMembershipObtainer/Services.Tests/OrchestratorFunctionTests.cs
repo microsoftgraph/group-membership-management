@@ -76,8 +76,7 @@ namespace Tests.Services
             mockGraphGroupRepository.Object,
             mockBlobStorageRepository.Object,
             mockSyncJobStatusService.Object,
-            groupsRepository.Object,
-            channelsRepository.Object,
+            new MockDestinationResolver(groupsRepository.Object, channelsRepository.Object),
             mockDryRunValue.Object);
             _context = new Mock<TaskOrchestrationContext>();
             _serviceBusQueueRepository = new Mock<IServiceBusQueueRepository>();

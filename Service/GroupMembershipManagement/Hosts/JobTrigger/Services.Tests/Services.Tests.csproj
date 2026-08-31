@@ -31,6 +31,7 @@
     <ProjectReference Include="..\Function\JobTrigger.csproj" />
     <ProjectReference Include="..\Services.Contracts\Services.Contracts.csproj" />
     <ProjectReference Include="..\Services\Services.csproj" />
+    <ProjectReference Include="..\..\..\Repositories.Mocks\Repositories.Mocks.csproj" />
   </ItemGroup>
 
 </Project>

@@ -7,6 +7,7 @@ using Models.Notifications;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using Repositories.Contracts;
+using Repositories.Contracts.DestinationResolution;
 using Services.Notifier.Contracts;
 using System;
 using System.Globalization;
@@ -40,8 +41,7 @@ namespace Services.Notifier
         private readonly IThresholdConfig _thresholdConfig;
         private readonly IGMMResources _gmmResources;
         private readonly IServiceBusQueueRepository _serviceBusQueueRepository;
-        private readonly IDatabaseGroupsRepository _databaseGroupsRepository;
-        private readonly IDatabaseChannelsRepository _databaseChannelsRepository;
+        private readonly IDestinationResolver _destinationResolver;
         private readonly IDatabaseSettingsRepository _databaseSettingsRepository;
 
         public NotifierService(
@@ -57,8 +57,7 @@ namespace Services.Notifier
             IThresholdConfig thresholdConfig,
             IGMMResources gmmResources,
             IServiceBusQueueRepository serviceBusQueueRepository,
-            IDatabaseGroupsRepository databaseGroupsRepository,
-            IDatabaseChannelsRepository databaseChannelsRepository,
+            IDestinationResolver destinationResolver,
             IDatabaseSettingsRepository databaseSettingsRepository,
             TelemetryClient telemetryClient)
         {
@@ -74,35 +73,26 @@ namespace Services.Notifier
             _thresholdConfig = thresholdConfig ?? throw new ArgumentNullException(nameof(thresholdConfig));
             _gmmResources = gmmResources ?? throw new ArgumentException(nameof(gmmResources));
             _serviceBusQueueRepository = serviceBusQueueRepository ?? throw new ArgumentNullException(nameof(_serviceBusQueueRepository));
-            _databaseGroupsRepository = databaseGroupsRepository ?? throw new ArgumentNullException(nameof(databaseGroupsRepository));
-            _databaseChannelsRepository = databaseChannelsRepository ?? throw new ArgumentNullException(nameof(databaseChannelsRepository));
+            _destinationResolver = destinationResolver ?? throw new ArgumentNullException(nameof(destinationResolver));
             _databaseSettingsRepository = databaseSettingsRepository ?? throw new ArgumentNullException(nameof(databaseSettingsRepository));
             _telemetryClient = telemetryClient ?? throw new ArgumentNullException(nameof(telemetryClient));
         }
 
         public async Task<Guid> GetGroupIdAsync(SyncJob syncJob)
         {
-            if (syncJob.MembershipType == MembershipTypes.TeamsChannelMembership.ToString())
+            var destination = await _destinationResolver.ResolveAsync(syncJob);
+            return destination switch
             {
-                var channel = syncJob.Channel ?? await _databaseChannelsRepository.GetChannelUsingSyncJobIdAsync(syncJob.Id);
-                return channel.GroupId;
-            }
-            else if (syncJob.MembershipType == MembershipTypes.GroupMembership.ToString())
-            {
-                var group = syncJob.Group ?? await _databaseGroupsRepository.GetGroupUsingSyncJobIdAsync(syncJob.Id);
-                return group.GroupId;
-            }
-            return Guid.Empty;
+                ResolvedGroupDestination groupDestination => groupDestination.ObjectId,
+                ResolvedTeamsChannelDestination channelDestination => channelDestination.TeamObjectId,
+                _ => Guid.Empty
+            };
         }
 
         public async Task<string> GetChannelIdAsync(SyncJob syncJob)
         {
-            if (syncJob.MembershipType == MembershipTypes.TeamsChannelMembership.ToString())
-            {
-                var channel = syncJob.Channel ?? await _databaseChannelsRepository.GetChannelUsingSyncJobIdAsync(syncJob.Id);
-                return channel.ChannelId;
-            }
-            return string.Empty;
+            var destination = await _destinationResolver.ResolveAsync(syncJob);
+            return destination is ResolvedTeamsChannelDestination channelDestination ? channelDestination.ChannelId : string.Empty;
         }
 
         public async Task SendThresholdEmailAsync(ThresholdNotification notification)

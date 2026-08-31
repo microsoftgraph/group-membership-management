@@ -31,6 +31,8 @@ using Models.Helpers;
 using System.Text.Json;
 using JsonSerializer = System.Text.Json.JsonSerializer;
 
+using Repositories.Mocks;
+
 namespace Services.Tests
 {
     [TestClass]
@@ -432,6 +434,7 @@ namespace Services.Tests
                                                         syncJobRepository.Object,
                                                         groupsRepository.Object,
                                                         channelsRepository.Object,
+                                                        new MockDestinationResolver(groupsRepository.Object, channelsRepository.Object),
                                                         destinationAttributesRepository.Object,
                                                         notificationTypesRepository.Object,
                                                         iJobNotificationRepository.Object,
@@ -516,6 +519,7 @@ namespace Services.Tests
                                                         syncJobRepository.Object,
                                                         groupsRepository.Object,
                                                         channelsRepository.Object,
+                                                        new MockDestinationResolver(groupsRepository.Object, channelsRepository.Object),
                                                         destinationAttributesRepository.Object,
                                                         emailTypeRepository.Object,
                                                         iJobNotificationRepository.Object,

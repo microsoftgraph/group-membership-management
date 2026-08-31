@@ -39,7 +39,7 @@ namespace Services.Tests
             var mockSyncJobStatusService = new Mock<ISyncJobStatusService>();
             var mockSyncJobHistoryRepository = new Mock<ISyncJobHistoryRepository>();
 
-            var graphUpdaterService = new GraphUpdaterService(NullLogger<GraphUpdaterService>.Instance, telemetryClient, mockGraphGroup, mockMail, mailSenders, mockSyncJobs, mockGroups, mockNotificationType, mockJobNotification, mockServiceBusQueueRepository.Object, mockSyncJobStatusService.Object, mockSyncJobHistoryRepository.Object);
+            var graphUpdaterService = new GraphUpdaterService(NullLogger<GraphUpdaterService>.Instance, telemetryClient, mockGraphGroup, mockMail, mailSenders, mockSyncJobs, new MockDestinationResolver(mockGroups), mockNotificationType, mockJobNotification, mockServiceBusQueueRepository.Object, mockSyncJobStatusService.Object, mockSyncJobHistoryRepository.Object);
             var runId = Guid.NewGuid();
             var groupId = Guid.NewGuid();
             mockGraphGroup.GroupsToUsers.Add(groupId, new List<AzureADUser>());
@@ -74,7 +74,7 @@ namespace Services.Tests
             var mockSyncJobStatusService = new Mock<ISyncJobStatusService>();
             var mockSyncJobHistoryRepository = new Mock<ISyncJobHistoryRepository>();
 
-            var graphUpdaterService = new GraphUpdaterService(NullLogger<GraphUpdaterService>.Instance, telemetryClient, mockGraphGroup, mockMail, mailSenders, mockSyncJobs, mockGroups, mockNotificationType, mockJobNotification, mockServiceBusQueueRepository.Object, mockSyncJobStatusService.Object, mockSyncJobHistoryRepository.Object);
+            var graphUpdaterService = new GraphUpdaterService(NullLogger<GraphUpdaterService>.Instance, telemetryClient, mockGraphGroup, mockMail, mailSenders, mockSyncJobs, new MockDestinationResolver(mockGroups), mockNotificationType, mockJobNotification, mockServiceBusQueueRepository.Object, mockSyncJobStatusService.Object, mockSyncJobHistoryRepository.Object);
             var runId = Guid.NewGuid();
             var groupId = Guid.NewGuid();
             bool isInitialSync = false;

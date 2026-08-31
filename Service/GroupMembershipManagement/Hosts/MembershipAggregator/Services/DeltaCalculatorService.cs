@@ -9,6 +9,7 @@ using Models.Notifications;
 using Models.ServiceBus;
 using Models.ThresholdNotifications;
 using Repositories.Contracts;
+using Repositories.Contracts.DestinationResolution;
 using Repositories.Contracts.InjectConfig;
 using Services.Contracts;
 using Services.Entities;
@@ -25,8 +26,7 @@ namespace Services
     {
 
         private readonly IDatabaseSyncJobsRepository _syncJobRepository;
-        private readonly IDatabaseGroupsRepository _databaseGroupsRepository;
-        private readonly IDatabaseChannelsRepository _databaseChannelsRepository;
+        private readonly IDestinationResolver _destinationResolver;
         private readonly ILogger<DeltaCalculatorService> _logger;
         private readonly IGraphAPIService _graphAPIService;
         private readonly INotificationRepository _notificationRepository;
@@ -36,8 +36,7 @@ namespace Services
 
         public DeltaCalculatorService(
             IDatabaseSyncJobsRepository syncJobRepository,
-            IDatabaseGroupsRepository databaseGroupsRepository,
-            IDatabaseChannelsRepository databaseChannelsRepository,
+            IDestinationResolver destinationResolver,
             ILogger<DeltaCalculatorService> logger,
             IGraphAPIService graphAPIService,
             IDryRunValue dryRun,
@@ -47,8 +46,7 @@ namespace Services
             )
         {
             _syncJobRepository = syncJobRepository ?? throw new ArgumentNullException(nameof(syncJobRepository));
-            _databaseGroupsRepository = databaseGroupsRepository ?? throw new ArgumentNullException(nameof(databaseGroupsRepository));
-            _databaseChannelsRepository = databaseChannelsRepository ?? throw new ArgumentNullException(nameof(databaseChannelsRepository));
+            _destinationResolver = destinationResolver ?? throw new ArgumentNullException(nameof(destinationResolver));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _graphAPIService = graphAPIService ?? throw new ArgumentNullException(nameof(graphAPIService));
             _notificationRepository = notificationRepository ?? throw new ArgumentNullException(nameof(notificationRepository));
@@ -59,27 +57,19 @@ namespace Services
 
         public async Task<Guid> GetGroupIdAsync(SyncJob syncJob)
         {
-            if (syncJob.MembershipType == MembershipTypes.TeamsChannelMembership.ToString())
+            var destination = await _destinationResolver.ResolveAsync(syncJob);
+            return destination switch
             {
-                var channel = syncJob.Channel ?? await _databaseChannelsRepository.GetChannelUsingSyncJobIdAsync(syncJob.Id);
-                return channel.GroupId;
-            }
-            else if (syncJob.MembershipType == MembershipTypes.GroupMembership.ToString())
-            {
-                var group = syncJob.Group ?? await _databaseGroupsRepository.GetGroupUsingSyncJobIdAsync(syncJob.Id);
-                return group.GroupId;
-            }
-            return Guid.Empty;
+                ResolvedGroupDestination groupDestination => groupDestination.ObjectId,
+                ResolvedTeamsChannelDestination channelDestination => channelDestination.TeamObjectId,
+                _ => Guid.Empty
+            };
         }
 
         public async Task<string> GetChannelIdAsync(SyncJob syncJob)
         {
-            if (syncJob.MembershipType == MembershipTypes.TeamsChannelMembership.ToString())
-            {
-                var channel = syncJob.Channel ?? await _databaseChannelsRepository.GetChannelUsingSyncJobIdAsync(syncJob.Id);
-                return channel.ChannelId;
-            }
-            return string.Empty;
+            var destination = await _destinationResolver.ResolveAsync(syncJob);
+            return destination is ResolvedTeamsChannelDestination channelDestination ? channelDestination.ChannelId : string.Empty;
         }
 
         public async Task<DeltaResponse> CalculateDifferenceAsync(GroupMembership sourceMembership, GroupMembership destinationMembership)

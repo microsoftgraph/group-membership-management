@@ -7,6 +7,7 @@ using Moq;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Repositories.Contracts;
+using Repositories.Mocks;
 using Services.Contracts;
 using Services.TeamsChannelUpdater.Contracts;
 using Services.TeamsChannelUpdater;
@@ -99,7 +100,7 @@ namespace Services.Tests
 
             _teamsChannelUpdaterService = new TeamsChannelUpdaterService(NullLogger<TeamsChannelUpdaterService>.Instance,
                 _mockTeamsChannelRepository.Object, _mockSyncJobRepository.Object,
-                _mockGroupsRepository.Object, _mockChannelsRepository.Object,
+                new MockDestinationResolver(_mockGroupsRepository.Object, _mockChannelsRepository.Object),
                 _mockServiceBusQueueRepository.Object,
                 _mockSyncJobStatusService.Object,
                 _mockSyncJobHistoryRepository.Object);

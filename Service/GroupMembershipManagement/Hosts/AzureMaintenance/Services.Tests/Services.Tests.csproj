@@ -23,6 +23,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Services\Services.csproj" />
+    <ProjectReference Include="..\..\..\Repositories.Mocks\Repositories.Mocks.csproj" />
   </ItemGroup>
 
 </Project>

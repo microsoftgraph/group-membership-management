@@ -14,6 +14,7 @@ using Models.ServiceBus;
 using Moq;
 using Repositories.Contracts;
 using Repositories.Contracts.InjectConfig;
+using Repositories.Mocks;
 using Services.Contracts;
 using Models.SyncJobHistory;
 using System;
@@ -99,8 +100,7 @@ namespace Tests.Services
                                     _graphGroupRepository.Object,
                                     _blobStorageRepository.Object,
                                     _syncJobRepository.Object,
-                                    _groupsRepository.Object,
-                                    _channelsRepository.Object,
+                                    new MockDestinationResolver(_groupsRepository.Object, _channelsRepository.Object),
                                     _serviceBusQueueRepository.Object,
                                     _databaseDestinationAttributesRepository.Object,
                                     NullLogger<SGMembershipCalculator>.Instance,

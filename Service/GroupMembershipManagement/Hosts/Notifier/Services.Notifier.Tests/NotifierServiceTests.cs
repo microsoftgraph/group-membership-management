@@ -21,6 +21,7 @@ using Repositories.Contracts;
 using Repositories.Contracts.InjectConfig;
 using Repositories.Localization;
 using Repositories.Mail;
+using Repositories.Mocks;
 using Repositories.RetryPolicyProvider;
 using Services.Tests;
 using System;
@@ -195,8 +196,7 @@ namespace Services.Notifier.Tests
                 _thresholdConfig.Object,
                 _gmmResources.Object,
                 _serviceBusQueueRepository.Object,
-                _groupsRepository.Object,
-                _channelsRepository.Object,
+                new MockDestinationResolver(_groupsRepository.Object, _channelsRepository.Object),
                 _settingsRepository.Object,
                 _telemetryClient);
         }
@@ -658,8 +658,7 @@ namespace Services.Notifier.Tests
                                     _thresholdConfig.Object,
                                     _gmmResources.Object,
                                     _serviceBusQueueRepository.Object,
-                                    _groupsRepository.Object,
-                                    _channelsRepository.Object,
+                                    new MockDestinationResolver(_groupsRepository.Object, _channelsRepository.Object),
                                     _settingsRepository.Object,
                                     _telemetryClient
                                     );

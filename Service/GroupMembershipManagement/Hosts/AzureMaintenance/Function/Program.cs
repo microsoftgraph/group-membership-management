@@ -90,8 +90,7 @@ namespace Hosts.AzureMaintenance
 
                         return new AzureMaintenanceService(
                             services.GetService<IDatabaseSyncJobsRepository>(),
-                            services.GetService<IDatabaseGroupsRepository>(),
-                            services.GetService<IDatabaseChannelsRepository>(),
+                            services.GetService<IDestinationResolver>(),
                             services.GetService<IDatabasePurgedSyncJobsRepository>(),
                             services.GetService<IGraphGroupRepository>(),
                             services.GetService<IHandleInactiveJobsConfig>(),

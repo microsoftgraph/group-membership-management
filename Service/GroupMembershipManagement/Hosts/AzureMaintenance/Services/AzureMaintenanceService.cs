@@ -8,6 +8,7 @@ using Models.AzureMaintenance;
 using Models.Notifications;
 using Models.ServiceBus;
 using Repositories.Contracts;
+using Repositories.Contracts.DestinationResolution;
 using Repositories.Contracts.InjectConfig;
 using Services.Contracts;
 using System;
@@ -28,8 +29,7 @@ namespace Services
         private static readonly DateTime _minRealDate = new DateTime(1900, 1, 1, 0, 0, 0, DateTimeKind.Utc);
 
         private readonly IDatabaseSyncJobsRepository _syncJobRepository = null;
-        private readonly IDatabaseGroupsRepository _databaseGroupsRepository = null;
-        private readonly IDatabaseChannelsRepository _databaseChannelsRepository = null;
+        private readonly IDestinationResolver _destinationResolver = null;
         private readonly IDatabasePurgedSyncJobsRepository _purgedSyncJobRepository = null;
         private readonly IGraphGroupRepository _graphGroupRepository = null;
         private readonly IHandleInactiveJobsConfig _handleInactiveJobsConfig = null;
@@ -41,8 +41,7 @@ namespace Services
 
         public AzureMaintenanceService(
             IDatabaseSyncJobsRepository syncJobRepository,
-            IDatabaseGroupsRepository databaseGroupsRepository,
-            IDatabaseChannelsRepository databaseChannelsRepository,
+            IDestinationResolver destinationResolver,
             IDatabasePurgedSyncJobsRepository purgedSyncJobRepository,
             IGraphGroupRepository graphGroupRepository,
 			IHandleInactiveJobsConfig handleInactiveJobsConfig,
@@ -53,8 +52,7 @@ namespace Services
             string gmmOwnerAppName = null)
         {
             _syncJobRepository = syncJobRepository ?? throw new ArgumentNullException(nameof(syncJobRepository));
-            _databaseGroupsRepository = databaseGroupsRepository ?? throw new ArgumentNullException(nameof(databaseGroupsRepository));
-            _databaseChannelsRepository = databaseChannelsRepository ?? throw new ArgumentNullException(nameof(databaseChannelsRepository));
+            _destinationResolver = destinationResolver ?? throw new ArgumentNullException(nameof(destinationResolver));
             _purgedSyncJobRepository = purgedSyncJobRepository ?? throw new ArgumentNullException(nameof(purgedSyncJobRepository));
             _graphGroupRepository = graphGroupRepository ?? throw new ArgumentNullException(nameof(graphGroupRepository));
             _handleInactiveJobsConfig = handleInactiveJobsConfig ?? throw new ArgumentNullException(nameof(handleInactiveJobsConfig));
@@ -233,18 +231,13 @@ namespace Services
         }
         private async Task<Guid> GetGroupIdAsync(SyncJob syncJob)
         {
-            if (syncJob.MembershipType == MembershipTypes.TeamsChannelMembership.ToString())
+            var destination = await _destinationResolver.ResolveAsync(syncJob);
+            return destination switch
             {
-                var destination = syncJob.Channel ?? await _databaseChannelsRepository.GetChannelUsingSyncJobIdAsync(syncJob.Id);
-                return destination?.GroupId ?? Guid.Empty;
-
-            }
-            else if (syncJob.MembershipType == MembershipTypes.GroupMembership.ToString())
-            {
-                var destination = syncJob.Group ?? await _databaseGroupsRepository.GetGroupUsingSyncJobIdAsync(syncJob.Id);
-                return destination?.GroupId ?? Guid.Empty;
-            }
-            return Guid.Empty;
+                ResolvedGroupDestination groupDestination => groupDestination.ObjectId,
+                ResolvedTeamsChannelDestination channelDestination => channelDestination.TeamObjectId,
+                _ => Guid.Empty
+            };
         }
 
         public async Task<List<PurgedSyncJob>> BackupInactiveJobsAsync(List<SyncJob> syncJobs)

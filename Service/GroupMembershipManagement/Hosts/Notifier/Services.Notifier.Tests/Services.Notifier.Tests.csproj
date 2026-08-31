@@ -26,6 +26,7 @@
   <ItemGroup>
     <ProjectReference Include="..\..\..\Repositories.Localization\Repositories.Localization.csproj" />
     <ProjectReference Include="..\..\..\Repositories.Mail\Repositories.Mail.csproj" />
+    <ProjectReference Include="..\..\..\Repositories.Mocks\Repositories.Mocks.csproj" />
     <ProjectReference Include="..\Function\Notifier.csproj" />
     <ProjectReference Include="..\Services.Notifier\Services.Notifier.csproj" />
   </ItemGroup>

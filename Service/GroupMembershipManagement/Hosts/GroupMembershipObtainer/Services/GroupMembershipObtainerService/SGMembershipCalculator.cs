@@ -9,6 +9,7 @@ using Microsoft.Extensions.Logging;
 using Polly;
 using Polly.Retry;
 using Repositories.Contracts;
+using Repositories.Contracts.DestinationResolution;
 using Repositories.Contracts.InjectConfig;
 using Services.Contracts;
 using System;
@@ -27,8 +28,7 @@ namespace Hosts.GroupMembershipObtainer
         private readonly IBlobStorageRepository _blobStorageRepository;
         private readonly ILogger<SGMembershipCalculator> _logger;
         private readonly IDatabaseSyncJobsRepository _databaseSyncJobsRepository;
-        private readonly IDatabaseGroupsRepository _databaseGroupsRepository;
-        private readonly IDatabaseChannelsRepository _databaseChannelsRepository;
+        private readonly IDestinationResolver _destinationResolver;
         private readonly bool _isGroupMembershipDryRunEnabled;
         private readonly IServiceBusQueueRepository _notificationsQueueRepository;
         private readonly IDatabaseDestinationAttributesRepository _databaseDestinationAttributesRepository;
@@ -37,8 +37,7 @@ namespace Hosts.GroupMembershipObtainer
         public SGMembershipCalculator(IGraphGroupRepository graphGroupRepository,
                                       IBlobStorageRepository blobStorageRepository,
                                       IDatabaseSyncJobsRepository databaseSyncJobsRepository,
-                                      IDatabaseGroupsRepository databaseGroupsRepository,
-                                      IDatabaseChannelsRepository databaseChannelsRepository,
+                                      IDestinationResolver destinationResolver,
                                       IServiceBusQueueRepository notificationsQueueRepository,
                                       IDatabaseDestinationAttributesRepository databaseDestinationAttributesRepository,
                                       ILogger<SGMembershipCalculator> logger,
@@ -50,8 +49,7 @@ namespace Hosts.GroupMembershipObtainer
             _blobStorageRepository = blobStorageRepository;
             _logger = logger;
             _databaseSyncJobsRepository = databaseSyncJobsRepository;
-            _databaseGroupsRepository = databaseGroupsRepository;
-            _databaseChannelsRepository = databaseChannelsRepository;
+            _destinationResolver = destinationResolver ?? throw new ArgumentNullException(nameof(destinationResolver));
             _notificationsQueueRepository = notificationsQueueRepository;
             _databaseDestinationAttributesRepository = databaseDestinationAttributesRepository;
             _isGroupMembershipDryRunEnabled = dryRun.DryRunEnabled;
@@ -156,17 +154,13 @@ namespace Hosts.GroupMembershipObtainer
 
         public async Task<Guid> GetGroupIdAsync(SyncJob syncJob)
         {
-            if (syncJob.MembershipType == MembershipTypes.TeamsChannelMembership.ToString())
+            var destination = await _destinationResolver.ResolveAsync(syncJob);
+            return destination switch
             {
-                var channel = syncJob.Channel ?? await _databaseChannelsRepository.GetChannelUsingSyncJobIdAsync(syncJob.Id);
-                return channel.GroupId;
-            }
-            else if (syncJob.MembershipType == MembershipTypes.GroupMembership.ToString())
-            {
-                var group = syncJob.Group ?? await _databaseGroupsRepository.GetGroupUsingSyncJobIdAsync(syncJob.Id);
-                return group.GroupId;
-            }
-            return Guid.Empty;
+                ResolvedGroupDestination groupDestination => groupDestination.ObjectId,
+                ResolvedTeamsChannelDestination channelDestination => channelDestination.TeamObjectId,
+                _ => Guid.Empty
+            };
         }
 
         public async Task<string> SendMembershipAsync(SyncJob syncJob, List<AzureADUser> allUsers, int currentPart, bool exclusionary)

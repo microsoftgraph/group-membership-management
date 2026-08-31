@@ -6,6 +6,7 @@ using Microsoft.Extensions.Logging;
 using Models;
 using Models.ServiceBus;
 using Repositories.Contracts;
+using Repositories.Contracts.DestinationResolution;
 using Repositories.Contracts.InjectConfig;
 using Services.Contracts;
 using Services.Entities;
@@ -22,8 +23,7 @@ namespace Services
         private readonly IDryRunValue _dryRunSettings;
         private readonly ILogger<GroupOwnershipObtainerService> _logger;
         private readonly IDatabaseSyncJobsRepository _databaseSyncJobsRepository;
-        private readonly IDatabaseGroupsRepository _databaseGroupsRepository;
-        private readonly IDatabaseChannelsRepository _databaseChannelsRepository;
+        private readonly IDestinationResolver _destinationResolver;
         private readonly IGraphGroupRepository _graphGroupRepository;
         private readonly IBlobStorageRepository _blobStorageRepository;
 
@@ -31,33 +31,27 @@ namespace Services
             IDryRunValue dryRunSettings,
             ILogger<GroupOwnershipObtainerService> logger,
             IDatabaseSyncJobsRepository databaseSyncJobsRepository,
-            IDatabaseGroupsRepository databaseGroupsRepository,
-            IDatabaseChannelsRepository databaseChannelsRepository,
+            IDestinationResolver destinationResolver,
             IGraphGroupRepository graphGroupRepository,
             IBlobStorageRepository blobStorageRepository)
         {
             _dryRunSettings = dryRunSettings ?? throw new ArgumentNullException(nameof(dryRunSettings));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _databaseSyncJobsRepository = databaseSyncJobsRepository ?? throw new ArgumentNullException(nameof(databaseSyncJobsRepository));
-            _databaseGroupsRepository = databaseGroupsRepository ?? throw new ArgumentNullException(nameof(databaseGroupsRepository));
-            _databaseChannelsRepository = databaseChannelsRepository ?? throw new ArgumentNullException(nameof(databaseChannelsRepository));
+            _destinationResolver = destinationResolver ?? throw new ArgumentNullException(nameof(destinationResolver));
             _graphGroupRepository = graphGroupRepository ?? throw new ArgumentNullException(nameof(graphGroupRepository));
             _blobStorageRepository = blobStorageRepository ?? throw new ArgumentNullException(nameof(blobStorageRepository));
         }
 
         public async Task<Guid> GetGroupIdAsync(SyncJob syncJob)
         {
-            if (syncJob.MembershipType == MembershipTypes.TeamsChannelMembership.ToString())
+            var destination = await _destinationResolver.ResolveAsync(syncJob);
+            return destination switch
             {
-                var channel = syncJob.Channel ?? await _databaseChannelsRepository.GetChannelUsingSyncJobIdAsync(syncJob.Id);
-                return channel.GroupId;
-            }
-            else if (syncJob.MembershipType == MembershipTypes.GroupMembership.ToString())
-            {
-                var group = syncJob.Group ?? await _databaseGroupsRepository.GetGroupUsingSyncJobIdAsync(syncJob.Id);
-                return group.GroupId;
-            }
-            return Guid.Empty;
+                ResolvedGroupDestination groupDestination => groupDestination.ObjectId,
+                ResolvedTeamsChannelDestination channelDestination => channelDestination.TeamObjectId,
+                _ => Guid.Empty
+            };
         }
 
         public async Task<List<SyncJob>> GetSyncJobsSegmentAsync()

@@ -19,6 +19,7 @@ using Models.SyncJobHistory;
 using Moq;
 using Polly;
 using Repositories.Contracts;
+using Repositories.Mocks;
 using Repositories.Contracts.InjectConfig;
 using Services.Contracts;
 using Services.Entities;
@@ -122,8 +123,7 @@ namespace Services.Tests
             _deltaCalculatorService = new DeltaCalculatorService
                                             (
                                                 _syncJobRepository.Object,
-                                                _groupsRepository.Object,
-                                                _channelsRepository.Object,
+                                                new MockDestinationResolver(_groupsRepository.Object, _channelsRepository.Object),
                                                 NullLogger<DeltaCalculatorService>.Instance,
                                                 _graphAPIService.Object,
                                                 _dryRun.Object,
@@ -599,8 +599,7 @@ namespace Services.Tests
             _deltaCalculatorService = new DeltaCalculatorService
                                 (
                                     _syncJobRepository.Object,
-                                    _groupsRepository.Object,
-                                    _channelsRepository.Object,
+                                    new MockDestinationResolver(_groupsRepository.Object, _channelsRepository.Object),
                                     NullLogger<DeltaCalculatorService>.Instance,
                                     _graphAPIService.Object,
                                     _dryRun.Object,
@@ -632,8 +631,7 @@ namespace Services.Tests
             _deltaCalculatorService = new DeltaCalculatorService
                                 (
                                     _syncJobRepository.Object,
-                                    _groupsRepository.Object,
-                                    _channelsRepository.Object,
+                                    new MockDestinationResolver(_groupsRepository.Object, _channelsRepository.Object),
                                     NullLogger<DeltaCalculatorService>.Instance,
                                     _graphAPIService.Object,
                                     _dryRun.Object,
@@ -659,8 +657,7 @@ namespace Services.Tests
             _deltaCalculatorService = new DeltaCalculatorService
                                 (
                                     _syncJobRepository.Object,
-                                    _groupsRepository.Object,
-                                    _channelsRepository.Object,
+                                    new MockDestinationResolver(_groupsRepository.Object, _channelsRepository.Object),
                                     NullLogger<DeltaCalculatorService>.Instance,
                                     _graphAPIService.Object,
                                     _dryRun.Object,

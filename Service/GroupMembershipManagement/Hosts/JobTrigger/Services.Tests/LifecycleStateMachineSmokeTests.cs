@@ -24,6 +24,8 @@ using System.Text.Json;
 using System.Threading.Tasks;
 using JsonSerializer = System.Text.Json.JsonSerializer;
 
+using Repositories.Mocks;
+
 namespace Services.Tests
 {
     /// <summary>
@@ -616,6 +618,7 @@ namespace Services.Tests
                 _mockSyncJobRepo.Object,
                 mockGroupsRepo.Object,
                 mockChannelsRepo.Object,
+                new MockDestinationResolver(mockGroupsRepo.Object, mockChannelsRepo.Object),
                 mockDestAttrRepo.Object,
                 mockNotifTypesRepo.Object,
                 mockJobNotifRepo.Object,

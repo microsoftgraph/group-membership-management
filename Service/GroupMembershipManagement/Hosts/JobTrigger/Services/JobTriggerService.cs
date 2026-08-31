@@ -10,6 +10,7 @@ using Models.Notifications;
 using Models.ServiceBus;
 using Models.SyncJobHistory;
 using Repositories.Contracts;
+using Repositories.Contracts.DestinationResolution;
 using Repositories.Contracts.Helpers;
 using Repositories.Contracts.InjectConfig;
 using Services.Contracts;
@@ -38,6 +39,7 @@ namespace Services
         private readonly IDatabaseSyncJobsRepository _databaseSyncJobsRepository;
         private readonly IDatabaseGroupsRepository _databaseGroupsRepository;
         private readonly IDatabaseChannelsRepository _databaseChannelsRepository;
+        private readonly IDestinationResolver _destinationResolver;
         private readonly IDatabaseDestinationAttributesRepository _databaseDestinationAttributesRepository;
         private readonly INotificationTypesRepository _notificationTypesRepository;
         private readonly IJobNotificationsRepository _jobNotificationRepository;
@@ -58,6 +60,7 @@ namespace Services
             IDatabaseSyncJobsRepository databaseSyncJobsRepository,
             IDatabaseGroupsRepository databaseGroupsRepository,
             IDatabaseChannelsRepository databaseChannelsRepository,
+            IDestinationResolver destinationResolver,
             IDatabaseDestinationAttributesRepository databaseDestinationAttributesRepository,
             INotificationTypesRepository notificationTypesRepository,
             IJobNotificationsRepository jobNotificationRepository,
@@ -79,6 +82,7 @@ namespace Services
             _databaseSyncJobsRepository = databaseSyncJobsRepository ?? throw new ArgumentNullException(nameof(databaseSyncJobsRepository));
             _databaseGroupsRepository = databaseGroupsRepository ?? throw new ArgumentNullException(nameof(databaseGroupsRepository));
             _databaseChannelsRepository = databaseChannelsRepository ?? throw new ArgumentNullException(nameof(databaseChannelsRepository));
+            _destinationResolver = destinationResolver ?? throw new ArgumentNullException(nameof(destinationResolver));
             _databaseDestinationAttributesRepository = databaseDestinationAttributesRepository ?? throw new ArgumentNullException(nameof(databaseDestinationAttributesRepository));
             _jobNotificationRepository = jobNotificationRepository ?? throw new ArgumentNullException(nameof(jobNotificationRepository));
             _notificationTypesRepository = notificationTypesRepository ?? throw new ArgumentNullException(nameof(notificationTypesRepository));
@@ -137,17 +141,19 @@ namespace Services
 
             if (job.MembershipType == "TeamsChannelMembership")
             {
+                var resolvedChannel = await _destinationResolver.ResolveAsync(job) as ResolvedTeamsChannelDestination;
                 var channel = new AzureADTeamsChannel
                 {
-                    ObjectId = job.Channel.GroupId,
-                    ChannelId = job.Channel.ChannelId
+                    ObjectId = resolvedChannel?.TeamObjectId ?? Guid.Empty,
+                    ChannelId = resolvedChannel?.ChannelId
                 };
 
                 return await _teamsChannelRepository.GetTeamsChannelNameAsync(channel);
             }
             else if (job.MembershipType == "GroupMembership")
             {
-                var objectId = job.Group.GroupId;
+                var resolvedGroup = await _destinationResolver.ResolveAsync(job) as ResolvedGroupDestination;
+                var objectId = resolvedGroup?.ObjectId ?? Guid.Empty;
                 return await _graphGroupRepository.GetGroupNameAsync(objectId);
             }
 
@@ -287,10 +293,11 @@ namespace Services
         }
         public async Task<List<string>> GetGroupEndpointsAsync(SyncJob job)
         {
-            var destinationObjectId = job.MembershipType switch
+            var destination = await _destinationResolver.ResolveAsync(job);
+            var destinationObjectId = destination switch
             {
-                var type when type == MembershipTypes.TeamsChannelMembership.ToString() => job.Channel.GroupId,
-                var type when type == MembershipTypes.GroupMembership.ToString() => job.Group.GroupId,
+                ResolvedGroupDestination groupDestination => groupDestination.ObjectId,
+                ResolvedTeamsChannelDestination channelDestination => channelDestination.TeamObjectId,
                 _ => Guid.Empty
             };
 

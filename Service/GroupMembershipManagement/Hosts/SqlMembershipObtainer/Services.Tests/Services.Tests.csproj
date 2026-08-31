@@ -23,6 +23,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Function\SqlMembershipObtainer.csproj" />
+    <ProjectReference Include="..\..\..\Repositories.Mocks\Repositories.Mocks.csproj" />
     <ProjectReference Include="..\Services.Contracts\Services.Contracts.csproj" />
     <ProjectReference Include="..\Services\Services\Services.csproj" />
   </ItemGroup>

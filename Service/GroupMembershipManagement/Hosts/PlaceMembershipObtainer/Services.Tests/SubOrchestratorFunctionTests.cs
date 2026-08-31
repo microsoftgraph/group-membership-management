@@ -82,8 +82,7 @@ namespace Tests.Services
                                             _graphGroupRepository.Object,
                                             _blobStorageRepository.Object,
                                             _syncJobStatusService.Object,
-                                            _groupsRepository.Object,
-                                            _channelsRepository.Object,
+                                            new MockDestinationResolver(_groupsRepository.Object, _channelsRepository.Object),
                                             _dryRunValue.Object
                                             );
 
