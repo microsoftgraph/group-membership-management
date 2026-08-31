@@ -30,6 +30,12 @@ namespace WebApi.Tests
             };
         }
 
+        private static CopilotChatRequestDto ValidRequest(string message = "Include all employees") => new()
+        {
+            Message = message,
+            WorkingQuery = new List<SourcePartDto>()
+        };
+
         [TestMethod]
         public async Task ChatAsync_WithNullRequest_ReturnsBadRequest()
         {
@@ -46,38 +52,61 @@ namespace WebApi.Tests
         [TestMethod]
         public async Task ChatAsync_WithEmptyMessage_ReturnsBadRequest()
         {
-            // Arrange
-            var request = new CopilotChatRequestDto { Message = "" };
+            var request = new CopilotChatRequestDto { Message = "", WorkingQuery = new List<SourcePartDto>() };
 
-            // Act
             var result = await _controller.ChatAsync(request);
 
-            // Assert
             Assert.IsInstanceOfType(result, typeof(BadRequestObjectResult));
         }
 
         [TestMethod]
         public async Task ChatAsync_WithWhitespaceMessage_ReturnsBadRequest()
         {
-            // Arrange
-            var request = new CopilotChatRequestDto { Message = "   " };
+            var request = new CopilotChatRequestDto { Message = "   ", WorkingQuery = new List<SourcePartDto>() };
 
-            // Act
             var result = await _controller.ChatAsync(request);
 
-            // Assert
             Assert.IsInstanceOfType(result, typeof(BadRequestObjectResult));
         }
 
         [TestMethod]
-        public async Task ChatAsync_WithValidRequest_ReturnsOkWithResponse()
+        public async Task ChatAsync_WithNullWorkingQuery_ReturnsBadRequest()
         {
-            // Arrange
+            // A missing workingQuery is a clear InvalidRequest — never a false "loaded" state.
+            var request = new CopilotChatRequestDto { Message = "Refine my query", WorkingQuery = null };
+
+            var result = await _controller.ChatAsync(request);
+
+            Assert.IsInstanceOfType(result, typeof(BadRequestObjectResult));
+            _mockHandler.Verify(
+                x => x.ExecuteAsync(It.IsAny<CopilotChatRequest>()),
+                Times.Never);
+        }
+
+        [TestMethod]
+        public async Task ChatAsync_WithEmptyWorkingQuery_IsAcceptedAsNewQuery()
+        {
+            _mockHandler
+                .Setup(x => x.ExecuteAsync(It.IsAny<CopilotChatRequest>()))
+                .ReturnsAsync(new CopilotChatResponse { StatusCode = HttpStatusCode.OK, ResponseMessage = "OK" });
+
+            // Act
+            await _controller.ChatAsync(ValidRequest());
+
+            // Assert — an empty (but non-null) workingQuery is a valid new-query request.
+            _mockHandler.Verify(x => x.ExecuteAsync(
+                It.Is<CopilotChatRequest>(r => r.WorkingQuery != null && r.WorkingQuery.Count == 0)),
+                Times.Once);
+        }
+
+        [TestMethod]
+        public async Task ChatAsync_WithValidRequest_ReturnsOkWithResultingQuery()
+        {
             var handlerResponse = new CopilotChatResponse
             {
                 StatusCode = HttpStatusCode.OK,
-                ResponseMessage = "Here's your filter.",
-                SourceParts = new List<CopilotSourcePartResult>
+                ResponseMessage = "Here's your query.",
+                ResultingQuery = new List<CopilotSourcePartResult>
                 {
                     new CopilotSourcePartResult
                     {
@@ -87,6 +116,10 @@ namespace WebApi.Tests
                         IsExclusion = false,
                         UseOrgStructure = false
                     }
+                },
+                AppliedOperations = new List<CopilotOperationSummary>
+                {
+                    new CopilotOperationSummary { Op = "add", PartId = "p1" }
                 }
             };
 
@@ -94,37 +127,32 @@ namespace WebApi.Tests
                 .Setup(x => x.ExecuteAsync(It.IsAny<CopilotChatRequest>()))
                 .ReturnsAsync(handlerResponse);
 
-            var request = new CopilotChatRequestDto { Message = "Include all employees" };
+            var result = await _controller.ChatAsync(ValidRequest());
 
-            // Act
-            var result = await _controller.ChatAsync(request);
-
-            // Assert
             var okResult = result as OkObjectResult;
             Assert.IsNotNull(okResult);
             var dto = okResult.Value as CopilotChatResponseDto;
             Assert.IsNotNull(dto);
-            Assert.AreEqual("Here's your filter.", dto.Message);
-            Assert.AreEqual(1, dto.SourceParts.Count);
-            Assert.AreEqual("category_code = 'value1'", dto.SourceParts[0].Filter);
-            Assert.AreEqual("Sample Title", dto.SourceParts[0].Title);
+            Assert.AreEqual("Here's your query.", dto.Message);
+            Assert.AreEqual(1, dto.ResultingQuery.Count);
+            Assert.AreEqual("category_code = 'value1'", dto.ResultingQuery[0].Filter);
+            Assert.AreEqual("Sample Title", dto.ResultingQuery[0].Title);
+            Assert.AreEqual(1, dto.AppliedOperations.Count);
+            Assert.AreEqual("add", dto.AppliedOperations[0].Op);
+            Assert.AreEqual("p1", dto.AppliedOperations[0].PartId);
         }
 
         [TestMethod]
         public async Task ChatAsync_MapsConversationHistoryCorrectly()
         {
-            // Arrange
             _mockHandler
                 .Setup(x => x.ExecuteAsync(It.IsAny<CopilotChatRequest>()))
-                .ReturnsAsync(new CopilotChatResponse
-                {
-                    StatusCode = HttpStatusCode.OK,
-                    ResponseMessage = "OK"
-                });
+                .ReturnsAsync(new CopilotChatResponse { StatusCode = HttpStatusCode.OK, ResponseMessage = "OK" });
 
             var request = new CopilotChatRequestDto
             {
                 Message = "Company-wide",
+                WorkingQuery = new List<SourcePartDto>(),
                 ConversationHistory = new List<ChatMessageDto>
                 {
                     new ChatMessageDto { Role = "user", Content = "Include employees" },
@@ -132,10 +160,8 @@ namespace WebApi.Tests
                 }
             };
 
-            // Act
             await _controller.ChatAsync(request);
 
-            // Assert
             _mockHandler.Verify(x => x.ExecuteAsync(
                 It.Is<CopilotChatRequest>(r =>
                     r.UserMessage == "Company-wide" &&
@@ -146,16 +172,11 @@ namespace WebApi.Tests
         }
 
         [TestMethod]
-        public async Task ChatAsync_MapsUserContextCorrectly()
+        public async Task ChatAsync_MapsUserContextAndWorkingQueryCorrectly()
         {
-            // Arrange
             _mockHandler
                 .Setup(x => x.ExecuteAsync(It.IsAny<CopilotChatRequest>()))
-                .ReturnsAsync(new CopilotChatResponse
-                {
-                    StatusCode = HttpStatusCode.OK,
-                    ResponseMessage = "OK"
-                });
+                .ReturnsAsync(new CopilotChatResponse { StatusCode = HttpStatusCode.OK, ResponseMessage = "OK" });
 
             var request = new CopilotChatRequestDto
             {
@@ -166,44 +187,42 @@ namespace WebApi.Tests
                     ManagerEmail = "jsmith@contoso.com",
                     ManagerAlias = "jsmith"
                 },
-                CurrentFilter = "category_code = 'value1'"
+                WorkingQuery = new List<SourcePartDto>
+                {
+                    new SourcePartDto { PartId = "w1", Filter = "category_code = 'value1'" }
+                }
             };
 
-            // Act
             await _controller.ChatAsync(request);
 
-            // Assert
             _mockHandler.Verify(x => x.ExecuteAsync(
                 It.Is<CopilotChatRequest>(r =>
                     r.UserContext != null &&
                     r.UserContext.ManagerName == "Jane Smith" &&
                     r.UserContext.ManagerEmail == "jsmith@contoso.com" &&
-                    r.CurrentFilter == "category_code = 'value1'")),
+                    r.WorkingQuery != null &&
+                    r.WorkingQuery.Count == 1 &&
+                    r.WorkingQuery[0].PartId == "w1" &&
+                    r.WorkingQuery[0].Filter == "category_code = 'value1'")),
                 Times.Once);
         }
 
         [TestMethod]
         public async Task ChatAsync_WithNullConversationHistory_DefaultsToEmptyList()
         {
-            // Arrange
             _mockHandler
                 .Setup(x => x.ExecuteAsync(It.IsAny<CopilotChatRequest>()))
-                .ReturnsAsync(new CopilotChatResponse
-                {
-                    StatusCode = HttpStatusCode.OK,
-                    ResponseMessage = "OK"
-                });
+                .ReturnsAsync(new CopilotChatResponse { StatusCode = HttpStatusCode.OK, ResponseMessage = "OK" });
 
             var request = new CopilotChatRequestDto
             {
                 Message = "Include employees",
+                WorkingQuery = new List<SourcePartDto>(),
                 ConversationHistory = null
             };
 
-            // Act
             await _controller.ChatAsync(request);
 
-            // Assert
             _mockHandler.Verify(x => x.ExecuteAsync(
                 It.Is<CopilotChatRequest>(r => r.ConversationHistory.Count == 0)),
                 Times.Once);
@@ -212,7 +231,6 @@ namespace WebApi.Tests
         [TestMethod]
         public async Task ChatAsync_WhenHandlerReturnsBadRequest_ReturnsBadRequest()
         {
-            // Arrange
             _mockHandler
                 .Setup(x => x.ExecuteAsync(It.IsAny<CopilotChatRequest>()))
                 .ReturnsAsync(new CopilotChatResponse
@@ -222,12 +240,8 @@ namespace WebApi.Tests
                     ErrorCode = "InvalidRequest"
                 });
 
-            var request = new CopilotChatRequestDto { Message = "test" };
+            var result = await _controller.ChatAsync(ValidRequest("test"));
 
-            // Act
-            var result = await _controller.ChatAsync(request);
-
-            // Assert
             var badResult = result as BadRequestObjectResult;
             Assert.IsNotNull(badResult);
         }
@@ -235,7 +249,6 @@ namespace WebApi.Tests
         [TestMethod]
         public async Task ChatAsync_WhenHandlerReturnsTimeout_Returns408()
         {
-            // Arrange
             _mockHandler
                 .Setup(x => x.ExecuteAsync(It.IsAny<CopilotChatRequest>()))
                 .ReturnsAsync(new CopilotChatResponse
@@ -245,12 +258,8 @@ namespace WebApi.Tests
                     ErrorCode = "Timeout"
                 });
 
-            var request = new CopilotChatRequestDto { Message = "test" };
+            var result = await _controller.ChatAsync(ValidRequest("test"));
 
-            // Act
-            var result = await _controller.ChatAsync(request);
-
-            // Assert
             var statusResult = result as ObjectResult;
             Assert.IsNotNull(statusResult);
             Assert.AreEqual(StatusCodes.Status408RequestTimeout, statusResult.StatusCode);
@@ -259,7 +268,6 @@ namespace WebApi.Tests
         [TestMethod]
         public async Task ChatAsync_WhenHandlerReturnsInternalError_Returns500()
         {
-            // Arrange
             _mockHandler
                 .Setup(x => x.ExecuteAsync(It.IsAny<CopilotChatRequest>()))
                 .ReturnsAsync(new CopilotChatResponse
@@ -269,28 +277,23 @@ namespace WebApi.Tests
                     ErrorCode = "InternalError"
                 });
 
-            var request = new CopilotChatRequestDto { Message = "test" };
+            var result = await _controller.ChatAsync(ValidRequest("test"));
 
-            // Act
-            var result = await _controller.ChatAsync(request);
-
-            // Assert
             var statusResult = result as ObjectResult;
             Assert.IsNotNull(statusResult);
             Assert.AreEqual(StatusCodes.Status500InternalServerError, statusResult.StatusCode);
         }
 
         [TestMethod]
-        public async Task ChatAsync_MapsOrgLeaderFieldsInResponse()
+        public async Task ChatAsync_MapsOrgLeaderFieldsInResultingQuery()
         {
-            // Arrange
             _mockHandler
                 .Setup(x => x.ExecuteAsync(It.IsAny<CopilotChatRequest>()))
                 .ReturnsAsync(new CopilotChatResponse
                 {
                     StatusCode = HttpStatusCode.OK,
                     ResponseMessage = "Org filter done.",
-                    SourceParts = new List<CopilotSourcePartResult>
+                    ResultingQuery = new List<CopilotSourcePartResult>
                     {
                         new CopilotSourcePartResult
                         {
@@ -306,16 +309,12 @@ namespace WebApi.Tests
                     }
                 });
 
-            var request = new CopilotChatRequestDto { Message = "Everyone under Jane" };
+            var result = await _controller.ChatAsync(ValidRequest("Everyone under Jane")) as OkObjectResult;
 
-            // Act
-            var result = await _controller.ChatAsync(request) as OkObjectResult;
-
-            // Assert
             Assert.IsNotNull(result);
             var dto = result.Value as CopilotChatResponseDto;
             Assert.IsNotNull(dto);
-            var sp = dto.SourceParts[0];
+            var sp = dto.ResultingQuery[0];
             Assert.IsTrue(sp.UseOrgStructure);
             Assert.AreEqual("Jane Smith", sp.OrgLeaderName);
             Assert.AreEqual("jsmith@contoso.com", sp.OrgLeaderEmail);
@@ -326,26 +325,20 @@ namespace WebApi.Tests
         [TestMethod]
         public async Task ChatAsync_WithValidConversationId_PassesItThrough()
         {
-            // Arrange
             var validGuid = "a0d376c9-721f-439a-8952-8a965cb9d2e5";
             _mockHandler
                 .Setup(x => x.ExecuteAsync(It.IsAny<CopilotChatRequest>()))
-                .ReturnsAsync(new CopilotChatResponse
-                {
-                    StatusCode = HttpStatusCode.OK,
-                    ResponseMessage = "OK"
-                });
+                .ReturnsAsync(new CopilotChatResponse { StatusCode = HttpStatusCode.OK, ResponseMessage = "OK" });
 
             var request = new CopilotChatRequestDto
             {
                 Message = "Include employees",
+                WorkingQuery = new List<SourcePartDto>(),
                 ConversationId = validGuid
             };
 
-            // Act
             await _controller.ChatAsync(request);
 
-            // Assert
             _mockHandler.Verify(x => x.ExecuteAsync(
                 It.Is<CopilotChatRequest>(r => r.ConversationId == validGuid)),
                 Times.Once);
@@ -354,25 +347,19 @@ namespace WebApi.Tests
         [TestMethod]
         public async Task ChatAsync_WithInvalidConversationId_SanitizesToNull()
         {
-            // Arrange
             _mockHandler
                 .Setup(x => x.ExecuteAsync(It.IsAny<CopilotChatRequest>()))
-                .ReturnsAsync(new CopilotChatResponse
-                {
-                    StatusCode = HttpStatusCode.OK,
-                    ResponseMessage = "OK"
-                });
+                .ReturnsAsync(new CopilotChatResponse { StatusCode = HttpStatusCode.OK, ResponseMessage = "OK" });
 
             var request = new CopilotChatRequestDto
             {
                 Message = "Include employees",
+                WorkingQuery = new List<SourcePartDto>(),
                 ConversationId = "not-a-guid-at-all"
             };
 
-            // Act
             await _controller.ChatAsync(request);
 
-            // Assert
             _mockHandler.Verify(x => x.ExecuteAsync(
                 It.Is<CopilotChatRequest>(r => r.ConversationId == null)),
                 Times.Once);
@@ -381,25 +368,19 @@ namespace WebApi.Tests
         [TestMethod]
         public async Task ChatAsync_WithNullConversationId_PassesNull()
         {
-            // Arrange
             _mockHandler
                 .Setup(x => x.ExecuteAsync(It.IsAny<CopilotChatRequest>()))
-                .ReturnsAsync(new CopilotChatResponse
-                {
-                    StatusCode = HttpStatusCode.OK,
-                    ResponseMessage = "OK"
-                });
+                .ReturnsAsync(new CopilotChatResponse { StatusCode = HttpStatusCode.OK, ResponseMessage = "OK" });
 
             var request = new CopilotChatRequestDto
             {
                 Message = "Include employees",
+                WorkingQuery = new List<SourcePartDto>(),
                 ConversationId = null
             };
 
-            // Act
             await _controller.ChatAsync(request);
 
-            // Assert
             _mockHandler.Verify(x => x.ExecuteAsync(
                 It.Is<CopilotChatRequest>(r => r.ConversationId == null)),
                 Times.Once);

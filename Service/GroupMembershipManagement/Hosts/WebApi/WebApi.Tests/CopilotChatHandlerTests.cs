@@ -39,7 +39,7 @@ namespace WebApi.Tests
                     It.IsAny<string>(),
                     It.IsAny<List<CopilotChatMessage>>(),
                     It.IsAny<CopilotUserContext?>(),
-                    It.IsAny<string?>(),
+                    It.IsAny<List<CopilotSourcePartResult>?>(),
                     It.IsAny<string?>()))
                 .ReturnsAsync(expectedResult);
 
@@ -79,7 +79,7 @@ namespace WebApi.Tests
                     It.IsAny<string>(),
                     It.IsAny<List<CopilotChatMessage>>(),
                     It.IsAny<CopilotUserContext?>(),
-                    It.IsAny<string?>(),
+                    It.IsAny<List<CopilotSourcePartResult>?>(),
                     It.IsAny<string?>()))
                 .ReturnsAsync(expectedResult);
 
@@ -124,7 +124,7 @@ namespace WebApi.Tests
                     It.IsAny<string>(),
                     It.IsAny<List<CopilotChatMessage>>(),
                     It.IsAny<CopilotUserContext?>(),
-                    It.IsAny<string?>(),
+                    It.IsAny<List<CopilotSourcePartResult>?>(),
                     It.IsAny<string?>()))
                 .ReturnsAsync(expectedResult);
 
@@ -155,7 +155,7 @@ namespace WebApi.Tests
             Assert.AreEqual(HttpStatusCode.BadRequest, response.StatusCode);
             Assert.AreEqual("InvalidRequest", response.ErrorCode);
             _mockCopilotService.Verify(
-                x => x.GetChatResponseAsync(It.IsAny<string>(), It.IsAny<List<CopilotChatMessage>>(), It.IsAny<CopilotUserContext?>(), It.IsAny<string?>(), It.IsAny<string?>()),
+                x => x.GetChatResponseAsync(It.IsAny<string>(), It.IsAny<List<CopilotChatMessage>>(), It.IsAny<CopilotUserContext?>(), It.IsAny<List<CopilotSourcePartResult>?>(), It.IsAny<string?>()),
                 Times.Never);
         }
 
@@ -182,7 +182,7 @@ namespace WebApi.Tests
                     It.IsAny<string>(),
                     It.IsAny<List<CopilotChatMessage>>(),
                     It.IsAny<CopilotUserContext?>(),
-                    It.IsAny<string?>(),
+                    It.IsAny<List<CopilotSourcePartResult>?>(),
                     It.IsAny<string?>()))
                 .ThrowsAsync(new TimeoutException("OpenAI API call timed out"));
 
@@ -206,7 +206,7 @@ namespace WebApi.Tests
                     It.IsAny<string>(),
                     It.IsAny<List<CopilotChatMessage>>(),
                     It.IsAny<CopilotUserContext?>(),
-                    It.IsAny<string?>(),
+                    It.IsAny<List<CopilotSourcePartResult>?>(),
                     It.IsAny<string?>()))
                 .ThrowsAsync(new InvalidOperationException("Exceeded maximum tool calls"));
 
@@ -235,7 +235,7 @@ namespace WebApi.Tests
                     "Company-wide",
                     It.Is<List<CopilotChatMessage>>(h => h.Count == 2),
                     It.IsAny<CopilotUserContext?>(),
-                    It.IsAny<string?>(),
+                    It.IsAny<List<CopilotSourcePartResult>?>(),
                     It.IsAny<string?>()))
                 .ReturnsAsync(new CopilotChatResult { ResponseMessage = "Done" });
 
@@ -256,7 +256,7 @@ namespace WebApi.Tests
         }
 
         [TestMethod]
-        public async Task ExecuteAsync_PassesUserContextAndCurrentFilter()
+        public async Task ExecuteAsync_PassesUserContextAndWorkingQuery()
         {
             // Arrange
             var userContext = new CopilotUserContext
@@ -270,11 +270,15 @@ namespace WebApi.Tests
                     It.IsAny<string>(),
                     It.IsAny<List<CopilotChatMessage>>(),
                     It.IsAny<CopilotUserContext?>(),
-                    It.IsAny<string?>(),
+                    It.IsAny<List<CopilotSourcePartResult>?>(),
                     It.IsAny<string?>()))
                 .ReturnsAsync(new CopilotChatResult { ResponseMessage = "Got it" });
 
-            var request = new CopilotChatRequest("Include my team", new List<CopilotChatMessage>(), userContext, "category_code = 'value1'");
+            var workingQuery = new List<CopilotSourcePartResult>
+            {
+                new CopilotSourcePartResult { PartId = "w1", Filter = "category_code = 'value1'" }
+            };
+            var request = new CopilotChatRequest("Include my team", new List<CopilotChatMessage>(), userContext, workingQuery: workingQuery);
 
             // Act
             await _handler.ExecuteAsync(request);
@@ -285,7 +289,7 @@ namespace WebApi.Tests
                     "Include my team",
                     It.IsAny<List<CopilotChatMessage>>(),
                     It.Is<CopilotUserContext>(uc => uc.ManagerName == "Jane Smith" && uc.ManagerEmail == "jsmith@contoso.com"),
-                    "category_code = 'value1'",
+                    It.Is<List<CopilotSourcePartResult>?>(w => w != null && w.Count == 1 && w[0].PartId == "w1"),
                     null),
                 Times.Once);
         }
@@ -325,7 +329,7 @@ namespace WebApi.Tests
                     It.IsAny<string>(),
                     It.IsAny<List<CopilotChatMessage>>(),
                     It.IsAny<CopilotUserContext?>(),
-                    It.IsAny<string?>(),
+                    It.IsAny<List<CopilotSourcePartResult>?>(),
                     It.IsAny<string?>()))
                 .ReturnsAsync(expectedResult);
 
@@ -356,3 +360,4 @@ namespace WebApi.Tests
         }
     }
 }
+
