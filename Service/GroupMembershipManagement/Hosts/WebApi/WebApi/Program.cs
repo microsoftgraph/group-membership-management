@@ -414,6 +414,7 @@ namespace WebApi
             });
             builder.Services.AddScoped<IDatabaseGroupsRepository, DatabaseGroupsRepository>();
             builder.Services.AddScoped<IDatabaseChannelsRepository, DatabaseChannelsRepository>();
+            builder.Services.AddScoped<IDestinationResolver, LegacyDestinationResolver>();
             builder.Services.AddScoped<ISyncJobChangeRepository, SyncJobChangeRepository>();
             builder.Services.AddScoped<ISyncJobHistoryRepository, SyncJobHistoryRepository>();
             builder.Services.AddScoped<IAdfRunRepository, AdfRunRepository>();

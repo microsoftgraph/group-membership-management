@@ -110,6 +110,7 @@ namespace Hosts.FunctionBase
             services.AddScoped<IDatabaseSyncJobsRepository, DatabaseSyncJobsRepository>();
             services.AddScoped<IDatabaseGroupsRepository, DatabaseGroupsRepository>();
             services.AddScoped<IDatabaseChannelsRepository, DatabaseChannelsRepository>();
+            services.AddScoped<IDestinationResolver, LegacyDestinationResolver>();
             services.AddScoped<ISyncJobHistoryRepository, SyncJobHistoryRepository>();
             services.AddScoped<ISyncJobChangeRepository, SyncJobChangeRepository>();
             services.AddScoped<IDatabaseSettingsRepository, DatabaseSettingsRepository>();
