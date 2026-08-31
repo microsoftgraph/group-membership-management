@@ -4,6 +4,7 @@
 using Hosts.GroupOwnershipObtainer;
 using Microsoft.Extensions.Logging;
 using Models;
+using Models.Helpers;
 using Models.ServiceBus;
 using Repositories.Contracts;
 using Repositories.Contracts.DestinationResolution;
@@ -76,6 +77,7 @@ namespace Services
         public async Task<string> SendMembershipAsync(SyncJob syncJob, Guid groupId, List<Guid> allUsers, int currentPart, bool exclusionary)
         {
             var runId = syncJob.RunId.GetValueOrDefault();
+            allUsers?.Sort(CanonicalObjectIdComparer.Instance);
             var groupMembership = new GroupMembership
             {
                 SourceMembers = allUsers != null ? allUsers.Select(x => new AzureADUser { ObjectId = x }).ToList() : new List<AzureADUser>(),

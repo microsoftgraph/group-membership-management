@@ -1,6 +1,7 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 using Models;
+using Models.Helpers;
 using Models.ServiceBus;
 using Models.SyncJobHistory;
 using Repositories.Contracts;
@@ -89,6 +90,7 @@ namespace Services
         public async Task<string> SendMembershipAsync(SyncJob syncJob, Guid groupId, List<AzureADUser> allUsers, int currentPart, bool exclusionary)
         {
             var runId = syncJob.RunId.GetValueOrDefault();
+            allUsers?.Sort(CanonicalMemberComparer<AzureADUser>.Instance);
             var groupMembership = new GroupMembership
             {
                 SourceMembers = allUsers ?? new List<AzureADUser>(),

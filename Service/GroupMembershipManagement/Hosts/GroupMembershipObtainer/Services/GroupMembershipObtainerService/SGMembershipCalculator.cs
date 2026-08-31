@@ -167,6 +167,7 @@ namespace Hosts.GroupMembershipObtainer
         {
             var runId = syncJob.RunId.GetValueOrDefault();
             var targetOfficeGroupId = await GetGroupIdAsync(syncJob);
+            allUsers?.Sort(CanonicalMemberComparer<AzureADUser>.Instance);
             var groupMembership = new GroupMembership
             {
                 SourceMembers = allUsers ?? new List<AzureADUser>(),

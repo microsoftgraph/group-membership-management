@@ -6,6 +6,7 @@ using Azure.Storage.Blobs;
 using Azure.Storage.Blobs.Models;
 using Azure.Storage.Blobs.Specialized;
 using Models;
+using Models.Helpers;
 using Models.ServiceBus;
 using Repositories.Contracts;
 using System;
@@ -27,6 +28,11 @@ namespace Repositories.BlobStorage
             DefaultAzureCredential credential = new(DefaultAzureCredential.DefaultEnvironmentVariableName);
 
             _containerClient = new BlobContainerClient(new Uri(containerUrl), credential);
+        }
+
+        public BlobStorageRepository(BlobContainerClient containerClient)
+        {
+            _containerClient = containerClient ?? throw new ArgumentNullException(nameof(containerClient));
         }
 
         public async Task DeleteFileAsync(string path)
@@ -244,7 +250,10 @@ namespace Repositories.BlobStorage
             writer.WritePropertyName("SourceMembers");
             writer.WriteStartArray();
 
-            foreach (var id in sourceMemberIds)
+            var orderedMemberIds = sourceMemberIds.ToArray();
+            Array.Sort(orderedMemberIds, CanonicalObjectIdComparer.Instance);
+
+            foreach (var id in orderedMemberIds)
             {
                 writer.WriteStartObject();
                 writer.WriteString("ObjectId", id);
@@ -591,6 +600,8 @@ namespace Repositories.BlobStorage
                     }
                 }
             }
+
+            uniqueUsers.Sort(CanonicalMemberComparer<AzureADUser>.Instance);
 
             var groupMembership = new GroupMembership
             {

@@ -6,6 +6,7 @@ using Microsoft.Extensions.Configuration.AzureAppConfiguration;
 using Microsoft.Extensions.Logging;
 using Models;
 using Models.Entities;
+using Models.Helpers;
 using Models.ServiceBus;
 using Repositories.Contracts;
 using Services.Contracts;
@@ -113,9 +114,11 @@ namespace TeamsChannelMembershipObtainer.Service
         {
             Guid runId = channelSyncInfo.SyncJob.RunId.GetValueOrDefault(Guid.Empty);
 
+            var sourceMembers = new List<AzureADUser>(users);
+            sourceMembers.Sort(CanonicalMemberComparer<AzureADUser>.Instance);
             var groupMembership = new GroupMembership
             {
-                SourceMembers = new List<AzureADUser>(users) ?? new List<AzureADUser>(),
+                SourceMembers = sourceMembers,
                 RunId = runId,
                 Exclusionary = channelSyncInfo.Exclusionary,
                 SyncJobId = channelSyncInfo.SyncJob.Id,

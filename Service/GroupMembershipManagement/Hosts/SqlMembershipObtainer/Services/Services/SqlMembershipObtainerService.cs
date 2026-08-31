@@ -5,6 +5,7 @@ using Microsoft.ApplicationInsights;
 using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.Logging;
 using Models;
+using Models.Helpers;
 using Models.ServiceBus;
 using Models.SyncJobHistory;
 using Repositories.Contracts;
@@ -156,9 +157,11 @@ namespace Services
 
         public async Task<MembershipFileResult> UploadMembershipFileAsync(List<GraphProfileInformation> profiles, SyncJob syncJob, Guid groupId, int currentPart, bool exclusionary)
         {
+            var sourceMembers = profiles.Select(x => new AzureADUser { ObjectId = Guid.Parse(x.Id) }).ToList();
+            sourceMembers.Sort(CanonicalMemberComparer<AzureADUser>.Instance);
             var groupMemberToBeSent = new GroupMembership
             {
-                SourceMembers = profiles.Select(x => new AzureADUser { ObjectId = Guid.Parse(x.Id) }).ToList(),
+                SourceMembers = sourceMembers,
                 Destination = new AzureADGroup { ObjectId = groupId },
                 SyncJobId = syncJob.Id,
                 RunId = syncJob.RunId.Value,
