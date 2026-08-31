@@ -3,7 +3,7 @@
 
 import React, { useCallback, useEffect, useState, useRef } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { classNamesFunction, IProcessedStyleSet, Spinner, SpinnerSize } from '@fluentui/react';
+import { classNamesFunction, IProcessedStyleSet, Spinner, SpinnerSize, MessageBar, MessageBarType } from '@fluentui/react';
 import { useTheme } from '@fluentui/react/lib/Theme';
 import { v4 as uuidv4 } from 'uuid';
 import { MembershipConfigurationStyleProps, MembershipConfigurationStyles, MembershipConfigurationProps } from './MembershipConfiguration.types';
@@ -34,7 +34,6 @@ import { selectIsJobTenantReader, selectIsJobTenantWriter, selectIsSubmissionRev
 import { UserSpotCheck } from '../UserSpotCheck';
 import { selectGeneratedTitlesYet, selectSelectedJobDetails, selectSelectedJobWithNoTitles, setGeneratedTitlesYet, setTitles} from '../../store/jobs.slice';
 import { SyncJobQuery } from '../../models/SyncJobQuery';
-import { selectOrgLeaderDataReturned } from '../../store/orgLeaderDetails.slice';
 import { closePanel, openPanel, selectIsPanelOpen, mergeResultingParts } from '../../store/copilot.slice';
 import { fetchOrgLeaderDetails } from '../../store/orgLeaderDetails.api';
 import { fetchGroupDetailsAndGenerateTitle, fetchOrgLeaderDetailsAndGenerateHRTitle, generateTitles } from '../../store/title.api';
@@ -42,6 +41,7 @@ import { HRPart } from '../../models/HRPart';
 import { selectGeneratedGroupParts, selectGeneratedHRParts, selectTitles } from '../../store/title.slice';
 import { selectIsAITitleEnabled } from '../../store/settings.slice';
 import { useTitleProcessing } from '../../hooks/useTitleProcessing';
+import { applyResolvedOrgLeaderToPart } from '../../utils/orgLeader';
 
 const getClassNames = classNamesFunction<MembershipConfigurationStyleProps, MembershipConfigurationStyles>();
 
@@ -68,7 +68,6 @@ export const MembershipConfigurationBase: React.FunctionComponent<MembershipConf
 
   const advancedViewQuery = useSelector(manageMembershipAdvancedViewQuery) ?? '';
   const isSubmissionReviewer = useSelector(selectIsSubmissionReviewer);
-  const orgLeaderDataReturned = useSelector(selectOrgLeaderDataReturned);
   const isEditingExistingJob = useSelector(manageMembershipIsEditingExistingJob);
   const isAITitleEnabled = useSelector(selectIsAITitleEnabled);
   const jobWithNoTitles = useSelector(selectSelectedJobWithNoTitles);
@@ -85,6 +84,11 @@ export const MembershipConfigurationBase: React.FunctionComponent<MembershipConf
   const copilotApplyStartTimeRef = useRef<number>(0);
   const copilotNeedsOrgLeaderRef = useRef(false);
   const titlesRequestedForJobIdRef = useRef<string | undefined>(undefined);
+  const [copilotUnresolvedLeaders, setCopilotUnresolvedLeaders] = useState<string[]>([]);
+  // True once an in-flight Copilot apply has finished resolving all org leaders and committed
+  // the parts. Drives the overlay dismissal directly instead of the shared orgLeaderDataReturned
+  // flag, which is unreliable across concurrent/rejected lookups.
+  const [copilotOrgLeadersResolved, setCopilotOrgLeadersResolved] = useState(false);
   const areAttributeMappingsLoading = useSelector(selectAreAttributeMappingsLoading);
 
   // Reset panel state on mount (prevents auto-open from stale Redux state)
@@ -102,40 +106,61 @@ export const MembershipConfigurationBase: React.FunctionComponent<MembershipConf
     }
   }, [isCopilotPanelOpen, activeSourcePartId, sourceParts]);
 
-  const handleCopilotSourcePartsGenerated = useCallback((generatedParts: ISourcePart[]) => {
+  const handleCopilotSourcePartsGenerated = useCallback(async (generatedParts: ISourcePart[]) => {
     // Start loading overlay - track start time for minimum display duration
     setIsCopilotApplying(true);
+    setCopilotOrgLeadersResolved(false);
     copilotApplyStartTimeRef.current = Date.now();
     const anyUseOrgStructure = generatedParts.some(p => p.useOrgStructure);
     copilotNeedsOrgLeaderRef.current = anyUseOrgStructure;
 
-    // Fire org leader API call immediately for the FIRST part that has an objectId
-    // so it runs in parallel with React re-renders
-    const firstOrgPart = generatedParts.find(p => p.useOrgStructure && p.managerToAutoSelect?.objectId);
-    const targetPartId = activeSourcePartId || generatedParts[0]?.id;
-    if (firstOrgPart?.managerToAutoSelect?.objectId && targetPartId) {
-      dispatch(fetchOrgLeaderDetails({
-        objectId: firstOrgPart.managerToAutoSelect.objectId,
-        key: 0,
-        text: firstOrgPart.managerToAutoSelect.displayName,
-        partId: targetPartId
+    try {
+      // Resolve every org-structure leader (objectId -> employeeId) up front and bake the
+      // employeeId into the part, so the rule card AND the rule editor read one persisted source
+      // of truth (query.source.manager.id) instead of the transient managerToAutoSelect hint —
+      // independent of which rule's editor happens to be mounted.
+      const unresolved: string[] = [];
+      const resolvedParts = await Promise.all(generatedParts.map(async (part) => {
+        if (part.query.type === SourcePartType.HR && part.useOrgStructure && part.managerToAutoSelect?.objectId) {
+          try {
+            const details = await dispatch(fetchOrgLeaderDetails({
+              objectId: part.managerToAutoSelect.objectId,
+              key: 0,
+              text: part.managerToAutoSelect.displayName,
+              partId: part.id,
+            })).unwrap();
+            if (details.employeeId > 0) {
+              return applyResolvedOrgLeaderToPart(part, details.employeeId, details.maxDepth);
+            }
+            // Leader isn't present in the HR source (employeeId 0): keep the hint so the picker
+            // still shows it and the user can pick manually, but tell them it wasn't applied.
+            unresolved.push(part.managerToAutoSelect.displayName);
+          } catch {
+            unresolved.push(part.managerToAutoSelect.displayName);
+          }
+        }
+        return part;
       }));
+      setCopilotUnresolvedLeaders(unresolved);
+
+      // The resulting query is the complete, authoritative set of parts (Copilot preserves
+      // parts it cannot edit). Apply it BY id: matching ids keep their transient UI state,
+      // new server-minted parts are appended, and removed parts drop out. No global isNew forcing.
+      const merged = mergeResultingParts(sourceParts, resolvedParts).map(part =>
+        part.isNew ? { ...part, isExpanded: true } : part
+      );
+      dispatch(setSourceParts(merged));
+      setActiveSourcePartId(null);
+      setCopilotUsedPartIds(prev => {
+        const next = new Set(prev);
+        if (activeSourcePartId) next.add(activeSourcePartId);
+        return next;
+      });
+      dispatch(closePanel());
+    } finally {
+      // Resolution + commit are done (even if a lookup threw): let the overlay dismiss.
+      setCopilotOrgLeadersResolved(true);
     }
-    
-    // The resulting query is the complete, authoritative set of parts (Copilot preserves
-    // parts it cannot edit). Apply it BY id: matching ids keep their transient UI state,
-    // new server-minted parts are appended, and removed parts drop out. No global isNew forcing.
-    const merged = mergeResultingParts(sourceParts, generatedParts).map(part =>
-      part.isNew ? { ...part, isExpanded: true } : part
-    );
-    dispatch(setSourceParts(merged));
-    setActiveSourcePartId(null);
-    setCopilotUsedPartIds(prev => {
-      const next = new Set(prev);
-      if (activeSourcePartId) next.add(activeSourcePartId);
-      return next;
-    });
-    dispatch(closePanel());
   }, [dispatch, activeSourcePartId, sourceParts]);
 
   // Hide copilot apply overlay when data loading completes (with minimum display time)
@@ -144,7 +169,7 @@ export const MembershipConfigurationBase: React.FunctionComponent<MembershipConf
     if (!isCopilotApplying) return;
 
     const attributesReady = !areAttributeMappingsLoading;
-    const orgLeaderReady = !copilotNeedsOrgLeaderRef.current || orgLeaderDataReturned === true;
+    const orgLeaderReady = !copilotNeedsOrgLeaderRef.current || copilotOrgLeadersResolved;
 
     if (attributesReady && orgLeaderReady) {
       const elapsed = Date.now() - copilotApplyStartTimeRef.current;
@@ -158,7 +183,7 @@ export const MembershipConfigurationBase: React.FunctionComponent<MembershipConf
       
       return () => clearTimeout(timer);
     }
-  }, [isCopilotApplying, areAttributeMappingsLoading, orgLeaderDataReturned]);
+  }, [isCopilotApplying, areAttributeMappingsLoading, copilotOrgLeadersResolved]);
 
   const handleAdvancedViewQueryChange = (_event: React.FormEvent<HTMLTextAreaElement | HTMLInputElement>, newValue?: string) => {
     // Always update the query state to preserve user input, even if it's invalid JSON
@@ -306,6 +331,17 @@ export const MembershipConfigurationBase: React.FunctionComponent<MembershipConf
                 Setting up your membership query...
               </span>
             </div>
+          )}
+          {copilotUnresolvedLeaders.length > 0 && (
+            <MessageBar
+              messageBarType={MessageBarType.warning}
+              isMultiline
+              onDismiss={() => setCopilotUnresolvedLeaders([])}
+              dismissButtonAriaLabel="Close"
+              styles={{ root: { marginBottom: 8 } }}
+            >
+              {`Couldn't set ${copilotUnresolvedLeaders.join(', ')} as the org leader — not found in the HR source. Please pick a leader manually for that rule.`}
+            </MessageBar>
           )}
           <RulesEditor isEditable={isEditable} />
         </div>

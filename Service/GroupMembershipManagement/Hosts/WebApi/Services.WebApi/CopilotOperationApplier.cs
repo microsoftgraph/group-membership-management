@@ -117,7 +117,10 @@ namespace Services.WebApi
             }
 
             result.ResultingQuery = current;
-            if (current.Count == 0)
+            // Warn only when an edit actually EMPTIED a previously non-empty query. A no-op turn
+            // (clarifying question / describe / off-topic) or a brand-new empty query never triggers
+            // the banner. inbound>0 && current==0 implies an operation ran, so no extra guard needed.
+            if (inbound.Count > 0 && current.Count == 0)
             {
                 result.Warning = "This query now has no membership criteria.";
             }

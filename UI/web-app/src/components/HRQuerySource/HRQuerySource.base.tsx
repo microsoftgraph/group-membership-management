@@ -36,6 +36,7 @@ import { selectOrgLeaderDataReturned } from '../../store/orgLeaderDetails.slice'
 import { InfoWord } from '../InfoWord';
 import { OrgLeader } from '../OrgLeader';
 import { jsxFormat } from '../../utils/stringUtils';
+import { clampOrgLeaderDepth, withResolvedOrgLeaderSource } from '../../utils/orgLeader';
 import { upsertGeneratedTitle, titleGenerationStarted, titleGenerationEnded, selectPartsGeneratingTitle } from '../../store/title.slice';
 import { fetchOrgLeaderDetailsAndGenerateHRTitle, getTitle } from '../../store/title.api';
 import { setIsMissingAndOrOperator } from '../../store/manageMembership.slice';
@@ -51,6 +52,21 @@ function isFilterComplete(filter: string): boolean {
   if (hasTrailingAndOrOperator(filter)) return false;
   if (!hasValidEqualityOperators(filter)) return false;
   return hasValueAfterOperator(filter);
+}
+
+// Decides whether the visual filter builder should re-parse props.source.filter.
+// Normally the builder only parses while its grouping latch is off; once a grouped/IN-clause
+// filter enables grouping the latch stays on so interactive edits aren't clobbered by the
+// round-trip through Redux. That latch, however, also froze the builder when the SAME part's
+// filter was replaced externally (e.g. Copilot "refine an existing query" applied to it),
+// leaving stale rows until the rule was reselected. Re-parse in that external case too.
+export function shouldReparseHrFilter(
+  incomingFilter: string | undefined,
+  groupingEnabled: boolean,
+  isExternalFilterChange: boolean
+): boolean {
+  if (!incomingFilter) return false;
+  return !groupingEnabled || isExternalFilterChange;
 }
 
 export const getClassNames = classNamesFunction<HRQuerySourceStyleProps, HRQuerySourceStyles>();
@@ -131,6 +147,19 @@ export const HRQuerySourceBase: React.FunctionComponent<HRQuerySourceProps> = (p
   );
   const sourceRef = React.useRef(props.source);
   sourceRef.current = props.source;
+  // Tracks the filter string the visual builder currently represents. Updated whenever this
+  // component emits a change itself (emitSourceChange) and whenever the parse effect syncs to a
+  // new external value, so interactive edits (which round-trip through Redux) are distinguished
+  // from external replacements (e.g. Copilot) that must force a re-parse.
+  const lastSyncedFilterRef = React.useRef<string | undefined>(props.source.filter);
+
+  // Wraps the parent onSourceChange so every self-originated filter change is recorded as the
+  // currently-represented filter. This keeps the parse effect from mistaking an interactive edit
+  // for an external replacement and re-parsing (which would clobber in-progress grouped edits).
+  const emitSourceChange = (newSource: HRSourcePartSource, id: string, title?: string) => {
+    lastSyncedFilterRef.current = newSource?.filter;
+    onSourceChange(newSource, id, title);
+  };
   const partsGeneratingTitle = useSelector(selectPartsGeneratingTitle);
   // True while this rule's AI title is queued for regeneration or actively being calculated.
   const isTitleGenerating = (partsGeneratingTitle[partId] ?? 0) > 0;
@@ -317,7 +346,7 @@ export const HRQuerySourceBase: React.FunctionComponent<HRQuerySourceProps> = (p
       if (isDragAndDropEnabled) {
         setSource(prevSource => {
           const newSource = { ...prevSource, filter: newStr };
-          onSourceChange(newSource, partId, props.title);
+          emitSourceChange(newSource, partId, props.title);
           return newSource;
         });
       }
@@ -520,7 +549,7 @@ const getGroupLabels = (groups: Group[]) => {
   const filter = str;
   setSource(prevSource => {
       const newSource = { ...prevSource, filter };
-      onSourceChange(newSource, partId, props.title);
+      emitSourceChange(newSource, partId, props.title);
       return newSource;
   });
 }
@@ -659,17 +688,41 @@ const getOptions = (
   };
 
   useEffect(() => {
-    if (props.source.filter) {
-      if (containsSqlExpression(props.source.filter)) {
+    const incomingFilter = props.source.filter;
+    // Detect an external replacement (a filter this component did not emit itself, e.g. Copilot
+    // applying a refined query to this same part) BEFORE advancing the synced ref.
+    const isExternalFilterChange = incomingFilter !== lastSyncedFilterRef.current;
+    lastSyncedFilterRef.current = incomingFilter;
+
+    if (isExternalFilterChange) {
+      // Clear the grouping latch and derived visual state so the parse below rebuilds from the
+      // new filter in place, instead of leaving the previous rows on screen until the rule is
+      // reselected (which used to be the only way to force a remount + re-parse).
+      setGroupingEnabled(false);
+      setFilterTextEnabled(false);
+      setGroups([]);
+      setChildren([]);
+      setItems([]);
+      setSelectedKeys([]);
+      // Also drop any row selection carried over from the previous filter, otherwise stale
+      // selectedItems/selectedIndices (and the Fluent Selection) could enable Group/Ungroup or
+      // target rows that no longer correspond to the freshly parsed filter.
+      setSelectedItems([]);
+      setSelectedIndices([]);
+      selection.setAllSelected(false);
+    }
+
+    if (incomingFilter) {
+      if (containsSqlExpression(incomingFilter)) {
         setFilterTextEnabled(true);
         return;
       }
     }
 
-    if (props.source.filter && !groupingEnabled) {
+    if (incomingFilter && shouldReparseHrFilter(incomingFilter, groupingEnabled, isExternalFilterChange)) {
       let isParsingFilter = false;
       let isParsingGroup = false;
-      const sanitizedFilter = stripQuotedContent(props.source.filter);
+      const sanitizedFilter = stripQuotedContent(incomingFilter);
       const numberOfOpenParenthesis = countOccurrences(sanitizedFilter, "(");
       const numberOfCloseParenthesis = countOccurrences(sanitizedFilter, ")");
       // Count both IN and NOT IN clauses properly, but exclude quoted values like 'IN'
@@ -697,7 +750,7 @@ const getOptions = (
       }
 
       if (isParsingGroup) {
-        const groups = parseGroup(props.source.filter, hasInClause);
+        const groups = parseGroup(incomingFilter, hasInClause);
         if (groups.length <= 0) {
           setFilterTextEnabled(true);
           return;
@@ -710,8 +763,8 @@ const getOptions = (
 
       if (isParsingFilter) {
         const regex = new RegExp(`( And | Or | ${PLACEHOLDER_OPERATOR} )`, 'gi');
-        if (props.source.filter != undefined) {
-          const parts = props.source.filter.split(regex);
+        if (incomingFilter != undefined) {
+          const parts = incomingFilter.split(regex);
           const childFilters: string[] = [];
           let currentFilter = "";
           for (let i = 0; i < parts.length; i += 2) {
@@ -739,17 +792,8 @@ const getOptions = (
   const applyResolvedOrgLeader = (employeeId: number, maxDepth: number, baseTitle: string) => {
     const existingDepth = props.source.manager?.depth;
     // Clamp the previous depth to the new leader's maxDepth; if invalid, drop it so the depth dropdown isn't blank and the title isn't stale.
-    const depth = existingDepth !== undefined && maxDepth > 0 && existingDepth > maxDepth
-      ? undefined
-      : (existingDepth ?? depthToAutoSelect ?? undefined);
-    const newSource: HRSourcePartSource = {
-      ...props.source,
-      manager: {
-        ...props.source.manager,
-        id: employeeId,
-        depth: depth
-      }
-    };
+    const depth = clampOrgLeaderDepth(existingDepth, depthToAutoSelect, maxDepth);
+    const newSource: HRSourcePartSource = withResolvedOrgLeaderSource(props.source, employeeId, depth);
     let updatedTitle = baseTitle;
     if (existingDepth !== depth) {
       updatedTitle = updateHRTitleWithNewDepth(updatedTitle, depth, {
@@ -761,7 +805,7 @@ const getOptions = (
       setLocalTitle(updatedTitle);
     }
     setSource(newSource);
-    onSourceChange(newSource, partId, updatedTitle);
+    emitSourceChange(newSource, partId, updatedTitle);
     setOrgErrorMessage('');
     pendingOrgLeaderObjectIdRef.current = undefined;
     setPendingOrgLeaderPersona(undefined);
@@ -816,7 +860,7 @@ const getOptions = (
       const newTitle = combineHRTitleWithAICriteria(hrTitle, aiTitle, hasManagerAtStart, strings.HROnboarding.withSummarizedCriteria, exclusionaryAtStart, strings.excludePrefix);
 
       onEnableEdit(true);
-      onSourceChange(sourceRef.current, partId, newTitle);
+      emitSourceChange(sourceRef.current, partId, newTitle);
       setLocalTitle(newTitle);
     } finally {
       dispatch(titleGenerationEnded(partId));
@@ -866,7 +910,7 @@ const getOptions = (
         }
       );
       setLocalTitle(newTitle);
-      onSourceChange(props.source, partId, newTitle);
+      emitSourceChange(props.source, partId, newTitle);
       // Await the objectId -> employeeId lookup and write the result through directly.
       // Relying on a downstream effect made persistence dependent on fragile ordering
       // (and on Redux state that other rule cards can overwrite).
@@ -894,7 +938,7 @@ const getOptions = (
         setPendingOrgLeaderPersona(undefined);
         pendingOrgLeaderObjectIdRef.current = undefined;
         setLocalTitle(previousTitle);
-        onSourceChange(props.source, partId, previousTitle);
+        emitSourceChange(props.source, partId, previousTitle);
         setOrgErrorMessage(hrSource?.name && hrSource?.name !== "" ?
           (items[0].text ?? '') + strings.HROnboarding.customOrgLeaderMissingErrorMessage + (hrSource?.customLabel || hrSource?.name) + strings.HROnboarding.source :
           (items[0].text ?? '') + strings.HROnboarding.orgLeaderMissingErrorMessage);
@@ -910,7 +954,7 @@ const getOptions = (
         manager: { ...props.source.manager, id: undefined, depth: undefined }
       };
       setSource(clearedSource);
-      onSourceChange(clearedSource, partId, localTitle || props.title);
+      emitSourceChange(clearedSource, partId, localTitle || props.title);
     }
   };
 
@@ -941,7 +985,7 @@ const getOptions = (
           depth: newDepth
         }
       };
-      onSourceChange(newSource, partId, newTitle);
+      emitSourceChange(newSource, partId, newTitle);
       return newSource;
     });
 
@@ -961,7 +1005,7 @@ const getOptions = (
     const filter = newValue;
     setSource(prevSource => {
         const newSource = { ...prevSource, filter };
-        onSourceChange(newSource, partId, props.title);
+        emitSourceChange(newSource, partId, props.title);
         return newSource;
     });
   };
@@ -1202,7 +1246,7 @@ const getOptions = (
           const titleAfterCleaned = stripCriteriaIfEmpty(cleanedFilter, localTitle || props.title || '');
           setSource(prevSource => {
               const newSource = { ...prevSource, filter: cleanedFilter };
-              onSourceChange(newSource, partId, titleAfterCleaned);
+              emitSourceChange(newSource, partId, titleAfterCleaned);
               return newSource;
           });
           if (titleAfterCleaned !== (localTitle || props.title || '')) setLocalTitle(titleAfterCleaned);
@@ -1214,7 +1258,7 @@ const getOptions = (
       const titleAfterRemove = stripCriteriaIfEmpty(newFilter, localTitle || props.title || '');
       setSource(prevSource => {
           const newSource = { ...prevSource, filter: newFilter };
-          onSourceChange(newSource, partId, titleAfterRemove);
+          emitSourceChange(newSource, partId, titleAfterRemove);
           return newSource;
       });
       if (titleAfterRemove !== (localTitle || props.title || '')) setLocalTitle(titleAfterRemove);
@@ -1249,7 +1293,7 @@ const getOptions = (
             depth
           }
         };
-        onSourceChange(newSource, partId, newTitle);
+        emitSourceChange(newSource, partId, newTitle);
         return newSource;
       });
       setLocalTitle(newTitle);
@@ -1282,7 +1326,7 @@ const getOptions = (
       lastGeneratedKeyRef.current = filter;
       setSource(prevSource => {
         const newSource = { ...prevSource, filter };
-        onSourceChange(newSource, partId, newTitle);
+        emitSourceChange(newSource, partId, newTitle);
         return newSource;
       });
       setLocalTitle(newTitle);
@@ -1300,7 +1344,7 @@ const getOptions = (
       dispatch(fetchDefaultSqlMembershipSourceAttributes());
       setSource(prevSource => {
         const newSource = { ...prevSource };
-        onSourceChange(newSource, partId, props.title);
+        emitSourceChange(newSource, partId, props.title);
         return newSource;
       });
     }
@@ -1441,7 +1485,7 @@ const getOptions = (
       }
       setSource(prevSource => {
         const newSource = { ...prevSource, filter };
-        onSourceChange(newSource, partId, props.title);
+        emitSourceChange(newSource, partId, props.title);
         return newSource;
       });
     }
@@ -1468,7 +1512,7 @@ const getOptions = (
       setSource(prevSource => {
         let filter = updatedFilter;
         const newSource = { ...prevSource, filter };
-        onSourceChange(newSource, partId, props.title);
+        emitSourceChange(newSource, partId, props.title);
         return newSource;
       });
     }
@@ -1528,7 +1572,7 @@ const getOptions = (
       }
       setSource(prevSource => {
         const newSource = { ...prevSource, filter };
-        onSourceChange(newSource, partId, props.title);
+        emitSourceChange(newSource, partId, props.title);
         return newSource;
       });
     }
@@ -1545,7 +1589,7 @@ const getOptions = (
       setSource(prevSource => {
         let filter = updatedFilter;
         const newSource = { ...prevSource, filter };
-        onSourceChange(newSource, partId, props.title);
+        emitSourceChange(newSource, partId, props.title);
         return newSource;
       });
     }
@@ -1597,7 +1641,7 @@ const getOptions = (
         }
         setSource(prevSource => {
           const newSource = { ...prevSource, filter };
-          onSourceChange(newSource, partId, props.title);
+          emitSourceChange(newSource, partId, props.title);
           return newSource;
         });
       }
@@ -1614,7 +1658,7 @@ const getOptions = (
         setSource(prevSource => {
           let filter = updatedFilter;
           const newSource = { ...prevSource, filter };
-          onSourceChange(newSource, partId, props.title);
+          emitSourceChange(newSource, partId, props.title);
           return newSource;
         });
       }
@@ -1684,7 +1728,7 @@ const getOptions = (
       }
       setSource(prevSource => {
           const newSource = { ...prevSource, filter };
-          onSourceChange(newSource, partId, props.title);
+          emitSourceChange(newSource, partId, props.title);
           return newSource;
       });
     }
@@ -1701,7 +1745,7 @@ const getOptions = (
       setSource(prevSource => {
         let filter = updatedFilter;
         const newSource = { ...prevSource, filter };
-        onSourceChange(newSource, partId, props.title);
+        emitSourceChange(newSource, partId, props.title);
         return newSource;
       });
     }
@@ -1743,7 +1787,7 @@ const getOptions = (
       }
       setSource(prevSource => {
         const newSource = { ...prevSource, filter };
-        onSourceChange(newSource, partId, props.title);
+        emitSourceChange(newSource, partId, props.title);
         return newSource;
       });
     }
@@ -1766,7 +1810,7 @@ const getOptions = (
           dispatch(setIsMissingAndOrOperator(false));
         }
         const newSource = { ...prevSource, filter };
-        onSourceChange(newSource, partId, props.title);
+        emitSourceChange(newSource, partId, props.title);
         return newSource;
       });
     }

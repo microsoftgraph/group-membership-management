@@ -99,6 +99,37 @@ namespace WebApi.Tests
             Assert.IsFalse(string.IsNullOrWhiteSpace(result.Warning));
         }
 
+        // Regression: a turn with NO applied operations (clarifying question / describe / off-topic)
+        // on an empty working query must NOT surface the "no membership criteria" warning — nothing
+        // changed, so the alarming banner should not appear.
+        [TestMethod]
+        public void EmptyWorkingQuery_NoOperations_DoesNotWarn()
+        {
+            var working = new List<CopilotSourcePartResult>();
+
+            var result = CopilotOperationApplier.Apply(working, new List<EditOperation>(), Ids());
+
+            Assert.IsNull(result.ErrorCode);
+            Assert.AreEqual(0, result.ResultingQuery.Count);
+            Assert.AreEqual(0, result.AppliedOperations.Count);
+            Assert.IsTrue(string.IsNullOrWhiteSpace(result.Warning), "No operations were applied; warning must not be set.");
+        }
+
+        // Edge: a `set` with no parts on an already-empty query applied an operation but did not
+        // *empty* anything — it was empty to begin with — so the warning must not fire.
+        [TestMethod]
+        public void SetEmpty_OnEmptyWorkingQuery_DoesNotWarn()
+        {
+            var working = new List<CopilotSourcePartResult>();
+            var ops = new List<EditOperation> { new() { Op = "set", Parts = new List<CopilotSourcePartResult>() } };
+
+            var result = CopilotOperationApplier.Apply(working, ops, Ids());
+
+            Assert.IsNull(result.ErrorCode);
+            Assert.AreEqual(0, result.ResultingQuery.Count);
+            Assert.IsTrue(string.IsNullOrWhiteSpace(result.Warning), "Query was already empty; nothing was emptied.");
+        }
+
         [TestMethod]
         public void ValidationScope_UntouchedPartsAreNotAltered()
         {
