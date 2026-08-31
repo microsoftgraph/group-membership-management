@@ -55,8 +55,6 @@ namespace WebApi.Models.DTOs
 
         /// <summary>
         /// Returns the default (disabled) configuration used when no setting row exists.
-        /// The window spans a week so the default satisfies the start-before-end rule
-        /// enforced on PATCH.
         /// </summary>
         [JsonIgnore]
         public static AlertBannerConfigDto Default
@@ -69,7 +67,7 @@ namespace WebApi.Models.DTOs
                     Message = string.Empty,
                     IsEnabled = false,
                     StartDate = now,
-                    EndDate = now.AddDays(7),
+                    EndDate = now,
                     LinkUrl = null,
                     LinkText = null
                 };

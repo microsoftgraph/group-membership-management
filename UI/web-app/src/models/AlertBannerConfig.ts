@@ -24,8 +24,8 @@ const addDays = (date: Date, days: number): Date => new Date(date.getTime() + da
 
 /**
  * Returns a disabled default configuration, used before the server config loads
- * or when no configuration exists. The window spans a week so the default passes
- * the server's start-before-end validation without any date edits.
+ * or when no configuration exists. The window spans a week so the placeholder the
+ * form renders while loading already satisfies the server's start-before-end rule.
  */
 export const getDefaultAlertBannerConfig = (): AlertBannerConfig => {
   const now = new Date();
@@ -41,11 +41,11 @@ export const getDefaultAlertBannerConfig = (): AlertBannerConfig => {
 
 /**
  * Widens a degenerate visibility window so the admin form does not open with a
- * validation error the admin never caused. Older backends (and the pre-existing
- * default configuration) return start == end when no banner has been configured,
- * which fails the server's start-before-end rule and would otherwise block saving
- * every other setting on the General tab. Configurations that already describe a
- * real window are returned untouched.
+ * validation error the admin never caused. The backend serves a default of
+ * start == end when no banner has been configured, which fails its own
+ * start-before-end rule and would otherwise block saving every other setting on
+ * the General tab. Configurations that already describe a real window are
+ * returned untouched.
  */
 export const normalizeAlertBannerWindow = (config: AlertBannerConfig): AlertBannerConfig => {
   const start = new Date(config.startDate);
