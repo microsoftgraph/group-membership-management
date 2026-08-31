@@ -5,9 +5,11 @@ using Models;
 using Models.Helpers;
 using Moq;
 using Repositories.Contracts;
+using Repositories.Contracts.DestinationResolution;
 using Services;
 using Services.Messages.Requests;
 using System.Net;
+using System.Threading;
 using Microsoft.Extensions.Logging.Abstractions;
 
 namespace WebApi.Tests
@@ -17,6 +19,7 @@ namespace WebApi.Tests
     {
         private Mock<IDatabaseSyncJobsRepository> _mockSyncJobRepository = null!;
         private Mock<IBlobStorageRepository> _mockBlobStorageRepository = null!;
+        private Mock<IDestinationResolver> _mockDestinationResolver = null!;
         private GetMembershipDownloadHandler _handler = null!;
 
         private Guid _syncJobId;
@@ -29,11 +32,16 @@ namespace WebApi.Tests
         {
             _mockSyncJobRepository = new Mock<IDatabaseSyncJobsRepository>();
             _mockBlobStorageRepository = new Mock<IBlobStorageRepository>();
+            _mockDestinationResolver = new Mock<IDestinationResolver>();
+            _mockDestinationResolver
+                .Setup(x => x.ResolveAsync(It.IsAny<SyncJob>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync((ResolvedDestination?)null);
 
             _handler = new GetMembershipDownloadHandler(
                 NullLogger<GetMembershipDownloadHandler>.Instance,
                 _mockSyncJobRepository.Object,
-                _mockBlobStorageRepository.Object);
+                _mockBlobStorageRepository.Object,
+                _mockDestinationResolver.Object);
 
             _syncJobId = Guid.NewGuid();
             _runId = Guid.NewGuid();
@@ -66,6 +74,58 @@ namespace WebApi.Tests
 
             var extractedJson = ExtractJsonFromZip(response.FileContent);
             Assert.AreEqual(blobContent, extractedJson);
+        }
+
+        [TestMethod]
+        public async Task GroupDestination_ReroutesThroughBoundary_UsesResolvedObjectIdAsBlobKey()
+        {
+            // T035/US2: when the shared boundary resolves a group destination, the blob key/filename must
+            // equal the resolved ObjectId, preserving the exact identity legacy TargetOfficeGroupId reads produced.
+            _testSyncJob.MembershipType = MembershipTypes.GroupMembership.ToString();
+            var resolved = new ResolvedGroupDestination { SyncJobId = _syncJobId, ObjectId = _targetGroupId };
+            _mockDestinationResolver
+                .Setup(x => x.ResolveAsync(_testSyncJob, It.IsAny<CancellationToken>()))
+                .ReturnsAsync(resolved);
+
+            var blobContent = "{\"SourceMembers\":[],\"RunId\":\"" + _runId + "\"}";
+            var blobPath = $"{_targetGroupId}/02232026-1200_{_runId}_Aggregated.json";
+            SetupMocks(blobContent, blobPath);
+
+            var response = await _handler.ExecuteAsync(new GetMembershipDownloadRequest(_syncJobId, _runId));
+
+            Assert.AreEqual(HttpStatusCode.OK, response.StatusCode);
+            Assert.AreEqual($"membership_changes_{_targetGroupId}_{_runId}.zip", response.FileName);
+            _mockBlobStorageRepository.Verify(x => x.FindAggregatedFileByRunIdAsync(_targetGroupId.ToString(), _runId.ToString()), Times.Once);
+        }
+
+        [TestMethod]
+        public async Task TeamsChannelDestination_ReroutesThroughBoundary_UsesResolvedTeamObjectId_NotChannelId()
+        {
+            // T036/US2: Teams-channel reroutes must key off ResolvedTeamsChannelDestination.TeamObjectId
+            // (matching pre-migration TargetOfficeGroupId semantics) and must not collapse to a group-only
+            // identity that drops or substitutes the channel-specific ChannelId.
+            _testSyncJob.MembershipType = MembershipTypes.TeamsChannelMembership.ToString();
+            var channelId = "19:abc123@thread.tacv2";
+            var resolved = new ResolvedTeamsChannelDestination
+            {
+                SyncJobId = _syncJobId,
+                TeamObjectId = _targetGroupId,
+                ChannelId = channelId
+            };
+            _mockDestinationResolver
+                .Setup(x => x.ResolveAsync(_testSyncJob, It.IsAny<CancellationToken>()))
+                .ReturnsAsync(resolved);
+
+            var blobContent = "{\"SourceMembers\":[],\"RunId\":\"" + _runId + "\"}";
+            var blobPath = $"{_targetGroupId}/02232026-1200_{_runId}_Aggregated.json";
+            SetupMocks(blobContent, blobPath);
+
+            var response = await _handler.ExecuteAsync(new GetMembershipDownloadRequest(_syncJobId, _runId));
+
+            Assert.AreEqual(HttpStatusCode.OK, response.StatusCode);
+            Assert.AreEqual($"membership_changes_{_targetGroupId}_{_runId}.zip", response.FileName);
+            StringAssert.DoesNotMatch(response.FileName, new System.Text.RegularExpressions.Regex(System.Text.RegularExpressions.Regex.Escape(channelId)));
+            _mockBlobStorageRepository.Verify(x => x.FindAggregatedFileByRunIdAsync(_targetGroupId.ToString(), _runId.ToString()), Times.Once);
         }
 
         [TestMethod]

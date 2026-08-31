@@ -5,6 +5,7 @@ using Hosts.WebApi;
 using Models;
 using Models.Helpers;
 using Repositories.Contracts;
+using Repositories.Contracts.DestinationResolution;
 using Services.Contracts;
 using Services.Messages.Requests;
 using Services.Messages.Responses;
@@ -26,6 +27,7 @@ namespace Services
         private readonly IBlobStorageRepository _blobStorageRepository;
         private readonly IGraphGroupRepository _graphGroupRepository;
         private readonly IHubContext<SignalRService> _hubContext;
+        private readonly IDestinationResolver _destinationResolver;
 
         public SearchSyncHistoryByUserHandler(
             ILogger<SearchSyncHistoryByUserHandler> logger,
@@ -33,7 +35,8 @@ namespace Services
             ISyncJobHistoryRepository syncJobHistoryRepository,
             IBlobStorageRepository blobStorageRepository,
             IGraphGroupRepository graphGroupRepository,
-            IHubContext<SignalRService> hubContext) : base(logger)
+            IHubContext<SignalRService> hubContext,
+            IDestinationResolver destinationResolver) : base(logger)
         {
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _databaseSyncJobsRepository = databaseSyncJobsRepository ?? throw new ArgumentNullException(nameof(databaseSyncJobsRepository));
@@ -41,6 +44,7 @@ namespace Services
             _blobStorageRepository = blobStorageRepository ?? throw new ArgumentNullException(nameof(blobStorageRepository));
             _graphGroupRepository = graphGroupRepository ?? throw new ArgumentNullException(nameof(graphGroupRepository));
             _hubContext = hubContext ?? throw new ArgumentNullException(nameof(hubContext));
+            _destinationResolver = destinationResolver ?? throw new ArgumentNullException(nameof(destinationResolver));
         }
 
         protected override async Task<SearchSyncHistoryByUserResponse> ExecuteCoreAsync(SearchSyncHistoryByUserRequest request)
@@ -56,13 +60,16 @@ namespace Services
                     return response;
                 }
 
+                var resolvedDestination = await _destinationResolver.ResolveAsync(syncJob);
+                var groupIdentity = ResolveGroupIdentity(syncJob, resolvedDestination);
+
                 response.UserInCurrentGroup = await _graphGroupRepository.IsEmailRecipientMemberOfGroupAsync(
                     request.UserObjectId.ToString(),
-                    syncJob.TargetOfficeGroupId);
+                    groupIdentity);
                 response.CheckedCurrentGroupMembership = true;
 
                 var allRuns = await GetAllHistoryAsync(request.SyncJobId);
-                var targetGroupId = syncJob.TargetOfficeGroupId.ToString();
+                var targetGroupId = groupIdentity.ToString();
                 var totalRuns = allRuns.Count;
                 var processedRuns = 0;
                 var lastPublishedProcessedRuns = 0;
@@ -341,6 +348,19 @@ namespace Services
 
             value = default;
             return false;
+        }
+
+        // Explicitly handles both destination kinds per the resolver contract (ResolvedGroupDestination.ObjectId,
+        // ResolvedTeamsChannelDestination.TeamObjectId) rather than collapsing to a shared alias. Falls back to the
+        // legacy persisted scalar only when the boundary cannot resolve (preserves pre-migration behavior exactly).
+        private static Guid ResolveGroupIdentity(SyncJob syncJob, ResolvedDestination? resolvedDestination)
+        {
+            return resolvedDestination switch
+            {
+                ResolvedGroupDestination group => group.ObjectId,
+                ResolvedTeamsChannelDestination channel => channel.TeamObjectId,
+                _ => syncJob.TargetOfficeGroupId
+            };
         }
     }
 }

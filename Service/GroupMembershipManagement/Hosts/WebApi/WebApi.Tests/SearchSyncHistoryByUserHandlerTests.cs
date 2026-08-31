@@ -4,6 +4,7 @@
 using Microsoft.AspNetCore.SignalR;
 using Moq;
 using Repositories.Contracts;
+using Repositories.Contracts.DestinationResolution;
 using Services;
 using Services.Messages.Requests;
 using Services.Messages.Responses;
@@ -24,6 +25,7 @@ namespace WebApi.Tests
         private Mock<IHubContext<SignalRService>> _mockHubContext = null!;
         private Mock<IHubClients> _mockHubClients = null!;
         private Mock<IClientProxy> _mockClientProxy = null!;
+        private Mock<IDestinationResolver> _mockDestinationResolver = null!;
         private SearchSyncHistoryByUserHandler _handler = null!;
 
         private Guid _syncJobId;
@@ -40,6 +42,7 @@ namespace WebApi.Tests
             _mockHubContext = new Mock<IHubContext<SignalRService>>();
             _mockHubClients = new Mock<IHubClients>();
             _mockClientProxy = new Mock<IClientProxy>();
+            _mockDestinationResolver = new Mock<IDestinationResolver>();
 
             _mockHubContext
                 .SetupGet(x => x.Clients)
@@ -59,7 +62,8 @@ namespace WebApi.Tests
                 _mockSyncJobHistoryRepository.Object,
                 _mockBlobStorageRepository.Object,
                 _mockGraphGroupRepository.Object,
-                _mockHubContext.Object);
+                _mockHubContext.Object,
+                _mockDestinationResolver.Object);
 
             _syncJobId = Guid.NewGuid();
             _targetGroupId = Guid.NewGuid();
@@ -87,6 +91,57 @@ namespace WebApi.Tests
             Assert.AreEqual(0, response.MatchingRunIds.Count);
             Assert.AreEqual(0, response.RunMembershipChanges.Count);
             Assert.IsFalse(response.CheckedCurrentGroupMembership);
+        }
+
+        [TestMethod]
+        public async Task ExecuteAsync_UseBoundary_GroupDestinationResolved_MembershipCheckUsesResolvedObjectId()
+        {
+            // T035/US2: membership check and blob key must use the resolved boundary identity, not the legacy scalar.
+            var resolvedObjectId = Guid.NewGuid();
+            _mockDestinationResolver
+                .Setup(x => x.ResolveAsync(It.IsAny<global::Models.SyncJob>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new ResolvedGroupDestination { SyncJobId = _syncJobId, ObjectId = resolvedObjectId });
+            _mockGraphGroupRepository
+                .Setup(x => x.IsEmailRecipientMemberOfGroupAsync(_userObjectId.ToString(), resolvedObjectId))
+                .ReturnsAsync(true);
+
+            var response = await _handler.ExecuteAsync(new SearchSyncHistoryByUserRequest(_syncJobId, _userObjectId));
+
+            Assert.AreEqual(HttpStatusCode.OK, response.StatusCode);
+            Assert.IsTrue(response.UserInCurrentGroup);
+            _mockGraphGroupRepository.Verify(
+                x => x.IsEmailRecipientMemberOfGroupAsync(_userObjectId.ToString(), resolvedObjectId),
+                Times.Once);
+            _mockGraphGroupRepository.Verify(
+                x => x.IsEmailRecipientMemberOfGroupAsync(_userObjectId.ToString(), _targetGroupId),
+                Times.Never);
+        }
+
+        [TestMethod]
+        public async Task ExecuteAsync_UseBoundary_TeamsChannelDestinationResolved_MembershipCheckUsesTeamObjectId_NotChannelId()
+        {
+            // T036/US2: Teams-channel reroutes must key the membership check off TeamObjectId (historical
+            // TargetOfficeGroupId semantics), never collapsing to group-only identity or leaking ChannelId.
+            var resolvedTeamObjectId = Guid.NewGuid();
+            _mockDestinationResolver
+                .Setup(x => x.ResolveAsync(It.IsAny<global::Models.SyncJob>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new ResolvedTeamsChannelDestination
+                {
+                    SyncJobId = _syncJobId,
+                    TeamObjectId = resolvedTeamObjectId,
+                    ChannelId = "19:channel123@thread.tacv2"
+                });
+            _mockGraphGroupRepository
+                .Setup(x => x.IsEmailRecipientMemberOfGroupAsync(_userObjectId.ToString(), resolvedTeamObjectId))
+                .ReturnsAsync(true);
+
+            var response = await _handler.ExecuteAsync(new SearchSyncHistoryByUserRequest(_syncJobId, _userObjectId));
+
+            Assert.AreEqual(HttpStatusCode.OK, response.StatusCode);
+            Assert.IsTrue(response.UserInCurrentGroup);
+            _mockGraphGroupRepository.Verify(
+                x => x.IsEmailRecipientMemberOfGroupAsync(_userObjectId.ToString(), resolvedTeamObjectId),
+                Times.Once);
         }
 
         [TestMethod]

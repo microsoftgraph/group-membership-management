@@ -5,6 +5,7 @@ using Microsoft.Extensions.Logging;
 using Models;
 using Models.Helpers;
 using Repositories.Contracts;
+using Repositories.Contracts.DestinationResolution;
 using Services.Contracts;
 using Services.Messages.Requests;
 using Services.Messages.Responses;
@@ -102,6 +103,7 @@ Use only the provided data. Output 1-2 sentences normally, or up to 3 sentences 
         private readonly ISqlMembershipRepository _sqlMembershipRepository;
         private readonly IDataFactoryRepository _dataFactoryRepository;
         private readonly IOpenAIService _openAIService;
+        private readonly IDestinationResolver _destinationResolver;
 
         public GetRunExplanationHandler(
             ILogger<GetRunExplanationHandler> logger,
@@ -112,7 +114,8 @@ Use only the provided data. Output 1-2 sentences normally, or up to 3 sentences 
             IBlobStorageRepository blobStorageRepository,
             ISqlMembershipRepository sqlMembershipRepository,
             IDataFactoryRepository dataFactoryRepository,
-            IOpenAIService openAIService) : base(logger)
+            IOpenAIService openAIService,
+            IDestinationResolver destinationResolver) : base(logger)
         {
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _databaseSyncJobsRepository = databaseSyncJobsRepository ?? throw new ArgumentNullException(nameof(databaseSyncJobsRepository));
@@ -123,6 +126,7 @@ Use only the provided data. Output 1-2 sentences normally, or up to 3 sentences 
             _sqlMembershipRepository = sqlMembershipRepository ?? throw new ArgumentNullException(nameof(sqlMembershipRepository));
             _dataFactoryRepository = dataFactoryRepository ?? throw new ArgumentNullException(nameof(dataFactoryRepository));
             _openAIService = openAIService ?? throw new ArgumentNullException(nameof(openAIService));
+            _destinationResolver = destinationResolver ?? throw new ArgumentNullException(nameof(destinationResolver));
         }
 
         protected override async Task<GetRunExplanationResponse> ExecuteCoreAsync(GetRunExplanationRequest request)
@@ -138,10 +142,13 @@ Use only the provided data. Output 1-2 sentences normally, or up to 3 sentences 
                     return response;
                 }
 
+                var resolvedDestination = await _destinationResolver.ResolveAsync(syncJob);
+                var groupIdentity = ResolveGroupIdentity(syncJob, resolvedDestination);
+
                 if (!request.HasAiSyncJobRole)
                 {
                     var isOwner = await _graphGroupRepository.IsEmailRecipientOwnerOfGroupAsync(
-                        request.UserIdentity, syncJob.TargetOfficeGroupId);
+                        request.UserIdentity, groupIdentity);
                     if (!isOwner)
                     {
                         response.StatusCode = HttpStatusCode.Forbidden;
@@ -194,7 +201,7 @@ Use only the provided data. Output 1-2 sentences normally, or up to 3 sentences 
                 }
 
                 // Fire aggregated blob find + per-part file catalog (this-run and previous-run) in parallel.
-                var targetGroupId = syncJob.TargetOfficeGroupId.ToString();
+                var targetGroupId = groupIdentity.ToString();
                 var hasAttributableInclusionaryPart = parts.Any(p => IsAttributionCandidate(p.Type));
                 Task<Dictionary<string, BlobResult>>? partFilesTask = hasAttributableInclusionaryPart
                     ? _blobStorageRepository.FindPartFilesByRunIdAsync(targetGroupId, request.RunId.ToString())
@@ -547,6 +554,19 @@ Use only the provided data. Output 1-2 sentences normally, or up to 3 sentences 
                 .OrderByDescending(h => h.UpdatedAt)
                 .Take(maxRuns)
                 .ToList();
+        }
+
+        // Explicitly handles both destination kinds per the resolver contract (ResolvedGroupDestination.ObjectId,
+        // ResolvedTeamsChannelDestination.TeamObjectId) rather than collapsing to a shared alias. Falls back to the
+        // legacy persisted scalar only when the boundary cannot resolve (preserves pre-migration behavior exactly).
+        private static Guid ResolveGroupIdentity(SyncJob syncJob, ResolvedDestination? resolvedDestination)
+        {
+            return resolvedDestination switch
+            {
+                ResolvedGroupDestination group => group.ObjectId,
+                ResolvedTeamsChannelDestination channel => channel.TeamObjectId,
+                _ => syncJob.TargetOfficeGroupId
+            };
         }
     }
 }

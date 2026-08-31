@@ -6,6 +6,7 @@ using Models;
 using Models.SyncJobChange;
 using Moq;
 using Repositories.Contracts;
+using Repositories.Contracts.DestinationResolution;
 using Services;
 using Services.Contracts;
 using Services.Messages.Requests;
@@ -13,6 +14,7 @@ using Services.Messages.Responses;
 using Services.WebApi;
 using Services.WebApi.Contracts;
 using System.Net;
+using System.Threading;
 
 namespace WebApi.Tests
 {
@@ -28,6 +30,7 @@ namespace WebApi.Tests
         private Mock<IDatabaseSqlMembershipSourcesRepository> _mockSqlMembershipSourcesRepository = null!;
         private Mock<IGraphGroupRepository> _mockGraphGroupRepository = null!;
         private Mock<IOpenAIService> _mockOpenAIService = null!;
+        private Mock<IDestinationResolver> _mockDestinationResolver = null!;
         private GetSyncExplanationHandler _handler = null!;
 
         private Guid _syncJobId;
@@ -48,6 +51,7 @@ namespace WebApi.Tests
             _mockSqlMembershipSourcesRepository = new Mock<IDatabaseSqlMembershipSourcesRepository>();
             _mockGraphGroupRepository = new Mock<IGraphGroupRepository>();
             _mockOpenAIService = new Mock<IOpenAIService>();
+            _mockDestinationResolver = new Mock<IDestinationResolver>();
 
             _handler = new GetSyncExplanationHandler(
                 NullLogger<GetSyncExplanationHandler>.Instance,
@@ -59,7 +63,8 @@ namespace WebApi.Tests
                 _mockSqlMembershipRepository.Object,
                 _mockSqlMembershipSourcesRepository.Object,
                 _mockGraphGroupRepository.Object,
-                _mockOpenAIService.Object);
+                _mockOpenAIService.Object,
+                _mockDestinationResolver.Object);
 
             _syncJobId = Guid.NewGuid();
             _targetGroupId = Guid.NewGuid();
@@ -674,6 +679,63 @@ namespace WebApi.Tests
                 x => x.IsEmailRecipientOwnerOfGroupAsync(It.IsAny<string>(), It.IsAny<Guid>(), It.IsAny<bool>()),
                 Times.Never,
                 "Should not check ownership when user has AI role");
+        }
+
+        [TestMethod]
+        public async Task ExecuteAsync_UseBoundary_GroupDestinationResolved_OwnershipAndBlobKeyUseResolvedObjectId()
+        {
+            // T035/US2: ownership check and blob lookup must use the resolved boundary identity, not a stale scalar.
+            var resolvedObjectId = Guid.NewGuid();
+            _mockDestinationResolver
+                .Setup(x => x.ResolveAsync(It.IsAny<SyncJob>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new ResolvedGroupDestination { SyncJobId = _syncJobId, ObjectId = resolvedObjectId });
+            _mockGraphGroupRepository
+                .Setup(x => x.IsEmailRecipientOwnerOfGroupAsync(TestUserIdentity, resolvedObjectId, It.IsAny<bool>()))
+                .ReturnsAsync(true);
+            _mockBlobStorageRepository
+                .Setup(x => x.FindAggregatedFileByRunIdAsync(resolvedObjectId.ToString(), _runId.ToString()))
+                .ReturnsAsync(new BlobResult { BlobStatus = BlobStatus.NotFound });
+
+            var response = await _handler.ExecuteAsync(
+                new GetSyncExplanationRequest(_syncJobId, _runId, _userObjectId, TestUserIdentity, hasAiSyncJobRole: false));
+
+            Assert.AreEqual(HttpStatusCode.OK, response.StatusCode);
+            _mockGraphGroupRepository.Verify(
+                x => x.IsEmailRecipientOwnerOfGroupAsync(TestUserIdentity, resolvedObjectId, It.IsAny<bool>()),
+                Times.Once);
+            _mockBlobStorageRepository.Verify(
+                x => x.FindAggregatedFileByRunIdAsync(resolvedObjectId.ToString(), _runId.ToString()),
+                Times.Once);
+        }
+
+        [TestMethod]
+        public async Task ExecuteAsync_UseBoundary_TeamsChannelDestinationResolved_UsesTeamObjectId_NotChannelId()
+        {
+            // T036/US2: Teams-channel reroutes must key ownership/blob lookups off TeamObjectId (historical
+            // TargetOfficeGroupId semantics), never collapsing to a group-only identity or substituting ChannelId.
+            var resolvedTeamObjectId = Guid.NewGuid();
+            _mockDestinationResolver
+                .Setup(x => x.ResolveAsync(It.IsAny<SyncJob>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new ResolvedTeamsChannelDestination
+                {
+                    SyncJobId = _syncJobId,
+                    TeamObjectId = resolvedTeamObjectId,
+                    ChannelId = "19:channel123@thread.tacv2"
+                });
+            _mockGraphGroupRepository
+                .Setup(x => x.IsEmailRecipientOwnerOfGroupAsync(TestUserIdentity, resolvedTeamObjectId, It.IsAny<bool>()))
+                .ReturnsAsync(true);
+            _mockBlobStorageRepository
+                .Setup(x => x.FindAggregatedFileByRunIdAsync(resolvedTeamObjectId.ToString(), _runId.ToString()))
+                .ReturnsAsync(new BlobResult { BlobStatus = BlobStatus.NotFound });
+
+            var response = await _handler.ExecuteAsync(
+                new GetSyncExplanationRequest(_syncJobId, _runId, _userObjectId, TestUserIdentity, hasAiSyncJobRole: false));
+
+            Assert.AreEqual(HttpStatusCode.OK, response.StatusCode);
+            _mockBlobStorageRepository.Verify(
+                x => x.FindAggregatedFileByRunIdAsync(resolvedTeamObjectId.ToString(), _runId.ToString()),
+                Times.Once);
         }
 
         private void SetupBlobWithUser(MembershipAction action)

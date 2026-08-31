@@ -5,6 +5,7 @@ using Hosts.WebApi;
 using Models;
 using Models.Helpers;
 using Repositories.Contracts;
+using Repositories.Contracts.DestinationResolution;
 using Services.Contracts;
 using Services.Messages.Requests;
 using Services.Messages.Responses;
@@ -19,15 +20,18 @@ namespace Services
         private readonly ILogger<GetMembershipDownloadHandler> _logger;
         private readonly IDatabaseSyncJobsRepository _databaseSyncJobsRepository;
         private readonly IBlobStorageRepository _blobStorageRepository;
+        private readonly IDestinationResolver _destinationResolver;
 
         public GetMembershipDownloadHandler(
             ILogger<GetMembershipDownloadHandler> logger,
             IDatabaseSyncJobsRepository databaseSyncJobsRepository,
-            IBlobStorageRepository blobStorageRepository) : base(logger)
+            IBlobStorageRepository blobStorageRepository,
+            IDestinationResolver destinationResolver) : base(logger)
         {
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _databaseSyncJobsRepository = databaseSyncJobsRepository ?? throw new ArgumentNullException(nameof(databaseSyncJobsRepository));
             _blobStorageRepository = blobStorageRepository ?? throw new ArgumentNullException(nameof(blobStorageRepository));
+            _destinationResolver = destinationResolver ?? throw new ArgumentNullException(nameof(destinationResolver));
         }
 
         protected override async Task<GetMembershipDownloadResponse> ExecuteCoreAsync(GetMembershipDownloadRequest request)
@@ -43,7 +47,8 @@ namespace Services
                     return response;
                 }
 
-                var groupId = syncJob.TargetOfficeGroupId.ToString();
+                var resolvedDestination = await _destinationResolver.ResolveAsync(syncJob);
+                var groupId = ResolveGroupIdentity(syncJob, resolvedDestination).ToString();
                 var blobResult = await _blobStorageRepository.FindAggregatedFileByRunIdAsync(groupId, request.RunId.ToString());
                 if (blobResult.BlobStatus == BlobStatus.NotFound)
                 {
@@ -106,6 +111,19 @@ namespace Services
         {
             var job = await _databaseSyncJobsRepository.GetSyncJobAsync(syncJobId);
             return job != null ? (job, HttpStatusCode.OK) : (null, HttpStatusCode.NotFound);
+        }
+
+        // Explicitly handles both destination kinds per the resolver contract (ResolvedGroupDestination.ObjectId,
+        // ResolvedTeamsChannelDestination.TeamObjectId) rather than collapsing to a shared alias. Falls back to the
+        // legacy persisted scalar only when the boundary cannot resolve (preserves pre-migration behavior exactly).
+        private static Guid ResolveGroupIdentity(SyncJob syncJob, ResolvedDestination? resolvedDestination)
+        {
+            return resolvedDestination switch
+            {
+                ResolvedGroupDestination group => group.ObjectId,
+                ResolvedTeamsChannelDestination channel => channel.TeamObjectId,
+                _ => syncJob.TargetOfficeGroupId
+            };
         }
     }
 }

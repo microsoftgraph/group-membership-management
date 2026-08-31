@@ -9,6 +9,7 @@ using Models.Notifications;
 using Models.ServiceBus;
 using Models.SyncJobChange;
 using Repositories.Contracts;
+using Repositories.Contracts.DestinationResolution;
 using Services.WebApi.Contracts;
 using System.Text.Json;
 
@@ -19,15 +20,18 @@ namespace Services.WebApi
         private readonly IServiceBusQueueRepository _serviceBusQueueRepository;
         private readonly ILogger<NotificationService> _logger;
         private readonly IGraphGroupRepository _graphGroupRepository;
+        private readonly IDestinationResolver _destinationResolver;
 
         public NotificationService(
             [FromKeyedServices("Notifications")] IServiceBusQueueRepository serviceBusQueueRepository,
             ILogger<NotificationService> logger,
-            IGraphGroupRepository graphGroupRepository)
+            IGraphGroupRepository graphGroupRepository,
+            IDestinationResolver destinationResolver)
         {
             _serviceBusQueueRepository = serviceBusQueueRepository ?? throw new ArgumentNullException(nameof(serviceBusQueueRepository));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _graphGroupRepository = graphGroupRepository ?? throw new ArgumentNullException(nameof(graphGroupRepository));
+            _destinationResolver = destinationResolver ?? throw new ArgumentNullException(nameof(destinationResolver));
         }
 
         public async Task SendSubmissionRejectedNotificationAsync(
@@ -50,9 +54,11 @@ namespace Services.WebApi
             NotificationMessageType notificationType)
         {
             string groupName;
+            var resolvedDestination = await _destinationResolver.ResolveAsync(syncJob);
+            var groupIdentity = ResolveGroupIdentity(syncJob, resolvedDestination);
             try
             {
-                groupName = await _graphGroupRepository.GetGroupNameAsync(syncJob.TargetOfficeGroupId);
+                groupName = await _graphGroupRepository.GetGroupNameAsync(groupIdentity);
                 if (string.IsNullOrEmpty(groupName))
                 {
                     groupName = "<Group name could not be retrieved>";
@@ -61,7 +67,7 @@ namespace Services.WebApi
             catch (Exception ex)
             {
                 groupName = "<Group name could not be retrieved>";
-                _logger.NotificationGroupNameRetrievalFailed(syncJob.RunId, syncJob.TargetOfficeGroupId, ex);
+                _logger.NotificationGroupNameRetrievalFailed(syncJob.RunId, groupIdentity, ex);
             }
 
             var isRejection = notificationType == NotificationMessageType.SubmissionRejectedNotification;
@@ -70,7 +76,7 @@ namespace Services.WebApi
             var additionalContentParameters = isRejection
                 ? new string[]
                 {
-                    syncJob.TargetOfficeGroupId.ToString(),                      // {0} - Group ID
+                    groupIdentity.ToString(),                      // {0} - Group ID
                     groupName,                                                     // {1} - Group Name
                     businessJustification!,                                        // {2} - Rejection Reason
                     syncJob.Requestor ?? string.Empty,                            // {3} - Requestor email
@@ -78,7 +84,7 @@ namespace Services.WebApi
                 }
                 : new string[]
                 {
-                    syncJob.TargetOfficeGroupId.ToString(),  // {0} - Group ID
+                    groupIdentity.ToString(),  // {0} - Group ID
                     groupName                                // {1} - Group Name
                 };
 
@@ -156,6 +162,19 @@ namespace Services.WebApi
                 _logger.NotificationSendFailed(syncJob.RunId, notificationType, ex);
                 throw;
             }
+        }
+
+        // Explicitly handles both destination kinds per the resolver contract (ResolvedGroupDestination.ObjectId,
+        // ResolvedTeamsChannelDestination.TeamObjectId) rather than collapsing to a shared alias. Falls back to the
+        // legacy persisted scalar only when the boundary cannot resolve (preserves pre-migration behavior exactly).
+        private static Guid ResolveGroupIdentity(SyncJob syncJob, ResolvedDestination? resolvedDestination)
+        {
+            return resolvedDestination switch
+            {
+                ResolvedGroupDestination group => group.ObjectId,
+                ResolvedTeamsChannelDestination channel => channel.TeamObjectId,
+                _ => syncJob.TargetOfficeGroupId
+            };
         }
     }
 }

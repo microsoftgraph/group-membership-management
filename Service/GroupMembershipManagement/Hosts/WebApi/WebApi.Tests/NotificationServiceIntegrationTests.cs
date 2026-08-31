@@ -22,12 +22,14 @@ namespace WebApi.Tests
             // Arrange
             var mockServiceBusRepository = new Mock<IServiceBusQueueRepository>();
             var mockGraphGroupRepository = new Mock<IGraphGroupRepository>();
+            var mockDestinationResolver = new Mock<IDestinationResolver>();
 
             // Act
             var notificationService = new NotificationService(
                 mockServiceBusRepository.Object,
                 NullLogger<NotificationService>.Instance,
-                mockGraphGroupRepository.Object);
+                mockGraphGroupRepository.Object,
+                mockDestinationResolver.Object);
 
             // Assert
             Assert.IsInstanceOfType(notificationService, typeof(INotificationService));
@@ -49,7 +51,8 @@ namespace WebApi.Tests
             var notificationService = new NotificationService(
                 mockServiceBusRepository.Object,
                 NullLogger<NotificationService>.Instance,
-                mockGraphGroupRepository.Object);
+                mockGraphGroupRepository.Object,
+                new Mock<IDestinationResolver>().Object);
 
             var syncJob = new SyncJob
             {
@@ -84,7 +87,8 @@ namespace WebApi.Tests
             var notificationService = new NotificationService(
                 mockServiceBusRepository.Object,
                 NullLogger<NotificationService>.Instance,
-                mockGraphGroupRepository.Object);
+                mockGraphGroupRepository.Object,
+                new Mock<IDestinationResolver>().Object);
 
             Assert.IsNotNull(notificationService);
         }

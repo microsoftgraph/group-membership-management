@@ -115,7 +115,7 @@ namespace Services.Tests
                 .Setup(x => x.GetNotesByAdfRunIdsAsync(It.IsAny<IEnumerable<string>>()))
                 .ReturnsAsync(new Dictionary<string, string>());
             _blobStorageRepository = new Mock<IBlobStorageRepository>();
-            _getMembershipDownloadHandler = new GetMembershipDownloadHandler(NullLogger<GetMembershipDownloadHandler>.Instance, _syncJobRepository.Object, _blobStorageRepository.Object);
+            _getMembershipDownloadHandler = new GetMembershipDownloadHandler(NullLogger<GetMembershipDownloadHandler>.Instance, _syncJobRepository.Object, _blobStorageRepository.Object, new Mock<IDestinationResolver>().Object);
             _titlesRepository = new Mock<IDatabaseTitlesRepository>();
             _settingsRepository = new Mock<IDatabaseSettingsRepository>();
             _notificationService = new Mock<INotificationService>();

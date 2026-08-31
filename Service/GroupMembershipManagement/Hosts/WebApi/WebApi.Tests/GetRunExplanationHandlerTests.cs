@@ -6,11 +6,13 @@ using Models;
 using Models.SyncJobChange;
 using Moq;
 using Repositories.Contracts;
+using Repositories.Contracts.DestinationResolution;
 using Services;
 using Services.Contracts;
 using Services.Messages.Requests;
 using Services.WebApi.Contracts;
 using System.Net;
+using System.Threading;
 
 namespace WebApi.Tests
 {
@@ -25,6 +27,7 @@ namespace WebApi.Tests
         private Mock<ISqlMembershipRepository> _mockSqlMembershipRepository = null!;
         private Mock<IDataFactoryRepository> _mockDataFactoryRepository = null!;
         private Mock<IOpenAIService> _mockOpenAIService = null!;
+        private Mock<IDestinationResolver> _mockDestinationResolver = null!;
         private GetRunExplanationHandler _handler = null!;
 
         private Guid _syncJobId;
@@ -43,6 +46,7 @@ namespace WebApi.Tests
             _mockSqlMembershipRepository = new Mock<ISqlMembershipRepository>();
             _mockDataFactoryRepository = new Mock<IDataFactoryRepository>();
             _mockOpenAIService = new Mock<IOpenAIService>();
+            _mockDestinationResolver = new Mock<IDestinationResolver>();
 
             _handler = new GetRunExplanationHandler(
                 NullLogger<GetRunExplanationHandler>.Instance,
@@ -53,7 +57,8 @@ namespace WebApi.Tests
                 _mockBlobStorageRepository.Object,
                 _mockSqlMembershipRepository.Object,
                 _mockDataFactoryRepository.Object,
-                _mockOpenAIService.Object);
+                _mockOpenAIService.Object,
+                _mockDestinationResolver.Object);
 
             _syncJobId = Guid.NewGuid();
             _targetGroupId = Guid.NewGuid();
@@ -150,6 +155,58 @@ namespace WebApi.Tests
             var response = await _handler.ExecuteAsync(BuildRequest(hasAiRole: false));
 
             Assert.AreEqual(HttpStatusCode.OK, response.StatusCode);
+        }
+
+        [TestMethod]
+        public async Task ExecuteAsync_UseBoundary_GroupDestinationResolved_OwnershipCheckUsesResolvedObjectId()
+        {
+            // T035/US2: when the shared boundary resolves a group destination whose ObjectId differs from the
+            // legacy TargetOfficeGroupId (e.g. because the resolver reads live Group navigation), the ownership
+            // check and blob key must use the resolver's identity, not the stale scalar — proving genuine reroute.
+            var resolvedObjectId = Guid.NewGuid();
+            _mockDestinationResolver
+                .Setup(x => x.ResolveAsync(It.IsAny<SyncJob>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new ResolvedGroupDestination { SyncJobId = _syncJobId, ObjectId = resolvedObjectId });
+            _mockGraphGroupRepository
+                .Setup(x => x.IsEmailRecipientOwnerOfGroupAsync(TestUserIdentity, resolvedObjectId, It.IsAny<bool>()))
+                .ReturnsAsync(true);
+
+            var response = await _handler.ExecuteAsync(BuildRequest(hasAiRole: false));
+
+            Assert.AreEqual(HttpStatusCode.OK, response.StatusCode);
+            _mockGraphGroupRepository.Verify(
+                x => x.IsEmailRecipientOwnerOfGroupAsync(TestUserIdentity, resolvedObjectId, It.IsAny<bool>()),
+                Times.Once);
+            _mockGraphGroupRepository.Verify(
+                x => x.IsEmailRecipientOwnerOfGroupAsync(TestUserIdentity, _targetGroupId, It.IsAny<bool>()),
+                Times.Never);
+        }
+
+        [TestMethod]
+        public async Task ExecuteAsync_UseBoundary_TeamsChannelDestinationResolved_OwnershipCheckUsesTeamObjectId_NotChannelId()
+        {
+            // T036/US2: Teams-channel reroutes must key ownership/blob lookups off ResolvedTeamsChannelDestination.TeamObjectId
+            // (the historical TargetOfficeGroupId semantics) — never collapse to a group-only identity that drops ChannelId,
+            // and never substitute the ChannelId in place of the team identity.
+            var resolvedTeamObjectId = Guid.NewGuid();
+            _mockDestinationResolver
+                .Setup(x => x.ResolveAsync(It.IsAny<SyncJob>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new ResolvedTeamsChannelDestination
+                {
+                    SyncJobId = _syncJobId,
+                    TeamObjectId = resolvedTeamObjectId,
+                    ChannelId = "19:channel123@thread.tacv2"
+                });
+            _mockGraphGroupRepository
+                .Setup(x => x.IsEmailRecipientOwnerOfGroupAsync(TestUserIdentity, resolvedTeamObjectId, It.IsAny<bool>()))
+                .ReturnsAsync(true);
+
+            var response = await _handler.ExecuteAsync(BuildRequest(hasAiRole: false));
+
+            Assert.AreEqual(HttpStatusCode.OK, response.StatusCode);
+            _mockGraphGroupRepository.Verify(
+                x => x.IsEmailRecipientOwnerOfGroupAsync(TestUserIdentity, resolvedTeamObjectId, It.IsAny<bool>()),
+                Times.Once);
         }
 
         [TestMethod]

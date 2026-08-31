@@ -7,6 +7,7 @@ using Models;
 using Models.Helpers;
 using Models.SyncJobChange;
 using Repositories.Contracts;
+using Repositories.Contracts.DestinationResolution;
 using Services.Contracts;
 using Services.Messages.Requests;
 using Services.Messages.Responses;
@@ -56,6 +57,7 @@ Use only the provided data. If you cannot determine the reason with reasonable c
         private readonly IDatabaseSqlMembershipSourcesRepository _databaseSqlMembershipSourcesRepository;
         private readonly IGraphGroupRepository _graphGroupRepository;
         private readonly IOpenAIService _openAIService;
+        private readonly IDestinationResolver _destinationResolver;
 
         public GetSyncExplanationHandler(
             ILogger<GetSyncExplanationHandler> logger,
@@ -67,7 +69,8 @@ Use only the provided data. If you cannot determine the reason with reasonable c
             ISqlMembershipRepository sqlMembershipRepository,
             IDatabaseSqlMembershipSourcesRepository databaseSqlMembershipSourcesRepository,
             IGraphGroupRepository graphGroupRepository,
-            IOpenAIService openAIService) : base(logger)
+            IOpenAIService openAIService,
+            IDestinationResolver destinationResolver) : base(logger)
         {
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _databaseSyncJobsRepository = databaseSyncJobsRepository ?? throw new ArgumentNullException(nameof(databaseSyncJobsRepository));
@@ -79,6 +82,7 @@ Use only the provided data. If you cannot determine the reason with reasonable c
             _databaseSqlMembershipSourcesRepository = databaseSqlMembershipSourcesRepository ?? throw new ArgumentNullException(nameof(databaseSqlMembershipSourcesRepository));
             _graphGroupRepository = graphGroupRepository ?? throw new ArgumentNullException(nameof(graphGroupRepository));
             _openAIService = openAIService ?? throw new ArgumentNullException(nameof(openAIService));
+            _destinationResolver = destinationResolver ?? throw new ArgumentNullException(nameof(destinationResolver));
         }
 
         protected override async Task<GetSyncExplanationResponse> ExecuteCoreAsync(GetSyncExplanationRequest request)
@@ -95,10 +99,13 @@ Use only the provided data. If you cannot determine the reason with reasonable c
                 }
 
                 // If user doesn't have AI_SYNC_JOB or tenant-level role, check group ownership
+                var resolvedDestination = await _destinationResolver.ResolveAsync(syncJob);
+                var groupIdentity = ResolveGroupIdentity(syncJob, resolvedDestination);
+
                 if (!request.HasAiSyncJobRole)
                 {
                     var isOwner = await _graphGroupRepository.IsEmailRecipientOwnerOfGroupAsync(
-                        request.UserIdentity, syncJob.TargetOfficeGroupId);
+                        request.UserIdentity, groupIdentity);
                     if (!isOwner)
                     {
                         response.StatusCode = HttpStatusCode.Forbidden;
@@ -114,7 +121,7 @@ Use only the provided data. If you cannot determine the reason with reasonable c
                 }
 
                 var membershipChange = await GetUserMembershipChangeAsync(
-                    syncJob.TargetOfficeGroupId.ToString(), request.RunId, request.UserObjectId);
+                    groupIdentity.ToString(), request.RunId, request.UserObjectId);
 
                 if (membershipChange == null)
                 {
@@ -146,6 +153,19 @@ Use only the provided data. If you cannot determine the reason with reasonable c
             }
 
             return response;
+        }
+
+        // Explicitly handles both destination kinds per the resolver contract (ResolvedGroupDestination.ObjectId,
+        // ResolvedTeamsChannelDestination.TeamObjectId) rather than collapsing to a shared alias. Falls back to the
+        // legacy persisted scalar only when the boundary cannot resolve (preserves pre-migration behavior exactly).
+        private static Guid ResolveGroupIdentity(SyncJob syncJob, ResolvedDestination? resolvedDestination)
+        {
+            return resolvedDestination switch
+            {
+                ResolvedGroupDestination group => group.ObjectId,
+                ResolvedTeamsChannelDestination channel => channel.TeamObjectId,
+                _ => syncJob.TargetOfficeGroupId
+            };
         }
 
         private async Task<MembershipChangeType?> GetUserMembershipChangeAsync(string targetGroupId, Guid runId, Guid userObjectId)

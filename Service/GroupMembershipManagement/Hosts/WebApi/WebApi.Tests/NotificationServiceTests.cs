@@ -8,9 +8,12 @@ using Models.ServiceBus;
 using Models.SyncJobChange;
 using Moq;
 using Repositories.Contracts;
+using Repositories.Contracts.DestinationResolution;
 using Services.WebApi;
 using Services.WebApi.Contracts;
+using System.Linq;
 using System.Text.Json;
+using System.Threading;
 
 namespace WebApi.Tests
 {
@@ -19,6 +22,7 @@ namespace WebApi.Tests
     {
         private Mock<IServiceBusQueueRepository> _mockServiceBusQueueRepository = null!;
         private Mock<IGraphGroupRepository> _mockGraphGroupRepository = null!;
+        private Mock<IDestinationResolver> _mockDestinationResolver = null!;
         private NotificationService _notificationService = null!;
         private SyncJob _testSyncJob = null!;
         private SyncJobChange _testSubmission = null!;
@@ -28,11 +32,13 @@ namespace WebApi.Tests
         {
             _mockServiceBusQueueRepository = new Mock<IServiceBusQueueRepository>();
             _mockGraphGroupRepository = new Mock<IGraphGroupRepository>();
+            _mockDestinationResolver = new Mock<IDestinationResolver>();
 
             _notificationService = new NotificationService(
                 _mockServiceBusQueueRepository.Object,
                 NullLogger<NotificationService>.Instance,
-                _mockGraphGroupRepository.Object);
+                _mockGraphGroupRepository.Object,
+                _mockDestinationResolver.Object);
 
             _testSyncJob = new SyncJob
             {
@@ -89,6 +95,70 @@ namespace WebApi.Tests
             Assert.IsTrue(messageContent.ContainsKey("SubmitterObjectId"));
             Assert.IsTrue(messageContent.ContainsKey("SubmitterDisplayName"));
             Assert.IsTrue(messageContent.ContainsKey("BusinessJustification"));
+        }
+
+        [TestMethod]
+        public async Task SendReviewStatusChangeNotificationAsync_UseBoundary_GroupDestinationResolved_UsesResolvedObjectId()
+        {
+            // T035/US2: group-name lookup and the {0} Group ID content parameter must use the resolved boundary
+            // identity, not the legacy TargetOfficeGroupId scalar, once the boundary resolves a genuine destination.
+            var resolvedObjectId = Guid.NewGuid();
+            _mockDestinationResolver
+                .Setup(x => x.ResolveAsync(It.IsAny<SyncJob>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new ResolvedGroupDestination { SyncJobId = _testSyncJob.Id, ObjectId = resolvedObjectId });
+            _mockGraphGroupRepository
+                .Setup(x => x.GetGroupNameAsync(resolvedObjectId))
+                .ReturnsAsync("Resolved Group Name");
+
+            ServiceBusMessage capturedMessage = null!;
+            _mockServiceBusQueueRepository
+                .Setup(x => x.SendMessageAsync(It.IsAny<ServiceBusMessage>()))
+                .Callback<ServiceBusMessage>(msg => capturedMessage = msg)
+                .Returns(Task.CompletedTask);
+
+            await _notificationService.SendSubmissionRejectedNotificationAsync(_testSyncJob, _testSubmission);
+
+            _mockGraphGroupRepository.Verify(x => x.GetGroupNameAsync(resolvedObjectId), Times.Once);
+            var messageBodyString = System.Text.Encoding.UTF8.GetString(capturedMessage.Body);
+            var messageContent = JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(messageBodyString);
+            var additionalContentParameters = messageContent!["AdditionalContentParameters"]
+                .EnumerateArray().Select(e => e.GetString()).ToArray();
+            Assert.AreEqual(resolvedObjectId.ToString(), additionalContentParameters[0]);
+            Assert.AreEqual("Resolved Group Name", additionalContentParameters[1]);
+        }
+
+        [TestMethod]
+        public async Task SendReviewStatusChangeNotificationAsync_UseBoundary_TeamsChannelDestinationResolved_UsesTeamObjectId_NotChannelId()
+        {
+            // T036/US2: Teams-channel reroutes must key the group-name lookup and {0} content parameter off
+            // TeamObjectId (historical TargetOfficeGroupId semantics), never leaking ChannelId into that slot.
+            var resolvedTeamObjectId = Guid.NewGuid();
+            _mockDestinationResolver
+                .Setup(x => x.ResolveAsync(It.IsAny<SyncJob>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new ResolvedTeamsChannelDestination
+                {
+                    SyncJobId = _testSyncJob.Id,
+                    TeamObjectId = resolvedTeamObjectId,
+                    ChannelId = "19:channel123@thread.tacv2"
+                });
+            _mockGraphGroupRepository
+                .Setup(x => x.GetGroupNameAsync(resolvedTeamObjectId))
+                .ReturnsAsync("Resolved Team Name");
+
+            ServiceBusMessage capturedMessage = null!;
+            _mockServiceBusQueueRepository
+                .Setup(x => x.SendMessageAsync(It.IsAny<ServiceBusMessage>()))
+                .Callback<ServiceBusMessage>(msg => capturedMessage = msg)
+                .Returns(Task.CompletedTask);
+
+            await _notificationService.SendSubmissionRejectedNotificationAsync(_testSyncJob, _testSubmission);
+
+            var messageBodyString = System.Text.Encoding.UTF8.GetString(capturedMessage.Body);
+            var messageContent = JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(messageBodyString);
+            var additionalContentParameters = messageContent!["AdditionalContentParameters"]
+                .EnumerateArray().Select(e => e.GetString()).ToArray();
+            Assert.AreEqual(resolvedTeamObjectId.ToString(), additionalContentParameters[0]);
+            Assert.AreNotEqual("19:channel123@thread.tacv2", additionalContentParameters[0]);
         }
 
         [TestMethod]
@@ -212,7 +282,7 @@ namespace WebApi.Tests
         {
             // Act & Assert
             Assert.ThrowsException<ArgumentNullException>(
-                () => new NotificationService(null!, NullLogger<NotificationService>.Instance, _mockGraphGroupRepository.Object));
+                () => new NotificationService(null!, NullLogger<NotificationService>.Instance, _mockGraphGroupRepository.Object, _mockDestinationResolver.Object));
         }
 
         [TestMethod]
@@ -220,7 +290,7 @@ namespace WebApi.Tests
         {
             // Act & Assert
             Assert.ThrowsException<ArgumentNullException>(
-                () => new NotificationService(_mockServiceBusQueueRepository.Object, null!, _mockGraphGroupRepository.Object));
+                () => new NotificationService(_mockServiceBusQueueRepository.Object, null!, _mockGraphGroupRepository.Object, _mockDestinationResolver.Object));
         }
 
         [TestMethod]
