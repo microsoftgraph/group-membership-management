@@ -4158,10 +4158,10 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
               type: 'Extension/Microsoft_OperationsManagementSuite_Workspace/PartType/LogsDashboardPart'
               settings: {
                 content: {
-                  Query: 'customEvents\n| where name == "NotificationSent" or name == "NotificationResponseReceived"\n| summarize [\'Notifications Sent\'] = countif(name == "NotificationSent"), [\'Responses Received\'] = countif(name == "NotificationResponseReceived") by Date = bin(timestamp, 1d)\n| order by Date desc'
+                  Query: 'customEvents\n| where name == "NotificationSent" or name == "NotificationResponseReceived"\n| summarize [\'Threshold Notifications Sent\'] = countif(name == "NotificationSent"), [\'Threshold Responses Received\'] = countif(name == "NotificationResponseReceived") by Date = bin(timestamp, 1d)\n| order by Date desc'
                   ControlType: 'FrameControlChart'
                   SpecificChart: 'StackedColumn'
-                  PartTitle: 'Notifications Sent and Responses Received Per Day'
+                  PartTitle: 'Threshold Notifications Sent and Responses Received Per Day'
                   Dimensions: {
                     xAxis: {
                       name: 'Date'
@@ -4169,11 +4169,11 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
                     }
                     yAxis: [
                       {
-                        name: 'Notifications Sent'
+                        name: 'Threshold Notifications Sent'
                         type: 'long'
                       }
                       {
-                        name: 'Responses Received'
+                        name: 'Threshold Responses Received'
                         type: 'long'
                       }
                     ]
