@@ -36,13 +36,13 @@ import {
     selectCopilotError,
     selectLastSourceParts,
     selectUseOrgStructure,
+    selectCopilotWarning,
     addMessage,
     clearMessages,
     clearLastSourcePart,
 } from '../../store/copilot.slice';
 import { sendCopilotMessage, UserContext } from '../../store/copilot.api';
 import { selectCopilotSuggestedPrompts } from '../../store/settings.slice';
-import { selectOrgLeaderDetails } from '../../store/orgLeaderDetails.slice';
 import { getSourcePartsFromState } from '../../store/manageMembership.slice';
 import { HRSourcePartSource } from '../../models/HRSourcePart';
 import { SourcePartType } from '../../models/SourcePartType';
@@ -67,44 +67,8 @@ export const CopilotPanelBase: React.FunctionComponent<ICopilotPanelProps> = (
     const error = useSelector(selectCopilotError);
     const lastSourceParts = useSelector(selectLastSourceParts);
     const useOrgStructure = useSelector(selectUseOrgStructure);
-    const orgLeaderDetails = useSelector(selectOrgLeaderDetails);
+    const warning = useSelector(selectCopilotWarning);
     const sourceParts = useSelector(getSourcePartsFromState);
-
-    // Build a rich context describing the current source part's full configuration
-    const currentMembershipContext = React.useMemo(() => {
-        if (!sourcePartId) return undefined;
-        const part = sourceParts.find(p => p.id === sourcePartId);
-        if (!part || part.query.type !== SourcePartType.HR) return undefined;
-        const hrSource = part.query.source as HRSourcePartSource;
-
-        const pieces: string[] = [];
-
-        // SQL filter
-        if (hrSource?.filter) {
-            pieces.push(`filter: ${hrSource.filter}`);
-        }
-
-        // Exclusion
-        if (part.query.exclusionary) {
-            pieces.push('exclusionary: true');
-        }
-
-        // Org structure / manager / depth
-        if (hrSource?.manager?.id) {
-            pieces.push('orgStructure: enabled');
-            // Try to get the display name from orgLeaderDetails if it matches
-            if (orgLeaderDetails?.text) {
-                pieces.push(`orgLeader: ${orgLeaderDetails.text}`);
-            }
-            if (hrSource.manager.depth != null) {
-                pieces.push(`depth: ${hrSource.manager.depth}`);
-            } else {
-                pieces.push('depth: all levels');
-            }
-        }
-
-        return pieces.length > 0 ? pieces.join(' | ') : undefined;
-    }, [sourcePartId, sourceParts, orgLeaderDetails]);
 
     const [inputValue, setInputValue] = useState('');
     const [showResumeDialog, setShowResumeDialog] = useState(false);
@@ -195,12 +159,11 @@ export const CopilotPanelBase: React.FunctionComponent<ICopilotPanelProps> = (
                 message: messageText.trim(), 
                 userContext,
                 hrAttributes,
-                currentFilter: currentMembershipContext
             })).unwrap();
         } catch (err) {
             // Error is handled by the slice
         }
-    }, [dispatch, isLoading, hrAttributes, currentMembershipContext]);
+    }, [dispatch, isLoading, hrAttributes]);
 
     const handleAcceptAndApply = useCallback(() => {
         if (lastSourceParts.length === 0 || !onSourcePartsGenerated) return;
@@ -321,6 +284,15 @@ export const CopilotPanelBase: React.FunctionComponent<ICopilotPanelProps> = (
                             </div>
                             <div className={classNames.headerSubtitle}>
                                 {strings.Copilot?.subtitle || 'Your AI-powered membership builder'}
+                            </div>
+                            <div
+                                className={classNames.headerSubtitle}
+                                data-testid="copilot-mode-indicator"
+                                style={{ fontStyle: 'italic' }}
+                            >
+                                {sourceParts.length > 0
+                                    ? (strings.Copilot?.modeRefining || 'Refining your existing query')
+                                    : (strings.Copilot?.modeNew || 'Creating a new query')}
                             </div>
                         </div>
                     </div>
@@ -650,7 +622,18 @@ export const CopilotPanelBase: React.FunctionComponent<ICopilotPanelProps> = (
                             <div className={`${classNames.messageRow} ${classNames.botMessage}`}>
                                 {renderBotAvatar()}
                                 <div className={classNames.messageContent} style={{ backgroundColor: theme.semanticColors.errorBackground, color: theme.semanticColors.errorText }}>
-                                    {strings.Copilot?.errorMessage || 'Sorry, something went wrong. Please try again.'}
+                                    <div>{strings.Copilot?.errorMessage || 'Sorry, something went wrong. Please try again.'}</div>
+                                    <div data-testid="copilot-load-fallback" style={{ marginTop: '6px' }}>
+                                        {strings.Copilot?.loadFailed || 'You can still create a new query from scratch here.'}
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+                        {warning && !error && (
+                            <div className={`${classNames.messageRow} ${classNames.botMessage}`} data-testid="copilot-warning">
+                                {renderBotAvatar()}
+                                <div className={classNames.messageContent} style={{ backgroundColor: theme.semanticColors.warningBackground }}>
+                                    {warning}
                                 </div>
                             </div>
                         )}

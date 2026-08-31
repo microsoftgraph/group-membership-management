@@ -8,20 +8,26 @@ import { ThunkConfig, RootState } from './store';
 import { TokenType } from '../services/auth';
 import { IChatMessage } from '../components/CopilotPanel/CopilotPanel.types';
 import { ISourcePart } from '../models/ISourcePart';
-import { HRSourcePart } from '../models/HRSourcePart';
+import { HRSourcePart, HRSourcePartSource } from '../models/HRSourcePart';
 import { GroupMembershipSourcePart } from '../models/GroupMembershipSourcePart';
 import { SourcePartType } from '../models/SourcePartType';
 
 export interface CopilotResponse {
     message: IChatMessage;
-    sourceParts: ISourcePart[]; // Array of source parts, each with its own org leader info
+    sourceParts: ISourcePart[]; // The complete resulting query (each with its own org leader info)
     useOrgStructure: boolean; // Whether any part uses org hierarchy
+    warning?: string; // Soft warning (e.g., the resulting query is empty)
+    errorCode?: string; // Set when the operation set was rejected (e.g., UnknownPartTarget)
 }
 
-// Backend API response format (supports multiple source parts with per-part org leader info)
+// Backend API response format (v2: full resulting query after applying operations)
 interface CopilotApiResponse {
     message: string;
-    sourceParts?: ApiSourcePart[]; // Array of source parts from backend
+    sourceParts?: ApiSourcePart[]; // v1 back-compat
+    resultingQuery?: ApiSourcePart[]; // v2: complete authoritative query
+    appliedOperations?: { op: string; partId?: string }[];
+    warning?: string;
+    errorCode?: string;
 }
 
 // Backend source part format (now includes org leader info per-part and group membership support)
@@ -40,8 +46,63 @@ interface ApiSourcePart {
     groupName?: string; // For GroupMembership: the group's display name
 }
 
-function transformSourcePart(apiPart: ApiSourcePart): ISourcePart {
+/**
+ * Builds the full working query the Copilot endpoint refines: every current source part
+ * (including unsupported types Copilot cannot manipulate) is projected onto an ApiSourcePart
+ * keyed by its stable `id` as `partId`, so the server can preserve unreferenced parts.
+ */
+export function buildWorkingQuery(sourceParts: ISourcePart[]): ApiSourcePart[] {
+    return (sourceParts ?? []).map((part): ApiSourcePart => {
+        const sourceType = part.query?.type ?? SourcePartType.HR;
+        const isExclusion = !!part.query?.exclusionary;
+
+        if (sourceType === SourcePartType.GroupMembership) {
+            const source = (part.query as GroupMembershipSourcePart).source;
+            return {
+                partId: part.id,
+                sourceType,
+                filter: null,
+                title: part.title ?? '',
+                isExclusion,
+                useOrgStructure: false,
+                groupId: typeof source === 'string' ? source : undefined,
+                groupName: part.title,
+            };
+        }
+
+        if (sourceType === SourcePartType.HR) {
+            const hrSource = (part.query as HRSourcePart).source as HRSourcePartSource;
+            return {
+                partId: part.id,
+                sourceType,
+                filter: hrSource?.filter ?? null,
+                title: part.title ?? '',
+                isExclusion,
+                useOrgStructure: !!part.useOrgStructure || hrSource?.manager?.id != null,
+                orgLeaderName: part.managerToAutoSelect?.displayName,
+                orgLeaderEmail: part.managerToAutoSelect?.email,
+                orgLeaderObjectId: part.managerToAutoSelect?.objectId,
+                orgLeaderDepth: part.depthToAutoSelect ?? hrSource?.manager?.depth,
+            };
+        }
+
+        // Unsupported source types (GroupOwnership, PlaceMembership, TeamsChannelMembership):
+        // carry a minimal descriptor so the server preserves the part unchanged.
+        return {
+            partId: part.id,
+            sourceType,
+            filter: null,
+            title: part.title ?? '',
+            isExclusion,
+            useOrgStructure: false,
+        };
+    });
+}
+
+function transformSourcePart(apiPart: ApiSourcePart, priorIds: Set<string>): ISourcePart {
     const isGroupMembership = apiPart.sourceType === 'GroupMembership' && !!apiPart.groupId;
+    // A part is "new" only when the server minted an id we hadn't sent as working context.
+    const isNew = !priorIds.has(apiPart.partId);
 
     if (isGroupMembership) {
         const groupQuery: GroupMembershipSourcePart = {
@@ -54,7 +115,7 @@ function transformSourcePart(apiPart: ApiSourcePart): ISourcePart {
             id: apiPart.partId || uuidv4(),
             title: apiPart.title || apiPart.groupName || 'Group Source',
             query: groupQuery,
-            isNew: true,
+            isNew,
             isExpanded: false,
             createdViaAIQB: true,
         };
@@ -73,7 +134,7 @@ function transformSourcePart(apiPart: ApiSourcePart): ISourcePart {
         id: apiPart.partId || uuidv4(),
         title: apiPart.title,
         query: hrQuery,
-        isNew: true,
+        isNew,
         isExpanded: false,
         // Per-part org leader info
         useOrgStructure: apiPart.useOrgStructure || false,
@@ -97,12 +158,11 @@ export interface SendMessagePayload {
     message: string;
     userContext?: UserContext;
     hrAttributes?: { name: string; hasMapping: boolean; customLabel?: string; description?: string }[];
-    currentFilter?: string;
 }
 
 export const sendCopilotMessage = createAsyncThunk<CopilotResponse, SendMessagePayload, ThunkConfig>(
     'copilot/sendMessage',
-    async ({ message: userMessage, userContext, hrAttributes, currentFilter }, { extra, getState, rejectWithValue }) => {
+    async ({ message: userMessage, userContext, hrAttributes }, { extra, getState, rejectWithValue }) => {
         const { authenticationService } = extra.services;
         const token = await authenticationService.getTokenAsync(TokenType.GMM);
         const headers = new Headers();
@@ -110,19 +170,23 @@ export const sendCopilotMessage = createAsyncThunk<CopilotResponse, SendMessageP
         headers.append('Authorization', bearer);
         headers.append('Content-Type', 'application/json');
 
-        // Get conversation history from state
+        // Get conversation history and the current working query from state
         const state = getState() as RootState;
         const conversationHistory = state.copilot.messages.map(msg => ({
             role: msg.role,
             content: msg.content,
         }));
+        const currentSourceParts = state.manageMembership.sourceParts;
+        const workingQuery = buildWorkingQuery(currentSourceParts);
+        const priorIds = new Set(currentSourceParts.map(p => p.id));
+        const existingById = new Map(currentSourceParts.map(p => [p.id, p]));
 
         const requestBody = {
             message: userMessage,
             conversationHistory,
             userContext,
             hrAttributes,
-            currentFilter,
+            workingQuery,
             conversationId: state.copilot.conversationId,
         };
 
@@ -163,13 +227,28 @@ export const sendCopilotMessage = createAsyncThunk<CopilotResponse, SendMessageP
                 timestamp: new Date().toISOString(),
             };
 
-            // Transform source parts array (each part carries its own org leader info)
-            const sourceParts = (data.sourceParts ?? []).map(transformSourcePart);
+            // v2 returns the complete resulting query; fall back to v1 sourceParts for compatibility.
+            const apiParts = data.resultingQuery ?? data.sourceParts ?? [];
+
+            // Apply by partId: supported parts are (re)built from the response; unsupported parts
+            // Copilot cannot manipulate are reused unchanged from current state so nothing is lost.
+            const sourceParts = apiParts.map(apiPart => {
+                const isSupported = !apiPart.sourceType ||
+                    apiPart.sourceType === SourcePartType.HR ||
+                    apiPart.sourceType === SourcePartType.GroupMembership;
+                const existing = existingById.get(apiPart.partId);
+                if (!isSupported && existing) {
+                    return existing;
+                }
+                return transformSourcePart(apiPart, priorIds);
+            });
 
             return {
                 message: assistantMessage,
                 sourceParts,
                 useOrgStructure: sourceParts.some(p => p.useOrgStructure),
+                warning: data.warning,
+                errorCode: data.errorCode,
             };
         } catch (error) {
             return rejectWithValue({

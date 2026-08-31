@@ -15,6 +15,7 @@ import copilotReducer, {
   selectLastSourceParts,
   selectUseOrgStructure,
   selectIsPanelOpen,
+  mergeResultingParts,
   CopilotState,
 } from './copilot.slice';
 import { sendCopilotMessage } from './copilot.api';
@@ -30,6 +31,7 @@ const initialState: CopilotState = {
   isPanelOpen: false,
   lastSourceParts: [],
   useOrgStructure: false,
+  warning: null,
   conversationId: 'test-conversation-id',
 };
 
@@ -244,6 +246,60 @@ describe('copilot.slice', () => {
 
     it('selectIsPanelOpen returns panel state', () => {
       expect(selectIsPanelOpen(mockRootState)).toBe(true);
+    });
+  });
+
+  // T017 [US4]: apply the resulting query BY partId
+  describe('mergeResultingParts (apply-by-id)', () => {
+    const hr = (id: string, filter: string, extra?: Partial<ISourcePart>): ISourcePart => ({
+      id,
+      title: filter,
+      query: { type: SourcePartType.HR, source: { filter }, exclusionary: false },
+      isNew: false,
+      isExpanded: false,
+      ...extra,
+    });
+
+    it('replaces a matching id in place and preserves its expanded state', () => {
+      const existing = [hr('a', 'A = 1', { isExpanded: true })];
+      const resulting = [hr('a', 'A = 99')];
+
+      const merged = mergeResultingParts(existing, resulting);
+
+      expect(merged).toHaveLength(1);
+      expect(merged[0].id).toBe('a');
+      expect((merged[0].query as { source: { filter: string } }).source.filter).toBe('A = 99');
+      expect(merged[0].isExpanded).toBe(true); // preserved from existing
+      expect(merged[0].isNew).toBe(false); // existing parts are not forced to isNew
+    });
+
+    it('drops ids that are absent from the resulting query', () => {
+      const existing = [hr('a', 'A = 1'), hr('b', 'B = 2')];
+      const resulting = [hr('a', 'A = 1')];
+
+      const merged = mergeResultingParts(existing, resulting);
+
+      expect(merged.map(p => p.id)).toEqual(['a']);
+    });
+
+    it('appends server-minted parts and keeps their isNew flag', () => {
+      const existing = [hr('a', 'A = 1')];
+      const resulting = [hr('a', 'A = 1'), hr('minted-1', 'C = 3', { isNew: true })];
+
+      const merged = mergeResultingParts(existing, resulting);
+
+      expect(merged.map(p => p.id)).toEqual(['a', 'minted-1']);
+      expect(merged[1].isNew).toBe(true);
+    });
+
+    it('does not force isNew:true on parts that already existed', () => {
+      const existing = [hr('a', 'A = 1', { isNew: false }), hr('b', 'B = 2', { isNew: false })];
+      const resulting = [hr('b', 'B = 2'), hr('a', 'A = 1')]; // reordered, both pre-existing
+
+      const merged = mergeResultingParts(existing, resulting);
+
+      expect(merged.every(p => p.isNew === false)).toBe(true);
+      expect(merged.map(p => p.id)).toEqual(['b', 'a']); // resulting order is authoritative
     });
   });
 });

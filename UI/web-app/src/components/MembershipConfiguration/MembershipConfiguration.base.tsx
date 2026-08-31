@@ -11,7 +11,6 @@ import { AdvancedQuery } from '../AdvancedQuery';
 import { CopilotPanel } from '../CopilotPanel';
 import { AppDispatch } from '../../store';
 import {
-  addSourcePart,
   buildCompositeQuery,
   clearSourceParts,
   getSourcePartsFromState,
@@ -22,7 +21,6 @@ import {
   setCompositeQuery,
   setIsAdvancedQueryValid,
   setSourceParts,
-  updateSourcePart,
   manageMembershipIsEditingExistingJob,
 } from '../../store/manageMembership.slice';
 import { selectAttributes, selectAreAttributeMappingsLoading } from '../../store/sqlMembershipSources.slice';
@@ -37,7 +35,7 @@ import { UserSpotCheck } from '../UserSpotCheck';
 import { selectGeneratedTitlesYet, selectSelectedJobDetails, selectSelectedJobWithNoTitles, setGeneratedTitlesYet, setTitles} from '../../store/jobs.slice';
 import { SyncJobQuery } from '../../models/SyncJobQuery';
 import { selectOrgLeaderDataReturned } from '../../store/orgLeaderDetails.slice';
-import { closePanel, openPanel, selectIsPanelOpen } from '../../store/copilot.slice';
+import { closePanel, openPanel, selectIsPanelOpen, mergeResultingParts } from '../../store/copilot.slice';
 import { fetchOrgLeaderDetails } from '../../store/orgLeaderDetails.api';
 import { fetchGroupDetailsAndGenerateTitle, fetchOrgLeaderDetailsAndGenerateHRTitle, generateTitles } from '../../store/title.api';
 import { HRPart } from '../../models/HRPart';
@@ -124,61 +122,13 @@ export const MembershipConfigurationBase: React.FunctionComponent<MembershipConf
       }));
     }
     
-    // Deduplicate: skip generated parts that match already-applied source parts
-    // (LLM sometimes returns previously accepted parts again)
-    const isDuplicate = (part: ISourcePart): boolean => {
-      return sourceParts.some(existing => {
-        if (existing.query.type !== part.query.type) return false;
-        if (existing.query.exclusionary !== part.query.exclusionary) return false;
-        // For group membership: same groupId
-        if (part.query.type === SourcePartType.GroupMembership && existing.query.type === SourcePartType.GroupMembership) {
-          return part.query.source === existing.query.source;
-        }
-        // For HR/org: same leader identity + same depth + same filter
-        if (part.useOrgStructure && existing.useOrgStructure &&
-            part.query.type === SourcePartType.HR && existing.query.type === SourcePartType.HR) {
-          const partLeader = part.managerToAutoSelect?.objectId ?? part.managerToAutoSelect?.email?.toLowerCase();
-          const existingLeader = existing.managerToAutoSelect?.objectId ?? existing.managerToAutoSelect?.email?.toLowerCase();
-          const partFilter = part.query.source.filter ?? '';
-          const existingFilter = existing.query.source.filter ?? '';
-
-          return partLeader === existingLeader &&
-                 part.depthToAutoSelect === existing.depthToAutoSelect &&
-                 partFilter === existingFilter;
-        }
-        // For HR filter-only: same filter string
-        if (part.query.type === SourcePartType.HR && existing.query.type === SourcePartType.HR) {
-          const partFilter = 'source' in part.query ? JSON.stringify(part.query.source) : '';
-          const existingFilter = 'source' in existing.query ? JSON.stringify(existing.query.source) : '';
-          return partFilter === existingFilter;
-        }
-        return false;
-      });
-    };
-
-    if (activeSourcePartId && generatedParts.length > 0) {
-      // Update the specific source part that was active when Copilot was opened
-      const updatedPart = {
-        ...generatedParts[0],
-        id: activeSourcePartId,
-        isExpanded: true,
-      };
-      dispatch(updateSourcePart(updatedPart));
-      
-      // Add remaining parts, skipping duplicates of already-applied parts
-      generatedParts.slice(1).forEach(part => {
-        if (!isDuplicate(part)) {
-          dispatch(addSourcePart({...part, isExpanded: true}));
-        }
-      });
-    } else {
-      // No active source part - add all generated parts as new, skipping duplicates
-      generatedParts.forEach(part => {
-        if (!isDuplicate(part)) {
-          dispatch(addSourcePart({...part, isExpanded: true}));
-        }
-      });
-    }
+    // The resulting query is the complete, authoritative set of parts (Copilot preserves
+    // parts it cannot edit). Apply it BY id: matching ids keep their transient UI state,
+    // new server-minted parts are appended, and removed parts drop out. No global isNew forcing.
+    const merged = mergeResultingParts(sourceParts, generatedParts).map(part =>
+      part.isNew ? { ...part, isExpanded: true } : part
+    );
+    dispatch(setSourceParts(merged));
     setActiveSourcePartId(null);
     setCopilotUsedPartIds(prev => {
       const next = new Set(prev);

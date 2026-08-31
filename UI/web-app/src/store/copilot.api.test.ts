@@ -4,7 +4,8 @@
 import { afterEach, beforeEach, describe, it, expect, vi } from 'vitest';
 import { SourcePartType } from '../models/SourcePartType';
 import { setupStore } from './store';
-import { sendCopilotMessage } from './copilot.api';
+import { sendCopilotMessage, buildWorkingQuery } from './copilot.api';
+import { ISourcePart } from '../models/ISourcePart';
 
 // Test the transformSourcePart logic by importing the module's shape
 // Since transformSourcePart is not exported, we test the expected transformation contract
@@ -265,6 +266,89 @@ describe('copilot.api transformSourcePart contract', () => {
       const payload = result.payload as { sourceParts: { createdViaAIQB?: boolean }[] };
       expect(payload.sourceParts).toHaveLength(2);
       expect(payload.sourceParts.every(sp => sp.createdViaAIQB === true)).toBe(true);
+    });
+
+    // T027 [US1]: the thunk targets the Copilot endpoint and sends a workingQuery.
+    it('POSTs to the Copilot endpoint with a workingQuery field', async () => {
+      const fetchMock = vi.fn().mockResolvedValue({
+        ok: true,
+        status: 200,
+        text: async () => JSON.stringify({ message: 'ok', resultingQuery: [] }),
+      });
+      global.fetch = fetchMock as unknown as typeof fetch;
+
+      const store = setupStore(undefined, { authenticationService: mockAuthService as never });
+      await store.dispatch(sendCopilotMessage({ message: 'describe my query' }));
+
+      expect(fetchMock).toHaveBeenCalledTimes(1);
+      const [url, options] = fetchMock.mock.calls[0];
+      expect(String(url)).toContain('/api/v1/Copilot/chat');
+      const body = JSON.parse((options as { body: string }).body);
+      expect(Array.isArray(body.workingQuery)).toBe(true);
+      expect(body.currentFilter).toBeUndefined();
+    });
+
+    it('reads the resultingQuery field into source parts', async () => {
+      const result = await dispatchWithMockedFetch({
+        message: 'ok',
+        resultingQuery: [
+          { partId: 'p1', filter: "Country = 'USA'", title: 'US', isExclusion: false, useOrgStructure: false },
+        ],
+      });
+
+      expect(result.type).toBe(sendCopilotMessage.fulfilled.type);
+      const payload = result.payload as { sourceParts: { id: string }[] };
+      expect(payload.sourceParts).toHaveLength(1);
+      expect(payload.sourceParts[0].id).toBe('p1');
+    });
+  });
+
+  // T027 [US1]: buildWorkingQuery projects the current source parts (including unsupported types).
+  describe('buildWorkingQuery', () => {
+    const hrPart: ISourcePart = {
+      id: 'hr-1',
+      title: 'US FTEs',
+      query: { type: SourcePartType.HR, source: { filter: "Country = 'USA'" }, exclusionary: false },
+      isNew: false,
+      isExpanded: false,
+    };
+    const groupPart: ISourcePart = {
+      id: 'grp-1',
+      title: 'Leads',
+      query: { type: SourcePartType.GroupMembership, source: 'group-guid', exclusionary: true },
+      isNew: false,
+      isExpanded: false,
+    };
+    const ownershipPart: ISourcePart = {
+      id: 'own-1',
+      title: 'Owners',
+      query: { type: SourcePartType.GroupOwnership, source: [] },
+      isNew: false,
+      isExpanded: false,
+    };
+
+    it('maps each part id to partId and carries the source type', () => {
+      const wq = buildWorkingQuery([hrPart, groupPart, ownershipPart]);
+      expect(wq.map(p => p.partId)).toEqual(['hr-1', 'grp-1', 'own-1']);
+      expect(wq.map(p => p.sourceType)).toEqual(['SqlMembership', 'GroupMembership', 'GroupOwnership']);
+    });
+
+    it('carries the HR filter and the group id', () => {
+      const wq = buildWorkingQuery([hrPart, groupPart]);
+      expect(wq[0].filter).toBe("Country = 'USA'");
+      expect(wq[1].groupId).toBe('group-guid');
+      expect(wq[1].isExclusion).toBe(true);
+    });
+
+    it('includes unsupported parts so the server can preserve them', () => {
+      const wq = buildWorkingQuery([ownershipPart]);
+      expect(wq).toHaveLength(1);
+      expect(wq[0].partId).toBe('own-1');
+      expect(wq[0].sourceType).toBe('GroupOwnership');
+    });
+
+    it('returns an empty array for no parts', () => {
+      expect(buildWorkingQuery([])).toEqual([]);
     });
   });
 });
