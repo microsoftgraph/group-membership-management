@@ -247,6 +247,19 @@ namespace Repositories.BlobStorage
 
             writer.WriteStartObject();
 
+            // Write metadata first so streaming readers can classify members as they arrive.
+            writer.WritePropertyName("Destination");
+            JsonSerializer.Serialize(writer, destination);
+
+            writer.WriteString("RunId", runId);
+            writer.WriteString("SyncJobId", syncJobId);
+            writer.WriteBoolean("Exclusionary", exclusionary);
+            writer.WriteBoolean("MembershipObtainerDryRunEnabled", membershipObtainerDryRunEnabled);
+            if (query != null)
+            {
+                writer.WriteString("Query", query);
+            }
+
             writer.WritePropertyName("SourceMembers");
             writer.WriteStartArray();
 
@@ -261,18 +274,6 @@ namespace Repositories.BlobStorage
             }
 
             writer.WriteEndArray();
-
-            writer.WritePropertyName("Destination");
-            JsonSerializer.Serialize(writer, destination);
-
-            writer.WriteString("RunId", runId);
-            writer.WriteString("SyncJobId", syncJobId);
-            writer.WriteBoolean("Exclusionary", exclusionary);
-            writer.WriteBoolean("MembershipObtainerDryRunEnabled", membershipObtainerDryRunEnabled);
-            if (query != null)
-            {
-                writer.WriteString("Query", query);
-            }
 
             writer.WriteEndObject();
             await writer.FlushAsync();

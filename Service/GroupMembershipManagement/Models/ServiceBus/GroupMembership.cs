@@ -5,6 +5,7 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using System.Linq;
+using System.Text.Json.Serialization;
 
 namespace Models.ServiceBus
 {
@@ -12,6 +13,11 @@ namespace Models.ServiceBus
     public class GroupMembership
     {
         public AzureADGroup Destination { get; set; }
+
+        /// <summary>
+        /// Written after membership metadata so streaming readers can classify members as they arrive.
+        /// </summary>
+        [JsonPropertyOrder(100)]
         public List<AzureADUser> SourceMembers { get; set; } = new List<AzureADUser>();
         public Guid RunId { get; set; }
         public Guid SyncJobId { get; set; }
