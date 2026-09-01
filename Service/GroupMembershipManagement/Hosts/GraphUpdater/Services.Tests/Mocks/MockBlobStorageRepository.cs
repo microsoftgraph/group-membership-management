@@ -6,6 +6,7 @@ using Repositories.Contracts;
 using System;
 using System.Collections.Generic;
 using System.Text.Json;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace Services.Tests.Mocks
@@ -91,6 +92,24 @@ namespace Services.Tests.Mocks
             bool exclusionary,
             bool membershipObtainerDryRunEnabled,
             string query)
+        {
+            throw new NotImplementedException();
+        }
+
+        public IAsyncEnumerable<AzureADUser> StreamMembershipAsync(
+            string path,
+            Action<Models.ServiceBus.GroupMembership> onMembershipDetailsKnown = null,
+            CancellationToken cancellationToken = default)
+        {
+            throw new NotImplementedException();
+        }
+
+        public Task WriteMembershipAsync(
+            string path,
+            Models.ServiceBus.GroupMembership envelope,
+            IAsyncEnumerable<AzureADUser> members,
+            Dictionary<string, string> metadata = null,
+            CancellationToken cancellationToken = default)
         {
             throw new NotImplementedException();
         }

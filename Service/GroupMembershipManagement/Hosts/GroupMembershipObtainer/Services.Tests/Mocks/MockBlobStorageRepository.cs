@@ -9,6 +9,7 @@ using Repositories.Contracts;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Runtime.CompilerServices;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
@@ -104,6 +105,25 @@ namespace Tests.FunctionApps.Mocks
         {
             // For testing, just return 0 - tests can override this behavior if needed
             return Task.FromResult(0);
+        }
+
+        public async IAsyncEnumerable<AzureADUser> StreamMembershipAsync(
+            string path,
+            Action<Models.ServiceBus.GroupMembership> onMembershipDetailsKnown = null,
+            [EnumeratorCancellation] CancellationToken cancellationToken = default)
+        {
+            await Task.CompletedTask;
+            yield break;
+        }
+
+        public Task WriteMembershipAsync(
+            string path,
+            Models.ServiceBus.GroupMembership envelope,
+            IAsyncEnumerable<AzureADUser> members,
+            Dictionary<string, string> metadata = null,
+            CancellationToken cancellationToken = default)
+        {
+            return Task.CompletedTask;
         }
 
         public Task<string> UploadFileBlockAsync(string path, string content, Dictionary<string, string> metadata = null)

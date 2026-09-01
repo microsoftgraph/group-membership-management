@@ -1,5 +1,6 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
+using Azure;
 using Azure.Core;
 using Azure.Identity;
 using Azure.Storage.Blobs;
@@ -13,8 +14,10 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Runtime.CompilerServices;
 using System.Text;
 using System.Text.Json;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace Repositories.BlobStorage
@@ -22,17 +25,29 @@ namespace Repositories.BlobStorage
     public class BlobStorageRepository : IBlobStorageRepository
     {
         private BlobContainerClient _containerClient;
+        private readonly Func<string, BlockBlobClient> _blockBlobClientFactory;
 
         public BlobStorageRepository(string containerUrl)
         {
             DefaultAzureCredential credential = new(DefaultAzureCredential.DefaultEnvironmentVariableName);
 
             _containerClient = new BlobContainerClient(new Uri(containerUrl), credential);
+            _blockBlobClientFactory = path => _containerClient.GetBlockBlobClient(path);
         }
 
         public BlobStorageRepository(BlobContainerClient containerClient)
         {
             _containerClient = containerClient ?? throw new ArgumentNullException(nameof(containerClient));
+            _blockBlobClientFactory = path => _containerClient.GetBlockBlobClient(path);
+        }
+
+        internal BlobStorageRepository(
+            BlobContainerClient containerClient,
+            Func<string, BlockBlobClient> blockBlobClientFactory)
+        {
+            _containerClient = containerClient ?? throw new ArgumentNullException(nameof(containerClient));
+            _blockBlobClientFactory = blockBlobClientFactory
+                ?? throw new ArgumentNullException(nameof(blockBlobClientFactory));
         }
 
         public async Task DeleteFileAsync(string path)
@@ -247,7 +262,7 @@ namespace Repositories.BlobStorage
 
             writer.WriteStartObject();
 
-            // Write metadata first so streaming readers can classify members as they arrive.
+            // Write the envelope before the members.
             writer.WritePropertyName("Destination");
             JsonSerializer.Serialize(writer, destination);
 
@@ -467,6 +482,36 @@ namespace Repositories.BlobStorage
             using var stream = await blobClient.OpenReadAsync(new BlobOpenReadOptions(false));
             var ids = GroupMembershipSourceMembersStreamingExtractor.Extract(stream);
             return ids;
+        }
+
+        public async IAsyncEnumerable<AzureADUser> StreamMembershipAsync(
+            string path,
+            Action<GroupMembership> onMembershipDetailsKnown = null,
+            [EnumeratorCancellation] CancellationToken cancellationToken = default)
+        {
+            var blobClient = _containerClient.GetBlobClient(path);
+            var exists = await blobClient.ExistsAsync(cancellationToken);
+            if (!exists)
+                throw new FileNotFoundException(path);
+
+            await using var stream = await blobClient.OpenReadAsync(new BlobOpenReadOptions(false), cancellationToken);
+            await foreach (var member in MembershipStream.ReadAsync(stream, onMembershipDetailsKnown, cancellationToken))
+            {
+                yield return member;
+            }
+        }
+
+        public async Task WriteMembershipAsync(
+            string path,
+            GroupMembership envelope,
+            IAsyncEnumerable<AzureADUser> members,
+            Dictionary<string, string> metadata = null,
+            CancellationToken cancellationToken = default)
+        {
+            var blobClient = _blockBlobClientFactory(path);
+            await using var stream = new BlockBlobStagingWriteStream(blobClient);
+            await MembershipStream.WriteAsync(stream, envelope, members, cancellationToken);
+            await stream.CommitAsync(metadata, cancellationToken);
         }
 
         public async Task<int> StreamMembershipToCacheAsync(string sourceMembershipFilePath, string destinationCacheFilePath, Dictionary<string, string> metadata = null)

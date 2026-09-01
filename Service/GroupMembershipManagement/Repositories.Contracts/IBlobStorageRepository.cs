@@ -4,13 +4,16 @@ using Models;
 using System;
 using System.Collections.Generic;
 using System.Text.Json;
+using System.Threading;
 using System.Threading.Tasks;
+using Models.ServiceBus;
 
 namespace Repositories.Contracts
 {
     public interface IBlobStorageRepository
     {
         public Task UploadFileAsync(string path, string content, Dictionary<string, string> metadata = null);
+
         Task<string> UploadFileBlockAsync(string path, string content, Dictionary<string, string> metadata = null);
         public Task DeleteFileAsync(string path);
         public Task DeleteFilesByPrefixAsync(string prefix, bool excludeLatest = false);
@@ -106,5 +109,18 @@ namespace Repositories.Contracts
             bool exclusionary,
             bool membershipObtainerDryRunEnabled,
             string query);
+
+        /// <summary>Reads a membership blob one member at a time.</summary>
+        /// <param name="path">Blob path.</param>
+        /// <param name="onMembershipDetailsKnown">
+        /// Called once before the members when the envelope comes first, otherwise after the full read.
+        /// SourceMembers is empty.
+        /// </param>
+        /// <param name="cancellationToken">Cancels the read.</param>
+        public IAsyncEnumerable<AzureADUser> StreamMembershipAsync(string path, Action<GroupMembership> onMembershipDetailsKnown = null, CancellationToken cancellationToken = default);
+
+        /// <summary>Writes a membership blob from a stream of members.</summary>
+        /// <remarks>Publishes content and metadata only after serialization completes.</remarks>
+        public Task WriteMembershipAsync(string path, GroupMembership envelope, IAsyncEnumerable<AzureADUser> members, Dictionary<string, string> metadata = null, CancellationToken cancellationToken = default);
     }
 }

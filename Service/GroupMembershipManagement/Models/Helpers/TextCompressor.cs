@@ -22,10 +22,13 @@ namespace Models.Helpers
             var inputBytes = Encoding.Default.GetBytes(input);
             using (var sourceMS = new MemoryStream(inputBytes))
             using (var destinationMS = new MemoryStream())
-            using (var brotli = new BrotliStream(destinationMS, CompressionLevel.Fastest))
             {
-                sourceMS.CopyTo(brotli);
-                brotli.Flush();
+                // Disposal writes Brotli's final block before the output buffer is read.
+                using (var brotli = new BrotliStream(destinationMS, CompressionLevel.Fastest, leaveOpen: true))
+                {
+                    sourceMS.CopyTo(brotli);
+                }
+
                 var outputBytes = destinationMS.ToArray();
                 return Convert.ToBase64String(outputBytes);
             }
