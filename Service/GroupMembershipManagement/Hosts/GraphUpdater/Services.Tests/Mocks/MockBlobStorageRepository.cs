@@ -63,7 +63,7 @@ namespace Services.Tests.Mocks
 
         public Task UploadGroupMembershipFromGuidsAsync(
             string membershipFilePath,
-            IEnumerable<Guid> sourceMemberIds,
+            IReadOnlyCollection<Guid> sourceMemberIds,
             AzureADGroup destination,
             Guid runId,
             Guid syncJobId,
