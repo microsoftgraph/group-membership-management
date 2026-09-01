@@ -9,7 +9,7 @@ using System.Linq;
 namespace Models.ServiceBus
 {
     [ExcludeFromCodeCoverage]
-    public class GroupMembership : ICloneable
+    public class GroupMembership
     {
         public AzureADGroup Destination { get; set; }
         public List<AzureADUser> SourceMembers { get; set; } = new List<AzureADUser>();
@@ -55,27 +55,6 @@ namespace Models.ServiceBus
             toReturn.Last().IsLastMessage = true;
 
             return toReturn;
-        }
-
-        /// <summary>
-        /// Does a full deep clone
-        /// </summary>
-        /// <returns></returns>
-        public object Clone()
-        {
-            var groupMembership = (GroupMembership)this.MemberwiseClone();
-            groupMembership.Destination = this.Destination != null ? new AzureADGroup { ObjectId = this.Destination.ObjectId } : null;
-            groupMembership.SyncJobId = this.SyncJobId;
-            groupMembership.Query = this.Query;
-            SourceMembers = this.SourceMembers != null
-                            ? this.SourceMembers.Select(x => new AzureADUser
-                            {
-                                ObjectId = x.ObjectId,
-                                MembershipAction = x.MembershipAction
-                            }).ToList()
-                            : null;
-
-            return groupMembership;
         }
 
         public static GroupMembership Merge(IEnumerable<GroupMembership> groupMemberships)
