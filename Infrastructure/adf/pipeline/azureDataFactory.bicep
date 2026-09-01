@@ -673,6 +673,7 @@ resource dataSet_MemberHRData 'Microsoft.DataFactory/factories/datasets@2018-06-
       escapeChar: '\\'
       firstRowAsHeader: true
       quoteChar: '"'
+      nullValue: ''
     }
     schema: [
       {
@@ -876,6 +877,9 @@ resource dataFlow_PopulateDestinationDataFlow 'Microsoft.DataFactory/factories/d
           }
           name: 'sink'
         }
+        {
+          name: 'MgrValidationCache'
+        }
       ]
       transformations: [
         {
@@ -883,6 +887,54 @@ resource dataFlow_PopulateDestinationDataFlow 'Microsoft.DataFactory/factories/d
         }
         {
           name: 'CastColumns'
+        }
+        {
+          name: 'MgrEligibleDerive'
+        }
+        {
+          name: 'MgrEligibleKeys'
+        }
+        {
+          name: 'MgrValidationDerive'
+        }
+        {
+          name: 'MgrValidationJoin'
+        }
+        {
+          name: 'MgrValidationFlags'
+        }
+        {
+          name: 'MgrCounts'
+        }
+        {
+          name: 'MgrCountsKey'
+        }
+        {
+          name: 'MgrSummaryCounts'
+        }
+        {
+          name: 'MgrInvalidRows'
+        }
+        {
+          name: 'MgrInvalidPairsDerive'
+        }
+        {
+          name: 'MgrInvalidRanked'
+        }
+        {
+          name: 'MgrInvalidTop'
+        }
+        {
+          name: 'MgrPairsAgg'
+        }
+        {
+          name: 'MgrPairsString'
+        }
+        {
+          name: 'MgrSummaryJoin'
+        }
+        {
+          name: 'MgrAssert'
         }
       ]
       scriptLines: [
@@ -925,6 +977,7 @@ resource dataFlow_PopulateDestinationDataFlow 'Microsoft.DataFactory/factories/d
         '     updateable:false,'
         '     upsertable:false,'
         '     format: \'table\','
+        '     saveOrder: 2,'
         '     mapColumn('
         '          AzureObjectId,'
         '          Email = UserPrincipalName,'
@@ -935,6 +988,50 @@ resource dataFlow_PopulateDestinationDataFlow 'Microsoft.DataFactory/factories/d
         '          Country_Code = CountryCode,'
         '          Department'
         '     )) ~> sink'
+        'join derive(mgrEligibleKey = toInteger(EmployeeIdentificationNumber)) ~> MgrEligibleDerive'
+        'MgrEligibleDerive aggregate(groupBy(mgrEligibleKey),'
+        '     mgrKeyCount = count()) ~> MgrEligibleKeys'
+        'join derive(mgrEmployeeId = toInteger(EmployeeIdentificationNumber),'
+        '          mgrManagerRaw = ManagerIdentificationNumber,'
+        '          mgrManagerId = toInteger(ManagerIdentificationNumber),'
+        '          mgrIsNull = isNull(ManagerIdentificationNumber),'
+        '          mgrIsMalformed = (!isNull(ManagerIdentificationNumber)) && (trim(ManagerIdentificationNumber) == \'\' || isNull(toInteger(ManagerIdentificationNumber)) || toInteger(ManagerIdentificationNumber) == 0)) ~> MgrValidationDerive'
+        'MgrValidationDerive, MgrEligibleKeys join(mgrManagerId == mgrEligibleKey,'
+        '     joinType:\'left\','
+        '     matchType:\'exact\','
+        '     ignoreSpaces: false,'
+        '     broadcast: \'auto\') ~> MgrValidationJoin'
+        'MgrValidationJoin derive(mgrRecordInvalid = (!mgrIsNull) && (mgrIsMalformed || isNull(mgrEligibleKey))) ~> MgrValidationFlags'
+        'MgrValidationFlags aggregate(rootCount = countIf(mgrIsNull),'
+        '     nonRootInvalidCount = countIf(mgrRecordInvalid)) ~> MgrCounts'
+        'MgrCounts derive(mgrJoinKey = 1,'
+        '          invalidUserCount = nonRootInvalidCount + iif(rootCount > 1, rootCount, toLong(0))) ~> MgrCountsKey'
+        'MgrCountsKey derive(isValid = (rootCount == 1) && (invalidUserCount == 0)) ~> MgrSummaryCounts'
+        'MgrValidationFlags filter(mgrRecordInvalid == true()) ~> MgrInvalidRows'
+        'MgrInvalidRows derive(mgrGroup = 1,'
+        '          mgrPair = \'EmployeeId=\' + toString(mgrEmployeeId) + \',ManagerId=\' + coalesce(toString(mgrManagerId), iif(trim(coalesce(mgrManagerRaw, \'\')) == \'\', \'<empty>\', mgrManagerRaw))) ~> MgrInvalidPairsDerive'
+        'MgrInvalidPairsDerive window(over(mgrGroup),'
+        '     asc(mgrEmployeeId, true),'
+        '     mgrRank = rowNumber()) ~> MgrInvalidRanked'
+        'MgrInvalidRanked filter(mgrRank <= 10) ~> MgrInvalidTop'
+        'MgrInvalidTop aggregate(invalidPairsArray = collect(mgrPair)) ~> MgrPairsAgg'
+        'MgrPairsAgg derive(mgrJoinKey = 1,'
+        '          invalidPairs = iif(size(invalidPairsArray) == 0, \'\', reduce(invalidPairsArray, \'\', iif(#acc == \'\', #item, #acc + \'; \' + #item), #result))) ~> MgrPairsString'
+        'MgrSummaryCounts, MgrPairsString join(MgrSummaryCounts@mgrJoinKey == MgrPairsString@mgrJoinKey,'
+        '     joinType:\'inner\','
+        '     matchType:\'exact\','
+        '     ignoreSpaces: false,'
+        '     broadcast: \'auto\') ~> MgrSummaryJoin'
+        'MgrSummaryJoin assert(expectTrue(isValid == true(), false, \'InvalidManagerHierarchy\', null,'
+        '          \'InvalidManagerHierarchy invalidUserCount=\' + toString(invalidUserCount) + \' rootCount=\' + toString(rootCount) + \' invalidPairs=[\' + invalidPairs + \']\'),'
+        '     rejectDataFlowOnError: true) ~> MgrAssert'
+        'MgrAssert sink(allowSchemaDrift: true,'
+        '     validateSchema: false,'
+        '     skipDuplicateMapInputs: true,'
+        '     skipDuplicateMapOutputs: true,'
+        '     store: \'cache\','
+        '     format: \'inline\','
+        '     saveOrder: 1) ~> MgrValidationCache'
       ]
     }
   }
