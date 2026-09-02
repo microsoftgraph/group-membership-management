@@ -14,6 +14,8 @@ namespace Repositories.Contracts
     {
         public Task UploadFileAsync(string path, string content, Dictionary<string, string> metadata = null);
 
+        /// <summary>Uploads a blob only when the path does not exist and returns whether it was created.</summary>
+        public Task<bool> UploadFileIfAbsentAsync(string path, string content, CancellationToken cancellationToken = default);
         Task<string> UploadFileBlockAsync(string path, string content, Dictionary<string, string> metadata = null);
         public Task DeleteFileAsync(string path);
         public Task DeleteFilesByPrefixAsync(string prefix, bool excludeLatest = false);

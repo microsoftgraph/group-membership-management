@@ -28,20 +28,26 @@ namespace Repositories.BlobStorage
         private readonly Func<string, BlockBlobClient> _blockBlobClientFactory;
 
         public BlobStorageRepository(string containerUrl)
-            : this(
-                new BlobContainerClient(
-                    new Uri(containerUrl),
-                    new DefaultAzureCredential(DefaultAzureCredential.DefaultEnvironmentVariableName)))
         {
+            DefaultAzureCredential credential = new(DefaultAzureCredential.DefaultEnvironmentVariableName);
+
+            _containerClient = new BlobContainerClient(new Uri(containerUrl), credential);
+            _blockBlobClientFactory = path => _containerClient.GetBlockBlobClient(path);
+        }
+
+        public BlobStorageRepository(BlobContainerClient containerClient)
+        {
+            _containerClient = containerClient ?? throw new ArgumentNullException(nameof(containerClient));
+            _blockBlobClientFactory = path => _containerClient.GetBlockBlobClient(path);
         }
 
         internal BlobStorageRepository(
             BlobContainerClient containerClient,
-            Func<string, BlockBlobClient> blockBlobClientFactory = null)
+            Func<string, BlockBlobClient> blockBlobClientFactory)
         {
             _containerClient = containerClient ?? throw new ArgumentNullException(nameof(containerClient));
             _blockBlobClientFactory = blockBlobClientFactory
-                ?? (path => _containerClient.GetBlockBlobClient(path));
+                ?? throw new ArgumentNullException(nameof(blockBlobClientFactory));
         }
 
         public async Task DeleteFileAsync(string path)
@@ -222,6 +228,32 @@ namespace Repositories.BlobStorage
             {
                 var options = new BlobUploadOptions { Metadata = metadata };
                 await blobClient.UploadAsync(BinaryData.FromString(content), options);
+            }
+        }
+
+        public async Task<bool> UploadFileIfAbsentAsync(
+            string path,
+            string content,
+            CancellationToken cancellationToken = default)
+        {
+            var blobClient = _containerClient.GetBlobClient(path);
+            var options = new BlobUploadOptions
+            {
+                Conditions = new BlobRequestConditions { IfNoneMatch = ETag.All }
+            };
+
+            try
+            {
+                await blobClient.UploadAsync(
+                    BinaryData.FromString(content),
+                    options,
+                    cancellationToken);
+                return true;
+            }
+            catch (RequestFailedException exception)
+                when (exception.Status == 409 || exception.Status == 412)
+            {
+                return false;
             }
         }
 

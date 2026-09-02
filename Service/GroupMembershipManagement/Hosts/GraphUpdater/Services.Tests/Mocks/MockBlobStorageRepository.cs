@@ -57,6 +57,21 @@ namespace Services.Tests.Mocks
             throw new NotImplementedException();
         }
 
+        public Task<bool> UploadFileIfAbsentAsync(
+            string path,
+            string content,
+            CancellationToken cancellationToken = default)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            if (Files.ContainsKey(path))
+            {
+                return Task.FromResult(false);
+            }
+
+            Files[path] = content;
+            return Task.FromResult(true);
+        }
+
         public Task UploadFileStreamAsync<T>(string path, T content, Dictionary<string, string> metadata = null, JsonSerializerOptions serializerOptions = null)
         {
             throw new NotImplementedException();

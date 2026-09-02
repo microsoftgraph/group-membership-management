@@ -4,6 +4,7 @@ using Azure.Messaging.ServiceBus;
 using Common.DependencyInjection;
 using DIConcreteTypes;
 using Hosts.FunctionBase;
+using Hosts.MembershipAggregator.Helpers;
 using Microsoft.ApplicationInsights;
 using Microsoft.Azure.Functions.Worker;
 using Microsoft.Azure.Functions.Worker.ApplicationInsights;
@@ -57,7 +58,14 @@ namespace Hosts.MembershipAggregator
                     });
 
                     services
+                        .AddOptions<MembershipMergeOptions>()
+                        .Validate(options => options.IsValid,
+                            "MaxStreamsPerPass must be at least 4 and ReadAheadSize must be at least 1.")
+                        .ValidateOnStart();
+
+                    services
                     .AddSingleton(sp => sp.GetRequiredService<IOptions<MultiLaneConfig>>().Value)
+                    .AddSingleton<MembershipMergeEngine>()
                     .AddGraphAPIClient()
                     .AddScoped<IGraphGroupRepository, GraphGroupRepository>()
                     .AddScoped<IGraphAPIService, GraphAPIService>((services) =>

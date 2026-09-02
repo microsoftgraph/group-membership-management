@@ -67,6 +67,21 @@ namespace Tests.FunctionApps.Mocks
             return Task.CompletedTask;
         }
 
+        public Task<bool> UploadFileIfAbsentAsync(
+            string path,
+            string content,
+            CancellationToken cancellationToken = default)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            if (Sent.Any(file => file.Path == path))
+            {
+                return Task.FromResult(false);
+            }
+
+            Sent.Add((path, content));
+            return Task.FromResult(true);
+        }
+
         public Task UploadFileStreamAsync<T>(string path, T content, Dictionary<string, string> metadata = null, JsonSerializerOptions serializerOptions = null)
         {
             return Task.CompletedTask;

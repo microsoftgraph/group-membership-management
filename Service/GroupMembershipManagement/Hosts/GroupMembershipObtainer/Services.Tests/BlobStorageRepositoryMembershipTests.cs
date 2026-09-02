@@ -195,6 +195,42 @@ namespace Tests.FunctionApps
             CollectionAssert.AreEqual(secondContent, published[1]);
         }
 
+        [TestMethod]
+        public async Task UploadFileIfAbsentAsyncCreatesOnlyAnAbsentBlob()
+        {
+            BlobUploadOptions publishedOptions = null;
+            var blobClient = new Mock<BlobClient>();
+            blobClient.Setup(client => client.UploadAsync(
+                    It.IsAny<BinaryData>(),
+                    It.IsAny<BlobUploadOptions>(),
+                    It.IsAny<CancellationToken>()))
+                .Callback<BinaryData, BlobUploadOptions, CancellationToken>((content, options, cancellationToken) =>
+                    publishedOptions = options)
+                .ReturnsAsync(Mock.Of<Response<BlobContentInfo>>());
+            var repository = Repository(blobClient);
+
+            var created = await repository.UploadFileIfAbsentAsync("membership.json", "{}");
+
+            Assert.IsTrue(created);
+            Assert.AreEqual(ETag.All, publishedOptions.Conditions.IfNoneMatch);
+        }
+
+        [TestMethod]
+        public async Task UploadFileIfAbsentAsyncReportsAnExistingBlob()
+        {
+            var blobClient = new Mock<BlobClient>();
+            blobClient.Setup(client => client.UploadAsync(
+                    It.IsAny<BinaryData>(),
+                    It.IsAny<BlobUploadOptions>(),
+                    It.IsAny<CancellationToken>()))
+                .ThrowsAsync(new RequestFailedException(412, "The blob already exists."));
+            var repository = Repository(blobClient);
+
+            var created = await repository.UploadFileIfAbsentAsync("membership.json", "{}");
+
+            Assert.IsFalse(created);
+        }
+
         private static Mock<BlockBlobClient> StagedBlob(
             Action<byte[], CommitBlockListOptions> publish,
             Action<string> onBlockStaged = null)
