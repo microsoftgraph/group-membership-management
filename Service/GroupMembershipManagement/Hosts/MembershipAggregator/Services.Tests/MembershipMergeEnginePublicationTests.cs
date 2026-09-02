@@ -705,9 +705,7 @@ namespace Services.Tests
                 () => Engine(store).ExecuteAsync(request));
 
             Assert.AreSame(primaryFailure, actual);
-            Assert.AreSame(
-                cleanupFailure,
-                actual.Data["MembershipMergeCleanupFailure"]);
+            Assert.AreSame(cleanupFailure, actual.Data["MembershipMergeCleanupFailure"]);
             CollectionAssert.AreEquivalent(
                 new[]
                 {
@@ -736,14 +734,141 @@ namespace Services.Tests
                 });
             var request = Request(input);
 
-            var exception = await Assert.ThrowsExceptionAsync<InvalidDataException>(
-                () => Engine(store).ExecuteAsync(request));
+            var exception = await Assert.ThrowsExceptionAsync<InvalidDataException>(() => Engine(store).ExecuteAsync(request));
 
             StringAssert.Contains(exception.Message, "changed while writing delta outputs");
             Assert.IsFalse(store.ContainsMembership($"{request.AttemptPrefix}-additions.json"));
             Assert.IsFalse(store.ContainsMembership($"{request.AttemptPrefix}-removals.json"));
             Assert.IsFalse(store.ContainsText(
                 $"{request.OutputPrefix}/{request.IdempotencyKey}-manifest.json"));
+        }
+
+        [TestMethod]
+        public async Task EqualCardinalityObjectIdChangeBetweenDeltaPassesPublishesNoResult()
+        {
+            var store = new MembershipMergeTestStore();
+            var openCount = 0;
+            var changingSource = MembershipMergeInput.FromMemberSource(
+                "changing-source",
+                MembershipMergeInputKind.Included,
+                cancellationToken =>
+                {
+                    openCount++;
+                    return EnumerateMembers(
+                        new[]
+                        {
+                            User(openCount == 1 ? ParseGuid(1) : ParseGuid(3), ParseGuid(101))
+                        },
+                        cancellationToken);
+                });
+            var destination = MembershipMergeInput.FromMembers(
+                "destination", MembershipMergeInputKind.Destination, new[] { User(ParseGuid(2)) });
+            var request = Request(changingSource, destination);
+
+            await AssertChangedInputPublishesNoResult(store, request);
+        }
+
+        [TestMethod]
+        public async Task EqualCardinalitySourceGroupChangeBetweenDeltaPassesPublishesNoResult()
+        {
+            var store = new MembershipMergeTestStore();
+            var openCount = 0;
+            var changingSource = MembershipMergeInput.FromMemberSource(
+                "changing-source-group",
+                MembershipMergeInputKind.Included,
+                cancellationToken =>
+                {
+                    openCount++;
+                    return EnumerateMembers(
+                        new[]
+                        {
+                            User(ParseGuid(1), openCount == 1 ? ParseGuid(101) : ParseGuid(102))
+                        },
+                        cancellationToken);
+                });
+            var destination = MembershipMergeInput.FromMembers(
+                "destination", MembershipMergeInputKind.Destination, new[] { User(ParseGuid(2)) });
+            var request = Request(changingSource, destination);
+
+            await AssertChangedInputPublishesNoResult(store, request);
+        }
+
+        [TestMethod]
+        public async Task EqualCardinalityDestinationPropertyChangeBetweenDeltaPassesPublishesNoResult()
+        {
+            var store = new MembershipMergeTestStore();
+            var openCount = 0;
+            var source = MembershipMergeInput.FromMembers(
+                "source", MembershipMergeInputKind.Included, new[] { User(ParseGuid(1), ParseGuid(101)) });
+            var changingDestination = MembershipMergeInput.FromMemberSource(
+                "changing-destination-properties",
+                MembershipMergeInputKind.Destination,
+                cancellationToken =>
+                {
+                    openCount++;
+                    return EnumerateMembers(
+                        new AzureADUser[]
+                        {
+                            new AzureADTeamsUser
+                            {
+                                ObjectId = ParseGuid(2),
+                                ConversationMemberId = openCount == 1
+                                    ? "first-conversation-member"
+                                    : "second-conversation-member"
+                            }
+                        },
+                        cancellationToken);
+                });
+            var request = Request(source, changingDestination);
+
+            await AssertChangedInputPublishesNoResult(store, request);
+        }
+
+        [TestMethod]
+        public async Task EqualCardinalityMembershipStateChangeBetweenDeltaPassesPublishesNoResult()
+        {
+            var store = new MembershipMergeTestStore();
+            var exclusionOpenCount = 0;
+            var destinationOpenCount = 0;
+            // The six legacy counts stay equal while the excluded and destination member identities change.
+            var stableSource = MembershipMergeInput.FromMembers(
+                "stable-source",
+                MembershipMergeInputKind.Included,
+                new[]
+                {
+                    User(ParseGuid(1)),
+                    User(ParseGuid(2)),
+                    User(ParseGuid(3))
+                });
+            var changingExclusion = MembershipMergeInput.FromMemberSource(
+                "changing-exclusion",
+                MembershipMergeInputKind.Excluded,
+                cancellationToken =>
+                {
+                    exclusionOpenCount++;
+                    return EnumerateMembers(
+                        new[]
+                        {
+                            User(exclusionOpenCount == 1 ? ParseGuid(2) : ParseGuid(1))
+                        },
+                        cancellationToken);
+                });
+            var changingDestination = MembershipMergeInput.FromMemberSource(
+                "changing-destination",
+                MembershipMergeInputKind.Destination,
+                cancellationToken =>
+                {
+                    destinationOpenCount++;
+                    return EnumerateMembers(
+                        new[]
+                        {
+                            User(destinationOpenCount == 1 ? ParseGuid(2) : ParseGuid(1))
+                        },
+                        cancellationToken);
+                });
+            var request = Request(stableSource, changingExclusion, changingDestination);
+
+            await AssertChangedInputPublishesNoResult(store, request);
         }
 
         [TestMethod]
@@ -886,12 +1011,8 @@ namespace Services.Tests
             Assert.AreEqual(ParseGuid(1), (await store.ReadMembersAsync(result.AdditionsPath)).Single().ObjectId);
         }
 
-        private static MembershipMergeEngine Engine(
-            MembershipMergeTestStore store,
-            MembershipMergeOptions options = null) =>
-            new MembershipMergeEngine(
-                store.Repository.Object,
-                Options.Create(options ?? new MembershipMergeOptions()));
+        private static MembershipMergeEngine Engine(MembershipMergeTestStore store, MembershipMergeOptions options = null) =>
+            new MembershipMergeEngine(store.Repository.Object, Options.Create(options ?? new MembershipMergeOptions()));
 
         private static MembershipMergeRequest Request(params MembershipMergeInput[] inputs) =>
             Request(Guid.Parse("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"), inputs);
@@ -899,12 +1020,17 @@ namespace Services.Tests
         private static MembershipMergeRequest Request(
             Guid attemptId,
             params MembershipMergeInput[] inputs) =>
-            new MembershipMergeRequest(
-                inputs,
-                "merge-output",
-                "run-123",
-                attemptId,
-                Envelope());
+            new MembershipMergeRequest(inputs, "merge-output", "run-123", attemptId, Envelope());
+
+        private static async Task AssertChangedInputPublishesNoResult(MembershipMergeTestStore store, MembershipMergeRequest request)
+        {
+            var exception = await Assert.ThrowsExceptionAsync<InvalidDataException>(() => Engine(store).ExecuteAsync(request));
+
+            StringAssert.Contains(exception.Message, "changed while writing delta outputs");
+            Assert.IsFalse(store.ContainsMembership($"{request.AttemptPrefix}-additions.json"));
+            Assert.IsFalse(store.ContainsMembership($"{request.AttemptPrefix}-removals.json"));
+            Assert.IsFalse(store.ContainsText($"{request.OutputPrefix}/{request.IdempotencyKey}-manifest.json"));
+        }
 
         private static async IAsyncEnumerable<AzureADUser> CancellingMembers(
             CancellationTokenSource cancellation,

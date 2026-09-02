@@ -89,7 +89,7 @@ namespace Hosts.MembershipAggregator.Helpers
                     cancellationToken);
 
                 diagnostics.PassCount++;
-                var additionsSummary = new MembershipMergeSummary();
+                using var additionsSummary = new MembershipMergeSummary();
                 await _repository.WriteMembershipAsync(
                     additionsPath,
                     request.FirstSourceEnvelope,
@@ -103,6 +103,7 @@ namespace Hosts.MembershipAggregator.Helpers
 
                 if (additionsSummary.RemoveCount == 0)
                 {
+                    // The additions pass already counted removals, so an empty result needs no second input read.
                     await _repository.WriteMembershipAsync(
                         removalsPath,
                         request.FirstSourceEnvelope,
@@ -111,7 +112,7 @@ namespace Hosts.MembershipAggregator.Helpers
                 }
                 else
                 {
-                    var removalsSummary = new MembershipMergeSummary();
+                    using var removalsSummary = new MembershipMergeSummary();
                     await _repository.WriteMembershipAsync(
                         removalsPath,
                         request.FirstSourceEnvelope,
@@ -231,7 +232,7 @@ namespace Hosts.MembershipAggregator.Helpers
                     cancellationToken);
 
                 diagnostics.PassCount++;
-                var sourceSummary = new MembershipMergeSummary();
+                using var sourceSummary = new MembershipMergeSummary();
                 await _repository.WriteMembershipAsync(
                     sourcePath,
                     sourceEnvelope,
@@ -246,7 +247,7 @@ namespace Hosts.MembershipAggregator.Helpers
 
                 if (destinationPath != null)
                 {
-                    var destinationSummary = new MembershipMergeSummary();
+                    using var destinationSummary = new MembershipMergeSummary();
                     await _repository.WriteMembershipAsync(
                         destinationPath,
                         destinationEnvelope,
@@ -315,28 +316,31 @@ namespace Hosts.MembershipAggregator.Helpers
                         int Batch)>();
                 var batch = 0;
 
-                for (var index = 0; index < currentInputs.Count; index += _options.MaxStreamsPerPass)
+                try
                 {
-                    var batchInputs = currentInputs
-                        .Skip(index)
-                        .Take(_options.MaxStreamsPerPass)
-                        .ToArray();
-                    var summary = await SummarizeMergeAsync(
-                        batchInputs,
-                        diagnostics,
-                        cancellationToken);
-                    stagedBatches.Add((batchInputs, summary, batch));
-                    batch++;
-                }
+                    for (var index = 0; index < currentInputs.Count; index += _options.MaxStreamsPerPass)
+                    {
+                        var batchInputs = currentInputs
+                            .Skip(index)
+                            .Take(_options.MaxStreamsPerPass)
+                            .ToArray();
+                        var summary = await SummarizeMergeAsync(batchInputs, diagnostics, cancellationToken);
+                        stagedBatches.Add((batchInputs, summary, batch));
+                        batch++;
+                    }
 
-                foreach (var stagedBatch in stagedBatches)
+                    foreach (var stagedBatch in stagedBatches)
+                    {
+                        await writeIntermediateOutputs(stagedBatch.Inputs, stagedBatch.Summary, pass, stagedBatch.Batch, nextInputs);
+                    }
+                }
+                finally
                 {
-                    await writeIntermediateOutputs(
-                        stagedBatch.Inputs,
-                        stagedBatch.Summary,
-                        pass,
-                        stagedBatch.Batch,
-                        nextInputs);
+                    // Each summary must remain alive until its batch output has been validated.
+                    foreach (var stagedBatch in stagedBatches)
+                    {
+                        stagedBatch.Summary.Dispose();
+                    }
                 }
 
                 if (nextInputs.Count >= currentInputs.Count)
@@ -480,7 +484,7 @@ namespace Hosts.MembershipAggregator.Helpers
                 };
 
                 intermediatePaths.Add(path);
-                var projectionSummary = new MembershipMergeSummary();
+                using var projectionSummary = new MembershipMergeSummary();
                 await _repository.WriteMembershipAsync(
                     path,
                     envelope,
@@ -540,7 +544,7 @@ namespace Hosts.MembershipAggregator.Helpers
                 };
 
                 intermediatePaths.Add(path);
-                var projectionSummary = new MembershipMergeSummary();
+                using var projectionSummary = new MembershipMergeSummary();
                 await _repository.WriteMembershipAsync(
                     path,
                     envelope,
@@ -627,12 +631,20 @@ namespace Hosts.MembershipAggregator.Helpers
             CancellationToken cancellationToken)
         {
             var summary = new MembershipMergeSummary();
-            await foreach (var record in MergeRecordsAsync(inputs, diagnostics, cancellationToken))
+            try
             {
-                summary.Record(record);
-            }
+                await foreach (var record in MergeRecordsAsync(inputs, diagnostics, cancellationToken))
+                {
+                    summary.Record(record);
+                }
 
-            return summary;
+                return summary;
+            }
+            catch
+            {
+                summary.Dispose();
+                throw;
+            }
         }
 
         /// <summary>
@@ -710,7 +722,7 @@ namespace Hosts.MembershipAggregator.Helpers
             MembershipMergeSummary actual,
             string output)
         {
-            if (!expected.HasSameCountsAs(actual))
+            if (!expected.HasSameContentAs(actual))
             {
                 throw new InvalidDataException(
                     $"Membership merge inputs changed while writing {output}.");

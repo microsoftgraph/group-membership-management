@@ -5,8 +5,11 @@ using Models;
 using Models.ServiceBus;
 using Repositories.Contracts;
 using System;
+using System.Buffers.Binary;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
+using System.Security.Cryptography;
+using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Threading;
@@ -212,10 +215,13 @@ namespace Hosts.MembershipAggregator.Helpers
         int DestinationMemberCount);
 
     /// <summary>
-    /// Collects the counts needed to publish and cross-check streamed merge outputs.
+    /// Collects the counts and content identity needed to cross-check streamed merge outputs.
     /// </summary>
-    internal sealed class MembershipMergeSummary
+    internal sealed class MembershipMergeSummary : IDisposable
     {
+        private IncrementalHash _contentHash = IncrementalHash.CreateHash(HashAlgorithmName.SHA256);
+        private byte[] _contentFingerprint;
+
         public int IncludedCount { get; private set; }
 
         public int ExcludedCount { get; private set; }
@@ -228,8 +234,14 @@ namespace Hosts.MembershipAggregator.Helpers
 
         public int RemoveCount { get; private set; }
 
+        /// <summary>
+        /// Records one merged member's counts and complete content identity.
+        /// </summary>
         public void Record(MembershipMergeRecord record)
         {
+            if (record == null) throw new ArgumentNullException(nameof(record));
+            AppendRecord(record);
+
             if (record.Included) IncludedCount++;
             if (record.Excluded) ExcludedCount++;
             if (record.InDestination) DestinationCount++;
@@ -245,14 +257,114 @@ namespace Hosts.MembershipAggregator.Helpers
             }
         }
 
-        public bool HasSameCountsAs(MembershipMergeSummary other) =>
+        /// <summary>
+        /// Confirms that two passes observed the same counts and complete record content.
+        /// </summary>
+        public bool HasSameContentAs(MembershipMergeSummary other) =>
             other != null
             && IncludedCount == other.IncludedCount
             && ExcludedCount == other.ExcludedCount
             && DestinationCount == other.DestinationCount
             && SourceMemberCount == other.SourceMemberCount
             && AddCount == other.AddCount
-            && RemoveCount == other.RemoveCount;
+            && RemoveCount == other.RemoveCount
+            && CryptographicOperations.FixedTimeEquals(CompleteFingerprint(), other.CompleteFingerprint());
+
+        /// <summary>
+        /// Releases the incremental hash after validation completes or fails.
+        /// </summary>
+        public void Dispose()
+        {
+            _contentHash?.Dispose();
+            _contentHash = null;
+        }
+
+        /// <summary>
+        /// Adds every delta-relevant record field to the bounded content fingerprint.
+        /// </summary>
+        private void AppendRecord(MembershipMergeRecord record)
+        {
+            if (_contentHash == null)
+            {
+                throw new InvalidOperationException("A completed membership merge summary cannot record more members.");
+            }
+
+            // Lengths and presence flags keep the hash input unambiguous without retaining records.
+            Span<byte> recordHeader = stackalloc byte[21];
+            record.ObjectId.TryWriteBytes(recordHeader);
+            recordHeader[16] = (byte)(
+                (record.Included ? 1 : 0)
+                | (record.Excluded ? 2 : 0)
+                | (record.InDestination ? 4 : 0));
+            BinaryPrimitives.WriteInt32LittleEndian(recordHeader.Slice(17), record.SourceGroups.Length);
+            _contentHash.AppendData(recordHeader);
+
+            Span<byte> sourceGroupBytes = stackalloc byte[16];
+            foreach (var sourceGroup in record.SourceGroups)
+            {
+                sourceGroup.TryWriteBytes(sourceGroupBytes);
+                _contentHash.AppendData(sourceGroupBytes);
+            }
+
+            Span<byte> propertiesHeader = stackalloc byte[5];
+            if (!record.DestinationProperties.HasValue)
+            {
+                propertiesHeader[0] = 0;
+                _contentHash.AppendData(propertiesHeader.Slice(0, 1));
+                return;
+            }
+
+            propertiesHeader[0] = 1;
+            var propertiesJson = record.DestinationProperties.Value.GetRawText();
+            BinaryPrimitives.WriteInt32LittleEndian(propertiesHeader.Slice(1), Encoding.UTF8.GetByteCount(propertiesJson));
+            _contentHash.AppendData(propertiesHeader);
+            AppendUtf8(propertiesJson);
+        }
+
+        /// <summary>
+        /// Hashes text in bounded chunks without allocating its complete UTF-8 representation.
+        /// </summary>
+        private void AppendUtf8(string value)
+        {
+            var encoder = Encoding.UTF8.GetEncoder();
+            var remaining = value.AsSpan();
+            Span<byte> buffer = stackalloc byte[1024];
+
+            while (!remaining.IsEmpty)
+            {
+                encoder.Convert(
+                    remaining,
+                    buffer,
+                    flush: true,
+                    out var charactersUsed,
+                    out var bytesUsed,
+                    out _);
+                _contentHash.AppendData(buffer.Slice(0, bytesUsed));
+                remaining = remaining.Slice(charactersUsed);
+            }
+        }
+
+        /// <summary>
+        /// Finalizes the fingerprint once so repeated consistency checks use the same value.
+        /// </summary>
+        private byte[] CompleteFingerprint()
+        {
+            // Finalizing consumes the hash state, so retain the result for repeated comparisons.
+            if (_contentFingerprint != null)
+            {
+                return _contentFingerprint;
+            }
+
+            if (_contentHash == null)
+            {
+                throw new ObjectDisposedException(nameof(MembershipMergeSummary));
+            }
+
+            _contentFingerprint = _contentHash.GetHashAndReset();
+            _contentHash.Dispose();
+            _contentHash = null;
+            return _contentFingerprint;
+        }
     }
 
     /// <summary>
