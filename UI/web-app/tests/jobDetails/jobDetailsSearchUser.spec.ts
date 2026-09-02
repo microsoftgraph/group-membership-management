@@ -40,10 +40,6 @@ async function openSyncHistoryTab(page: Page): Promise<ReturnType<typeof page.lo
   const historyPanel = page.locator('.ms-Panel').first();
   await expect(historyPanel).toBeVisible({ timeout: 10000 });
 
-  const syncTab = page.getByRole('tab', { name: 'Sync' });
-  await expect(syncTab).toBeVisible({ timeout: 10000 });
-  await syncTab.click();
-
   const pickerInput = historyPanel.locator('.ms-BasePicker-input').first();
   await expect(pickerInput).toBeVisible({ timeout: 10000 });
   return pickerInput;
