@@ -28,26 +28,20 @@ namespace Repositories.BlobStorage
         private readonly Func<string, BlockBlobClient> _blockBlobClientFactory;
 
         public BlobStorageRepository(string containerUrl)
+            : this(
+                new BlobContainerClient(
+                    new Uri(containerUrl),
+                    new DefaultAzureCredential(DefaultAzureCredential.DefaultEnvironmentVariableName)))
         {
-            DefaultAzureCredential credential = new(DefaultAzureCredential.DefaultEnvironmentVariableName);
-
-            _containerClient = new BlobContainerClient(new Uri(containerUrl), credential);
-            _blockBlobClientFactory = path => _containerClient.GetBlockBlobClient(path);
-        }
-
-        public BlobStorageRepository(BlobContainerClient containerClient)
-        {
-            _containerClient = containerClient ?? throw new ArgumentNullException(nameof(containerClient));
-            _blockBlobClientFactory = path => _containerClient.GetBlockBlobClient(path);
         }
 
         internal BlobStorageRepository(
             BlobContainerClient containerClient,
-            Func<string, BlockBlobClient> blockBlobClientFactory)
+            Func<string, BlockBlobClient> blockBlobClientFactory = null)
         {
             _containerClient = containerClient ?? throw new ArgumentNullException(nameof(containerClient));
             _blockBlobClientFactory = blockBlobClientFactory
-                ?? throw new ArgumentNullException(nameof(blockBlobClientFactory));
+                ?? (path => _containerClient.GetBlockBlobClient(path));
         }
 
         public async Task DeleteFileAsync(string path)
