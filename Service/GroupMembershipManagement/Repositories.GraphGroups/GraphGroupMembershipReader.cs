@@ -173,7 +173,7 @@ namespace Repositories.GraphGroups
             // So we need to extract the response from the native response handler.
             await _graphServiceClient.RequestAdapter.SendPrimitiveAsync<int?>(requestInformation);
 
-            var nativeHttpResponse = nativeResponseHandler.Value as HttpResponseMessage;
+            using var nativeHttpResponse = nativeResponseHandler.Value as HttpResponseMessage;
 
             if (nativeHttpResponse == null)
             {

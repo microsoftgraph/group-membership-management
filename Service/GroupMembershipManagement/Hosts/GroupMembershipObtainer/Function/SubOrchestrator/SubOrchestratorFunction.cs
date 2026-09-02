@@ -118,10 +118,12 @@ namespace Hosts.GroupMembershipObtainer
 
                         if (transitiveGroupCount > 0 || !_deltaCachingConfig.DeltaCacheEnabled)
                         {
-                            await TrackAgentMembersReadEventAsync(context, request, ReadPathTransitive);
                             logger.RunTransitiveMembersQuery(request.SourceGroup.ObjectId);
                             await GetTransitiveMembers(context, request, logger);
                             var membershipFilePath = await ProcessGroupMembershipChangesAsync(context, request);
+
+                            await TrackAgentMembersReadEventAsync(context, request, ReadPathTransitive);
+
                             return new SubOrchestratorResponse
                             {
                                 Status = SyncStatus.InProgress,
@@ -130,8 +132,6 @@ namespace Hosts.GroupMembershipObtainer
                         }
                         else
                         {
-                            await TrackAgentMembersReadEventAsync(context, request, ReadPathDelta);
-
                             // first check if delta file exists in cache folder
                             var deltaFilePath = $"cache/delta_{request.SourceGroup.ObjectId}";
                             var compressedDeltaFileContent = await GetFileDownloaderFunction(context, deltaFilePath, request, true);
@@ -181,6 +181,9 @@ namespace Hosts.GroupMembershipObtainer
                                     logger.RunDeltaQuery(request.SourceGroup.ObjectId);
                                     var deltaLink = await GetInitialDeltaUsers(context, request, logger);
                                     var membershipFilePath = await ProcessGroupMembershipChangesAsync(context, request, deltaLink);
+
+                                    await TrackAgentMembersReadEventAsync(context, request, ReadPathDelta);
+
                                     return new SubOrchestratorResponse
                                     {
                                         Status = SyncStatus.InProgress,
@@ -196,6 +199,9 @@ namespace Hosts.GroupMembershipObtainer
                                     logger.RunTransitiveMembersQuery(request.SourceGroup.ObjectId);
                                     await GetTransitiveMembers(context, request, logger);
                                     var membershipFilePath = await ProcessGroupMembershipChangesAsync(context, request);
+
+                                    await TrackAgentMembersReadEventAsync(context, request, ReadPathTransitive);
+
                                     return new SubOrchestratorResponse
                                     {
                                         Status = SyncStatus.InProgress,
@@ -261,6 +267,9 @@ namespace Hosts.GroupMembershipObtainer
                                             await ClearCacheFunction(context, cacheFilePath, request);
                                             await ClearCacheFunction(context, deltaFilePath, request);
                                         }
+
+                                        await TrackAgentMembersReadEventAsync(context, request, ReadPathDelta);
+
                                         return new SubOrchestratorResponse
                                         {
                                             Status = SyncStatus.InProgress,
@@ -269,6 +278,8 @@ namespace Hosts.GroupMembershipObtainer
                                     }
                                     else
                                     {
+                                        await TrackAgentMembersReadEventAsync(context, request, ReadPathDelta);
+
                                         return new SubOrchestratorResponse
                                         {
                                             Status = SyncStatus.InProgress,
@@ -285,6 +296,9 @@ namespace Hosts.GroupMembershipObtainer
                                     logger.RunDeltaQuery(request.SourceGroup.ObjectId);
                                     var deltaLink = await GetInitialDeltaUsers(context, request, logger);
                                     var membershipFilePath = await ProcessGroupMembershipChangesAsync(context, request, deltaLink);
+
+                                    await TrackAgentMembersReadEventAsync(context, request, ReadPathDelta);
+
                                     return new SubOrchestratorResponse
                                     {
                                         Status = SyncStatus.InProgress,
