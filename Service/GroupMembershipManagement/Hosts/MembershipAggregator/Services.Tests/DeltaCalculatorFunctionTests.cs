@@ -15,6 +15,8 @@ using Moq;
 using Repositories.Contracts;
 using Services.Contracts;
 using System;
+using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -214,6 +216,71 @@ namespace Services.Tests
                 destination: new AzureADGroup(),
                 requestGroupId: Guid.Empty,
                 targetOfficeGroupId: groupId);
+        }
+
+        [TestMethod]
+        public async Task CalculateDeltaAsync_SourceDestinationDiffersFromRequest_ThrowsBeforeMerge()
+        {
+            var store = new MembershipMergeTestStore();
+            var requestedGroupId = ParseGuid(6101);
+            var sourceGroupId = ParseGuid(6102);
+            var syncJob = new SyncJob
+            {
+                Id = ParseGuid(6103),
+                RunId = ParseGuid(6104),
+                TargetOfficeGroupId = requestedGroupId,
+                MembershipType = MembershipTypes.GroupMembership.ToString()
+            };
+            var sourceEnvelope = new GroupMembership
+            {
+                Destination = new AzureADGroup { ObjectId = sourceGroupId },
+                SyncJobId = syncJob.Id,
+                RunId = syncJob.RunId.Value
+            };
+            var destinationEnvelope = new GroupMembership
+            {
+                Destination = new AzureADGroup { ObjectId = requestedGroupId },
+                SyncJobId = syncJob.Id,
+                RunId = syncJob.RunId.Value
+            };
+            await store.AddCompressedAsync("/source", sourceEnvelope, User(ParseGuid(1), ParseGuid(101)));
+            await store.AddCompressedAsync("/destination", destinationEnvelope);
+            var deltaCalculatorService = new Mock<IDeltaCalculatorService>();
+            var function = new DeltaCalculatorFunction(
+                NullLogger<DeltaCalculatorFunction>.Instance,
+                store.Repository.Object,
+                deltaCalculatorService.Object,
+                Options.Create(new MembershipMergeOptions()));
+
+            var exception = await Assert.ThrowsExceptionAsync<InvalidDataException>(
+                () => function.CalculateDeltaAsync(new DeltaCalculatorRequest
+                {
+                    SyncJob = syncJob,
+                    CurrentPart = 2,
+                    TotalParts = 2,
+                    GroupId = requestedGroupId,
+                    SourceGroupMembership = string.Empty,
+                    DestinationGroupMembership = string.Empty,
+                    ReadFromBlobs = true,
+                    SourceMembershipFilePath = "/source",
+                    DestinationMembershipFilePath = "/destination"
+                }));
+
+            StringAssert.Contains(exception.Message, sourceGroupId.ToString());
+            StringAssert.Contains(exception.Message, requestedGroupId.ToString());
+            store.Repository.Verify(
+                repository => repository.WriteMembershipAsync(
+                    It.IsAny<string>(),
+                    It.IsAny<GroupMembership>(),
+                    It.IsAny<IAsyncEnumerable<AzureADUser>>(),
+                    It.IsAny<Dictionary<string, string>>(),
+                    It.IsAny<CancellationToken>()),
+                Times.Never);
+            deltaCalculatorService.Verify(
+                service => service.CalculateDifferenceAsync(
+                    It.IsAny<GroupMembership>(),
+                    It.IsAny<MembershipDeltaSummary>()),
+                Times.Never);
         }
 
         [TestMethod]

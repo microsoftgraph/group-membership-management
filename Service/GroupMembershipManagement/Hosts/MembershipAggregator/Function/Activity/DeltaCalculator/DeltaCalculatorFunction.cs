@@ -128,13 +128,19 @@ namespace Hosts.MembershipAggregator
                     };
                 }
 
-                var groupId = sourceMembership.Destination?.ObjectId ?? Guid.Empty;
-                if (groupId == Guid.Empty)
+                var requestedGroupId = request.GroupId != Guid.Empty
+                    ? request.GroupId
+                    : request.SyncJob.TargetOfficeGroupId;
+                var sourceGroupId = sourceMembership.Destination?.ObjectId ?? Guid.Empty;
+                if (requestedGroupId != Guid.Empty
+                    && sourceGroupId != Guid.Empty
+                    && sourceGroupId != requestedGroupId)
                 {
-                    groupId = request.GroupId != Guid.Empty
-                        ? request.GroupId
-                        : request.SyncJob.TargetOfficeGroupId;
+                    throw new InvalidDataException(
+                        $"The source membership destination '{sourceGroupId}' does not match the requested destination '{requestedGroupId}'.");
                 }
+
+                var groupId = requestedGroupId != Guid.Empty ? requestedGroupId : sourceGroupId;
                 if (groupId == Guid.Empty)
                 {
                     throw new InvalidDataException("The source membership does not identify a destination group.");
