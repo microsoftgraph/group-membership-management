@@ -653,6 +653,40 @@ namespace Services.Tests
         }
 
         [TestMethod]
+        public async Task UploadAggregatedMembershipAsync_WithHistoricalInlineMode_RejectsNegativeCounts()
+        {
+            var sourcePath = $"/{_groupId}/source.json";
+            _existingSourcePaths.Add(sourcePath);
+            var addition = new AzureADUser { ObjectId = Guid.NewGuid() };
+
+            var response = await _function.UploadAggregatedMembershipAsync(
+                new AggregatedMembershipUploadRequest
+                {
+                    SyncJob = _syncJob,
+                    CurrentPart = 1,
+                    TotalParts = 1,
+                    GroupId = _groupId,
+                    SourceMembershipFilePath = sourcePath,
+                    CompressedMembersToAddJson = TextCompressor.Compress(JsonSerializer.Serialize(new[] { addition })),
+                    CompressedMembersToRemoveJson = TextCompressor.Compress(JsonSerializer.Serialize(Array.Empty<AzureADUser>())),
+                    MembersToAddCount = -1,
+                    MembersToRemoveCount = 0,
+                    CurrentUtcDateTime = DateTime.UtcNow
+                });
+
+            Assert.IsFalse(response.IsSuccessful);
+            StringAssert.Contains(response.ErrorMessage, "Delta member counts cannot be negative");
+            _blobStorageRepository.Verify(
+                repository => repository.WriteMembershipAsync(
+                    It.IsAny<string>(),
+                    It.IsAny<GroupMembership>(),
+                    It.IsAny<IAsyncEnumerable<AzureADUser>>(),
+                    It.IsAny<Dictionary<string, string>>(),
+                    It.IsAny<CancellationToken>()),
+                Times.Never);
+        }
+
+        [TestMethod]
         public async Task UploadAggregatedMembershipAsync_WithHistoricalStagedRequest_InfersStagedMode()
         {
             var sourcePath = $"/{_groupId}/source.json";

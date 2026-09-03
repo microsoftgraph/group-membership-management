@@ -65,6 +65,11 @@ namespace Hosts.MembershipAggregator
                         return Failure($"Source membership blob was not found at path {request.SourceMembershipFilePath}.");
                     }
 
+                    if (request.MembersToAddCount < 0 || request.MembersToRemoveCount < 0)
+                    {
+                        return Failure("Delta member counts cannot be negative.");
+                    }
+
                     var hasAnyStagedDeltaPath =
                         !string.IsNullOrWhiteSpace(request.MembersToAddFilePath)
                         || !string.IsNullOrWhiteSpace(request.MembersToRemoveFilePath);
@@ -81,11 +86,6 @@ namespace Hosts.MembershipAggregator
                             return Failure("Both staged addition and removal paths are required.");
                         }
 
-                        if (request.MembersToAddCount < 0 || request.MembersToRemoveCount < 0)
-                        {
-                            return Failure("Delta member counts cannot be negative.");
-                        }
-
                         membersToAddCount = request.MembersToAddCount;
                         membersToRemoveCount = request.MembersToRemoveCount;
                         members = ReadStagedDeltaAsync(request, cancellationToken);
@@ -93,12 +93,6 @@ namespace Hosts.MembershipAggregator
                     else
                     {
                         var hasExplicitTransportMode = request.UseStagedDeltaFiles.HasValue;
-                        if (hasExplicitTransportMode
-                            && (request.MembersToAddCount < 0 || request.MembersToRemoveCount < 0))
-                        {
-                            return Failure("Delta member counts cannot be negative.");
-                        }
-
                         var hasDeclaredChanges =
                             request.MembersToAddCount > 0
                             || request.MembersToRemoveCount > 0;
