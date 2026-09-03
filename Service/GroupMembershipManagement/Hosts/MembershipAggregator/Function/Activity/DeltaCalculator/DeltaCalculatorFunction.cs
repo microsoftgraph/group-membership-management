@@ -139,6 +139,14 @@ namespace Hosts.MembershipAggregator
                 {
                     throw new InvalidDataException("The source membership does not identify a destination group.");
                 }
+                if (sourceMembership.Destination == null)
+                {
+                    sourceMembership.Destination = new AzureADGroup { ObjectId = groupId };
+                }
+                else if (sourceMembership.Destination.ObjectId == Guid.Empty)
+                {
+                    sourceMembership.Destination.ObjectId = groupId;
+                }
 
                 var runId = sourceMembership.RunId != Guid.Empty
                     ? sourceMembership.RunId

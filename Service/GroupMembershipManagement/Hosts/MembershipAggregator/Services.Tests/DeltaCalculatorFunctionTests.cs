@@ -195,6 +195,28 @@ namespace Services.Tests
         }
 
         [TestMethod]
+        public async Task CalculateDeltaAsync_NullDestination_UsesRequestGroupId()
+        {
+            var groupId = ParseGuid(6001);
+
+            await AssertResolvedDestinationAsync(
+                destination: null,
+                requestGroupId: groupId,
+                targetOfficeGroupId: Guid.Empty);
+        }
+
+        [TestMethod]
+        public async Task CalculateDeltaAsync_EmptyDestinationId_UsesSyncJobGroupId()
+        {
+            var groupId = ParseGuid(6002);
+
+            await AssertResolvedDestinationAsync(
+                destination: new AzureADGroup(),
+                requestGroupId: Guid.Empty,
+                targetOfficeGroupId: groupId);
+        }
+
+        [TestMethod]
         public async Task CalculateDeltaAsync_RepeatedExecutionsUseDistinctAttemptPaths()
         {
             var groupId = ParseGuid(7001);
@@ -408,6 +430,82 @@ namespace Services.Tests
                     It.IsAny<GroupMembership>(),
                     It.IsAny<MembershipDeltaSummary>()),
                 Times.Never);
+        }
+
+        private static async Task AssertResolvedDestinationAsync(
+            AzureADGroup destination,
+            Guid requestGroupId,
+            Guid targetOfficeGroupId)
+        {
+            var store = new MembershipMergeTestStore();
+            var groupId = requestGroupId != Guid.Empty ? requestGroupId : targetOfficeGroupId;
+            var syncJob = new SyncJob
+            {
+                Id = ParseGuid(6003),
+                RunId = ParseGuid(6004),
+                TargetOfficeGroupId = targetOfficeGroupId,
+                MembershipType = MembershipTypes.GroupMembership.ToString()
+            };
+            var sourceEnvelope = new GroupMembership
+            {
+                Destination = destination,
+                SyncJobId = syncJob.Id,
+                RunId = syncJob.RunId.Value
+            };
+            var destinationEnvelope = new GroupMembership
+            {
+                Destination = new AzureADGroup { ObjectId = groupId },
+                SyncJobId = syncJob.Id,
+                RunId = syncJob.RunId.Value
+            };
+            await store.AddCompressedAsync("/source", sourceEnvelope, User(ParseGuid(1), ParseGuid(101)));
+            await store.AddCompressedAsync("/destination", destinationEnvelope);
+
+            var deltaCalculatorService = new Mock<IDeltaCalculatorService>();
+            deltaCalculatorService
+                .Setup(service => service.CalculateDifferenceAsync(
+                    It.IsAny<GroupMembership>(),
+                    It.IsAny<MembershipDeltaSummary>()))
+                .Returns((
+                    GroupMembership membership,
+                    MembershipDeltaSummary summary) =>
+                {
+                    Assert.IsNotNull(membership.Destination);
+                    Assert.AreEqual(groupId, membership.Destination.ObjectId);
+                    return Task.FromResult(new DeltaResponse
+                    {
+                        MembersToAddCount = summary.MembersToAddCount,
+                        MembersToRemoveCount = summary.MembersToRemoveCount,
+                        MembershipDeltaStatus = MembershipDeltaStatus.Ok
+                    });
+                });
+            var function = new DeltaCalculatorFunction(
+                NullLogger<DeltaCalculatorFunction>.Instance,
+                store.Repository.Object,
+                deltaCalculatorService.Object,
+                Options.Create(new MembershipMergeOptions()));
+
+            var response = await function.CalculateDeltaAsync(new DeltaCalculatorRequest
+            {
+                SyncJob = syncJob,
+                CurrentPart = 2,
+                TotalParts = 2,
+                GroupId = requestGroupId,
+                SourceGroupMembership = string.Empty,
+                DestinationGroupMembership = string.Empty,
+                ReadFromBlobs = true,
+                SourceMembershipFilePath = "/source",
+                DestinationMembershipFilePath = "/destination"
+            });
+
+            Assert.AreEqual(MembershipDeltaStatus.Ok, response.MembershipDeltaStatus);
+            Assert.AreEqual(1, response.MembersToAddCount);
+            Assert.AreEqual(0, response.MembersToRemoveCount);
+            deltaCalculatorService.Verify(
+                service => service.CalculateDifferenceAsync(
+                    It.IsAny<GroupMembership>(),
+                    It.IsAny<MembershipDeltaSummary>()),
+                Times.Once);
         }
 
         private static AzureADUser User(Guid objectId, Guid sourceGroup) =>
