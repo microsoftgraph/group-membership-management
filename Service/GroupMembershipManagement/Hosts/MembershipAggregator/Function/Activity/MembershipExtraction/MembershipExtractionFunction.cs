@@ -3,6 +3,7 @@
 using Hosts.MembershipAggregator.Helpers;
 using Microsoft.Azure.Functions.Worker;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using Models;
 using Models.Helpers;
 using Models.ServiceBus;
@@ -10,9 +11,9 @@ using Repositories.Contracts;
 using Repositories.Contracts.Helpers;
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
-using System.Text.Json;
-using System.Text.Json.Serialization;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace Hosts.MembershipAggregator
@@ -21,15 +22,25 @@ namespace Hosts.MembershipAggregator
     {
         private readonly ILogger<MembershipExtractionFunction> _logger;
         private readonly IBlobStorageRepository _blobStorageRepository;
+        private readonly MembershipMergeEngine _mergeEngine;
 
-        public MembershipExtractionFunction(ILogger<MembershipExtractionFunction> logger, IBlobStorageRepository blobStorageRepository)
+        public MembershipExtractionFunction(
+            ILogger<MembershipExtractionFunction> logger,
+            IBlobStorageRepository blobStorageRepository,
+            IOptions<MembershipMergeOptions> mergeOptions)
         {
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-            _blobStorageRepository = blobStorageRepository ?? throw new ArgumentNullException(nameof(blobStorageRepository));
+            _blobStorageRepository = blobStorageRepository
+                ?? throw new ArgumentNullException(nameof(blobStorageRepository));
+            _mergeEngine = new MembershipMergeEngine(
+                _blobStorageRepository,
+                mergeOptions ?? throw new ArgumentNullException(nameof(mergeOptions)));
         }
 
         [Function(nameof(MembershipExtractionFunction))]
-        public async Task<MembershipExtractionResponse> ExtractMembershipAsync([ActivityTrigger] MembershipExtractionRequest request)
+        public async Task<MembershipExtractionResponse> ExtractMembershipAsync(
+            [ActivityTrigger] MembershipExtractionRequest request,
+            CancellationToken cancellationToken = default)
         {
             using (_logger.BeginSyncJobScope(request.SyncJob, new Dictionary<string, object>
             {
@@ -41,28 +52,41 @@ namespace Hosts.MembershipAggregator
 
                 try
                 {
-                    var allGroupMemberships = new List<(string FilePath, string Content)>();
+                    var currentUtcDateTime = request.CurrentUtcDateTime == default
+                        ? DateTime.UtcNow
+                        : request.CurrentUtcDateTime;
+                    var groupId = request.GroupId != Guid.Empty
+                        ? request.GroupId
+                        : request.SyncJob?.TargetOfficeGroupId ?? Guid.Empty;
 
-                    foreach (var part in request.CompletedParts)
+                    if (groupId == Guid.Empty)
                     {
-                        var blobResult = await _blobStorageRepository.DownloadFileAsync(part);
-                        if (blobResult.BlobStatus == BlobStatus.NotFound)
-                        {
-                            return new MembershipExtractionResponse
-                            {
-                                IsSuccessful = false,
-                                ErrorMessage = $"File {part} was not found"
-                            };
-                        }
-
-                        allGroupMemberships.Add((part, blobResult.Content));
+                        throw new InvalidOperationException(
+                            "Unable to determine a valid group identifier for membership extraction output.");
                     }
 
-                    var membershipResult = await ExtractMembershipInformationAsync(
-                        allGroupMemberships.ToArray(),
-                        request.DestinationPart);
+                    var inputs = new List<MembershipMergeInput>();
+                    GroupMembership firstSourceEnvelope = null;
 
-                    if (membershipResult.SourceMembership == null)
+                    foreach (var part in request.CompletedParts.Where(
+                        part => !string.Equals(
+                            part,
+                            request.DestinationPart,
+                            StringComparison.Ordinal)))
+                    {
+                        var envelope = await ReadEnvelopeAsync(
+                            part,
+                            isDestination: false,
+                            cancellationToken);
+                        firstSourceEnvelope ??= envelope;
+                        inputs.Add(MembershipMergeInput.FromPath(
+                            part,
+                            envelope.Exclusionary
+                                ? MembershipMergeInputKind.Excluded
+                                : MembershipMergeInputKind.Included));
+                    }
+
+                    if (firstSourceEnvelope == null)
                     {
                         return new MembershipExtractionResponse
                         {
@@ -71,57 +95,59 @@ namespace Hosts.MembershipAggregator
                         };
                     }
 
-                    var destinationExpected = !string.IsNullOrWhiteSpace(request.DestinationPart) && request.CompletedParts.Contains(request.DestinationPart);
-                    if (destinationExpected && membershipResult.DestinationMembership == null)
+                    GroupMembership destinationEnvelope = null;
+                    var destinationExpected =
+                        !string.IsNullOrWhiteSpace(request.DestinationPart)
+                        && request.CompletedParts.Contains(request.DestinationPart);
+                    if (destinationExpected)
                     {
-                        return new MembershipExtractionResponse
-                        {
-                            IsSuccessful = false,
-                            ErrorMessage = "DestinationMembership could not be extracted"
-                        };
+                        destinationEnvelope = await ReadEnvelopeAsync(
+                            request.DestinationPart,
+                            isDestination: true,
+                            cancellationToken);
+                        inputs.Add(MembershipMergeInput.FromPath(
+                            request.DestinationPart,
+                            MembershipMergeInputKind.Destination));
                     }
 
-                    var destinationMemberCount = membershipResult.DestinationMembership?.SourceMembers?.Count ?? 0;
+                    var attemptId = Guid.NewGuid();
+                    var sourceFilePath = MembershipFilePathHelper.BuildFilePath(
+                        request.SyncJob,
+                        groupId,
+                        $"SourceMembership-{attemptId:N}",
+                        currentUtcDateTime);
+                    var destinationFilePath = destinationEnvelope == null
+                        ? null
+                        : MembershipFilePathHelper.BuildFilePath(
+                            request.SyncJob,
+                            groupId,
+                            $"DestinationMembership-{attemptId:N}",
+                            currentUtcDateTime);
 
-                    var currentUtcDateTime = request.CurrentUtcDateTime == default ? DateTime.UtcNow : request.CurrentUtcDateTime;
-                    var groupId = request.GroupId != Guid.Empty
-                                   ? request.GroupId
-                                   : request.SyncJob?.TargetOfficeGroupId ?? Guid.Empty;
+                    var snapshot = await _mergeEngine.StageSnapshotAsync(
+                        inputs,
+                        sourceFilePath,
+                        firstSourceEnvelope,
+                        destinationFilePath,
+                        destinationEnvelope,
+                        cancellationToken: cancellationToken);
 
-                    if (groupId == Guid.Empty)
-                    {
-                        throw new InvalidOperationException("Unable to determine a valid group identifier for membership extraction output.");
-                    }
-
-                    var serializerOptions = new JsonSerializerOptions
-                    {
-                        DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingDefault
-                    };
-
-                    var sourceFilePath = MembershipFilePathHelper.BuildFilePath(request.SyncJob, groupId, "SourceMembership", currentUtcDateTime);
-                    var sourceContent = TextCompressor.Compress(JsonSerializer.Serialize(membershipResult.SourceMembership, serializerOptions));
-                    await _blobStorageRepository.UploadFileAsync(sourceFilePath, sourceContent);
-
-                    string destinationFilePath = null;
-                    if (membershipResult.DestinationMembership != null)
-                    {
-                        destinationFilePath = MembershipFilePathHelper.BuildFilePath(request.SyncJob, groupId, "DestinationMembership", currentUtcDateTime);
-                        var destinationContent = TextCompressor.Compress(JsonSerializer.Serialize(membershipResult.DestinationMembership, serializerOptions));
-                        await _blobStorageRepository.UploadFileAsync(destinationFilePath, destinationContent);
-                    }
-
-                    var sourceMemberCount = membershipResult.SourceMembership.SourceMembers.Count;
-
-                    _logger.MembershipExtractionSuccess(sourceMemberCount, destinationMemberCount);
+                    _logger.MembershipExtractionSuccess(
+                        snapshot.SourceMemberCount,
+                        snapshot.DestinationMemberCount);
 
                     return new MembershipExtractionResponse
                     {
                         IsSuccessful = true,
                         SourceMembershipFilePath = sourceFilePath,
                         DestinationMembershipFilePath = destinationFilePath,
-                        SourceMemberCount = sourceMemberCount,
-                        DestinationMemberCount = destinationMemberCount
+                        SourceMemberCount = snapshot.SourceMemberCount,
+                        DestinationMemberCount = snapshot.DestinationMemberCount
                     };
+                }
+                catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+                {
+                    throw;
                 }
                 catch (Exception ex)
                 {
@@ -136,108 +162,59 @@ namespace Hosts.MembershipAggregator
             }
         }
 
-        private async Task<(GroupMembership SourceMembership, GroupMembership DestinationMembership)> ExtractMembershipInformationAsync(
-            (string FilePath, string Content)[] allGroupMemberships,
-            string destinationPath)
+        private async Task<GroupMembership> ReadEnvelopeAsync(
+            string filePath,
+            bool isDestination,
+            CancellationToken cancellationToken)
         {
-            var sourceGroupsMemberships = new List<GroupMembership>();
-
-            foreach (var membership in allGroupMemberships.Where(x => x.FilePath != destinationPath))
-            {
-                try
-                {
-                    if (string.IsNullOrEmpty(membership.Content))
-                    {
-                        throw new InvalidOperationException($"Content for file '{membership.FilePath}' is null or empty");
-                    }
-
-                    var jsonContent = TryDecompress(membership.Content);
-                    var groupMembership = JsonSerializer.Deserialize<GroupMembership>(jsonContent);
-                    if (groupMembership == null)
-                    {
-                        throw new InvalidOperationException($"Deserialization of GroupMembership from file '{membership.FilePath}' returned null");
-                    }
-
-                    sourceGroupsMemberships.Add(groupMembership);
-                }
-                catch (FormatException ex)
-                {
-                    _logger.FileProcessingFailed(ex, membership.FilePath, ex.Message);
-                    throw new InvalidOperationException($"Failed to process content from file '{membership.FilePath}': {ex.Message}", ex);
-                }
-                catch (JsonException ex)
-                {
-                    _logger.JsonDeserializationFailed(ex, membership.FilePath, ex.Message);
-                    throw new InvalidOperationException($"Failed to deserialize JSON content from file '{membership.FilePath}': {ex.Message}", ex);
-                }
-            }
-
-            if (sourceGroupsMemberships.Count == 0)
-            {
-                return (null, null);
-            }
-
-            var sourceGroupMembership = sourceGroupsMemberships[0];
-            var toInclude = sourceGroupsMemberships.Where(g => !g.Exclusionary).SelectMany(x => x.SourceMembers).ToList();
-            var toExclude = sourceGroupsMemberships.Where(g => g.Exclusionary).SelectMany(x => x.SourceMembers).ToList();
-            var diff = toInclude.Except(toExclude).ToList();
-
-            var source = sourceGroupsMemberships.SelectMany(x => x.SourceMembers).ToList();
-            var listGrouped = source.GroupBy(u => u.ObjectId)
-                               .Select(u => new AzureADUser { ObjectId = u.Key, SourceGroups = u.Select(y => y.SourceGroup).Distinct().ToList() })
-                               .ToList();
-
-            var objectIds = new HashSet<Guid>(diff.Select(u => u.ObjectId));
-            var sourceMembers = listGrouped.Where(u => objectIds.Contains(u.ObjectId)).ToList();
-
-            sourceGroupMembership.SourceMembers = sourceMembers;
-
-            var destinationMembershipFile = allGroupMemberships.FirstOrDefault(x => x.FilePath == destinationPath);
-            if (string.IsNullOrEmpty(destinationMembershipFile.FilePath))
-            {
-                return (sourceGroupMembership, null);
-            }
+            GroupMembership envelope = null;
 
             try
             {
-                _logger.ProcessingDestinationFile(destinationPath, destinationMembershipFile.Content?.Length ?? 0);
-
-                if (string.IsNullOrEmpty(destinationMembershipFile.Content))
+                await foreach (var _ in _blobStorageRepository.StreamMembershipAsync(
+                    filePath,
+                    details =>
+                    {
+                        envelope = details;
+                    },
+                    cancellationToken))
                 {
-                    throw new InvalidOperationException($"Content for destination file '{destinationPath}' is null or empty");
+                    if (envelope != null)
+                    {
+                        break;
+                    }
                 }
+            }
+            catch (FileNotFoundException)
+            {
+                throw new FileNotFoundException($"File {filePath} was not found");
+            }
+            catch (InvalidDataException ex)
+                when (ex.Message.Contains("empty", StringComparison.OrdinalIgnoreCase))
+            {
+                var fileDescription = isDestination
+                    ? $"destination file '{filePath}'"
+                    : $"file '{filePath}'";
+                throw new InvalidOperationException(
+                    $"Content for {fileDescription} is null or empty",
+                    ex);
+            }
+            catch (Exception ex) when (
+                ex is FormatException
+                || ex is InvalidDataException
+                || ex is System.Text.Json.JsonException)
+            {
+                var fileDescription = isDestination
+                    ? $"destination file '{filePath}'"
+                    : $"file '{filePath}'";
+                throw new InvalidOperationException(
+                    $"Failed to deserialize JSON content from {fileDescription}: {ex.Message}",
+                    ex);
+            }
 
-                var jsonContent = TryDecompress(destinationMembershipFile.Content);
-                var destinationGroupMembership = JsonSerializer.Deserialize<GroupMembership>(jsonContent);
-                if (destinationGroupMembership == null)
-                {
-                    throw new InvalidOperationException($"Deserialization of destination GroupMembership from file '{destinationPath}' returned null");
-                }
-
-                return (sourceGroupMembership, destinationGroupMembership);
-            }
-            catch (FormatException ex)
-            {
-                _logger.DestinationFileProcessingFailed(ex, destinationPath, ex.Message);
-                throw new InvalidOperationException($"Failed to process content from destination file '{destinationPath}': {ex.Message}", ex);
-            }
-            catch (JsonException ex)
-            {
-                _logger.DestinationJsonDeserializationFailed(ex, destinationPath, ex.Message);
-                throw new InvalidOperationException($"Failed to deserialize JSON content from destination file '{destinationPath}': {ex.Message}", ex);
-            }
-        }
-
-        private static string TryDecompress(string content)
-        {
-            try
-            {
-                return TextCompressor.Decompress(content);
-            }
-            catch (FormatException)
-            {
-                return content;
-            }
+            return envelope
+                ?? throw new InvalidDataException(
+                    $"Membership file '{filePath}' does not contain a valid envelope.");
         }
     }
 }

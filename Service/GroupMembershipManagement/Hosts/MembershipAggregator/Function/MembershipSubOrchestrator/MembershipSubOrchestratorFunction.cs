@@ -116,40 +116,54 @@ namespace Hosts.MembershipAggregator
             }
             var sourceMembershipFilePath = membershipExtractionResponse.SourceMembershipFilePath;
             var destinationMembershipFilePath = membershipExtractionResponse.DestinationMembershipFilePath;
-
-            if (string.IsNullOrWhiteSpace(sourceMembershipFilePath) || string.IsNullOrWhiteSpace(destinationMembershipFilePath))
+            var deltaCalculatorRequest = new DeltaCalculatorRequest
             {
-                await context.CallActivityAsync(nameof(JobStatusUpdaterFunction),
-                                                new JobStatusUpdaterRequest
-                                                {
-                                                    SyncJob = request.SyncJob,
-                                                    CurrentPart = currentPart,
-                                                    TotalParts = totalParts,
-                                                    Status = SyncStatus.Error,
-                                                    IsDryRun = false,
-                                                    IsNoOpSync = false
-                                                });
+                SyncJob = request.SyncJob,
+                CurrentPart = currentPart,
+                TotalParts = totalParts,
+                SourceGroupMembership = string.Empty,
+                DestinationGroupMembership = string.Empty,
+                ReadFromBlobs = true,
+                SourceMembershipFilePath = sourceMembershipFilePath,
+                DestinationMembershipFilePath = destinationMembershipFilePath
+            };
+            Exception primaryFailure = null;
 
-                var missingComponent = string.IsNullOrWhiteSpace(sourceMembershipFilePath) ? "SourceMembership" : "DestinationMembership";
-                logger.MissingMembershipComponent(missingComponent, request.GroupId);
-
-                await context.CallActivityAsync(nameof(TelemetryTrackerFunction), new TelemetryTrackerRequest
-                {
-                    SyncJob = request.SyncJob,
-                    CurrentPart = currentPart,
-                    TotalParts = totalParts,
-                    JobStatus = SyncStatus.Error,
-                    ResultStatus = ResultStatus.Failure
-                });
-
-                return new MembershipSubOrchestratorResponse
-                {
-                    MembershipDeltaStatus = MembershipDeltaStatus.Error
-                };
-            }
-
-            if (!request.SyncJob.AllowEmptyDestination && membershipExtractionResponse.SourceMemberCount == 0)
+            try
             {
+                if (string.IsNullOrWhiteSpace(sourceMembershipFilePath) || string.IsNullOrWhiteSpace(destinationMembershipFilePath))
+                {
+                    await context.CallActivityAsync(nameof(JobStatusUpdaterFunction),
+                                                    new JobStatusUpdaterRequest
+                                                    {
+                                                        SyncJob = request.SyncJob,
+                                                        CurrentPart = currentPart,
+                                                        TotalParts = totalParts,
+                                                        Status = SyncStatus.Error,
+                                                        IsDryRun = false,
+                                                        IsNoOpSync = false
+                                                    });
+
+                    var missingComponent = string.IsNullOrWhiteSpace(sourceMembershipFilePath) ? "SourceMembership" : "DestinationMembership";
+                    logger.MissingMembershipComponent(missingComponent, request.GroupId);
+
+                    await context.CallActivityAsync(nameof(TelemetryTrackerFunction), new TelemetryTrackerRequest
+                    {
+                        SyncJob = request.SyncJob,
+                        CurrentPart = currentPart,
+                        TotalParts = totalParts,
+                        JobStatus = SyncStatus.Error,
+                        ResultStatus = ResultStatus.Failure
+                    });
+
+                    return new MembershipSubOrchestratorResponse
+                    {
+                        MembershipDeltaStatus = MembershipDeltaStatus.Error
+                    };
+                }
+
+                if (!request.SyncJob.AllowEmptyDestination && membershipExtractionResponse.SourceMemberCount == 0)
+                {
                 await context.CallActivityAsync(nameof(JobStatusUpdaterFunction),
                                                 new JobStatusUpdaterRequest
                                                 {
@@ -201,18 +215,6 @@ namespace Hosts.MembershipAggregator
                 };
             }
 
-            var deltaCalculatorRequest = new DeltaCalculatorRequest
-            {
-                SyncJob = request.SyncJob,
-                CurrentPart = currentPart,
-                TotalParts = totalParts,
-                SourceGroupMembership = string.Empty,
-                DestinationGroupMembership = string.Empty,
-                ReadFromBlobs = true,
-                SourceMembershipFilePath = sourceMembershipFilePath,
-                DestinationMembershipFilePath = destinationMembershipFilePath
-            };
-
             logger.ReadingMembershipFromBlobs(sourceMembershipFilePath, destinationMembershipFilePath);
 
             var deltaResponse = await context.CallActivityAsync<DeltaCalculatorResponse>(nameof(DeltaCalculatorFunction), deltaCalculatorRequest);
@@ -262,8 +264,6 @@ namespace Hosts.MembershipAggregator
                         ResultStatus = ResultStatus.Failure
                     });
 
-                    await DeleteMembershipFilesAsync(context, deltaCalculatorRequest);
-
                     return new MembershipSubOrchestratorResponse
                     {
                         MembershipDeltaStatus = MembershipDeltaStatus.Error
@@ -271,8 +271,6 @@ namespace Hosts.MembershipAggregator
                 }
 
                 logger.UploadedMembershipFile(aggregatedMembershipResponse.FilePath, aggregatedMembershipResponse.MemberCount);
-
-                await DeleteMembershipFilesAsync(context, deltaCalculatorRequest);
 
                 return new MembershipSubOrchestratorResponse
                 {
@@ -325,8 +323,6 @@ namespace Hosts.MembershipAggregator
                         JobStatus = SyncStatus.Error,
                         ResultStatus = ResultStatus.Failure
                     });
-
-                    await DeleteMembershipFilesAsync(context, deltaCalculatorRequest);
 
                     return new MembershipSubOrchestratorResponse
                     {
@@ -474,14 +470,32 @@ namespace Hosts.MembershipAggregator
                                 });
             }
 
-                await DeleteMembershipFilesAsync(context, deltaCalculatorRequest);
-
-            return new MembershipSubOrchestratorResponse
+                return new MembershipSubOrchestratorResponse
+                {
+                    MembershipDeltaStatus = deltaResponse.MembershipDeltaStatus,
+                    MembersToBeAdded = deltaResponse.MembersToAddCount,
+                    MembersToBeRemoved = deltaResponse.MembersToRemoveCount
+                };
+            }
+            catch (Exception exception)
             {
-                MembershipDeltaStatus = deltaResponse.MembershipDeltaStatus,
-                MembersToBeAdded = deltaResponse.MembersToAddCount,
-                MembersToBeRemoved = deltaResponse.MembersToRemoveCount
-            };
+                primaryFailure = exception;
+                throw;
+            }
+            finally
+            {
+                try
+                {
+                    await DeleteMembershipFilesAsync(context, deltaCalculatorRequest);
+                }
+                catch (Exception cleanupFailure) when (primaryFailure != null)
+                {
+                    primaryFailure.Data["MembershipExtractionCleanupFailure"] = cleanupFailure;
+                    logger.LogError(
+                        cleanupFailure,
+                        "Failed to clean up staged membership files after an earlier failure.");
+                }
+            }
         }
 
         private async Task DeleteMembershipFilesAsync(TaskOrchestrationContext context, DeltaCalculatorRequest request)

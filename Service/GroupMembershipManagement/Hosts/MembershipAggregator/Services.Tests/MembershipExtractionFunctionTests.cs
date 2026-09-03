@@ -2,17 +2,23 @@
 // Licensed under the MIT license.
 
 using Hosts.MembershipAggregator;
+using Hosts.MembershipAggregator.Helpers;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Models;
 using Models.Helpers;
 using Models.ServiceBus;
 using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Options;
 using Moq;
+using Repositories.BlobStorage;
 using Repositories.Contracts;
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
+using System.Text;
 using System.Text.Json;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace Services.Tests
@@ -30,16 +36,43 @@ namespace Services.Tests
         public void Setup()
         {
             _blobStorageRepository = new Mock<IBlobStorageRepository>();
-            _membershipExtractionFunction = new MembershipExtractionFunction(NullLogger<MembershipExtractionFunction>.Instance, _blobStorageRepository.Object);
+            _membershipExtractionFunction = new MembershipExtractionFunction(
+                NullLogger<MembershipExtractionFunction>.Instance,
+                _blobStorageRepository.Object,
+                Options.Create(new MembershipMergeOptions()));
 
             _uploadedFiles = new Dictionary<string, string>();
             _blobStorageRepository
-                .Setup(x => x.UploadFileAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<Dictionary<string, string>>()))
-                .Callback<string, string, Dictionary<string, string>>((path, content, metadata) =>
-                {
-                    _uploadedFiles[path] = content;
-                })
-                .Returns(Task.CompletedTask);
+                .Setup(x => x.StreamMembershipAsync(
+                    It.IsAny<string>(),
+                    It.IsAny<Action<GroupMembership>>(),
+                    It.IsAny<CancellationToken>()))
+                .Returns((
+                    string path,
+                    Action<GroupMembership> onMembershipDetailsKnown,
+                    CancellationToken cancellationToken) =>
+                    ReadMembershipAsync(
+                        path,
+                        onMembershipDetailsKnown,
+                        cancellationToken));
+            _blobStorageRepository
+                .Setup(x => x.WriteMembershipAsync(
+                    It.IsAny<string>(),
+                    It.IsAny<GroupMembership>(),
+                    It.IsAny<IAsyncEnumerable<AzureADUser>>(),
+                    It.IsAny<Dictionary<string, string>>(),
+                    It.IsAny<CancellationToken>()))
+                .Returns((
+                    string path,
+                    GroupMembership envelope,
+                    IAsyncEnumerable<AzureADUser> members,
+                    Dictionary<string, string> metadata,
+                    CancellationToken cancellationToken) =>
+                    WriteMembershipAsync(
+                        path,
+                        envelope,
+                        members,
+                        cancellationToken));
             
             _groupId = Guid.NewGuid();
             _syncJob = new SyncJob
@@ -54,7 +87,10 @@ namespace Services.Tests
         {
             // Act & Assert
             Assert.ThrowsException<ArgumentNullException>(() => 
-                new MembershipExtractionFunction(null!, _blobStorageRepository.Object));
+                new MembershipExtractionFunction(
+                    null!,
+                    _blobStorageRepository.Object,
+                    Options.Create(new MembershipMergeOptions())));
         }
 
         [TestMethod]
@@ -62,7 +98,10 @@ namespace Services.Tests
         {
             // Act & Assert
             Assert.ThrowsException<ArgumentNullException>(() => 
-                new MembershipExtractionFunction(NullLogger<MembershipExtractionFunction>.Instance, null!));
+                new MembershipExtractionFunction(
+                    NullLogger<MembershipExtractionFunction>.Instance,
+                    null!,
+                    Options.Create(new MembershipMergeOptions())));
         }
 
         [TestMethod]
@@ -1185,9 +1224,54 @@ namespace Services.Tests
                 SyncJobId = _syncJob.Id,
                 RunId = _syncJob.RunId ?? Guid.NewGuid(),
                 Exclusionary = exclusionary,
-                SourceMembers = users,
+                SourceMembers = users
+                    .OrderBy(user => user.ObjectId, CanonicalObjectIdComparer.Instance)
+                    .ToList(),
                 Destination = new AzureADGroup { ObjectId = _groupId }
             };
+        }
+
+        private async IAsyncEnumerable<AzureADUser> ReadMembershipAsync(
+            string path,
+            Action<GroupMembership> onMembershipDetailsKnown,
+            [System.Runtime.CompilerServices.EnumeratorCancellation]
+            CancellationToken cancellationToken)
+        {
+            var blob = await _blobStorageRepository.Object.DownloadFileAsync(path);
+            if (blob == null || blob.BlobStatus == BlobStatus.NotFound)
+            {
+                throw new FileNotFoundException(path);
+            }
+
+            if (string.IsNullOrEmpty(blob.Content))
+            {
+                throw new InvalidDataException(
+                    $"Content for file '{path}' is null or empty");
+            }
+
+            await using var stream = new MemoryStream(Encoding.UTF8.GetBytes(blob.Content));
+            await foreach (var member in MembershipStream.ReadAsync(
+                stream,
+                onMembershipDetailsKnown,
+                cancellationToken: cancellationToken))
+            {
+                yield return member;
+            }
+        }
+
+        private async Task WriteMembershipAsync(
+            string path,
+            GroupMembership envelope,
+            IAsyncEnumerable<AzureADUser> members,
+            CancellationToken cancellationToken)
+        {
+            await using var stream = new MemoryStream();
+            await MembershipStream.WriteAsync(
+                stream,
+                envelope,
+                members,
+                cancellationToken: cancellationToken);
+            _uploadedFiles[path] = Encoding.UTF8.GetString(stream.ToArray());
         }
 
         private BlobResult CreateBlobResult(GroupMembership membership)

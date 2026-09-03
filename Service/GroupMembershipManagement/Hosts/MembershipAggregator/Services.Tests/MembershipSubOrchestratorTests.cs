@@ -3,6 +3,7 @@
 
 using DIConcreteTypes;
 using Hosts.MembershipAggregator;
+using Hosts.MembershipAggregator.Helpers;
 using MembershipAggregator.Activity.EmailSender;
 using MembershipAggregator.Services.Entities;
 using Microsoft.ApplicationInsights;
@@ -10,6 +11,7 @@ using Microsoft.ApplicationInsights.Extensibility;
 using Microsoft.DurableTask;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Options;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Models;
 using Models.Helpers;
@@ -18,6 +20,7 @@ using Models.ServiceBus;
 using Models.SyncJobHistory;
 using Moq;
 using Polly;
+using Repositories.BlobStorage;
 using Repositories.Contracts;
 using Repositories.Mocks;
 using Repositories.Contracts.InjectConfig;
@@ -26,8 +29,11 @@ using Services.Entities;
 using System;
 using System.Collections.Generic;
 using System.Data.SqlTypes;
+using System.IO;
 using System.Linq;
+using System.Text;
 using System.Text.Json;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace Services.Tests
@@ -54,6 +60,7 @@ namespace Services.Tests
         private SyncJobGroup _groupInformation;
         private MultiLaneConfig _multiLaneConfig;
         private Dictionary<string, string> _uploadedBlobs;
+        private Dictionary<string, BlobResult> _membershipInputBlobs;
 
         private Mock<IDryRunValue> _dryRun;
         private Mock<IGMMResources> _gmmResources;
@@ -79,6 +86,7 @@ namespace Services.Tests
             _durableContext = new Mock<TaskOrchestrationContext>();
             _blobStorageRepository = new Mock<IBlobStorageRepository>();
             _uploadedBlobs = new Dictionary<string, string>();
+            _membershipInputBlobs = new Dictionary<string, BlobResult>();
 
             _blobStorageRepository
                 .Setup(x => x.UploadFileAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<Dictionary<string, string>>()))
@@ -87,6 +95,37 @@ namespace Services.Tests
                     _uploadedBlobs[path] = content;
                     return Task.CompletedTask;
                 });
+            _blobStorageRepository
+                .Setup(x => x.StreamMembershipAsync(
+                    It.IsAny<string>(),
+                    It.IsAny<Action<GroupMembership>>(),
+                    It.IsAny<CancellationToken>()))
+                .Returns((
+                    string path,
+                    Action<GroupMembership> onMembershipDetailsKnown,
+                    CancellationToken cancellationToken) =>
+                    ReadMembershipAsync(
+                        path,
+                        onMembershipDetailsKnown,
+                        cancellationToken));
+            _blobStorageRepository
+                .Setup(x => x.WriteMembershipAsync(
+                    It.IsAny<string>(),
+                    It.IsAny<GroupMembership>(),
+                    It.IsAny<IAsyncEnumerable<AzureADUser>>(),
+                    It.IsAny<Dictionary<string, string>>(),
+                    It.IsAny<CancellationToken>()))
+                .Returns((
+                    string path,
+                    GroupMembership envelope,
+                    IAsyncEnumerable<AzureADUser> members,
+                    Dictionary<string, string> metadata,
+                    CancellationToken cancellationToken) =>
+                    WriteMembershipAsync(
+                        path,
+                        envelope,
+                        members,
+                        cancellationToken));
 
             _blobStorageRepository
                 .Setup(x => x.GetBlobMetadataAsync(It.IsAny<string>()))
@@ -387,9 +426,12 @@ namespace Services.Tests
 
             Assert.AreEqual(MembershipDeltaStatus.Ok, response.MembershipDeltaStatus);
             Assert.IsNotNull(response.FilePath);
-            _blobStorageRepository.Verify(x => x.DownloadFileAsync("http://file-path-1"), Times.Once());
-            _blobStorageRepository.Verify(x => x.DownloadFileAsync("http://file-path-2"), Times.Once());
-            _blobStorageRepository.Verify(x => x.DownloadFileAsync("http://file-path-3"), Times.Once());
+            _blobStorageRepository.Verify(
+                repository => repository.StreamMembershipAsync(
+                    It.IsAny<string>(),
+                    It.IsAny<Action<GroupMembership>>(),
+                    It.IsAny<CancellationToken>()),
+                Times.Exactly(9));
         }
 
         [TestMethod]
@@ -692,13 +734,19 @@ namespace Services.Tests
             var orchestratorFunction = new MembershipSubOrchestratorFunction(_graphAPIService.Object, _telemetryClient, _multiLaneConfig);
             var response = await orchestratorFunction.RunMembershipSubOrchestratorFunctionAsync(_durableContext.Object);
 
-            _blobStorageRepository.Verify(x => x.UploadFileAsync(It.Is<string>(x => x.Contains("SourceMembership")),
-                                                                 It.IsAny<string>(),
-                                                                 It.IsAny<Dictionary<string, string>>()), Times.AtLeastOnce());
+            _blobStorageRepository.Verify(x => x.WriteMembershipAsync(
+                It.Is<string>(path => path.Contains("SourceMembership")),
+                It.IsAny<GroupMembership>(),
+                It.IsAny<IAsyncEnumerable<AzureADUser>>(),
+                It.IsAny<Dictionary<string, string>>(),
+                It.IsAny<CancellationToken>()), Times.AtLeastOnce());
 
-            _blobStorageRepository.Verify(x => x.UploadFileAsync(It.Is<string>(x => x.Contains("DestinationMembership")),
-                                                                 It.IsAny<string>(),
-                                                                 It.IsAny<Dictionary<string, string>>()), Times.AtLeastOnce());
+            _blobStorageRepository.Verify(x => x.WriteMembershipAsync(
+                It.Is<string>(path => path.Contains("DestinationMembership")),
+                It.IsAny<GroupMembership>(),
+                It.IsAny<IAsyncEnumerable<AzureADUser>>(),
+                It.IsAny<Dictionary<string, string>>(),
+                It.IsAny<CancellationToken>()), Times.AtLeastOnce());
 
             _blobStorageRepository.Verify(x => x.DownloadFileAsync(It.Is<string>(x => x.Contains("SourceMembership"))), Times.AtLeastOnce());
             _blobStorageRepository.Verify(x => x.DownloadFileAsync(It.Is<string>(x => x.Contains("DestinationMembership"))), Times.AtLeastOnce());
@@ -867,6 +915,12 @@ namespace Services.Tests
             _graphAPIService.Verify(api => api.SendEmailAsync(
                           _syncJob, NotificationMessageType.NoDataNotification, It.IsAny<string[]>()),
                           Times.Once());
+            _durableContext.Verify(
+                context => context.CallActivityAsync(
+                    nameof(FileDeleterFunction),
+                    It.IsAny<FileDeleterRequest>(),
+                    It.IsAny<TaskOptions>()),
+                Times.Exactly(2));
         }
 
         [TestMethod]
@@ -960,6 +1014,40 @@ namespace Services.Tests
         }
 
         [TestMethod]
+        public async Task MembershipSubOrchestrator_WithMalformedStagedPart_ReturnsErrorWithoutAggregate()
+        {
+            _blobStorageRepository.Setup(repository => repository.DownloadFileAsync(
+                    "http://file-path-1"))
+                .ReturnsAsync(new BlobResult
+                {
+                    BlobStatus = BlobStatus.Found,
+                    Content = TextCompressor.Compress("{ malformed json")
+                });
+
+            var orchestratorFunction = new MembershipSubOrchestratorFunction(
+                _graphAPIService.Object,
+                _telemetryClient,
+                _multiLaneConfig);
+            var response = await orchestratorFunction.RunMembershipSubOrchestratorFunctionAsync(
+                _durableContext.Object);
+
+            Assert.AreEqual(MembershipDeltaStatus.Error, response.MembershipDeltaStatus);
+            _durableContext.Verify(
+                context => context.CallActivityAsync(
+                    nameof(JobStatusUpdaterFunction),
+                    It.Is<JobStatusUpdaterRequest>(request =>
+                        request.Status == SyncStatus.Error),
+                    It.IsAny<TaskOptions>()),
+                Times.Once);
+            _durableContext.Verify(
+                context => context.CallActivityAsync<AggregatedMembershipUploadResponse>(
+                    nameof(AggregatedMembershipUploaderFunction),
+                    It.IsAny<AggregatedMembershipUploadRequest>(),
+                    It.IsAny<TaskOptions>()),
+                Times.Never);
+        }
+
+        [TestMethod]
         public async Task MembershipSubOrchestrator_WithMissingDestinationPath_ReturnsErrorWithoutCallingDelta()
         {
             _membershipSubOrchestratorRequest = new MembershipSubOrchestratorRequest
@@ -1008,12 +1096,132 @@ namespace Services.Tests
                 It.Is<JobStatusUpdaterRequest>(request => request.Status == SyncStatus.Error),
                 It.IsAny<TaskOptions>()),
                 Times.Once());
+            _durableContext.Verify(
+                context => context.CallActivityAsync(
+                    nameof(FileDeleterFunction),
+                    It.Is<FileDeleterRequest>(
+                        request => request.FilePath == "/source-membership.json"),
+                    It.IsAny<TaskOptions>()),
+                Times.Once());
+        }
+
+        [TestMethod]
+        public async Task MembershipSubOrchestrator_WhenDeltaThrows_CleansBothSnapshots()
+        {
+            var expectedFailure = new InvalidOperationException("Delta failed.");
+            _durableContext.Setup(context => context.CallActivityAsync<DeltaCalculatorResponse>(
+                    nameof(DeltaCalculatorFunction),
+                    It.IsAny<DeltaCalculatorRequest>(),
+                    It.IsAny<TaskOptions>()))
+                .ThrowsAsync(expectedFailure);
+
+            var orchestratorFunction = new MembershipSubOrchestratorFunction(
+                _graphAPIService.Object,
+                _telemetryClient,
+                _multiLaneConfig);
+
+            var actualFailure = await Assert.ThrowsExceptionAsync<InvalidOperationException>(
+                () => orchestratorFunction.RunMembershipSubOrchestratorFunctionAsync(
+                    _durableContext.Object));
+
+            Assert.AreSame(expectedFailure, actualFailure);
+            _durableContext.Verify(
+                context => context.CallActivityAsync(
+                    nameof(FileDeleterFunction),
+                    It.IsAny<FileDeleterRequest>(),
+                    It.IsAny<TaskOptions>()),
+                Times.Exactly(2));
+        }
+
+        [TestMethod]
+        public async Task MembershipSubOrchestrator_WhenCleanupAlsoThrows_PreservesPrimaryFailure()
+        {
+            var expectedFailure = new InvalidOperationException("Delta failed.");
+            _durableContext.Setup(context => context.CallActivityAsync<DeltaCalculatorResponse>(
+                    nameof(DeltaCalculatorFunction),
+                    It.IsAny<DeltaCalculatorRequest>(),
+                    It.IsAny<TaskOptions>()))
+                .ThrowsAsync(expectedFailure);
+            _durableContext.Setup(context => context.CallActivityAsync(
+                    nameof(FileDeleterFunction),
+                    It.IsAny<FileDeleterRequest>(),
+                    It.IsAny<TaskOptions>()))
+                .ThrowsAsync(new IOException("Cleanup failed."));
+
+            var orchestratorFunction = new MembershipSubOrchestratorFunction(
+                _graphAPIService.Object,
+                _telemetryClient,
+                _multiLaneConfig);
+
+            var actualFailure = await Assert.ThrowsExceptionAsync<InvalidOperationException>(
+                () => orchestratorFunction.RunMembershipSubOrchestratorFunctionAsync(
+                    _durableContext.Object));
+
+            Assert.AreSame(expectedFailure, actualFailure);
+            Assert.IsInstanceOfType<IOException>(
+                actualFailure.Data["MembershipExtractionCleanupFailure"]);
         }
 
         private async Task<MembershipExtractionResponse> CallMembershipExtractionFunctionAsync(MembershipExtractionRequest request)
         {
-            var function = new MembershipExtractionFunction(NullLogger<MembershipExtractionFunction>.Instance, _blobStorageRepository.Object);
+            var function = new MembershipExtractionFunction(
+                NullLogger<MembershipExtractionFunction>.Instance,
+                _blobStorageRepository.Object,
+                Options.Create(new MembershipMergeOptions()));
             return await function.ExtractMembershipAsync(request);
+        }
+
+        private async IAsyncEnumerable<AzureADUser> ReadMembershipAsync(
+            string path,
+            Action<GroupMembership> onMembershipDetailsKnown,
+            [System.Runtime.CompilerServices.EnumeratorCancellation]
+            CancellationToken cancellationToken)
+        {
+            if (!_membershipInputBlobs.TryGetValue(path, out var blob))
+            {
+                blob = await _blobStorageRepository.Object.DownloadFileAsync(path);
+                if (blob != null && blob.BlobStatus != BlobStatus.NotFound)
+                {
+                    _membershipInputBlobs[path] = blob;
+                }
+            }
+
+            if (blob == null || blob.BlobStatus == BlobStatus.NotFound)
+            {
+                throw new FileNotFoundException(path);
+            }
+
+            var content = TextCompressor.Decompress(blob.Content);
+            var membership = JsonSerializer.Deserialize<GroupMembership>(content);
+            membership.SourceMembers = membership.SourceMembers
+                .OrderBy(member => member.ObjectId, CanonicalObjectIdComparer.Instance)
+                .ToList();
+
+            var envelope = JsonSerializer.Deserialize<GroupMembership>(
+                JsonSerializer.Serialize(membership));
+            envelope.SourceMembers.Clear();
+            onMembershipDetailsKnown?.Invoke(envelope);
+
+            foreach (var member in membership.SourceMembers)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                yield return member;
+            }
+        }
+
+        private async Task WriteMembershipAsync(
+            string path,
+            GroupMembership envelope,
+            IAsyncEnumerable<AzureADUser> members,
+            CancellationToken cancellationToken)
+        {
+            await using var stream = new MemoryStream();
+            await MembershipStream.WriteAsync(
+                stream,
+                envelope,
+                members,
+                cancellationToken: cancellationToken);
+            _uploadedBlobs[path] = Encoding.UTF8.GetString(stream.ToArray());
         }
 
         private async Task<AggregatedMembershipUploadResponse> CallAggregatedMembershipUploaderFunctionAsync(AggregatedMembershipUploadRequest request)
