@@ -16,8 +16,6 @@ using Services.Entities;
 using System;
 using System.Collections.Generic;
 using System.Data.SqlTypes;
-using System.Diagnostics;
-using System.Linq;
 using System.Threading.Tasks;
 
 namespace Services
@@ -72,13 +70,18 @@ namespace Services
             return destination is ResolvedTeamsChannelDestination channelDestination ? channelDestination.ChannelId : string.Empty;
         }
 
-        public async Task<DeltaResponse> CalculateDifferenceAsync(GroupMembership sourceMembership, GroupMembership destinationMembership)
+        public async Task<DeltaResponse> CalculateDifferenceAsync(
+            GroupMembership sourceMembership,
+            MembershipDeltaSummary deltaSummary)
         {
+            if (sourceMembership == null) throw new ArgumentNullException(nameof(sourceMembership));
+            if (deltaSummary == null) throw new ArgumentNullException(nameof(deltaSummary));
+
             var deltaResponse = new DeltaResponse
             {
                 MembershipDeltaStatus = MembershipDeltaStatus.Ok,
-                MembersToAdd = new List<AzureADUser>(),
-                MembersToRemove = new List<AzureADUser>()
+                MembersToAddCount = deltaSummary.MembersToAddCount,
+                MembersToRemoveCount = deltaSummary.MembersToRemoveCount
             };
 
             var job = await _syncJobRepository.GetSyncJobAsync(sourceMembership.SyncJobId);
@@ -110,12 +113,10 @@ namespace Services
 
             if (deltaResponse.MembershipDeltaStatus == MembershipDeltaStatus.Ok)
             {
-                var delta = await CalculateDeltaAsync(sourceMembership, destinationMembership, fromto, job);
                 var isInitialSync = job.LastRunTime == SqlDateTime.MinValue.Value;
-                var threshold = isInitialSync ? new ThresholdResult() : await CalculateThresholdAsync(job, groupId, delta.Delta, delta.TotalMembersCount, sourceMembership.RunId);
-
-                deltaResponse.MembersToAdd = delta.Delta.ToAdd;
-                deltaResponse.MembersToRemove = delta.Delta.ToRemove;
+                var threshold = isInitialSync
+                    ? new ThresholdResult()
+                    : CalculateThreshold(job, groupId, deltaSummary);
 
                 if (threshold.IsThresholdExceeded)
                 {
@@ -124,7 +125,9 @@ namespace Services
 
                     if (job.IgnoreThresholdOnce)
                         await LogIgnoreThresholdOnceAsync(job, sourceMembership.RunId);
-                    else if (job.AllowEmptyDestination && (delta.Delta.ToAdd.Count > 0 && delta.TotalMembersCount == 0))
+                    else if (job.AllowEmptyDestination
+                        && deltaSummary.MembersToAddCount > 0
+                        && deltaSummary.DestinationMemberCount == 0)
                     {
                         deltaResponse.MembershipDeltaStatus = MembershipDeltaStatus.Ok;
                         await LogAllowEmptyDestinationAsync(job, sourceMembership.RunId);
@@ -147,59 +150,33 @@ namespace Services
                     return deltaResponse;
                 }
 
-                if (deltaResponse.MembersToAdd.Count == 0 && deltaResponse.MembersToRemove.Count == 0)
+                if (deltaResponse.MembersToAddCount == 0
+                    && deltaResponse.MembersToRemoveCount == 0)
+                {
                     deltaResponse.MembershipDeltaStatus = MembershipDeltaStatus.NoChanges;
+                }
             }
 
             return deltaResponse;
         }
 
-        private async Task<(MembershipDelta<AzureADUser> Delta, int TotalMembersCount)> CalculateDeltaAsync(
-                                                                                            GroupMembership sourceMembership,
-                                                                                            GroupMembership destinationMembership,
-                                                                                            string fromto,
-                                                                                            SyncJob job)
-        {
-            _logger.CalculatingMembershipDifference(fromto, destinationMembership?.SourceMembers?.Count ?? 0);
-
-            var stopwatch = Stopwatch.StartNew();
-            var sourceMembers = sourceMembership?.SourceMembers ?? new List<AzureADUser>();
-            var destinationMembers = destinationMembership?.SourceMembers ?? new List<AzureADUser>();
-
-            var sourceSet = new HashSet<AzureADUser>(sourceMembers);
-            var destinationSet = new HashSet<AzureADUser>(destinationMembers);
-
-            sourceSet.ExceptWith(destinationMembers);
-            destinationSet.ExceptWith(sourceMembers);
-
-            var toAdd = sourceSet.ToList();
-            toAdd.ForEach(x => x.MembershipAction = MembershipAction.Add);
-
-            var toRemove = destinationSet.ToList();
-            toRemove.ForEach(x => x.MembershipAction = MembershipAction.Remove);
-
-            var delta = new MembershipDelta<AzureADUser>(toAdd, toRemove);
-
-            stopwatch.Stop();
-
-            _logger.CalculatedMembershipDifference(fromto, stopwatch.Elapsed.TotalSeconds, delta.ToAdd.Count, delta.ToRemove.Count);
-
-            var destinationMemberCount = destinationMembers.Count;
-
-            return (delta, destinationMemberCount);
-        }
-
-        private async Task<ThresholdResult> CalculateThresholdAsync(SyncJob job, Guid groupId, MembershipDelta<AzureADUser> delta, int totalMembersCount, Guid runId)
+        private ThresholdResult CalculateThreshold(
+            SyncJob job,
+            Guid groupId,
+            MembershipDeltaSummary deltaSummary)
         {
             double percentageIncrease = 0;
             double percentageDecrease = 0;
             bool isAdditionsThresholdExceeded = false;
             bool isRemovalsThresholdExceeded = false;
-            totalMembersCount = totalMembersCount == 0 ? 1 : totalMembersCount;
+            var thresholdDenominator = deltaSummary.DestinationMemberCount == 0
+                ? 1
+                : deltaSummary.DestinationMemberCount;
 
             if (job.ThresholdPercentageForAdditions >= 0)
             {
-                percentageIncrease = (double)delta.ToAdd.Count / totalMembersCount * 100;
+                percentageIncrease =
+                    (double)deltaSummary.MembersToAddCount / thresholdDenominator * 100;
                 isAdditionsThresholdExceeded = percentageIncrease > job.ThresholdPercentageForAdditions;
 
                 if (isAdditionsThresholdExceeded)
@@ -210,7 +187,8 @@ namespace Services
 
             if (job.ThresholdPercentageForRemovals >= 0)
             {
-                percentageDecrease = (double)delta.ToRemove.Count / totalMembersCount * 100;
+                percentageDecrease =
+                    (double)deltaSummary.MembersToRemoveCount / thresholdDenominator * 100;
                 isRemovalsThresholdExceeded = percentageDecrease > job.ThresholdPercentageForRemovals;
 
                 if (isRemovalsThresholdExceeded)
@@ -223,8 +201,8 @@ namespace Services
             {
                 IncreaseThresholdPercentage = percentageIncrease,
                 DecreaseThresholdPercentage = percentageDecrease,
-                DeltaToAddCount = delta.ToAdd.Count,
-                DeltaToRemoveCount = delta.ToRemove.Count,
+                DeltaToAddCount = deltaSummary.MembersToAddCount,
+                DeltaToRemoveCount = deltaSummary.MembersToRemoveCount,
                 IsAdditionsThresholdExceeded = isAdditionsThresholdExceeded,
                 IsRemovalsThresholdExceeded = isRemovalsThresholdExceeded
             };

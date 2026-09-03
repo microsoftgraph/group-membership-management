@@ -1,8 +1,10 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
+using Hosts.MembershipAggregator.Helpers;
 using MembershipAggregator.Services.Entities;
 using Microsoft.Azure.Functions.Worker;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using Models;
 using Models.Helpers;
 using Models.ServiceBus;
@@ -11,7 +13,10 @@ using Repositories.Contracts.Helpers;
 using Services.Contracts;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
+using System.IO;
 using System.Text.Json;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace Hosts.MembershipAggregator
@@ -21,19 +26,24 @@ namespace Hosts.MembershipAggregator
         private readonly ILogger<DeltaCalculatorFunction> _logger;
         private readonly IBlobStorageRepository _blobStorageRepository;
         private readonly IDeltaCalculatorService _deltaCalculatorService;
+        private readonly MembershipMergeEngine _mergeEngine;
 
         public DeltaCalculatorFunction(
             ILogger<DeltaCalculatorFunction> logger,
             IBlobStorageRepository blobStorageRepository,
-            IDeltaCalculatorService deltaCalculatorService)
+            IDeltaCalculatorService deltaCalculatorService,
+            IOptions<MembershipMergeOptions> mergeOptions)
         {
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _blobStorageRepository = blobStorageRepository ?? throw new ArgumentNullException(nameof(blobStorageRepository));
             _deltaCalculatorService = deltaCalculatorService ?? throw new ArgumentNullException(nameof(deltaCalculatorService));
+            _mergeEngine = new MembershipMergeEngine(_blobStorageRepository, mergeOptions ?? throw new ArgumentNullException(nameof(mergeOptions)));
         }
 
         [Function(nameof(DeltaCalculatorFunction))]
-        public async Task<DeltaCalculatorResponse> CalculateDeltaAsync([ActivityTrigger] DeltaCalculatorRequest request)
+        public async Task<DeltaCalculatorResponse> CalculateDeltaAsync(
+            [ActivityTrigger] DeltaCalculatorRequest request,
+            CancellationToken cancellationToken = default)
         {
             using (_logger.BeginSyncJobScope(request.SyncJob, new Dictionary<string, object>
             {
@@ -44,7 +54,8 @@ namespace Hosts.MembershipAggregator
                 _logger.FunctionStarted(nameof(DeltaCalculatorFunction));
 
                 GroupMembership sourceMembership;
-                GroupMembership destinationMembership;
+                IReadOnlyList<MembershipMergeInput> inputs;
+                var destinationMemberCount = request.DestinationMemberCount;
 
                 if (request.ReadFromBlobs)
                 {
@@ -66,13 +77,11 @@ namespace Hosts.MembershipAggregator
                         };
                     }
 
-                    var sourceBlobResult = await _blobStorageRepository.DownloadFileAsync(request.SourceMembershipFilePath);
-                    _logger.SourceBlobDownloadResult(sourceBlobResult.BlobStatus.ToString(), request.SourceMembershipFilePath);
-
-                    var destinationBlobResult = await _blobStorageRepository.DownloadFileAsync(request.DestinationMembershipFilePath);
-                    _logger.DestinationBlobDownloadResult(destinationBlobResult.BlobStatus.ToString(), request.DestinationMembershipFilePath);
-
-                    if (sourceBlobResult.BlobStatus == BlobStatus.NotFound)
+                    try
+                    {
+                        sourceMembership = await ReadEnvelopeAsync(request.SourceMembershipFilePath, cancellationToken);
+                    }
+                    catch (FileNotFoundException)
                     {
                         _logger.SourceBlobNotFound();
                         return new DeltaCalculatorResponse
@@ -81,7 +90,11 @@ namespace Hosts.MembershipAggregator
                         };
                     }
 
-                    if (destinationBlobResult.BlobStatus == BlobStatus.NotFound)
+                    try
+                    {
+                        await ReadEnvelopeAsync(request.DestinationMembershipFilePath, cancellationToken);
+                    }
+                    catch (FileNotFoundException)
                     {
                         _logger.DestinationBlobNotFound();
                         return new DeltaCalculatorResponse
@@ -90,47 +103,102 @@ namespace Hosts.MembershipAggregator
                         };
                     }
 
-                    var sourceJson = TryDecompress(sourceBlobResult.Content);
-                    var destinationJson = TryDecompress(destinationBlobResult.Content);
-
-                    sourceMembership = JsonSerializer.Deserialize<GroupMembership>(sourceJson);
-                    destinationMembership = JsonSerializer.Deserialize<GroupMembership>(destinationJson);
+                    _logger.SourceBlobDownloadResult(BlobStatus.Found.ToString(), request.SourceMembershipFilePath);
+                    _logger.DestinationBlobDownloadResult(BlobStatus.Found.ToString(), request.DestinationMembershipFilePath);
+                    inputs = new[]
+                    {
+                        MembershipMergeInput.FromPath(request.SourceMembershipFilePath, MembershipMergeInputKind.Included),
+                        MembershipMergeInput.FromPath(request.DestinationMembershipFilePath, MembershipMergeInputKind.Destination)
+                    };
                 }
                 else
                 {
                     sourceMembership = JsonSerializer.Deserialize<GroupMembership>(TextCompressor.Decompress(request.SourceGroupMembership));
-                    destinationMembership = JsonSerializer.Deserialize<GroupMembership>(TextCompressor.Decompress(request.DestinationGroupMembership));
+                    var destinationMembership = JsonSerializer.Deserialize<GroupMembership>(TextCompressor.Decompress(request.DestinationGroupMembership));
+                    if (sourceMembership == null || destinationMembership == null)
+                    {
+                        throw new InvalidDataException("Legacy membership input could not be deserialized.");
+                    }
+                    destinationMemberCount = destinationMembership.SourceMembers?.Count ?? 0;
+
+                    inputs = new[]
+                    {
+                        MembershipMergeInput.FromMembers("legacy-source", MembershipMergeInputKind.Included, sourceMembership.SourceMembers ?? new List<AzureADUser>()),
+                        MembershipMergeInput.FromMembers("legacy-destination", MembershipMergeInputKind.Destination, destinationMembership.SourceMembers ?? new List<AzureADUser>())
+                    };
                 }
 
-                var response = await _deltaCalculatorService.CalculateDifferenceAsync(sourceMembership, destinationMembership);
+                var groupId = sourceMembership.Destination?.ObjectId ?? Guid.Empty;
+                if (groupId == Guid.Empty)
+                {
+                    groupId = request.GroupId != Guid.Empty
+                        ? request.GroupId
+                        : request.SyncJob.TargetOfficeGroupId;
+                }
+                if (groupId == Guid.Empty)
+                {
+                    throw new InvalidDataException("The source membership does not identify a destination group.");
+                }
+
+                var runId = sourceMembership.RunId != Guid.Empty
+                    ? sourceMembership.RunId
+                    : request.SyncJob.RunId ?? Guid.Empty;
+                if (runId == Guid.Empty)
+                {
+                    throw new InvalidDataException("The source membership does not identify a sync run.");
+                }
+
+                var mergeRequest = new MembershipMergeRequest(
+                    inputs,
+                    $"/{groupId}/delta",
+                    $"{request.SyncJob.Id:N}-{runId:N}",
+                    Guid.NewGuid(),
+                    sourceMembership);
+                var fromTo = $"to {sourceMembership.Destination}";
+                _logger.CalculatingMembershipDifference(fromTo, destinationMemberCount);
+                var stopwatch = Stopwatch.StartNew();
+                var mergeResult = await _mergeEngine.ExecuteAsync(mergeRequest, cancellationToken: cancellationToken);
+                stopwatch.Stop();
+                _logger.CalculatedMembershipDifference(fromTo, stopwatch.Elapsed.TotalSeconds, mergeResult.AddCount, mergeResult.RemoveCount);
+                var response = await _deltaCalculatorService.CalculateDifferenceAsync(
+                    sourceMembership,
+                    new MembershipDeltaSummary(
+                        mergeResult.SourceMemberCount,
+                        mergeResult.DestinationMemberCount,
+                        mergeResult.AddCount,
+                        mergeResult.RemoveCount));
 
                 _logger.FunctionCompleted(nameof(DeltaCalculatorFunction));
                 return new DeltaCalculatorResponse
                 {
-                    MembersToAddCount = response.MembersToAdd?.Count ?? 0,
-                    MembersToRemoveCount = response.MembersToRemove?.Count ?? 0,
+                    MembersToAddCount = response.MembersToAddCount,
+                    MembersToRemoveCount = response.MembersToRemoveCount,
+                    SourceMemberCount = mergeResult.SourceMemberCount,
+                    DestinationMemberCount = mergeResult.DestinationMemberCount,
                     MembershipDeltaStatus = response.MembershipDeltaStatus,
-                    CompressedMembersToAddJSON = TextCompressor.Compress(JsonSerializer.Serialize(response.MembersToAdd)),
-                    CompressedMembersToRemoveJSON = TextCompressor.Compress(JsonSerializer.Serialize(response.MembersToRemove)),
+                    MembersToAddFilePath = mergeResult.AdditionsPath,
+                    MembersToRemoveFilePath = mergeResult.RemovalsPath,
+                    DeltaManifestFilePath = mergeResult.ManifestPath,
+                    UseStagedDeltaFiles = true
                 };
             }
         }
 
-        private static string TryDecompress(string content)
+        private async Task<GroupMembership> ReadEnvelopeAsync(
+            string filePath,
+            CancellationToken cancellationToken)
         {
-            if (string.IsNullOrEmpty(content))
+            GroupMembership envelope = null;
+
+            await foreach (var _ in _blobStorageRepository.StreamMembershipAsync(filePath, details => envelope = details, cancellationToken))
             {
-                return content;
+                if (envelope != null)
+                {
+                    break;
+                }
             }
 
-            try
-            {
-                return TextCompressor.Decompress(content);
-            }
-            catch (FormatException)
-            {
-                return content;
-            }
+            return envelope ?? throw new InvalidDataException($"Membership file '{filePath}' does not contain a valid envelope.");
         }
     }
 }

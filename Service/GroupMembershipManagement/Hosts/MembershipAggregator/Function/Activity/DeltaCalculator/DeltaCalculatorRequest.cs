@@ -10,6 +10,8 @@ namespace Hosts.MembershipAggregator
         public required SyncJob SyncJob { get; init; }
         public required int CurrentPart { get; init; }
         public required int TotalParts { get; init; }
+        public Guid GroupId { get; init; }
+        public int DestinationMemberCount { get; init; }
 
         /// <summary>
         /// Compressed serialized GroupMembership
@@ -25,4 +27,3 @@ namespace Hosts.MembershipAggregator
         public required string DestinationMembershipFilePath { get; init; }
     }
 }
-

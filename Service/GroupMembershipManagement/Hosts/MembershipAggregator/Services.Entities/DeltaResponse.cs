@@ -1,14 +1,11 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
-using Models;
-using System.Collections.Generic;
-
 namespace MembershipAggregator.Services.Entities
 {
     public class DeltaResponse
     {
-        public ICollection<AzureADUser> MembersToAdd { get; set; }
-        public ICollection<AzureADUser> MembersToRemove { get; set; }
+        public int MembersToAddCount { get; set; }
+        public int MembersToRemoveCount { get; set; }
         public MembershipDeltaStatus MembershipDeltaStatus { get; set; }
     }
 }

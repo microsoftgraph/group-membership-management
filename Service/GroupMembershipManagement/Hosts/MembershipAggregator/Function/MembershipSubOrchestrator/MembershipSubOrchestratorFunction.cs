@@ -121,12 +121,15 @@ namespace Hosts.MembershipAggregator
                 SyncJob = request.SyncJob,
                 CurrentPart = currentPart,
                 TotalParts = totalParts,
+                GroupId = request.GroupId,
+                DestinationMemberCount = membershipExtractionResponse.DestinationMemberCount,
                 SourceGroupMembership = string.Empty,
                 DestinationGroupMembership = string.Empty,
                 ReadFromBlobs = true,
                 SourceMembershipFilePath = sourceMembershipFilePath,
                 DestinationMembershipFilePath = destinationMembershipFilePath
             };
+            DeltaCalculatorResponse deltaResponse = null;
             Exception primaryFailure = null;
 
             try
@@ -217,7 +220,7 @@ namespace Hosts.MembershipAggregator
 
             logger.ReadingMembershipFromBlobs(sourceMembershipFilePath, destinationMembershipFilePath);
 
-            var deltaResponse = await context.CallActivityAsync<DeltaCalculatorResponse>(nameof(DeltaCalculatorFunction), deltaCalculatorRequest);
+            deltaResponse = await context.CallActivityAsync<DeltaCalculatorResponse>(nameof(DeltaCalculatorFunction), deltaCalculatorRequest);
 
             AggregatedMembershipUploadResponse aggregatedMembershipResponse = null;
 
@@ -233,15 +236,18 @@ namespace Hosts.MembershipAggregator
                         SourceMembershipFilePath = sourceMembershipFilePath,
                         CompressedMembersToAddJson = deltaResponse.CompressedMembersToAddJSON,
                         CompressedMembersToRemoveJson = deltaResponse.CompressedMembersToRemoveJSON,
+                        MembersToAddFilePath = deltaResponse.MembersToAddFilePath,
+                        MembersToRemoveFilePath = deltaResponse.MembersToRemoveFilePath,
+                        DeltaManifestFilePath = deltaResponse.DeltaManifestFilePath,
+                        UseStagedDeltaFiles = deltaResponse.UseStagedDeltaFiles,
+                        MembersToAddCount = deltaResponse.MembersToAddCount,
+                        MembersToRemoveCount = deltaResponse.MembersToRemoveCount,
                         CurrentUtcDateTime = currentUtcDateTime
                     });
 
-                if (!aggregatedMembershipResponse.IsSuccessful)
+                var errorMessage = GetAggregatedUploadError(aggregatedMembershipResponse, deltaResponse);
+                if (errorMessage != null)
                 {
-                    var errorMessage = string.IsNullOrWhiteSpace(aggregatedMembershipResponse.ErrorMessage)
-                        ? "Aggregated membership upload failed without an error message."
-                        : aggregatedMembershipResponse.ErrorMessage;
-
                     logger.AggregatedUploadError(errorMessage);
 
                     await context.CallActivityAsync(nameof(JobStatusUpdaterFunction),
@@ -293,15 +299,18 @@ namespace Hosts.MembershipAggregator
                         SourceMembershipFilePath = sourceMembershipFilePath,
                         CompressedMembersToAddJson = deltaResponse.CompressedMembersToAddJSON,
                         CompressedMembersToRemoveJson = deltaResponse.CompressedMembersToRemoveJSON,
+                        MembersToAddFilePath = deltaResponse.MembersToAddFilePath,
+                        MembersToRemoveFilePath = deltaResponse.MembersToRemoveFilePath,
+                        DeltaManifestFilePath = deltaResponse.DeltaManifestFilePath,
+                        UseStagedDeltaFiles = deltaResponse.UseStagedDeltaFiles,
+                        MembersToAddCount = deltaResponse.MembersToAddCount,
+                        MembersToRemoveCount = deltaResponse.MembersToRemoveCount,
                         CurrentUtcDateTime = currentUtcDateTime
                     });
 
-                if (!aggregatedMembershipResponse.IsSuccessful)
+                var errorMessage = GetAggregatedUploadError(aggregatedMembershipResponse, deltaResponse);
+                if (errorMessage != null)
                 {
-                    var errorMessage = string.IsNullOrWhiteSpace(aggregatedMembershipResponse.ErrorMessage)
-                        ? "Aggregated membership upload failed without an error message."
-                        : aggregatedMembershipResponse.ErrorMessage;
-
                     logger.AggregatedUploadError(errorMessage);
 
                     await context.CallActivityAsync(nameof(JobStatusUpdaterFunction),
@@ -486,7 +495,7 @@ namespace Hosts.MembershipAggregator
             {
                 try
                 {
-                    await DeleteMembershipFilesAsync(context, deltaCalculatorRequest);
+                    await DeleteMembershipFilesAsync(context, deltaCalculatorRequest, deltaResponse);
                 }
                 catch (Exception cleanupFailure) when (primaryFailure != null)
                 {
@@ -498,33 +507,81 @@ namespace Hosts.MembershipAggregator
             }
         }
 
-        private async Task DeleteMembershipFilesAsync(TaskOrchestrationContext context, DeltaCalculatorRequest request)
+        private static string GetAggregatedUploadError(
+            AggregatedMembershipUploadResponse response,
+            DeltaCalculatorResponse deltaResponse)
+        {
+            if (response == null)
+            {
+                return "Aggregated membership upload returned no response.";
+            }
+
+            if (!response.IsSuccessful)
+            {
+                return string.IsNullOrWhiteSpace(response.ErrorMessage)
+                    ? "Aggregated membership upload failed without an error message."
+                    : response.ErrorMessage;
+            }
+
+            if (string.IsNullOrWhiteSpace(response.FilePath))
+            {
+                return "Aggregated membership upload reported success without a file path.";
+            }
+
+            var expectedMemberCount = (long)deltaResponse.MembersToAddCount + deltaResponse.MembersToRemoveCount;
+            if (response.MemberCount != expectedMemberCount)
+            {
+                return $"Aggregated membership upload reported {response.MemberCount} members; expected {expectedMemberCount}.";
+            }
+
+            return null;
+        }
+
+        private async Task DeleteMembershipFilesAsync(
+            TaskOrchestrationContext context,
+            DeltaCalculatorRequest request,
+            DeltaCalculatorResponse response)
         {
             if (request == null)
             {
                 return;
             }
 
-            if (!string.IsNullOrWhiteSpace(request.SourceMembershipFilePath))
+            var filePaths = new[]
             {
-                await context.CallActivityAsync(nameof(FileDeleterFunction), new FileDeleterRequest
+                request.SourceMembershipFilePath,
+                request.DestinationMembershipFilePath,
+                response?.MembersToAddFilePath,
+                response?.MembersToRemoveFilePath,
+                response?.DeltaManifestFilePath
+            }
+                .Where(path => !string.IsNullOrWhiteSpace(path))
+                .Distinct(StringComparer.Ordinal);
+            Exception firstFailure = null;
+
+            foreach (var filePath in filePaths)
+            {
+                try
                 {
-                    SyncJob = request.SyncJob,
-                    CurrentPart = request.CurrentPart,
-                    TotalParts = request.TotalParts,
-                    FilePath = request.SourceMembershipFilePath
-                });
+                    await context.CallActivityAsync(
+                        nameof(FileDeleterFunction),
+                        new FileDeleterRequest
+                        {
+                            SyncJob = request.SyncJob,
+                            CurrentPart = request.CurrentPart,
+                            TotalParts = request.TotalParts,
+                            FilePath = filePath
+                        });
+                }
+                catch (Exception exception)
+                {
+                    firstFailure ??= exception;
+                }
             }
 
-            if (!string.IsNullOrWhiteSpace(request.DestinationMembershipFilePath))
+            if (firstFailure != null)
             {
-                await context.CallActivityAsync(nameof(FileDeleterFunction), new FileDeleterRequest
-                {
-                    SyncJob = request.SyncJob,
-                    CurrentPart = request.CurrentPart,
-                    TotalParts = request.TotalParts,
-                    FilePath = request.DestinationMembershipFilePath
-                });
+                throw firstFailure;
             }
         }
 

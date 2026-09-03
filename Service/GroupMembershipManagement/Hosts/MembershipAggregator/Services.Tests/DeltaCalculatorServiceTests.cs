@@ -89,7 +89,7 @@ namespace Services.Tests
         /// Builds a source/destination pair whose delta is well under the job's thresholds,
         /// so the non-exceeded ("recovered") branch is taken.
         /// </summary>
-        private (GroupMembership Source, GroupMembership Destination) BuildUnderThresholdMembership()
+        private GroupMembership BuildSourceMembership()
         {
             var shared = new List<AzureADUser>();
             for (var i = 0; i < 10; i++)
@@ -105,15 +105,7 @@ namespace Services.Tests
                 SourceMembers = new List<AzureADUser>(shared)
             };
 
-            var destination = new GroupMembership
-            {
-                SyncJobId = _syncJob.Id,
-                RunId = _syncJob.RunId ?? Guid.NewGuid(),
-                Destination = new AzureADGroup { ObjectId = _targetGroupId },
-                SourceMembers = new List<AzureADUser>(shared)
-            };
-
-            return (source, destination);
+            return source;
         }
 
         /// <summary>
@@ -140,9 +132,11 @@ namespace Services.Tests
                 .Setup(x => x.GetThresholdNotificationBySyncJobIdAsync(_syncJob.Id))
                 .ReturnsAsync(unresolved);
 
-            var (source, destination) = BuildUnderThresholdMembership();
+            var source = BuildSourceMembership();
 
-            var response = await CreateService().CalculateDifferenceAsync(source, destination);
+            var response = await CreateService().CalculateDifferenceAsync(
+                source,
+                new MembershipDeltaSummary(10, 10, 0, 0));
 
             Assert.AreNotEqual(MembershipDeltaStatus.ThresholdExceeded, response.MembershipDeltaStatus);
 
@@ -164,9 +158,11 @@ namespace Services.Tests
                 .Setup(x => x.GetThresholdNotificationBySyncJobIdAsync(_syncJob.Id))
                 .ReturnsAsync((ThresholdNotification)null!);
 
-            var (source, destination) = BuildUnderThresholdMembership();
+            var source = BuildSourceMembership();
 
-            var response = await CreateService().CalculateDifferenceAsync(source, destination);
+            var response = await CreateService().CalculateDifferenceAsync(
+                source,
+                new MembershipDeltaSummary(10, 10, 0, 0));
 
             Assert.AreNotEqual(MembershipDeltaStatus.ThresholdExceeded, response.MembershipDeltaStatus);
 
@@ -195,13 +191,84 @@ namespace Services.Tests
                 .Setup(x => x.GetThresholdNotificationBySyncJobIdAsync(_syncJob.Id))
                 .ReturnsAsync(alreadyResolved);
 
-            var (source, destination) = BuildUnderThresholdMembership();
+            var source = BuildSourceMembership();
 
-            await CreateService().CalculateDifferenceAsync(source, destination);
+            await CreateService().CalculateDifferenceAsync(
+                source,
+                new MembershipDeltaSummary(10, 10, 0, 0));
 
             _notificationRepository.Verify(
                 x => x.SaveNotificationAsync(It.IsAny<ThresholdNotification>()),
                 Times.Never());
+        }
+
+        [TestMethod]
+        public async Task CalculateDifferenceAsync_UsesDestinationCountForThresholdDenominator()
+        {
+            _syncJob.ThresholdPercentageForAdditions = 50;
+            _syncJob.ThresholdPercentageForRemovals = -1;
+
+            var response = await CreateService().CalculateDifferenceAsync(
+                BuildSourceMembership(),
+                new MembershipDeltaSummary(
+                    sourceMemberCount: 100,
+                    destinationMemberCount: 2,
+                    membersToAddCount: 2,
+                    membersToRemoveCount: 0));
+
+            Assert.AreEqual(
+                MembershipDeltaStatus.ThresholdExceeded,
+                response.MembershipDeltaStatus);
+            Assert.AreEqual(2, response.MembersToAddCount);
+            Assert.AreEqual(0, response.MembersToRemoveCount);
+        }
+
+        [DataTestMethod]
+        [DataRow(20, 0, 200, 10, -1, MembershipDeltaStatus.Ok)]
+        [DataRow(21, 0, 200, 10, -1, MembershipDeltaStatus.ThresholdExceeded)]
+        [DataRow(0, 20, 200, -1, 10, MembershipDeltaStatus.Ok)]
+        [DataRow(0, 21, 200, -1, 10, MembershipDeltaStatus.ThresholdExceeded)]
+        [DataRow(1, 0, 0, 100, -1, MembershipDeltaStatus.Ok)]
+        [DataRow(2, 0, 0, 100, -1, MembershipDeltaStatus.ThresholdExceeded)]
+        [DataRow(50, 50, 200, -1, -1, MembershipDeltaStatus.Ok)]
+        public async Task CalculateDifferenceAsync_ThresholdPercentagesMatchCurrentFormula(
+            int membersToAdd,
+            int membersToRemove,
+            int destinationMembers,
+            int additionsThreshold,
+            int removalsThreshold,
+            MembershipDeltaStatus expectedStatus)
+        {
+            _syncJob.ThresholdPercentageForAdditions = additionsThreshold;
+            _syncJob.ThresholdPercentageForRemovals = removalsThreshold;
+
+            var response = await CreateService().CalculateDifferenceAsync(
+                BuildSourceMembership(),
+                new MembershipDeltaSummary(
+                    sourceMemberCount: destinationMembers + membersToAdd - membersToRemove,
+                    destinationMemberCount: destinationMembers,
+                    membersToAddCount: membersToAdd,
+                    membersToRemoveCount: membersToRemove));
+
+            Assert.AreEqual(expectedStatus, response.MembershipDeltaStatus);
+        }
+
+        [TestMethod]
+        public async Task CalculateDifferenceAsync_InitialSyncSkipsThresholdEvaluation()
+        {
+            _syncJob.LastRunTime = System.Data.SqlTypes.SqlDateTime.MinValue.Value;
+            _syncJob.ThresholdPercentageForAdditions = 0;
+            _syncJob.ThresholdPercentageForRemovals = 0;
+
+            var response = await CreateService().CalculateDifferenceAsync(
+                BuildSourceMembership(),
+                new MembershipDeltaSummary(
+                    sourceMemberCount: 2,
+                    destinationMemberCount: 0,
+                    membersToAddCount: 2,
+                    membersToRemoveCount: 0));
+
+            Assert.AreEqual(MembershipDeltaStatus.Ok, response.MembershipDeltaStatus);
         }
     }
 }

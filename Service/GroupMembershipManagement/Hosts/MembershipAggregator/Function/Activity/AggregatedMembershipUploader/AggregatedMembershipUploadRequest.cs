@@ -12,8 +12,14 @@ namespace Hosts.MembershipAggregator
         public required int TotalParts { get; init; }
         public Guid GroupId { get; set; }
         public required string SourceMembershipFilePath { get; set; }
-        public required string CompressedMembersToAddJson { get; set; }
-        public required string CompressedMembersToRemoveJson { get; set; }
+        public string CompressedMembersToAddJson { get; set; }
+        public string CompressedMembersToRemoveJson { get; set; }
+        public string MembersToAddFilePath { get; set; }
+        public string MembersToRemoveFilePath { get; set; }
+        public string DeltaManifestFilePath { get; set; }
+        public bool? UseStagedDeltaFiles { get; set; }
+        public int MembersToAddCount { get; set; }
+        public int MembersToRemoveCount { get; set; }
         public DateTime CurrentUtcDateTime { get; set; }
     }
 }

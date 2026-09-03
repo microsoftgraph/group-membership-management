@@ -96,6 +96,25 @@ namespace Services.Tests
                     return Task.CompletedTask;
                 });
             _blobStorageRepository
+                .Setup(repository => repository.UploadFileIfAbsentAsync(
+                    It.IsAny<string>(),
+                    It.IsAny<string>(),
+                    It.IsAny<CancellationToken>()))
+                .Returns((
+                    string path,
+                    string content,
+                    CancellationToken cancellationToken) =>
+                {
+                    cancellationToken.ThrowIfCancellationRequested();
+                    if (_uploadedBlobs.ContainsKey(path))
+                    {
+                        return Task.FromResult(false);
+                    }
+
+                    _uploadedBlobs[path] = content;
+                    return Task.FromResult(true);
+                });
+            _blobStorageRepository
                 .Setup(x => x.StreamMembershipAsync(
                     It.IsAny<string>(),
                     It.IsAny<Action<GroupMembership>>(),
@@ -398,8 +417,177 @@ namespace Services.Tests
             Assert.AreEqual(MembershipDeltaStatus.Ok, response.MembershipDeltaStatus);
 
             _blobStorageRepository.Verify(x => x.DownloadFileAsync(It.IsAny<string>()), Times.AtLeast(3));
-            _blobStorageRepository.Verify(x => x.UploadFileAsync(It.Is<string>(path => path.Contains("Aggregated")), It.IsAny<string>(), It.IsAny<Dictionary<string, string>>()), Times.Once());
+            VerifyAggregatedMembershipWrites(Times.Once());
+            Assert.IsNotNull(_deltaCalculatorResponse);
+            _durableContext.Verify(
+                context => context.CallActivityAsync<AggregatedMembershipUploadResponse>(
+                    nameof(AggregatedMembershipUploaderFunction),
+                    It.Is<AggregatedMembershipUploadRequest>(request =>
+                        request.MembersToAddFilePath == _deltaCalculatorResponse.MembersToAddFilePath
+                        && request.MembersToRemoveFilePath == _deltaCalculatorResponse.MembersToRemoveFilePath
+                        && request.DeltaManifestFilePath == _deltaCalculatorResponse.DeltaManifestFilePath
+                        && request.UseStagedDeltaFiles == _deltaCalculatorResponse.UseStagedDeltaFiles
+                        && request.MembersToAddCount == _deltaCalculatorResponse.MembersToAddCount
+                        && request.MembersToRemoveCount == _deltaCalculatorResponse.MembersToRemoveCount),
+                    It.IsAny<TaskOptions>()),
+                Times.Once);
+            _durableContext.Verify(
+                context => context.CallActivityAsync(
+                    nameof(FileDeleterFunction),
+                    It.IsAny<FileDeleterRequest>(),
+                    It.IsAny<TaskOptions>()),
+                Times.Exactly(5));
             _syncJobStatusService.Verify(x => x.UpdateJobStatusAsync(It.IsAny<SyncJob>(), It.IsAny<SyncStatus?>(), It.IsAny<SyncJobHistory>(), It.IsAny<string>()), Times.Never());
+        }
+
+        [TestMethod]
+        public async Task MembershipSubOrchestrator_OldShapedDeltaHistoryCompletesThroughLegacyFallback()
+        {
+            var addition = new AzureADUser
+            {
+                ObjectId = Guid.NewGuid(),
+                MembershipAction = MembershipAction.Add
+            };
+            var removal = new AzureADUser
+            {
+                ObjectId = Guid.NewGuid(),
+                MembershipAction = MembershipAction.Remove
+            };
+            var compressedAdditions = TextCompressor.Compress(
+                JsonSerializer.Serialize<ICollection<AzureADUser>>(new[] { addition }));
+            var compressedRemovals = TextCompressor.Compress(
+                JsonSerializer.Serialize<ICollection<AzureADUser>>(new[] { removal }));
+            _durableContext.Setup(context => context.CallActivityAsync<DeltaCalculatorResponse>(
+                    nameof(DeltaCalculatorFunction),
+                    It.IsAny<DeltaCalculatorRequest>(),
+                    It.IsAny<TaskOptions>()))
+                .ReturnsAsync(new DeltaCalculatorResponse
+                {
+                    CompressedMembersToAddJSON = compressedAdditions,
+                    CompressedMembersToRemoveJSON = compressedRemovals,
+                    MembersToAddCount = 1,
+                    MembersToRemoveCount = 1,
+                    MembershipDeltaStatus = MembershipDeltaStatus.Ok
+                });
+
+            var orchestratorFunction = new MembershipSubOrchestratorFunction(
+                _graphAPIService.Object,
+                _telemetryClient,
+                _multiLaneConfig);
+            var response = await orchestratorFunction.RunMembershipSubOrchestratorFunctionAsync(
+                _durableContext.Object);
+
+            Assert.AreEqual(MembershipDeltaStatus.Ok, response.MembershipDeltaStatus);
+            Assert.IsNotNull(response.FilePath);
+            Assert.AreEqual(1, response.MembersToBeAdded);
+            Assert.AreEqual(1, response.MembersToBeRemoved);
+            _durableContext.Verify(
+                context => context.CallActivityAsync<AggregatedMembershipUploadResponse>(
+                    nameof(AggregatedMembershipUploaderFunction),
+                    It.Is<AggregatedMembershipUploadRequest>(request =>
+                        request.CompressedMembersToAddJson == compressedAdditions
+                        && request.CompressedMembersToRemoveJson == compressedRemovals
+                        && request.MembersToAddFilePath == null
+                        && request.MembersToRemoveFilePath == null
+                        && request.UseStagedDeltaFiles == null),
+                    It.IsAny<TaskOptions>()),
+                Times.Once);
+        }
+
+        [TestMethod]
+        public async Task MembershipSubOrchestrator_ExplicitInlineModeIsPassedThrough()
+        {
+            var addition = new AzureADUser
+            {
+                ObjectId = Guid.NewGuid(),
+                MembershipAction = MembershipAction.Add
+            };
+            var compressedAdditions = TextCompressor.Compress(
+                JsonSerializer.Serialize<ICollection<AzureADUser>>(new[] { addition }));
+            var compressedRemovals = TextCompressor.Compress(
+                JsonSerializer.Serialize<ICollection<AzureADUser>>(Array.Empty<AzureADUser>()));
+            _durableContext.Setup(context => context.CallActivityAsync<DeltaCalculatorResponse>(
+                    nameof(DeltaCalculatorFunction),
+                    It.IsAny<DeltaCalculatorRequest>(),
+                    It.IsAny<TaskOptions>()))
+                .ReturnsAsync(new DeltaCalculatorResponse
+                {
+                    CompressedMembersToAddJSON = compressedAdditions,
+                    CompressedMembersToRemoveJSON = compressedRemovals,
+                    MembersToAddFilePath = "/missing/additions",
+                    MembersToRemoveFilePath = "/missing/removals",
+                    UseStagedDeltaFiles = false,
+                    MembersToAddCount = 1,
+                    MembersToRemoveCount = 0,
+                    MembershipDeltaStatus = MembershipDeltaStatus.Ok
+                });
+
+            var orchestratorFunction = new MembershipSubOrchestratorFunction(
+                _graphAPIService.Object,
+                _telemetryClient,
+                _multiLaneConfig);
+            var response = await orchestratorFunction.RunMembershipSubOrchestratorFunctionAsync(
+                _durableContext.Object);
+
+            Assert.AreEqual(MembershipDeltaStatus.Ok, response.MembershipDeltaStatus);
+            Assert.AreEqual(1, response.MembersToBeAdded);
+            Assert.AreEqual(0, response.MembersToBeRemoved);
+            _durableContext.Verify(
+                context => context.CallActivityAsync<AggregatedMembershipUploadResponse>(
+                    nameof(AggregatedMembershipUploaderFunction),
+                    It.Is<AggregatedMembershipUploadRequest>(request =>
+                        request.UseStagedDeltaFiles == false
+                        && request.MembersToAddFilePath == "/missing/additions"
+                        && request.MembersToRemoveFilePath == "/missing/removals"),
+                    It.IsAny<TaskOptions>()),
+                Times.Once);
+        }
+
+        [DataTestMethod]
+        [DataRow(MembershipDeltaStatus.Ok, "/empty-aggregate", 0)]
+        [DataRow(MembershipDeltaStatus.Ok, null, 1)]
+        [DataRow(MembershipDeltaStatus.ThresholdExceeded, "/empty-aggregate", 0)]
+        [DataRow(MembershipDeltaStatus.ThresholdExceeded, null, 1)]
+        public async Task MembershipSubOrchestrator_InvalidSuccessfulUploadResponse_FailsClosed(
+            MembershipDeltaStatus deltaStatus,
+            string aggregatePath,
+            int memberCount)
+        {
+            _durableContext.Setup(context => context.CallActivityAsync<DeltaCalculatorResponse>(
+                    nameof(DeltaCalculatorFunction),
+                    It.IsAny<DeltaCalculatorRequest>(),
+                    It.IsAny<TaskOptions>()))
+                .ReturnsAsync(new DeltaCalculatorResponse
+                {
+                    MembersToAddFilePath = "/delta/additions",
+                    MembersToRemoveFilePath = "/delta/removals",
+                    DeltaManifestFilePath = "/delta/manifest",
+                    UseStagedDeltaFiles = true,
+                    MembersToAddCount = 1,
+                    MembershipDeltaStatus = deltaStatus
+                });
+            _durableContext.Setup(context => context.CallActivityAsync<AggregatedMembershipUploadResponse>(
+                    nameof(AggregatedMembershipUploaderFunction),
+                    It.IsAny<AggregatedMembershipUploadRequest>(),
+                    It.IsAny<TaskOptions>()))
+                .ReturnsAsync(new AggregatedMembershipUploadResponse
+                {
+                    IsSuccessful = true,
+                    FilePath = aggregatePath,
+                    MemberCount = memberCount
+                });
+
+            var orchestratorFunction = new MembershipSubOrchestratorFunction(_graphAPIService.Object, _telemetryClient, _multiLaneConfig);
+            var response = await orchestratorFunction.RunMembershipSubOrchestratorFunctionAsync(_durableContext.Object);
+
+            Assert.AreEqual(MembershipDeltaStatus.Error, response.MembershipDeltaStatus);
+            Assert.IsTrue(string.IsNullOrWhiteSpace(response.FilePath));
+            _durableContext.Verify(
+                context => context.CallActivityAsync(
+                    nameof(JobStatusUpdaterFunction),
+                    It.Is<JobStatusUpdaterRequest>(request => request.Status == SyncStatus.Error),
+                    It.IsAny<TaskOptions>()),
+                Times.Once);
         }
 
         [TestMethod]
@@ -431,7 +619,7 @@ namespace Services.Tests
                     It.IsAny<string>(),
                     It.IsAny<Action<GroupMembership>>(),
                     It.IsAny<CancellationToken>()),
-                Times.Exactly(9));
+                Times.Exactly(17));
         }
 
         [TestMethod]
@@ -480,7 +668,17 @@ namespace Services.Tests
             Assert.AreEqual(MembershipDeltaStatus.ThresholdExceeded, response.MembershipDeltaStatus);
 
             _blobStorageRepository.Verify(x => x.DownloadFileAsync(It.IsAny<string>()), Times.AtLeast(3));
-            _blobStorageRepository.Verify(x => x.UploadFileAsync(It.Is<string>(path => path.Contains("Aggregated")), It.IsAny<string>(), It.IsAny<Dictionary<string, string>>()), Times.Once());
+            VerifyAggregatedMembershipWrites(Times.Once());
+            Assert.IsNotNull(_deltaCalculatorResponse);
+            _durableContext.Verify(
+                context => context.CallActivityAsync<AggregatedMembershipUploadResponse>(
+                    nameof(AggregatedMembershipUploaderFunction),
+                    It.Is<AggregatedMembershipUploadRequest>(request =>
+                        request.MembersToAddFilePath == _deltaCalculatorResponse.MembersToAddFilePath
+                        && request.MembersToRemoveFilePath == _deltaCalculatorResponse.MembersToRemoveFilePath
+                        && request.DeltaManifestFilePath == _deltaCalculatorResponse.DeltaManifestFilePath),
+                    It.IsAny<TaskOptions>()),
+                Times.Once);
             _syncJobStatusService.Verify(x => x.UpdateJobStatusAsync(
                                                                     It.IsAny<SyncJob>(),
                                                                     It.Is<SyncStatus?>(x => x == SyncStatus.ThresholdExceeded),
@@ -528,7 +726,7 @@ namespace Services.Tests
             Assert.AreEqual(MembershipDeltaStatus.ThresholdExceeded, response.MembershipDeltaStatus);
 
             _blobStorageRepository.Verify(x => x.DownloadFileAsync(It.IsAny<string>()), Times.AtLeast(3));
-            _blobStorageRepository.Verify(x => x.UploadFileAsync(It.Is<string>(path => path.Contains("Aggregated")), It.IsAny<string>(), It.IsAny<Dictionary<string, string>>()), Times.Once());
+            VerifyAggregatedMembershipWrites(Times.Once());
             _syncJobStatusService.Verify(x => x.UpdateJobStatusAsync(
                                                                     It.IsAny<SyncJob>(),
                                                                     It.Is<SyncStatus?>(x => x == SyncStatus.ThresholdExceeded),
@@ -550,7 +748,7 @@ namespace Services.Tests
             Assert.AreEqual(MembershipDeltaStatus.ThresholdExceeded, response.MembershipDeltaStatus);
 
             _blobStorageRepository.Verify(x => x.DownloadFileAsync(It.IsAny<string>()), Times.AtLeast(3));
-            _blobStorageRepository.Verify(x => x.UploadFileAsync(It.Is<string>(path => path.Contains("Aggregated")), It.IsAny<string>(), It.IsAny<Dictionary<string, string>>()), Times.Once());
+            VerifyAggregatedMembershipWrites(Times.Once());
 
             _notificationsQueueRepository.Verify(x => x.SendMessageAsync(It.IsAny<ServiceBusMessage>()), Times.Once());
 
@@ -595,7 +793,7 @@ namespace Services.Tests
             Assert.AreEqual(MembershipDeltaStatus.ThresholdExceeded, response.MembershipDeltaStatus);
 
             _blobStorageRepository.Verify(x => x.DownloadFileAsync(It.IsAny<string>()), Times.AtLeast(3));
-            _blobStorageRepository.Verify(x => x.UploadFileAsync(It.Is<string>(path => path.Contains("Aggregated")), It.IsAny<string>(), It.IsAny<Dictionary<string, string>>()), Times.Once());
+            VerifyAggregatedMembershipWrites(Times.Once());
 
             _notificationsQueueRepository.Verify(x => x.SendMessageAsync(It.IsAny<ServiceBusMessage>()), Times.Once());
 
@@ -620,7 +818,7 @@ namespace Services.Tests
             Assert.AreEqual(MembershipDeltaStatus.ThresholdExceeded, response.MembershipDeltaStatus);
 
             _blobStorageRepository.Verify(x => x.DownloadFileAsync(It.IsAny<string>()), Times.AtLeast(3));
-            _blobStorageRepository.Verify(x => x.UploadFileAsync(It.Is<string>(path => path.Contains("Aggregated")), It.IsAny<string>(), It.IsAny<Dictionary<string, string>>()), Times.Once());
+            VerifyAggregatedMembershipWrites(Times.Once());
 
             _notificationsQueueRepository.Verify(x => x.SendMessageAsync(It.IsAny<ServiceBusMessage>()), Times.Once());
 
@@ -657,7 +855,7 @@ namespace Services.Tests
             Assert.AreEqual(MembershipDeltaStatus.DryRun, response.MembershipDeltaStatus);
 
             _blobStorageRepository.Verify(x => x.DownloadFileAsync(It.IsAny<string>()), Times.AtLeast(3));
-            _blobStorageRepository.Verify(x => x.UploadFileAsync(It.Is<string>(path => path.Contains("Aggregated")), It.IsAny<string>(), It.IsAny<Dictionary<string, string>>()), Times.Never());
+            VerifyAggregatedMembershipWrites(Times.Never());
             _syncJobStatusService.Verify(x => x.UpdateJobStatusAsync(
                                                                     It.IsAny<SyncJob>(),
                                                                     It.Is<SyncStatus?>(x => x == SyncStatus.Idle),
@@ -689,7 +887,7 @@ namespace Services.Tests
             Assert.AreEqual(MembershipDeltaStatus.Error, response.MembershipDeltaStatus);
 
             _blobStorageRepository.Verify(x => x.DownloadFileAsync(It.IsAny<string>()), Times.AtLeast(3));
-            _blobStorageRepository.Verify(x => x.UploadFileAsync(It.Is<string>(path => path.Contains("Aggregated")), It.IsAny<string>(), It.IsAny<Dictionary<string, string>>()), Times.Never());
+            VerifyAggregatedMembershipWrites(Times.Never());
         }
 
         [TestMethod]
@@ -715,7 +913,7 @@ namespace Services.Tests
             Assert.AreEqual(MembershipDeltaStatus.Error, response.MembershipDeltaStatus);
 
             _blobStorageRepository.Verify(x => x.DownloadFileAsync(It.IsAny<string>()), Times.AtLeast(3));
-            _blobStorageRepository.Verify(x => x.UploadFileAsync(It.Is<string>(path => path.Contains("Aggregated")), It.IsAny<string>(), It.IsAny<Dictionary<string, string>>()), Times.Never());
+            VerifyAggregatedMembershipWrites(Times.Never());
         }
 
         [TestMethod]
@@ -755,9 +953,7 @@ namespace Services.Tests
             _blobStorageRepository.Verify(x => x.DeleteFileAsync(It.Is<string>(x => x.Contains("SourceMembership"))), Times.AtLeastOnce());
             _blobStorageRepository.Verify(x => x.DeleteFileAsync(It.Is<string>(x => x.Contains("DestinationMembership"))), Times.AtLeastOnce());
 
-            _blobStorageRepository.Verify(x => x.UploadFileAsync(It.Is<string>(x => x.Contains("Aggregated")),
-                                                                 It.IsAny<string>(),
-                                                                 It.IsAny<Dictionary<string, string>>()), Times.AtLeastOnce());
+            VerifyAggregatedMembershipWrites(Times.AtLeastOnce());
             _syncJobStatusService.Verify(x => x.UpdateJobStatusAsync(It.IsAny<SyncJob>(), It.IsAny<SyncStatus?>(), It.IsAny<SyncJobHistory>(), It.IsAny<string>()), Times.Never());
 
             Assert.IsNotNull(response.FilePath);
@@ -952,7 +1148,8 @@ namespace Services.Tests
 
             var usersFromDestination = usersFromQueryPart1.Concat(usersFromQueryPart2).ToList();
 
-            _blobStorageRepository.Setup(x => x.DownloadFileAsync(It.IsAny<string>()))
+            _blobStorageRepository.Setup(x => x.DownloadFileAsync(
+                    It.Is<string>(path => path.StartsWith("http://file-path"))))
                         .Callback<string>(path =>
                         {
                             List<AzureADUser> users = null;
@@ -1045,6 +1242,7 @@ namespace Services.Tests
                     It.IsAny<AggregatedMembershipUploadRequest>(),
                     It.IsAny<TaskOptions>()),
                 Times.Never);
+            VerifyAggregatedMembershipWrites(Times.Never());
         }
 
         [TestMethod]
@@ -1160,6 +1358,20 @@ namespace Services.Tests
             Assert.AreSame(expectedFailure, actualFailure);
             Assert.IsInstanceOfType<IOException>(
                 actualFailure.Data["MembershipExtractionCleanupFailure"]);
+            _durableContext.Verify(
+                context => context.CallActivityAsync(
+                    nameof(FileDeleterFunction),
+                    It.Is<FileDeleterRequest>(request =>
+                        request.FilePath == _membershipExtractionResponse.SourceMembershipFilePath),
+                    It.IsAny<TaskOptions>()),
+                Times.Once);
+            _durableContext.Verify(
+                context => context.CallActivityAsync(
+                    nameof(FileDeleterFunction),
+                    It.Is<FileDeleterRequest>(request =>
+                        request.FilePath == _membershipExtractionResponse.DestinationMembershipFilePath),
+                    It.IsAny<TaskOptions>()),
+                Times.Once);
         }
 
         private async Task<MembershipExtractionResponse> CallMembershipExtractionFunctionAsync(MembershipExtractionRequest request)
@@ -1250,8 +1462,24 @@ namespace Services.Tests
 
 		private async Task<DeltaCalculatorResponse> CallDeltaCalculatorFunctionAsync(DeltaCalculatorRequest request)
         {
-            var function = new DeltaCalculatorFunction(NullLogger<DeltaCalculatorFunction>.Instance, _blobStorageRepository.Object, _deltaCalculatorService);
-            return await function.CalculateDeltaAsync(request);
+		    var function = new DeltaCalculatorFunction(
+		        NullLogger<DeltaCalculatorFunction>.Instance,
+		        _blobStorageRepository.Object,
+		        _deltaCalculatorService,
+		        Options.Create(new MembershipMergeOptions()));
+		    return await function.CalculateDeltaAsync(request);
+		}
+
+        private void VerifyAggregatedMembershipWrites(Times times)
+        {
+            _blobStorageRepository.Verify(
+                repository => repository.WriteMembershipAsync(
+                    It.Is<string>(path => path.Contains("Aggregated")),
+                    It.IsAny<GroupMembership>(),
+                    It.IsAny<IAsyncEnumerable<AzureADUser>>(),
+                    It.IsAny<Dictionary<string, string>>(),
+                    It.IsAny<CancellationToken>()),
+                times);
         }
 
         private string GenerateFileName(SyncJob syncJob, Guid groupId, string suffix, DateTime currentUtcDateTime)

@@ -12,6 +12,6 @@ namespace Services.Contracts
     {
         Task<Guid> GetGroupIdAsync(SyncJob syncJob);
         Task<string> GetChannelIdAsync(SyncJob syncJob);
-        Task<DeltaResponse> CalculateDifferenceAsync(GroupMembership sourceMembership, GroupMembership destinationMembership);
+        Task<DeltaResponse> CalculateDifferenceAsync(GroupMembership sourceMembership, MembershipDeltaSummary deltaSummary);
     }
 }

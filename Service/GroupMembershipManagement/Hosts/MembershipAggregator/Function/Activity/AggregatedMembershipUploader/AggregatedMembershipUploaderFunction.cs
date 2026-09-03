@@ -10,8 +10,10 @@ using Repositories.Contracts;
 using Repositories.Contracts.Helpers;
 using System;
 using System.Collections.Generic;
+using System.IO;
+using System.Runtime.CompilerServices;
 using System.Text.Json;
-using System.Text.Json.Serialization;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace Hosts.MembershipAggregator
@@ -28,7 +30,9 @@ namespace Hosts.MembershipAggregator
         }
 
         [Function(nameof(AggregatedMembershipUploaderFunction))]
-        public async Task<AggregatedMembershipUploadResponse> UploadAggregatedMembershipAsync([ActivityTrigger] AggregatedMembershipUploadRequest request)
+        public async Task<AggregatedMembershipUploadResponse> UploadAggregatedMembershipAsync(
+            [ActivityTrigger] AggregatedMembershipUploadRequest request,
+            CancellationToken cancellationToken = default)
         {
             using (_logger.BeginSyncJobScope(request.SyncJob, new Dictionary<string, object>
             {
@@ -60,22 +64,70 @@ namespace Hosts.MembershipAggregator
                     {
                         return Failure($"Source membership blob was not found at path {request.SourceMembershipFilePath}.");
                     }
-                    var membersToAdd = DeserializeMembers(request.CompressedMembersToAddJson);
-                    var membersToRemove = DeserializeMembers(request.CompressedMembersToRemoveJson);
 
-                    var aggregatedMembership = BuildAggregatedMembership(request, membersToAdd, membersToRemove);
-                    var memberCount = aggregatedMembership.SourceMembers.Count;
+                    var hasAnyStagedDeltaPath =
+                        !string.IsNullOrWhiteSpace(request.MembersToAddFilePath)
+                        || !string.IsNullOrWhiteSpace(request.MembersToRemoveFilePath);
+                    var useStagedDeltaFiles = request.UseStagedDeltaFiles ?? hasAnyStagedDeltaPath;
+                    IAsyncEnumerable<AzureADUser> members;
+                    int membersToAddCount;
+                    int membersToRemoveCount;
+
+                    if (useStagedDeltaFiles)
+                    {
+                        if (string.IsNullOrWhiteSpace(request.MembersToAddFilePath)
+                            || string.IsNullOrWhiteSpace(request.MembersToRemoveFilePath))
+                        {
+                            return Failure("Both staged addition and removal paths are required.");
+                        }
+
+                        if (request.MembersToAddCount < 0 || request.MembersToRemoveCount < 0)
+                        {
+                            return Failure("Delta member counts cannot be negative.");
+                        }
+
+                        membersToAddCount = request.MembersToAddCount;
+                        membersToRemoveCount = request.MembersToRemoveCount;
+                        members = ReadStagedDeltaAsync(request, cancellationToken);
+                    }
+                    else
+                    {
+                        var hasExplicitTransportMode = request.UseStagedDeltaFiles.HasValue;
+                        if (hasExplicitTransportMode
+                            && (request.MembersToAddCount < 0 || request.MembersToRemoveCount < 0))
+                        {
+                            return Failure("Delta member counts cannot be negative.");
+                        }
+
+                        var hasDeclaredChanges =
+                            request.MembersToAddCount > 0
+                            || request.MembersToRemoveCount > 0;
+                        if (hasDeclaredChanges
+                            && string.IsNullOrWhiteSpace(request.CompressedMembersToAddJson)
+                            && string.IsNullOrWhiteSpace(request.CompressedMembersToRemoveJson))
+                        {
+                            return Failure("Delta counts report changes, but no staged or legacy delta members were supplied.");
+                        }
+
+                        var membersToAdd = DeserializeMembers(request.CompressedMembersToAddJson);
+                        var membersToRemove = DeserializeMembers(request.CompressedMembersToRemoveJson);
+                        membersToAddCount = membersToAdd.Count;
+                        membersToRemoveCount = membersToRemove.Count;
+
+                        if ((hasExplicitTransportMode || hasDeclaredChanges)
+                            && (membersToAddCount != request.MembersToAddCount
+                                || membersToRemoveCount != request.MembersToRemoveCount))
+                        {
+                            return Failure("Declared delta counts do not match the legacy delta members.");
+                        }
+
+                        members = ReadLegacyDeltaAsync(membersToAdd, membersToRemove, cancellationToken);
+                    }
 
                     var currentTime = request.CurrentUtcDateTime == default ? DateTime.UtcNow : request.CurrentUtcDateTime;
                     var filePath = MembershipFilePathHelper.BuildFilePath(request.SyncJob, request.GroupId, "Aggregated", currentTime);
-
-                    var serializerOptions = new JsonSerializerOptions
-                    {
-                        DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingDefault
-                    };
-
-                    var content = TextCompressor.Compress(JsonSerializer.Serialize(aggregatedMembership, serializerOptions));
-                    await _blobStorageRepository.UploadFileAsync(filePath, content);
+                    var aggregatedMembership = BuildAggregatedMembership(request, membersToAddCount, membersToRemoveCount);
+                    await _blobStorageRepository.WriteMembershipAsync(filePath, aggregatedMembership, members, cancellationToken: cancellationToken);
 
                     _logger.AggregatedUploadComplete(filePath);
 
@@ -83,8 +135,12 @@ namespace Hosts.MembershipAggregator
                     {
                         IsSuccessful = true,
                         FilePath = filePath,
-                        MemberCount = memberCount
+                        MemberCount = membersToAddCount + membersToRemoveCount
                     };
+                }
+                catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+                {
+                    throw;
                 }
                 catch (Exception ex)
                 {
@@ -107,8 +163,8 @@ namespace Hosts.MembershipAggregator
 
         private static GroupMembership BuildAggregatedMembership(
             AggregatedMembershipUploadRequest request,
-            ICollection<AzureADUser> membersToAdd,
-            ICollection<AzureADUser> membersToRemove)
+            int membersToAddCount,
+            int membersToRemoveCount)
         {
             var runId = request.SyncJob.RunId ?? Guid.Empty;
 
@@ -119,10 +175,6 @@ namespace Hosts.MembershipAggregator
                 Email = request.SyncJob.DestinationEmail?.Email
             };
 
-            var totalMembersToAdd = membersToAdd?.Count ?? 0;
-            var totalMembersToRemove = membersToRemove?.Count ?? 0;
-            var aggregatedMembershipMembers = ExtractAggregatedMembers(membersToAdd, membersToRemove);
-
             var aggregatedMembership = new GroupMembership
             {
                 Destination = destination,
@@ -131,40 +183,74 @@ namespace Hosts.MembershipAggregator
                 RunId = runId,
                 MembershipObtainerDryRunEnabled = request.SyncJob.IsDryRunEnabled,
                 Exclusionary = false,
-                ProjectedMemberCount = totalMembersToAdd + totalMembersToRemove,
-                TotalMembersToAdd = totalMembersToAdd,
-                TotalMembersToRemove = totalMembersToRemove,
-                Query = request.SyncJob.Query,
-                SourceMembers = aggregatedMembershipMembers
+                ProjectedMemberCount = membersToAddCount + membersToRemoveCount,
+                TotalMembersToAdd = membersToAddCount,
+                TotalMembersToRemove = membersToRemoveCount,
+                Query = request.SyncJob.Query
             };
 
             return aggregatedMembership;
         }
 
-        private static List<AzureADUser> ExtractAggregatedMembers(
-            ICollection<AzureADUser> membersToAdd,
-            ICollection<AzureADUser> membersToRemove)
+        private async IAsyncEnumerable<AzureADUser> ReadStagedDeltaAsync(
+            AggregatedMembershipUploadRequest request,
+            [EnumeratorCancellation] CancellationToken cancellationToken)
         {
-            List<AzureADUser> aggregatedMembers;
-            if (membersToAdd is List<AzureADUser> addList)
+            await foreach (var member in ReadAndValidateStagedMembersAsync(request.MembersToAddFilePath, MembershipAction.Add, request.MembersToAddCount, cancellationToken))
             {
-                aggregatedMembers = addList;
-            }
-            else if (membersToAdd != null)
-            {
-                aggregatedMembers = new List<AzureADUser>(membersToAdd);
-            }
-            else
-            {
-                aggregatedMembers = new List<AzureADUser>();
+                yield return member;
             }
 
-            if (membersToRemove != null && membersToRemove.Count > 0)
+            await foreach (var member in ReadAndValidateStagedMembersAsync(request.MembersToRemoveFilePath, MembershipAction.Remove, request.MembersToRemoveCount, cancellationToken))
             {
-                aggregatedMembers.AddRange(membersToRemove);
+                yield return member;
+            }
+        }
+
+        private async IAsyncEnumerable<AzureADUser> ReadAndValidateStagedMembersAsync(
+            string path,
+            MembershipAction expectedAction,
+            int expectedCount,
+            [EnumeratorCancellation] CancellationToken cancellationToken)
+        {
+            var actualCount = 0;
+            await foreach (var member in _blobStorageRepository.StreamMembershipAsync(path, cancellationToken: cancellationToken))
+            {
+                if (member.MembershipAction != expectedAction)
+                {
+                    throw new InvalidDataException(
+                        $"Staged delta member '{member.ObjectId}' in '{path}' has action " +
+                        $"{member.MembershipAction}, expected {expectedAction}.");
+                }
+
+                actualCount++;
+                yield return member;
             }
 
-            return aggregatedMembers;
+            if (actualCount != expectedCount)
+            {
+                throw new InvalidDataException($"Staged delta '{path}' contains {actualCount} members, expected {expectedCount}.");
+            }
+        }
+
+        private static async IAsyncEnumerable<AzureADUser> ReadLegacyDeltaAsync(
+            ICollection<AzureADUser> membersToAdd,
+            ICollection<AzureADUser> membersToRemove,
+            [EnumeratorCancellation] CancellationToken cancellationToken)
+        {
+            foreach (var member in membersToAdd)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                yield return member;
+            }
+
+            foreach (var member in membersToRemove)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                yield return member;
+            }
+
+            await Task.CompletedTask;
         }
 
         private static AggregatedMembershipUploadResponse Failure(string message)
