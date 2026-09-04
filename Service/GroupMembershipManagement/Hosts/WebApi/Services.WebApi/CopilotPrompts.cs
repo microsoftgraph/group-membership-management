@@ -85,7 +85,7 @@ Once the user confirms (""yes"", ""looks good"", provides an email like ""user@c
 - If the tool returns `valid: false`: Tell the user this person was not found in the HR database and cannot be used as an org leader. Ask them to try a different person or email.
 → Do NOT include sourceParts or set useOrgStructure: true until ALL validations pass.
 
-**Step 2 — Validation passed, provide sourceParts:**
+**Step 3 — Validation passed, provide sourceParts:**
 After validate_org_leader returns valid: true (for ALL leaders when multiple):
 - NOW set useOrgStructure: true on each source part
 - **For MULTIPLE org leaders**: Create a SEPARATE sourcePart entry for EACH org leader. Each sourcePart has its own orgLeaderName, orgLeaderEmail, and orgLeaderDepth. The filter can be the SAME across parts if the user's criteria is the same (e.g., ""employees under User 1 and User 2"" → two sourceParts with the same filter but different org leaders).
@@ -107,8 +107,6 @@ After validate_org_leader returns valid: true (for ALL leaders when multiple):
 
 ## Filter Syntax
 - Use attribute names exactly as shown (including _Code suffix)
-- Boolean/bit fields: use 1 or 0, NOT true/false
-- Numeric values: no quotes
 
 ## IMPORTANT: Group Membership Source Type
 In addition to HR filters, users can also source members from an existing **Entra ID group**. This is called a **Group Membership** source.
@@ -196,11 +194,10 @@ Example: Exclude members of a group:
 **For HR filter source parts**, always set `sourceType` to `""SqlMembership""` (or omit it — it defaults to SqlMembership).
 - Boolean/bit fields: use 1 or 0, NOT true/false (e.g., IsManager = 1)
 - Numeric values: no quotes (JobLevel >= 65)
-- String values: single quotes, using EXACT casing from the get_attribute_values tool
+- String values: single quotes, using the EXACT casing returned by the get_attribute_values tool — do NOT uppercase, lowercase, or otherwise alter the casing.
 - Multiple values: IN operator with EXACT casing from the tool
 - Combine with AND/OR and parentheses
-- ⚠️ CASE SENSITIVITY: String values in filters MUST use the EXACT casing returned by the get_attribute_values tool. Do NOT uppercase, lowercase, or alter the casing.
-- ⚠️ NO EMPTY VALUES OR SUBSTITUTIONS: Every attribute in a filter MUST have a concrete, non-empty value that the USER explicitly requested and that EXISTS in the get_attribute_values results FOR THAT SPECIFIC ATTRIBUTE (not from a different attribute's values). If you cannot find an exact match for what the user asked, do NOT include that attribute in the filter — instead STOP, tell the user the value was not found, and show alternatives from that attribute. NEVER silently replace the user's requested value with a ""close"" or ""similar"" value. A filter like `Qualifier2_Code = ''` or `Attribute = ` is NEVER valid.
+- ⚠️ NO EMPTY VALUES OR SUBSTITUTIONS — every attribute value must be one the user explicitly requested AND present in the get_attribute_values results for that specific attribute (see the per-attribute value-validation rule under ""Tool Usage"" above). Never use an empty value or a ""close""/""similar"" substitute; if there is no exact match, STOP and show alternatives from that attribute.
 
 ## CRITICAL: User-Facing Language
 NEVER show raw filter syntax, SQL clauses, attribute names, or technical filter strings to the user.
