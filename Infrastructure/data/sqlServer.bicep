@@ -32,6 +32,12 @@ param sqlSkuCapacity int
 @description('Administrators Azure AD Group Object Id')
 param sqlAdministratorsGroupId string
 
+@description('Deploy GMM across two Azure regions. A single switch for the whole multi-region posture: every tier that becomes multi-region gates on it, so enabling it provisions all of them. Today that is the SyncJobs database - a secondary SQL server, a read replica in the secondary region, and an auto-failover group.')
+param enableMultiRegion bool = false
+
+@description('Resource id of the secondary SQL server that partners the primary server in the failover group.')
+param secondaryServerId string = ''
+
 var dataKeyVaultName = '${solutionAbbreviation}-data-${environmentAbbreviation}'
 var sqlServerName = '${solutionAbbreviation}-data-${environmentAbbreviation}'
 var primaryDatabaseName = '${sqlDatabaseName}'
@@ -45,7 +51,13 @@ var sqlServerAdditionalSettings = 'MultipleActiveResultSets=False;Encrypt=True;T
 var jobsSqlDataBaseName = 'Initial Catalog=${solutionAbbreviation}-data-${environmentAbbreviation};'
 var replicaJobsSqlDataBaseName = 'Initial Catalog=${solutionAbbreviation}-data-${environmentAbbreviation}-R;'
 var replicaConnectionString = 'Server=tcp:${replicaSqlServerName}${environment().suffixes.sqlServerHostname},1433;Initial Catalog=${replicaSqlDatabaseName};${sqlServerAdditionalSettings}'
-var jobsMSIConnectionString = 'Server=tcp:${sqlServerName}${environment().suffixes.sqlServerHostname},1433;${jobsSqlDataBaseName}Authentication=Active Directory Default;Connection Timeout=90;'
+var failoverGroupName = '${sqlServerName}-fog'
+// The write endpoint resolves to the failover group listener when the multi-region topology is
+// enabled, and to the primary server otherwise.
+var writeServerHost = enableMultiRegion
+  ? '${failoverGroupName}${environment().suffixes.sqlServerHostname}'
+  : '${sqlServerName}${environment().suffixes.sqlServerHostname}'
+var jobsMSIConnectionString = 'Server=tcp:${writeServerHost},1433;${jobsSqlDataBaseName}Authentication=Active Directory Default;Connection Timeout=90;'
 var replicaJobsMSIConnectionString = 'Server=tcp:${replicaSqlServerName}${environment().suffixes.sqlServerHostname},1433;${replicaJobsSqlDataBaseName}Authentication=Active Directory Default;Connection Timeout=90;'
 
 // primary sql server resources
@@ -216,6 +228,38 @@ resource readReplicaDb 'Microsoft.Sql/servers/databases@2021-11-01-preview' = {
 }
 
 // conditional resources
+// --- multi-region failover group
+// The failover group is a child of the primary server and references the secondary server across
+// resource groups by resource id. Listing the primary database in `databases` makes Azure create
+// the partner copy on the secondary server automatically, so the partner database is never
+// declared here.
+resource failoverGroup 'Microsoft.Sql/servers/failoverGroups@2021-11-01-preview' = if (enableMultiRegion) {
+  name: failoverGroupName
+  parent: sqlServer
+  properties: {
+    // Manual only. The Automatic policy performs a forced, data-losing promotion after its grace
+    // period. The read-only listener is unused because it always resolves to the region compute
+    // is not in.
+    readWriteEndpoint: {
+      failoverPolicy: 'Manual'
+    }
+    readOnlyEndpoint: {
+      failoverPolicy: 'Disabled'
+    }
+    partnerServers: [
+      {
+        id: secondaryServerId
+      }
+    ]
+    databases: [
+      primaryDatabase.id
+    ]
+  }
+  dependsOn: [
+    readReplicaDb
+  ]
+}
+
 // --- primary sql server locks
 resource SqlDatabase_DeleteLock 'Microsoft.Authorization/locks@2020-05-01' = if(isProduction) {
   scope: primaryDatabase
@@ -278,3 +322,4 @@ module secureKeyvaultSecrets 'keyVaultSecretsSecure.bicep' = {
 
 output sqlServerId string = sqlServer.id
 output replicaSqlServerId string = replicaSqlServer.id
+output primaryDatabaseId string = primaryDatabase.id

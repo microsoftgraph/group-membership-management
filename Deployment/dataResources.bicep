@@ -35,6 +35,12 @@ param featureFlags object = {
 @description('When true, networking resources (private endpoints, DCR, DCR association) are skipped.')
 param skipNetworkingDeployment bool = true
 
+@description('Deploy GMM across two Azure regions. A single switch for the whole multi-region posture: every tier that becomes multi-region gates on it, so enabling it provisions all of them. Today that is the SyncJobs database - a secondary SQL server, a read replica in the secondary region, and an auto-failover group.')
+param enableMultiRegion bool = false
+
+@description('Azure region that hosts the secondary-region resources. Required when enableMultiRegion is true.')
+param secondaryLocation string = ''
+
 param emailReceivers array = [
   {
     name: 'Example name'
@@ -416,5 +422,7 @@ module dataInfrastructureTemplate '../Infrastructure/data/template.bicep' = {
     featureFlags: featureFlags
     skipNetworkingDeployment: skipNetworkingDeployment
     logAnalyticsRetentionInDays: logAnalyticsRetentionInDays
+    enableMultiRegion: enableMultiRegion
+    secondaryLocation: secondaryLocation
   }
 }

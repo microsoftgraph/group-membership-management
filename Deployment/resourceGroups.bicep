@@ -7,6 +7,13 @@ param computeResourceGroupName string
 param networkingResourceGroupName string
 param appConfigurationDataOwners array
 param setRBACPermissions bool = false
+param enableMultiRegion bool = false
+param secondaryLocation string = ''
+
+// Fixed naming token for the secondary region. Must match the value in the data infrastructure
+// templates, which compose the secondary resource group name the same way.
+var secondaryRegionToken = 'sec'
+var secondaryDataResourceGroupName = '${dataResourceGroupName}-${secondaryRegionToken}'
 
 resource prereqsResourceGroup 'Microsoft.Resources/resourceGroups@2023-07-01' = {
   name: prereqsResourceGroupName
@@ -26,6 +33,11 @@ resource computeResourceGroup 'Microsoft.Resources/resourceGroups@2023-07-01' = 
 resource networkingResourceGroup 'Microsoft.Resources/resourceGroups@2023-07-01' = {
   name: networkingResourceGroupName
   location: location
+}
+
+resource secondaryDataResourceGroup 'Microsoft.Resources/resourceGroups@2023-07-01' = if (enableMultiRegion) {
+  name: secondaryDataResourceGroupName
+  location: secondaryLocation
 }
 
 module appConfigurationRBAC 'rbacTemplate.bicep' = if (setRBACPermissions) {

@@ -641,10 +641,39 @@ param featureFlags object = {
   enableOpenAI: false
 }
 
+@description('Deploy GMM across two Azure regions. A single switch for the whole multi-region posture: every tier that becomes multi-region gates on it, so enabling it provisions all of them. Today that is the SyncJobs database - a secondary SQL server, a read replica in the secondary region, and an auto-failover group.')
+param enableMultiRegion bool = false
+
+@description('Azure region that hosts the secondary-region resources. Required when enableMultiRegion is true.')
+param secondaryLocation string = ''
+
 var syncJobsTopicName = 'syncJobs'
 var dcrName = '${solutionAbbreviation}-${resourceGroupClassification}-${environmentAbbreviation}-vm-dcr'
 var managementVmName = '${solutionAbbreviation}-networking-${environmentAbbreviation}-management-vm'
 var networkingResourceGroupName = '${solutionAbbreviation}-networking-${environmentAbbreviation}'
+// Fixed naming token for the secondary region. Must match the value in sqlServer.bicep.
+var secondaryRegionToken = 'sec'
+var secondaryDataResourceGroupName = '${solutionAbbreviation}-data-${environmentAbbreviation}-${secondaryRegionToken}'
+var secondarySqlServerName = '${solutionAbbreviation}-data-${environmentAbbreviation}-${secondaryRegionToken}'
+var secondaryReplicaSqlServerName = '${solutionAbbreviation}-data-${environmentAbbreviation}-${secondaryRegionToken}-R'
+var secondaryReplicaSqlDatabaseName = '${solutionAbbreviation}-data-${environmentAbbreviation}-R'
+var primaryDatabaseName = '${solutionAbbreviation}-data-${environmentAbbreviation}'
+
+// The secondary servers live in another resource group, so they are deployed as a module. This
+// module must not depend on the sqlServer module: sqlServer consumes its server id, so a reverse
+// dependency would be circular.
+module sqlServerSecondary 'sqlServerSecondary.bicep' = if (enableMultiRegion) {
+  name: 'sqlServerSecondaryTemplate'
+  scope: resourceGroup(secondaryDataResourceGroupName)
+  params: {
+    secondarySqlServerName: secondarySqlServerName
+    secondaryReplicaSqlServerName: secondaryReplicaSqlServerName
+    secondaryLocation: secondaryLocation
+    sqlAdministratorsGroupId: sqlAdministratorsGroupId
+    tenantId: tenantId
+    logAnalyticsWorkspaceId: logAnalyticsTemplate.outputs.resourceId
+  }
+}
 
 module sqlServer 'sqlServer.bicep' = {
   name: 'sqlServerTemplate'
@@ -659,9 +688,34 @@ module sqlServer 'sqlServer.bicep' = {
     sqlSkuCapacity: sqlSkuCapacity
     sqlAdministratorsGroupId: sqlAdministratorsGroupId
     tenantId: tenantId
+    enableMultiRegion: enableMultiRegion
+    secondaryServerId: enableMultiRegion ? sqlServerSecondary.outputs.serverId : ''
   }
   dependsOn: [
     dataKeyVaultTemplate
+  ]
+}
+
+// The secondary region read replica database is a sibling geo replica of the primary database, so
+// its source is the primary database rather than any replica.
+module secondaryReadReplicaDb 'secondaryReadReplicaDb.bicep' = if (enableMultiRegion) {
+  name: 'secondaryReadReplicaDbTemplate'
+  scope: resourceGroup(secondaryDataResourceGroupName)
+  params: {
+    secondaryReplicaSqlServerName: secondaryReplicaSqlServerName
+    secondarySqlServerName: secondarySqlServerName
+    primaryDatabaseName: primaryDatabaseName
+    replicaSqlDatabaseName: secondaryReplicaSqlDatabaseName
+    secondaryLocation: secondaryLocation
+    isProduction: isProduction
+    sourceDatabaseId: sqlServer.outputs.primaryDatabaseId
+    sqlSkuName: sqlSkuName
+    sqlSkuTier: sqlSkuTier
+    sqlSkuFamily: sqlSkuFamily
+    sqlSkuCapacity: sqlSkuCapacity
+  }
+  dependsOn: [
+    sqlServerSecondary
   ]
 }
 
