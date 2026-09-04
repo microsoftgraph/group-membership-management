@@ -59,6 +59,11 @@ namespace Hosts.MembershipAggregator
         public static partial void InvalidPartRegistration(this ILogger logger,
             Guid syncJobId, int partNumber, int totalParts, string filePath);
 
+        [LoggerMessage(EventId = 30026, Level = LogLevel.Error,
+            Message = "Job tracker rejected part {PartNumber} of {TotalParts} for job {SyncJobId}")]
+        public static partial void PartRegistrationRejected(this ILogger logger,
+            Guid syncJobId, int partNumber, int totalParts, Exception exception);
+
         // ── MembershipSubOrchestratorFunction ──
 
         [LoggerMessage(EventId = 30030, Level = LogLevel.Warning,

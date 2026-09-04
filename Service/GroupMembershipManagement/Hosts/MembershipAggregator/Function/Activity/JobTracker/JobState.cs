@@ -15,10 +15,13 @@ namespace Hosts.MembershipAggregator
         // The destination is also one of the entries in CompletedParts.
         public string DestinationPart { get; set; }
 
+        // A rejected registration invalidates the complete run.
+        public bool RegistrationRejected { get; set; }
+        public string RegistrationRejectionReason { get; set; }
+
         // Single-writer claim: set true the first time RegisterPartAndCheckComplete
         // observes all parts present. Prevents two racing orchestrators from both
         // proceeding to MembershipSubOrchestratorFunction / TopicMessageSenderFunction.
         public bool CompletionClaimed { get; set; }
     }
 }
-

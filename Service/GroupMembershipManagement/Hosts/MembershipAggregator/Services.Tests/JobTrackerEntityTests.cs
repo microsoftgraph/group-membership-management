@@ -3,15 +3,12 @@
 
 using Hosts.MembershipAggregator;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
+using System;
+using System.Collections.Generic;
 using System.Threading.Tasks;
 
 namespace Services.Tests
 {
-    /// <summary>
-    /// Locks in the core invariants of the atomic register-and-check fix for the
-    /// JobTrackerEntity state-loss race. See BUG_FIX_RUBBER_DUCK in the
-    /// MembershipAggregator host for the full root-cause analysis.
-    /// </summary>
     [TestClass]
     public class JobTrackerEntityTests
     {
@@ -105,14 +102,16 @@ namespace Services.Tests
             {
                 PartNumber = 2,
                 TotalParts = 2,
-                FilePath = "/part2.json"
+                FilePath = "/part2.json",
+                IsDestinationPart = true
             });
 
             var duplicateClaim = await entity.RegisterPartAndCheckComplete(new JobTrackerRegistration
             {
                 PartNumber = 2,
                 TotalParts = 2,
-                FilePath = "/part2.json"
+                FilePath = "/part2.json",
+                IsDestinationPart = true
             });
 
             Assert.IsTrue(firstClaim.IsComplete ^ duplicateClaim.IsComplete,
@@ -121,12 +120,16 @@ namespace Services.Tests
                 "First caller at completion boundary should claim it.");
             Assert.IsFalse(duplicateClaim.IsComplete,
                 "Subsequent caller must not re-claim completion.");
+            Assert.IsFalse(firstClaim.RegistrationRejected);
+            Assert.IsFalse(duplicateClaim.RegistrationRejected);
+            Assert.IsNull(firstClaim.RegistrationRejectionReason);
+            Assert.IsNull(duplicateClaim.RegistrationRejectionReason);
             Assert.AreEqual(2, duplicateClaim.CompletedCount,
                 "CompletedCount should remain stable after completion claimed.");
         }
 
         [TestMethod]
-        public async Task RegisterPartAndCheckComplete_LateRegistration_DoesNotReClaimCompletion()
+        public async Task RegisterPartAndCheckComplete_OutOfRangeLateRegistration_IsRejected()
         {
             // Once CompletionClaimed=true, any further registration (including a new
             // PartNumber that pushes count beyond TotalParts) must not re-trigger
@@ -144,27 +147,36 @@ namespace Services.Tests
             {
                 PartNumber = 2,
                 TotalParts = 2,
-                FilePath = "/part2.json"
+                FilePath = "/part2.json",
+                IsDestinationPart = true
             });
             Assert.IsTrue(completion.IsComplete);
 
-            var lateArrival = await entity.RegisterPartAndCheckComplete(new JobTrackerRegistration
+            var rejection = await entity.RegisterPartAndCheckComplete(new JobTrackerRegistration
             {
                 PartNumber = 3,
                 TotalParts = 2,
                 FilePath = "/part3.json"
             });
 
-            Assert.IsFalse(lateArrival.IsComplete,
-                "Post-completion registrations must not re-claim completion.");
+            Assert.IsTrue(rejection.RegistrationRejected);
+            StringAssert.Contains(rejection.RegistrationRejectionReason, "PartNumber=3");
+            var replay = await entity.RegisterPartAndCheckComplete(new JobTrackerRegistration
+            {
+                PartNumber = 2,
+                TotalParts = 2,
+                FilePath = "/part2.json",
+                IsDestinationPart = true
+            });
+            Assert.IsTrue(replay.RegistrationRejected);
+            Assert.IsFalse(replay.IsComplete);
+            Assert.AreEqual(rejection.RegistrationRejectionReason, replay.RegistrationRejectionReason);
+            Assert.AreEqual(2, replay.CompletedCount);
         }
 
         [TestMethod]
-        public async Task RegisterPartAndCheckComplete_TotalPartsOnlySetOnce()
+        public async Task RegisterPartAndCheckComplete_TotalPartsMismatch_RejectsRunAtomically()
         {
-            // D3 invariant: a later caller that disagrees on TotalParts must not
-            // overwrite the entity's view. First-writer wins.
-
             var entity = new JobTrackerEntity();
 
             await entity.RegisterPartAndCheckComplete(new JobTrackerRegistration
@@ -174,19 +186,174 @@ namespace Services.Tests
                 FilePath = "/part1.json"
             });
 
-            var second = await entity.RegisterPartAndCheckComplete(new JobTrackerRegistration
+            var rejection = await entity.RegisterPartAndCheckComplete(new JobTrackerRegistration
             {
                 PartNumber = 2,
                 TotalParts = 99,
                 FilePath = "/part2.json"
             });
 
-            Assert.AreEqual(3, second.TotalParts,
-                "TotalParts must remain at its first-set value.");
+            Assert.IsTrue(rejection.RegistrationRejected);
+            StringAssert.Contains(rejection.RegistrationRejectionReason, "part 2");
+            StringAssert.Contains(rejection.RegistrationRejectionReason, "expected 3");
+            var replay = await entity.RegisterPartAndCheckComplete(new JobTrackerRegistration
+            {
+                PartNumber = 1,
+                TotalParts = 3,
+                FilePath = "/part1.json"
+            });
+            Assert.IsTrue(replay.RegistrationRejected);
+            Assert.IsFalse(replay.IsComplete);
+            Assert.AreEqual(rejection.RegistrationRejectionReason, replay.RegistrationRejectionReason);
+            Assert.AreEqual(3, replay.TotalParts);
+            Assert.AreEqual(1, replay.CompletedCount);
         }
 
         [TestMethod]
-        public async Task RegisterPartAndCheckComplete_NullRegistration_ReturnsCurrentStateSafely()
+        public async Task RegisterPartAndCheckComplete_DifferentPartUsingExistingPath_RejectsRunAtomically()
+        {
+            var entity = new JobTrackerEntity();
+
+            await entity.RegisterPartAndCheckComplete(new JobTrackerRegistration
+            {
+                PartNumber = 1,
+                TotalParts = 2,
+                FilePath = "/source.json"
+            });
+
+            var rejection = await entity.RegisterPartAndCheckComplete(new JobTrackerRegistration
+            {
+                PartNumber = 2,
+                TotalParts = 2,
+                FilePath = "/source.json",
+                IsDestinationPart = true
+            });
+
+            Assert.IsTrue(rejection.RegistrationRejected);
+            StringAssert.Contains(rejection.RegistrationRejectionReason, "part 2");
+            StringAssert.Contains(rejection.RegistrationRejectionReason, "part 1");
+            StringAssert.Contains(rejection.RegistrationRejectionReason, "/source.json");
+            var laterPart = await entity.RegisterPartAndCheckComplete(new JobTrackerRegistration
+            {
+                PartNumber = 2,
+                TotalParts = 2,
+                FilePath = "/destination.json",
+                IsDestinationPart = true
+            });
+            Assert.IsTrue(laterPart.RegistrationRejected);
+            Assert.IsFalse(laterPart.IsComplete);
+            Assert.AreEqual(rejection.RegistrationRejectionReason, laterPart.RegistrationRejectionReason);
+        }
+
+        [TestMethod]
+        public async Task RegisterPartAndCheckComplete_ExistingStateWithDuplicatePaths_IsRejected()
+        {
+            var entity = new TestableJobTrackerEntity();
+            entity.SetState(new JobState
+            {
+                TotalParts = 3,
+                CompletedParts = new Dictionary<int, string>
+                {
+                    [1] = "/duplicate.json",
+                    [2] = "/duplicate.json"
+                }
+            });
+
+            var rejection = await entity.RegisterPartAndCheckComplete(new JobTrackerRegistration
+            {
+                PartNumber = 3,
+                TotalParts = 3,
+                FilePath = "/destination.json",
+                IsDestinationPart = true
+            });
+
+            Assert.IsTrue(rejection.RegistrationRejected);
+            StringAssert.Contains(rejection.RegistrationRejectionReason, "parts 1 and 2");
+            StringAssert.Contains(rejection.RegistrationRejectionReason, "/duplicate.json");
+            var replay = await entity.RegisterPartAndCheckComplete(new JobTrackerRegistration
+            {
+                PartNumber = 3,
+                TotalParts = 3,
+                FilePath = "/destination.json",
+                IsDestinationPart = true
+            });
+            Assert.IsTrue(replay.RegistrationRejected);
+            Assert.AreEqual(rejection.RegistrationRejectionReason, replay.RegistrationRejectionReason);
+        }
+
+        [TestMethod]
+        public async Task RegisterPartAndCheckComplete_ExistingStateWithNegativeTotalParts_IsRejected()
+        {
+            await AssertStateRejectedAsync(
+                new JobState { TotalParts = -1 },
+                "TotalParts=-1");
+        }
+
+        [TestMethod]
+        public async Task RegisterPartAndCheckComplete_UninitializedStateWithLifecycleData_IsRejected()
+        {
+            await AssertStateRejectedAsync(
+                new JobState
+                {
+                    CompletedParts = new Dictionary<int, string>
+                    {
+                        [1] = "/source.json"
+                    }
+                },
+                "without an initialized total-parts value");
+        }
+
+        [TestMethod]
+        public async Task RegisterPartAndCheckComplete_CompleteStateWithoutDestination_IsRejected()
+        {
+            await AssertStateRejectedAsync(
+                new JobState
+                {
+                    TotalParts = 2,
+                    CompletedParts = new Dictionary<int, string>
+                    {
+                        [1] = "/source.json",
+                        [2] = "/other-source.json"
+                    }
+                },
+                "without a destination part");
+        }
+
+        [TestMethod]
+        public async Task RegisterPartAndCheckComplete_CompleteStateWithoutClaim_IsRejected()
+        {
+            await AssertStateRejectedAsync(
+                new JobState
+                {
+                    TotalParts = 2,
+                    CompletedParts = new Dictionary<int, string>
+                    {
+                        [1] = "/source.json",
+                        [2] = "/destination.json"
+                    },
+                    DestinationPart = "/destination.json"
+                },
+                "completion claim is inconsistent");
+        }
+
+        [TestMethod]
+        public async Task RegisterPartAndCheckComplete_IncompleteStateWithClaim_IsRejected()
+        {
+            await AssertStateRejectedAsync(
+                new JobState
+                {
+                    TotalParts = 2,
+                    CompletedParts = new Dictionary<int, string>
+                    {
+                        [1] = "/source.json"
+                    },
+                    CompletionClaimed = true
+                },
+                "completion claim is inconsistent");
+        }
+
+        [TestMethod]
+        public async Task RegisterPartAndCheckComplete_ConflictingPartPath_RejectsRunAtomically()
         {
             var entity = new JobTrackerEntity();
 
@@ -197,17 +364,31 @@ namespace Services.Tests
                 FilePath = "/part1.json"
             });
 
-            var result = await entity.RegisterPartAndCheckComplete(null);
+            var rejection = await entity.RegisterPartAndCheckComplete(new JobTrackerRegistration
+            {
+                PartNumber = 1,
+                TotalParts = 2,
+                FilePath = "/different-part1.json"
+            });
 
-            Assert.IsFalse(result.IsComplete);
-            Assert.AreEqual(1, result.CompletedCount);
-            Assert.AreEqual(2, result.TotalParts);
-            Assert.AreEqual(0, result.CompletedParts.Count);
-            Assert.IsNull(result.DestinationPart);
+            Assert.IsTrue(rejection.RegistrationRejected);
+            StringAssert.Contains(rejection.RegistrationRejectionReason, "part 1");
+            StringAssert.Contains(rejection.RegistrationRejectionReason, "/part1.json");
+            StringAssert.Contains(rejection.RegistrationRejectionReason, "/different-part1.json");
+            var replay = await entity.RegisterPartAndCheckComplete(new JobTrackerRegistration
+            {
+                PartNumber = 1,
+                TotalParts = 2,
+                FilePath = "/part1.json"
+            });
+            Assert.IsTrue(replay.RegistrationRejected);
+            Assert.IsFalse(replay.IsComplete);
+            Assert.AreEqual(rejection.RegistrationRejectionReason, replay.RegistrationRejectionReason);
+            Assert.AreEqual(1, replay.CompletedCount);
         }
 
         [TestMethod]
-        public async Task RegisterPartAndCheckComplete_CompletionSnapshot_IsIndependentOfLaterRegistrations()
+        public async Task RegisterPartAndCheckComplete_SecondDestinationPart_RejectsRunAtomically()
         {
             var entity = new JobTrackerEntity();
 
@@ -215,27 +396,192 @@ namespace Services.Tests
             {
                 PartNumber = 1,
                 TotalParts = 2,
-                FilePath = "/part1.json"
+                FilePath = "/destination.json",
+                IsDestinationPart = true
             });
 
+            var rejection = await entity.RegisterPartAndCheckComplete(new JobTrackerRegistration
+            {
+                PartNumber = 2,
+                TotalParts = 2,
+                FilePath = "/second-destination.json",
+                IsDestinationPart = true
+            });
+
+            Assert.IsTrue(rejection.RegistrationRejected);
+            StringAssert.Contains(rejection.RegistrationRejectionReason, "part 2");
+            StringAssert.Contains(rejection.RegistrationRejectionReason, "/destination.json");
+            var samePathRejection = await entity.RegisterPartAndCheckComplete(new JobTrackerRegistration
+            {
+                PartNumber = 2,
+                TotalParts = 2,
+                FilePath = "/destination.json",
+                IsDestinationPart = true
+            });
+            Assert.IsTrue(samePathRejection.RegistrationRejected);
+            Assert.AreEqual(
+                rejection.RegistrationRejectionReason,
+                samePathRejection.RegistrationRejectionReason);
+
+            var laterSourcePart = await entity.RegisterPartAndCheckComplete(new JobTrackerRegistration
+            {
+                PartNumber = 2,
+                TotalParts = 2,
+                FilePath = "/source.json"
+            });
+            Assert.IsTrue(laterSourcePart.RegistrationRejected);
+            Assert.IsFalse(laterSourcePart.IsComplete);
+            Assert.AreEqual(rejection.RegistrationRejectionReason, laterSourcePart.RegistrationRejectionReason);
+        }
+
+        [TestMethod]
+        public async Task RegisterPartAndCheckComplete_ExactDuplicateBeforeCompletion_IsAccepted()
+        {
+            var entity = new JobTrackerEntity();
+            var registration = new JobTrackerRegistration
+            {
+                PartNumber = 1,
+                TotalParts = 2,
+                FilePath = "/source.json"
+            };
+
+            var first = await entity.RegisterPartAndCheckComplete(registration);
+            var replay = await entity.RegisterPartAndCheckComplete(registration);
+
+            Assert.IsFalse(first.IsComplete);
+            Assert.IsFalse(replay.IsComplete);
+            Assert.IsFalse(first.RegistrationRejected);
+            Assert.IsFalse(replay.RegistrationRejected);
+            Assert.IsNull(first.RegistrationRejectionReason);
+            Assert.IsNull(replay.RegistrationRejectionReason);
+            Assert.AreEqual(1, replay.CompletedCount);
+            Assert.AreEqual(2, replay.TotalParts);
+        }
+
+        [TestMethod]
+        public async Task RegisterPartAndCheckComplete_ReturnedSnapshotCannotMutateEntityState()
+        {
+            var entity = new JobTrackerEntity();
+            await entity.RegisterPartAndCheckComplete(new JobTrackerRegistration
+            {
+                PartNumber = 1,
+                TotalParts = 2,
+                FilePath = "/source.json"
+            });
             var completion = await entity.RegisterPartAndCheckComplete(new JobTrackerRegistration
             {
                 PartNumber = 2,
                 TotalParts = 2,
-                FilePath = "/part2.json",
+                FilePath = "/destination.json",
                 IsDestinationPart = true
             });
 
-            await entity.RegisterPartAndCheckComplete(new JobTrackerRegistration
+            completion.CompletedParts[1] = "/changed-by-caller.json";
+
+            var rejection = await entity.RegisterPartAndCheckComplete(new JobTrackerRegistration
             {
-                PartNumber = 3,
+                PartNumber = 1,
                 TotalParts = 2,
-                FilePath = "/part3.json"
+                FilePath = "/different-source.json"
             });
 
-            Assert.AreEqual(2, completion.CompletedParts.Count);
-            Assert.IsFalse(completion.CompletedParts.ContainsKey(3));
-            Assert.AreEqual("/part2.json", completion.DestinationPart);
+            Assert.IsTrue(rejection.RegistrationRejected);
+            StringAssert.Contains(rejection.RegistrationRejectionReason, "/source.json");
+            Assert.IsFalse(
+                rejection.RegistrationRejectionReason.Contains(
+                    "/changed-by-caller.json",
+                    StringComparison.Ordinal));
+        }
+
+        [TestMethod]
+        public async Task RegisterPartAndCheckComplete_AllPartsWithoutDestination_IsRejected()
+        {
+            var entity = new JobTrackerEntity();
+            await entity.RegisterPartAndCheckComplete(new JobTrackerRegistration
+            {
+                PartNumber = 1,
+                TotalParts = 2,
+                FilePath = "/source1.json"
+            });
+
+            var rejection = await entity.RegisterPartAndCheckComplete(new JobTrackerRegistration
+            {
+                PartNumber = 2,
+                TotalParts = 2,
+                FilePath = "/source2.json"
+            });
+
+            Assert.IsTrue(rejection.RegistrationRejected);
+            StringAssert.Contains(rejection.RegistrationRejectionReason, "destination");
+            var correctedRegistration = await entity.RegisterPartAndCheckComplete(
+                new JobTrackerRegistration
+                {
+                    PartNumber = 2,
+                    TotalParts = 2,
+                    FilePath = "/source2.json",
+                    IsDestinationPart = true
+                });
+            Assert.IsTrue(correctedRegistration.RegistrationRejected);
+            Assert.IsFalse(correctedRegistration.IsComplete);
+            Assert.AreEqual(
+                rejection.RegistrationRejectionReason,
+                correctedRegistration.RegistrationRejectionReason);
+        }
+
+        [TestMethod]
+        public async Task RegisterPartAndCheckComplete_NullRegistration_IsRejected()
+        {
+            var entity = new JobTrackerEntity();
+
+            var rejection = await entity.RegisterPartAndCheckComplete(null);
+
+            Assert.IsTrue(rejection.RegistrationRejected);
+            StringAssert.Contains(rejection.RegistrationRejectionReason, "registration");
+            var laterRegistration = await entity.RegisterPartAndCheckComplete(new JobTrackerRegistration
+            {
+                PartNumber = 1,
+                TotalParts = 1,
+                FilePath = "/destination.json",
+                IsDestinationPart = true
+            });
+            Assert.IsTrue(laterRegistration.RegistrationRejected);
+            Assert.IsFalse(laterRegistration.IsComplete);
+            Assert.AreEqual(
+                rejection.RegistrationRejectionReason,
+                laterRegistration.RegistrationRejectionReason);
+        }
+
+        private static async Task AssertStateRejectedAsync(JobState state, string expectedMessage)
+        {
+            var entity = new TestableJobTrackerEntity();
+            entity.SetState(state);
+
+            var rejection = await entity.RegisterPartAndCheckComplete(new JobTrackerRegistration
+            {
+                PartNumber = 1,
+                TotalParts = state.TotalParts > 0 ? state.TotalParts : 1,
+                FilePath = "/incoming.json"
+            });
+
+            Assert.IsTrue(rejection.RegistrationRejected);
+            StringAssert.Contains(rejection.RegistrationRejectionReason, expectedMessage);
+            var replay = await entity.RegisterPartAndCheckComplete(new JobTrackerRegistration
+            {
+                PartNumber = 1,
+                TotalParts = state.TotalParts > 0 ? state.TotalParts : 1,
+                FilePath = "/incoming.json"
+            });
+            Assert.IsTrue(replay.RegistrationRejected);
+            Assert.IsFalse(replay.IsComplete);
+            Assert.AreEqual(rejection.RegistrationRejectionReason, replay.RegistrationRejectionReason);
+        }
+
+        private sealed class TestableJobTrackerEntity : JobTrackerEntity
+        {
+            public void SetState(JobState state)
+            {
+                State = state;
+            }
         }
     }
 }

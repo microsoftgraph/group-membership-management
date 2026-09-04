@@ -73,9 +73,6 @@ namespace Hosts.MembershipAggregator
                     string.IsNullOrEmpty(request.FilePath))
                 {
                     logger.InvalidPartRegistration(request.SyncJob.Id, currentPart, totalParts, request.FilePath);
-                    throw new ArgumentException(
-                        $"Invalid part registration: PartNumber={currentPart}, " +
-                        $"TotalParts={totalParts}, FilePath='{request.FilePath}'.");
                 }
 
                 logger.GroupIdRetrieved(request.SyncJob.Id, groupId);
@@ -89,10 +86,31 @@ namespace Hosts.MembershipAggregator
                     IsDestinationPart = request.IsDestinationPart
                 };
 
-                var completion = await context.Entities.CallEntityAsync<JobTrackerCompletionResult>(
-                    entityInstanceId,
-                    nameof(JobTrackerEntity.RegisterPartAndCheckComplete),
-                    input: registration);
+                JobTrackerCompletionResult completion;
+                try
+                {
+                    completion = await context.Entities.CallEntityAsync<JobTrackerCompletionResult>(
+                        entityInstanceId,
+                        nameof(JobTrackerEntity.RegisterPartAndCheckComplete),
+                        input: registration);
+
+                    if (completion.RegistrationRejected)
+                    {
+                        var rejectionReason = string.IsNullOrWhiteSpace(completion.RegistrationRejectionReason)
+                            ? $"Job tracker rejected part {registration.PartNumber} without a rejection reason."
+                            : completion.RegistrationRejectionReason;
+                        throw new InvalidOperationException(rejectionReason);
+                    }
+                }
+                catch (Exception exception) when (exception is not OperationCanceledException)
+                {
+                    logger.PartRegistrationRejected(
+                        request.SyncJob.Id,
+                        request.PartNumber,
+                        request.PartsCount,
+                        exception);
+                    throw;
+                }
 
                 allPartsCompleted = completion.IsComplete;
 

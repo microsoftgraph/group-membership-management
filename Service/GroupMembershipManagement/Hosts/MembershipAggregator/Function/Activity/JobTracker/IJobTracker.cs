@@ -22,6 +22,8 @@ namespace Hosts.MembershipAggregator
     public class JobTrackerCompletionResult
     {
         public bool IsComplete { get; set; }
+        public bool RegistrationRejected { get; set; }
+        public string RegistrationRejectionReason { get; set; }
         public int CompletedCount { get; set; }
         public int TotalParts { get; set; }
         public Dictionary<int, string> CompletedParts { get; set; } = new Dictionary<int, string>();
