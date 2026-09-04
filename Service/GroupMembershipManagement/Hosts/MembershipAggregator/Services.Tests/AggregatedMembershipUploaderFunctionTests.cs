@@ -374,6 +374,29 @@ namespace Services.Tests
         }
 
         [TestMethod]
+        public async Task UploadAggregatedMembershipAsync_WithOutOfMemoryException_PropagatesFailure()
+        {
+            var sourcePath = $"/{_groupId}/source.json";
+            _blobStorageRepository
+                .Setup(repository => repository.GetBlobMetadataAsync(sourcePath))
+                .ThrowsAsync(new OutOfMemoryException("memory exhausted"));
+            var request = new AggregatedMembershipUploadRequest
+            {
+                SyncJob = _syncJob,
+                CurrentPart = 1,
+                TotalParts = 1,
+                GroupId = _groupId,
+                SourceMembershipFilePath = sourcePath,
+                CurrentUtcDateTime = DateTime.UtcNow
+            };
+
+            var exception = await Assert.ThrowsExceptionAsync<OutOfMemoryException>(
+                () => _function.UploadAggregatedMembershipAsync(request));
+
+            Assert.AreEqual("memory exhausted", exception.Message);
+        }
+
+        [TestMethod]
         public async Task UploadAggregatedMembershipAsync_WhenSourceBlobMissing_ReturnsFailure()
         {
             // Arrange

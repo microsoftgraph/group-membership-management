@@ -149,6 +149,10 @@ namespace Hosts.MembershipAggregator
                 {
                     throw;
                 }
+                catch (OutOfMemoryException)
+                {
+                    throw;
+                }
                 catch (Exception ex)
                 {
                     _logger.MembershipExtractionError(ex, ex.Message);

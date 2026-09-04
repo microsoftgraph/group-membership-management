@@ -165,6 +165,23 @@ namespace Services.Tests
         }
 
         [TestMethod]
+        public async Task ExtractMembershipAsync_WithOutOfMemoryException_PropagatesFailure()
+        {
+            var request = CreateValidRequest();
+            _blobStorageRepository
+                .Setup(repository => repository.StreamMembershipAsync(
+                    It.IsAny<string>(),
+                    It.IsAny<Action<GroupMembership>>(),
+                    It.IsAny<CancellationToken>()))
+                .Throws(new OutOfMemoryException("memory exhausted"));
+
+            var exception = await Assert.ThrowsExceptionAsync<OutOfMemoryException>(
+                () => _membershipExtractionFunction.ExtractMembershipAsync(request));
+
+            Assert.AreEqual("memory exhausted", exception.Message);
+        }
+
+        [TestMethod]
         public async Task ExtractMembershipAsync_WithNoSourceGroups_ReturnsFailureResponse()
         {
             // Arrange

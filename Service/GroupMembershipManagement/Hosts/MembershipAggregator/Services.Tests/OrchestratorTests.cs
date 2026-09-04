@@ -431,6 +431,47 @@ namespace Services.Tests
         }
 
         [TestMethod]
+        public async Task ActivityOutOfMemoryFailureRecordsErrorWithoutDispatchingAsync()
+        {
+            var expectedFailure = new OutOfMemoryException("memory exhausted");
+            _durableContext
+                .Setup(context =>
+                    context.CallSubOrchestratorAsync<MembershipSubOrchestratorResponse>(
+                        nameof(MembershipSubOrchestratorFunction),
+                        It.IsAny<MembershipSubOrchestratorRequest>(),
+                        It.IsAny<TaskOptions>()))
+                .ThrowsAsync(expectedFailure);
+            var orchestratorFunction = new OrchestratorFunction();
+
+            var actualFailure = await Assert.ThrowsExceptionAsync<OutOfMemoryException>(
+                () => orchestratorFunction.RunOrchestratorAsync(
+                    _durableContext.Object));
+
+            Assert.AreSame(expectedFailure, actualFailure);
+            _durableContext.Verify(
+                context => context.CallActivityAsync(
+                    nameof(TopicMessageSenderFunction),
+                    It.IsAny<TopicMessageSenderRequest>(),
+                    It.IsAny<TaskOptions>()),
+                Times.Never);
+            _durableContext.Verify(
+                context => context.CallActivityAsync(
+                    nameof(JobStatusUpdaterFunction),
+                    It.Is<JobStatusUpdaterRequest>(request =>
+                        request.Status == SyncStatus.Error),
+                    It.IsAny<TaskOptions>()),
+                Times.Once);
+            _durableContext.Verify(
+                context => context.CallActivityAsync(
+                    nameof(TelemetryTrackerFunction),
+                    It.Is<TelemetryTrackerRequest>(request =>
+                        request.JobStatus == SyncStatus.Error &&
+                        request.ResultStatus == ResultStatus.Failure),
+                    It.IsAny<TaskOptions>()),
+                Times.Once);
+        }
+
+        [TestMethod]
         public async Task RejectedRunCannotDispatchAfterRemainingPartArrivesAsync()
         {
             await _jobTrackerEntity.RegisterPartAndCheckComplete(new JobTrackerRegistration
