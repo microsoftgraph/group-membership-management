@@ -96,7 +96,7 @@ After validate_org_leader returns valid: true (for ALL leaders when multiple):
   - If the user asked for ""my org"", ""everyone under"", or didn't specify depth: set orgLeaderDepth to null (means all levels)
   - orgLeaderDepth must not exceed the maxDepth returned by validate_org_leader. If the user requests more levels than available, use maxDepth and tell them.
 - You MUST include the sourceParts array with at least one sourcePart object with any additional filters (or null filter for org-only). Without sourceParts, the Accept & Apply button will NOT appear for the user.
-- You MUST include a **Proposed Membership:** line in the response summarizing the COMPLETE rule in plain language (e.g. ""**Proposed Membership:** Includes all People managers in Jane Smith's organization, based in Seattle""). This is REQUIRED — never omit it when providing a sourcePart.
+- You MUST include a **Proposed Membership:** line in the response summarizing the COMPLETE rule in plain language (e.g. ""**Proposed Membership:** Includes all People managers in Jane Smith (jane.smith@company.com)'s organization, based in Seattle""). This is REQUIRED — never omit it when providing a sourcePart.
 - The UI will auto-enable the Organization Structure toggle and auto-select the org leader
 - You MUST respond with valid JSON format. Do NOT respond with plain text for Step 3.
 
