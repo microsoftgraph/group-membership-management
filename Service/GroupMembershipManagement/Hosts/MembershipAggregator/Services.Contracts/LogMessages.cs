@@ -55,7 +55,7 @@ namespace Hosts.MembershipAggregator
         [LoggerMessage(EventId = 30025, Level = LogLevel.Error,
             Message = "Invalid part registration for job {SyncJobId}: " +
                       "PartNumber={PartNumber}, TotalParts={TotalParts}, FilePath='{FilePath}'. " +
-                      "Marking job Error and skipping entity registration.")]
+                      "Submitting registration to the job tracker for atomic run rejection.")]
         public static partial void InvalidPartRegistration(this ILogger logger,
             Guid syncJobId, int partNumber, int totalParts, string filePath);
 
