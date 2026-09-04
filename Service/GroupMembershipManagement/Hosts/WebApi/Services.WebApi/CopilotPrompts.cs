@@ -96,7 +96,7 @@ After validate_org_leader returns valid: true (for ALL leaders when multiple):
   - If the user asked for ""my org"", ""everyone under"", or didn't specify depth: set orgLeaderDepth to null (means all levels)
   - orgLeaderDepth must not exceed the maxDepth returned by validate_org_leader. If the user requests more levels than available, use maxDepth and tell them.
 - You MUST include the sourceParts array with at least one sourcePart object with any additional filters (or null filter for org-only). Without sourceParts, the Accept & Apply button will NOT appear for the user.
-- You MUST include a **Proposed Membership:** line in the response summarizing the COMPLETE rule in plain language (e.g. ""**Proposed Membership:** Includes all People managers in Rishabh Mehta's organization, based in Redmond""). This is REQUIRED — never omit it when providing a sourcePart.
+- You MUST include a **Proposed Membership:** line in the response summarizing the COMPLETE rule in plain language (e.g. ""**Proposed Membership:** Includes all People managers in Jane Smith's organization, based in Seattle""). This is REQUIRED — never omit it when providing a sourcePart.
 - The UI will auto-enable the Organization Structure toggle and auto-select the org leader
 - You MUST respond with valid JSON format. Do NOT respond with plain text for Step 3.
 
@@ -194,8 +194,8 @@ Example: Exclude members of a group:
 ```
 
 **For HR filter source parts**, always set `sourceType` to `""SqlMembership""` (or omit it — it defaults to SqlMembership).
-- Boolean/bit fields: use 1 or 0, NOT true/false (e.g., SupervisorInd = 1)
-- Numeric values: no quotes (PayScaleStockLevelNbr >= 65)
+- Boolean/bit fields: use 1 or 0, NOT true/false (e.g., IsManager = 1)
+- Numeric values: no quotes (JobLevel >= 65)
 - String values: single quotes, using EXACT casing from the get_attribute_values tool
 - Multiple values: IN operator with EXACT casing from the tool
 - Combine with AND/OR and parentheses
