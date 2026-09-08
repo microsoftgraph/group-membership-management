@@ -532,10 +532,21 @@ export const ManageMembershipBase: React.FunctionComponent<IManageMembershipProp
   const isSubmitDisabled = isBusinessJustificationRequired && !isBusinessJustificationProvided;
 
   // Header title + destination pill shown in the gray page-header band (matches JobDetails).
+  // Prefer the live selectedDestination; only fall back to the loaded job when no destination is
+  // selected yet. The channel is derived from the SAME source as the team so a freshly re-selected
+  // team is never paired with a stale channel from the originally loaded job (e.g. "NewTeam: OldChannel"),
+  // and the "Team: Channel" form only renders when both names are actually present.
   const pageTitle: string = isEditingExistingJob
     ? strings.ManageMembership.labels.pageTitle
     : strings.ManageMembership.labels.addPageTitle;
-  const headerDestinationName = selectedDestination?.name ?? (isEditingExistingJob ? reactiveJobDetails?.targetGroupName : undefined);
+  const headerDestinationTeamName = selectedDestination?.name ?? (isEditingExistingJob ? reactiveJobDetails?.targetGroupName : undefined);
+  const headerDestinationType = selectedDestination?.type ?? (isEditingExistingJob ? reactiveJobDetails?.targetDestinationType : undefined);
+  const headerDestinationChannelName = selectedDestination
+    ? selectedDestination.channelName
+    : (isEditingExistingJob ? reactiveJobDetails?.targetChannelName : undefined);
+  const headerDestinationName = headerDestinationType === DestinationType.TeamsChannelMembership && headerDestinationTeamName && headerDestinationChannelName
+    ? `${headerDestinationTeamName}: ${headerDestinationChannelName}`
+    : headerDestinationTeamName;
   const headerDestinationInitials = (headerDestinationName ?? '')
     .split(' ')
     .filter(Boolean)

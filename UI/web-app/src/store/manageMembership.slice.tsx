@@ -296,6 +296,13 @@ const manageMembershipSlice = createSlice({
                         source: ""
                     };
                     break;
+                case SourcePartType.TeamsChannelMembership:
+                    updatedQuery = {
+                        type: type,
+                        source: { objectId: "", channelId: "" },
+                        exclusionary: false
+                    };
+                    break;
                 default:
                     updatedQuery = currentQuery;
             }

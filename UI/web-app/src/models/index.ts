@@ -30,6 +30,7 @@ export * from './HRSourcePart';
 export * from './GroupMembershipSourcePart';
 export * from './GroupOwnershipSourcePart';
 export * from './PlaceMembershipSourcePart';
+export * from './TeamsChannelMembershipSourcePart';
 export * from './ServiceStatuses';
 export * from './Operations';
 export * from './GetServiceStatusResponse';

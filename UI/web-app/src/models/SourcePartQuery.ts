@@ -5,5 +5,6 @@ import { HRSourcePart } from './HRSourcePart';
 import { GroupOwnershipSourcePart } from './GroupOwnershipSourcePart';
 import { GroupMembershipSourcePart } from './GroupMembershipSourcePart';
 import { PlaceMembershipSourcePart } from './PlaceMembershipSourcePart';
+import { TeamsChannelMembershipSourcePart } from './TeamsChannelMembershipSourcePart';
 
-export type SourcePartQuery = HRSourcePart | GroupMembershipSourcePart | GroupOwnershipSourcePart | PlaceMembershipSourcePart;
+export type SourcePartQuery = HRSourcePart | GroupMembershipSourcePart | GroupOwnershipSourcePart | PlaceMembershipSourcePart | TeamsChannelMembershipSourcePart;

@@ -6,6 +6,7 @@ import {
     IsGroupMembershipSourcePartQuery,
     IsGroupOwnershipSourcePartQuery,
     IsPlaceMembershipSourcePartQuery,
+    IsTeamsChannelMembershipSourcePartQuery,
     ISourcePart,
 } from '../models';
 import { SourcePartQuery } from '../models/SourcePartQuery';
@@ -52,6 +53,9 @@ export function removeUnusedProperties<T extends SourcePartQuery>(sourcePart: T)
     } else if (IsPlaceMembershipSourcePartQuery(sourcePart)) {
         // No properties to trim for PlaceMembershipSourcePart
         return sourcePart;
+    } else if (IsTeamsChannelMembershipSourcePartQuery(sourcePart)) {
+        // No properties to trim for TeamsChannelMembershipSourcePart
+        return sourcePart;
     } else {
         // During live editing (advanced view) or transitional states a source part can be incomplete.
         // Instead of throwing (which crashes the UI), return the original object unchanged.
@@ -93,6 +97,11 @@ export function isSourcePartValid(sourcePart: ISourcePart): boolean {
         case SourcePartType.PlaceMembership:
             if(IsPlaceMembershipSourcePartQuery(sourcePart.query)){
                 return sourcePart.query.source.length > 0;
+            }
+            return false;
+        case SourcePartType.TeamsChannelMembership:
+            if(IsTeamsChannelMembershipSourcePartQuery(sourcePart.query)){
+                return sourcePart.query.source.objectId.length > 0 && sourcePart.query.source.channelId.length > 0;
             }
             return false;
         default:

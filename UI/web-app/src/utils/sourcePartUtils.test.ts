@@ -83,6 +83,20 @@ describe('isSourcePartValid', () => {
     });
   });
 
+  describe('TeamsChannelMembership', () => {
+    it('returns true when objectId and channelId are both set', () => {
+      expect(isSourcePartValid(makePart(SourcePartType.TeamsChannelMembership, { objectId: 'group-guid', channelId: '19:abc@thread.tacv2' }))).toBe(true);
+    });
+
+    it('returns false when objectId is empty', () => {
+      expect(isSourcePartValid(makePart(SourcePartType.TeamsChannelMembership, { objectId: '', channelId: '19:abc@thread.tacv2' }))).toBe(false);
+    });
+
+    it('returns false when channelId is empty', () => {
+      expect(isSourcePartValid(makePart(SourcePartType.TeamsChannelMembership, { objectId: 'group-guid', channelId: '' }))).toBe(false);
+    });
+  });
+
   it('returns false for unknown type', () => {
     expect(isSourcePartValid(makePart('Unknown' as any, 'x'))).toBe(false);
   });
@@ -101,6 +115,11 @@ describe('removeUnusedProperties', () => {
 
   it('returns PlaceMembership query unchanged', () => {
     const query = { type: SourcePartType.PlaceMembership, source: 'filter' } as any;
+    expect(removeUnusedProperties(query)).toEqual(query);
+  });
+
+  it('returns TeamsChannelMembership query unchanged', () => {
+    const query = { type: SourcePartType.TeamsChannelMembership, source: { objectId: 'g', channelId: '19:abc@thread.tacv2' } } as any;
     expect(removeUnusedProperties(query)).toEqual(query);
   });
 

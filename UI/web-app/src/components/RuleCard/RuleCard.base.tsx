@@ -22,12 +22,14 @@ import { useStrings } from '../../store/hooks';
 import { SourcePartType } from '../../models/SourcePartType';
 import { HRSourcePartSource } from '../../models/HRSourcePart';
 import { IsGroupMembershipSourcePartQuery } from '../../models/GroupMembershipSourcePart';
+import { IsTeamsChannelMembershipSourcePartQuery, resolveTeamsChannelSourceDisplayNames } from '../../models/TeamsChannelMembershipSourcePart';
 import { selectSource, selectIsSourceLoading } from '../../store/sqlMembershipSources.slice';
 import { fetchDefaultSqlMembershipSource } from '../../store/sqlMembershipSources.api';
 import { selectObjectIdEmployeeIdMapping } from '../../store/orgLeaderDetails.slice';
 import { fetchOrgLeaderDetailsUsingId } from '../../store/orgLeaderDetails.api';
 import { useSelectedGroupById } from '../../store/groupPart.slice';
 import { searchDestinations } from '../../store/manageMembership.api';
+import { manageMembershipSelectedDestination } from '../../store/manageMembership.slice';
 import { selectSelectedJobDetails } from '../../store/jobs.slice';
 import { selectPartsGeneratingTitle } from '../../store/title.slice';
 
@@ -67,6 +69,7 @@ export const RuleCardBase: React.FunctionComponent<RuleCardProps> = (props: Rule
   };
 
   const hrSource = useSelector(selectSource);
+  const selectedDestination = useSelector(manageMembershipSelectedDestination);
   const isSourceLoading = useSelector(selectIsSourceLoading);
   const orgLeaderMapping = useSelector(selectObjectIdEmployeeIdMapping);
   const jobDetails = useSelector(selectSelectedJobDetails);
@@ -142,6 +145,8 @@ export const RuleCardBase: React.FunctionComponent<RuleCardProps> = (props: Rule
         return ruleStrings.typePlace;
       case SourcePartType.GroupOwnership:
         return ruleStrings.typeGroupOwnership;
+      case SourcePartType.TeamsChannelMembership:
+        return ruleStrings.typeTeamsChannel;
       default:
         return '';
     }
@@ -187,6 +192,24 @@ export const RuleCardBase: React.FunctionComponent<RuleCardProps> = (props: Rule
             showPersona: !!groupPersona?.secondaryText,
           },
         ];
+      case SourcePartType.TeamsChannelMembership: {
+        const { teamName, channelName } = resolveTeamsChannelSourceDisplayNames(
+          IsTeamsChannelMembershipSourcePartQuery(part.query) ? part.query.source : undefined,
+          selectedDestination
+        );
+        return [
+          {
+            label: ruleStrings.teamNameLabel,
+            value: teamName || ruleStrings.notSet,
+            showPersona: false,
+          },
+          {
+            label: ruleStrings.channelNameLabel,
+            value: channelName || ruleStrings.notSet,
+            showPersona: false,
+          },
+        ];
+      }
       default:
         return [];
     }

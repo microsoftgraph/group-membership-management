@@ -7,9 +7,11 @@ import { RuleCard } from './RuleCard';
 import { renderWithProviders } from '../../testing/renderWithProviders';
 import groupPartReducer from '../../store/groupPart.slice';
 import titleReducer from '../../store/title.slice';
+import manageMembershipReducer from '../../store/manageMembership.slice';
 import type { RootState } from '../../store';
 import type { ISourcePart } from '../../models/ISourcePart';
 import { SourcePartType } from '../../models/SourcePartType';
+import { DestinationType } from '../../models/DestinationType';
 
 const getGroupPartState = (): RootState['groupPart'] =>
   groupPartReducer(undefined, { type: 'test/init' });
@@ -36,6 +38,19 @@ const groupPart = (overrides: Partial<ISourcePart> = {}): ISourcePart => ({
   query: {
     type: SourcePartType.GroupMembership,
     source: 'group-guid',
+    exclusionary: false,
+  },
+  isNew: false,
+  isExpanded: false,
+  ...overrides,
+});
+
+const teamsChannelPart = (overrides: Partial<ISourcePart> = {}): ISourcePart => ({
+  id: 'tc-1',
+  title: 'General',
+  query: {
+    type: SourcePartType.TeamsChannelMembership,
+    source: { objectId: 'group-002', channelId: 'channel-001' },
     exclusionary: false,
   },
   isNew: false,
@@ -81,6 +96,54 @@ describe('RuleCard', () => {
     expect(screen.getByText('Alias:')).toBeInTheDocument();
     expect(screen.getAllByText('Group Test 1').length).toBeGreaterThan(0);
     expect(screen.getAllByText('group_alias').length).toBeGreaterThan(0);
+  });
+
+  it('renders a Teams Channel rule with its badge plus Team name and Channel name from the destination', () => {
+    const base = manageMembershipReducer(undefined, { type: 'test/init' });
+    const preloadedState: Partial<RootState> = {
+      manageMembership: {
+        ...base,
+        selectedDestination: {
+          id: 'group-002',
+          name: 'Engineering-All',
+          type: DestinationType.TeamsChannelMembership,
+          channelId: 'channel-001',
+          channelName: 'General',
+        },
+      } as RootState['manageMembership'],
+    };
+
+    renderWithProviders(<RuleCard part={teamsChannelPart()} onSelect={() => {}} />, { preloadedState });
+
+    expect(screen.getByText('Teams Channel')).toBeInTheDocument();
+    expect(screen.getByText('Team name:')).toBeInTheDocument();
+    expect(screen.getByText('Channel name:')).toBeInTheDocument();
+    expect(screen.getAllByText('Engineering-All').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('General').length).toBeGreaterThan(0);
+  });
+
+  it('shows the raw Teams Channel source ids when the part does not match the selected destination', () => {
+    const base = manageMembershipReducer(undefined, { type: 'test/init' });
+    const preloadedState: Partial<RootState> = {
+      manageMembership: {
+        ...base,
+        selectedDestination: {
+          id: 'other-group',
+          name: 'Other Team',
+          type: DestinationType.TeamsChannelMembership,
+          channelId: 'other-channel',
+          channelName: 'Other Channel',
+        },
+      } as RootState['manageMembership'],
+    };
+
+    renderWithProviders(<RuleCard part={teamsChannelPart()} onSelect={() => {}} />, { preloadedState });
+
+    // Ids don't match the destination, so the raw stored ids are shown rather than a mismatched name.
+    expect(screen.getAllByText('group-002').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('channel-001').length).toBeGreaterThan(0);
+    expect(screen.queryByText('Other Team')).not.toBeInTheDocument();
+    expect(screen.queryByText('Other Channel')).not.toBeInTheDocument();
   });
 
   it('invokes onSelect with the rule id when clicked', () => {

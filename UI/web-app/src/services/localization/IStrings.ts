@@ -187,6 +187,8 @@ export type IStrings = {
       depthLabel: string;
       nameLabel: string;
       aliasLabel: string;
+      teamNameLabel: string;
+      channelNameLabel: string;
       notSet: string;
       allLevels: string;
       levelDown: string;
@@ -842,6 +844,10 @@ export type IStrings = {
       groupMembership: string;
       groupOwnership: string;
       placeMembership: string;
+      teamsChannelMembership: string;
+      teamsChannelSourceReadOnlyDescription: string;
+      teamsChannelSourceTeamName: string;
+      teamsChannelSourceChannelName: string;
       clickHere: string;
       requestor: string;
       requestorInfo: string;

@@ -236,6 +236,13 @@ describe('manageMembership.slice — source part reducers', () => {
     expect(state.sourceParts[0].query.type).toBe(SourcePartType.PlaceMembership);
   });
 
+  it('updateSourcePartType switches to TeamsChannelMembership with an empty channel source', () => {
+    const seeded = { ...initial, sourceParts: [makeSourcePart('p1')] };
+    const state = manageMembershipReducer(seeded, updateSourcePartType({ partId: 'p1', type: SourcePartType.TeamsChannelMembership }));
+    expect(state.sourceParts[0].query.type).toBe(SourcePartType.TeamsChannelMembership);
+    expect(state.sourceParts[0].query.source).toEqual({ objectId: '', channelId: '' });
+  });
+
   it('updateSourcePartType clears the stale title on type change', () => {
     const seeded = { ...initial, sourceParts: [makeSourcePart('p1', SourcePartType.GroupMembership, 'All Users in TestGroup')] };
     const state = manageMembershipReducer(seeded, updateSourcePartType({ partId: 'p1', type: SourcePartType.HR }));

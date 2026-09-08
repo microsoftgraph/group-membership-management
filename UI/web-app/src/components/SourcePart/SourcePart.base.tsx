@@ -11,11 +11,14 @@ import {
   IDropdownOption,
   IProcessedStyleSet,
   IPersonaProps,
+  MessageBar,
+  MessageBarType,
+  TextField,
 } from '@fluentui/react';
 import { useTheme } from '@fluentui/react/lib/Theme';
 import { SourcePartStyleProps, SourcePartStyles, SourcePartProps } from './SourcePart.types';
 import { AppDispatch } from '../../store';
-import { updateSourcePart, updateSourcePartType } from '../../store/manageMembership.slice';
+import { updateSourcePart, updateSourcePartType, manageMembershipSelectedDestination } from '../../store/manageMembership.slice';
 import { useStrings } from '../../store/hooks';
 import { ISourcePart } from '../../models/ISourcePart';
 import { HRQuerySource } from '../HRQuerySource';
@@ -23,10 +26,12 @@ import { HRSourcePart, HRSourcePartSource } from '../../models/HRSourcePart';
 import { GroupQuerySource } from '../GroupQuerySource';
 import { SourcePartType } from '../../models/SourcePartType';
 import { SourcePartQuery } from '../../models/SourcePartQuery';
+import { DestinationType } from '../../models/DestinationType';
+import { IsTeamsChannelMembershipSourcePartQuery, resolveTeamsChannelSourceDisplayNames } from '../../models/TeamsChannelMembershipSourcePart';
 import { AdvancedViewSourcePart } from '../AdvancedViewSourcePart';
 import { selectSource } from '../../store/sqlMembershipSources.slice';
 import { SqlMembershipSource } from '../../models';
-import { selectIsJobTenantWriter, selectIsJobWriter } from '../../store/roles.slice';
+import { selectIsJobTenantWriter, selectIsJobWriter, selectIsTeamsChannelOnboarder } from '../../store/roles.slice';
 import { extractExclusionaryFromTitle, removeExclusionaryPrefix } from '../../utils/titleGenerator';
 
 const getClassNames = classNamesFunction<SourcePartStyleProps, SourcePartStyles>();
@@ -50,9 +55,18 @@ export const SourcePartBase: React.FunctionComponent<SourcePartProps> = (props: 
   const [isInclusionary, setIsInclusionary] = useState(!(part.query.exclusionary ?? false));
   const isJobWriter = useSelector(selectIsJobWriter);
   const isJobTenantWriter = useSelector(selectIsJobTenantWriter);
+  const isTeamsChannelOnboarder = useSelector(selectIsTeamsChannelOnboarder);
   const [, setIsEditEnabled] = useState<boolean>(false);
   const [expanded, setExpanded] = useState(part.isExpanded);
   const hrSource = useSelector(selectSource);
+  const selectedDestination = useSelector(manageMembershipSelectedDestination);
+  const isTeamsChannelSource = part.query.type === SourcePartType.TeamsChannelMembership;
+  // Resolve the team/channel names from the part's OWN stored source ids (falling back to the raw
+  // ids when the destination doesn't match), so the read-only view always reflects what will be saved.
+  const teamsChannelSourceDisplay = resolveTeamsChannelSourceDisplayNames(
+    IsTeamsChannelMembershipSourcePartQuery(part.query) ? part.query.source : undefined,
+    selectedDestination
+  );
 
   useEffect(() => {
     if (part.isNew) {
@@ -71,6 +85,21 @@ export const SourcePartBase: React.FunctionComponent<SourcePartProps> = (props: 
 
     if (item.key === SourcePartType.HR) {
       setHRSourcePartSource({ manager: { id: undefined, depth: undefined }, filter: "" });
+    }
+
+    if (item.key === SourcePartType.TeamsChannelMembership) {
+      const objectId = selectedDestination?.id ?? '';
+      const channelId = selectedDestination?.channelId ?? '';
+      const newPart: ISourcePart = {
+        ...part,
+        title: selectedDestination?.channelName || selectedDestination?.name || '',
+        query: {
+          type: SourcePartType.TeamsChannelMembership,
+          source: { objectId, channelId },
+          exclusionary: false,
+        },
+      };
+      dispatch(updateSourcePart(newPart));
     }
   }
 
@@ -101,6 +130,17 @@ export const SourcePartBase: React.FunctionComponent<SourcePartProps> = (props: 
     if (isJobTenantWriter) {
       sourceTypeOptions.push( { key: SourcePartType.GroupOwnership, text: strings.ManageMembership.labels.groupOwnership });
       sourceTypeOptions.push( { key: SourcePartType.PlaceMembership, text: strings.ManageMembership.labels.placeMembership });
+    }
+    // Always include the option when this part is already a Teams channel source so the Dropdown
+    // renders coherently (never blank) and the selection can't be silently lost for a user who
+    // lacks the role. Only offer it as a NEW choice when the destination is a Teams channel and the
+    // user is authorized to add it (tenant job writer or Teams channel onboarder).
+    const canAddTeamsChannelSource =
+      selectedDestination?.type === DestinationType.TeamsChannelMembership &&
+      !!selectedDestination?.channelId &&
+      (isJobTenantWriter || isTeamsChannelOnboarder);
+    if (isTeamsChannelSource || canAddTeamsChannelSource) {
+      sourceTypeOptions.push( { key: SourcePartType.TeamsChannelMembership, text: strings.ManageMembership.labels.teamsChannelMembership });
     }
     return sourceTypeOptions;
   };
@@ -177,8 +217,8 @@ export const SourcePartBase: React.FunctionComponent<SourcePartProps> = (props: 
                   options={inclusionaryOptions}
                   label={strings.ManageMembership.labels.includeSourcePart}
                   onChange={handleInclusionaryChange}
-                  selectedKey={isInclusionary ? 'Yes' : 'No'}
-                  disabled={!isJobWriter || !isEditable}
+                  selectedKey={isTeamsChannelSource ? 'Yes' : (isInclusionary ? 'Yes' : 'No')}
+                  disabled={!isJobWriter || !isEditable || isTeamsChannelSource}
                 />
                 <Dropdown
                   styles={{ title: classNames.dropdownTitle }}
@@ -218,6 +258,25 @@ export const SourcePartBase: React.FunctionComponent<SourcePartProps> = (props: 
           )}
           {part.query.type === SourcePartType.PlaceMembership && (
             <AdvancedViewSourcePart key={SourcePartType.PlaceMembership} part={part} isEditable={isEditable} />
+          )}
+          {part.query.type === SourcePartType.TeamsChannelMembership && (
+            <div key={SourcePartType.TeamsChannelMembership}>
+              <MessageBar messageBarType={MessageBarType.info}>
+                {strings.ManageMembership.labels.teamsChannelSourceReadOnlyDescription}
+              </MessageBar>
+              <TextField
+                label={strings.ManageMembership.labels.teamsChannelSourceTeamName}
+                value={teamsChannelSourceDisplay.teamName}
+                readOnly
+                disabled
+              />
+              <TextField
+                label={strings.ManageMembership.labels.teamsChannelSourceChannelName}
+                value={teamsChannelSourceDisplay.channelName}
+                readOnly
+                disabled
+              />
+            </div>
           )}
         </div>
       }
