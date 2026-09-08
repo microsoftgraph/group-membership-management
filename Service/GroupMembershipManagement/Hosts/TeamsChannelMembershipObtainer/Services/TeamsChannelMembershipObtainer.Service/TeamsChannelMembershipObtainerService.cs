@@ -79,11 +79,31 @@ namespace TeamsChannelMembershipObtainer.Service
 
             if (!channelSyncInfo.IsDestinationPart)
             {
-                _logger.ChannelNotDestination(azureADTeamsChannel.ObjectId, azureADTeamsChannel.ChannelId);
-                await _syncJobRepository.UpdateSyncJobStatusAsync(new[] { channelSyncInfo.SyncJob }, SyncStatus.TeamsChannelNotDestination);
-                return new ValidateChannelResponse {
+                // Re-scoped US3: a TeamsChannel source part is permitted only when it references the
+                // same channel as the job's TeamsChannel destination (enforced at submit by the WebAPI).
+                // Its identity is therefore the destination channel, already resolved above, so it is
+                // read as a source rather than rejected. Re-verify the channel is shared as
+                // defense-in-depth before contributing its members as a source.
+                var sourceType = await _teamsChannelRepository.GetChannelTypeAsync(azureADTeamsChannel, runId);
+
+                if (!IsAllowedChannelType(sourceType))
+                {
+                    _logger.StandardChannelDetected(azureADTeamsChannel.ChannelId, azureADTeamsChannel.ObjectId);
+                    await _syncJobRepository.UpdateSyncJobStatusAsync(new[] { channelSyncInfo.SyncJob }, SyncStatus.StandardTeamsChannel);
+                    return new ValidateChannelResponse
+                    {
+                        ParsedChannel = azureADTeamsChannel,
+                        IsValid = false
+                    };
+                }
+
+                _logger.ChannelTypeDetected(azureADTeamsChannel.ChannelId, azureADTeamsChannel.ObjectId, sourceType);
+
+                return new ValidateChannelResponse
+                {
                     ParsedChannel = azureADTeamsChannel,
-                    IsValid = false };
+                    IsValid = true
+                };
             }
 
             var destType = await _teamsChannelRepository.GetChannelTypeAsync(azureADTeamsChannel, runId);
@@ -102,6 +122,17 @@ namespace TeamsChannelMembershipObtainer.Service
             return new ValidateChannelResponse {
                     ParsedChannel = azureADTeamsChannel,
                     IsValid = true };
+        }
+
+        // A channel is allowed as a source when its membership type is neither Standard nor Private
+        // (i.e. shared, or an undefined/unknown/future type, which is treated as eligible). The
+        // Microsoft Graph ChannelMembershipType enum's ToString() yields PascalCase
+        // ("Standard"/"Private"/"Shared"), so the comparison is case-insensitive and MUST NOT rely
+        // on a lowercase-only literal match.
+        private static bool IsAllowedChannelType(string? channelType)
+        {
+            return !string.Equals(channelType, "standard", StringComparison.OrdinalIgnoreCase)
+                && !string.Equals(channelType, "private", StringComparison.OrdinalIgnoreCase);
         }
 
         public Task<List<AzureADTeamsUser>> GetUsersFromTeamAsync(AzureADTeamsChannel azureADTeamsChannel, Guid runId)

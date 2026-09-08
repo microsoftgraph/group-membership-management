@@ -128,27 +128,125 @@ namespace Services.Tests
         }
 
         [TestMethod]
-        public async Task VerifyRejectsNonDestinationTeamsChannels()
+        public async Task VerifyAcceptsMatchingSharedSourceChannel()
         {
-            var badSyncInfo = new ChannelSyncInfo
+            _mockTeamsChannelRepository.Setup(repo => repo.GetChannelTypeAsync(It.IsAny<AzureADTeamsChannel>(), It.IsAny<Guid>()))
+               .ReturnsAsync("Shared");
+
+            var sourceSyncInfo = new ChannelSyncInfo
             {
-                TotalParts = 1,
-                CurrentPart = 2,
+                TotalParts = 2,
+                CurrentPart = 1,
                 IsDestinationPart = false,
                 SyncJob = new SyncJob
                 {
                     RunId = Guid.Parse("00000000-0000-0000-0000-000000000012"),
                     Status = SyncStatus.InProgress.ToString(),
                     Timestamp = new DateTimeOffset(1995, 03, 28, 1, 2, 3, TimeSpan.Zero),
-                    Query = @"[{""type"":""GroupMembership"",""source"":""00000000-0000-0000-0000-000000000000""}]",
+                    Query = @"[{""type"":""GroupMembership"",""source"":""00000000-0000-0000-0000-000000000000""},{""type"":""TeamsChannelMembership"",""source"":{""objectId"":""00000000-0000-0000-0000-000000000042"",""channelId"":""some channel""}}]",
                     MembershipType = "TeamsChannelMembership"
                 }
             };
 
-            var verification = await _service.VerifyChannelAsync(badSyncInfo);
+            var verification = await _service.VerifyChannelAsync(sourceSyncInfo);
+
+            Assert.IsTrue(verification.IsValid);
+        }
+
+        [TestMethod]
+        public async Task VerifyAcceptsUndefinedTypeSourceChannel()
+        {
+            _mockTeamsChannelRepository.Setup(repo => repo.GetChannelTypeAsync(It.IsAny<AzureADTeamsChannel>(), It.IsAny<Guid>()))
+               .ReturnsAsync((string?)null);
+
+            var sourceSyncInfo = BuildSourceSyncInfo();
+
+            var verification = await _service.VerifyChannelAsync(sourceSyncInfo);
+
+            Assert.IsTrue(verification.IsValid);
+        }
+
+        [TestMethod]
+        public async Task VerifyRejectsStandardSourceChannel()
+        {
+            // PascalCase is what the Microsoft Graph enum's ToString() actually returns; a
+            // lowercase-only comparison would let a Standard channel through as a source.
+            _mockTeamsChannelRepository.Setup(repo => repo.GetChannelTypeAsync(It.IsAny<AzureADTeamsChannel>(), It.IsAny<Guid>()))
+               .ReturnsAsync("Standard");
+
+            var sourceSyncInfo = BuildSourceSyncInfo();
+
+            var verification = await _service.VerifyChannelAsync(sourceSyncInfo);
 
             Assert.IsFalse(verification.IsValid);
-         }
+        }
+
+        [TestMethod]
+        public async Task VerifyRejectsPrivateSourceChannel()
+        {
+            _mockTeamsChannelRepository.Setup(repo => repo.GetChannelTypeAsync(It.IsAny<AzureADTeamsChannel>(), It.IsAny<Guid>()))
+               .ReturnsAsync("Private");
+
+            var sourceSyncInfo = BuildSourceSyncInfo();
+
+            var verification = await _service.VerifyChannelAsync(sourceSyncInfo);
+
+            Assert.IsFalse(verification.IsValid);
+        }
+
+        [TestMethod]
+        public async Task VerifyResolvesChannelFromDestinationIgnoringDeclaredSourceIdentity()
+        {
+            // Security property: the channel that gets read is derived from the job's DESTINATION
+            // (which the caller must own), not from the identity declared in the query's
+            // TeamsChannelMembership source part. A crafted mismatched source identity must be ignored.
+            _mockTeamsChannelRepository.Setup(repo => repo.GetChannelTypeAsync(It.IsAny<AzureADTeamsChannel>(), It.IsAny<Guid>()))
+               .ReturnsAsync("Shared");
+
+            var maliciousSyncInfo = new ChannelSyncInfo
+            {
+                TotalParts = 2,
+                CurrentPart = 1,
+                IsDestinationPart = false,
+                SyncJob = new SyncJob
+                {
+                    RunId = Guid.Parse("00000000-0000-0000-0000-000000000012"),
+                    Status = SyncStatus.InProgress.ToString(),
+                    Timestamp = new DateTimeOffset(1995, 03, 28, 1, 2, 3, TimeSpan.Zero),
+                    // The TeamsChannel source declares a DIFFERENT channel than the destination.
+                    Query = @"[{""type"":""GroupMembership"",""source"":""00000000-0000-0000-0000-000000000000""},{""type"":""TeamsChannelMembership"",""source"":{""objectId"":""00000000-0000-0000-0000-000000000099"",""channelId"":""19:attacker@thread.tacv2""}}]",
+                    MembershipType = "TeamsChannelMembership"
+                }
+            };
+
+            var verification = await _service.VerifyChannelAsync(maliciousSyncInfo);
+
+            Assert.IsTrue(verification.IsValid);
+            Assert.IsNotNull(verification.ParsedChannel);
+            // Identity comes from the destination (group ...042 / "some channel"), not the declared source.
+            Assert.AreEqual(Guid.Parse("00000000-0000-0000-0000-000000000042"), verification.ParsedChannel!.ObjectId);
+            Assert.AreEqual("some channel", verification.ParsedChannel.ChannelId);
+            Assert.AreNotEqual(Guid.Parse("00000000-0000-0000-0000-000000000099"), verification.ParsedChannel.ObjectId);
+            Assert.AreNotEqual("19:attacker@thread.tacv2", verification.ParsedChannel.ChannelId);
+        }
+
+        private static ChannelSyncInfo BuildSourceSyncInfo()
+        {
+            return new ChannelSyncInfo
+            {
+                TotalParts = 2,
+                CurrentPart = 1,
+                IsDestinationPart = false,
+                SyncJob = new SyncJob
+                {
+                    RunId = Guid.Parse("00000000-0000-0000-0000-000000000012"),
+                    Status = SyncStatus.InProgress.ToString(),
+                    Timestamp = new DateTimeOffset(1995, 03, 28, 1, 2, 3, TimeSpan.Zero),
+                    Query = @"[{""type"":""GroupMembership"",""source"":""00000000-0000-0000-0000-000000000000""},{""type"":""TeamsChannelMembership"",""source"":{""objectId"":""00000000-0000-0000-0000-000000000042"",""channelId"":""some channel""}}]",
+                    MembershipType = "TeamsChannelMembership"
+                }
+            };
+        }
 
         [TestMethod]
         public async Task VerifyAcceptsValidSync()
