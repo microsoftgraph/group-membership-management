@@ -14,6 +14,7 @@ using Services.Messages.Responses;
 using System.Net;
 using System.Text.Encodings.Web;
 using System.Text.Json;
+using System.Text.Json.Nodes;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.DependencyInjection;
 using NewSyncJobDTO = WebApi.Models.DTOs.NewSyncJob;
@@ -97,6 +98,15 @@ namespace Services
                         response.Message = "A sync job for this channel already exists.";
                         return response;
                     }
+                }
+
+                // Validate any TeamsChannel source part: it is permitted only when it references the
+                // same channel as this job's TeamsChannel destination, the job has at least one other
+                // source part, and the part is inclusionary. (US3: source == destination.)
+                var teamsChannelSourceValidation = ValidateTeamsChannelSourceParts(newSyncJobEntity);
+                if (teamsChannelSourceValidation != null)
+                {
+                    return teamsChannelSourceValidation;
                 }
 
                 var isPendingConfigurationEnabled = _pendingConfigurationConfig.PendingConfigurationIsEnabled;
@@ -299,6 +309,140 @@ namespace Services
                 _logger.AITitleSettingRetrievalFailed(ex);
                 return false;
             }
+        }
+
+        private PostJobResponse? ValidateTeamsChannelSourceParts(SyncJob newSyncJobEntity)
+        {
+            var sourceParts = ParseQuerySourceParts(newSyncJobEntity.Query);
+            var teamsChannelSourceParts = sourceParts
+                .Where(IsTeamsChannelSourcePart)
+                .ToList();
+
+            if (teamsChannelSourceParts.Count == 0)
+            {
+                return null;
+            }
+
+            // A TeamsChannel source part requires a TeamsChannel destination on the same job.
+            if (newSyncJobEntity.MembershipType != MembershipTypes.TeamsChannelMembership.ToString()
+                || string.IsNullOrEmpty(newSyncJobEntity.Channel?.ChannelId))
+            {
+                return new PostJobResponse
+                {
+                    StatusCode = HttpStatusCode.BadRequest,
+                    ErrorCode = "TeamsChannelSourceRequiresChannelDestination",
+                    Message = "A TeamsChannel source is only allowed on a job whose destination is a Teams channel."
+                };
+            }
+
+            var destinationGroupId = newSyncJobEntity.Channel.GroupId.ToString();
+            var destinationChannelId = newSyncJobEntity.Channel.ChannelId;
+
+            // Each TeamsChannel source part must reference the same channel as the destination.
+            if (teamsChannelSourceParts.Any(p =>
+                    !string.Equals(p.SourceObjectId, destinationGroupId, StringComparison.OrdinalIgnoreCase)
+                    || !string.Equals(p.SourceChannelId, destinationChannelId, StringComparison.OrdinalIgnoreCase)))
+            {
+                return new PostJobResponse
+                {
+                    StatusCode = HttpStatusCode.BadRequest,
+                    ErrorCode = "TeamsChannelSourceMustMatchDestination",
+                    Message = "A TeamsChannel source must reference the same channel as this job's destination."
+                };
+            }
+
+            // At least one other source part with a recognized (non-TeamsChannel) type must be present.
+            // Typeless/garbage parts do not count as an additional source.
+            if (!sourceParts.Any(p => !string.IsNullOrWhiteSpace(p.Type) && !IsTeamsChannelSourcePart(p)))
+            {
+                return new PostJobResponse
+                {
+                    StatusCode = HttpStatusCode.BadRequest,
+                    ErrorCode = "TeamsChannelSourceRequiresAdditionalSource",
+                    Message = "A TeamsChannel source must be combined with at least one other source part."
+                };
+            }
+
+            // A TeamsChannel source part is inclusionary only.
+            if (teamsChannelSourceParts.Any(p => p.Exclusionary))
+            {
+                return new PostJobResponse
+                {
+                    StatusCode = HttpStatusCode.BadRequest,
+                    ErrorCode = "TeamsChannelSourceCannotBeExclusionary",
+                    Message = "A TeamsChannel source cannot be exclusionary."
+                };
+            }
+
+            return null;
+        }
+
+        private static bool IsTeamsChannelSourcePart(SourcePartInfo part) =>
+            string.Equals(part.Type, MembershipTypes.TeamsChannelMembership.ToString(), StringComparison.OrdinalIgnoreCase);
+
+        private static List<SourcePartInfo> ParseQuerySourceParts(string? query)
+        {
+            var parts = new List<SourcePartInfo>();
+            if (string.IsNullOrWhiteSpace(query))
+            {
+                return parts;
+            }
+
+            if (JsonNode.Parse(query) is not JsonArray queryArray)
+            {
+                return parts;
+            }
+
+            foreach (var item in queryArray)
+            {
+                if (item is not JsonObject sourcePart)
+                {
+                    continue;
+                }
+
+                var info = new SourcePartInfo
+                {
+                    Type = ReadStringNode(sourcePart["type"])
+                };
+
+                if (sourcePart["exclusionary"] is JsonValue exclusionaryValue)
+                {
+                    if (exclusionaryValue.TryGetValue<bool>(out var exclusionary))
+                    {
+                        info.Exclusionary = exclusionary;
+                    }
+                    else if (exclusionaryValue.TryGetValue<string>(out var exclusionaryText)
+                        && bool.TryParse(exclusionaryText, out var parsedExclusionary))
+                    {
+                        // Align with the trigger's (bool) cast: a stringified boolean must be honored here
+                        // so an exclusionary TeamsChannel source is rejected at submit rather than crashing later.
+                        info.Exclusionary = parsedExclusionary;
+                    }
+                }
+
+                if (sourcePart["source"] is JsonObject source)
+                {
+                    info.SourceObjectId = ReadStringNode(source["objectId"]);
+                    info.SourceChannelId = ReadStringNode(source["channelId"]);
+                }
+
+                parts.Add(info);
+            }
+
+            return parts;
+        }
+
+        // Returns the node's string value, or null when it is absent or not a JSON string. This keeps
+        // the parser tolerant of malformed parts so validation rules (not an exception) reject them.
+        private static string? ReadStringNode(JsonNode? node) =>
+            node is JsonValue value && value.TryGetValue<string>(out var text) ? text : null;
+
+        private sealed class SourcePartInfo
+        {
+            public string? Type { get; set; }
+            public bool Exclusionary { get; set; }
+            public string? SourceObjectId { get; set; }
+            public string? SourceChannelId { get; set; }
         }
 
         private static SyncJob MapSyncJobDTOtoEntity(NewSyncJobDTO syncJob)
