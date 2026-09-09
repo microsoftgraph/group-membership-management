@@ -848,6 +848,7 @@ export type IStrings = {
       teamsChannelSourceReadOnlyDescription: string;
       teamsChannelSourceTeamName: string;
       teamsChannelSourceChannelName: string;
+      teamsChannelSourceRequiresAdditionalSource: string;
       clickHere: string;
       requestor: string;
       requestorInfo: string;

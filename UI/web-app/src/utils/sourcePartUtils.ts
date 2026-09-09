@@ -108,3 +108,16 @@ export function isSourcePartValid(sourcePart: ISourcePart): boolean {
             return false;
     }
  };
+
+// US3: a TeamsChannel source is only meaningful alongside at least one other (non-TeamsChannel)
+// source part. Returns true when the parts contain a TeamsChannel source but no other source type,
+// which the WebApi rejects on submit (TeamsChannelSourceRequiresAdditionalSource). Surfacing this in
+// the UI lets the user fix it before submitting instead of only seeing a post-submit error.
+export function hasStandaloneTeamsChannelSource(sourceParts: ISourcePart[]): boolean {
+    const hasTeamsChannelSource = sourceParts.some(part => part.query?.type === SourcePartType.TeamsChannelMembership);
+    if (!hasTeamsChannelSource) {
+        return false;
+    }
+    const hasOtherSource = sourceParts.some(part => part.query?.type && part.query.type !== SourcePartType.TeamsChannelMembership);
+    return !hasOtherSource;
+}

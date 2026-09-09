@@ -855,6 +855,7 @@ export const strings: IStrings = {
       teamsChannelSourceReadOnlyDescription: 'Un origen de canal de Teams solo puede ser el canal de destino de este trabajo. Se establece automáticamente y no se puede editar.',
       teamsChannelSourceTeamName: 'Nombre del equipo',
       teamsChannelSourceChannelName: 'Nombre del canal',
+      teamsChannelSourceRequiresAdditionalSource: 'Un origen de canal de Teams debe combinarse con al menos otro origen. Agregue otra regla de origen antes de continuar.',
       clickHere: 'Haz click aquí',
       requestor: 'Solicitante',
       requestorInfo: 'El solicitante es la persona que inicialmente solicitó que GMM gestione la membresía de este destino. Esta persona debe ser propietaria del destino. Esto nos ayuda a rastrear a quién contactar si tenemos preguntas sobre la sincronización inicial. De lo contrario, el solicitante no tiene más derechos sobre el destino que cualquier otro propietario.',

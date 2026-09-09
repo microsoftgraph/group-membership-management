@@ -200,6 +200,23 @@ namespace WebApi.Tests
         }
 
         [TestMethod]
+        public async Task RejectsTeamsChannelSourceWhenOnlyOtherPartHasUnrecognizedType()
+        {
+            // #5: a sibling part with a non-empty but unrecognized type must not satisfy the
+            // "additional source" requirement; no obtainer would process it and the sync would stall.
+            var unknownTypePart = @"{""type"":""SomethingUnsupported"",""source"":""foo""}";
+            var request = BuildRequest(
+                $"{TeamsChannelSourcePart()},{unknownTypePart}",
+                TeamsChannelDestination());
+
+            var response = await _handler.ExecuteAsync(request);
+
+            Assert.AreEqual(HttpStatusCode.BadRequest, response.StatusCode);
+            Assert.AreEqual("TeamsChannelSourceRequiresAdditionalSource", response.ErrorCode);
+            _syncJobRepository.Verify(r => r.CreateSyncJobAsync(It.IsAny<SyncJobEntity>()), Times.Never);
+        }
+
+        [TestMethod]
         public async Task RejectsTeamsChannelSourceWithStringExclusionaryTrue()
         {
             // F4: a stringified exclusionary boolean must be honored so it is rejected at submit

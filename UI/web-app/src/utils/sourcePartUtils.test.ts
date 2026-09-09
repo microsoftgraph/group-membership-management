@@ -2,7 +2,7 @@
 // Licensed under the MIT license.
 
 import { describe, expect, it } from 'vitest';
-import { isSourcePartValid, removeUnusedProperties } from './sourcePartUtils';
+import { isSourcePartValid, removeUnusedProperties, hasStandaloneTeamsChannelSource } from './sourcePartUtils';
 import { SourcePartType } from '../models/SourcePartType';
 import type { ISourcePart } from '../models/ISourcePart';
 
@@ -148,5 +148,31 @@ describe('removeUnusedProperties', () => {
     const query = { type: 'Unknown', source: 'x' } as any;
     const result = removeUnusedProperties(query);
     expect(result).toEqual(query);
+  });
+});
+
+describe('hasStandaloneTeamsChannelSource', () => {
+  const teamsChannelPart = (id: string): ISourcePart => ({
+    id,
+    title: 'TC',
+    isNew: false,
+    isExpanded: false,
+    query: { type: SourcePartType.TeamsChannelMembership, source: { objectId: 'g', channelId: '19:abc@thread.tacv2' } } as any,
+  });
+
+  it('returns false when there is no TeamsChannel source', () => {
+    expect(hasStandaloneTeamsChannelSource([makePart(SourcePartType.GroupMembership, 'guid')])).toBe(false);
+  });
+
+  it('returns true when a TeamsChannel source is the only source', () => {
+    expect(hasStandaloneTeamsChannelSource([teamsChannelPart('tc1')])).toBe(true);
+  });
+
+  it('returns false when a TeamsChannel source is combined with another source type', () => {
+    expect(hasStandaloneTeamsChannelSource([teamsChannelPart('tc1'), makePart(SourcePartType.GroupMembership, 'guid')])).toBe(false);
+  });
+
+  it('returns true when the only other part is also a TeamsChannel source', () => {
+    expect(hasStandaloneTeamsChannelSource([teamsChannelPart('tc1'), teamsChannelPart('tc2')])).toBe(true);
   });
 });

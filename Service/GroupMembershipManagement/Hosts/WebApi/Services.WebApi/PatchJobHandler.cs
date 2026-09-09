@@ -297,6 +297,20 @@ namespace Services.WebApi
             }
 
             var updatedSyncJob = MapDtoToEntity(syncJob, syncJobToPatch, request.SyncJobId);
+
+            // Re-run the US3 TeamsChannel source validation whenever the query is edited, so an update
+            // cannot persist a TeamsChannel source that the create path (PostJobHandler) would reject.
+            if (updatesQuery)
+            {
+                var teamsChannelSourceError = TeamsChannelSourcePartValidator.Validate(updatedSyncJob);
+                if (teamsChannelSourceError != null)
+                {
+                    response.StatusCode = HttpStatusCode.BadRequest;
+                    response.ErrorCode = teamsChannelSourceError.ErrorCode;
+                    return response;
+                }
+            }
+
             await _databaseSyncJobsRepository.UpdateSyncJobsAsync(new[] { updatedSyncJob });
 
             syncJobChange.ChangeDetails = SyncJobSerializationHelper.SerializeSyncJob(updatedSyncJob);

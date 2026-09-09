@@ -22,7 +22,7 @@ import { ISourcePart } from '../models/ISourcePart';
 import { SourcePartType } from '../models/SourcePartType';
 import { PLACEHOLDER_OPERATOR } from '../models/HRFilterConstants';
 import { SourcePartQuery } from '../models/SourcePartQuery';
-import { isSourcePartValid, removeUnusedProperties } from '../utils/sourcePartUtils';
+import { isSourcePartValid, removeUnusedProperties, hasStandaloneTeamsChannelSource } from '../utils/sourcePartUtils';
 import { createGroup } from './groups.api';
 import { GroupSettings } from '../models/GroupSettings';
 import { DestinationType } from '../models/DestinationType';
@@ -579,7 +579,15 @@ export const areAllSourcePartsValid = (state: RootState): boolean => {
     if (sourceParts.length === 0) {
         return false;
     }
-    return sourceParts.every(isSourcePartValid);
+    if (!sourceParts.every(isSourcePartValid)) {
+        return false;
+    }
+    // US3: a TeamsChannel source on its own is rejected by the WebApi; block progression until the
+    // user adds another source so the requirement is caught before submit rather than after.
+    if (hasStandaloneTeamsChannelSource(sourceParts)) {
+        return false;
+    }
+    return true;
 };
 
 // 4- Confirmation

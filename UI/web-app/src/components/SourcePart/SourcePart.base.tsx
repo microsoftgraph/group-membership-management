@@ -18,7 +18,7 @@ import {
 import { useTheme } from '@fluentui/react/lib/Theme';
 import { SourcePartStyleProps, SourcePartStyles, SourcePartProps } from './SourcePart.types';
 import { AppDispatch } from '../../store';
-import { updateSourcePart, updateSourcePartType, manageMembershipSelectedDestination } from '../../store/manageMembership.slice';
+import { updateSourcePart, updateSourcePartType, manageMembershipSelectedDestination, getSourcePartsFromState } from '../../store/manageMembership.slice';
 import { useStrings } from '../../store/hooks';
 import { ISourcePart } from '../../models/ISourcePart';
 import { HRQuerySource } from '../HRQuerySource';
@@ -60,7 +60,13 @@ export const SourcePartBase: React.FunctionComponent<SourcePartProps> = (props: 
   const [expanded, setExpanded] = useState(part.isExpanded);
   const hrSource = useSelector(selectSource);
   const selectedDestination = useSelector(manageMembershipSelectedDestination);
+  const allSourceParts = useSelector(getSourcePartsFromState);
   const isTeamsChannelSource = part.query.type === SourcePartType.TeamsChannelMembership;
+  // US3: a TeamsChannel source is only accepted by the WebApi alongside at least one other source.
+  // Warn inline when this TeamsChannel part currently has no sibling of another type.
+  const teamsChannelSourceNeedsAdditionalSource =
+    isTeamsChannelSource &&
+    !allSourceParts.some(p => p.id !== partId && p.query?.type && p.query.type !== SourcePartType.TeamsChannelMembership);
   // Resolve the team/channel names from the part's OWN stored source ids (falling back to the raw
   // ids when the destination doesn't match), so the read-only view always reflects what will be saved.
   const teamsChannelSourceDisplay = resolveTeamsChannelSourceDisplayNames(
@@ -151,6 +157,32 @@ export const SourcePartBase: React.FunctionComponent<SourcePartProps> = (props: 
       setHRSourcePartSource(part.query.source as HRSourcePartSource);
     }
   }, [part.query.type, part.query.exclusionary, part.query.source]);
+
+  // US3: a TeamsChannel source must stay identical to the job's TeamsChannel destination. The ids are
+  // copied from the destination when the rule is first selected; if the destination changes afterwards
+  // the read-only fields would otherwise show a stale value the user cannot correct and that only errors
+  // at submit. Re-point the stored source ids (and title) to the current destination whenever they drift.
+  useEffect(() => {
+    if (!isTeamsChannelSource) return;
+    if (selectedDestination?.type !== DestinationType.TeamsChannelMembership) return;
+    if (!IsTeamsChannelMembershipSourcePartQuery(part.query)) return;
+
+    const destObjectId = selectedDestination?.id ?? '';
+    const destChannelId = selectedDestination?.channelId ?? '';
+    if (part.query.source.objectId === destObjectId && part.query.source.channelId === destChannelId) {
+      return;
+    }
+
+    dispatch(updateSourcePart({
+      ...part,
+      title: selectedDestination?.channelName || selectedDestination?.name || '',
+      query: {
+        type: SourcePartType.TeamsChannelMembership,
+        source: { objectId: destObjectId, channelId: destChannelId },
+        exclusionary: false,
+      },
+    }));
+  }, [dispatch, isTeamsChannelSource, selectedDestination, part]);
 
 
   const handleSourceChange = (source: HRSourcePartSource, partId: string, title?: string) => {
@@ -276,6 +308,11 @@ export const SourcePartBase: React.FunctionComponent<SourcePartProps> = (props: 
                 readOnly
                 disabled
               />
+              {!detailsOnly && teamsChannelSourceNeedsAdditionalSource && (
+                <MessageBar messageBarType={MessageBarType.warning}>
+                  {strings.ManageMembership.labels.teamsChannelSourceRequiresAdditionalSource}
+                </MessageBar>
+              )}
             </div>
           )}
         </div>

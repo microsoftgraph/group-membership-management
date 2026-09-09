@@ -441,6 +441,29 @@ describe('manageMembership.slice — selectors', () => {
     expect(areAllSourcePartsValid(buildRoot())).toBe(false);
   });
 
+  it('areAllSourcePartsValid returns false for a standalone TeamsChannel source', () => {
+    const teamsChannelPart: ISourcePart = {
+      id: 'tc1',
+      title: 'TC',
+      isNew: false,
+      isExpanded: false,
+      query: { type: SourcePartType.TeamsChannelMembership, source: { objectId: 'g', channelId: '19:abc@thread.tacv2' }, exclusionary: false } as any,
+    };
+    expect(areAllSourcePartsValid(buildRoot({ sourceParts: [teamsChannelPart] }))).toBe(false);
+  });
+
+  it('areAllSourcePartsValid returns true for a TeamsChannel source combined with a group source', () => {
+    const teamsChannelPart: ISourcePart = {
+      id: 'tc1',
+      title: 'TC',
+      isNew: false,
+      isExpanded: false,
+      query: { type: SourcePartType.TeamsChannelMembership, source: { objectId: 'g', channelId: '19:abc@thread.tacv2' }, exclusionary: false } as any,
+    };
+    const groupPart = makeSourcePart('g1', SourcePartType.GroupMembership);
+    expect(areAllSourcePartsValid(buildRoot({ sourceParts: [teamsChannelPart, groupPart] }))).toBe(true);
+  });
+
   it('manageMembershipIsMissingAndOrOperator is false when no HR parts have a placeholder', () => {
     const parts = [makeSourcePart('p1', SourcePartType.GroupMembership)];
     expect(manageMembershipIsMissingAndOrOperator(buildRoot({ sourceParts: parts }))).toBe(false);
