@@ -1,0 +1,10 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <AssemblyName>Hosts.AgentReader.Services.Entities</AssemblyName>
+    <RootNamespace>Hosts.AgentReader.Services.Entities</RootNamespace>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\Models\Models.csproj" />
+  </ItemGroup>
+</Project>

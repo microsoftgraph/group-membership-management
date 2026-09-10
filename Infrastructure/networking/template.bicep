@@ -77,7 +77,7 @@ param resourcesVnetAddressPrefix string = '10.1.0.0/16'
 // -----------------------------------------------
 // Function-integration subnets are allocated from CIDR `cidrSubnet(resourcesVnetAddressPrefix, 26, index + 4)`.
 // The `+ 4` skips the four /26 blocks that make up VmSubnet (10.x.0.0/24).
-// Public indices [0, 59] = up to 60 subnets (0..18 assigned today, 19..59 reserved).
+// Public indices [0, 59] = up to 60 subnets (0..19 assigned today, 20..59 reserved).
 // Additional indices [60, ∞) = passed via additionalFunctionSubnets (3 assigned: 60, 61, 62).
 //
 // Allocation is split between two append-only lists sharing one CIDR reservation:
@@ -98,8 +98,8 @@ param additionalFunctionSubnets array = []
 
 var functionSubnetIndexFloor = 60
 
-// Canonical public function-subnet catalog. Indices 0..18 are assigned today;
-// 19..59 are reserved for future public functions (WebApi will be re-added
+// Canonical public function-subnet catalog. Indices 0..19 are assigned today;
+// 20..59 are reserved for future public functions (WebApi will be re-added
 // when Standard plan + Swift VNET integration work lands). Names MUST match
 // Service/GroupMembershipManagement/Hosts/<X>/Infrastructure/compute/ folders.
 // APPEND-ONLY: never reorder, never renumber, tombstone removals.
@@ -123,7 +123,8 @@ var publicFunctionSubnets = [
   { name: 'syncjobupdater', index: 16 }
   { name: 'teamschannelmembershipobtainer', index: 17 }
   { name: 'teamschannelupdater', index: 18 }
-  // indices 19..59 reserved for future public functions
+  { name: 'agentreader', index: 19 }
+  // indices 20..59 reserved for future public functions
 ]
 
 var allFunctionSubnets = concat(publicFunctionSubnets, additionalFunctionSubnets)

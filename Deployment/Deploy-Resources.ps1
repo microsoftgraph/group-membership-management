@@ -1018,7 +1018,7 @@ function Set-FunctionAuthenticationAllowedIdentities {
     }
 
     # Define function apps that need ADF access
-    $adfFunctionAppNames = @("AzureUserReader", "NonProdService", "SqlDataChecker")
+    $adfFunctionAppNames = @("AzureUserReader", "NonProdService", "SqlDataChecker", "AgentReader")
     $adfFunctionAppNames += $AdditionalAdfFunctionAppNames
 
     # Define function apps that need WebAPI access
@@ -1234,7 +1234,7 @@ function Set-FunctionIpRestrictions {
     $webApiIps = @($webApi.PossibleOutboundIpAddresses -split ',' | ForEach-Object { $_.Trim() } | Where-Object { $_ })
     Write-DeployLog -Level Success -Message "WebAPI outbound IPs: $($webApiIps.Count)"
 
-    $adfFunctionAppNames = @("AzureUserReader", "NonProdService", "SqlDataChecker") + $AdditionalAdfFunctionAppNames
+    $adfFunctionAppNames = @("AzureUserReader", "NonProdService", "SqlDataChecker", "AgentReader") + $AdditionalAdfFunctionAppNames
     $webApiFunctionAppNames = @("JobScheduler") + $AdditionalWebApiFunctionAppNames
 
     Write-DeployLog -Level Info -Message "Applying ADF caller rules..."
@@ -1738,7 +1738,7 @@ function Set-SQLServerPermissions {
         -Operation { Get-AzDataFactoryV2 -ResourceGroupName $dataResourceGroup -Name $dataFactoryName -ErrorAction SilentlyContinue } `
         -OperationName "Get Data Factory" `
         -MaxAttempts 3 -BaseDelaySeconds 2
-    $functionAppsADF = $functionApps | Where-Object { $_.Name -match "-webapi" -or $_.Name -match "-SqlMembershipObtainer" -or $_.Name -match "-SqlDataChecker" -or $_.Name -match "-AutoApprover" }
+    $functionAppsADF = $functionApps | Where-Object { $_.Name -match "-webapi" -or $_.Name -match "-SqlMembershipObtainer" -or $_.Name -match "-SqlDataChecker" -or $_.Name -match "-AutoApprover" -or $_.Name -match "-AgentReader" }
 
     if ($null -ne $dataFactory) {
 

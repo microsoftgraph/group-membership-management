@@ -111,6 +111,9 @@ stages:
       - function:
          name: 'SqlDataChecker'
          coverageThreshold: 0
+      - function:
+         name: 'AgentReader'
+         coverageThreshold: 55
 
   - template: yaml/build-release-package.yml
     parameters:

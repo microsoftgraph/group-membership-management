@@ -82,6 +82,7 @@ param resourcesVnetName string = ''
 param maxInstanceCountOverrides object = {}
 
 var defaultMaxInstanceCounts = {
+  agentReader: 4
   autoApprover: 25
   azureMaintenance: 10
   azureUserReader: 4
@@ -113,10 +114,11 @@ var _resolvedNetworkingResourceGroupName = empty(networkingResourceGroupName) ? 
 var _resolvedResourcesVnetName = empty(resourcesVnetName) ? '${solutionAbbreviation}-networking-${environmentAbbreviation}-resources-vnet' : resourcesVnetName
 
 // Helper: compute the subnet ID for a given public function short name.
-// Subnet names follow `func-pub-<name>` for populated indices in [0, 18]
-// (indices 19..59 are reserved but unallocated; 
+// Subnet names follow `func-pub-<name>` for populated indices in [0, 19]
+// (indices 20..59 are reserved but unallocated; 
 func publicFunctionSubnetId(subscriptionId string, networkingRg string, vnetName string, shortName string) string => resourceId(subscriptionId, networkingRg, 'Microsoft.Network/virtualNetworks/subnets', vnetName, 'func-pub-${shortName}')
 
+var _vnetSubnetIdAgentReader                 = enableFunctionVnetIntegration ? publicFunctionSubnetId(subscription().subscriptionId, _resolvedNetworkingResourceGroupName, _resolvedResourcesVnetName, 'agentreader') : ''
 var _vnetSubnetIdAutoApprover                = enableFunctionVnetIntegration ? publicFunctionSubnetId(subscription().subscriptionId, _resolvedNetworkingResourceGroupName, _resolvedResourcesVnetName, 'autoapprover') : ''
 var _vnetSubnetIdAzureMaintenance            = enableFunctionVnetIntegration ? publicFunctionSubnetId(subscription().subscriptionId, _resolvedNetworkingResourceGroupName, _resolvedResourcesVnetName, 'azuremaintenance') : ''
 var _vnetSubnetIdAzureUserReader             = enableFunctionVnetIntegration ? publicFunctionSubnetId(subscription().subscriptionId, _resolvedNetworkingResourceGroupName, _resolvedResourcesVnetName, 'azureuserreader') : ''
@@ -540,6 +542,41 @@ module nonProdServiceComputeResources '../Service/GroupMembershipManagement/Host
   ]
 }
 
+// ----------------- AgentReader
+module agentReaderDataResources '../Service/GroupMembershipManagement/Hosts/AgentReader/Infrastructure/data/template.bicep' = {
+  name: 'agentReaderDataResourcesTemplate'
+  scope: resourceGroup(dataResourceGroupName)
+  params: {
+    environmentAbbreviation: environmentAbbreviation
+    solutionAbbreviation: solutionAbbreviation
+  }
+}
+
+module agentReaderComputeResources '../Service/GroupMembershipManagement/Hosts/AgentReader/Infrastructure/compute/template.bicep' = {
+  name: 'agentReaderComputeResourcesTemplate'
+  scope: resourceGroup(computeResourceGroupName)
+  params: {
+    functionAppLogsDestination: functionAppLogsDestination
+    functionAppLogsStorageAccountName: functionAppLogsStorageAccountName
+    maxInstanceCount: maxInstanceCounts.agentReader
+    enableVnetIntegration: enableFunctionVnetIntegration
+    virtualNetworkSubnetId: _vnetSubnetIdAgentReader
+    location: location
+    environmentAbbreviation: environmentAbbreviation
+    solutionAbbreviation: solutionAbbreviation
+    tenantId: tenantId
+    prereqsKeyVaultResourceGroup: prereqsResourceGroupName
+    dataKeyVaultResourceGroup: dataResourceGroupName
+    setRBACPermissions: setRBACPermissions
+    featureFlags: featureFlags
+    functionAuthAppClientId: functionAuthAppClientId
+    enableFunctionAuthentication: enableFunctionAuthentication
+  }
+  dependsOn: [
+    agentReaderDataResources
+  ]
+}
+
 // ----------------- AzureUserReader
 module azureUserReaderDataResources '../Service/GroupMembershipManagement/Hosts/AzureUserReader/Infrastructure/data/template.bicep' = {
   name: 'azureUserReaderDataResourcesTemplate'
@@ -830,6 +867,19 @@ module sqlDataCheckerComputeResources '../Service/GroupMembershipManagement/Host
 }
 
 /// Functions Post Compute tasks
+module agentReaderPostCompute '../Service/GroupMembershipManagement/Hosts/AgentReader/Infrastructure/compute/postCompute.bicep' = {
+  name: 'agentReaderPostCompute'
+  params: {
+    dataKeyVaultName: '${solutionAbbreviation}-data-${environmentAbbreviation}'
+    dataKeyVaultResourceGroup: dataResourceGroupName
+    environmentAbbreviation: environmentAbbreviation
+    solutionAbbreviation: solutionAbbreviation
+  }
+  dependsOn:[
+    agentReaderComputeResources
+  ]
+}
+
 module azureUserReaderPostCompute '../Service/GroupMembershipManagement/Hosts/AzureUserReader/Infrastructure/compute/postCompute.bicep' = {
   name: 'azureUserReaderPostCompute'
   params: {
