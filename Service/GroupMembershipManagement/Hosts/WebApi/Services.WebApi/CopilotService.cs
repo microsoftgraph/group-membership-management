@@ -456,7 +456,10 @@ namespace Services.WebApi
 
                 var selectFields = new[] { "displayName", "mail", "id", "userPrincipalName", "userType", "accountEnabled" };
 
-                // Single call: exact match by displayName, mailNickname (alias), mail, or UPN
+                // Single call: exact match by displayName, alias (UPN local-part), mail, or UPN.
+                // mailNickname is not reliably the user's real alias (it can drift from the UPN
+                // local-part), so alias-only input (e.g. "jsmith") is matched via userPrincipalName
+                // startswith "jsmith@" instead of mailNickname eq "jsmith".
                 List<Microsoft.Graph.Models.User> allUsers = new();
 
                 try
@@ -464,7 +467,7 @@ namespace Services.WebApi
                     var exactResponse = await graphClient.Users.GetAsync(config =>
                     {
                         config.Headers.Add("ConsistencyLevel", "eventual");
-                        config.QueryParameters.Filter = $"displayName eq '{searchSafe}' or mailNickname eq '{searchSafe}' or mail eq '{searchSafe}' or userPrincipalName eq '{searchSafe}'";
+                        config.QueryParameters.Filter = $"displayName eq '{searchSafe}' or userPrincipalName eq '{searchSafe}' or startswith(userPrincipalName, '{searchSafe}@') or mail eq '{searchSafe}'";
                         config.QueryParameters.Select = selectFields;
                         config.QueryParameters.Count = true;
                         config.QueryParameters.Top = 10;
