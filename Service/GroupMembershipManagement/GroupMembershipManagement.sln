@@ -66,6 +66,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DIConcreteTypes.Tests", "DI
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Repositories.EntityFramework.Tests", "Repositories.EntityFramework.Tests\Repositories.EntityFramework.Tests.csproj", "{9242ECCA-CD8F-4EAE-AA6E-EAA64F60A894}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Repositories.RetryPolicyProvider.Tests", "Repositories.RetryPolicyProvider.Tests\Repositories.RetryPolicyProvider.Tests.csproj", "{7A708F3A-D4B0-49E3-96EF-6C778A490C23}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -424,6 +426,18 @@ Global
 		{9242ECCA-CD8F-4EAE-AA6E-EAA64F60A894}.Release|x64.Build.0 = Release|Any CPU
 		{9242ECCA-CD8F-4EAE-AA6E-EAA64F60A894}.Release|x86.ActiveCfg = Release|Any CPU
 		{9242ECCA-CD8F-4EAE-AA6E-EAA64F60A894}.Release|x86.Build.0 = Release|Any CPU
+		{7A708F3A-D4B0-49E3-96EF-6C778A490C23}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{7A708F3A-D4B0-49E3-96EF-6C778A490C23}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{7A708F3A-D4B0-49E3-96EF-6C778A490C23}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{7A708F3A-D4B0-49E3-96EF-6C778A490C23}.Debug|x64.Build.0 = Debug|Any CPU
+		{7A708F3A-D4B0-49E3-96EF-6C778A490C23}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{7A708F3A-D4B0-49E3-96EF-6C778A490C23}.Debug|x86.Build.0 = Debug|Any CPU
+		{7A708F3A-D4B0-49E3-96EF-6C778A490C23}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{7A708F3A-D4B0-49E3-96EF-6C778A490C23}.Release|Any CPU.Build.0 = Release|Any CPU
+		{7A708F3A-D4B0-49E3-96EF-6C778A490C23}.Release|x64.ActiveCfg = Release|Any CPU
+		{7A708F3A-D4B0-49E3-96EF-6C778A490C23}.Release|x64.Build.0 = Release|Any CPU
+		{7A708F3A-D4B0-49E3-96EF-6C778A490C23}.Release|x86.ActiveCfg = Release|Any CPU
+		{7A708F3A-D4B0-49E3-96EF-6C778A490C23}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

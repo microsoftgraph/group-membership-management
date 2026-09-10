@@ -26,13 +26,13 @@ namespace Repositories.RetryPolicyProvider
 
         public AsyncPolicy<HttpResponseMessage> CreateRetryAfterPolicy(Guid? runId)
         {
-            HttpStatusCode[] httpsStatusCodesWithRetryAfterHeader = {
+            HttpStatusCode[] httpStatusCodesWorthRetrying = {
                 HttpStatusCode.TooManyRequests // 429
             };
 
             return Policy
                 .HandleResult<HttpResponseMessage>(result =>
-                    httpsStatusCodesWithRetryAfterHeader.Contains(result.StatusCode) && result.Headers?.RetryAfter != null)
+                    httpStatusCodesWorthRetrying.Contains(result.StatusCode))
                 .WaitAndRetryAsync(
                     _maxGraphServiceAttempts.MaxRetryAfterAttempts,
                     sleepDurationProvider: GetSleepDuration,
@@ -69,7 +69,10 @@ namespace Repositories.RetryPolicyProvider
 
         private TimeSpan GetSleepDuration(int retryCount, DelegateResult<HttpResponseMessage> response, Context context)
         {
-            var waitTime = response.Result.Headers.RetryAfter.Date.Value - DateTime.UtcNow;
+            var retryAfter = response.Result.Headers.RetryAfter;
+            var waitTime = retryAfter?.Delta
+                ?? (retryAfter?.Date - DateTimeOffset.UtcNow)
+                ?? TimeSpan.FromSeconds(150);
 
             _retryPolicyProviderLogger.LogInformation($"Wait time set to {waitTime}");
 
