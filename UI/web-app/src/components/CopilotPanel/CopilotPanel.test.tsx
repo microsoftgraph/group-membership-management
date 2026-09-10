@@ -197,12 +197,23 @@ describe('CopilotPanel', () => {
     await renderCopilotPanel({
       preloadedState: {
         copilot: {
-          error: 'Something went wrong',
+          messages: [
+            {
+              id: 'error-message',
+              role: 'assistant',
+              content: 'Failed to communicate with GMM Copilot. Please try again.',
+              timestamp: '2026-01-01T00:00:02.000Z',
+              isError: true,
+            },
+          ],
+          error: 'Failed to communicate with GMM Copilot. Please try again.',
         },
       },
     });
 
-    expect(screen.getByText(defaultStrings.Copilot.errorMessage)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: defaultStrings.Copilot.resumeDialogContinue }));
+
+    expect(await screen.findByText(defaultStrings.Copilot.errorMessage)).toBeInTheDocument();
   });
 
   it('shows Accept & Apply button when lastSourceParts exist', async () => {
@@ -257,6 +268,39 @@ describe('CopilotPanel', () => {
     expect(
       screen.queryByRole('button', { name: defaultStrings.Copilot.acceptAndApply })
     ).not.toBeInTheDocument();
+  });
+
+  it('keeps Accept & Apply visible on the last bot message when only errors follow it', async () => {
+    const { defaultStrings } = await loadModules();
+    await renderCopilotPanel({
+      preloadedState: {
+        copilot: {
+          messages: [
+            {
+              id: 'assistant-message',
+              role: 'assistant',
+              content: 'Here is a filter for FTEs.',
+              timestamp: '2026-01-01T00:00:01.000Z',
+            },
+            {
+              id: 'error-message',
+              role: 'assistant',
+              content: 'Failed to communicate with GMM Copilot. Please try again.',
+              timestamp: '2026-01-01T00:00:02.000Z',
+              isError: true,
+            },
+          ],
+          lastSourceParts: [mockSourcePart],
+          lastAppliedOperations: [{ op: 'add', partId: 'p1' }],
+        },
+      },
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: defaultStrings.Copilot.resumeDialogContinue }));
+
+    expect(
+      await screen.findByRole('button', { name: defaultStrings.Copilot.acceptAndApply })
+    ).toBeInTheDocument();
   });
 
   it('calls dismissPanel on close button click', async () => {
@@ -352,7 +396,47 @@ describe('CopilotPanel', () => {
 
   await waitFor(() => expect(writeText).toHaveBeenCalledTimes(1));
   const written = writeText.mock.calls[0][0];
-  expect(JSON.parse(written)).toEqual(messages);
+  const parsed = JSON.parse(written);
+  expect(parsed.messages).toEqual(messages);
+  expect(parsed.messageCount).toBe(messages.length);
+  expect(typeof parsed.sessionId).toBe('string');
+  expect(parsed.sessionId.length).toBeGreaterThan(0);
+  expect(typeof parsed.copiedAt).toBe('string');
+  expect(parsed.error).toBeNull();
+  expect(parsed.warning).toBeNull();
+  });
+
+  it('includes the session id and error banner in the copied diagnostics', async () => {
+  const { defaultStrings } = await loadModules();
+  const writeText = setupClipboardMock();
+  const messages = [
+    {
+      id: 'user-message',
+      role: 'user',
+      content: 'Show me FTEs.',
+      timestamp: '2026-01-01T00:00:00.000Z',
+    },
+  ];
+  await renderCopilotPanel({
+    preloadedState: {
+      copilot: {
+        messages,
+        conversationId: 'session-abc-123',
+        error: 'Failed to communicate with GMM Copilot. Please try again.',
+      },
+    },
+  });
+
+  fireEvent.click(screen.getByRole('button', { name: defaultStrings.Copilot.resumeDialogContinue }));
+
+  const copyButton = await screen.findByRole('button', { name: defaultStrings.Copilot.copyConversation });
+  fireEvent.click(copyButton);
+
+  await waitFor(() => expect(writeText).toHaveBeenCalledTimes(1));
+  const parsed = JSON.parse(writeText.mock.calls[0][0]);
+  expect(parsed.sessionId).toBe('session-abc-123');
+  expect(parsed.error).toBe('Failed to communicate with GMM Copilot. Please try again.');
+  expect(parsed.messages).toEqual(messages);
   });
   });
 

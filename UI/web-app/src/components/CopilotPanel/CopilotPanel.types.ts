@@ -63,6 +63,7 @@ export interface IChatMessage {
     role: 'user' | 'assistant';
     content: string;
     timestamp: string; // ISO string for Redux serialization
+    isError?: boolean; // Marks a failed turn surfaced inline in the transcript (not sent back to the model)
 }
 
 export interface ISuggestedPrompt {

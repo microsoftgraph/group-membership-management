@@ -140,7 +140,19 @@ const copilotSlice = createSlice({
             .addCase(sendCopilotMessage.rejected, (state, action) => {
                 state.isLoading = false;
                 const payload = action.payload as { message?: string } | undefined;
-                state.error = payload?.message || action.error.message || 'An error occurred';
+                const errorText = payload?.message || action.error.message || 'An error occurred';
+                state.error = errorText;
+                // Persist the failure as an inline transcript entry so it stays visible in the
+                // chat window and is captured by "Copy conversation" (e.g. a "please try again"
+                // failure). Flagged with isError so it renders with error styling and is excluded
+                // from the conversationHistory sent back to the model on the next turn.
+                state.messages.push({
+                    id: uuidv4(),
+                    role: 'assistant',
+                    content: errorText,
+                    timestamp: new Date().toISOString(),
+                    isError: true,
+                });
             });
     },
 });
@@ -149,6 +161,7 @@ export const { addMessage, clearMessages, setError, clearLastSourcePart, openPan
 
 // Selectors
 export const selectCopilotMessages = (state: RootState) => state.copilot.messages;
+export const selectCopilotConversationId = (state: RootState) => state.copilot.conversationId;
 export const selectCopilotIsLoading = (state: RootState) => state.copilot.isLoading;
 export const selectCopilotError = (state: RootState) => state.copilot.error;
 export const selectLastSourceParts = (state: RootState) => state.copilot.lastSourceParts;

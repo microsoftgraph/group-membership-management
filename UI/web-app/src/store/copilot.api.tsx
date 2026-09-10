@@ -177,12 +177,16 @@ export const sendCopilotMessage = createAsyncThunk<CopilotResponse, SendMessageP
         headers.append('Authorization', bearer);
         headers.append('Content-Type', 'application/json');
 
-        // Get conversation history and the current working query from state
+        // Get conversation history and the current working query from state.
+        // Exclude inline error entries (isError): they are UI-only failure markers and
+        // must not be replayed to the model as assistant turns.
         const state = getState() as RootState;
-        const conversationHistory = state.copilot.messages.map(msg => ({
-            role: msg.role,
-            content: msg.content,
-        }));
+        const conversationHistory = state.copilot.messages
+            .filter(msg => !msg.isError)
+            .map(msg => ({
+                role: msg.role,
+                content: msg.content,
+            }));
         const currentSourceParts = state.manageMembership.sourceParts;
         const workingQuery = buildWorkingQuery(currentSourceParts);
         const priorIds = new Set(currentSourceParts.map(p => p.id));

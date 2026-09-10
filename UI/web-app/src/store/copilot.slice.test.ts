@@ -251,6 +251,21 @@ describe('copilot.slice', () => {
       expect(state.error).toBe('Network error');
     });
 
+    it('rejected should append an inline error message to the transcript', () => {
+      const loadingState = { ...initialState, isLoading: true };
+      const state = copilotReducer(loadingState, {
+        type: sendCopilotMessage.rejected.type,
+        payload: { message: 'Failed to communicate with GMM Copilot. Please try again.' },
+        error: { message: 'ignored when payload present' },
+      });
+      expect(state.messages).toHaveLength(1);
+      const appended = state.messages[0];
+      expect(appended.role).toBe('assistant');
+      expect(appended.isError).toBe(true);
+      expect(appended.content).toBe('Failed to communicate with GMM Copilot. Please try again.');
+      expect(state.error).toBe('Failed to communicate with GMM Copilot. Please try again.');
+    });
+
     it('rejected without message should use fallback error', () => {
       const state = copilotReducer(initialState, {
         type: sendCopilotMessage.rejected.type,

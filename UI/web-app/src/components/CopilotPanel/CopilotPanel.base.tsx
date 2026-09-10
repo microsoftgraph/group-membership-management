@@ -32,6 +32,7 @@ import { useDispatch, useSelector } from 'react-redux';
 import { AppDispatch } from '../../store';
 import {
     selectCopilotMessages,
+    selectCopilotConversationId,
     selectCopilotIsLoading,
     selectCopilotError,
     selectLastSourceParts,
@@ -64,6 +65,7 @@ export const CopilotPanelBase: React.FunctionComponent<ICopilotPanelProps> = (
     const classNames: IProcessedStyleSet<ICopilotPanelStyles> = getClassNames(styles, { className, theme });
 
     const messages = useSelector(selectCopilotMessages);
+    const conversationId = useSelector(selectCopilotConversationId);
     const isLoading = useSelector(selectCopilotIsLoading);
     const error = useSelector(selectCopilotError);
     const lastSourceParts = useSelector(selectLastSourceParts);
@@ -71,6 +73,17 @@ export const CopilotPanelBase: React.FunctionComponent<ICopilotPanelProps> = (
     const useOrgStructure = useSelector(selectUseOrgStructure);
     const warning = useSelector(selectCopilotWarning);
     const sourceParts = useSelector(getSourcePartsFromState);
+
+    // Index of the most recent non-error message. Accept & Apply anchors here so a
+    // previously-proposed change stays acceptable even after a failed turn — but only
+    // when everything after it is an error (a later user/bot turn would move this index
+    // forward, correctly retiring the offer).
+    const lastNonErrorIndex = useMemo(() => {
+        for (let i = messages.length - 1; i >= 0; i--) {
+            if (!messages[i].isError) return i;
+        }
+        return -1;
+    }, [messages]);
 
     const [inputValue, setInputValue] = useState('');
     const [showResumeDialog, setShowResumeDialog] = useState(false);
@@ -209,10 +222,24 @@ export const CopilotPanelBase: React.FunctionComponent<ICopilotPanelProps> = (
     }, []);
 
     const handleCopyConversation = useCallback(async () => {
-        if (messages.length === 0) {
+        if (messages.length === 0 && !error && !warning) {
             return;
         }
-        const payload = JSON.stringify(messages, null, 2);
+        // Build a diagnostic payload that mirrors everything visible in the chat
+        // window plus cross-referencing metadata. Beyond the message list we also
+        // include the session (conversation) id for log correlation and the current
+        // error/warning banners — which are surfaced from Redux state rather than as
+        // chat messages, so they were previously absent from the copied text (e.g. a
+        // "please try again" failure would not appear in the copy).
+        const diagnostics = {
+            sessionId: conversationId,
+            copiedAt: new Date().toISOString(),
+            messageCount: messages.length,
+            messages,
+            error: error ?? null,
+            warning: warning ?? null,
+        };
+        const payload = JSON.stringify(diagnostics, null, 2);
         try {
             await navigator.clipboard.writeText(payload);
             if (!isMountedRef.current) {
@@ -247,7 +274,7 @@ export const CopilotPanelBase: React.FunctionComponent<ICopilotPanelProps> = (
                 copiedTimeoutRef.current = null;
             }, 2000);
         }
-    }, [messages]);
+    }, [messages, conversationId, error, warning]);
 
     const handleResumeStartOver = useCallback(() => {
         dispatch(clearMessages());
@@ -312,7 +339,7 @@ export const CopilotPanelBase: React.FunctionComponent<ICopilotPanelProps> = (
                                     : (strings.Copilot?.copyConversation || 'Copy conversation')}
                             ariaLabel={strings.Copilot?.copyConversation || 'Copy conversation'}
                             onClick={handleCopyConversation}
-                            disabled={messages.length === 0}
+                            disabled={messages.length === 0 && !error && !warning}
                             styles={{
                                 root: {
                                     color: copyStatus === 'error' 
@@ -526,8 +553,28 @@ export const CopilotPanelBase: React.FunctionComponent<ICopilotPanelProps> = (
     };
 
     const renderMessage = (message: IChatMessage, index: number): JSX.Element => {
+        // Inline failure entry (spec: failed turns live in the transcript). Render the same
+        // friendly error bubble the standalone banner used to show; the raw error string is
+        // preserved in message.content for "Copy conversation" / log correlation.
+        if (message.isError) {
+            return (
+                <div
+                    key={message.id}
+                    className={`${classNames.messageRow} ${classNames.botMessage}`}
+                >
+                    {renderBotAvatar()}
+                    <div className={classNames.messageContent} style={{ backgroundColor: theme.semanticColors.errorBackground, color: theme.semanticColors.errorText }}>
+                        <div>{strings.Copilot?.errorMessage || 'Sorry, something went wrong. Please try again.'}</div>
+                        <div data-testid="copilot-load-fallback" style={{ marginTop: '6px' }}>
+                            {strings.Copilot?.loadFailed || 'You can still create a new query from scratch here.'}
+                        </div>
+                    </div>
+                </div>
+            );
+        }
+
         const isBot = message.role === 'assistant';
-        const isLastBotMessage = isBot && index === messages.length - 1;
+        const isLastBotMessage = isBot && index === lastNonErrorIndex;
         // Show Accept & Apply only if this is the last bot message, we have a resulting query,
         // AND the server actually applied at least one operation this turn. A no-op turn
         // (describe/clarify/refuse) returns the query unchanged with no applied operations, so
@@ -621,17 +668,6 @@ export const CopilotPanelBase: React.FunctionComponent<ICopilotPanelProps> = (
                             <div className={classNames.loadingIndicator}>
                                 <Spinner size={SpinnerSize.small} />
                                 <span>{strings.Copilot?.thinking || 'Thinking...'}</span>
-                            </div>
-                        )}
-                        {error && (
-                            <div className={`${classNames.messageRow} ${classNames.botMessage}`}>
-                                {renderBotAvatar()}
-                                <div className={classNames.messageContent} style={{ backgroundColor: theme.semanticColors.errorBackground, color: theme.semanticColors.errorText }}>
-                                    <div>{strings.Copilot?.errorMessage || 'Sorry, something went wrong. Please try again.'}</div>
-                                    <div data-testid="copilot-load-fallback" style={{ marginTop: '6px' }}>
-                                        {strings.Copilot?.loadFailed || 'You can still create a new query from scratch here.'}
-                                    </div>
-                                </div>
                             </div>
                         )}
                         {warning && !error && (
