@@ -120,6 +120,7 @@ export const JobDetailsBase: React.FunctionComponent<IJobDetailsProps> = (
   const { jobId } = useParams<{ jobId: string }>();
   const { groupId } = useParams<{ groupId: string }>();
   const { channelId } = useParams<{ channelId: string }>();
+  const effectiveJobId = jobId ?? job.syncJobId;
   const [searchParams] = useSearchParams();
   // Capture on mount before the URL-sync effect strips the query.
   const [shouldAutoOpenThresholdAction] = useState(() => searchParams.get('takeAction') === 'true');
@@ -447,11 +448,11 @@ export const JobDetailsBase: React.FunctionComponent<IJobDetailsProps> = (
               />
             </div>
           )}
-          {jobId && (
+          {effectiveJobId && (
             <JobHistoryPanel
               isOpen={isJobHistoryPanelOpen}
               dismissPanel={() => setIsJobHistoryPanelOpen(false)}
-              jobId={jobId}
+              jobId={effectiveJobId}
               onEditRules={openMembershipConfiguration}
               onEditThreshold={openRunConfiguration}
               autoOpenThresholdAction={shouldAutoOpenThresholdAction}
