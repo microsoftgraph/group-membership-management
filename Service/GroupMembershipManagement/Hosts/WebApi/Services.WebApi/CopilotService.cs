@@ -220,8 +220,11 @@ namespace Services.WebApi
             }
 
             // Load dynamic temperature and topP
-            var temperature = 0.7f;
-            var topP = 0.9f;
+            // Defaults tuned for deterministic structured-JSON output (exact attribute names/casing,
+            // no invented values). Low temperature minimizes hallucination; top_p left at 1.0 so
+            // temperature is the single sampling lever. Overridable via admin AI settings.
+            var temperature = 0.2f;
+            var topP = 1.0f;
             if (aiSettings.TryGetValue(SettingKey.CopilotTemperature, out var tempStr) && float.TryParse(tempStr, NumberStyles.Float, CultureInfo.InvariantCulture, out var parsedTemp))
                 temperature = Math.Clamp(parsedTemp, 0.0f, 1.0f);
             if (aiSettings.TryGetValue(SettingKey.CopilotTopP, out var topPStr) && float.TryParse(topPStr, NumberStyles.Float, CultureInfo.InvariantCulture, out var parsedTopP))
