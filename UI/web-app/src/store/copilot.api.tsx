@@ -12,10 +12,17 @@ import { HRSourcePart, HRSourcePartSource } from '../models/HRSourcePart';
 import { GroupMembershipSourcePart } from '../models/GroupMembershipSourcePart';
 import { SourcePartType } from '../models/SourcePartType';
 
+// A single operation the server actually applied to the working query (empty list = nothing changed).
+export interface CopilotOperationSummary {
+    op: string;
+    partId?: string;
+}
+
 export interface CopilotResponse {
     message: IChatMessage;
     sourceParts: ISourcePart[]; // The complete resulting query (each with its own org leader info)
     useOrgStructure: boolean; // Whether any part uses org hierarchy
+    appliedOperations: CopilotOperationSummary[]; // Ops the server applied this turn; empty = no change
     warning?: string; // Soft warning (e.g., the resulting query is empty)
     errorCode?: string; // Set when the operation set was rejected (e.g., UnknownPartTarget)
 }
@@ -25,7 +32,7 @@ interface CopilotApiResponse {
     message: string;
     sourceParts?: ApiSourcePart[]; // v1 back-compat
     resultingQuery?: ApiSourcePart[]; // v2: complete authoritative query
-    appliedOperations?: { op: string; partId?: string }[];
+    appliedOperations?: CopilotOperationSummary[];
     warning?: string;
     errorCode?: string;
 }
@@ -243,10 +250,24 @@ export const sendCopilotMessage = createAsyncThunk<CopilotResponse, SendMessageP
                 return transformSourcePart(apiPart, priorIds);
             });
 
+            // v2 (operation engine) always reports what it applied via appliedOperations, even as an
+            // empty list on no-op turns. A legacy v1 response has no operation semantics (it only ever
+            // returned the query via sourceParts), so preserve the original behavior for it: treat any
+            // non-empty query as "changed" so Accept & Apply still shows. Detect v2 by the presence of
+            // the appliedOperations field (v2 includes it, empty or not).
+            const isV2Response = data.appliedOperations !== undefined;
+            const appliedOperations: CopilotOperationSummary[] = isV2Response
+                ? data.appliedOperations!
+                : (sourceParts.length > 0 ? [{ op: 'set' }] : []);
+
             return {
                 message: assistantMessage,
                 sourceParts,
                 useOrgStructure: sourceParts.some(p => p.useOrgStructure),
+                // The server is authoritative about what changed. An empty list means the turn
+                // was a no-op (describe/clarify/refuse) or the operation set was rejected, so the
+                // UI should not offer "Accept & Apply" even though resultingQuery is non-empty.
+                appliedOperations,
                 warning: data.warning,
                 errorCode: data.errorCode,
             };

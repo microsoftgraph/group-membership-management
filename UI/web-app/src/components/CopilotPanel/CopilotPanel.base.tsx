@@ -35,6 +35,7 @@ import {
     selectCopilotIsLoading,
     selectCopilotError,
     selectLastSourceParts,
+    selectLastAppliedOperations,
     selectUseOrgStructure,
     selectCopilotWarning,
     addMessage,
@@ -66,6 +67,7 @@ export const CopilotPanelBase: React.FunctionComponent<ICopilotPanelProps> = (
     const isLoading = useSelector(selectCopilotIsLoading);
     const error = useSelector(selectCopilotError);
     const lastSourceParts = useSelector(selectLastSourceParts);
+    const lastAppliedOperations = useSelector(selectLastAppliedOperations);
     const useOrgStructure = useSelector(selectUseOrgStructure);
     const warning = useSelector(selectCopilotWarning);
     const sourceParts = useSelector(getSourcePartsFromState);
@@ -526,8 +528,11 @@ export const CopilotPanelBase: React.FunctionComponent<ICopilotPanelProps> = (
     const renderMessage = (message: IChatMessage, index: number): JSX.Element => {
         const isBot = message.role === 'assistant';
         const isLastBotMessage = isBot && index === messages.length - 1;
-        // Show Accept & Apply only if this is the last bot message AND we have a source part ready
-        const canAccept = isLastBotMessage && lastSourceParts.length > 0 && !isLoading;
+        // Show Accept & Apply only if this is the last bot message, we have a resulting query,
+        // AND the server actually applied at least one operation this turn. A no-op turn
+        // (describe/clarify/refuse) returns the query unchanged with no applied operations, so
+        // offering "Accept & Apply" there would re-apply an identical query and mislead the user.
+        const canAccept = isLastBotMessage && lastSourceParts.length > 0 && lastAppliedOperations.length > 0 && !isLoading;
         
         const displayContent = message.content;
         

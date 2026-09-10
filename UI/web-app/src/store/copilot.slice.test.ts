@@ -13,6 +13,7 @@ import copilotReducer, {
   selectCopilotIsLoading,
   selectCopilotError,
   selectLastSourceParts,
+  selectLastAppliedOperations,
   selectUseOrgStructure,
   selectIsPanelOpen,
   mergeResultingParts,
@@ -30,6 +31,7 @@ const initialState: CopilotState = {
   error: null,
   isPanelOpen: false,
   lastSourceParts: [],
+  lastAppliedOperations: [],
   useOrgStructure: false,
   warning: null,
   conversationId: 'test-conversation-id',
@@ -117,10 +119,12 @@ describe('copilot.slice', () => {
       const populated: CopilotState = {
         ...initialState,
         lastSourceParts: [mockSourcePart],
+        lastAppliedOperations: [{ op: 'add', partId: 'p1' }],
         useOrgStructure: true,
       };
       const state = copilotReducer(populated, clearLastSourcePart());
       expect(state.lastSourceParts).toEqual([]);
+      expect(state.lastAppliedOperations).toEqual([]);
       expect(state.useOrgStructure).toBe(false);
     });
 
@@ -193,6 +197,50 @@ describe('copilot.slice', () => {
       expect(state.lastSourceParts[0].createdViaAIQB).toBe(true);
     });
 
+    it('fulfilled stores appliedOperations from the response payload', () => {
+      const payload = {
+        message: mockAssistantMessage,
+        sourceParts: [mockSourcePart],
+        useOrgStructure: false,
+        appliedOperations: [{ op: 'replace', partId: 'p1' }],
+      };
+      const state = copilotReducer(initialState, {
+        type: sendCopilotMessage.fulfilled.type,
+        payload,
+      });
+      expect(state.lastAppliedOperations).toEqual([{ op: 'replace', partId: 'p1' }]);
+    });
+
+    it('fulfilled with no applied operations (no-op turn) leaves appliedOperations empty', () => {
+      // Describe/clarify/refuse turns return the query unchanged with an empty operation set.
+      // The empty list is what gates the Accept & Apply button in the panel.
+      const payload = {
+        message: mockAssistantMessage,
+        sourceParts: [mockSourcePart],
+        useOrgStructure: false,
+        appliedOperations: [],
+      };
+      const state = copilotReducer(initialState, {
+        type: sendCopilotMessage.fulfilled.type,
+        payload,
+      });
+      expect(state.lastSourceParts).toEqual([mockSourcePart]);
+      expect(state.lastAppliedOperations).toEqual([]);
+    });
+
+    it('fulfilled without appliedOperations defaults to empty', () => {
+      const payload = {
+        message: mockAssistantMessage,
+        sourceParts: [mockSourcePart],
+        useOrgStructure: false,
+      };
+      const state = copilotReducer(initialState, {
+        type: sendCopilotMessage.fulfilled.type,
+        payload,
+      });
+      expect(state.lastAppliedOperations).toEqual([]);
+    });
+
     it('rejected should set error and stop loading', () => {
       const loadingState = { ...initialState, isLoading: true };
       const state = copilotReducer(loadingState, {
@@ -220,6 +268,7 @@ describe('copilot.slice', () => {
         error: 'test error',
         isPanelOpen: true,
         lastSourceParts: [mockSourcePart],
+        lastAppliedOperations: [{ op: 'add', partId: 'p1' }],
         useOrgStructure: true,
       },
     } as unknown as RootState;
@@ -238,6 +287,10 @@ describe('copilot.slice', () => {
 
     it('selectLastSourceParts returns source parts', () => {
       expect(selectLastSourceParts(mockRootState)).toEqual([mockSourcePart]);
+    });
+
+    it('selectLastAppliedOperations returns applied operations', () => {
+      expect(selectLastAppliedOperations(mockRootState)).toEqual([{ op: 'add', partId: 'p1' }]);
     });
 
     it('selectUseOrgStructure returns flag', () => {

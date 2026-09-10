@@ -8,7 +8,7 @@ import { IChatMessage } from '../components/CopilotPanel/CopilotPanel.types';
 import { ISourcePart } from '../models/ISourcePart';
 import { HRSourcePart } from '../models/HRSourcePart';
 import { SourcePartType } from '../models/SourcePartType';
-import { sendCopilotMessage } from './copilot.api';
+import { sendCopilotMessage, CopilotOperationSummary } from './copilot.api';
 
 /**
  * Merges the complete resulting query returned by Copilot into the current source parts
@@ -68,6 +68,7 @@ export interface CopilotState {
     error: string | null;
     isPanelOpen: boolean;
     lastSourceParts: ISourcePart[]; // Source parts from last chat response (each with its own org leader info)
+    lastAppliedOperations: CopilotOperationSummary[]; // Ops the server applied last turn; empty = no change (hides Accept & Apply)
     useOrgStructure: boolean; // Whether any part uses org hierarchy
     warning: string | null; // Soft warning from the last response (e.g. empty resulting query)
 }
@@ -79,6 +80,7 @@ const initialState: CopilotState = {
     error: null,
     isPanelOpen: false,
     lastSourceParts: [],
+    lastAppliedOperations: [],
     useOrgStructure: false,
     warning: null,
 };
@@ -96,6 +98,7 @@ const copilotSlice = createSlice({
             state.conversationId = uuidv4();
             state.error = null;
             state.lastSourceParts = [];
+            state.lastAppliedOperations = [];
             state.useOrgStructure = false;
             state.warning = null;
         },
@@ -104,6 +107,7 @@ const copilotSlice = createSlice({
         },
         clearLastSourcePart: (state) => {
             state.lastSourceParts = [];
+            state.lastAppliedOperations = [];
             state.useOrgStructure = false;
             state.warning = null;
         },
@@ -125,6 +129,9 @@ const copilotSlice = createSlice({
                 state.messages.push(action.payload.message);
                 // Store source parts from chat response (each with its own org leader info)
                 state.lastSourceParts = action.payload.sourceParts;
+                // Ops the server actually applied this turn. Empty means nothing changed
+                // (describe/clarify/refuse or a rejected op set), which gates Accept & Apply.
+                state.lastAppliedOperations = action.payload.appliedOperations ?? [];
                 // Whether any part uses org hierarchy
                 state.useOrgStructure = action.payload.useOrgStructure;
                 // Soft warning (e.g. the resulting query is now empty)
@@ -145,6 +152,7 @@ export const selectCopilotMessages = (state: RootState) => state.copilot.message
 export const selectCopilotIsLoading = (state: RootState) => state.copilot.isLoading;
 export const selectCopilotError = (state: RootState) => state.copilot.error;
 export const selectLastSourceParts = (state: RootState) => state.copilot.lastSourceParts;
+export const selectLastAppliedOperations = (state: RootState) => state.copilot.lastAppliedOperations;
 export const selectUseOrgStructure = (state: RootState) => state.copilot.useOrgStructure;
 export const selectCopilotWarning = (state: RootState) => state.copilot.warning;
 export const selectIsPanelOpen = (state: RootState) => state.copilot.isPanelOpen;

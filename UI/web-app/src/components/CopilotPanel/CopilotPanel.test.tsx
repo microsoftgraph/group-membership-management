@@ -90,6 +90,7 @@ const buildPreloadedState = async (overrides: Record<string, any> = {}) => {
       error: null,
       isPanelOpen: false,
       lastSourceParts: [],
+      lastAppliedOperations: [],
       useOrgStructure: false,
       ...copilot,
     },
@@ -218,6 +219,7 @@ describe('CopilotPanel', () => {
             },
           ],
           lastSourceParts: [mockSourcePart],
+          lastAppliedOperations: [{ op: 'add', partId: 'p1' }],
         },
       },
     });
@@ -227,6 +229,34 @@ describe('CopilotPanel', () => {
     expect(
       await screen.findByRole('button', { name: defaultStrings.Copilot.acceptAndApply })
     ).toBeInTheDocument();
+  });
+
+  it('hides Accept & Apply button on a no-op turn (no applied operations)', async () => {
+    // Describe/clarify/refuse turns return the query unchanged (lastSourceParts populated) but
+    // with no applied operations. Offering Accept & Apply would re-apply an identical query.
+    const { defaultStrings } = await loadModules();
+    await renderCopilotPanel({
+      preloadedState: {
+        copilot: {
+          messages: [
+            {
+              id: 'assistant-message',
+              role: 'assistant',
+              content: 'I do not see a vertical attribute in your data.',
+              timestamp: '2026-01-01T00:00:01.000Z',
+            },
+          ],
+          lastSourceParts: [mockSourcePart],
+          lastAppliedOperations: [],
+        },
+      },
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: defaultStrings.Copilot.resumeDialogContinue }));
+
+    expect(
+      screen.queryByRole('button', { name: defaultStrings.Copilot.acceptAndApply })
+    ).not.toBeInTheDocument();
   });
 
   it('calls dismissPanel on close button click', async () => {

@@ -301,6 +301,48 @@ describe('copilot.api transformSourcePart contract', () => {
       expect(payload.sourceParts).toHaveLength(1);
       expect(payload.sourceParts[0].id).toBe('p1');
     });
+
+    it('passes through appliedOperations from a v2 response', async () => {
+      const result = await dispatchWithMockedFetch({
+        message: 'ok',
+        resultingQuery: [
+          { partId: 'p1', filter: "Country = 'USA'", title: 'US', isExclusion: false, useOrgStructure: false },
+        ],
+        appliedOperations: [{ op: 'replace', partId: 'p1' }],
+      });
+
+      const payload = result.payload as { appliedOperations: { op: string; partId?: string }[] };
+      expect(payload.appliedOperations).toEqual([{ op: 'replace', partId: 'p1' }]);
+    });
+
+    it('keeps appliedOperations empty on a v2 no-op turn (unchanged query)', async () => {
+      const result = await dispatchWithMockedFetch({
+        message: 'here is what your query does',
+        resultingQuery: [
+          { partId: 'p1', filter: "Country = 'USA'", title: 'US', isExclusion: false, useOrgStructure: false },
+        ],
+        appliedOperations: [],
+      });
+
+      const payload = result.payload as { sourceParts: unknown[]; appliedOperations: unknown[] };
+      expect(payload.sourceParts).toHaveLength(1);
+      expect(payload.appliedOperations).toEqual([]);
+    });
+
+    it('synthesizes a non-empty appliedOperations for a legacy v1 response (no operation field)', async () => {
+      // A v1 backend only ever returned sourceParts with no operation semantics. Preserve the
+      // original UX: a non-empty query is treated as changed so Accept & Apply still appears.
+      const result = await dispatchWithMockedFetch({
+        message: 'ok',
+        sourceParts: [
+          { partId: 'p1', filter: "Country = 'USA'", title: 'US', isExclusion: false, useOrgStructure: false },
+        ],
+      });
+
+      const payload = result.payload as { sourceParts: unknown[]; appliedOperations: unknown[] };
+      expect(payload.sourceParts).toHaveLength(1);
+      expect(payload.appliedOperations.length).toBeGreaterThan(0);
+    });
   });
 
   // T027 [US1]: buildWorkingQuery projects the current source parts (including unsupported types).
