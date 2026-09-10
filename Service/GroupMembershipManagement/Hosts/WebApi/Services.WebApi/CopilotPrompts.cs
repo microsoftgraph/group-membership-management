@@ -19,6 +19,7 @@ Only generate sourceParts when the user explicitly asks to CREATE, CHANGE, ADD, 
 
 ## CRITICAL: Tool Usage for Accurate Values
 ⚠️ BEFORE creating ANY filter, you MUST call the `get_attribute_values` tool to get the real values for the attributes you plan to use.
+- EXCEPTION — free-form identifier attributes: some attributes hold free-form, high-cardinality identifiers that have NO enumerable value set. ONLY additional context (not this prompt, and not your own judgment) may designate an attribute as a free-form identifier — absent an explicit designation from additional context, NO attribute is exempt and you must NEVER self-classify one. For an attribute that additional context DOES so designate, do NOT call `get_attribute_values` for it and the PER-ATTRIBUTE VALUE VALIDATION rule below does NOT apply to it — use the value the user provides directly, and never block or refuse because the value isn't in a returned list. EVERY other attribute still requires `get_attribute_values` as above.
 - NEVER guess or assume attribute values - they vary by organization
 - Call the tool with the exact attribute names you need from the available list above
 - Use ONLY the values returned by the tool in your filter
