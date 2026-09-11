@@ -34,6 +34,9 @@ param functionAuthAppClientId string
 @description('Enable function authentication.')
 param enableFunctionAuthentication bool = false
 
+@description('Maximum number of users whose ManagerId is missing from the extract before PopulateDestinationPipeline fails.')
+param maxInvalidUserCount int = 25
+
 var dataFactoryName = factoryName
 var azureBlobStorageLinkedService = 'AzureBlobStorage_${resourceSuffix}'
 var destinationDatabaseLinkedService = 'DestinationDatabase_${resourceSuffix}'
@@ -210,11 +213,96 @@ resource Pipeline_PopulateDestinationPipeline 'Microsoft.DataFactory/factories/p
         }
       }
       {
-        name: 'Add Height Column'
+        name: 'Check Manager Hierarchy'
         type: 'Script'
         dependsOn: [
           {
             activity: 'PopulateDestinationDataFlow'
+            dependencyConditions: [
+              'Succeeded'
+            ]
+          }
+        ]
+        policy: {
+          timeout: '0.12:00:00'
+          retry: 0
+          retryIntervalInSeconds: 30
+          secureOutput: false
+          secureInput: false
+        }
+        userProperties: []
+        linkedServiceName: {
+          referenceName: destinationDatabaseLinkedService
+          type: 'LinkedServiceReference'
+        }
+        typeProperties: {
+          scripts: [
+            {
+              type: 'Query'
+              text: {
+                value: '@concat(\'\nWITH u AS (SELECT EmployeeId, ManagerId FROM [users].[\',replace(pipeline().RunId,\'-\',\'\'),\']),\nr AS (SELECT COUNT(*) AS rootCount FROM u WHERE ManagerId IS NULL),\nbad AS (\n\tSELECT u.EmployeeId, u.ManagerId\n\tFROM u\n\tWHERE u.ManagerId IS NOT NULL\n\t\tAND NOT EXISTS (SELECT 1 FROM u m WHERE m.EmployeeId = u.ManagerId)\n)\nSELECT\n\t(SELECT rootCount FROM r) AS rootCount,\n\t(SELECT COUNT(*) FROM bad) AS invalidUserCount,\n\t(SELECT COUNT(*) FROM u) AS totalUserCount,\n\t(SELECT COUNT(DISTINCT ManagerId) FROM bad) AS missingManagerCount,\n\t${maxInvalidUserCount} AS maxInvalidUserCount,\n\tISNULL((SELECT STRING_AGG(CONCAT(EmployeeId, \'\':\'\', ISNULL(CAST(ManagerId AS VARCHAR(20)), \'\'<null>\'\')), \'\', \'\')\n\t\tFROM (SELECT TOP 10 EmployeeId, ManagerId FROM bad ORDER BY EmployeeId) s), \'\'\'\') AS invalidPairs,\n\tCASE WHEN (SELECT rootCount FROM r) = 1\n\t\tAND (SELECT COUNT(*) FROM bad) <= ${maxInvalidUserCount}\n\tTHEN 1 ELSE 0 END AS isValid\n\')'
+                type: 'Expression'
+              }
+            }
+          ]
+          scriptBlockExecutionTimeout: '02:00:00'
+        }
+      }
+      {
+        name: 'Gate Manager Hierarchy Validation'
+        type: 'IfCondition'
+        dependsOn: [
+          {
+            activity: 'Check Manager Hierarchy'
+            dependencyConditions: [
+              'Succeeded'
+            ]
+          }
+        ]
+        userProperties: []
+        typeProperties: {
+          expression: {
+            value: '@not(equals(activity(\'Check Manager Hierarchy\').output.resultSets[0].rows[0].isValid, 1))'
+            type: 'Expression'
+          }
+          ifTrueActivities: [
+            {
+              name: 'Fail Invalid Manager Hierarchy'
+              type: 'Fail'
+              dependsOn: []
+              userProperties: []
+              typeProperties: {
+                message: {
+                  value: '@concat(\'Invalid manager hierarchy detected. invalidUserCount=\', string(activity(\'Check Manager Hierarchy\').output.resultSets[0].rows[0].invalidUserCount), \' of \', string(activity(\'Check Manager Hierarchy\').output.resultSets[0].rows[0].totalUserCount), \' (max \', string(activity(\'Check Manager Hierarchy\').output.resultSets[0].rows[0].maxInvalidUserCount), \'); rootCount=\', string(activity(\'Check Manager Hierarchy\').output.resultSets[0].rows[0].rootCount), \'; missingManagerCount=\', string(activity(\'Check Manager Hierarchy\').output.resultSets[0].rows[0].missingManagerCount), \'; invalidPairs=[\', string(activity(\'Check Manager Hierarchy\').output.resultSets[0].rows[0].invalidPairs), \']; query=SELECT EmployeeId,ManagerId FROM [users].[\', replace(pipeline().RunId,\'-\',\'\'), \'] u WHERE u.ManagerId IS NOT NULL AND NOT EXISTS(SELECT 1 FROM [users].[\', replace(pipeline().RunId,\'-\',\'\'), \'] m WHERE m.EmployeeId=u.ManagerId)\')'
+                  type: 'Expression'
+                }
+                errorCode: 'InvalidManagerHierarchy'
+              }
+            }
+          ]
+          ifFalseActivities: [
+            {
+              name: 'Record Manager Hierarchy Status'
+              type: 'SetVariable'
+              dependsOn: []
+              userProperties: []
+              typeProperties: {
+                variableName: 'managerHierarchyStatus'
+                value: {
+                  value: '@concat(\'Manager hierarchy within tolerance. invalidUserCount=\', string(activity(\'Check Manager Hierarchy\').output.resultSets[0].rows[0].invalidUserCount), \' of \', string(activity(\'Check Manager Hierarchy\').output.resultSets[0].rows[0].totalUserCount), \' (max \', string(activity(\'Check Manager Hierarchy\').output.resultSets[0].rows[0].maxInvalidUserCount), \'); rootCount=\', string(activity(\'Check Manager Hierarchy\').output.resultSets[0].rows[0].rootCount), \'; missingManagerCount=\', string(activity(\'Check Manager Hierarchy\').output.resultSets[0].rows[0].missingManagerCount), \'; invalidPairs=[\', string(activity(\'Check Manager Hierarchy\').output.resultSets[0].rows[0].invalidPairs), \']\')'
+                  type: 'Expression'
+                }
+              }
+            }
+          ]
+        }
+      }
+      {
+        name: 'Add Height Column'
+        type: 'Script'
+        dependsOn: [
+          {
+            activity: 'Gate Manager Hierarchy Validation'
             dependencyConditions: [
               'Succeeded'
             ]
@@ -434,6 +522,11 @@ resource Pipeline_PopulateDestinationPipeline 'Microsoft.DataFactory/factories/p
     ]
     policy: {
       elapsedTimeMetric: {}
+    }
+    variables: {
+      managerHierarchyStatus: {
+        type: 'String'
+      }
     }
     annotations: []
   }
@@ -877,9 +970,6 @@ resource dataFlow_PopulateDestinationDataFlow 'Microsoft.DataFactory/factories/d
           }
           name: 'sink'
         }
-        {
-          name: 'MgrValidationCache'
-        }
       ]
       transformations: [
         {
@@ -887,54 +977,6 @@ resource dataFlow_PopulateDestinationDataFlow 'Microsoft.DataFactory/factories/d
         }
         {
           name: 'CastColumns'
-        }
-        {
-          name: 'MgrEligibleDerive'
-        }
-        {
-          name: 'MgrEligibleKeys'
-        }
-        {
-          name: 'MgrValidationDerive'
-        }
-        {
-          name: 'MgrValidationJoin'
-        }
-        {
-          name: 'MgrValidationFlags'
-        }
-        {
-          name: 'MgrCounts'
-        }
-        {
-          name: 'MgrCountsKey'
-        }
-        {
-          name: 'MgrSummaryCounts'
-        }
-        {
-          name: 'MgrInvalidRows'
-        }
-        {
-          name: 'MgrInvalidPairsDerive'
-        }
-        {
-          name: 'MgrInvalidRanked'
-        }
-        {
-          name: 'MgrInvalidTop'
-        }
-        {
-          name: 'MgrPairsAgg'
-        }
-        {
-          name: 'MgrPairsString'
-        }
-        {
-          name: 'MgrSummaryJoin'
-        }
-        {
-          name: 'MgrAssert'
         }
       ]
       scriptLines: [
@@ -977,7 +1019,6 @@ resource dataFlow_PopulateDestinationDataFlow 'Microsoft.DataFactory/factories/d
         '     updateable:false,'
         '     upsertable:false,'
         '     format: \'table\','
-        '     saveOrder: 2,'
         '     mapColumn('
         '          AzureObjectId,'
         '          Email = UserPrincipalName,'
@@ -988,50 +1029,6 @@ resource dataFlow_PopulateDestinationDataFlow 'Microsoft.DataFactory/factories/d
         '          Country_Code = CountryCode,'
         '          Department'
         '     )) ~> sink'
-        'join derive(mgrEligibleKey = toInteger(EmployeeIdentificationNumber)) ~> MgrEligibleDerive'
-        'MgrEligibleDerive aggregate(groupBy(mgrEligibleKey),'
-        '     mgrKeyCount = count()) ~> MgrEligibleKeys'
-        'join derive(mgrEmployeeId = toInteger(EmployeeIdentificationNumber),'
-        '          mgrManagerRaw = ManagerIdentificationNumber,'
-        '          mgrManagerId = toInteger(ManagerIdentificationNumber),'
-        '          mgrIsNull = isNull(ManagerIdentificationNumber),'
-        '          mgrIsMalformed = (!isNull(ManagerIdentificationNumber)) && (trim(ManagerIdentificationNumber) == \'\' || isNull(toInteger(ManagerIdentificationNumber)) || toInteger(ManagerIdentificationNumber) == 0)) ~> MgrValidationDerive'
-        'MgrValidationDerive, MgrEligibleKeys join(mgrManagerId == mgrEligibleKey,'
-        '     joinType:\'left\','
-        '     matchType:\'exact\','
-        '     ignoreSpaces: false,'
-        '     broadcast: \'auto\') ~> MgrValidationJoin'
-        'MgrValidationJoin derive(mgrRecordInvalid = (!mgrIsNull) && (mgrIsMalformed || isNull(mgrEligibleKey))) ~> MgrValidationFlags'
-        'MgrValidationFlags aggregate(rootCount = countIf(mgrIsNull),'
-        '     nonRootInvalidCount = countIf(mgrRecordInvalid)) ~> MgrCounts'
-        'MgrCounts derive(mgrJoinKey = 1,'
-        '          invalidUserCount = nonRootInvalidCount + iif(rootCount > 1, rootCount, toLong(0))) ~> MgrCountsKey'
-        'MgrCountsKey derive(isValid = (rootCount == 1) && (invalidUserCount == 0)) ~> MgrSummaryCounts'
-        'MgrValidationFlags filter(mgrRecordInvalid == true()) ~> MgrInvalidRows'
-        'MgrInvalidRows derive(mgrGroup = 1,'
-        '          mgrPair = \'EmployeeId=\' + toString(mgrEmployeeId) + \',ManagerId=\' + coalesce(toString(mgrManagerId), iif(trim(coalesce(mgrManagerRaw, \'\')) == \'\', \'<empty>\', mgrManagerRaw))) ~> MgrInvalidPairsDerive'
-        'MgrInvalidPairsDerive window(over(mgrGroup),'
-        '     asc(mgrEmployeeId, true),'
-        '     mgrRank = rowNumber()) ~> MgrInvalidRanked'
-        'MgrInvalidRanked filter(mgrRank <= 10) ~> MgrInvalidTop'
-        'MgrInvalidTop aggregate(invalidPairsArray = collect(mgrPair)) ~> MgrPairsAgg'
-        'MgrPairsAgg derive(mgrJoinKey = 1,'
-        '          invalidPairs = iif(size(invalidPairsArray) == 0, \'\', reduce(invalidPairsArray, \'\', iif(#acc == \'\', #item, #acc + \'; \' + #item), #result))) ~> MgrPairsString'
-        'MgrSummaryCounts, MgrPairsString join(MgrSummaryCounts@mgrJoinKey == MgrPairsString@mgrJoinKey,'
-        '     joinType:\'inner\','
-        '     matchType:\'exact\','
-        '     ignoreSpaces: false,'
-        '     broadcast: \'auto\') ~> MgrSummaryJoin'
-        'MgrSummaryJoin assert(expectTrue(isValid == true(), false, \'InvalidManagerHierarchy\', null,'
-        '          \'InvalidManagerHierarchy invalidUserCount=\' + toString(invalidUserCount) + \' rootCount=\' + toString(rootCount) + \' invalidPairs=[\' + invalidPairs + \']\'),'
-        '     rejectDataFlowOnError: true) ~> MgrAssert'
-        'MgrAssert sink(allowSchemaDrift: true,'
-        '     validateSchema: false,'
-        '     skipDuplicateMapInputs: true,'
-        '     skipDuplicateMapOutputs: true,'
-        '     store: \'cache\','
-        '     format: \'inline\','
-        '     saveOrder: 1) ~> MgrValidationCache'
       ]
     }
   }

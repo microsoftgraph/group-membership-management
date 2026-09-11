@@ -59,6 +59,14 @@ Regardless of the approach used to populate the database with HR data, GMM has s
 
 - **Additional columns:** You can include as many additional attribute columns as needed (e.g., `Department`, `JobTitle_Code`, `Country_Code`) as long as the required columns above are present. These additional columns can be used for filtering in your sync job queries.
 
+- **Manager hierarchy:** `PopulateDestinationPipeline` validates the manager hierarchy after the destination table is written and **fails the run** if it is invalid. The data must satisfy both of the following:
+  - **Exactly one root** — precisely one row has a `NULL` `ManagerId`. Checked with no tolerance.
+  - **At most `maxInvalidUserCount` rows with a missing manager (default `25`)** — a row counts against this limit when its `ManagerId` is not `NULL` and does not match the `EmployeeId` of any row in the same table. Set the parameter to `0` to require a perfectly clean hierarchy.
+
+  A missing manager most commonly means a manager left the organization but their reports were not reassigned, so the manager is absent from the extract while their reports remain. A small number of these is normal during routine HR churn, so the run is allowed to proceed; a larger number indicates the extract itself is incomplete, and the run is failed. Failing the run keeps partial or corrupted org data from being published — GMM continues to use the last successful run until the source data is corrected.
+
+  If your source file uses a placeholder such as `0` to mean "no manager", leave the field empty instead. A `ManagerId` of `0` is only treated as valid if some row actually has `EmployeeId` `0`; otherwise it counts as a missing manager, and enough of them will fail the run. An empty field becomes `NULL`, which makes the row a root — and only one row may be a root.
+
 **Mappings Table Requirements:**
 - **Table name:** Must follow the pattern `[mappings].<ADF-Pipeline-Run-Id>` (e.g., `[mappings].00000000-0000-0000-0000-000000000000`)
 - **Required columns:** If using mappings, the table must **only** contain:
@@ -140,6 +148,28 @@ Below is an example of how GMM populates users in `<SolutionAbbreviation>-data-<
 
         - The GMM UI expects these three columns in the mappings table. It uses these columns to convert descriptions to code and vice versa. 
         - For each column in the destination table named using the pattern `<ColumnName>_Code`, the GMM UI expect at least one entry in the mappings table where ColumnName is `<ColumnName>`
+
+10. If the pipeline fails with the error code `InvalidManagerHierarchy`, the manager hierarchy in your user file did not meet the requirements described in [Data Requirements](#data-requirements). The `Fail Invalid Manager Hierarchy` activity reports the details, for example:
+
+    ```
+    Invalid manager hierarchy detected. invalidUserCount=113 of 345218 (max 25); rootCount=1;
+    missingManagerCount=35; invalidPairs=[968688:1536125, 1334976:1504734];
+    query=SELECT EmployeeId,ManagerId FROM [users].[<run-id>] u WHERE u.ManagerId IS NOT NULL
+    AND NOT EXISTS(SELECT 1 FROM [users].[<run-id>] m WHERE m.EmployeeId=u.ManagerId)
+    ```
+
+    | Field | Meaning |
+    |-------|---------|
+    | `invalidUserCount` / `totalUserCount` | How many rows have a `ManagerId` that is missing from the table, out of how many rows in total |
+    | `max` | The `maxInvalidUserCount` limit in force for this run |
+    | `rootCount` | Rows with a `NULL` `ManagerId`; must be exactly 1, with no tolerance |
+    | `missingManagerCount` | How many *distinct* managers are missing. This is usually the number to act on — one departed manager can invalidate many reports |
+    | `invalidPairs` | Up to 10 sample `EmployeeId:ManagerId` pairs |
+    | `query` | A ready-to-run query listing every affected row. The run-specific table name is already embedded, so no lookup is required |
+
+    Run the embedded query against the `<SolutionAbbreviation>-data-<EnvironmentAbbreviation>-adf` database to get the full list, correct the source file, and re-run the pipeline. Because the run failed, its destination table is not picked up by GMM.
+
+    A `rootCount` other than 1 fails the run on its own, regardless of `invalidUserCount`. `rootCount=0` usually means every row has a manager, so the hierarchy contains a cycle; `rootCount` above 1 means the extract holds several disconnected org trees, which normally indicates a partial export.
 
 Now you are ready to onboard a group!
 
