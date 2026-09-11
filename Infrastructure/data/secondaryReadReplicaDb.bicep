@@ -41,6 +41,10 @@ resource secondaryReplicaSqlServer 'Microsoft.Sql/servers@2021-11-01-preview' ex
   name: secondaryReplicaSqlServerName
 }
 
+resource secondarySqlServer 'Microsoft.Sql/servers@2021-11-01-preview' existing = {
+  name: secondarySqlServerName
+}
+
 resource secondaryReadReplicaDb 'Microsoft.Sql/servers/databases@2021-11-01-preview' = {
   name: replicaSqlDatabaseName
   parent: secondaryReplicaSqlServer
@@ -74,10 +78,44 @@ resource SecondaryReadReplicaDb_DeleteLock 'Microsoft.Authorization/locks@2020-0
   }
 }
 
-// The failover group creates the partner database rather than it being declared, so it is
-// referenced as existing in order to be locked. It carries the primary database's name.
-resource secondaryPartnerDatabase 'Microsoft.Sql/servers/databases@2021-11-01-preview' existing = {
-  name: '${secondarySqlServerName}/${primaryDatabaseName}'
+// The failover group creates the partner database on the secondary server rather than it being
+// declared there, so it would otherwise inherit the serverless default auto-pause delay instead
+// of the disabled setting every other database in this project uses. Declaring it here - after
+// the failover group has already created and adopted it - is an in-place update rather than a
+// create, and gives the properties below a home in source control. It carries the primary
+// database's name.
+resource secondaryPartnerDatabase 'Microsoft.Sql/servers/databases@2021-11-01-preview' = {
+  name: primaryDatabaseName
+  parent: secondarySqlServer
+  location: secondaryLocation
+  properties: {
+    autoPauseDelay: -1
+    createMode: 'OnlineSecondary'
+    secondaryType: 'Geo'
+    sourceDatabaseId: sourceDatabaseId
+  }
+  sku: {
+    name: sqlSkuName
+    tier: sqlSkuTier
+    family: sqlSkuFamily
+    capacity: sqlSkuCapacity
+  }
+}
+
+// The partner database becomes the write database after a failover, so it needs the same
+// long-term backup retention as the primary. This is declared as a child of the resource above
+// rather than standalone because the service rejects a retention policy on a serverless
+// database while auto-pause is still enabled - being a child makes ARM apply the disabled
+// auto-pause setting first.
+resource secondaryPartnerLongTermBackup 'Microsoft.Sql/servers/databases/backupLongTermRetentionPolicies@2022-05-01-preview' = {
+  parent: secondaryPartnerDatabase
+  name: 'default'
+  properties: {
+    weeklyRetention: 'P1W'
+    monthlyRetention: 'P1M'
+    yearlyRetention: 'P1Y'
+    weekOfYear: 1
+  }
 }
 
 resource SecondaryPartnerDatabase_DeleteLock 'Microsoft.Authorization/locks@2020-05-01' = if(isProduction) {
