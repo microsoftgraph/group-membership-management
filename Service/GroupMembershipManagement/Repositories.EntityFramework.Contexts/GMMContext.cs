@@ -37,6 +37,12 @@ namespace Repositories.EntityFramework.Contexts
         public DbSet<Title> Titles { get; set; }
         public DbSet<DeferredNotification> DeferredNotifications { get; set; }
 
+        // Consolidated Table-Per-Type (TPT) destination model. These sets are shared by
+        // GMMReadContext (which derives from GMMContext) so read and write models stay identical.
+        public DbSet<Destination> Destinations { get; set; }
+        public DbSet<GroupDestination> GroupDestinations { get; set; }
+        public DbSet<TeamsChannelDestination> TeamsChannelDestinations { get; set; }
+
         protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
         {
             // EF Core 9+ promotes PendingModelChangesWarning to an error thrown by Database.Migrate().
@@ -326,7 +332,89 @@ namespace Repositories.EntityFramework.Contexts
             modelBuilder.Entity<Channel>()
                 .HasIndex(g => new { g.SyncJobId, g.GroupId })
                 .IsUnique();
+
+            ConfigureConsolidatedDestinations(modelBuilder);
         }
+
+        /// <summary>
+        /// Maps the consolidated TPT destination model (base <c>Destinations</c> plus shared-key
+        /// <c>GroupDestinations</c>/<c>TeamsChannelDestinations</c>) for both write and read contexts.
+        /// </summary>
+        private static void ConfigureConsolidatedDestinations(ModelBuilder modelBuilder)
+        {
+            // Base destination row: one per supported SyncJob, typed via MembershipTypes.
+            modelBuilder.Entity<Destination>(entity =>
+            {
+                entity.ToTable("Destinations");
+
+                entity.HasKey(d => d.SyncJobId);
+
+                // SyncJobId is both PK and FK to SyncJobs.Id; cascade with the owning job.
+                entity.HasOne<SyncJob>()
+                    .WithOne()
+                    .HasForeignKey<Destination>(d => d.SyncJobId)
+                    .HasPrincipalKey<SyncJob>(s => s.Id)
+                    .OnDelete(DeleteBehavior.Cascade);
+
+                // Type discriminator; DB-level FK to MembershipTypes.Name (SyncJobs.MembershipType standard, not by Id).
+                entity.Property(d => d.DestinationType)
+                    .IsRequired()
+                    .HasMaxLength(MembershipTypeNameMaxLength);
+                entity.HasIndex(d => d.DestinationType);
+            });
+
+            // Group per-type row: shared PK/FK to the base destination.
+            modelBuilder.Entity<GroupDestination>(entity =>
+            {
+                entity.ToTable("GroupDestinations");
+
+                entity.HasKey(g => g.SyncJobId);
+
+                entity.HasOne<Destination>()
+                    .WithOne()
+                    .HasForeignKey<GroupDestination>(g => g.SyncJobId)
+                    .HasPrincipalKey<Destination>(d => d.SyncJobId)
+                    .OnDelete(DeleteBehavior.Cascade);
+
+                entity.Property(g => g.GroupId).IsRequired();
+                entity.Property(g => g.Name);
+                entity.Property(g => g.Email);
+
+                entity.HasIndex(g => g.GroupId);
+            });
+
+            // Teams-channel per-type row: shared PK/FK plus required channel identity.
+            modelBuilder.Entity<TeamsChannelDestination>(entity =>
+            {
+                entity.ToTable("TeamsChannelDestinations");
+
+                entity.HasKey(t => t.SyncJobId);
+
+                entity.HasOne<Destination>()
+                    .WithOne()
+                    .HasForeignKey<TeamsChannelDestination>(t => t.SyncJobId)
+                    .HasPrincipalKey<Destination>(d => d.SyncJobId)
+                    .OnDelete(DeleteBehavior.Cascade);
+
+                entity.Property(t => t.TeamId).IsRequired();
+
+                // Preserve the legacy TeamsChannels.ChannelId capacity (nvarchar(255)).
+                entity.Property(t => t.ChannelId)
+                    .IsRequired()
+                    .HasMaxLength(TeamsChannelDestinationChannelIdMaxLength);
+
+                entity.Property(t => t.TeamName);
+                entity.Property(t => t.ChannelName);
+
+                entity.HasIndex(t => t.TeamId);
+            });
+        }
+
+        // Preserve the legacy TeamsChannels.ChannelId capacity (nvarchar(255)) so values aren't truncated.
+        internal const int TeamsChannelDestinationChannelIdMaxLength = 255;
+
+        // Matches the MembershipTypes.Name capacity so the by-Name FK column aligns with its principal.
+        internal const int MembershipTypeNameMaxLength = 255;
         private void SeedNotificationTypes(ModelBuilder modelBuilder)
         {
             var notificationTypes = Enum.GetValues(typeof(NotificationMessageType))
@@ -347,6 +435,15 @@ namespace Repositories.EntityFramework.Contexts
         }
     }
 
+    /// <summary>
+    /// Read-optimized context for resolver/query projections. It derives from
+    /// <see cref="GMMContext"/> so every table, key, relationship, and property mapping —
+    /// including the consolidated TPT destination model (<c>Destinations</c>,
+    /// <c>GroupDestinations</c>, <c>TeamsChannelDestinations</c>) — is byte-for-byte
+    /// identical to the write context. Read and write mappings therefore cannot drift;
+    /// consolidated reads use no-tracking typed projections (e.g. <c>AsNoTracking()</c>)
+    /// over these shared sets. Writes never use this context.
+    /// </summary>
     public class GMMReadContext : GMMContext
     {
         public GMMReadContext(DbContextOptions<GMMContext> options)
