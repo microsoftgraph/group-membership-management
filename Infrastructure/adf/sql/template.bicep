@@ -41,7 +41,7 @@ param jobsSqlDataBaseName string = '${solutionAbbreviation}-data-${environmentAb
 var dataKeyVaultName = '${solutionAbbreviation}-data-${environmentAbbreviation}'
 
 module sqlServer 'sqlServer.bicep' =  {
-  name: 'sqlServerTemplate'
+  name: 'adfSqlServerTemplate'
   params: {
     location: location
     sqlServerName: sqlServerName

@@ -39,7 +39,7 @@ resource storageAccountContainer 'Microsoft.Storage/storageAccounts/blobServices
 }
 
 module secureSecretsTemplate 'keyVaultSecretsSecure.bicep' = {
-  name: 'secureSecretsTemplate'
+  name: 'adfStorageSecureSecretsTemplate'
   params: {
     keyVaultName: keyVaultName
     keyVaultSecrets: {

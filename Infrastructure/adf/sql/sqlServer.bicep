@@ -35,7 +35,7 @@ resource sqlDatabase 'Microsoft.Sql/servers/databases@2021-02-01-preview' = {
 }
 
 module secureKeyvaultSecrets 'keyVaultSecretsSecure.bicep' = {
-  name: 'secureKeyvaultSecrets'
+  name: 'adfSqlSecureKeyvaultSecrets'
   params: {
     keyVaultName: dataKeyVaultName
     keyVaultSecrets: {
