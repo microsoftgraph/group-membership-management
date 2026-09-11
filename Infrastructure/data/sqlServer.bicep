@@ -231,8 +231,9 @@ resource readReplicaDb 'Microsoft.Sql/servers/databases@2021-11-01-preview' = {
 // --- multi-region failover group
 // The failover group is a child of the primary server and references the secondary server across
 // resource groups by resource id. Listing the primary database in `databases` makes Azure create
-// the partner copy on the secondary server automatically, so the partner database is never
-// declared here.
+// the partner copy on the secondary server automatically, so the partner database is not created
+// here. It is declared in `secondaryReadReplicaDb.bicep`, which runs afterwards and sets the
+// properties the implicit copy does not inherit.
 resource failoverGroup 'Microsoft.Sql/servers/failoverGroups@2021-11-01-preview' = if (enableMultiRegion) {
   name: failoverGroupName
   parent: sqlServer

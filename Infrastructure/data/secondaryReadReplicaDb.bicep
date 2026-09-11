@@ -78,12 +78,10 @@ resource SecondaryReadReplicaDb_DeleteLock 'Microsoft.Authorization/locks@2020-0
   }
 }
 
-// The failover group creates the partner database on the secondary server rather than it being
-// declared there, so it would otherwise inherit the serverless default auto-pause delay instead
-// of the disabled setting every other database in this project uses. Declaring it here - after
-// the failover group has already created and adopted it - is an in-place update rather than a
-// create, and gives the properties below a home in source control. It carries the primary
-// database's name.
+// The failover group creates this database on the secondary server, so it is not created here.
+// Declaring it lets its properties be managed in source control: an implicitly created partner
+// inherits the serverless default auto-pause delay rather than the disabled setting the rest of
+// these databases use. It carries the primary database's name.
 resource secondaryPartnerDatabase 'Microsoft.Sql/servers/databases@2021-11-01-preview' = {
   name: primaryDatabaseName
   parent: secondarySqlServer

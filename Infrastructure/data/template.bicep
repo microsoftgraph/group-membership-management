@@ -698,6 +698,11 @@ module sqlServer 'sqlServer.bicep' = {
 
 // The secondary region read replica database is a sibling geo replica of the primary database, so
 // its source is the primary database rather than any replica.
+// `sourceDatabaseId` is what orders this module after the failover group: consuming an output of
+// the `sqlServer` module makes it wait for that whole module, failover group included. The
+// `dependsOn` below only orders it after the secondary servers exist. Keep sourcing this value
+// from the module output - replacing it with a constructed resource id would drop that ordering
+// and let this module race the partner database the failover group creates.
 module secondaryReadReplicaDb 'secondaryReadReplicaDb.bicep' = if (enableMultiRegion) {
   name: 'secondaryReadReplicaDbTemplate'
   scope: resourceGroup(secondaryDataResourceGroupName)
