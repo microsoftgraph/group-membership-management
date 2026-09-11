@@ -13,6 +13,18 @@ param jobsSqlDatabaseName string
 @description('Data Key vault name.')
 param dataKeyVaultName string
 
+@description('ADF SQL SKU Name. Must be consistent with the tier/family/capacity params. Supported combinations: Basic/Basic/\'\'/5, S0|S1|S2/Standard/\'\'/10|20|50, GP_S_Gen5/GeneralPurpose/Gen5/<vCores>.')
+param adfSqlSkuName string = 'S0'
+
+@description('ADF SQL SKU Tier')
+param adfSqlSkuTier string = 'Standard'
+
+@description('ADF SQL SKU Family. Leave empty for DTU-based SKUs.')
+param adfSqlSkuFamily string = ''
+
+@description('ADF SQL SKU Capacity')
+param adfSqlSkuCapacity int = 10
+
 var sqlServerUrl = 'Server=tcp:${sqlServerName}${environment().suffixes.sqlServerHostname},1433;'
 var adfSqlServerDataBaseCatalog = 'Initial Catalog=${adfSqlDatabaseName};'
 var jobsSqlDataBaseCatalog = 'Initial Catalog=${jobsSqlDatabaseName};'
@@ -27,10 +39,10 @@ resource sqlDatabase 'Microsoft.Sql/servers/databases@2021-02-01-preview' = {
   parent: sqlServer
   location: location
   sku: {
-    name: 'Basic'
-    tier: 'Basic'
-    family: ''
-    capacity: 0
+    name: adfSqlSkuName
+    tier: adfSqlSkuTier
+    family: adfSqlSkuFamily
+    capacity: adfSqlSkuCapacity
   }
 }
 

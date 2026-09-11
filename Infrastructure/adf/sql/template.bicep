@@ -38,6 +38,18 @@ param adfSqlDataBaseName string
 @description('Name of Jobs SQL Server')
 param jobsSqlDataBaseName string = '${solutionAbbreviation}-data-${environmentAbbreviation}'
 
+@description('ADF SQL SKU Name. Must be consistent with the tier/family/capacity params. Supported combinations: Basic/Basic/\'\'/5, S0|S1|S2/Standard/\'\'/10|20|50, GP_S_Gen5/GeneralPurpose/Gen5/<vCores>.')
+param adfSqlSkuName string = 'S0'
+
+@description('ADF SQL SKU Tier')
+param adfSqlSkuTier string = 'Standard'
+
+@description('ADF SQL SKU Family. Leave empty for DTU-based SKUs.')
+param adfSqlSkuFamily string = ''
+
+@description('ADF SQL SKU Capacity')
+param adfSqlSkuCapacity int = 10
+
 var dataKeyVaultName = '${solutionAbbreviation}-data-${environmentAbbreviation}'
 
 module sqlServer 'sqlServer.bicep' =  {
@@ -48,6 +60,10 @@ module sqlServer 'sqlServer.bicep' =  {
     adfSqlDatabaseName: adfSqlDataBaseName
     jobsSqlDatabaseName: jobsSqlDataBaseName
     dataKeyVaultName: dataKeyVaultName
+    adfSqlSkuName: adfSqlSkuName
+    adfSqlSkuTier: adfSqlSkuTier
+    adfSqlSkuFamily: adfSqlSkuFamily
+    adfSqlSkuCapacity: adfSqlSkuCapacity
   }
 }
 
