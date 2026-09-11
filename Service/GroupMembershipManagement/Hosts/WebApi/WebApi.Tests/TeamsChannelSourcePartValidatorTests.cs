@@ -46,6 +46,23 @@ namespace Services.WebApi.Tests
         }
 
         [TestMethod]
+        public void ReturnsNullWhenQueryIsNotWellFormedJson()
+        {
+            // The update path may hand the validator a query that is not a JSON array (e.g. a legacy or
+            // free-form value). It contains no TeamsChannel source part, so the validator must treat it as
+            // valid rather than throwing on JsonNode.Parse (regression for the PATCH-path 500).
+            var job = new SyncJob
+            {
+                Query = "UpdatedQuery",
+                Destination = TeamsChannelDestination(),
+                MembershipType = "TeamsChannelMembership",
+                TargetOfficeGroupId = Guid.Parse(GroupId),
+                Channel = null
+            };
+            Assert.IsNull(TeamsChannelSourcePartValidator.Validate(job));
+        }
+
+        [TestMethod]
         public void RejectsTeamsChannelSourceWithoutChannelDestination()
         {
             var job = UpdatePathJob($"{GroupSourcePart()},{TeamsChannelSourcePart()}", GroupDestination(), membershipType: "GroupMembership");

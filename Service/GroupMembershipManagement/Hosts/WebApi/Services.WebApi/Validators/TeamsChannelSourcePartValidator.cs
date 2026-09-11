@@ -140,7 +140,20 @@ namespace Services.WebApi.Validators
                 return parts;
             }
 
-            if (JsonNode.Parse(query) is not JsonArray queryArray)
+            JsonArray? queryArray;
+            try
+            {
+                // A query that is not a well-formed JSON array (e.g. a legacy or free-form value supplied
+                // on the patch path) contains no TeamsChannel source part to validate, so treat it as empty
+                // rather than throwing. Malformed queries are caught by the schema/empty-query checks.
+                queryArray = JsonNode.Parse(query) as JsonArray;
+            }
+            catch (JsonException)
+            {
+                return parts;
+            }
+
+            if (queryArray is null)
             {
                 return parts;
             }
