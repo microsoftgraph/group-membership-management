@@ -32,6 +32,10 @@ param functionAuthAppClientId string
 @description('Enable function authentication.')
 param enableFunctionAuthentication bool = false
 
+@description('Number of most recent tables to retain in each of the users and mappings schemas. Cleanup of older tables is attempted after all non-cleanup activities succeed.')
+@minValue(2)
+param tablesToRetain int = 30
+
 var dataKeyVaultName = '${solutionAbbreviation}-data-${environmentAbbreviation}'
 
 resource dataKeyVault 'Microsoft.KeyVault/vaults@2019-09-01' existing = {
@@ -53,5 +57,6 @@ module azureDataFactoryTemplate 'azureDataFactory.bicep' = {
 		storageAccountName: dataKeyVault.getSecret('adfStorageAccountName')
 		functionAuthAppClientId: functionAuthAppClientId
 		enableFunctionAuthentication: enableFunctionAuthentication
+		tablesToRetain: tablesToRetain
 	}
 }

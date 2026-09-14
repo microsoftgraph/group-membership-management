@@ -17,6 +17,10 @@ param adfDBSqlSkuFamily string = ''
 @description('ADF SQL SKU Capacity')
 param adfDBSqlSkuCapacity int = 10
 
+@description('Number of most recent tables to retain in each of the users and mappings schemas. Cleanup of older tables is attempted after all non-cleanup activities succeed.')
+@minValue(2)
+param tablesToRetain int = 30
+
 var sqlServerName = '${solutionAbbreviation}-data-${environmentAbbreviation}'
 var sqlDataBaseName = '${solutionAbbreviation}-data-${environmentAbbreviation}-adf'
 
@@ -47,6 +51,7 @@ module adfForHRData '../Infrastructure/adf/pipeline/template.bicep' = {
     sqlDatabaseName: sqlDataBaseName
     functionAuthAppClientId: functionAuthAppClientId
     enableFunctionAuthentication: enableFunctionAuthentication
+    tablesToRetain: tablesToRetain
   }
   dependsOn: [
     sqlForHRData

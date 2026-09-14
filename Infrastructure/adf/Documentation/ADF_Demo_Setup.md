@@ -171,6 +171,8 @@ Below is an example of how GMM populates users in `<SolutionAbbreviation>-data-<
 
     A `rootCount` other than 1 fails the run on its own, regardless of `invalidUserCount`. `rootCount=0` usually means every row has a manager, so the hierarchy contains a cycle; `rootCount` above 1 means the extract holds several disconnected org trees, which normally indicates a partial export.
 
+11. After `Calculate Height`, `PopulateMappingsTableDataFlow`, and `Create Agents Index` all succeed, `Clean Up Old Users Tables` attempts to drop older tables in the `users` schema. Only after users cleanup succeeds does `Clean Up Old Mappings Tables` attempt the same for the `mappings` schema, making mappings cleanup the only top-level terminal activity. Each cleanup activity retains the newest tables in its schema by table creation date.
+
 Now you are ready to onboard a group!
 
 ---
