@@ -73,6 +73,9 @@ param aiLocation string
 @description('When true, networking resources (private endpoints, DCR, DCR association) are skipped.')
 param skipNetworkingDeployment bool = true
 
+@description('When true, WebApi acquires an AAD bearer token (via FunctionAuth app registration) for the JobScheduler call. When false, WebApi relies on the function key alone. Must match the flag used by the callee function apps.')
+param enableFunctionAuthentication bool = false
+
 param featureFlags object = {
   enableTeamsChannel: false
   enableOpenAI: false
@@ -119,7 +122,7 @@ resource appInsights 'Microsoft.Insights/components@2020-02-02' existing = {
   name: appInsightsName
 }
 
-var appSettings = [
+var appSettings = concat([
   {
     name: 'AZURE_TOKEN_CREDENTIALS'
     value:'ManagedIdentityCredential'
@@ -304,11 +307,12 @@ var appSettings = [
     name: 'Settings:JobSchedulerFunctionKey'
     value: '@Microsoft.KeyVault(SecretUri=${reference(jobSchedulerFunctionKey, '2019-09-01').secretUriWithVersion})'
   }
+], enableFunctionAuthentication ? [
   {
     name: 'Settings:FunctionAuthAppClientId'
     value: '@Microsoft.KeyVault(SecretUri=${reference(functionAuthAppClientId, '2019-09-01').secretUriWithVersion})'
   }
-]
+] : [])
 
 resource dataKeyVault 'Microsoft.KeyVault/vaults@2023-07-01' existing = {
   name: dataKeyVaultName

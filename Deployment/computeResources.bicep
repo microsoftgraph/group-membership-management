@@ -939,6 +939,7 @@ module webApiComputeResources '../Service/GroupMembershipManagement/Hosts/WebApi
     featureFlags: featureFlags
     apiHostname: resolvedApiHostname
     skipNetworkingDeployment: skipNetworkingDeployment
+    enableFunctionAuthentication: enableFunctionAuthentication
   }
   dependsOn: [
     sqlMembershipObtainerComputeResources
