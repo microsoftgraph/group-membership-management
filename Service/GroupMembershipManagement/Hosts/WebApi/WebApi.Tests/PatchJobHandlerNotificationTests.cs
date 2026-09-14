@@ -111,6 +111,7 @@ namespace WebApi.Tests
 
             var request = new PatchJobRequest(
                 isAllowed: true,
+                isOnBehalfAllowed: true,
                 userIdentity: Guid.NewGuid().ToString(),
                 syncJobId: _testSyncJob.Id,
                 patchDocument: patchDocument,
@@ -146,6 +147,7 @@ namespace WebApi.Tests
 
             var request = new PatchJobRequest(
                 isAllowed: true,
+                isOnBehalfAllowed: true,
                 userIdentity: Guid.NewGuid().ToString(),
                 syncJobId: _testSyncJob.Id,
                 patchDocument: patchDocument,
@@ -186,6 +188,7 @@ namespace WebApi.Tests
 
             var request = new PatchJobRequest(
                 isAllowed: true,
+                isOnBehalfAllowed: true,
                 userIdentity: Guid.NewGuid().ToString(),
                 syncJobId: _testSyncJob.Id,
                 patchDocument: patchDocument,
@@ -225,6 +228,7 @@ namespace WebApi.Tests
 
             var request = new PatchJobRequest(
                 isAllowed: true,
+                isOnBehalfAllowed: true,
                 userIdentity: Guid.NewGuid().ToString(),
                 syncJobId: _testSyncJob.Id,
                 patchDocument: patchDocument,

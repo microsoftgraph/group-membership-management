@@ -11,10 +11,6 @@ import {
   TextField,
   Separator,
   ActionButton,
-  IPersonaSharedProps,
-  Persona,
-  PersonaSize,
-  Shimmer,
   Dropdown,
   IDropdownOption,
   MessageBar,
@@ -45,14 +41,11 @@ import {
   manageMembershipIsEditingExistingJob,
 } from '../../store/manageMembership.slice';
 import { OnboardingSteps } from '../../models/OnboardingSteps';
-import { useLocation, useParams } from 'react-router-dom';
-import { selectIsJobTenantWriter, selectIsJobWriter } from '../../store/roles.slice';
+import { selectIsJobTenantWriter, selectIsSubmissionReviewer } from '../../store/roles.slice';
 import { EndpointsList } from '../EndpointsList';
 import { selectIsBusinessJustificationRequired } from '../../store/settings.slice';
 import { InfoLabel } from '../InfoLabel';
 import { selectSelectedJobDetails } from '../../store/jobs.slice';
-import { selectLastModifiedOnBehalfOfUserProfile } from '../../store/profile.slice';
-import { SyncStatus } from '../../models';
 import { AppDispatch } from '../../store';
 import { getGroupOwners } from '../../store/manageMembership.api';
 import { SourcePartType } from '../../models/SourcePartType';
@@ -94,22 +87,12 @@ export const ConfirmationBase: React.FunctionComponent<IConfirmationProps> = (pr
   const isBusinessJustificationRequired = useSelector(selectIsBusinessJustificationRequired);
   const businessJustification = useSelector(manageMembershipBusinessJustification);
   const jobDetails = useSelector(selectSelectedJobDetails);
-  const lastModifiedOnBehalfOfUserProfile = useSelector(selectLastModifiedOnBehalfOfUserProfile);
   const groupOwners = useSelector(manageMembershipGroupOwners);
   const hasHiddenMembershipSources = jobDetails?.hasHiddenMembershipSources ?? false;
-  const lastModifiedOnBehalfOfUserProps: IPersonaSharedProps = {
-    imageUrl: lastModifiedOnBehalfOfUserProfile?.photoUrl,
-    text: lastModifiedOnBehalfOfUserProfile?.displayName
-  };
 
   const isJobTenantWriter = useSelector(selectIsJobTenantWriter);
+  const isSubmissionReviewer = useSelector(selectIsSubmissionReviewer);
 
-  const location = useLocation();
-  const locationState = location.state as { currentStep?: number, jobId?: string };
-  const { jobId: urlJobId } = useParams<{ jobId: string }>();
-  const jobId = locationState?.jobId ?? urlJobId;
-
-  const isJobWriter = useSelector(selectIsJobWriter);
   const isEditingExistingJob = useSelector(manageMembershipIsEditingExistingJob);
 
   // When editing an existing job, the selectedDestination is not always populated in state,
@@ -352,41 +335,7 @@ export const ConfirmationBase: React.FunctionComponent<IConfirmationProps> = (pr
                 </MessageBar>
               )}
 
-            {isJobTenantWriter && (
-            jobId && jobDetails && jobDetails?.status === SyncStatus.PendingReview && jobDetails.lastModifiedOnBehalfOfObjectId? (
-            jobDetails && jobDetails?.status === SyncStatus.PendingReview ? (
-              <Stack.Item align="start">
-                <InfoLabel
-                  label={strings.ManageMembership.labels.requestedOnBehalfOf}
-                  description={strings.JobDetails.descriptions.requestedOnBehalfOf}
-                />
-                <div className={classNames.itemData}>
-                  {jobDetails != null ? (
-                    lastModifiedOnBehalfOfUserProfile?.photoUrl === "ErrorNonExistentStorage" ? (
-                      <div className={classNames.itemData}>
-                        <Text variant="medium" block>
-                          {lastModifiedOnBehalfOfUserProfile.displayName}
-                        </Text>
-                        <Text variant="medium" block>
-                          {jobDetails.lastModifiedOnBehalfOfObjectId}
-                        </Text>
-                      </div>
-                    ) : (
-                      <Persona
-                        {...lastModifiedOnBehalfOfUserProps}
-                        text={lastModifiedOnBehalfOfUserProfile?.displayName}
-                        size={PersonaSize.size32}
-                        hidePersonaDetails={false}
-                        imageAlt={lastModifiedOnBehalfOfUserProfile?.displayName}
-                      />
-                    )
-                  ) : (
-                    <Shimmer width="100%" />
-                  )}
-                </div>
-              </Stack.Item>
-            ) : null
-          ) : (
+            {(isJobTenantWriter || isSubmissionReviewer) && (
             <>
               <Separator />
               <Dropdown
@@ -399,7 +348,7 @@ export const ConfirmationBase: React.FunctionComponent<IConfirmationProps> = (pr
                   groupOwners.find(owner => owner.displayName === lastModifiedOnBehalfOfDisplayName)?.objectId :
                   undefined}
                 onChange={handleGroupOwnerChange}
-                disabled={!isJobWriter || groupOwnerOptions.length === 0}
+                disabled={groupOwnerOptions.length === 0}
                 styles={{
                   dropdown: classNames.valuesDropdown,
                   title: classNames.dropdownTitle
@@ -409,7 +358,7 @@ export const ConfirmationBase: React.FunctionComponent<IConfirmationProps> = (pr
                 data-testid="group-owners-dropdown"
               />
             </>
-          ))}
+          )}
             </div>
 
           <div>

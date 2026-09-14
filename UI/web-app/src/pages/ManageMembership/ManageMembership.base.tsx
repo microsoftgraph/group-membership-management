@@ -78,7 +78,7 @@ import { OnboardingSteps } from '../../models/OnboardingSteps';
 import { selectSelectedJobDetails, selectSelectedJobLoading, selectSelectedJobWithNoTitles } from '../../store/jobs.slice';
 import { fetchJobDetails, patchJobDetails } from '../../store/jobDetails.api';
 import { Loader } from '../../components/Loader';
-import { selectIsJobTenantReader, selectIsJobTenantWriter, selectIsJobWriter } from '../../store/roles.slice';
+import { selectIsJobTenantReader, selectIsJobTenantWriter, selectIsJobWriter, selectIsSubmissionReviewer } from '../../store/roles.slice';
 import { PostGroupResponse, SyncStatus } from '../../models';
 import { SyncJobQuery } from '../../models/SyncJobQuery';
 import { PatchJobRequest } from '../../models/PatchJobRequest';
@@ -224,6 +224,7 @@ export const ManageMembershipBase: React.FunctionComponent<IManageMembershipProp
   }, [dispatch, isEditingExistingJob, reactiveJobDetails?.targetGroupId, reactiveJobDetails?.targetDestinationType]);
   const sourcePartsQuery = useSelector(manageMembershipCompositeQuery);
   const isTenantJobWriter: boolean | undefined = useSelector(selectIsJobTenantWriter);
+  const isSubmissionReviewer: boolean | undefined = useSelector(selectIsSubmissionReviewer);
   const isTenantJobReader: boolean | undefined = useSelector(selectIsJobTenantReader);
   // The advanced view is only available to job tenant roles, so anyone else is always
   // evaluated against the regular (source parts) view regardless of stale toggle state.
@@ -418,18 +419,24 @@ export const ManageMembershipBase: React.FunctionComponent<IManageMembershipProp
           op: "replace",
           path: "/ThresholdPercentageForRemovals",
           value: thresholdPercentageForRemovals
-        },
-        {
-          op: "replace",
-          path: "/LastModifiedOnBehalfOfDisplayName",
-          value: lastModifiedOnBehalfOfDisplayName
-        },
-        {
-          op: "replace",
-          path: "/LastModifiedOnBehalfOfObjectId",
-          value: lastModifiedOnBehalfOfObjectId
         }
       );
+
+      // Only Job Tenant Writers and Submission Reviewers may set the "requested on behalf of" owner; otherwise don't carry over the stored value.
+      if (isTenantJobWriter || isSubmissionReviewer) {
+        patchOperation.push(
+          {
+            op: "replace",
+            path: "/LastModifiedOnBehalfOfDisplayName",
+            value: lastModifiedOnBehalfOfDisplayName
+          },
+          {
+            op: "replace",
+            path: "/LastModifiedOnBehalfOfObjectId",
+            value: lastModifiedOnBehalfOfObjectId
+          }
+        );
+      }
 
       setIsEditingJob(true);
       const patchRequest: PatchJobRequest = {
@@ -467,11 +474,13 @@ export const ManageMembershipBase: React.FunctionComponent<IManageMembershipProp
         type: selectedDestination?.type
       }]);
 
+      const canSetOnBehalf = isTenantJobWriter || isSubmissionReviewer;
+
       const newJob: NewJob = {
         destination: destinationJson,
         requestor: requestor ?? '',
-        lastModifiedOnBehalfOfDisplayName: lastModifiedOnBehalfOfDisplayName ?? '',
-        lastModifiedOnBehalfOfObjectId: lastModifiedOnBehalfOfObjectId ?? '',
+        lastModifiedOnBehalfOfDisplayName: canSetOnBehalf ? (lastModifiedOnBehalfOfDisplayName ?? '') : '',
+        lastModifiedOnBehalfOfObjectId: canSetOnBehalf ? (lastModifiedOnBehalfOfObjectId ?? '') : '',
         startDate: startDate,
         period: period,
         query: finalQuery,

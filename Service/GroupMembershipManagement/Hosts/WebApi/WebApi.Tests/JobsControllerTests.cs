@@ -430,6 +430,72 @@ namespace Services.Tests
             _syncJobChangeRepository.Verify(x => x.Save(It.IsAny<SyncJobChange>()), Times.Once);
         }
 
+        [TestMethod]
+        public async Task PostJob_OnBehalfProvidedByTenantWriter_RecordsOnBehalfAndRequestorAsync()
+        {
+            // A Job Tenant Writer is allowed to record an "on behalf of" owner: the owner becomes the Requestor and is kept in the audit.
+            UseRolesContext(Roles.JOB_TENANT_WRITER);
+            var onBehalfId = Guid.NewGuid();
+            _newSyncJob.LastModifiedOnBehalfOfObjectId = onBehalfId.ToString();
+            _newSyncJob.LastModifiedOnBehalfOfDisplayName = "Paul Daly";
+            _graphGroupRepository.Setup(x => x.GetUserByUpnOrIdAsync(onBehalfId.ToString(), false))
+                .ReturnsAsync(new AzureADUser { UserPrincipalName = "paul@domain.com" });
+
+            var response = await _jobsController.PostJobAsync(_newSyncJob);
+
+            Assert.IsInstanceOfType(response, typeof(CreatedResult));
+            _databaseSyncJobsRepository.Verify(x => x.CreateSyncJobAsync(It.Is<SyncJob>(j => j.Requestor == "paul@domain.com")), Times.Once);
+            _syncJobChangeRepository.Verify(x => x.Save(It.Is<SyncJobChange>(
+                sjc => sjc.ChangedOnBehalfOfObjectId == onBehalfId
+                    && sjc.ChangedOnBehalfOfDisplayName == "Paul Daly")), Times.Once);
+        }
+
+        [TestMethod]
+        public async Task PostJob_OnBehalfProvidedByOwnerWriterWithReviewerRole_RecordsOnBehalfAsync()
+        {
+            // An owner-writer who is ALSO a Submission Reviewer is allowed to record an "on behalf of" owner.
+            UseRolesContext(Roles.JOB_OWNER_WRITER, Roles.SUBMISSION_REVIEWER);
+            _graphGroupRepository.Setup(x => x.IsEmailRecipientOwnerOfGroupAsync(It.IsAny<string>(), It.IsAny<Guid>(), It.IsAny<bool>()))
+                .ReturnsAsync(true);
+            var onBehalfId = Guid.NewGuid();
+            _newSyncJob.LastModifiedOnBehalfOfObjectId = onBehalfId.ToString();
+            _newSyncJob.LastModifiedOnBehalfOfDisplayName = "Paul Daly";
+            _graphGroupRepository.Setup(x => x.GetUserByUpnOrIdAsync(onBehalfId.ToString(), false))
+                .ReturnsAsync(new AzureADUser { UserPrincipalName = "paul@domain.com" });
+
+            var response = await _jobsController.PostJobAsync(_newSyncJob);
+
+            Assert.IsInstanceOfType(response, typeof(CreatedResult));
+            _databaseSyncJobsRepository.Verify(x => x.CreateSyncJobAsync(It.Is<SyncJob>(j => j.Requestor == "paul@domain.com")), Times.Once);
+            _syncJobChangeRepository.Verify(x => x.Save(It.Is<SyncJobChange>(
+                sjc => sjc.ChangedOnBehalfOfObjectId == onBehalfId
+                    && sjc.ChangedOnBehalfOfDisplayName == "Paul Daly")), Times.Once);
+        }
+
+        [TestMethod]
+        public async Task PostJob_OnBehalfProvidedByOwnerWriterOnly_DropsOnBehalfAndUsesSubmitterAsync()
+        {
+            // An ordinary owner-writer is NOT allowed to record an "on behalf of" owner: the value is dropped and the submitter is the Requestor.
+            UseRolesContext(Roles.JOB_OWNER_WRITER);
+            _graphGroupRepository.Setup(x => x.IsEmailRecipientOwnerOfGroupAsync(It.IsAny<string>(), It.IsAny<Guid>(), It.IsAny<bool>()))
+                .ReturnsAsync(true);
+            var onBehalfId = Guid.NewGuid();
+            _newSyncJob.LastModifiedOnBehalfOfObjectId = onBehalfId.ToString();
+            _newSyncJob.LastModifiedOnBehalfOfDisplayName = "Paul Daly";
+            _graphGroupRepository.Setup(x => x.GetUserByUpnOrIdAsync(onBehalfId.ToString(), false))
+                .ReturnsAsync(new AzureADUser { UserPrincipalName = "paul@domain.com" });
+
+            var response = await _jobsController.PostJobAsync(_newSyncJob);
+
+            Assert.IsInstanceOfType(response, typeof(CreatedResult));
+            // Requestor falls back to the submitter (default GetUserByUpnOrIdAsync -> "upn") and the on-behalf UPN is never resolved.
+            _databaseSyncJobsRepository.Verify(x => x.CreateSyncJobAsync(It.Is<SyncJob>(j => j.Requestor == "upn")), Times.Once);
+            _graphGroupRepository.Verify(x => x.GetUserByUpnOrIdAsync(onBehalfId.ToString(), false), Times.Never);
+            _syncJobChangeRepository.Verify(x => x.Save(It.Is<SyncJobChange>(
+                sjc => sjc.ChangedOnBehalfOfObjectId == null
+                    && sjc.ChangedOnBehalfOfDisplayName == null)), Times.Once);
+        }
+
         private void UseTenantWriterContext()
         {
             _context = CreateHttpContext(new List<Claim>

@@ -129,6 +129,8 @@ namespace WebApi.Controllers.v1.Jobs
                 }
 
                 var isJobTenantWriter = User.IsInRole(Models.Roles.JOB_TENANT_WRITER);
+                // Only Job Tenant Writers and Submission Reviewers may record an "on behalf of" owner.
+                var isOnBehalfAllowed = isJobTenantWriter || User.IsInRole(Models.Roles.SUBMISSION_REVIEWER);
 
                 // TeamsChannel jobs additionally require the onboarder role unless the caller is a tenant writer.
                 if (IsTeamsChannelDestination(newSyncJob.Destination))
@@ -142,7 +144,7 @@ namespace WebApi.Controllers.v1.Jobs
                 }
 
                 var businessJustification = newSyncJob.BusinessJustification;
-                var response = await _postJobRequestHandler.ExecuteAsync(new PostJobRequest(userId, newSyncJob, isJobTenantWriter, displayName, businessJustification));
+                var response = await _postJobRequestHandler.ExecuteAsync(new PostJobRequest(userId, newSyncJob, isJobTenantWriter, displayName, businessJustification, isOnBehalfAllowed));
 
                 switch (response.StatusCode)
                 {

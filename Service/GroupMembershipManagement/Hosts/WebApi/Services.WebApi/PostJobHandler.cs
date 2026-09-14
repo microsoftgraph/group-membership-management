@@ -133,7 +133,7 @@ namespace Services
                 var isAITitleEnabled = await IsAITitleEnabledAsync();
 
                 var destinationId = newSyncJobEntity.MembershipType == MembershipTypes.GroupMembership.ToString() ? newSyncJobEntity.Group.GroupId : newSyncJobEntity.Channel.GroupId;
-                var userIdentifier = string.IsNullOrEmpty(request.NewSyncJob.LastModifiedOnBehalfOfObjectId) ? request.UserIdentity : request.NewSyncJob.LastModifiedOnBehalfOfObjectId;
+                var userIdentifier = (request.IsOnBehalfAllowed && !string.IsNullOrEmpty(request.NewSyncJob.LastModifiedOnBehalfOfObjectId)) ? request.NewSyncJob.LastModifiedOnBehalfOfObjectId : request.UserIdentity;
                 var userResponse = await _graphGroupRepository.GetUserByUpnOrIdAsync(userIdentifier, false);
                 newSyncJobEntity.Requestor = userResponse.UserPrincipalName;
                 var isGroupOwner = await _graphGroupRepository.IsEmailRecipientOwnerOfGroupAsync(request.UserIdentity, destinationId);
@@ -171,8 +171,9 @@ namespace Services
                         Owners = ownersDictionary.GetValueOrDefault(destinationId)
                     };
                     await _destinationAttributesRepository.UpdateAttributes(destinationAttributes);
-                    var changedOnBehalfOfDisplayName = request.NewSyncJob.LastModifiedOnBehalfOfDisplayName;
-                    var changedOnBehalfOfObjectId = request.NewSyncJob.LastModifiedOnBehalfOfObjectId;
+                    // Only honor the on-behalf owner when the caller is allowed (Job Tenant Writer or Submission Reviewer); otherwise the audit records the real submitter.
+                    string? changedOnBehalfOfDisplayName = request.IsOnBehalfAllowed ? request.NewSyncJob.LastModifiedOnBehalfOfDisplayName : null;
+                    string? changedOnBehalfOfObjectId = request.IsOnBehalfAllowed ? request.NewSyncJob.LastModifiedOnBehalfOfObjectId : null;
                     var changeReason = SyncJobChangeReason.Onboarding;
 
                     await _syncJobChangeRepository.Save(new SyncJobChange

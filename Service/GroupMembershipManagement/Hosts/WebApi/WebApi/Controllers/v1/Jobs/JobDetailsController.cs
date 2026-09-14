@@ -137,7 +137,7 @@ namespace WebApi.Controllers.v1.Jobs
                 var patchDocument = ConvertToPatchDocument(requestDTO.PatchOperation);
                 var canApproveJob = User.IsInRole(Models.Roles.SUBMISSION_REVIEWER);
 
-                var response = await _patchJobRequestHandler.ExecuteAsync(new PatchJobRequest(true, userId, syncJobId, patchDocument, displayName, requestDTO.ChangeReason, requestDTO.BusinessJustification, canApproveJob, titlesValue, hasTitlesOp));
+                var response = await _patchJobRequestHandler.ExecuteAsync(new PatchJobRequest(true, IsOnBehalfAllowed(), userId, syncJobId, patchDocument, displayName, requestDTO.ChangeReason, requestDTO.BusinessJustification, canApproveJob, titlesValue, hasTitlesOp));
 
                 var patchJobResponse = new PatchJobResponse
                 {
@@ -190,7 +190,7 @@ namespace WebApi.Controllers.v1.Jobs
                 var (titlesValue, hasTitlesOp) = ExtractAndRemoveTitles(requestDTO.PatchOperation);
                 var patchDocument = ConvertToPatchDocument(requestDTO.PatchOperation);
 
-                var response = await _patchJobRequestHandler.ExecuteAsync(new PatchJobRequest(true, userId, syncJobId, patchDocument, displayName, requestDTO.ChangeReason, requestDTO.BusinessJustification, false, titlesValue, hasTitlesOp));
+                var response = await _patchJobRequestHandler.ExecuteAsync(new PatchJobRequest(true, IsOnBehalfAllowed(), userId, syncJobId, patchDocument, displayName, requestDTO.ChangeReason, requestDTO.BusinessJustification, false, titlesValue, hasTitlesOp));
 
                 var patchJobResponse = new PatchJobResponse
                 {
@@ -246,7 +246,7 @@ namespace WebApi.Controllers.v1.Jobs
                 // This is a double check right now, keeping this in place for future use when the api call is open up to all users
                 var isAllowed = User.IsInRole(Models.Roles.JOB_TENANT_WRITER) || User.IsInRole(Models.Roles.SUBMISSION_REVIEWER);
 
-                var response = await _patchJobRequestHandler.ExecuteAsync(new PatchJobRequest(isAllowed, userId, syncJobId, patchDocument, displayName, requestDTO.ChangeReason, requestDTO.BusinessJustification, false, titlesValue, hasTitlesOp));
+                var response = await _patchJobRequestHandler.ExecuteAsync(new PatchJobRequest(isAllowed, IsOnBehalfAllowed(), userId, syncJobId, patchDocument, displayName, requestDTO.ChangeReason, requestDTO.BusinessJustification, false, titlesValue, hasTitlesOp));
 
                 var patchJobResponse = new PatchJobResponse
                 {
@@ -350,7 +350,7 @@ namespace WebApi.Controllers.v1.Jobs
                 var (titlesValue, hasTitlesOp) = ExtractAndRemoveTitles(requestDTO.PatchOperation);
                 var patchDocument = ConvertToPatchDocument(requestDTO.PatchOperation);
 
-                var response = await _patchJobRequestHandler.ExecuteAsync(new PatchJobRequest(true, userId, syncJobId, patchDocument, displayName, requestDTO.ChangeReason, requestDTO.BusinessJustification, false, titlesValue, hasTitlesOp));
+                var response = await _patchJobRequestHandler.ExecuteAsync(new PatchJobRequest(true, IsOnBehalfAllowed(), userId, syncJobId, patchDocument, displayName, requestDTO.ChangeReason, requestDTO.BusinessJustification, false, titlesValue, hasTitlesOp));
 
                 var patchJobResponse = new PatchJobResponse
                 {
@@ -568,6 +568,11 @@ namespace WebApi.Controllers.v1.Jobs
                 System.Net.HttpStatusCode.Forbidden => Forbid(),
                 _ => Problem(statusCode: (int)System.Net.HttpStatusCode.InternalServerError)
             };
+        }
+
+        private bool IsOnBehalfAllowed()
+        {
+            return User.IsInRole(Models.Roles.JOB_TENANT_WRITER) || User.IsInRole(Models.Roles.SUBMISSION_REVIEWER);
         }
 
         private (string titlesValue, bool hasTitlesOp) ExtractAndRemoveTitles(List<PatchOperation> patchOperations)

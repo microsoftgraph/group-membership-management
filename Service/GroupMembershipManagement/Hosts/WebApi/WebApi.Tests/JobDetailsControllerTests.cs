@@ -1206,6 +1206,174 @@ namespace Services.Tests
         }
 
         [TestMethod]
+        public async Task UpdateJob_OnBehalfProvidedByTenantWriter_RecordsOnBehalfInAuditAsync()
+        {
+            // A Job Tenant Writer is allowed to record an "on behalf of" owner, so the audit keeps the supplied owner.
+            _jobEntity.Status = SyncStatus.Idle.ToString();
+            _jobDetailsController = new JobDetailsController(_getJobDetailsHandler, _removeGMMHandler, _patchJobHandler, _getGroupHandler, _getChannelHandler, _getJobChangesHandler, _getSyncJobHistoryHandler, _getMembershipDownloadHandler, _getThresholdNotificationHandlerMock.Object, _syncJobChangeRepository.Object, NullLogger<JobDetailsController>.Instance)
+            {
+                ControllerContext = CreateControllerContext(new List<Claim> {
+                    new Claim(ClaimTypes.Name, "user@domain.com"),
+                    new Claim(ClaimTypes.Role, Roles.JOB_TENANT_WRITER),
+                    new Claim("http://schemas.microsoft.com/identity/claims/objectidentifier", Guid.NewGuid().ToString())})
+            };
+
+            var onBehalfId = Guid.NewGuid();
+            var operations = new List<PatchOperation>
+            {
+                new PatchOperation { Op = "replace", Path = "/Query", Value = ConvertToJsonElement("UpdatedQuery") },
+                new PatchOperation { Op = "replace", Path = "/LastModifiedOnBehalfOfObjectId", Value = ConvertToJsonElement(onBehalfId.ToString()) },
+                new PatchOperation { Op = "replace", Path = "/LastModifiedOnBehalfOfDisplayName", Value = ConvertToJsonElement("Paul Daly") },
+                new PatchOperation { Op = "replace", Path = "/ChangeReason", Value = ConvertToJsonElement(SyncJobChangeReason.Update.ToString()) },
+                new PatchOperation { Op = "replace", Path = "/BusinessJustification", Value = ConvertToJsonElement("Updating on behalf of owner") }
+            };
+
+            var requestDTO = CreatePatchJobRequestDTO(operations, SyncJobChangeReason.Update.ToString(), "Updating on behalf of owner");
+            var response = await _jobDetailsController.UpdateJobAsync(_jobEntity.Id, requestDTO);
+            var result = response as OkObjectResult;
+
+            Assert.IsNotNull(result);
+            Assert.AreEqual(200, result.StatusCode);
+            _syncJobChangeRepository.Verify(x => x.Save(It.Is<SyncJobChange>(
+                sjc => sjc.ChangedOnBehalfOfObjectId == onBehalfId
+                    && sjc.ChangedOnBehalfOfDisplayName == "Paul Daly")), Times.Once);
+        }
+
+        [TestMethod]
+        public async Task UpdateJob_OnBehalfProvidedByOwnerWriterWithReviewerRole_RecordsOnBehalfInAuditAsync()
+        {
+            // An owner-writer who is ALSO a Submission Reviewer is allowed to record an "on behalf of" owner.
+            _jobEntity.Status = SyncStatus.Idle.ToString();
+            _jobDetailsController = new JobDetailsController(_getJobDetailsHandler, _removeGMMHandler, _patchJobHandler, _getGroupHandler, _getChannelHandler, _getJobChangesHandler, _getSyncJobHistoryHandler, _getMembershipDownloadHandler, _getThresholdNotificationHandlerMock.Object, _syncJobChangeRepository.Object, NullLogger<JobDetailsController>.Instance)
+            {
+                ControllerContext = CreateControllerContext(new List<Claim> {
+                    new Claim(ClaimTypes.Name, "user@domain.com"),
+                    new Claim(ClaimTypes.Role, Roles.JOB_OWNER_WRITER),
+                    new Claim(ClaimTypes.Role, Roles.SUBMISSION_REVIEWER),
+                    new Claim("http://schemas.microsoft.com/identity/claims/objectidentifier", Guid.NewGuid().ToString())})
+            };
+
+            var onBehalfId = Guid.NewGuid();
+            var operations = new List<PatchOperation>
+            {
+                new PatchOperation { Op = "replace", Path = "/Query", Value = ConvertToJsonElement("UpdatedQuery") },
+                new PatchOperation { Op = "replace", Path = "/LastModifiedOnBehalfOfObjectId", Value = ConvertToJsonElement(onBehalfId.ToString()) },
+                new PatchOperation { Op = "replace", Path = "/LastModifiedOnBehalfOfDisplayName", Value = ConvertToJsonElement("Paul Daly") },
+                new PatchOperation { Op = "replace", Path = "/ChangeReason", Value = ConvertToJsonElement(SyncJobChangeReason.Update.ToString()) },
+                new PatchOperation { Op = "replace", Path = "/BusinessJustification", Value = ConvertToJsonElement("Updating on behalf of owner") }
+            };
+
+            var requestDTO = CreatePatchJobRequestDTO(operations, SyncJobChangeReason.Update.ToString(), "Updating on behalf of owner");
+            var response = await _jobDetailsController.UpdateJobAsync(_jobEntity.Id, requestDTO);
+            var result = response as OkObjectResult;
+
+            Assert.IsNotNull(result);
+            Assert.AreEqual(200, result.StatusCode);
+            _syncJobChangeRepository.Verify(x => x.Save(It.Is<SyncJobChange>(
+                sjc => sjc.ChangedOnBehalfOfObjectId == onBehalfId
+                    && sjc.ChangedOnBehalfOfDisplayName == "Paul Daly")), Times.Once);
+        }
+
+        [TestMethod]
+        public async Task UpdateJob_OnBehalfProvidedByOwnerWriterOnly_DropsOnBehalfFromAuditAsync()
+        {
+            // An ordinary owner-writer is NOT allowed to record an "on behalf of" owner; the carried-over value is ignored but the update still succeeds.
+            _jobEntity.Status = SyncStatus.Idle.ToString();
+            _jobDetailsController = new JobDetailsController(_getJobDetailsHandler, _removeGMMHandler, _patchJobHandler, _getGroupHandler, _getChannelHandler, _getJobChangesHandler, _getSyncJobHistoryHandler, _getMembershipDownloadHandler, _getThresholdNotificationHandlerMock.Object, _syncJobChangeRepository.Object, NullLogger<JobDetailsController>.Instance)
+            {
+                ControllerContext = CreateControllerContext(new List<Claim> {
+                    new Claim(ClaimTypes.Name, "user@domain.com"),
+                    new Claim(ClaimTypes.Role, Roles.JOB_OWNER_WRITER),
+                    new Claim("http://schemas.microsoft.com/identity/claims/objectidentifier", Guid.NewGuid().ToString())})
+            };
+
+            var onBehalfId = Guid.NewGuid();
+            var operations = new List<PatchOperation>
+            {
+                new PatchOperation { Op = "replace", Path = "/Query", Value = ConvertToJsonElement("UpdatedQuery") },
+                new PatchOperation { Op = "replace", Path = "/LastModifiedOnBehalfOfObjectId", Value = ConvertToJsonElement(onBehalfId.ToString()) },
+                new PatchOperation { Op = "replace", Path = "/LastModifiedOnBehalfOfDisplayName", Value = ConvertToJsonElement("Paul Daly") },
+                new PatchOperation { Op = "replace", Path = "/ChangeReason", Value = ConvertToJsonElement(SyncJobChangeReason.Update.ToString()) },
+                new PatchOperation { Op = "replace", Path = "/BusinessJustification", Value = ConvertToJsonElement("Updating own group") }
+            };
+
+            var requestDTO = CreatePatchJobRequestDTO(operations, SyncJobChangeReason.Update.ToString(), "Updating own group");
+            var response = await _jobDetailsController.UpdateJobAsync(_jobEntity.Id, requestDTO);
+            var result = response as OkObjectResult;
+
+            Assert.IsNotNull(result);
+            Assert.AreEqual(200, result.StatusCode);
+            _syncJobChangeRepository.Verify(x => x.Save(It.Is<SyncJobChange>(
+                sjc => sjc.ChangedOnBehalfOfObjectId == null
+                    && sjc.ChangedOnBehalfOfDisplayName == null)), Times.Once);
+        }
+
+        [TestMethod]
+        public async Task EnableJob_OnBehalfProvidedByOwnerWriterOnly_DropsOnBehalfFromAuditAsync()
+        {
+            _jobEntity.Status = SyncStatus.CustomerPaused.ToString();
+            _jobDetailsController = new JobDetailsController(_getJobDetailsHandler, _removeGMMHandler, _patchJobHandler, _getGroupHandler, _getChannelHandler, _getJobChangesHandler, _getSyncJobHistoryHandler, _getMembershipDownloadHandler, _getThresholdNotificationHandlerMock.Object, _syncJobChangeRepository.Object, NullLogger<JobDetailsController>.Instance)
+            {
+                ControllerContext = CreateControllerContext(new List<Claim> {
+                    new Claim(ClaimTypes.Name, "user@domain.com"),
+                    new Claim(ClaimTypes.Role, Roles.JOB_OWNER_WRITER),
+                    new Claim("http://schemas.microsoft.com/identity/claims/objectidentifier", Guid.NewGuid().ToString())})
+            };
+
+            var onBehalfId = Guid.NewGuid();
+            var operations = new List<PatchOperation>
+            {
+                new PatchOperation { Op = "replace", Path = "/Status", Value = ConvertToJsonElement(SyncStatus.Idle.ToString()) },
+                new PatchOperation { Op = "replace", Path = "/LastModifiedOnBehalfOfObjectId", Value = ConvertToJsonElement(onBehalfId.ToString()) },
+                new PatchOperation { Op = "replace", Path = "/LastModifiedOnBehalfOfDisplayName", Value = ConvertToJsonElement("Paul Daly") },
+                new PatchOperation { Op = "replace", Path = "/ChangeReason", Value = ConvertToJsonElement(SyncJobChangeReason.StatusUpdate.ToString()) },
+                new PatchOperation { Op = "replace", Path = "/BusinessJustification", Value = ConvertToJsonElement("Resuming own sync") }
+            };
+
+            var requestDTO = CreatePatchJobRequestDTO(operations, SyncJobChangeReason.StatusUpdate.ToString(), "Resuming own sync");
+            var response = await _jobDetailsController.EnableJobAsync(_jobEntity.Id, requestDTO);
+            var result = response as OkObjectResult;
+
+            Assert.IsNotNull(result);
+            Assert.AreEqual(200, result.StatusCode);
+            _syncJobChangeRepository.Verify(x => x.Save(It.Is<SyncJobChange>(
+                sjc => sjc.ChangedOnBehalfOfObjectId == null
+                    && sjc.ChangedOnBehalfOfDisplayName == null)), Times.Once);
+        }
+
+        [TestMethod]
+        public async Task EnableJob_OnBehalfProvidedByTenantWriter_RecordsOnBehalfInAuditAsync()
+        {
+            _jobEntity.Status = SyncStatus.CustomerPaused.ToString();            _jobDetailsController = new JobDetailsController(_getJobDetailsHandler, _removeGMMHandler, _patchJobHandler, _getGroupHandler, _getChannelHandler, _getJobChangesHandler, _getSyncJobHistoryHandler, _getMembershipDownloadHandler, _getThresholdNotificationHandlerMock.Object, _syncJobChangeRepository.Object, NullLogger<JobDetailsController>.Instance)
+            {
+                ControllerContext = CreateControllerContext(new List<Claim> {
+                    new Claim(ClaimTypes.Name, "user@domain.com"),
+                    new Claim(ClaimTypes.Role, Roles.JOB_TENANT_WRITER),
+                    new Claim("http://schemas.microsoft.com/identity/claims/objectidentifier", Guid.NewGuid().ToString())})
+            };
+
+            var onBehalfId = Guid.NewGuid();
+            var operations = new List<PatchOperation>
+            {
+                new PatchOperation { Op = "replace", Path = "/Status", Value = ConvertToJsonElement(SyncStatus.Idle.ToString()) },
+                new PatchOperation { Op = "replace", Path = "/LastModifiedOnBehalfOfObjectId", Value = ConvertToJsonElement(onBehalfId.ToString()) },
+                new PatchOperation { Op = "replace", Path = "/LastModifiedOnBehalfOfDisplayName", Value = ConvertToJsonElement("Paul Daly") },
+                new PatchOperation { Op = "replace", Path = "/ChangeReason", Value = ConvertToJsonElement(SyncJobChangeReason.StatusUpdate.ToString()) },
+                new PatchOperation { Op = "replace", Path = "/BusinessJustification", Value = ConvertToJsonElement("Resuming on behalf of owner") }
+            };
+
+            var requestDTO = CreatePatchJobRequestDTO(operations, SyncJobChangeReason.StatusUpdate.ToString(), "Resuming on behalf of owner");
+            var response = await _jobDetailsController.EnableJobAsync(_jobEntity.Id, requestDTO);
+            var result = response as OkObjectResult;
+
+            Assert.IsNotNull(result);
+            Assert.AreEqual(200, result.StatusCode);
+            _syncJobChangeRepository.Verify(x => x.Save(It.Is<SyncJobChange>(
+                sjc => sjc.ChangedOnBehalfOfObjectId == onBehalfId
+                    && sjc.ChangedOnBehalfOfDisplayName == "Paul Daly")), Times.Once);
+        }
+
+        [TestMethod]
         [DataRow(Roles.JOB_OWNER_WRITER)]
         [DataRow(Roles.JOB_TENANT_WRITER)]
         public async Task UpdateJobWithEmptyQueryReturnsBadRequestAsync(string role)

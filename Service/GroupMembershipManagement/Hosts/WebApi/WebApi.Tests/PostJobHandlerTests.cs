@@ -70,7 +70,7 @@ namespace WebApi.Tests
                 Status = "Idle"
             };
 
-            return new PostJobRequest(Guid.NewGuid().ToString(), newSyncJob, false, "Test User", "justification");
+            return new PostJobRequest(Guid.NewGuid().ToString(), newSyncJob, false, "Test User", "justification", false);
         }
 
         [TestMethod]

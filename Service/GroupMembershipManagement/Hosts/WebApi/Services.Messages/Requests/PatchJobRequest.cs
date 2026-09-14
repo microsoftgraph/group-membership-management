@@ -9,6 +9,7 @@ namespace Services.Messages.Requests
     public class PatchJobRequest : RequestBase
     {
         public bool IsAllowed { get; set; }
+        public bool IsOnBehalfAllowed { get; set; }
         public Guid SyncJobId { get; }
         public string UserIdentity { get; }
         public JsonPatchDocument<SyncJobPatch> PatchDocument { get; }
@@ -21,6 +22,7 @@ namespace Services.Messages.Requests
 
         public PatchJobRequest(
             bool isAllowed,
+            bool isOnBehalfAllowed,
             string userIdentity,
             Guid syncJobId, 
             JsonPatchDocument<SyncJobPatch> patchDocument, 
@@ -32,6 +34,7 @@ namespace Services.Messages.Requests
             bool hasTitlesOperation = false)
         {
             IsAllowed = isAllowed;
+            IsOnBehalfAllowed = isOnBehalfAllowed;
             UserIdentity = userIdentity;
             SyncJobId = syncJobId;
             PatchDocument = patchDocument;

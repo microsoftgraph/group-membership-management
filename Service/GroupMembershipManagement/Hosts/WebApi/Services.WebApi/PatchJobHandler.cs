@@ -98,8 +98,14 @@ namespace Services.WebApi
                 titles = request.PatchDocument.Operations.FirstOrDefault(op => op.path == "/Titles")?.value?.ToString();
             }
             
-            var changedOnBehalfOfDisplayName = request.PatchDocument.Operations.FirstOrDefault(op => op.path == "/LastModifiedOnBehalfOfDisplayName")?.value?.ToString();
-            var changedOnBehalfOfObjectId = request.PatchDocument.Operations.FirstOrDefault(op => op.path == "/LastModifiedOnBehalfOfObjectId")?.value?.ToString();
+            // Only Job Tenant Writers and Submission Reviewers may record an "on behalf of" owner; ignore carried-over values for anyone else.
+            string? changedOnBehalfOfDisplayName = null;
+            string? changedOnBehalfOfObjectId = null;
+            if (request.IsOnBehalfAllowed)
+            {
+                changedOnBehalfOfDisplayName = request.PatchDocument.Operations.FirstOrDefault(op => op.path == "/LastModifiedOnBehalfOfDisplayName")?.value?.ToString();
+                changedOnBehalfOfObjectId = request.PatchDocument.Operations.FirstOrDefault(op => op.path == "/LastModifiedOnBehalfOfObjectId")?.value?.ToString();
+            }
 
             var syncJobChange = new SyncJobChange
             {
