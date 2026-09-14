@@ -61,7 +61,9 @@ function Set-PostDeploymentUpdates {
         [Parameter(Mandatory = $true)]
         [string]$ScriptsDirectory,
         [Parameter(Mandatory = $true)]
-        [string]$ConnectionString
+        [string]$ConnectionString,
+        [Parameter(Mandatory = $false)]
+        [switch]$SkipOrphanedAccountRoleAssignmentCleanup = $true
     )
 
     Write-DeployPhase -Name 'Running Post-Deployment Migrations' -Event Begin
@@ -71,7 +73,8 @@ function Set-PostDeploymentUpdates {
         -EnvironmentAbbreviation $EnvironmentAbbreviation `
         -SolutionAbbreviation $SolutionAbbreviation `
         -SubscriptionName $currentContext.Subscription.Name `
-        -ConnectionString $ConnectionString
+        -ConnectionString $ConnectionString `
+        -SkipOrphanedAccountRoleAssignmentCleanup:$SkipOrphanedAccountRoleAssignmentCleanup
     Write-DeployPhase -Name 'Running Post-Deployment Migrations' -Event End
 }
 
@@ -3722,6 +3725,7 @@ function Deploy-Resources {
     $skipFunctionAppCodeDeployment  = Get-Default -Value $ParameterHashtable['skipFunctionAppCodeDeployment'].value -Default $false
     $skipUIDeployment               = Get-Default -Value $ParameterHashtable['skipUIDeployment'].value -Default $false
     $skipPostDeploymentUpdates      = Get-Default -Value $ParameterHashtable['skipPostDeploymentUpdates'].value -Default $false
+    $skipOrphanedAccountRoleAssignmentCleanup = Get-Default -Value $ParameterHashtable['skipOrphanedAccountRoleAssignmentCleanup'].value -Default $true
     $skipSqlServerPermissionSetup   = Get-Default -Value $ParameterHashtable['skipSqlServerPermissionSetup'].value -Default $false
     $skipPrivilegedDirectoryActions   = Get-Default -Value $ParameterHashtable['skipPrivilegedDirectoryActions'].value -Default $false
     $tenantDomain                   = Get-DefaultString -Value $ParameterHashtable['tenantDomain'].value                   -Default 'not-set'
@@ -3923,7 +3927,8 @@ function Deploy-Resources {
             -EnvironmentAbbreviation $environmentAbbreviation `
             -SolutionAbbreviation $solutionAbbreviation `
             -ScriptsDirectory $scriptsDirectory `
-            -ConnectionString $connectionString
+            -ConnectionString $connectionString `
+            -SkipOrphanedAccountRoleAssignmentCleanup:$skipOrphanedAccountRoleAssignmentCleanup
     }
     else {
         Write-DeployLog -Level Warn -Message "Skipping post-deployment updates as per configuration [skipPostDeploymentUpdates = $skipPostDeploymentUpdates]."

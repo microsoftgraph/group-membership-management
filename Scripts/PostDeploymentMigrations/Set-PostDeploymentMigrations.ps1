@@ -23,7 +23,7 @@ function Set-PostDeploymentMigrations {
 
 	# Only run orphaned role assignments cleanup if NOT skipped
 	if (-not $SkipOrphanedAccountRoleAssignmentCleanup) {
-		Write-Verbose "Running orphaned role assignments cleanup..."
+		Write-Host "Running orphaned role assignments cleanup..."
 		. ($ScriptsDirectory + '/PostDeploymentMigrations/Set-OrphanedRoleAssignmentsCleanup.ps1')
 		$subscriptionId = (Get-AzContext).Subscription.Id
 		if ([string]::IsNullOrWhiteSpace($subscriptionId)) {
@@ -32,7 +32,7 @@ function Set-PostDeploymentMigrations {
 		Set-OrphanedRoleAssignmentsCleanup -SubscriptionId $subscriptionId -ScriptsDirectory $ScriptsDirectory -Confirm:$false
 	}
 	else {
-		Write-Verbose "Skipping orphaned role assignments cleanup (SkipOrphanedAccountRoleAssignmentCleanup flag is set)."
+		Write-Host "Skipping orphaned role assignments cleanup (SkipOrphanedAccountRoleAssignmentCleanup flag is set)."
 		Write-Verbose "To run manually, execute: Set-OrphanedRoleAssignmentsCleanup -Interactive"
 	}
 

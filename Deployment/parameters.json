@@ -324,6 +324,13 @@
         "required": false
       }
     },
+    "skipOrphanedAccountRoleAssignmentCleanup": {
+      "value": true,
+      "metadata": {
+        "description": "Skip orphaned role assignment cleanup during post-deployment updates. Defaults to true when omitted. Set to false to permit cleanup; SQL migrations still run unless skipPostDeploymentUpdates is true.",
+        "required": false
+      }
+    },
     "skipSqlServerPermissionSetup": {
       "value": false,
       "metadata": {
