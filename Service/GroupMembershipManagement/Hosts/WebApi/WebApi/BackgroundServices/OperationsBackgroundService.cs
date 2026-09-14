@@ -725,15 +725,25 @@ namespace WebApi.BackgroundServices
                 _logger.JobSchedulerCalling();
                 var jobSchedulerUrl = $"{_operationsSettings.JobSchedulerFunctionBaseUrl}/api/PipelineInvocationStarterFunction?code={_operationsSettings.JobSchedulerFunctionKey}";
 
-                // Acquire token for JobScheduler function app with platform authentication
-                var credential = new DefaultAzureCredential(DefaultAzureCredential.DefaultEnvironmentVariableName);
-                var tokenRequestContext = new TokenRequestContext(new[] { $"api://{_operationsSettings.FunctionAuthAppClientId}/.default" });
-                var accessToken = await credential.GetTokenAsync(tokenRequestContext, cancellationToken);
-                
+                // Acquire token for JobScheduler function app with platform authentication.
+                // When FunctionAuthAppClientId is not configured, skip token acquisition and rely on the
+                // function key (?code=) alone. This supports environments where the FunctionAuth app
+                // registration has been removed and Easy Auth is disabled on JobScheduler.
+                AccessToken? accessToken = null;
+                if (!string.IsNullOrWhiteSpace(_operationsSettings.FunctionAuthAppClientId))
+                {
+                    var credential = new DefaultAzureCredential(DefaultAzureCredential.DefaultEnvironmentVariableName);
+                    var tokenRequestContext = new TokenRequestContext(new[] { $"api://{_operationsSettings.FunctionAuthAppClientId}/.default" });
+                    accessToken = await credential.GetTokenAsync(tokenRequestContext, cancellationToken);
+                }
+
                 await retryPolicy.ExecuteAsync(async () =>
                 {
                     var request = new HttpRequestMessage(HttpMethod.Post, jobSchedulerUrl);
-                    request.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", accessToken.Token);
+                    if (accessToken.HasValue)
+                    {
+                        request.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", accessToken.Value.Token);
+                    }
                     request.Content = new StringContent(JsonSerializer.Serialize(new { DelayForDeploymentInMinutes = 5 }), Encoding.UTF8, "application/json");
                     var response = await _httpClient.SendAsync(request);
                     var responseContent = await response.Content.ReadAsStringAsync();
