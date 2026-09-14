@@ -39,3 +39,4 @@ export * from './SyncJobHistory';
 export * from './SearchSyncHistoryByUserResult';
 export * from './SyncHistorySearchProgressUpdate';
 export * from './PostGroupResponse';
+export * from './DashboardSummary';

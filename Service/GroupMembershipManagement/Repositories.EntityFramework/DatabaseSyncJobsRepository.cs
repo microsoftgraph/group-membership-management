@@ -4,6 +4,7 @@
 using Microsoft.EntityFrameworkCore;
 using System.Data.SqlTypes;
 using Models;
+using Models.Dashboard;
 using Repositories.Contracts;
 using Repositories.EntityFramework.Contexts;
 using System.Text.Json;
@@ -12,6 +13,38 @@ namespace Repositories.EntityFramework
 {
     public class DatabaseSyncJobsRepository : IDatabaseSyncJobsRepository
     {
+        // A job that has never run still carries a sentinel timestamp. The 1900-01-01
+        // threshold covers both the C# default (SqlDateTime.MinValue, 1753-01-01) and the
+        // SQL column default (1601-01-01).
+        private static readonly DateTime NeverRunSentinel = new DateTime(1900, 1, 1);
+
+        private const string OnboardingRequestType = "Onboarding";
+        private const string UpdateRequestType = "Update";
+
+        private static readonly string[] InProgressStatuses =
+        {
+            nameof(SyncStatus.InProgress),
+            nameof(SyncStatus.StuckInProgress),
+            nameof(SyncStatus.ErroredDueToStuckInProgress)
+        };
+
+        // Healthy or transitional statuses that are never anomalous.
+        private static readonly string[] OperationalStatuses =
+        {
+            nameof(SyncStatus.Idle),
+            nameof(SyncStatus.InProgress),
+            nameof(SyncStatus.PendingReview)
+        };
+
+        // Anything outside this set is reported as anomalous on the dashboard. Purge-eligible
+        // statuses are excluded because AzureMaintenance already tracks, warns on, and cleans
+        // them up, so surfacing them here would double-report an already-managed lifecycle.
+        // Sourced from PurgeEligibleStatuses so the dashboard stays in step as that list changes.
+        private static readonly string[] NonAnomalousStatuses =
+            OperationalStatuses
+                .Concat(PurgeEligibleStatuses.All.Select(status => status.ToString()))
+                .ToArray();
+
         private readonly GMMContext _writeContext;
         private readonly GMMReadContext _readContext;
 
@@ -299,6 +332,89 @@ namespace Repositories.EntityFramework
                 .Where(j => j.Id == jobId)
                 .ExecuteUpdateAsync(s => s
                     .SetProperty(j => j.Destination, destination));
+        }
+
+        public async Task<DashboardSummary> GetDashboardSummaryAsync(CancellationToken cancellationToken = default)
+        {
+            var now = DateTime.UtcNow;
+            var pendingReviewStatus = nameof(SyncStatus.PendingReview);
+
+            // Correlated TOP 1 against the already-filtered PendingReview jobs. Ranking the
+            // whole SyncJobChanges table with a window function first would force a full scan
+            // because the status predicate cannot be pushed through the window.
+            var pendingReviewRows = await _readContext.SyncJobs
+                .AsNoTracking()
+                .Where(job => job.Status == pendingReviewStatus)
+                .Select(job => new
+                {
+                    IsOnboarding = job.LastRunTime <= NeverRunSentinel,
+                    LatestChangeTime = _readContext.SyncJobChanges
+                        .Where(change => change.SyncJobId == job.Id)
+                        .OrderByDescending(change => change.ChangeTime)
+                        .ThenByDescending(change => change.Id)
+                        .Select(change => (DateTime?)change.ChangeTime)
+                        .FirstOrDefault()
+                })
+                .ToListAsync(cancellationToken);
+
+            var inProgressRows = await _readContext.SyncJobs
+                .AsNoTracking()
+                .Where(job => InProgressStatuses.Contains(job.Status))
+                .Select(job => new { job.Status, job.LastSuccessfulStartTime })
+                .ToListAsync(cancellationToken);
+
+            var anomalousRows = await _readContext.SyncJobs
+                .AsNoTracking()
+                .Where(job => !NonAnomalousStatuses.Contains(job.Status))
+                .Select(job => new { job.Status, job.LastSuccessfulRunTime, job.Period })
+                .ToListAsync(cancellationToken);
+
+            return new DashboardSummary
+            {
+                QueriedAtUtc = now,
+                PendingReview = pendingReviewRows
+                    .GroupBy(row => row.IsOnboarding ? OnboardingRequestType : UpdateRequestType)
+                    .Select(group => new PendingReviewSummaryRow
+                    {
+                        RequestType = group.Key,
+                        Count = group.Count(),
+                        OldestChangeTime = group.Min(row => row.LatestChangeTime)
+                    })
+                    .OrderBy(row => row.RequestType)
+                    .ToList(),
+
+                InProgress = inProgressRows
+                    .GroupBy(row => row.Status)
+                    .Select(group => new InProgressStatusRow
+                    {
+                        Status = group.Key,
+                        Count = group.Count(),
+                        OldestStartTime = group
+                            .Where(row => row.LastSuccessfulStartTime >= NeverRunSentinel)
+                            .Min(row => (DateTime?)row.LastSuccessfulStartTime)
+                    })
+                    .OrderBy(row => row.Status)
+                    .ToList(),
+
+                AnomalousStatuses = anomalousRows
+                    .GroupBy(row => row.Status)
+                    .Select(group => new AnomalousStatusRow
+                    {
+                        Status = group.Key,
+                        Count = group.Count(),
+                        MaxCyclesMissed = group
+                            .Where(row => row.LastSuccessfulRunTime >= NeverRunSentinel && row.Period > 0)
+                            .Select(row => (int?)((int)(now - row.LastSuccessfulRunTime).TotalHours / row.Period))
+                            .Max(),
+                        OldestLastSuccessfulRun = group
+                            .Where(row => row.LastSuccessfulRunTime >= NeverRunSentinel)
+                            .Min(row => (DateTime?)row.LastSuccessfulRunTime),
+                        NeverSucceededCount = group.Count(row => row.LastSuccessfulRunTime < NeverRunSentinel)
+                    })
+                    .OrderByDescending(row => row.Count)
+                    .ThenBy(row => row.Status)
+                    .ToList()
+            };
         }
     }
 }

@@ -53,6 +53,10 @@ namespace WebApi.Controllers.v1.Roles
             var isAISettingsReader = User.IsInRole(Models.Roles.AI_SETTINGS_READER) || isAISettingsAdministrator;
             var isCustomMembershipProviderReader = User.IsInRole(Models.Roles.CUSTOM_MEMBERSHIP_PROVIDER_READER) || isCustomMembershipProviderAdministrator;
 
+            // The operational dashboard is read-only, so there is no ReadWrite counterpart and no
+            // other administrator role implies it. Access is strictly opt-in via Dashboard.Read.All.
+            var isDashboardReader = User.IsInRole(Models.Roles.DASHBOARD_READER);
+
             var roleStatus = new Models.DTOs.RolesObject
             {
                 IsJobOwnerReader = isJobOwnerReader,
@@ -77,7 +81,8 @@ namespace WebApi.Controllers.v1.Roles
                 IsGeneralSettingsReader = isGeneralSettingsReader,
                 IsAutoApproverReader = isAutoApproverReader,
                 IsAISettingsReader = isAISettingsReader,
-                IsCustomMembershipProviderReader = isCustomMembershipProviderReader
+                IsCustomMembershipProviderReader = isCustomMembershipProviderReader,
+                IsDashboardReader = isDashboardReader
             };
 
             return Ok(roleStatus);

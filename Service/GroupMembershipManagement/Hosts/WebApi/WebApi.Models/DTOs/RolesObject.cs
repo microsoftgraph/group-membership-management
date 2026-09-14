@@ -43,5 +43,12 @@ namespace WebApi.Models.DTOs
         public bool IsAutoApproverReader { get; set; }
         public bool IsAISettingsReader { get; set; }
         public bool IsCustomMembershipProviderReader { get; set; }
+
+        /// <summary>
+        /// True only when the caller holds Dashboard.Read.All. The operational dashboard is
+        /// read-only, so there is no ReadWrite counterpart to widen this and no other
+        /// administrator role grants it; access is strictly opt-in.
+        /// </summary>
+        public bool IsDashboardReader { get; set; }
     }
 }

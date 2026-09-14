@@ -240,6 +240,14 @@ function Set-AppRolesIfNeeded {
             Id                 = [Guid]::NewGuid().ToString()
             IsEnabled          = $True
             AllowedMemberTypes = @($memberTypes)
+        },
+        @{
+            DisplayName        = "Dashboard Reader"
+            Description        = "Can view the operational dashboard in the Admin Center. Grants no ability to change any setting."
+            Value              = "Dashboard.Read.All"
+            Id                 = [Guid]::NewGuid().ToString()
+            IsEnabled          = $True
+            AllowedMemberTypes = @($memberTypes)
         }
 
     )

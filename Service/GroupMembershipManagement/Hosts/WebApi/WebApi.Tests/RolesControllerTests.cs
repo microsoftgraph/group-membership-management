@@ -152,6 +152,52 @@ namespace Services.Tests
         }
 
         [TestMethod]
+        public void GetAllRoles_ReflectsDashboardReader()
+        {
+            _rolesController.ControllerContext = CreateControllerContext(new List<Claim>
+            {
+                new Claim(ClaimTypes.Role, Roles.DASHBOARD_READER)
+            });
+
+            var withRole = ((_rolesController.GetAllRoles().Result as OkObjectResult)!.Value as RolesObject)!;
+            Assert.IsTrue(withRole.IsDashboardReader, "Should be true when the caller holds DASHBOARD_READER");
+
+            // The dashboard is read-only, so holding it must never imply any edit capability.
+            Assert.IsFalse(withRole.IsGeneralSettingsAdministrator);
+            Assert.IsFalse(withRole.IsAutoApproverAdministrator);
+            Assert.IsFalse(withRole.IsAISettingsAdministrator);
+            Assert.IsFalse(withRole.IsCustomMembershipProviderAdministrator);
+            Assert.IsFalse(withRole.IsOperationsResetAdministrator);
+
+            _rolesController.ControllerContext = CreateControllerContext(new List<Claim>
+            {
+                new Claim(ClaimTypes.Role, Roles.JOB_OWNER_WRITER)
+            });
+
+            var withoutRole = ((_rolesController.GetAllRoles().Result as OkObjectResult)!.Value as RolesObject)!;
+            Assert.IsFalse(withoutRole.IsDashboardReader, "Should be false when the caller lacks DASHBOARD_READER");
+        }
+
+        [TestMethod]
+        public void GetAllRoles_DashboardReaderIsNotImpliedByAdministrators()
+        {
+            // Dashboard.Read.All has no ReadWrite counterpart, so unlike the settings reader
+            // flags it must stay false for administrators who were not explicitly granted it.
+            _rolesController.ControllerContext = CreateControllerContext(new List<Claim>
+            {
+                new Claim(ClaimTypes.Role, Roles.GENERAL_SETTINGS_ADMINISTRATOR),
+                new Claim(ClaimTypes.Role, Roles.AUTO_APPROVER_ADMINISTRATOR),
+                new Claim(ClaimTypes.Role, Roles.AI_SETTINGS_ADMINISTRATOR),
+                new Claim(ClaimTypes.Role, Roles.CUSTOM_MEMBERSHIP_PROVIDER_ADMINISTRATOR),
+                new Claim(ClaimTypes.Role, Roles.RESET_ADMINISTRATOR)
+            });
+
+            var roles = ((_rolesController.GetAllRoles().Result as OkObjectResult)!.Value as RolesObject)!;
+
+            Assert.IsFalse(roles.IsDashboardReader);
+        }
+
+        [TestMethod]
         public void GetAllRoles_ReaderFlagsAreFalseWithoutSettingsRoles()
         {
             _rolesController.ControllerContext = CreateControllerContext(new List<Claim>

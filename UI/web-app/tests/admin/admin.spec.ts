@@ -28,13 +28,14 @@ test.describe('Admin Tests', () => {
     await page.goto(`${url}/Admin`);
 
     const tabs = page.getByRole('tab');
-    await expect(tabs).toHaveCount(5, { timeout: 20000 });
+    await expect(tabs).toHaveCount(6, { timeout: 20000 });
     await expect(tabs).toHaveText([
       'General',
       'Operations',
       'Custom Source',
       'AI',
       'Auto Approver',
+      'Dashboard',
     ]);
   });
 

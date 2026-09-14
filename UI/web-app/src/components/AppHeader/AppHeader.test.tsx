@@ -79,6 +79,7 @@ describe('AppHeader', () => {
             isAutoApproverReader: false,
             isAISettingsReader: false,
             isCustomMembershipProviderReader: false,
+            isDashboardReader: false,
             isFetchingRoles: false,
           },
           settings: {

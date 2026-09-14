@@ -2,7 +2,7 @@
 // Licensed under the MIT license.
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { classNamesFunction, Toggle, IProcessedStyleSet, Pivot, PivotItem, PrimaryButton, DefaultButton, TextField, Text, TooltipHost, IColumn, SelectionMode, ShimmeredDetailsList, Dropdown, Spinner, IRenderFunction, ISelectableDroppableTextProps, IDropdown, Slider, Icon, IconButton, ActionButton, Link, MessageBar, MessageBarType } from '@fluentui/react';
+import { classNamesFunction, Toggle, IProcessedStyleSet, Pivot, PivotItem, PrimaryButton, DefaultButton, TextField, Text, TooltipHost, IColumn, SelectionMode, ShimmeredDetailsList, Dropdown, Spinner, IRenderFunction, ISelectableDroppableTextProps, IDropdown, Slider, Icon, IconButton, ActionButton, Link, MessageBar, MessageBarType, mergeStyles } from '@fluentui/react';
 import { useTheme } from '@fluentui/react/lib/Theme';
 import {
   AdminConfigStyleProps,
@@ -17,6 +17,7 @@ import {
   GeneralSettingsProps,
   AutoApproverSettingsProps,
   SettingsSectionProps,
+  DashboardProps,
   AISettingsProps } from './AdminConfig.types';
 import { PageSection } from '../../components/PageSection';
 import { HyperlinkSetting } from '../../components/HyperlinkSetting';
@@ -24,9 +25,13 @@ import { Operation } from '../../components/Operation';
 import { Page } from '../../components/Page';
 import { PageHeader } from '../../components/PageHeader';
 import { SettingKey, SettingKeyMap, SqlMembershipAttribute, SqlMembershipSource } from '../../models';
+import type { PendingReviewSummaryRow, InProgressStatusRow, AnomalousStatusRow } from '../../models/DashboardSummary';
 import { GeneralSetting } from '../../components/GeneralSetting';
 import { ServiceNotificationSettings, validateServiceNotification } from './ServiceNotificationSettings';
 import { ConfiguredAttributeRules, ConfiguredAttributeToggleCard, useConfiguredAttributeApproval } from './ConfiguredAttributeApprovalSettings';
+import { useAppDispatch, useAppSelector } from '../../store/hooks';
+import { fetchDashboardSummary } from '../../store/dashboard.api';
+import { selectDashboardSummary, selectDashboardLoading, selectDashboardError } from '../../store/dashboard.slice';
 import type { AlertBannerConfig } from '../../models/AlertBannerConfig';
 
 const getClassNames = classNamesFunction<AdminConfigStyleProps, AdminConfigStyles>();
@@ -45,6 +50,7 @@ export const AdminConfigView: React.FunctionComponent<AdminConfigViewProps> = (p
     canViewAutoApproverSettings,
     canViewAISettings,
     canViewCustomSourceSettings,
+    canViewDashboard,
     isReadOnly,
     defaultAIPrompt } = props;
 
@@ -239,6 +245,19 @@ export const AdminConfigView: React.FunctionComponent<AdminConfigViewProps> = (p
                     onNavigateToCustomSource={() => setSelectedTabKey('customSource')} />
                 </PivotItem>
               }
+              {canViewDashboard &&
+                <PivotItem
+                  headerText={strings.Dashboard.labels.dashboard}
+                  headerButtonProps={{
+                    'data-order': 6,
+                    'data-title': strings.Dashboard.labels.dashboard,
+                  }}
+                >
+                  <Dashboard
+                    classNames={classNames}
+                    strings={strings} />
+                </PivotItem>
+              }
             </Pivot>
           </PageSection>
         </div>
@@ -275,6 +294,303 @@ const Operations: React.FunctionComponent<OperationsProps> = (props: OperationsP
           description={strings.Operations.labels.resetOperationDescription}
           buttonText={strings.Operations.buttons}
         ></Operation>
+      </div>
+    </SettingsSection>
+  );
+}
+
+type DashboardTone = 'good' | 'warning' | 'danger' | 'neutral';
+
+// The API serializes UTC timestamps; tolerate payloads that omit the zone designator
+// so the browser does not reinterpret them as local time.
+const parseUtc = (value?: string | null): Date | null => {
+  if (!value) {
+    return null;
+  }
+  const normalized = /(Z|[+-]\d{2}:?\d{2})$/.test(value) ? value : `${value}Z`;
+  const parsed = new Date(normalized);
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
+};
+
+const calendarDayDiff = (value: Date): number => {
+  const now = new Date();
+  const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+  const startOfValue = new Date(value.getFullYear(), value.getMonth(), value.getDate()).getTime();
+  return Math.floor((startOfToday - startOfValue) / 86400000);
+};
+
+const Dashboard: React.FunctionComponent<DashboardProps> = (props: DashboardProps) => {
+  const { classNames, strings } = props;
+  const dispatch = useAppDispatch();
+  const theme = useTheme();
+  const summary = useAppSelector(selectDashboardSummary);
+  const loading = useAppSelector(selectDashboardLoading);
+  const error = useAppSelector(selectDashboardError);
+
+  useEffect(() => {
+    dispatch(fetchDashboardSummary());
+  }, [dispatch]);
+
+  const labels = strings.Dashboard.labels;
+
+  const toneColor = useCallback((tone: DashboardTone): string => {
+    switch (tone) {
+      case 'good': return theme.palette.green;
+      case 'warning': return theme.palette.yellowDark;
+      case 'danger': return theme.palette.redDark;
+      default: return theme.palette.neutralSecondary;
+    }
+  }, [theme]);
+
+  const renderChip = useCallback((tone: DashboardTone, text: string) => (
+    <span className={mergeStyles({
+      display: 'inline-block',
+      padding: '2px 8px',
+      borderRadius: 10,
+      fontSize: 12,
+      fontWeight: 600,
+      whiteSpace: 'nowrap',
+      color: toneColor(tone),
+      border: `1px solid ${toneColor(tone)}`,
+      backgroundColor: theme.palette.neutralLighterAlt,
+    })}>{text}</span>
+  ), [theme, toneColor]);
+
+  const formatDateTime = (value?: string | null): string => {
+    const parsed = parseUtc(value);
+    return parsed === null
+      ? labels.notAvailable
+      : parsed.toLocaleString(undefined, { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' });
+  };
+
+  const formatAge = (value?: string | null): string => {
+    const parsed = parseUtc(value);
+    if (parsed === null) {
+      return labels.notAvailable;
+    }
+    const days = calendarDayDiff(parsed);
+    if (days >= 1) {
+      return `${days}d ${labels.agoSuffix}`;
+    }
+    const minutes = Math.floor((Date.now() - parsed.getTime()) / 60000);
+    if (minutes >= 60) {
+      return `${Math.floor(minutes / 60)}h ${labels.agoSuffix}`;
+    }
+    return minutes >= 1 ? `${minutes}m ${labels.agoSuffix}` : labels.justNow;
+  };
+
+  const cyclesLabel = (cycles?: number | null): string => {
+    if (cycles === null || cycles === undefined) {
+      return labels.unknown;
+    }
+    if (cycles === 1) {
+      return `1 ${labels.cycleSuffix}`;
+    }
+    return `${Math.max(cycles, 0)} ${labels.cyclesSuffix}`;
+  };
+
+  const cyclesTone = (cycles?: number | null): DashboardTone => {
+    if (cycles === null || cycles === undefined) return 'warning';
+    if (cycles >= 4) return 'danger';
+    return cycles >= 2 ? 'warning' : 'good';
+  };
+
+  const pendingAgeTone = (value?: string | null): DashboardTone => {
+    const parsed = parseUtc(value);
+    if (parsed === null) return 'neutral';
+    const days = calendarDayDiff(parsed);
+    if (days > 7) return 'danger';
+    return days > 3 ? 'warning' : 'good';
+  };
+
+  const inProgressTone = (status: string): DashboardTone => {
+    switch (status) {
+      case 'ErroredDueToStuckInProgress': return 'danger';
+      case 'StuckInProgress': return 'warning';
+      case 'InProgress': return 'good';
+      default: return 'neutral';
+    }
+  };
+
+  const inProgressAgeTone = (value?: string | null): DashboardTone => {
+    const parsed = parseUtc(value);
+    if (parsed === null) return 'neutral';
+    const hours = (Date.now() - parsed.getTime()) / 3600000;
+    if (hours > 6) return 'danger';
+    return hours > 2 ? 'warning' : 'good';
+  };
+
+  const anomalousTone = (row: AnomalousStatusRow): DashboardTone => {
+    if (row.count > 0 && row.neverSucceededCount === row.count) return 'danger';
+    if (row.neverSucceededCount > 0) return (row.maxCyclesMissed ?? 0) >= 4 ? 'danger' : 'warning';
+    return cyclesTone(row.maxCyclesMissed);
+  };
+
+  const stalenessSummary = (row: AnomalousStatusRow): string => {
+    const parts: string[] = [];
+    if (row.maxCyclesMissed === null || row.maxCyclesMissed === undefined) {
+      parts.push(labels.cycleCountUnknown);
+    } else if (row.maxCyclesMissed >= 2) {
+      parts.push(`${cyclesLabel(row.maxCyclesMissed)} ${labels.missedSuffix}`);
+    }
+    if (row.neverSucceededCount > 0) {
+      parts.push(`${row.neverSucceededCount} ${labels.neverRanOkSuffix}`);
+    }
+    return parts.length > 0 ? parts.join(' · ') : labels.likelyTransient;
+  };
+
+  const renderCounts = (cards: { key: string; label: string; value: number; detail?: string; tone: DashboardTone }[]) => (
+    <div className={classNames.dashboardCounts} role="list">
+      {cards.map((card) => (
+        <div key={card.key} role="listitem" className={classNames.dashboardCount} style={{ borderLeftColor: toneColor(card.tone) }}>
+          <span className={classNames.dashboardCountLabel}>{card.label}</span>
+          <span className={classNames.dashboardCountValue}>{card.value}</span>
+          {card.detail !== undefined && <span className={classNames.dashboardCountDetail}>{card.detail}</span>}
+        </div>
+      ))}
+      <div role="listitem" className={classNames.dashboardCount} style={{ borderLeftColor: toneColor('neutral') }}>
+        <span className={classNames.dashboardCountLabel}>{labels.total}</span>
+        <span className={classNames.dashboardCountValue}>{cards.reduce((sum, card) => sum + card.value, 0)}</span>
+      </div>
+    </div>
+  );
+
+  const pendingReview = summary?.pendingReview ?? [];
+  const inProgress = summary?.inProgress ?? [];
+  const anomalous = summary?.anomalousStatuses ?? [];
+  const isShimmering = loading && !summary;
+
+  const pendingReviewColumns: IColumn[] = [
+    {
+      key: 'requestType', name: labels.changeReason, minWidth: 120, maxWidth: 200, isResizable: true,
+      onRender: (item: PendingReviewSummaryRow) => renderChip(item.requestType === 'Onboarding' ? 'good' : item.requestType === 'Update' ? 'warning' : 'neutral', item.requestType)
+    },
+    { key: 'count', name: labels.count, fieldName: 'count', minWidth: 60, maxWidth: 100, isResizable: true },
+    {
+      key: 'oldestChange', name: labels.oldestChange, minWidth: 160, maxWidth: 220, isResizable: true,
+      onRender: (item: PendingReviewSummaryRow) => formatDateTime(item.oldestChangeTime)
+    },
+    {
+      key: 'age', name: labels.age, minWidth: 100, maxWidth: 140, isResizable: true,
+      onRender: (item: PendingReviewSummaryRow) => renderChip(pendingAgeTone(item.oldestChangeTime), formatAge(item.oldestChangeTime))
+    }
+  ];
+
+  const inProgressColumns: IColumn[] = [
+    {
+      key: 'status', name: labels.status, minWidth: 180, maxWidth: 260, isResizable: true,
+      onRender: (item: InProgressStatusRow) => renderChip(inProgressTone(item.status), item.status)
+    },
+    { key: 'count', name: labels.count, fieldName: 'count', minWidth: 60, maxWidth: 100, isResizable: true },
+    {
+      key: 'oldestStarted', name: labels.oldestStarted, minWidth: 160, maxWidth: 220, isResizable: true,
+      onRender: (item: InProgressStatusRow) => formatDateTime(item.oldestStartTime)
+    },
+    {
+      key: 'age', name: labels.age, minWidth: 100, maxWidth: 140, isResizable: true,
+      onRender: (item: InProgressStatusRow) => renderChip(inProgressAgeTone(item.oldestStartTime), formatAge(item.oldestStartTime))
+    }
+  ];
+
+  const anomalousColumns: IColumn[] = [
+    {
+      key: 'status', name: labels.status, minWidth: 180, maxWidth: 260, isResizable: true,
+      onRender: (item: AnomalousStatusRow) => renderChip('neutral', item.status)
+    },
+    { key: 'count', name: labels.count, fieldName: 'count', minWidth: 60, maxWidth: 100, isResizable: true },
+    {
+      key: 'cycles', name: labels.maxCyclesMissed, minWidth: 130, maxWidth: 170, isResizable: true,
+      onRender: (item: AnomalousStatusRow) => renderChip(cyclesTone(item.maxCyclesMissed), cyclesLabel(item.maxCyclesMissed))
+    },
+    {
+      key: 'lastSuccess', name: labels.oldestLastSuccess, minWidth: 160, maxWidth: 220, isResizable: true,
+      onRender: (item: AnomalousStatusRow) => formatDateTime(item.oldestLastSuccessfulRun)
+    },
+    {
+      key: 'neverSucceeded', name: labels.neverSucceeded, minWidth: 130, maxWidth: 170, isResizable: true,
+      onRender: (item: AnomalousStatusRow) => item.neverSucceededCount > 0
+        ? renderChip('danger', `${item.neverSucceededCount}`)
+        : <span>0</span>
+    }
+  ];
+
+  return (
+    <SettingsSection
+      classNames={classNames}
+      title={labels.dashboard}
+      subtitle={labels.description}>
+      <div className={classNames.dashboardToolbar}>
+        <ActionButton iconProps={{ iconName: 'Refresh' }} disabled={loading} onClick={() => { dispatch(fetchDashboardSummary()); }}>
+          {labels.refresh}
+        </ActionButton>
+      </div>
+      {error && <MessageBar messageBarType={MessageBarType.error}>{labels.loadFailed}</MessageBar>}
+
+      <div className={classNames.dashboardSection}>
+        <Text variant="mediumPlus" className={classNames.sectionHeading}>{labels.pendingReview}</Text>
+        <Text className={classNames.dashboardHint}>{labels.pendingReviewDescription}</Text>
+        {!isShimmering && pendingReview.length === 0
+          ? <Text className={classNames.dashboardEmpty}>{labels.noPendingReview}</Text>
+          : <>
+            {pendingReview.length > 0 && renderCounts(pendingReview.map((row) => ({
+              key: row.requestType,
+              label: row.requestType,
+              value: row.count,
+              detail: `${labels.oldestPrefix} ${formatDateTime(row.oldestChangeTime)}`,
+              tone: row.requestType === 'Onboarding' ? 'good' : row.requestType === 'Update' ? 'warning' : 'neutral'
+            })))}
+            <ShimmeredDetailsList
+              items={pendingReview}
+              columns={pendingReviewColumns}
+              selectionMode={SelectionMode.none}
+              enableShimmer={isShimmering}
+              ariaLabelForGrid={labels.pendingReview}
+            />
+          </>}
+      </div>
+
+      <div className={classNames.dashboardSection}>
+        <Text variant="mediumPlus" className={classNames.sectionHeading}>{labels.inProgress}</Text>
+        {!isShimmering && inProgress.length === 0
+          ? <Text className={classNames.dashboardEmpty}>{labels.noInProgress}</Text>
+          : <>
+            {inProgress.length > 0 && renderCounts(inProgress.map((row) => ({
+              key: row.status,
+              label: row.status,
+              value: row.count,
+              detail: `${labels.oldestPrefix} ${formatDateTime(row.oldestStartTime)}`,
+              tone: inProgressTone(row.status)
+            })))}
+            <ShimmeredDetailsList
+              items={inProgress}
+              columns={inProgressColumns}
+              selectionMode={SelectionMode.none}
+              enableShimmer={isShimmering}
+              ariaLabelForGrid={labels.inProgress}
+            />
+          </>}
+      </div>
+
+      <div className={classNames.dashboardSection}>
+        <Text variant="mediumPlus" className={classNames.sectionHeading}>{labels.anomalousStatuses}</Text>
+        {!isShimmering && anomalous.length === 0
+          ? <Text className={classNames.dashboardEmpty}>{labels.noAnomalous}</Text>
+          : <>
+            {anomalous.length > 0 && renderCounts(anomalous.map((row) => ({
+              key: row.status,
+              label: row.status,
+              value: row.count,
+              detail: stalenessSummary(row),
+              tone: anomalousTone(row)
+            })))}
+            <ShimmeredDetailsList
+              items={anomalous}
+              columns={anomalousColumns}
+              selectionMode={SelectionMode.none}
+              enableShimmer={isShimmering}
+              ariaLabelForGrid={labels.anomalousStatuses}
+            />
+          </>}
       </div>
     </SettingsSection>
   );

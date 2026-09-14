@@ -339,6 +339,59 @@ export const getStyles = (props: AdminConfigStyleProps): AdminConfigStyles => {
             fontSize: 14,
             color: theme.palette.themePrimary,
         },
+        dashboardToolbar: {
+            display: 'flex',
+            justifyContent: 'flex-end',
+            marginBottom: 4,
+        },
+        dashboardSection: {
+            marginTop: 24,
+        },
+        dashboardHint: {
+            display: 'block',
+            marginTop: 0,
+            marginBottom: 12,
+            lineHeight: '20px',
+            color: theme.palette.neutralSecondary,
+        },
+        dashboardEmpty: {
+            display: 'block',
+            marginBottom: 8,
+            color: theme.palette.neutralSecondary,
+        },
+        dashboardCounts: {
+            display: 'flex',
+            flexWrap: 'wrap',
+            gap: 12,
+            marginBottom: 16,
+        },
+        dashboardCount: {
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 2,
+            minWidth: 150,
+            padding: '10px 14px',
+            borderRadius: 8,
+            borderLeftWidth: 4,
+            borderLeftStyle: 'solid',
+            backgroundColor: theme.palette.neutralLighterAlt,
+            boxSizing: 'border-box',
+        },
+        dashboardCountLabel: {
+            fontSize: 12,
+            fontWeight: 600,
+            textTransform: 'uppercase',
+            color: theme.palette.neutralSecondary,
+        },
+        dashboardCountValue: {
+            fontSize: 24,
+            fontWeight: 600,
+            lineHeight: '30px',
+            color: theme.palette.neutralPrimary,
+        },
+        dashboardCountDetail: {
+            fontSize: 12,
+            color: theme.palette.neutralSecondary,
+        },
     };
 };
-

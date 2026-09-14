@@ -10,6 +10,7 @@ import { IDestinationsApi } from './destinations/IDestinationsApi';
 import { ITitleApi } from './titles';
 import { IFeedbackApi } from './feedback';
 import { IConfiguredAttributeApprovalApi } from './configuredAttributeApproval';
+import { IDashboardApi } from './dashboard';
 
 export interface IGMMApi {
   title: ITitleApi;
@@ -21,4 +22,5 @@ export interface IGMMApi {
   operationsApi: IOperationsApi;
   feedback: IFeedbackApi;
   configuredAttributeApproval: IConfiguredAttributeApprovalApi;
+  dashboard: IDashboardApi;
 };

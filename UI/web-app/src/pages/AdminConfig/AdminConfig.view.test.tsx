@@ -118,6 +118,7 @@ const renderAdminConfigView = (defaultAIPrompt: string, settingsOverrides?: Part
         canViewAutoApproverSettings={false}
         canViewAISettings={true}
         canViewCustomSourceSettings={false}
+        canViewDashboard={false}
         isReadOnly={false}
         defaultAIPrompt={defaultAIPrompt}
       />
@@ -134,7 +135,8 @@ describe('AdminConfigView tab layout', () => {
       isAISettingsAdministrator: boolean;
     },
     settingsOverrides?: Partial<Record<SettingKey, string>>,
-    attributes?: SqlMembershipAttribute[]
+    attributes?: SqlMembershipAttribute[],
+    canViewDashboard = false
   ) =>
     renderWithProviders(
       <MemoryRouter>
@@ -153,6 +155,7 @@ describe('AdminConfigView tab layout', () => {
           canViewAutoApproverSettings={roles.isAutoApproverAdministrator}
           canViewAISettings={roles.isAISettingsAdministrator}
           canViewCustomSourceSettings={roles.isCustomMembershipProviderAdmin}
+          canViewDashboard={canViewDashboard}
           isReadOnly={false}
           {...roles}
         />
@@ -198,6 +201,41 @@ describe('AdminConfigView tab layout', () => {
     const tabNames = screen.getAllByRole('tab').map((tab) => tab.textContent?.trim());
 
     expect(tabNames).not.toContain(defaultStrings.AdminConfig.AutoApproverSettings.labels.autoApprover);
+  });
+
+  test('hides the Dashboard tab without the Dashboard Reader role', () => {
+    renderWithRoles(allRoles);
+
+    const tabNames = screen.getAllByRole('tab').map((tab) => tab.textContent?.trim());
+
+    expect(tabNames).not.toContain(defaultStrings.AdminConfig.Dashboard.labels.dashboard);
+  });
+
+  test('renders the Dashboard tab last for a Dashboard Reader', () => {
+    renderWithRoles(allRoles, undefined, undefined, true);
+
+    const tabNames = screen.getAllByRole('tab').map((tab) => tab.textContent?.trim());
+
+    expect(tabNames[tabNames.length - 1]).toBe(defaultStrings.AdminConfig.Dashboard.labels.dashboard);
+  });
+
+  test('shows the Dashboard tab to a Dashboard Reader holding no other admin role', () => {
+    renderWithRoles(
+      {
+        isAutoApproverAdministrator: false,
+        isCustomMembershipProviderAdmin: false,
+        isOperationsResetAdministrator: false,
+        isGeneralSettingsAdministrator: false,
+        isAISettingsAdministrator: false,
+      },
+      undefined,
+      undefined,
+      true
+    );
+
+    const tabNames = screen.getAllByRole('tab').map((tab) => tab.textContent?.trim());
+
+    expect(tabNames).toEqual([defaultStrings.AdminConfig.Dashboard.labels.dashboard]);
   });
 
   test('keeps auto approval toggles off the General tab', () => {
@@ -542,6 +580,7 @@ describe('AdminConfigView Custom Source', () => {
           canViewAutoApproverSettings={false}
           canViewAISettings={false}
           canViewCustomSourceSettings={true}
+          canViewDashboard={false}
           isReadOnly={false}
           defaultAIPrompt={''}
         />
@@ -621,6 +660,7 @@ describe('AdminConfigView custom source null threshold', () => {
           canViewAutoApproverSettings={false}
           canViewAISettings={false}
           canViewCustomSourceSettings={true}
+          canViewDashboard={false}
           isReadOnly={false}
           defaultAIPrompt={''}
         />
@@ -768,6 +808,7 @@ describe('AdminConfigView custom source null threshold', () => {
           canViewAutoApproverSettings={false}
           canViewAISettings={false}
           canViewCustomSourceSettings={true}
+          canViewDashboard={false}
           isReadOnly={false}
           defaultAIPrompt={''}
         />
@@ -836,6 +877,7 @@ describe('AdminConfigView read-only access', () => {
           canViewAutoApproverSettings={true}
           canViewAISettings={true}
           canViewCustomSourceSettings={true}
+          canViewDashboard={false}
           isReadOnly={true}
           defaultAIPrompt={''}
         />

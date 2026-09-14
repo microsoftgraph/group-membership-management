@@ -66,6 +66,7 @@ test('renders header after login', async () => {
     isAutoApproverReader: false,
     isAISettingsReader: false,
     isCustomMembershipProviderReader: false,
+    isDashboardReader: false,
     isFetchingRoles: false,
   };
 
@@ -181,6 +182,7 @@ const buildNoAccessRoles = (): RolesResponse => ({
   isAutoApproverReader: false,
   isAISettingsReader: false,
   isCustomMembershipProviderReader: false,
+  isDashboardReader: false,
   isFetchingRoles: false,
 });
 

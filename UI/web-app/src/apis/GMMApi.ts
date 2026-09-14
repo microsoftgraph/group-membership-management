@@ -14,6 +14,7 @@ import { IDestinationsApi } from './destinations/IDestinationsApi';
 import { DestinationsApi } from './destinations/DestinationsApi';
 import { IFeedbackApi, FeedbackApi } from './feedback';
 import { IConfiguredAttributeApprovalApi, ConfiguredAttributeApprovalApi } from './configuredAttributeApproval';
+import { IDashboardApi, DashboardApi } from './dashboard';
 
 export class GMMApi implements IGMMApi {
   private _titleApi: ITitleApi;
@@ -25,6 +26,7 @@ export class GMMApi implements IGMMApi {
   private _destinationsApi: IDestinationsApi;
   private _feedbackApi: IFeedbackApi;
   private _configuredAttributeApprovalApi: IConfiguredAttributeApprovalApi;
+  private _dashboardApi: IDashboardApi;
 
   constructor(options: ApiOptions) {
     const { baseUrl } = options;
@@ -37,6 +39,7 @@ export class GMMApi implements IGMMApi {
     this._destinationsApi = new DestinationsApi({ ...options, baseUrl: `${baseUrl}/destinations` });
     this._feedbackApi = new FeedbackApi({ ...options, baseUrl: `${baseUrl}/feedback` });
     this._configuredAttributeApprovalApi = new ConfiguredAttributeApprovalApi({ ...options, baseUrl: `${baseUrl}/autoApprover/configuredAttribute` });
+    this._dashboardApi = new DashboardApi({ ...options, baseUrl: `${baseUrl}/dashboard` });
   }
 
   public get title(): ITitleApi {
@@ -65,5 +68,8 @@ export class GMMApi implements IGMMApi {
   }
   public get configuredAttributeApproval(): IConfiguredAttributeApprovalApi {
     return this._configuredAttributeApprovalApi;
+  }
+  public get dashboard(): IDashboardApi {
+    return this._dashboardApi;
   }
 };

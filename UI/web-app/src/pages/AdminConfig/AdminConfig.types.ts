@@ -62,6 +62,15 @@ export type AdminConfigStyles = {
   serviceNotificationTextFieldGroup: IStyle;
   serviceNotificationErrorMessage: IStyle;
   serviceNotificationInfoIcon: IStyle;
+  dashboardToolbar: IStyle;
+  dashboardSection: IStyle;
+  dashboardHint: IStyle;
+  dashboardEmpty: IStyle;
+  dashboardCounts: IStyle;
+  dashboardCount: IStyle;
+  dashboardCountLabel: IStyle;
+  dashboardCountValue: IStyle;
+  dashboardCountDetail: IStyle;
 };
 
 export type AdminConfigStyleProps = {
@@ -102,6 +111,7 @@ export type AdminConfigViewProps = AdminConfigProps & {
   canViewAutoApproverSettings: boolean;
   canViewAISettings: boolean;
   canViewCustomSourceSettings: boolean;
+  canViewDashboard: boolean;
   isReadOnly: boolean;
   defaultAIPrompt: string;
 };
@@ -116,6 +126,11 @@ export type UserResourcesSettingsProps = {
 };
 
 export type OperationsProps = {
+  classNames: IProcessedStyleSet<AdminConfigStyles>;
+  strings: IStrings['AdminConfig'];
+};
+
+export type DashboardProps = {
   classNames: IProcessedStyleSet<AdminConfigStyles>;
   strings: IStrings['AdminConfig'];
 };

@@ -2,6 +2,7 @@
 // Licensed under the MIT license.
 
 using Models;
+using Models.Dashboard;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -32,5 +33,6 @@ namespace Repositories.Contracts
         Task<int> BulkResetJobStatusAsync(SyncStatus fromStatus, SyncStatus toStatus, CancellationToken cancellationToken = default);
         Task<SyncJob?> ClaimSyncJobAsync(Guid jobId, Guid? runId, int period, string targetStatus);
         Task UpdateSyncJobDestinationAsync(Guid jobId, string destination);
+        Task<DashboardSummary> GetDashboardSummaryAsync(CancellationToken cancellationToken = default);
     }
 }

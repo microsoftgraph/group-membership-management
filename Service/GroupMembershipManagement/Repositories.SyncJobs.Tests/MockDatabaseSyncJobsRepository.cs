@@ -2,6 +2,7 @@
 // Licensed under the MIT license.
 
 using Models;
+using Models.Dashboard;
 using Repositories.Contracts;
 using System;
 using System.Collections.Generic;
@@ -175,6 +176,11 @@ namespace Repositories.SyncJobs.Tests
             if (job != null)
                 job.Destination = destination;
             return Task.CompletedTask;
+        }
+
+        public Task<DashboardSummary> GetDashboardSummaryAsync(CancellationToken cancellationToken = default)
+        {
+            return Task.FromResult(new DashboardSummary { QueriedAtUtc = DateTime.UtcNow });
         }
     }
 }

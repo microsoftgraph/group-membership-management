@@ -25,5 +25,6 @@ namespace WebApi.Models
         public const string AUTO_APPROVER_READER = "AutoApprover.Read.All";
         public const string AI_SETTINGS_READER = "AISettings.Read.All";
         public const string CUSTOM_MEMBERSHIP_PROVIDER_READER = "CustomSource.Read.All";
+        public const string DASHBOARD_READER = "Dashboard.Read.All";
     }
 }

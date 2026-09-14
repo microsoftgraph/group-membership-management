@@ -28,6 +28,8 @@ export type Roles = {
   isAutoApproverReader: boolean;
   isAISettingsReader: boolean;
   isCustomMembershipProviderReader: boolean;
+  // Opt-in only: the operational dashboard is read-only, so no administrator role implies this.
+  isDashboardReader: boolean;
   isFetchingRoles: boolean;
 }
 
@@ -52,6 +54,7 @@ const initialState: Roles = {
   isAutoApproverReader: false,
   isAISettingsReader: false,
   isCustomMembershipProviderReader: false,
+  isDashboardReader: false,
   isFetchingRoles: false,
 };
 
@@ -93,6 +96,7 @@ export const selectIsGeneralSettingsReader = (state: RootState) => state.roles.i
 export const selectIsAutoApproverReader = (state: RootState) => state.roles.isAutoApproverReader;
 export const selectIsAISettingsReader = (state: RootState) => state.roles.isAISettingsReader;
 export const selectIsCustomMembershipProviderReader = (state: RootState) => state.roles.isCustomMembershipProviderReader;
+export const selectIsDashboardReader = (state: RootState) => state.roles.isDashboardReader;
 
 export const selectHasAccess = (state: RootState) => {
   return state.roles.isJobOwnerReader || state.roles.isJobOwnerWriter || state.roles.isJobTenantReader || state.roles.isJobTenantWriter;
@@ -125,7 +129,8 @@ export const selectHasAdminCenterPermissions = (state: RootState) => {
           state.roles.isGeneralSettingsReader ||
           state.roles.isAutoApproverReader ||
           state.roles.isAISettingsReader ||
-          state.roles.isCustomMembershipProviderReader;
+          state.roles.isCustomMembershipProviderReader ||
+          state.roles.isDashboardReader;
 };
 
 // True when the user can reach the Admin Center but cannot change anything on it.

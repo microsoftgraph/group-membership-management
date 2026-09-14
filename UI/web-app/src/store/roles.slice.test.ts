@@ -23,6 +23,7 @@ import rolesReducer, {
   selectIsAutoApproverReader,
   selectIsAISettingsReader,
   selectIsCustomMembershipProviderReader,
+  selectIsDashboardReader,
 } from './roles.slice';
 import { getAllRoles } from './roles.api';
 
@@ -156,6 +157,34 @@ describe('roles.slice — selectors', () => {
       expect(selectHasAdminCenterPermissions(makeRoot({ isAutoApproverReader: true }))).toBe(true);
       expect(selectHasAdminCenterPermissions(makeRoot({ isAISettingsReader: true }))).toBe(true);
       expect(selectHasAdminCenterPermissions(makeRoot({ isCustomMembershipProviderReader: true }))).toBe(true);
+    });
+    it('returns true for isDashboardReader', () => {
+      expect(selectHasAdminCenterPermissions(makeRoot({ isDashboardReader: true }))).toBe(true);
+    });
+  });
+
+  describe('dashboard reader', () => {
+    it('exposes a selector', () => {
+      expect(selectIsDashboardReader(makeRoot({ isDashboardReader: true }))).toBe(true);
+      expect(selectIsDashboardReader(makeRoot())).toBe(false);
+    });
+
+    it('is not implied by any administrator role', () => {
+      expect(
+        selectIsDashboardReader(
+          makeRoot({
+            isGeneralSettingsAdministrator: true,
+            isAISettingsAdministrator: true,
+            isAutoApproverAdministrator: true,
+            isCustomMembershipProviderAdministrator: true,
+            isOperationsResetAdministrator: true,
+          })
+        )
+      ).toBe(false);
+    });
+
+    it('grants read-only admin center access on its own', () => {
+      expect(selectHasReadOnlyAdminCenterAccess(makeRoot({ isDashboardReader: true }))).toBe(true);
     });
   });
 

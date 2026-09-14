@@ -21,6 +21,7 @@ export interface Roles {
   isAutoApproverReader: boolean;
   isAISettingsReader: boolean;
   isCustomMembershipProviderReader: boolean;
+  isDashboardReader: boolean;
   isFetchingRoles: boolean;
 }
 

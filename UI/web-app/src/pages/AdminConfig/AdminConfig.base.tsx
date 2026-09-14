@@ -55,6 +55,7 @@ import {
   selectIsAutoApproverReader,
   selectIsAISettingsReader,
   selectIsCustomMembershipProviderReader,
+  selectIsDashboardReader,
 } from '../../store/roles.slice';
 import { MessageBar, MessageBarType } from '@fluentui/react';
 import { Loader } from '../../components/Loader';
@@ -131,6 +132,7 @@ export const AdminConfigBase: React.FunctionComponent<AdminConfigProps> = (props
   const canViewAutoApproverSettings = useSelector(selectIsAutoApproverReader);
   const canViewAISettings = useSelector(selectIsAISettingsReader);
   const canViewCustomSourceSettings = useSelector(selectIsCustomMembershipProviderReader);
+  const canViewDashboard = useSelector(selectIsDashboardReader);
   const isReadOnly = useSelector(selectHasReadOnlyAdminCenterAccess);
 
   const strings = useStrings().AdminConfig;
@@ -341,6 +343,7 @@ export const AdminConfigBase: React.FunctionComponent<AdminConfigProps> = (props
       canViewAutoApproverSettings={canViewAutoApproverSettings}
       canViewAISettings={canViewAISettings}
       canViewCustomSourceSettings={canViewCustomSourceSettings}
+      canViewDashboard={canViewDashboard}
       isReadOnly={isReadOnly}
       defaultAIPrompt={defaultAIPrompt}
     />

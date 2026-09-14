@@ -154,6 +154,7 @@ const mockRoles = {
   isAutoApproverReader: true,
   isAISettingsReader: true,
   isCustomMembershipProviderReader: true,
+  isDashboardReader: true,
   isFetchingRoles: false,
 };
 

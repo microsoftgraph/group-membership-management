@@ -254,6 +254,42 @@ export type IStrings = {
         starting: string;
       };
     },
+    Dashboard: {
+      labels: {
+        dashboard: string;
+        description: string;
+        refresh: string;
+        loadFailed: string;
+        notAvailable: string;
+        status: string;
+        count: string;
+        total: string;
+        oldestPrefix: string;
+        age: string;
+        justNow: string;
+        agoSuffix: string;
+        pendingReview: string;
+        pendingReviewDescription: string;
+        changeReason: string;
+        oldestChange: string;
+        noPendingReview: string;
+        inProgress: string;
+        oldestStarted: string;
+        noInProgress: string;
+        anomalousStatuses: string;
+        maxCyclesMissed: string;
+        oldestLastSuccess: string;
+        neverSucceeded: string;
+        noAnomalous: string;
+        unknown: string;
+        cycleSuffix: string;
+        cyclesSuffix: string;
+        cycleCountUnknown: string;
+        missedSuffix: string;
+        neverRanOkSuffix: string;
+        likelyTransient: string;
+      };
+    },
     CustomSourceSettings: {
       labels: {
         customSource: string;
