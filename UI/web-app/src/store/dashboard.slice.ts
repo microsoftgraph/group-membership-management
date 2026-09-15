@@ -2,8 +2,8 @@
 // Licensed under the MIT license.
 
 import { createSlice, PayloadAction } from '@reduxjs/toolkit';
-import { ApprovalActivity, DashboardSummary } from '../models';
-import { fetchApprovalActivity, fetchDashboardSummary } from './dashboard.api';
+import { ApprovalActivity, DashboardSummary, OnBehalfOfActivity } from '../models';
+import { fetchApprovalActivity, fetchDashboardSummary, fetchOnBehalfOfActivity } from './dashboard.api';
 import type { RootState } from './store';
 
 export interface DashboardState {
@@ -14,6 +14,10 @@ export interface DashboardState {
   approvalActivityLoading: boolean;
   approvalActivityError: string | undefined;
   approvalWindowDays: number;
+  onBehalfOfActivity: OnBehalfOfActivity | undefined;
+  onBehalfOfActivityLoading: boolean;
+  onBehalfOfActivityError: string | undefined;
+  onBehalfOfWindowDays: number;
 }
 
 const initialState: DashboardState = {
@@ -24,6 +28,10 @@ const initialState: DashboardState = {
   approvalActivityLoading: false,
   approvalActivityError: undefined,
   approvalWindowDays: 7,
+  onBehalfOfActivity: undefined,
+  onBehalfOfActivityLoading: false,
+  onBehalfOfActivityError: undefined,
+  onBehalfOfWindowDays: 7,
 };
 
 const dashboardSlice = createSlice({
@@ -35,6 +43,9 @@ const dashboardSlice = createSlice({
     },
     setApprovalWindowDays(state, action: PayloadAction<number>) {
       state.approvalWindowDays = action.payload;
+    },
+    setOnBehalfOfWindowDays(state, action: PayloadAction<number>) {
+      state.onBehalfOfWindowDays = action.payload;
     },
   },
   extraReducers: (builder) => {
@@ -66,11 +77,27 @@ const dashboardSlice = createSlice({
       .addCase(fetchApprovalActivity.rejected, (state, action) => {
         state.approvalActivityLoading = false;
         state.approvalActivityError = action.error.message ?? 'Failed to fetch the approval activity.';
+      })
+      .addCase(fetchOnBehalfOfActivity.pending, (state) => {
+        state.onBehalfOfActivityLoading = true;
+        state.onBehalfOfActivityError = undefined;
+      })
+      .addCase(fetchOnBehalfOfActivity.fulfilled, (state, action: PayloadAction<OnBehalfOfActivity>) => {
+        state.onBehalfOfActivity = action.payload;
+        state.onBehalfOfActivityLoading = false;
+        // Echo the window the API actually served so a clamped request is reflected in the picker.
+        if (action.payload?.windowDays) {
+          state.onBehalfOfWindowDays = action.payload.windowDays;
+        }
+      })
+      .addCase(fetchOnBehalfOfActivity.rejected, (state, action) => {
+        state.onBehalfOfActivityLoading = false;
+        state.onBehalfOfActivityError = action.error.message ?? 'Failed to fetch the on behalf of activity.';
       });
   },
 });
 
-export const { resetDashboardError, setApprovalWindowDays } = dashboardSlice.actions;
+export const { resetDashboardError, setApprovalWindowDays, setOnBehalfOfWindowDays } = dashboardSlice.actions;
 
 export const selectDashboardSummary = (state: RootState) => state.dashboard.summary;
 export const selectDashboardLoading = (state: RootState) => state.dashboard.loading;
@@ -79,5 +106,9 @@ export const selectApprovalActivity = (state: RootState) => state.dashboard.appr
 export const selectApprovalActivityLoading = (state: RootState) => state.dashboard.approvalActivityLoading;
 export const selectApprovalActivityError = (state: RootState) => state.dashboard.approvalActivityError;
 export const selectApprovalWindowDays = (state: RootState) => state.dashboard.approvalWindowDays;
+export const selectOnBehalfOfActivity = (state: RootState) => state.dashboard.onBehalfOfActivity;
+export const selectOnBehalfOfActivityLoading = (state: RootState) => state.dashboard.onBehalfOfActivityLoading;
+export const selectOnBehalfOfActivityError = (state: RootState) => state.dashboard.onBehalfOfActivityError;
+export const selectOnBehalfOfWindowDays = (state: RootState) => state.dashboard.onBehalfOfWindowDays;
 
 export default dashboardSlice.reducer;

@@ -35,6 +35,13 @@ namespace Repositories.EntityFramework
         private const string UnknownReviewerKey = "__unknown__";
         private const string UnknownReviewerName = "Unknown reviewer";
 
+        // Submitters rendered as their own series / table row on the on-behalf-of chart. Mirrors
+        // the reviewer ranking above; the remainder folds into a single aggregated row.
+        private const int TopSubmitterCount = 5;
+        private const string OtherSubmitterKey = "__other__";
+        private const string UnknownSubmitterKey = "__unknown__";
+        private const string UnknownSubmitterName = "Unknown submitter";
+
         /// <summary>Widest window the approval activity chart will query.</summary>
         public const int MaxApprovalWindowDays = 90;
 
@@ -549,5 +556,117 @@ namespace Repositories.EntityFramework
 
         private static bool MatchesReviewer(string rowKey, string seriesKey, HashSet<string> topKeys)
             => seriesKey == OtherReviewerKey ? !topKeys.Contains(rowKey) : rowKey == seriesKey;
+
+        public async Task<OnBehalfOfActivity> GetOnBehalfOfActivityAsync(int windowDays, CancellationToken cancellationToken = default)
+        {
+            var now = DateTime.UtcNow;
+            var days = Math.Clamp(windowDays, 1, MaxApprovalWindowDays);
+
+            // The window is inclusive of today, so a 7-day window starts at midnight 6 days ago.
+            var sinceUtc = now.Date.AddDays(-(days - 1));
+
+            // Only Onboarding / Update changes ever carry ChangedOnBehalfOfObjectId, and it is set
+            // only when the submitter chose an owner other than themselves. Filtering on it is what
+            // makes this genuinely "on behalf of" rather than "all requests by these people".
+            var rows = await _readContext.SyncJobChanges
+                .AsNoTracking()
+                .Where(change => change.ChangeTime >= sinceUtc
+                    && change.ChangedOnBehalfOfObjectId != null
+                    && (change.ChangeReason == OnboardingRequestType
+                        || change.ChangeReason == UpdateRequestType))
+                .Select(change => new
+                {
+                    change.ChangeTime,
+                    change.ChangeReason,
+                    change.ChangedByObjectId,
+                    change.ChangedByDisplayName
+                })
+                .ToListAsync(cancellationToken);
+
+            var submitterRows = rows
+                .Select(row => new
+                {
+                    row.ChangeTime,
+                    row.ChangeReason,
+                    SubmitterKey = row.ChangedByObjectId.HasValue
+                        ? row.ChangedByObjectId.Value.ToString()
+                        : UnknownSubmitterKey,
+                    row.ChangedByDisplayName
+                })
+                .ToList();
+
+            var rankedSubmitters = submitterRows
+                .GroupBy(row => row.SubmitterKey)
+                .Select(group => new SubmitterActivityRow
+                {
+                    SubmitterKey = group.Key,
+                    DisplayName = group
+                        .Select(row => row.ChangedByDisplayName)
+                        .FirstOrDefault(name => !string.IsNullOrWhiteSpace(name))
+                        ?? (group.Key == UnknownSubmitterKey ? UnknownSubmitterName : group.Key),
+                    Onboarding = group.Count(row => row.ChangeReason == OnboardingRequestType),
+                    Update = group.Count(row => row.ChangeReason == UpdateRequestType)
+                })
+                .OrderByDescending(row => row.Onboarding + row.Update)
+                .ThenBy(row => row.DisplayName)
+                .ToList();
+
+            var topSubmitters = rankedSubmitters.Take(TopSubmitterCount).ToList();
+            var topKeys = topSubmitters.Select(row => row.SubmitterKey).ToHashSet();
+            var remainder = rankedSubmitters.Skip(TopSubmitterCount).ToList();
+
+            var submitters = new List<SubmitterActivityRow>(topSubmitters);
+            if (remainder.Count > 0)
+            {
+                submitters.Add(new SubmitterActivityRow
+                {
+                    SubmitterKey = OtherSubmitterKey,
+                    DisplayName = $"Other ({remainder.Count})",
+                    Onboarding = remainder.Sum(row => row.Onboarding),
+                    Update = remainder.Sum(row => row.Update),
+                    IsOther = true
+                });
+            }
+
+            var rowsByDay = submitterRows.ToLookup(row => row.ChangeTime.Date);
+
+            var dayBuckets = new List<OnBehalfOfActivityDay>(days);
+            for (var offset = 0; offset < days; offset++)
+            {
+                var date = sinceUtc.AddDays(offset);
+                var forDay = rowsByDay[date].ToList();
+
+                dayBuckets.Add(new OnBehalfOfActivityDay
+                {
+                    Date = date,
+                    Submitters = submitters
+                        .Select(submitter => new SubmitterDayCount
+                        {
+                            SubmitterKey = submitter.SubmitterKey,
+                            Onboarding = forDay.Count(row =>
+                                row.ChangeReason == OnboardingRequestType && MatchesSubmitter(row.SubmitterKey, submitter.SubmitterKey, topKeys)),
+                            Update = forDay.Count(row =>
+                                row.ChangeReason == UpdateRequestType && MatchesSubmitter(row.SubmitterKey, submitter.SubmitterKey, topKeys))
+                        })
+                        .ToList()
+                });
+            }
+
+            return new OnBehalfOfActivity
+            {
+                WindowDays = days,
+                SinceUtc = sinceUtc,
+                QueriedAtUtc = now,
+                // Totals span every submitter, including the aggregated remainder, so the
+                // Onboarding and Update cards always add up to the Total card.
+                OnboardingTotal = submitterRows.Count(row => row.ChangeReason == OnboardingRequestType),
+                UpdateTotal = submitterRows.Count(row => row.ChangeReason == UpdateRequestType),
+                Submitters = submitters,
+                Days = dayBuckets
+            };
+        }
+
+        private static bool MatchesSubmitter(string rowKey, string seriesKey, HashSet<string> topKeys)
+            => seriesKey == OtherSubmitterKey ? !topKeys.Contains(rowKey) : rowKey == seriesKey;
     }
 }

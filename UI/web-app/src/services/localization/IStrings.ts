@@ -302,6 +302,13 @@ export type IStrings = {
         last7Days: string;
         last30Days: string;
         last90Days: string;
+        requestsOnBehalfOf: string;
+        onBehalfDescription: string;
+        onBehalfLoadFailed: string;
+        noOnBehalfActivity: string;
+        onboarding: string;
+        update: string;
+        submitter: string;
       };
     },
     CustomSourceSettings: {

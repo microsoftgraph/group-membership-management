@@ -12,9 +12,14 @@ import dashboardReducer, {
   selectApprovalActivityError,
   selectApprovalActivityLoading,
   selectApprovalWindowDays,
+  setOnBehalfOfWindowDays,
+  selectOnBehalfOfActivity,
+  selectOnBehalfOfActivityError,
+  selectOnBehalfOfActivityLoading,
+  selectOnBehalfOfWindowDays,
 } from './dashboard.slice';
-import { fetchApprovalActivity, fetchDashboardSummary } from './dashboard.api';
-import { ApprovalActivity, DashboardSummary } from '../models';
+import { fetchApprovalActivity, fetchDashboardSummary, fetchOnBehalfOfActivity } from './dashboard.api';
+import { ApprovalActivity, DashboardSummary, OnBehalfOfActivity } from '../models';
 import type { RootState } from './store';
 
 const initial = dashboardReducer(undefined, { type: '@@INIT' });
@@ -50,6 +55,25 @@ const activity: ApprovalActivity = {
       date: '2026-01-30T00:00:00Z',
       automated: 2,
       reviewers: [{ reviewerKey: 'r1', approved: 10, rejected: 1 }],
+    },
+  ],
+};
+
+const onBehalfActivity: OnBehalfOfActivity = {
+  windowDays: 30,
+  sinceUtc: '2026-01-01T00:00:00Z',
+  queriedAtUtc: '2026-01-31T00:00:00Z',
+  onboardingTotal: 120,
+  updateTotal: 45,
+  grandTotal: 165,
+  submitters: [
+    { submitterKey: 's1', displayName: 'Ada Lovelace', onboarding: 100, update: 40, isOther: false },
+    { submitterKey: '__other__', displayName: 'Other', onboarding: 20, update: 5, isOther: true },
+  ],
+  days: [
+    {
+      date: '2026-01-30T00:00:00Z',
+      submitters: [{ submitterKey: 's1', onboarding: 5, update: 2 }],
     },
   ],
 };
@@ -201,5 +225,97 @@ describe('dashboard.slice — approval activity', () => {
       meta: { requestId: 'req2', arg: 30, requestStatus: 'rejected' },
     };
     expect(dashboardReducer(loaded, action).approvalActivity).toEqual(activity);
+  });
+});
+
+describe('dashboard.slice — on behalf of activity', () => {
+  it('defaults to a seven day window with no activity loaded', () => {
+    expect(initial.onBehalfOfWindowDays).toBe(7);
+    expect(initial.onBehalfOfActivity).toBeUndefined();
+    expect(initial.onBehalfOfActivityLoading).toBe(false);
+    expect(initial.onBehalfOfActivityError).toBeUndefined();
+  });
+
+  it('setOnBehalfOfWindowDays updates the selected window', () => {
+    expect(dashboardReducer(initial, setOnBehalfOfWindowDays(90)).onBehalfOfWindowDays).toBe(90);
+  });
+
+  it('reads activity, loading, error and window off the root state', () => {
+    const root = {
+      dashboard: {
+        onBehalfOfActivity: onBehalfActivity,
+        onBehalfOfActivityLoading: true,
+        onBehalfOfActivityError: 'boom',
+        onBehalfOfWindowDays: 90,
+      },
+    } as unknown as RootState;
+    expect(selectOnBehalfOfActivity(root)).toEqual(onBehalfActivity);
+    expect(selectOnBehalfOfActivityLoading(root)).toBe(true);
+    expect(selectOnBehalfOfActivityError(root)).toBe('boom');
+    expect(selectOnBehalfOfWindowDays(root)).toBe(90);
+  });
+
+  it('pending sets loading and clears any previous error', () => {
+    const seeded = { ...initial, onBehalfOfActivityError: 'boom' };
+    const state = dashboardReducer(seeded, fetchOnBehalfOfActivity.pending('req1', 7));
+    expect(state.onBehalfOfActivityLoading).toBe(true);
+    expect(state.onBehalfOfActivityError).toBeUndefined();
+  });
+
+  it('fulfilled stores the activity and echoes the window the API served', () => {
+    const state = dashboardReducer(initial, fetchOnBehalfOfActivity.fulfilled(onBehalfActivity, 'req1', 7));
+    expect(state.onBehalfOfActivityLoading).toBe(false);
+    expect(state.onBehalfOfActivity).toEqual(onBehalfActivity);
+    expect(state.onBehalfOfWindowDays).toBe(30);
+  });
+
+  it('fulfilled with no payload does not throw and keeps the requested window', () => {
+    const seeded = { ...initial, onBehalfOfWindowDays: 30 };
+    const state = dashboardReducer(
+      seeded,
+      fetchOnBehalfOfActivity.fulfilled(undefined as unknown as OnBehalfOfActivity, 'req1', 30)
+    );
+    expect(state.onBehalfOfActivityLoading).toBe(false);
+    expect(state.onBehalfOfActivity).toBeUndefined();
+    expect(state.onBehalfOfWindowDays).toBe(30);
+  });
+
+  it('totals reconcile with the per submitter rows', () => {
+    const state = dashboardReducer(initial, fetchOnBehalfOfActivity.fulfilled(onBehalfActivity, 'req1', 30));
+    const rows = state.onBehalfOfActivity!.submitters;
+    expect(rows.reduce((sum, row) => sum + row.onboarding, 0)).toBe(state.onBehalfOfActivity!.onboardingTotal);
+    expect(rows.reduce((sum, row) => sum + row.update, 0)).toBe(state.onBehalfOfActivity!.updateTotal);
+  });
+
+  it('rejected records the error and stops loading', () => {
+    const action = {
+      type: fetchOnBehalfOfActivity.rejected.type,
+      error: { message: 'network down' },
+      meta: { requestId: 'req1', arg: 7, requestStatus: 'rejected' },
+    };
+    const state = dashboardReducer({ ...initial, onBehalfOfActivityLoading: true }, action);
+    expect(state.onBehalfOfActivityLoading).toBe(false);
+    expect(state.onBehalfOfActivityError).toBe('network down');
+  });
+
+  it('rejected falls back to a generic message when none is supplied', () => {
+    const action = {
+      type: fetchOnBehalfOfActivity.rejected.type,
+      error: {},
+      meta: { requestId: 'req1', arg: 7, requestStatus: 'rejected' },
+    };
+    expect(dashboardReducer(initial, action).onBehalfOfActivityError).toBe(
+      'Failed to fetch the on behalf of activity.'
+    );
+  });
+
+  it('a failed refresh keeps the previously loaded activity visible', () => {
+    const loaded = dashboardReducer(initial, fetchOnBehalfOfActivity.fulfilled(onBehalfActivity, 'req1', 30));
+    const action = {
+      type: fetchOnBehalfOfActivity.rejected.type,
+      error: { message: 'network down' },
+      meta: { requestId: 'req2', arg: 30, requestStatus: 'rejected' },
+    };
+    expect(dashboardReducer(loaded, action).onBehalfOfActivity).toEqual(onBehalfActivity);
   });
 });

@@ -30,11 +30,12 @@ import { PageHeader } from '../../components/PageHeader';
 import { SettingKey, SettingKeyMap, SqlMembershipAttribute, SqlMembershipSource } from '../../models';
 import type { PendingReviewSummaryRow, InProgressStatusRow, AnomalousStatusRow } from '../../models/DashboardSummary';
 import type { ReviewerActivityRow } from '../../models/ApprovalActivity';
+import type { SubmitterActivityRow } from '../../models/OnBehalfOfActivity';
 import { GeneralSetting } from '../../components/GeneralSetting';
 import { ServiceNotificationSettings, validateServiceNotification } from './ServiceNotificationSettings';
 import { ConfiguredAttributeRules, ConfiguredAttributeToggleCard, useConfiguredAttributeApproval } from './ConfiguredAttributeApprovalSettings';
 import { useAppDispatch, useAppSelector } from '../../store/hooks';
-import { fetchApprovalActivity, fetchDashboardSummary } from '../../store/dashboard.api';
+import { fetchApprovalActivity, fetchDashboardSummary, fetchOnBehalfOfActivity } from '../../store/dashboard.api';
 import {
   selectDashboardSummary,
   selectDashboardLoading,
@@ -43,7 +44,12 @@ import {
   selectApprovalActivityLoading,
   selectApprovalActivityError,
   selectApprovalWindowDays,
-  setApprovalWindowDays } from '../../store/dashboard.slice';
+  setApprovalWindowDays,
+  selectOnBehalfOfActivity,
+  selectOnBehalfOfActivityLoading,
+  selectOnBehalfOfActivityError,
+  selectOnBehalfOfWindowDays,
+  setOnBehalfOfWindowDays } from '../../store/dashboard.slice';
 import type { AlertBannerConfig } from '../../models/AlertBannerConfig';
 
 const getClassNames = classNamesFunction<AdminConfigStyleProps, AdminConfigStyles>();
@@ -380,6 +386,19 @@ const REVIEWER_HUES = [
 // index-based hue assignment is stable between the chart, the legend and the reviewer table.
 const reviewerHue = (index: number) => REVIEWER_HUES[index % REVIEWER_HUES.length];
 
+// Submitter rows arrive pre-sorted by the API with the aggregated "Other" bucket last, so the
+// index-based hue assignment is stable between the chart, the legend and the submitter table.
+const SUBMITTER_HUES = [
+  { onboarding: '#2AA198', update: '#14655F' },
+  { onboarding: '#8B7BD8', update: '#54459F' },
+  { onboarding: '#E8A33D', update: '#AE6E12' },
+  { onboarding: '#4C9AFF', update: '#245FA8' },
+  { onboarding: '#D96BA0', update: '#9E3568' },
+  { onboarding: '#9A9896', update: '#63615F' },
+];
+
+const submitterHue = (index: number) => SUBMITTER_HUES[index % SUBMITTER_HUES.length];
+
 const formatChartDay = (value: string): string => {
   const parsed = parseUtc(value);
   return parsed
@@ -502,6 +521,123 @@ const ApprovalActivitySection: React.FunctionComponent<DashboardProps> = (props:
             selectionMode={SelectionMode.none}
             enableShimmer={isShimmering}
             ariaLabelForGrid={labels.approvals}
+          />
+        </>}
+    </div>
+  );
+}
+
+const OnBehalfOfSection: React.FunctionComponent<DashboardProps> = (props: DashboardProps) => {
+  const { classNames, strings } = props;
+  const dispatch = useAppDispatch();
+  const theme = useTheme();
+  const activity = useAppSelector(selectOnBehalfOfActivity);
+  const loading = useAppSelector(selectOnBehalfOfActivityLoading);
+  const error = useAppSelector(selectOnBehalfOfActivityError);
+  const windowDays = useAppSelector(selectOnBehalfOfWindowDays);
+
+  const labels = strings.Dashboard.labels;
+
+  useEffect(() => {
+    dispatch(fetchOnBehalfOfActivity(windowDays));
+  }, [dispatch, windowDays]);
+
+  const submitters = useMemo(() => activity?.submitters ?? [], [activity]);
+
+  const chartData: IVerticalStackedChartProps[] = useMemo(() => (activity?.days ?? []).map((day) => {
+    const points: IVSChartDataPoint[] = [];
+    submitters.forEach((submitter, index) => {
+      const hue = submitterHue(index);
+      const counts = day.submitters.find((entry) => entry.submitterKey === submitter.submitterKey);
+      if (counts && counts.onboarding > 0) {
+        points.push({ legend: submitter.displayName, data: counts.onboarding, color: hue.onboarding });
+      }
+      if (counts && counts.update > 0) {
+        points.push({ legend: `${submitter.displayName} (${labels.update})`, data: counts.update, color: hue.update });
+      }
+    });
+    return { xAxisPoint: formatChartDay(day.date), chartData: points };
+  }), [activity, submitters, labels.update]);
+
+  const hasData = chartData.some((day) => day.chartData.length > 0);
+
+  const windowOptions = [
+    { key: 7, text: labels.last7Days },
+    { key: 30, text: labels.last30Days },
+    { key: 90, text: labels.last90Days }
+  ];
+
+  const submitterColumns: IColumn[] = [
+    {
+      key: 'submitter', name: labels.submitter, minWidth: 180, maxWidth: 320, isResizable: true,
+      onRender: (item: SubmitterActivityRow, index?: number) => (
+        <span className={mergeStyles({ display: 'flex', alignItems: 'center', gap: 8 })}>
+          <span
+            aria-hidden="true"
+            className={mergeStyles({
+              width: 10,
+              height: 10,
+              borderRadius: 2,
+              flexShrink: 0,
+              backgroundColor: submitterHue(index ?? 0).onboarding
+            })} />
+          <span>{item.displayName}</span>
+        </span>
+      )
+    },
+    { key: 'onboarding', name: labels.onboarding, fieldName: 'onboarding', minWidth: 90, maxWidth: 120, isResizable: true },
+    { key: 'update', name: labels.update, fieldName: 'update', minWidth: 90, maxWidth: 120, isResizable: true },
+    {
+      key: 'total', name: labels.total, minWidth: 90, maxWidth: 120, isResizable: true,
+      onRender: (item: SubmitterActivityRow) => <span>{item.onboarding + item.update}</span>
+    }
+  ];
+
+  const isShimmering = loading && !activity;
+
+  return (
+    <div className={classNames.dashboardSection}>
+      <Text variant="mediumPlus" className={classNames.sectionHeading}>{labels.requestsOnBehalfOf}</Text>
+      <Text className={classNames.dashboardHint}>{labels.onBehalfDescription}</Text>
+      <div className={classNames.dashboardToolbar}>
+        <Dropdown
+          ariaLabel={labels.timeRange}
+          label={labels.timeRange}
+          selectedKey={windowDays}
+          options={windowOptions}
+          disabled={loading}
+          styles={{ root: { minWidth: 160 } }}
+          onChange={(_event, option) => {
+            if (option) {
+              dispatch(setOnBehalfOfWindowDays(option.key as number));
+            }
+          }} />
+      </div>
+      {error && <MessageBar messageBarType={MessageBarType.error}>{labels.onBehalfLoadFailed}</MessageBar>}
+      {!isShimmering && !hasData
+        ? <Text className={classNames.dashboardEmpty}>{labels.noOnBehalfActivity}</Text>
+        : <>
+          {activity && renderCountCards(classNames, theme, labels.total, [
+            { key: 'onboarding', label: labels.onboarding, value: activity.onboardingTotal, tone: 'good' },
+            { key: 'update', label: labels.update, value: activity.updateTotal, tone: 'neutral' }
+          ])}
+          {hasData && (
+            <div className={mergeStyles({ marginTop: 12 })}>
+              <VerticalStackedBarChart
+                data={chartData}
+                height={320}
+                barWidth={28}
+                hideLegend={false}
+                yAxisTickCount={5}
+                chartTitle={labels.requestsOnBehalfOf} />
+            </div>
+          )}
+          <ShimmeredDetailsList
+            items={submitters}
+            columns={submitterColumns}
+            selectionMode={SelectionMode.none}
+            enableShimmer={isShimmering}
+            ariaLabelForGrid={labels.requestsOnBehalfOf}
           />
         </>}
     </div>
@@ -762,6 +898,7 @@ const Dashboard: React.FunctionComponent<DashboardProps> = (props: DashboardProp
       </div>
 
       <ApprovalActivitySection classNames={classNames} strings={strings} />
+      <OnBehalfOfSection classNames={classNames} strings={strings} />
     </SettingsSection>
   );
 }

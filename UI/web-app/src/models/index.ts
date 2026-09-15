@@ -41,3 +41,4 @@ export * from './SyncHistorySearchProgressUpdate';
 export * from './PostGroupResponse';
 export * from './DashboardSummary';
 export * from './ApprovalActivity';
+export * from './OnBehalfOfActivity';

@@ -305,6 +305,13 @@ export const strings: IStrings = {
         last7Days: "Last 7 days",
         last30Days: "Last 30 days",
         last90Days: "Last 90 days",
+        requestsOnBehalfOf: "Requests On Behalf Of",
+        onBehalfDescription: "Onboarding and update requests submitted on behalf of a group owner, by submitter.",
+        onBehalfLoadFailed: "Failed to load the on behalf of activity.",
+        noOnBehalfActivity: "No on behalf of requests in this window.",
+        onboarding: "Onboarding",
+        update: "Update",
+        submitter: "Submitter",
       }
     },
     CustomSourceSettings: {

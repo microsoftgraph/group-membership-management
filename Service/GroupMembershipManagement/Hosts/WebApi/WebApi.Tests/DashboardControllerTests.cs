@@ -26,6 +26,7 @@ namespace WebApi.Tests
         private DashboardController _dashboardController = null!;
         private GetDashboardSummaryHandler _getDashboardSummaryHandler = null!;
         private GetApprovalActivityHandler _getApprovalActivityHandler = null!;
+        private GetOnBehalfOfActivityHandler _getOnBehalfOfActivityHandler = null!;
         private Mock<IDatabaseSyncJobsRepository> _databaseSyncJobsRepository = null!;
         private Mock<ILogger<DashboardController>> _logger = null!;
 
@@ -41,7 +42,10 @@ namespace WebApi.Tests
             _getApprovalActivityHandler = new GetApprovalActivityHandler(NullLogger<GetApprovalActivityHandler>.Instance,
                                                                         _databaseSyncJobsRepository.Object);
 
-            _dashboardController = new DashboardController(_getDashboardSummaryHandler, _getApprovalActivityHandler, _logger.Object)
+            _getOnBehalfOfActivityHandler = new GetOnBehalfOfActivityHandler(NullLogger<GetOnBehalfOfActivityHandler>.Instance,
+                                                                            _databaseSyncJobsRepository.Object);
+
+            _dashboardController = new DashboardController(_getDashboardSummaryHandler, _getApprovalActivityHandler, _getOnBehalfOfActivityHandler, _logger.Object)
             {
                 ControllerContext = CreateControllerContext(new List<Claim>
                 {
@@ -106,7 +110,7 @@ namespace WebApi.Tests
             var handler = new Mock<IRequestHandler<GetDashboardSummaryRequest, GetDashboardSummaryResponse>>();
             handler.Setup(h => h.ExecuteAsync(It.IsAny<GetDashboardSummaryRequest>())).ThrowsAsync(thrown);
 
-            var controller = new DashboardController(handler.Object, _getApprovalActivityHandler, _logger.Object)
+            var controller = new DashboardController(handler.Object, _getApprovalActivityHandler, _getOnBehalfOfActivityHandler, _logger.Object)
             {
                 ControllerContext = CreateControllerContext(new List<Claim>
                 {
@@ -215,7 +219,7 @@ namespace WebApi.Tests
             var handler = new Mock<IRequestHandler<GetApprovalActivityRequest, GetApprovalActivityResponse>>();
             handler.Setup(h => h.ExecuteAsync(It.IsAny<GetApprovalActivityRequest>())).ThrowsAsync(thrown);
 
-            var controller = new DashboardController(_getDashboardSummaryHandler, handler.Object, _logger.Object)
+            var controller = new DashboardController(_getDashboardSummaryHandler, handler.Object, _getOnBehalfOfActivityHandler, _logger.Object)
             {
                 ControllerContext = CreateControllerContext(new List<Claim>
                 {
@@ -224,6 +228,103 @@ namespace WebApi.Tests
             };
 
             var response = await controller.GetApprovalActivityAsync(7);
+
+            var result = response as ObjectResult;
+            Assert.IsNotNull(result);
+            Assert.AreEqual((int)HttpStatusCode.InternalServerError, result.StatusCode);
+
+            var problem = result.Value as ProblemDetails;
+            Assert.IsNotNull(problem);
+            AssertNoExceptionLeak.Assert(problem.Detail ?? string.Empty, thrown);
+        }
+
+        [TestMethod]
+        public async Task GetOnBehalfOfActivityAsync_ReturnsAggregatesFromTheRepository()
+        {
+            var activity = new OnBehalfOfActivity
+            {
+                WindowDays = 30,
+                SinceUtc = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc),
+                QueriedAtUtc = new DateTime(2026, 1, 31, 0, 0, 0, DateTimeKind.Utc),
+                OnboardingTotal = 120,
+                UpdateTotal = 45,
+                Submitters = new List<SubmitterActivityRow>
+                {
+                    new() { SubmitterKey = "s1", DisplayName = "Ada Lovelace", Onboarding = 100, Update = 40 },
+                    new() { SubmitterKey = "__other__", DisplayName = "Other", Onboarding = 20, Update = 5, IsOther = true }
+                },
+                Days = new List<OnBehalfOfActivityDay>
+                {
+                    new()
+                    {
+                        Date = new DateTime(2026, 1, 30, 0, 0, 0, DateTimeKind.Utc),
+                        Submitters = new List<SubmitterDayCount>
+                        {
+                            new() { SubmitterKey = "s1", Onboarding = 5, Update = 2 }
+                        }
+                    }
+                }
+            };
+
+            _databaseSyncJobsRepository.Setup(x => x.GetOnBehalfOfActivityAsync(It.IsAny<int>(), It.IsAny<CancellationToken>()))
+                                       .ReturnsAsync(activity);
+
+            var response = await _dashboardController.GetOnBehalfOfActivityAsync(30);
+
+            var result = response as OkObjectResult;
+            Assert.IsNotNull(result);
+
+            var activityResponse = result.Value as GetOnBehalfOfActivityResponse;
+            Assert.IsNotNull(activityResponse);
+            Assert.AreEqual(HttpStatusCode.OK, activityResponse.StatusCode);
+            Assert.AreEqual(30, activityResponse.Activity.WindowDays);
+            Assert.AreEqual(120, activityResponse.Activity.OnboardingTotal);
+            Assert.AreEqual(45, activityResponse.Activity.UpdateTotal);
+            Assert.AreEqual(165, activityResponse.Activity.GrandTotal);
+            Assert.AreEqual(2, activityResponse.Activity.Submitters.Count);
+            Assert.IsTrue(activityResponse.Activity.Submitters.Last().IsOther);
+        }
+
+        [TestMethod]
+        public async Task GetOnBehalfOfActivityAsync_DefaultsToASevenDayWindow()
+        {
+            _databaseSyncJobsRepository.Setup(x => x.GetOnBehalfOfActivityAsync(It.IsAny<int>(), It.IsAny<CancellationToken>()))
+                                       .ReturnsAsync(new OnBehalfOfActivity { WindowDays = 7 });
+
+            await _dashboardController.GetOnBehalfOfActivityAsync();
+
+            _databaseSyncJobsRepository.Verify(x => x.GetOnBehalfOfActivityAsync(7, It.IsAny<CancellationToken>()), Times.Once);
+        }
+
+        [TestMethod]
+        public async Task GetOnBehalfOfActivityAsync_ReturnsInternalServerErrorWhenTheRepositoryFails()
+        {
+            _databaseSyncJobsRepository.Setup(x => x.GetOnBehalfOfActivityAsync(It.IsAny<int>(), It.IsAny<CancellationToken>()))
+                                       .ThrowsAsync(new Exception("An error occurred"));
+
+            var response = await _dashboardController.GetOnBehalfOfActivityAsync(7);
+
+            var result = response as ObjectResult;
+            Assert.IsNotNull(result);
+            Assert.AreEqual((int)HttpStatusCode.InternalServerError, result.StatusCode);
+        }
+
+        [TestMethod]
+        public async Task GetOnBehalfOfActivityAsync_SanitizesUnexpectedException()
+        {
+            var thrown = new InvalidOperationException("sensitive internal detail that must not leak");
+            var handler = new Mock<IRequestHandler<GetOnBehalfOfActivityRequest, GetOnBehalfOfActivityResponse>>();
+            handler.Setup(h => h.ExecuteAsync(It.IsAny<GetOnBehalfOfActivityRequest>())).ThrowsAsync(thrown);
+
+            var controller = new DashboardController(_getDashboardSummaryHandler, _getApprovalActivityHandler, handler.Object, _logger.Object)
+            {
+                ControllerContext = CreateControllerContext(new List<Claim>
+                {
+                    new Claim(ClaimTypes.Role, Roles.DASHBOARD_READER)
+                })
+            };
+
+            var response = await controller.GetOnBehalfOfActivityAsync(7);
 
             var result = response as ObjectResult;
             Assert.IsNotNull(result);

@@ -195,5 +195,10 @@ namespace Repositories.Mocks
         {
             return Task.FromResult(new ApprovalActivity { WindowDays = windowDays, QueriedAtUtc = DateTime.UtcNow });
         }
+
+        public Task<OnBehalfOfActivity> GetOnBehalfOfActivityAsync(int windowDays, CancellationToken cancellationToken = default)
+        {
+            return Task.FromResult(new OnBehalfOfActivity { WindowDays = windowDays, QueriedAtUtc = DateTime.UtcNow });
+        }
     }
 }
