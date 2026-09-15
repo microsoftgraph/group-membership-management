@@ -16,7 +16,7 @@ GMM automates Entra ID group membership synchronization at enterprise scale. The
 ## Architecture & Technology Stack
 
 ### Core Technologies
-- **Backend**: .NET 8.0, C#
+- **Backend**: .NET 10.0, C#
 - **Cloud Platform**: Microsoft Azure
 - **Frontend**: React with TypeScript, Fluent UI
 - **Database**: SQL Server with Entity Framework Core

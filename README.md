@@ -81,7 +81,7 @@ For a complete list of all services and resources, see the [GMM Resources Overvi
 
 | Layer | Technologies |
 |-------|-------------|
-| **Backend** | .NET 8.0, C#, Azure Functions |
+| **Backend** | .NET 10.0, C#, Azure Functions |
 | **Frontend** | React, TypeScript, Fluent UI |
 | **Database** | SQL Server, Entity Framework Core |
 | **Messaging** | Azure Service Bus |
