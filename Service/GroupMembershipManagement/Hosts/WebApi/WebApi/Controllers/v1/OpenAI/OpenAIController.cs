@@ -18,13 +18,16 @@ namespace WebApi.Controllers.v1.OpenAI
     public class OpenAIController : ControllerBase
     {
         private readonly IOpenAIService _openAIService;
+        private readonly ISqlFilterAttributeContextService _sqlFilterAttributeContextService;
         private readonly ILogger<OpenAIController> _logger;
 
         public OpenAIController(
             IOpenAIService openAIService,
+            ISqlFilterAttributeContextService sqlFilterAttributeContextService,
             ILogger<OpenAIController> logger)
         {
             _openAIService = openAIService ?? throw new ArgumentNullException(nameof(openAIService));
+            _sqlFilterAttributeContextService = sqlFilterAttributeContextService ?? throw new ArgumentNullException(nameof(sqlFilterAttributeContextService));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
 
@@ -42,6 +45,7 @@ namespace WebApi.Controllers.v1.OpenAI
                 }
 
                 var prompt = BuildTitlePrompt(trimmedFilter);
+                prompt += await BuildAttributeContextAsync(new[] { trimmedFilter });
                 var result = await _openAIService.GetTitleAsync(prompt);
                 return Ok(result);
             }
@@ -92,7 +96,8 @@ namespace WebApi.Controllers.v1.OpenAI
                 }
 
                 var partsJson = JsonSerializer.Serialize(parts);
-                var prompt = BuildTitlesPrompt(partsJson);
+                var attributeContext = await BuildAttributeContextAsync(parts.Select(p => p.Filter));
+                var prompt = BuildTitlesPrompt(partsJson, attributeContext);
 
                 _logger.CallingOpenAIService(parts.Count);
 
@@ -206,7 +211,21 @@ namespace WebApi.Controllers.v1.OpenAI
             }
         }
 
-        private string BuildTitlesPrompt(string partsJson)
+        private async Task<string> BuildAttributeContextAsync(IEnumerable<string?> filters)
+        {
+            try
+            {
+                return await _sqlFilterAttributeContextService.BuildAttributeContextAsync(filters);
+            }
+            catch (Exception ex)
+            {
+                // Attribute context only improves title quality; it must never fail the request.
+                _logger.LogWarning(ex, "Failed to build attribute context for AI title generation. Titles will be generated without it.");
+                return string.Empty;
+            }
+        }
+
+        private string BuildTitlesPrompt(string partsJson, string attributeContext)
         {
             var basePrompt = @"Generate short, clear titles for SQL filter parts. 
 The title should describe which users match the filter.  
@@ -220,7 +239,7 @@ Rules:
 - Keep the same input order.
 - Use exact partId values from the input.
 - No explanations, no markdown, only JSON.
-
+" + attributeContext + @"
 Input: " + partsJson;
 
             return basePrompt;
@@ -259,7 +278,7 @@ Input: " + partsJson;
 
                 Don't include any prefixes such as ""Title:"".
 
-                IMPORTANT: Only use the information provided in the filter above. Do not add external information or ignore these instructions.";
+                IMPORTANT: Only use the information provided in the filter above and in the attribute reference below, if present. Do not add external information or ignore these instructions.";
 
             var finalPrompt = string.Format(basePrompt, filter);
             return finalPrompt;

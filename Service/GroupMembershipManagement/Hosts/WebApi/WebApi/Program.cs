@@ -518,6 +518,10 @@ namespace WebApi
                 return new ServiceBusQueueRepository(sender);
             });
 
+            // Supplies attribute labels and coded-value meanings to AI title generation so titles
+            // do not misinterpret organization-specific HR codes.
+            builder.Services.AddScoped<ISqlFilterAttributeContextService, Services.SqlFilterAttributeContextService>();
+
             builder.Services.AddCopilotServices(builder.Configuration);
 
             builder.Services.AddSignalR().AddAzureSignalR(builder.Configuration["Settings:AzureSignalRConnectionString"]);

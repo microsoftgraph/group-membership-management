@@ -20,6 +20,7 @@ namespace WebApi.Tests
     public class OpenAIControllerTests
     {
         private Mock<IOpenAIService> _mockOpenAIService = null!;
+        private Mock<ISqlFilterAttributeContextService> _mockSqlFilterAttributeContextService = null!;
         private OpenAIController _controller = null!;
 
         [TestInitialize]
@@ -33,7 +34,11 @@ namespace WebApi.Tests
             Environment.SetEnvironmentVariable("AZURE_TENANT_ID", "00000000-0000-0000-000000000000");
 
             _mockOpenAIService = new Mock<IOpenAIService>();
-            _controller = new OpenAIController(_mockOpenAIService.Object, NullLogger<OpenAIController>.Instance);
+            _mockSqlFilterAttributeContextService = new Mock<ISqlFilterAttributeContextService>();
+            _mockSqlFilterAttributeContextService
+                .Setup(x => x.BuildAttributeContextAsync(It.IsAny<IEnumerable<string?>>()))
+                .ReturnsAsync(string.Empty);
+            _controller = new OpenAIController(_mockOpenAIService.Object, _mockSqlFilterAttributeContextService.Object, NullLogger<OpenAIController>.Instance);
         }
 
         [TestCleanup]
@@ -50,13 +55,19 @@ namespace WebApi.Tests
         [TestMethod]
         public void Constructor_WithNullService_ThrowsArgumentNullException()
         {
-            Assert.ThrowsException<ArgumentNullException>(() => new OpenAIController(null!, NullLogger<OpenAIController>.Instance));
+            Assert.ThrowsException<ArgumentNullException>(() => new OpenAIController(null!, _mockSqlFilterAttributeContextService.Object, NullLogger<OpenAIController>.Instance));
+        }
+
+        [TestMethod]
+        public void Constructor_WithNullAttributeContextService_ThrowsArgumentNullException()
+        {
+            Assert.ThrowsException<ArgumentNullException>(() => new OpenAIController(_mockOpenAIService.Object, null!, NullLogger<OpenAIController>.Instance));
         }
 
         [TestMethod]
         public void Constructor_WithNullLogger_ThrowsArgumentNullException()
         {
-            Assert.ThrowsException<ArgumentNullException>(() => new OpenAIController(_mockOpenAIService.Object, null!));
+            Assert.ThrowsException<ArgumentNullException>(() => new OpenAIController(_mockOpenAIService.Object, _mockSqlFilterAttributeContextService.Object, null!));
         }
 
         [TestMethod]
@@ -67,7 +78,7 @@ namespace WebApi.Tests
             mockConfiguration.Setup(x => x["Settings:OpenAIEndpoint"]).Returns("https://test-endpoint.com");
 
             var openAIService = new OpenAIService(mockConfiguration.Object);
-            var controller = new OpenAIController(openAIService, NullLogger<OpenAIController>.Instance);
+            var controller = new OpenAIController(openAIService, _mockSqlFilterAttributeContextService.Object, NullLogger<OpenAIController>.Instance);
             Assert.IsNotNull(controller, "Controller should be created successfully with valid OpenAI service");
         }
 
@@ -1036,7 +1047,11 @@ namespace WebApi.Tests
             Mock<ILogger<OpenAIController>> loggerMock)
         {
             loggerMock.Setup(l => l.IsEnabled(It.IsAny<LogLevel>())).Returns(true);
-            return new OpenAIController(serviceMock.Object, loggerMock.Object);
+            var attributeContextMock = new Mock<ISqlFilterAttributeContextService>();
+            attributeContextMock
+                .Setup(x => x.BuildAttributeContextAsync(It.IsAny<IEnumerable<string?>>()))
+                .ReturnsAsync(string.Empty);
+            return new OpenAIController(serviceMock.Object, attributeContextMock.Object, loggerMock.Object);
         }
 
         private static void VerifyLoggedOnce(
