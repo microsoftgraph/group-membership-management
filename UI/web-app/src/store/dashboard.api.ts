@@ -2,7 +2,7 @@
 // Licensed under the MIT license.
 
 import { createAsyncThunk } from '@reduxjs/toolkit';
-import { DashboardSummary } from '../models';
+import { ApprovalActivity, DashboardSummary } from '../models';
 import { ThunkConfig } from './store';
 
 export const fetchDashboardSummary = createAsyncThunk<DashboardSummary, void, ThunkConfig>(
@@ -10,5 +10,13 @@ export const fetchDashboardSummary = createAsyncThunk<DashboardSummary, void, Th
   async (_, { extra }) => {
     const { gmmApi } = extra.apis;
     return await gmmApi.dashboard.fetchDashboardSummary();
+  }
+);
+
+export const fetchApprovalActivity = createAsyncThunk<ApprovalActivity, number, ThunkConfig>(
+  'dashboard/fetchApprovalActivity',
+  async (windowDays, { extra }) => {
+    const { gmmApi } = extra.apis;
+    return await gmmApi.dashboard.fetchApprovalActivity(windowDays);
   }
 );

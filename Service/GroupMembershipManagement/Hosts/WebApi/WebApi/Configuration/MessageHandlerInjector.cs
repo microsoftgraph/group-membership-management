@@ -66,6 +66,7 @@ namespace WebApi.Configuration
             services.AddTransient<IRequestHandler<GetServiceStatusRequest, GetServiceStatusResponse>, GetServiceStatusHandler>();
 
             services.AddTransient<IRequestHandler<GetDashboardSummaryRequest, GetDashboardSummaryResponse>, GetDashboardSummaryHandler>();
+            services.AddTransient<IRequestHandler<GetApprovalActivityRequest, GetApprovalActivityResponse>, GetApprovalActivityHandler>();
 
             services.AddTransient<IRequestHandler<CopilotChatRequest, CopilotChatResponse>, CopilotChatHandler>();
 

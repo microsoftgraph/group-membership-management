@@ -288,6 +288,20 @@ export type IStrings = {
         missedSuffix: string;
         neverRanOkSuffix: string;
         likelyTransient: string;
+        approvals: string;
+        approvalsDescription: string;
+        approvalsLoadFailed: string;
+        noApprovalActivity: string;
+        automated: string;
+        manual: string;
+        rejected: string;
+        approved: string;
+        reviewer: string;
+        rejectedSuffix: string;
+        timeRange: string;
+        last7Days: string;
+        last30Days: string;
+        last90Days: string;
       };
     },
     CustomSourceSettings: {

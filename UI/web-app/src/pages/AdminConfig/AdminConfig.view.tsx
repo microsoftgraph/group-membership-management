@@ -4,6 +4,9 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { classNamesFunction, Toggle, IProcessedStyleSet, Pivot, PivotItem, PrimaryButton, DefaultButton, TextField, Text, TooltipHost, IColumn, SelectionMode, ShimmeredDetailsList, Dropdown, Spinner, IRenderFunction, ISelectableDroppableTextProps, IDropdown, Slider, Icon, IconButton, ActionButton, Link, MessageBar, MessageBarType, mergeStyles } from '@fluentui/react';
 import { useTheme } from '@fluentui/react/lib/Theme';
+import type { ITheme } from '@fluentui/react/lib/Theme';
+import { VerticalStackedBarChart } from '@fluentui/react-charting';
+import type { IVerticalStackedChartProps, IVSChartDataPoint } from '@fluentui/react-charting';
 import {
   AdminConfigStyleProps,
   AdminConfigStyles,
@@ -26,12 +29,21 @@ import { Page } from '../../components/Page';
 import { PageHeader } from '../../components/PageHeader';
 import { SettingKey, SettingKeyMap, SqlMembershipAttribute, SqlMembershipSource } from '../../models';
 import type { PendingReviewSummaryRow, InProgressStatusRow, AnomalousStatusRow } from '../../models/DashboardSummary';
+import type { ReviewerActivityRow } from '../../models/ApprovalActivity';
 import { GeneralSetting } from '../../components/GeneralSetting';
 import { ServiceNotificationSettings, validateServiceNotification } from './ServiceNotificationSettings';
 import { ConfiguredAttributeRules, ConfiguredAttributeToggleCard, useConfiguredAttributeApproval } from './ConfiguredAttributeApprovalSettings';
 import { useAppDispatch, useAppSelector } from '../../store/hooks';
-import { fetchDashboardSummary } from '../../store/dashboard.api';
-import { selectDashboardSummary, selectDashboardLoading, selectDashboardError } from '../../store/dashboard.slice';
+import { fetchApprovalActivity, fetchDashboardSummary } from '../../store/dashboard.api';
+import {
+  selectDashboardSummary,
+  selectDashboardLoading,
+  selectDashboardError,
+  selectApprovalActivity,
+  selectApprovalActivityLoading,
+  selectApprovalActivityError,
+  selectApprovalWindowDays,
+  setApprovalWindowDays } from '../../store/dashboard.slice';
 import type { AlertBannerConfig } from '../../models/AlertBannerConfig';
 
 const getClassNames = classNamesFunction<AdminConfigStyleProps, AdminConfigStyles>();
@@ -319,6 +331,183 @@ const calendarDayDiff = (value: Date): number => {
   return Math.floor((startOfToday - startOfValue) / 86400000);
 };
 
+const toneColorFor = (theme: ITheme, tone: DashboardTone): string => {
+  switch (tone) {
+    case 'good': return theme.palette.green;
+    case 'warning': return theme.palette.yellowDark;
+    case 'danger': return theme.palette.redDark;
+    default: return theme.palette.neutralSecondary;
+  }
+};
+
+type CountCard = { key: string; label: string; value: number; detail?: string; tone: DashboardTone };
+
+const renderCountCards = (
+  classNames: IProcessedStyleSet<AdminConfigStyles>,
+  theme: ITheme,
+  totalLabel: string,
+  cards: CountCard[]
+) => (
+  <div className={classNames.dashboardCounts} role="list">
+    {cards.map((card) => (
+      <div key={card.key} role="listitem" className={classNames.dashboardCount} style={{ borderLeftColor: toneColorFor(theme, card.tone) }}>
+        <span className={classNames.dashboardCountLabel}>{card.label}</span>
+        <span className={classNames.dashboardCountValue}>{card.value}</span>
+        {card.detail !== undefined && <span className={classNames.dashboardCountDetail}>{card.detail}</span>}
+      </div>
+    ))}
+    <div role="listitem" className={classNames.dashboardCount} style={{ borderLeftColor: toneColorFor(theme, 'neutral') }}>
+      <span className={classNames.dashboardCountLabel}>{totalLabel}</span>
+      <span className={classNames.dashboardCountValue}>{cards.reduce((sum, card) => sum + card.value, 0)}</span>
+    </div>
+  </div>
+);
+
+// Fixed series colors: chart hues must stay distinguishable from each other rather than
+// track the theme. Each reviewer gets an approved/rejected pair so their rejections stack
+// directly above their approvals in the same hue family.
+const AUTOMATED_COLOR = '#4FC3F7';
+const REVIEWER_HUES = [
+  { approved: '#2AA198', rejected: '#14655F' },
+  { approved: '#8B7BD8', rejected: '#54459F' },
+  { approved: '#E8A33D', rejected: '#AE6E12' },
+  { approved: '#4C9AFF', rejected: '#245FA8' },
+  { approved: '#D96BA0', rejected: '#9E3568' },
+  { approved: '#9A9896', rejected: '#63615F' },
+];
+
+// Reviewer rows arrive pre-sorted by the API with the aggregated "Other" bucket last, so the
+// index-based hue assignment is stable between the chart, the legend and the reviewer table.
+const reviewerHue = (index: number) => REVIEWER_HUES[index % REVIEWER_HUES.length];
+
+const formatChartDay = (value: string): string => {
+  const parsed = parseUtc(value);
+  return parsed
+    ? parsed.toLocaleDateString(undefined, { month: 'short', day: 'numeric', timeZone: 'UTC' })
+    : '';
+};
+
+const ApprovalActivitySection: React.FunctionComponent<DashboardProps> = (props: DashboardProps) => {
+  const { classNames, strings } = props;
+  const dispatch = useAppDispatch();
+  const theme = useTheme();
+  const activity = useAppSelector(selectApprovalActivity);
+  const loading = useAppSelector(selectApprovalActivityLoading);
+  const error = useAppSelector(selectApprovalActivityError);
+  const windowDays = useAppSelector(selectApprovalWindowDays);
+
+  const labels = strings.Dashboard.labels;
+
+  useEffect(() => {
+    dispatch(fetchApprovalActivity(windowDays));
+  }, [dispatch, windowDays]);
+
+  const reviewers = useMemo(() => activity?.reviewers ?? [], [activity]);
+
+  const chartData: IVerticalStackedChartProps[] = useMemo(() => (activity?.days ?? []).map((day) => {
+    const points: IVSChartDataPoint[] = [];
+    if (day.automated > 0) {
+      points.push({ legend: labels.automated, data: day.automated, color: AUTOMATED_COLOR });
+    }
+    reviewers.forEach((reviewer, index) => {
+      const hue = reviewerHue(index);
+      const counts = day.reviewers.find((entry) => entry.reviewerKey === reviewer.reviewerKey);
+      if (counts && counts.approved > 0) {
+        points.push({ legend: reviewer.displayName, data: counts.approved, color: hue.approved });
+      }
+      if (counts && counts.rejected > 0) {
+        points.push({ legend: `${reviewer.displayName} (${labels.rejectedSuffix})`, data: counts.rejected, color: hue.rejected });
+      }
+    });
+    return { xAxisPoint: formatChartDay(day.date), chartData: points };
+  }), [activity, reviewers, labels.automated, labels.rejectedSuffix]);
+
+  const hasData = chartData.some((day) => day.chartData.length > 0);
+
+  const windowOptions = [
+    { key: 7, text: labels.last7Days },
+    { key: 30, text: labels.last30Days },
+    { key: 90, text: labels.last90Days }
+  ];
+
+  const reviewerColumns: IColumn[] = [
+    {
+      key: 'reviewer', name: labels.reviewer, minWidth: 180, maxWidth: 320, isResizable: true,
+      onRender: (item: ReviewerActivityRow, index?: number) => (
+        <span className={mergeStyles({ display: 'flex', alignItems: 'center', gap: 8 })}>
+          <span
+            aria-hidden="true"
+            className={mergeStyles({
+              width: 10,
+              height: 10,
+              borderRadius: 2,
+              flexShrink: 0,
+              backgroundColor: reviewerHue(index ?? 0).approved
+            })} />
+          <span>{item.displayName}</span>
+        </span>
+      )
+    },
+    { key: 'approved', name: labels.approved, fieldName: 'approved', minWidth: 90, maxWidth: 120, isResizable: true },
+    { key: 'rejected', name: labels.rejected, fieldName: 'rejected', minWidth: 90, maxWidth: 120, isResizable: true },
+    {
+      key: 'total', name: labels.total, minWidth: 90, maxWidth: 120, isResizable: true,
+      onRender: (item: ReviewerActivityRow) => <span>{item.approved + item.rejected}</span>
+    }
+  ];
+
+  const isShimmering = loading && !activity;
+
+  return (
+    <div className={classNames.dashboardSection}>
+      <Text variant="mediumPlus" className={classNames.sectionHeading}>{labels.approvals}</Text>
+      <Text className={classNames.dashboardHint}>{labels.approvalsDescription}</Text>
+      <div className={classNames.dashboardToolbar}>
+        <Dropdown
+          ariaLabel={labels.timeRange}
+          label={labels.timeRange}
+          selectedKey={windowDays}
+          options={windowOptions}
+          disabled={loading}
+          styles={{ root: { minWidth: 160 } }}
+          onChange={(_event, option) => {
+            if (option) {
+              dispatch(setApprovalWindowDays(option.key as number));
+            }
+          }} />
+      </div>
+      {error && <MessageBar messageBarType={MessageBarType.error}>{labels.approvalsLoadFailed}</MessageBar>}
+      {!isShimmering && !hasData
+        ? <Text className={classNames.dashboardEmpty}>{labels.noApprovalActivity}</Text>
+        : <>
+          {activity && renderCountCards(classNames, theme, labels.total, [
+            { key: 'automated', label: labels.automated, value: activity.automatedTotal, tone: 'neutral' },
+            { key: 'manual', label: labels.manual, value: activity.manualTotal, tone: 'good' },
+            { key: 'rejected', label: labels.rejected, value: activity.rejectedTotal, tone: 'danger' }
+          ])}
+          {hasData && (
+            <div className={mergeStyles({ marginTop: 12 })}>
+              <VerticalStackedBarChart
+                data={chartData}
+                height={320}
+                barWidth={28}
+                hideLegend={false}
+                yAxisTickCount={5}
+                chartTitle={labels.approvals} />
+            </div>
+          )}
+          <ShimmeredDetailsList
+            items={reviewers}
+            columns={reviewerColumns}
+            selectionMode={SelectionMode.none}
+            enableShimmer={isShimmering}
+            ariaLabelForGrid={labels.approvals}
+          />
+        </>}
+    </div>
+  );
+}
+
 const Dashboard: React.FunctionComponent<DashboardProps> = (props: DashboardProps) => {
   const { classNames, strings } = props;
   const dispatch = useAppDispatch();
@@ -333,14 +522,7 @@ const Dashboard: React.FunctionComponent<DashboardProps> = (props: DashboardProp
 
   const labels = strings.Dashboard.labels;
 
-  const toneColor = useCallback((tone: DashboardTone): string => {
-    switch (tone) {
-      case 'good': return theme.palette.green;
-      case 'warning': return theme.palette.yellowDark;
-      case 'danger': return theme.palette.redDark;
-      default: return theme.palette.neutralSecondary;
-    }
-  }, [theme]);
+  const toneColor = useCallback((tone: DashboardTone): string => toneColorFor(theme, tone), [theme]);
 
   const renderChip = useCallback((tone: DashboardTone, text: string) => (
     <span className={mergeStyles({
@@ -439,21 +621,7 @@ const Dashboard: React.FunctionComponent<DashboardProps> = (props: DashboardProp
     return parts.length > 0 ? parts.join(' · ') : labels.likelyTransient;
   };
 
-  const renderCounts = (cards: { key: string; label: string; value: number; detail?: string; tone: DashboardTone }[]) => (
-    <div className={classNames.dashboardCounts} role="list">
-      {cards.map((card) => (
-        <div key={card.key} role="listitem" className={classNames.dashboardCount} style={{ borderLeftColor: toneColor(card.tone) }}>
-          <span className={classNames.dashboardCountLabel}>{card.label}</span>
-          <span className={classNames.dashboardCountValue}>{card.value}</span>
-          {card.detail !== undefined && <span className={classNames.dashboardCountDetail}>{card.detail}</span>}
-        </div>
-      ))}
-      <div role="listitem" className={classNames.dashboardCount} style={{ borderLeftColor: toneColor('neutral') }}>
-        <span className={classNames.dashboardCountLabel}>{labels.total}</span>
-        <span className={classNames.dashboardCountValue}>{cards.reduce((sum, card) => sum + card.value, 0)}</span>
-      </div>
-    </div>
-  );
+  const renderCounts = (cards: CountCard[]) => renderCountCards(classNames, theme, labels.total, cards);
 
   const pendingReview = summary?.pendingReview ?? [];
   const inProgress = summary?.inProgress ?? [];
@@ -592,6 +760,8 @@ const Dashboard: React.FunctionComponent<DashboardProps> = (props: DashboardProp
             />
           </>}
       </div>
+
+      <ApprovalActivitySection classNames={classNames} strings={strings} />
     </SettingsSection>
   );
 }

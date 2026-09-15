@@ -182,5 +182,10 @@ namespace Repositories.SyncJobs.Tests
         {
             return Task.FromResult(new DashboardSummary { QueriedAtUtc = DateTime.UtcNow });
         }
+
+        public Task<ApprovalActivity> GetApprovalActivityAsync(int windowDays, CancellationToken cancellationToken = default)
+        {
+            return Task.FromResult(new ApprovalActivity { WindowDays = windowDays, QueriedAtUtc = DateTime.UtcNow });
+        }
     }
 }

@@ -34,5 +34,6 @@ namespace Repositories.Contracts
         Task<SyncJob?> ClaimSyncJobAsync(Guid jobId, Guid? runId, int period, string targetStatus);
         Task UpdateSyncJobDestinationAsync(Guid jobId, string destination);
         Task<DashboardSummary> GetDashboardSummaryAsync(CancellationToken cancellationToken = default);
+        Task<ApprovalActivity> GetApprovalActivityAsync(int windowDays, CancellationToken cancellationToken = default);
     }
 }

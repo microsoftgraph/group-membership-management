@@ -5,6 +5,7 @@ using Microsoft.EntityFrameworkCore;
 using System.Data.SqlTypes;
 using Models;
 using Models.Dashboard;
+using Models.SyncJobChange;
 using Repositories.Contracts;
 using Repositories.EntityFramework.Contexts;
 using System.Text.Json;
@@ -20,6 +21,22 @@ namespace Repositories.EntityFramework
 
         private const string OnboardingRequestType = "Onboarding";
         private const string UpdateRequestType = "Update";
+
+        // Approval reasons in SyncJobChanges. SubmissionApproved = a human reviewer approved via
+        // the web app; OnboardingAutoApproved = the AutoApprover function approved automatically.
+        private const string ManualApprovalReason = nameof(SyncJobChangeReason.SubmissionApproved);
+        private const string AutomatedApprovalReason = nameof(SyncJobChangeReason.OnboardingAutoApproved);
+        private const string RejectionReason = nameof(SyncJobChangeReason.SubmissionRejected);
+
+        // Reviewers rendered as their own chart series / table row. The remainder folds into a
+        // single aggregated row so the manual total always reconciles.
+        private const int TopReviewerCount = 5;
+        private const string OtherReviewerKey = "__other__";
+        private const string UnknownReviewerKey = "__unknown__";
+        private const string UnknownReviewerName = "Unknown reviewer";
+
+        /// <summary>Widest window the approval activity chart will query.</summary>
+        public const int MaxApprovalWindowDays = 90;
 
         private static readonly string[] InProgressStatuses =
         {
@@ -416,5 +433,121 @@ namespace Repositories.EntityFramework
                     .ToList()
             };
         }
+
+        public async Task<ApprovalActivity> GetApprovalActivityAsync(int windowDays, CancellationToken cancellationToken = default)
+        {
+            var now = DateTime.UtcNow;
+            var days = Math.Clamp(windowDays, 1, MaxApprovalWindowDays);
+
+            // The window is inclusive of today, so a 7-day window starts at midnight 6 days ago.
+            var sinceUtc = now.Date.AddDays(-(days - 1));
+
+            var rows = await _readContext.SyncJobChanges
+                .AsNoTracking()
+                .Where(change => change.ChangeTime >= sinceUtc
+                    && (change.ChangeReason == ManualApprovalReason
+                        || change.ChangeReason == AutomatedApprovalReason
+                        || change.ChangeReason == RejectionReason))
+                .Select(change => new
+                {
+                    change.ChangeTime,
+                    change.ChangeReason,
+                    change.ChangedByObjectId,
+                    change.ChangedByDisplayName
+                })
+                .ToListAsync(cancellationToken);
+
+            var manualRows = rows
+                .Where(row => row.ChangeReason != AutomatedApprovalReason)
+                .Select(row => new
+                {
+                    row.ChangeTime,
+                    row.ChangeReason,
+                    ReviewerKey = row.ChangedByObjectId.HasValue
+                        ? row.ChangedByObjectId.Value.ToString()
+                        : UnknownReviewerKey,
+                    row.ChangedByDisplayName
+                })
+                .ToList();
+
+            // Rank by combined manual volume so a reviewer who mostly rejects still earns a series.
+            var rankedReviewers = manualRows
+                .GroupBy(row => row.ReviewerKey)
+                .Select(group => new ReviewerActivityRow
+                {
+                    ReviewerKey = group.Key,
+                    DisplayName = group
+                        .Select(row => row.ChangedByDisplayName)
+                        .FirstOrDefault(name => !string.IsNullOrWhiteSpace(name))
+                        ?? (group.Key == UnknownReviewerKey ? UnknownReviewerName : group.Key),
+                    Approved = group.Count(row => row.ChangeReason == ManualApprovalReason),
+                    Rejected = group.Count(row => row.ChangeReason == RejectionReason)
+                })
+                .OrderByDescending(row => row.Approved + row.Rejected)
+                .ThenBy(row => row.DisplayName)
+                .ToList();
+
+            var topReviewers = rankedReviewers.Take(TopReviewerCount).ToList();
+            var topKeys = topReviewers.Select(row => row.ReviewerKey).ToHashSet();
+            var remainder = rankedReviewers.Skip(TopReviewerCount).ToList();
+
+            var reviewers = new List<ReviewerActivityRow>(topReviewers);
+            if (remainder.Count > 0)
+            {
+                reviewers.Add(new ReviewerActivityRow
+                {
+                    ReviewerKey = OtherReviewerKey,
+                    DisplayName = $"Manual (other, {remainder.Count})",
+                    Approved = remainder.Sum(row => row.Approved),
+                    Rejected = remainder.Sum(row => row.Rejected),
+                    IsOther = true
+                });
+            }
+
+            var manualByDay = manualRows.ToLookup(row => row.ChangeTime.Date);
+            var automatedByDay = rows
+                .Where(row => row.ChangeReason == AutomatedApprovalReason)
+                .ToLookup(row => row.ChangeTime.Date);
+
+            var dayBuckets = new List<ApprovalActivityDay>(days);
+            for (var offset = 0; offset < days; offset++)
+            {
+                var date = sinceUtc.AddDays(offset);
+                var manualForDay = manualByDay[date].ToList();
+
+                var perReviewer = reviewers
+                    .Select(reviewer => new ReviewerDayCount
+                    {
+                        ReviewerKey = reviewer.ReviewerKey,
+                        Approved = manualForDay.Count(row =>
+                            row.ChangeReason == ManualApprovalReason && MatchesReviewer(row.ReviewerKey, reviewer.ReviewerKey, topKeys)),
+                        Rejected = manualForDay.Count(row =>
+                            row.ChangeReason == RejectionReason && MatchesReviewer(row.ReviewerKey, reviewer.ReviewerKey, topKeys))
+                    })
+                    .ToList();
+
+                dayBuckets.Add(new ApprovalActivityDay
+                {
+                    Date = date,
+                    Automated = automatedByDay[date].Count(),
+                    Reviewers = perReviewer
+                });
+            }
+
+            return new ApprovalActivity
+            {
+                WindowDays = days,
+                SinceUtc = sinceUtc,
+                QueriedAtUtc = now,
+                AutomatedTotal = rows.Count(row => row.ChangeReason == AutomatedApprovalReason),
+                ManualTotal = manualRows.Count(row => row.ChangeReason == ManualApprovalReason),
+                RejectedTotal = manualRows.Count(row => row.ChangeReason == RejectionReason),
+                Reviewers = reviewers,
+                Days = dayBuckets
+            };
+        }
+
+        private static bool MatchesReviewer(string rowKey, string seriesKey, HashSet<string> topKeys)
+            => seriesKey == OtherReviewerKey ? !topKeys.Contains(rowKey) : rowKey == seriesKey;
     }
 }

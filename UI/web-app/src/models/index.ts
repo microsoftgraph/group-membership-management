@@ -40,3 +40,4 @@ export * from './SearchSyncHistoryByUserResult';
 export * from './SyncHistorySearchProgressUpdate';
 export * from './PostGroupResponse';
 export * from './DashboardSummary';
+export * from './ApprovalActivity';
