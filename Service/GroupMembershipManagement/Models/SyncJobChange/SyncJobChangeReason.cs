@@ -13,6 +13,7 @@ namespace Models.SyncJobChange
         SubmissionRejected,
         IgnoreThresholdOnce,
         GroupSettings,
-        ScheduledNow
+        ScheduledNow,
+        UpdateAutoApproved
     }
 }

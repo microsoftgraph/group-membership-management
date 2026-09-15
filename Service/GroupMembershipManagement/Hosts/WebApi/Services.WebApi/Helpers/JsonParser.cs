@@ -1,12 +1,75 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
+using System.Text.Json;
 using System.Text.Json.Nodes;
 
 namespace Services.Helpers
 {
     internal static class JsonParser
     {
+        /// <summary>
+        /// The result of comparing a stored query against a submitted query for configuration-only classification.
+        /// </summary>
+        internal enum QueryEquivalence
+        {
+            /// <summary>The two queries are semantically identical (whitespace / formatting / object key order ignored).</summary>
+            Equal,
+
+            /// <summary>The two queries differ semantically (including array element order).</summary>
+            Differs,
+
+            /// <summary>At least one query could not be parsed as JSON; callers MUST fail closed and treat this as a query change.</summary>
+            Unparseable
+        }
+
+        /// <summary>
+        /// Compares a stored query against a submitted query for configuration-only classification.
+        /// The comparison is insensitive to whitespace, indentation, and JSON object key ordering, but
+        /// array element order IS significant. It performs no semantic interpretation: it does not resolve
+        /// group IDs, call Graph, or evaluate membership — it is a pure structural JSON comparison.
+        /// </summary>
+        /// <param name="storedQuery">The query currently persisted on the sync job.</param>
+        /// <param name="submittedQuery">The query supplied in the PATCH submission.</param>
+        /// <returns>
+        /// <see cref="QueryEquivalence.Equal"/> when the two are structurally identical;
+        /// <see cref="QueryEquivalence.Differs"/> when they differ;
+        /// <see cref="QueryEquivalence.Unparseable"/> when either side is null, empty, or invalid JSON (fail closed).
+        /// </returns>
+        internal static QueryEquivalence CompareQueries(string? storedQuery, string? submittedQuery)
+        {
+            JsonNode? storedNode;
+            JsonNode? submittedNode;
+
+            if (string.IsNullOrWhiteSpace(storedQuery) || string.IsNullOrWhiteSpace(submittedQuery))
+                return QueryEquivalence.Unparseable;
+
+            try
+            {
+                storedNode = JsonNode.Parse(storedQuery);
+            }
+            catch (JsonException)
+            {
+                return QueryEquivalence.Unparseable;
+            }
+
+            try
+            {
+                submittedNode = JsonNode.Parse(submittedQuery);
+            }
+            catch (JsonException)
+            {
+                return QueryEquivalence.Unparseable;
+            }
+
+            if (storedNode is null || submittedNode is null)
+                return QueryEquivalence.Unparseable;
+
+            return JsonNode.DeepEquals(storedNode, submittedNode)
+                ? QueryEquivalence.Equal
+                : QueryEquivalence.Differs;
+        }
+
         /// <summary>
         /// Parses a query JSON string and extracts all GroupMembership source group IDs.
         /// Returns null if the query is invalid or contains non-GroupMembership sources.

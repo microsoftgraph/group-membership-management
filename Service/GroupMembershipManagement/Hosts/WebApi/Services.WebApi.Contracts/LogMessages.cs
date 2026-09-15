@@ -729,5 +729,13 @@ namespace Hosts.WebApi
         [LoggerMessage(EventId = 91626, Level = LogLevel.Error,
             Message = "Failed to revert sync job {SyncJobId} to PendingReview after auto-approver enqueue failure; the job may remain stuck in PendingAutoApproval")]
         public static partial void AutoApproverRevertToPendingReviewFailed(this ILogger logger, Guid syncJobId, Exception exception);
+
+        [LoggerMessage(EventId = 91627, Level = LogLevel.Information,
+            Message = "Configuration-only update to sync job {SyncJobId} was auto-approved; pre-edit status preserved and no reviewer action required")]
+        public static partial void ConfigurationUpdateAutoApproved(this ILogger logger, Guid syncJobId);
+
+        [LoggerMessage(EventId = 91628, Level = LogLevel.Warning,
+            Message = "Failed to retrieve the IsAutoApprovalForConfigurationUpdatesEnabled setting; defaulting the feature to off")]
+        public static partial void AutoApprovalForConfigurationUpdatesSettingRetrievalFailed(this ILogger logger, Exception exception);
     }
 }

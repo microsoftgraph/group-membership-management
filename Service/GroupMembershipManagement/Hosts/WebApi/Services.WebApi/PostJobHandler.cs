@@ -242,7 +242,8 @@ namespace Services
                                 RequestorDisplayName = request.UserDisplayName,
                                 ChangedOnBehalfOfDisplayName = changedOnBehalfOfDisplayName,
                                 ChangedOnBehalfOfObjectId = changedOnBehalfOfObjectId,
-                                BusinessJustification = request.BusinessJustification
+                                BusinessJustification = request.BusinessJustification,
+                                Origin = AutoApprovalOrigin.Onboarding
                             };
 
                             var autoApprovalBody = System.Text.Encoding.UTF8.GetBytes(JsonSerializer.Serialize(autoApprovalMessage));

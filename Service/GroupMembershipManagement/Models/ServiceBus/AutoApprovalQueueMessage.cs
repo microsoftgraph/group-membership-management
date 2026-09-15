@@ -5,6 +5,17 @@ using System;
 
 namespace Models.ServiceBus
 {
+    /// <summary>
+    /// Identifies which submission path produced an <see cref="AutoApprovalQueueMessage"/>.
+    /// Defaults to <see cref="Onboarding"/> so messages serialized before this field existed
+    /// (in-flight during a rolling deploy) continue to deserialize as onboarding requests.
+    /// </summary>
+    public enum AutoApprovalOrigin
+    {
+        Onboarding,
+        Update
+    }
+
     public class AutoApprovalQueueMessage
     {
         /// <summary>
@@ -36,5 +47,11 @@ namespace Models.ServiceBus
         /// Business justification provided for the request.
         /// </summary>
         public string? BusinessJustification { get; init; }
+
+        /// <summary>
+        /// Identifies which submission path produced this message. Absent on the wire ⇒ <see cref="AutoApprovalOrigin.Onboarding"/>
+        /// so messages produced before this field existed remain valid across a rolling deploy (FR-016).
+        /// </summary>
+        public AutoApprovalOrigin Origin { get; init; } = AutoApprovalOrigin.Onboarding;
     }
 }

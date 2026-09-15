@@ -4,17 +4,21 @@
 using Hosts.WebApi;
 using Microsoft.AspNetCore.JsonPatch;
 using Models;
+using Models.ServiceBus;
 using Models.SyncJobChange;
 using Repositories.Contracts;
 using Services.Contracts;
+using Services.Helpers;
 using Services.Messages.Requests;
 using Services.Messages.Responses;
 using Services.WebApi.Contracts;
 using Services.WebApi.Validators;
 using System.Net;
+using System.Text;
 using System.Text.Json;
 using WebApi.Models.DTOs;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.DependencyInjection;
 using SyncJob = Models.SyncJob;
 using SyncJobChange = Models.SyncJobChange.SyncJobChange;
 
@@ -29,6 +33,7 @@ namespace Services.WebApi
         private readonly IDatabaseTitlesRepository _titlesRepository;
         private readonly IDatabaseSettingsRepository _databaseSettingsRepository;
         private readonly INotificationService _notificationService;
+        private readonly IServiceBusQueueRepository? _autoApproverQueueRepository;
 
         public PatchJobHandler(
             ILogger<PatchJobHandler> logger,
@@ -37,7 +42,8 @@ namespace Services.WebApi
             ISyncJobChangeRepository syncJobChangeRepository,
             IDatabaseTitlesRepository titlesRepository,
             IDatabaseSettingsRepository databaseSettingsRepository,
-            INotificationService notificationService)
+            INotificationService notificationService,
+            [FromKeyedServices("AutoApprover")] IServiceBusQueueRepository? autoApproverQueueRepository = null)
             : base(logger)
         {
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
@@ -47,6 +53,7 @@ namespace Services.WebApi
             _titlesRepository = titlesRepository ?? throw new ArgumentNullException(nameof(titlesRepository));
             _databaseSettingsRepository = databaseSettingsRepository ?? throw new ArgumentNullException(nameof(databaseSettingsRepository));
             _notificationService = notificationService ?? throw new ArgumentNullException(nameof(notificationService));
+            _autoApproverQueueRepository = autoApproverQueueRepository;
         }
 
         protected override async Task<PatchJobResponse> ExecuteCoreAsync(PatchJobRequest request)
@@ -237,8 +244,139 @@ namespace Services.WebApi
             // Handle General Update
             if (request.ChangeReason == SyncJobChangeReason.Update.ToString())
             {
-                var result = await ValidateAndUpdateSyncJob(request, syncJob, syncJobChange, SyncStatus.PendingReview.ToString());
-                if (result != null) return result;
+                // Capture the status the job had before this edit; the config-only fast path must preserve it.
+                var preEditStatus = syncJob.Status;
+                var isConfigUpdateAutoApprovalEnabled = await IsAutoApprovalForConfigurationUpdatesEnabledAsync();
+
+                if (!isConfigUpdateAutoApprovalEnabled)
+                {
+                    // Feature off: preserve today's behavior byte-for-byte — every update goes to PendingReview.
+                    var result = await ValidateAndUpdateSyncJob(request, syncJob, syncJobChange, SyncStatus.PendingReview.ToString());
+                    if (result != null) return result;
+                }
+                else
+                {
+                    // Classification must reflect the FINAL query the patch produces, not just the first /Query
+                    // operation: JSON Patch allows multiple ops on the same path and ApplyTo applies them all in
+                    // order, so reading only the first op could misclassify a real query change as config-only.
+                    // When /Query is absent the query cannot change, so it is config-only regardless of the stored
+                    // value (even if that stored value is unparseable legacy data).
+                    var hasQueryOperation = request.PatchDocument.Operations
+                        .Any(op => string.Equals(op.path, "/Query", StringComparison.OrdinalIgnoreCase));
+
+                    bool isConfigurationOnly;
+                    if (!hasQueryOperation)
+                    {
+                        isConfigurationOnly = true;
+                    }
+                    else
+                    {
+                        string? finalQuery = null;
+                        try
+                        {
+                            // Dry-run the patch against a throwaway DTO to obtain the fully-applied query. This does
+                            // not mutate syncJob; ValidateAndUpdateSyncJob re-applies the patch on the real path.
+                            var probe = MapEntityToDto(request.SyncJobId, syncJob);
+                            request.PatchDocument.ApplyTo(probe);
+                            finalQuery = probe.Query;
+                        }
+                        catch
+                        {
+                            // A malformed patch fails closed to the query-changing path; ValidateAndUpdateSyncJob
+                            // will surface the same failure when it re-applies the patch.
+                            finalQuery = null;
+                        }
+
+                        // Normalized-equal ⇒ config-only. Any difference, or an unparseable query on either side,
+                        // fails closed to the query-changing path.
+                        isConfigurationOnly = finalQuery != null
+                            && JsonParser.CompareQueries(syncJob.Query, finalQuery) == JsonParser.QueryEquivalence.Equal;
+                    }
+
+                    // Status preservation only makes sense for operational jobs. A job that is not currently
+                    // Idle or CustomerPaused (for example one a reviewer previously left in SubmissionRejected, or
+                    // an errored job) must not be silently auto-approved back into a non-schedulable, non-reviewable
+                    // state — that would strand it while telling the submitter it was approved. Such edits fall back
+                    // to today's PendingReview behavior so a human re-evaluates them.
+                    var canPreserveStatus = preEditStatus == SyncStatus.Idle.ToString()
+                        || preEditStatus == SyncStatus.CustomerPaused.ToString();
+
+                    if (isConfigurationOnly && canPreserveStatus)
+                    {
+                        // Config-only fast path: apply the change, preserve the pre-edit status (do NOT resume a paused
+                        // job), audit with UpdateAutoApproved, and notify only the submitter. The handler forces no
+                        // timing field, so nothing here expedites the sync (FR-010, FR-011).
+                        var result = await ValidateAndUpdateSyncJob(request, syncJob, syncJobChange, preEditStatus, SyncJobChangeReason.UpdateAutoApproved.ToString());
+                        if (result != null) return result;
+
+                        _logger.ConfigurationUpdateAutoApproved(request.SyncJobId);
+                        await _notificationService.SendSubmissionApprovedNotificationAsync(syncJob, syncJobChange);
+                    }
+                    else if (isConfigurationOnly)
+                    {
+                        // Config-only edit to a non-operational job (e.g. SubmissionRejected/error state): route to
+                        // PendingReview exactly as today rather than preserving a status that would strand the job.
+                        var result = await ValidateAndUpdateSyncJob(request, syncJob, syncJobChange, SyncStatus.PendingReview.ToString());
+                        if (result != null) return result;
+                    }
+                    else if (_autoApproverQueueRepository == null)
+                    {
+                        // Query changed but the AutoApprover host is disabled: fall back to human review; never leave
+                        // the job in PendingAutoApproval, which nothing would resolve (FR-014).
+                        var result = await ValidateAndUpdateSyncJob(request, syncJob, syncJobChange, SyncStatus.PendingReview.ToString());
+                        if (result != null) return result;
+                    }
+                    else
+                    {
+                        // Query-changing path: route the newly submitted query through the same AutoApprover the
+                        // onboarding producer uses (mirrors PostJobHandler).
+                        var result = await ValidateAndUpdateSyncJob(request, syncJob, syncJobChange, SyncStatus.PendingAutoApproval.ToString());
+                        if (result != null) return result;
+
+                        var autoApprovalMessage = new AutoApprovalQueueMessage
+                        {
+                            SyncJobId = request.SyncJobId,
+                            RequestorObjectId = request.UserIdentity,
+                            RequestorDisplayName = request.UserDisplayName,
+                            ChangedOnBehalfOfDisplayName = changedOnBehalfOfDisplayName,
+                            ChangedOnBehalfOfObjectId = changedOnBehalfOfObjectId,
+                            BusinessJustification = request.BusinessJustification,
+                            Origin = AutoApprovalOrigin.Update
+                        };
+
+                        var autoApprovalBody = Encoding.UTF8.GetBytes(JsonSerializer.Serialize(autoApprovalMessage));
+                        var autoApprovalServiceBusMessage = new ServiceBusMessage
+                        {
+                            MessageId = request.SyncJobId.ToString(),
+                            Body = autoApprovalBody
+                        };
+
+                        try
+                        {
+                            await _autoApproverQueueRepository.SendMessageAsync(autoApprovalServiceBusMessage);
+                            _logger.AutoApproverMessageSent(autoApprovalServiceBusMessage.MessageId);
+                        }
+                        catch (Exception ex)
+                        {
+                            // ValidateAndUpdateSyncJob mutated `syncJob` in place (MapDtoToEntity returns the same
+                            // instance) so it already carries the submitted query with PendingAutoApproval. The
+                            // AutoApprover only acts on queue messages; if enqueueing failed nothing would move the
+                            // job out of PendingAutoApproval, so revert it to PendingReview for human review while
+                            // keeping the submitted query intact (FR-013).
+                            _logger.AutoApproverMessageSendFailed(request.SyncJobId, ex);
+
+                            try
+                            {
+                                syncJob.Status = SyncStatus.PendingReview.ToString();
+                                await _databaseSyncJobsRepository.UpdateSyncJobsAsync(new[] { syncJob });
+                            }
+                            catch (Exception revertEx)
+                            {
+                                _logger.AutoApproverRevertToPendingReviewFailed(request.SyncJobId, revertEx);
+                            }
+                        }
+                    }
+                }
             }
 
             if (isAITitleEnabled && request.HasTitlesOperation)
@@ -263,10 +401,10 @@ namespace Services.WebApi
 
             return response;
         }
-        private async Task<PatchJobResponse> ValidateAndUpdateSyncJob(PatchJobRequest request, SyncJob syncJob, SyncJobChange syncJobChange, string status)
+        private async Task<PatchJobResponse> ValidateAndUpdateSyncJob(PatchJobRequest request, SyncJob syncJob, SyncJobChange syncJobChange, string status, string? changeReasonOverride = null)
         {
             var syncJobToPatch = MapEntityToDto(request.SyncJobId, syncJob);
-            var changeReason = request.ChangeReason;
+            var changeReason = changeReasonOverride ?? request.ChangeReason;
 
             var response = new PatchJobResponse();
 
@@ -382,6 +520,20 @@ namespace Services.WebApi
             catch (Exception ex)
             {
                 _logger.AITitleSettingRetrievalFailed(ex);
+                return false;
+            }
+        }
+
+        private async Task<bool> IsAutoApprovalForConfigurationUpdatesEnabledAsync()
+        {
+            try
+            {
+                var setting = await _databaseSettingsRepository.GetSettingByKeyAsync(SettingKey.IsAutoApprovalForConfigurationUpdatesEnabled);
+                return setting != null && bool.TryParse(setting.SettingValue, out bool result) && result;
+            }
+            catch (Exception ex)
+            {
+                _logger.AutoApprovalForConfigurationUpdatesSettingRetrievalFailed(ex);
                 return false;
             }
         }

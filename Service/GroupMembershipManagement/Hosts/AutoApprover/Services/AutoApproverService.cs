@@ -102,12 +102,19 @@ namespace Services.AutoApprover
                 return;
             }
 
-            if (syncJob.StartDate < DateTime.UtcNow)
+            if (syncJob.StartDate < DateTime.UtcNow && message.Origin == AutoApprovalOrigin.Onboarding)
             {
+                // The onboarding path pushes StartDate out 24h so a freshly onboarded job does not run immediately.
+                // An update-originated approval must never expedite or reschedule an existing job, so the +24h push
+                // is skipped entirely for Origin == Update (FR-017).
                 syncJob.StartDate = DateTime.UtcNow.AddHours(24);
             }
 
             syncJob.Status = SyncStatus.Idle.ToString();
+
+            var changeReason = message.Origin == AutoApprovalOrigin.Update
+                ? SyncJobChangeReason.UpdateAutoApproved
+                : SyncJobChangeReason.OnboardingAutoApproved;
 
             var changedOnBehalfOfDisplayName = message.ChangedOnBehalfOfDisplayName;
             var changedOnBehalfOfObjectId = message.ChangedOnBehalfOfObjectId;
@@ -119,7 +126,7 @@ namespace Services.AutoApprover
                 ChangedByObjectId = requestorObjectId,
                 ChangedByDisplayName = message.RequestorDisplayName,
                 ChangeSource = SyncJobChangeSource.WebApp,
-                ChangeReason = SyncJobChangeReason.OnboardingAutoApproved.ToString(),
+                ChangeReason = changeReason.ToString(),
                 ChangeDetails = SyncJobSerializationHelper.SerializeSyncJob(syncJob),
                 BusinessJustification = message.BusinessJustification,
                 ChangedOnBehalfOfDisplayName = changedOnBehalfOfDisplayName != null && changedOnBehalfOfDisplayName != message.RequestorDisplayName ? changedOnBehalfOfDisplayName : null,

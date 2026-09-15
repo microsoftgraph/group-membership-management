@@ -1774,5 +1774,161 @@ namespace Services.Tests
 
             VerifyPendingReview(m.Jobs, m.Changes);
         }
+
+        private static (Mock<IDatabaseSyncJobsRepository> jobs,
+                        Mock<IDatabaseSettingsRepository> settings,
+                        Mock<IGraphGroupRepository> graph,
+                        Mock<ISyncJobChangeRepository> changes,
+                        Mock<ILogger<AutoApproverService>> logger,
+                        SyncJob syncJob)
+            SetupGroupBasedApproval(Guid syncJobId, DateTime startDate)
+        {
+            var groupId = Guid.NewGuid();
+            var syncJob = new SyncJob
+            {
+                Id = syncJobId,
+                Status = SyncStatus.PendingAutoApproval.ToString(),
+                StartDate = startDate,
+                Query = $"[{{\"type\":\"GroupMembership\",\"source\":\"{groupId}\"}}]"
+            };
+
+            var jobs = new Mock<IDatabaseSyncJobsRepository>();
+            var settings = new Mock<IDatabaseSettingsRepository>();
+            var graph = new Mock<IGraphGroupRepository>();
+            var changes = new Mock<ISyncJobChangeRepository>();
+            var logger = new Mock<ILogger<AutoApproverService>>();
+
+            jobs.Setup(x => x.GetSyncJobAsync(syncJobId)).ReturnsAsync(syncJob);
+            settings.Setup(x => x.GetSettingByKeyAsync(SettingKey.IsAutoApprovalForGroupBasedSyncsEnabled))
+                    .ReturnsAsync(new Setting { SettingKey = SettingKey.IsAutoApprovalForGroupBasedSyncsEnabled, SettingValue = "true" });
+            settings.Setup(x => x.GetSettingByKeyAsync(SettingKey.IsAutoApprovalForRequestorIsOrgLeaderSyncsEnabled))
+                    .ReturnsAsync(new Setting { SettingKey = SettingKey.IsAutoApprovalForRequestorIsOrgLeaderSyncsEnabled, SettingValue = "false" });
+            graph.Setup(x => x.GetGroupsAsync(It.IsAny<List<Guid>>()))
+                 .ReturnsAsync(new List<AzureADGroup> { new AzureADGroup { ObjectId = groupId, Visibility = "Public" } });
+
+            return (jobs, settings, graph, changes, logger, syncJob);
+        }
+
+        [TestMethod]
+        public async Task ProcessAutoApproval_UpdateOrigin_ApprovesWithoutTouchingStartDateAsync()
+        {
+            // FR-017 / contract test 1: an Update-origin approval writes UpdateAutoApproved, moves the job to
+            // Idle, and MUST NOT push StartDate — an update never expedites or reschedules an existing job.
+            var syncJobId = Guid.NewGuid();
+            var requestorId = Guid.NewGuid().ToString();
+            var originalStartDate = new DateTime(2020, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+
+            var (jobs, settings, graph, changes, logger, syncJob) = SetupGroupBasedApproval(syncJobId, originalStartDate);
+            var service = CreateService(jobs, settings, graph, changes, logger);
+
+            await service.ProcessAutoApprovalAsync(new AutoApprovalQueueMessage
+            {
+                SyncJobId = syncJobId,
+                RequestorObjectId = requestorId,
+                RequestorDisplayName = "Requestor",
+                Origin = AutoApprovalOrigin.Update
+            });
+
+            jobs.Verify(x => x.UpdateSyncJobsAsync(It.Is<IEnumerable<SyncJob>>(j =>
+                j.First().Status == SyncStatus.Idle.ToString()), null), Times.Once);
+            changes.Verify(x => x.Save(It.Is<SyncJobChange>(c =>
+                c.SyncJobId == syncJobId && c.ChangeReason == SyncJobChangeReason.UpdateAutoApproved.ToString())), Times.Once);
+            Assert.AreEqual(originalStartDate, syncJob.StartDate, "Update-origin approval must not modify StartDate.");
+        }
+
+        [TestMethod]
+        public async Task ProcessAutoApproval_UpdateOrigin_DeclineMovesToPendingReviewAsync()
+        {
+            // FR-015 / contract test 2: an Update-origin decline lands in PendingReview with no audit record.
+            var syncJobId = Guid.NewGuid();
+            var requestorId = Guid.NewGuid().ToString();
+            var groupId = Guid.NewGuid();
+
+            var syncJob = new SyncJob
+            {
+                Id = syncJobId,
+                Status = SyncStatus.PendingAutoApproval.ToString(),
+                StartDate = new DateTime(2020, 1, 1, 0, 0, 0, DateTimeKind.Utc),
+                Query = $"[{{\"type\":\"GroupMembership\",\"source\":\"{groupId}\"}}]"
+            };
+
+            var jobs = new Mock<IDatabaseSyncJobsRepository>();
+            var settings = new Mock<IDatabaseSettingsRepository>();
+            var graph = new Mock<IGraphGroupRepository>();
+            var changes = new Mock<ISyncJobChangeRepository>();
+            var logger = new Mock<ILogger<AutoApproverService>>();
+
+            jobs.Setup(x => x.GetSyncJobAsync(syncJobId)).ReturnsAsync(syncJob);
+            settings.Setup(x => x.GetSettingByKeyAsync(SettingKey.IsAutoApprovalForGroupBasedSyncsEnabled))
+                    .ReturnsAsync(new Setting { SettingKey = SettingKey.IsAutoApprovalForGroupBasedSyncsEnabled, SettingValue = "true" });
+            settings.Setup(x => x.GetSettingByKeyAsync(SettingKey.IsAutoApprovalForRequestorIsOrgLeaderSyncsEnabled))
+                    .ReturnsAsync(new Setting { SettingKey = SettingKey.IsAutoApprovalForRequestorIsOrgLeaderSyncsEnabled, SettingValue = "false" });
+            graph.Setup(x => x.GetGroupsAsync(It.IsAny<List<Guid>>()))
+                 .ReturnsAsync(new List<AzureADGroup> { new AzureADGroup { ObjectId = groupId, Visibility = "HiddenMembership" } });
+
+            var service = CreateService(jobs, settings, graph, changes, logger);
+
+            await service.ProcessAutoApprovalAsync(new AutoApprovalQueueMessage
+            {
+                SyncJobId = syncJobId,
+                RequestorObjectId = requestorId,
+                RequestorDisplayName = "Requestor",
+                Origin = AutoApprovalOrigin.Update
+            });
+
+            jobs.Verify(x => x.UpdateSyncJobsAsync(It.Is<IEnumerable<SyncJob>>(j =>
+                j.First().Status == SyncStatus.PendingReview.ToString()), It.IsAny<SyncStatus?>()), Times.Once);
+            changes.Verify(x => x.Save(It.IsAny<SyncJobChange>()), Times.Never);
+        }
+
+        [TestMethod]
+        public async Task ProcessAutoApproval_OnboardingOrigin_PushesStartDateAndWritesOnboardingReasonAsync()
+        {
+            // FR-018 / contract test 3: onboarding behavior is unchanged — StartDate in the past is pushed out
+            // 24h and the audit reason stays OnboardingAutoApproved.
+            var syncJobId = Guid.NewGuid();
+            var requestorId = Guid.NewGuid().ToString();
+            var originalStartDate = new DateTime(2020, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+
+            var (jobs, settings, graph, changes, logger, syncJob) = SetupGroupBasedApproval(syncJobId, originalStartDate);
+            var service = CreateService(jobs, settings, graph, changes, logger);
+
+            await service.ProcessAutoApprovalAsync(new AutoApprovalQueueMessage
+            {
+                SyncJobId = syncJobId,
+                RequestorObjectId = requestorId,
+                RequestorDisplayName = "Requestor",
+                Origin = AutoApprovalOrigin.Onboarding
+            });
+
+            jobs.Verify(x => x.UpdateSyncJobsAsync(It.Is<IEnumerable<SyncJob>>(j =>
+                j.First().Status == SyncStatus.Idle.ToString()), null), Times.Once);
+            changes.Verify(x => x.Save(It.Is<SyncJobChange>(c =>
+                c.SyncJobId == syncJobId && c.ChangeReason == SyncJobChangeReason.OnboardingAutoApproved.ToString())), Times.Once);
+            Assert.IsTrue(syncJob.StartDate > DateTime.UtcNow, "Onboarding approval must push a past StartDate into the future.");
+        }
+
+        [TestMethod]
+        public async Task ProcessAutoApproval_MissingOrigin_DefaultsToOnboardingBehaviorAsync()
+        {
+            // FR-016 / contract test 4: a message serialized before the Origin field existed deserializes with
+            // Origin == Onboarding and behaves exactly like the onboarding path (StartDate push + Onboarding reason).
+            var syncJobId = Guid.NewGuid();
+            var requestorId = Guid.NewGuid().ToString();
+            var originalStartDate = new DateTime(2020, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+
+            var (jobs, settings, graph, changes, logger, syncJob) = SetupGroupBasedApproval(syncJobId, originalStartDate);
+            var service = CreateService(jobs, settings, graph, changes, logger);
+
+            var legacyJson = $"{{\"SyncJobId\":\"{syncJobId}\",\"RequestorObjectId\":\"{requestorId}\",\"RequestorDisplayName\":\"Requestor\"}}";
+            var message = System.Text.Json.JsonSerializer.Deserialize<AutoApprovalQueueMessage>(legacyJson);
+            Assert.AreEqual(AutoApprovalOrigin.Onboarding, message.Origin, "Absent Origin must default to Onboarding.");
+
+            await service.ProcessAutoApprovalAsync(message);
+
+            changes.Verify(x => x.Save(It.Is<SyncJobChange>(c =>
+                c.SyncJobId == syncJobId && c.ChangeReason == SyncJobChangeReason.OnboardingAutoApproved.ToString())), Times.Once);
+            Assert.IsTrue(syncJob.StartDate > DateTime.UtcNow, "Missing-origin message must behave like onboarding and push StartDate.");
+        }
     }
 }
