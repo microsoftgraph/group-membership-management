@@ -88,6 +88,24 @@ namespace Repositories.RetryPolicyProvider.Tests
             Assert.IsTrue(_delays[0] <= retryAt - before);
         }
 
+        [TestMethod]
+        public async Task RetryAfterPolicy_RetriesImmediatelyWhenHttpDateHasPassed()
+        {
+            using var throttled = new HttpResponseMessage(HttpStatusCode.TooManyRequests);
+            using var success = new HttpResponseMessage(HttpStatusCode.OK);
+            throttled.Headers.RetryAfter = new RetryConditionHeaderValue(DateTimeOffset.UtcNow.AddSeconds(-30));
+            var attempts = 0;
+
+            var result = await CreateProvider().CreateRetryAfterPolicy(null)
+                .ExecuteAsync(() => Task.FromResult(++attempts == 1 ? throttled : success));
+
+            // An elapsed Retry-After date yields a negative wait. Polly only sleeps when the
+            // duration is greater than zero, so the retry proceeds immediately instead of throwing.
+            Assert.AreSame(success, result);
+            Assert.AreEqual(2, attempts);
+            Assert.AreEqual(0, _delays.Count);
+        }
+
         [DataTestMethod]
         [DataRow(0)]
         [DataRow(1)]
