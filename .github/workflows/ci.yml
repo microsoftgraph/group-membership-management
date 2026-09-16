@@ -24,10 +24,10 @@ jobs:
     steps:
 
     - name: Checkout Action
-      uses: actions/checkout@v1
+      uses: actions/checkout@50fbc622fc4ef5163becd7fab6573eac35f8462e # v1.2.0
 
     - name: Use .NET Core
-      uses: actions/setup-dotnet@v1
+      uses: actions/setup-dotnet@871f041373faaad213a635d9afb62905ec029bbb # v1.10.1
       with:
         dotnet-version: 8.0.303
 
@@ -64,7 +64,7 @@ jobs:
       shell: powershell
 
     - name: publish functions to artifact
-      uses: actions/upload-artifact@v2
+      uses: actions/upload-artifact@82c141cc518b40d92cc801eee768e7aafc9c2fa2 # v2.3.1
       with:
         name: ${{ github.run_number }}
         path: upload/**
@@ -78,7 +78,7 @@ jobs:
       shell: powershell
 
     - name: publish artifact
-      uses: actions/upload-artifact@v2
+      uses: actions/upload-artifact@82c141cc518b40d92cc801eee768e7aafc9c2fa2 # v2.3.1
       with:
         name: ${{ github.run_number }}
         path: |
