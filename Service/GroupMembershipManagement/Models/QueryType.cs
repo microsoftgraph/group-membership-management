@@ -8,6 +8,7 @@ namespace Models
         Transitive = 0,
         Delta = 1,
         DeltaLink = 2,
-        Other = 3
+        Other = 3,
+        AgentUser = 4
     }
 }
