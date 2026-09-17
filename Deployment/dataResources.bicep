@@ -24,6 +24,11 @@ param isProduction bool = false
 @minValue(30)
 @maxValue(730)
 param logAnalyticsRetentionInDays int = 365
+
+@description('Provisioned throughput for the GPT deployment, expressed in kTPM (thousands of tokens per minute). Drives both the deployed capacity and the quota line on the dashboard tile.')
+@minValue(1)
+param openAIkTPMCapacity int = 150
+
 param notificationAlertThreshold int = 10
 param skipMailNotifications bool = false
 param isMailApplicationPermissionGranted bool = false
@@ -422,6 +427,7 @@ module dataInfrastructureTemplate '../Infrastructure/data/template.bicep' = {
     featureFlags: featureFlags
     skipNetworkingDeployment: skipNetworkingDeployment
     logAnalyticsRetentionInDays: logAnalyticsRetentionInDays
+    openAIkTPMCapacity: openAIkTPMCapacity
     enableMultiRegion: enableMultiRegion
     secondaryLocation: secondaryLocation
   }
