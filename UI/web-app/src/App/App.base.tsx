@@ -1,6 +1,6 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
-import { classNamesFunction, Icon, type IProcessedStyleSet } from '@fluentui/react';
+import { classNamesFunction, Icon, Link, type IProcessedStyleSet } from '@fluentui/react';
 import { useTheme } from '@fluentui/react/lib/Theme';
 import React, { useEffect, useState } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
@@ -21,7 +21,7 @@ import { fetchAlertBanner } from '../store/alertBanner.api';
 import { selectDashboardUrl } from '../store/settings.slice';
 import { AppFooter } from '../components/AppFooter';
 import { fetchDefaultSqlMembershipSource, fetchDefaultSqlMembershipSourceAttributes } from '../store/sqlMembershipSources.api';
-import { selectHasAccess, selectIsFetchingRoles } from '../store/roles.slice';
+import { selectHasAccess, selectHasAnyGmmRole, selectIsFetchingRoles } from '../store/roles.slice';
 import { fetchMyProfile } from '../store/userProfile.api';
 import { Disclaimer } from '../components/Disclaimer';
 import { jsxFormat } from '../utils/stringUtils';
@@ -45,6 +45,8 @@ export const AppBase: React.FunctionComponent<IAppProps> = (props: IAppProps) =>
   const profile = useSelector(selectProfile);
   const loggedIn = useSelector(selectLoggedIn);
   const hasAccess = useSelector(selectHasAccess);
+  // Distinguishes "provisioned, but owns no GMM-managed groups" from "not a provisioned GMM user".
+  const hasAnyGmmRole = useSelector(selectHasAnyGmmRole);
   const isFetchingRoles = useSelector(selectIsFetchingRoles);
   const operationStatusError = useSelector(selectOperationError);
   const dashboardUrl = useSelector(selectDashboardUrl);
@@ -126,19 +128,23 @@ export const AppBase: React.FunctionComponent<IAppProps> = (props: IAppProps) =>
             </> :
             <div className={classNames.permissionDenied}>
               <Text>
-                {isSafeDashboardUrl
-                  ? jsxFormat(
-                      strings.noOwnedGroupsAccessGuidance,
-                      <a
+                {hasAnyGmmRole ? strings.noOwnedGroupsReason : strings.noGmmAccessReason}
+                {isSafeDashboardUrl && (
+                  <>
+                    {' '}
+                    {jsxFormat(
+                      strings.accessGuidance,
+                      <Link
                         href={trimmedDashboardUrl}
                         target="_blank"
                         rel="noopener noreferrer"
-                        style={{ color: theme.palette.themePrimary, textDecoration: 'underline' }}
+                        underline={true}
                       >
-                        {strings.noOwnedGroupsAccessGuidanceLinkLabel}
-                      </a>
-                    )
-                  : strings.permissionDenied}
+                        {strings.accessGuidanceLinkLabel}
+                      </Link>
+                    )}
+                  </>
+                )}
               </Text>
             </div>
           )

@@ -244,7 +244,9 @@ const buildGmmApiMock = (
   },
 });
 
-test('renders existing permissionDenied message when user has no access and dashboardUrl is unset', async () => {
+const guidancePrefix = (template: string) => template.split('{0}')[0].trim();
+
+test('renders the no GMM access reason without guidance when user holds no role and dashboardUrl is unset', async () => {
   const authenticationService = new OfflineAuthenticationService();
   const rolesResponse = buildNoAccessRoles();
   const preloadedState = buildPreloadedState(authenticationService, rolesResponse);
@@ -259,13 +261,14 @@ test('renders existing permissionDenied message when user has no access and dash
     { store }
   );
 
-  expect(await screen.findByText(defaultStrings.permissionDenied)).toBeInTheDocument();
+  expect(await screen.findByText(defaultStrings.noGmmAccessReason)).toBeInTheDocument();
+  expect(container.textContent).not.toContain(guidancePrefix(defaultStrings.accessGuidance));
   expect(
     container.querySelector('a[href="https://example.com/gmm-info"]')
   ).toBeNull();
 });
 
-test('renders access guidance with dashboard link when user has no access and dashboardUrl is set', async () => {
+test('renders the no GMM access reason with shared guidance link when dashboardUrl is set', async () => {
   const authenticationService = new OfflineAuthenticationService();
   const rolesResponse = buildNoAccessRoles();
   const dashboardSettings = [
@@ -284,8 +287,11 @@ test('renders access guidance with dashboard link when user has no access and da
   );
 
   expect(
-    await screen.findByText(defaultStrings.noOwnedGroupsAccessGuidanceLinkLabel)
+    await screen.findByText(defaultStrings.accessGuidanceLinkLabel)
   ).toBeInTheDocument();
+  expect(container.textContent).toContain(defaultStrings.noGmmAccessReason);
+  expect(container.textContent).not.toContain(defaultStrings.noOwnedGroupsReason);
+  expect(container.textContent).toContain(guidancePrefix(defaultStrings.accessGuidance));
 
   const link = container.querySelector('a[href="https://example.com/gmm-info"]') as HTMLAnchorElement | null;
   expect(link).not.toBeNull();
@@ -293,7 +299,34 @@ test('renders access guidance with dashboard link when user has no access and da
   expect(link?.getAttribute('rel')).toBe('noopener noreferrer');
 });
 
-test('renders existing permissionDenied message when dashboardUrl uses an unsafe scheme', async () => {
+test('renders the no owned groups reason with the same guidance link when the user holds a GMM role', async () => {
+  const authenticationService = new OfflineAuthenticationService();
+  const rolesResponse = { ...buildNoAccessRoles(), isJobOwnerEnabler: true };
+  const dashboardSettings = [
+    { settingKey: SettingKey.DashboardUrl, settingValue: 'https://example.com/gmm-info' },
+  ];
+  const preloadedState = buildPreloadedState(authenticationService, rolesResponse);
+  const gmmApiMock = buildGmmApiMock(rolesResponse, dashboardSettings);
+
+  const store = setupStore(preloadedState, { authenticationService }, { gmmApi: gmmApiMock });
+
+  const { container } = renderWithProviders(
+    <MemoryRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+      <App />
+    </MemoryRouter>,
+    { store }
+  );
+
+  expect(
+    await screen.findByText(defaultStrings.accessGuidanceLinkLabel)
+  ).toBeInTheDocument();
+  expect(container.textContent).toContain(defaultStrings.noOwnedGroupsReason);
+  expect(container.textContent).not.toContain(defaultStrings.noGmmAccessReason);
+  expect(container.textContent).toContain(guidancePrefix(defaultStrings.accessGuidance));
+  expect(container.querySelector('a[href="https://example.com/gmm-info"]')).not.toBeNull();
+});
+
+test('renders the reason without guidance when dashboardUrl uses an unsafe scheme', async () => {
   const authenticationService = new OfflineAuthenticationService();
   const rolesResponse = buildNoAccessRoles();
   const dashboardSettings = [
@@ -311,7 +344,8 @@ test('renders existing permissionDenied message when dashboardUrl uses an unsafe
     { store }
   );
 
-  expect(await screen.findByText(defaultStrings.permissionDenied)).toBeInTheDocument();
+  expect(await screen.findByText(defaultStrings.noGmmAccessReason)).toBeInTheDocument();
+  expect(container.textContent).not.toContain(guidancePrefix(defaultStrings.accessGuidance));
   expect(container.querySelector('a[href^="javascript:"]')).toBeNull();
 });
 

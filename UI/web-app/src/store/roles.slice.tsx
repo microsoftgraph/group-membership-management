@@ -102,6 +102,14 @@ export const selectHasJobWritePermissions = (state: RootState) => {
   return state.roles.isJobOwnerWriter || state.roles.isJobTenantWriter;
 };
 
+// True when the user holds at least one GMM role. Someone who holds a role but still fails
+// selectHasAccess is a provisioned user whose scope resolves to no GMM-managed groups, which is a
+// different problem than simply not being a provisioned GMM user.
+export const selectHasAnyGmmRole = (state: RootState) => {
+  return Object.entries(state.roles)
+    .some(([role, isAssigned]) => role !== 'isFetchingRoles' && isAssigned === true);
+};
+
 export const selectIsJobWriter = (state: RootState) => {
   return state.roles.isJobOwnerWriter || state.roles.isJobTenantWriter;
 };

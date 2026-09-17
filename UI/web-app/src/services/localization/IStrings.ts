@@ -18,8 +18,10 @@ export type IStrings = {
   maintenanceTitle: string;
   maintenanceMessage: string;
   permissionDenied: string;
-  noOwnedGroupsAccessGuidance: string;
-  noOwnedGroupsAccessGuidanceLinkLabel: string;
+  noOwnedGroupsReason: string;
+  noGmmAccessReason: string;
+  accessGuidance: string;
+  accessGuidanceLinkLabel: string;
   HROnboarding: {
     orgLeader: string;
     provideOrgLeader: string;
