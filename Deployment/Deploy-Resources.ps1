@@ -1644,6 +1644,131 @@ function Set-SqlServerFirewallRule {
     Write-DeployPhase -Name 'Configuring SQL Server Firewall' -Event End
 }
 
+function Set-SqlContainedUser {
+    param (
+        [Parameter(Mandatory = $true)]
+        [string]$PrincipalName,
+        [Parameter(Mandatory = $true)]
+        [string]$ConnectionString,
+        [Parameter(Mandatory = $true)]
+        [string]$DatabaseName,
+        [Parameter(Mandatory = $true)]
+        [string]$SolutionAbbreviation,
+        [Parameter(Mandatory = $true)]
+        [string]$EnvironmentAbbreviation,
+        [string[]]$Roles = @('db_datareader', 'db_datawriter'),
+        [string]$PrincipalClientId
+    )
+
+    $sqlToken = Get-BearerToken -Resource "https://database.windows.net/"
+    $connection = New-Object System.Data.SqlClient.SqlConnection
+    $connection.ConnectionString = $ConnectionString
+    $connection.AccessToken = $sqlToken
+
+    $roleClauses = ($Roles | ForEach-Object { "ALTER ROLE $_ ADD MEMBER [$PrincipalName]" }) -join "
+            "
+
+    $sqlScript = "IF NOT EXISTS (SELECT * FROM sys.database_principals WHERE name = N'$PrincipalName')
+        BEGIN
+            CREATE USER [$PrincipalName] FROM EXTERNAL PROVIDER
+            $roleClauses
+        END"
+
+    $roleCommand = $connection.CreateCommand()
+    $roleCommand.CommandText = $sqlScript
+
+    Write-DeployLog -Level Info -Message "Granting permissions to $DatabaseName database for $PrincipalName"
+    Invoke-SqlOperationWithFirewallRetry `
+        -EnvironmentAbbreviation $EnvironmentAbbreviation `
+        -SolutionAbbreviation $SolutionAbbreviation `
+        -Operation {
+            $connection.Open()
+            [void]$roleCommand.ExecuteNonQuery()
+            $connection.Close()
+        }
+
+    $roleCommand.Dispose()
+    Write-DeployLog -Level Success -Message "Permissions granted to $DatabaseName database for $PrincipalName"
+
+    if ($PrincipalClientId) {
+        Assert-SqlContainedUserSid `
+            -PrincipalName $PrincipalName `
+            -Connection $connection `
+            -SolutionAbbreviation $SolutionAbbreviation `
+            -EnvironmentAbbreviation $EnvironmentAbbreviation `
+            -PrincipalClientId $PrincipalClientId
+    }
+}
+
+function Assert-SqlContainedUserSid {
+    param (
+        [Parameter(Mandatory = $true)]
+        [string]$PrincipalName,
+        [Parameter(Mandatory = $true)]
+        $Connection,
+        [Parameter(Mandatory = $true)]
+        [string]$SolutionAbbreviation,
+        [Parameter(Mandatory = $true)]
+        [string]$EnvironmentAbbreviation,
+        [Parameter(Mandatory = $true)]
+        [string]$PrincipalClientId
+    )
+
+    $sidCommand = $Connection.CreateCommand()
+    $sidCommand.CommandText = "SELECT CONVERT(uniqueidentifier, dp.sid) FROM sys.database_principals dp WHERE dp.name = N'$PrincipalName'"
+
+    $actualSid = $null
+    try {
+        Invoke-SqlOperationWithFirewallRetry `
+            -EnvironmentAbbreviation $EnvironmentAbbreviation `
+            -SolutionAbbreviation $SolutionAbbreviation `
+            -Operation {
+                $Connection.Open()
+                $script:sidResult = $sidCommand.ExecuteScalar()
+                $Connection.Close()
+            }
+        $actualSid = $script:sidResult
+    }
+    catch {
+        Write-DeployLog -Level Warn -Message "Could not read the SID for $PrincipalName ($($_.Exception.Message)). Skipping the SID check."
+        $sidCommand.Dispose()
+        return
+    }
+    $sidCommand.Dispose()
+
+    if ($null -eq $actualSid) {
+        Write-DeployLog -Level Warn -Message "No database principal named $PrincipalName was found when reading back its SID."
+        return
+    }
+
+    Write-DeployLog -Level Info -Message "$PrincipalName SID: $actualSid"
+
+    if ("$actualSid" -ine $PrincipalClientId) {
+        throw @"
+SQL contained user '$PrincipalName' has the WRONG SID.
+
+  expected (identity clientId / appId) : $PrincipalClientId
+  actual   (user SID in the database)  : $actualSid
+
+Azure SQL matches a managed identity's token to a contained user by the identity's
+appId. A user carrying any other value - most commonly the identity's objectId -
+looks healthy in sys.database_principals and in role-membership queries, and then
+fails EVERY login with error 18456, "token-identified principal is not a user in
+this database".
+
+Fix it by dropping and recreating the user from an Entra-authenticated session
+that is an admin of the logical server:
+
+  DROP USER [$PrincipalName];
+  CREATE USER [$PrincipalName] FROM EXTERNAL PROVIDER;
+
+Do not create the user with an explicit SID.
+"@
+    }
+
+    Write-DeployLog -Level Success -Message "$PrincipalName SID matches the identity's clientId."
+}
+
 function Set-SQLServerPermissions {
     param (
         [Parameter(Mandatory = $true)]
@@ -1653,7 +1778,9 @@ function Set-SQLServerPermissions {
         [Parameter(Mandatory = $true)]
         [string]$ConnectionString,
         [Parameter(Mandatory = $true)]
-        [string]$ConnectionStringADF
+        [string]$ConnectionStringADF,
+        [Parameter(Mandatory = $false)]
+        [bool]$DeployAks = $false
     )
 
     # SQL Permissions
@@ -1663,73 +1790,61 @@ function Set-SQLServerPermissions {
     $computeResourceGroup = "$SolutionAbbreviation-compute-$EnvironmentAbbreviation"
     $dataResourceGroup = "$SolutionAbbreviation-data-$EnvironmentAbbreviation"
 
+    $databaseNameJobs = "$SolutionAbbreviation-data-$EnvironmentAbbreviation"
+    $databaseNameADF = "$SolutionAbbreviation-data-$EnvironmentAbbreviation-adf"
+
     # Set the permissions for the user running the script.
-    $context = [Microsoft.Azure.Commands.Common.Authentication.Abstractions.AzureRmProfileProvider]::Instance.Profile.DefaultContext
-    $sqlToken = [Microsoft.Azure.Commands.Common.Authentication.AzureSession]::Instance.AuthenticationFactory.Authenticate($context.Account, $context.Environment, $context.Tenant.Id.ToString(), $null, [Microsoft.Azure.Commands.Common.Authentication.ShowDialog]::Never, $null, "https://database.windows.net").AccessToken
-    $connection = New-Object System.Data.SqlClient.SqlConnection
-    $connection.ConnectionString = $ConnectionString
-    $connection.AccessToken = $sqlToken
-
-    $sqlScript = "IF NOT EXISTS (SELECT * FROM sys.database_principals WHERE name = N'$($context.Account.Id)')
-        BEGIN
-            CREATE USER [$($context.Account.Id)] FROM EXTERNAL PROVIDER
-            ALTER ROLE db_datareader ADD MEMBER [$($context.Account.Id)]
-            ALTER ROLE db_datawriter ADD MEMBER [$($context.Account.Id)]
-            ALTER ROLE db_ddladmin ADD MEMBER [$($context.Account.Id)]
-        END"
-    
-    $roleCommand = $connection.CreateCommand()
-    $roleCommand.CommandText = $sqlScript
-
-    Write-DeployLog -Level Info -Message "Granting permissions to SQL database for $($context.Account.Id)"
-    Invoke-SqlOperationWithFirewallRetry `
+    Set-SqlContainedUser `
+        -PrincipalName           (Get-AzContext).Account.Id `
+        -ConnectionString        $ConnectionString `
+        -DatabaseName            $databaseNameJobs `
+        -SolutionAbbreviation    $SolutionAbbreviation `
         -EnvironmentAbbreviation $EnvironmentAbbreviation `
-        -SolutionAbbreviation $SolutionAbbreviation `
-        -Operation { 
-            $connection.Open()
-            [void]$roleCommand.ExecuteNonQuery() 
-            $connection.Close()
-        }
-
-    $roleCommand.Dispose()
-    Write-DeployLog -Level Success -Message "Permissions granted to SQL database for $($context.Account.Id)"
+        -Roles                   @('db_datareader', 'db_datawriter', 'db_ddladmin')
 
     # Set the permissions for the function apps.
     $functionApps = Invoke-WithRetry `
         -Operation { Get-AzResource -ResourceGroupName $computeResourceGroup -ResourceType "Microsoft.Web/sites" } `
         -OperationName "Get function apps for SQL permissions" `
         -MaxAttempts 3 -BaseDelaySeconds 2
-    
+
     foreach ($functionApp in $functionApps) {
 
         $isWebAPI = $functionApp.Name -match "-webapi"
-        $adminRoleClause = "ALTER ROLE db_ddladmin ADD MEMBER [$($functionApp.Name)]"
-        
-        $functionSqlScript = "IF NOT EXISTS (SELECT * FROM sys.database_principals WHERE name = N'$($functionApp.Name)')
-        BEGIN
-            CREATE USER [$($functionApp.Name)] FROM EXTERNAL PROVIDER
-            ALTER ROLE db_datareader ADD MEMBER [$($functionApp.Name)]
-            ALTER ROLE db_datawriter ADD MEMBER [$($functionApp.Name)]
-            $($isWebAPI ? $adminRoleClause : '')
-        END"
+        $functionAppRoles = $isWebAPI ? @('db_datareader', 'db_datawriter', 'db_ddladmin') : @('db_datareader', 'db_datawriter')
 
-        Write-DeployLog -Level Info -Message "Granting permissions to SQL database for $($functionApp.Name)"
-
-        $roleCommand = $connection.CreateCommand()
-        $roleCommand.CommandText = $functionSqlScript
-
-        Invoke-SqlOperationWithFirewallRetry `
+        Set-SqlContainedUser `
+            -PrincipalName           $functionApp.Name `
+            -ConnectionString        $ConnectionString `
+            -DatabaseName            $databaseNameJobs `
+            -SolutionAbbreviation    $SolutionAbbreviation `
             -EnvironmentAbbreviation $EnvironmentAbbreviation `
-            -SolutionAbbreviation $SolutionAbbreviation `
-            -Operation { 
-                $connection.Open()
-                [void]$roleCommand.ExecuteNonQuery() 
-                $connection.Close()
+            -Roles                   $functionAppRoles
+    }
+
+    if ($DeployAks -eq $true) {
+        $aksServices = @('JobTrigger')
+
+        foreach ($aksService in $aksServices) {
+            $aksIdentityName = "$SolutionAbbreviation-identity-$EnvironmentAbbreviation-aks-$aksService"
+
+            $aksIdentity = Invoke-WithRetry `
+                -Operation { Get-AzUserAssignedIdentity -ResourceGroupName $computeResourceGroup -Name $aksIdentityName -ErrorAction SilentlyContinue } `
+                -OperationName "Get AKS workload identity $aksIdentityName" `
+                -MaxAttempts 3 -BaseDelaySeconds 2
+
+            if ($null -eq $aksIdentity) {
+                throw "AKS workload identity '$aksIdentityName' was not found in '$computeResourceGroup'. It is created by aksPrereqs.bicep, which runs earlier in this deployment, so this means the AKS prerequisite deployment did not complete."
             }
 
-        $roleCommand.Dispose()
-
-        Write-DeployLog -Level Success -Message "Permissions granted to SQL database for $($functionApp.Name)"
+            Set-SqlContainedUser `
+                -PrincipalName           $aksIdentityName `
+                -ConnectionString        $ConnectionString `
+                -DatabaseName            $databaseNameJobs `
+                -SolutionAbbreviation    $SolutionAbbreviation `
+                -EnvironmentAbbreviation $EnvironmentAbbreviation `
+                -PrincipalClientId       $aksIdentity.ClientId
+        }
     }
 
     # ADF Permissions
@@ -1742,62 +1857,22 @@ function Set-SQLServerPermissions {
 
     if ($null -ne $dataFactory) {
 
-        $connectionADF = New-Object System.Data.SqlClient.SqlConnection
-        $connectionADF.ConnectionString = $ConnectionStringADF
-        $connectionADF.AccessToken = $sqlToken
-        
-        $dataFactorySqlScript = "IF NOT EXISTS (SELECT * FROM sys.database_principals WHERE name = N'$dataFactoryName')
-        BEGIN
-            CREATE USER [$dataFactoryName] FROM EXTERNAL PROVIDER
-            ALTER ROLE db_datareader ADD MEMBER [$dataFactoryName]
-            ALTER ROLE db_datawriter ADD MEMBER [$dataFactoryName]
-            ALTER ROLE db_ddladmin ADD MEMBER [$dataFactoryName]
-        END"
-
-        Write-DeployLog -Level Info -Message "Granting permissions to SQL database for $dataFactoryName"
-
-        $roleCommandADF = $connectionADF.CreateCommand()
-        $roleCommandADF.CommandText = $dataFactorySqlScript
-
-        Invoke-SqlOperationWithFirewallRetry `
+        Set-SqlContainedUser `
+            -PrincipalName           $dataFactoryName `
+            -ConnectionString        $ConnectionStringADF `
+            -DatabaseName            $databaseNameADF `
+            -SolutionAbbreviation    $SolutionAbbreviation `
             -EnvironmentAbbreviation $EnvironmentAbbreviation `
-            -SolutionAbbreviation $SolutionAbbreviation `
-            -Operation { 
-                $connectionADF.Open()
-                [void]$roleCommandADF.ExecuteNonQuery()
-                $connectionADF.Close()
-            }
-
-        $roleCommandADF.Dispose()
-
-        Write-DeployLog -Level Success -Message "Permissions granted to SQL database for $dataFactoryName"
+            -Roles                   @('db_datareader', 'db_datawriter', 'db_ddladmin')
 
         foreach ($functionApp in $functionAppsADF) {
 
-            $functionSqlScript = "IF NOT EXISTS (SELECT * FROM sys.database_principals WHERE name = N'$($functionApp.Name)')
-            BEGIN
-                CREATE USER [$($functionApp.Name)] FROM EXTERNAL PROVIDER
-                ALTER ROLE db_datareader ADD MEMBER [$($functionApp.Name)]
-                ALTER ROLE db_datawriter ADD MEMBER [$($functionApp.Name)]
-            END"
-
-            Write-DeployLog -Level Info -Message "Granting permissions to ADF database for $($functionApp.Name)"
-
-            $roleCommandADF = $connectionADF.CreateCommand()
-            $roleCommandADF.CommandText = $functionSqlScript
-
-            Invoke-SqlOperationWithFirewallRetry `
-                -EnvironmentAbbreviation $EnvironmentAbbreviation `
-                -SolutionAbbreviation $SolutionAbbreviation `
-                -Operation { 
-                    $connectionADF.Open()
-                    [void]$roleCommandADF.ExecuteNonQuery()
-                    $connectionADF.Close()
-                }
-
-            $roleCommandADF.Dispose()
-
-            Write-DeployLog -Level Success -Message "Permissions granted to ADF database for $($functionApp.Name)"
+            Set-SqlContainedUser `
+                -PrincipalName           $functionApp.Name `
+                -ConnectionString        $ConnectionStringADF `
+                -DatabaseName            $databaseNameADF `
+                -SolutionAbbreviation    $SolutionAbbreviation `
+                -EnvironmentAbbreviation $EnvironmentAbbreviation
         }
     }
     Write-DeployPhase -Name 'Granting SQL Database Permissions' -Event End
