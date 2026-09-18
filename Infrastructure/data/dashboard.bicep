@@ -3621,7 +3621,7 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
                   GridColumnsWidth: {
                     Message: '379px'
                   }
-                  Query: 'let gmm_logs = union\n  (ApplicationLog_CL | project TimeGenerated, Message, location_s, RunId_g),\n  (AppTraces | project TimeGenerated, Message, location_s=tostring(Properties.Location), RunId_g=tostring(Properties.RunId));\ngmm_logs\n| where isnotempty(location_s)\n| where ((location_s != "ProfileSync") and (Message has "exception" or Message has "error") and Message !has "Response" and Message !has "ErrorInvalidRecipients" and Message !has "Regex Expression:") or (Message has "Setting job status to" and Message !has "Idle" and Message !has "InProgress" and Message !has "StuckInProgress") \n| where Message !startswith "Dispatched job status"\n| where Message !startswith "Rate limit exceeded"\n| distinct TimeGenerated, location_s, Message, RunId_g\n| order by TimeGenerated desc\n'
+                  Query: 'let gmm_logs = union\n  (ApplicationLog_CL | project TimeGenerated, Message, location_s, RunId_g),\n  (AppTraces | project TimeGenerated, Message, location_s=tostring(Properties.Location), RunId_g=tostring(Properties.RunId));\nlet error_statuses = dynamic(["Error", "ErroredDueToStuckInProgress", "TeamsChannelError", "SchemaError"]);\ngmm_logs\n| where isnotempty(location_s)\n| where Message startswith "Updated sync job" or Message startswith "Set job status to" or Message startswith "Setting job status to"\n| where Message has_any (error_statuses)\n| distinct TimeGenerated, location_s, Message, RunId_g\n| order by TimeGenerated desc\n'
                   PartTitle: 'Jobs marked as Error'
                 }
               }
