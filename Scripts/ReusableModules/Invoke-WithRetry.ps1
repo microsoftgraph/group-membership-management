@@ -52,7 +52,7 @@ function Invoke-WithRetry {
                 throw
             }
 
-            $delaySeconds = [int]([Math]::Pow(2, $attempt - 1) * $BaseDelaySeconds)
+            $delaySeconds = $BaseDelaySeconds * (1 -shl ($attempt - 1))
             Write-Warning "'$OperationName' failed with transient error: $($_.Exception.Message)"
             Write-Warning "Retrying in $delaySeconds seconds (attempt $($attempt + 1)/$MaxAttempts)..."
             Start-Sleep -Seconds $delaySeconds
@@ -109,7 +109,7 @@ function Invoke-WithCreateRetry {
                 throw
             }
 
-            $delaySeconds = [int]([Math]::Pow(2, $attempt - 1) * $BaseDelaySeconds)
+            $delaySeconds = $BaseDelaySeconds * (1 -shl ($attempt - 1))
             Write-Warning "'$OperationName' create operation failed with transient error: $($_.Exception.Message)"
             Write-Warning "Retrying in $delaySeconds seconds (attempt $($attempt + 1)/$MaxAttempts)..."
             Start-Sleep -Seconds $delaySeconds
