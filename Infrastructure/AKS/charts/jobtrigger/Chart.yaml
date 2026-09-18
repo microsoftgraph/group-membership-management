@@ -1,0 +1,10 @@
+apiVersion: v2
+name: jobtrigger
+description: The timer-triggered Durable service that claims due sync jobs and dispatches them to the syncjobs Service Bus topic.
+type: application
+version: 0.1.0
+
+dependencies:
+  - name: gmm-service-lib
+    version: 0.1.0
+    repository: "file://../gmm-service-lib"

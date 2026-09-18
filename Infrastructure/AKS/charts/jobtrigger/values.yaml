@@ -1,0 +1,95 @@
+service:
+  name: jobtrigger
+
+workload:
+  timerTriggered: true
+
+replicaCount: 1
+
+image:
+  repository: ""
+  digest: ""
+  tag: ""
+  allowTag: false
+  pullPolicy: IfNotPresent
+
+workloadIdentity:
+  clientId: ""
+
+durable:
+  hubName: "jobtriggeraks"
+  hostId: "jobtrigger-aks"
+
+storage:
+  accountName: ""
+
+config:
+  appConfigurationEndpoint: ""
+  azureTokenCredentials: WorkloadIdentityCredential
+
+  # The host resolves `%name%` bindings while INDEXING functions, before the worker
+  # that loads App Configuration exists, so every `%...%` reference must be listed
+  # here. A missing entry leaves the pod Ready with that function not indexed.
+  bindingExpressionSettings:
+    jobTriggerSchedule: "0 */5 * * * *"
+
+keyVault:
+  tenantId: ""
+
+  names:
+    prereqs: ""
+    data: ""
+
+  vaults:
+    - alias: prereqs
+      secrets:
+        - { objectName: graphAppCertificateName,             key: graphCredentials__ClientCertificateName }
+        - { objectName: graphAppClientId,                    key: graphCredentials__ClientId }
+        - { objectName: graphAppClientSecret,                key: graphCredentials__ClientSecret }
+        - { objectName: graphAppTenantId,                    key: graphCredentials__TenantId }
+        - { objectName: senderUsername,                      key: senderAddress }
+        - { objectName: senderPassword,                      key: senderPassword }
+        - { objectName: supportEmailAddresses,               key: supportEmailAddresses }
+        - { objectName: teamsChannelServiceAccountObjectId,  key: teamsChannelServiceAccountObjectId }
+        - { objectName: teamsChannelServiceAccountUsername,  key: teamsChannelServiceAccountUsername }
+        - { objectName: teamsChannelServiceAccountPassword,  key: teamsChannelServiceAccountPassword }
+        - { objectName: teamsChannelAppCertificateName,      key: TeamsGraphCredentials__ClientCertificateName }
+        - { objectName: teamsChannelAppClientId,             key: TeamsGraphCredentials__ClientId }
+        - { objectName: teamsChannelAppClientSecret,         key: TeamsGraphCredentials__ClientSecret }
+        - { objectName: teamsChannelAppTenantId,             key: TeamsGraphCredentials__TenantId }
+    - alias: data
+      secrets:
+        - { objectName: appInsightsConnectionString,              key: APPLICATIONINSIGHTS_CONNECTION_STRING }
+        - { objectName: jobsMSIConnectionString,                  key: ConnectionStrings__JobsContext }
+        - { objectName: replicaJobsMSIConnectionString,           key: ConnectionStrings__JobsContextReadOnly }
+        - { objectName: serviceBusFQN,                            key: gmmServiceBus__fullyQualifiedNamespace }
+        - { objectName: serviceBusSyncJobTopic,                   key: serviceBusSyncJobTopic }
+        - { objectName: serviceBusNotificationsQueue,             key: serviceBusNotificationsQueue }
+        - { objectName: notifierProviderId,                       key: actionableEmailProviderId }
+        - { objectName: graphUserAssignedManagedIdentityClientId, key: graphCredentials__UserAssignedManagedIdentityClientId }
+
+terminationGracePeriodSeconds: 60
+
+# Sized from measured usage: memory P50/P95/max 854/1037/1168 MB, CPU P95 14.7%.
+# Exceeding the memory limit OOMKills the Durable host mid-activity, which produces
+# a terminal job Error rather than a retry.
+resources:
+  requests:
+    cpu: 300m
+    memory: 1Gi
+  limits:
+    cpu: 2000m
+    memory: 2Gi
+
+securityContext:
+  runAsNonRoot: true
+  # The Functions base image runs as root; it ships `app`, uid 1654 (not 1000).
+  runAsUser: 1654
+  runAsGroup: 1654
+  fsGroup: 1654
+  readOnlyRootFilesystem: false
+
+probes:
+  enabled: false
+
+revisionHistoryLimit: 3

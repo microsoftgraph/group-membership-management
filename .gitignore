@@ -194,3 +194,5 @@ ModelManifest.xml
 
 # VSCode
 .vscode/
+Infrastructure/AKS/charts/*/charts/*.tgz
+Infrastructure/AKS/charts/*/Chart.lock

@@ -1,0 +1,7 @@
+apiVersion: v2
+name: gmm-service-lib
+description: Helm library chart holding the partials shared by every containerized GMM service.
+type: library
+version: 0.1.0
+maintainers:
+  - name: GMM
