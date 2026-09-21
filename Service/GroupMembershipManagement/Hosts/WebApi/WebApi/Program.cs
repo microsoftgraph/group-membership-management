@@ -41,6 +41,7 @@ using Services.Contracts;
 using Services.Entities;
 using Services.WebApi;
 using Services.WebApi.Contracts;
+using Services.WebApi.DependencyInjection;
 using WebApi.BackgroundServices;
 using WebApi.Configuration;
 using WebApi.Models;
@@ -521,21 +522,7 @@ namespace WebApi
                 return new ServiceBusQueueRepository(sender);
             });
 
-            var openAIEndpoint = builder.Configuration["Settings:OpenAIEndpoint"];
-
-            // Registered first so it acts as the fallback when no approved AI endpoint is configured,
-            // producing a deterministic 503 instead of failing controller activation.
-            builder.Services.AddScoped<IFeedbackRefinementService, UnavailableFeedbackRefinementService>();
-
-            if (!string.IsNullOrWhiteSpace(openAIEndpoint))
-            {
-                // OpenAI service for title generation
-                builder.Services.AddSingleton<IOpenAIService, OpenAIService>();
-                // Copilot service for GMM Copilot chat and filter resolution
-                builder.Services.AddScoped<ICopilotService, CopilotService>();
-                // Rejection feedback refinement, additionally gated by a default-off database setting
-                builder.Services.AddScoped<IFeedbackRefinementService, FeedbackRefinementService>();
-            }
+            builder.Services.AddCopilotServices(builder.Configuration);
 
             builder.Services.AddSignalR().AddAzureSignalR(builder.Configuration["Settings:AzureSignalRConnectionString"]);
 

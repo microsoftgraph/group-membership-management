@@ -9,9 +9,10 @@ using System.ClientModel.Primitives;
 using System.Diagnostics.CodeAnalysis;
 using System.Net.Http;
 using Polly;
+using Microsoft.Extensions.Configuration;
 using Services.WebApi.Contracts;
 
-namespace WebApi.BackgroundServices
+namespace Services.WebApi
 {
     [ExcludeFromCodeCoverage]
     public class OpenAIService : IOpenAIService

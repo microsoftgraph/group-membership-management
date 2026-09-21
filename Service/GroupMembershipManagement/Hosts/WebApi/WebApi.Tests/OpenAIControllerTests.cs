@@ -6,7 +6,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
 using WebApi.Controllers.v1.OpenAI;
-using WebApi.BackgroundServices;
+using Services.WebApi;
 using System.Text.Json;
 using Models;
 using Microsoft.AspNetCore.Mvc;

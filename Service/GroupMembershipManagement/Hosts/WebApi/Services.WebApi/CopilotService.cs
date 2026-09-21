@@ -1,17 +1,15 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-using Azure.AI.OpenAI;
-using Azure.Identity;
-using Hosts.WebApi;
 using OpenAI.Chat;
+using Hosts.WebApi;
+using Services.WebApi.AI;
 using System.Collections.Concurrent;
 using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Configuration;
 using Models;
 using Polly;
 using Services.WebApi.Contracts;
@@ -154,24 +152,17 @@ namespace Services.WebApi
         #endregion
 
         public CopilotService(
-            IConfiguration configuration,
+            IChatClientFactory chatClientFactory,
             IServiceScopeFactory serviceScopeFactory,
             IDatabaseSettingsRepository settingsRepository,
             ILogger<CopilotService> logger)
         {
-            var endpoint = configuration["Settings:OpenAIEndpoint"];
+            ArgumentNullException.ThrowIfNull(chatClientFactory);
             _serviceScopeFactory = serviceScopeFactory ?? throw new ArgumentNullException(nameof(serviceScopeFactory));
             _settingsRepository = settingsRepository ?? throw new ArgumentNullException(nameof(settingsRepository));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
 
-            if (string.IsNullOrWhiteSpace(endpoint))
-            {
-                throw new ArgumentNullException(nameof(endpoint), "OpenAI endpoint is not configured.");
-            }
-
-            DefaultAzureCredential credential = new(DefaultAzureCredential.DefaultEnvironmentVariableName);
-            var openAIClient = new AzureOpenAIClient(new Uri(endpoint), credential);
-            _chatClient = openAIClient.GetChatClient("gpt-5.4-mini");
+            _chatClient = chatClientFactory.CreateChatClient();
 
             _retryPolicy = Policy
                 .Handle<Azure.RequestFailedException>(ex =>
