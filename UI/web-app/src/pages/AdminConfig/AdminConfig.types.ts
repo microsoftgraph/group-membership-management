@@ -64,6 +64,7 @@ export type AdminConfigStyles = {
   serviceNotificationInfoIcon: IStyle;
   dashboardToolbar: IStyle;
   dashboardSection: IStyle;
+  dashboardSectionRow: IStyle;
   dashboardHint: IStyle;
   dashboardEmpty: IStyle;
   dashboardCounts: IStyle;

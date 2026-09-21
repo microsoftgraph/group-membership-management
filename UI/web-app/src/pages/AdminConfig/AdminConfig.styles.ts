@@ -347,6 +347,19 @@ export const getStyles = (props: AdminConfigStyleProps): AdminConfigStyles => {
         dashboardSection: {
             marginTop: 24,
         },
+        // Approvals and on-behalf-of report the same shape of data over the same kind of window, so
+        // they pair up on a wide viewport and stack on narrow ones.
+        // minmax(0, 1fr) keeps the chart SVG from forcing a column wider than its half.
+        dashboardSectionRow: {
+            display: 'grid',
+            gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
+            gap: 24,
+            alignItems: 'start',
+            '@media (max-width: 1100px)': {
+                gridTemplateColumns: '1fr',
+                gap: 0,
+            },
+        },
         dashboardHint: {
             display: 'block',
             marginTop: 0,

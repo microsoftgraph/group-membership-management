@@ -399,6 +399,38 @@ const SUBMITTER_HUES = [
 
 const submitterHue = (index: number) => SUBMITTER_HUES[index % SUBMITTER_HUES.length];
 
+// The charts plot onto a string/band axis - IVerticalStackedChartProps types xAxisPoint as
+// `number | string`, so a real date axis is unavailable and d3 draws a tick for every band. That is
+// why xAxisTickCount is documented as "Does not work for string axis". Thinning therefore has to
+// happen in the data, by blanking the labels we do not want drawn.
+// The approvals and on-behalf-of charts share a row, so each only gets about half the page width.
+const MAX_SECTION_AXIS_LABELS = 10;
+const AXIS_ROTATE_ABOVE = 7;
+const ZERO_WIDTH_SPACE = '\u200b';
+
+const axisStride = (total: number, maxLabels: number): number =>
+  Math.max(1, Math.ceil(total / Math.max(1, maxLabels)));
+
+// How many labels survive thinning, which is what decides whether they still need rotating.
+const visibleAxisLabels = (total: number, maxLabels: number): number =>
+  total === 0 ? 0 : Math.ceil(total / axisStride(total, maxLabels));
+
+const thinAxisLabels = (data: IVerticalStackedChartProps[], maxLabels: number): IVerticalStackedChartProps[] => {
+  const stride = axisStride(data.length, maxLabels);
+  if (stride === 1) {
+    return data;
+  }
+  return data.map((point, index) => (index % stride === 0 ? point : {
+    ...point,
+    // A blanked band still needs a unique key, otherwise the band scale collapses it onto its
+    // neighbour and the two stacks draw on top of each other. Zero-width spaces are unique per
+    // index and render as nothing.
+    xAxisPoint: ZERO_WIDTH_SPACE.repeat(index + 1),
+    // The axis no longer shows this bucket, so keep its real label reachable on hover.
+    xAxisCalloutData: point.xAxisCalloutData ?? String(point.xAxisPoint)
+  }));
+};
+
 const formatChartDay = (value: string): string => {
   const parsed = parseUtc(value);
   return parsed
@@ -423,7 +455,7 @@ const ApprovalActivitySection: React.FunctionComponent<DashboardProps> = (props:
 
   const reviewers = useMemo(() => activity?.reviewers ?? [], [activity]);
 
-  const chartData: IVerticalStackedChartProps[] = useMemo(() => (activity?.days ?? []).map((day) => {
+  const chartData: IVerticalStackedChartProps[] = useMemo(() => thinAxisLabels((activity?.days ?? []).map((day) => {
     const points: IVSChartDataPoint[] = [];
     if (day.automated > 0) {
       points.push({ legend: labels.automated, data: day.automated, color: AUTOMATED_COLOR });
@@ -439,7 +471,7 @@ const ApprovalActivitySection: React.FunctionComponent<DashboardProps> = (props:
       }
     });
     return { xAxisPoint: formatChartDay(day.date), chartData: points };
-  }), [activity, reviewers, labels.automated, labels.rejectedSuffix]);
+  }), MAX_SECTION_AXIS_LABELS), [activity, reviewers, labels.automated, labels.rejectedSuffix]);
 
   const hasData = chartData.some((day) => day.chartData.length > 0);
 
@@ -512,6 +544,7 @@ const ApprovalActivitySection: React.FunctionComponent<DashboardProps> = (props:
                 barWidth={28}
                 hideLegend={false}
                 yAxisTickCount={5}
+                rotateXAxisLables={visibleAxisLabels(chartData.length, MAX_SECTION_AXIS_LABELS) > AXIS_ROTATE_ABOVE}
                 chartTitle={labels.approvals} />
             </div>
           )}
@@ -544,7 +577,7 @@ const OnBehalfOfSection: React.FunctionComponent<DashboardProps> = (props: Dashb
 
   const submitters = useMemo(() => activity?.submitters ?? [], [activity]);
 
-  const chartData: IVerticalStackedChartProps[] = useMemo(() => (activity?.days ?? []).map((day) => {
+  const chartData: IVerticalStackedChartProps[] = useMemo(() => thinAxisLabels((activity?.days ?? []).map((day) => {
     const points: IVSChartDataPoint[] = [];
     submitters.forEach((submitter, index) => {
       const hue = submitterHue(index);
@@ -557,7 +590,7 @@ const OnBehalfOfSection: React.FunctionComponent<DashboardProps> = (props: Dashb
       }
     });
     return { xAxisPoint: formatChartDay(day.date), chartData: points };
-  }), [activity, submitters, labels.update]);
+  }), MAX_SECTION_AXIS_LABELS), [activity, submitters, labels.update]);
 
   const hasData = chartData.some((day) => day.chartData.length > 0);
 
@@ -629,6 +662,7 @@ const OnBehalfOfSection: React.FunctionComponent<DashboardProps> = (props: Dashb
                 barWidth={28}
                 hideLegend={false}
                 yAxisTickCount={5}
+                rotateXAxisLables={visibleAxisLabels(chartData.length, MAX_SECTION_AXIS_LABELS) > AXIS_ROTATE_ABOVE}
                 chartTitle={labels.requestsOnBehalfOf} />
             </div>
           )}
@@ -897,8 +931,10 @@ const Dashboard: React.FunctionComponent<DashboardProps> = (props: DashboardProp
           </>}
       </div>
 
-      <ApprovalActivitySection classNames={classNames} strings={strings} />
-      <OnBehalfOfSection classNames={classNames} strings={strings} />
+      <div className={classNames.dashboardSectionRow}>
+        <ApprovalActivitySection classNames={classNames} strings={strings} />
+        <OnBehalfOfSection classNames={classNames} strings={strings} />
+      </div>
     </SettingsSection>
   );
 }
