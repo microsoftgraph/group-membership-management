@@ -301,6 +301,9 @@ namespace Services.WebApi
             int toolCallCount = 0;
             int totalInputTokens = 0;
             int totalOutputTokens = 0;
+            int totalTokens = 0;
+            var usageObserved = false;
+            var invokedTools = new List<string>();
 
             try
             {
@@ -316,8 +319,13 @@ namespace Services.WebApi
                     });
 
                     var chatCompletion = response.Value;
-                    totalInputTokens += chatCompletion.Usage?.InputTokenCount ?? 0;
-                    totalOutputTokens += chatCompletion.Usage?.OutputTokenCount ?? 0;
+                    if (chatCompletion.Usage is { } usage)
+                    {
+                        usageObserved = true;
+                        totalInputTokens += usage.InputTokenCount;
+                        totalOutputTokens += usage.OutputTokenCount;
+                        totalTokens += usage.TotalTokenCount;
+                    }
 
                     // Check if LLM wants to call a tool
                     if (chatCompletion.FinishReason == ChatFinishReason.ToolCalls)
@@ -326,6 +334,7 @@ namespace Services.WebApi
                         
                         var toolCallNames = string.Join(", ", chatCompletion.ToolCalls.Select(t => t.FunctionName));
                         _logger.CopilotToolCallIteration(toolCallCount, maxToolCalls, toolCallNames);
+                        invokedTools.AddRange(chatCompletion.ToolCalls.Select(t => t.FunctionName));
 
                         // Add assistant message with tool calls to conversation
                         messages.Add(new AssistantChatMessage(chatCompletion));
@@ -385,7 +394,17 @@ namespace Services.WebApi
                             ResultingQuery = applyResult.ResultingQuery,
                             AppliedOperations = applyResult.AppliedOperations,
                             Warning = applyResult.Warning,
-                            ErrorCode = applyResult.ErrorCode
+                            ErrorCode = applyResult.ErrorCode,
+                            InvokedTools = invokedTools,
+                            Usage = usageObserved
+                                ? new CopilotChatUsage
+                                {
+                                    InputTokens = totalInputTokens,
+                                    OutputTokens = totalOutputTokens,
+                                    TotalTokens = totalTokens,
+                                    ModelCallCount = toolCallCount + 1
+                                }
+                                : null
                         };
                     }
                 }

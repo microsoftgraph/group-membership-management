@@ -55,6 +55,17 @@ namespace Services.WebApi.Contracts
         /// </summary>
         public string? ErrorCode { get; set; }
 
+        /// <summary>
+        /// Tool function names invoked during this turn, in request order.
+        /// </summary>
+        public List<string> InvokedTools { get; set; } = new();
+
+        /// <summary>
+        /// Provider-reported token usage accumulated across model calls made for this turn.
+        /// Null when the provider did not return usage.
+        /// </summary>
+        public CopilotChatUsage? Usage { get; set; }
+
         // Convenience properties for backward compatibility (derived from first source part)
         public CopilotSourcePartResult? SourcePart => SourceParts.Count > 0 ? SourceParts[0] : null;
         public bool UseOrgStructure => SourceParts.Any(p => p.UseOrgStructure);
@@ -62,6 +73,14 @@ namespace Services.WebApi.Contracts
         public string? OrgLeaderEmail => SourceParts.FirstOrDefault(p => p.OrgLeaderEmail != null)?.OrgLeaderEmail;
         public string? OrgLeaderObjectId => SourceParts.FirstOrDefault(p => p.OrgLeaderObjectId != null)?.OrgLeaderObjectId;
         public int? OrgLeaderDepth => SourceParts.FirstOrDefault(p => p.OrgLeaderDepth != null)?.OrgLeaderDepth;
+    }
+
+    public class CopilotChatUsage
+    {
+        public long? InputTokens { get; set; }
+        public long? OutputTokens { get; set; }
+        public long? TotalTokens { get; set; }
+        public int ModelCallCount { get; set; }
     }
 
     public class CopilotSourcePartResult
