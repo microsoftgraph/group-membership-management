@@ -13,7 +13,7 @@ using System.Threading.Tasks;
 namespace Repositories.EntityFramework
 {
     /// <summary>
-    /// Consolidated implementation of <see cref="IDestinationResolver"/> that reads typed
+    /// EF-entity implementation of <see cref="IDestinationResolver"/> that reads typed
     /// destination identity from the Table-Per-Type model (<c>Destinations</c> plus the
     /// matching <c>GroupDestinations</c> / <c>TeamsChannelDestinations</c> row) using
     /// no-tracking <see cref="GMMReadContext"/> projections (contract:
@@ -25,11 +25,11 @@ namespace Repositories.EntityFramework
     /// This resolver is registered in place of the legacy resolver only after reconciliation
     /// readiness (feature-flag controlled); it does not change legacy writes.
     /// </summary>
-    public class ConsolidatedDestinationResolver : IDestinationResolver
+    public class DestinationEntityResolver : IDestinationResolver
     {
         private readonly GMMReadContext _readContext;
 
-        public ConsolidatedDestinationResolver(GMMReadContext readContext)
+        public DestinationEntityResolver(GMMReadContext readContext)
         {
             _readContext = readContext ?? throw new ArgumentNullException(nameof(readContext));
         }

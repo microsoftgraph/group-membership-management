@@ -1,4 +1,4 @@
-﻿// Copyright (c) Microsoft Corporation.
+// Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
 using Microsoft.EntityFrameworkCore;
@@ -14,14 +14,14 @@ using System.Threading.Tasks;
 namespace Repositories.EntityFramework.Tests
 {
     /// <summary>
-    /// T019: Consolidated <see cref="ConsolidatedDestinationResolver"/> equivalence tests.
+    /// T019: Consolidated <see cref="DestinationEntityResolver"/> equivalence tests.
     /// Typed group and Teams-channel identity must match the legacy resolver for equivalent
     /// records, and missing / wrong-type / both-type structures must be rejected with no
     /// per-job fallback (FR-016/FR-017, resolver-json-cutover.md Section Resolver behavior).
     /// The consolidated model is exercised over the EF in-memory provider.
     /// </summary>
     [TestClass]
-    public class ConsolidatedDestinationResolverTests
+    public class DestinationEntityResolverTests
     {
         private static readonly Guid GroupTypeId = Guid.Parse("aaaaaaaa-0000-0000-0000-000000000001");
         private static readonly Guid ChannelTypeId = Guid.Parse("aaaaaaaa-0000-0000-0000-000000000002");
@@ -66,7 +66,7 @@ namespace Repositories.EntityFramework.Tests
             using var context = NewReadContext();
             SeedGroup(context, syncJobId, objectId);
 
-            var consolidated = await new ConsolidatedDestinationResolver(context)
+            var consolidated = await new DestinationEntityResolver(context)
                 .ResolveAsync(new SyncJob { Id = syncJobId, MembershipType = "GroupMembership" });
 
             var legacy = await new LegacyDestinationResolver(
@@ -92,7 +92,7 @@ namespace Repositories.EntityFramework.Tests
             using var context = NewReadContext();
             SeedChannel(context, syncJobId, teamId, channelId);
 
-            var consolidated = await new ConsolidatedDestinationResolver(context)
+            var consolidated = await new DestinationEntityResolver(context)
                 .ResolveAsync(new SyncJob { Id = syncJobId, MembershipType = "TeamsChannelMembership" });
 
             var legacy = await new LegacyDestinationResolver(
@@ -114,14 +114,14 @@ namespace Repositories.EntityFramework.Tests
         public async Task ResolveAsync_NullSyncJob_ReturnsNull()
         {
             using var context = NewReadContext();
-            Assert.IsNull(await new ConsolidatedDestinationResolver(context).ResolveAsync(null));
+            Assert.IsNull(await new DestinationEntityResolver(context).ResolveAsync(null));
         }
 
         [TestMethod]
         public async Task ResolveAsync_MissingBaseRow_ReturnsNull_NoFallback()
         {
             using var context = NewReadContext();
-            var result = await new ConsolidatedDestinationResolver(context)
+            var result = await new DestinationEntityResolver(context)
                 .ResolveAsync(new SyncJob { Id = Guid.NewGuid(), MembershipType = "GroupMembership" });
             Assert.IsNull(result);
         }
@@ -134,7 +134,7 @@ namespace Repositories.EntityFramework.Tests
             context.Destinations.Add(new Destination { SyncJobId = syncJobId, DestinationType = MembershipTypes.GroupMembership.ToString() });
             context.SaveChanges();
 
-            var result = await new ConsolidatedDestinationResolver(context)
+            var result = await new DestinationEntityResolver(context)
                 .ResolveAsync(new SyncJob { Id = syncJobId });
             Assert.IsNull(result);
         }
@@ -154,7 +154,7 @@ namespace Repositories.EntityFramework.Tests
             });
             context.SaveChanges();
 
-            var result = await new ConsolidatedDestinationResolver(context)
+            var result = await new DestinationEntityResolver(context)
                 .ResolveAsync(new SyncJob { Id = syncJobId });
             Assert.IsNull(result);
         }
@@ -174,7 +174,7 @@ namespace Repositories.EntityFramework.Tests
             });
             context.SaveChanges();
 
-            var result = await new ConsolidatedDestinationResolver(context)
+            var result = await new DestinationEntityResolver(context)
                 .ResolveAsync(new SyncJob { Id = syncJobId });
             Assert.IsNull(result);
         }
@@ -193,7 +193,7 @@ namespace Repositories.EntityFramework.Tests
             });
             context.SaveChanges();
 
-            var result = await new ConsolidatedDestinationResolver(context)
+            var result = await new DestinationEntityResolver(context)
                 .ResolveAsync(new SyncJob { Id = syncJobId });
             Assert.IsNull(result);
         }
