@@ -229,7 +229,9 @@ than assuming the script applied them.
 ### Key Vault secrets published
 
 `functionApp.bicep` writes `agentReaderUrl` and `agentReaderFunctionName`; `postCompute.bicep` writes
-`agentReaderKey` once the app exists. ADF needs the URL and the key to invoke the starter. On a fresh
-environment ADF is deployed before this function app, so those two secret names must also be added to
-`$adfDataSecrets` in `Deployment/Deploy-Resources.ps1` when the pipeline wiring lands — otherwise the
-ADF template's `getSecret` call fails against a secret that does not yet exist.
+`agentReaderKey` once the app exists, both into the **data** key vault. ADF needs the URL and the key to
+invoke the starter. On a fresh environment ADF is deployed before this function app, so `agentReaderUrl`
+and `agentReaderKey` are listed in `$adfDataSecrets` in `Deployment/Deploy-Resources.ps1`, which seeds
+them with a `not-set` placeholder when absent — otherwise the ADF template's `getSecret` call would fail
+against a secret that does not yet exist. The placeholder is replaced with the real values when the
+function app is deployed; until then the AgentReader activity cannot reach the starter.

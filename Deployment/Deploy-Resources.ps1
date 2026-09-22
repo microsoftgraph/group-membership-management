@@ -842,7 +842,7 @@ function Set-ADFResources {
 
     # Ensure ADF secrets are set in the Key Vault
     Write-DeployPhase -Name 'Setting ADF Key Vault Secrets' -Event Begin
-    $adfDataSecrets = @("azureUserReaderUrl", "azureUserReaderKey", "adfStorageAccountName")
+    $adfDataSecrets = @("azureUserReaderUrl", "azureUserReaderKey", "agentReaderUrl", "agentReaderKey", "adfStorageAccountName")
     Set-DefaultSecretsIfMissing `
         -KeyVaultName $dataResourceGroup `
         -SecretNames $adfDataSecrets

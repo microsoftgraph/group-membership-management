@@ -24,6 +24,14 @@ param azureUserReaderUrl string
 @secure()
 param azureUserReaderFunctionKey string
 
+@description('AgentReader function url.')
+@secure()
+param agentReaderUrl string
+
+@description('AgentReader function key.')
+@secure()
+param agentReaderFunctionKey string
+
 @description('Name of adf storage account')
 @secure()
 param storageAccountName string
@@ -45,6 +53,7 @@ var dataFactoryName = factoryName
 var azureBlobStorageLinkedService = 'AzureBlobStorage_${resourceSuffix}'
 var destinationDatabaseLinkedService = 'DestinationDatabase_${resourceSuffix}'
 var azureUserReaderLinkedService = 'AzureUserReader_${resourceSuffix}'
+var agentReaderLinkedService = 'AgentReader_${resourceSuffix}'
 var populateDestinationPipelineName = 'PopulateDestinationPipeline_${resourceSuffix}'
 var destinationTableDataSet = 'DestinationTable_${resourceSuffix}'
 var mappingsTableDataSet = 'MappingsTable_${resourceSuffix}'
@@ -131,6 +140,42 @@ resource linkedService_AzureUserReader_NoAuth 'Microsoft.DataFactory/factories/l
       functionKey: {
         type: 'SecureString'
         value: azureUserReaderFunctionKey
+      }
+    }
+  }
+  dependsOn: []
+}
+
+resource linkedService_AgentReader 'Microsoft.DataFactory/factories/linkedServices@2018-06-01' = if (enableFunctionAuthentication) {
+  parent: dataFactory
+  name: agentReaderLinkedService
+  properties: {
+    annotations: []
+    type: 'AzureFunction'
+    typeProperties: {
+      functionAppUrl: agentReaderUrl
+      authentication: 'MSI'
+      resourceId: 'api://${functionAuthAppClientId}'
+      functionKey: {
+        type: 'SecureString'
+        value: agentReaderFunctionKey
+      }
+    }
+  }
+  dependsOn: []
+}
+
+resource linkedService_AgentReader_NoAuth 'Microsoft.DataFactory/factories/linkedServices@2018-06-01' = if (!enableFunctionAuthentication) {
+  parent: dataFactory
+  name: agentReaderLinkedService
+  properties: {
+    annotations: []
+    type: 'AzureFunction'
+    typeProperties: {
+      functionAppUrl: agentReaderUrl
+      functionKey: {
+        type: 'SecureString'
+        value: agentReaderFunctionKey
       }
     }
   }
@@ -484,6 +529,168 @@ resource Pipeline_PopulateDestinationPipeline 'Microsoft.DataFactory/factories/p
         }
       }
       {
+        name: 'AgentReader'
+        type: 'AzureFunctionActivity'
+        dependsOn: [
+          {
+            activity: 'Create Agents Index'
+            dependencyConditions: [
+              'Succeeded'
+            ]
+          }
+        ]
+        policy: {
+          timeout: '0.12:00:00'
+          retry: 0
+          retryIntervalInSeconds: 30
+          secureOutput: false
+          secureInput: false
+        }
+        userProperties: []
+        typeProperties: {
+          functionName: 'StarterFunction'
+          body: {
+            value: '@concat(\'{"RunId":"\', pipeline().RunId, \'"}\')'
+            type: 'Expression'
+          }
+          headers: {}
+          method: 'POST'
+        }
+        linkedServiceName: {
+          referenceName: agentReaderLinkedService
+          type: 'LinkedServiceReference'
+        }
+      }
+      {
+        name: 'Check AgentReader Completed Status'
+        type: 'Until'
+        dependsOn: [
+          {
+            activity: 'AgentReader'
+            dependencyConditions: [
+              'Succeeded'
+            ]
+          }
+        ]
+        userProperties: []
+        typeProperties: {
+          expression: {
+            value: '@not(or(equals(coalesce(activity(\'Check AgentReader Status\')?.output.runtimeStatus,\'DontCheck\'), \'Pending\'), equals(coalesce(activity(\'Check AgentReader Status\')?.output.runtimeStatus,\'DontCheck\'), \'Running\')))'
+            type: 'Expression'
+          }
+          activities: [
+            {
+              name: 'Wait on AgentReader'
+              type: 'Wait'
+              dependsOn: []
+              userProperties: []
+              typeProperties: {
+                waitTimeInSeconds: 30
+              }
+            }
+            {
+              name: 'Check AgentReader Status'
+              type: 'WebActivity'
+              dependsOn: [
+                {
+                  activity: 'Wait on AgentReader'
+                  dependencyConditions: [
+                    'Succeeded'
+                  ]
+                }
+              ]
+              policy: {
+                timeout: '0.00:10:00'
+                retry: 2
+                retryIntervalInSeconds: 300
+                secureOutput: false
+                secureInput: false
+              }
+              userProperties: []
+              typeProperties: {
+                method: 'GET'
+                headers: {}
+                linkedServices: [
+                  {
+                    referenceName: agentReaderLinkedService
+                    type: 'LinkedServiceReference'
+                  }
+                ]
+                url: {
+                  value: '@activity(\'AgentReader\').output.statusQueryGetUri'
+                  type: 'Expression'
+                }
+                ...(enableFunctionAuthentication ? {
+                  authentication: {
+                    type: 'MSI'
+                    resource: 'api://${functionAuthAppClientId}'
+                  }
+                } : {})
+              }
+            }
+            {
+              name: 'Set AgentReader Status'
+              type: 'SetVariable'
+              dependsOn: [
+                {
+                  activity: 'Check AgentReader Status'
+                  dependencyConditions: [
+                    'Succeeded'
+                  ]
+                }
+              ]
+              policy: {
+                secureOutput: false
+                secureInput: false
+              }
+              userProperties: []
+              typeProperties: {
+                variableName: 'agentReaderRuntimeStatus'
+                value: {
+                  value: '@coalesce(activity(\'Check AgentReader Status\')?.output.runtimeStatus,\'DontCheck\')'
+                  type: 'Expression'
+                }
+              }
+            }
+          ]
+          timeout: '0.03:00:00'
+        }
+      }
+      {
+        name: 'Gate AgentReader Terminal Status'
+        type: 'IfCondition'
+        dependsOn: [
+          {
+            activity: 'Check AgentReader Completed Status'
+            dependencyConditions: [
+              'Succeeded'
+            ]
+          }
+        ]
+        userProperties: []
+        typeProperties: {
+          expression: {
+            value: '@not(equals(variables(\'agentReaderRuntimeStatus\'), \'Completed\'))'
+            type: 'Expression'
+          }
+          ifTrueActivities: [
+            {
+              name: 'Fail AgentReader Step'
+              type: 'Fail'
+              dependsOn: []
+              userProperties: []
+              typeProperties: {
+                message: {
+                  value: '@concat(\'AgentReader did not complete successfully. Runtime status: \', variables(\'agentReaderRuntimeStatus\'))'
+                  type: 'Expression'
+                }
+                errorCode: 'AgentReaderFailed'
+              }
+            }
+          ]
+        }
+      }
+      {
         name: 'PopulateMappingsTableDataFlow'
         type: 'ExecuteDataFlow'
         dependsOn: [
@@ -611,6 +818,9 @@ resource Pipeline_PopulateDestinationPipeline 'Microsoft.DataFactory/factories/p
     }
     variables: {
       managerHierarchyStatus: {
+        type: 'String'
+      }
+      agentReaderRuntimeStatus: {
         type: 'String'
       }
     }

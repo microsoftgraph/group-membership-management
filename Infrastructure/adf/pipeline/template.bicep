@@ -54,6 +54,8 @@ module azureDataFactoryTemplate 'azureDataFactory.bicep' = {
 		sqlDatabaseName: sqlDatabaseName
 		azureUserReaderUrl: dataKeyVault.getSecret('azureUserReaderUrl')
 		azureUserReaderFunctionKey: dataKeyVault.getSecret('azureUserReaderKey')
+		agentReaderUrl: dataKeyVault.getSecret('agentReaderUrl')
+		agentReaderFunctionKey: dataKeyVault.getSecret('agentReaderKey')
 		storageAccountName: dataKeyVault.getSecret('adfStorageAccountName')
 		functionAuthAppClientId: functionAuthAppClientId
 		enableFunctionAuthentication: enableFunctionAuthentication
