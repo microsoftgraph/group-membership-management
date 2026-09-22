@@ -1,8 +1,6 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-using Azure.AI.OpenAI;
-using Azure.Identity;
 using Microsoft.Extensions.Configuration;
 using OpenAI.Chat;
 
@@ -13,7 +11,6 @@ namespace Services.WebApi.AI
     /// </summary>
     internal sealed class AzureOpenAIChatClientFactory : IChatClientFactory
     {
-        private const string DeploymentName = "gpt-5.4-mini";
         private readonly ChatClient _chatClient;
 
         public AzureOpenAIChatClientFactory(IConfiguration configuration)
@@ -28,9 +25,7 @@ namespace Services.WebApi.AI
                     nameof(configuration));
             }
 
-            var credential = new DefaultAzureCredential(DefaultAzureCredential.DefaultEnvironmentVariableName);
-            var openAIClient = new AzureOpenAIClient(new Uri(endpoint), credential);
-            _chatClient = openAIClient.GetChatClient(DeploymentName);
+            _chatClient = AzureOpenAIChatClientBuilder.Create(endpoint);
         }
 
         public ChatClient CreateChatClient() => _chatClient;

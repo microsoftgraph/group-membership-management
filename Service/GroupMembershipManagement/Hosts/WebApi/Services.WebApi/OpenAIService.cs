@@ -1,10 +1,9 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-using Azure.AI.OpenAI;
-using Azure.Core;
-using Azure.Identity;
 using OpenAI.Chat;
+using Services.WebApi.AI;
+using System.ClientModel;
 using System.ClientModel.Primitives;
 using System.Diagnostics.CodeAnalysis;
 using System.Net.Http;
@@ -18,8 +17,6 @@ namespace Services.WebApi
     public class OpenAIService : IOpenAIService
     {
         private readonly string _endpoint;
-        private readonly string _deploymentName = "gpt-5.4-mini";
-        private readonly AzureOpenAIClient _openAIClient;
         private readonly ChatClient _chatClient;
         private readonly IAsyncPolicy _retryPolicy;
 
@@ -32,23 +29,17 @@ namespace Services.WebApi
                 throw new ArgumentNullException(nameof(_endpoint), "OpenAI endpoint is not configured.");
             }
 
-            DefaultAzureCredential credential = new(DefaultAzureCredential.DefaultEnvironmentVariableName);
-
             // Retire pooled connections after 1s so retries reconnect to a healthy node instead of staying pinned to a wedged one returning 403.
             var transportHandler = new SocketsHttpHandler
             {
                 PooledConnectionLifetime = TimeSpan.FromSeconds(1)
             };
-            var clientOptions = new AzureOpenAIClientOptions
-            {
-                Transport = new HttpClientPipelineTransport(new HttpClient(transportHandler))
-            };
-
-            _openAIClient = new AzureOpenAIClient(new Uri(_endpoint), credential, clientOptions);
-            _chatClient = _openAIClient.GetChatClient(_deploymentName);
+            _chatClient = AzureOpenAIChatClientBuilder.Create(
+                _endpoint,
+                new HttpClientPipelineTransport(new HttpClient(transportHandler)));
 
             _retryPolicy = Policy
-                .Handle<Azure.RequestFailedException>(ex =>
+                .Handle<ClientResultException>(ex =>
                     ex.Status == 429 ||
                     ex.Status == 500 ||
                     ex.Status == 502 ||
@@ -91,7 +82,7 @@ namespace Services.WebApi
                     {
                         return await _chatClient.CompleteChatAsync(messages, requestOptions, timeoutCts.Token);
                     }
-                    catch (Azure.RequestFailedException ex) when (ex.Status == 429)
+                    catch (ClientResultException ex) when (ex.Status == 429)
                     {
                         throw new Exception($"OpenAI API rate limited (HTTP 429). Will retry with exponential backoff. Error: {ex.Message}");
                     }
@@ -134,7 +125,7 @@ namespace Services.WebApi
                     {
                         return await _chatClient.CompleteChatAsync(messages, requestOptions, timeoutCts.Token);
                     }
-                    catch (Azure.RequestFailedException ex) when (ex.Status == 429)
+                    catch (ClientResultException ex) when (ex.Status == 429)
                     {
                         throw new Exception($"OpenAI API rate limited (HTTP 429). Will retry with exponential backoff. Error: {ex.Message}");
                     }

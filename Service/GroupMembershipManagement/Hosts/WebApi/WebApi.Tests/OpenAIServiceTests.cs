@@ -9,7 +9,7 @@ using System.Net.Sockets;
 using Polly;
 using System.Diagnostics;
 using Azure.Identity;
-using Azure.Core;
+using System.ClientModel;
 
 namespace Services.Tests
 {
@@ -160,7 +160,7 @@ namespace Services.Tests
             catch (Exception ex)
             {
                 var isExpectedExceptionType = ex is TimeoutException ||
-                                            ex is Azure.RequestFailedException ||
+                                            ex is ClientResultException ||
                                             ex is HttpRequestException ||
                                             ex is OperationCanceledException ||
                                             ex is ArgumentException ||
@@ -203,7 +203,7 @@ namespace Services.Tests
             {
                 var isExpectedExceptionType = ex is ArgumentNullException ||
                                             ex is ArgumentException ||
-                                            ex is Azure.RequestFailedException ||
+                                            ex is ClientResultException ||
                                             ex is HttpRequestException ||
                                             ex is TimeoutException ||
                                             ex is OperationCanceledException ||
@@ -234,7 +234,7 @@ namespace Services.Tests
             catch (Exception ex)
             {
                 var isExpectedExceptionType = ex is ArgumentException ||
-                                            ex is Azure.RequestFailedException ||
+                                            ex is ClientResultException ||
                                             ex is HttpRequestException ||
                                             ex is TimeoutException ||
                                             ex is OperationCanceledException ||

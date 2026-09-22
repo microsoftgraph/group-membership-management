@@ -6,7 +6,10 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Azure.AI.OpenAI" />
+    <InternalsVisibleTo Include="WebApi.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
     <PackageReference Include="Azure.Identity" />
     <PackageReference Include="Azure.ResourceManager.AppService" />
     <PackageReference Include="Azure.ResourceManager.Storage" />
@@ -18,6 +21,7 @@
     <PackageReference Include="Microsoft.Data.SqlClient" />
     <PackageReference Include="Microsoft.EntityFrameworkCore" />
     <PackageReference Include="Microsoft.Graph" />
+    <PackageReference Include="OpenAI" />
     <PackageReference Include="Polly" />
   </ItemGroup>
 
