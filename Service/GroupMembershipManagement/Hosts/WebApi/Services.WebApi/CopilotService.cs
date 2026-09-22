@@ -44,10 +44,12 @@ namespace Services.WebApi
         // Request-scoped cache for attribute values to avoid duplicate DB queries within the same conversation turn
         private readonly ConcurrentDictionary<string, string> _attributeValueCache = new(StringComparer.OrdinalIgnoreCase);
 
+        private const int CopilotAttributeValueLimit = 25;
+
         #region Tool Definition
         private static readonly ChatTool GetAttributeValuesTool = ChatTool.CreateFunctionTool(
             functionName: "get_attribute_values",
-            functionDescription: "Get valid values for HR attributes from the database. ALWAYS call this before creating any filter to ensure you use correct attribute values. Never guess values.",
+            functionDescription: "Get valid values for HR attributes from the database. ALWAYS call this before creating any filter to ensure you use correct attribute values. Never guess values. If the user names a specific value, pass it as searchTerm so the database performs the match.",
             functionParameters: BinaryData.FromString(@"{
                 ""type"": ""object"",
                 ""properties"": {
@@ -55,6 +57,10 @@ namespace Services.WebApi
                         ""type"": ""array"",
                         ""items"": { ""type"": ""string"" },
                         ""description"": ""List of attribute names to get values for. Use exact attribute names from the available list.""
+                    },
+                    ""searchTerm"": {
+                        ""type"": ""string"",
+                        ""description"": ""Optional case-insensitive substring to match against Code or Description.""
                     }
                 },
                 ""required"": [""attributes""]
@@ -424,7 +430,7 @@ namespace Services.WebApi
                     return JsonSerializer.Serialize(new { error = "No attributes specified" });
                 }
 
-                var result = await FetchAttributeValuesAsync(args.Attributes);
+                var result = await FetchAttributeValuesAsync(args.Attributes, args.SearchTerm);
                 return result;
             }
             catch (Exception ex)
@@ -436,6 +442,7 @@ namespace Services.WebApi
         private class GetAttributeValuesArgs
         {
             public List<string>? Attributes { get; set; }
+            public string? SearchTerm { get; set; }
         }
 
         private async Task<string> ExecuteLookupPersonToolAsync(string argumentsJson)
@@ -997,10 +1004,13 @@ namespace Services.WebApi
             return CopilotPrompts.UserContextTemplate.Replace("{0}", string.Join("\n", parts));
         }
 
-        private async Task<string> FetchAttributeValuesAsync(List<string> attributeNames)
+        private async Task<string> FetchAttributeValuesAsync(List<string> attributeNames, string? searchTerm = null)
         {
-            // Check request-scoped cache: build a cache key from sorted attribute names
-            var cacheKey = string.Join(",", attributeNames.OrderBy(a => a, StringComparer.OrdinalIgnoreCase));
+            var normalizedSearch = string.IsNullOrWhiteSpace(searchTerm) ? null : searchTerm.Trim();
+
+            var cacheKey = string.Join("|",
+                string.Join(",", attributeNames.OrderBy(a => a, StringComparer.OrdinalIgnoreCase)),
+                normalizedSearch ?? string.Empty);
             if (_attributeValueCache.TryGetValue(cacheKey, out var cachedResult))
             {
                 return cachedResult;
@@ -1036,16 +1046,12 @@ namespace Services.WebApi
 
                 try
                 {
-                    var mappings = await sqlMembershipRepository.GetAttributeMappingsAsync(baseAttrName, tableName);
-                    if (mappings != null && mappings.Count > 0)
-                    {
-                        return (attrName, mappings, (string?)null);
-                    }
-                    return (attrName, new List<(string Code, string Description)>(), "No predefined values");
+                    var (mappings, hasMore) = await sqlMembershipRepository.GetAttributeMappingsPageAsync(baseAttrName, tableName, normalizedSearch, CopilotAttributeValueLimit, AttributeSearchMode.Substring);
+                    return (attrName, mappings ?? new List<(string Code, string Description)>(), hasMore, (string?)null);
                 }
                 catch (Exception ex)
                 {
-                    return (attrName, new List<(string Code, string Description)>(), ex.Message);
+                    return (attrName, new List<(string Code, string Description)>(), false, ex.Message);
                 }
             });
 
@@ -1053,32 +1059,39 @@ namespace Services.WebApi
 
             // Build structured JSON response for the tool
             var attributeValues = new Dictionary<string, object>();
-            foreach (var (attrName, mappings, error) in results)
+            foreach (var (attrName, mappings, hasMore, error) in results)
             {
-                if (!string.IsNullOrEmpty(error) && error != "No predefined values")
+                if (!string.IsNullOrEmpty(error))
                 {
                     attributeValues[attrName] = new { error };
                 }
                 else if (mappings.Count == 0)
                 {
-                    attributeValues[attrName] = new { values = Array.Empty<object>(), note = "No predefined values - use appropriate numeric or string values" };
-                }
-                else if (mappings.Count > 50)
-                {
-                    // Truncate detailed list to avoid token overflow, but include ALL codes (they're short)
-                    // so the LLM can find the user's requested value without asking to "search further"
-                    var truncated = mappings.Take(50).Select(m => new { code = m.Code, description = m.Description }).ToList();
-                    var allCodes = mappings.Select(m => m.Code).ToList();
-                    attributeValues[attrName] = new { 
-                        values = truncated, 
-                        totalCount = mappings.Count,
-                        note = $"Detailed descriptions shown for first 50 of {mappings.Count} values. ALL valid codes are listed in 'allCodes' — use them directly in filters. Do NOT ask the user to 'search further' or say a value is missing.",
-                        allCodes
+                    // Empty result — either the attribute has no predefined values, or a searchTerm
+                    // filtered everything out. Signal both cases so the LLM knows what happened.
+                    attributeValues[attrName] = new
+                    {
+                        values = Array.Empty<object>(),
+                        hasMore = false,
+                        searchTerm = normalizedSearch,
+                        note = normalizedSearch == null
+                            ? "No predefined values - use appropriate numeric or string values"
+                            : $"No matches for searchTerm '{normalizedSearch}'. Ask the user to check the spelling or use a different value; do NOT substitute a value from another attribute."
                     };
                 }
                 else
                 {
-                    attributeValues[attrName] = new { values = mappings.Select(m => new { code = m.Code, description = m.Description }).ToList() };
+                    attributeValues[attrName] = new
+                    {
+                        values = mappings.Select(m => new { code = m.Code, description = m.Description }).ToList(),
+                        hasMore,
+                        searchTerm = normalizedSearch,
+                        note = hasMore
+                            ? (normalizedSearch == null
+                                ? $"Showing first {mappings.Count} of many values. If the user named a specific value, call get_attribute_values again with searchTerm=<user's value>."
+                                : $"Showing first {mappings.Count} matches for searchTerm '{normalizedSearch}'. More rows exist — ask the user to narrow (e.g. add another word) and call get_attribute_values again with a more specific searchTerm.")
+                            : null
+                    };
                 }
             }
 
@@ -1086,7 +1099,7 @@ namespace Services.WebApi
             var wrappedResult = new Dictionary<string, object>
             {
                 ["attributes"] = attributeValues,
-                ["VALIDATION_RULE"] = "CRITICAL: For each attribute in a filter, the value MUST exist in that SAME attribute's values/allCodes above. If the user's requested value is NOT found for the specific attribute, you MUST stop, tell the user it was not found, and show alternatives. NEVER substitute a different value or use a value from another attribute."
+                ["VALIDATION_RULE"] = "CRITICAL: For each attribute in a filter, the value MUST exist in that SAME attribute's `values` above. If the user's requested value is NOT present and `hasMore` is true, you MUST call get_attribute_values AGAIN with searchTerm=<user's value> BEFORE claiming the value is missing. Only after a searchTerm call returns zero matches may you tell the user it was not found. NEVER substitute a value from another attribute."
             };
 
             var result = JsonSerializer.Serialize(wrappedResult, new JsonSerializerOptions { WriteIndented = false });

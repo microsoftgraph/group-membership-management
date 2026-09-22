@@ -36,6 +36,22 @@ namespace WebApi.Tests
         }
 
         [TestMethod]
+        public void ChatPrompt_DescribesAttributeValueSearch()
+        {
+            Assert.IsTrue(CopilotPrompts.ChatPrompt.Contains("searchTerm"),
+                "Prompt must reference `searchTerm` so the LLM knows to pass named values to the database.");
+            Assert.IsTrue(CopilotPrompts.ChatPrompt.Contains("substrings in both Code and Description"));
+            Assert.IsTrue(CopilotPrompts.ChatPrompt.Contains("Use separate calls"));
+        }
+
+        [TestMethod]
+        public void ChatPrompt_DoesNotReferenceObsoleteAllCodesField()
+        {
+            Assert.IsFalse(CopilotPrompts.ChatPrompt.Contains("allCodes"),
+                "Prompt must not reference the removed `allCodes` truncation field.");
+        }
+
+        [TestMethod]
         public void ChatPrompt_ContainsJsonOutputFormat()
         {
             Assert.IsTrue(CopilotPrompts.ChatPrompt.Contains("sourceParts"));

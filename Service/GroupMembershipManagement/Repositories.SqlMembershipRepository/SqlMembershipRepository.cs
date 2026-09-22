@@ -576,11 +576,10 @@ namespace Repositories.SqlMembershipRepository
         }
 
         /// <summary>
-        /// Returns a capped page of attribute mappings, optionally filtered by a prefix search on Code or Description.
-        /// <paramref name="search"/> matches the client-side behavior it replaces (starts-with, case-insensitive by collation).
+        /// Returns a capped page of attribute mappings, optionally filtered by a search on Code or Description.
         /// HasMore reports whether more rows matched than were returned, so the caller can offer server-side search.
         /// </summary>
-        public async Task<(List<(string Code, string Description)> Mappings, bool HasMore)> GetAttributeMappingsPageAsync(string attribute, string tableName, string? search = null, int top = DefaultAttributeMappingsPageSize)
+        public async Task<(List<(string Code, string Description)> Mappings, bool HasMore)> GetAttributeMappingsPageAsync(string attribute, string tableName, string? search = null, int top = DefaultAttributeMappingsPageSize, AttributeSearchMode matchMode = AttributeSearchMode.Prefix)
         {
             ValidateTableName(tableName);
             ValidateAttributeName(attribute);
@@ -602,7 +601,10 @@ namespace Repositories.SqlMembershipRepository
             var searchClause = hasSearch
                 ? @" AND (Code LIKE @Search ESCAPE '\' OR Description LIKE @Search ESCAPE '\')"
                 : string.Empty;
-            var selectQuery = $"SELECT DISTINCT TOP (@Top) Code, Description FROM [mappings].[{tableName}] WHERE ColumnName = @Attribute{searchClause} ORDER BY Description, Code";
+            var exactMatchOrder = hasSearch
+                ? "CASE WHEN Code = @ExactSearch OR Description = @ExactSearch THEN 0 ELSE 1 END, "
+                : string.Empty;
+            var selectQuery = $"SELECT TOP (@Top) Code, Description FROM (SELECT DISTINCT Code, Description FROM [mappings].[{tableName}] WHERE ColumnName = @Attribute{searchClause}) AS Mappings ORDER BY {exactMatchOrder}Description, Code";
 
             await retryPolicy.ExecuteAsync(async () =>
             {
@@ -619,7 +621,13 @@ namespace Repositories.SqlMembershipRepository
 
                         if (hasSearch)
                         {
-                            cmd.Parameters.Add(new SqlParameter("@Search", SqlDbType.NVarChar, 256) { Value = EscapeLikePattern(search.Trim()) + "%" });
+                            var trimmedSearch = search.Trim();
+                            var escaped = EscapeLikePattern(trimmedSearch);
+                            var searchPattern = matchMode == AttributeSearchMode.Substring
+                                ? "%" + escaped + "%"
+                                : escaped + "%";
+                            cmd.Parameters.Add(new SqlParameter("@Search", SqlDbType.NVarChar, 256) { Value = searchPattern });
+                            cmd.Parameters.Add(new SqlParameter("@ExactSearch", SqlDbType.NVarChar, 256) { Value = trimmedSearch });
                         }
 
                         using (var reader = await cmd.ExecuteReaderAsync(CommandBehavior.CloseConnection))
