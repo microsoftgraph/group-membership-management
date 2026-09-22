@@ -50,6 +50,7 @@ $sharedScriptsDirectory = Join-Path $PSScriptRoot "../Scripts"
 . (Join-Path $sharedScriptsDirectory 'ReusableModules/Invoke-WithRetry.ps1')
 . (Join-Path $sharedScriptsDirectory 'ReusableModules/DeploymentLogging.ps1')
 . (Join-Path $sharedScriptsDirectory 'FunctionAppCompat.ps1')
+. (Join-Path $sharedScriptsDirectory 'GMM-WebAPI-Operations.ps1')
 
 function Set-PostDeploymentUpdates {
     [CmdletBinding()]
@@ -147,7 +148,7 @@ function Set-Subscription {
 }
 
 function Set-ResourceProviders {
-    foreach ($namespace in @("Microsoft.ServiceBus", "Microsoft.Insights", "Microsoft.OperationalInsights", "Microsoft.AlertsManagement", "Microsoft.Storage", "Microsoft.AppConfiguration", "Microsoft.Sql", "Microsoft.Web", "Microsoft.DataFactory", "Microsoft.SignalRService", "Microsoft.DevTestLab", "Microsoft.ContainerService")) {
+    foreach ($namespace in @("Microsoft.ServiceBus", "Microsoft.Insights", "Microsoft.OperationalInsights", "Microsoft.AlertsManagement", "Microsoft.Storage", "Microsoft.AppConfiguration", "Microsoft.Sql", "Microsoft.Web", "Microsoft.Cdn", "Microsoft.DataFactory", "Microsoft.SignalRService", "Microsoft.DevTestLab", "Microsoft.ContainerService")) {
         Write-DeployLog -Level Info -Message "Checking if the resource provider $namespace is registered..."
         $provider = Invoke-WithRetry `
             -Operation { Get-AzResourceProvider -ProviderNamespace $namespace } `
@@ -950,7 +951,6 @@ function Get-CommonParameters {
     $commonParametersObject.parameters["dataKeyVaultName"] = @{"value" = $dataResourceGroup }
     $commonParametersObject.parameters["computeKeyVaultName"] = @{"value" = $computeResourceGroup }
     $commonParametersObject.parameters["appConfigurationName"] = @{"value" = "$SolutionAbbreviation-appConfig-$EnvironmentAbbreviation" }
-    $commonParametersObject.parameters["apiServiceBaseUri"] = @{"value" = "https://$SolutionAbbreviation-compute-$EnvironmentAbbreviation-webapi.azurewebsites.net" }
 
     return $commonParametersObject
 }
@@ -3023,6 +3023,10 @@ function Set-ConfigureWebApps {
         [Parameter(Mandatory = $false)]
         [AllowNull()]
         [AllowEmptyString()]
+        [string]$WebApiAppRegistrationId,
+        [Parameter(Mandatory = $false)]
+        [AllowNull()]
+        [AllowEmptyString()]
         [string]$StaticWebAppName,
         [Parameter(Mandatory = $true)]
         [boolean]$SkipPrivilegedDirectoryActions        
@@ -3166,8 +3170,65 @@ function Set-ConfigureWebApps {
             Write-DeployLog -Level Success -Message "Redirect URIs updated successfully"
         }
     }
+
+    Set-WebApiSwaggerRedirectUri `
+        -SolutionAbbreviation $SolutionAbbreviation `
+        -EnvironmentAbbreviation $EnvironmentAbbreviation `
+        -WebApiAppRegistrationId $WebApiAppRegistrationId
+
     Write-DeployPhase -Name 'Configuring CORS' -Event End
 }
+
+function Set-WebApiSwaggerRedirectUri {
+    param (
+        [Parameter(Mandatory = $true)]
+        [string]$SolutionAbbreviation,
+        [Parameter(Mandatory = $true)]
+        [string]$EnvironmentAbbreviation,
+        [Parameter(Mandatory = $false)]
+        [AllowNull()]
+        [AllowEmptyString()]
+        [string]$WebApiAppRegistrationId
+    )
+
+    $prereqsKeyVaultName = "$SolutionAbbreviation-prereqs-$EnvironmentAbbreviation"
+
+    if ([string]::IsNullOrWhiteSpace($WebApiAppRegistrationId)) {
+        Write-DeployLog -Level Info -Message "WebAPI App Registration ID not provided. Retrieving from Key Vault..."
+        $WebApiAppRegistrationId = Get-KeyVaultSecretWithFirewallRetry `
+            -ResourceGroup $prereqsKeyVaultName `
+            -VaultName $prereqsKeyVaultName `
+            -SecretName "webApiClientId" `
+            -AsPlainText
+    }
+
+    if ([string]::IsNullOrWhiteSpace($WebApiAppRegistrationId)) {
+        Write-DeployLog -Level Warn -Message "Unable to resolve the WebAPI App Registration ID; skipping the Swagger redirect URI."
+        return
+    }
+
+    $redirectUri = "$(Resolve-WebApiBaseUri -SolutionAbbreviation $SolutionAbbreviation -EnvironmentAbbreviation $EnvironmentAbbreviation)/swagger/oauth2-redirect.html"
+
+    $webApiApp = Get-MgApplication -Filter "appId eq '$WebApiAppRegistrationId'"
+    if ($null -eq $webApiApp) {
+        Write-DeployLog -Level Warn -Message "WebAPI application registration '$WebApiAppRegistrationId' was not found; skipping the Swagger redirect URI."
+        return
+    }
+
+    # Merge only. Existing entries are left alone so a deliberately added URI is never removed.
+    $currentRedirectUris = Get-Default -Value $webApiApp.Web.RedirectUris -Default @()
+    if ($currentRedirectUris -contains $redirectUri) {
+        Write-DeployLog -Level Info -Message "WebAPI Swagger redirect URI already registered; skipping."
+        return
+    }
+
+    Write-DeployLog -Level Info -Message "Adding the WebAPI Swagger redirect URI..."
+    Update-MgApplication `
+        -ApplicationId $webApiApp.Id `
+        -Web @{ RedirectUris = @($currentRedirectUris + $redirectUri) }
+    Write-DeployLog -Level Success -Message "WebAPI Swagger redirect URI added successfully"
+}
+
 function Set-PublishUICode {
     param (
         [Parameter(Mandatory = $true)]
@@ -3209,7 +3270,8 @@ function Set-PublishUICode {
     $computeResourceGroup = "$SolutionAbbreviation-compute-$EnvironmentAbbreviation"
     $prereqsResourceGroup = "$SolutionAbbreviation-prereqs-$EnvironmentAbbreviation"
     $prereqsKeyVaultName = "$SolutionAbbreviation-prereqs-$EnvironmentAbbreviation"
-    $webApiBaseUri = "https://$SolutionAbbreviation-compute-$EnvironmentAbbreviation-webapi.azurewebsites.net"
+    $webApiBaseUri = Resolve-WebApiBaseUri -SolutionAbbreviation $SolutionAbbreviation `
+        -EnvironmentAbbreviation $EnvironmentAbbreviation
 
     if ([string]::IsNullOrWhiteSpace($UIAppClientId)) {
         $UIAppClientId = Get-KeyVaultSecretWithFirewallRetry `
@@ -3706,7 +3768,12 @@ function Start-WebApiIfStopped {
     Write-DeployLog -Level Success -Message "WebAPI '$webApiName' is running."
 }
 
-function Start-EFMigrationViaWebAPI {
+# Confirms the WebApi answers its health endpoint through the canonical address. Front Door queues
+# configuration changes, so a newly deployed profile, endpoint, route and WAF association can take
+# roughly half an hour to propagate and the edge answers 404 until it does. Hitting the health
+# endpoint successfully also triggers EF migrations, which run as the WebApi wakes up.
+function Wait-WebApiReady {
+    [CmdletBinding()]
     param (
         [Parameter(Mandatory = $true)]
         [string]$SolutionAbbreviation,
@@ -3714,21 +3781,74 @@ function Start-EFMigrationViaWebAPI {
         [string]$EnvironmentAbbreviation
     )
 
-    # Call the WebAPI to perform EF migrations. The WebAPI performs EF migrations on startup. Calling any endpoint will trigger the startup process if the app is not already running.
-    # The endpoint will always return an error code, so we catch the error and ignore it.
-    Write-DeployPhase -Name 'Running EF Migrations' -Event Begin
-    Try{
-        Write-DeployLog -Level Info -Message "Invoking WebAPI to perform EF migrations..."
-        Invoke-WebRequest -Uri "https://$SolutionAbbreviation-compute-$EnvironmentAbbreviation-webapi.azurewebsites.net/" | Out-Null
-    }
-    Catch{
-        # Ignore the error
-    }
-    Finally {
-       Write-DeployLog -Level Success -Message "WebAPI invocation completed."
+    $timeoutMinutes = 45
+    $maxPollIntervalSeconds = 30
+
+    Write-DeployPhase -Name 'Waiting for WebApi readiness' -Event Begin
+
+    $baseUri = Resolve-WebApiBaseUri -SolutionAbbreviation $SolutionAbbreviation `
+        -EnvironmentAbbreviation $EnvironmentAbbreviation
+
+    # Poll at a capped interval instead of doubling without bound: unbounded exponential backoff has
+    # its coarsest resolution in the window where readiness normally arrives, so it can idle for many
+    # minutes after the endpoint is already serving.
+    $healthUri = "$($baseUri.TrimEnd('/'))/healthz"
+    $deadline = (Get-Date).AddMinutes($timeoutMinutes)
+    $delaySeconds = 2
+    $attempt = 0
+    $lastStatusText = ''
+    $lastHeartbeat = Get-Date
+
+    Write-DeployLog -Level Info -Message "Waiting up to $timeoutMinutes minute(s) for '$healthUri' to answer 200."
+
+    while ($true) {
+        $attempt++
+        $status = $null
+        $detail = ''
+
+        try {
+            $response = Invoke-WebRequest -Uri $healthUri -Method Get -MaximumRedirection 0 -TimeoutSec 30 -UseBasicParsing -ErrorAction Stop
+            $status = [int]$response.StatusCode
+        }
+        catch {
+            if ($_.Exception.Response) {
+                $status = [int]$_.Exception.Response.StatusCode
+            }
+            $detail = $_.Exception.Message
+        }
+
+        if ($status -eq 200) {
+            Write-DeployLog -Level Success -Message "WebApi answered 200 through the canonical endpoint after $attempt attempt(s)."
+            break
+        }
+
+        # 403 means the request reached the origin and the origin refused it, which points at an
+        # origin access restriction or an X-Azure-FDID mismatch. That is a misconfiguration rather
+        # than propagation, so waiting out the remaining budget would only delay the failure.
+        if ($status -eq 403) {
+            throw "WebApi health probe returned 403 from '$healthUri'. The origin rejected the request, which indicates an origin access restriction or a Front Door ID mismatch rather than configuration propagation. $detail"
+        }
+
+        $statusText = if ($status) { "HTTP $status" } else { 'no response' }
+
+        if ((Get-Date) -ge $deadline) {
+            throw "WebApi did not become ready at '$healthUri' within $timeoutMinutes minute(s). Last observed $statusText after $attempt attempt(s). If the address is correct, the app may have failed to start; check the WebApi startup logs for EF migration errors. $detail"
+        }
+
+        if ($statusText -ne $lastStatusText -or ((Get-Date) - $lastHeartbeat).TotalMinutes -ge 5) {
+            $remainingMinutes = [int]([Math]::Ceiling(($deadline - (Get-Date)).TotalMinutes))
+            Write-DeployLog -Level Info -Message "WebApi not ready yet ($statusText); about $remainingMinutes minute(s) of budget remaining."
+            $lastStatusText = $statusText
+            $lastHeartbeat = Get-Date
+        }
+
+        Start-Sleep -Seconds $delaySeconds
+        if ($delaySeconds -lt $maxPollIntervalSeconds) {
+            $delaySeconds = [Math]::Min($delaySeconds * 2, $maxPollIntervalSeconds)
+        }
     }
 
-    Write-DeployPhase -Name 'Running EF Migrations' -Event End
+    Write-DeployPhase -Name 'Waiting for WebApi readiness' -Event End
 }
 
 
@@ -3846,9 +3966,8 @@ function Deploy-Resources {
     if(!$isInitialDeployment) {
 
         . "$scriptsDirectory/GMM-WebAPI-Operations.ps1"
-
-        Write-DeployLog -Level Info -Message "Stopping GMM via WebApi Stop endpoint before deployment..."
         if($resetGMMType -eq "Credentials" -or $resetGMMType -eq "ServicePrincipal") {
+            Write-DeployLog -Level Info -Message "Stopping GMM via WebApi Stop endpoint before deployment..."
             Invoke-GMMOperation -OperationName "Stop" -AuthMethod $resetGMMType `
                 -SolutionAbbreviation $solutionAbbreviation `
                 -EnvironmentAbbreviation $environmentAbbreviation
@@ -3959,6 +4078,7 @@ function Deploy-Resources {
             -SolutionAbbreviation $solutionAbbreviation `
             -EnvironmentAbbreviation $environmentAbbreviation `
             -UIAppRegistrationId $appRegistrationSetupResult.UIAppId `
+            -WebApiAppRegistrationId $appRegistrationSetupResult.WebApiAppId `
             -SkipPrivilegedDirectoryActions $skipPrivilegedDirectoryActions
     }
     else {
@@ -3992,8 +4112,8 @@ function Deploy-Resources {
         -SolutionAbbreviation $solutionAbbreviation `
         -EnvironmentAbbreviation $environmentAbbreviation
 
-    # Call the WebAPI to perform EF migrations.
-    Start-EFMigrationViaWebAPI `
+    # Call the WebAPI to confirm readiness and trigger EF migrations.
+    Wait-WebApiReady `
         -SolutionAbbreviation $solutionAbbreviation `
         -EnvironmentAbbreviation $environmentAbbreviation
 

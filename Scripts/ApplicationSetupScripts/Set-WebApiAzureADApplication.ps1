@@ -485,7 +485,6 @@ function New-WebApiValidationConfiguration {
 	)
     
 	$webApiAppDisplayName = "$SolutionAbbreviation-webapi-$EnvironmentAbbreviation"
-	$replyUrls = @("https://$SolutionAbbreviation-compute-$EnvironmentAbbreviation-webapi.azurewebsites.net/swagger/oauth2-redirect.html")
     
 	$requiredResourceAccess = @{
 		ResourceAppId  = "00000003-0000-0000-c000-000000000000"
@@ -523,7 +522,6 @@ function New-WebApiValidationConfiguration {
 		requiredResourceAccess = @($requiredResourceAccess)
 		isFallbackPublicClient = $false
 		web                    = @{
-			redirectUris          = $replyUrls
 			implicitGrantSettings = @{
 				enableAccessTokenIssuance = $true
 				enableIdTokenIssuance     = $true

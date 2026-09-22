@@ -37,7 +37,7 @@ Notes:
 Add the following variables to your environment parameter file located in `/Service/GroupMembershipManagement/Hosts/UI/Infrastructure/compute/parameters/parameters.<environmentAbbreviation>.json`:
 
 - **apiAppClientId** (Set value as the application (client) id of `<solutionAbbreviation>`-webapi-`<environmentAbbreviation>`)
-- **apiServiceBaseUri** (Set value as `https://<solutionAbbreviation>-compute-<environmentAbbreviation>-webapi.azurewebsites.net`)
+- **apiServiceBaseUri** (Set value as the deployed Front Door endpoint address, obtained with `Resolve-WebApiBaseUri`; the hostname is generated, so do not construct it)
 - **uiAppTenantId** (Set value as the azure tenant id where the UI/WebApi applications are installed)
 - **uiAppClientId** (Set value as the application (client) id of `<solutionAbbreviation>`-ui-`<environmentAbbreviation>`)
 - **sharepointDomain** (Set value as the SharePoint domain for your tenant, i.e. m365x1234567.sharepoint.com )

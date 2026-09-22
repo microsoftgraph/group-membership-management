@@ -24,17 +24,12 @@ param skipNetworkingDeployment bool = true
 
 // UI parameters
 param customDomainName string = ''
-param apiServiceBaseUri string
 param uiLocation string
 param branch string = 'not-set'
 param repositoryUrl string = 'https://url'
 
 // API parameters
 param pipeline string
-
-//WebAPI, Notifier
-param apiHostname string = ''
-var resolvedApiHostname = apiHostname == '' ? '${solutionAbbreviation}-compute-${environmentAbbreviation}-webapi.azurewebsites.net' : apiHostname
 
 // Message Splitter
 param availableMessageSplitterSubscriptions array = [
@@ -640,7 +635,6 @@ module notifierComputeResources '../Service/GroupMembershipManagement/Hosts/Noti
     dataResourceGroup: dataResourceGroupName
     setRBACPermissions: setRBACPermissions
     featureFlags: featureFlags
-    apiHostname: resolvedApiHostname
     functionAuthAppClientId: functionAuthAppClientId
     enableFunctionAuthentication: enableFunctionAuthentication
   }
@@ -987,7 +981,6 @@ module webApiComputeResources '../Service/GroupMembershipManagement/Hosts/WebApi
     adfPipeline: pipeline
     setRBACPermissions: setRBACPermissions
     featureFlags: featureFlags
-    apiHostname: resolvedApiHostname
     skipNetworkingDeployment: skipNetworkingDeployment
     enableFunctionAuthentication: enableFunctionAuthentication
   }
@@ -1008,7 +1001,7 @@ module uiComputeResources '../Service/GroupMembershipManagement/Hosts/UI/Infrast
     branch: branch
     repositoryUrl: repositoryUrl
     customDomainName: customDomainName
-    apiServiceBaseUri: apiServiceBaseUri
+    apiServiceBaseUri: webApiComputeResources.outputs.apiServiceBaseUri
     dataResourceGroupName: dataResourceGroupName
     computeResourceGroupName: computeResourceGroupName
     provider: 'Custom'

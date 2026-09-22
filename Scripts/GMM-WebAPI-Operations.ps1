@@ -3,10 +3,15 @@
     Replaces the previously separate Stop-GMM.ps1, Reschedule-GMM.ps1, and Reset-GMM.ps1 scripts.
 
     Exports:
+      Address lookup:       Resolve-WebApiBaseUri
       Auth helpers:         Get-WebApiTokenWithServicePrincipal, Get-WebApiTokenWithCredentials
       Low-level operation:  Invoke-GMMWebApiOperation
       Main entry point:     Invoke-GMMOperation
       (Admin utilities moved to Set-WebApiAzureADApplication.ps1)
+
+    Dot-sourcing this file only defines helpers. It performs no sign-in, token acquisition,
+    Azure/WebApi request or deployment execution, so pre-Stop and UI-only paths can load it
+    on its own.
 #>
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -15,6 +20,65 @@
 
 . "$PSScriptRoot/ReusableModules/Get-KeyVaultSecretWithFirewallRetry.ps1"
 . "$PSScriptRoot/ReusableModules/Invoke-WithRetry.ps1"
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Canonical WebApi address
+# ─────────────────────────────────────────────────────────────────────────────
+
+function Get-ArmResource {
+    param(
+        [Parameter(Mandatory = $true)][string]$ResourceId,
+        [Parameter(Mandatory = $true)][string]$ApiVersion
+    )
+
+    try {
+        return Invoke-AzRestMethod -Method GET -Path "${ResourceId}?api-version=$ApiVersion" -WhatIf:$false -Confirm:$false -ErrorAction Stop
+    }
+    catch {
+        return $null
+    }
+}
+
+function Resolve-WebApiBaseUri {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)][string]$SolutionAbbreviation,
+        [Parameter(Mandatory)][string]$EnvironmentAbbreviation
+    )
+
+    $SubscriptionId = (Get-AzContext).Subscription.Id
+    $ResourceGroupName = "$SolutionAbbreviation-compute-$EnvironmentAbbreviation"
+
+    $resourcePrefix = "/subscriptions/$SubscriptionId/resourceGroups/$ResourceGroupName/providers"
+    $appName = "$SolutionAbbreviation-compute-$EnvironmentAbbreviation-webapi"
+    $profileName = "$SolutionAbbreviation-compute-$EnvironmentAbbreviation-frontdoor"
+
+    $endpoint = Get-ArmResource -ResourceId "$resourcePrefix/Microsoft.Cdn/profiles/$profileName/afdEndpoints/$appName" -ApiVersion '2024-02-01'
+    if ($endpoint.StatusCode -eq 200) {
+        $endpointHost = ($endpoint.Content | ConvertFrom-Json).properties.hostName
+        if (-not [string]::IsNullOrWhiteSpace($endpointHost)) {
+            return "https://$($endpointHost.ToLowerInvariant())"
+        }
+    }
+
+    $frontDoorProfile = Get-ArmResource -ResourceId "$resourcePrefix/Microsoft.Cdn/profiles/$profileName" -ApiVersion '2024-02-01'
+    if ($frontDoorProfile.StatusCode -ne 404) {
+        throw "Cannot use the WebApi address: the Front Door endpoint '$appName' is unavailable and ARM did not confirm that profile '$profileName' is absent (HTTP $($frontDoorProfile.StatusCode)). Resolve the Front Door deployment, the Microsoft.Cdn provider registration or the read permissions, then run this again."
+    }
+
+    $app = Get-ArmResource -ResourceId "$resourcePrefix/Microsoft.Web/sites/$appName" -ApiVersion '2024-04-01'
+    if ($app.StatusCode -ne 200) {
+        throw "Cannot use the WebApi address: '$appName' could not be read (HTTP $($app.StatusCode))."
+    }
+
+    $originHost = ($app.Content | ConvertFrom-Json).properties.defaultHostName
+    if ([string]::IsNullOrWhiteSpace($originHost)) {
+        throw "Cannot use the WebApi address: '$appName' reported no host name."
+    }
+
+    Write-Warning "WebApi Front Door does not exist yet. Using the currently deployed App Service address; after compute deployment origin restrictions block this address."
+    return "https://$($originHost.ToLowerInvariant())"
+}
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Auth Helpers
@@ -145,7 +209,9 @@ function Invoke-GMMWebApiOperation {
         [bool]$ThrowOnTimeout = $true
     )
 
-    $baseUrl = "https://$SolutionAbbreviation-compute-$EnvironmentAbbreviation-webapi.azurewebsites.net/api/v1/operations"
+    $baseUri = Resolve-WebApiBaseUri -SolutionAbbreviation $SolutionAbbreviation `
+        -EnvironmentAbbreviation $EnvironmentAbbreviation
+    $baseUrl = "$baseUri/api/v1/operations"
     $headers = @{
         "Authorization" = "Bearer $AccessToken"
         "Content-Type"  = "application/json"
@@ -230,14 +296,6 @@ function Invoke-GMMOperation {
         [ValidateNotNullOrEmpty()]
         [string]$EnvironmentAbbreviation
     )
-
-    $resourceGroupName = "$SolutionAbbreviation-compute-$EnvironmentAbbreviation"
-    $appName = "$resourceGroupName-webapi"
-    $app = Get-AzWebApp -ResourceGroupName $resourceGroupName -Name $appName -ErrorAction SilentlyContinue
-    
-    if (-not $app) {
-        throw "❌ Unable to retrieve the web app for GMM $($OperationName.ToLower())."
-    }
 
     $token = switch ($AuthMethod) {
         "ServicePrincipal" { Get-WebApiTokenWithServicePrincipal -SolutionAbbreviation $SolutionAbbreviation -EnvironmentAbbreviation $EnvironmentAbbreviation }

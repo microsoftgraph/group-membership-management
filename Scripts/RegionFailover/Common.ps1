@@ -15,6 +15,7 @@ $script:SharedScriptsDirectory = Split-Path -Parent $PSScriptRoot
 . (Join-Path $script:SharedScriptsDirectory 'ReusableModules/Get-KeyVaultSecretWithFirewallRetry.ps1')
 . (Join-Path $script:SharedScriptsDirectory 'ReusableModules/Set-KeyVaultSecretWithFirewallRetry.ps1')
 . (Join-Path $script:SharedScriptsDirectory 'FunctionAppCompat.ps1')
+. (Join-Path $script:SharedScriptsDirectory 'GMM-WebAPI-Operations.ps1')
 
 # Naming token for the secondary region's resources. Names derive from the environment abbreviation
 # alone, never from deployment state, which may be unreachable during the outage these scripts
@@ -246,6 +247,8 @@ function Get-GmmContext {
     $failoverGroupName = "$primaryServerName-fog"
 
     return [pscustomobject]@{
+        SolutionAbbreviation       = $SolutionAbbreviation
+        EnvironmentAbbreviation    = $EnvironmentAbbreviation
         SqlHostSuffix              = $sqlHostSuffix
         DataResourceGroupName      = $dataResourceGroupName
         ComputeResourceGroupName   = "$SolutionAbbreviation-compute-$EnvironmentAbbreviation"
@@ -368,15 +371,9 @@ function Get-OperationsBaseUrl {
         [Parameter(Mandatory = $true)][pscustomobject]$Context
     )
 
-    $webApi = Invoke-WithRetry `
-        -Operation { Get-AzWebApp -ResourceGroupName $Context.ComputeResourceGroupName -Name $Context.WebApiSiteName } `
-        -OperationName "Resolve the WebApi hostname for $($Context.WebApiSiteName)"
-
-    if (-not $webApi -or [string]::IsNullOrWhiteSpace($webApi.DefaultHostName)) {
-        throw "Unable to resolve the hostname for '$($Context.WebApiSiteName)' in '$($Context.ComputeResourceGroupName)'."
-    }
-
-    return "https://$($webApi.DefaultHostName)/api/v1/operations"
+    $baseUri = Resolve-WebApiBaseUri -SolutionAbbreviation $Context.SolutionAbbreviation `
+        -EnvironmentAbbreviation $Context.EnvironmentAbbreviation
+    return "$baseUri/api/v1/operations"
 }
 
 function Get-GmmServiceStatus {

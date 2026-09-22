@@ -32,12 +32,6 @@ param prereqsKeyVaultResourceGroup string = '${solutionAbbreviation}-prereqs-${e
 @description('Service plan name.')
 param servicePlanName string = '${solutionAbbreviation}-${resourceGroupClassification}-${environmentAbbreviation}-${substring(uniqueString(subscription().id,'Notifier'),0,8)}'
 
-@description('App service name.')
-param appServiceName string = '${solutionAbbreviation}-${resourceGroupClassification}-${environmentAbbreviation}-webapi'
-
-@description('Enter the hostname for the api')
-param apiHostname string = '${appServiceName}.azurewebsites.net'
-
 @description('Service plan sku')
 
 param servicePlanSku string = 'FC1'
@@ -136,7 +130,6 @@ var appSettings = {
   senderAddress: '@Microsoft.KeyVault(SecretUri=${reference(senderUsername, '2019-09-01').secretUriWithVersion})'
   senderPassword: '@Microsoft.KeyVault(SecretUri=${reference(senderPassword, '2019-09-01').secretUriWithVersion})'
   supportEmailAddresses: '@Microsoft.KeyVault(SecretUri=${reference(supportEmailAddresses, '2019-09-01').secretUriWithVersion})'
-  apiHostname: apiHostname
   serviceBusNotificationsTopic: '@Microsoft.KeyVault(SecretUri=${reference(serviceBusNotificationsTopic, '2019-09-01').secretUriWithVersion})'
   serviceBusNotificationsSubscription: '@Microsoft.KeyVault(SecretUri=${reference(serviceBusNotificationsSubscription, '2019-09-01').secretUriWithVersion})'
   notifierReplaySchedule: '0 */5 * * * *'

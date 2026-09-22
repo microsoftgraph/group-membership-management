@@ -25,9 +25,6 @@ param servicePlanName string = '${solutionAbbreviation}-${resourceGroupClassific
 @description('App service name.')
 param appServiceName string = '${solutionAbbreviation}-${resourceGroupClassification}-${environmentAbbreviation}-webapi'
 
-@description('Enter the hostname for the api')
-param apiHostname string = '${appServiceName}.azurewebsites.net'
-
 @description('Service plan sku')
 param servicePlanSku string = 'F1'
 
@@ -224,10 +221,6 @@ var appSettings = concat([
     value: '${solutionAbbreviation}-TeamsChannel-${environmentAbbreviation}'
   }
   {
-    name: 'Settings:ApiHostname'
-    value: apiHostname
-  }
-  {
     name: 'Settings:GraphCredentials:KeyVaultName'
     value: prereqsKeyVaultName
   }
@@ -390,6 +383,16 @@ module servicePlanTemplate 'servicePlan.bicep' = {
     maximumElasticWorkerCount: maximumElasticWorkerCount
   }
 }
+
+module frontDoorProfile 'frontDoorProfile.bicep' = {
+  name: 'frontDoorProfileTemplate-WebApi'
+  params: {
+    profileName: '${solutionAbbreviation}-${resourceGroupClassification}-${environmentAbbreviation}-frontdoor'
+    endpointName: '${solutionAbbreviation}-${resourceGroupClassification}-${environmentAbbreviation}-webapi'
+    logAnalyticsWorkspaceId: resourceId(dataResourceGroup, 'Microsoft.OperationalInsights/workspaces', '${solutionAbbreviation}-data-${environmentAbbreviation}')
+  }
+}
+
 module appService 'appService.bicep' = {
   name: 'appServiceTemplate-WebApi'
   params: {
@@ -397,6 +400,7 @@ module appService 'appService.bicep' = {
     location: location
     servicePlanName: servicePlanName
     appSettings: appSettings
+    frontDoorId: frontDoorProfile.outputs.frontDoorId
     dataKeyVaultName: dataKeyVaultName
     dataResourceGroup: dataResourceGroup
     prereqsKeyVaultName: prereqsKeyVaultName
@@ -413,6 +417,15 @@ module appService 'appService.bicep' = {
   ]
 }
 
+module frontDoorRoutes 'frontDoorRoutes.bicep' = {
+  name: 'frontDoorRoutesTemplate-WebApi'
+  params: {
+    profileName: frontDoorProfile.outputs.frontDoorProfileName
+    endpointName: frontDoorProfile.outputs.frontDoorEndpointName
+    originHostname: appService.outputs.defaultHostName
+  }
+}
+
 module openAINetworking 'openAIResources.bicep' = if (featureFlags.enableOpenAI) {
   name: 'openAINetworkingTemplate-WebApi'
   scope: resourceGroup(dataResourceGroup)
@@ -425,3 +438,5 @@ module openAINetworking 'openAIResources.bicep' = if (featureFlags.enableOpenAI)
     appService
   ]
 }
+
+output apiServiceBaseUri string = frontDoorProfile.outputs.apiServiceBaseUri

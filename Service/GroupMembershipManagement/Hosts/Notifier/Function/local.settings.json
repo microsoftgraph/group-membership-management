@@ -18,7 +18,6 @@
     "senderAddress": "",
     "senderPassword": "",
     "supportEmailAddresses": "",
-    "apiHostname": "",
     "serviceBusNotificationsTopic": "notifications",
     "serviceBusNotificationsSubscription": "notifier",
     "notifierReplaySchedule": "0 */5 * * * *"

@@ -11,6 +11,10 @@ param servicePlanName string
 @description('Application settings')
 param appSettings array
 
+@description('Unique Front Door profile ID allowed to reach the main site.')
+@minLength(1)
+param frontDoorId string
+
 @description('Name of the \'data\' key vault.')
 param dataKeyVaultName string
 
@@ -34,12 +38,29 @@ param setRBACPermissions bool
 
 var deployUserManagedIdentity = userManagedIdentities != null && userManagedIdentities != {}
 
+var ingressRestrictions = [
+  {
+    name: 'FrontDoor'
+    ipAddress: 'AzureFrontDoor.Backend'
+    tag: 'ServiceTag'
+    action: 'Allow'
+    priority: 100
+    headers: {
+      'x-azure-fdid': [
+        frontDoorId
+      ]
+    }
+  }
+]
+
+// Newer site APIs revalidate EndToEndEncryption, which Free plans do not support.
 resource websiteTemplate 'Microsoft.Web/sites@2022-03-01' = {
   name: name
   location: location
   kind: 'app'
   properties: {
     httpsOnly: true
+    publicNetworkAccess: 'Enabled'
     reserved: false
     serverFarmId: resourceId('Microsoft.Web/serverfarms', servicePlanName)
     siteConfig: {
@@ -47,6 +68,9 @@ resource websiteTemplate 'Microsoft.Web/sites@2022-03-01' = {
       cors: {
         supportCredentials: true
       }
+      ipSecurityRestrictions: ingressRestrictions
+      ipSecurityRestrictionsDefaultAction: 'Deny'
+      scmIpSecurityRestrictionsUseMain: false
     }
   }
   identity: {
@@ -89,7 +113,7 @@ resource sites_scm 'Microsoft.Web/sites/basicPublishingCredentialsPolicies@2022-
   ]
 }
 
-resource websiteConfig 'Microsoft.Web/sites/config@2022-03-01' = {
+resource websiteConfig 'Microsoft.Web/sites/config@2023-12-01' = {
   name: 'web'
   parent: websiteTemplate
   properties: {
@@ -97,6 +121,9 @@ resource websiteConfig 'Microsoft.Web/sites/config@2022-03-01' = {
     ftpsState: 'Disabled'
     minTlsVersion: '1.2'
     appSettings: appSettings
+    ipSecurityRestrictions: ingressRestrictions
+    ipSecurityRestrictionsDefaultAction: 'Deny'
+    scmIpSecurityRestrictionsUseMain: false
   }
   dependsOn: [
     sites_scm
@@ -105,5 +132,6 @@ resource websiteConfig 'Microsoft.Web/sites/config@2022-03-01' = {
 
 
 output principalId string = websiteTemplate.identity.principalId
+output defaultHostName string = websiteTemplate.properties.defaultHostName
 output outboundIpAddresses string = websiteTemplate.properties.outboundIpAddresses
 output possibleOutboundIpAddresses string = websiteTemplate.properties.possibleOutboundIpAddresses

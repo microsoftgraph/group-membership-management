@@ -75,9 +75,6 @@ namespace WebApi
             var azureAdInstanceUrl = azureAdConfigSection.GetValue<string>("Instance");
             azureAdInstanceUrl += azureAdInstanceUrl.Last() == '/' ? string.Empty : "/";
 
-            var apiHostName = builder.Configuration.GetValue<string>("Settings:ApiHostname");
-            var secureApiHostName = $"https://{apiHostName}";
-
             builder.Services.AddDbContext<GMMContext>(options =>
                 options.UseSqlServer(builder.Configuration.GetConnectionString("JobsContext"), sqlServerOptions =>
                 {
@@ -123,8 +120,7 @@ namespace WebApi
 
                 var validAudiences = new[] {
                         $"api://{azureAdClientId}",
-                        azureAdClientId,
-                        secureApiHostName
+                        azureAdClientId
                     };
 
                 options.TokenValidationParameters = new TokenValidationParameters
@@ -564,9 +560,11 @@ namespace WebApi
 
                 app.UseSwagger(c =>
                 {
-                    c.PreSerializeFilters.Add((swagger, httpReq) =>
+                    c.PreSerializeFilters.Add((swagger, _) =>
                     {
-                        swagger.Servers = new List<OpenApiServer> { new OpenApiServer { Url = $"{httpReq.Scheme}://{httpReq.Host.Value}" } };
+                        // Relative server URL keeps Try It Out on the browser's origin, which is the
+                        // Front Door endpoint rather than the origin host Front Door sends upstream.
+                        swagger.Servers = new List<OpenApiServer> { new OpenApiServer { Url = "/" } };
                     });
                 });
             }
@@ -610,6 +608,13 @@ namespace WebApi
             app.MapHub<SignalRService>("/servicestatus");
 
             app.MapControllers();
+
+            // Anonymous, rate-limit-exempt liveness probe. Front Door health probes and the
+            // deployment warmup require a 200 here; it reports process liveness only.
+            app.MapMethods("/healthz", ["GET", "HEAD"], () => Results.Ok())
+                .AllowAnonymous()
+                .DisableRateLimiting()
+                .ExcludeFromDescription();
 
             app.Run();
         }
