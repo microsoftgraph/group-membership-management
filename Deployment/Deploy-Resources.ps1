@@ -2971,22 +2971,22 @@ function Show-ManualRedirectURIInstructions {
     [CmdletBinding()]
     param(
         [Parameter(Mandatory = $true)]
-        [string]$SolutionAbbreviation,
+        [string]$ApplicationName,
         [Parameter(Mandatory = $true)]
-        [string]$EnvironmentAbbreviation,
+        [string]$AppRegistrationId,
         [Parameter(Mandatory = $true)]
-        [string]$UIAppRegistrationId,
-        [Parameter(Mandatory = $true)]
-        [string[]]$RedirectUris
+        [string[]]$RedirectUris,
+        [Parameter(Mandatory = $false)]
+        [string]$PlatformSection = 'Single-page application'
     )
 
     # Construct the direct link to the app registration's Authentication blade
-    $portalLink = "https://portal.azure.com/#view/Microsoft_AAD_RegisteredApps/ApplicationMenuBlade/~/Authentication/appId/$UIAppRegistrationId/isMSAApp~/false"
+    $portalLink = "https://portal.azure.com/#view/Microsoft_AAD_RegisteredApps/ApplicationMenuBlade/~/Authentication/appId/$AppRegistrationId/isMSAApp~/false"
 
     Write-DeployLog -Level Warn -Message "MANUAL REDIRECT URI UPDATE REQUIRED"
-    Write-DeployLog -Level Info -Message "The following redirect URIs need to be added to the UI application:"
-    Write-DeployLog -Level Info -Message "Application: $SolutionAbbreviation-ui-$EnvironmentAbbreviation"
-    Write-DeployLog -Level Info -Message "Application (client) ID: $UIAppRegistrationId`n"
+    Write-DeployLog -Level Info -Message "The following redirect URIs need to be added to the application:"
+    Write-DeployLog -Level Info -Message "Application: $ApplicationName"
+    Write-DeployLog -Level Info -Message "Application (client) ID: $AppRegistrationId`n"
     
     Write-DeployLog -Level Info -Message "Direct link to app registration:"
     Write-DeployLog -Level Info -Message "$portalLink`n"
@@ -3000,9 +3000,9 @@ function Show-ManualRedirectURIInstructions {
     Write-DeployLog -Level Info -Message "1. Click the direct link above or go to: https://portal.azure.com"
     Write-DeployLog -Level Info -Message "2. If using the portal link directly:"
     Write-DeployLog -Level Info -Message "- Navigate to Microsoft Entra ID > App registrations"
-    Write-DeployLog -Level Info -Message "- Find and select: $SolutionAbbreviation-ui-$EnvironmentAbbreviation"
+    Write-DeployLog -Level Info -Message "- Find and select: $ApplicationName"
     Write-DeployLog -Level Info -Message "- Go to 'Authentication' in the left menu"
-    Write-DeployLog -Level Info -Message "3. Under 'Single-page application', click 'Add URI'"
+    Write-DeployLog -Level Info -Message "3. Under '$PlatformSection', click 'Add URI'"
     Write-DeployLog -Level Info -Message "4. Add each of the redirect URIs listed above"
     Write-DeployLog -Level Info -Message "5. Click 'Save' at the top of the page`n"
     
@@ -3156,9 +3156,8 @@ function Set-ConfigureWebApps {
         if ($SkipPrivilegedDirectoryActions -eq $true) {
             # Manual mode - provide instructions
             Show-ManualRedirectURIInstructions `
-                -SolutionAbbreviation $SolutionAbbreviation `
-                -EnvironmentAbbreviation $EnvironmentAbbreviation `
-                -UIAppRegistrationId $UIAppRegistrationId `
+                -ApplicationName "$SolutionAbbreviation-ui-$EnvironmentAbbreviation" `
+                -AppRegistrationId $UIAppRegistrationId `
                 -RedirectUris $newRedirectUris
         }
         else {
@@ -3174,7 +3173,8 @@ function Set-ConfigureWebApps {
     Set-WebApiSwaggerRedirectUri `
         -SolutionAbbreviation $SolutionAbbreviation `
         -EnvironmentAbbreviation $EnvironmentAbbreviation `
-        -WebApiAppRegistrationId $WebApiAppRegistrationId
+        -WebApiAppRegistrationId $WebApiAppRegistrationId `
+        -SkipPrivilegedDirectoryActions $SkipPrivilegedDirectoryActions
 
     Write-DeployPhase -Name 'Configuring CORS' -Event End
 }
@@ -3188,7 +3188,9 @@ function Set-WebApiSwaggerRedirectUri {
         [Parameter(Mandatory = $false)]
         [AllowNull()]
         [AllowEmptyString()]
-        [string]$WebApiAppRegistrationId
+        [string]$WebApiAppRegistrationId,
+        [Parameter(Mandatory = $false)]
+        [boolean]$SkipPrivilegedDirectoryActions = $false
     )
 
     $prereqsKeyVaultName = "$SolutionAbbreviation-prereqs-$EnvironmentAbbreviation"
@@ -3219,6 +3221,17 @@ function Set-WebApiSwaggerRedirectUri {
     $currentRedirectUris = Get-Default -Value $webApiApp.Web.RedirectUris -Default @()
     if ($currentRedirectUris -contains $redirectUri) {
         Write-DeployLog -Level Info -Message "WebAPI Swagger redirect URI already registered; skipping."
+        return
+    }
+
+    if ($SkipPrivilegedDirectoryActions -eq $true) {
+        # Manual mode - the deployment holds read-only directory scope, so print instructions
+        # instead of attempting a write that would fail.
+        Show-ManualRedirectURIInstructions `
+            -ApplicationName "$SolutionAbbreviation-webapi-$EnvironmentAbbreviation" `
+            -AppRegistrationId $WebApiAppRegistrationId `
+            -RedirectUris @($redirectUri) `
+            -PlatformSection 'Web'
         return
     }
 
