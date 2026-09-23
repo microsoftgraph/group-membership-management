@@ -184,7 +184,7 @@ Informs owners that synchronization was paused because proposed membership addit
 ### Notification Name SubmissionRejectedNotification
 
 #### Purpose:
-Informs owners that their submission to onboard a new sync job or modify an existing one requires revision. It includes the reviewer's feedback and guidance to update and resubmit the membership configuration. The **Revise and resubmit** button opens the **Job Details** page in the GMM UI. The email also provides a support contact and explains what happens if the rejected submission is left unresolved.
+Informs owners that their submission to onboard a new sync job or modify an existing one requires revision. It includes the reviewer's feedback and guidance to update and resubmit the membership configuration. The **Revise and resubmit** button opens the **Job Details** page in the GMM UI. The email also provides a support contact and explains what happens if the rejected submission is left unresolved. The reviewer's feedback is rendered with the line breaks, blank lines, and leading indentation the reviewer typed; the text itself is HTML-encoded and no markdown is interpreted.
 
 #### Email Format:
 - Format: Styled HTML email

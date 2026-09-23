@@ -496,6 +496,28 @@ namespace Services.Notifier.Tests
         }
 
         [TestMethod]
+        public async Task BuildSubmissionRejectedFallbackAsync_PreservesLineBreaksAndIndentationInRejectionReason()
+        {
+            const string reason =
+                "Rejecting out of caution.\r\n" +
+                "\r\n" +
+                "The justification needs 2 things:\r\n" +
+                "    1. what the membership is used for\r\n" +
+                "    2. what the membership should look like";
+
+            var email = MakeSubmissionRejectedEmail(reason: reason);
+            var html = await _builder.BuildSubmissionRejectedFallbackAsync(email, GroupName, GroupId, JobUrl, SentDate);
+
+            // Blank line between paragraphs survives as two consecutive breaks.
+            StringAssert.Contains(html, "Rejecting out of caution.<br><br>The justification needs 2 things:");
+            // Leading indentation survives as non-breaking spaces.
+            StringAssert.Contains(html, "<br>&nbsp;&nbsp;&nbsp;&nbsp;1. what the membership is used for");
+            StringAssert.Contains(html, "<br>&nbsp;&nbsp;&nbsp;&nbsp;2. what the membership should look like");
+            // Raw newlines must not leak into the HTML body of the feedback block.
+            Assert.IsFalse(html.Contains("caution.\r\n"), "Reviewer feedback must not carry raw newlines into the HTML");
+        }
+
+        [TestMethod]
         public async Task BuildSubmissionRejectedFallbackAsync_HtmlEncodesRejectionReason()
         {
             const string maliciousReason = "<img src=x onerror=alert(1)>";

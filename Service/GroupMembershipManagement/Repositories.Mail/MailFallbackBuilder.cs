@@ -355,7 +355,7 @@ namespace Repositories.Mail
 
             var bodyHtml = new StringBuilder();
             bodyHtml.Append("<p style=\"margin:0;\">")
-                    .Append(System.Net.WebUtility.HtmlEncode(rejectionReason))
+                    .Append(RenderPreservingWhitespace(rejectionReason))
                     .Append("</p>");
 
             var title = _localizationRepository.TranslateSetting("SubmissionRejectedFallback.ReviewerFeedbackLabel");
@@ -1302,6 +1302,39 @@ namespace Repositories.Mail
                 (uri.Scheme == Uri.UriSchemeHttp || uri.Scheme == Uri.UriSchemeHttps))
                 return url;
             return string.Empty;
+        }
+
+        /// <summary>
+        /// HTML-encodes reviewer-authored text while preserving the line breaks, blank lines and
+        /// leading indentation the reviewer typed. Newlines become &lt;br&gt; and leading spaces/tabs
+        /// become non-breaking spaces, because HTML otherwise collapses both into a single space.
+        /// No markdown is interpreted: the text is untrusted reviewer input.
+        /// </summary>
+        private static string RenderPreservingWhitespace(string content)
+        {
+            if (string.IsNullOrEmpty(content))
+                return string.Empty;
+
+            var lines = content.Replace("\r\n", "\n").Replace("\r", "\n").Split('\n');
+            var html = new StringBuilder();
+
+            for (var i = 0; i < lines.Length; i++)
+            {
+                if (i > 0)
+                    html.Append("<br>");
+
+                var line = lines[i];
+                var indent = 0;
+                while (indent < line.Length && (line[indent] == ' ' || line[indent] == '\t'))
+                {
+                    html.Append(line[indent] == '\t' ? "&nbsp;&nbsp;&nbsp;&nbsp;" : "&nbsp;");
+                    indent++;
+                }
+
+                html.Append(System.Net.WebUtility.HtmlEncode(line.Substring(indent)));
+            }
+
+            return html.ToString();
         }
 
         private static string ConvertContentToHtml(string content)
