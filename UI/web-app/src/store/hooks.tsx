@@ -15,6 +15,7 @@ import { SourcePartQuery } from '../models/SourcePartQuery';
 import { SourcePartType } from '../models/SourcePartType';
 import { validateGroup } from './groups.api';
 import { validateSqlFilters } from './sqlMembershipSources.api';
+import { hasValueAfterOperator } from '../utils/filterValidationHelpers';
 
 // Use throughout the app instead of plain `useDispatch` and `useSelector`
 export const useAppDispatch: () => AppDispatch = useDispatch;
@@ -85,7 +86,21 @@ export const useQueryValidation = () => {
             }
           });
 
-          if (sqlFiltersToValidate.size > 0) {
+          // `Attribute = ''` is syntactically valid Sql, so the server-side filter check accepts it.
+          // Catch clauses with an empty value here so the advanced view cannot submit a predicate
+          // that would silently match (almost) no one.
+          const partsWithEmptyValues = Array.from(sqlFiltersToValidate.entries())
+            .filter(([, filter]) => !hasValueAfterOperator(filter))
+            .map(([index]) => index + 1);
+
+          if (partsWithEmptyValues.length > 0) {
+            isValid = false;
+            if (showValidationMessage) {
+              showValidationMessage(
+                `${strings.ManageMembership.labels.emptyFilterValues} (${partsWithEmptyValues.join(', ')})`
+              );
+            }
+          } else if (sqlFiltersToValidate.size > 0) {
             const sqlValidationResponse = await dispatch(validateSqlFilters(sqlFiltersToValidate)).unwrap();
             if (!sqlValidationResponse.isValid) {
               isValid = false;

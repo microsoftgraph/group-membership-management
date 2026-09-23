@@ -80,9 +80,52 @@ export function hasValidEqualityOperators(filter: string): boolean {
 }
 
 /**
+ * True when `value` is a quoted string literal with no meaningful content, e.g. `''`
+ * or `'   '`. `''''` is NOT empty: it is the escaped form of a single quote character.
+ */
+export function isEmptyQuotedLiteral(value: string): boolean {
+  const trimmed = value.trim();
+  if (trimmed.length < 2 || !trimmed.startsWith("'") || !trimmed.endsWith("'")) {
+    return false;
+  }
+  const inner = trimmed.slice(1, -1).replace(/''/g, "'");
+  return inner.trim() === '';
+}
+
+/**
+ * Splits the contents of an IN/NOT IN list into its individual entries,
+ * ignoring commas inside quoted literals.
+ */
+function splitInClauseEntries(list: string): string[] {
+  const entries: string[] = [];
+  let current = '';
+  let inQuote = false;
+
+  for (let i = 0; i < list.length; i++) {
+    const char = list[i];
+    if (char === "'") {
+      inQuote = !inQuote;
+      current += char;
+    } else if (char === ',' && !inQuote) {
+      entries.push(current);
+      current = '';
+    } else {
+      current += char;
+    }
+  }
+  entries.push(current);
+
+  return entries;
+}
+
+/**
  * Checks that every segment has a non-empty value after its equality operator
  * (and that IN/NOT IN values aren't empty `()`). Complements
  * `hasValidEqualityOperators`, which only verifies that an operator is present.
+ *
+ * An empty string literal (`Attribute = ''`) is treated as missing: the visual filter
+ * builder quotes nvarchar values, so a cleared value box serializes to `''`, which would
+ * otherwise reach the database as a predicate that matches (almost) nobody.
  */
 export function hasValueAfterOperator(filter: string): boolean {
   if (!filter || filter.trim() === '') return false;
@@ -101,7 +144,16 @@ export function hasValueAfterOperator(filter: string): boolean {
 
       const value = match[1].trim();
       if (!value) return false;
-      if ((op === 'IN' || op === 'NOT IN') && /^\(\s*\)$/.test(value)) return false;
+      if (op === 'IN' || op === 'NOT IN') {
+        if (/^\(\s*\)$/.test(value)) return false;
+        const listMatch = /^\((.*)\)$/s.exec(value);
+        if (listMatch) {
+          const entries = splitInClauseEntries(listMatch[1]);
+          if (entries.some(entry => entry.trim() === '' || isEmptyQuotedLiteral(entry))) return false;
+        }
+        return true;
+      }
+      if (isEmptyQuotedLiteral(value)) return false;
       return true;
     }
     return false;

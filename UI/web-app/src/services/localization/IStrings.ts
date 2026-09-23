@@ -805,6 +805,7 @@ export type IStrings = {
       invalidQuery: string;
       invalidGroups: string;
       invalidSqlFilters: string;
+      emptyFilterValues: string;
       step3title: string;
       step3description: string;
       selectStartDate: string;

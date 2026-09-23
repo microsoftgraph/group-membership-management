@@ -1,7 +1,7 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-import { hasTrailingAndOrOperator, hasValueAfterOperator, removeTrailingAndOrOperator } from './filterValidationHelpers';
+import { hasTrailingAndOrOperator, hasValueAfterOperator, isEmptyQuotedLiteral, removeTrailingAndOrOperator } from './filterValidationHelpers';
 
 describe('hasTrailingAndOrOperator', () => {
   it('returns false for null/undefined/empty string', () => {
@@ -88,5 +88,47 @@ describe('hasValueAfterOperator', () => {
 
   it('handles grouped filters with outer parentheses', () => {
     expect(hasValueAfterOperator("(CompanyType IN ('MS') AND Height > 2) OR Building = '102682'")).toBe(true);
+  });
+
+  it('returns false for an empty quoted literal', () => {
+    expect(hasValueAfterOperator("EmployeeType = ''")).toBe(false);
+    expect(hasValueAfterOperator("EmployeeType <> ''")).toBe(false);
+    expect(hasValueAfterOperator("EmployeeType = '   '")).toBe(false);
+    expect(hasValueAfterOperator("Dept = 'Sales' AND EmployeeType = ''")).toBe(false);
+  });
+
+  it('returns false when an IN list contains an empty entry', () => {
+    expect(hasValueAfterOperator("EmployeeType IN ('FTE','')")).toBe(false);
+    expect(hasValueAfterOperator("EmployeeType NOT IN ('')")).toBe(false);
+    expect(hasValueAfterOperator("EmployeeType IN ('FTE',)")).toBe(false);
+  });
+
+  it('treats an escaped single quote as a real value', () => {
+    expect(hasValueAfterOperator("Dept = ''''")).toBe(true);
+    expect(hasValueAfterOperator("Dept IN ('''')")).toBe(true);
+  });
+
+  it('keeps accepting values that merely contain quotes', () => {
+    expect(hasValueAfterOperator("Dept = 'O''Brien'")).toBe(true);
+    expect(hasValueAfterOperator("Dept IN ('O''Brien','Sales')")).toBe(true);
+  });
+});
+
+describe('isEmptyQuotedLiteral', () => {
+  it('detects empty and whitespace-only literals', () => {
+    expect(isEmptyQuotedLiteral("''")).toBe(true);
+    expect(isEmptyQuotedLiteral("'   '")).toBe(true);
+    expect(isEmptyQuotedLiteral("  ''  ")).toBe(true);
+  });
+
+  it('does not flag literals with content', () => {
+    expect(isEmptyQuotedLiteral("'FTE'")).toBe(false);
+    expect(isEmptyQuotedLiteral("''''")).toBe(false);
+  });
+
+  it('does not flag unquoted values', () => {
+    expect(isEmptyQuotedLiteral('2')).toBe(false);
+    expect(isEmptyQuotedLiteral('NULL')).toBe(false);
+    expect(isEmptyQuotedLiteral('')).toBe(false);
   });
 });

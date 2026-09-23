@@ -811,6 +811,7 @@ export const strings: IStrings = {
       invalidQuery: 'Failed to parse query. Ensure it is valid JSON.',
       invalidGroups: 'Invalid group IDs:',
       invalidSqlFilters: "Invalid Sql filter. Ensure each filter is valid Sql.",
+      emptyFilterValues: "Every filter condition must have a value. Remove or complete conditions with an empty value.",
       step3title: 'Step 3 of 4: Run Configuration',
       step3description: '',
       selectStartDate: 'Select an option to start managing the membership',

@@ -812,6 +812,7 @@ export const strings: IStrings = {
       invalidQuery: 'Error al analizar la consulta. Asegúrese de que sea JSON válido.',
       invalidGroups: 'Grupos inválido:',
       invalidSqlFilters: "Filtro de SQL inválido. Asegure que cada filtro contiene SQL válido.",
+      emptyFilterValues: "Cada condición del filtro debe tener un valor. Elimine o complete las condiciones con un valor vacío.",
       step3title: 'Paso 3 de 4: Configuración de ejecución',
       step3description: '',
       selectStartDate: 'Selecciona una opción para comenzar a administrar la membresía',

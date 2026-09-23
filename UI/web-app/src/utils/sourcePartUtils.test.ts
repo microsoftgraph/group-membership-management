@@ -61,6 +61,27 @@ describe('isSourcePartValid', () => {
     it('returns false when filter has attribute and value but no operator', () => {
       expect(isSourcePartValid(makePart(SourcePartType.HR, { manager: { id: 1 }, filter: "dept Sales" }))).toBe(false);
     });
+
+    it('returns false when a clause has an empty quoted value', () => {
+      expect(isSourcePartValid(makePart(SourcePartType.HR, { filter: "EmployeeType = ''" }))).toBe(false);
+      expect(isSourcePartValid(makePart(SourcePartType.HR, { filter: "EmployeeType = '   '" }))).toBe(false);
+    });
+
+    it('returns false when a clause has no value at all', () => {
+      expect(isSourcePartValid(makePart(SourcePartType.HR, { filter: 'EmployeeType = ' }))).toBe(false);
+    });
+
+    it('returns false when only one clause of many has an empty value', () => {
+      expect(isSourcePartValid(makePart(SourcePartType.HR, { filter: "dept = 'Sales' AND EmployeeType = ''" }))).toBe(false);
+    });
+
+    it('returns false when an empty-valued clause is combined with a manager', () => {
+      expect(isSourcePartValid(makePart(SourcePartType.HR, { manager: { id: 1 }, filter: "EmployeeType = ''" }))).toBe(false);
+    });
+
+    it('still accepts a clause whose value is an escaped single quote', () => {
+      expect(isSourcePartValid(makePart(SourcePartType.HR, { filter: "dept = ''''" }))).toBe(true);
+    });
   });
 
   describe('GroupOwnership', () => {

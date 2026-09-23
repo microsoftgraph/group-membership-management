@@ -11,7 +11,7 @@ import {
 } from '../models';
 import { SourcePartQuery } from '../models/SourcePartQuery';
 import { SourcePartType } from '../models/SourcePartType';
-import { hasTrailingAndOrOperator, hasValidEqualityOperators, removeTrailingAndOrOperator } from './filterValidationHelpers';
+import { hasTrailingAndOrOperator, hasValidEqualityOperators, hasValueAfterOperator, removeTrailingAndOrOperator } from './filterValidationHelpers';
 
 export function removeUnusedProperties<T extends SourcePartQuery>(sourcePart: T): T {
     if (IsHRSourcePartQuery(sourcePart)) {
@@ -73,10 +73,13 @@ export function isSourcePartValid(sourcePart: ISourcePart): boolean {
                 const filter = sourcePart.query.source?.filter;
                 const hasManager = Number.isFinite(managerId);
                 const hasFilter = typeof filter === 'string' && filter.trim().length > 0;
-                // If a filter is present, ensure all clauses have valid equality operators
-                const isFilterValid = hasFilter && hasValidEqualityOperators(filter);
+                // A filter is only valid when every clause has a recognized equality operator AND a
+                // real value after it. Checking the operator alone let `Attribute = ''` (a cleared
+                // value box, which the builder still quotes) through to submission.
+                const isFilterValid = hasFilter && hasValidEqualityOperators(filter) && hasValueAfterOperator(filter);
                 // Valid if: has a valid filter, or has a manager (filter is optional when manager is set)
-                // Invalid if: has a filter with missing operators (even with manager, malformed filter should block)
+                // Invalid if: has a filter with missing operators or missing values (even with a
+                // manager, a malformed filter should block)
                 if (hasFilter && !isFilterValid) {
                     return false;
                 }
