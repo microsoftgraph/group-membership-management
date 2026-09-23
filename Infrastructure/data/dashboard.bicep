@@ -24,6 +24,8 @@ param openAIkTPMCapacity int = 150
 
 var openAITpmCapacity = openAIkTPMCapacity * 1000
 var openAITpmCapacityLabel = openAITpmCapacity >= 1000000 ? '${openAITpmCapacity / 1000000}M' : '${openAITpmCapacity / 1000}K'
+var copilotTpmTileTitle = 'Copilot Token Usage (% of ${openAITpmCapacityLabel} TPM cap)'
+var copilotTpmQuery = 'let bin_t = 1m;\nlet tpmQuota = todouble(${openAITpmCapacity});\ntraces\n| where customDimensions["EventId"] == "93112" or message startswith "CopilotChat token usage"\n| extend Tokens = todouble(toint(customDimensions["InputTokens"]) + toint(customDimensions["OutputTokens"]))\n| summarize TokensPerMinute = sum(Tokens) by bin(timestamp, bin_t)\n| project timestamp, PercentOfQuota = round(100.0 * TokensPerMinute / tpmQuota, 2)\n| order by timestamp asc\n'
 
 resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
   name: resourceGroup
@@ -4564,7 +4566,7 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
               type: 'Extension/HubsExtension/PartType/MarkdownPart'
               settings: {
                 content: {
-                  content: '# <span style="color:DarkOrange">Copilot Dashboard</span>\r\n\r\n## <span style="color:DarkOrange">Summary</span>\r\n\r\nUse this dashboard to view Azure OpenAI consumption for the Copilot feature against its configured capacity.'
+                  content: '# <span style="color:DarkOrange">Copilot Dashboard</span>\r\n\r\n## <span style="color:DarkOrange">Summary</span>\r\n\r\nUse this dashboard to view Azure OpenAI consumption for the Copilot feature against its configured capacity. Token usage is shown as a percentage of the configured cap, where 100% = ${openAITpmCapacityLabel} tokens per minute.'
                   title: ''
                   subtitle: ''
                   markdownSource: 1
@@ -4623,7 +4625,7 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
                 }
                 {
                   name: 'Query'
-                  value: 'let bin_t = 1m;\nlet tpmQuota = todouble(${openAITpmCapacity});\nlet bins = traces\n| where customDimensions["EventId"] == "93112" or message startswith "CopilotChat token usage"\n| extend TokensPerMinute = todouble(toint(customDimensions["InputTokens"]) + toint(customDimensions["OutputTokens"]))\n| summarize TokensPerMinute = sum(TokensPerMinute) by bin(timestamp, bin_t);\nunion\n(bins | extend Series = "Tokens per minute"),\n(bins | distinct timestamp | extend TokensPerMinute = tpmQuota, Series = "Quota (${openAITpmCapacityLabel}/min)")\n| project timestamp, TokensPerMinute, Series\n'
+                  value: copilotTpmQuery
                   isOptional: true
                 }
                 {
@@ -4662,10 +4664,10 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
               type: 'Extension/Microsoft_OperationsManagementSuite_Workspace/PartType/LogsDashboardPart'
               settings: {
                 content: {
-                  Query: 'let bin_t = 1m;\nlet tpmQuota = todouble(${openAITpmCapacity});\nlet bins = traces\n| where customDimensions["EventId"] == "93112" or message startswith "CopilotChat token usage"\n| extend TokensPerMinute = todouble(toint(customDimensions["InputTokens"]) + toint(customDimensions["OutputTokens"]))\n| summarize TokensPerMinute = sum(TokensPerMinute) by bin(timestamp, bin_t);\nunion\n(bins | extend Series = "Tokens per minute"),\n(bins | distinct timestamp | extend TokensPerMinute = tpmQuota, Series = "Quota (${openAITpmCapacityLabel}/min)")\n| project timestamp, TokensPerMinute, Series\n'
+                  Query: copilotTpmQuery
                   ControlType: 'FrameControlChart'
-                  SpecificChart: 'Line'
-                  PartTitle: 'Copilot TPM Usage vs Configured Cap'
+                  SpecificChart: 'StackedColumn'
+                  PartTitle: copilotTpmTileTitle
                   Dimensions: {
                     xAxis: {
                       name: 'timestamp'
@@ -4673,16 +4675,11 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
                     }
                     yAxis: [
                       {
-                        name: 'TokensPerMinute'
+                        name: 'PercentOfQuota'
                         type: 'real'
                       }
                     ]
-                    splitBy: [
-                      {
-                        name: 'Series'
-                        type: 'string'
-                      }
-                    ]
+                    splitBy: []
                     aggregation: 'Sum'
                   }
                   LegendOptions: {
@@ -4692,7 +4689,7 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
                 }
               }
               partHeader: {
-                title: 'Copilot TPM Usage vs Configured Cap'
+                title: copilotTpmTileTitle
                 subtitle: ''
               }
             }
