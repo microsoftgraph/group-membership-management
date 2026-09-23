@@ -71,6 +71,15 @@ describe('isSourcePartValid', () => {
       expect(isSourcePartValid(makePart(SourcePartType.HR, { filter: 'EmployeeType = ' }))).toBe(false);
     });
 
+    it('returns false when an empty value is hidden behind a trailing AND/OR', () => {
+      expect(isSourcePartValid(makePart(SourcePartType.HR, { filter: "EmployeeType = '' AND" }))).toBe(false);
+      expect(isSourcePartValid(makePart(SourcePartType.HR, { filter: "EmployeeType = '' OR " }))).toBe(false);
+    });
+
+    it('still accepts a complete clause with a trailing AND/OR', () => {
+      expect(isSourcePartValid(makePart(SourcePartType.HR, { filter: "dept = 'Sales' AND" }))).toBe(true);
+    });
+
     it('returns false when only one clause of many has an empty value', () => {
       expect(isSourcePartValid(makePart(SourcePartType.HR, { filter: "dept = 'Sales' AND EmployeeType = ''" }))).toBe(false);
     });

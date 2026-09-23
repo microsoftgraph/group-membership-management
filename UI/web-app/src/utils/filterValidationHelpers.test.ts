@@ -97,6 +97,15 @@ describe('hasValueAfterOperator', () => {
     expect(hasValueAfterOperator("Dept = 'Sales' AND EmployeeType = ''")).toBe(false);
   });
 
+  it('strips a trailing AND/OR before validating the value', () => {
+    // `removeUnusedProperties` drops the dangling operator at submit time, so the value
+    // check must see the same filter that would actually be submitted.
+    expect(hasValueAfterOperator("EmployeeType = '' AND")).toBe(false);
+    expect(hasValueAfterOperator("EmployeeType = '' OR ")).toBe(false);
+    expect(hasValueAfterOperator("EmployeeType = and")).toBe(false);
+    expect(hasValueAfterOperator("Dept = 'Sales' AND")).toBe(true);
+  });
+
   it('returns false when an IN list contains an empty entry', () => {
     expect(hasValueAfterOperator("EmployeeType IN ('FTE','')")).toBe(false);
     expect(hasValueAfterOperator("EmployeeType NOT IN ('')")).toBe(false);

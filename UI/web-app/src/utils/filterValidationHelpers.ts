@@ -130,8 +130,14 @@ function splitInClauseEntries(list: string): string[] {
 export function hasValueAfterOperator(filter: string): boolean {
   if (!filter || filter.trim() === '') return false;
 
+  // Strip a trailing AND/OR before validating, exactly like `hasValidEqualityOperators` does.
+  // Without this, `Attribute = '' AND` reads `'' AND` as the value and passes, and
+  // `removeUnusedProperties` then drops the dangling AND and submits `Attribute = ''`.
+  const cleanedFilter = removeTrailingAndOrOperator(filter.trim()).trim();
+  if (cleanedFilter === '') return false;
+
   const sortedOperators = [...VALID_EQUALITY_OPERATORS].sort((a, b) => b.length - a.length);
-  const segments = splitFilterSegments(filter);
+  const segments = splitFilterSegments(cleanedFilter);
 
   return segments.every(segment => {
     const trimmed = segment.trim();
