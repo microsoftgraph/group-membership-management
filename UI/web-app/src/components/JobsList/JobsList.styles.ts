@@ -189,7 +189,9 @@ export const getStyles = (props: IJobsListStyleProps): IJobsListStyles => {
     },
     searchBoxContainer: {
       position: 'relative' as const,
-      width: 340,
+      // Fits a full 36-character lowercase GUID, the casing the API
+      // returns, without clipping.
+      width: 390,
     },
     inputIcon: {
       position: 'absolute' as const,
