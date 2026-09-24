@@ -38,10 +38,22 @@ namespace Services.Tests
                 logger.Object);
         }
 
-        private static void EnablePerPartOnly(Mock<IDatabaseSettingsRepository> settingsRepository)
+        /// <summary>Turns on every qualification path.</summary>
+        private static void EnableAllPaths(Mock<IDatabaseSettingsRepository> settingsRepository) =>
+            EnablePaths(settingsRepository, groupBased: true, orgLeader: true, leaderAssistant: true);
+
+        /// <summary>Turns on group-based and org-leader, leaving the assistant path off.</summary>
+        private static void EnableGroupAndOrgLeaderPaths(Mock<IDatabaseSettingsRepository> settingsRepository) =>
+            EnablePaths(settingsRepository, groupBased: true, orgLeader: true);
+
+        private static void EnablePaths(Mock<IDatabaseSettingsRepository> settingsRepository, bool groupBased, bool orgLeader, bool leaderAssistant = false)
         {
-            settingsRepository.Setup(x => x.GetSettingByKeyAsync(SettingKey.IsPerPartAutoApprovalEnabled))
-                              .ReturnsAsync(new Setting { SettingKey = SettingKey.IsPerPartAutoApprovalEnabled, SettingValue = "true" });
+            settingsRepository.Setup(x => x.GetSettingByKeyAsync(SettingKey.IsAutoApprovalForGroupBasedSyncsEnabled))
+                              .ReturnsAsync(new Setting { SettingKey = SettingKey.IsAutoApprovalForGroupBasedSyncsEnabled, SettingValue = groupBased ? "true" : "false" });
+            settingsRepository.Setup(x => x.GetSettingByKeyAsync(SettingKey.IsAutoApprovalForRequestorIsOrgLeaderSyncsEnabled))
+                              .ReturnsAsync(new Setting { SettingKey = SettingKey.IsAutoApprovalForRequestorIsOrgLeaderSyncsEnabled, SettingValue = orgLeader ? "true" : "false" });
+            settingsRepository.Setup(x => x.GetSettingByKeyAsync(SettingKey.IsAutoApprovalForLeaderAssistantEnabled))
+                              .ReturnsAsync(new Setting { SettingKey = SettingKey.IsAutoApprovalForLeaderAssistantEnabled, SettingValue = leaderAssistant ? "true" : "false" });
         }
 
         private static AutoApprovalQueueMessage Message(Guid syncJobId, string requestorId) =>
@@ -73,147 +85,6 @@ namespace Services.Tests
         }
 
         [TestMethod]
-        public async Task ProcessAutoApproval_GroupMembershipVisible_ApprovesJobAsync()
-        {
-            var syncJobId = Guid.NewGuid();
-            var groupId1 = Guid.NewGuid();
-            var groupId2 = Guid.NewGuid();
-            var requestorId = Guid.NewGuid().ToString();
-
-            var syncJob = new SyncJob
-            {
-                Id = syncJobId,
-                Status = SyncStatus.PendingAutoApproval.ToString(),
-                StartDate = DateTime.UtcNow.AddHours(-1),
-                Query = $"[{{\"type\":\"GroupMembership\",\"source\":\"{groupId1}\"}},{{\"type\":\"GroupMembership\",\"source\":\"{groupId2}\"}}]"
-            };
-
-            var syncJobsRepository = new Mock<IDatabaseSyncJobsRepository>();
-            var settingsRepository = new Mock<IDatabaseSettingsRepository>();
-            var graphGroupRepository = new Mock<IGraphGroupRepository>();
-            var syncJobChangeRepository = new Mock<ISyncJobChangeRepository>();
-            var logger = new Mock<ILogger<AutoApproverService>>();
-
-            syncJobsRepository.Setup(x => x.GetSyncJobAsync(syncJobId)).ReturnsAsync(syncJob);
-            settingsRepository.Setup(x => x.GetSettingByKeyAsync(SettingKey.IsAutoApprovalForGroupBasedSyncsEnabled))
-                              .ReturnsAsync(new Setting { SettingKey = SettingKey.IsAutoApprovalForGroupBasedSyncsEnabled, SettingValue = "true" });
-            settingsRepository.Setup(x => x.GetSettingByKeyAsync(SettingKey.IsAutoApprovalForRequestorIsOrgLeaderSyncsEnabled))
-                              .ReturnsAsync(new Setting { SettingKey = SettingKey.IsAutoApprovalForRequestorIsOrgLeaderSyncsEnabled, SettingValue = "false" });
-
-            graphGroupRepository.Setup(x => x.GetGroupsAsync(It.IsAny<List<Guid>>()))
-                                .ReturnsAsync(new List<AzureADGroup>
-                                {
-                                    new AzureADGroup { ObjectId = groupId1, Visibility = "Public" },
-                                    new AzureADGroup { ObjectId = groupId2, Visibility = "Private" }
-                                });
-
-            var service = CreateService(syncJobsRepository, settingsRepository, graphGroupRepository, syncJobChangeRepository, logger);
-
-            await service.ProcessAutoApprovalAsync(new AutoApprovalQueueMessage
-            {
-                SyncJobId = syncJobId,
-                RequestorObjectId = requestorId,
-                RequestorDisplayName = "Requestor"
-            });
-
-            syncJobsRepository.Verify(x => x.UpdateSyncJobsAsync(It.Is<IEnumerable<SyncJob>>(jobs =>
-                jobs.Count() == 1 && jobs.First().Status == SyncStatus.Idle.ToString()), null), Times.Once);
-
-            syncJobChangeRepository.Verify(x => x.Save(It.Is<SyncJobChange>(change =>
-                change.SyncJobId == syncJobId && change.ChangeReason == SyncJobChangeReason.OnboardingAutoApproved.ToString())), Times.Once);
-        }
-
-        [TestMethod]
-        public async Task ProcessAutoApproval_GroupMembershipHidden_MovesToPendingReviewAsync()
-        {
-            var syncJobId = Guid.NewGuid();
-            var groupId = Guid.NewGuid();
-
-            var syncJob = new SyncJob
-            {
-                Id = syncJobId,
-                Status = SyncStatus.PendingAutoApproval.ToString(),
-                Query = $"[{{\"type\":\"GroupMembership\",\"source\":\"{groupId}\"}}]"
-            };
-
-            var syncJobsRepository = new Mock<IDatabaseSyncJobsRepository>();
-            var settingsRepository = new Mock<IDatabaseSettingsRepository>();
-            var graphGroupRepository = new Mock<IGraphGroupRepository>();
-            var syncJobChangeRepository = new Mock<ISyncJobChangeRepository>();
-            var logger = new Mock<ILogger<AutoApproverService>>();
-
-            syncJobsRepository.Setup(x => x.GetSyncJobAsync(syncJobId)).ReturnsAsync(syncJob);
-            settingsRepository.Setup(x => x.GetSettingByKeyAsync(SettingKey.IsAutoApprovalForGroupBasedSyncsEnabled))
-                              .ReturnsAsync(new Setting { SettingKey = SettingKey.IsAutoApprovalForGroupBasedSyncsEnabled, SettingValue = "true" });
-
-            graphGroupRepository.Setup(x => x.GetGroupsAsync(It.IsAny<List<Guid>>()))
-                                .ReturnsAsync(new List<AzureADGroup>
-                                {
-                                    new AzureADGroup { ObjectId = groupId, Visibility = "HiddenMembership" }
-                                });
-
-            var service = CreateService(syncJobsRepository, settingsRepository, graphGroupRepository, syncJobChangeRepository, logger);
-
-            await service.ProcessAutoApprovalAsync(new AutoApprovalQueueMessage
-            {
-                SyncJobId = syncJobId,
-                RequestorObjectId = Guid.NewGuid().ToString(),
-                RequestorDisplayName = "Requestor"
-            });
-
-            // Not granted: the job is handed off to a human by moving it to PendingReview, but no
-            // OnboardingAutoApproved audit record is written.
-            syncJobsRepository.Verify(x => x.UpdateSyncJobsAsync(It.Is<IEnumerable<SyncJob>>(jobs =>
-                jobs.Count() == 1 && jobs.First().Status == SyncStatus.PendingReview.ToString()), It.IsAny<SyncStatus?>()), Times.Once);
-            syncJobChangeRepository.Verify(x => x.Save(It.IsAny<SyncJobChange>()), Times.Never);
-        }
-
-        [TestMethod]
-        public async Task ProcessAutoApproval_OrgLeaderMatchingManager_ApprovesJobAsync()
-        {
-            var syncJobId = Guid.NewGuid();
-            var requestorId = Guid.NewGuid().ToString();
-            var managerId = 12345;
-
-            var syncJob = new SyncJob
-            {
-                Id = syncJobId,
-                Status = SyncStatus.PendingAutoApproval.ToString(),
-                Query = $"[{{\"type\":\"SqlMembership\",\"source\":{{\"manager\":{{\"id\":{managerId}}}}}}}]"
-            };
-
-            var syncJobsRepository = new Mock<IDatabaseSyncJobsRepository>();
-            var settingsRepository = new Mock<IDatabaseSettingsRepository>();
-            var graphGroupRepository = new Mock<IGraphGroupRepository>();
-            var syncJobChangeRepository = new Mock<ISyncJobChangeRepository>();
-            var logger = new Mock<ILogger<AutoApproverService>>();
-
-            syncJobsRepository.Setup(x => x.GetSyncJobAsync(syncJobId)).ReturnsAsync(syncJob);
-            settingsRepository.Setup(x => x.GetSettingByKeyAsync(SettingKey.IsAutoApprovalForGroupBasedSyncsEnabled))
-                              .ReturnsAsync(new Setting { SettingKey = SettingKey.IsAutoApprovalForGroupBasedSyncsEnabled, SettingValue = "false" });
-            settingsRepository.Setup(x => x.GetSettingByKeyAsync(SettingKey.IsAutoApprovalForRequestorIsOrgLeaderSyncsEnabled))
-                              .ReturnsAsync(new Setting { SettingKey = SettingKey.IsAutoApprovalForRequestorIsOrgLeaderSyncsEnabled, SettingValue = "true" });
-
-            graphGroupRepository.Setup(x => x.GetUserWithOnPremisesImmutableIdAsync(requestorId, It.IsAny<Guid?>()))
-                                .ReturnsAsync(new AzureADUser { OnPremisesImmutableId = managerId.ToString() });
-
-            var service = CreateService(syncJobsRepository, settingsRepository, graphGroupRepository, syncJobChangeRepository, logger);
-
-            await service.ProcessAutoApprovalAsync(new AutoApprovalQueueMessage
-            {
-                SyncJobId = syncJobId,
-                RequestorObjectId = requestorId,
-                RequestorDisplayName = "Requestor"
-            });
-
-            syncJobsRepository.Verify(x => x.UpdateSyncJobsAsync(It.Is<IEnumerable<SyncJob>>(jobs =>
-                jobs.Count() == 1 && jobs.First().Status == SyncStatus.Idle.ToString()), null), Times.Once);
-
-            syncJobChangeRepository.Verify(x => x.Save(It.Is<SyncJobChange>(change =>
-                change.SyncJobId == syncJobId && change.ChangeReason == SyncJobChangeReason.OnboardingAutoApproved.ToString())), Times.Once);
-        }
-
-        [TestMethod]
         public async Task ProcessAutoApproval_ChangeRecordSaveFails_RevertsStatusAndRethrowsAsync()
         {
             var syncJobId = Guid.NewGuid();
@@ -236,17 +107,10 @@ namespace Services.Tests
             var logger = new Mock<ILogger<AutoApproverService>>();
 
             syncJobsRepository.Setup(x => x.GetSyncJobAsync(syncJobId)).ReturnsAsync(syncJob);
-            settingsRepository.Setup(x => x.GetSettingByKeyAsync(SettingKey.IsAutoApprovalForGroupBasedSyncsEnabled))
-                              .ReturnsAsync(new Setting { SettingKey = SettingKey.IsAutoApprovalForGroupBasedSyncsEnabled, SettingValue = "true" });
-            settingsRepository.Setup(x => x.GetSettingByKeyAsync(SettingKey.IsAutoApprovalForRequestorIsOrgLeaderSyncsEnabled))
-                              .ReturnsAsync(new Setting { SettingKey = SettingKey.IsAutoApprovalForRequestorIsOrgLeaderSyncsEnabled, SettingValue = "false" });
+            EnableGroupAndOrgLeaderPaths(settingsRepository);
 
             graphGroupRepository.Setup(x => x.GetGroupsAsync(It.IsAny<List<Guid>>()))
-                                .ReturnsAsync(new List<AzureADGroup>
-                                {
-                                    new AzureADGroup { ObjectId = groupId1, Visibility = "Public" },
-                                    new AzureADGroup { ObjectId = groupId2, Visibility = "Private" }
-                                });
+                                .ReturnsAsync((List<Guid> ids) => ids.Select(id => new AzureADGroup { ObjectId = id, Visibility = "Public" }).ToList());
 
             // The same syncJob reference is mutated in place during the revert, so capture the status at
             // call time rather than relying on the object's final state during Verify.
@@ -331,7 +195,7 @@ namespace Services.Tests
             var logger = new Mock<ILogger<AutoApproverService>>();
 
             syncJobsRepository.Setup(x => x.GetSyncJobAsync(syncJobId)).ReturnsAsync(syncJob);
-            EnablePerPartOnly(settingsRepository);
+            EnableGroupAndOrgLeaderPaths(settingsRepository);
             graphGroupRepository.Setup(x => x.GetGroupsAsync(It.IsAny<List<Guid>>()))
                                 .ReturnsAsync(new List<AzureADGroup> { new AzureADGroup { ObjectId = groupId, Visibility = "Public" } });
 
@@ -358,7 +222,7 @@ namespace Services.Tests
             var logger = new Mock<ILogger<AutoApproverService>>();
 
             syncJobsRepository.Setup(x => x.GetSyncJobAsync(syncJobId)).ReturnsAsync(syncJob);
-            EnablePerPartOnly(settingsRepository);
+            EnableGroupAndOrgLeaderPaths(settingsRepository);
             graphGroupRepository.Setup(x => x.GetGroupsAsync(It.IsAny<List<Guid>>()))
                                 .ReturnsAsync(new List<AzureADGroup> { new AzureADGroup { ObjectId = groupId, Visibility = "Private" } });
             graphGroupRepository.Setup(x => x.GetGroupOwnersAsync(groupId, It.IsAny<int>()))
@@ -386,7 +250,7 @@ namespace Services.Tests
             var logger = new Mock<ILogger<AutoApproverService>>();
 
             syncJobsRepository.Setup(x => x.GetSyncJobAsync(syncJobId)).ReturnsAsync(syncJob);
-            EnablePerPartOnly(settingsRepository);
+            EnableGroupAndOrgLeaderPaths(settingsRepository);
             graphGroupRepository.Setup(x => x.GetGroupsAsync(It.IsAny<List<Guid>>()))
                                 .ReturnsAsync(new List<AzureADGroup> { new AzureADGroup { ObjectId = groupId, Visibility = "Private" } });
             graphGroupRepository.Setup(x => x.GetGroupOwnersAsync(groupId, It.IsAny<int>()))
@@ -413,7 +277,7 @@ namespace Services.Tests
             var logger = new Mock<ILogger<AutoApproverService>>();
 
             syncJobsRepository.Setup(x => x.GetSyncJobAsync(syncJobId)).ReturnsAsync(syncJob);
-            EnablePerPartOnly(settingsRepository);
+            EnableGroupAndOrgLeaderPaths(settingsRepository);
             graphGroupRepository.Setup(x => x.GetGroupsAsync(It.IsAny<List<Guid>>())).ReturnsAsync(new List<AzureADGroup>());
 
             var service = CreateService(syncJobsRepository, settingsRepository, graphGroupRepository, syncJobChangeRepository, logger);
@@ -437,7 +301,7 @@ namespace Services.Tests
             var logger = new Mock<ILogger<AutoApproverService>>();
 
             syncJobsRepository.Setup(x => x.GetSyncJobAsync(syncJobId)).ReturnsAsync(syncJob);
-            EnablePerPartOnly(settingsRepository);
+            EnableGroupAndOrgLeaderPaths(settingsRepository);
             graphGroupRepository.Setup(x => x.GetGroupsAsync(It.IsAny<List<Guid>>())).ThrowsAsync(new Exception("graph down"));
 
             var service = CreateService(syncJobsRepository, settingsRepository, graphGroupRepository, syncJobChangeRepository, logger);
@@ -461,7 +325,7 @@ namespace Services.Tests
             var logger = new Mock<ILogger<AutoApproverService>>();
 
             syncJobsRepository.Setup(x => x.GetSyncJobAsync(syncJobId)).ReturnsAsync(syncJob);
-            EnablePerPartOnly(settingsRepository);
+            EnableGroupAndOrgLeaderPaths(settingsRepository);
             graphGroupRepository.Setup(x => x.GetGroupsAsync(It.IsAny<List<Guid>>()))
                                 .ReturnsAsync(new List<AzureADGroup> { new AzureADGroup { ObjectId = groupId, Visibility = "Private" } });
             graphGroupRepository.Setup(x => x.GetGroupOwnersAsync(groupId, It.IsAny<int>())).ThrowsAsync(new Exception("owners down"));
@@ -490,7 +354,7 @@ namespace Services.Tests
             var dataFactoryRepository = new Mock<IDataFactoryRepository>();
 
             syncJobsRepository.Setup(x => x.GetSyncJobAsync(syncJobId)).ReturnsAsync(syncJob);
-            EnablePerPartOnly(settingsRepository);
+            EnableGroupAndOrgLeaderPaths(settingsRepository);
             dataFactoryRepository.Setup(x => x.GetMostRecentSucceededRunIdAsync()).ReturnsAsync("abc-def");
             sqlMembershipRepository.Setup(x => x.GetUserEmployeeIdAsync(requestorId, It.IsAny<string>())).ReturnsAsync(managerId);
 
@@ -520,7 +384,7 @@ namespace Services.Tests
             var dataFactoryRepository = new Mock<IDataFactoryRepository>();
 
             syncJobsRepository.Setup(x => x.GetSyncJobAsync(syncJobId)).ReturnsAsync(syncJob);
-            EnablePerPartOnly(settingsRepository);
+            EnableGroupAndOrgLeaderPaths(settingsRepository);
             dataFactoryRepository.Setup(x => x.GetMostRecentSucceededRunIdAsync()).ReturnsAsync("abc-def");
             sqlMembershipRepository.Setup(x => x.GetUserEmployeeIdAsync(requestorId, It.IsAny<string>())).ReturnsAsync(managerId);
 
@@ -549,7 +413,7 @@ namespace Services.Tests
             var dataFactoryRepository = new Mock<IDataFactoryRepository>();
 
             syncJobsRepository.Setup(x => x.GetSyncJobAsync(syncJobId)).ReturnsAsync(syncJob);
-            EnablePerPartOnly(settingsRepository);
+            EnableGroupAndOrgLeaderPaths(settingsRepository);
             dataFactoryRepository.Setup(x => x.GetMostRecentSucceededRunIdAsync()).ReturnsAsync("abc-def");
             sqlMembershipRepository.Setup(x => x.GetUserEmployeeIdAsync(requestorId, It.IsAny<string>())).ReturnsAsync(4242);
 
@@ -576,7 +440,7 @@ namespace Services.Tests
             var dataFactoryRepository = new Mock<IDataFactoryRepository>();
 
             syncJobsRepository.Setup(x => x.GetSyncJobAsync(syncJobId)).ReturnsAsync(syncJob);
-            EnablePerPartOnly(settingsRepository);
+            EnableGroupAndOrgLeaderPaths(settingsRepository);
             dataFactoryRepository.Setup(x => x.GetMostRecentSucceededRunIdAsync()).ReturnsAsync("abc-def");
             sqlMembershipRepository.Setup(x => x.GetUserEmployeeIdAsync(requestorId, It.IsAny<string>())).ReturnsAsync(999);
 
@@ -603,7 +467,7 @@ namespace Services.Tests
             var dataFactoryRepository = new Mock<IDataFactoryRepository>();
 
             syncJobsRepository.Setup(x => x.GetSyncJobAsync(syncJobId)).ReturnsAsync(syncJob);
-            EnablePerPartOnly(settingsRepository);
+            EnableGroupAndOrgLeaderPaths(settingsRepository);
             dataFactoryRepository.Setup(x => x.GetMostRecentSucceededRunIdAsync()).ReturnsAsync("abc-def");
             sqlMembershipRepository.Setup(x => x.GetUserEmployeeIdAsync(requestorId, It.IsAny<string>())).ReturnsAsync((int?)null);
 
@@ -630,7 +494,7 @@ namespace Services.Tests
             var dataFactoryRepository = new Mock<IDataFactoryRepository>();
 
             syncJobsRepository.Setup(x => x.GetSyncJobAsync(syncJobId)).ReturnsAsync(syncJob);
-            EnablePerPartOnly(settingsRepository);
+            EnableGroupAndOrgLeaderPaths(settingsRepository);
             dataFactoryRepository.Setup(x => x.GetMostRecentSucceededRunIdAsync()).ThrowsAsync(new Exception("adf down"));
 
             var service = CreateService(syncJobsRepository, settingsRepository, graphGroupRepository, syncJobChangeRepository, logger, sqlMembershipRepository, dataFactoryRepository);
@@ -657,7 +521,7 @@ namespace Services.Tests
             var dataFactoryRepository = new Mock<IDataFactoryRepository>();
 
             syncJobsRepository.Setup(x => x.GetSyncJobAsync(syncJobId)).ReturnsAsync(syncJob);
-            EnablePerPartOnly(settingsRepository);
+            EnableGroupAndOrgLeaderPaths(settingsRepository);
             dataFactoryRepository.Setup(x => x.GetMostRecentSucceededRunIdAsync()).ReturnsAsync("abc-def");
             sqlMembershipRepository.Setup(x => x.GetUserEmployeeIdAsync(requestorId, It.IsAny<string>())).ThrowsAsync(new Exception("sql down"));
 
@@ -686,7 +550,7 @@ namespace Services.Tests
             var dataFactoryRepository = new Mock<IDataFactoryRepository>();
 
             syncJobsRepository.Setup(x => x.GetSyncJobAsync(syncJobId)).ReturnsAsync(syncJob);
-            EnablePerPartOnly(settingsRepository);
+            EnableGroupAndOrgLeaderPaths(settingsRepository);
             graphGroupRepository.Setup(x => x.GetGroupsAsync(It.IsAny<List<Guid>>()))
                                 .ReturnsAsync(new List<AzureADGroup> { new AzureADGroup { ObjectId = groupId, Visibility = "Public" } });
             dataFactoryRepository.Setup(x => x.GetMostRecentSucceededRunIdAsync()).ReturnsAsync("abc-def");
@@ -715,7 +579,7 @@ namespace Services.Tests
             var logger = new Mock<ILogger<AutoApproverService>>();
 
             syncJobsRepository.Setup(x => x.GetSyncJobAsync(syncJobId)).ReturnsAsync(syncJob);
-            EnablePerPartOnly(settingsRepository);
+            EnableGroupAndOrgLeaderPaths(settingsRepository);
             graphGroupRepository.Setup(x => x.GetGroupsAsync(It.Is<List<Guid>>(l => l.Contains(publicGroupId))))
                                 .ReturnsAsync(new List<AzureADGroup> { new AzureADGroup { ObjectId = publicGroupId, Visibility = "Public" } });
             graphGroupRepository.Setup(x => x.GetGroupsAsync(It.Is<List<Guid>>(l => l.Contains(privateGroupId))))
@@ -729,8 +593,10 @@ namespace Services.Tests
             VerifyPendingReview(syncJobsRepository, syncJobChangeRepository);
         }
 
+        // Qualification path switches: a part whose path is off is rejected before any lookup.
+
         [TestMethod]
-        public async Task PerPart_KillSwitchDisabled_DoesNotEvaluateAndMovesToPendingReviewAsync()
+        public async Task AllPathsDisabled_GroupQuery_RejectsWithoutAnyLookupAsync()
         {
             var syncJobId = Guid.NewGuid();
             var groupId = Guid.NewGuid();
@@ -744,14 +610,187 @@ namespace Services.Tests
             var logger = new Mock<ILogger<AutoApproverService>>();
 
             syncJobsRepository.Setup(x => x.GetSyncJobAsync(syncJobId)).ReturnsAsync(syncJob);
-            settingsRepository.Setup(x => x.GetSettingByKeyAsync(SettingKey.IsPerPartAutoApprovalEnabled))
-                              .ReturnsAsync(new Setting { SettingKey = SettingKey.IsPerPartAutoApprovalEnabled, SettingValue = "false" });
+            EnablePaths(settingsRepository, groupBased: false, orgLeader: false);
 
             var service = CreateService(syncJobsRepository, settingsRepository, graphGroupRepository, syncJobChangeRepository, logger);
             await service.ProcessAutoApprovalAsync(Message(syncJobId, Guid.NewGuid().ToString()));
 
             VerifyPendingReview(syncJobsRepository, syncJobChangeRepository);
             graphGroupRepository.Verify(x => x.GetGroupsAsync(It.IsAny<List<Guid>>()), Times.Never);
+            graphGroupRepository.Verify(x => x.GetGroupOwnersAsync(It.IsAny<Guid>(), It.IsAny<int>()), Times.Never);
+        }
+
+        [TestMethod]
+        public async Task AllPathsDisabled_SqlQuery_RejectsWithoutAnyLookupAsync()
+        {
+            var syncJobId = Guid.NewGuid();
+            var managerId = 4242;
+
+            var syncJob = new SyncJob { Id = syncJobId, Status = SyncStatus.PendingAutoApproval.ToString(), Query = $"[{{\"type\":\"SqlMembership\",\"source\":{{\"manager\":{{\"id\":{managerId}}}}}}}]" };
+
+            var syncJobsRepository = new Mock<IDatabaseSyncJobsRepository>();
+            var settingsRepository = new Mock<IDatabaseSettingsRepository>();
+            var graphGroupRepository = new Mock<IGraphGroupRepository>();
+            var syncJobChangeRepository = new Mock<ISyncJobChangeRepository>();
+            var logger = new Mock<ILogger<AutoApproverService>>();
+            var sqlMembershipRepository = new Mock<ISqlMembershipRepository>();
+            var dataFactoryRepository = new Mock<IDataFactoryRepository>();
+
+            syncJobsRepository.Setup(x => x.GetSyncJobAsync(syncJobId)).ReturnsAsync(syncJob);
+            EnablePaths(settingsRepository, groupBased: false, orgLeader: false, leaderAssistant: false);
+
+            logger.Setup(x => x.IsEnabled(It.IsAny<LogLevel>())).Returns(true);
+
+            var service = CreateService(syncJobsRepository, settingsRepository, graphGroupRepository, syncJobChangeRepository, logger, sqlMembershipRepository, dataFactoryRepository);
+            await service.ProcessAutoApprovalAsync(Message(syncJobId, Guid.NewGuid().ToString()));
+
+            VerifyPendingReview(syncJobsRepository, syncJobChangeRepository);
+
+            logger.Verify(x => x.Log(
+                LogLevel.Information,
+                It.Is<EventId>(e => e.Id == 250127),
+                It.Is<It.IsAnyType>((v, _) => v.ToString().Contains("Sql_Paths_Disabled")),
+                It.IsAny<Exception>(),
+                It.IsAny<Func<It.IsAnyType, Exception, string>>()), Times.Once);
+
+            // Neither SQL path is enabled, so none of their lookups should happen.
+            dataFactoryRepository.Verify(x => x.GetMostRecentSucceededRunIdAsync(), Times.Never);
+            sqlMembershipRepository.Verify(x => x.GetUserEmployeeIdAsync(It.IsAny<string>(), It.IsAny<string>()), Times.Never);
+            sqlMembershipRepository.Verify(x => x.GetUserAzureObjectIdAsync(It.IsAny<int>(), It.IsAny<string>()), Times.Never);
+            graphGroupRepository.Verify(x => x.GetAssistantsAsync(It.IsAny<Guid>()), Times.Never);
+
+            // Nothing was read, so the context line should be skipped rather than report "not found".
+            logger.Verify(x => x.Log(
+                LogLevel.Information,
+                It.Is<EventId>(e => e.Id == 250133),
+                It.IsAny<It.IsAnyType>(),
+                It.IsAny<Exception>(),
+                It.IsAny<Func<It.IsAnyType, Exception, string>>()), Times.Never);
+        }
+
+        [TestMethod]
+        public async Task GroupPathDisabled_GroupPartRejectedEvenWhenPublicAsync()
+        {
+            var syncJobId = Guid.NewGuid();
+            var groupId = Guid.NewGuid();
+
+            var syncJob = new SyncJob { Id = syncJobId, Status = SyncStatus.PendingAutoApproval.ToString(), Query = $"[{{\"type\":\"GroupMembership\",\"source\":\"{groupId}\"}}]" };
+
+            var syncJobsRepository = new Mock<IDatabaseSyncJobsRepository>();
+            var settingsRepository = new Mock<IDatabaseSettingsRepository>();
+            var graphGroupRepository = new Mock<IGraphGroupRepository>();
+            var syncJobChangeRepository = new Mock<ISyncJobChangeRepository>();
+            var logger = new Mock<ILogger<AutoApproverService>>();
+
+            syncJobsRepository.Setup(x => x.GetSyncJobAsync(syncJobId)).ReturnsAsync(syncJob);
+            EnablePaths(settingsRepository, groupBased: false, orgLeader: true);
+
+            // A Public group would otherwise qualify, so approval here would mean the switch was ignored.
+            graphGroupRepository.Setup(x => x.GetGroupsAsync(It.IsAny<List<Guid>>()))
+                                .ReturnsAsync(new List<AzureADGroup> { new AzureADGroup { ObjectId = groupId, Visibility = "Public" } });
+
+            var service = CreateService(syncJobsRepository, settingsRepository, graphGroupRepository, syncJobChangeRepository, logger);
+            await service.ProcessAutoApprovalAsync(Message(syncJobId, Guid.NewGuid().ToString()));
+
+            VerifyPendingReview(syncJobsRepository, syncJobChangeRepository);
+            graphGroupRepository.Verify(x => x.GetGroupsAsync(It.IsAny<List<Guid>>()), Times.Never);
+        }
+
+        [TestMethod]
+        public async Task SqlPathDisabled_SqlPartRejectedEvenWhenManagerIsRequestorAsync()
+        {
+            var syncJobId = Guid.NewGuid();
+            var requestorId = Guid.NewGuid().ToString();
+            var managerId = 4242;
+
+            var syncJob = new SyncJob { Id = syncJobId, Status = SyncStatus.PendingAutoApproval.ToString(), Query = $"[{{\"type\":\"SqlMembership\",\"source\":{{\"manager\":{{\"id\":{managerId}}}}}}}]" };
+
+            var syncJobsRepository = new Mock<IDatabaseSyncJobsRepository>();
+            var settingsRepository = new Mock<IDatabaseSettingsRepository>();
+            var graphGroupRepository = new Mock<IGraphGroupRepository>();
+            var syncJobChangeRepository = new Mock<ISyncJobChangeRepository>();
+            var logger = new Mock<ILogger<AutoApproverService>>();
+            var sqlMembershipRepository = new Mock<ISqlMembershipRepository>();
+            var dataFactoryRepository = new Mock<IDataFactoryRepository>();
+
+            syncJobsRepository.Setup(x => x.GetSyncJobAsync(syncJobId)).ReturnsAsync(syncJob);
+            EnablePaths(settingsRepository, groupBased: true, orgLeader: false);
+            dataFactoryRepository.Setup(x => x.GetMostRecentSucceededRunIdAsync()).ReturnsAsync("abc-def");
+            sqlMembershipRepository.Setup(x => x.GetUserEmployeeIdAsync(requestorId, It.IsAny<string>())).ReturnsAsync(managerId);
+
+            var service = CreateService(syncJobsRepository, settingsRepository, graphGroupRepository, syncJobChangeRepository, logger, sqlMembershipRepository, dataFactoryRepository);
+            await service.ProcessAutoApprovalAsync(Message(syncJobId, requestorId));
+
+            VerifyPendingReview(syncJobsRepository, syncJobChangeRepository);
+
+            // A disabled SQL path must not cost a run lookup or a users-table read.
+            dataFactoryRepository.Verify(x => x.GetMostRecentSucceededRunIdAsync(), Times.Never);
+            sqlMembershipRepository.Verify(x => x.GetUserEmployeeIdAsync(It.IsAny<string>(), It.IsAny<string>()), Times.Never);
+        }
+
+        [TestMethod]
+        public async Task SqlPathDisabled_MixedQuery_RejectsWholeJobAsync()
+        {
+            var syncJobId = Guid.NewGuid();
+            var groupId = Guid.NewGuid();
+            var requestorId = Guid.NewGuid().ToString();
+            var managerId = 4242;
+
+            // Every part must qualify, so the disabled SQL part declines the job.
+            var syncJob = new SyncJob
+            {
+                Id = syncJobId,
+                Status = SyncStatus.PendingAutoApproval.ToString(),
+                Query = $"[{{\"type\":\"GroupMembership\",\"source\":\"{groupId}\"}},{{\"type\":\"SqlMembership\",\"source\":{{\"manager\":{{\"id\":{managerId}}}}}}}]"
+            };
+
+            var syncJobsRepository = new Mock<IDatabaseSyncJobsRepository>();
+            var settingsRepository = new Mock<IDatabaseSettingsRepository>();
+            var graphGroupRepository = new Mock<IGraphGroupRepository>();
+            var syncJobChangeRepository = new Mock<ISyncJobChangeRepository>();
+            var logger = new Mock<ILogger<AutoApproverService>>();
+            var sqlMembershipRepository = new Mock<ISqlMembershipRepository>();
+            var dataFactoryRepository = new Mock<IDataFactoryRepository>();
+
+            syncJobsRepository.Setup(x => x.GetSyncJobAsync(syncJobId)).ReturnsAsync(syncJob);
+            EnablePaths(settingsRepository, groupBased: true, orgLeader: false);
+            graphGroupRepository.Setup(x => x.GetGroupsAsync(It.IsAny<List<Guid>>()))
+                                .ReturnsAsync(new List<AzureADGroup> { new AzureADGroup { ObjectId = groupId, Visibility = "Public" } });
+            sqlMembershipRepository.Setup(x => x.GetUserEmployeeIdAsync(requestorId, It.IsAny<string>())).ReturnsAsync(managerId);
+
+            var service = CreateService(syncJobsRepository, settingsRepository, graphGroupRepository, syncJobChangeRepository, logger, sqlMembershipRepository, dataFactoryRepository);
+            await service.ProcessAutoApprovalAsync(Message(syncJobId, requestorId));
+
+            VerifyPendingReview(syncJobsRepository, syncJobChangeRepository);
+        }
+
+        [TestMethod]
+        public async Task GroupPathDisabled_SqlOnlyQueryStillApprovesAsync()
+        {
+            var syncJobId = Guid.NewGuid();
+            var requestorId = Guid.NewGuid().ToString();
+            var managerId = 4242;
+
+            // The switches are independent: turning off group sources must not affect a SQL-only job.
+            var syncJob = new SyncJob { Id = syncJobId, Status = SyncStatus.PendingAutoApproval.ToString(), Query = $"[{{\"type\":\"SqlMembership\",\"source\":{{\"manager\":{{\"id\":{managerId}}}}}}}]" };
+
+            var syncJobsRepository = new Mock<IDatabaseSyncJobsRepository>();
+            var settingsRepository = new Mock<IDatabaseSettingsRepository>();
+            var graphGroupRepository = new Mock<IGraphGroupRepository>();
+            var syncJobChangeRepository = new Mock<ISyncJobChangeRepository>();
+            var logger = new Mock<ILogger<AutoApproverService>>();
+            var sqlMembershipRepository = new Mock<ISqlMembershipRepository>();
+            var dataFactoryRepository = new Mock<IDataFactoryRepository>();
+
+            syncJobsRepository.Setup(x => x.GetSyncJobAsync(syncJobId)).ReturnsAsync(syncJob);
+            EnablePaths(settingsRepository, groupBased: false, orgLeader: true);
+            dataFactoryRepository.Setup(x => x.GetMostRecentSucceededRunIdAsync()).ReturnsAsync("abc-def");
+            sqlMembershipRepository.Setup(x => x.GetUserEmployeeIdAsync(requestorId, It.IsAny<string>())).ReturnsAsync(managerId);
+
+            var service = CreateService(syncJobsRepository, settingsRepository, graphGroupRepository, syncJobChangeRepository, logger, sqlMembershipRepository, dataFactoryRepository);
+            await service.ProcessAutoApprovalAsync(Message(syncJobId, requestorId));
+
+            VerifyApproved(syncJobsRepository, syncJobChangeRepository, syncJobId);
         }
 
         [TestMethod]
@@ -768,7 +807,7 @@ namespace Services.Tests
             var logger = new Mock<ILogger<AutoApproverService>>();
 
             syncJobsRepository.Setup(x => x.GetSyncJobAsync(syncJobId)).ReturnsAsync(syncJob);
-            EnablePerPartOnly(settingsRepository);
+            EnableGroupAndOrgLeaderPaths(settingsRepository);
 
             var service = CreateService(syncJobsRepository, settingsRepository, graphGroupRepository, syncJobChangeRepository, logger);
             await service.ProcessAutoApprovalAsync(Message(syncJobId, Guid.NewGuid().ToString()));
@@ -776,30 +815,17 @@ namespace Services.Tests
             VerifyPendingReview(syncJobsRepository, syncJobChangeRepository);
         }
 
-        // ── Per-Part Rule precedence ──
-        // The Per-Part Rule is authoritative: when enabled it is the only rule consulted, so its
-        // verdict cannot be widened by the group-based or org-leader rules being enabled too.
-
-        private static void EnableAllRules(Mock<IDatabaseSettingsRepository> settingsRepository)
-        {
-            settingsRepository.Setup(x => x.GetSettingByKeyAsync(SettingKey.IsAutoApprovalForGroupBasedSyncsEnabled))
-                              .ReturnsAsync(new Setting { SettingKey = SettingKey.IsAutoApprovalForGroupBasedSyncsEnabled, SettingValue = "true" });
-            settingsRepository.Setup(x => x.GetSettingByKeyAsync(SettingKey.IsAutoApprovalForRequestorIsOrgLeaderSyncsEnabled))
-                              .ReturnsAsync(new Setting { SettingKey = SettingKey.IsAutoApprovalForRequestorIsOrgLeaderSyncsEnabled, SettingValue = "true" });
-            settingsRepository.Setup(x => x.GetSettingByKeyAsync(SettingKey.IsPerPartAutoApprovalEnabled))
-                              .ReturnsAsync(new Setting { SettingKey = SettingKey.IsPerPartAutoApprovalEnabled, SettingValue = "true" });
-        }
+        // No whole-query fallback: a failed part cannot be rescued by the query as a whole.
 
         [TestMethod]
-        public async Task PerPart_AllRulesEnabled_PerPartDeclines_OtherRulesSkippedAsync()
+        public async Task AllPathsEnabled_PartFails_NoWholeQueryFallbackAsync()
         {
             var syncJobId = Guid.NewGuid();
             var groupId1 = Guid.NewGuid();
             var groupId2 = Guid.NewGuid();
             var requestorId = Guid.NewGuid().ToString();
 
-            // Two Private groups the requestor owns neither of. The group-based rule would approve
-            // this (no HiddenMembership source), so an approval here would prove the rules were OR-ed.
+            // The retired whole-query rule would have approved this; approval means a fallback survived.
             var syncJob = new SyncJob
             {
                 Id = syncJobId,
@@ -814,7 +840,7 @@ namespace Services.Tests
             var logger = new Mock<ILogger<AutoApproverService>>();
 
             syncJobsRepository.Setup(x => x.GetSyncJobAsync(syncJobId)).ReturnsAsync(syncJob);
-            EnableAllRules(settingsRepository);
+            EnableGroupAndOrgLeaderPaths(settingsRepository);
             graphGroupRepository.Setup(x => x.GetGroupsAsync(It.IsAny<List<Guid>>()))
                                 .ReturnsAsync((List<Guid> ids) => ids.Select(id => new AzureADGroup { ObjectId = id, Visibility = "Private" }).ToList());
             graphGroupRepository.Setup(x => x.GetGroupOwnersAsync(It.IsAny<Guid>(), It.IsAny<int>()))
@@ -825,21 +851,19 @@ namespace Services.Tests
 
             VerifyPendingReview(syncJobsRepository, syncJobChangeRepository);
 
-            // Per-part looks up one group at a time and stops at the first failure; the group-based
-            // rule would have looked up both sources in a single call.
+            // Per-part stops at the first failure; the retired rule looked up every source at once.
             graphGroupRepository.Verify(x => x.GetGroupsAsync(It.Is<List<Guid>>(ids => ids.Count > 1)), Times.Never);
             graphGroupRepository.Verify(x => x.GetUserWithOnPremisesImmutableIdAsync(It.IsAny<string>(), It.IsAny<Guid?>()), Times.Never);
         }
 
         [TestMethod]
-        public async Task PerPart_AllRulesEnabled_PerPartApprovesHiddenOwner_ApprovesAsync()
+        public async Task AllPathsEnabled_HiddenMembershipOwner_ApprovesAsync()
         {
             var syncJobId = Guid.NewGuid();
             var groupId = Guid.NewGuid();
             var requestorId = Guid.NewGuid().ToString();
 
-            // The group-based rule rejects any HiddenMembership source; per-part approves it because
-            // the requestor is an owner. Per-part is authoritative, so the job is approved.
+            // The retired rule rejected HiddenMembership; per-part approves it on ownership.
             var syncJob = new SyncJob { Id = syncJobId, Status = SyncStatus.PendingAutoApproval.ToString(), Query = $"[{{\"type\":\"GroupMembership\",\"source\":\"{groupId}\"}}]" };
 
             var syncJobsRepository = new Mock<IDatabaseSyncJobsRepository>();
@@ -849,7 +873,7 @@ namespace Services.Tests
             var logger = new Mock<ILogger<AutoApproverService>>();
 
             syncJobsRepository.Setup(x => x.GetSyncJobAsync(syncJobId)).ReturnsAsync(syncJob);
-            EnableAllRules(settingsRepository);
+            EnableGroupAndOrgLeaderPaths(settingsRepository);
             graphGroupRepository.Setup(x => x.GetGroupsAsync(It.IsAny<List<Guid>>()))
                                 .ReturnsAsync(new List<AzureADGroup> { new AzureADGroup { ObjectId = groupId, Visibility = "HiddenMembership" } });
             graphGroupRepository.Setup(x => x.GetGroupOwnersAsync(groupId, It.IsAny<int>()))
@@ -863,50 +887,13 @@ namespace Services.Tests
         }
 
         [TestMethod]
-        public async Task PerPart_Disabled_GroupBasedAndOrgLeaderStillEvaluatedAsync()
-        {
-            var syncJobId = Guid.NewGuid();
-            var groupId = Guid.NewGuid();
-            var requestorId = Guid.NewGuid().ToString();
-
-            // Same shape per-part would reject (Private, requestor not an owner). With per-part off the
-            // legacy OR-ed behaviour must be unchanged, so the group-based rule approves it.
-            var syncJob = new SyncJob { Id = syncJobId, Status = SyncStatus.PendingAutoApproval.ToString(), Query = $"[{{\"type\":\"GroupMembership\",\"source\":\"{groupId}\"}}]" };
-
-            var syncJobsRepository = new Mock<IDatabaseSyncJobsRepository>();
-            var settingsRepository = new Mock<IDatabaseSettingsRepository>();
-            var graphGroupRepository = new Mock<IGraphGroupRepository>();
-            var syncJobChangeRepository = new Mock<ISyncJobChangeRepository>();
-            var logger = new Mock<ILogger<AutoApproverService>>();
-
-            syncJobsRepository.Setup(x => x.GetSyncJobAsync(syncJobId)).ReturnsAsync(syncJob);
-            settingsRepository.Setup(x => x.GetSettingByKeyAsync(SettingKey.IsAutoApprovalForGroupBasedSyncsEnabled))
-                              .ReturnsAsync(new Setting { SettingKey = SettingKey.IsAutoApprovalForGroupBasedSyncsEnabled, SettingValue = "true" });
-            settingsRepository.Setup(x => x.GetSettingByKeyAsync(SettingKey.IsAutoApprovalForRequestorIsOrgLeaderSyncsEnabled))
-                              .ReturnsAsync(new Setting { SettingKey = SettingKey.IsAutoApprovalForRequestorIsOrgLeaderSyncsEnabled, SettingValue = "true" });
-            settingsRepository.Setup(x => x.GetSettingByKeyAsync(SettingKey.IsPerPartAutoApprovalEnabled))
-                              .ReturnsAsync(new Setting { SettingKey = SettingKey.IsPerPartAutoApprovalEnabled, SettingValue = "false" });
-            graphGroupRepository.Setup(x => x.GetGroupsAsync(It.IsAny<List<Guid>>()))
-                                .ReturnsAsync(new List<AzureADGroup> { new AzureADGroup { ObjectId = groupId, Visibility = "Private" } });
-            graphGroupRepository.Setup(x => x.GetGroupOwnersAsync(It.IsAny<Guid>(), It.IsAny<int>()))
-                                .ReturnsAsync(new List<AzureADUser> { new AzureADUser { ObjectId = Guid.NewGuid() } });
-
-            var service = CreateService(syncJobsRepository, settingsRepository, graphGroupRepository, syncJobChangeRepository, logger);
-            await service.ProcessAutoApprovalAsync(Message(syncJobId, requestorId));
-
-            VerifyApproved(syncJobsRepository, syncJobChangeRepository, syncJobId);
-        }
-
-        [TestMethod]
         public async Task PerPart_FilterOnlySqlPart_RejectsThatPartWithoutFailingWholeParseAsync()
         {
             var syncJobId = Guid.NewGuid();
             var groupId = Guid.NewGuid();
             var requestorId = Guid.NewGuid().ToString();
 
-            // A filter-only SqlMembership source is a supported GMM query shape (~29% of PROD jobs have
-            // one). It must be rejected as a single part rather than failing the parse for the whole
-            // query, so the decline names the offending part instead of claiming the query is unreadable.
+            // A filter-only SqlMembership source must reject as one part, not fail the whole parse.
             var syncJob = new SyncJob
             {
                 Id = syncJobId,
@@ -921,7 +908,7 @@ namespace Services.Tests
             var logger = new Mock<ILogger<AutoApproverService>>();
 
             syncJobsRepository.Setup(x => x.GetSyncJobAsync(syncJobId)).ReturnsAsync(syncJob);
-            EnableAllRules(settingsRepository);
+            EnableGroupAndOrgLeaderPaths(settingsRepository);
             graphGroupRepository.Setup(x => x.GetGroupsAsync(It.IsAny<List<Guid>>()))
                                 .ReturnsAsync(new List<AzureADGroup> { new AzureADGroup { ObjectId = groupId, Visibility = "Public" } });
 
@@ -941,8 +928,7 @@ namespace Services.Tests
             var syncJobId = Guid.NewGuid();
             var requestorId = Guid.NewGuid().ToString();
 
-            // Fail-closed guard for the parser change: a source with no manager names nobody to match,
-            // so it must never approve even when the requestor resolves to an EmployeeId.
+            // A source with no manager names nobody to match, so it must never approve.
             var syncJob = new SyncJob
             {
                 Id = syncJobId,
@@ -957,7 +943,7 @@ namespace Services.Tests
             var logger = new Mock<ILogger<AutoApproverService>>();
 
             syncJobsRepository.Setup(x => x.GetSyncJobAsync(syncJobId)).ReturnsAsync(syncJob);
-            EnableAllRules(settingsRepository);
+            EnableGroupAndOrgLeaderPaths(settingsRepository);
 
             var service = CreateService(syncJobsRepository, settingsRepository, graphGroupRepository, syncJobChangeRepository, logger);
             await service.ProcessAutoApprovalAsync(Message(syncJobId, requestorId));
@@ -972,11 +958,7 @@ namespace Services.Tests
             var requestorId = Guid.NewGuid().ToString();
             var managerId = 4242;
 
-            // manager.depth and exclusionary are not consulted by the rule. Ignoring depth is the safe
-            // direction: SqlMembershipRepository.GetChildEntitiesAsync seeds its recursive CTE on the
-            // manager and recurses strictly downward (ON e.ManagerId = emp.EmployeeId), so a depth only
-            // narrows the requestor's own subtree. An absent depth is the broader query, and that shape
-            // is already auto-approved, so a bounded depth can never widen who the requestor may pull.
+            // depth and exclusionary are not consulted; a depth only narrows the requestor's subtree.
             var syncJob = new SyncJob
             {
                 Id = syncJobId,
@@ -993,7 +975,7 @@ namespace Services.Tests
             var dataFactoryRepository = new Mock<IDataFactoryRepository>();
 
             syncJobsRepository.Setup(x => x.GetSyncJobAsync(syncJobId)).ReturnsAsync(syncJob);
-            EnablePerPartOnly(settingsRepository);
+            EnableGroupAndOrgLeaderPaths(settingsRepository);
             dataFactoryRepository.Setup(x => x.GetMostRecentSucceededRunIdAsync()).ReturnsAsync("abc-def");
             sqlMembershipRepository.Setup(x => x.GetUserEmployeeIdAsync(requestorId, It.IsAny<string>())).ReturnsAsync(managerId);
 
@@ -1026,7 +1008,7 @@ namespace Services.Tests
             var logger = new Mock<ILogger<AutoApproverService>>();
 
             syncJobsRepository.Setup(x => x.GetSyncJobAsync(syncJobId)).ReturnsAsync(syncJob);
-            EnablePerPartOnly(settingsRepository);
+            EnableGroupAndOrgLeaderPaths(settingsRepository);
 
             // Source-generated [LoggerMessage] methods short-circuit on IsEnabled, which a Moq ILogger
             // returns false for by default, so nothing would be logged without this.
@@ -1043,6 +1025,507 @@ namespace Services.Tests
                 It.Is<It.IsAnyType>((v, t) => v.ToString().Contains("UnsupportedSourceType")),
                 It.IsAny<Exception>(),
                 It.IsAny<Func<It.IsAnyType, Exception, string>>()), Times.Once);
+        }
+
+        [TestMethod]
+        public async Task PerPart_SqlRequestorIsPublishedAssistant_ApprovesAsync()
+        {
+            var syncJobId = Guid.NewGuid();
+            var requestorObjectId = Guid.NewGuid();
+            var requestorId = requestorObjectId.ToString();
+            var leaderObjectId = Guid.NewGuid();
+            var managerId = 4242;
+
+            var syncJob = new SyncJob { Id = syncJobId, Status = SyncStatus.PendingAutoApproval.ToString(), Query = $"[{{\"type\":\"SqlMembership\",\"source\":{{\"manager\":{{\"id\":{managerId}}}}}}}]" };
+
+            var syncJobsRepository = new Mock<IDatabaseSyncJobsRepository>();
+            var settingsRepository = new Mock<IDatabaseSettingsRepository>();
+            var graphGroupRepository = new Mock<IGraphGroupRepository>();
+            var syncJobChangeRepository = new Mock<ISyncJobChangeRepository>();
+            var logger = new Mock<ILogger<AutoApproverService>>();
+            var sqlMembershipRepository = new Mock<ISqlMembershipRepository>();
+            var dataFactoryRepository = new Mock<IDataFactoryRepository>();
+
+            syncJobsRepository.Setup(x => x.GetSyncJobAsync(syncJobId)).ReturnsAsync(syncJob);
+            EnableAllPaths(settingsRepository);
+            dataFactoryRepository.Setup(x => x.GetMostRecentSucceededRunIdAsync()).ReturnsAsync("abc-def");
+
+            // The requestor is not the manager, so only the assistant relationship can approve.
+            sqlMembershipRepository.Setup(x => x.GetUserEmployeeIdAsync(requestorId, It.IsAny<string>())).ReturnsAsync(999);
+            sqlMembershipRepository.Setup(x => x.GetUserAzureObjectIdAsync(managerId, It.IsAny<string>())).Returns(Task.FromResult<string?>(leaderObjectId.ToString()));
+            graphGroupRepository.Setup(x => x.GetAssistantsAsync(leaderObjectId))
+                                .ReturnsAsync(new List<AzureADUser> { new AzureADUser { ObjectId = requestorObjectId } });
+
+            logger.Setup(x => x.IsEnabled(It.IsAny<LogLevel>())).Returns(true);
+
+            var service = CreateService(syncJobsRepository, settingsRepository, graphGroupRepository, syncJobChangeRepository, logger, sqlMembershipRepository, dataFactoryRepository);
+            await service.ProcessAutoApprovalAsync(Message(syncJobId, requestorId));
+
+            VerifyApproved(syncJobsRepository, syncJobChangeRepository, syncJobId);
+
+            logger.Verify(x => x.Log(
+                LogLevel.Information,
+                It.Is<EventId>(e => e.Id == 250135),
+                It.IsAny<It.IsAnyType>(),
+                It.IsAny<Exception>(),
+                It.IsAny<Func<It.IsAnyType, Exception, string>>()), Times.Once);
+
+            // The summary must attribute the part to the path that actually approved it.
+            logger.Verify(x => x.Log(
+                LogLevel.Information,
+                It.Is<EventId>(e => e.Id == 250116),
+                It.Is<It.IsAnyType>((v, _) => v.ToString().Contains("SqlMembership(manager-self): 0")
+                                           && v.ToString().Contains("SqlMembership(assistant): 1")),
+                It.IsAny<Exception>(),
+                It.IsAny<Func<It.IsAnyType, Exception, string>>()), Times.Once);
+        }
+
+        [TestMethod]
+        public async Task PerPart_SqlPart_LogsLeaderAssistantPathStateAsync()
+        {
+            var syncJobId = Guid.NewGuid();
+            var requestorObjectId = Guid.NewGuid();
+            var requestorId = requestorObjectId.ToString();
+            var leaderObjectId = Guid.NewGuid();
+            var managerId = 4242;
+
+            var syncJob = new SyncJob { Id = syncJobId, Status = SyncStatus.PendingAutoApproval.ToString(), Query = $"[{{\"type\":\"SqlMembership\",\"source\":{{\"manager\":{{\"id\":{managerId}}}}}}}]" };
+
+            var syncJobsRepository = new Mock<IDatabaseSyncJobsRepository>();
+            var settingsRepository = new Mock<IDatabaseSettingsRepository>();
+            var graphGroupRepository = new Mock<IGraphGroupRepository>();
+            var syncJobChangeRepository = new Mock<ISyncJobChangeRepository>();
+            var logger = new Mock<ILogger<AutoApproverService>>();
+            var sqlMembershipRepository = new Mock<ISqlMembershipRepository>();
+            var dataFactoryRepository = new Mock<IDataFactoryRepository>();
+
+            syncJobsRepository.Setup(x => x.GetSyncJobAsync(syncJobId)).ReturnsAsync(syncJob);
+            EnableAllPaths(settingsRepository);
+            dataFactoryRepository.Setup(x => x.GetMostRecentSucceededRunIdAsync()).ReturnsAsync("abc-def");
+            sqlMembershipRepository.Setup(x => x.GetUserEmployeeIdAsync(requestorId, It.IsAny<string>())).ReturnsAsync(999);
+            sqlMembershipRepository.Setup(x => x.GetUserAzureObjectIdAsync(managerId, It.IsAny<string>())).Returns(Task.FromResult<string?>(leaderObjectId.ToString()));
+            graphGroupRepository.Setup(x => x.GetAssistantsAsync(leaderObjectId))
+                                .ReturnsAsync(new List<AzureADUser> { new AzureADUser { ObjectId = requestorObjectId } });
+
+            logger.Setup(x => x.IsEnabled(It.IsAny<LogLevel>())).Returns(true);
+
+            var service = CreateService(syncJobsRepository, settingsRepository, graphGroupRepository, syncJobChangeRepository, logger, sqlMembershipRepository, dataFactoryRepository);
+            await service.ProcessAutoApprovalAsync(Message(syncJobId, requestorId));
+
+            // The paths-resolved log covers only the two eagerly read settings, so the assistant
+            // path needs its own line or its state is invisible during triage.
+            logger.Verify(x => x.Log(
+                LogLevel.Information,
+                It.Is<EventId>(e => e.Id == 250139),
+                It.Is<It.IsAnyType>((v, _) => v.ToString().Contains("leader-assistant: True")),
+                It.IsAny<Exception>(),
+                It.IsAny<Func<It.IsAnyType, Exception, string>>()), Times.Once);
+        }
+
+        [TestMethod]
+        public async Task PerPart_GroupOnlySubmission_DoesNotReadOrLogLeaderAssistantPathAsync()
+        {
+            var syncJobId = Guid.NewGuid();
+            var groupId = Guid.NewGuid();
+            var requestorId = Guid.NewGuid().ToString();
+
+            var syncJob = new SyncJob { Id = syncJobId, Status = SyncStatus.PendingAutoApproval.ToString(), Query = $"[{{\"type\":\"GroupMembership\",\"source\":\"{groupId}\"}}]" };
+
+            var syncJobsRepository = new Mock<IDatabaseSyncJobsRepository>();
+            var settingsRepository = new Mock<IDatabaseSettingsRepository>();
+            var graphGroupRepository = new Mock<IGraphGroupRepository>();
+            var syncJobChangeRepository = new Mock<ISyncJobChangeRepository>();
+            var logger = new Mock<ILogger<AutoApproverService>>();
+
+            syncJobsRepository.Setup(x => x.GetSyncJobAsync(syncJobId)).ReturnsAsync(syncJob);
+            EnableGroupAndOrgLeaderPaths(settingsRepository);
+            graphGroupRepository.Setup(x => x.GetGroupsAsync(It.IsAny<List<Guid>>()))
+                                .ReturnsAsync(new List<AzureADGroup> { new AzureADGroup { ObjectId = groupId, Visibility = "Public" } });
+
+            logger.Setup(x => x.IsEnabled(It.IsAny<LogLevel>())).Returns(true);
+
+            var service = CreateService(syncJobsRepository, settingsRepository, graphGroupRepository, syncJobChangeRepository, logger);
+            await service.ProcessAutoApprovalAsync(Message(syncJobId, requestorId));
+
+            // The setting is read lazily, so a group-only submission must pay for neither the read nor the log.
+            settingsRepository.Verify(x => x.GetSettingByKeyAsync(SettingKey.IsAutoApprovalForLeaderAssistantEnabled), Times.Never);
+
+            logger.Verify(x => x.Log(
+                LogLevel.Information,
+                It.Is<EventId>(e => e.Id == 250139),
+                It.IsAny<It.IsAnyType>(),
+                It.IsAny<Exception>(),
+                It.IsAny<Func<It.IsAnyType, Exception, string>>()), Times.Never);
+        }
+
+        [TestMethod]
+        public async Task PerPart_SqlAssistantSubRuleDisabled_MovesToPendingReviewAsync()
+        {
+            var syncJobId = Guid.NewGuid();
+            var requestorObjectId = Guid.NewGuid();
+            var requestorId = requestorObjectId.ToString();
+            var leaderObjectId = Guid.NewGuid();
+            var managerId = 4242;
+
+            var syncJob = new SyncJob { Id = syncJobId, Status = SyncStatus.PendingAutoApproval.ToString(), Query = $"[{{\"type\":\"SqlMembership\",\"source\":{{\"manager\":{{\"id\":{managerId}}}}}}}]" };
+
+            var syncJobsRepository = new Mock<IDatabaseSyncJobsRepository>();
+            var settingsRepository = new Mock<IDatabaseSettingsRepository>();
+            var graphGroupRepository = new Mock<IGraphGroupRepository>();
+            var syncJobChangeRepository = new Mock<ISyncJobChangeRepository>();
+            var logger = new Mock<ILogger<AutoApproverService>>();
+            var sqlMembershipRepository = new Mock<ISqlMembershipRepository>();
+            var dataFactoryRepository = new Mock<IDataFactoryRepository>();
+
+            syncJobsRepository.Setup(x => x.GetSyncJobAsync(syncJobId)).ReturnsAsync(syncJob);
+
+            // A genuine assistant relationship must still be ignored while that path is off.
+            EnableGroupAndOrgLeaderPaths(settingsRepository);
+            dataFactoryRepository.Setup(x => x.GetMostRecentSucceededRunIdAsync()).ReturnsAsync("abc-def");
+            sqlMembershipRepository.Setup(x => x.GetUserEmployeeIdAsync(requestorId, It.IsAny<string>())).ReturnsAsync(999);
+            sqlMembershipRepository.Setup(x => x.GetUserAzureObjectIdAsync(managerId, It.IsAny<string>())).Returns(Task.FromResult<string?>(leaderObjectId.ToString()));
+            graphGroupRepository.Setup(x => x.GetAssistantsAsync(leaderObjectId))
+                                .ReturnsAsync(new List<AzureADUser> { new AzureADUser { ObjectId = requestorObjectId } });
+
+            var service = CreateService(syncJobsRepository, settingsRepository, graphGroupRepository, syncJobChangeRepository, logger, sqlMembershipRepository, dataFactoryRepository);
+            await service.ProcessAutoApprovalAsync(Message(syncJobId, requestorId));
+
+            VerifyPendingReview(syncJobsRepository, syncJobChangeRepository);
+            graphGroupRepository.Verify(x => x.GetAssistantsAsync(It.IsAny<Guid>()), Times.Never);
+        }
+
+        [TestMethod]
+        public async Task PerPart_SqlAssistantPathOnWhileManagerSelfPathOff_ApprovesWithoutReadingEmployeeIdAsync()
+        {
+            var syncJobId = Guid.NewGuid();
+            var requestorObjectId = Guid.NewGuid();
+            var requestorId = requestorObjectId.ToString();
+            var leaderObjectId = Guid.NewGuid();
+            var managerId = 4242;
+
+            var syncJob = new SyncJob { Id = syncJobId, Status = SyncStatus.PendingAutoApproval.ToString(), Query = $"[{{\"type\":\"SqlMembership\",\"source\":{{\"manager\":{{\"id\":{managerId}}}}}}}]" };
+
+            var syncJobsRepository = new Mock<IDatabaseSyncJobsRepository>();
+            var settingsRepository = new Mock<IDatabaseSettingsRepository>();
+            var graphGroupRepository = new Mock<IGraphGroupRepository>();
+            var syncJobChangeRepository = new Mock<ISyncJobChangeRepository>();
+            var logger = new Mock<ILogger<AutoApproverService>>();
+            var sqlMembershipRepository = new Mock<ISqlMembershipRepository>();
+            var dataFactoryRepository = new Mock<IDataFactoryRepository>();
+
+            syncJobsRepository.Setup(x => x.GetSyncJobAsync(syncJobId)).ReturnsAsync(syncJob);
+
+            // The assistant path stands on its own without manager-self approval.
+            EnablePaths(settingsRepository, groupBased: false, orgLeader: false, leaderAssistant: true);
+            dataFactoryRepository.Setup(x => x.GetMostRecentSucceededRunIdAsync()).ReturnsAsync("abc-def");
+            sqlMembershipRepository.Setup(x => x.GetUserAzureObjectIdAsync(managerId, It.IsAny<string>())).Returns(Task.FromResult<string?>(leaderObjectId.ToString()));
+            graphGroupRepository.Setup(x => x.GetAssistantsAsync(leaderObjectId))
+                                .ReturnsAsync(new List<AzureADUser> { new AzureADUser { ObjectId = requestorObjectId } });
+
+            var service = CreateService(syncJobsRepository, settingsRepository, graphGroupRepository, syncJobChangeRepository, logger, sqlMembershipRepository, dataFactoryRepository);
+            await service.ProcessAutoApprovalAsync(Message(syncJobId, requestorId));
+
+            VerifyApproved(syncJobsRepository, syncJobChangeRepository, syncJobId);
+
+            // Manager-self is off, so the requestor's employee id is never needed.
+            sqlMembershipRepository.Verify(x => x.GetUserEmployeeIdAsync(It.IsAny<string>(), It.IsAny<string>()), Times.Never);
+        }
+
+        [TestMethod]
+        public async Task PerPart_SqlBothPathsDisabled_SkipsAssistantLookupAsync()
+        {
+            var syncJobId = Guid.NewGuid();
+            var requestorObjectId = Guid.NewGuid();
+            var requestorId = requestorObjectId.ToString();
+            var leaderObjectId = Guid.NewGuid();
+            var managerId = 4242;
+
+            var syncJob = new SyncJob { Id = syncJobId, Status = SyncStatus.PendingAutoApproval.ToString(), Query = $"[{{\"type\":\"SqlMembership\",\"source\":{{\"manager\":{{\"id\":{managerId}}}}}}}]" };
+
+            var syncJobsRepository = new Mock<IDatabaseSyncJobsRepository>();
+            var settingsRepository = new Mock<IDatabaseSettingsRepository>();
+            var graphGroupRepository = new Mock<IGraphGroupRepository>();
+            var syncJobChangeRepository = new Mock<ISyncJobChangeRepository>();
+            var logger = new Mock<ILogger<AutoApproverService>>();
+            var sqlMembershipRepository = new Mock<ISqlMembershipRepository>();
+            var dataFactoryRepository = new Mock<IDataFactoryRepository>();
+
+            syncJobsRepository.Setup(x => x.GetSyncJobAsync(syncJobId)).ReturnsAsync(syncJob);
+
+            // Both SQL paths off, so a genuine assistant relationship is not enough on its own.
+            EnablePaths(settingsRepository, groupBased: true, orgLeader: false, leaderAssistant: false);
+            graphGroupRepository.Setup(x => x.GetAssistantsAsync(leaderObjectId))
+                                .ReturnsAsync(new List<AzureADUser> { new AzureADUser { ObjectId = requestorObjectId } });
+
+            var service = CreateService(syncJobsRepository, settingsRepository, graphGroupRepository, syncJobChangeRepository, logger, sqlMembershipRepository, dataFactoryRepository);
+            await service.ProcessAutoApprovalAsync(Message(syncJobId, requestorId));
+
+            VerifyPendingReview(syncJobsRepository, syncJobChangeRepository);
+            graphGroupRepository.Verify(x => x.GetAssistantsAsync(It.IsAny<Guid>()), Times.Never);
+            sqlMembershipRepository.Verify(x => x.GetUserAzureObjectIdAsync(It.IsAny<int>(), It.IsAny<string>()), Times.Never);
+        }
+
+        [TestMethod]
+        public async Task PerPart_SqlRequestorIsNotAnAssistant_MovesToPendingReviewAsync()
+        {
+            var syncJobId = Guid.NewGuid();
+            var requestorId = Guid.NewGuid().ToString();
+            var leaderObjectId = Guid.NewGuid();
+            var managerId = 4242;
+
+            var syncJob = new SyncJob { Id = syncJobId, Status = SyncStatus.PendingAutoApproval.ToString(), Query = $"[{{\"type\":\"SqlMembership\",\"source\":{{\"manager\":{{\"id\":{managerId}}}}}}}]" };
+
+            var syncJobsRepository = new Mock<IDatabaseSyncJobsRepository>();
+            var settingsRepository = new Mock<IDatabaseSettingsRepository>();
+            var graphGroupRepository = new Mock<IGraphGroupRepository>();
+            var syncJobChangeRepository = new Mock<ISyncJobChangeRepository>();
+            var logger = new Mock<ILogger<AutoApproverService>>();
+            var sqlMembershipRepository = new Mock<ISqlMembershipRepository>();
+            var dataFactoryRepository = new Mock<IDataFactoryRepository>();
+
+            syncJobsRepository.Setup(x => x.GetSyncJobAsync(syncJobId)).ReturnsAsync(syncJob);
+            EnableAllPaths(settingsRepository);
+            dataFactoryRepository.Setup(x => x.GetMostRecentSucceededRunIdAsync()).ReturnsAsync("abc-def");
+            sqlMembershipRepository.Setup(x => x.GetUserEmployeeIdAsync(requestorId, It.IsAny<string>())).ReturnsAsync(999);
+            sqlMembershipRepository.Setup(x => x.GetUserAzureObjectIdAsync(managerId, It.IsAny<string>())).Returns(Task.FromResult<string?>(leaderObjectId.ToString()));
+
+            // The leader publishes an assistant, just not this requestor.
+            graphGroupRepository.Setup(x => x.GetAssistantsAsync(leaderObjectId))
+                                .ReturnsAsync(new List<AzureADUser> { new AzureADUser { ObjectId = Guid.NewGuid() } });
+
+            var service = CreateService(syncJobsRepository, settingsRepository, graphGroupRepository, syncJobChangeRepository, logger, sqlMembershipRepository, dataFactoryRepository);
+            await service.ProcessAutoApprovalAsync(Message(syncJobId, requestorId));
+
+            VerifyPendingReview(syncJobsRepository, syncJobChangeRepository);
+        }
+
+        [TestMethod]
+        public async Task PerPart_SqlLeaderPublishesNoAssistant_MovesToPendingReviewAsync()
+        {
+            var syncJobId = Guid.NewGuid();
+            var requestorId = Guid.NewGuid().ToString();
+            var leaderObjectId = Guid.NewGuid();
+            var managerId = 4242;
+
+            var syncJob = new SyncJob { Id = syncJobId, Status = SyncStatus.PendingAutoApproval.ToString(), Query = $"[{{\"type\":\"SqlMembership\",\"source\":{{\"manager\":{{\"id\":{managerId}}}}}}}]" };
+
+            var syncJobsRepository = new Mock<IDatabaseSyncJobsRepository>();
+            var settingsRepository = new Mock<IDatabaseSettingsRepository>();
+            var graphGroupRepository = new Mock<IGraphGroupRepository>();
+            var syncJobChangeRepository = new Mock<ISyncJobChangeRepository>();
+            var logger = new Mock<ILogger<AutoApproverService>>();
+            var sqlMembershipRepository = new Mock<ISqlMembershipRepository>();
+            var dataFactoryRepository = new Mock<IDataFactoryRepository>();
+
+            syncJobsRepository.Setup(x => x.GetSyncJobAsync(syncJobId)).ReturnsAsync(syncJob);
+            EnableAllPaths(settingsRepository);
+            dataFactoryRepository.Setup(x => x.GetMostRecentSucceededRunIdAsync()).ReturnsAsync("abc-def");
+            sqlMembershipRepository.Setup(x => x.GetUserEmployeeIdAsync(requestorId, It.IsAny<string>())).ReturnsAsync(999);
+            sqlMembershipRepository.Setup(x => x.GetUserAzureObjectIdAsync(managerId, It.IsAny<string>())).Returns(Task.FromResult<string?>(leaderObjectId.ToString()));
+
+            // A successful read returning no assistant is an authoritative "no", not an outage.
+            graphGroupRepository.Setup(x => x.GetAssistantsAsync(leaderObjectId)).ReturnsAsync(new List<AzureADUser>());
+
+            var service = CreateService(syncJobsRepository, settingsRepository, graphGroupRepository, syncJobChangeRepository, logger, sqlMembershipRepository, dataFactoryRepository);
+            await service.ProcessAutoApprovalAsync(Message(syncJobId, requestorId));
+
+            VerifyPendingReview(syncJobsRepository, syncJobChangeRepository);
+        }
+
+        [TestMethod]
+        public async Task PerPart_SqlAssistantLookupUnavailable_MovesToPendingReviewAsync()
+        {
+            var syncJobId = Guid.NewGuid();
+            var requestorId = Guid.NewGuid().ToString();
+            var leaderObjectId = Guid.NewGuid();
+            var managerId = 4242;
+
+            var syncJob = new SyncJob { Id = syncJobId, Status = SyncStatus.PendingAutoApproval.ToString(), Query = $"[{{\"type\":\"SqlMembership\",\"source\":{{\"manager\":{{\"id\":{managerId}}}}}}}]" };
+
+            var syncJobsRepository = new Mock<IDatabaseSyncJobsRepository>();
+            var settingsRepository = new Mock<IDatabaseSettingsRepository>();
+            var graphGroupRepository = new Mock<IGraphGroupRepository>();
+            var syncJobChangeRepository = new Mock<ISyncJobChangeRepository>();
+            var logger = new Mock<ILogger<AutoApproverService>>();
+            var sqlMembershipRepository = new Mock<ISqlMembershipRepository>();
+            var dataFactoryRepository = new Mock<IDataFactoryRepository>();
+
+            syncJobsRepository.Setup(x => x.GetSyncJobAsync(syncJobId)).ReturnsAsync(syncJob);
+            EnableAllPaths(settingsRepository);
+            dataFactoryRepository.Setup(x => x.GetMostRecentSucceededRunIdAsync()).ReturnsAsync("abc-def");
+            sqlMembershipRepository.Setup(x => x.GetUserEmployeeIdAsync(requestorId, It.IsAny<string>())).ReturnsAsync(999);
+            sqlMembershipRepository.Setup(x => x.GetUserAzureObjectIdAsync(managerId, It.IsAny<string>())).Returns(Task.FromResult<string?>(leaderObjectId.ToString()));
+
+            // Fail closed: an unreadable profile must never be treated as "no assistant".
+            graphGroupRepository.Setup(x => x.GetAssistantsAsync(leaderObjectId)).ThrowsAsync(new InvalidOperationException("graph unavailable"));
+
+            logger.Setup(x => x.IsEnabled(It.IsAny<LogLevel>())).Returns(true);
+
+            var service = CreateService(syncJobsRepository, settingsRepository, graphGroupRepository, syncJobChangeRepository, logger, sqlMembershipRepository, dataFactoryRepository);
+            await service.ProcessAutoApprovalAsync(Message(syncJobId, requestorId));
+
+            VerifyPendingReview(syncJobsRepository, syncJobChangeRepository);
+
+            logger.Verify(x => x.Log(
+                LogLevel.Error,
+                It.Is<EventId>(e => e.Id == 250136),
+                It.IsAny<It.IsAnyType>(),
+                It.IsAny<Exception>(),
+                It.IsAny<Func<It.IsAnyType, Exception, string>>()), Times.Once);
+        }
+
+        [TestMethod]
+        public async Task PerPart_SqlManagerIdentityUnresolved_MovesToPendingReviewAsync()
+        {
+            var syncJobId = Guid.NewGuid();
+            var requestorId = Guid.NewGuid().ToString();
+            var managerId = 4242;
+
+            var syncJob = new SyncJob { Id = syncJobId, Status = SyncStatus.PendingAutoApproval.ToString(), Query = $"[{{\"type\":\"SqlMembership\",\"source\":{{\"manager\":{{\"id\":{managerId}}}}}}}]" };
+
+            var syncJobsRepository = new Mock<IDatabaseSyncJobsRepository>();
+            var settingsRepository = new Mock<IDatabaseSettingsRepository>();
+            var graphGroupRepository = new Mock<IGraphGroupRepository>();
+            var syncJobChangeRepository = new Mock<ISyncJobChangeRepository>();
+            var logger = new Mock<ILogger<AutoApproverService>>();
+            var sqlMembershipRepository = new Mock<ISqlMembershipRepository>();
+            var dataFactoryRepository = new Mock<IDataFactoryRepository>();
+
+            syncJobsRepository.Setup(x => x.GetSyncJobAsync(syncJobId)).ReturnsAsync(syncJob);
+            EnableAllPaths(settingsRepository);
+            dataFactoryRepository.Setup(x => x.GetMostRecentSucceededRunIdAsync()).ReturnsAsync("abc-def");
+            sqlMembershipRepository.Setup(x => x.GetUserEmployeeIdAsync(requestorId, It.IsAny<string>())).ReturnsAsync(999);
+
+            // The manager has no usable directory object id, so there is nobody to read a profile for.
+            sqlMembershipRepository.Setup(x => x.GetUserAzureObjectIdAsync(managerId, It.IsAny<string>())).Returns(Task.FromResult<string?>(string.Empty));
+
+            logger.Setup(x => x.IsEnabled(It.IsAny<LogLevel>())).Returns(true);
+
+            var service = CreateService(syncJobsRepository, settingsRepository, graphGroupRepository, syncJobChangeRepository, logger, sqlMembershipRepository, dataFactoryRepository);
+            await service.ProcessAutoApprovalAsync(Message(syncJobId, requestorId));
+
+            VerifyPendingReview(syncJobsRepository, syncJobChangeRepository);
+            graphGroupRepository.Verify(x => x.GetAssistantsAsync(It.IsAny<Guid>()), Times.Never);
+
+            logger.Verify(x => x.Log(
+                LogLevel.Error,
+                It.Is<EventId>(e => e.Id == 250137),
+                It.IsAny<It.IsAnyType>(),
+                It.IsAny<Exception>(),
+                It.IsAny<Func<It.IsAnyType, Exception, string>>()), Times.Once);
+        }
+
+        [TestMethod]
+        public async Task PerPart_SqlManagerSelfWins_NoProfileReadAsync()
+        {
+            var syncJobId = Guid.NewGuid();
+            var requestorId = Guid.NewGuid().ToString();
+            var managerId = 4242;
+
+            var syncJob = new SyncJob { Id = syncJobId, Status = SyncStatus.PendingAutoApproval.ToString(), Query = $"[{{\"type\":\"SqlMembership\",\"source\":{{\"manager\":{{\"id\":{managerId}}}}}}}]" };
+
+            var syncJobsRepository = new Mock<IDatabaseSyncJobsRepository>();
+            var settingsRepository = new Mock<IDatabaseSettingsRepository>();
+            var graphGroupRepository = new Mock<IGraphGroupRepository>();
+            var syncJobChangeRepository = new Mock<ISyncJobChangeRepository>();
+            var logger = new Mock<ILogger<AutoApproverService>>();
+            var sqlMembershipRepository = new Mock<ISqlMembershipRepository>();
+            var dataFactoryRepository = new Mock<IDataFactoryRepository>();
+
+            syncJobsRepository.Setup(x => x.GetSyncJobAsync(syncJobId)).ReturnsAsync(syncJob);
+            EnableAllPaths(settingsRepository);
+            dataFactoryRepository.Setup(x => x.GetMostRecentSucceededRunIdAsync()).ReturnsAsync("abc-def");
+
+            // The requestor is the manager, so no profile read should be added.
+            sqlMembershipRepository.Setup(x => x.GetUserEmployeeIdAsync(requestorId, It.IsAny<string>())).ReturnsAsync(managerId);
+
+            var service = CreateService(syncJobsRepository, settingsRepository, graphGroupRepository, syncJobChangeRepository, logger, sqlMembershipRepository, dataFactoryRepository);
+            await service.ProcessAutoApprovalAsync(Message(syncJobId, requestorId));
+
+            VerifyApproved(syncJobsRepository, syncJobChangeRepository, syncJobId);
+            graphGroupRepository.Verify(x => x.GetAssistantsAsync(It.IsAny<Guid>()), Times.Never);
+            sqlMembershipRepository.Verify(x => x.GetUserAzureObjectIdAsync(It.IsAny<int>(), It.IsAny<string>()), Times.Never);
+        }
+
+        [TestMethod]
+        public async Task PerPart_SqlAssistantWithoutEmployeeId_ApprovesAsync()
+        {
+            var syncJobId = Guid.NewGuid();
+            var requestorObjectId = Guid.NewGuid();
+            var requestorId = requestorObjectId.ToString();
+            var leaderObjectId = Guid.NewGuid();
+            var managerId = 4242;
+
+            var syncJob = new SyncJob { Id = syncJobId, Status = SyncStatus.PendingAutoApproval.ToString(), Query = $"[{{\"type\":\"SqlMembership\",\"source\":{{\"manager\":{{\"id\":{managerId}}}}}}}]" };
+
+            var syncJobsRepository = new Mock<IDatabaseSyncJobsRepository>();
+            var settingsRepository = new Mock<IDatabaseSettingsRepository>();
+            var graphGroupRepository = new Mock<IGraphGroupRepository>();
+            var syncJobChangeRepository = new Mock<ISyncJobChangeRepository>();
+            var logger = new Mock<ILogger<AutoApproverService>>();
+            var sqlMembershipRepository = new Mock<ISqlMembershipRepository>();
+            var dataFactoryRepository = new Mock<IDataFactoryRepository>();
+
+            syncJobsRepository.Setup(x => x.GetSyncJobAsync(syncJobId)).ReturnsAsync(syncJob);
+            EnableAllPaths(settingsRepository);
+            dataFactoryRepository.Setup(x => x.GetMostRecentSucceededRunIdAsync()).ReturnsAsync("abc-def");
+
+            // Matched on object id, so an assistant absent from the HR table still approves.
+            sqlMembershipRepository.Setup(x => x.GetUserEmployeeIdAsync(requestorId, It.IsAny<string>())).ReturnsAsync((int?)null);
+            sqlMembershipRepository.Setup(x => x.GetUserAzureObjectIdAsync(managerId, It.IsAny<string>())).Returns(Task.FromResult<string?>(leaderObjectId.ToString()));
+            graphGroupRepository.Setup(x => x.GetAssistantsAsync(leaderObjectId))
+                                .ReturnsAsync(new List<AzureADUser> { new AzureADUser { ObjectId = requestorObjectId } });
+
+            var service = CreateService(syncJobsRepository, settingsRepository, graphGroupRepository, syncJobChangeRepository, logger, sqlMembershipRepository, dataFactoryRepository);
+            await service.ProcessAutoApprovalAsync(Message(syncJobId, requestorId));
+
+            VerifyApproved(syncJobsRepository, syncJobChangeRepository, syncJobId);
+        }
+
+        [TestMethod]
+        public async Task PerPart_SqlSameLeaderAcrossParts_ReadsProfileOnceAsync()
+        {
+            var syncJobId = Guid.NewGuid();
+            var requestorObjectId = Guid.NewGuid();
+            var requestorId = requestorObjectId.ToString();
+            var leaderObjectId = Guid.NewGuid();
+            var managerId = 4242;
+
+            var syncJob = new SyncJob
+            {
+                Id = syncJobId,
+                Status = SyncStatus.PendingAutoApproval.ToString(),
+                Query = $"[{{\"type\":\"SqlMembership\",\"source\":{{\"manager\":{{\"id\":{managerId}}}}}}},{{\"type\":\"SqlMembership\",\"source\":{{\"manager\":{{\"id\":{managerId}}},\"filter\":\"Department eq 'Sales'\"}}}}]"
+            };
+
+            var syncJobsRepository = new Mock<IDatabaseSyncJobsRepository>();
+            var settingsRepository = new Mock<IDatabaseSettingsRepository>();
+            var graphGroupRepository = new Mock<IGraphGroupRepository>();
+            var syncJobChangeRepository = new Mock<ISyncJobChangeRepository>();
+            var logger = new Mock<ILogger<AutoApproverService>>();
+            var sqlMembershipRepository = new Mock<ISqlMembershipRepository>();
+            var dataFactoryRepository = new Mock<IDataFactoryRepository>();
+
+            syncJobsRepository.Setup(x => x.GetSyncJobAsync(syncJobId)).ReturnsAsync(syncJob);
+            EnableAllPaths(settingsRepository);
+            dataFactoryRepository.Setup(x => x.GetMostRecentSucceededRunIdAsync()).ReturnsAsync("abc-def");
+            sqlMembershipRepository.Setup(x => x.GetUserEmployeeIdAsync(requestorId, It.IsAny<string>())).ReturnsAsync(999);
+            sqlMembershipRepository.Setup(x => x.GetUserAzureObjectIdAsync(managerId, It.IsAny<string>())).Returns(Task.FromResult<string?>(leaderObjectId.ToString()));
+            graphGroupRepository.Setup(x => x.GetAssistantsAsync(leaderObjectId))
+                                .ReturnsAsync(new List<AzureADUser> { new AzureADUser { ObjectId = requestorObjectId } });
+
+            var service = CreateService(syncJobsRepository, settingsRepository, graphGroupRepository, syncJobChangeRepository, logger, sqlMembershipRepository, dataFactoryRepository);
+            await service.ProcessAutoApprovalAsync(Message(syncJobId, requestorId));
+
+            VerifyApproved(syncJobsRepository, syncJobChangeRepository, syncJobId);
+
+            // Both parts name the same leader, so the profile is read once for the whole submission.
+            graphGroupRepository.Verify(x => x.GetAssistantsAsync(leaderObjectId), Times.Once);
+            sqlMembershipRepository.Verify(x => x.GetUserAzureObjectIdAsync(managerId, It.IsAny<string>()), Times.Once);
+
+            // GetOrgLeaderAsync also walks the leader's whole reporting tree to compute a depth this
+            // path discards, so resolving the leader must not go through it.
+            sqlMembershipRepository.Verify(x => x.GetOrgLeaderAsync(It.IsAny<int>(), It.IsAny<string>()), Times.Never);
         }
     }
 }

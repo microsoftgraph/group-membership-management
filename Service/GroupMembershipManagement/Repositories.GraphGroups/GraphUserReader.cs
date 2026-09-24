@@ -14,6 +14,7 @@ using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
 using System.Net.Http;
+using System.Text.Json;
 using System.Threading.Tasks;
 
 namespace Repositories.GraphGroups
@@ -311,6 +312,77 @@ namespace Repositories.GraphGroups
             });
 
             return response;
+        }
+
+        /// <summary>Reads the assistants published on a leader's directory profile.</summary>
+        /// <remarks>Empty means no assistant; an unreadable profile throws so callers can fail closed.</remarks>
+        public async Task<List<AzureADUser>> GetAssistantsAsync(Guid leaderObjectId, Guid? runId)
+        {
+            var baseUrl = "https://graph.microsoft.com/beta";
+            var positionsUrl = $"{baseUrl}/users/{leaderObjectId}/profile/positions";
+
+            var requestInformation = _graphServiceClient.Users.ToGetRequestInformation();
+            requestInformation.URI = new Uri(positionsUrl);
+            requestInformation.PathParameters["baseurl"] = baseUrl;
+
+            var nativeResponseHandler = new NativeResponseHandler();
+            requestInformation.AddRequestOptions(new IRequestOption[] { new ResponseHandlerOption { ResponseHandler = nativeResponseHandler } });
+
+            await _graphServiceClient
+                    .RequestAdapter
+                    .SendAsync(requestInformation, UserCollectionResponse.CreateFromDiscriminatorValue);
+
+            using var nativeResponse = nativeResponseHandler.Value as HttpResponseMessage;
+
+            if (nativeResponse == null)
+                throw new InvalidOperationException("The profile positions request returned no response.");
+
+            var headers = nativeResponse.Headers.ToImmutableDictionary(x => x.Key, x => x.Value);
+            await _graphGroupMetricTracker.TrackMetricsAsync(headers, QueryType.Other, runId);
+
+            // Never downgraded to "no assistant" so the caller can fail closed.
+            if (!nativeResponse.IsSuccessStatusCode)
+                throw new InvalidOperationException($"The profile positions request failed with status {(int)nativeResponse.StatusCode}.");
+
+            var content = await nativeResponse.Content.ReadAsStringAsync();
+            return ParseAssistants(content);
+        }
+
+        // Shape: { "value": [ { ..., "colleagues": [ { "relationship": "assistant", "userId": "..." } ] } ] }
+        // Only the object id is projected so no directory identifier can reach a log.
+        private static List<AzureADUser> ParseAssistants(string content)
+        {
+            var assistants = new List<AzureADUser>();
+
+            if (string.IsNullOrWhiteSpace(content))
+                return assistants;
+
+            using var document = JsonDocument.Parse(content);
+
+            if (!document.RootElement.TryGetProperty("value", out var positions) || positions.ValueKind != JsonValueKind.Array)
+                return assistants;
+
+            foreach (var position in positions.EnumerateArray())
+            {
+                if (!position.TryGetProperty("colleagues", out var colleagues) || colleagues.ValueKind != JsonValueKind.Array)
+                    continue;
+
+                foreach (var colleague in colleagues.EnumerateArray())
+                {
+                    if (!colleague.TryGetProperty("relationship", out var relationship)
+                        || !string.Equals(relationship.GetString(), "assistant", StringComparison.OrdinalIgnoreCase))
+                        continue;
+
+                    if (colleague.TryGetProperty("userId", out var userId)
+                        && Guid.TryParse(userId.GetString(), out var assistantObjectId)
+                        && !assistants.Any(a => a.ObjectId == assistantObjectId))
+                    {
+                        assistants.Add(new AzureADUser { ObjectId = assistantObjectId });
+                    }
+                }
+            }
+
+            return assistants;
         }
     }
 }

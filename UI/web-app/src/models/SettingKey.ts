@@ -20,8 +20,9 @@ export const enum SettingKey {
     CopilotSuggestedPrompts = 15,
     IsAISearchForUserEnabled = 16,
     IsAIRunExplanationEnabled = 17,
-    IsPerPartAutoApprovalEnabled = 20,
-    IsAIRejectionFeedbackRefinementEnabled = 21
+    // Ordinal 20 (IsPerPartAutoApprovalEnabled) is retired and not reused.
+    IsAIRejectionFeedbackRefinementEnabled = 21,
+    IsAutoApprovalForLeaderAssistantEnabled = 22
 }
 
 export const SettingKeyMap: Record<SettingKey, string> = {
@@ -43,6 +44,6 @@ export const SettingKeyMap: Record<SettingKey, string> = {
     [SettingKey.CopilotSuggestedPrompts]: 'CopilotSuggestedPrompts',
     [SettingKey.IsAISearchForUserEnabled]: 'IsAISearchForUserEnabled',
     [SettingKey.IsAIRunExplanationEnabled]: 'IsAIRunExplanationEnabled',
-    [SettingKey.IsPerPartAutoApprovalEnabled]: 'IsPerPartAutoApprovalEnabled',
-    [SettingKey.IsAIRejectionFeedbackRefinementEnabled]: 'IsAIRejectionFeedbackRefinementEnabled'
+    [SettingKey.IsAIRejectionFeedbackRefinementEnabled]: 'IsAIRejectionFeedbackRefinementEnabled',
+    [SettingKey.IsAutoApprovalForLeaderAssistantEnabled]: 'IsAutoApprovalForLeaderAssistantEnabled'
 };

@@ -9,7 +9,7 @@ import { MemoryRouter } from 'react-router-dom';
 import { AdminConfigView, fractionToPercentText } from './AdminConfig.view';
 import { getStyles } from './AdminConfig.styles';
 import type { AdminConfigViewProps } from './AdminConfig.types';
-import { SettingKey, SqlMembershipAttribute } from '../../models';
+import { SettingKey, SettingKeyMap, SqlMembershipAttribute } from '../../models';
 import { getDefaultAlertBannerConfig } from '../../models/AlertBannerConfig';
 import { defaultStrings } from '../../services/localization';
 import { renderWithProviders } from '../../testing/renderWithProviders';
@@ -27,8 +27,18 @@ vi.mock('../../components/PageSection', () => ({
 }));
 
 vi.mock('../../components/GeneralSetting', () => ({
-  GeneralSetting: ({ title, description }: { title: string; description: string }) => (
-    <div>
+  GeneralSetting: ({
+    id,
+    title,
+    description,
+    generalSettingValue,
+  }: {
+    id: string;
+    title: string;
+    description: string;
+    generalSettingValue: string;
+  }) => (
+    <div data-testid={`setting-${id}`} data-value={generalSettingValue}>
       <div>{title}</div>
       <div>{description}</div>
     </div>
@@ -58,11 +68,12 @@ const createSettings = (overrides?: Partial<Record<SettingKey, string>>): { read
   [SettingKey.IsDisclaimerEnabled]: 'false',
   [SettingKey.IsAutoApprovalForGroupBasedSyncsEnabled]: 'false',
   [SettingKey.IsAutoApprovalForRequestorIsOrgLeaderSyncsEnabled]: 'false',
-  [SettingKey.IsPerPartAutoApprovalEnabled]: 'false',
+  [SettingKey.IsAutoApprovalForLeaderAssistantEnabled]: 'false',
   [SettingKey.IsAITitleEnabled]: 'true',
   [SettingKey.IsAICopilotEnabled]: 'true',
   [SettingKey.IsAISearchForUserEnabled]: 'false',
   [SettingKey.IsAIRunExplanationEnabled]: 'false',
+  [SettingKey.IsAIRejectionFeedbackRefinementEnabled]: 'false',
   [SettingKey.CopilotTemperature]: '0.7',
   [SettingKey.CopilotTopP]: '0.9',
   [SettingKey.CopilotInstructions]: '',
@@ -99,20 +110,23 @@ const renderAdminConfigView = (defaultAIPrompt: string, settingsOverrides?: Part
   );
 
 describe('AdminConfigView tab layout', () => {
-  const renderWithRoles = (roles: {
-    isAutoApproverAdministrator: boolean;
-    isCustomMembershipProviderAdmin: boolean;
-    isOperationsResetAdministrator: boolean;
-    isGeneralSettingsAdministrator: boolean;
-    isAISettingsAdministrator: boolean;
-  }) =>
+  const renderWithRoles = (
+    roles: {
+      isAutoApproverAdministrator: boolean;
+      isCustomMembershipProviderAdmin: boolean;
+      isOperationsResetAdministrator: boolean;
+      isGeneralSettingsAdministrator: boolean;
+      isAISettingsAdministrator: boolean;
+    },
+    settingsOverrides?: Partial<Record<SettingKey, string>>
+  ) =>
     renderWithProviders(
       <MemoryRouter>
         <AdminConfigView
           isSaving={false}
           onSave={vi.fn()}
           handleGetValues={vi.fn()}
-          settings={createSettings()}
+          settings={createSettings(settingsOverrides)}
           sqlMembershipSource={undefined}
           sqlMembershipSourceAttributes={undefined}
           serviceNotification={getDefaultAlertBannerConfig()}
@@ -194,6 +208,37 @@ describe('AdminConfigView tab layout', () => {
         defaultStrings.AdminConfig.AutoApproverSettings.labels.isAutoApprovalForRequestorIsOrgLeaderSyncsEnabledTitle
       )
     ).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        defaultStrings.AdminConfig.AutoApproverSettings.labels.isAutoApprovalForLeaderAssistantEnabledTitle
+      )
+    ).toBeInTheDocument();
+
+    // Per-part evaluation always runs, so it is no longer offered as an administrator choice.
+    expect(screen.queryByText(/per-part/i)).not.toBeInTheDocument();
+  });
+
+  test("renders the leader's assistant toggle as a control independent of the other paths", () => {
+    renderWithRoles(allRoles, {
+      [SettingKey.IsAutoApprovalForGroupBasedSyncsEnabled]: 'false',
+      [SettingKey.IsAutoApprovalForRequestorIsOrgLeaderSyncsEnabled]: 'false',
+      [SettingKey.IsAutoApprovalForLeaderAssistantEnabled]: 'true',
+    });
+
+    fireEvent.click(
+      screen.getByRole('tab', { name: defaultStrings.AdminConfig.AutoApproverSettings.labels.autoApprover })
+    );
+
+    // The assistant path must be able to run while both other paths stay off.
+    expect(
+      screen.getByTestId(`setting-${SettingKeyMap[SettingKey.IsAutoApprovalForGroupBasedSyncsEnabled]}`)
+    ).toHaveAttribute('data-value', 'false');
+    expect(
+      screen.getByTestId(`setting-${SettingKeyMap[SettingKey.IsAutoApprovalForRequestorIsOrgLeaderSyncsEnabled]}`)
+    ).toHaveAttribute('data-value', 'false');
+    expect(
+      screen.getByTestId(`setting-${SettingKeyMap[SettingKey.IsAutoApprovalForLeaderAssistantEnabled]}`)
+    ).toHaveAttribute('data-value', 'true');
   });
 });
 

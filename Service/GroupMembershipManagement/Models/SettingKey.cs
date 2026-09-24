@@ -24,7 +24,10 @@ namespace Models
         IsAISearchForUserEnabled = 16,
         IsAIRunExplanationEnabled = 17,
         AlertBannerConfig = 18,
+
+        /// <summary>Retired: per-part always runs. Kept so existing rows are not orphaned.</summary>
         IsPerPartAutoApprovalEnabled = 20,
-        IsAIRejectionFeedbackRefinementEnabled = 21
+        IsAIRejectionFeedbackRefinementEnabled = 21,
+        IsAutoApprovalForLeaderAssistantEnabled = 22
     }
 }

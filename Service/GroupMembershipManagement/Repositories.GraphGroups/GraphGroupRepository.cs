@@ -186,6 +186,11 @@ namespace Repositories.GraphGroups
             return await _graphUserReader.GetUserAccountEnabledAsync(userIdentifier, ResolveRunId());
         }
 
+        public async Task<List<AzureADUser>> GetAssistantsAsync(Guid leaderObjectId)
+        {
+            return await _graphUserReader.GetAssistantsAsync(leaderObjectId, ResolveRunId());
+        }
+
         public async Task<List<AzureADUser>> GetGroupOwnersAsync(Guid groupObjectId, int top = 0)
         {
             return await _graphGroupOwnerReader.GetGroupOwnersAsync(groupObjectId, ResolveRunId(), top);

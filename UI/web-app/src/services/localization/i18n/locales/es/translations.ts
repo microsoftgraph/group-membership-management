@@ -334,13 +334,13 @@ export const strings: IStrings = {
       labels: {
         autoApprover: "Aprobación Automática",
         controlsTitle: "Controles de Aprobación Automática",
-        description: "Configure las condiciones que determinan cuándo las solicitudes de membresía pueden aprobarse automáticamente.",
+        description: "Cada solicitud se evalúa parte de origen por parte de origen y se aprueba automáticamente solo cuando todas sus partes califican. Estos interruptores controlan qué tipos de parte de origen pueden calificar.",
         isAutoApprovalForGroupBasedSyncsEnabledTitle: "¿Está habilitada la auto-aprobación para sincronizaciones basadas en grupos?",
-        isAutoApprovalForGroupBasedSyncsEnabledDescription: "Aprobar automáticamente trabajos de sincronización cuando todas las partes de origen son del tipo GroupMembership con visibilidad aceptable (no HiddenMembership).",
+        isAutoApprovalForGroupBasedSyncsEnabledDescription: "Aprobar automáticamente las partes de origen GroupMembership cuando el grupo es Public o el solicitante es propietario.",
         isAutoApprovalForRequestorIsOrgLeaderSyncsEnabledTitle: "¿Está habilitada la auto-aprobación para solicitante como líder organizacional?",
-        isAutoApprovalForRequestorIsOrgLeaderSyncsEnabledDescription: "Aprobar automáticamente trabajos de sincronización SqlMembership únicos cuando el ID del gerente coincide con el onPremisesImmutableId del solicitante.",
-        isPerPartAutoApprovalEnabledTitle: "¿Está habilitada la auto-aprobación por partes?",
-        isPerPartAutoApprovalEnabledDescription: "Aprobar automáticamente trabajos de sincronización cuando cada parte de origen califica de forma independiente: partes de grupo por visibilidad aceptable, y partes SQL cuando el solicitante es el gerente de la parte.",
+        isAutoApprovalForRequestorIsOrgLeaderSyncsEnabledDescription: "Aprobar automáticamente las partes de origen SqlMembership cuando el solicitante es el gerente indicado en esa parte.",
+        isAutoApprovalForLeaderAssistantEnabledTitle: "¿Está habilitada la auto-aprobación para el asistente de un líder?",
+        isAutoApprovalForLeaderAssistantEnabledDescription: "Aprobar automáticamente las partes de origen SqlMembership cuando el solicitante es el asistente publicado del gerente de esa parte.",
       }
     },
     AISettings: {

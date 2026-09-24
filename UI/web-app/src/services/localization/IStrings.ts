@@ -335,8 +335,8 @@ export type IStrings = {
         isAutoApprovalForGroupBasedSyncsEnabledDescription: string;
         isAutoApprovalForRequestorIsOrgLeaderSyncsEnabledTitle: string;
         isAutoApprovalForRequestorIsOrgLeaderSyncsEnabledDescription: string;
-        isPerPartAutoApprovalEnabledTitle: string;
-        isPerPartAutoApprovalEnabledDescription: string;
+        isAutoApprovalForLeaderAssistantEnabledTitle: string;
+        isAutoApprovalForLeaderAssistantEnabledDescription: string;
       }
     },
     AISettings: {

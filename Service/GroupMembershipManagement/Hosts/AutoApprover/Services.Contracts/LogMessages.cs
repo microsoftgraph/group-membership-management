@@ -66,25 +66,7 @@ namespace Hosts.AutoApprover
             Message = "Error during auto-approval check.")]
         public static partial void AutoApprovalCheckError(this ILogger logger, Exception exception);
 
-        [LoggerMessage(EventId = 250107, Level = LogLevel.Information,
-            Message = "Auto-approval granted: All {GroupCount} source groups have acceptable visibility.")]
-        public static partial void GroupVisibilityApprovalGranted(this ILogger logger, int groupCount);
-
-        [LoggerMessage(EventId = 250108, Level = LogLevel.Error,
-            Message = "Error during GroupMembership auto-approval check.")]
-        public static partial void GroupMembershipApprovalCheckError(this ILogger logger, Exception exception);
-
-        [LoggerMessage(EventId = 250109, Level = LogLevel.Information,
-            Message = "Auto-approval granted: Single SqlMembership query with manager ID matching requestor's onPremisesImmutableId.")]
-        public static partial void SqlMembershipApprovalGranted(this ILogger logger);
-
-        [LoggerMessage(EventId = 250110, Level = LogLevel.Error,
-            Message = "Error during SqlMembership auto-approval check.")]
-        public static partial void SqlMembershipApprovalCheckError(this ILogger logger, Exception exception);
-
-        [LoggerMessage(EventId = 250111, Level = LogLevel.Error,
-            Message = "Error retrieving user onPremisesImmutableId.")]
-        public static partial void UserImmutableIdRetrievalError(this ILogger logger, Exception exception);
+        // EventIds 250107-250111 retired with the whole-query rules; not reused.
 
         [LoggerMessage(EventId = 250112, Level = LogLevel.Error,
             Message = "Error retrieving auto-approval setting.")]
@@ -105,12 +87,10 @@ namespace Hosts.AutoApprover
         // ── Per-Part Rule ──
 
         [LoggerMessage(EventId = 250116, Level = LogLevel.Information,
-            Message = "Per-Part Rule approved the submission. Approved parts — SqlMembership(manager-self): {SqlApprovedCount}, GroupMembership(public): {GroupPublicCount}, GroupMembership(owner): {GroupOwnerCount}; total parts: {TotalParts}.")]
-        public static partial void PerPartRuleApproved(this ILogger logger, int sqlApprovedCount, int groupPublicCount, int groupOwnerCount, int totalParts);
+            Message = "Per-Part Rule approved the submission. Approved parts — SqlMembership(manager-self): {SqlManagerSelfCount}, SqlMembership(assistant): {SqlAssistantCount}, GroupMembership(public): {GroupPublicCount}, GroupMembership(owner): {GroupOwnerCount}; total parts: {TotalParts}.")]
+        public static partial void PerPartRuleApproved(this ILogger logger, int sqlManagerSelfCount, int sqlAssistantCount, int groupPublicCount, int groupOwnerCount, int totalParts);
 
-        [LoggerMessage(EventId = 250118, Level = LogLevel.Error,
-            Message = "Error retrieving Per-Part Rule setting {SettingKey}.")]
-        public static partial void SettingRetrievalError(this ILogger logger, string settingKey, Exception exception);
+        // EventId 250118 retired with the per-part setting reader; not reused.
 
         [LoggerMessage(EventId = 250119, Level = LogLevel.Error,
             Message = "Error retrieving requestor's EmployeeId from the users table.")]
@@ -124,8 +104,11 @@ namespace Hosts.AutoApprover
             Message = "Unhandled error during Per-Part Rule evaluation.")]
         public static partial void PerPartRuleCheckError(this ILogger logger, Exception exception);
 
+        // Only the manager id is compared; filters, manager depth, and exclusionary flags are not evaluated.
+        // That is safe because a manager-based source resolves only within the requestor's own reporting
+        // chain, which a depth or filter can narrow but never widen.
         [LoggerMessage(EventId = 250123, Level = LogLevel.Information,
-            Message = "SqlMembership part {PartIndex} approved: the manager id in the source matches the requestor's EmployeeId. Only the manager id is compared — any filter, manager depth, or exclusionary flag on this part is not evaluated. That is safe because a manager-based source resolves only within the requestor's own reporting chain, which a depth or filter can narrow but never widen.")]
+            Message = "SqlMembership part {PartIndex} approved: the manager id in the source matches the requestor's EmployeeId.")]
         public static partial void SqlPartApprovedByManagerSelf(this ILogger logger, int partIndex);
 
         [LoggerMessage(EventId = 250125, Level = LogLevel.Information,
@@ -148,25 +131,47 @@ namespace Hosts.AutoApprover
             Message = "Error retrieving owners for group part {PartIndex} ({GroupId}).")]
         public static partial void GroupOwnersError(this ILogger logger, int partIndex, string groupId, Exception exception);
 
-        [LoggerMessage(EventId = 250130, Level = LogLevel.Information,
-            Message = "Per-Part Rule declined the submission and is authoritative; group-based (enabled: {GroupBasedEnabled}) and org-leader (enabled: {OrgLeaderEnabled}) evaluation was skipped.")]
-        public static partial void PerPartRuleTookPrecedence(this ILogger logger, bool groupBasedEnabled, bool orgLeaderEnabled);
+        // EventId 250130 retired: per-part is now the only rule; not reused.
 
         [LoggerMessage(EventId = 250131, Level = LogLevel.Information,
-            Message = "Auto-approval modes resolved — group-based: {GroupBasedEnabled}, org-leader: {OrgLeaderEnabled}, per-part: {PerPartEnabled}.")]
-        public static partial void AutoApprovalModesResolved(this ILogger logger, bool groupBasedEnabled, bool orgLeaderEnabled, bool perPartEnabled);
+            Message = "Auto-approval paths resolved — group-based: {GroupBasedEnabled}, org-leader: {OrgLeaderEnabled}.")]
+        public static partial void AutoApprovalModesResolved(this ILogger logger, bool groupBasedEnabled, bool orgLeaderEnabled);
 
         [LoggerMessage(EventId = 250132, Level = LogLevel.Information,
-            Message = "Per-Part Rule declined the submission at {PartType} part {PartIndex} ({Source}): {Reason} — {Details}. Evaluated {PartsEvaluated} of {TotalParts} parts. Approved before the failure — SqlMembership(manager-self): {SqlApprovedCount}, GroupMembership(public): {GroupPublicCount}, GroupMembership(owner): {GroupOwnerCount}.")]
-        public static partial void PerPartRuleDeclined(this ILogger logger, int partIndex, string partType, string source, string reason, string details, int partsEvaluated, int totalParts, int sqlApprovedCount, int groupPublicCount, int groupOwnerCount);
+            Message = "Per-Part Rule declined the submission at {PartType} part {PartIndex} ({Source}): {Reason} — {Details}. Evaluated {PartsEvaluated} of {TotalParts} parts. Approved before the failure — SqlMembership(manager-self): {SqlManagerSelfCount}, SqlMembership(assistant): {SqlAssistantCount}, GroupMembership(public): {GroupPublicCount}, GroupMembership(owner): {GroupOwnerCount}.")]
+        public static partial void PerPartRuleDeclined(this ILogger logger, int partIndex, string partType, string source, string reason, string details, int partsEvaluated, int totalParts, int sqlManagerSelfCount, int sqlAssistantCount, int groupPublicCount, int groupOwnerCount);
 
         // EmployeeId is an HR identifier, so its value is never logged — only whether it resolved.
         [LoggerMessage(EventId = 250133, Level = LogLevel.Information,
             Message = "SqlMembership part evaluation context: users table {UsersTable}, requestor EmployeeId {EmployeeIdStatus}.")]
         public static partial void SqlPartEvaluationContext(this ILogger logger, string usersTable, string employeeIdStatus);
 
+        // Not a validation error: a query can be perfectly valid for GMM yet use a shape the rule does not vouch for.
         [LoggerMessage(EventId = 250134, Level = LogLevel.Information,
-            Message = "Per-Part Rule declined the submission: the query has no source parts the rule can evaluate. Cause: {Cause}. This does not mean the query is invalid for GMM — a query can be perfectly valid yet use a shape the rule does not vouch for — so the submission needs manual review.")]
+            Message = "Per-Part Rule declined the submission: the query has no source parts the rule can evaluate. Cause: {Cause}. Submission needs manual review.")]
         public static partial void PerPartQueryNotParsable(this ILogger logger, string cause);
+
+        // Only the published assistant relationship is compared; filters, manager depth, and exclusionary
+        // flags are not evaluated, for the same reason as the manager-self approval (250123).
+        [LoggerMessage(EventId = 250135, Level = LogLevel.Information,
+            Message = "SqlMembership part {PartIndex} approved: the requestor is the published assistant of the manager referenced in the source.")]
+        public static partial void SqlPartApprovedByAssistant(this ILogger logger, int partIndex);
+
+        [LoggerMessage(EventId = 250136, Level = LogLevel.Error,
+            Message = "Error reading the published assistant for the manager referenced in SqlMembership part {PartIndex}. Part rejected; submission needs manual review.")]
+        public static partial void AssistantLookupError(this ILogger logger, int partIndex, Exception exception);
+
+        [LoggerMessage(EventId = 250137, Level = LogLevel.Error,
+            Message = "Error resolving the directory identity of the manager referenced in SqlMembership part {PartIndex}. Part rejected; submission needs manual review.")]
+        public static partial void ManagerIdentityResolveError(this ILogger logger, int partIndex, Exception exception);
+
+        [LoggerMessage(EventId = 250138, Level = LogLevel.Error,
+            Message = "Error retrieving the leader's-assistant auto-approval setting.")]
+        public static partial void LeaderAssistantSettingRetrievalError(this ILogger logger, Exception exception);
+
+        // Reported separately from 250131 because this setting is read only when the submission contains a SqlMembership part.
+        [LoggerMessage(EventId = 250139, Level = LogLevel.Information,
+            Message = "Auto-approval paths resolved — leader-assistant: {LeaderAssistantEnabled}.")]
+        public static partial void LeaderAssistantPathResolved(this ILogger logger, bool leaderAssistantEnabled);
     }
 }

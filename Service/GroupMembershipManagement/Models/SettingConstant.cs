@@ -30,7 +30,8 @@ namespace Models
             { SettingKey.IsAIRunExplanationEnabled, Guid.Parse("FCC646D4-5EB9-4753-88F9-6450806AD3C6") },
             { SettingKey.AlertBannerConfig, Guid.Parse("B8C9D0E1-F2A3-4567-1234-67890123456A") },
             { SettingKey.IsPerPartAutoApprovalEnabled, Guid.Parse("9FFEAFBA-4C71-4CFF-8422-DEBAB380C552") },
-            { SettingKey.IsAIRejectionFeedbackRefinementEnabled, Guid.Parse("C9D0E1F2-A3B4-5678-2345-789012345678") }
+            { SettingKey.IsAIRejectionFeedbackRefinementEnabled, Guid.Parse("C9D0E1F2-A3B4-5678-2345-789012345678") },
+            { SettingKey.IsAutoApprovalForLeaderAssistantEnabled, Guid.Parse("8BEC33CB-2123-41D3-83DC-C4E3D790983E") }
         };
     }
 }

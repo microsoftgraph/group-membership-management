@@ -214,13 +214,13 @@ export const selectIsAutoApprovalForRequestorIsOrgLeaderSyncsEnabled = (state: R
   return isAutoApprovalForRequestorIsOrgLeaderSyncsEnabledSetting ? isAutoApprovalForRequestorIsOrgLeaderSyncsEnabledSetting.settingValue === 'true' : undefined;
 }
 
-export const selectIsPerPartAutoApprovalEnabled = (state: RootState) => {
+export const selectIsAutoApprovalForLeaderAssistantEnabled = (state: RootState) => {
   const settingsArray = state.settings.settings;
   if (!settingsArray) {
     return undefined;
   }
-  const isPerPartAutoApprovalEnabledSetting = settingsArray.find((setting) => setting.settingKey === SettingKey.IsPerPartAutoApprovalEnabled);
-  return isPerPartAutoApprovalEnabledSetting ? isPerPartAutoApprovalEnabledSetting.settingValue === 'true' : undefined;
+  const isAutoApprovalForLeaderAssistantEnabledSetting = settingsArray.find((setting) => setting.settingKey === SettingKey.IsAutoApprovalForLeaderAssistantEnabled);
+  return isAutoApprovalForLeaderAssistantEnabledSetting ? isAutoApprovalForLeaderAssistantEnabledSetting.settingValue === 'true' : undefined;
 }
 
 export const selectIsAITitleEnabled = (state: RootState) => {

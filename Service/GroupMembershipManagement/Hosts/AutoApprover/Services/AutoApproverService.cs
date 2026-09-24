@@ -83,10 +83,9 @@ namespace Services.AutoApprover
 
             var isGroupBasedAutoApprovalEnabled = await IsAutoApprovalForGroupBasedSyncsEnabledAsync();
             var isOrgLeaderAutoApprovalEnabled = await IsAutoApprovalForRequestorIsOrgLeaderSyncsEnabledAsync();
-            var isPerPartAutoApprovalEnabled = await IsPerPartAutoApprovalEnabledAsync();
-            _logger.AutoApprovalModesResolved(isGroupBasedAutoApprovalEnabled, isOrgLeaderAutoApprovalEnabled, isPerPartAutoApprovalEnabled);
+            _logger.AutoApprovalModesResolved(isGroupBasedAutoApprovalEnabled, isOrgLeaderAutoApprovalEnabled);
 
-            var shouldAutoApprove = await ShouldAutoApproveJobAsync(syncJob.Query, message.RequestorObjectId, isGroupBasedAutoApprovalEnabled, isOrgLeaderAutoApprovalEnabled, isPerPartAutoApprovalEnabled);
+            var shouldAutoApprove = await ShouldAutoApproveJobAsync(syncJob.Query, message.RequestorObjectId, isGroupBasedAutoApprovalEnabled, isOrgLeaderAutoApprovalEnabled);
 
             if (!shouldAutoApprove)
             {
@@ -149,109 +148,17 @@ namespace Services.AutoApprover
             _logger.SyncJobAutoApproved(message.SyncJobId);
         }
 
-        private async Task<bool> ShouldAutoApproveJobAsync(string query, string userIdentity, bool isGroupBasedAutoApprovalEnabled, bool isOrgLeaderAutoApprovalEnabled, bool isPerPartAutoApprovalEnabled)
+        // Each setting switches on one way a part may qualify; with every path off nothing auto-approves.
+        private async Task<bool> ShouldAutoApproveJobAsync(string query, string userIdentity, bool isGroupBasedAutoApprovalEnabled, bool isOrgLeaderAutoApprovalEnabled)
         {
             try
             {
-                if (isPerPartAutoApprovalEnabled)
-                {
-                    var perPartApproval = await ShouldAutoApprovePerPartAsync(query, userIdentity);
-
-                    if (!perPartApproval && (isGroupBasedAutoApprovalEnabled || isOrgLeaderAutoApprovalEnabled))
-                        _logger.PerPartRuleTookPrecedence(isGroupBasedAutoApprovalEnabled, isOrgLeaderAutoApprovalEnabled);
-
-                    return perPartApproval;
-                }
-
-                if (isGroupBasedAutoApprovalEnabled)
-                {
-                    var groupMembershipApproval = await ShouldAutoApproveGroupMembershipJobAsync(query);
-                    if (groupMembershipApproval)
-                        return true;
-                }
-
-                if (isOrgLeaderAutoApprovalEnabled)
-                {
-                    var sqlMembershipApproval = await ShouldAutoApproveSqlMembershipJobAsync(query, userIdentity);
-                    if (sqlMembershipApproval)
-                        return true;
-                }
-
-                return false;
+                return await ShouldAutoApprovePerPartAsync(query, userIdentity, isGroupBasedAutoApprovalEnabled, isOrgLeaderAutoApprovalEnabled);
             }
             catch (Exception ex)
             {
                 _logger.AutoApprovalCheckError(ex);
                 return false;
-            }
-        }
-
-        private async Task<bool> ShouldAutoApproveGroupMembershipJobAsync(string query)
-        {
-            try
-            {
-                if (!JsonParser.IsGroupMembershipOnlyQuery(query))
-                    return false;
-
-                var groupIds = JsonParser.GetGroupMembershipSourceIds(query);
-                if (groupIds == null || groupIds.Count == 0)
-                    return false;
-
-                var groups = await _graphGroupRepository.GetGroupsAsync(groupIds);
-
-                var hiddenGroupFound = groups.Any(group => string.Equals(group.Visibility, "HiddenMembership", StringComparison.OrdinalIgnoreCase));
-                if (hiddenGroupFound)
-                {
-                    return false;
-                }
-
-                _logger.GroupVisibilityApprovalGranted(groupIds.Count);
-
-                return true;
-            }
-            catch (Exception ex)
-            {
-                _logger.GroupMembershipApprovalCheckError(ex);
-                return false;
-            }
-        }
-
-        private async Task<bool> ShouldAutoApproveSqlMembershipJobAsync(string query, string userIdentity)
-        {
-            try
-            {
-                var userDetails = await GetUserOnPremisesImmutableIdAsync(userIdentity);
-                if (string.IsNullOrEmpty(userDetails))
-                    return false;
-
-                if (!int.TryParse(userDetails, out var userImmutableId))
-                    return false;
-
-                if (!JsonParser.IsSingleSqlMembershipQueryWithManagerId(query, userImmutableId))
-                    return false;
-
-                _logger.SqlMembershipApprovalGranted();
-
-                return true;
-            }
-            catch (Exception ex)
-            {
-                _logger.SqlMembershipApprovalCheckError(ex);
-                return false;
-            }
-        }
-
-        private async Task<string> GetUserOnPremisesImmutableIdAsync(string userIdentity)
-        {
-            try
-            {
-                var user = await _graphGroupRepository.GetUserWithOnPremisesImmutableIdAsync(userIdentity, null);
-                return user?.OnPremisesImmutableId;
-            }
-            catch (Exception ex)
-            {
-                _logger.UserImmutableIdRetrievalError(ex);
-                return null;
             }
         }
 
@@ -283,24 +190,24 @@ namespace Services.AutoApprover
             }
         }
 
-        private async Task<bool> IsPerPartAutoApprovalEnabledAsync()
+        // IsPerPartAutoApprovalEnabled is no longer read; the member stays so existing rows are not orphaned.
+
+        private async Task<bool> IsAutoApprovalForLeaderAssistantEnabledAsync()
         {
             try
             {
-                var setting = await _databaseSettingsRepository.GetSettingByKeyAsync(SettingKey.IsPerPartAutoApprovalEnabled);
+                var setting = await _databaseSettingsRepository.GetSettingByKeyAsync(SettingKey.IsAutoApprovalForLeaderAssistantEnabled);
                 return setting != null && string.Equals(setting.SettingValue, "true", StringComparison.OrdinalIgnoreCase);
             }
             catch (Exception ex)
             {
-                _logger.SettingRetrievalError(nameof(SettingKey.IsPerPartAutoApprovalEnabled), ex);
+                _logger.LeaderAssistantSettingRetrievalError(ex);
                 return false;
             }
         }
 
-        // Per-Part Rule: evaluates each source part independently (Group parts by Graph visibility/owner,
-        // SQL parts by manager-self identity) and approves the whole submission only when every part passes.
-        // Any failure resolves to reject the part (fail-closed).
-        private async Task<bool> ShouldAutoApprovePerPartAsync(string query, string userIdentity)
+        // Approved only when every part qualifies through an enabled path; any failure rejects.
+        private async Task<bool> ShouldAutoApprovePerPartAsync(string query, string userIdentity, bool isGroupBasedEnabled, bool isOrgLeaderEnabled)
         {
             try
             {
@@ -314,16 +221,34 @@ namespace Services.AutoApprover
                 }
 
                 int? employeeId = null;
+                string tableName = null;
+
+                // Read only when a SQL part exists, so it costs nothing elsewhere.
+                var isLeaderAssistantEnabled = false;
+
                 if (parts.Any(p => p.Type == SourcePart.SqlMembershipType))
                 {
-                    var tableName = await ResolveUsersTableNameAsync();
-                    if (!string.IsNullOrEmpty(tableName))
+                    isLeaderAssistantEnabled = await IsAutoApprovalForLeaderAssistantEnabledAsync();
+                    _logger.LeaderAssistantPathResolved(isLeaderAssistantEnabled);
+                }
+
+                // Resolved only when a SQL path is on, so a disabled path costs no lookup.
+                if ((isOrgLeaderEnabled || isLeaderAssistantEnabled) && parts.Any(p => p.Type == SourcePart.SqlMembershipType))
+                {
+                    tableName = await ResolveUsersTableNameAsync();
+
+                    // Only the manager-self comparison needs the requestor's employee id.
+                    if (isOrgLeaderEnabled && !string.IsNullOrEmpty(tableName))
                         employeeId = await ResolveEmployeeIdAsync(userIdentity, tableName);
 
                     _logger.SqlPartEvaluationContext(
                         string.IsNullOrEmpty(tableName) ? "(unresolved)" : tableName,
-                        employeeId != null ? "resolved" : "not found");
+                        !isOrgLeaderEnabled ? "not read (manager-self path disabled)"
+                            : employeeId != null ? "resolved" : "not found");
                 }
+
+                // One profile read per distinct leader per submission, shared across parts.
+                var assistantCache = new Dictionary<int, AssistantLookup>();
 
                 var mix = new PartApprovalMix();
 
@@ -335,26 +260,26 @@ namespace Services.AutoApprover
                     switch (part.Type)
                     {
                         case SourcePart.GroupMembershipType:
-                            rejection = await EvaluateGroupPartAsync(part, userIdentity, i, mix);
+                            rejection = await EvaluateGroupPartAsync(part, userIdentity, isGroupBasedEnabled, i, mix);
                             break;
                         case SourcePart.SqlMembershipType:
-                            rejection = EvaluateSqlPart(part, employeeId, i, mix);
+                            rejection = await EvaluateSqlPartAsync(part, employeeId, userIdentity, tableName, isOrgLeaderEnabled, isLeaderAssistantEnabled, assistantCache, i, mix);
                             break;
                         default:
                             rejection = Reject(part, i, SourcePartRejectionReason.Unknown_Type,
-                                $"'{part.Type}' is not a source type the Per-Part Rule can evaluate");
+                                $"'{part.Type}' is not a source type that can be evaluated");
                             break;
                     }
 
                     if (rejection != null)
                     {
                         _logger.PerPartRuleDeclined(i, part.Type, part.SourceDescriptor, rejection.Value.Reason.ToString(),
-                            rejection.Value.Details, i + 1, parts.Count, mix.SqlApproved, mix.GroupPublic, mix.GroupOwner);
+                            rejection.Value.Details, i + 1, parts.Count, mix.SqlManagerSelf, mix.SqlAssistant, mix.GroupPublic, mix.GroupOwner);
                         return false;
                     }
                 }
 
-                _logger.PerPartRuleApproved(mix.SqlApproved, mix.GroupPublic, mix.GroupOwner, parts.Count);
+                _logger.PerPartRuleApproved(mix.SqlManagerSelf, mix.SqlAssistant, mix.GroupPublic, mix.GroupOwner, parts.Count);
                 return true;
             }
             catch (Exception ex)
@@ -401,8 +326,13 @@ namespace Services.AutoApprover
 
         // Returns null when the part is approved, otherwise the reason it was rejected and a
         // human-readable detail (group visibility, employee id mismatch, ...) explaining that reason.
-        private async Task<PartRejection?> EvaluateGroupPartAsync(SourcePart part, string userIdentity, int partIndex, PartApprovalMix mix)
+        private async Task<PartRejection?> EvaluateGroupPartAsync(SourcePart part, string userIdentity, bool isGroupBasedEnabled, int partIndex, PartApprovalMix mix)
         {
+            // Checked before the directory is touched, so a disabled path costs nothing.
+            if (!isGroupBasedEnabled)
+                return Reject(part, partIndex, SourcePartRejectionReason.Group_Path_Disabled,
+                    "auto-approval for group-based sources is switched off, so this part has no enabled way to qualify; the submission needs manual review");
+
             if (!Guid.TryParse(part.SourceGroupId, out var groupId))
                 return Reject(part, partIndex, SourcePartRejectionReason.Group_NotFound, "source id is not a valid group id");
 
@@ -453,33 +383,122 @@ namespace Services.AutoApprover
         }
 
         // Returns null when the part is approved, otherwise the reason it was rejected and a detail.
-        private PartRejection? EvaluateSqlPart(SourcePart part, int? employeeId, int partIndex, PartApprovalMix mix)
+        private async Task<PartRejection?> EvaluateSqlPartAsync(
+            SourcePart part,
+            int? employeeId,
+            string userIdentity,
+            string tableName,
+            bool isOrgLeaderEnabled,
+            bool isLeaderAssistantEnabled,
+            Dictionary<int, AssistantLookup> assistantCache,
+            int partIndex,
+            PartApprovalMix mix)
         {
-            // Checked before the EmployeeId lookup: a filter-only SQL source names no manager, so no
-            // requestor identity could ever approve it. Reporting a missing EmployeeId here would send
-            // an operator after HR data that would not change the outcome.
+            // Reported ahead of the data-driven reasons: the remedy is an admin setting.
+            if (!isOrgLeaderEnabled && !isLeaderAssistantEnabled)
+                return Reject(part, partIndex, SourcePartRejectionReason.Sql_Paths_Disabled,
+                    "every auto-approval path for SQL sources is switched off, so this part has no enabled way to qualify; the submission needs manual review");
+
+            // A filter-only SQL source names no manager, so neither SQL path has a leader to match.
             if (part.ManagerId == null)
                 return Reject(part, partIndex, SourcePartRejectionReason.Sql_NoManagerId,
-                    "the SQL source is filter-only and names no manager, so there is no manager-self relationship to verify; the submission needs manual review");
-
-            if (employeeId == null)
-                return Reject(part, partIndex, SourcePartRejectionReason.EmployeeId_Missing,
-                    "the requestor has no EmployeeId in the users table");
+                    "the SQL source is filter-only and names no manager, so there is no manager relationship to verify; the submission needs manual review");
 
             // Requestor is the manager referenced in the query — approve. Only manager.id is compared;
             // filter, manager.depth and exclusionary are deliberately not considered. Ignoring them is
             // the safe direction: SqlMembershipRepository.GetChildEntitiesAsync seeds its recursive CTE
             // on this manager and recurses strictly downward (ON e.ManagerId = emp.EmployeeId), so a
             // filter or depth can only narrow the requestor's own subtree, never reach outside it.
-            if (employeeId.Value == part.ManagerId.Value)
+            // Evaluated before the assistant path so manager-self never triggers a profile read.
+            if (isOrgLeaderEnabled && employeeId != null && employeeId.Value == part.ManagerId.Value)
             {
                 _logger.SqlPartApprovedByManagerSelf(partIndex);
-                mix.SqlApproved++;
+                mix.SqlManagerSelf++;
                 return null;
             }
 
+            if (isLeaderAssistantEnabled)
+            {
+                var lookup = await ResolveAssistantsAsync(part.ManagerId.Value, tableName, assistantCache, partIndex);
+
+                if (lookup.Status == AssistantLookupStatus.LeaderUnresolved)
+                    return Reject(part, partIndex, SourcePartRejectionReason.Manager_Identity_Unresolved,
+                        "the manager referenced in the query has no resolvable directory identity, so an assistant relationship could not be verified; the submission needs manual review");
+
+                if (lookup.Status == AssistantLookupStatus.Unavailable)
+                    return Reject(part, partIndex, SourcePartRejectionReason.Assistant_Lookup_Unavailable,
+                        "the manager's published assistant could not be read, so an assistant relationship could not be verified; the submission needs manual review");
+
+                // The object id is the match key; the manager published this person as acting for them.
+                if (lookup.Assistants.Any(a => string.Equals(a.ObjectId.ToString(), userIdentity, StringComparison.OrdinalIgnoreCase)))
+                {
+                    _logger.SqlPartApprovedByAssistant(partIndex);
+                    mix.SqlAssistant++;
+                    return null;
+                }
+
+                // A missing EmployeeId means the manager-self check could not run either.
+                if (isOrgLeaderEnabled && employeeId == null)
+                    return Reject(part, partIndex, SourcePartRejectionReason.EmployeeId_Missing,
+                        "the requestor is not a published assistant of the manager referenced in the query, and has no EmployeeId in the users table, so the manager-self relationship could not be verified either");
+
+                return Reject(part, partIndex, SourcePartRejectionReason.Requestor_Not_Assistant,
+                    isOrgLeaderEnabled
+                        ? "the requestor is neither the manager referenced in the query nor a published assistant of that manager"
+                        : "the requestor is not a published assistant of the manager referenced in the query, and auto-approval for the requestor as org leader is switched off");
+            }
+
+            // Only the manager-self path is enabled here, so the assistant relationship is never consulted.
+            if (employeeId == null)
+                return Reject(part, partIndex, SourcePartRejectionReason.EmployeeId_Missing,
+                    "the requestor has no EmployeeId in the users table");
+
             return Reject(part, partIndex, SourcePartRejectionReason.Requestor_Manager_Mismatch,
                 "the requestor is not the manager referenced in the query");
+        }
+
+        private async Task<AssistantLookup> ResolveAssistantsAsync(int managerId, string tableName, Dictionary<int, AssistantLookup> cache, int partIndex)
+        {
+            if (cache.TryGetValue(managerId, out var cached))
+                return cached;
+
+            var lookup = await LookupAssistantsAsync(managerId, tableName, partIndex);
+            cache[managerId] = lookup;
+            return lookup;
+        }
+
+        // Failures resolve to a status so neither can look like "this leader has no assistant".
+        private async Task<AssistantLookup> LookupAssistantsAsync(int managerId, string tableName, int partIndex)
+        {
+            Guid leaderObjectId;
+
+            try
+            {
+                if (string.IsNullOrEmpty(tableName))
+                    throw new InvalidOperationException("The users table name could not be resolved.");
+
+                // Only the leader's directory id is needed; GetOrgLeaderAsync would also walk the whole reporting tree for a depth this path discards.
+                var azureObjectId = await _sqlMembershipRepository.GetUserAzureObjectIdAsync(managerId, tableName);
+
+                if (!Guid.TryParse(azureObjectId, out leaderObjectId))
+                    throw new InvalidOperationException("The manager has no usable directory object id in the users table.");
+            }
+            catch (Exception ex)
+            {
+                _logger.ManagerIdentityResolveError(partIndex, ex);
+                return new AssistantLookup(AssistantLookupStatus.LeaderUnresolved, null);
+            }
+
+            try
+            {
+                var assistants = await _graphGroupRepository.GetAssistantsAsync(leaderObjectId);
+                return new AssistantLookup(AssistantLookupStatus.Resolved, assistants ?? new List<AzureADUser>());
+            }
+            catch (Exception ex)
+            {
+                _logger.AssistantLookupError(partIndex, ex);
+                return new AssistantLookup(AssistantLookupStatus.Unavailable, null);
+            }
         }
 
         private PartRejection Reject(SourcePart part, int partIndex, SourcePartRejectionReason reason, string details)

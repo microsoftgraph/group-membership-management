@@ -358,11 +358,11 @@ const AutoApproverSettings: React.FunctionComponent<AutoApproverSettingsProps> =
         disabled={!canEdit}
       />
       <GeneralSetting
-        id={SettingKeyMap[SettingKey.IsPerPartAutoApprovalEnabled]}
-        title={strings.AutoApproverSettings.labels.isPerPartAutoApprovalEnabledTitle}
-        description={strings.AutoApproverSettings.labels.isPerPartAutoApprovalEnabledDescription}
-        onGeneralSettingChange={handleSettingChange(SettingKey.IsPerPartAutoApprovalEnabled)}
-        generalSettingValue={settings[SettingKey.IsPerPartAutoApprovalEnabled]}
+        id={SettingKeyMap[SettingKey.IsAutoApprovalForLeaderAssistantEnabled]}
+        title={strings.AutoApproverSettings.labels.isAutoApprovalForLeaderAssistantEnabledTitle}
+        description={strings.AutoApproverSettings.labels.isAutoApprovalForLeaderAssistantEnabledDescription}
+        onGeneralSettingChange={handleSettingChange(SettingKey.IsAutoApprovalForLeaderAssistantEnabled)}
+        generalSettingValue={settings[SettingKey.IsAutoApprovalForLeaderAssistantEnabled]}
         disabled={!canEdit}
       />
       </div>
@@ -385,11 +385,12 @@ const UserResourcesSettings: React.FunctionComponent<UserResourcesSettingsProps>
     [SettingKey.IsDisclaimerEnabled]: true,
     [SettingKey.IsAutoApprovalForGroupBasedSyncsEnabled]: true,
     [SettingKey.IsAutoApprovalForRequestorIsOrgLeaderSyncsEnabled]: true,
-    [SettingKey.IsPerPartAutoApprovalEnabled]: true,
+    [SettingKey.IsAutoApprovalForLeaderAssistantEnabled]: true,
     [SettingKey.IsAITitleEnabled]: true,
     [SettingKey.IsAICopilotEnabled]: true,
     [SettingKey.IsAISearchForUserEnabled]: true,
     [SettingKey.IsAIRunExplanationEnabled]: true,
+    [SettingKey.IsAIRejectionFeedbackRefinementEnabled]: true,
     [SettingKey.CopilotTemperature]: true,
     [SettingKey.CopilotTopP]: true,
     [SettingKey.CopilotInstructions]: true,

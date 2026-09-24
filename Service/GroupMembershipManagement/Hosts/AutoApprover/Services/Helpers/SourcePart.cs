@@ -1,6 +1,9 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
+using Models;
+using System.Collections.Generic;
+
 namespace Services.AutoApprover.Helpers
 {
     /// <summary>
@@ -51,7 +54,16 @@ namespace Services.AutoApprover.Helpers
         EmployeeId_Missing,
         Group_LookupFailed,
         Owner_LookupFailed,
-        Sql_NoManagerId
+        Sql_NoManagerId,
+        Manager_Identity_Unresolved,
+        Assistant_Lookup_Unavailable,
+        Requestor_Not_Assistant,
+
+        /// <summary>A GroupMembership part whose group-based path is switched off.</summary>
+        Group_Path_Disabled,
+
+        /// <summary>A SqlMembership part with every SQL path switched off.</summary>
+        Sql_Paths_Disabled
     }
 
     /// <summary>
@@ -95,8 +107,32 @@ namespace Services.AutoApprover.Helpers
     /// </summary>
     internal sealed class PartApprovalMix
     {
-        public int SqlApproved;
+        // Counted separately so an operator can tell which path approved a part.
+        public int SqlManagerSelf;
+        public int SqlAssistant;
         public int GroupPublic;
         public int GroupOwner;
+    }
+
+    /// <summary>Outcome of reading a leader's published assistants; only Resolved is authoritative.</summary>
+    internal enum AssistantLookupStatus
+    {
+        Resolved,
+        LeaderUnresolved,
+        Unavailable
+    }
+
+    internal readonly struct AssistantLookup
+    {
+        public AssistantLookup(AssistantLookupStatus status, List<AzureADUser> assistants)
+        {
+            Status = status;
+            Assistants = assistants;
+        }
+
+        public AssistantLookupStatus Status { get; }
+
+        /// <summary>Populated only when <see cref="Status"/> is <see cref="AssistantLookupStatus.Resolved"/>.</summary>
+        public List<AzureADUser> Assistants { get; }
     }
 }

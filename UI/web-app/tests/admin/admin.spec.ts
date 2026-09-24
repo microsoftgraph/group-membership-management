@@ -58,14 +58,20 @@ test.describe('Admin Tests', () => {
 
     const groupBasedToggleId = SettingKeyMap[SettingKey.IsAutoApprovalForGroupBasedSyncsEnabled];
     const orgLeaderToggleId = SettingKeyMap[SettingKey.IsAutoApprovalForRequestorIsOrgLeaderSyncsEnabled];
+    const leaderAssistantToggleId = SettingKeyMap[SettingKey.IsAutoApprovalForLeaderAssistantEnabled];
 
     await page.getByRole('tab', { name: 'General', exact: true }).click();
     await expect(page.locator(`#${groupBasedToggleId}`)).toHaveCount(0);
     await expect(page.locator(`#${orgLeaderToggleId}`)).toHaveCount(0);
+    await expect(page.locator(`#${leaderAssistantToggleId}`)).toHaveCount(0);
 
     await page.getByRole('tab', { name: 'Auto Approver', exact: true }).click();
     await expect(page.locator(`#${groupBasedToggleId}`)).toBeVisible({ timeout: 10000 });
     await expect(page.locator(`#${orgLeaderToggleId}`)).toBeVisible();
+    await expect(page.locator(`#${leaderAssistantToggleId}`)).toBeVisible();
+
+    // Per-part evaluation is always on and is no longer an administrator choice.
+    await expect(page.locator('#IsPerPartAutoApprovalEnabled')).toHaveCount(0);
   });
 
   test('Initial disclaimer displays on first load', { tag: '@setup' }, async ({ page }) => {

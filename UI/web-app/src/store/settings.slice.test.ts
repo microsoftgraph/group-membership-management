@@ -14,7 +14,7 @@ import settingsReducer, {
   selectIsDisclaimerEnabled,
   selectIsAutoApprovalForGroupBasedSyncsEnabled,
   selectIsAutoApprovalForRequestorIsOrgLeaderSyncsEnabled,
-  selectIsPerPartAutoApprovalEnabled,
+  selectIsAutoApprovalForLeaderAssistantEnabled,
   selectIsAITitleEnabled,
   selectCopilotSuggestedPrompts,
   selectAreSettingsLoaded,
@@ -186,9 +186,13 @@ describe('settings.slice — selectors', () => {
     expect(selectIsAutoApprovalForRequestorIsOrgLeaderSyncsEnabled(root)).toBe(true);
   });
 
-  it('selectIsPerPartAutoApprovalEnabled returns true', () => {
-    const root = buildRoot([makeSetting(SettingKey.IsPerPartAutoApprovalEnabled, 'true')]);
-    expect(selectIsPerPartAutoApprovalEnabled(root)).toBe(true);
+  it('selectIsAutoApprovalForLeaderAssistantEnabled returns true', () => {
+    const root = buildRoot([makeSetting(SettingKey.IsAutoApprovalForLeaderAssistantEnabled, 'true')]);
+    expect(selectIsAutoApprovalForLeaderAssistantEnabled(root)).toBe(true);
+  });
+
+  it('selectIsAutoApprovalForLeaderAssistantEnabled returns undefined when not set', () => {
+    expect(selectIsAutoApprovalForLeaderAssistantEnabled(buildRoot())).toBeUndefined();
   });
 
   it('selectIsAITitleEnabled returns true', () => {

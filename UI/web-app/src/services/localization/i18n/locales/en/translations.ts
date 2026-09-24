@@ -333,13 +333,13 @@ export const strings: IStrings = {
       labels: {
         autoApprover: "Auto Approver",
         controlsTitle: "Auto-Approval Controls",
-        description: "Configure the conditions that determine when membership requests can be approved automatically.",
+        description: "Every request is evaluated one source part at a time and is approved automatically only when all of its parts qualify. These switches control which kinds of source part are allowed to qualify.",
         isAutoApprovalForGroupBasedSyncsEnabledTitle: "Is auto-approval for group-based syncs enabled?",
-        isAutoApprovalForGroupBasedSyncsEnabledDescription: "Automatically approve sync jobs when all source parts are GroupMembership type with acceptable visibility (not HiddenMembership).",
+        isAutoApprovalForGroupBasedSyncsEnabledDescription: "Automatically approve GroupMembership source parts when the group is Public or the requestor is an owner.",
         isAutoApprovalForRequestorIsOrgLeaderSyncsEnabledTitle: "Is auto-approval for requestor as org leader syncs enabled?",
-        isAutoApprovalForRequestorIsOrgLeaderSyncsEnabledDescription: "Automatically approve single SqlMembership sync jobs when the manager ID matches the requestor's onPremisesImmutableId.",
-        isPerPartAutoApprovalEnabledTitle: "Is per-part auto-approval enabled?",
-        isPerPartAutoApprovalEnabledDescription: "Automatically approve sync jobs when every source part independently qualifies \u2014 Group parts by acceptable visibility, and SQL parts when the requestor is the part's manager.",
+        isAutoApprovalForRequestorIsOrgLeaderSyncsEnabledDescription: "Automatically approve SqlMembership source parts when the requestor is the manager named in that part.",
+        isAutoApprovalForLeaderAssistantEnabledTitle: "Is auto-approval for a leader's assistant enabled?",
+        isAutoApprovalForLeaderAssistantEnabledDescription: "Automatically approve SqlMembership source parts when the requestor is the published assistant of that part's manager.",
       }
     },
     AISettings: {

@@ -455,7 +455,26 @@ namespace Services.Tests
         }
 
         [TestMethod]
-        public async Task PatchPerPartAutoApprovalSettingWhenUserHasAutoApproverRoleReturnsNoContentTestAsync()
+        public async Task PatchRetiredPerPartSettingReturnsForbidEvenForAutoApproverAdministratorTestAsync()
+        {
+            // The former per-part setting is owned by no role and stays unwritable.
+            _settingsController = new SettingsController(_getSettingHandler, _getAllSettingsHandler, _patchSettingHandler, _getSupportEmailHandler)
+            {
+                ControllerContext = CreateControllerContext(new List<Claim>
+                {
+                    new Claim(ClaimTypes.Name, "user@domain.com"),
+                    new Claim(ClaimTypes.Role, Roles.AUTO_APPROVER_ADMINISTRATOR)
+                })
+            };
+
+            var response = await _settingsController.PatchSettingAsync(SettingKey.IsPerPartAutoApprovalEnabled, "true");
+
+            Assert.IsInstanceOfType(response, typeof(ForbidResult));
+            _settingsRepository.Verify(x => x.PatchSettingAsync(It.IsAny<SettingKey>(), It.IsAny<string>()), Times.Never());
+        }
+
+        [TestMethod]
+        public async Task PatchLeaderAssistantAutoApprovalSettingWhenUserHasAutoApproverRoleReturnsNoContentTestAsync()
         {
             _settingsController = new SettingsController(_getSettingHandler, _getAllSettingsHandler, _patchSettingHandler, _getSupportEmailHandler)
             {
@@ -466,20 +485,20 @@ namespace Services.Tests
                 })
             };
 
-            _settingsRepository.Setup(x => x.PatchSettingAsync(SettingKey.IsPerPartAutoApprovalEnabled, "true"))
+            _settingsRepository.Setup(x => x.PatchSettingAsync(SettingKey.IsAutoApprovalForLeaderAssistantEnabled, "true"))
                                .Verifiable();
 
-            var response = await _settingsController.PatchSettingAsync(SettingKey.IsPerPartAutoApprovalEnabled, "true");
+            var response = await _settingsController.PatchSettingAsync(SettingKey.IsAutoApprovalForLeaderAssistantEnabled, "true");
 
             Assert.IsInstanceOfType(response, typeof(NoContentResult));
-            _settingsRepository.Verify(x => x.PatchSettingAsync(SettingKey.IsPerPartAutoApprovalEnabled, "true"), Times.Once());
+            _settingsRepository.Verify(x => x.PatchSettingAsync(SettingKey.IsAutoApprovalForLeaderAssistantEnabled, "true"), Times.Once());
         }
 
         [TestMethod]
-        public async Task PatchPerPartAutoApprovalSettingWhenUserLacksAutoApproverRoleReturnsForbidTestAsync()
+        public async Task PatchLeaderAssistantAutoApprovalSettingWhenUserLacksAutoApproverRoleReturnsForbidTestAsync()
         {
             // Default controller holds only the General Settings role.
-            var response = await _settingsController.PatchSettingAsync(SettingKey.IsPerPartAutoApprovalEnabled, "true");
+            var response = await _settingsController.PatchSettingAsync(SettingKey.IsAutoApprovalForLeaderAssistantEnabled, "true");
 
             Assert.IsInstanceOfType(response, typeof(ForbidResult));
             _settingsRepository.Verify(x => x.PatchSettingAsync(It.IsAny<SettingKey>(), It.IsAny<string>()), Times.Never());
