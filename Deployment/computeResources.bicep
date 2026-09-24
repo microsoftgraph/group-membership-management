@@ -76,6 +76,9 @@ param resourcesVnetName string = ''
 @description('Per-host Flex maximumInstanceCount overrides (host key -> cap). Only supplied keys override the defaults; unspecified hosts keep their default.')
 param maxInstanceCountOverrides object = {}
 
+@description('CRON expression controlling how often the DestinationAttributesUpdater timer trigger runs.')
+param destinationAttributesUpdaterSchedule string = '0 0 */12 * * *'
+
 var defaultMaxInstanceCounts = {
   agentReader: 4
   autoApprover: 25
@@ -207,6 +210,7 @@ module destinationAttributesUpdaterComputeResources '../Service/GroupMembershipM
     dataKeyVaultResourceGroup: dataResourceGroupName
     setRBACPermissions: setRBACPermissions
     featureFlags: featureFlags
+    destinationAttributesUpdaterSchedule: destinationAttributesUpdaterSchedule
   }
   dependsOn: [
     destinationAttributesUpdaterDataResources
