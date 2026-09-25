@@ -97,6 +97,95 @@ The deploying user must have one of the following Microsoft Entra ID roles:
 
 ---
 
+### Permissions Granted by the Deployment Script
+
+This section documents what the deployment script grants on your behalf, so you know exactly what is being created in your directory and subscription. It is the counterpart to [Required Permissions](#required-permissions) above: those are the permissions *you* need, these are the permissions the script *assigns*.
+
+When `skipPrivilegedDirectoryActions` is `true`, none of the directory-side grants below are performed — the script prints the equivalent manual instructions instead, and you must perform them yourself.
+
+#### App Registrations and Their API Permissions
+
+The script creates the following app registrations and requests these Microsoft Graph permissions on each.
+
+| Application | Permission | Type | Admin consent required |
+|-------------|-----------|------|------------------------|
+| `<solutionAbbreviation>-Graph-<environmentAbbreviation>` | `User.Read.All` | Application | Yes |
+| | `GroupMember.Read.All` | Application | Yes |
+| | `Member.Read.Hidden` | Application | Yes |
+| | `ChannelMember.ReadWrite.All` | Delegated | Yes |
+| | `Mail.Send` | Delegated | No |
+| `<solutionAbbreviation>-TeamsChannel-<environmentAbbreviation>` | `ChannelMember.ReadWrite.All` | Delegated | Yes |
+| | `Channel.ReadBasic.All` | Delegated | Yes |
+| `<solutionAbbreviation>-webapi-<environmentAbbreviation>` | `User.Read` | Delegated | No |
+| `<solutionAbbreviation>-ui-<environmentAbbreviation>` | `User.Read` | Delegated | No |
+| | `User.ReadBasic.All` | Delegated | No |
+| `<solutionAbbreviation>-FunctionAuth-<environmentAbbreviation>` | None | — | No |
+
+Notes:
+
+- The **Graph** application is the only one granted Microsoft Graph *application* permissions. These always require admin consent, which is why a directory role of Global Administrator or Privileged Role Administrator is required.
+- GMM is **not** granted a tenant-wide group write permission. Membership changes are authorized by GMM being added as an **owner** of each destination group, not by `GroupMember.ReadWrite.All`.
+- The **WebApi** application additionally exposes a `user_impersonation` scope and pre-authorizes the UI application to call it, so end users are never prompted to consent.
+- The **FunctionAuth** application exposes only a `client_impersonation` scope; it requests no Microsoft Graph permissions.
+- The script does not grant admin consent silently. After deployment it prints a consent URL for each application that needs it — see [Post Deployment](#post-deployment).
+
+#### Managed Identity Permissions
+
+When `authenticationType` is `UserAssignedManagedIdentity`, the script assigns these Microsoft Graph **application** permissions to the user-assigned managed identity `<solutionAbbreviation>-identity-<environmentAbbreviation>-Graph`:
+
+- `GroupMember.Read.All`
+- `Member.Read.Hidden`
+- `User.Read.All`
+
+These replace the need for a client secret on the Graph application. They require admin consent.
+
+#### WebAPI Application Roles
+
+The script defines application roles on the WebApi app registration. These are **not** granted to anyone automatically — you must assign them to users or groups after deployment (see [Assigning WebAPI App Roles to Users](#assigning-webapi-app-roles-to-users)).
+
+| Role value | Purpose |
+|------------|---------|
+| `Job.Read.OwnedBy` | Read owned destinations |
+| `Job.Enable.OwnedBy` | Enable or disable owned destinations |
+| `Job.Delete.OwnedBy` | Delete owned destinations |
+| `Job.EditConfiguration.OwnedBy` | Update owned destinations' configuration |
+| `Job.ReadWrite.OwnedBy` | Create, view, and update owned destinations |
+| `Job.Read.All` | Read all destinations in the tenant |
+| `Job.ReadWrite.All` | Create, view, and update all destinations in the tenant |
+| `Submission.ReadWrite.All` | View and manage submission requests |
+| `CustomSource.ReadWrite.All` | Manage custom membership provider field names |
+| `CustomSource.Read.All` | Read custom membership provider field names |
+| `GeneralSettings.ReadWrite.All` | Update general settings |
+| `GeneralSettings.Read.All` | Read general settings |
+| `AutoApprover.ReadWrite.All` | Manage auto-approval configuration |
+| `AutoApprover.Read.All` | Read auto-approval configuration |
+| `AISettings.ReadWrite.All` | Update AI settings |
+| `AISettings.Read.All` | Read AI settings |
+| `AI.Onboarding.Chat` | Use the AI onboarding chat experience |
+| `AI.SyncJob.All` | View sync jobs through AI features |
+| `TeamsChannel.Onboard.OwnedBy` | Onboard owned Teams channels |
+| `Operations.Reset` | Reset or stop GMM |
+
+> **Note:** `Operations.Reset` is also assigned to the WebApi's own service principal so that the deployment script can call the operations endpoints during subsequent deployments.
+
+#### Azure RBAC Role Assignments
+
+After the infrastructure is deployed, the script assigns Azure RBAC roles so that each service's managed identity can reach the resources it depends on. This is why the deploying user needs `Microsoft.Authorization/roleAssignments/write` (included in **Owner**) — **Contributor alone is not sufficient**.
+
+| Role | Assigned to | Scope |
+|------|------------|-------|
+| `Key Vault Secrets User` | Function apps, WebApi, managed identities | Key Vaults |
+| `App Configuration Data Reader` | Function apps, WebApi | App Configuration store |
+| `Azure Service Bus Data Sender` / `Azure Service Bus Data Receiver` | Function apps, WebApi | Service Bus namespace |
+| `Storage Blob Data Contributor`, `Storage Queue Data Contributor`, `Storage Table Data Contributor` | Function apps, WebApi | Storage accounts |
+| `Log Analytics Reader` | JobScheduler function app | Log Analytics workspace |
+| `Data Factory Contributor` | Function apps that trigger data pipelines | Data Factory |
+| `Website Contributor`, `Reader` | WebApi | Function apps and resource groups |
+| `SignalR App Server` | WebApi | SignalR service |
+| `Cognitive Services OpenAI User` | WebApi | Azure OpenAI resource |
+
+---
+
 ### Pre-Deployment Setup
 
 #### Create a SQL Administrators Security Group
@@ -273,6 +362,9 @@ The deployment script creates the following app registrations in Microsoft Entra
 - `<solution-abbreviation>-webapi-<environment-abbreviation>`
 - `<solution-abbreviation>-Graph-<environment-abbreviation>`
 - `<solution-abbreviation>-TeamsChannel-<environment-abbreviation>`
+- `<solution-abbreviation>-FunctionAuth-<environment-abbreviation>`
+
+For the exact permissions requested on each application, see [Permissions Granted by the Deployment Script](#permissions-granted-by-the-deployment-script).
 
 > **Note:** If you set `skipPrivilegedDirectoryActions` to `true`, you must create these app registrations manually before running the deployment script.
 
