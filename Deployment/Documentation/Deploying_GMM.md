@@ -99,7 +99,7 @@ The deploying user must have one of the following Microsoft Entra ID roles:
 
 ### Permissions Granted by the Deployment Script
 
-This section documents what the deployment script grants on your behalf, so you know exactly what is being created in your directory and subscription. It is the counterpart to [Required Permissions](#required-permissions) above: those are the permissions *you* need, these are the permissions the script *assigns*.
+This section documents the Microsoft Entra ID permissions the deployment script grants on your behalf, so you know exactly what is being created in your directory. It is the counterpart to [Required Permissions](#required-permissions) above: those are the permissions *you* need, these are the permissions the script *assigns*.
 
 When `skipPrivilegedDirectoryActions` is `true`, none of the directory-side grants below are performed — the script prints the equivalent manual instructions instead, and you must perform them yourself.
 
@@ -138,51 +138,6 @@ When `authenticationType` is `UserAssignedManagedIdentity`, the script assigns t
 - `User.Read.All`
 
 These replace the need for a client secret on the Graph application. They require admin consent.
-
-#### WebAPI Application Roles
-
-The script defines application roles on the WebApi app registration. These are **not** granted to anyone automatically — you must assign them to users or groups after deployment (see [Assigning WebAPI App Roles to Users](#assigning-webapi-app-roles-to-users)).
-
-| Role value | Purpose |
-|------------|---------|
-| `Job.Read.OwnedBy` | Read owned destinations |
-| `Job.Enable.OwnedBy` | Enable or disable owned destinations |
-| `Job.Delete.OwnedBy` | Delete owned destinations |
-| `Job.EditConfiguration.OwnedBy` | Update owned destinations' configuration |
-| `Job.ReadWrite.OwnedBy` | Create, view, and update owned destinations |
-| `Job.Read.All` | Read all destinations in the tenant |
-| `Job.ReadWrite.All` | Create, view, and update all destinations in the tenant |
-| `Submission.ReadWrite.All` | View and manage submission requests |
-| `CustomSource.ReadWrite.All` | Manage custom membership provider field names |
-| `CustomSource.Read.All` | Read custom membership provider field names |
-| `GeneralSettings.ReadWrite.All` | Update general settings |
-| `GeneralSettings.Read.All` | Read general settings |
-| `AutoApprover.ReadWrite.All` | Manage auto-approval configuration |
-| `AutoApprover.Read.All` | Read auto-approval configuration |
-| `AISettings.ReadWrite.All` | Update AI settings |
-| `AISettings.Read.All` | Read AI settings |
-| `AI.Onboarding.Chat` | Use the AI onboarding chat experience |
-| `AI.SyncJob.All` | View sync jobs through AI features |
-| `TeamsChannel.Onboard.OwnedBy` | Onboard owned Teams channels |
-| `Operations.Reset` | Reset or stop GMM |
-
-> **Note:** `Operations.Reset` is also assigned to the WebApi's own service principal so that the deployment script can call the operations endpoints during subsequent deployments.
-
-#### Azure RBAC Role Assignments
-
-After the infrastructure is deployed, the script assigns Azure RBAC roles so that each service's managed identity can reach the resources it depends on. This is why the deploying user needs `Microsoft.Authorization/roleAssignments/write` (included in **Owner**) — **Contributor alone is not sufficient**.
-
-| Role | Assigned to | Scope |
-|------|------------|-------|
-| `Key Vault Secrets User` | Function apps, WebApi, managed identities | Key Vaults |
-| `App Configuration Data Reader` | Function apps, WebApi | App Configuration store |
-| `Azure Service Bus Data Sender` / `Azure Service Bus Data Receiver` | Function apps, WebApi | Service Bus namespace |
-| `Storage Blob Data Contributor`, `Storage Queue Data Contributor`, `Storage Table Data Contributor` | Function apps, WebApi | Storage accounts |
-| `Log Analytics Reader` | JobScheduler function app | Log Analytics workspace |
-| `Data Factory Contributor` | Function apps that trigger data pipelines | Data Factory |
-| `Website Contributor`, `Reader` | WebApi | Function apps and resource groups |
-| `SignalR App Server` | WebApi | SignalR service |
-| `Cognitive Services OpenAI User` | WebApi | Azure OpenAI resource |
 
 ---
 
