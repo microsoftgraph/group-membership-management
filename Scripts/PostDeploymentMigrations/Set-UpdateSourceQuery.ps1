@@ -359,15 +359,17 @@ function Set-UpdateSourceQuery {
                 continue
             }
 
-            $converted = Convert-SqlSourceQuery -Query ([string]$row['Query'])
+            $originalQuery = [string]$row['Query']
+            $converted = Convert-SqlSourceQuery -Query $originalQuery
             if ($converted.Status -eq 'NoChanges') {
                 $queriesNotUpdated++
                 continue
             }
 
             $pendingUpdates.Add([PSCustomObject]@{
-                    Id    = [Guid]::Parse([string]$row['Id'])
-                    Query = $converted.TransformedQuery
+                    Id            = [Guid]::Parse([string]$row['Id'])
+                    OriginalQuery = $originalQuery
+                    Query         = $converted.TransformedQuery
                 })
 
             switch ($converted.Category) {
@@ -393,7 +395,7 @@ function Set-UpdateSourceQuery {
 
                         $createCommand = $connection.CreateCommand()
                         $createCommand.Transaction = $transaction
-                        $createCommand.CommandText = 'CREATE TABLE #RewrittenQueries (Id uniqueidentifier NOT NULL PRIMARY KEY, NewQuery nvarchar(max) NOT NULL);'
+                        $createCommand.CommandText = 'CREATE TABLE #RewrittenQueries (Id uniqueidentifier NOT NULL PRIMARY KEY, OriginalQuery nvarchar(max) NOT NULL, NewQuery nvarchar(max) NOT NULL);'
                         try {
                             [void]$createCommand.ExecuteNonQuery()
                         }
@@ -403,9 +405,10 @@ function Set-UpdateSourceQuery {
 
                         $staging = [Data.DataTable]::new()
                         [void]$staging.Columns.Add('Id', [Guid])
+                        [void]$staging.Columns.Add('OriginalQuery', [string])
                         [void]$staging.Columns.Add('NewQuery', [string])
                         foreach ($pendingUpdate in $pendingUpdates) {
-                            [void]$staging.Rows.Add($pendingUpdate.Id, $pendingUpdate.Query)
+                            [void]$staging.Rows.Add($pendingUpdate.Id, $pendingUpdate.OriginalQuery, $pendingUpdate.Query)
                         }
 
                         $bulkCopy = [Data.SqlClient.SqlBulkCopy]::new(
@@ -416,6 +419,7 @@ function Set-UpdateSourceQuery {
                         $bulkCopy.BatchSize = 5000
                         $bulkCopy.BulkCopyTimeout = 600
                         [void]$bulkCopy.ColumnMappings.Add('Id', 'Id')
+                        [void]$bulkCopy.ColumnMappings.Add('OriginalQuery', 'OriginalQuery')
                         [void]$bulkCopy.ColumnMappings.Add('NewQuery', 'NewQuery')
                         $bulkCopy.WriteToServer($staging)
 
@@ -426,7 +430,9 @@ function Set-UpdateSourceQuery {
 UPDATE jobs
 SET jobs.[Query] = rewritten.NewQuery
 FROM dbo.SyncJobs AS jobs
-INNER JOIN #RewrittenQueries AS rewritten ON rewritten.Id = jobs.Id;
+INNER JOIN #RewrittenQueries AS rewritten ON rewritten.Id = jobs.Id
+WHERE DATALENGTH(jobs.[Query]) = DATALENGTH(rewritten.OriginalQuery)
+  AND CONVERT(varbinary(max), jobs.[Query]) = CONVERT(varbinary(max), rewritten.OriginalQuery);
 '@
 
                         try {
@@ -437,7 +443,7 @@ INNER JOIN #RewrittenQueries AS rewritten ON rewritten.Id = jobs.Id;
                         }
 
                         if ($affected -ne $pendingUpdates.Count) {
-                            throw "Expected to update $($pendingUpdates.Count) query value(s) but $affected row(s) were affected."
+                            throw "Expected to update $($pendingUpdates.Count) query value(s) but $affected row(s) were affected. A job was changed or deleted after it was read, so no changes were saved; run the script again."
                         }
 
                         $transaction.Commit()
