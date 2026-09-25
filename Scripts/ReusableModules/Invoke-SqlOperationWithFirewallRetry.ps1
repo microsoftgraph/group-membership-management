@@ -22,12 +22,12 @@ function Add-SqlIpFromError {
             -ErrorAction SilentlyContinue
 
         if ($null -eq $sqlIPRule) {
-            New-AzSqlServerFirewallRule `
+            [void](New-AzSqlServerFirewallRule `
                 -ResourceGroupName $dataResourceGroupName `
                 -ServerName $sqlServerName `
                 -FirewallRuleName $sqlIPRuleName `
                 -StartIpAddress $ipToAdd `
-                -EndIpAddress $ipToAdd
+                -EndIpAddress $ipToAdd)
             Write-Verbose "Added Sql IP $ipToAdd to SQL Server firewall rules."
         }
     }
@@ -47,16 +47,16 @@ function Invoke-SqlOperationWithFirewallRetry {
         [Parameter(Mandatory = $false)]
         [int]$MaxRetries = 10
     )
-    
+
     $directory = $PSScriptRoot
     . ($directory + '/Invoke-WithFirewallRetry.ps1')
-    
+
     $dataResourceGroup = "$SolutionAbbreviation-data-$EnvironmentAbbreviation"
-    
+
     Invoke-WithFirewallRetry -ResourceGroup $dataResourceGroup -MaxRetries $MaxRetries `
             -Operation $Operation `
             -OnFirewallError {
-                param($errorMessage) 
+                param($errorMessage)
                 Add-SqlIpFromError -ErrorMessage $errorMessage -SolutionAbbreviation $SolutionAbbreviation -EnvironmentAbbreviation $EnvironmentAbbreviation
             }
 }

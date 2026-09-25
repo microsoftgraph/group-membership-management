@@ -1,252 +1,486 @@
-function Set-UpdateSourceQuery {
-    # IMPORTANT: All query JSON must be compact (no extra whitespace between keys/values).
-    # Use ConvertTo-Json -Compress or string literals without spaces after colons.
-    # The WebApi serializer (JsonSerializer with WriteIndented=false) produces compact JSON,
-    # and any mismatch causes unnecessary re-processing on subsequent migration runs.
+# Runs on every deployment. Rewrites SyncJobs.Query values saved in older formats into the
+# current format: SecurityGroup parts become GroupMembership, parts listing several group or
+# manager IDs are split into one part per ID, and "!=" becomes "<>". SQL parts already in the
+# current format with a valid identityTypes list are kept exactly as stored. All changes are
+# saved in a single transaction.
+#
+# Rewritten JSON must stay compact (no whitespace), matching the WebApi serializer; otherwise
+# every deployment sees a difference and rewrites the same rows again.
+
+function Build-SqlQueryPart {
     [CmdletBinding()]
-	param(
-        [Parameter(Mandatory=$True)]
-		[string] $EnvironmentAbbreviation,
-		[Parameter(Mandatory=$True)]
-		[string] $SolutionAbbreviation,
-		[Parameter(Mandatory=$True)]
-		[string] $ConnectionString
+    param(
+        [Parameter(Mandatory = $true)]
+        $OriginalPart,
+
+        [Parameter(Mandatory = $true)]
+        $NewSource
     )
 
-    Write-Host "Start Set-UpdateSourceQuery"
+    $rebuilt = [ordered]@{}
+    $sawSource = $false
 
-    $tableName = "SyncJobs"
-    $tableSchema = "dbo"
+    foreach ($property in $OriginalPart.PSObject.Properties) {
+        if ($property.Name -ceq 'source') {
+            $rebuilt['source'] = $NewSource
+            $sawSource = $true
+        }
+        else {
+            $rebuilt[$property.Name] = $property.Value
+        }
+    }
 
-    # Connect to the SQL Server instance
-    $context = [Microsoft.Azure.Commands.Common.Authentication.Abstractions.AzureRmProfileProvider]::Instance.Profile.DefaultContext
-    $sqlToken = [Microsoft.Azure.Commands.Common.Authentication.AzureSession]::Instance.AuthenticationFactory.Authenticate($context.Account, $context.Environment, $context.Tenant.Id.ToString(), $null, [Microsoft.Azure.Commands.Common.Authentication.ShowDialog]::Never, $null, "https://database.windows.net").AccessToken
-    $connection = New-Object System.Data.SqlClient.SqlConnection
-    $connection.ConnectionString = $ConnectionString
-    $connection.AccessToken = $sqlToken
+    if (-not $sawSource) {
+        $rebuilt['source'] = $NewSource
+    }
 
-    $tableExists = Invoke-SqlOperationWithFirewallRetry `
-                    -EnvironmentAbbreviation $EnvironmentAbbreviation `
-                    -SolutionAbbreviation $SolutionAbbreviation `
-                    -Operation { 
-                        $connection.Open()
-        
-                        # Check if the table exists
-                        $checkTableQuery = "SELECT CASE WHEN EXISTS (SELECT 1 FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = '$tableSchema' AND TABLE_NAME = '$tableName') THEN 1 ELSE 0 END AS TableExists;"
+    return ConvertTo-Json -InputObject ([PSCustomObject]$rebuilt) -Compress -Depth 100
+}
 
+function Test-SourceQueryIdentityTypesSelection {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [System.Text.Json.JsonElement]$Selection
+    )
 
-                        $checkCommand = $connection.CreateCommand()
-                        $checkCommand.CommandText = $checkTableQuery
-                        $tableExistsResult = $checkCommand.ExecuteScalar()
+    if ($Selection.ValueKind -ne [System.Text.Json.JsonValueKind]::Array) {
+        return $false
+    }
 
-                        # Close the connection
-                        $checkCommand.Dispose()
-                        $connection.Close()
+    $values = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
+    foreach ($item in $Selection.EnumerateArray()) {
+        if ($item.ValueKind -ne [System.Text.Json.JsonValueKind]::String) {
+            return $false
+        }
 
-                        return $tableExistsResult
-                    }
+        $value = $item.GetString()
+        if (-not [string]::Equals($value, 'users', [StringComparison]::Ordinal) -and
+            -not [string]::Equals($value, 'agents', [StringComparison]::Ordinal)) {
+            return $false
+        }
 
-    if ($tableExists -eq 1) {
-        Write-Output "The table '$tableSchema.$tableName' exists."
+        if (-not $values.Add($value)) {
+            return $false
+        }
+    }
 
-        # Replace SecurityGroup with GroupMembership
-        Invoke-SqlOperationWithFirewallRetry `
-            -EnvironmentAbbreviation $EnvironmentAbbreviation `
-            -SolutionAbbreviation $SolutionAbbreviation `
-            -Operation { 
-                $connection.Open()
-                $updateQuery = "UPDATE SyncJobs SET Query = REPLACE(Query, 'SecurityGroup', 'GroupMembership') WHERE Query LIKE '%SecurityGroup%'"
-                $updateCommand = $connection.CreateCommand()
-                $updateCommand.CommandText = $updateQuery
-                $updateCommand.ExecuteNonQuery()
-                $updateCommand.Dispose()
-                $connection.Close()
+    return $values.Count -gt 0
+}
+
+function Get-SourceQueryRawParts {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$Query
+    )
+
+    $document = $null
+    try {
+        $document = [System.Text.Json.JsonDocument]::Parse($Query)
+        if ($document.RootElement.ValueKind -ne [System.Text.Json.JsonValueKind]::Array) {
+            return @()
+        }
+
+        $parts = [Collections.Generic.List[object]]::new()
+        foreach ($part in $document.RootElement.EnumerateArray()) {
+            $preserve = $false
+
+            if ($part.ValueKind -eq [System.Text.Json.JsonValueKind]::Object) {
+                $typeProperty = [System.Text.Json.JsonElement]::new()
+                $selectionProperty = [System.Text.Json.JsonElement]::new()
+                $sourceProperty = [System.Text.Json.JsonElement]::new()
+
+                $hasType = $part.TryGetProperty('type', [ref]$typeProperty)
+                $hasSelection = $part.TryGetProperty('identityTypes', [ref]$selectionProperty)
+                $hasSource = $part.TryGetProperty('source', [ref]$sourceProperty)
+
+                if ($hasType -and
+                    $typeProperty.ValueKind -eq [System.Text.Json.JsonValueKind]::String -and
+                    [string]::Equals($typeProperty.GetString(), 'SqlMembership', [StringComparison]::Ordinal) -and
+                    $hasSelection -and
+                    (Test-SourceQueryIdentityTypesSelection -Selection $selectionProperty) -and
+                    $hasSource -and
+                    $sourceProperty.ValueKind -eq [System.Text.Json.JsonValueKind]::Object) {
+
+                    $idsProperty = [System.Text.Json.JsonElement]::new()
+                    $hasIds = $sourceProperty.TryGetProperty('ids', [ref]$idsProperty)
+                    $preserve = -not $hasIds
+                }
             }
 
-         # Replace != with <>
-        Invoke-SqlOperationWithFirewallRetry `
-            -EnvironmentAbbreviation $EnvironmentAbbreviation `
-            -SolutionAbbreviation $SolutionAbbreviation `
-            -Operation { 
-                $connection.Open()
-                $updateQuery = "UPDATE SyncJobs SET Query = REPLACE(Query, '!=', '<>') WHERE Query LIKE '%!=%'"
-                $updateCommand = $connection.CreateCommand()
-                $updateCommand.CommandText = $updateQuery
-                $updateCommand.ExecuteNonQuery()
-                $updateCommand.Dispose()
-                $connection.Close()
+            $parts.Add([PSCustomObject]@{
+                RawText = $part.GetRawText()
+                Preserve = $preserve
+            })
+        }
+
+        return $parts.ToArray()
+    }
+    catch {
+        return @()
+    }
+    finally {
+        if ($null -ne $document) {
+            $document.Dispose()
+        }
+    }
+}
+
+function Convert-SqlSourceQuery {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [AllowEmptyString()]
+        [string]$Query
+    )
+
+    if ([string]::IsNullOrEmpty($Query)) {
+        return [PSCustomObject]@{
+            Status = 'NoChanges'
+            TransformedQuery = $Query
+            Category = 'None'
+        }
+    }
+
+    $currentQuery = @(ConvertFrom-Json -InputObject $Query)
+    $rawParts = @(Get-SourceQueryRawParts -Query $Query)
+    if ($rawParts.Count -ne $currentQuery.Count) {
+        $rawParts = @()
+    }
+
+    $newQueryParts = [Collections.Generic.List[string]]::new()
+    $fromOldFormat = $false
+    $fromUnknownFormat = $false
+    $fromNewFormat = $false
+    $knownTypes = @('SqlMembership', 'GroupMembership')
+
+    for ($partIndex = 0; $partIndex -lt $currentQuery.Count; $partIndex++) {
+        $part = $currentQuery[$partIndex]
+
+        if ($rawParts.Count -eq $currentQuery.Count -and $rawParts[$partIndex].Preserve) {
+            $newQueryParts.Add($rawParts[$partIndex].RawText)
+            $fromNewFormat = $true
+            continue
+        }
+
+        $partType = if ($part.type -eq 'SecurityGroup') { 'GroupMembership' } else { $part.type }
+
+        if ($partType -eq 'GroupMembership' -and $part.source) {
+            foreach ($id in $part.source) {
+                if ($part.exclusionary -eq $true) {
+                    $newQueryParts.Add('{"type":"GroupMembership","source":"' + $id + '","exclusionary":true}')
+                }
+                else {
+                    $newQueryParts.Add('{"type":"GroupMembership","source":"' + $id + '"}')
+                }
             }
 
-        # Retrieve data from the SQL table
-        $dataTable = Invoke-SqlOperationWithFirewallRetry `
-                        -EnvironmentAbbreviation $EnvironmentAbbreviation `
-                        -SolutionAbbreviation $SolutionAbbreviation `
-                        -Operation { 
-                            $connection.Open()
-                            # Retrieve data from the SQL table
-                            $query = "SELECT * FROM SyncJobs"
-                            $command = $connection.CreateCommand()
-                            $command.CommandText = $query
+            $fromOldFormat = $true
+            continue
+        }
 
-                            # Create a DataTable to store the results
-                            $dataTableResult = New-Object System.Data.DataTable
-                            $dataAdapter = New-Object System.Data.SqlClient.SqlDataAdapter $command
-                            [void]$dataAdapter.Fill($dataTableResult)
-
-                            # Close the DataReader and the connection
-                            $command.Dispose()
-                            $connection.Close()
-
-                            return $dataTableResult
+        if ($partType -eq 'SqlMembership' -and $part.source) {
+            foreach ($source in $part.source) {
+                if ($source.manager.id) {
+                    $newQueryParts.Add(
+                        (Build-SqlQueryPart -OriginalPart $part -NewSource $source).Replace('!=', '<>'))
+                }
+                elseif ($source.ids) {
+                    foreach ($id in $source.ids) {
+                        $expandedSource = [ordered]@{
+                            manager = [ordered]@{
+                                id = $id
+                            }
                         }
 
-        $type = @("SqlMembership", "GroupMembership")
+                        if ($source.depth) {
+                            $expandedSource.manager.depth = $source.depth
+                        }
+
+                        if ($source.filter) {
+                            $expandedSource.filter = $source.filter
+                        }
+
+                        $newQueryParts.Add(
+                            (Build-SqlQueryPart -OriginalPart $part -NewSource $expandedSource).Replace('!=', '<>'))
+                    }
+                }
+                elseif ($source.filter) {
+                    $newQueryParts.Add(
+                        (Build-SqlQueryPart -OriginalPart $part -NewSource $source).Replace('!=', '<>'))
+                }
+            }
+
+            $fromOldFormat = $true
+            continue
+        }
+
+        $serializedPart = ConvertTo-Json -InputObject $part -Compress -Depth 100
+        $serializedPart = $serializedPart.Replace('SecurityGroup', 'GroupMembership').Replace('!=', '<>')
+        $newQueryParts.Add($serializedPart)
+
+        if ($partType -notin $knownTypes) {
+            $fromUnknownFormat = $true
+        }
+        else {
+            $fromNewFormat = $true
+        }
+    }
+
+    $newQuery = '[' + ($newQueryParts -join ',') + ']'
+    $category = if ($fromUnknownFormat) {
+        'Unknown'
+    }
+    elseif ($fromOldFormat) {
+        'Old'
+    }
+    elseif ($fromNewFormat) {
+        'New'
+    }
+    else {
+        'None'
+    }
+
+    return [PSCustomObject]@{
+        Status = if ([string]::Equals($Query, $newQuery, [StringComparison]::Ordinal)) { 'NoChanges' } else { 'Changed' }
+        TransformedQuery = $newQuery
+        Category = $category
+    }
+}
+
+function New-SourceQueryMigrationConnection {
+    [Diagnostics.CodeAnalysis.SuppressMessageAttribute(
+        'PSUseShouldProcessForStateChangingFunctions',
+        '',
+        Justification = 'Creates an unopened in-memory connection.')]
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$ConnectionString
+    )
+
+    $context = [Microsoft.Azure.Commands.Common.Authentication.Abstractions.AzureRmProfileProvider]::Instance.Profile.DefaultContext
+    $sqlToken = [Microsoft.Azure.Commands.Common.Authentication.AzureSession]::Instance.AuthenticationFactory.Authenticate(
+        $context.Account,
+        $context.Environment,
+        $context.Tenant.Id.ToString(),
+        $null,
+        [Microsoft.Azure.Commands.Common.Authentication.ShowDialog]::Never,
+        $null,
+        'https://database.windows.net').AccessToken
+
+    $connection = [Data.SqlClient.SqlConnection]::new()
+    $connection.ConnectionString = $ConnectionString
+    $connection.AccessToken = $sqlToken
+    return $connection
+}
+
+function Set-UpdateSourceQuery {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$EnvironmentAbbreviation,
+
+        [Parameter(Mandatory = $true)]
+        [string]$SolutionAbbreviation,
+
+        [Parameter(Mandatory = $true)]
+        [string]$ConnectionString
+    )
+
+    Write-Host 'Start Set-UpdateSourceQuery'
+
+    $connection = New-SourceQueryMigrationConnection -ConnectionString $ConnectionString
+    try {
+        $tableExists = Invoke-SqlOperationWithFirewallRetry `
+            -EnvironmentAbbreviation $EnvironmentAbbreviation `
+            -SolutionAbbreviation $SolutionAbbreviation `
+            -Operation {
+            try {
+                $connection.Open()
+                $checkCommand = $connection.CreateCommand()
+                $checkCommand.CommandText = "SELECT CASE WHEN OBJECT_ID(N'dbo.SyncJobs', N'U') IS NULL THEN 0 ELSE 1 END;"
+                try {
+                    return $checkCommand.ExecuteScalar()
+                }
+                finally {
+                    $checkCommand.Dispose()
+                }
+            }
+            finally {
+                if ($connection.State -ne [Data.ConnectionState]::Closed) {
+                    $connection.Close()
+                }
+            }
+        }
+        if ($tableExists -ne 1) {
+            Write-Output "The table 'dbo.SyncJobs' does not exist. Skipping the Query update."
+            return
+        }
+
+        Write-Output "The table 'dbo.SyncJobs' exists."
+
+        $dataTable = Invoke-SqlOperationWithFirewallRetry `
+            -EnvironmentAbbreviation $EnvironmentAbbreviation `
+            -SolutionAbbreviation $SolutionAbbreviation `
+            -Operation {
+            try {
+                $connection.Open()
+                $command = $connection.CreateCommand()
+                $command.CommandText = 'SELECT Id, [Query] FROM dbo.SyncJobs'
+                $dataTableResult = [Data.DataTable]::new()
+                $dataAdapter = [Data.SqlClient.SqlDataAdapter]::new($command)
+
+                try {
+                    [void]$dataAdapter.Fill($dataTableResult)
+                    return $dataTableResult
+                }
+                finally {
+                    $dataAdapter.Dispose()
+                    $command.Dispose()
+                }
+            }
+            finally {
+                if ($connection.State -ne [Data.ConnectionState]::Closed) {
+                    $connection.Close()
+                }
+            }
+        }
 
         $queriesUpdatedFromOldFormat = 0
         $queriesUpdatedFromNewFormat = 0
         $queriesUpdatedFromUnknownFormat = 0
         $queriesNotUpdated = 0
+        $pendingUpdates = [Collections.Generic.List[object]]::new()
 
-        $fromOldFormatFlag = $false
-        $fromUnknownFormatFlag = $false
-        $fromNewFormatFlag = $false
+        foreach ($row in $dataTable) {
+            if ([string]::IsNullOrEmpty($row['Query'])) {
+                continue
+            }
 
-        foreach ($row in $dataTable)
-        {
-            if (-not [string]::IsNullOrEmpty($row["Query"])) {
+            $converted = Convert-SqlSourceQuery -Query ([string]$row['Query'])
+            if ($converted.Status -eq 'NoChanges') {
+                $queriesNotUpdated++
+                continue
+            }
 
-                $newQueryParts = @()
-                $currentQuery = ConvertFrom-Json -InputObject $row["Query"]
+            $pendingUpdates.Add([PSCustomObject]@{
+                    Id    = [Guid]::Parse([string]$row['Id'])
+                    Query = $converted.TransformedQuery
+                })
 
-                foreach($part in $currentQuery) {
-
-                    if($part.type -eq "GroupMembership" -and $part.source) {
-                        foreach($id in $part.source) {
-                            if($part.exclusionary -eq $true) {
-                                    $newQueryPart = '{"type":"GroupMembership","source":"' + $id + '","exclusionary":true}'
-                            }
-                            else {
-                                $newQueryPart = '{"type":"GroupMembership","source":"' + $id + '"}'
-                            }
-                            $newQueryParts += $newQueryPart
-                        }
-                        $fromOldFormatFlag = $true
-                    }
-                    elseif($part.type -eq "SqlMembership" -and $part.source) {
-                        foreach($source in $part.source) {
-                            if ($source.manager.id) {
-                                $sourceAsString = ConvertTo-Json -InputObject $source -Compress -Depth 100
-                                write-host $sourceAsString
-                                $sourceAsString = ([regex]'(?i)\\u([0-9a-h]{4})').Replace($sourceAsString, {param($Match) "$([char][int64]"0x$($Match.Groups[1].Value)")"})
-
-                                if($part.exclusionary -eq $true) {
-                                    $newQueryPart = '{"type":"SqlMembership","source":' + $sourceAsString + ',"exclusionary":true}'
-                                }
-                                else {
-                                    $newQueryPart = '{"type":"SqlMembership","source":' + $sourceAsString + '}'
-                                }
-                                $newQueryParts += $newQueryPart
-                            }
-
-                            elseif ($source.ids) {
-                                foreach ($id in $part.source.ids) {
-                                    $newQueryPart = @{
-                                        type = "SqlMembership"
-                                        source = @{
-                                            manager = @{
-                                                id = $id
-                                            }
-                                        }
-                                    }
-
-                                    if ($part.source.depth) {
-                                        $newQueryPart.source.manager.depth = $part.source.depth
-                                    }
-                                    if ($part.source.filter) {
-                                        $newQueryPart.source.filter = $part.source.filter
-                                    }
-                                    if($part.exclusionary -eq $true)
-                                    {
-                                        $newQueryPart.exclusionary = $true
-                                    }
-
-                                    $newQueryPart = $newQueryPart | ConvertTo-Json -Depth 100 -Compress
-                                    $newQueryPart = ([regex]'(?i)\\u([0-9a-h]{4})').Replace($newQueryPart, {param($Match) "$([char][int64]"0x$($Match.Groups[1].Value)")"})
-                                    $newQueryParts += $newQueryPart
-                                }
-                            }
-
-                            elseif ($source.filter) {
-                                $sourceAsString = ConvertTo-Json -InputObject $source -Compress -Depth 100
-                                $sourceAsString = ([regex]'(?i)\\u([0-9a-h]{4})').Replace($sourceAsString, {param($Match) "$([char][int64]"0x$($Match.Groups[1].Value)")"})
-
-                                if($part.exclusionary -eq $true) {
-                                    $newQueryPart = '{"type":"SqlMembership","source":' + $sourceAsString + ',"exclusionary":true}'
-                                }
-                                else {
-                                    $newQueryPart = '{"type":"SqlMembership","source":' + $sourceAsString + '}'
-                                }
-                                $newQueryParts += $newQueryPart
-                            }
-                        }
-                        $fromOldFormatFlag = $true
-                    }
-                    elseif($part.type -notin $type) {
-                        $newQueryParts +=  ConvertTo-Json -InputObject $part -Compress -Depth 100
-                        $fromUnknownFormatFlag = $true
-                    }
-                    else {
-                        $newQueryParts +=  ConvertTo-Json -InputObject $part -Compress -Depth 100
-                        $fromNewFormatFlag = $true
-                    }
-                }
-
-                $newQuery = "[" + ($newQueryParts -join ",") + "]"
-                if ($row["Query"] -ne $newQuery) {
-                    $updateQuery = "UPDATE SyncJobs SET Query = @Query WHERE Id = @Id"
-
-                    # Use parameterized query to handle data escaping
-                    $updateCommand = $connection.CreateCommand()
-                    $updateCommand.CommandText = $updateQuery
-
-
-                    $updateCommand.Parameters.Add((New-Object Data.SqlClient.SqlParameter("@Query", [Data.SqlDbType]::NVarChar, -1))).Value = $newQuery
-                    $updateCommand.Parameters.Add((New-Object Data.SqlClient.SqlParameter("@Id", [Data.SqlDbType]::UniqueIdentifier))).Value = [System.Guid]::Parse($row["Id"])
-
-                    Invoke-SqlOperationWithFirewallRetry `
-                        -EnvironmentAbbreviation $EnvironmentAbbreviation `
-                        -SolutionAbbreviation $SolutionAbbreviation `
-                        -Operation { 
-                            $connection.Open()
-                            [void]$updateCommand.ExecuteNonQuery()
-                            $connection.Close()
-                        }
-
-                    if ($fromUnknownFormatFlag) {
-                        $queriesUpdatedFromUnknownFormat += 1
-                        $fromUnknownFormatFlag = $false
-                    }
-                    elseif ($fromOldFormatFlag) {
-                        $queriesUpdatedFromOldFormat += 1
-                        $fromOldFormatFlag = $false
-                    }
-                    elseif ($fromNewFormatFlag) {
-                        $queriesUpdatedFromNewFormat += 1
-                        $fromNewFormatFlag = $false
-                    }
-                }
-                else {
-                    $queriesNotUpdated += 1
-                }
+            switch ($converted.Category) {
+                'Unknown' { $queriesUpdatedFromUnknownFormat++ }
+                'Old' { $queriesUpdatedFromOldFormat++ }
+                'New' { $queriesUpdatedFromNewFormat++ }
             }
         }
-        Write-Host "Queries updated from old format: " $queriesUpdatedFromOldFormat
-        Write-Host "Queries updated from new format (removed white space): " $queriesUpdatedFromNewFormat
-        Write-Host "Queries updated from unknown format: " $queriesUpdatedFromUnknownFormat
-        Write-Host "Queries not updated: " $queriesNotUpdated
-    } else {
-        Write-Output "The table '$tableSchema.$tableName' does not exist. Skipping the Query update."
+
+        if ($pendingUpdates.Count -gt 0) {
+            [void](Invoke-SqlOperationWithFirewallRetry `
+                    -EnvironmentAbbreviation $EnvironmentAbbreviation `
+                    -SolutionAbbreviation $SolutionAbbreviation `
+                    -Operation {
+                    $bulkCopy = $null
+                    $staging = $null
+                    $transaction = $null
+                    $resolved = $false
+
+                    try {
+                        $connection.Open()
+                        $transaction = $connection.BeginTransaction()
+
+                        $createCommand = $connection.CreateCommand()
+                        $createCommand.Transaction = $transaction
+                        $createCommand.CommandText = 'CREATE TABLE #RewrittenQueries (Id uniqueidentifier NOT NULL PRIMARY KEY, NewQuery nvarchar(max) NOT NULL);'
+                        try {
+                            [void]$createCommand.ExecuteNonQuery()
+                        }
+                        finally {
+                            $createCommand.Dispose()
+                        }
+
+                        $staging = [Data.DataTable]::new()
+                        [void]$staging.Columns.Add('Id', [Guid])
+                        [void]$staging.Columns.Add('NewQuery', [string])
+                        foreach ($pendingUpdate in $pendingUpdates) {
+                            [void]$staging.Rows.Add($pendingUpdate.Id, $pendingUpdate.Query)
+                        }
+
+                        $bulkCopy = [Data.SqlClient.SqlBulkCopy]::new(
+                            $connection,
+                            [Data.SqlClient.SqlBulkCopyOptions]::Default,
+                            $transaction)
+                        $bulkCopy.DestinationTableName = '#RewrittenQueries'
+                        $bulkCopy.BatchSize = 5000
+                        $bulkCopy.BulkCopyTimeout = 600
+                        [void]$bulkCopy.ColumnMappings.Add('Id', 'Id')
+                        [void]$bulkCopy.ColumnMappings.Add('NewQuery', 'NewQuery')
+                        $bulkCopy.WriteToServer($staging)
+
+                        $applyCommand = $connection.CreateCommand()
+                        $applyCommand.Transaction = $transaction
+                        $applyCommand.CommandTimeout = 600
+                        $applyCommand.CommandText = @'
+UPDATE jobs
+SET jobs.[Query] = rewritten.NewQuery
+FROM dbo.SyncJobs AS jobs
+INNER JOIN #RewrittenQueries AS rewritten ON rewritten.Id = jobs.Id;
+'@
+
+                        try {
+                            $affected = $applyCommand.ExecuteNonQuery()
+                        }
+                        finally {
+                            $applyCommand.Dispose()
+                        }
+
+                        if ($affected -ne $pendingUpdates.Count) {
+                            throw "Expected to update $($pendingUpdates.Count) query value(s) but $affected row(s) were affected."
+                        }
+
+                        $transaction.Commit()
+                        $resolved = $true
+                        return $affected
+                    }
+                    finally {
+                        if ($null -ne $bulkCopy) {
+                            $bulkCopy.Close()
+                            $bulkCopy.Dispose()
+                        }
+
+                        if ($null -ne $staging) {
+                            $staging.Dispose()
+                        }
+
+                        if ($null -ne $transaction) {
+                            if (-not $resolved) {
+                                try {
+                                    $transaction.Rollback()
+                                }
+                                catch {
+                                    Write-Verbose 'Rollback failed after the source-query migration transaction.'
+                                }
+                            }
+
+                            $transaction.Dispose()
+                        }
+
+                        if ($connection.State -ne [Data.ConnectionState]::Closed) {
+                            $connection.Close()
+                        }
+                    }
+                })
+        }
+
+        Write-Host "Queries updated from old format: $queriesUpdatedFromOldFormat"
+        Write-Host "Queries updated from new format: $queriesUpdatedFromNewFormat"
+        Write-Host "Queries updated from unknown format: $queriesUpdatedFromUnknownFormat"
+        Write-Host "Queries not updated: $queriesNotUpdated"
     }
-    
-    Write-Host "Finish Set-UpdateSourceQuery"
+    finally {
+        $connection.Dispose()
+        Write-Host 'Finish Set-UpdateSourceQuery'
+    }
 }
