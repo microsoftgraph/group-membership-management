@@ -42,6 +42,7 @@ import manageMembershipReducer, {
   manageMembershipIsMissingAndOrOperator,
   buildCompositeQuery,
   ManageMembershipState,
+  setJobDetailsForExistingJob,
 } from './manageMembership.slice';
 import {
   getGroupOnboardingStatus,
@@ -518,5 +519,41 @@ describe('buildCompositeQuery', () => {
     const part = { ...makeSourcePart('p1'), query: undefined } as any;
     const result = buildCompositeQuery([part]);
     expect(result[0]).toBeUndefined();
+  });
+
+  it('preserves the exact SQL identity selection and qualified filter', () => {
+    const query = {
+      type: SourcePartType.HR,
+      source: {
+        filter: "users.EmployeeType_Code = 'FTE' AND agents.BlueprintId = 'approved'",
+      },
+      exclusionary: false,
+      identityTypes: ['agents', 'users'],
+    };
+    const result = buildCompositeQuery([{ ...makeSourcePart('p1'), query } as any]);
+
+    expect(result[0]).toEqual(query);
+  });
+});
+
+describe('setJobDetailsForExistingJob', () => {
+  it('loads and reprojects the exact SQL identity selection', () => {
+    const query = [{
+      type: SourcePartType.HR,
+      source: {
+        filter: "users.EmployeeType_Code = 'FTE' AND agents.BlueprintId = 'approved'",
+      },
+      exclusionary: false,
+      identityTypes: ['users', 'agents'],
+    }];
+    const job = {
+      query: JSON.stringify(query),
+      titles: [{ partId: 'part-1', name: 'SQL rule' }],
+    } as any;
+
+    const state = manageMembershipReducer(initial, setJobDetailsForExistingJob(job));
+
+    expect(state.sourceParts[0].query).toEqual(query[0]);
+    expect(state.compositeQuery).toEqual(query);
   });
 });

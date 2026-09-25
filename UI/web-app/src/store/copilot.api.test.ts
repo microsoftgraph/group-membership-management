@@ -350,7 +350,12 @@ describe('copilot.api transformSourcePart contract', () => {
     const hrPart: ISourcePart = {
       id: 'hr-1',
       title: 'US FTEs',
-      query: { type: SourcePartType.HR, source: { filter: "Country = 'USA'" }, exclusionary: false },
+      query: {
+        type: SourcePartType.HR,
+        source: { filter: "Country = 'USA'" },
+        exclusionary: false,
+        identityTypes: ['agents', 'users'],
+      },
       isNew: false,
       isExpanded: false,
     };
@@ -378,8 +383,22 @@ describe('copilot.api transformSourcePart contract', () => {
     it('carries the HR filter and the group id', () => {
       const wq = buildWorkingQuery([hrPart, groupPart]);
       expect(wq[0].filter).toBe("Country = 'USA'");
+      expect(wq[0].identityTypes).toEqual(['agents', 'users']);
       expect(wq[1].groupId).toBe('group-guid');
       expect(wq[1].isExclusion).toBe(true);
+    });
+
+    it('does not synthesize identityTypes for a legacy HR part', () => {
+      const legacyPart: ISourcePart = {
+        ...hrPart,
+        query: {
+          type: SourcePartType.HR,
+          source: { filter: "Country = 'USA'" },
+          exclusionary: false,
+        },
+      };
+
+      expect(buildWorkingQuery([legacyPart])[0]).not.toHaveProperty('identityTypes');
     });
 
     it('includes unsupported parts so the server can preserve them', () => {

@@ -22,6 +22,7 @@ import copilotReducer, {
 import { sendCopilotMessage } from './copilot.api';
 import { IChatMessage } from '../components/CopilotPanel/CopilotPanel.types';
 import { ISourcePart } from '../models/ISourcePart';
+import { HRSourcePart } from '../models/HRSourcePart';
 import { SourcePartType } from '../models/SourcePartType';
 import { RootState } from './store';
 
@@ -368,6 +369,61 @@ describe('copilot.slice', () => {
 
       expect(merged.every(p => p.isNew === false)).toBe(true);
       expect(merged.map(p => p.id)).toEqual(['b', 'a']); // resulting order is authoritative
+    });
+
+    it('preserves the exact SQL identity selection while applying a refined filter', () => {
+      const existing = [hr('a', "users.EmployeeType_Code = 'FTE'", {
+        query: {
+          type: SourcePartType.HR,
+          source: { filter: "users.EmployeeType_Code = 'FTE'" },
+          exclusionary: false,
+          identityTypes: ['agents', 'users'],
+        },
+      })];
+      const resulting = [hr('a', "users.EmployeeType_Code IN ('FTE', 'Vendor')")];
+
+      const merged = mergeResultingParts(existing, resulting);
+
+      const mergedQuery = merged[0].query as HRSourcePart;
+      expect(mergedQuery.source.filter).toBe("users.EmployeeType_Code IN ('FTE', 'Vendor')");
+      expect(mergedQuery.identityTypes).toEqual(['agents', 'users']);
+    });
+
+    it('matches a part whose ID comes back in different letter case and keeps the existing ID', () => {
+      const existingId = '3f2a9c1e-7b4d-4e8a-9f10-2c6b8d4e5a71';
+      const existing = [hr(existingId, "users.EmployeeType_Code = 'FTE'", {
+        isExpanded: true,
+        query: {
+          type: SourcePartType.HR,
+          source: { filter: "users.EmployeeType_Code = 'FTE'" },
+          exclusionary: false,
+          identityTypes: ['users', 'agents'],
+        },
+      })];
+      const resulting = [hr(existingId.toUpperCase(), "users.EmployeeType_Code IN ('FTE', 'Vendor')", { isNew: true })];
+
+      const merged = mergeResultingParts(existing, resulting);
+
+      expect(merged[0].id).toBe(existingId);
+      expect(merged[0].isNew).toBe(false);
+      expect(merged[0].isExpanded).toBe(true);
+      expect((merged[0].query as HRSourcePart).identityTypes).toEqual(['users', 'agents']);
+    });
+
+    it('does not synthesize identityTypes for a matched legacy SQL part', () => {
+      const existing = [hr('a', "users.EmployeeType_Code = 'FTE'")];
+      const resulting = [hr('a', "users.EmployeeType_Code IN ('FTE', 'Vendor')", {
+        query: {
+          type: SourcePartType.HR,
+          source: { filter: "users.EmployeeType_Code IN ('FTE', 'Vendor')" },
+          exclusionary: false,
+          identityTypes: ['users'],
+        },
+      })];
+
+      const merged = mergeResultingParts(existing, resulting);
+
+      expect(merged[0].query).not.toHaveProperty('identityTypes');
     });
 
     it('carries forward a resolved org leader when the refined part comes back without one', () => {

@@ -3,6 +3,7 @@
 
 import React from 'react';
 import { fireEvent, screen } from '@testing-library/react';
+import { vi } from 'vitest';
 import { SourcePart } from './SourcePart';
 import { renderWithProviders } from '../../testing/renderWithProviders';
 import rolesReducer from '../../store/roles.slice';
@@ -11,6 +12,32 @@ import type { RootState } from '../../store';
 import type { ISourcePart } from '../../models/ISourcePart';
 import { SourcePartType } from '../../models/SourcePartType';
 import { DestinationType } from '../../models/DestinationType';
+import type { HRSourcePart, HRSourcePartSource, IdentityType } from '../../models/HRSourcePart';
+
+type HRQuerySourceStubProps = {
+  onSourceChange: (source: HRSourcePartSource, partId: string, title?: string) => void;
+  source: HRSourcePartSource;
+  partId: string;
+};
+
+vi.mock('../HRQuerySource', () => ({
+  HRQuerySource: ({ onSourceChange, source, partId }: HRQuerySourceStubProps) => (
+    <button
+      onClick={() =>
+        onSourceChange(
+          {
+            ...source,
+            filter: "users.EmployeeType_Code = 'FTE' AND agents.BlueprintId = 'approved'",
+          },
+          partId,
+          'Generated SQL title'
+        )
+      }
+    >
+      Edit SQL filter
+    </button>
+  ),
+}));
 
 const getRolesState = (overrides: Partial<RootState['roles']> = {}): RootState['roles'] => ({
   ...rolesReducer(undefined, { type: 'test/init' }),
@@ -20,12 +47,14 @@ const getRolesState = (overrides: Partial<RootState['roles']> = {}): RootState['
 });
 
 const getManageMembershipState = (
-  destinationOverride?: Partial<RootState['manageMembership']['selectedDestination']>
+  destinationOverride?: Partial<RootState['manageMembership']['selectedDestination']>,
+  sourceParts: ISourcePart[] = []
 ): RootState['manageMembership'] => {
   const base = manageMembershipReducer(undefined, { type: 'test/init' });
   return {
     ...base,
     selectedDestination: destinationOverride as RootState['manageMembership']['selectedDestination'],
+    sourceParts,
   };
 };
 
@@ -71,13 +100,29 @@ const teamsChannelPart = (): ISourcePart => ({
   isExpanded: true,
 });
 
+const sqlPart = (identityTypes?: IdentityType[]): ISourcePart => ({
+  id: 'part-1',
+  title: 'SQL rule',
+  query: {
+    type: SourcePartType.HR,
+    source: {
+      manager: { id: 1234, depth: 2 },
+      filter: "users.EmployeeType_Code = 'Vendor'",
+    },
+    exclusionary: false,
+    ...(identityTypes === undefined ? {} : { identityTypes }),
+  },
+  isNew: false,
+  isExpanded: true,
+});
+
 const renderSourcePart = (part: ISourcePart, destination: any, roleOverrides: Partial<RootState['roles']> = {}) =>
   renderWithProviders(
     <SourcePart partId={part.id} query={part.query} part={part} isEditable />,
     {
       preloadedState: {
         roles: getRolesState(roleOverrides),
-        manageMembership: getManageMembershipState(destination),
+        manageMembership: getManageMembershipState(destination, [part]),
       } as Partial<RootState>,
     }
   );
@@ -162,5 +207,63 @@ describe('SourcePart — TeamsChannel source', () => {
     expect(screen.getByDisplayValue('channel-001')).toBeInTheDocument();
     expect(screen.queryByDisplayValue('Other Team')).not.toBeInTheDocument();
     expect(screen.queryByDisplayValue('Other Channel')).not.toBeInTheDocument();
+  });
+});
+
+describe('SourcePart — SQL identity compatibility', () => {
+  it('preserves the exact identity selection when the friendly editor changes the filter and title', () => {
+    const part = sqlPart(['agents', 'users']);
+    const { store } = renderSourcePart(part, groupDestination);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Edit SQL filter' }));
+
+    const updated = store.getState().manageMembership.sourceParts[0];
+    const updatedQuery = updated.query as HRSourcePart;
+    expect(updatedQuery.identityTypes).toEqual(['agents', 'users']);
+    expect(updatedQuery.source).toEqual({
+      manager: { id: 1234, depth: 2 },
+      filter: "users.EmployeeType_Code = 'FTE' AND agents.BlueprintId = 'approved'",
+    });
+    expect(updated.title).toBe('Generated SQL title');
+  });
+
+  it('does not synthesize identityTypes when the legacy query omitted it', () => {
+    const { store } = renderSourcePart(sqlPart(), groupDestination);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Edit SQL filter' }));
+
+    expect(store.getState().manageMembership.sourceParts[0].query).not.toHaveProperty('identityTypes');
+  });
+
+  it('preserves the exact identity selection when inclusion changes', () => {
+    const { store } = renderSourcePart(sqlPart(['users', 'agents']), groupDestination);
+
+    fireEvent.click(screen.getByRole('radio', { name: 'Remove people that match this rule' }));
+
+    const query = store.getState().manageMembership.sourceParts[0].query as HRSourcePart;
+    expect(query.exclusionary).toBe(true);
+    expect(query.identityTypes).toEqual(['users', 'agents']);
+    expect(query.source.filter).toBe("users.EmployeeType_Code = 'Vendor'");
+  });
+
+  it('keeps the rule unchanged when the current source type is re-selected', () => {
+    const part = sqlPart(['agents', 'users']);
+    const { store } = renderSourcePart(part, groupDestination);
+
+    fireEvent.click(screen.getByRole('combobox', { name: /select rule type/i }));
+    fireEvent.click(screen.getByRole('option', { name: 'HR' }));
+
+    expect(store.getState().manageMembership.sourceParts[0]).toEqual(part);
+  });
+
+  it('starts a fresh rule without identityTypes when a different source type is chosen', () => {
+    const { store } = renderSourcePart(sqlPart(['agents', 'users']), groupDestination);
+
+    fireEvent.click(screen.getByRole('combobox', { name: /select rule type/i }));
+    fireEvent.click(screen.getByRole('option', { name: 'Group Membership' }));
+
+    const query = store.getState().manageMembership.sourceParts[0].query;
+    expect(query.type).toBe(SourcePartType.GroupMembership);
+    expect(query).not.toHaveProperty('identityTypes');
   });
 });

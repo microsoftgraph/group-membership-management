@@ -5,7 +5,7 @@ import { describe, expect, it } from 'vitest';
 import { clampOrgLeaderDepth, applyResolvedOrgLeaderToPart } from './orgLeader';
 import { ISourcePart } from '../models/ISourcePart';
 import { SourcePartType } from '../models/SourcePartType';
-import { HRSourcePartSource } from '../models/HRSourcePart';
+import { HRSourcePart, HRSourcePartSource } from '../models/HRSourcePart';
 
 describe('clampOrgLeaderDepth', () => {
   it('keeps an existing depth that is within the leader maxDepth', () => {
@@ -51,11 +51,18 @@ describe('applyResolvedOrgLeaderToPart', () => {
   it('clamps an over-max existing depth to undefined', () => {
     const withDepth: ISourcePart = {
       ...hrPart,
-      query: { type: SourcePartType.HR, source: { filter: undefined, manager: { id: undefined, depth: 8 } }, exclusionary: false },
+      query: {
+        type: SourcePartType.HR,
+        source: { filter: undefined, manager: { id: undefined, depth: 8 } },
+        exclusionary: false,
+        identityTypes: ['agents', 'users'],
+      },
     };
-    const src = applyResolvedOrgLeaderToPart(withDepth, 999, 4).query.source as HRSourcePartSource;
+    const result = applyResolvedOrgLeaderToPart(withDepth, 999, 4);
+    const src = result.query.source as HRSourcePartSource;
     expect(src.manager?.depth).toBeUndefined();
     expect(src.manager?.id).toBe(999);
+    expect((result.query as HRSourcePart).identityTypes).toEqual(['agents', 'users']);
   });
 
   it('returns non-HR parts unchanged', () => {

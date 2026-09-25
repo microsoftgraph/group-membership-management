@@ -41,7 +41,7 @@
                     "id": {
                       "type": "integer",
                       "minimum": 1
-                    },           
+                    },
                     "depth": {
                       "type": "integer",
                       "minimum": 1
@@ -55,6 +55,15 @@
                 }
               },
               "additionalProperties": false
+            },
+            "identityTypes": {
+              "type": "array",
+              "minItems": 1,
+              "uniqueItems": true,
+              "items": {
+                "type": "string",
+                "enum": ["users", "agents"]
+              }
             },
             "exclusionary": {
               "type": "boolean"
@@ -154,4 +163,3 @@
       ]
     }
   }
-  

@@ -9,6 +9,7 @@ import manageMembershipReducer from '../../store/manageMembership.slice';
 import rolesReducer from '../../store/roles.slice';
 import type { RootState } from '../../store';
 import type { ISourcePart } from '../../models/ISourcePart';
+import type { HRSourcePart } from '../../models/HRSourcePart';
 import { SourcePartType } from '../../models/SourcePartType';
 
 const getManageMembershipState = (): RootState['manageMembership'] =>
@@ -126,6 +127,60 @@ describe('AdvancedViewToggle', () => {
       source: 'abc',
       exclusionary: false,
     });
+  });
+
+  it('round-trips the exact SQL identity selection and qualified filter', () => {
+    const query: HRSourcePart = {
+      type: SourcePartType.HR,
+      source: {
+        filter: "users.EmployeeType_Code = 'FTE' AND agents.BlueprintId = 'approved'",
+      },
+      exclusionary: false,
+      identityTypes: ['agents', 'users'],
+    };
+    const part: ISourcePart = {
+      ...createSourcePart(),
+      query,
+    };
+    const { store } = renderWithProviders(<AdvancedViewToggle />, {
+      preloadedState: buildState(
+        { isJobTenantWriter: true },
+        { sourceParts: [part] }
+      ),
+    });
+
+    fireEvent.click(screen.getByRole('switch'));
+    const advancedViewQuery = store.getState().manageMembership.advancedViewQuery;
+    if (advancedViewQuery == null) {
+      throw new Error('Expected the advanced query to be populated.');
+    }
+    expect(JSON.parse(advancedViewQuery)).toEqual([query]);
+
+    fireEvent.click(screen.getByRole('switch'));
+    expect(store.getState().manageMembership.sourceParts[0].query).toEqual(query);
+  });
+
+  it('does not synthesize identityTypes during a legacy query round trip', () => {
+    const query = {
+      type: SourcePartType.HR,
+      source: { filter: "users.EmployeeType_Code = 'FTE'" },
+      exclusionary: false,
+    };
+    const { store } = renderWithProviders(<AdvancedViewToggle />, {
+      preloadedState: buildState(
+        { isJobTenantWriter: true },
+        {
+          isAdvancedView: true,
+          isAdvancedQueryValid: true,
+          advancedViewQuery: JSON.stringify([query]),
+        }
+      ),
+    });
+
+    fireEvent.click(screen.getByRole('switch'));
+
+    expect(store.getState().manageMembership.sourceParts[0].query).toEqual(query);
+    expect(store.getState().manageMembership.sourceParts[0].query).not.toHaveProperty('identityTypes');
   });
 
   it('honors an explicit readOnly override for writers', () => {

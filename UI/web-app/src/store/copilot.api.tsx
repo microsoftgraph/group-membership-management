@@ -8,7 +8,7 @@ import { ThunkConfig, RootState } from './store';
 import { TokenType } from '../services/auth';
 import { IChatMessage } from '../components/CopilotPanel/CopilotPanel.types';
 import { ISourcePart } from '../models/ISourcePart';
-import { HRSourcePart, HRSourcePartSource } from '../models/HRSourcePart';
+import { HRSourcePart, HRSourcePartSource, IdentityType } from '../models/HRSourcePart';
 import { GroupMembershipSourcePart } from '../models/GroupMembershipSourcePart';
 import { SourcePartType } from '../models/SourcePartType';
 
@@ -51,6 +51,7 @@ interface ApiSourcePart {
     orgLeaderDepth?: number;
     groupId?: string; // For GroupMembership: the Entra ID group's objectId
     groupName?: string; // For GroupMembership: the group's display name
+    identityTypes?: IdentityType[];
 }
 
 /**
@@ -79,7 +80,7 @@ export function buildWorkingQuery(sourceParts: ISourcePart[]): ApiSourcePart[] {
 
         if (sourceType === SourcePartType.HR) {
             const hrSource = (part.query as HRSourcePart).source as HRSourcePartSource;
-            return {
+            const apiPart: ApiSourcePart = {
                 partId: part.id,
                 sourceType,
                 filter: hrSource?.filter ?? null,
@@ -91,6 +92,11 @@ export function buildWorkingQuery(sourceParts: ISourcePart[]): ApiSourcePart[] {
                 orgLeaderObjectId: part.managerToAutoSelect?.objectId,
                 orgLeaderDepth: part.depthToAutoSelect ?? hrSource?.manager?.depth,
             };
+            const identityTypes = (part.query as HRSourcePart).identityTypes;
+            if (identityTypes !== undefined) {
+                apiPart.identityTypes = [...identityTypes];
+            }
+            return apiPart;
         }
 
         // Unsupported source types (GroupOwnership, PlaceMembership, TeamsChannelMembership):

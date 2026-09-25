@@ -10,6 +10,7 @@ import manageMembershipReducer from '../../store/manageMembership.slice';
 import rolesReducer from '../../store/roles.slice';
 import type { RootState } from '../../store';
 import type { ISourcePart } from '../../models/ISourcePart';
+import type { HRSourcePart } from '../../models/HRSourcePart';
 import { SourcePartType } from '../../models/SourcePartType';
 
 const makePart = (id: string, title: string): ISourcePart => ({
@@ -88,6 +89,20 @@ describe('RulesEditor', () => {
     expect(parts[1].title).toBe('Rule A');
     expect(parts[1].id).not.toBe('a');
     expect(parts[2].id).toBe('b');
+  });
+
+  it('duplicates the exact SQL identity selection without sharing the query object', () => {
+    const source = makePart('a', 'Rule A');
+    source.query = { ...(source.query as HRSourcePart), identityTypes: ['agents', 'users'] };
+    const { store } = renderEditor({
+      preloadedState: buildState([source]),
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Duplicate rule: Rule A' }));
+
+    const parts = store.getState().manageMembership.sourceParts;
+    expect((parts[1].query as HRSourcePart).identityTypes).toEqual(['agents', 'users']);
+    expect(parts[1].query).not.toBe(parts[0].query);
   });
 
   it('deletes a rule from the store', () => {

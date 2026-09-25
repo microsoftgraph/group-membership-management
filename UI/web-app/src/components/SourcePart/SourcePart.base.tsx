@@ -86,6 +86,8 @@ export const SourcePartBase: React.FunctionComponent<SourcePartProps> = (props: 
 
   const handleSourceTypeChanged = (event: React.FormEvent<HTMLDivElement>, item: IDropdownOption | undefined): void => {
     if (!item) return;
+    // A controlled Fluent Dropdown also reports re-selecting the current option; that must not reset the rule.
+    if (item.key === part.query.type) return;
 
     dispatch(updateSourcePartType({ partId: partId, type: item.key as SourcePartType }));
 
@@ -186,7 +188,9 @@ export const SourcePartBase: React.FunctionComponent<SourcePartProps> = (props: 
 
 
   const handleSourceChange = (source: HRSourcePartSource, partId: string, title?: string) => {
+    const currentQuery = part.query as HRSourcePart;
     const newQuery: HRSourcePart = {
+      ...currentQuery,
       type: SourcePartType.HR,
       source: source,
       exclusionary: !isInclusionary

@@ -54,6 +54,7 @@ export function applyResolvedOrgLeaderToPart(
   const src = part.query.source as HRSourcePartSource;
   const depth = clampOrgLeaderDepth(src?.manager?.depth, part.depthToAutoSelect, maxDepth);
   const query: HRSourcePart = {
+    ...(part.query as HRSourcePart),
     type: SourcePartType.HR,
     source: withResolvedOrgLeaderSource(src ?? {}, employeeId, depth),
     exclusionary: part.query.exclusionary,

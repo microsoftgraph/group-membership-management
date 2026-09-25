@@ -4,10 +4,13 @@
 import { SourcePartQuery } from './SourcePartQuery';
 import { SourcePartType } from './SourcePartType';
 
+export type IdentityType = 'users' | 'agents';
+
 export type HRSourcePart = {
     type: SourcePartType.HR;
     source: HRSourcePartSource;
     exclusionary?: boolean;
+    identityTypes?: IdentityType[];
   };
 
   export type HRSourcePartSource = {

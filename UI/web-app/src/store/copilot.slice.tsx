@@ -18,14 +18,15 @@ import { sendCopilotMessage, CopilotOperationSummary } from './copilot.api';
  * without unconditionally forcing `isNew: true` on every part.
  */
 export function mergeResultingParts(existing: ISourcePart[], resulting: ISourcePart[]): ISourcePart[] {
-    const existingById = new Map(existing.map(p => [p.id, p]));
+    // The server matches part IDs ignoring case and may return Copilot's spelling, so match the same way.
+    const existingById = new Map(existing.map(p => [p.id?.toLowerCase(), p]));
     return resulting.map(part => {
-        const prev = existingById.get(part.id);
+        const prev = existingById.get(part.id?.toLowerCase());
         if (!prev) {
             return part;
         }
-        // Preserve transient UI state and existing "new" status for parts that already existed.
-        const merged: ISourcePart = { ...part, isExpanded: prev.isExpanded, isNew: prev.isNew ?? false };
+        // Preserve the existing ID, transient UI state and "new" status for parts that already existed.
+        const merged: ISourcePart = { ...part, id: prev.id, isExpanded: prev.isExpanded, isNew: prev.isNew ?? false };
 
         // Carry forward a previously-resolved org leader (query.source.manager) when a matched HR part
         // comes back without one. Copilot never edits the HR manager id directly — it is resolved
@@ -57,6 +58,19 @@ export function mergeResultingParts(existing: ISourcePart[], resulting: ISourceP
                 };
             }
         }
+
+        // Copilot does not handle identityTypes, so a matched part keeps the user's existing selection.
+        if (merged.query.type === SourcePartType.HR && prev.query.type === SourcePartType.HR) {
+            const existingIdentityTypes = (prev.query as HRSourcePart).identityTypes;
+            const nextQuery: HRSourcePart = { ...(merged.query as HRSourcePart) };
+            if (existingIdentityTypes === undefined) {
+                delete nextQuery.identityTypes;
+            } else {
+                nextQuery.identityTypes = [...existingIdentityTypes];
+            }
+            merged.query = nextQuery;
+        }
+
         return merged;
     });
 }
