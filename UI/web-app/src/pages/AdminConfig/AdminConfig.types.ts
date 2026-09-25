@@ -26,6 +26,8 @@ export type AdminConfigStyles = {
   valuesDropdownTitle: IStyle;
   valuesDropdownSpinner: IStyle;
   descriptionTextField: IStyle;
+  sensitiveHintIcon: IStyle;
+  sensitiveSummarySeparator: IStyle;
   aiSettingsLeaveEmptyNote: IStyle;
   aiSettingsLeaveEmptyNoteIcon: IStyle;
   aiSettingsDefaultInstructionsContainer: IStyle;
@@ -144,6 +146,9 @@ export type AutoApproverSettingsProps = {
   settings: { readonly [key in SettingKey]: string };
   setSettings: React.Dispatch<React.SetStateAction<{ readonly [key in SettingKey]: string }>>;
   canEdit: boolean;
+  sqlMembershipSourceAttributes: SqlMembershipAttribute[] | undefined;
+  canViewCustomSourceSettings: boolean;
+  onNavigateToCustomSource: () => void;
 };
 
 export type SettingsSectionProps = {

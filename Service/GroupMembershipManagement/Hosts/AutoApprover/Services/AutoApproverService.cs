@@ -13,6 +13,7 @@ using Services.AutoApprover.Helpers;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 
 namespace Services.AutoApprover
@@ -25,7 +26,11 @@ namespace Services.AutoApprover
         private readonly ISyncJobChangeRepository _syncJobChangeRepository;
         private readonly ISqlMembershipRepository _sqlMembershipRepository;
         private readonly IDataFactoryRepository _dataFactoryRepository;
+        private readonly IDatabaseSqlMembershipSourcesRepository _sqlMembershipSourcesRepository;
         private readonly ILogger<AutoApproverService> _logger;
+
+        // A submitted filter is caller-supplied text, so bound the match.
+        private static readonly TimeSpan SensitiveMatchTimeout = TimeSpan.FromSeconds(2);
 
         public AutoApproverService(
             IDatabaseSyncJobsRepository syncJobRepository,
@@ -34,6 +39,7 @@ namespace Services.AutoApprover
             ISyncJobChangeRepository syncJobChangeRepository,
             ISqlMembershipRepository sqlMembershipRepository,
             IDataFactoryRepository dataFactoryRepository,
+            IDatabaseSqlMembershipSourcesRepository sqlMembershipSourcesRepository,
             ILogger<AutoApproverService> logger)
         {
             _syncJobRepository = syncJobRepository ?? throw new ArgumentNullException(nameof(syncJobRepository));
@@ -42,6 +48,7 @@ namespace Services.AutoApprover
             _syncJobChangeRepository = syncJobChangeRepository ?? throw new ArgumentNullException(nameof(syncJobChangeRepository));
             _sqlMembershipRepository = sqlMembershipRepository ?? throw new ArgumentNullException(nameof(sqlMembershipRepository));
             _dataFactoryRepository = dataFactoryRepository ?? throw new ArgumentNullException(nameof(dataFactoryRepository));
+            _sqlMembershipSourcesRepository = sqlMembershipSourcesRepository ?? throw new ArgumentNullException(nameof(sqlMembershipSourcesRepository));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
 
@@ -225,11 +232,19 @@ namespace Services.AutoApprover
 
                 // Read only when a SQL part exists, so it costs nothing elsewhere.
                 var isLeaderAssistantEnabled = false;
+                var isSensitiveScreeningEnabled = false;
+                var sensitiveAttributes = new SensitiveAttributeCache();
 
                 if (parts.Any(p => p.Type == SourcePart.SqlMembershipType))
                 {
                     isLeaderAssistantEnabled = await IsAutoApprovalForLeaderAssistantEnabledAsync();
                     _logger.LeaderAssistantPathResolved(isLeaderAssistantEnabled);
+
+                    // Loaded even when screening is off so the logged count always reflects what is configured.
+                    isSensitiveScreeningEnabled = await IsSensitiveAttributeScreeningEnabledAsync();
+                    await LoadSensitiveAttributesAsync(sensitiveAttributes, isSensitiveScreeningEnabled);
+
+                    _logger.SensitiveScreeningResolved(isSensitiveScreeningEnabled, sensitiveAttributes.Names.Count);
                 }
 
                 // Resolved only when a SQL path is on, so a disabled path costs no lookup.
@@ -263,7 +278,7 @@ namespace Services.AutoApprover
                             rejection = await EvaluateGroupPartAsync(part, userIdentity, isGroupBasedEnabled, i, mix);
                             break;
                         case SourcePart.SqlMembershipType:
-                            rejection = await EvaluateSqlPartAsync(part, employeeId, userIdentity, tableName, isOrgLeaderEnabled, isLeaderAssistantEnabled, assistantCache, i, mix);
+                            rejection = await EvaluateSqlPartAsync(part, employeeId, userIdentity, tableName, isOrgLeaderEnabled, isLeaderAssistantEnabled, isSensitiveScreeningEnabled, sensitiveAttributes, assistantCache, i, mix);
                             break;
                         default:
                             rejection = Reject(part, i, SourcePartRejectionReason.Unknown_Type,
@@ -287,6 +302,87 @@ namespace Services.AutoApprover
                 _logger.PerPartRuleCheckError(ex);
                 return false;
             }
+        }
+
+        // Screening off is safe here: if Settings is unreachable the path gates also read false, so nothing auto-approves.
+        private async Task<bool> IsSensitiveAttributeScreeningEnabledAsync()
+        {
+            try
+            {
+                var setting = await _databaseSettingsRepository.GetSettingByKeyAsync(SettingKey.IsSensitiveAttributeScreeningEnabled);
+                return setting != null && string.Equals(setting.SettingValue, "true", StringComparison.OrdinalIgnoreCase);
+            }
+            catch (Exception ex)
+            {
+                _logger.SensitiveScreeningSettingRetrievalError(ex);
+                return false;
+            }
+        }
+
+        // Enabled is ignored: an attribute hidden from the query builder can still be Sensitive.
+        private async Task<SensitiveAttributeCache> LoadSensitiveAttributesAsync(SensitiveAttributeCache cache, bool screeningEnabled)
+        {
+            if (cache.Loaded)
+                return cache;
+
+            cache.Loaded = true;
+
+            try
+            {
+                var attributes = await _sqlMembershipSourcesRepository.GetDefaultSourceAttributesAsync();
+
+                cache.Names = attributes?
+                    .Where(a => a != null && a.IsSensitive && !string.IsNullOrWhiteSpace(a.Name))
+                    .Select(a => a.Name)
+                    .ToList() ?? new List<string>();
+            }
+            catch (Exception ex)
+            {
+                // Only an error when screening is on; with it off the list is informational and nothing fails closed.
+                if (screeningEnabled)
+                    _logger.SensitiveAttributeListReadError(ex);
+
+                cache.Failed = true;
+                cache.Names = new List<string>();
+            }
+
+            return cache;
+        }
+
+        // Called only after an identity check passed, so it never masks an identity mismatch.
+        private PartRejection? ScreenFilter(SourcePart part, bool screeningEnabled, SensitiveAttributeCache cache, int partIndex)
+        {
+            if (!screeningEnabled || part.Filter == null)
+                return null;
+
+            if (cache.Failed)
+                return Reject(part, partIndex, SourcePartRejectionReason.Sensitive_List_Unavailable,
+                    "the list of Sensitive attributes could not be read, so the filter on this source could not be screened; the submission needs manual review");
+
+            // An empty list is not a failure: nothing is marked Sensitive, so nothing is blocked.
+            foreach (var name in cache.Names)
+            {
+                bool matched;
+
+                try
+                {
+                    matched = Regex.IsMatch(part.Filter, $@"\b{Regex.Escape(name)}\b", RegexOptions.IgnoreCase, SensitiveMatchTimeout);
+                }
+                catch (RegexMatchTimeoutException)
+                {
+                    return Reject(part, partIndex, SourcePartRejectionReason.Sensitive_List_Unavailable,
+                        "the filter on this source could not be screened within the time allowed; the submission needs manual review");
+                }
+
+                if (matched)
+                {
+                    _logger.SqlPartRejectedBySensitiveFilter(partIndex, name);
+                    return Reject(part, partIndex, SourcePartRejectionReason.Sensitive_Filter,
+                        $"the filter on this source references '{name}', which is marked Sensitive");
+                }
+            }
+
+            return null;
         }
 
         private async Task<string> ResolveUsersTableNameAsync()
@@ -390,6 +486,8 @@ namespace Services.AutoApprover
             string tableName,
             bool isOrgLeaderEnabled,
             bool isLeaderAssistantEnabled,
+            bool isSensitiveScreeningEnabled,
+            SensitiveAttributeCache sensitiveAttributes,
             Dictionary<int, AssistantLookup> assistantCache,
             int partIndex,
             PartApprovalMix mix)
@@ -412,6 +510,11 @@ namespace Services.AutoApprover
             // Evaluated before the assistant path so manager-self never triggers a profile read.
             if (isOrgLeaderEnabled && employeeId != null && employeeId.Value == part.ManagerId.Value)
             {
+                // Managing an org does not license a sensitive filter across it.
+                var screened = ScreenFilter(part, isSensitiveScreeningEnabled, sensitiveAttributes, partIndex);
+                if (screened != null)
+                    return screened;
+
                 _logger.SqlPartApprovedByManagerSelf(partIndex);
                 mix.SqlManagerSelf++;
                 return null;
@@ -432,6 +535,11 @@ namespace Services.AutoApprover
                 // The object id is the match key; the manager published this person as acting for them.
                 if (lookup.Assistants.Any(a => string.Equals(a.ObjectId.ToString(), userIdentity, StringComparison.OrdinalIgnoreCase)))
                 {
+                    // An assistant is further from the data owner, so screening applies here too.
+                    var screened = ScreenFilter(part, isSensitiveScreeningEnabled, sensitiveAttributes, partIndex);
+                    if (screened != null)
+                        return screened;
+
                     _logger.SqlPartApprovedByAssistant(partIndex);
                     mix.SqlAssistant++;
                     return null;

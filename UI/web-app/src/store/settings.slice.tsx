@@ -223,6 +223,15 @@ export const selectIsAutoApprovalForLeaderAssistantEnabled = (state: RootState) 
   return isAutoApprovalForLeaderAssistantEnabledSetting ? isAutoApprovalForLeaderAssistantEnabledSetting.settingValue === 'true' : undefined;
 }
 
+export const selectIsSensitiveAttributeScreeningEnabled = (state: RootState) => {
+  const settingsArray = state.settings.settings;
+  if (!settingsArray) {
+    return undefined;
+  }
+  const isSensitiveAttributeScreeningEnabledSetting = settingsArray.find((setting) => setting.settingKey === SettingKey.IsSensitiveAttributeScreeningEnabled);
+  return isSensitiveAttributeScreeningEnabledSetting ? isSensitiveAttributeScreeningEnabledSetting.settingValue === 'true' : undefined;
+}
+
 export const selectIsAITitleEnabled = (state: RootState) => {
   const settingsArray = state.settings.settings;
   if (!settingsArray) {

@@ -2,7 +2,7 @@
 // Licensed under the MIT license.
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { classNamesFunction, Toggle, IProcessedStyleSet, Pivot, PivotItem, PrimaryButton, DefaultButton, TextField, Text, IColumn, SelectionMode, ShimmeredDetailsList, Dropdown, Spinner, IRenderFunction, ISelectableDroppableTextProps, IDropdown, Slider, Icon, IconButton, ActionButton, MessageBar, MessageBarType } from '@fluentui/react';
+import { classNamesFunction, Toggle, IProcessedStyleSet, Pivot, PivotItem, PrimaryButton, DefaultButton, TextField, Text, IColumn, SelectionMode, ShimmeredDetailsList, Dropdown, Spinner, IRenderFunction, ISelectableDroppableTextProps, IDropdown, Slider, Icon, IconButton, ActionButton, Link, MessageBar, MessageBarType } from '@fluentui/react';
 import { useTheme } from '@fluentui/react/lib/Theme';
 import {
   AdminConfigStyleProps,
@@ -60,6 +60,20 @@ export const AdminConfigView: React.FunctionComponent<AdminConfigViewProps> = (p
   const [hasUrlValidationErrors, setHasUrlValidationErrors] = useState<boolean>(false);
   const [hasAttributeValidationErrors, setHasAttributeValidationErrors] = useState<boolean>(false);
   const [newServiceNotification, setNewServiceNotification] = useState<AlertBannerConfig>(serviceNotification);
+  const [selectedTabKey, setSelectedTabKey] = useState<string | undefined>(undefined);
+
+  const visibleTabKeys = useMemo(() => [
+    ...(canViewGeneralSettings ? ['general'] : []),
+    ...(isOperationsResetAdministrator ? ['operations'] : []),
+    ...(canViewCustomSourceSettings ? ['customSource'] : []),
+    ...(canViewAISettings ? ['ai'] : []),
+    ...(canViewAutoApproverSettings ? ['autoApprover'] : []),
+  ], [canViewGeneralSettings, isOperationsResetAdministrator, canViewCustomSourceSettings, canViewAISettings, canViewAutoApproverSettings]);
+
+  // Fluent locks the Pivot into uncontrolled mode if selectedKey is ever undefined, so always pass a key.
+  const effectiveTabKey = selectedTabKey && visibleTabKeys.includes(selectedTabKey)
+    ? selectedTabKey
+    : (visibleTabKeys[0] ?? 'general');
 
   useEffect(() => {
     setNewServiceNotification(serviceNotification);
@@ -118,9 +132,13 @@ export const AdminConfigView: React.FunctionComponent<AdminConfigViewProps> = (p
         }
         <div className={classNames.card}>
           <PageSection>
-            <Pivot>
+            <Pivot
+              selectedKey={effectiveTabKey}
+              onLinkClick={(item) => setSelectedTabKey(item?.props.itemKey)}
+            >
               {canViewGeneralSettings &&
                 <PivotItem
+                  itemKey="general"
                   headerText={strings.GeneralSettings.labels.general}
                   headerButtonProps={{
                     'data-order': 1,
@@ -142,6 +160,7 @@ export const AdminConfigView: React.FunctionComponent<AdminConfigViewProps> = (p
               }
               {isOperationsResetAdministrator &&
                 <PivotItem
+                  itemKey="operations"
                   headerText={strings.Operations.labels.operations}
                   headerButtonProps={{
                     'data-order': 2,
@@ -155,6 +174,7 @@ export const AdminConfigView: React.FunctionComponent<AdminConfigViewProps> = (p
               }
               {canViewCustomSourceSettings &&
                 <PivotItem
+                  itemKey="customSource"
                   headerText={strings.CustomSourceSettings.labels.customSource}
                   headerButtonProps={{
                     'data-order': 3,
@@ -175,6 +195,7 @@ export const AdminConfigView: React.FunctionComponent<AdminConfigViewProps> = (p
               }
               {canViewAISettings &&
                 <PivotItem
+                  itemKey="ai"
                   headerText={strings.AISettings.labels.aiSettings}
                   headerButtonProps={{
                     'data-order': 4,
@@ -192,6 +213,7 @@ export const AdminConfigView: React.FunctionComponent<AdminConfigViewProps> = (p
               }
               {canViewAutoApproverSettings &&
                 <PivotItem
+                  itemKey="autoApprover"
                   headerText={strings.AutoApproverSettings.labels.autoApprover}
                   headerButtonProps={{
                     'data-order': 5,
@@ -203,7 +225,10 @@ export const AdminConfigView: React.FunctionComponent<AdminConfigViewProps> = (p
                     strings={strings}
                     settings={newSettings}
                     canEdit={isAutoApproverAdministrator}
-                    setSettings={setNewSettings} />
+                    setSettings={setNewSettings}
+                    sqlMembershipSourceAttributes={newAttributes}
+                    canViewCustomSourceSettings={canViewCustomSourceSettings}
+                    onNavigateToCustomSource={() => setSelectedTabKey('customSource')} />
                 </PivotItem>
               }
             </Pivot>
@@ -328,13 +353,41 @@ const GeneralSettings: React.FunctionComponent<GeneralSettingsProps> = (props: G
 }
 
 const AutoApproverSettings: React.FunctionComponent<AutoApproverSettingsProps> = (props: AutoApproverSettingsProps) => {
-  const { classNames, strings, settings, setSettings, canEdit } = props;
+  const { classNames, strings, settings, setSettings, canEdit, sqlMembershipSourceAttributes, canViewCustomSourceSettings, onNavigateToCustomSource } = props;
 
   const handleSettingChange = (settingKey: SettingKey) => (newValue: string) => {
     setSettings((settings) => ({ ...settings, [settingKey]: newValue }));
   };
 
+  const sensitiveNames = useMemo(
+    () => (sqlMembershipSourceAttributes ?? []).filter((attribute) => attribute.isSensitive).map((attribute) => attribute.customLabel || attribute.name),
+    [sqlMembershipSourceAttributes]
+  );
+
+  const labels = strings.AutoApproverSettings.labels;
+  const countText = (sensitiveNames.length === 1 ? labels.sensitiveAttributeCountSingular : labels.sensitiveAttributeCountPlural)
+    .replace('{0}', String(sensitiveNames.length));
+
+  // Only shown once the attribute list has loaded, so the count is never misleading.
+  const sensitiveSummary = sqlMembershipSourceAttributes === undefined ? undefined : (
+    <>
+      <Icon iconName="Info" className={classNames.sensitiveHintIcon} />
+      <span data-testid="sensitive-attribute-summary">
+        {sensitiveNames.length === 0
+          ? labels.noSensitiveAttributesMarked
+          : <><strong>{countText}</strong>{labels.sensitiveAttributesMarked.replace('{0}', sensitiveNames.join(', '))}</>}
+      </span>
+      {canViewCustomSourceSettings && (
+        <>
+          <span aria-hidden="true" className={classNames.sensitiveSummarySeparator}>·</span>
+          <Link onClick={onNavigateToCustomSource}>{labels.manageOnCustomSource}</Link>
+        </>
+      )}
+    </>
+  );
+
   return (
+    <>
     <SettingsSection
       classNames={classNames}
       title={strings.AutoApproverSettings.labels.controlsTitle}
@@ -367,6 +420,24 @@ const AutoApproverSettings: React.FunctionComponent<AutoApproverSettingsProps> =
       />
       </div>
     </SettingsSection>
+    <SettingsSection
+      classNames={classNames}
+      title={strings.AutoApproverSettings.labels.safeguardsTitle}
+      subtitle={strings.AutoApproverSettings.labels.safeguardsDescription}
+    >
+      <div className={classNames.settingsGrid}>
+      <GeneralSetting
+        id={SettingKeyMap[SettingKey.IsSensitiveAttributeScreeningEnabled]}
+        title={strings.AutoApproverSettings.labels.isSensitiveAttributeScreeningEnabledTitle}
+        description={strings.AutoApproverSettings.labels.isSensitiveAttributeScreeningEnabledDescription}
+        onGeneralSettingChange={handleSettingChange(SettingKey.IsSensitiveAttributeScreeningEnabled)}
+        generalSettingValue={settings[SettingKey.IsSensitiveAttributeScreeningEnabled]}
+        disabled={!canEdit}
+        footer={sensitiveSummary}
+      />
+      </div>
+    </SettingsSection>
+    </>
   );
 }
 
@@ -386,6 +457,7 @@ const UserResourcesSettings: React.FunctionComponent<UserResourcesSettingsProps>
     [SettingKey.IsAutoApprovalForGroupBasedSyncsEnabled]: true,
     [SettingKey.IsAutoApprovalForRequestorIsOrgLeaderSyncsEnabled]: true,
     [SettingKey.IsAutoApprovalForLeaderAssistantEnabled]: true,
+    [SettingKey.IsSensitiveAttributeScreeningEnabled]: true,
     [SettingKey.IsAITitleEnabled]: true,
     [SettingKey.IsAICopilotEnabled]: true,
     [SettingKey.IsAISearchForUserEnabled]: true,
@@ -652,6 +724,7 @@ const CustomSourceSettings: React.FunctionComponent<CustomSourceSettingsProps> =
       isResizable: true,
       isSorted: sortKey === 'sensitive',
       isSortedDescending,
+      showSortIconWhenUnsorted: true,
     },
     {
       key: 'name',

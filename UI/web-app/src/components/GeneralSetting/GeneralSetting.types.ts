@@ -10,6 +10,7 @@ export type GeneralSettingStyles = {
   titleRow: IStyle;
   title: IStyle;
   description: IStyle;
+  footer: IStyle;
 };
 
 export type GeneralSettingStyleProps = {
@@ -25,4 +26,5 @@ export type GeneralSettingProps = React.AllHTMLAttributes<HTMLDivElement> & {
   description: string;
   onGeneralSettingChange: (value: string) => void;
   generalSettingValue: string;
+  footer?: React.ReactNode;
 };

@@ -24,6 +24,9 @@ namespace Services.AutoApprover.Helpers
         // SQL parts only — from source.manager.id.
         public int? ManagerId { get; set; }
 
+        /// <summary>SQL parts only — from <c>source.filter</c>. Whitespace-only filters become null.</summary>
+        public string Filter { get; set; }
+
         /// <summary>
         /// Readable identifier for this part's source, surfaced on rejection logs so an operator can
         /// tell which source caused the decline without correlating adjacent traces. SQL parts are
@@ -63,7 +66,13 @@ namespace Services.AutoApprover.Helpers
         Group_Path_Disabled,
 
         /// <summary>A SqlMembership part with every SQL path switched off.</summary>
-        Sql_Paths_Disabled
+        Sql_Paths_Disabled,
+
+        /// <summary>A SqlMembership part whose filter references an attribute marked Sensitive.</summary>
+        Sensitive_Filter,
+
+        /// <summary>The Sensitive attribute list could not be read, so no filter can be cleared.</summary>
+        Sensitive_List_Unavailable
     }
 
     /// <summary>
@@ -112,6 +121,14 @@ namespace Services.AutoApprover.Helpers
         public int SqlAssistant;
         public int GroupPublic;
         public int GroupOwner;
+    }
+
+    /// <summary>The admin-curated Sensitive attribute list, read at most once per submission.</summary>
+    internal sealed class SensitiveAttributeCache
+    {
+        public bool Loaded;
+        public bool Failed;
+        public List<string> Names = new List<string>();
     }
 
     /// <summary>Outcome of reading a leader's published assistants; only Resolved is authoritative.</summary>

@@ -17,6 +17,7 @@ import {
   selectIsAutoApprovalForGroupBasedSyncsEnabled,
   selectIsAutoApprovalForRequestorIsOrgLeaderSyncsEnabled,
   selectIsAutoApprovalForLeaderAssistantEnabled,
+  selectIsSensitiveAttributeScreeningEnabled,
   selectIsAIRejectionFeedbackRefinementEnabled,
   selectIsAITitleEnabled,
   selectIsAICopilotEnabled,
@@ -84,6 +85,7 @@ export const AdminConfigBase: React.FunctionComponent<AdminConfigProps> = (props
   const IsAutoApprovalForGroupBasedSyncsEnabled = useSelector(selectIsAutoApprovalForGroupBasedSyncsEnabled);
   const IsAutoApprovalForRequestorIsOrgLeaderSyncsEnabled = useSelector(selectIsAutoApprovalForRequestorIsOrgLeaderSyncsEnabled);
   const isAutoApprovalForLeaderAssistantEnabled = useSelector(selectIsAutoApprovalForLeaderAssistantEnabled);
+  const isSensitiveAttributeScreeningEnabled = useSelector(selectIsSensitiveAttributeScreeningEnabled);
   const isAITitleEnabled = useSelector(selectIsAITitleEnabled);
   const isAICopilotEnabled = useSelector(selectIsAICopilotEnabled);
   const isAISearchForUserEnabled = useSelector(selectIsAISearchForUserEnabled);
@@ -138,6 +140,7 @@ export const AdminConfigBase: React.FunctionComponent<AdminConfigProps> = (props
     [SettingKey.IsAutoApprovalForGroupBasedSyncsEnabled]: IsAutoApprovalForGroupBasedSyncsEnabled ? 'true' : 'false',
     [SettingKey.IsAutoApprovalForRequestorIsOrgLeaderSyncsEnabled]: IsAutoApprovalForRequestorIsOrgLeaderSyncsEnabled ? 'true' : 'false',
     [SettingKey.IsAutoApprovalForLeaderAssistantEnabled]: isAutoApprovalForLeaderAssistantEnabled ? 'true' : 'false',
+    [SettingKey.IsSensitiveAttributeScreeningEnabled]: isSensitiveAttributeScreeningEnabled ? 'true' : 'false',
     [SettingKey.IsAITitleEnabled]: isAITitleEnabled ? 'true' : 'false',
     [SettingKey.IsAICopilotEnabled]: isAICopilotEnabled ? 'true' : 'false',
     [SettingKey.IsAISearchForUserEnabled]: isAISearchForUserEnabled ? 'true' : 'false',
@@ -153,7 +156,7 @@ export const AdminConfigBase: React.FunctionComponent<AdminConfigProps> = (props
 
   useEffect(() => {
     setSettings(generateSettings())
-  }, [dashboardUrl, outlookWarningUrl, privacyPolicyUrl, canReviewOwnSubmissions, createGroupFeatureEnabled, isBusinessJustificationRequired, IsDisclaimerEnabled, IsAutoApprovalForGroupBasedSyncsEnabled, IsAutoApprovalForRequestorIsOrgLeaderSyncsEnabled, isAutoApprovalForLeaderAssistantEnabled, isAITitleEnabled, isAICopilotEnabled, isAISearchForUserEnabled, isAIRunExplanationEnabled, isAIRejectionFeedbackRefinementEnabled, copilotTemperature, copilotTopP, copilotInstructions, copilotSuggestedPrompts]);
+  }, [dashboardUrl, outlookWarningUrl, privacyPolicyUrl, canReviewOwnSubmissions, createGroupFeatureEnabled, isBusinessJustificationRequired, IsDisclaimerEnabled, IsAutoApprovalForGroupBasedSyncsEnabled, IsAutoApprovalForRequestorIsOrgLeaderSyncsEnabled, isAutoApprovalForLeaderAssistantEnabled, isSensitiveAttributeScreeningEnabled, isAITitleEnabled, isAICopilotEnabled, isAISearchForUserEnabled, isAIRunExplanationEnabled, isAIRejectionFeedbackRefinementEnabled, copilotTemperature, copilotTopP, copilotInstructions, copilotSuggestedPrompts]);
 
   const handleGetValues = (attribute: SqlMembershipAttribute) => {
     dispatch(fetchAttributeValues(attribute));
@@ -177,6 +180,7 @@ export const AdminConfigBase: React.FunctionComponent<AdminConfigProps> = (props
     SettingKey.IsAutoApprovalForGroupBasedSyncsEnabled,
     SettingKey.IsAutoApprovalForRequestorIsOrgLeaderSyncsEnabled,
     SettingKey.IsAutoApprovalForLeaderAssistantEnabled,
+    SettingKey.IsSensitiveAttributeScreeningEnabled,
   ];
 
   const aiSettingKeys: SettingKey[] = [
@@ -199,6 +203,7 @@ export const AdminConfigBase: React.FunctionComponent<AdminConfigProps> = (props
     SettingKey.IsAutoApprovalForGroupBasedSyncsEnabled,
     SettingKey.IsAutoApprovalForRequestorIsOrgLeaderSyncsEnabled,
     SettingKey.IsAutoApprovalForLeaderAssistantEnabled,
+    SettingKey.IsSensitiveAttributeScreeningEnabled,
     SettingKey.IsAITitleEnabled,
     SettingKey.IsAICopilotEnabled,
     SettingKey.IsAISearchForUserEnabled,

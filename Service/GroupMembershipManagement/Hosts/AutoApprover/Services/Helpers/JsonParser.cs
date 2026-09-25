@@ -15,8 +15,8 @@ namespace Services.AutoApprover.Helpers
         /// reports which failure via <paramref name="failure"/> so the decline log can name the cause.
         /// A SQL part without a <c>manager.id</c> is a supported GMM query shape, so it parses
         /// successfully and is rejected individually by the evaluator rather than discarding the
-        /// whole query. Fields the rule does not consult (<c>filter</c>, <c>manager.depth</c>,
-        /// <c>exclusionary</c>) are ignored and never cause a parse failure.
+        /// whole query. <c>filter</c> is captured for sensitive-attribute screening only;
+        /// <c>manager.depth</c> and <c>exclusionary</c> are ignored and never cause a parse failure.
         /// </summary>
         internal static bool TryParseParts(string query, out List<SourcePart> parts, out QueryParseFailure failure)
         {
@@ -79,10 +79,21 @@ namespace Services.AutoApprover.Helpers
                         // which reports why that specific part is not eligible for auto-approval.
                         int? managerId = sqlSource["manager"]?.AsObject()?["id"]?.GetValue<int?>();
 
+                        // A non-string filter must not fail the parse; null means nothing to screen.
+                        string filter = null;
+                        try
+                        {
+                            filter = sqlSource["filter"]?.GetValue<string>();
+                        }
+                        catch (InvalidOperationException)
+                        {
+                        }
+
                         parts.Add(new SourcePart
                         {
                             Type = SourcePart.SqlMembershipType,
-                            ManagerId = managerId
+                            ManagerId = managerId,
+                            Filter = string.IsNullOrWhiteSpace(filter) ? null : filter
                         });
                     }
                     else

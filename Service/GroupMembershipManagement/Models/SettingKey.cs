@@ -28,6 +28,9 @@ namespace Models
         /// <summary>Retired: per-part always runs. Kept so existing rows are not orphaned.</summary>
         IsPerPartAutoApprovalEnabled = 20,
         IsAIRejectionFeedbackRefinementEnabled = 21,
-        IsAutoApprovalForLeaderAssistantEnabled = 22
+        IsAutoApprovalForLeaderAssistantEnabled = 22,
+
+        /// <summary>When on, a SqlMembership part whose filter references a Sensitive attribute is never auto-approved.</summary>
+        IsSensitiveAttributeScreeningEnabled = 23
     }
 }

@@ -74,6 +74,20 @@ test.describe('Admin Tests', () => {
     await expect(page.locator('#IsPerPartAutoApprovalEnabled')).toHaveCount(0);
   });
 
+  test('Sensitive attribute screening safeguard renders on the Auto Approver tab', async ({ page }) => {
+    const url = DOMAIN.startsWith('http://') || DOMAIN.startsWith('https://') ? DOMAIN : `https://${DOMAIN}`;
+    await page.goto(`${url}/Admin`);
+
+    const screeningToggleId = SettingKeyMap[SettingKey.IsSensitiveAttributeScreeningEnabled];
+
+    await page.getByRole('tab', { name: 'General', exact: true }).click();
+    await expect(page.locator(`#${screeningToggleId}`)).toHaveCount(0);
+
+    await page.getByRole('tab', { name: 'Auto Approver', exact: true }).click();
+    await expect(page.getByText('Safeguards')).toBeVisible({ timeout: 10000 });
+    await expect(page.locator(`#${screeningToggleId}`)).toBeVisible();
+  });
+
   test('Initial disclaimer displays on first load', { tag: '@setup' }, async ({ page }) => {
     test.setTimeout(120000); // 2 minutes timeout for setup tests
 

@@ -45,5 +45,11 @@ export const getStyles = (props: GeneralSettingStyleProps): GeneralSettingStyles
       fontSize: 14,
       fontWeight: 400,
     },
+    footer: {
+      borderTop: `1px solid ${theme.palette.neutralLighter}`,
+      paddingTop: 12,
+      fontSize: 12,
+      lineHeight: '18px',
+    },
   };
 };

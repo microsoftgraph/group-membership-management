@@ -341,6 +341,15 @@ export const strings: IStrings = {
         isAutoApprovalForRequestorIsOrgLeaderSyncsEnabledDescription: "Aprobar automáticamente las partes de origen SqlMembership cuando el solicitante es el gerente indicado en esa parte.",
         isAutoApprovalForLeaderAssistantEnabledTitle: "¿Está habilitada la auto-aprobación para el asistente de un líder?",
         isAutoApprovalForLeaderAssistantEnabledDescription: "Aprobar automáticamente las partes de origen SqlMembership cuando el solicitante es el asistente publicado del gerente de esa parte.",
+        safeguardsTitle: "Salvaguardas",
+        safeguardsDescription: "Estos interruptores restringen la auto-aprobación. Se aplican sobre los controles anteriores, a todas las rutas habilitadas.",
+        isSensitiveAttributeScreeningEnabledTitle: "¿Está habilitada la revisión de atributos confidenciales?",
+        isSensitiveAttributeScreeningEnabledDescription: "Cuando está activado, una parte de origen SqlMembership cuyo filtro haga referencia a un atributo Confidencial nunca se auto-aprueba, ni en la ruta del líder de la organización ni en la del asistente del líder.",
+        sensitiveAttributeCountSingular: "{0} atributo",
+        sensitiveAttributeCountPlural: "{0} atributos",
+        sensitiveAttributesMarked: " marcados como Confidencial: {0}",
+        noSensitiveAttributesMarked: "Ningún atributo está marcado como Confidencial, por lo que esta salvaguarda aún no tiene efecto.",
+        manageOnCustomSource: "Administrar en Origen Personalizado ›",
       }
     },
     AISettings: {

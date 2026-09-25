@@ -6,7 +6,7 @@ import type { GeneralSettingProps, GeneralSettingStyles, GeneralSettingStyleProp
 export const getClassNames = classNamesFunction<GeneralSettingStyleProps, GeneralSettingStyles>();
 
 export const GeneralSettingBase: React.FunctionComponent<GeneralSettingProps> = (props: GeneralSettingProps) => {
-  const { title, description, className, generalSettingValue, onGeneralSettingChange, styles, id, disabled } = props;
+  const { title, description, className, generalSettingValue, onGeneralSettingChange, styles, id, disabled, footer } = props;
   const classNames = getClassNames(styles, {
     className,
     theme: useTheme(),
@@ -33,6 +33,7 @@ export const GeneralSettingBase: React.FunctionComponent<GeneralSettingProps> = 
         />
       </div>
       <div className={classNames.description}>{description}</div>
+      {footer && <div className={classNames.footer}>{footer}</div>}
     </div>
   );
 };

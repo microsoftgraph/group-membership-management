@@ -12,6 +12,7 @@ using Microsoft.Extensions.Hosting;
 using Repositories.Contracts;
 using Repositories.Contracts.InjectConfig;
 using Repositories.DataFactory;
+using Repositories.EntityFramework;
 using Repositories.GraphGroups;
 using Repositories.SqlMembershipRepository;
 using Services.AutoApprover;
@@ -61,6 +62,9 @@ namespace Hosts.AutoApprover
                         CommonServices.GetValueOrThrowBase(configuration, "subscriptionId"),
                         CommonServices.GetValueOrThrowBase(configuration, "dataResourceGroup")));
                     services.AddSingleton<IDataFactoryRepository, DataFactoryRepository>();
+
+                    // Supplies the admin-curated Sensitive attribute list used to screen SQL filters.
+                    services.AddScoped<IDatabaseSqlMembershipSourcesRepository, DatabaseSqlMembershipSourcesRepository>();
 
                     services.AddScoped<IAutoApproverService, AutoApproverService>();
                 })

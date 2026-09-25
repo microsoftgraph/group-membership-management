@@ -26,7 +26,8 @@ namespace Services.Tests
             Mock<ISyncJobChangeRepository> syncJobChangeRepository,
             Mock<ILogger<AutoApproverService>> logger,
             Mock<ISqlMembershipRepository> sqlMembershipRepository = null,
-            Mock<IDataFactoryRepository> dataFactoryRepository = null)
+            Mock<IDataFactoryRepository> dataFactoryRepository = null,
+            Mock<IDatabaseSqlMembershipSourcesRepository> sqlMembershipSourcesRepository = null)
         {
             return new AutoApproverService(
                 syncJobsRepository.Object,
@@ -35,6 +36,7 @@ namespace Services.Tests
                 syncJobChangeRepository.Object,
                 (sqlMembershipRepository ?? new Mock<ISqlMembershipRepository>()).Object,
                 (dataFactoryRepository ?? new Mock<IDataFactoryRepository>()).Object,
+                (sqlMembershipSourcesRepository ?? new Mock<IDatabaseSqlMembershipSourcesRepository>()).Object,
                 logger.Object);
         }
 
@@ -54,6 +56,23 @@ namespace Services.Tests
                               .ReturnsAsync(new Setting { SettingKey = SettingKey.IsAutoApprovalForRequestorIsOrgLeaderSyncsEnabled, SettingValue = orgLeader ? "true" : "false" });
             settingsRepository.Setup(x => x.GetSettingByKeyAsync(SettingKey.IsAutoApprovalForLeaderAssistantEnabled))
                               .ReturnsAsync(new Setting { SettingKey = SettingKey.IsAutoApprovalForLeaderAssistantEnabled, SettingValue = leaderAssistant ? "true" : "false" });
+        }
+
+        /// <summary>Turns on sensitive attribute screening with the given flagged attribute names.</summary>
+        private static Mock<IDatabaseSqlMembershipSourcesRepository> EnableScreening(
+            Mock<IDatabaseSettingsRepository> settingsRepository,
+            params string[] sensitiveAttributeNames)
+        {
+            settingsRepository.Setup(x => x.GetSettingByKeyAsync(SettingKey.IsSensitiveAttributeScreeningEnabled))
+                              .ReturnsAsync(new Setting { SettingKey = SettingKey.IsSensitiveAttributeScreeningEnabled, SettingValue = "true" });
+
+            var sourcesRepository = new Mock<IDatabaseSqlMembershipSourcesRepository>();
+            sourcesRepository.Setup(x => x.GetDefaultSourceAttributesAsync())
+                             .ReturnsAsync(sensitiveAttributeNames
+                                 .Select(n => new SqlMembershipAttribute { Name = n, IsSensitive = true })
+                                 .ToList());
+
+            return sourcesRepository;
         }
 
         private static AutoApprovalQueueMessage Message(Guid syncJobId, string requestorId) =>
@@ -1526,6 +1545,234 @@ namespace Services.Tests
             // GetOrgLeaderAsync also walks the leader's whole reporting tree to compute a depth this
             // path discards, so resolving the leader must not go through it.
             sqlMembershipRepository.Verify(x => x.GetOrgLeaderAsync(It.IsAny<int>(), It.IsAny<string>()), Times.Never);
+        }
+
+        /// <summary>Builds the mocks a manager-self SQL submission needs, with the given filter.</summary>
+        private static (Mock<IDatabaseSyncJobsRepository> Jobs, Mock<IDatabaseSettingsRepository> Settings, Mock<IGraphGroupRepository> Graph,
+                        Mock<ISyncJobChangeRepository> Changes, Mock<ILogger<AutoApproverService>> Logger, Mock<ISqlMembershipRepository> Sql,
+                        Mock<IDataFactoryRepository> DataFactory, Guid SyncJobId, string RequestorId)
+            ManagerSelfSubmission(string filter, int managerId = 4242)
+        {
+            var syncJobId = Guid.NewGuid();
+            var requestorId = Guid.NewGuid().ToString();
+            var filterJson = filter == null ? string.Empty : $",\"filter\":\"{filter}\"";
+
+            var syncJob = new SyncJob
+            {
+                Id = syncJobId,
+                Status = SyncStatus.PendingAutoApproval.ToString(),
+                Query = $"[{{\"type\":\"SqlMembership\",\"source\":{{\"manager\":{{\"id\":{managerId}}}{filterJson}}}}}]"
+            };
+
+            var jobs = new Mock<IDatabaseSyncJobsRepository>();
+            var settings = new Mock<IDatabaseSettingsRepository>();
+            var graph = new Mock<IGraphGroupRepository>();
+            var changes = new Mock<ISyncJobChangeRepository>();
+            var logger = new Mock<ILogger<AutoApproverService>>();
+            var sql = new Mock<ISqlMembershipRepository>();
+            var dataFactory = new Mock<IDataFactoryRepository>();
+
+            jobs.Setup(x => x.GetSyncJobAsync(syncJobId)).ReturnsAsync(syncJob);
+            EnableAllPaths(settings);
+            dataFactory.Setup(x => x.GetMostRecentSucceededRunIdAsync()).ReturnsAsync("abc-def");
+            sql.Setup(x => x.GetUserEmployeeIdAsync(requestorId, It.IsAny<string>())).ReturnsAsync(managerId);
+            logger.Setup(x => x.IsEnabled(It.IsAny<LogLevel>())).Returns(true);
+
+            return (jobs, settings, graph, changes, logger, sql, dataFactory, syncJobId, requestorId);
+        }
+
+        private static void VerifyLogged(Mock<ILogger<AutoApproverService>> logger, int eventId, Times times) =>
+            logger.Verify(x => x.Log(
+                It.IsAny<LogLevel>(),
+                It.Is<EventId>(e => e.Id == eventId),
+                It.IsAny<It.IsAnyType>(),
+                It.IsAny<Exception>(),
+                It.IsAny<Func<It.IsAnyType, Exception, string>>()), times);
+
+        [TestMethod]
+        public async Task Screening_SafeFilter_ApprovesAsync()
+        {
+            var m = ManagerSelfSubmission("Department eq 'Sales'");
+            var sources = EnableScreening(m.Settings, "PayScaleStockLevelNbr");
+
+            var service = CreateService(m.Jobs, m.Settings, m.Graph, m.Changes, m.Logger, m.Sql, m.DataFactory, sources);
+            await service.ProcessAutoApprovalAsync(Message(m.SyncJobId, m.RequestorId));
+
+            VerifyApproved(m.Jobs, m.Changes, m.SyncJobId);
+            VerifyLogged(m.Logger, 250141, Times.Never());
+        }
+
+        [TestMethod]
+        public async Task Screening_SensitiveFilter_ManagerSelfPath_RejectsAsync()
+        {
+            var m = ManagerSelfSubmission("PayScaleStockLevelNbr eq 60");
+            var sources = EnableScreening(m.Settings, "PayScaleStockLevelNbr");
+
+            var service = CreateService(m.Jobs, m.Settings, m.Graph, m.Changes, m.Logger, m.Sql, m.DataFactory, sources);
+            await service.ProcessAutoApprovalAsync(Message(m.SyncJobId, m.RequestorId));
+
+            VerifyPendingReview(m.Jobs, m.Changes);
+            VerifyLogged(m.Logger, 250141, Times.Once());
+        }
+
+        [TestMethod]
+        public async Task Screening_SensitiveFilter_AssistantPath_RejectsAsync()
+        {
+            var syncJobId = Guid.NewGuid();
+            var requestorObjectId = Guid.NewGuid();
+            var requestorId = requestorObjectId.ToString();
+            var leaderObjectId = Guid.NewGuid();
+            var managerId = 4242;
+
+            var syncJob = new SyncJob
+            {
+                Id = syncJobId,
+                Status = SyncStatus.PendingAutoApproval.ToString(),
+                Query = $"[{{\"type\":\"SqlMembership\",\"source\":{{\"manager\":{{\"id\":{managerId}}},\"filter\":\"PayScaleStockLevelNbr eq 60\"}}}}]"
+            };
+
+            var jobs = new Mock<IDatabaseSyncJobsRepository>();
+            var settings = new Mock<IDatabaseSettingsRepository>();
+            var graph = new Mock<IGraphGroupRepository>();
+            var changes = new Mock<ISyncJobChangeRepository>();
+            var logger = new Mock<ILogger<AutoApproverService>>();
+            var sql = new Mock<ISqlMembershipRepository>();
+            var dataFactory = new Mock<IDataFactoryRepository>();
+
+            jobs.Setup(x => x.GetSyncJobAsync(syncJobId)).ReturnsAsync(syncJob);
+            EnableAllPaths(settings);
+            dataFactory.Setup(x => x.GetMostRecentSucceededRunIdAsync()).ReturnsAsync("abc-def");
+
+            // Not the manager, so only the assistant relationship could have approved this part.
+            sql.Setup(x => x.GetUserEmployeeIdAsync(requestorId, It.IsAny<string>())).ReturnsAsync(999);
+            sql.Setup(x => x.GetUserAzureObjectIdAsync(managerId, It.IsAny<string>())).Returns(Task.FromResult<string?>(leaderObjectId.ToString()));
+            graph.Setup(x => x.GetAssistantsAsync(leaderObjectId))
+                 .ReturnsAsync(new List<AzureADUser> { new AzureADUser { ObjectId = requestorObjectId } });
+            logger.Setup(x => x.IsEnabled(It.IsAny<LogLevel>())).Returns(true);
+
+            var sources = EnableScreening(settings, "PayScaleStockLevelNbr");
+
+            var service = CreateService(jobs, settings, graph, changes, logger, sql, dataFactory, sources);
+            await service.ProcessAutoApprovalAsync(Message(syncJobId, requestorId));
+
+            VerifyPendingReview(jobs, changes);
+            VerifyLogged(logger, 250141, Times.Once());
+        }
+
+        [TestMethod]
+        public async Task Screening_NoFilter_ApprovesAsync()
+        {
+            var m = ManagerSelfSubmission(null);
+            var sources = EnableScreening(m.Settings, "PayScaleStockLevelNbr");
+
+            var service = CreateService(m.Jobs, m.Settings, m.Graph, m.Changes, m.Logger, m.Sql, m.DataFactory, sources);
+            await service.ProcessAutoApprovalAsync(Message(m.SyncJobId, m.RequestorId));
+
+            VerifyApproved(m.Jobs, m.Changes, m.SyncJobId);
+        }
+
+        [TestMethod]
+        public async Task Screening_NoAttributesFlagged_ApprovesAsync()
+        {
+            var m = ManagerSelfSubmission("PayScaleStockLevelNbr eq 60");
+            var sources = EnableScreening(m.Settings);
+
+            var service = CreateService(m.Jobs, m.Settings, m.Graph, m.Changes, m.Logger, m.Sql, m.DataFactory, sources);
+            await service.ProcessAutoApprovalAsync(Message(m.SyncJobId, m.RequestorId));
+
+            // Nothing is marked Sensitive, so turning screening on must not reject everything.
+            VerifyApproved(m.Jobs, m.Changes, m.SyncJobId);
+            VerifyLogged(m.Logger, 250142, Times.Once());
+        }
+
+        [TestMethod]
+        public async Task Screening_ListReadFails_RejectsAsync()
+        {
+            var m = ManagerSelfSubmission("Department eq 'Sales'");
+            var sources = EnableScreening(m.Settings);
+            sources.Setup(x => x.GetDefaultSourceAttributesAsync()).ThrowsAsync(new Exception("database unavailable"));
+
+            var service = CreateService(m.Jobs, m.Settings, m.Graph, m.Changes, m.Logger, m.Sql, m.DataFactory, sources);
+            await service.ProcessAutoApprovalAsync(Message(m.SyncJobId, m.RequestorId));
+
+            VerifyPendingReview(m.Jobs, m.Changes);
+            VerifyLogged(m.Logger, 250122, Times.Once());
+        }
+
+        [TestMethod]
+        public async Task Screening_Disabled_ApprovesSensitiveFilterAsync()
+        {
+            var m = ManagerSelfSubmission("PayScaleStockLevelNbr eq 60");
+            var sources = new Mock<IDatabaseSqlMembershipSourcesRepository>();
+
+            var service = CreateService(m.Jobs, m.Settings, m.Graph, m.Changes, m.Logger, m.Sql, m.DataFactory, sources);
+            await service.ProcessAutoApprovalAsync(Message(m.SyncJobId, m.RequestorId));
+
+            VerifyApproved(m.Jobs, m.Changes, m.SyncJobId);
+
+            // The list is still read so the resolved count is logged truthfully, but it gates nothing while screening is off.
+            sources.Verify(x => x.GetDefaultSourceAttributesAsync(), Times.Once);
+        }
+
+        [TestMethod]
+        public async Task Screening_Disabled_ListReadFails_ApprovesWithoutErrorAsync()
+        {
+            var m = ManagerSelfSubmission("PayScaleStockLevelNbr eq 60");
+            var sources = new Mock<IDatabaseSqlMembershipSourcesRepository>();
+            sources.Setup(x => x.GetDefaultSourceAttributesAsync()).ThrowsAsync(new Exception("database unavailable"));
+
+            var service = CreateService(m.Jobs, m.Settings, m.Graph, m.Changes, m.Logger, m.Sql, m.DataFactory, sources);
+            await service.ProcessAutoApprovalAsync(Message(m.SyncJobId, m.RequestorId));
+
+            // Reading the list is best-effort while screening is off, so a failure must not fail the part or raise an error.
+            VerifyApproved(m.Jobs, m.Changes, m.SyncJobId);
+            VerifyLogged(m.Logger, 250122, Times.Never());
+        }
+
+        [TestMethod]
+        public async Task Screening_MatchesWholeWordsOnly_ApprovesAsync()
+        {
+            var m = ManagerSelfSubmission("SalaryBand eq 'A'");
+            var sources = EnableScreening(m.Settings, "Salary");
+
+            var service = CreateService(m.Jobs, m.Settings, m.Graph, m.Changes, m.Logger, m.Sql, m.DataFactory, sources);
+            await service.ProcessAutoApprovalAsync(Message(m.SyncJobId, m.RequestorId));
+
+            VerifyApproved(m.Jobs, m.Changes, m.SyncJobId);
+        }
+
+        [TestMethod]
+        public async Task Screening_SensitiveButDisabledAttribute_RejectsAsync()
+        {
+            var m = ManagerSelfSubmission("PayScaleStockLevelNbr eq 60");
+
+            m.Settings.Setup(x => x.GetSettingByKeyAsync(SettingKey.IsSensitiveAttributeScreeningEnabled))
+                      .ReturnsAsync(new Setting { SettingKey = SettingKey.IsSensitiveAttributeScreeningEnabled, SettingValue = "true" });
+
+            var sources = new Mock<IDatabaseSqlMembershipSourcesRepository>();
+            sources.Setup(x => x.GetDefaultSourceAttributesAsync())
+                   .ReturnsAsync(new List<SqlMembershipAttribute>
+                   {
+                       new SqlMembershipAttribute { Name = "PayScaleStockLevelNbr", IsSensitive = true, Enabled = false }
+                   });
+
+            var service = CreateService(m.Jobs, m.Settings, m.Graph, m.Changes, m.Logger, m.Sql, m.DataFactory, sources);
+            await service.ProcessAutoApprovalAsync(Message(m.SyncJobId, m.RequestorId));
+
+            VerifyPendingReview(m.Jobs, m.Changes);
+            VerifyLogged(m.Logger, 250141, Times.Once());
+        }
+
+        [TestMethod]
+        public async Task Screening_MatchIsCaseInsensitiveAsync()
+        {
+            var m = ManagerSelfSubmission("payscalestocklevelnbr eq 60");
+            var sources = EnableScreening(m.Settings, "PayScaleStockLevelNbr");
+
+            var service = CreateService(m.Jobs, m.Settings, m.Graph, m.Changes, m.Logger, m.Sql, m.DataFactory, sources);
+            await service.ProcessAutoApprovalAsync(Message(m.SyncJobId, m.RequestorId));
+
+            VerifyPendingReview(m.Jobs, m.Changes);
         }
     }
 }

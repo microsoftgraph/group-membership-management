@@ -68,7 +68,8 @@ namespace WebApi.Controllers.v1.Settings
         {
             SettingKey.IsAutoApprovalForGroupBasedSyncsEnabled,
             SettingKey.IsAutoApprovalForRequestorIsOrgLeaderSyncsEnabled,
-            SettingKey.IsAutoApprovalForLeaderAssistantEnabled
+            SettingKey.IsAutoApprovalForLeaderAssistantEnabled,
+            SettingKey.IsSensitiveAttributeScreeningEnabled
         };
 
         private static readonly IReadOnlySet<SettingKey> GeneralSettingKeys = new HashSet<SettingKey>

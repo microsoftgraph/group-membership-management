@@ -32,15 +32,18 @@ vi.mock('../../components/GeneralSetting', () => ({
     title,
     description,
     generalSettingValue,
+    footer,
   }: {
     id: string;
     title: string;
     description: string;
     generalSettingValue: string;
+    footer?: React.ReactNode;
   }) => (
     <div data-testid={`setting-${id}`} data-value={generalSettingValue}>
       <div>{title}</div>
       <div>{description}</div>
+      {footer && <div>{footer}</div>}
     </div>
   ),
 }));
@@ -69,6 +72,7 @@ const createSettings = (overrides?: Partial<Record<SettingKey, string>>): { read
   [SettingKey.IsAutoApprovalForGroupBasedSyncsEnabled]: 'false',
   [SettingKey.IsAutoApprovalForRequestorIsOrgLeaderSyncsEnabled]: 'false',
   [SettingKey.IsAutoApprovalForLeaderAssistantEnabled]: 'false',
+  [SettingKey.IsSensitiveAttributeScreeningEnabled]: 'false',
   [SettingKey.IsAITitleEnabled]: 'true',
   [SettingKey.IsAICopilotEnabled]: 'true',
   [SettingKey.IsAISearchForUserEnabled]: 'false',
@@ -118,7 +122,8 @@ describe('AdminConfigView tab layout', () => {
       isGeneralSettingsAdministrator: boolean;
       isAISettingsAdministrator: boolean;
     },
-    settingsOverrides?: Partial<Record<SettingKey, string>>
+    settingsOverrides?: Partial<Record<SettingKey, string>>,
+    attributes?: SqlMembershipAttribute[]
   ) =>
     renderWithProviders(
       <MemoryRouter>
@@ -128,7 +133,7 @@ describe('AdminConfigView tab layout', () => {
           handleGetValues={vi.fn()}
           settings={createSettings(settingsOverrides)}
           sqlMembershipSource={undefined}
-          sqlMembershipSourceAttributes={undefined}
+          sqlMembershipSourceAttributes={attributes}
           serviceNotification={getDefaultAlertBannerConfig()}
           strings={defaultStrings.AdminConfig}
           styles={getStyles}
@@ -216,6 +221,102 @@ describe('AdminConfigView tab layout', () => {
 
     // Per-part evaluation always runs, so it is no longer offered as an administrator choice.
     expect(screen.queryByText(/per-part/i)).not.toBeInTheDocument();
+  });
+
+  test('shows the sensitive attribute screening safeguard on the Auto Approver tab', () => {
+    renderWithRoles(allRoles, {
+      [SettingKey.IsSensitiveAttributeScreeningEnabled]: 'true',
+    });
+
+    fireEvent.click(
+      screen.getByRole('tab', { name: defaultStrings.AdminConfig.AutoApproverSettings.labels.autoApprover })
+    );
+
+    expect(
+      screen.getByText(defaultStrings.AdminConfig.AutoApproverSettings.labels.safeguardsTitle)
+    ).toBeInTheDocument();
+    expect(
+      screen.getByTestId(`setting-${SettingKeyMap[SettingKey.IsSensitiveAttributeScreeningEnabled]}`)
+    ).toHaveAttribute('data-value', 'true');
+  });
+
+  test('defaults sensitive attribute screening to off', () => {
+    renderWithRoles(allRoles);
+
+    fireEvent.click(
+      screen.getByRole('tab', { name: defaultStrings.AdminConfig.AutoApproverSettings.labels.autoApprover })
+    );
+
+    expect(
+      screen.getByTestId(`setting-${SettingKeyMap[SettingKey.IsSensitiveAttributeScreeningEnabled]}`)
+    ).toHaveAttribute('data-value', 'false');
+  });
+
+  test('summarizes which attributes are marked Sensitive', () => {
+    renderWithRoles(allRoles, { [SettingKey.IsSensitiveAttributeScreeningEnabled]: 'true' }, [
+      { name: 'Covered', customLabel: '', type: 'int', hasMapping: false, values: [], description: '', enabled: true, isSensitive: true },
+      { name: 'PayScaleStockLevelNbr', customLabel: '', type: 'int', hasMapping: false, values: [], description: '', enabled: true, isSensitive: true },
+      { name: 'Country', customLabel: '', type: 'nvarchar', hasMapping: false, values: [], description: '', enabled: true, isSensitive: false },
+    ]);
+
+    fireEvent.click(
+      screen.getByRole('tab', { name: defaultStrings.AdminConfig.AutoApproverSettings.labels.autoApprover })
+    );
+
+    const summary = screen.getByTestId('sensitive-attribute-summary');
+    expect(summary).toHaveTextContent('2 attributes');
+    expect(summary).toHaveTextContent('Covered, PayScaleStockLevelNbr');
+    expect(summary).not.toHaveTextContent('Country');
+  });
+
+  test('shows the same summary whether the safeguard is on or off', () => {
+    const attributes = [
+      { name: 'Covered', customLabel: '', type: 'int', hasMapping: false, values: [], description: '', enabled: true, isSensitive: true },
+    ];
+    const openSummary = () => {
+      fireEvent.click(
+        screen.getByRole('tab', { name: defaultStrings.AdminConfig.AutoApproverSettings.labels.autoApprover })
+      );
+      return screen.getByTestId('sensitive-attribute-summary').textContent;
+    };
+
+    const on = renderWithRoles(allRoles, { [SettingKey.IsSensitiveAttributeScreeningEnabled]: 'true' }, attributes);
+    const onText = openSummary();
+    on.unmount();
+
+    renderWithRoles(allRoles, { [SettingKey.IsSensitiveAttributeScreeningEnabled]: 'false' }, attributes);
+    expect(openSummary()).toBe(onText);
+  });
+
+  test('tells the administrator when nothing is marked Sensitive', () => {
+    renderWithRoles(allRoles, undefined, [
+      { name: 'Country', customLabel: '', type: 'nvarchar', hasMapping: false, values: [], description: '', enabled: true, isSensitive: false },
+    ]);
+
+    fireEvent.click(
+      screen.getByRole('tab', { name: defaultStrings.AdminConfig.AutoApproverSettings.labels.autoApprover })
+    );
+
+    expect(screen.getByTestId('sensitive-attribute-summary')).toHaveTextContent(
+      defaultStrings.AdminConfig.AutoApproverSettings.labels.noSensitiveAttributesMarked
+    );
+  });
+
+  test('the Manage on Custom Source link opens the Custom Source tab', () => {
+    renderWithRoles(allRoles, undefined, [
+      { name: 'Covered', customLabel: '', type: 'int', hasMapping: false, values: [], description: '', enabled: true, isSensitive: true },
+    ]);
+
+    fireEvent.click(
+      screen.getByRole('tab', { name: defaultStrings.AdminConfig.AutoApproverSettings.labels.autoApprover })
+    );
+    fireEvent.click(
+      screen.getByText(defaultStrings.AdminConfig.AutoApproverSettings.labels.manageOnCustomSource)
+    );
+
+    expect(
+      screen.getByRole('tab', { name: defaultStrings.AdminConfig.CustomSourceSettings.labels.customSource })
+    ).toHaveAttribute('aria-selected', 'true');
   });
 
   test("renders the leader's assistant toggle as a control independent of the other paths", () => {

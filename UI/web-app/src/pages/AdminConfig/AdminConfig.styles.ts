@@ -109,6 +109,16 @@ export const getStyles = (props: AdminConfigStyleProps): AdminConfigStyles => {
             borderColor: theme.palette.neutralQuaternary,
             background: theme.palette.white,
         },
+        sensitiveHintIcon: {
+            fontSize: 14,
+            color: theme.palette.themePrimary,
+            verticalAlign: 'text-bottom',
+            marginRight: 6
+        },
+        sensitiveSummarySeparator: {
+            margin: '0 6px',
+            color: theme.palette.neutralTertiary
+        },
         aiSettingsLeaveEmptyNote: {
             display: 'flex',
             alignItems: 'center',

@@ -173,5 +173,24 @@ namespace Hosts.AutoApprover
         [LoggerMessage(EventId = 250139, Level = LogLevel.Information,
             Message = "Auto-approval paths resolved — leader-assistant: {LeaderAssistantEnabled}.")]
         public static partial void LeaderAssistantPathResolved(this ILogger logger, bool leaderAssistantEnabled);
+
+        [LoggerMessage(EventId = 250140, Level = LogLevel.Error,
+            Message = "Error retrieving the sensitive-attribute screening setting.")]
+        public static partial void SensitiveScreeningSettingRetrievalError(this ILogger logger, Exception exception);
+
+        // Fail closed: without the list, no filter can be cleared.
+        [LoggerMessage(EventId = 250122, Level = LogLevel.Error,
+            Message = "Error reading the Sensitive attribute list. Filter-bearing SqlMembership parts cannot be screened and will be rejected.")]
+        public static partial void SensitiveAttributeListReadError(this ILogger logger, Exception exception);
+
+        // Attribute names are admin config, so safe to log. The filter never is: it can hold HR values.
+        [LoggerMessage(EventId = 250141, Level = LogLevel.Information,
+            Message = "SqlMembership part {PartIndex} rejected: its filter references the Sensitive attribute '{AttributeName}'.")]
+        public static partial void SqlPartRejectedBySensitiveFilter(this ILogger logger, int partIndex, string attributeName);
+
+        // Logged once per submission so screening-off is distinguishable from nothing-flagged.
+        [LoggerMessage(EventId = 250142, Level = LogLevel.Information,
+            Message = "Sensitive attribute screening resolved — enabled: {ScreeningEnabled}, attributes marked Sensitive: {SensitiveAttributeCount}.")]
+        public static partial void SensitiveScreeningResolved(this ILogger logger, bool screeningEnabled, int sensitiveAttributeCount);
     }
 }

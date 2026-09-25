@@ -340,6 +340,15 @@ export const strings: IStrings = {
         isAutoApprovalForRequestorIsOrgLeaderSyncsEnabledDescription: "Automatically approve SqlMembership source parts when the requestor is the manager named in that part.",
         isAutoApprovalForLeaderAssistantEnabledTitle: "Is auto-approval for a leader's assistant enabled?",
         isAutoApprovalForLeaderAssistantEnabledDescription: "Automatically approve SqlMembership source parts when the requestor is the published assistant of that part's manager.",
+        safeguardsTitle: "Safeguards",
+        safeguardsDescription: "These switches restrict auto-approval. They apply on top of the controls above, to every path that is enabled.",
+        isSensitiveAttributeScreeningEnabledTitle: "Is sensitive attribute screening enabled?",
+        isSensitiveAttributeScreeningEnabledDescription: "When on, a SqlMembership source part whose filter references a Sensitive attribute is never auto-approved — on both the org leader and the leader's assistant paths.",
+        sensitiveAttributeCountSingular: "{0} attribute",
+        sensitiveAttributeCountPlural: "{0} attributes",
+        sensitiveAttributesMarked: " are marked Sensitive: {0}",
+        noSensitiveAttributesMarked: "No attributes are marked Sensitive, so this safeguard has no effect yet.",
+        manageOnCustomSource: "Manage on Custom Source ›",
       }
     },
     AISettings: {

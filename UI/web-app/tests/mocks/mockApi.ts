@@ -58,6 +58,9 @@ const settingKeyByName: Record<string, number> = {
   CopilotSuggestedPrompts: 15,
   IsAISearchForUserEnabled: 16,
   IsAIRunExplanationEnabled: 17,
+  IsAIRejectionFeedbackRefinementEnabled: 21,
+  IsAutoApprovalForLeaderAssistantEnabled: 22,
+  IsSensitiveAttributeScreeningEnabled: 23,
 };
 
 function resolveSettingKey(rawKey: string): number {

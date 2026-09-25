@@ -15,6 +15,7 @@ import settingsReducer, {
   selectIsAutoApprovalForGroupBasedSyncsEnabled,
   selectIsAutoApprovalForRequestorIsOrgLeaderSyncsEnabled,
   selectIsAutoApprovalForLeaderAssistantEnabled,
+  selectIsSensitiveAttributeScreeningEnabled,
   selectIsAITitleEnabled,
   selectCopilotSuggestedPrompts,
   selectAreSettingsLoaded,
@@ -193,6 +194,15 @@ describe('settings.slice — selectors', () => {
 
   it('selectIsAutoApprovalForLeaderAssistantEnabled returns undefined when not set', () => {
     expect(selectIsAutoApprovalForLeaderAssistantEnabled(buildRoot())).toBeUndefined();
+  });
+
+  it('selectIsSensitiveAttributeScreeningEnabled returns true', () => {
+    const root = buildRoot([makeSetting(SettingKey.IsSensitiveAttributeScreeningEnabled, 'true')]);
+    expect(selectIsSensitiveAttributeScreeningEnabled(root)).toBe(true);
+  });
+
+  it('selectIsSensitiveAttributeScreeningEnabled returns undefined when not set', () => {
+    expect(selectIsSensitiveAttributeScreeningEnabled(buildRoot())).toBeUndefined();
   });
 
   it('selectIsAITitleEnabled returns true', () => {
