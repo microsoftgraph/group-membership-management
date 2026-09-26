@@ -26,8 +26,41 @@
         },
         "exclusionary": {
           "type": "boolean"
+        },
+        "identityTypes": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "enum": [
+              "users",
+              "agents"
+            ]
+          }
         }
-      }
+      },
+      "anyOf": [
+        {
+          "not": {
+            "required": [
+              "identityTypes"
+            ]
+          }
+        },
+        {
+          "required": [
+            "type"
+          ],
+          "properties": {
+            "type": {
+              "enum": [
+                "SqlMembership"
+              ]
+            }
+          }
+        }
+      ]
     }
   }
 }

@@ -63,6 +63,34 @@ namespace Services.Tests
             }
         }
 
+        [TestMethod]
+        [DataRow("[{\"type\":\"SqlMembership\",\"source\":{\"filter\":\"Department = 'Sales'\"}}]")]
+        [DataRow("[{\"type\":\"SqlMembership\",\"source\":{\"filter\":\"Department = 'Sales'\"},\"identityTypes\":[\"users\"]}]")]
+        [DataRow("[{\"type\":\"SqlMembership\",\"source\":{\"filter\":\"Department = 'Sales'\"},\"identityTypes\":[\"agents\"]}]")]
+        [DataRow("[{\"type\":\"SqlMembership\",\"source\":{\"manager\":{\"id\":1}},\"identityTypes\":[\"users\",\"agents\"]}]")]
+        [DataRow("[{\"type\":\"SqlMembership\",\"source\":{\"manager\":{\"id\":1}},\"identityTypes\":[\"agents\"]},{\"type\":\"GroupMembership\",\"source\":\"00000000-0000-0000-0000-000000000000\"}]")]
+        public async Task TestValidSqlIdentityTypesQueriesAsync(string query)
+        {
+            var schemaValidatorFunction = new SchemaValidatorFunction(NullLogger<SchemaValidatorFunction>.Instance, _jobTriggerService.Object, _jsonSchemaProvider);
+            var syncJob = new SyncJob { RunId = Guid.Empty, Query = query };
+
+            Assert.IsTrue(await schemaValidatorFunction.ValidateSchemasAsync(syncJob));
+        }
+
+        [TestMethod]
+        [DataRow("[{\"type\":\"GroupMembership\",\"source\":\"00000000-0000-0000-0000-000000000000\",\"identityTypes\":[\"users\"]}]")]
+        [DataRow("[{\"type\":\"SqlMembership\",\"source\":{\"filter\":\"Department = 'Sales'\"},\"identityTypes\":[]}]")]
+        [DataRow("[{\"type\":\"SqlMembership\",\"source\":{\"filter\":\"Department = 'Sales'\"},\"identityTypes\":[\"devices\"]}]")]
+        [DataRow("[{\"type\":\"SqlMembership\",\"source\":{\"filter\":\"Department = 'Sales'\"},\"identityTypes\":[\"users\",\"users\"]}]")]
+        [DataRow("[{\"type\":\"SqlMembership\",\"source\":{\"filter\":\"Department = 'Sales'\"},\"identityTypes\":\"users\"}]")]
+        public async Task TestInvalidSqlIdentityTypesQueriesAsync(string query)
+        {
+            var schemaValidatorFunction = new SchemaValidatorFunction(NullLogger<SchemaValidatorFunction>.Instance, _jobTriggerService.Object, _jsonSchemaProvider);
+            var syncJob = new SyncJob { RunId = Guid.Empty, Query = query };
+
+            Assert.IsFalse(await schemaValidatorFunction.ValidateSchemasAsync(syncJob));
+        }
+
         public List<string> GetValidQueries()
         {
             return new List<string>
