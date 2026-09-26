@@ -142,9 +142,9 @@ namespace Hosts.AgentReader.Services.Tests
 
             Assert.AreEqual(1, page.Agents.Count);
             Assert.AreEqual(Guid.Parse(AgentId), page.Agents[0].AgentObjectId);
-            Assert.AreEqual(1001, page.Agents[0].ManagerId);
+            Assert.AreEqual(1001, page.Agents[0].AgentManagerId);
             Assert.AreEqual(blueprintId, page.Agents[0].BlueprintId);
-            Assert.IsFalse(page.Agents[0].AccountEnabled);
+            Assert.IsFalse(page.Agents[0].AgentAccountEnabled);
             Assert.AreEqual(1L, page.Counters.TotalEnumerated);
             Assert.AreEqual(1L, page.Counters.FilterPassingAgents);
             Assert.AreEqual(0L, page.Counters.BlueprintIdTruncated);

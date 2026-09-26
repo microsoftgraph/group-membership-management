@@ -79,7 +79,7 @@ namespace Hosts.AgentReader.Services.Tests
             var page = await service.ReadPageAsync(_runId, null, CancellationToken.None);
 
             Assert.AreEqual(1, page.Agents.Count);
-            Assert.AreEqual(expected, page.Agents[0].ManagerId);
+            Assert.AreEqual(expected, page.Agents[0].AgentManagerId);
             Assert.AreEqual(0L, page.Counters.TotalFiltered);
             Assert.AreEqual(1L, page.Counters.FilterPassingAgents);
             Assert.AreEqual(0L, page.Counters.Inserted);
@@ -97,9 +97,9 @@ namespace Hosts.AgentReader.Services.Tests
             var page = await service.ReadPageAsync(_runId, null, CancellationToken.None);
 
             Assert.AreEqual(3, page.Agents.Count);
-            Assert.IsFalse(page.Agents[0].AccountEnabled);
-            Assert.IsTrue(page.Agents[1].AccountEnabled);
-            Assert.IsTrue(page.Agents[2].AccountEnabled);
+            Assert.IsFalse(page.Agents[0].AgentAccountEnabled);
+            Assert.IsTrue(page.Agents[1].AgentAccountEnabled);
+            Assert.IsTrue(page.Agents[2].AgentAccountEnabled);
             Assert.AreEqual(1L, page.Counters.AccountEnabledDefaultApplied);
             Assert.AreEqual(1L, page.Counters.FilteredNoManager);
         }

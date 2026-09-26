@@ -43,7 +43,7 @@ namespace Repositories.AgentsTable
                     WHEN NOT EXISTS (
                         SELECT 1 FROM sys.indexes
                         WHERE object_id = OBJECT_ID(@tableName, N'U')
-                          AND name = N'IDX_Agents_ManagerId'
+                          AND name = N'IDX_Agents_AgentManagerId'
                           AND is_disabled = 0 AND is_hypothetical = 0
                     ) THEN 1
                     ELSE 2
@@ -53,7 +53,7 @@ namespace Repositories.AgentsTable
             var state = await command.ExecuteScalarAsync(cancellationToken);
             if (state is not int readiness || readiness != 2)
             {
-                throw new InvalidOperationException("The run's agents table and enabled IDX_Agents_ManagerId index must already exist.");
+                throw new InvalidOperationException("The run's agents table and enabled IDX_Agents_AgentManagerId index must already exist.");
             }
 
             if (await ReadRowCountAsync(connection, table, cancellationToken) != 0)
@@ -102,7 +102,7 @@ namespace Repositories.AgentsTable
                 }
 
                 command.CommandText = $"""
-                    SELECT AgentObjectId, ManagerId, BlueprintId, AccountEnabled
+                    SELECT AgentObjectId, AgentManagerId, BlueprintId, AgentAccountEnabled
                     FROM {table} WITH (TABLOCKX, HOLDLOCK)
                     WHERE AgentObjectId IN ({string.Join(", ", names)});
                     """;
@@ -142,13 +142,13 @@ namespace Repositories.AgentsTable
                 {
                     values.Add($"(@id{index}, @manager{index}, @blueprint{index}, @enabled{index})");
                     AddParameter(command, $"@id{index}", DbType.String, batch[index].AgentObjectId.ToString("D"), 36);
-                    AddParameter(command, $"@manager{index}", DbType.Int32, batch[index].ManagerId);
+                    AddParameter(command, $"@manager{index}", DbType.Int32, batch[index].AgentManagerId);
                     AddParameter(command, $"@blueprint{index}", DbType.String, batch[index].BlueprintId, 200);
-                    AddParameter(command, $"@enabled{index}", DbType.Boolean, batch[index].AccountEnabled);
+                    AddParameter(command, $"@enabled{index}", DbType.Boolean, batch[index].AgentAccountEnabled);
                 }
 
                 command.CommandText = $"""
-                    INSERT INTO {table} (AgentObjectId, ManagerId, BlueprintId, AccountEnabled)
+                    INSERT INTO {table} (AgentObjectId, AgentManagerId, BlueprintId, AgentAccountEnabled)
                     VALUES {string.Join(", ", values)};
                     """;
                 if (await command.ExecuteNonQueryAsync(cancellationToken) != batch.Length)

@@ -92,15 +92,15 @@ namespace Hosts.AgentReader.Services.Tests
             await using var connection = new SqlConnection(_connectionString);
             await connection.OpenAsync();
             using var command = connection.CreateCommand();
-            command.CommandText = $"SELECT AgentObjectId, ManagerId, BlueprintId, AccountEnabled FROM [agents].[{runId:N}];";
+            command.CommandText = $"SELECT AgentObjectId, AgentManagerId, BlueprintId, AgentAccountEnabled FROM [agents].[{runId:N}];";
             using (var reader = await command.ExecuteReaderAsync())
             {
                 while (await reader.ReadAsync())
                 {
                     var expected = rows.Single(row => row.AgentObjectId.ToString("D") == reader.GetString(0));
-                    Assert.AreEqual(expected.ManagerId, reader.GetInt32(1));
+                    Assert.AreEqual(expected.AgentManagerId, reader.GetInt32(1));
                     Assert.AreEqual(expected.BlueprintId, reader.IsDBNull(2) ? null : reader.GetString(2));
-                    Assert.AreEqual(expected.AccountEnabled, reader.GetBoolean(3));
+                    Assert.AreEqual(expected.AgentAccountEnabled, reader.GetBoolean(3));
                 }
             }
 
@@ -154,10 +154,10 @@ namespace Hosts.AgentReader.Services.Tests
             await repository.WriteAsync(runId, [original], CancellationToken.None);
 
             await Assert.ThrowsExceptionAsync<InvalidDataException>(
-                () => repository.WriteAsync(runId, [original with { ManagerId = 2 }], CancellationToken.None));
+                () => repository.WriteAsync(runId, [original with { AgentManagerId = 2 }], CancellationToken.None));
 
             Assert.AreEqual(1L, await repository.GetRowCountAsync(runId, CancellationToken.None));
-            Assert.AreEqual(1, await ScalarAsync<int>($"SELECT ManagerId FROM [agents].[{runId:N}];"));
+            Assert.AreEqual(1, await ScalarAsync<int>($"SELECT AgentManagerId FROM [agents].[{runId:N}];"));
         }
 
         [TestMethod]
@@ -165,7 +165,7 @@ namespace Hosts.AgentReader.Services.Tests
         {
             var runId = Guid.NewGuid();
             await CreateTableAsync(runId);
-            await ExecuteAsync(_connectionString, $"ALTER TABLE [agents].[{runId:N}] ADD CHECK (ManagerId < 501);");
+            await ExecuteAsync(_connectionString, $"ALTER TABLE [agents].[{runId:N}] ADD CHECK (AgentManagerId < 501);");
             var repository = CreateRepository();
             await repository.WriteAsync(runId, [new AgentRecord(Guid.NewGuid(), 0, null, true)], CancellationToken.None);
             var failingPage = Enumerable.Range(1, 600)
@@ -175,7 +175,7 @@ namespace Hosts.AgentReader.Services.Tests
                 () => repository.WriteAsync(runId, failingPage, CancellationToken.None));
 
             Assert.AreEqual(1L, await repository.GetRowCountAsync(runId, CancellationToken.None));
-            Assert.AreEqual(0, await ScalarAsync<int>($"SELECT ManagerId FROM [agents].[{runId:N}];"));
+            Assert.AreEqual(0, await ScalarAsync<int>($"SELECT AgentManagerId FROM [agents].[{runId:N}];"));
         }
 
         [TestMethod]
@@ -193,7 +193,7 @@ namespace Hosts.AgentReader.Services.Tests
                 () => repository.ValidateTableAsync(runId, CancellationToken.None));
             Assert.AreEqual(0, await ScalarAsync<int>($"""
                 SELECT COUNT(*) FROM sys.indexes
-                WHERE object_id = OBJECT_ID(N'[agents].[{runId:N}]') AND name = N'IDX_Agents_ManagerId';
+                WHERE object_id = OBJECT_ID(N'[agents].[{runId:N}]') AND name = N'IDX_Agents_AgentManagerId';
                 """));
         }
 
@@ -218,7 +218,7 @@ namespace Hosts.AgentReader.Services.Tests
             var agentId = Guid.NewGuid();
             await CreateTableAsync(runId);
             await ExecuteAsync(_connectionString, $"""
-                INSERT INTO [agents].[{runId:N}] (AgentObjectId, ManagerId, BlueprintId, AccountEnabled)
+                INSERT INTO [agents].[{runId:N}] (AgentObjectId, AgentManagerId, BlueprintId, AgentAccountEnabled)
                 VALUES ('{agentId:D}', 1, NULL, 1), ('{agentId:D}', 1, NULL, 1);
                 """);
             var repository = CreateRepository();
@@ -237,15 +237,15 @@ namespace Hosts.AgentReader.Services.Tests
             await ExecuteAsync(_connectionString, $"""
                 CREATE TABLE [agents].[{runId:N}] (
                     AgentObjectId nvarchar(36) NOT NULL,
-                    ManagerId int NOT NULL,
+                    AgentManagerId int NOT NULL,
                     BlueprintId nvarchar(200) NULL,
-                    AccountEnabled bit NOT NULL
+                    AgentAccountEnabled bit NOT NULL
                 );
                 """);
             if (createIndex)
             {
                 await ExecuteAsync(_connectionString,
-                    $"CREATE CLUSTERED INDEX IDX_Agents_ManagerId ON [agents].[{runId:N}](ManagerId);");
+                    $"CREATE CLUSTERED INDEX IDX_Agents_AgentManagerId ON [agents].[{runId:N}](AgentManagerId);");
             }
         }
 

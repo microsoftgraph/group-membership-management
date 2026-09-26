@@ -221,9 +221,9 @@ namespace Hosts.AgentReader.Services.Tests
             await connection.OpenAsync();
             using var command = connection.CreateCommand();
             command.CommandText = $"""
-                SELECT AgentObjectId, ManagerId, BlueprintId, AccountEnabled
+                SELECT AgentObjectId, AgentManagerId, BlueprintId, AgentAccountEnabled
                 FROM [agents].[{runId:N}]
-                ORDER BY AgentObjectId, ManagerId, AccountEnabled;
+                ORDER BY AgentObjectId, AgentManagerId, AgentAccountEnabled;
                 """;
             using var reader = await command.ExecuteReaderAsync();
             while (await reader.ReadAsync())
@@ -243,13 +243,13 @@ namespace Hosts.AgentReader.Services.Tests
             await ExecuteAsync(_connectionString, $"""
                 CREATE TABLE [agents].[{runId:N}] (
                     AgentObjectId nvarchar(36) NOT NULL,
-                    ManagerId int NOT NULL,
+                    AgentManagerId int NOT NULL,
                     BlueprintId nvarchar(200) NULL,
-                    AccountEnabled bit NOT NULL
+                    AgentAccountEnabled bit NOT NULL
                 );
                 """);
             await ExecuteAsync(_connectionString,
-                $"CREATE CLUSTERED INDEX IDX_Agents_ManagerId ON [agents].[{runId:N}](ManagerId);");
+                $"CREATE CLUSTERED INDEX IDX_Agents_AgentManagerId ON [agents].[{runId:N}](AgentManagerId);");
         }
 
         private static async Task ExecuteAsync(string connectionString, string sql)

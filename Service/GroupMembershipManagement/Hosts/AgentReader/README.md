@@ -42,7 +42,7 @@ following the same layering as `SqlMembershipObtainer`, `SqlDataChecker` and `Az
    whose key is the canonical run identifier. The entity alone decides whether to schedule the load.
    The starter waits until the orchestration exists (including `Pending`) before returning
    `StatusQueryGetUri`; it does not wait for the load to finish.
-3. **ValidateAgentTable** requires that `agents.[R]` already exists, that `IDX_Agents_ManagerId` is
+3. **ValidateAgentTable** requires that `agents.[R]` already exists, that `IDX_Agents_AgentManagerId` is
    present and enabled, and that the table is empty. The component performs **no DDL** of any kind.
 4. **AgentReaderFunction** reads one Graph page per call:
    ```
@@ -64,7 +64,7 @@ following the same layering as `SqlMembershipObtainer`, `SqlDataChecker` and `Az
 
 ## Eligibility rules
 
-`ManagerId` is sourced **only** from `manager.onPremisesImmutableId` and must fit an `Int32`. Each
+`AgentManagerId` is sourced **only** from `manager.onPremisesImmutableId` and must fit an `Int32`. Each
 rejection increments its own counter:
 
 | Condition | Counter |

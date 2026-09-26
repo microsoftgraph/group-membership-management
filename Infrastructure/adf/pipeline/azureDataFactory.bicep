@@ -484,7 +484,7 @@ resource Pipeline_PopulateDestinationPipeline 'Microsoft.DataFactory/factories/p
             {
               type: 'Query'
               text: {
-                value: '@concat(\'CREATE TABLE agents.[\',replace(pipeline().RunId,\'-\',\'\'),\'] (AgentObjectId nvarchar(36) NOT NULL, ManagerId int NOT NULL, BlueprintId nvarchar(200) NULL, AccountEnabled bit NOT NULL)\')'
+                value: '@concat(\'CREATE TABLE agents.[\',replace(pipeline().RunId,\'-\',\'\'),\'] (AgentObjectId nvarchar(36) NOT NULL, AgentManagerId int NOT NULL, BlueprintId nvarchar(200) NULL, AgentAccountEnabled bit NOT NULL)\')'
                 type: 'Expression'
               }
             }
@@ -520,7 +520,7 @@ resource Pipeline_PopulateDestinationPipeline 'Microsoft.DataFactory/factories/p
             {
               type: 'Query'
               text: {
-                value: '@concat(\'CREATE CLUSTERED INDEX IDX_Agents_ManagerId ON agents.[\',replace(pipeline().RunId,\'-\',\'\'),\'](ManagerId)\')'
+                value: '@concat(\'CREATE CLUSTERED INDEX IDX_Agents_AgentManagerId ON agents.[\',replace(pipeline().RunId,\'-\',\'\'),\'](AgentManagerId)\')'
                 type: 'Expression'
               }
             }

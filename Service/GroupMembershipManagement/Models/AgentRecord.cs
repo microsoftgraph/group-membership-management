@@ -7,5 +7,5 @@ using System;
 
 namespace Models
 {
-    public sealed record AgentRecord(Guid AgentObjectId, int ManagerId, string? BlueprintId, bool AccountEnabled);
+    public sealed record AgentRecord(Guid AgentObjectId, int AgentManagerId, string? BlueprintId, bool AgentAccountEnabled);
 }
