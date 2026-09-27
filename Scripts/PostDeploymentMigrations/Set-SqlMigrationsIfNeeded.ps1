@@ -40,5 +40,17 @@ function Set-SqlMigrationsIfNeeded {
 		-SolutionAbbreviation $SolutionAbbreviation `
 		-Verbose
 
+	. ($ScriptsDirectory + '/PostDeploymentMigrations/Set-SqlIdentityTypesMigration.ps1')
+	$identityTypesMigration = Set-SqlIdentityTypesMigration -ConnectionString $ConnectionString `
+		-EnvironmentAbbreviation $EnvironmentAbbreviation `
+		-SolutionAbbreviation $SolutionAbbreviation `
+		-Apply `
+		-Confirm:$false `
+		-Verbose
+
+	if ($identityTypesMigration.Status -notin @('Applied', 'AlreadyApplied', 'NoChanges')) {
+		throw "Set-SqlIdentityTypesMigration failed with status '$($identityTypesMigration.Status)' and reason '$($identityTypesMigration.ReasonCode)'."
+	}
+
 	Write-Verbose "Set-SqlMigrationsIfNeeded completed."
 }
