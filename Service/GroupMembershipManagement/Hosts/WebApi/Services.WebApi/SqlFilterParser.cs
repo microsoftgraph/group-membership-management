@@ -12,6 +12,20 @@ namespace Services
     /// </summary>
     internal static class SqlFilterParser
     {
+        /// <summary>
+        /// Upper bound on the filter text handed to the parser. Real filters are orders of magnitude
+        /// smaller; the cap exists so an oversized payload cannot drive parser work unbounded.
+        /// </summary>
+        public const int MaxFilterLength = 10000;
+
+        /// <summary>
+        /// Upper bound on parenthesis nesting. ScriptDom is a recursive-descent parser, so a deeply
+        /// nested expression recurses once per level and can exhaust the stack. A StackOverflowException
+        /// cannot be caught in .NET and would take the whole WebApi process down, so depth is rejected
+        /// before parsing rather than handled after it.
+        /// </summary>
+        public const int MaxNestingDepth = 32;
+
         public static bool TryParse(
             string? filter,
             out IReadOnlyDictionary<string, IReadOnlyCollection<string>> attributeValues,
@@ -23,6 +37,18 @@ namespace Services
             if (string.IsNullOrWhiteSpace(filter))
             {
                 error = "The filter is empty.";
+                return false;
+            }
+
+            if (filter.Length > MaxFilterLength)
+            {
+                error = $"The filter is longer than the {MaxFilterLength} character limit.";
+                return false;
+            }
+
+            if (ExceedsNestingLimit(filter))
+            {
+                error = $"The filter nests more than {MaxNestingDepth} levels deep.";
                 return false;
             }
 
@@ -58,6 +84,60 @@ namespace Services
                 StringComparer.OrdinalIgnoreCase);
 
             return true;
+        }
+
+        /// <summary>
+        /// Measures parenthesis depth without parsing. Characters inside string literals are skipped
+        /// so a legitimate value such as 'Contoso (EMEA)' is not mistaken for nesting.
+        /// </summary>
+        private static bool ExceedsNestingLimit(string filter)
+        {
+            var depth = 0;
+            var inLiteral = false;
+
+            for (var index = 0; index < filter.Length; index++)
+            {
+                var character = filter[index];
+
+                if (inLiteral)
+                {
+                    if (character != '\'')
+                    {
+                        continue;
+                    }
+
+                    // '' is an escaped quote inside a literal, not the end of it.
+                    if (index + 1 < filter.Length && filter[index + 1] == '\'')
+                    {
+                        index++;
+                        continue;
+                    }
+
+                    inLiteral = false;
+                    continue;
+                }
+
+                switch (character)
+                {
+                    case '\'':
+                        inLiteral = true;
+                        break;
+                    case '(':
+                        if (++depth > MaxNestingDepth)
+                        {
+                            return true;
+                        }
+                        break;
+                    case ')':
+                        if (depth > 0)
+                        {
+                            depth--;
+                        }
+                        break;
+                }
+            }
+
+            return false;
         }
 
         private sealed class FilterVisitor : TSqlFragmentVisitor

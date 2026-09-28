@@ -295,6 +295,86 @@ namespace WebApi.Tests
             StringAssert.Contains(context, "'CA' has no known meaning");
         }
 
+        [TestMethod]
+        public async Task OverlongFilter_IsRejectedAsync()
+        {
+            var overlong = "LocationArea_Code = 'CA' And EmployeeId NOT IN (" +
+                string.Join(", ", Enumerable.Range(0, 4000)) + ")";
+
+            Assert.IsTrue(overlong.Length > 10000, "The test filter must exceed the parser limit.");
+
+            var context = await _service.BuildAttributeContextAsync(new[] { overlong });
+
+            Assert.AreEqual(string.Empty, context, "An oversized filter must not reach the parser.");
+            _dataFactoryRepository.Verify(x => x.GetMostRecentSucceededRunIdAsync(), Times.Never);
+        }
+
+        [TestMethod]
+        public async Task DeeplyNestedFilter_IsRejectedAsync()
+        {
+            // A recursive-descent parse of this would recurse once per level; a StackOverflowException
+            // is uncatchable and would take the process down, so it is rejected before parsing.
+            var depth = 200;
+            var nested = new string('(', depth) + "LocationArea_Code = 'CA'" + new string(')', depth);
+
+            var context = await _service.BuildAttributeContextAsync(new[] { nested });
+
+            Assert.AreEqual(string.Empty, context);
+        }
+
+        [TestMethod]
+        public async Task ParenthesesInsideLiterals_AreNotCountedAsNestingAsync()
+        {
+            _sqlMembershipRepository
+                .Setup(x => x.GetAttributeMappingsByCodesAsync("LocationArea", It.IsAny<string>(), It.IsAny<IEnumerable<string>>()))
+                .ReturnsAsync(new List<(string Code, string Description)>());
+
+            var literals = string.Join(
+                " Or ",
+                Enumerable.Range(0, 50).Select(index => $"LocationArea_Code = 'Contoso (EMEA) {index}'"));
+
+            var context = await _service.BuildAttributeContextAsync(new[] { literals });
+
+            StringAssert.Contains(context, "LocationArea_Code", "Unnested literals containing parentheses must still parse.");
+        }
+
+        [TestMethod]
+        public async Task ExcessFilters_AreCappedAsync()
+        {
+            // The titles endpoint accepts an unbounded part list, so a single request must not be
+            // able to schedule unbounded parse work.
+            var filters = Enumerable.Range(0, 120)
+                .Select(index => $"Attribute{index} = 'x'")
+                .ToArray();
+
+            var context = await _service.BuildAttributeContextAsync(filters);
+
+            var describedAttributes = context
+                .Split('\n')
+                .Count(line => line.StartsWith("- Attribute", StringComparison.Ordinal));
+
+            Assert.AreEqual(50, describedAttributes, "No more than the filter cap may be parsed.");
+        }
+
+        [TestMethod]
+        public async Task ExcessCodeAttributes_AreCappedAsync()
+        {
+            _sqlMembershipRepository
+                .Setup(x => x.GetAttributeMappingsByCodesAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<IEnumerable<string>>()))
+                .ReturnsAsync(new List<(string Code, string Description)>());
+
+            var filters = Enumerable.Range(0, 40)
+                .Select(index => $"Attribute{index}_Code = 'x'")
+                .ToArray();
+
+            await _service.BuildAttributeContextAsync(filters);
+
+            // Each coded attribute costs a database round trip.
+            _sqlMembershipRepository.Verify(
+                x => x.GetAttributeMappingsByCodesAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<IEnumerable<string>>()),
+                Times.Exactly(25));
+        }
+
         private ISqlFilterAttributeContextService BuildService(SqlFilterAttributeContextCache cache)
         {
             return new SqlFilterAttributeContextService(

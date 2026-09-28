@@ -15,6 +15,17 @@ namespace Services
         private const string CodeSuffix = "_Code";
         private const int MaxPromptValueLength = 200;
 
+        /// <summary>
+        /// Upper bound on filters parsed per request. The titles endpoint accepts an unbounded part
+        /// list, so the work a single request can schedule is capped here rather than left open.
+        /// </summary>
+        private const int MaxFilters = 50;
+
+        /// <summary>
+        /// Upper bound on coded attributes resolved per request. Each one costs a database round trip.
+        /// </summary>
+        private const int MaxCodeAttributes = 25;
+
         private readonly ILogger<SqlFilterAttributeContextService> _logger;
         private readonly IDatabaseSqlMembershipSourcesRepository _databaseSqlMembershipSourcesRepository;
         private readonly IDataFactoryRepository _dataFactoryRepository;
@@ -57,6 +68,7 @@ namespace Services
         private Dictionary<string, HashSet<string>> CollectReferencedValues(IEnumerable<string?> filters)
         {
             var referencedValues = new Dictionary<string, HashSet<string>>(StringComparer.OrdinalIgnoreCase);
+            var parsed = 0;
 
             foreach (var filter in filters)
             {
@@ -64,6 +76,16 @@ namespace Services
                 {
                     continue;
                 }
+
+                if (parsed == MaxFilters)
+                {
+                    _logger.LogWarning(
+                        "More than {MaxFilters} filters were supplied for AI title generation; the remainder are described without attribute context.",
+                        MaxFilters);
+                    break;
+                }
+
+                parsed++;
 
                 if (!SqlFilterParser.TryParse(filter, out var attributeValues, out var error))
                 {
@@ -166,6 +188,8 @@ namespace Services
 
             var codeAttributes = referencedValues.Keys
                 .Where(attribute => attribute.EndsWith(CodeSuffix, StringComparison.OrdinalIgnoreCase))
+                .OrderBy(attribute => attribute, StringComparer.OrdinalIgnoreCase)
+                .Take(MaxCodeAttributes)
                 .ToList();
 
             if (codeAttributes.Count == 0)
