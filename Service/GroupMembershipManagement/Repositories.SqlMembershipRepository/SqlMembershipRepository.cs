@@ -5,13 +5,13 @@ using Azure.Identity;
 using Microsoft.Data.SqlClient;
 using Microsoft.Graph.Models;
 using Microsoft.SqlServer.TransactSql.ScriptDom;
+using Models;
 using Polly;
 using Polly.Retry;
 using Repositories.Contracts;
 using Repositories.Contracts.InjectConfig;
 using SqlMembershipObtainer.Entities;
 using System;
-using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Data;
 using System.Text.RegularExpressions;
@@ -27,6 +27,9 @@ namespace Repositories.SqlMembershipRepository
         private static readonly Regex ValidTableNamePattern = new(@"^[A-Za-z0-9_][A-Za-z0-9_\-]*$", RegexOptions.Compiled);
         // Attribute names must start with a letter or underscore (standard SQL column identifiers)
         private static readonly Regex ValidAttributeNamePattern = new(@"^[A-Za-z_][A-Za-z0-9_\-]*$", RegexOptions.Compiled);
+
+        // The agents join and projection read these columns; any other agents column is needed only if a filter names it.
+        private static readonly string[] _requiredAgentColumnNames = { "AgentObjectId", "AgentManagerId" };
 
         // Caps the browse/search page for attribute mappings. Large attributes (CostCenter is ~300K rows)
         // must never be returned to the UI in a single response.
@@ -369,6 +372,516 @@ namespace Repositories.SqlMembershipRepository
             }
 
             return HRColumns;
+        }
+
+        private async Task<(List<string> UserColumnNames, List<string> AgentColumnNames)>
+            GetFilterColumnNamesAsync(string tableName)
+        {
+            ValidateTableName(tableName);
+
+            // Column metadata stays visible when SELECT is denied, so an agents table the caller cannot read reports no
+            // columns and is treated like a missing one.
+            const string selectQuery = """
+                SELECT
+                    [name],
+                    CAST(CASE WHEN [object_id] = OBJECT_ID(@AgentsTableName) THEN 1 ELSE 0 END AS bit) AS [IsAgentsColumn]
+                FROM sys.columns
+                WHERE [object_id] = OBJECT_ID(@UsersTableName)
+                    OR ([object_id] = OBJECT_ID(@AgentsTableName)
+                        AND HAS_PERMS_BY_NAME(@AgentsTableName, N'OBJECT', N'SELECT') = 1)
+                """;
+
+            var userColumnNames = new List<string>();
+            var agentColumnNames = new List<string>();
+            var retryPolicy = GetRetryPolicyAsync();
+
+            await retryPolicy.ExecuteAsync(async () =>
+            {
+                userColumnNames.Clear();
+                agentColumnNames.Clear();
+
+                using (var connection = new SqlConnection(_sqlServerConnectionString))
+                {
+                    await connection.OpenAsync();
+
+                    using (var command = new SqlCommand(selectQuery, connection))
+                    {
+                        command.Parameters.Add(new SqlParameter("@UsersTableName", SqlDbType.NVarChar) { Value = $"[users].[{tableName}]" });
+                        command.Parameters.Add(new SqlParameter("@AgentsTableName", SqlDbType.NVarChar) { Value = $"[agents].[{tableName}]" });
+
+                        using (var reader = await command.ExecuteReaderAsync())
+                        {
+                            while (await reader.ReadAsync())
+                            {
+                                var columnNames = reader.GetBoolean(1) ? agentColumnNames : userColumnNames;
+                                columnNames.Add(reader.GetString(0));
+                            }
+                        }
+                    }
+                }
+            });
+
+            return (userColumnNames, agentColumnNames);
+        }
+
+        /// <summary>
+        /// Validates one SQL filter against known users and agents columns, and reports which table types the filter
+        /// references.
+        /// </summary>
+        /// <param name="filter">
+        /// The WHERE fragment as stored on the sync job, such as <c>Department = 'Sales'</c> or
+        /// <c>agents.BlueprintId = 'alpha'</c>. A <c>users.</c> or <c>agents.</c> prefix, in any casing and with or without
+        /// brackets, limits the column to that table. A column without either prefix is looked up in the users table first
+        /// and then in the agents table. Empty or syntactically invalid filters return an invalid compilation; this helper
+        /// does not treat an empty filter as "no filter".
+        /// </param>
+        /// <param name="tableName">
+        /// The users and agents table name without schema. The value is embedded in the parse-only SELECT text and is
+        /// expected to have already been validated by the caller.
+        /// </param>
+        /// <param name="userColumnNames">
+        /// The users table's column names. An unprefixed column present in both collections counts as a users column.
+        /// </param>
+        /// <param name="agentColumnNames">
+        /// The agents table's column names. Pass an empty collection when the agents table is missing or unreadable. In
+        /// that case a column written with the <c>agents.</c> prefix counts as an agents column, so the caller can fail the
+        /// rule with the agents input check, while an unprefixed column that is not a users column is rejected as invalid.
+        /// </param>
+        /// <returns>
+        /// A valid compilation with the referenced identity types and the users columns the filter uses (spelled as in
+        /// <paramref name="userColumnNames"/>), or an invalid compilation with the parser error or
+        /// <c>Invalid column name detected: {name}</c>. The name is shown without its prefix, so
+        /// <c>users.BlueprintId</c> is reported as <c>BlueprintId</c>. It does not throw for bad filter syntax.
+        /// </returns>
+        internal static SqlFilterCompilationResult CheckFilter(
+            string filter,
+            string tableName,
+            IReadOnlyCollection<string> userColumnNames,
+            IReadOnlyCollection<string> agentColumnNames)
+        {
+            var whereStatement = $"SELECT * FROM [users].[{tableName}] WHERE {filter}";
+            var (isValid, error) = TryCollectColumns(whereStatement, out var columnCollector);
+
+            if (!isValid)
+            {
+                return SqlFilterCompilationResult.Invalid(error);
+            }
+
+            var agentsTableIsReadable = agentColumnNames.Count > 0;
+            var referencedIdentityTypes = new List<IdentityType>();
+            var referencedUserColumnNames = new List<string>();
+
+            foreach (var (qualifier, columnName) in columnCollector.ColumnReferences)
+            {
+                var namesUsersTable = string.Equals(qualifier, "users", StringComparison.OrdinalIgnoreCase);
+                var namesAgentsTable = string.Equals(qualifier, "agents", StringComparison.OrdinalIgnoreCase);
+
+                if (!namesAgentsTable)
+                {
+                    var matchingUserColumnNames = userColumnNames
+                        .Where(userColumnName => string.Equals(userColumnName, columnName, StringComparison.OrdinalIgnoreCase))
+                        .ToArray();
+
+                    if (matchingUserColumnNames.Length > 0)
+                    {
+                        referencedIdentityTypes.Add(IdentityType.Users);
+                        referencedUserColumnNames.AddRange(matchingUserColumnNames);
+                        continue;
+                    }
+                }
+
+                if (!namesUsersTable &&
+                    agentColumnNames.Contains(columnName, StringComparer.OrdinalIgnoreCase))
+                {
+                    referencedIdentityTypes.Add(IdentityType.Agents);
+                    continue;
+                }
+
+                // Only the agents. prefix shows that a column was meant for a missing agents table; an unprefixed name
+                // could just as well be a misspelled users column.
+                if (namesAgentsTable && !agentsTableIsReadable)
+                {
+                    referencedIdentityTypes.Add(IdentityType.Agents);
+                    continue;
+                }
+
+                return SqlFilterCompilationResult.Invalid($"Invalid column name detected: {columnName}");
+            }
+
+            return SqlFilterCompilationResult.Valid(referencedIdentityTypes, referencedUserColumnNames);
+        }
+
+        /// <summary>
+        /// Evaluates one SQL membership rule and returns the selected user and agent object IDs.
+        /// </summary>
+        /// <param name="request">
+        /// The table, optional manager scope, optional filter, selected identity types, and raw ADF run ID to evaluate.
+        /// Null throws <see cref="ArgumentNullException"/>. Empty identity selections, blank or invalid table names, and
+        /// blank raw ADF run IDs are rejected before the query is built. A null or empty filter means no filter.
+        /// </param>
+        /// <returns>
+        /// A result containing distinct emitted users and agents. The lists can be empty. Users are emitted only when
+        /// requested; selected human rows are still counted for logging. Malformed agent object IDs, including a matched
+        /// agent row whose object ID is NULL, are skipped and counted. Missing required users rows, malformed selected
+        /// user object IDs, and missing filter-only EmployeeId values throw <see cref="InvalidOperationException"/>.
+        /// When agents are required, a missing or unreadable agents table, or one without the <c>AgentObjectId</c> and
+        /// <c>AgentManagerId</c> columns, also throws <see cref="InvalidOperationException"/> before the query runs.
+        /// </returns>
+        public async Task<SqlMembershipEvaluationResult> EvaluateMembershipAsync(
+            SqlMembershipEvaluationRequest request)
+        {
+            ValidateEvaluationRequest(request);
+
+            var (compilation, agentColumnNames) = await PrepareEvaluationCompilationAsync(request);
+
+            var plan = SqlMembershipQueryBuilder.BuildEvaluation(
+                request,
+                compilation);
+            EnsureAgentsInputIsUsable(plan, agentColumnNames);
+            var retryPolicy = GetMembershipEvaluationRetryPolicyAsync();
+            var skippedAgentRowCount = 0;
+
+            var selected = await ExecuteWithFreshEvaluationBuffersAsync(
+                operation => retryPolicy.ExecuteAsync(operation),
+                async (attemptUsers, attemptAgents) =>
+                {
+                    skippedAgentRowCount = 0;
+
+                    using (var connection = new SqlConnection(_sqlServerConnectionString))
+                    {
+                        await connection.OpenAsync();
+
+                        using (var command = new SqlCommand(plan.CommandText, connection))
+                        {
+                            AddEvaluationParameters(command, request, plan);
+
+                            using (var reader = await command.ExecuteReaderAsync(CommandBehavior.CloseConnection))
+                            {
+                                while (await reader.ReadAsync())
+                                {
+                                    if (reader.IsDBNull(0))
+                                    {
+                                        throw new InvalidOperationException(
+                                            $"[users].[{request.TableName}] contains a selected row without an AzureObjectId.");
+                                    }
+
+                                    if (request.IsFilterOnly &&
+                                        reader.GetBoolean(1))
+                                    {
+                                        throw new InvalidOperationException(
+                                            $"[users].[{request.TableName}] contains a selected row without an EmployeeId.");
+                                    }
+
+                                    // HR rows without an Entra account carry the all-zero ID; they have always passed through.
+                                    if (!Guid.TryParse(reader.GetString(0), out var userObjectId))
+                                    {
+                                        throw new InvalidOperationException(
+                                            $"[users].[{request.TableName}] contains a selected AzureObjectId that is not a GUID.");
+                                    }
+
+                                    attemptUsers.Add(userObjectId);
+
+                                    if (!plan.ReturnsAgentColumns ||
+                                        !reader.GetBoolean(3))
+                                    {
+                                        continue;
+                                    }
+
+                                    var agentObjectIdText = reader.IsDBNull(2) ? null : reader.GetString(2);
+
+                                    // TryParseExact "D" still accepts "+" and "0x" inside a group, so require the text to round-trip.
+                                    if (agentObjectIdText == null ||
+                                        !Guid.TryParseExact(agentObjectIdText, "D", out var agentObjectId) ||
+                                        agentObjectId == Guid.Empty ||
+                                        !string.Equals(agentObjectId.ToString("D"), agentObjectIdText, StringComparison.OrdinalIgnoreCase))
+                                    {
+                                        skippedAgentRowCount++;
+                                        continue;
+                                    }
+
+                                    attemptAgents.Add(agentObjectId);
+                                }
+                            }
+                        }
+                    }
+                });
+
+            var emittedUsers = request.IdentityTypes.Includes(Models.IdentityType.Users)
+                ? selected.Users
+                : Enumerable.Empty<Guid>();
+
+            return new SqlMembershipEvaluationResult(
+                emittedUsers,
+                selected.Agents,
+                selected.Users.Count,
+                compilation.ReferencedIdentityTypes,
+                skippedAgentRowCount);
+        }
+
+        /// <summary>
+        /// Answers whether one user or agent object ID is selected by one SQL membership rule.
+        /// </summary>
+        /// <param name="request">
+        /// The table, optional manager scope, optional filter, selected identity types, and raw ADF run ID to evaluate.
+        /// Null throws <see cref="ArgumentNullException"/>. If <paramref name="identityType"/> is not selected by the
+        /// request, the method returns false after any required scope, filter, and agents-input validation succeeds.
+        /// </param>
+        /// <param name="objectId">
+        /// The user or agent object ID to test. <see cref="Guid.Empty"/> throws <see cref="ArgumentException"/>.
+        /// </param>
+        /// <param name="identityType">
+        /// The kind of identity represented by <paramref name="objectId"/>. Pass users for a user object ID or agents for
+        /// an agent object ID. Unsupported enum values throw <see cref="ArgumentOutOfRangeException"/>.
+        /// </param>
+        /// <returns>
+        /// True when the rule selects that identity; false when it does not. For agents, only hyphenated GUID text in the
+        /// agents table can match. When agents are required, a missing or unreadable agents table, or one without the
+        /// <c>AgentObjectId</c> and <c>AgentManagerId</c> columns, throws <see cref="InvalidOperationException"/>.
+        /// </returns>
+        public async Task<bool> IsIdentitySelectedAsync(
+            SqlMembershipEvaluationRequest request,
+            Guid objectId,
+            Models.IdentityType identityType)
+        {
+            ValidateEvaluationRequest(request);
+
+            if (objectId == Guid.Empty)
+            {
+                throw new ArgumentException(
+                    "The object identifier must not be empty.",
+                    nameof(objectId));
+            }
+
+            if (identityType != Models.IdentityType.Users &&
+                identityType != Models.IdentityType.Agents)
+            {
+                throw new ArgumentOutOfRangeException(
+                    nameof(identityType),
+                    identityType,
+                    "Unsupported identity type.");
+            }
+
+            var (compilation, agentColumnNames) = await PrepareEvaluationCompilationAsync(request);
+            var plan = SqlMembershipQueryBuilder.BuildProbe(
+                request,
+                compilation,
+                identityType);
+            EnsureAgentsInputIsUsable(plan, agentColumnNames);
+            var isSelected = false;
+            var retryPolicy = GetMembershipEvaluationRetryPolicyAsync();
+
+            await retryPolicy.ExecuteAsync(async () =>
+            {
+                using (var connection = new SqlConnection(_sqlServerConnectionString))
+                {
+                    await connection.OpenAsync();
+
+                    using (var command = new SqlCommand(plan.CommandText, connection))
+                    {
+                        AddEvaluationParameters(command, request, plan);
+                        command.Parameters.Add(
+                            new SqlParameter("@ObjectId", SqlDbType.UniqueIdentifier)
+                            {
+                                Value = objectId,
+                            });
+
+                        using (var reader = await command.ExecuteReaderAsync(CommandBehavior.CloseConnection))
+                        {
+                            if (!await reader.ReadAsync())
+                            {
+                                throw new InvalidOperationException(
+                                    "SQL membership evaluation did not return a probe result.");
+                            }
+
+                            if (reader.GetBoolean(1))
+                            {
+                                throw new InvalidOperationException(
+                                    $"[users].[{request.TableName}] contains a selected AzureObjectId that is not a GUID.");
+                            }
+
+                            if (request.IsFilterOnly &&
+                                reader.GetBoolean(2))
+                            {
+                                throw new InvalidOperationException(
+                                    $"[users].[{request.TableName}] contains a selected row without an EmployeeId.");
+                            }
+
+                            isSelected = reader.GetBoolean(0);
+                        }
+                    }
+                }
+            });
+
+            return isSelected;
+        }
+
+        private static void ValidateEvaluationRequest(
+            SqlMembershipEvaluationRequest request)
+        {
+            if (request == null)
+            {
+                throw new ArgumentNullException(nameof(request));
+            }
+
+            ValidateTableName(request.TableName);
+
+            if (request.IdentityTypes.IsEmpty)
+            {
+                throw new ArgumentException(
+                    "At least one identity type must be selected.",
+                    nameof(request));
+            }
+
+            if (string.IsNullOrWhiteSpace(request.AdfRunId))
+            {
+                throw new ArgumentException(
+                    "The raw ADF run identifier is required.",
+                    nameof(request));
+            }
+        }
+
+        private async Task<(SqlFilterCompilationResult Compilation, IReadOnlyCollection<string> AgentColumnNames)>
+            PrepareEvaluationCompilationAsync(
+                SqlMembershipEvaluationRequest request)
+        {
+            var (userColumnNames, agentColumnNames) =
+                await GetFilterColumnNamesAsync(request.TableName);
+
+            if (userColumnNames.Count == 0)
+            {
+                throw new InvalidOperationException(
+                    $"The required users table [users].[{request.TableName}] is unavailable.");
+            }
+
+            if (string.IsNullOrWhiteSpace(request.Filter))
+            {
+                return (SqlFilterCompilationResult.Valid(Array.Empty<IdentityType>(), Array.Empty<string>()), agentColumnNames);
+            }
+
+            var compilation = CheckFilter(
+                request.Filter,
+                request.TableName,
+                userColumnNames,
+                agentColumnNames);
+
+            if (!compilation.IsValid)
+            {
+                throw new InvalidOperationException(compilation.Error);
+            }
+
+            return (compilation, agentColumnNames);
+        }
+
+        private static void AddEvaluationParameters(
+            SqlCommand command,
+            SqlMembershipEvaluationRequest request,
+            SqlMembershipQueryPlan plan)
+        {
+            if (request.ManagerEmployeeId.HasValue)
+            {
+                command.Parameters.Add(
+                    new SqlParameter("@ManagerEmployeeId", SqlDbType.Int)
+                    {
+                        Value = request.ManagerEmployeeId.Value,
+                    });
+            }
+
+            if (request.ManagerEmployeeId.HasValue &&
+                request.Depth > 0)
+            {
+                command.Parameters.Add(
+                    new SqlParameter("@Depth", SqlDbType.Int)
+                    {
+                        Value = request.Depth,
+                    });
+            }
+        }
+
+        private static void EnsureAgentsInputIsUsable(
+            SqlMembershipQueryPlan plan,
+            IReadOnlyCollection<string> agentColumnNames)
+        {
+            if (!plan.RequiresAgents)
+            {
+                return;
+            }
+
+            var agentsInputError = GetAgentsInputError(agentColumnNames);
+
+            if (agentsInputError != null)
+            {
+                throw new InvalidOperationException(agentsInputError);
+            }
+        }
+
+        private static string? GetAgentsInputError(
+            IReadOnlyCollection<string> agentColumnNames)
+        {
+            if (agentColumnNames.Count == 0)
+            {
+                return "Required agents input is unavailable.";
+            }
+
+            var missingColumnNames = _requiredAgentColumnNames
+                .Where(name => !agentColumnNames.Contains(name, StringComparer.OrdinalIgnoreCase))
+                .ToList();
+
+            if (missingColumnNames.Count == 0)
+            {
+                return null;
+            }
+
+            return $"Required agents input is missing columns: {string.Join(", ", missingColumnNames)}.";
+        }
+
+        /// <summary>
+        /// Runs a retryable evaluation operation with new result buffers for each attempt.
+        /// </summary>
+        /// <param name="executeWithRetry">
+        /// The retry wrapper that invokes the supplied operation. Null throws <see cref="ArgumentNullException"/>. If the
+        /// wrapper completes without invoking the operation, the method returns empty user and agent sets.
+        /// </param>
+        /// <param name="executeAttempt">
+        /// The operation to run for one attempt. It receives fresh user and agent sets to fill. Null throws
+        /// <see cref="ArgumentNullException"/>. Exceptions from an attempt are handled by <paramref name="executeWithRetry"/>
+        /// and propagate if the retry wrapper gives up.
+        /// </param>
+        /// <returns>
+        /// The user and agent sets from the successful attempt. IDs collected by failed attempts are discarded rather than
+        /// mixed into the final result.
+        /// </returns>
+        internal static async Task<(HashSet<Guid> Users, HashSet<Guid> Agents)>
+            ExecuteWithFreshEvaluationBuffersAsync(
+                Func<Func<Task>, Task> executeWithRetry,
+                Func<HashSet<Guid>, HashSet<Guid>, Task> executeAttempt)
+        {
+            if (executeWithRetry == null)
+            {
+                throw new ArgumentNullException(nameof(executeWithRetry));
+            }
+
+            if (executeAttempt == null)
+            {
+                throw new ArgumentNullException(nameof(executeAttempt));
+            }
+
+            HashSet<Guid>? selectedUsers = null;
+            HashSet<Guid>? selectedAgents = null;
+
+            await executeWithRetry(async () =>
+            {
+                var attemptUsers = new HashSet<Guid>();
+                var attemptAgents = new HashSet<Guid>();
+
+                await executeAttempt(attemptUsers, attemptAgents);
+
+                selectedUsers = attemptUsers;
+                selectedAgents = attemptAgents;
+            });
+
+            return (
+                selectedUsers ?? new HashSet<Guid>(),
+                selectedAgents ?? new HashSet<Guid>());
         }
 
         public async Task<(int maxDepth, string azureObjectId)> GetOrgLeaderAsync(int employeeId, string tableName)
@@ -791,34 +1304,121 @@ namespace Repositories.SqlMembershipRepository
 
             return attributeValues;
         }
+        /// <summary>
+        /// Validates saved SQL filter fragments against the current users table and, only when needed, the matching agents
+        /// table.
+        /// </summary>
+        /// <param name="sqlFilters">
+        /// Filters keyed by caller-owned filter index. Null throws <see cref="ArgumentNullException"/>. An empty
+        /// dictionary returns an empty error dictionary without opening a SQL connection. Each value is parsed as a WHERE
+        /// fragment; multiple statements and unknown columns are reported as errors. A column written as
+        /// <c>users.Name</c> must be in the users table and one written as <c>agents.Name</c> must be in the agents table,
+        /// so <c>users.BlueprintId</c> is rejected even when the agents table has <c>BlueprintId</c>. A column without
+        /// either prefix is looked up in the users table first, then in the agents table.
+        /// </param>
+        /// <param name="tableName">
+        /// The same-run table name without schema. Null, empty, whitespace, or unsupported characters throw
+        /// <see cref="ArgumentException"/>.
+        /// </param>
+        /// <returns>
+        /// Errors keyed by the corresponding input index. An empty dictionary means every filter passed validation. If the
+        /// users table is unavailable, every filter gets a users-table error. A filter that needs agents input gets
+        /// "Required agents input is unavailable." when the agents table is missing or the caller cannot read it, and
+        /// "Required agents input is missing columns: ..." naming <c>AgentObjectId</c> or <c>AgentManagerId</c> when
+        /// the table lacks either column. While the agents table is missing or unreadable, only a column written with the
+        /// <c>agents.</c> prefix, such as <c>agents.BlueprintId</c>, marks a filter as needing agents input; an unprefixed
+        /// <c>BlueprintId</c> is reported as "Invalid column name detected: BlueprintId", like any other name that is not
+        /// in the users table.
+        /// </returns>
         public async Task<Dictionary<int, string>> ValidateFiltersAsync(Dictionary<int, string> sqlFilters, string tableName)
         {
             ValidateTableName(tableName);
 
-            var exceptionsList = new ConcurrentDictionary<int, string>();
-            var validColumnNames = await GetColumnNamesAsync(tableName);
-
-            var tasks = sqlFilters.Select(sqlFilter =>
+            if (sqlFilters == null)
             {
-                var whereStatement = $@"SELECT * FROM [users].[{tableName}] WHERE {sqlFilter.Value}";
+                throw new ArgumentNullException(nameof(sqlFilters));
+            }
 
-                var (isValid, errorMessage) = IsValidWhereClause(whereStatement, validColumnNames);
+            var errors = new Dictionary<int, string>();
+            if (sqlFilters.Count == 0)
+            {
+                return errors;
+            }
 
-                if (!isValid)
+            var (userColumnNames, agentColumnNames) = await GetFilterColumnNamesAsync(tableName);
+            if (userColumnNames.Count == 0)
+            {
+                foreach (var filter in sqlFilters)
                 {
-                    exceptionsList.TryAdd(sqlFilter.Key, errorMessage);
+                    errors.Add(
+                        filter.Key,
+                        $"The required users table [users].[{tableName}] is unavailable.");
                 }
 
-                return Task.CompletedTask;
-            });
+                return errors;
+            }
 
-            await Task.WhenAll(tasks);
+            var filtersRequiringAgents = new List<int>();
 
-            return exceptionsList.ToDictionary();
+            foreach (var filter in sqlFilters)
+            {
+                var compilation = CheckFilter(filter.Value, tableName, userColumnNames, agentColumnNames);
+
+                if (!compilation.IsValid)
+                {
+                    errors.Add(filter.Key, compilation.Error);
+                    continue;
+                }
+
+                if (compilation.UsesAgents)
+                {
+                    filtersRequiringAgents.Add(filter.Key);
+                }
+            }
+
+            if (filtersRequiringAgents.Count == 0)
+            {
+                return errors;
+            }
+
+            var agentsInputError = GetAgentsInputError(agentColumnNames);
+
+            if (agentsInputError == null)
+            {
+                return errors;
+            }
+
+            foreach (var filterIndex in filtersRequiringAgents)
+            {
+                errors[filterIndex] = agentsInputError;
+            }
+
+            return errors;
         }
 
         private (bool, string) IsValidWhereClause(string whereStatement, List<string> validColumnNames)
         {
+            var (isValid, error) = TryCollectColumns(whereStatement, out var columnCollector);
+
+            if (!isValid)
+            {
+                return (false, error);
+            }
+
+            foreach (var column in columnCollector.ColumnNames)
+            {
+                if (!validColumnNames.Contains(column, StringComparer.OrdinalIgnoreCase))
+                {
+                    return (false, $"Invalid column name detected: {column}");
+                }
+            }
+
+            return (true, string.Empty);
+        }
+
+        private static (bool, string) TryCollectColumns(string whereStatement, out ColumnCollector columnCollector)
+        {
+            columnCollector = new ColumnCollector();
             var parser = new TSql150Parser(false);
             using var reader = new StringReader(whereStatement);
             var fragment = parser.Parse(reader, out IList<ParseError> errors);
@@ -841,32 +1441,47 @@ namespace Repositories.SqlMembershipRepository
                 }
 
                 // Collect column names
-                var columnCollector = new ColumnCollector();
                 fragment.Accept(columnCollector);
-
-                foreach (var column in columnCollector.ColumnNames)
-                {
-                    if (!validColumnNames.Contains(column, StringComparer.OrdinalIgnoreCase))
-                    {
-                        return (false, $"Invalid column name detected: {column}");
-                    }
-                }
 
                 return (true, string.Empty);
             }
         }
 
-        // Helper class to collect column names
+        /// <summary>
+        /// Collects the column references from parsed T-SQL.
+        /// </summary>
         public class ColumnCollector : TSqlFragmentVisitor
         {
+            /// <summary>
+            /// Gets the distinct column names found in the parsed SQL fragment. Qualified references such as
+            /// <c>agents.BlueprintId</c> contribute only <c>BlueprintId</c>.
+            /// </summary>
             public HashSet<string> ColumnNames { get; } = new();
 
+            /// <summary>
+            /// Gets every column reference in the order it appears, with the table prefix it was written with. Brackets
+            /// are removed and the original casing is kept. <c>[agents].[BlueprintId]</c> gives the qualifier
+            /// <c>agents</c> and the name <c>BlueprintId</c>; <c>BlueprintId</c> gives a null qualifier; a longer
+            /// reference such as <c>x.agents.BlueprintId</c> gives the qualifier <c>x.agents</c>.
+            /// </summary>
+            public List<(string? Qualifier, string Name)> ColumnReferences { get; } = new();
+
+            /// <summary>
+            /// Records the column name and table prefix from one column reference node when the node has an identifier.
+            /// </summary>
+            /// <param name="node">The parsed column reference. Null is not supplied by ScriptDom.</param>
             public override void Visit(ColumnReferenceExpression node)
             {
                 if (node.MultiPartIdentifier != null)
                 {
-                    var column = node.MultiPartIdentifier.Identifiers.Last().Value;
+                    var identifiers = node.MultiPartIdentifier.Identifiers;
+                    var column = identifiers.Last().Value;
+                    var qualifier = identifiers.Count > 1
+                        ? string.Join(".", identifiers.Take(identifiers.Count - 1).Select(identifier => identifier.Value))
+                        : null;
+
                     ColumnNames.Add(column);
+                    ColumnReferences.Add((qualifier, column));
                 }
             }
         }
@@ -875,6 +1490,26 @@ namespace Repositories.SqlMembershipRepository
         private AsyncRetryPolicy GetRetryPolicyAsync()
         {
             return Policy.Handle<SqlException>()
+                         .WaitAndRetryAsync(
+                             5,
+                             attempt => TimeSpan.FromSeconds(Math.Pow(2, attempt))
+                         );
+        }
+
+        private AsyncRetryPolicy GetMembershipEvaluationRetryPolicyAsync()
+        {
+            // Permission, missing-object, unknown-column or table-prefix, ambiguous-column, and type-mismatch errors fail
+            // the same way on every attempt.
+            return Policy.Handle<SqlException>(
+                             exception => exception.Number != 229 &&
+                                          exception.Number != 207 &&
+                                          exception.Number != 208 &&
+                                          exception.Number != 4104 &&
+                                          exception.Number != 209 &&
+                                          exception.Number != 206 &&
+                                          exception.Number != 245 &&
+                                          exception.Number != 529 &&
+                                          exception.Number != 8116)
                          .WaitAndRetryAsync(
                              5,
                              attempt => TimeSpan.FromSeconds(Math.Pow(2, attempt))
