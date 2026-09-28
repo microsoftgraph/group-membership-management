@@ -209,6 +209,16 @@ resource controlPlaneNodeSubnetNetworkContributor 'Microsoft.Authorization/roleA
   }
 }
 
+resource controlPlaneOutboundPipNetworkContributor 'Microsoft.Authorization/roleAssignments@2022-04-01' = if (setRBACPermissions) {
+  name: guid(aksOutboundPip.id, aksControlPlaneIdentity.id, _networkContributorRoleId)
+  scope: aksOutboundPip
+  properties: {
+    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', _networkContributorRoleId)
+    principalId: aksControlPlaneIdentity.properties.principalId
+    principalType: 'ServicePrincipal'
+  }
+}
+
 resource workloadIdentities 'Microsoft.ManagedIdentity/userAssignedIdentities@2024-11-30' = [for svc in services: {
   name: '${solutionAbbreviation}-identity-${environmentAbbreviation}-aks-${svc.name}'
   location: location
