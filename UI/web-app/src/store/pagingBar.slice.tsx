@@ -209,9 +209,12 @@ export const selectPagingOptions = createSelector(
     (state: RootState) => state.pagingBar.filterDestinationType,
     (state: RootState) => state.pagingBar.filterDestinationOwner,
     (state: RootState) => state.pagingBar.customSortBy,
+    (state: RootState) => state.roles.isJobTenantWriter,
+    (state: RootState) => state.roles.isTeamsChannelOnboarder,
   ],
   (pageNumber, pageSize, sortKey, isSortedDescending, filterStatus, filterActionRequired,
-   filterDestinationId, filterDestinationName, filterDestinationType, filterDestinationOwner, customSortBy) => {
+   filterDestinationId, filterDestinationName, filterDestinationType, filterDestinationOwner, customSortBy,
+   isJobTenantWriter, isTeamsChannelOnboarder) => {
 
     let orderByString: string | undefined = undefined;
     const filters: string[] = [];
@@ -224,7 +227,7 @@ export const selectPagingOptions = createSelector(
     if (filterActionRequired && filterActionRequired !== 'All') {
       filters.push("status eq '" + filterActionRequired + "'");
     }
-    if (filterDestinationType && filterDestinationType !== 'All')
+    if ((isJobTenantWriter || isTeamsChannelOnboarder) && filterDestinationType && filterDestinationType !== 'All')
     {
       filters.push("contains(Destination, '" + filterDestinationType + "')");
     }

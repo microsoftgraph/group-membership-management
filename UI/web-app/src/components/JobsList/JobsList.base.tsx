@@ -79,6 +79,7 @@ import {
   HourGlassIcon,
 } from '@fluentui/react-icons-mdl2';
 import { ActionRequired, SyncStatus } from '../../models';
+import { DestinationType } from '../../models/DestinationType';
 import { useStrings } from '../../store/hooks';
 import {
   selectPagingOptions,
@@ -86,12 +87,14 @@ import {
   selectPagingBarIsSortedDescending,
   selectPagingBarfilterDestinationName,
   selectPagingBarfilterDestinationOwnerPersona,
+  selectPagingBarfilterDestinationType,
   setSortKey,
   setIsSortedDescending,
   setPagingBarVisible,
   setCustomSortBy,
   setFilterDestinationName,
   setFilterDestinationOwnerPersona,
+  setFilterDestinationType,
   setFilterStatus,
   setFilterActionRequired,
   selectPagingBarFilterStatus,
@@ -101,11 +104,12 @@ import {
 import { resetManageMembership } from '../../store/manageMembership.slice';
 
 import Papa from 'papaparse';
-import { selectIsJobTenantWriter, selectIsJobWriter, selectIsSubmissionReviewer } from '../../store/roles.slice';
+import { selectIsJobTenantWriter, selectIsJobWriter, selectIsSubmissionReviewer, selectIsTeamsChannelOnboarder } from '../../store/roles.slice';
 import { destinationTypeLocalization } from '../../utils/destinationTypeUtils';
 import { debounce, getDisplayActionRequired } from '../../utils/jobUtils';
 import { selectDashboardUrl } from '../../store/settings.slice';
 import { jsxFormat } from '../../utils/stringUtils';
+import { getDestinationTypeColumnActionsMode } from './JobsList.utils';
 
 const getClassNames = classNamesFunction<
   IJobsListStyleProps,
@@ -141,6 +145,7 @@ export const JobsListBase: React.FunctionComponent<IJobsListProps> = (
   const isSortedDescending: boolean | undefined = useSelector(selectPagingBarIsSortedDescending);
 
   const isTenantJobWriter: boolean | undefined = useSelector(selectIsJobTenantWriter);
+  const isTeamsChannelOnboarder: boolean | undefined = useSelector(selectIsTeamsChannelOnboarder);
   const isJobWriter = useSelector(selectIsJobWriter);
   const isSubmissionReviewer = useSelector(selectIsSubmissionReviewer);
   const dashboardUrl = useSelector(selectDashboardUrl);
@@ -307,7 +312,7 @@ export const JobsListBase: React.FunctionComponent<IJobsListProps> = (
       isResizable: true,
       isSorted: sortKey === 'targetDestinationType',
       isSortedDescending,
-      columnActionsMode: 0,
+      columnActionsMode: getDestinationTypeColumnActionsMode(isTenantJobWriter, isTeamsChannelOnboarder),
       onRender: (item: any) => {
         const localizedType = destinationTypeLocalization[item.targetDestinationType] || item.targetDestinationType;
         return <span>{localizedType}</span>;
@@ -413,11 +418,24 @@ export const JobsListBase: React.FunctionComponent<IJobsListProps> = (
   };
 
   const dropdownSortColumns = ['targetGroupName', 'lastSuccessfulRunTime', 'estimatedNextRunTime', 'lastModifiedTime'];
-  const dropdownColumns = [...dropdownSortColumns, 'enabledOrNot', 'actionRequired'];
+  const canFilterByDestinationType = !!(isTenantJobWriter || isTeamsChannelOnboarder);
+  const dropdownColumns = [
+    ...dropdownSortColumns,
+    'enabledOrNot',
+    'actionRequired',
+    ...(canFilterByDestinationType ? ['targetDestinationType'] : []),
+  ];
 
   const persistedFilterStatus = useSelector(selectPagingBarFilterStatus);
   const persistedFilterActionRequired = useSelector(selectPagingBarFilterActionRequired);
-  const hasActiveFilter = !!(persistedFilterDestinationName || persistedFilterDestinationOwnerPersona || persistedFilterStatus || persistedFilterActionRequired);
+  const persistedFilterDestinationType = useSelector(selectPagingBarfilterDestinationType);
+  const hasActiveFilter = !!(
+    persistedFilterDestinationName ||
+    persistedFilterDestinationOwnerPersona ||
+    (canFilterByDestinationType && persistedFilterDestinationType) ||
+    persistedFilterStatus ||
+    persistedFilterActionRequired
+  );
 
   function onColumnHeaderClick(event?: any, column?: IColumn) {
     if (column) {
@@ -446,6 +464,12 @@ export const JobsListBase: React.FunctionComponent<IJobsListProps> = (
 
   const applyStatusFilter = (status: string) => {
     dispatch(setFilterStatus(status));
+    setColumnMenuTarget(null);
+    setColumnMenuColumn(null);
+  };
+
+  const applyDestinationTypeFilter = (destinationType: string) => {
+    dispatch(setFilterDestinationType(destinationType));
     setColumnMenuTarget(null);
     setColumnMenuColumn(null);
   };
@@ -996,6 +1020,43 @@ export const JobsListBase: React.FunctionComponent<IJobsListProps> = (
           </div>
         </div>
       </div>
+      {canFilterByDestinationType && columnMenuTarget && columnMenuColumn && columnMenuColumn.key === 'targetDestinationType' && (
+        <ContextualMenu
+          target={columnMenuTarget}
+          onDismiss={() => { setColumnMenuTarget(null); setColumnMenuColumn(null); }}
+          styles={{ root: { fontSize: 12 }, subComponentStyles: { menuItem: { root: { fontSize: 12 } }, callout: {} } }}
+          items={[
+            {
+              key: 'selectAll',
+              text: strings.JobsList.JobsListFilter.columnMenu.selectAll,
+              style: { color: theme.palette.themePrimary, paddingLeft: 4 },
+              iconProps: { iconName: '', styles: { root: { display: 'none' } } },
+              onClick: () => applyDestinationTypeFilter(''),
+            },
+            {
+              key: 'divider',
+              itemType: 1,
+            },
+            {
+              key: DestinationType.GroupMembership,
+              text: strings.JobsList.JobsListFilter.filters.destinationType.options.group,
+              onRenderIcon: renderCheckboxIcon(persistedFilterDestinationType === DestinationType.GroupMembership),
+              onClick: () => applyDestinationTypeFilter(
+                persistedFilterDestinationType === DestinationType.GroupMembership ? '' : DestinationType.GroupMembership
+              ),
+            },
+            {
+              key: DestinationType.TeamsChannelMembership,
+              text: strings.JobsList.JobsListFilter.filters.destinationType.options.channel,
+              onRenderIcon: renderCheckboxIcon(persistedFilterDestinationType === DestinationType.TeamsChannelMembership),
+              onClick: () => applyDestinationTypeFilter(
+                persistedFilterDestinationType === DestinationType.TeamsChannelMembership ? '' : DestinationType.TeamsChannelMembership
+              ),
+            },
+          ]}
+          directionalHint={DirectionalHint.bottomLeftEdge}
+        />
+      )}
       {columnMenuTarget && columnMenuColumn && columnMenuColumn.key === 'enabledOrNot' && (
         <ContextualMenu
           target={columnMenuTarget}

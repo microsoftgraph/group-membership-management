@@ -34,8 +34,11 @@ beforeEach(() => {
 
 const initial: PagingBarState = pagingBarReducer(undefined, { type: '@@INIT' });
 
-const buildRootState = (overrides: Partial<PagingBarState> = {}) =>
-  ({ pagingBar: { ...initial, ...overrides } } as any);
+const buildRootState = (
+  overrides: Partial<PagingBarState> = {},
+  roles = { isJobTenantWriter: true, isTeamsChannelOnboarder: false }
+) =>
+  ({ pagingBar: { ...initial, ...overrides }, roles } as any);
 
 describe('pagingBar.slice — reducers', () => {
   it('setPageSize updates pageSize and resets pageNumber to 1', () => {
@@ -207,6 +210,15 @@ describe('selectPagingOptions — OData filter building', () => {
   it('builds filter for filterDestinationType (excludes All)', () => {
     const result = selectPagingOptions(buildRootState({ filterDestinationType: 'GroupMembership' }));
     expect(result.filter).toContain("contains(Destination, 'GroupMembership')");
+  });
+
+  it('ignores a persisted destination type filter without either Teams Channel role', () => {
+    const result = selectPagingOptions(buildRootState(
+      { filterDestinationType: 'GroupMembership' },
+      { isJobTenantWriter: false, isTeamsChannelOnboarder: false }
+    ));
+
+    expect(result.filter).toBeUndefined();
   });
 
   it('does not add filter for filterDestinationType = All', () => {
