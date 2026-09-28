@@ -38,6 +38,13 @@ namespace Services
 
         protected override async Task<GetOnboardingStatusResponse> ExecuteCoreAsync(GetChannelOnboardingStatusRequest request)
         {
+            // US6 defense-in-depth: the controller gates this onboarding endpoint; re-check here so the
+            // handler cannot compute onboarding status when the effective authorization is unmet.
+            if (!request.IsOnboardingAuthorized)
+            {
+                throw new UnauthorizedAccessException("TeamsChannel onboarding requires the TeamsChannel onboarder permission.");
+            }
+
             var azureADChannel = new Models.Entities.AzureADTeamsChannel
             {
                 ObjectId = request.TeamId,
@@ -46,7 +53,9 @@ namespace Services
 
             var isServiceAccountOwner = await _teamsChannelRepository.IsServiceAccountOwnerOfChannelAsync(_teamsChannelConfig.TeamsChannelServiceAccountObjectId, azureADChannel, null);
             var isUserOwner = await _graphGroupRepository.IsEmailRecipientOwnerOfGroupAsync(request.UserIdentity, request.TeamId);
-            // A channel is "Onboarded" only when a TeamsChannel SyncJob exists for the exact (TeamId, ChannelId) pair.
+            // Channel-level lookup: a channel is "Onboarded" only when a TeamsChannel SyncJob exists for the
+            // exact (TeamId, ChannelId) pair. A GroupMembership job (or an unrelated sibling channel job) on the
+            // same Team no longer blocks this channel (US1 coexistence, US2 sibling channels).
             var syncJobExists = await _syncJobRepository.GetSyncJobByTeamIdAndChannelIdAsync(request.TeamId, request.ChannelId);
             bool isOnboarded = syncJobExists != null;
 

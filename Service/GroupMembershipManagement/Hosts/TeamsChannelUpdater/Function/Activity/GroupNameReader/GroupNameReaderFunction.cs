@@ -27,7 +27,7 @@ namespace Hosts.TeamsChannelUpdater
             using var scope = _logger.BeginSyncJobScope(request.SyncJob);
 
             _logger.FunctionStarted(nameof(GroupNameReaderFunction));
-            // Render "TeamName: ChannelName" for TeamsChannel jobs; use the group name otherwise.
+            // US5 (FR-015): render "TeamName: ChannelName" for TeamsChannel jobs; group name otherwise.
             var groupName = await _teamsChannelUpdaterService.GetDestinationLabelAsync(request.SyncJob, request.SyncJob.RunId.GetValueOrDefault());
             _logger.FunctionCompleted(nameof(GroupNameReaderFunction));
             return groupName;

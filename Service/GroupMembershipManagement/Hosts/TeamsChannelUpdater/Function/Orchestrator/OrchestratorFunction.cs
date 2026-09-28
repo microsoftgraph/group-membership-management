@@ -210,7 +210,10 @@ namespace Hosts.TeamsChannelUpdater
             }
         }
 
-        // Emit terminal SyncComplete telemetry without failing orchestration or double-emitting on replay.
+        // Emits the SyncComplete telemetry on a terminal path. Wrapped so a telemetry failure is
+        // logged but never fails the orchestration or rolls back membership (FR-011). Callers must
+        // guard with !context.IsReplaying so replay does not double-emit (FR-008). Mirrors the
+        // GraphUpdater emit path (no explicit Flush); the sampling-immune metric is durable.
         private void EmitSyncCompleteSafely(ILogger logger,
             SyncCompleteCustomEvent syncCompleteEvent,
             DateTime currentUtcDateTime,
@@ -269,3 +272,4 @@ namespace Hosts.TeamsChannelUpdater
         }
     }
 }
+

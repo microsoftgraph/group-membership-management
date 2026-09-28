@@ -89,7 +89,9 @@ namespace Repositories.EntityFramework
 
         public async Task<SyncJob> GetSyncJobByTeamIdAndChannelIdAsync(Guid teamId, string channelId)
         {
-            // Return any existing TeamsChannel SyncJob row for the exact Team and channel pair.
+            // Returns any existing TeamsChannel SyncJob row for the exact (TeamId, ChannelId) pair.
+            // "Active" = a row exists regardless of Status (including CustomerPaused). Deleted jobs are
+            // hard-deleted (their TeamsChannels row is removed), so no soft-delete filter is required.
             if (string.IsNullOrEmpty(channelId))
                 return null;
 

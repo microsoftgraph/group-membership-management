@@ -511,8 +511,6 @@ namespace Services.Tests
         [TestMethod]
         public async Task PostTeamsChannelJob_OwnerWriterWithoutOnboarderRole_ReturnsForbidden()
         {
-            // The controller gate rejects TeamsChannel creation when the caller lacks the onboarder role.
-            // Owner + duplicate checks are set to succeed so the Forbid can ONLY originate from the controller gate.
             UseRolesContext(Roles.JOB_OWNER_WRITER);
             var teamId = Guid.NewGuid();
             _databaseSyncJobsRepository.Setup(x => x.GetSyncJobByTeamIdAndChannelIdAsync(teamId, "19:channel-A"))
@@ -529,7 +527,6 @@ namespace Services.Tests
         [TestMethod]
         public async Task PostTeamsChannelJob_WithOnboardingAuthorization_PassesGate()
         {
-            // Owner writer + onboarder clears the controller gate and the job proceeds.
             UseRolesContext(Roles.JOB_OWNER_WRITER, Roles.TEAMS_CHANNEL_ONBOARDER);
             var teamId = Guid.NewGuid();
             _databaseSyncJobsRepository.Setup(x => x.GetSyncJobByTeamIdAndChannelIdAsync(teamId, "19:channel-A"))
@@ -545,7 +542,6 @@ namespace Services.Tests
         [TestMethod]
         public async Task PostGroupMembershipJob_WithoutOnboarderRole_IsNotGated()
         {
-            // The onboarding gate applies only to TeamsChannel creation, not group jobs.
             UseRolesContext(Roles.JOB_OWNER_WRITER);
             _graphGroupRepository.Setup(x => x.IsEmailRecipientOwnerOfGroupAsync(It.IsAny<string>(), It.IsAny<Guid>(), It.IsAny<bool>()))
                 .ReturnsAsync(true);
@@ -573,7 +569,7 @@ namespace Services.Tests
                 new Claim(ClaimTypes.Name, "user@domain.com"),
                 new Claim("http://schemas.microsoft.com/identity/claims/objectidentifier", Guid.NewGuid().ToString())
             };
-            claims.AddRange(roles.Select(r => new Claim(ClaimTypes.Role, r)));
+            claims.AddRange(roles.Select(role => new Claim(ClaimTypes.Role, role)));
             _context = CreateHttpContext(claims);
             _httpContextAccessor.Setup(x => x.HttpContext).Returns(_context);
             _jobsController.ControllerContext = new ControllerContext { HttpContext = _context };
@@ -649,7 +645,7 @@ namespace Services.Tests
         [TestMethod]
         public async Task PostTeamsChannelJob_WhenGroupMembershipJobExistsForTeam_Saves()
         {
-            // A GroupMembership job on the same Team must not block a TeamsChannel save.
+            // US1: a GroupMembership job on the same Team must not block a TeamsChannel save.
             var teamId = Guid.NewGuid();
             var channelId = "19:channel-A";
             // Team-level (old) lookup would match the group job; channel-level lookup finds no duplicate.

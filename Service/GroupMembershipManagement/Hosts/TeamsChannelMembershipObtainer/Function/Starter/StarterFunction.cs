@@ -36,6 +36,13 @@ namespace Hosts.TeamsChannelMembershipObtainer
                 CurrentPart = message.ApplicationProperties.ContainsKey("CurrentPart") ? Convert.ToInt32(message.ApplicationProperties["CurrentPart"]) : 0,
                 TotalParts = message.ApplicationProperties.ContainsKey("TotalParts") ? Convert.ToInt32(message.ApplicationProperties["TotalParts"]) : 0,
                 IsDestinationPart = message.ApplicationProperties.ContainsKey("IsDestinationPart") ? Convert.ToBoolean(message.ApplicationProperties["IsDestinationPart"]) : false,
+                // US3: identity of a shared channel used as a source part travels in the query
+                // part (forwarded onto the message by ServiceBusTopicsRepository).
+                SourceGroupId = message.ApplicationProperties.ContainsKey("SourceGroupId")
+                    && Guid.TryParse(Convert.ToString(message.ApplicationProperties["SourceGroupId"]), out var srcGroupId)
+                        ? srcGroupId : (Guid?)null,
+                SourceChannelId = message.ApplicationProperties.ContainsKey("SourceChannelId")
+                    ? Convert.ToString(message.ApplicationProperties["SourceChannelId"]) : null,
             };
 
             using var scope = _logger.BeginSyncJobScope(channelSyncInfo.SyncJob, new Dictionary<string, object>

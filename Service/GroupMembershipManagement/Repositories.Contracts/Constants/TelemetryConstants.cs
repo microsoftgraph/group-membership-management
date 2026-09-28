@@ -21,7 +21,8 @@ namespace Repositories.Contracts.Constants
         public const string OperationTypeDimensionName = "OperationType";
         public const string QueryTypeDimensionName = "QueryType";
 
-        // Discriminator that segments channel-path RUU from group-path RUU telemetry.
+        // Discriminator that segments channel-path RUU from group-path RUU on the
+        // ResourceUnitsUsed metric and ResourceUnitsUsedByType event (FR-RUU-001).
         public const string MembershipTypeDimensionName = "MembershipType";
     }
 }

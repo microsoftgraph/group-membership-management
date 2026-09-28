@@ -39,7 +39,10 @@ namespace Repositories.GraphGroups
                 return;
             }
 
-            // Record only Graph-reported channel RUU and tag it separately from group RUU.
+            // Do not fabricate a fixed delta cost. Record only what Graph actually reports via the
+            // x-ms-resource-unit header (which may be 0 for channel operations) and tag it with the
+            // TeamsChannel discriminator so channel RUU is segmentable from group RUU and never
+            // over-attributed (FR-RUU-002).
             var telemetryResult = await GraphTelemetryHelper.TrackResourceUnitsAsync(headers, queryType, runId, _teamsChannelMetricTrackerLogger, _telemetryClient, operationType, membershipType);
 
             // Telemetry values already recorded via GraphTelemetryHelper.

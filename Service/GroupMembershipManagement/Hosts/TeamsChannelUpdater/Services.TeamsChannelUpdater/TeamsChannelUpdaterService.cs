@@ -91,7 +91,10 @@ namespace Services.TeamsChannelUpdater
             job.ScheduledDate = currentDate.AddHours(job.Period);
             job.RunId = runId;
 
-            // TeamsChannelUpdater records end state, deltas, and AfterSyncUserCount when a run completes.
+            // TeamsChannelUpdater owns end-time + threshold violations, and (for parity with
+            // GraphUpdater) UsersAdded/UsersRemoved plus a computed AfterSyncUserCount on a
+            // successful Idle completion. StartTime is created by JobTrigger when the run is created;
+            // BeforeSyncUserCount is persisted by TeamsChannelMembershipObtainer for the destination part.
             var afterSyncUserCount = status == SyncStatus.Idle
                 ? await CalculateAfterSyncUserCountAsync(runId, usersAdded, usersRemoved)
                 : null;
@@ -120,7 +123,11 @@ namespace Services.TeamsChannelUpdater
             _logger.SyncStatusMessage(message);
         }
 
-        // Calculate AfterSyncUserCount from the run's persisted BeforeSyncUserCount and membership delta.
+        // Mirror of GraphUpdaterService.CalculateAfterSyncUserCountAsync: reads the
+        // BeforeSyncUserCount persisted earlier this run (by TeamsChannelMembershipObtainer for the
+        // destination part), keyed by RunId, and returns Before + added - removed. Returns null when
+        // no BeforeSyncUserCount was recorded, so callers with no destination-count producer degrade
+        // gracefully instead of reporting a wrong count.
         private async Task<int?> CalculateAfterSyncUserCountAsync(Guid runId, int? usersAdded, int? usersRemoved)
         {
             var existingHistory = await _syncJobHistoryRepository.GetByRunIdAsync(runId);
@@ -181,7 +188,33 @@ namespace Services.TeamsChannelUpdater
             return await _teamsChannelRepository.GetGroupOwnersAsync(groupObjectId, runId, top);
         }
 
-        // Render TeamsChannel destinations as "TeamName: ChannelName", falling back to ids as needed.
+        // US5 (FR-014): For TeamsChannel jobs, notification recipients are the shared channel owners and
+        // they REPLACE the parent-Team owners. Team owners are used only as a fallback when channel owners
+        // cannot be resolved. For non-TeamsChannel jobs, callers use the existing group-owner resolution.
+        public async Task<List<AzureADUser>> GetChannelOwnerRecipientsAsync(SyncJob job, Guid runId)
+        {
+            var groupId = await GetGroupIdAsync(job);
+
+            if (job.MembershipType != MembershipTypes.TeamsChannelMembership.ToString())
+            {
+                return await _teamsChannelRepository.GetGroupOwnersAsync(groupId, runId);
+            }
+
+            var channelId = await GetChannelIdAsync(job);
+            var channel = new AzureADTeamsChannel { ObjectId = groupId, ChannelId = channelId };
+
+            var channelOwners = await _teamsChannelRepository.GetChannelOwnersAsync(channel, runId);
+            if (channelOwners != null && channelOwners.Count > 0)
+            {
+                return channelOwners;
+            }
+
+            _logger.LogInformation($"No channel owners resolved for group {groupId}, channel {channelId}; falling back to Team owners.");
+            return await _teamsChannelRepository.GetGroupOwnersAsync(groupId, runId);
+        }
+
+        // US5 (FR-015): TeamsChannel destination label renders as "TeamName: ChannelName"; if a name cannot be
+        // resolved, substitute the corresponding id. Non-TeamsChannel jobs render the Team/group name as before.
         public async Task<string> GetDestinationLabelAsync(SyncJob job, Guid runId)
         {
             var groupId = await GetGroupIdAsync(job);

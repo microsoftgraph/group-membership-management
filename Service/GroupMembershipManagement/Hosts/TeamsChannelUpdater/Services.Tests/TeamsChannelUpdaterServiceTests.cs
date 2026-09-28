@@ -213,9 +213,43 @@ namespace Services.Tests
         }
 
         [TestMethod]
+        public async Task ChannelOwnersReplaceTeamOwnersAsRecipients()
+        {
+            // US5 (FR-014): channel owners are the recipients and REPLACE Team owners.
+            var channelOwners = new List<AzureADUser>
+            {
+                new AzureADUser { ObjectId = Guid.NewGuid(), Mail = "channelowner1@contoso.com" },
+                new AzureADUser { ObjectId = Guid.NewGuid(), Mail = "channelowner2@contoso.com" }
+            };
+            _mockTeamsChannelRepository
+                .Setup(repo => repo.GetChannelOwnersAsync(It.IsAny<AzureADTeamsChannel>(), It.IsAny<Guid?>()))
+                .ReturnsAsync(channelOwners);
+
+            var recipients = await _teamsChannelUpdaterService.GetChannelOwnerRecipientsAsync(_syncInfo.SyncJob, _syncInfo.SyncJob.RunId.GetValueOrDefault(Guid.Empty));
+
+            CollectionAssert.AreEquivalent(channelOwners.Select(o => o.ObjectId).ToList(), recipients.Select(o => o.ObjectId).ToList());
+            // Team owners must NOT be used when channel owners resolve.
+            _mockTeamsChannelRepository.Verify(repo => repo.GetGroupOwnersAsync(It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<int>()), Times.Never);
+        }
+
+        [TestMethod]
+        public async Task TeamOwnersUsedOnlyWhenNoChannelOwnersResolve()
+        {
+            // US5 (FR-014): fall back to Team owners only when channel owners cannot be resolved.
+            _mockTeamsChannelRepository
+                .Setup(repo => repo.GetChannelOwnersAsync(It.IsAny<AzureADTeamsChannel>(), It.IsAny<Guid?>()))
+                .ReturnsAsync(new List<AzureADUser>());
+
+            var recipients = await _teamsChannelUpdaterService.GetChannelOwnerRecipientsAsync(_syncInfo.SyncJob, _syncInfo.SyncJob.RunId.GetValueOrDefault(Guid.Empty));
+
+            CollectionAssert.AreEquivalent(_mockOwnerList.Select(o => o.ObjectId).ToList(), recipients.Select(o => o.ObjectId).ToList());
+            _mockTeamsChannelRepository.Verify(repo => repo.GetGroupOwnersAsync(_syncInfo.SyncJob.Channel.GroupId, It.IsAny<Guid>(), 0), Times.Once);
+        }
+
+        [TestMethod]
         public async Task DestinationLabelRendersTeamNameColonChannelName()
         {
-            // Render "TeamName: ChannelName".
+            // US5 (FR-015): "TeamName: ChannelName".
             _mockTeamsChannelRepository
                 .Setup(repo => repo.GetTeamsChannelNameAsync(It.IsAny<AzureADTeamsChannel>()))
                 .ReturnsAsync("Engineering Channel");
@@ -228,7 +262,7 @@ namespace Services.Tests
         [TestMethod]
         public async Task DestinationLabelSubstitutesChannelIdWhenNameUnresolvable()
         {
-            // Substitute the id when a name is unresolvable.
+            // US5 (FR-015): substitute the id when a name is unresolvable.
             _mockTeamsChannelRepository
                 .Setup(repo => repo.GetTeamsChannelNameAsync(It.IsAny<AzureADTeamsChannel>()))
                 .ReturnsAsync((string)null);

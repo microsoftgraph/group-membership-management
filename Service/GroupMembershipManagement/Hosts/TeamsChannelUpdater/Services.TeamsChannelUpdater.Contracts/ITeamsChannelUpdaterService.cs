@@ -17,6 +17,7 @@ namespace Services.TeamsChannelUpdater.Contracts
         public Task<(int SuccessCount, List<AzureADTeamsUser> UserRemovesFailed)> RemoveUsersFromChannelAsync(AzureADTeamsChannel azureADTeamsChannel, List<AzureADTeamsUser> members);
         public Task<string> GetGroupNameAsync(Guid groupId, Guid runId);
         public Task<List<AzureADUser>> GetGroupOwnersAsync(Guid groupObjectId, Guid runId, int top = 0);
+        public Task<List<AzureADUser>> GetChannelOwnerRecipientsAsync(SyncJob job, Guid runId);
         public Task<string> GetDestinationLabelAsync(SyncJob job, Guid runId);
         public Task SendEmailAsync(SyncJob job, NotificationMessageType notificationType, string[] additionalContentParams);
     }

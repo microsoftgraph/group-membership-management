@@ -155,6 +155,8 @@ namespace Services.Tests
                 TotalParts = 2,
                 CurrentPart = 1,
                 IsDestinationPart = false,
+                SourceGroupId = Guid.NewGuid(),
+                SourceChannelId = "19:sharedsource@thread.tacv2",
                 SyncJob = new SyncJob
                 {
                     RunId = Guid.Parse("00000000-0000-0000-0000-000000000012"),

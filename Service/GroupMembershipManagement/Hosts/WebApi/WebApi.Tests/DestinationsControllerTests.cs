@@ -158,7 +158,8 @@ namespace Services.Tests
                 Group = new Group { GroupId = Guid.NewGuid() }
             };
             _syncJobRepository.Setup(x => x.GetSyncJobByObjectIdAsync(It.IsAny<Guid>())).ReturnsAsync(syncJob);
-            // Channel-level lookup defaults to not onboarded unless a test opts into an exact match.
+            // Channel-level lookup defaults to "not onboarded" (null); the AlreadyOnboarded channel test
+            // opts in explicitly. This mirrors the new (TeamId, ChannelId) exact-match behavior.
             _syncJobRepository.Setup(x => x.GetSyncJobByTeamIdAndChannelIdAsync(It.IsAny<Guid>(), It.IsAny<string>())).ReturnsAsync((SyncJob)null);
 
         }
@@ -360,7 +361,7 @@ namespace Services.Tests
         [TestMethod]
         public async Task GetChannelOnboardingStatus_EffectiveAuthorizationRule()
         {
-            // The onboarding-status endpoint enforces the same effective authorization rule.
+            // US6 (T044): same effective rule enforced on the onboarding-status endpoint.
             var ownerOnly = await CreateControllerWithRoles(Roles.JOB_OWNER_WRITER).GetChannelOnboardingStatusAsync(Guid.NewGuid(), "channel-A");
             Assert.IsInstanceOfType(ownerOnly.Result, typeof(ForbidResult), "owner-writer alone should be forbidden (403)");
 
@@ -586,7 +587,7 @@ namespace Services.Tests
         [TestMethod]
         public async Task GetChannelOnboardingStatus_ChannelUnderTeamWithGroupMembershipJob_ReturnsReadyForOnboarding()
         {
-            // A GroupMembership job on the same Team must not block a channel.
+            // US1: a GroupMembership job on the same Team (team-level match) must NOT block a channel.
             Guid teamId = Guid.NewGuid();
             string channelId = "TestChannelId";
             var teamGroupJob = new SyncJob { Id = Guid.NewGuid(), MembershipType = "GroupMembership", Group = new Group { GroupId = teamId } };
@@ -604,7 +605,7 @@ namespace Services.Tests
         [TestMethod]
         public async Task GetChannelOnboardingStatus_SameTeamDifferentChannel_ReturnsReadyForOnboarding()
         {
-            // A sibling channel remains onboardable when another channel already has a job.
+            // US2: sibling channel under a Team that already has a different channel job is onboardable.
             Guid teamId = Guid.NewGuid();
             var existingChannelJob = new SyncJob { Id = Guid.NewGuid(), MembershipType = "TeamsChannelMembership", Channel = new Models.Channel { GroupId = teamId, ChannelId = "channel-A" } };
             _syncJobRepository.Setup(x => x.GetSyncJobByTeamIdAndChannelIdAsync(teamId, "channel-A")).ReturnsAsync(existingChannelJob);
@@ -621,7 +622,7 @@ namespace Services.Tests
         [TestMethod]
         public async Task GetChannelOnboardingStatus_SameTeamSameChannel_ReturnsOnboarded()
         {
-            // An exact Team and channel match is onboarded.
+            // US2: exact (teamId, channelId) match is Onboarded.
             Guid teamId = Guid.NewGuid();
             var existingChannelJob = new SyncJob { Id = Guid.NewGuid(), MembershipType = "TeamsChannelMembership", Channel = new Models.Channel { GroupId = teamId, ChannelId = "channel-A" } };
             _syncJobRepository.Setup(x => x.GetSyncJobByTeamIdAndChannelIdAsync(teamId, "channel-A")).ReturnsAsync(existingChannelJob);
@@ -1295,4 +1296,5 @@ namespace Services.Tests
         }
     }
 }
+
 

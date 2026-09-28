@@ -12,7 +12,8 @@ using Repositories.Contracts.Helpers;
 
 namespace Services.Tests
 {
-    // Channel-path RUU records Graph-reported costs with a membership-type discriminator.
+    // US4 (T029): channel-path RUU carries the membership-type/source discriminator and records
+    // the Graph-reported x-ms-resource-unit value (including zero) rather than a hardcoded cost.
     [TestClass]
     public class GraphTelemetryHelperRuuTests
     {

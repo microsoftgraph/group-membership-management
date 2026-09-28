@@ -65,7 +65,7 @@ namespace Services.Tests
         [TestMethod]
         public void GetAllRoles_ReflectsTeamsChannelOnboarder()
         {
-            // getAllRoles exposes whether the user has the TeamsChannel onboarder role.
+            // US6 (T045): getAllRoles exposes a boolean reflecting User.IsInRole(TEAMS_CHANNEL_ONBOARDER).
             _rolesController.ControllerContext = CreateControllerContext(new List<Claim>
             {
                 new Claim(ClaimTypes.Role, Roles.JOB_OWNER_WRITER),

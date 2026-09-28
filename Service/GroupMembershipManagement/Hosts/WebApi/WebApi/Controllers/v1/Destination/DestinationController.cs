@@ -67,6 +67,12 @@ namespace WebApi.Controllers.v1.Destination
         [HttpGet("teams/{teamId}/searchChannels/{query}")]
         public async Task<ActionResult<IEnumerable<Models.DTOs.Channel>>> SearchChannelsAsync(Guid teamId, string query)
         {
+            // US6: TeamsChannel onboarding entry point â€” allow tenant writer OR owner-writer + TEAMS_CHANNEL_ONBOARDER.
+            if (!Models.TeamsChannelOnboardingAuthorization.IsAuthorized(User))
+            {
+                return new ForbidResult();
+            }
+
             try
             {
                 // Pass the caller identity so the handler can restrict the search to Team owners (or tenant writers).
@@ -185,12 +191,18 @@ namespace WebApi.Controllers.v1.Destination
                 var isJobOwnerWriter = User.IsInRole(Models.Roles.JOB_OWNER_WRITER);
                 var isTeamsChannelOnboarder = User.IsInRole(Models.Roles.TEAMS_CHANNEL_ONBOARDER);
 
-                if (!isJobTenantWriter && !(isJobOwnerWriter && isTeamsChannelOnboarder))
+                // US6: TeamsChannel onboarding entry point â€” allow tenant writer OR owner-writer + TEAMS_CHANNEL_ONBOARDER.
+                if (!Models.TeamsChannelOnboardingAuthorization.IsAuthorized(User))
                 {
                     return new ForbidResult();
                 }
 
-                var response = await _getChannelOnboardingStatusHandler.ExecuteAsync(new GetChannelOnboardingStatusRequest(teamId, channelId, userId, isJobTenantWriter));
+                if (string.IsNullOrEmpty(userId))
+                {
+                    return new ForbidResult();
+                }
+
+                var response = await _getChannelOnboardingStatusHandler.ExecuteAsync(new GetChannelOnboardingStatusRequest(teamId, channelId, userId, isJobTenantWriter, isOnboardingAuthorized: true));
                 return Ok(response);
             }
             catch (UnauthorizedAccessException)

@@ -35,7 +35,15 @@ namespace Repositories.ServiceBusTopics
             var queryTypes = queries.Select(x => new
             {
                 type = (string)x["type"],
-                exclusionary = x["exclusionary"] != null ? (bool)x["exclusionary"] : false
+                exclusionary = x["exclusionary"] != null ? (bool)x["exclusionary"] : false,
+                // US3: a shared channel used as a source part carries its identity in the
+                // query part itself (source.groupId / source.channelId). Forward it so the
+                // TeamsChannelMembershipObtainer can read the correct source channel. Note the
+                // "source" of a normal GroupMembership part is a primitive (a bare GUID string),
+                // so we MUST type-check for JsonObject before indexing — indexing a JsonValue
+                // throws InvalidOperationException and would crash every non-channel job.
+                sourceGroupId = x["source"] is JsonObject srcGroupObj && srcGroupObj["groupId"] != null ? (string)srcGroupObj["groupId"] : null,
+                sourceChannelId = x["source"] is JsonObject srcChannelObj && srcChannelObj["channelId"] != null ? (string)srcChannelObj["channelId"] : null
             }).ToList();
 
             // + 1 to include destination group
@@ -48,6 +56,11 @@ namespace Repositories.ServiceBusTopics
                 sourceGroupMessage.ApplicationProperties.Add("Exclusionary", type.exclusionary);
                 sourceGroupMessage.ApplicationProperties.Add("TotalParts", totalParts);
                 sourceGroupMessage.ApplicationProperties.Add("CurrentPart", index);
+                if (type.type == "TeamsChannelMembership" && !string.IsNullOrEmpty(type.sourceChannelId))
+                {
+                    sourceGroupMessage.ApplicationProperties.Add("SourceGroupId", type.sourceGroupId);
+                    sourceGroupMessage.ApplicationProperties.Add("SourceChannelId", type.sourceChannelId);
+                }
                 sourceGroupMessage.MessageId += $"_{index++}";
                 await _serviceBusSender.SendMessageAsync(sourceGroupMessage);
             }

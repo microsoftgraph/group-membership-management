@@ -177,7 +177,7 @@ namespace Services.Tests
             _mockTeamsChannelUpdaterService.Verify(x => x.UpdateSyncJobStatusAsync(It.IsAny<SyncJob>(), SyncStatus.Error, false, It.IsAny<Guid>(), It.IsAny<int?>(), It.IsAny<int?>()));;
         }
 
-        // SyncComplete exactly-once and schema parity tests.
+        // ---- US4: SyncComplete exactly-once + schema parity -------------------------------
 
         private sealed class CapturingChannel : Microsoft.ApplicationInsights.Channel.ITelemetryChannel
         {

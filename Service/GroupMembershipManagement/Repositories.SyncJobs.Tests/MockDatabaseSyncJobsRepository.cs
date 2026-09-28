@@ -127,7 +127,9 @@ namespace Repositories.SyncJobs.Tests
 
         public Task<SyncJob> GetSyncJobByTeamIdAndChannelIdAsync(Guid teamId, string channelId)
         {
-            throw new NotImplementedException();
+            var job = Jobs.FirstOrDefault(j => j.MembershipType == "TeamsChannelMembership"
+                && j.Channel != null && j.Channel.GroupId == teamId && j.Channel.ChannelId == channelId);
+            return Task.FromResult(job);
         }
 
         public Task InsertSyncJobAsync(SyncJob job)
