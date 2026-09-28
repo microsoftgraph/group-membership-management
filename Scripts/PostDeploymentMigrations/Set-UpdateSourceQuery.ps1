@@ -38,6 +38,28 @@ function Build-SqlQueryPart {
     return ConvertTo-Json -InputObject ([PSCustomObject]$rebuilt) -Compress -Depth 100
 }
 
+function Build-GroupMembershipQueryPart {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$Source,
+
+        [Parameter(Mandatory = $true)]
+        [bool]$Exclusionary
+    )
+
+    $part = [ordered]@{
+        type = 'GroupMembership'
+        source = $Source
+    }
+
+    if ($Exclusionary) {
+        $part.exclusionary = $true
+    }
+
+    return ConvertTo-Json -InputObject ([PSCustomObject]$part) -Compress -Depth 100
+}
+
 function Test-SourceQueryIdentityTypesSelection {
     [CmdletBinding()]
     [OutputType([bool])]
@@ -85,8 +107,80 @@ function Test-JsonIntegerInRange {
     return ($Value -is [int] -or $Value -is [long]) -and $Value -ge $Minimum -and $Value -le [int]::MaxValue
 }
 
-# True only when the converter can rewrite this SQL source without losing any of it. Manager and
-# filter sources are written back with every property except the old portal's includeOrg and
+function Test-CurrentSqlManagerShape {
+    [CmdletBinding()]
+    [OutputType([bool])]
+    param(
+        [Parameter()]
+        [AllowNull()]
+        $Manager
+    )
+
+    if ($Manager -isnot [System.Management.Automation.PSCustomObject]) {
+        return $false
+    }
+
+    $hasId = $false
+    foreach ($property in $Manager.PSObject.Properties) {
+        if ($property.Name -cnotin @('id', 'depth') -or
+            -not (Test-JsonIntegerInRange -Value $property.Value -Minimum 1)) {
+            return $false
+        }
+
+        if ($property.Name -ceq 'id') {
+            $hasId = $true
+        }
+    }
+
+    return $hasId
+}
+
+function Test-ConvertibleSqlManagerSource {
+    [CmdletBinding()]
+    [OutputType([bool])]
+    param(
+        [Parameter()]
+        [AllowNull()]
+        $Source
+    )
+
+    if ($Source -isnot [System.Management.Automation.PSCustomObject]) {
+        return $false
+    }
+
+    $managerProperty = $Source.PSObject.Properties['manager']
+    if ($null -eq $managerProperty -or -not (Test-CurrentSqlManagerShape -Manager $managerProperty.Value)) {
+        return $false
+    }
+
+    foreach ($property in $Source.PSObject.Properties) {
+        $value = $property.Value
+
+        if ($property.Name -ceq 'manager') {
+            continue
+        }
+
+        if ($property.Name -ceq 'filter') {
+            if ($null -ne $value -and $value -isnot [string]) {
+                return $false
+            }
+        }
+        elseif ($property.Name -cin @('includeOrg', 'includeFilter')) {
+            if ($null -ne $value -and $value -isnot [bool]) {
+                return $false
+            }
+        }
+        else {
+            return $false
+        }
+    }
+
+    return $true
+}
+
+# True only when the converter can rewrite this SQL source without losing any of it. Manager
+# sources must match the current manager shape, plus a filter and old portal flags if present.
+# Filter sources are written back with every property except the old portal's includeOrg and
 # includeFilter flags, which nothing reads. The ids shape is rebuilt from ids, depth and filter, so
 # it may carry only those and the same two flags.
 # A depth of 0 and an empty filter are dropped because the service reads both as "not set".
@@ -103,8 +197,8 @@ function Test-ConvertibleSqlSource {
         return $false
     }
 
-    if ($Source.manager.id) {
-        return $true
+    if ($null -ne $Source.PSObject.Properties['manager']) {
+        return Test-ConvertibleSqlManagerSource -Source $Source
     }
 
     if ($null -eq $Source.PSObject.Properties['ids']) {
@@ -167,23 +261,7 @@ function Test-CurrentSqlSourceShape {
         $value = $property.Value
 
         if ($property.Name -ceq 'manager') {
-            if ($value -isnot [System.Management.Automation.PSCustomObject]) {
-                return $false
-            }
-
-            $hasId = $false
-            foreach ($managerProperty in $value.PSObject.Properties) {
-                if ($managerProperty.Name -cnotin @('id', 'depth') -or
-                    -not (Test-JsonIntegerInRange -Value $managerProperty.Value -Minimum 1)) {
-                    return $false
-                }
-
-                if ($managerProperty.Name -ceq 'id') {
-                    $hasId = $true
-                }
-            }
-
-            if (-not $hasId) {
+            if (-not (Test-CurrentSqlManagerShape -Manager $value)) {
                 return $false
             }
         }
@@ -399,6 +477,29 @@ function Test-SourceQueryValueRewritable {
     }
 
     return $true
+}
+
+function Test-GroupMembershipSourceStringRoundTrip {
+    [CmdletBinding()]
+    [OutputType([bool])]
+    param(
+        [Parameter()]
+        [AllowNull()]
+        $Value
+    )
+
+    if ($Value -isnot [string]) {
+        return $false
+    }
+
+    try {
+        $json = ConvertTo-Json -InputObject $Value -Compress -Depth 100
+        $roundTripped = ConvertFrom-SourceQueryJson -Query $json
+        return [string]::Equals($Value, $roundTripped, [StringComparison]::Ordinal)
+    }
+    catch {
+        return $false
+    }
 }
 
 # ConvertFrom-Json keeps only the last of repeated property names, so rebuilding a value that
@@ -636,13 +737,29 @@ function Convert-SqlSourceQuery {
                 continue
             }
 
+            $groupSourcesConvertible = $true
             foreach ($id in $part.source) {
-                if ($part.exclusionary -eq $true) {
-                    $newQueryParts.Add('{"type":"GroupMembership","source":"' + $id + '","exclusionary":true}')
+                if (-not (Test-GroupMembershipSourceStringRoundTrip -Value $id)) {
+                    $groupSourcesConvertible = $false
+                    break
                 }
-                else {
-                    $newQueryParts.Add('{"type":"GroupMembership","source":"' + $id + '"}')
+            }
+
+            if (-not $groupSourcesConvertible) {
+                $unrewritableParts++
+                if ($hasRawParts) {
+                    $newQueryParts.Add($rawText)
                 }
+                elseif ($keptAsStoredReason -eq 'None') {
+                    $keptAsStoredReason = 'UnrewritablePart'
+                }
+
+                continue
+            }
+
+            foreach ($id in $part.source) {
+                $newQueryParts.Add(
+                    (Build-GroupMembershipQueryPart -Source $id -Exclusionary ($part.exclusionary -eq $true)))
             }
 
             $rewrittenParts++
@@ -680,7 +797,7 @@ function Convert-SqlSourceQuery {
 
             $builtParts = [Collections.Generic.List[string]]::new()
             foreach ($source in $sources) {
-                if ($source.manager.id) {
+                if (Test-ConvertibleSqlManagerSource -Source $source) {
                     $builtParts.Add(
                         (Build-SqlQueryPart -OriginalPart $part -NewSource (Copy-SqlSourceInCurrentFormat -Source $source)))
                 }

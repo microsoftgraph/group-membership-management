@@ -163,6 +163,29 @@ Assert-Equal `
     $convertedLegacyGroup.TransformedQuery `
     'legacy SecurityGroup expansion remains unchanged'
 
+$legacyGroupGuid = '33333333-3333-3333-3333-333333333333'
+$oldNonExclusionaryGroupPart = '{"type":"GroupMembership","source":"' + $legacyGroupGuid + '"}'
+$oldExclusionaryGroupPart = '{"type":"GroupMembership","source":"' + $legacyGroupGuid + '","exclusionary":true}'
+Assert-Equal $oldNonExclusionaryGroupPart (Build-GroupMembershipQueryPart -Source $legacyGroupGuid -Exclusionary $false) `
+    'object-built GroupMembership output matches the old concatenated GUID output'
+Assert-Equal $oldExclusionaryGroupPart (Build-GroupMembershipQueryPart -Source $legacyGroupGuid -Exclusionary $true) `
+    'object-built exclusionary GroupMembership output matches the old concatenated GUID output'
+
+$quotedGroupValue = 'abc"def'
+$convertedQuotedGroup = Convert-SqlSourceQuery -Query '[{"type":"SecurityGroup","source":["abc\"def"]}]'
+Assert-Equal 'Changed' $convertedQuotedGroup.Status 'a legacy group source containing a quote is converted'
+$quotedGroupPart = @(ConvertFrom-Json -InputObject $convertedQuotedGroup.TransformedQuery)[0]
+Assert-Equal $quotedGroupValue $quotedGroupPart.source 'a legacy group source containing a quote remains valid JSON and round-trips'
+Assert-Equal 'NoChanges' (Convert-SqlSourceQuery -Query $convertedQuotedGroup.TransformedQuery).Status `
+    'a converted quoted group source is stable on a second run'
+
+$backslashGroupValue = 'abc\def'
+$convertedBackslashGroup = Convert-SqlSourceQuery -Query '[{"type":"SecurityGroup","source":["abc\\def"],"exclusionary":true}]'
+Assert-Equal 'Changed' $convertedBackslashGroup.Status 'a legacy group source containing a backslash is converted'
+$backslashGroupPart = @(ConvertFrom-Json -InputObject $convertedBackslashGroup.TransformedQuery)[0]
+Assert-Equal $backslashGroupValue $backslashGroupPart.source 'a legacy group source containing a backslash remains valid JSON and round-trips'
+Assert-Equal $true $backslashGroupPart.exclusionary 'a converted backslash group source preserves the exclusionary flag'
+
 $legacySqlQuery = '[{"type":"SqlMembership","source":[{"ids":[7,8],"depth":2,"filter":"Department != ''Vendor''"}],"identityTypes":["users"],"exclusionary":true,"future":"keep"}]'
 $convertedLegacySql = Convert-SqlSourceQuery -Query $legacySqlQuery
 Assert-Equal 'Old' $convertedLegacySql.Category 'legacy SQL ids input retains its conversion category'
@@ -217,10 +240,25 @@ foreach ($case in $oldPortalSqlCases) {
     Assert-Conversion -Query $case.Query -Expected $case.Expected -Because $case.Because
 }
 
-Assert-Conversion `
-    -Query '[{"type":"SqlMembership","source":{"manager":{"id":7,"note":"a != b"},"filter":"x != 1","extra":"c != d"},"future":"e != f"}]' `
-    -Expected '[{"type":"SqlMembership","source":{"manager":{"id":7,"note":"a != b"},"filter":"x <> 1","extra":"c != d"},"future":"e != f"}]' `
-    -Because 'only the filter of a manager source is normalised; every other value keeps its text'
+$invalidManagerSourceCases = @(
+    @{ Query = '[{"type":"SqlMembership","source":{"manager":{"id":"abc"},"filter":"x != 1"}}]'; Because = 'a manager id that is not an integer' },
+    @{ Query = '[{"type":"SqlMembership","source":{"manager":{"id":[7]},"filter":"x != 1"}}]'; Because = 'a manager id that is an array' },
+    @{ Query = '[{"type":"SqlMembership","source":{"manager":{"id":{"value":7}},"filter":"x != 1"}}]'; Because = 'a manager id that is an object' },
+    @{ Query = '[{"type":"SqlMembership","source":{"manager":{"id":0},"filter":"x != 1"}}]'; Because = 'a manager id of zero' },
+    @{ Query = '[{"type":"SqlMembership","source":{"manager":{"id":-7},"filter":"x != 1"}}]'; Because = 'a negative manager id' },
+    @{ Query = '[{"type":"SqlMembership","source":{"manager":{"id":7,"depth":0},"filter":"x != 1"}}]'; Because = 'a manager depth of zero' },
+    @{ Query = '[{"type":"SqlMembership","source":{"manager":{"id":7,"depth":"2"},"filter":"x != 1"}}]'; Because = 'a manager depth that is not an integer' },
+    @{ Query = '[{"type":"SqlMembership","source":{"manager":{"id":7,"note":"a != b"},"filter":"x != 1"}}]'; Because = 'an extra manager property' },
+    @{ Query = '[{"type":"SqlMembership","source":{"manager":{"id":7},"filter":"x != 1","extra":"c != d"}}]'; Because = 'an extra manager-source property' }
+)
+
+foreach ($case in $invalidManagerSourceCases) {
+    Assert-KeptAsStored -Query $case.Query -UnconvertedSqlParts 1 -KeptAsStoredReason 'None' `
+        -Because "a SQL part with $($case.Because) is kept instead of rebuilt"
+    Assert-Equal 1 (Convert-SqlSourceQuery -Query $case.Query).SqlPartsOutsideSchema `
+        "a SQL part with $($case.Because) is counted as outside the schema"
+}
+
 Assert-Conversion `
     -Query '[{"type":"SqlMembership","source":[{"filter":"x != 1","extra":"c != d"}]}]' `
     -Expected '[{"type":"SqlMembership","source":{"filter":"x <> 1","extra":"c != d"}}]' `
@@ -496,8 +534,6 @@ Assert-Conversion `
 
 $outsideSchemaCases = @(
     @{ Query = '[{"type":"SqlMembership","source":[{"filter":"x != 1","extra":"c != d"}]}]'; Expected = 1; Because = 'a converted filter source with an extra property' },
-    @{ Query = '[{"type":"SqlMembership","source":{"manager":{"id":7,"note":"a"}}}]'; Expected = 1; Because = 'a manager source with an extra manager property' },
-    @{ Query = '[{"type":"SqlMembership","source":{"manager":{"id":7,"depth":0}}}]'; Expected = 1; Because = 'a manager source with a depth of 0' },
     @{ Query = '[{"type":"SqlMembership","source":{"filter":"a = 1","includeOrg":"yes"}}]'; Expected = 1; Because = 'a filter source with a flag that is not true, false or null' },
     @{ Query = '[{"type":"SqlMembership","source":[{"ids":[7,8],"depth":2,"filter":"a != 1"}]}]'; Expected = 0; Because = 'a converted manager list' },
     @{ Query = '[{"type":"SqlMembership","source":{"filter":"a = 1"}}]'; Expected = 0; Because = 'a current filter source' }
