@@ -19,17 +19,20 @@ namespace Services
         private readonly IDatabaseSqlMembershipSourcesRepository _databaseSqlMembershipSourcesRepository;
         private readonly IDataFactoryRepository _dataFactoryRepository;
         private readonly ISqlMembershipRepository _sqlMembershipRepository;
+        private readonly SqlFilterAttributeContextCache _cache;
 
         public SqlFilterAttributeContextService(
             ILogger<SqlFilterAttributeContextService> logger,
             IDatabaseSqlMembershipSourcesRepository databaseSqlMembershipSourcesRepository,
             IDataFactoryRepository dataFactoryRepository,
-            ISqlMembershipRepository sqlMembershipRepository)
+            ISqlMembershipRepository sqlMembershipRepository,
+            SqlFilterAttributeContextCache cache)
         {
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _databaseSqlMembershipSourcesRepository = databaseSqlMembershipSourcesRepository ?? throw new ArgumentNullException(nameof(databaseSqlMembershipSourcesRepository));
             _dataFactoryRepository = dataFactoryRepository ?? throw new ArgumentNullException(nameof(dataFactoryRepository));
             _sqlMembershipRepository = sqlMembershipRepository ?? throw new ArgumentNullException(nameof(sqlMembershipRepository));
+            _cache = cache ?? throw new ArgumentNullException(nameof(cache));
         }
 
         public async Task<string> BuildAttributeContextAsync(IEnumerable<string?> filters)
@@ -87,35 +90,73 @@ namespace Services
 
         private async Task<IReadOnlyDictionary<string, string>> GetAttributeLabelsAsync()
         {
-            var labels = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+            return await _cache.GetAttributeLabelsAsync(async () =>
+            {
+                var labels = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
 
-            List<SqlMembershipAttribute>? storedAttributes;
-            try
-            {
-                storedAttributes = await _databaseSqlMembershipSourcesRepository.GetDefaultSourceAttributesAsync();
-            }
-            catch (Exception ex)
-            {
-                _logger.LogWarning(ex, "Failed to load admin-configured attribute labels; AI titles will use humanized attribute names.");
-                return labels;
-            }
-
-            if (storedAttributes == null)
-            {
-                return labels;
-            }
-
-            foreach (var attribute in storedAttributes)
-            {
-                if (string.IsNullOrWhiteSpace(attribute?.Name) || string.IsNullOrWhiteSpace(attribute.CustomLabel))
+                List<SqlMembershipAttribute>? storedAttributes;
+                try
                 {
-                    continue;
+                    storedAttributes = await _databaseSqlMembershipSourcesRepository.GetDefaultSourceAttributesAsync();
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Failed to load admin-configured attribute labels; AI titles will use humanized attribute names.");
+                    return ((IReadOnlyDictionary<string, string>)labels, SqlFilterAttributeContextCache.UnresolvedDuration);
                 }
 
-                labels[attribute.Name.Trim()] = attribute.CustomLabel.Trim();
-            }
+                if (storedAttributes == null)
+                {
+                    return ((IReadOnlyDictionary<string, string>)labels, SqlFilterAttributeContextCache.UnresolvedDuration);
+                }
 
-            return labels;
+                foreach (var attribute in storedAttributes)
+                {
+                    if (string.IsNullOrWhiteSpace(attribute?.Name) || string.IsNullOrWhiteSpace(attribute.CustomLabel))
+                    {
+                        continue;
+                    }
+
+                    labels[attribute.Name.Trim()] = attribute.CustomLabel.Trim();
+                }
+
+                return ((IReadOnlyDictionary<string, string>)labels, SqlFilterAttributeContextCache.ResolvedDuration);
+            });
+        }
+
+        /// <summary>
+        /// Resolves the ADF mappings table, or null when it cannot be reached. Cached, because this
+        /// runs on a debounced editing path and the run id lookup is an ARM control-plane call.
+        /// </summary>
+        private async Task<string?> GetMappingsTableNameAsync()
+        {
+            return await _cache.GetMappingsTableNameAsync(async () =>
+            {
+                try
+                {
+                    var adfRunId = await _dataFactoryRepository.GetMostRecentSucceededRunIdAsync();
+                    if (string.IsNullOrWhiteSpace(adfRunId))
+                    {
+                        _logger.LogWarning("No succeeded ADF run was found; AI titles will not describe coded attribute values.");
+                        return (null, SqlFilterAttributeContextCache.UnresolvedDuration);
+                    }
+
+                    var tableName = adfRunId.Replace("-", string.Empty);
+
+                    if (!await _sqlMembershipRepository.CheckIfMappingsTableExistsAsync(tableName))
+                    {
+                        _logger.LogWarning("ADF mappings table {TableName} does not exist; AI titles will not describe coded attribute values.", tableName);
+                        return (null, SqlFilterAttributeContextCache.UnresolvedDuration);
+                    }
+
+                    return (tableName, SqlFilterAttributeContextCache.ResolvedDuration);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Failed to resolve the ADF mappings table; AI titles will not describe coded attribute values.");
+                    return (null, SqlFilterAttributeContextCache.UnresolvedDuration);
+                }
+            });
         }
 
         private async Task<IReadOnlyDictionary<string, IReadOnlyDictionary<string, string>>> GetCodeDescriptionsAsync(
@@ -132,27 +173,9 @@ namespace Services
                 return resolved;
             }
 
-            string tableName;
-            try
+            var tableName = await GetMappingsTableNameAsync();
+            if (string.IsNullOrWhiteSpace(tableName))
             {
-                var adfRunId = await _dataFactoryRepository.GetMostRecentSucceededRunIdAsync();
-                if (string.IsNullOrWhiteSpace(adfRunId))
-                {
-                    _logger.LogWarning("No succeeded ADF run was found; AI titles will not describe coded attribute values.");
-                    return resolved;
-                }
-
-                tableName = adfRunId.Replace("-", string.Empty);
-
-                if (!await _sqlMembershipRepository.CheckIfMappingsTableExistsAsync(tableName))
-                {
-                    _logger.LogWarning("ADF mappings table {TableName} does not exist; AI titles will not describe coded attribute values.", tableName);
-                    return resolved;
-                }
-            }
-            catch (Exception ex)
-            {
-                _logger.LogWarning(ex, "Failed to resolve the ADF mappings table; AI titles will not describe coded attribute values.");
                 return resolved;
             }
 

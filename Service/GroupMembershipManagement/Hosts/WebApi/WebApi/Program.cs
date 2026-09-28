@@ -519,7 +519,10 @@ namespace WebApi
             });
 
             // Supplies attribute labels and coded-value meanings to AI title generation so titles
-            // do not misinterpret organization-specific HR codes.
+            // do not misinterpret organization-specific HR codes. The cache is a singleton because
+            // title generation runs on a debounced editing path and the lookups behind it are
+            // tenant-level and expensive.
+            builder.Services.AddSingleton<Services.SqlFilterAttributeContextCache>();
             builder.Services.AddScoped<ISqlFilterAttributeContextService, Services.SqlFilterAttributeContextService>();
 
             builder.Services.AddCopilotServices(builder.Configuration);

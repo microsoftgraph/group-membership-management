@@ -61,7 +61,8 @@ namespace WebApi.Tests
                 NullLogger<SqlFilterAttributeContextService>.Instance,
                 _sourcesRepository.Object,
                 _dataFactoryRepository.Object,
-                _sqlMembershipRepository.Object);
+                _sqlMembershipRepository.Object,
+                new SqlFilterAttributeContextCache());
         }
 
         [TestMethod]
@@ -221,6 +222,87 @@ namespace WebApi.Tests
 
             Assert.IsFalse(context.Contains(new string('x', 250)), "A mapping description must not be able to flood the prompt.");
             StringAssert.Contains(context, "...");
+        }
+
+        [TestMethod]
+        public async Task RepeatedRequests_ResolveTenantLookupsOnceAsync()
+        {
+            await _service.BuildAttributeContextAsync(new[] { ReportedFilter });
+            await _service.BuildAttributeContextAsync(new[] { ReportedFilter });
+            await _service.BuildAttributeContextAsync(new[] { "LocationArea_Code = 'US'" });
+
+            // Title generation re-runs on a debounce while a query is edited, so the ARM run id
+            // lookup and the admin label read must not repeat per request.
+            _dataFactoryRepository.Verify(x => x.GetMostRecentSucceededRunIdAsync(), Times.Once);
+            _sqlMembershipRepository.Verify(x => x.CheckIfMappingsTableExistsAsync(It.IsAny<string>()), Times.Once);
+            _sourcesRepository.Verify(x => x.GetDefaultSourceAttributesAsync(), Times.Once);
+        }
+
+        [TestMethod]
+        public async Task SeparateScopes_ShareTheCachedTenantLookupsAsync()
+        {
+            // The service is scoped and the cache is a singleton, so a second request getting its
+            // own service instance must still reuse the resolved table.
+            var cache = new SqlFilterAttributeContextCache();
+            var first = BuildService(cache);
+            var second = BuildService(cache);
+
+            await first.BuildAttributeContextAsync(new[] { ReportedFilter });
+            var context = await second.BuildAttributeContextAsync(new[] { ReportedFilter });
+
+            _dataFactoryRepository.Verify(x => x.GetMostRecentSucceededRunIdAsync(), Times.Once);
+            StringAssert.Contains(context, "'CA' means \"Canada\"");
+        }
+
+        [TestMethod]
+        public async Task ConcurrentRequests_ResolveTheRunIdOnceAsync()
+        {
+            var gate = new TaskCompletionSource();
+            _dataFactoryRepository
+                .Setup(x => x.GetMostRecentSucceededRunIdAsync())
+                .Returns(async () =>
+                {
+                    await gate.Task;
+                    return AdfRunId;
+                });
+
+            var cache = new SqlFilterAttributeContextCache();
+            var requests = Enumerable.Range(0, 8)
+                .Select(_ => BuildService(cache).BuildAttributeContextAsync(new[] { ReportedFilter }))
+                .ToList();
+
+            gate.SetResult();
+            var contexts = await Task.WhenAll(requests);
+
+            _dataFactoryRepository.Verify(x => x.GetMostRecentSucceededRunIdAsync(), Times.Once);
+            Assert.IsTrue(contexts.All(context => context.Contains("'CA' means \"Canada\"")));
+        }
+
+        [TestMethod]
+        public async Task UnresolvedMappingsTable_IsNotCachedForTheResolvedDurationAsync()
+        {
+            // A transient failure must not blank coded values for the full resolved lifetime.
+            Assert.IsTrue(
+                SqlFilterAttributeContextCache.UnresolvedDuration < SqlFilterAttributeContextCache.ResolvedDuration,
+                "An unresolved lookup must expire sooner than a resolved one.");
+
+            _sqlMembershipRepository
+                .Setup(x => x.CheckIfMappingsTableExistsAsync(It.IsAny<string>()))
+                .ThrowsAsync(new InvalidOperationException("SQL is unreachable."));
+
+            var context = await _service.BuildAttributeContextAsync(new[] { ReportedFilter });
+
+            StringAssert.Contains(context, "'CA' has no known meaning");
+        }
+
+        private ISqlFilterAttributeContextService BuildService(SqlFilterAttributeContextCache cache)
+        {
+            return new SqlFilterAttributeContextService(
+                NullLogger<SqlFilterAttributeContextService>.Instance,
+                _sourcesRepository.Object,
+                _dataFactoryRepository.Object,
+                _sqlMembershipRepository.Object,
+                cache);
         }
 
         /// <summary>
