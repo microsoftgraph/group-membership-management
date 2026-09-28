@@ -3,6 +3,8 @@
 
 using MembershipAggregator.Services.Entities;
 using Microsoft.ApplicationInsights;
+using Microsoft.ApplicationInsights.Channel;
+using Microsoft.ApplicationInsights.DataContracts;
 using Microsoft.ApplicationInsights.Extensibility;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
@@ -17,6 +19,7 @@ using Repositories.Mocks;
 using Services.Contracts;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
 
 namespace Services.Tests
@@ -34,11 +37,26 @@ namespace Services.Tests
 
         private SyncJob _syncJob = null!;
         private Guid _targetGroupId;
+        private CapturingTelemetryChannel _telemetryChannel = null!;
+
+        private sealed class CapturingTelemetryChannel : ITelemetryChannel
+        {
+            public List<ITelemetry> Items { get; } = new List<ITelemetry>();
+            public bool? DeveloperMode { get; set; }
+            public string EndpointAddress { get; set; } = string.Empty;
+            public void Send(ITelemetry item) => Items.Add(item);
+            public void Flush() { }
+            public void Dispose() { }
+        }
+
+        private int ThresholdViolationEventCount() =>
+            _telemetryChannel.Items.OfType<EventTelemetry>().Count(e => e.Name == "ThresholdViolation");
 
         [TestInitialize]
         public void Setup()
         {
             _targetGroupId = Guid.NewGuid();
+            _telemetryChannel = new CapturingTelemetryChannel();
 
             _syncJob = new SyncJob
             {
@@ -82,7 +100,7 @@ namespace Services.Tests
                 _dryRunValue.Object,
                 _notificationRepository.Object,
                 _notificationsQueueRepository.Object,
-                new TelemetryClient(new TelemetryConfiguration()));
+                new TelemetryClient(new TelemetryConfiguration { TelemetryChannel = _telemetryChannel, ConnectionString = "InstrumentationKey=00000000-0000-0000-0000-000000000000" }));
         }
 
         /// <summary>
@@ -251,6 +269,34 @@ namespace Services.Tests
                     membersToRemoveCount: membersToRemove));
 
             Assert.AreEqual(expectedStatus, response.MembershipDeltaStatus);
+        }
+
+        [DataTestMethod]
+        [DataRow(false, false, 10, MembershipDeltaStatus.ThresholdExceeded, 1)]
+        [DataRow(true, false, 10, MembershipDeltaStatus.Ok, 0)]
+        [DataRow(false, true, 0, MembershipDeltaStatus.Ok, 0)]
+        public async Task CalculateDifferenceAsync_TracksThresholdViolationOnlyWhenNotBypassed(
+            bool ignoreThresholdOnce,
+            bool allowEmptyDestination,
+            int destinationMembers,
+            MembershipDeltaStatus expectedStatus,
+            int expectedViolationEvents)
+        {
+            _syncJob.ThresholdPercentageForAdditions = 10;
+            _syncJob.ThresholdPercentageForRemovals = -1;
+            _syncJob.IgnoreThresholdOnce = ignoreThresholdOnce;
+            _syncJob.AllowEmptyDestination = allowEmptyDestination;
+
+            var response = await CreateService().CalculateDifferenceAsync(
+                BuildSourceMembership(),
+                new MembershipDeltaSummary(
+                    sourceMemberCount: destinationMembers + 50,
+                    destinationMemberCount: destinationMembers,
+                    membersToAddCount: 50,
+                    membersToRemoveCount: 0));
+
+            Assert.AreEqual(expectedStatus, response.MembershipDeltaStatus);
+            Assert.AreEqual(expectedViolationEvents, ThresholdViolationEventCount());
         }
 
         [TestMethod]

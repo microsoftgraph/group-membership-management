@@ -121,7 +121,6 @@ namespace Services
                 if (threshold.IsThresholdExceeded)
                 {
                     deltaResponse.MembershipDeltaStatus = job.IgnoreThresholdOnce ? MembershipDeltaStatus.Ok : MembershipDeltaStatus.ThresholdExceeded;
-                    TrackThresholdViolationEvent(groupId);
 
                     if (job.IgnoreThresholdOnce)
                         await LogIgnoreThresholdOnceAsync(job, sourceMembership.RunId);
@@ -134,6 +133,8 @@ namespace Services
                     }
                     else
                     {
+                        // Only report violations that actually block the sync; bypassed ones are not violations.
+                        TrackThresholdViolationEvent(groupId);
                         await SendThresholdNotificationAsync(threshold, job, groupId, sourceMembership.RunId);
                     }
 
