@@ -51,6 +51,14 @@ $sharedScriptsDirectory = Join-Path $PSScriptRoot "../Scripts"
 . (Join-Path $sharedScriptsDirectory 'ReusableModules/DeploymentLogging.ps1')
 . (Join-Path $sharedScriptsDirectory 'FunctionAppCompat.ps1')
 . (Join-Path $sharedScriptsDirectory 'GMM-WebAPI-Operations.ps1')
+$aksScriptsDirectory = Join-Path $sharedScriptsDirectory 'AKS'
+. (Join-Path $aksScriptsDirectory 'Invoke-AzCli.ps1')
+. (Join-Path $aksScriptsDirectory 'Connect-AksCluster.ps1')
+. (Join-Path $aksScriptsDirectory 'Set-AksResources.ps1')
+. (Join-Path $aksScriptsDirectory 'Test-AksWorkloadDependencies.ps1')
+. (Join-Path $aksScriptsDirectory 'Stop-AksWorkloads.ps1')
+. (Join-Path $aksScriptsDirectory 'Start-AksWorkloads.ps1')
+. (Join-Path $aksScriptsDirectory 'Set-AksWorkload.ps1')
 
 function Set-PostDeploymentUpdates {
     [CmdletBinding()]
@@ -788,39 +796,6 @@ function Set-ComputeResources {
         -BaseDelaySeconds 2
 
     Write-DeployPhase -Name 'Creating Compute Resources' -Event End
-}
-
-function Set-AksResources {
-    param (
-        [Parameter(Mandatory = $true)]
-        [string]$SolutionAbbreviation,
-        [Parameter(Mandatory = $true)]
-        [string]$EnvironmentAbbreviation,
-        [Parameter(Mandatory = $true)]
-        [string]$SubscriptionId,
-        [Parameter(Mandatory = $true)]
-        [string]$AksTemplateDirectoryPath,
-        [Parameter(Mandatory = $true)]
-        [Hashtable]$ParameterHashtable,
-        [Parameter(Mandatory = $false)]
-        [Hashtable]$AdditionalParameters = @{ parameters = @{} }
-    )
-
-    Write-DeployLog -Level Info -Message "Creating AKS resources"
-    $computeResourceGroup = "$SolutionAbbreviation-compute-$EnvironmentAbbreviation"
-    $templateFilePath = "$AksTemplateDirectoryPath/aksResources.json"
-    Invoke-WithRetry `
-        -Operation {
-            Start-ResourceDeployment `
-                -ResourceGroupName $computeResourceGroup `
-                -SubscriptionId $SubscriptionId `
-                -TemplateFilePath $templateFilePath `
-                -ParameterHashtable $ParameterHashtable `
-                -AdditionalParameters $AdditionalParameters
-        } `
-        -OperationName "Create AKS resources" `
-        -MaxAttempts $maxRetriesForDeploymentOperations `
-        -BaseDelaySeconds 2
 }
 
 function Set-ADFResources {
@@ -2183,7 +2158,8 @@ function Start-FunctionApps {
     foreach ($functionApp in $functionApps) {
         if ($functionApp.Name -match "JobTrigger") {
             $jobTriggerApp = $functionApp
-            Write-DeployLog -Level Info -Message "Skipping $($functionApp.Name) (will start last)"
+            $jobTriggerDisposition = if ($SkipJobTrigger) { 'will be stopped - it runs on the cluster here' } else { 'will start last' }
+            Write-DeployLog -Level Info -Message "Skipping $($functionApp.Name) ($jobTriggerDisposition)"
             continue
         }
         Write-DeployLog -Level Info -Message "Starting function app $($functionApp.Name)"
@@ -2193,7 +2169,15 @@ function Start-FunctionApps {
             -MaxAttempts 3 -BaseDelaySeconds 2
     }
 
-    if ($null -ne $jobTriggerApp -and -not $SkipJobTrigger) {
+    if ($null -ne $jobTriggerApp -and $SkipJobTrigger) {
+        Write-DeployLog -Level Info -Message "Stopping $($jobTriggerApp.Name) - it runs on the cluster in this environment and must not dispatch from the function app as well."
+        $jobTriggerAppName = $jobTriggerApp.Name
+        Invoke-WithRetry `
+            -Operation { Stop-FunctionAppCompat -ResourceGroupName $ResourceGroupName -Name $jobTriggerAppName } `
+            -OperationName "Stop $jobTriggerAppName" `
+            -MaxAttempts 3 -BaseDelaySeconds 2
+    }
+    elseif ($null -ne $jobTriggerApp) {
         Write-DeployLog -Level Info -Message "Waiting $JobTriggerDelaySeconds seconds before starting JobTrigger..."
         Start-Sleep -Seconds $JobTriggerDelaySeconds
         Write-DeployLog -Level Info -Message "Starting $($jobTriggerApp.Name)"
@@ -3445,6 +3429,11 @@ function Set-PublishUICode {
 }
 
 function Test-ScriptDependencies {
+    param (
+        [Parameter(Mandatory = $false)]
+        [bool]$DeployAks = $false
+    )
+
     Write-DeployPhase -Name 'Verifying Dependencies' -Event Begin
     $dependenciesPresent = $true
     $scriptsDirectory = Split-Path $PSScriptRoot -Parent
@@ -3524,6 +3513,10 @@ function Test-ScriptDependencies {
         Write-DeployLog -Level Success -Message "swa version $desiredVersion installed successfully."
     } else {
         throw "Failed to install swa version $desiredVersion."
+    }
+
+    if ($DeployAks -eq $true) {
+        Test-AksWorkloadDependencies
     }
 
     # Required paths and files
@@ -3631,10 +3624,12 @@ function Initialize-ScriptDependencies {
         [Parameter(Mandatory = $false)]
         [bool]$AssertUserPermissions = $true,
         [Parameter(Mandatory = $false)]
-        [bool]$SkipAuthentication = $false
+        [bool]$SkipAuthentication = $false,
+        [Parameter(Mandatory = $false)]
+        [bool]$DeployAks = $false
     )
 
-    Test-ScriptDependencies
+    Test-ScriptDependencies -DeployAks $DeployAks
 
     if ($SkipModuleInstallation -eq $true) {
         Write-DeployLog -Level Warn -Message "Skipping module installation as per configuration [SkipModuleInstallation = $($SkipModuleInstallation)]."
@@ -3684,6 +3679,22 @@ function Initialize-ScriptDependencies {
         Set-Subscription `
                 -ScriptsDirectory $ScriptsDirectory `
                 -SubscriptionId $SubscriptionId
+
+        if ($DeployAks -eq $true) {
+            $cliAccount = Invoke-AzCli -AllowFailure `
+                -OperationName 'Check the Azure CLI sign-in' `
+                -Arguments @('account', 'show', '--only-show-errors')
+
+            if ($cliAccount.ExitCode -ne 0) {
+                Write-DeployLog -Level Info -Message "Connecting to the Azure CLI for the AKS workload deployment..."
+                $loginArguments = @('login', '--only-show-errors')
+                if ($UseDeviceAuthentication -eq $true) { $loginArguments += '--use-device-code' }
+                Invoke-AzCli -OperationName 'Azure CLI sign-in' -Arguments $loginArguments | Out-Null
+            }
+
+            Invoke-AzCli -OperationName 'Select the Azure CLI subscription' `
+                -Arguments @('account', 'set', '--subscription', $SubscriptionId, '--only-show-errors') | Out-Null
+        }
 
         Write-DeployPhase -Name 'Authenticating' -Event End
 
@@ -3925,6 +3936,7 @@ function Deploy-Resources {
     $skipModuleInstallation                         = $parameterHashtable.skipModuleInstallation.value
     $skipNetworkingDeployment                       = Get-Default -Value $ParameterHashtable['skipNetworkingDeployment'].value -Default $true
     $skipAuthentication                             = Get-Default -Value $ParameterHashtable['skipAuthentication'].value -Default $false
+    $deployAks                                      = Get-Default -Value $ParameterHashtable['deployAks'].value -Default $false
     $enableFunctionAuthentication                   = Get-Default -Value $ParameterHashtable['enableFunctionAuthentication'].value -Default $false
 
     $setRBACPermissions             = Get-Default -Value $ParameterHashtable['setRBACPermissions'].value      -Default $false
@@ -3953,7 +3965,8 @@ function Deploy-Resources {
         -SkipModuleInstallation $skipModuleInstallation `
         -SkipPrivilegedDirectoryActions $skipPrivilegedDirectoryActions `
         -AssertUserPermissions $assertUserPermissions `
-        -SkipAuthentication $skipAuthentication
+        -SkipAuthentication $skipAuthentication `
+        -DeployAks $deployAks
 
     if (!$skipResourceProvidersCheck) {
         Write-DeployPhase -Name 'Registering Resource Providers' -Event Begin
@@ -3979,6 +3992,17 @@ function Deploy-Resources {
     if(!$isInitialDeployment) {
 
         . "$scriptsDirectory/GMM-WebAPI-Operations.ps1"
+
+        if ($deployAks -eq $true) {
+            Stop-AksWorkloads `
+                -SolutionAbbreviation    $solutionAbbreviation `
+                -EnvironmentAbbreviation $environmentAbbreviation `
+                -DeploymentPackagePath   $templateFilesDirectory
+        }
+        else {
+            Write-DeployLog -Level Info -Message "Skipping the AKS workload stop as per configuration [deployAks = $deployAks]. Standing a running workload down is a manual step before this flag is turned off."
+        }
+
         if($resetGMMType -eq "Credentials" -or $resetGMMType -eq "ServicePrincipal") {
             Write-DeployLog -Level Info -Message "Stopping GMM via WebApi Stop endpoint before deployment..."
             Invoke-GMMOperation -OperationName "Stop" -AuthMethod $resetGMMType `
@@ -4055,7 +4079,8 @@ function Deploy-Resources {
             -SolutionAbbreviation $solutionAbbreviation `
             -EnvironmentAbbreviation $environmentAbbreviation `
             -ConnectionString $connectionString `
-            -ConnectionStringADF $connectionStringADF
+            -ConnectionStringADF $connectionStringADF `
+            -DeployAks $deployAks
     }
 
     if (($true -eq $setRBACPermissions) -and ($false -eq $skipRBACPermissions)) {
@@ -4083,6 +4108,16 @@ function Deploy-Resources {
     }
     else {
         Write-DeployLog -Level Warn -Message "Skipping function app code deployment as per configuration [skipFunctionAppCodeDeployment = $skipFunctionAppCodeDeployment]."
+    }
+
+    if ($deployAks -eq $true) {
+        Set-AksWorkload `
+            -SolutionAbbreviation    $solutionAbbreviation `
+            -EnvironmentAbbreviation $environmentAbbreviation `
+            -DeploymentPackagePath   $templateFilesDirectory
+    }
+    else {
+        Write-DeployLog -Level Info -Message "Skipping the AKS workload deployment as per configuration [deployAks = $deployAks]."
     }
 
     # Configure web apps
@@ -4149,10 +4184,22 @@ function Deploy-Resources {
                 -SolutionAbbreviation $solutionAbbreviation `
                 -EnvironmentAbbreviation $environmentAbbreviation
         }
-        Write-DeployLog -Level Info -Message "Starting all remaining function apps..."
-        Start-FunctionApps -ResourceGroupName $computeResourceGroup
+        if ($deployAks -eq $true) {
+            Write-DeployLog -Level Info -Message "Starting all remaining function apps (JobTrigger EXCLUDED - it runs on AKS in this environment [deployAks = true])..."
+        }
+        else {
+            Write-DeployLog -Level Info -Message "Starting all remaining function apps..."
+        }
+        Start-FunctionApps -ResourceGroupName $computeResourceGroup -SkipJobTrigger $deployAks
     } elseif ($startFunctions) {
-        Start-FunctionApps -ResourceGroupName $computeResourceGroup
+        Start-FunctionApps -ResourceGroupName $computeResourceGroup -SkipJobTrigger $deployAks
+    }
+
+    if ($deployAks -eq $true) {
+        Start-AksWorkloads `
+            -SolutionAbbreviation    $solutionAbbreviation `
+            -EnvironmentAbbreviation $environmentAbbreviation `
+            -DeploymentPackagePath   $templateFilesDirectory
     }
 
     Write-DeployPhase -Name 'Deployment Complete' -Event Begin

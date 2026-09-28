@@ -158,6 +158,23 @@ Before deploying GMM, you must create a Microsoft Entra ID security group that w
 
 > **Note:** The deploying user should be a member of this group to ensure they can access the SQL databases during and after deployment.
 
+#### Create an AKS Administrators Security Group
+
+Only required if you are deploying the optional AKS cluster (`deployAks` set to `true`). Skip this if you are not.
+
+Members of this group become **Kubernetes cluster administrators**. The cluster has local (non-Entra) accounts disabled, so this group is the only way in — if it is empty or wrong, nobody can administer the cluster.
+
+1. Navigate to the [Azure Portal](https://portal.azure.com) and go to **Microsoft Entra ID**.
+2. Click on **Groups** in the left menu.
+3. Click **+ New group**.
+4. Set **Group type** to **Security**.
+5. Enter a **Group name** (e.g., `GMM AKS Admins`).
+6. Add the users who should have cluster administrator access as **Members**.
+7. Click **Create**.
+8. After creation, open the group and copy the **Object ID** - you will need this for the `aksAdministratorsGroupId` parameter.
+
+You may reuse an existing group, including the SQL administrators group, by supplying its Object ID. The deployment will not choose one for you: `aksAdministratorsGroupId` has no default and the deployment fails without it.
+
 ---
 
 ### Configuring Parameters
@@ -248,6 +265,14 @@ This parameter specifies the Microsoft Entra ID security group that will be gran
 - `sqlAdministratorsGroupId` - The Object ID of the security group
 
 Members of this group will have full administrative privileges on the GMM SQL databases. The SQL Server's Microsoft Entra admin login label is derived automatically from this Object ID, so the group's display name does not need to be supplied. See [Create a SQL Administrators Security Group](#create-a-sql-administrators-security-group) for instructions on creating this group.
+
+#### `aksAdministratorsGroupId`
+
+Required only when `deployAks` is `true`. Specifies the Microsoft Entra ID security group whose members become Kubernetes cluster administrators.
+
+- `aksAdministratorsGroupId` - The Object ID of the security group
+
+The cluster runs with local accounts disabled, so every administrative login is authenticated through Microsoft Entra ID and authorized through this group. There is no default and no fallback to another group, so the deployment fails if it is not supplied. See [Create an AKS Administrators Security Group](#create-an-aks-administrators-security-group) for instructions on creating this group.
 
 ---
 
