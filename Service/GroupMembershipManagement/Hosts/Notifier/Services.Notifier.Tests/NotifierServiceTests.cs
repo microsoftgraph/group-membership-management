@@ -14,6 +14,7 @@ using Microsoft.Graph;
 using Microsoft.Kiota.Abstractions;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Models;
+using Models.Entities;
 using Models.Notifications;
 using Models.ThresholdNotifications;
 using Moq;
@@ -197,14 +198,81 @@ namespace Services.Notifier.Tests
                 _gmmResources.Object,
                 _serviceBusQueueRepository.Object,
                 new MockDestinationResolver(_groupsRepository.Object, _channelsRepository.Object),
+                _channelsRepository.Object,
                 _settingsRepository.Object,
                 _telemetryClient);
         }
 
+        private NotifierService CreateNotifierServiceWithChannelRepo(IMailConfig mailConfig, ITeamsChannelRepository teamsChannelRepository)
+        {
+            return new NotifierService(NullLogger<NotifierService>.Instance,
+                _mailRepository.Object,
+                mailConfig,
+                _mailAddresses.Object,
+                _localizationRepository,
+                _notificationRepository.Object,
+                _graphGroupRepository.Object,
+                _notificationTypesRepository.Object,
+                _jobNotificationRepository.Object,
+                _thresholdConfig.Object,
+                _gmmResources.Object,
+                _serviceBusQueueRepository.Object,
+                new MockDestinationResolver(_groupsRepository.Object, _channelsRepository.Object),
+                _channelsRepository.Object,
+                _settingsRepository.Object,
+                _telemetryClient,
+                teamsChannelRepository);
+        }
+
+        [TestMethod]
+        public async Task SendThresholdEmail_TeamsChannel_UsesChannelOwners_WhenTheyHaveMail()
+        {
+            var channelRepo = new Mock<ITeamsChannelRepository>();
+            channelRepo.Setup(x => x.GetChannelOwnersAsync(It.IsAny<AzureADTeamsChannel>(), It.IsAny<Guid?>()))
+                .ReturnsAsync(new List<AzureADUser> { new AzureADUser { Mail = "channelowner@email.com" } });
+            channelRepo.Setup(x => x.GetTeamsChannelNameAsync(It.IsAny<AzureADTeamsChannel>()))
+                .ReturnsAsync("General");
+            _channelsRepository.Setup(x => x.GetChannelUsingSyncJobIdAsync(It.IsAny<Guid>()))
+                .ReturnsAsync(new Channel { GroupId = Guid.NewGuid(), ChannelId = "19:abc@thread.tacv2" });
+
+            EmailMessage captured = null;
+            _mailRepository.Setup(x => x.SendMailAsync(It.IsAny<EmailMessage>(), null))
+                .Callback<EmailMessage, Guid?>((m, _) => captured = m);
+
+            var service = CreateNotifierServiceWithChannelRepo(_mailConfig, channelRepo.Object);
+            await service.SendThresholdEmailAsync(_notification);
+
+            Assert.IsNotNull(captured);
+            Assert.AreEqual("channelowner@email.com", captured.ToEmailAddresses);
+        }
+
+        [TestMethod]
+        public async Task SendThresholdEmail_TeamsChannel_FallsBackToTeamOwners_WhenChannelOwnersHaveNoMail()
+        {
+            var channelRepo = new Mock<ITeamsChannelRepository>();
+            // Channel owners exist but none have a resolvable mail address -> must fall back to Team owners.
+            channelRepo.Setup(x => x.GetChannelOwnersAsync(It.IsAny<AzureADTeamsChannel>(), It.IsAny<Guid?>()))
+                .ReturnsAsync(new List<AzureADUser> { new AzureADUser { Mail = null }, new AzureADUser { Mail = "  " } });
+            channelRepo.Setup(x => x.GetTeamsChannelNameAsync(It.IsAny<AzureADTeamsChannel>()))
+                .ReturnsAsync("General");
+            _channelsRepository.Setup(x => x.GetChannelUsingSyncJobIdAsync(It.IsAny<Guid>()))
+                .ReturnsAsync(new Channel { GroupId = Guid.NewGuid(), ChannelId = "19:abc@thread.tacv2" });
+
+            EmailMessage captured = null;
+            _mailRepository.Setup(x => x.SendMailAsync(It.IsAny<EmailMessage>(), null))
+                .Callback<EmailMessage, Guid?>((m, _) => captured = m);
+
+            var service = CreateNotifierServiceWithChannelRepo(_mailConfig, channelRepo.Object);
+            await service.SendThresholdEmailAsync(_notification);
+
+            Assert.IsNotNull(captured);
+            // Team (group) owners have mail, so recipients fall back to them rather than an empty string.
+            Assert.AreEqual("owner_0@email.com;owner_1@email.com", captured.ToEmailAddresses);
+        }
+
         [TestInitialize]
         public void SetupTest()
-        {
-            _graphGroupRepository = new Mock<IGraphGroupRepository>();
+        {            _graphGroupRepository = new Mock<IGraphGroupRepository>();
             _mailRepository = new Mock<IMailRepository>();
             _notificationRepository = new Mock<INotificationRepository>();
             _mailAddresses = new Mock<IEmailSenderRecipient>();
@@ -659,6 +727,7 @@ namespace Services.Notifier.Tests
                                     _gmmResources.Object,
                                     _serviceBusQueueRepository.Object,
                                     new MockDestinationResolver(_groupsRepository.Object, _channelsRepository.Object),
+                                    _channelsRepository.Object,
                                     _settingsRepository.Object,
                                     _telemetryClient
                                     );

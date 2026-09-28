@@ -42,7 +42,9 @@ namespace Services.Notifier
         private readonly IGMMResources _gmmResources;
         private readonly IServiceBusQueueRepository _serviceBusQueueRepository;
         private readonly IDestinationResolver _destinationResolver;
+        private readonly IDatabaseChannelsRepository _databaseChannelsRepository;
         private readonly IDatabaseSettingsRepository _databaseSettingsRepository;
+        private readonly ITeamsChannelRepository _teamsChannelRepository;
 
         public NotifierService(
             ILogger<NotifierService> logger,
@@ -58,8 +60,10 @@ namespace Services.Notifier
             IGMMResources gmmResources,
             IServiceBusQueueRepository serviceBusQueueRepository,
             IDestinationResolver destinationResolver,
+            IDatabaseChannelsRepository databaseChannelsRepository,
             IDatabaseSettingsRepository databaseSettingsRepository,
-            TelemetryClient telemetryClient)
+            TelemetryClient telemetryClient,
+            ITeamsChannelRepository teamsChannelRepository = null)
         {
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _mailRepository = mailRepository ?? throw new ArgumentNullException(nameof(mailRepository));
@@ -74,9 +78,84 @@ namespace Services.Notifier
             _gmmResources = gmmResources ?? throw new ArgumentException(nameof(gmmResources));
             _serviceBusQueueRepository = serviceBusQueueRepository ?? throw new ArgumentNullException(nameof(_serviceBusQueueRepository));
             _destinationResolver = destinationResolver ?? throw new ArgumentNullException(nameof(destinationResolver));
+            _databaseChannelsRepository = databaseChannelsRepository ?? throw new ArgumentNullException(nameof(databaseChannelsRepository));
             _databaseSettingsRepository = databaseSettingsRepository ?? throw new ArgumentNullException(nameof(databaseSettingsRepository));
             _telemetryClient = telemetryClient ?? throw new ArgumentNullException(nameof(telemetryClient));
+            _teamsChannelRepository = teamsChannelRepository;
         }
+
+        // Resolves the notification recipients and destination label for a job based on its destination
+        // type. The presence of a TeamsChannel row (GetChannelUsingSyncJobIdAsync) is the destination-type
+        // discriminator: a channel means a TeamsChannelMembership destination, otherwise it is a plain group.
+        //   - Group destination (US default): recipients are the group owners; label is the group name.
+        //   - TeamsChannel destination (US5, FR-014/FR-015): recipients are the shared channel owners, which
+        //     REPLACE the parent-Team owners (Team owners are used only as a fallback when channel owners
+        //     cannot be resolved or none have a resolvable mail); label renders as "TeamName: ChannelName".
+        // Pass includeLabel=false for recipient-only callers to skip the (unused) label lookups.
+        private async Task<(string recipientEmails, string destinationLabel)> ResolveRecipientsAndLabelAsync(
+            Guid syncJobId, Guid targetOfficeGroupId, bool includeLabel = true)
+        {
+            var channel = _teamsChannelRepository == null
+                ? null
+                : await _databaseChannelsRepository.GetChannelUsingSyncJobIdAsync(syncJobId);
+
+            if (channel == null)
+            {
+                // Group destination: notify the group owners; the label is the group name.
+                var groupOwners = await _graphGroupRepository.GetGroupOwnersAsync(targetOfficeGroupId);
+                var groupLabel = includeLabel ? await _graphGroupRepository.GetGroupNameAsync(targetOfficeGroupId) : null;
+                return (BuildRecipientEmails(groupOwners), groupLabel);
+            }
+
+            // TeamsChannel destination: notify the shared channel owners, falling back to Team (group) owners
+            // when channel owners are unavailable OR none of them have a resolvable mail address.
+            var teamsChannel = new AzureADTeamsChannel { ObjectId = channel.GroupId, ChannelId = channel.ChannelId };
+
+            List<AzureADUser> channelOwners = null;
+            try
+            {
+                channelOwners = await _teamsChannelRepository.GetChannelOwnersAsync(teamsChannel, null);
+            }
+            catch (Exception ex)
+            {
+                // Degrade gracefully: a throwing repository (e.g. the disabled-mode no-op) or a
+                // transient Graph failure must not fail notification processing — fall back to Team owners.
+                _logger.LogInformation($"Failed to resolve channel owners for group {channel.GroupId}, channel {channel.ChannelId}; falling back to Team owners: {ex.Message}");
+            }
+
+            var emails = BuildRecipientEmails(channelOwners);
+            if (string.IsNullOrWhiteSpace(emails))
+            {
+                _logger.LogInformation($"No mailable channel owners resolved for group {channel.GroupId}, channel {channel.ChannelId}; falling back to Team owners.");
+                var teamOwners = await _graphGroupRepository.GetGroupOwnersAsync(targetOfficeGroupId);
+                emails = BuildRecipientEmails(teamOwners);
+            }
+
+            if (!includeLabel)
+                return (emails, null);
+
+            var groupName = await _graphGroupRepository.GetGroupNameAsync(targetOfficeGroupId);
+            var teamName = string.IsNullOrWhiteSpace(groupName) ? channel.GroupId.ToString() : groupName;
+
+            string channelName = null;
+            try
+            {
+                channelName = await _teamsChannelRepository.GetTeamsChannelNameAsync(teamsChannel);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogInformation($"Failed to resolve channel name for group {channel.GroupId}, channel {channel.ChannelId}: {ex.Message}");
+            }
+            if (string.IsNullOrWhiteSpace(channelName))
+                channelName = channel.ChannelId;
+
+            return (emails, $"{teamName}: {channelName}");
+        }
+
+        private static string BuildRecipientEmails(IEnumerable<AzureADUser> users) =>
+            users == null
+                ? string.Empty
+                : string.Join(";", users.Where(x => !string.IsNullOrWhiteSpace(x.Mail)).Select(x => x.Mail));
 
         public async Task<Guid> GetGroupIdAsync(SyncJob syncJob)
         {
@@ -106,9 +185,9 @@ namespace Services.Notifier
             }
             _logger.SendingEmail();
 
-            var groupName = await _graphGroupRepository.GetGroupNameAsync(notification.TargetOfficeGroupId);
-            var owners = await _graphGroupRepository.GetGroupOwnersAsync(notification.TargetOfficeGroupId);
-            var ownerEmails = string.Join(";", owners.Where(x => !string.IsNullOrWhiteSpace(x.Mail)).Select(x => x.Mail));
+            // Recipients + destination label depend on the destination type (group vs TeamsChannel).
+            var (ownerEmails, groupName) = await ResolveRecipientsAndLabelAsync(
+                notification.SyncJobId, notification.TargetOfficeGroupId);
 
             var cardState = notification.CardState;
 
@@ -277,8 +356,8 @@ namespace Services.Notifier
 
             if (!NotificationConstants.DestinationNotExistContent.Equals(contentTemplate, StringComparison.InvariantCultureIgnoreCase))
             {
-                var owners = await _graphGroupRepository.GetGroupOwnersAsync(groupId);
-                ownerEmails = string.Join(";", owners.Where(x => !string.IsNullOrWhiteSpace(x.Mail)).Select(x => x.Mail));
+                // Recipients depend on the destination type (group owners vs TeamsChannel owners).
+                (ownerEmails, _) = await ResolveRecipientsAndLabelAsync(job.Id, groupId, includeLabel: false);
             }
 
             var message = new EmailMessage

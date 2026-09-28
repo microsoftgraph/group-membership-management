@@ -1,22 +1,27 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
+using Azure.Core;
 using Azure.Identity;
 using Azure.Messaging.ServiceBus;
 using Common.DependencyInjection;
 using DIConcreteTypes;
 using Hosts.FunctionBase;
+using Microsoft.ApplicationInsights;
 using Microsoft.Azure.Functions.Worker;
 using Microsoft.Azure.Functions.Worker.ApplicationInsights;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using Microsoft.Graph;
 using Repositories.Contracts;
 using Repositories.Contracts.InjectConfig;
 using Repositories.EntityFramework;
 using Repositories.GraphGroups;
 using Repositories.ServiceBusQueue;
+using Repositories.TeamsChannel;
 using Services.Notifier;
 using Services.Notifier.Contracts;
 using System;
@@ -94,6 +99,40 @@ namespace Hosts.Notifier
                         .AddScoped<IDatabaseSyncJobsRepository, DatabaseSyncJobsRepository>()
                         .AddScoped<IDeferredNotificationsRepository, DeferredNotificationsRepository>()
                         .AddScoped<INotifierService, NotifierService>();
+
+                    // US5: TeamsChannel notifications route to channel owners; register the Teams channel
+                    // repository (or a disabled no-op when the feature is off) mirroring the JobTrigger host.
+                    services.Configure<GraphCredentials>("TeamsGraphCredentials", configuration.GetSection("TeamsGraphCredentials"));
+                    services.AddTransient<ITeamsChannelRepository>(sp =>
+                    {
+                        var config = sp.GetRequiredService<IConfiguration>();
+                        var enableTeamsChannel = CommonServices.GetBoolSettingBase(config, "enableTeamsChannel", false);
+                        if (!enableTeamsChannel)
+                        {
+                            return new DisabledTeamsChannelRepository();
+                        }
+
+                        var telemetryClient = sp.GetRequiredService<TelemetryClient>();
+                        var teamsGraphCredentials = sp.GetService<IOptionsSnapshot<GraphCredentials>>().Get("TeamsGraphCredentials");
+                        var channelReadWriteApplicationPermissionGranted = CommonServices.GetBoolSettingBase(config, "TeamsChannel:IsChannelReadWriteApplicationPermissionGranted", false);
+
+                        TokenCredential graphTokenCredential;
+                        if (channelReadWriteApplicationPermissionGranted)
+                        {
+                            graphTokenCredential = FunctionAppDI.CreateAuthProviderFromSecret(teamsGraphCredentials);
+                        }
+                        else
+                        {
+                            teamsGraphCredentials.ServiceAccountUserName = config["teamsChannelServiceAccountUsername"];
+                            teamsGraphCredentials.ServiceAccountPassword = config["teamsChannelServiceAccountPassword"];
+                            graphTokenCredential = FunctionAppDI.CreateServiceAccountAuthProvider(teamsGraphCredentials);
+                        }
+
+                        var graphServiceClient = new GraphServiceClient(graphTokenCredential);
+                        var teamsChannelRepositoryLogger = sp.GetRequiredService<ILogger<TeamsChannelRepository>>();
+                        var loggerFactory = sp.GetRequiredService<ILoggerFactory>();
+                        return new TeamsChannelRepository(graphServiceClient, telemetryClient, teamsChannelRepositoryLogger, loggerFactory);
+                    });
 
                     services.AddSingleton<IServiceBusQueueRepository>(sp =>
                     {
