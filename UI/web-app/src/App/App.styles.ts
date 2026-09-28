@@ -26,6 +26,17 @@ export const getStyles = (props: IAppStyleProps): IAppStyles => {
         fontFamily: 'Segoe UI',
         backgroundColor: neutralLighter,
         minHeight: '100vh',
+        selectors: {
+          '[role="columnheader"].is-actionable, [role="columnheader"].is-actionable *': {
+            cursor: 'pointer',
+          },
+          '[role="columnheader"].ms-DetailsHeader-cellIsCheck, [role="columnheader"].ms-DetailsHeader-cellIsCheck *': {
+            cursor: 'pointer',
+          },
+          'th a, th a *, th button, th button *, th [role="button"], th [role="button"] *': {
+            cursor: 'pointer',
+          },
+        },
       },
       classNames.root,
       className,

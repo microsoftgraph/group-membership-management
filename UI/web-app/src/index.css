@@ -11,3 +11,17 @@ code {
   font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
     monospace;
 }
+
+/* Fluent UI panels render in a Layer outside the application root. */
+[role="columnheader"].is-actionable,
+[role="columnheader"].is-actionable *,
+[role="columnheader"].ms-DetailsHeader-cellIsCheck,
+[role="columnheader"].ms-DetailsHeader-cellIsCheck *,
+th a,
+th a *,
+th button,
+th button *,
+th [role="button"],
+th [role="button"] * {
+  cursor: pointer;
+}

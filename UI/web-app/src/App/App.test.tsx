@@ -3,7 +3,7 @@
 
 import React from 'react';
 import { screen, waitFor } from '@testing-library/react';
-import { initializeIcons } from '@fluentui/react';
+import { createTheme, initializeIcons } from '@fluentui/react';
 import { MemoryRouter } from 'react-router-dom';
 
 import { App } from './App';
@@ -17,9 +17,30 @@ import type { IGMMApi } from '../apis/IGMMApi';
 import { SqlMembershipSource } from '../models/SqlMembershipSource';
 import { SqlMembershipAttribute } from '../models/SqlMembershipAttribute';
 import { SettingKey } from '../models/SettingKey';
+import { getStyles } from './App.styles';
 
 beforeAll(() => {
   initializeIcons(undefined, { disableWarnings: true });
+});
+
+test('shows a pointer cursor only for interactive table headers and their content', () => {
+  const styles = getStyles({ theme: createTheme() });
+
+  expect(styles.root).toEqual(expect.arrayContaining([
+    expect.objectContaining({
+      selectors: {
+        '[role="columnheader"].is-actionable, [role="columnheader"].is-actionable *': {
+          cursor: 'pointer',
+        },
+        '[role="columnheader"].ms-DetailsHeader-cellIsCheck, [role="columnheader"].ms-DetailsHeader-cellIsCheck *': {
+          cursor: 'pointer',
+        },
+        'th a, th a *, th button, th button *, th [role="button"], th [role="button"] *': {
+          cursor: 'pointer',
+        },
+      },
+    }),
+  ]));
 });
 
 test('renders header after login', async () => {

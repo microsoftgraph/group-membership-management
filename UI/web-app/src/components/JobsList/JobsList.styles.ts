@@ -91,6 +91,9 @@ export const getStyles = (props: IJobsListStyleProps): IJobsListStyles => {
         '.ms-DetailsRow-fields': {
           paddingRight: '0',
         },
+        '.ms-DetailsRow, .ms-DetailsRow *': {
+          cursor: 'pointer',
+        },
       },
     },
     footer: {
