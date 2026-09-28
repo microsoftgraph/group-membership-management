@@ -212,6 +212,64 @@ namespace WebApi.Tests
             _notifications.Verify(x => x.SendSubmissionApprovedNotificationAsync(It.IsAny<SyncJob>(), It.IsAny<SyncJobChange>()), Times.Never);
         }
 
+        // ---------- Security regression: non-query sensitive-field changes must not be auto-approved ----------
+
+        [TestMethod]
+        public async Task Update_DestinationChangeWithoutQueryChange_GoesToPendingReviewNotAutoApproved()
+        {
+            // A patch that changes /Destination (but not /Query) could redirect the sync to a different group.
+            // Ownership above is authorized against the ORIGINAL group only, so this must go to human review and
+            // must NOT be auto-approved via the config-only fast path.
+            var patch = new JsonPatchDocument<SyncJobPatch>();
+            patch.Replace(x => x.Destination, "[{\"type\":\"GroupMembership\",\"value\":{\"objectId\":\"99999999-9999-9999-9999-999999999999\"}}]");
+
+            var response = await CreateHandler().ExecuteAsync(UpdateRequest(patch));
+
+            Assert.AreEqual(HttpStatusCode.OK, response.StatusCode);
+            Assert.AreEqual(SyncStatus.PendingReview.ToString(), _syncJob.Status,
+                "A destination change must be routed to human review, not auto-approved.");
+            Assert.AreEqual(0, _enqueued.Count, "A non-query field change must not be enqueued to the AutoApprover.");
+            Assert.IsFalse(_savedChanges.Any(c => c.ChangeReason == SyncJobChangeReason.UpdateAutoApproved.ToString()),
+                "A destination change must never be audited as UpdateAutoApproved.");
+            Assert.AreEqual(SyncJobChangeReason.Update.ToString(), _savedChanges.Single().ChangeReason);
+            _notifications.Verify(x => x.SendSubmissionApprovedNotificationAsync(It.IsAny<SyncJob>(), It.IsAny<SyncJobChange>()), Times.Never);
+        }
+
+        [TestMethod]
+        public async Task Update_TargetOfficeGroupIdChange_GoesToPendingReviewNotAutoApproved()
+        {
+            // Changing /TargetOfficeGroupId redirects the sync to a group the requester may not own; authorization
+            // above only validated the original group, so this must go to human review, not the fast path.
+            var patch = new JsonPatchDocument<SyncJobPatch>();
+            patch.Replace(x => x.TargetOfficeGroupId, Guid.NewGuid());
+
+            var response = await CreateHandler().ExecuteAsync(UpdateRequest(patch));
+
+            Assert.AreEqual(HttpStatusCode.OK, response.StatusCode);
+            Assert.AreEqual(SyncStatus.PendingReview.ToString(), _syncJob.Status,
+                "A target group change must be routed to human review, not auto-approved.");
+            Assert.AreEqual(0, _enqueued.Count);
+            Assert.IsFalse(_savedChanges.Any(c => c.ChangeReason == SyncJobChangeReason.UpdateAutoApproved.ToString()));
+        }
+
+        [TestMethod]
+        public async Task Update_AllowlistedFieldAlongsideDestinationChange_StillGoesToPendingReview()
+        {
+            // Even when combined with an allowlisted field, a single non-allowlisted operation (here /Destination)
+            // must poison the whole submission into human review; the presence of a safe field must not smuggle a
+            // destination redirect through the auto-approval fast path.
+            var patch = new JsonPatchDocument<SyncJobPatch>();
+            patch.Replace(x => x.ThresholdPercentageForAdditions, 30);
+            patch.Replace(x => x.Destination, "[{\"type\":\"GroupMembership\",\"value\":{\"objectId\":\"88888888-8888-8888-8888-888888888888\"}}]");
+
+            var response = await CreateHandler().ExecuteAsync(UpdateRequest(patch));
+
+            Assert.AreEqual(HttpStatusCode.OK, response.StatusCode);
+            Assert.AreEqual(SyncStatus.PendingReview.ToString(), _syncJob.Status);
+            Assert.AreEqual(0, _enqueued.Count);
+            Assert.IsFalse(_savedChanges.Any(c => c.ChangeReason == SyncJobChangeReason.UpdateAutoApproved.ToString()));
+        }
+
         // ---------- User Story 2: query-changing AutoApprover path ----------
 
         [TestMethod]

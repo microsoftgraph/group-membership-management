@@ -35,6 +35,25 @@ namespace Services.WebApi
         private readonly INotificationService _notificationService;
         private readonly IServiceBusQueueRepository? _autoApproverQueueRepository;
 
+        // Explicit allowlist of low-risk configuration fields that may be auto-approved on the config-only fast path.
+        // Everything NOT listed here (notably /Destination and /TargetOfficeGroupId, which redirect the sync to a
+        // different group, plus /Status, /RunId, /Requestor, /AllowEmptyDestination and the Last*/OnBehalfOf fields)
+        // must go through human review: ownership is authorized against the ORIGINAL group only (never the post-patch
+        // destination), so a non-allowlisted change must never be silently auto-approved. /Query is intentionally
+        // absent — it is classified separately via a dry-run query comparison.
+        private static readonly HashSet<string> AutoApprovableConfigurationPaths = new(StringComparer.OrdinalIgnoreCase)
+        {
+            "/Period",
+            "/StartDate",
+            "/ScheduledDate",
+            "/IgnoreThresholdOnce",
+            "/ThresholdPercentageForAdditions",
+            "/ThresholdPercentageForRemovals",
+            "/IsDryRunEnabled",
+            "/DryRunTimeStamp",
+            "/Titles"
+        };
+
         public PatchJobHandler(
             ILogger<PatchJobHandler> logger,
             IGraphGroupRepository graphGroupRepository,
@@ -264,10 +283,10 @@ namespace Services.WebApi
                     var hasQueryOperation = request.PatchDocument.Operations
                         .Any(op => string.Equals(op.path, "/Query", StringComparison.OrdinalIgnoreCase));
 
-                    bool isConfigurationOnly;
+                    bool isQueryChanged;
                     if (!hasQueryOperation)
                     {
-                        isConfigurationOnly = true;
+                        isQueryChanged = false;
                     }
                     else
                     {
@@ -287,11 +306,21 @@ namespace Services.WebApi
                             finalQuery = null;
                         }
 
-                        // Normalized-equal ⇒ config-only. Any difference, or an unparseable query on either side,
-                        // fails closed to the query-changing path.
-                        isConfigurationOnly = finalQuery != null
-                            && JsonParser.CompareQueries(syncJob.Query, finalQuery) == JsonParser.QueryEquivalence.Equal;
+                        // Normalized-equal ⇒ query unchanged. Any difference, or an unparseable query on either
+                        // side, fails closed to the query-changing path.
+                        isQueryChanged = finalQuery == null
+                            || JsonParser.CompareQueries(syncJob.Query, finalQuery) != JsonParser.QueryEquivalence.Equal;
                     }
+
+                    // A configuration-only submission may only touch the allowlist of low-risk fields. Any operation
+                    // on a non-allowlisted field (e.g. /Destination or /TargetOfficeGroupId, which redirect the sync
+                    // to a group the requester may not own — authorization above validated the ORIGINAL group only)
+                    // must fall back to human review rather than the auto-approval fast path.
+                    var touchesOnlyAllowlistedNonQueryFields = request.PatchDocument.Operations
+                        .Where(op => !string.Equals(op.path, "/Query", StringComparison.OrdinalIgnoreCase))
+                        .All(op => AutoApprovableConfigurationPaths.Contains(op.path ?? string.Empty));
+
+                    var isConfigurationOnly = !isQueryChanged && touchesOnlyAllowlistedNonQueryFields;
 
                     // Status preservation only makes sense for operational jobs. A job that is not currently
                     // Idle or CustomerPaused (for example one a reviewer previously left in SubmissionRejected, or
@@ -316,6 +345,15 @@ namespace Services.WebApi
                     {
                         // Config-only edit to a non-operational job (e.g. SubmissionRejected/error state): route to
                         // PendingReview exactly as today rather than preserving a status that would strand the job.
+                        var result = await ValidateAndUpdateSyncJob(request, syncJob, syncJobChange, SyncStatus.PendingReview.ToString());
+                        if (result != null) return result;
+                    }
+                    else if (!isQueryChanged)
+                    {
+                        // The query did not change, but the patch touches a non-allowlisted field (e.g. /Destination
+                        // or /TargetOfficeGroupId). Such a change can redirect the sync to a different group while
+                        // authorization above only validated the original group, so it must go through human review
+                        // rather than be auto-approved.
                         var result = await ValidateAndUpdateSyncJob(request, syncJob, syncJobChange, SyncStatus.PendingReview.ToString());
                         if (result != null) return result;
                     }
