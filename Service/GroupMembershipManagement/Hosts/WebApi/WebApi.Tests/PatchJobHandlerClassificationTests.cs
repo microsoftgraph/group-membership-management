@@ -270,6 +270,22 @@ namespace WebApi.Tests
             Assert.IsFalse(_savedChanges.Any(c => c.ChangeReason == SyncJobChangeReason.UpdateAutoApproved.ToString()));
         }
 
+        [TestMethod]
+        public async Task Update_QueryChangeAlongsideNonAllowlistedField_GoesToPendingReview()
+        {
+            var patch = new JsonPatchDocument<SyncJobPatch>();
+            patch.Replace(x => x.Query, "[{\"type\":\"GroupMembership\",\"source\":\"77777777-7777-7777-7777-777777777777\"}]");
+            patch.Replace(x => x.AllowEmptyDestination, true);
+
+            var response = await CreateHandler().ExecuteAsync(UpdateRequest(patch));
+
+            Assert.AreEqual(HttpStatusCode.OK, response.StatusCode);
+            Assert.AreEqual(SyncStatus.PendingReview.ToString(), _syncJob.Status,
+                "A query change must not let a non-allowlisted field bypass human review.");
+            Assert.IsTrue(_syncJob.AllowEmptyDestination, "The submitted edit should be preserved for reviewer evaluation.");
+            Assert.AreEqual(0, _enqueued.Count, "The AutoApprover evaluates only queries and must not receive this mixed edit.");
+        }
+
         // ---------- User Story 2: query-changing AutoApprover path ----------
 
         [TestMethod]
@@ -292,6 +308,25 @@ namespace WebApi.Tests
             Assert.AreEqual(request.UserIdentity, message.RequestorObjectId);
             Assert.AreEqual("Owner", message.RequestorDisplayName);
             Assert.AreEqual("config change", message.BusinessJustification);
+        }
+
+        [TestMethod]
+        public async Task Update_RepeatedQueryChanges_UseDistinctMessageIds()
+        {
+            var firstPatch = new JsonPatchDocument<SyncJobPatch>();
+            firstPatch.Replace(x => x.Query, "[{\"type\":\"GroupMembership\",\"source\":\"22222222-2222-2222-2222-222222222222\"}]");
+            await CreateHandler().ExecuteAsync(UpdateRequest(firstPatch));
+
+            _syncJob.Status = SyncStatus.Idle.ToString();
+            var secondPatch = new JsonPatchDocument<SyncJobPatch>();
+            secondPatch.Replace(x => x.Query, "[{\"type\":\"GroupMembership\",\"source\":\"33333333-3333-3333-3333-333333333333\"}]");
+            await CreateHandler().ExecuteAsync(UpdateRequest(secondPatch));
+
+            Assert.AreEqual(2, _enqueued.Count);
+            Assert.AreNotEqual(_enqueued[0].MessageId, _enqueued[1].MessageId,
+                "Repeated edits for one job must not collide with Service Bus duplicate detection.");
+            Assert.AreNotEqual(_syncJob.Id.ToString(), _enqueued[0].MessageId,
+                "An update message must not collide with the onboarding message ID.");
         }
 
         [TestMethod]

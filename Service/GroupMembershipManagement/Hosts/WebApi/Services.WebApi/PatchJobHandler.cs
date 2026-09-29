@@ -348,12 +348,10 @@ namespace Services.WebApi
                         var result = await ValidateAndUpdateSyncJob(request, syncJob, syncJobChange, SyncStatus.PendingReview.ToString());
                         if (result != null) return result;
                     }
-                    else if (!isQueryChanged)
+                    else if (!touchesOnlyAllowlistedNonQueryFields)
                     {
-                        // The query did not change, but the patch touches a non-allowlisted field (e.g. /Destination
-                        // or /TargetOfficeGroupId). Such a change can redirect the sync to a different group while
-                        // authorization above only validated the original group, so it must go through human review
-                        // rather than be auto-approved.
+                        // Any non-allowlisted field requires human review, even when /Query also changed. The
+                        // AutoApprover evaluates only the query and must not implicitly approve unrelated changes.
                         var result = await ValidateAndUpdateSyncJob(request, syncJob, syncJobChange, SyncStatus.PendingReview.ToString());
                         if (result != null) return result;
                     }
@@ -385,7 +383,9 @@ namespace Services.WebApi
                         var autoApprovalBody = Encoding.UTF8.GetBytes(JsonSerializer.Serialize(autoApprovalMessage));
                         var autoApprovalServiceBusMessage = new ServiceBusMessage
                         {
-                            MessageId = request.SyncJobId.ToString(),
+                            // Duplicate detection is enabled on the queue. Each update submission needs its own ID so
+                            // it cannot collide with onboarding or another edit for the same job.
+                            MessageId = $"{request.SyncJobId}_{Guid.NewGuid()}",
                             Body = autoApprovalBody
                         };
 
