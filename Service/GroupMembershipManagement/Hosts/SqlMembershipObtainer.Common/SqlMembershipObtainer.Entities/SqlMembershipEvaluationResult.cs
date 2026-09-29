@@ -26,9 +26,10 @@ namespace SqlMembershipObtainer.Entities
         /// removed. The all-zero GUID throws <see cref="ArgumentException"/>.
         /// </param>
         /// <param name="selectedHumanCount">
-        /// The number of selected human rows before the requested identity-type projection is applied. A negative value
-        /// throws <see cref="ArgumentOutOfRangeException"/>. A value smaller than the emitted user count throws
-        /// <see cref="ArgumentException"/>.
+        /// The number of distinct user object IDs the rule selected, counted before users are dropped from an agents-only
+        /// result. A user with several agents counts once, and HR rows without an Entra account share the all-zero ID and
+        /// count once together. A negative value throws <see cref="ArgumentOutOfRangeException"/>. A value smaller than
+        /// the emitted user count throws <see cref="ArgumentException"/>.
         /// </param>
         /// <param name="referencedIdentityTypes">
         /// The table types referenced by the filter. Null throws <see cref="ArgumentNullException"/>. Duplicate values are
@@ -96,7 +97,8 @@ namespace SqlMembershipObtainer.Entities
         public IReadOnlyList<Guid> AgentObjectIds { get; }
 
         /// <summary>
-        /// Gets the number of selected human rows before user projection removes users from an agents-only result.
+        /// Gets the number of distinct user object IDs the rule selected, counted before users are dropped from an
+        /// agents-only result.
         /// </summary>
         public int SelectedHumanCount { get; }
 
@@ -122,7 +124,19 @@ namespace SqlMembershipObtainer.Entities
                 throw new ArgumentNullException(parameterName);
             }
 
-            var distinct = identifiers.Distinct().ToArray();
+            // The repository passes HashSets that are already distinct; copying one avoids building a second set.
+            Guid[] distinct;
+
+            if (identifiers is HashSet<Guid> identifierSet &&
+                identifierSet.Comparer.Equals(EqualityComparer<Guid>.Default))
+            {
+                distinct = new Guid[identifierSet.Count];
+                identifierSet.CopyTo(distinct);
+            }
+            else
+            {
+                distinct = identifiers.Distinct().ToArray();
+            }
 
             if (!allowEmptyGuid &&
                 distinct.Any(identifier => identifier == Guid.Empty))

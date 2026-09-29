@@ -1092,19 +1092,20 @@ namespace Services.Tests
         }
 
         [TestMethod]
-        public async Task FilterWithAnUnknownTablePrefixFailsWithoutRetrying()
+        public async Task FilterWithAnUnknownTablePrefixIsRejectedBeforeTheQueryRuns()
         {
-            var stopwatch = Stopwatch.StartNew();
+            const string expectedError =
+                "Invalid column prefix detected: nosuchtable.EmployeeType_Code. Use users., agents., or no prefix.";
 
-            var usersOnlyException = await Assert.ThrowsExceptionAsync<SqlException>(
+            var evaluationException = await Assert.ThrowsExceptionAsync<InvalidOperationException>(
                 () => _repository.EvaluateMembershipAsync(
                     CreateRequest(
                         "nosuchtable.EmployeeType_Code = 'FTE'",
                         IdentityTypeSet.All)));
 
-            Assert.AreEqual(4104, usersOnlyException.Number);
+            Assert.AreEqual(expectedError, evaluationException.Message);
 
-            var agentsException = await Assert.ThrowsExceptionAsync<SqlException>(
+            var probeException = await Assert.ThrowsExceptionAsync<InvalidOperationException>(
                 () => _repository.IsIdentitySelectedAsync(
                     CreateRequest(
                         "nosuchtable.BlueprintId = 'blueprint-a'",
@@ -1112,18 +1113,19 @@ namespace Services.Tests
                     _agent100,
                     IdentityType.Agents));
 
-            Assert.AreEqual(4104, agentsException.Number);
+            Assert.AreEqual(
+                "Invalid column prefix detected: nosuchtable.BlueprintId. Use users., agents., or no prefix.",
+                probeException.Message);
 
-            stopwatch.Stop();
+            var validationErrors = await _repository.ValidateFiltersAsync(
+                new Dictionary<int, string> { [0] = "nosuchtable.EmployeeType_Code = 'FTE'" },
+                _tableName);
 
-            // Retrying either call would wait 62 seconds before giving up.
-            Assert.IsTrue(
-                stopwatch.Elapsed < TimeSpan.FromSeconds(30),
-                $"A filter with an unknown table prefix took {stopwatch.Elapsed} to fail, which suggests it was retried.");
+            Assert.AreEqual(expectedError, validationErrors[0]);
         }
 
         [TestMethod]
-        public async Task FilterWithAnUnprefixedColumnInBothTablesFailsWithoutRetrying()
+        public async Task FilterWithAnUnprefixedColumnInBothTablesIsRejectedBeforeTheQueryRuns()
         {
             var sharedColumnTable = Guid.NewGuid().ToString("N");
             await CreateUsersTableAsync(sharedColumnTable);
@@ -1133,28 +1135,39 @@ namespace Services.Tests
                 "BlueprintId nvarchar(100) NULL, EmployeeType_Code nvarchar(50) NULL");
 
             const string filter = "EmployeeType_Code = 'FTE' AND agents.BlueprintId = 'blueprint-a'";
-            var stopwatch = Stopwatch.StartNew();
+            const string expectedError =
+                "Ambiguous column name detected: EmployeeType_Code. It is in both the users and agents tables; " +
+                "prefix it with users. or agents.";
 
-            var evaluationException = await Assert.ThrowsExceptionAsync<SqlException>(
+            var evaluationException = await Assert.ThrowsExceptionAsync<InvalidOperationException>(
                 () => _repository.EvaluateMembershipAsync(
                     CreateRequest(filter, IdentityTypeSet.All, sharedColumnTable)));
 
-            Assert.AreEqual(209, evaluationException.Number);
+            Assert.AreEqual(expectedError, evaluationException.Message);
 
-            var probeException = await Assert.ThrowsExceptionAsync<SqlException>(
+            var probeException = await Assert.ThrowsExceptionAsync<InvalidOperationException>(
                 () => _repository.IsIdentitySelectedAsync(
                     CreateRequest(filter, IdentityTypeSet.All, sharedColumnTable),
                     _agent100,
                     IdentityType.Agents));
 
-            Assert.AreEqual(209, probeException.Number);
+            Assert.AreEqual(expectedError, probeException.Message);
 
-            stopwatch.Stop();
+            var validationErrors = await _repository.ValidateFiltersAsync(
+                new Dictionary<int, string> { [0] = filter },
+                sharedColumnTable);
 
-            // Retrying either call would wait 62 seconds before giving up.
-            Assert.IsTrue(
-                stopwatch.Elapsed < TimeSpan.FromSeconds(30),
-                $"A filter with a column in both tables took {stopwatch.Elapsed} to fail, which suggests it was retried.");
+            Assert.AreEqual(expectedError, validationErrors[0]);
+
+            // Naming the table resolves the ambiguity, so the same filter runs once the column is prefixed.
+            var prefixedResult = await _repository.EvaluateMembershipAsync(
+                CreateRequest(
+                    "users.EmployeeType_Code = 'FTE' AND agents.BlueprintId = 'blueprint-a'",
+                    IdentityTypeSet.All,
+                    sharedColumnTable));
+
+            Assert.AreEqual(0, prefixedResult.UserObjectIds.Count);
+            Assert.AreEqual(0, prefixedResult.AgentObjectIds.Count);
         }
 
         [TestMethod]
@@ -1198,6 +1211,71 @@ namespace Services.Tests
                     filterRequest,
                     _user100,
                     IdentityType.Users));
+        }
+
+        [TestMethod]
+        public async Task DatePartFilterIsValidatedAndEvaluatedLikeAnyOtherFilter()
+        {
+            var datePartTable = Guid.NewGuid().ToString("N");
+            await CreateUsersTableAsync(datePartTable);
+            await ExecuteAsync($"""
+                INSERT INTO [users].[{datePartTable}]
+                    (EmployeeId, ManagerId, AzureObjectId, EmployeeType_Code, AccountEnabled)
+                VALUES
+                    (950, NULL, N'{_user100:D}', N'FTE', NULL),
+                    (951, 950, N'{_user200:D}', N'FTE', NULL);
+                """);
+
+            // Same shape as the rules the non-prod load-test job creator generates.
+            const string rotatingFilter =
+                "(EmployeeId > 0 AND EmployeeId <= 10 AND (0 + DATEPART(dayofyear, GETDATE())) % (8) < 4) OR " +
+                "(EmployeeId > 1 AND EmployeeId <= 11 AND (0 + DATEPART(dayofyear, GETDATE())) % (8) >= 4)";
+
+            var validationErrors = await _repository.ValidateFiltersAsync(
+                new Dictionary<int, string> { [0] = rotatingFilter },
+                datePartTable);
+
+            Assert.AreEqual(0, validationErrors.Count);
+
+            var filterRequest = CreateRequest(
+                "EmployeeId > 950 AND DATEPART(dayofyear, GETDATE()) > 0",
+                IdentityTypeSet.UsersOnly,
+                datePartTable);
+
+            AssertResult(
+                await _repository.EvaluateMembershipAsync(filterRequest),
+                new[] { _user200 },
+                Array.Empty<Guid>(),
+                1,
+                IdentityType.Users);
+
+            Assert.IsTrue(
+                await _repository.IsIdentitySelectedAsync(
+                    filterRequest,
+                    _user200,
+                    IdentityType.Users));
+
+            AssertResult(
+                await _repository.EvaluateMembershipAsync(
+                    CreateRequest(
+                        "EmployeeId > 0 AND DATEPART(dayofyear, GETDATE()) < 0",
+                        IdentityTypeSet.UsersOnly,
+                        datePartTable)),
+                Array.Empty<Guid>(),
+                Array.Empty<Guid>(),
+                0,
+                IdentityType.Users);
+
+            AssertResult(
+                await _repository.EvaluateMembershipAsync(
+                    CreateRequest(
+                        "DATEPART(dayofyear, GETDATE()) > 0",
+                        IdentityTypeSet.UsersOnly,
+                        datePartTable,
+                        managerEmployeeId: 950)),
+                new[] { _user100, _user200 },
+                Array.Empty<Guid>(),
+                2);
         }
 
         [TestMethod]

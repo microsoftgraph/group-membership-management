@@ -431,16 +431,18 @@ namespace Repositories.SqlMembershipRepository
         /// <param name="filter">
         /// The WHERE fragment as stored on the sync job, such as <c>Department = 'Sales'</c> or
         /// <c>agents.BlueprintId = 'alpha'</c>. A <c>users.</c> or <c>agents.</c> prefix, in any casing and with or without
-        /// brackets, limits the column to that table. A column without either prefix is looked up in the users table first
-        /// and then in the agents table. Empty or syntactically invalid filters return an invalid compilation; this helper
-        /// does not treat an empty filter as "no filter".
+        /// brackets, limits the column to that table; any other prefix, such as <c>dbo.</c> or <c>nosuch.</c>, is
+        /// rejected. A column without a prefix is looked up in the users table first and then in the agents table. Empty
+        /// or syntactically invalid filters return an invalid compilation; this helper does not treat an empty filter as
+        /// "no filter".
         /// </param>
         /// <param name="tableName">
         /// The users and agents table name without schema. The value is embedded in the parse-only SELECT text and is
         /// expected to have already been validated by the caller.
         /// </param>
         /// <param name="userColumnNames">
-        /// The users table's column names. An unprefixed column present in both collections counts as a users column.
+        /// The users table's column names. An unprefixed column present in both collections counts as a users column,
+        /// unless the filter also uses an agents column; then it is rejected as ambiguous.
         /// </param>
         /// <param name="agentColumnNames">
         /// The agents table's column names. Pass an empty collection when the agents table is missing or unreadable. In
@@ -449,9 +451,15 @@ namespace Repositories.SqlMembershipRepository
         /// </param>
         /// <returns>
         /// A valid compilation with the referenced identity types and the users columns the filter uses (spelled as in
-        /// <paramref name="userColumnNames"/>), or an invalid compilation with the parser error or
-        /// <c>Invalid column name detected: {name}</c>. The name is shown without its prefix, so
-        /// <c>users.BlueprintId</c> is reported as <c>BlueprintId</c>. It does not throw for bad filter syntax.
+        /// <paramref name="userColumnNames"/>), or an invalid compilation with one of these errors:
+        /// the parser error;
+        /// <c>Invalid column name detected: {name}</c>, with the name shown without its prefix, so
+        /// <c>users.BlueprintId</c> is reported as <c>BlueprintId</c>;
+        /// <c>Invalid column prefix detected: {prefix}.{name}. ...</c> for a prefix other than <c>users</c> or
+        /// <c>agents</c>;
+        /// or <c>Ambiguous column name detected: {name}. ...</c> when the filter uses an agents column and also an
+        /// unprefixed column found in both tables, such as <c>Department = 'Sales' AND agents.BlueprintId = 'alpha'</c>
+        /// when both tables have <c>Department</c>. It does not throw for bad filter syntax.
         /// </returns>
         internal static SqlFilterCompilationResult CheckFilter(
             string filter,
@@ -475,6 +483,13 @@ namespace Repositories.SqlMembershipRepository
             {
                 var namesUsersTable = string.Equals(qualifier, "users", StringComparison.OrdinalIgnoreCase);
                 var namesAgentsTable = string.Equals(qualifier, "agents", StringComparison.OrdinalIgnoreCase);
+
+                // The membership query only names the users and agents tables, so any other prefix fails when it runs.
+                if (qualifier != null && !namesUsersTable && !namesAgentsTable)
+                {
+                    return SqlFilterCompilationResult.Invalid(
+                        $"Invalid column prefix detected: {qualifier}.{columnName}. Use users., agents., or no prefix.");
+                }
 
                 if (!namesAgentsTable)
                 {
@@ -508,6 +523,23 @@ namespace Repositories.SqlMembershipRepository
                 return SqlFilterCompilationResult.Invalid($"Invalid column name detected: {columnName}");
             }
 
+            // A filter that uses agents columns runs after the agents join, where an unprefixed name found in both
+            // tables is ambiguous to SQL Server.
+            if (referencedIdentityTypes.Contains(IdentityType.Agents))
+            {
+                foreach (var (qualifier, columnName) in columnCollector.ColumnReferences)
+                {
+                    if (qualifier == null &&
+                        userColumnNames.Contains(columnName, StringComparer.OrdinalIgnoreCase) &&
+                        agentColumnNames.Contains(columnName, StringComparer.OrdinalIgnoreCase))
+                    {
+                        return SqlFilterCompilationResult.Invalid(
+                            $"Ambiguous column name detected: {columnName}. It is in both the users and agents tables; " +
+                            "prefix it with users. or agents.");
+                    }
+                }
+            }
+
             return SqlFilterCompilationResult.Valid(referencedIdentityTypes, referencedUserColumnNames);
         }
 
@@ -521,9 +553,10 @@ namespace Repositories.SqlMembershipRepository
         /// </param>
         /// <returns>
         /// A result containing distinct emitted users and agents. The lists can be empty. Users are emitted only when
-        /// requested; selected human rows are still counted for logging. Malformed agent object IDs, including a matched
-        /// agent row whose object ID is NULL, are skipped and counted. Missing required users rows, malformed selected
-        /// user object IDs, and missing filter-only EmployeeId values throw <see cref="InvalidOperationException"/>.
+        /// requested; the number of distinct selected users is still recorded for logging. Malformed agent object IDs,
+        /// including a matched agent row whose object ID is NULL, are skipped and counted. Missing required users rows,
+        /// malformed selected user object IDs, and missing filter-only EmployeeId values throw
+        /// <see cref="InvalidOperationException"/>.
         /// When agents are required, a missing or unreadable agents table, or one without the <c>AgentObjectId</c> and
         /// <c>AgentManagerId</c> columns, also throws <see cref="InvalidOperationException"/> before the query runs.
         /// </returns>
@@ -557,7 +590,9 @@ namespace Repositories.SqlMembershipRepository
 
                             using (var reader = await command.ExecuteReaderAsync(CommandBehavior.CloseConnection))
                             {
-                                while (await reader.ReadAsync())
+                                // Keep the synchronous Read: ReadAsync allocated a Task per row plus packet buffers,
+                                // about 37 MB more on a 200k-row table.
+                                while (reader.Read())
                                 {
                                     if (reader.IsDBNull(0))
                                     {
@@ -1313,8 +1348,10 @@ namespace Repositories.SqlMembershipRepository
         /// dictionary returns an empty error dictionary without opening a SQL connection. Each value is parsed as a WHERE
         /// fragment; multiple statements and unknown columns are reported as errors. A column written as
         /// <c>users.Name</c> must be in the users table and one written as <c>agents.Name</c> must be in the agents table,
-        /// so <c>users.BlueprintId</c> is rejected even when the agents table has <c>BlueprintId</c>. A column without
-        /// either prefix is looked up in the users table first, then in the agents table.
+        /// so <c>users.BlueprintId</c> is rejected even when the agents table has <c>BlueprintId</c>. Any other prefix,
+        /// such as <c>nosuch.Name</c>, is rejected. A column without a prefix is looked up in the users table first, then
+        /// in the agents table; if it is in both tables and the filter also uses an agents column, it is rejected as
+        /// ambiguous and must be prefixed.
         /// </param>
         /// <param name="tableName">
         /// The same-run table name without schema. Null, empty, whitespace, or unsupported characters throw
@@ -1448,10 +1485,28 @@ namespace Repositories.SqlMembershipRepository
         }
 
         /// <summary>
-        /// Collects the column references from parsed T-SQL.
+        /// Collects the column references from parsed T-SQL. The date-part word of a built-in date function, such as
+        /// <c>dayofyear</c> in <c>DATEPART(dayofyear, GETDATE())</c>, is not a column and is not collected.
         /// </summary>
         public class ColumnCollector : TSqlFragmentVisitor
         {
+            private static readonly HashSet<string> _datePartFunctionNames = new(StringComparer.OrdinalIgnoreCase)
+            {
+                "DATEADD", "DATEDIFF", "DATEDIFF_BIG", "DATENAME", "DATEPART", "DATETRUNC", "DATE_BUCKET",
+            };
+
+            private static readonly HashSet<string> _datePartNames = new(StringComparer.OrdinalIgnoreCase)
+            {
+                "year", "yy", "yyyy", "quarter", "qq", "q", "month", "mm", "m", "dayofyear", "dy", "y",
+                "day", "dd", "d", "week", "wk", "ww", "weekday", "dw", "w", "hour", "hh", "minute", "mi", "n",
+                "second", "ss", "s", "millisecond", "ms", "microsecond", "mcs", "nanosecond", "ns",
+                "tzoffset", "tz", "iso_week", "isowk", "isoww",
+            };
+
+            // ScriptDom parses a date-part word as a column reference; these nodes are skipped when columns are
+            // collected. Reference equality keeps an identical-looking column elsewhere in the filter from being skipped.
+            private readonly HashSet<TSqlFragment> _datePartArguments = new(ReferenceEqualityComparer.Instance);
+
             /// <summary>
             /// Gets the distinct column names found in the parsed SQL fragment. Qualified references such as
             /// <c>agents.BlueprintId</c> contribute only <c>BlueprintId</c>.
@@ -1467,12 +1522,46 @@ namespace Repositories.SqlMembershipRepository
             public List<(string? Qualifier, string Name)> ColumnReferences { get; } = new();
 
             /// <summary>
-            /// Records the column name and table prefix from one column reference node when the node has an identifier.
+            /// Marks the first argument of a built-in date function as a date part rather than a column when it is a
+            /// single unprefixed date-part word. For example, <c>dayofyear</c> in <c>DATEPART(dayofyear, GETDATE())</c>
+            /// and <c>[day]</c> in <c>DATEADD([day], 1, HireDate)</c> are skipped, while <c>HireDate</c> is still
+            /// collected. <c>DATEPART(notadatepart, x)</c>, <c>DATEPART(users.day, x)</c>, <c>dbo.DATEPART(day, x)</c>
+            /// and a date-part word in any other argument position are left to be collected as columns.
+            /// </summary>
+            /// <param name="node">The parsed function call. Null is not supplied by ScriptDom.</param>
+            public override void Visit(FunctionCall node)
+            {
+                if (node.CallTarget != null
+                    || node.FunctionName == null
+                    || !_datePartFunctionNames.Contains(node.FunctionName.Value)
+                    || node.Parameters.Count == 0)
+                {
+                    return;
+                }
+
+                var datePart = node.Parameters[0] as ColumnReferenceExpression;
+
+                if (datePart == null
+                    || datePart.MultiPartIdentifier == null
+                    || datePart.MultiPartIdentifier.Identifiers.Count != 1)
+                {
+                    return;
+                }
+
+                if (_datePartNames.Contains(datePart.MultiPartIdentifier.Identifiers[0].Value))
+                {
+                    _datePartArguments.Add(datePart);
+                }
+            }
+
+            /// <summary>
+            /// Records the column name and table prefix from one column reference node when the node has an identifier
+            /// and is not the date-part word of a date function.
             /// </summary>
             /// <param name="node">The parsed column reference. Null is not supplied by ScriptDom.</param>
             public override void Visit(ColumnReferenceExpression node)
             {
-                if (node.MultiPartIdentifier != null)
+                if (node.MultiPartIdentifier != null && !_datePartArguments.Contains(node))
                 {
                     var identifiers = node.MultiPartIdentifier.Identifiers;
                     var column = identifiers.Last().Value;

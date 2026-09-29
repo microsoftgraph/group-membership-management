@@ -260,6 +260,32 @@ namespace Services.Tests
         }
 
         [TestMethod]
+        public void MissingEmployeeIdCheck_TestsForNullWithoutConvertingEveryRowToText()
+        {
+            const string filter = "Department = 'Sales'";
+            const string nullCheck = "CASE WHEN [users].[EmployeeId] IS NULL THEN 1 ELSE 0 END";
+            var request = new SqlMembershipEvaluationRequest(
+                managerEmployeeId: null,
+                depth: 0,
+                filter,
+                IdentityTypeSet.UsersOnly,
+                tableName: "run123",
+                adfRunId: "run-123");
+
+            var evaluation = SqlMembershipQueryBuilder.BuildEvaluation(request, Analyze(filter));
+            var probe = SqlMembershipQueryBuilder.BuildProbe(request, Analyze(filter), IdentityType.Users);
+
+            foreach (var commandText in new[] { evaluation.CommandText, probe.CommandText })
+            {
+                StringAssert.Contains(commandText, nullCheck);
+                Assert.IsFalse(
+                    commandText.Contains("CONVERT(nvarchar(4000), [users].[EmployeeId])", StringComparison.Ordinal),
+                    commandText);
+                AssertValidSql(commandText);
+            }
+        }
+
+        [TestMethod]
         public void MembershipProbe_AggregatesOneUserAnswerWithoutMaterializingTheSet()
         {
             const string filter = "users.Department = 'Sales'";

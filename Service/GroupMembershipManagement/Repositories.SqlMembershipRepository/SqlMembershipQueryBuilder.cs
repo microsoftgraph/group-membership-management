@@ -292,7 +292,7 @@ namespace Repositories.SqlMembershipRepository
         /// <param name="returnsAgentColumns">True to add <c>AgentObjectId</c> and <c>HasAgentRow</c>.</param>
         /// <returns>
         /// The <c>SELECT</c> list with <c>UserObjectId</c>, <c>MalformedUserEmployeeId</c> (true when the user's
-        /// EmployeeId is null or blank) and, when requested, <c>AgentObjectId</c> and <c>HasAgentRow</c> (false when the
+        /// EmployeeId is null) and, when requested, <c>AgentObjectId</c> and <c>HasAgentRow</c> (false when the
         /// user has no agents).
         /// </returns>
         private static string BuildProjection(bool returnsAgentColumns)
@@ -309,13 +309,7 @@ namespace Repositories.SqlMembershipRepository
             return $"""
             SELECT
                 [users].[AzureObjectId] AS [UserObjectId],
-                CAST(
-                    CASE
-                        WHEN [users].[EmployeeId] IS NULL
-                            OR LTRIM(RTRIM(CONVERT(nvarchar(4000), [users].[EmployeeId]))) = N''
-                        THEN 1
-                        ELSE 0
-                    END AS bit) AS [MalformedUserEmployeeId]{agentColumns}
+                CAST(CASE WHEN [users].[EmployeeId] IS NULL THEN 1 ELSE 0 END AS bit) AS [MalformedUserEmployeeId]{agentColumns}
 
             """;
         }
@@ -368,12 +362,7 @@ namespace Repositories.SqlMembershipRepository
                         ELSE 0
                     END), 0) AS bit) AS [MalformedUserObjectId],
                 CAST(COALESCE(MAX(
-                    CASE
-                        WHEN [users].[EmployeeId] IS NULL
-                            OR LTRIM(RTRIM(CONVERT(nvarchar(4000), [users].[EmployeeId]))) = N''
-                        THEN 1
-                        ELSE 0
-                    END), 0) AS bit) AS [MalformedUserEmployeeId]
+                    CASE WHEN [users].[EmployeeId] IS NULL THEN 1 ELSE 0 END), 0) AS bit) AS [MalformedUserEmployeeId]
 
             """;
         }

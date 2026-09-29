@@ -82,8 +82,9 @@ namespace Repositories.Contracts
         /// for example, <c>Department = 'Sales'</c> is accepted when that column exists, while multiple statements are
         /// rejected. A column written as <c>users.Name</c> must be in the users table and one written as
         /// <c>agents.Name</c> must be in the agents table, so <c>users.BlueprintId</c> is rejected even when the agents
-        /// table has <c>BlueprintId</c>. A column without either prefix is looked up in the users table first, then in
-        /// the agents table.
+        /// table has <c>BlueprintId</c>. Any other prefix, such as <c>nosuch.Name</c>, is rejected. A column without a
+        /// prefix is looked up in the users table first, then in the agents table; if it is in both tables and the filter
+        /// also uses an agents column, it is rejected as ambiguous and must be prefixed.
         /// </param>
         /// <param name="tableName">
         /// The same-run table name without schema. Null, empty, whitespace, or unsupported characters throw
