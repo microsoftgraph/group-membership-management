@@ -128,7 +128,9 @@ $preservationCases = @(
     '[{"type":"SqlMembership","source":{"manager":{"id":1},"filter":"users.EmployeeType = ''FTE''"},"identityTypes":["users"]}]',
     '[{"type":"SqlMembership","source":{"filter":"agents.BlueprintId = ''alpha''"},"identityTypes":["agents"]}]',
     '[{"type":"SqlMembership","source":{"manager":{"id":1},"filter":"users.EmployeeType IN (''FTE'',''Vendor'')"},"identityTypes":["users","agents"]}]',
-    '[{"type":"SqlMembership","source":{"filter":"users.EmployeeType != ''Vendor''"},"identityTypes":["users"]}]',
+    '[{"type":"SqlMembership","source":{"filter":"users.Notes = ''a != b''"},"identityTypes":["users"]}]',
+    '[{"type":"SqlMembership","source":{"filter":"users.EmployeeType != ''Vendor''"},"identityTypes":["users"],"future":{"nested":[1,2]}}]',
+    '[{"type":"SqlMembership","source":{"filter":"users.EmployeeType != ''Vendor''"},"identityTypes":["users"],"exclusionary":"yes"}]',
     '[{"type":"SqlMembership","source":{"filter":"agents.BlueprintId = \"quoted\""},"identityTypes":["agents","users"],"future":{"nested":[1,2]}}]',
     '[{"type":"SqlMembership","source":{"manager":{"id":2147483647,"depth":1}},"identityTypes":["users"]}]'
 )
@@ -138,6 +140,37 @@ foreach ($query in $preservationCases) {
         -Because 'a current explicit SQL part survives the converter'
 }
 
+$currentNotEqualCases = @(
+    @{
+        Query = '[{"type":"SqlMembership","source":{"filter":"users.EmployeeType != ''Vendor''"},"identityTypes":["users"]}]'
+        Expected = '[{"type":"SqlMembership","source":{"filter":"users.EmployeeType <> ''Vendor''"},"identityTypes":["users"]}]'
+        Because = 'the != operator in a current SQL part becomes <> and the identity types are kept'
+    },
+    @{
+        Query = '[{"type":"SqlMembership","source":{"manager":{"id":7,"depth":2},"filter":"agents.BlueprintId != ''alpha''"},"exclusionary":true,"identityTypes":["agents","users"]}]'
+        Expected = '[{"type":"SqlMembership","source":{"manager":{"id":7,"depth":2},"filter":"agents.BlueprintId <> ''alpha''"},"exclusionary":true,"identityTypes":["agents","users"]}]'
+        Because = 'a current manager SQL part keeps its manager, exclusionary flag, identity types and property order when != is replaced'
+    },
+    @{
+        Query = '[{"type":"SqlMembership","source":{"filter":"users.Department = \u0027HR\u0027"},"identityTypes":["users"]},{"type":"SqlMembership","source":{"filter":"users.Department != \u0027Sales\u0027"},"identityTypes":["users"],"exclusionary":false}]'
+        Expected = '[{"type":"SqlMembership","source":{"filter":"users.Department = \u0027HR\u0027"},"identityTypes":["users"]},{"type":"SqlMembership","source":{"filter":"users.Department <> ''Sales''"},"identityTypes":["users"],"exclusionary":false}]'
+        Because = 'only the current SQL part that uses != is rewritten; the part next to it keeps its stored text'
+    }
+)
+
+foreach ($case in $currentNotEqualCases) {
+    Assert-Conversion -Query $case.Query -Expected $case.Expected -Because $case.Because
+    $convertedCurrent = Convert-SqlSourceQuery -Query $case.Query
+    Assert-Equal 'New' $convertedCurrent.Category "$($case.Because) (reported as a current-format update)"
+    Assert-Equal 0 $convertedCurrent.SqlPartsOutsideSchema "$($case.Because) (not counted as outside the schema)"
+}
+
+$repeatedNameNotEqualQuery = '[{"type":"SqlMembership","source":{"filter":"users.A != 1","filter":"users.B != 2"},"identityTypes":["users"]}]'
+Assert-KeptAsStored -Query $repeatedNameNotEqualQuery -UnconvertedSqlParts 0 -KeptAsStoredReason 'None' `
+    -Because 'a current SQL part that repeats a property name is not rewritten, because only one of the values would survive'
+Assert-Equal 1 (Convert-SqlSourceQuery -Query $repeatedNameNotEqualQuery).UnrewritableParts `
+    'a current SQL part that repeats a property name is reported as one that cannot be written back exactly'
+
 $preservedUnrecognisedCases = @(
     '[{"type":"SqlMembership","source":{"futureShape":{"version":2}},"identityTypes":["users"],"future":{"nested":[1,2]}}]',
     '[{"type":"SqlMembership","source":{"manager":{"id":7,"extra":1}},"identityTypes":["users"]}]',
@@ -145,7 +178,9 @@ $preservedUnrecognisedCases = @(
     '[{"type":"SqlMembership","source":{"manager":{"depth":2}},"identityTypes":["users"]}]',
     '[{"type":"SqlMembership","source":{"filter":5},"identityTypes":["users"]}]',
     '[{"type":"SqlMembership","source":{},"identityTypes":["users"]}]',
-    '[{"type":"SqlMembership","source":{"IDS":[7]},"identityTypes":["users"]}]'
+    '[{"type":"SqlMembership","source":{"IDS":[7]},"identityTypes":["users"]}]',
+    '[{"type":"SqlMembership","source":{"manager":{"id":7,"depth":0},"filter":"users.A != 1"},"identityTypes":["users"]}]',
+    '[{"type":"SqlMembership","source":{"filter":"users.A != 1","extra":"c != d"},"identityTypes":["users"]}]'
 )
 
 foreach ($query in $preservedUnrecognisedCases) {

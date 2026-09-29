@@ -1,8 +1,10 @@
 # Runs on every deployment. Rewrites SyncJobs.Query values saved in older formats into the
 # current format: SecurityGroup parts become GroupMembership, parts listing several group or
 # manager IDs are split into one part per ID, and the "!=" operator in SQL filters becomes "<>".
-# Parts that need no change, SQL parts in a shape the converter does not recognise, parts whose
-# values cannot be written back exactly, and queries it cannot read are kept exactly as stored.
+# SQL parts already in the current format only have that operator replaced, and only when every
+# property is one the converter writes back exactly. Parts that need no change, SQL parts in a
+# shape the converter does not recognise, parts whose values cannot be written back exactly, and
+# queries it cannot read are kept exactly as stored.
 # All changes are saved in a single transaction.
 #
 # Rewritten JSON must stay compact (no whitespace), matching the WebApi serializer; otherwise
@@ -414,6 +416,50 @@ function Copy-SqlSourceInCurrentFormat {
     return [PSCustomObject]$copy
 }
 
+# Rebuilds a current-format SQL part (one that already has identityTypes) with != replaced by <>
+# in its filter. Returns $null, meaning the stored text should be kept, when the filter does not
+# change or when the part holds anything this converter might not write back exactly.
+function Convert-CurrentSqlPartNotEqualOperator {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        $Part
+    )
+
+    if (-not (Test-SourceQueryValueRewritable -Value $Part) -or
+        -not (Test-CurrentSqlSourceShape -Source $Part.source)) {
+        return $null
+    }
+
+    foreach ($property in $Part.PSObject.Properties) {
+        if ($property.Name -ceq 'exclusionary') {
+            if ($property.Value -isnot [bool]) {
+                return $null
+            }
+        }
+        elseif ($property.Name -cnotin @('type', 'source', 'identityTypes')) {
+            return $null
+        }
+    }
+
+    $filter = $Part.source.filter
+    if ($filter -isnot [string]) {
+        return $null
+    }
+
+    $newFilter = Convert-SqlFilterNotEqualOperator -Filter $filter
+    if ([string]::Equals($filter, $newFilter, [StringComparison]::Ordinal)) {
+        return $null
+    }
+
+    $newSource = [ordered]@{}
+    foreach ($property in $Part.source.PSObject.Properties) {
+        $newSource[$property.Name] = if ($property.Name -ceq 'filter') { $newFilter } else { $property.Value }
+    }
+
+    return Build-SqlQueryPart -OriginalPart $Part -NewSource ([PSCustomObject]$newSource)
+}
+
 function ConvertFrom-SourceQueryJson {
     [CmdletBinding()]
     param(
@@ -699,6 +745,14 @@ function Convert-SqlSourceQuery {
         $rawText = if ($hasRawParts) { $rawParts[$partIndex].RawText } else { $null }
 
         if ($hasRawParts -and $rawParts[$partIndex].Preserve) {
+            $rewrittenPart = if ($rawParts[$partIndex].HasRepeatedNames) { $null } else { Convert-CurrentSqlPartNotEqualOperator -Part $part }
+            if ($null -ne $rewrittenPart) {
+                $newQueryParts.Add($rewrittenPart)
+                $rewrittenParts++
+                $fromNewFormat = $true
+                continue
+            }
+
             $newQueryParts.Add($rawText)
             if ($rawParts[$partIndex].HasRepeatedNames) {
                 $unrewritableParts++
