@@ -106,6 +106,7 @@ namespace Services
             {
                 job.IgnoreThresholdOnce = true;
                 job.Status = SyncStatus.Idle.ToString();
+                job.ScheduledDate = notification.ResolvedTime.AddMinutes(5);
                 changeReason = SyncJobChangeReason.IgnoreThresholdOnce.ToString();
                 await _syncJobRepository.UpdateSyncJobFromNotificationAsync(job, SyncStatus.Idle);
                 _logger.NotificationResolvedSyncStatusUpdated("Idle");

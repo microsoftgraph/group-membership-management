@@ -165,12 +165,25 @@ namespace Services.Tests
         [TestMethod]
         public async Task ResolveNotification_WithIgnoreOnceTestAsync()
         {
+            var syncJob = new SyncJob
+            {
+                ScheduledDate = DateTime.UtcNow.AddHours(24)
+            };
+            _syncJobRepository.Setup(x => x.GetSyncJobAsync(_thresholdNotification.SyncJobId))
+                .ReturnsAsync(syncJob);
             _resolveNotificationModel.Resolution = $"{ThresholdNotificationResolution.IgnoreOnce}";
+
             var response = await _notificationsController.ResolveNotificationAsync(_thresholdNotification.Id, _resolveNotificationModel);
 
             _notificationRepository.Verify(x => x.SaveNotificationAsync(_thresholdNotification), Times.Once);
+            _syncJobRepository.Verify(
+                x => x.UpdateSyncJobFromNotificationAsync(syncJob, SyncStatus.Idle),
+                Times.Once);
 
             Assert.IsInstanceOfType(response, typeof(NoContentResult));
+            Assert.IsTrue(syncJob.IgnoreThresholdOnce);
+            Assert.AreEqual(SyncStatus.Idle.ToString(), syncJob.Status);
+            Assert.AreEqual(_thresholdNotification.ResolvedTime.AddMinutes(5), syncJob.ScheduledDate);
         }
 
         /// <summary>
