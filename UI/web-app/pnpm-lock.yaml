@@ -9,7 +9,7 @@ overrides:
   ajv: '>=8.18.0'
   axios: '>=1.18.0'
   body-parser: '>=1.20.3'
-  brace-expansion@5: '>=5.0.9'
+  brace-expansion@5: '>=5.0.12'
   braces: '>=3.0.3'
   browserslist: '>=4.28.7 <5'
   cookie: '>=0.7.2'
@@ -109,9 +109,6 @@ importers:
       i18next:
         specifier: 23.6.0
         version: 23.6.0
-      moment:
-        specifier: ^2.30.1
-        version: 2.30.1
       otpauth:
         specifier: ^9.4.0
         version: 9.5.0
@@ -1246,8 +1243,8 @@ packages:
     engines: {node: '>=6.0.0'}
     hasBin: true
 
-  brace-expansion@5.0.9:
-    resolution: {integrity: sha1-fHJDiAm1+lur9UGZofHCgaaYT88=, tarball: https://ms-feed-17.pkgs.visualstudio.com/1es-public/_packaging/npm-public/npm/registry/brace-expansion/-/brace-expansion-5.0.9.tgz}
+  brace-expansion@5.0.12:
+    resolution: {integrity: sha512-YovQ3rzhaLMIrDjNDMkNS01tea93qhEhG5xy8f6+R0l+dw3Ki+5sCoIoI942iuLZTHWogWktgwVDhU09iNEimQ==, tarball: https://ms-feed-25.pkgs.visualstudio.com/1es-public/_packaging/npm-public/npm/registry/brace-expansion/-/brace-expansion-5.0.12.tgz}
     engines: {node: 20 || >=22}
 
   braces@3.0.3:
@@ -2211,9 +2208,6 @@ packages:
   minimatch@10.2.4:
     resolution: {integrity: sha512-oRjTw/97aTBN0RHbYCdtF1MQfvusSIBQM0IZEgzl6426+8jSC0nF1a/GmnVLpfB9yyr6g6FTqWqiZVbxrtaCIg==}
     engines: {node: 18 || 20 || >=22}
-
-  moment@2.30.1:
-    resolution: {integrity: sha512-uEmtNhbDOrWPFS+hdjFCBfy9f2YoyzRpwcl+DqpC6taX21FzsTLQVbMV/W7PzNSX6x/bhC1zA3c2UQ5NzH6how==}
 
   ms@2.1.3:
     resolution: {integrity: sha512-6FlzubTLZG3J2a/NVCAleEhjzq5oxgHyaCU9yYXvcLsvoVaHJq/s5xXI6/XXP6tz7R9xAOtHnSO/tXtF3WRTlA==}
@@ -4303,7 +4297,7 @@ snapshots:
 
   baseline-browser-mapping@2.11.19: {}
 
-  brace-expansion@5.0.9:
+  brace-expansion@5.0.12:
     dependencies:
       balanced-match: 4.0.4
 
@@ -5418,9 +5412,7 @@ snapshots:
 
   minimatch@10.2.4:
     dependencies:
-      brace-expansion: 5.0.9
-
-  moment@2.30.1: {}
+      brace-expansion: 5.0.12
 
   ms@2.1.3: {}
 
