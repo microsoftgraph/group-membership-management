@@ -31,7 +31,7 @@ function Write-UserManagedIdentityPermissionsInstructions {
 	)
 
 	$uamiName = "$SolutionAbbreviation-identity-$EnvironmentAbbreviation-Graph"
-	$appRoles = @("GroupMember.Read.All", "Member.Read.Hidden", "User.Read.All")
+	$appRoles = @("GroupMember.Read.All", "Member.Read.Hidden", "User.Read.All", "Group.Create")
 
 	Write-Host ""
 	Write-Host "=============================================================================" -ForegroundColor Cyan
@@ -173,7 +173,7 @@ function Set-UserManagedIdentityPermissions {
 	$currentAppRoleAssignments = Invoke-WithRetry -Operation {
 		Get-MgServicePrincipalAppRoleAssignment -ServicePrincipalId $uamiSPN.Id
 	} -OperationName "Get current app role assignments for UAMI"
-	$appRoles = @("GroupMember.Read.All", "Member.Read.Hidden", "User.Read.All")
+	$appRoles = @("GroupMember.Read.All", "Member.Read.Hidden", "User.Read.All", "Group.Create")
 	foreach ($appRoleName in $appRoles) {
 
 		$appRole = $graphApiSPN.AppRoles | Where-Object { $_.Value -eq $appRoleName -and $_.AllowedMemberTypes -contains "Application" }

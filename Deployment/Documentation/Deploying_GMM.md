@@ -112,6 +112,7 @@ The script creates the following app registrations and requests these Microsoft 
 | `<solutionAbbreviation>-Graph-<environmentAbbreviation>` | `User.Read.All` | Application | Yes |
 | | `GroupMember.Read.All` | Application | Yes |
 | | `Member.Read.Hidden` | Application | Yes |
+| | `Group.Create` | Application | Yes |
 | | `ChannelMember.ReadWrite.All` | Delegated | Yes |
 | | `Mail.Send` | Delegated | No |
 | `<solutionAbbreviation>-TeamsChannel-<environmentAbbreviation>` | `ChannelMember.ReadWrite.All` | Delegated | Yes |
@@ -124,7 +125,7 @@ The script creates the following app registrations and requests these Microsoft 
 Notes:
 
 - The **Graph** application is the only one granted Microsoft Graph *application* permissions. These always require admin consent, which is why a directory role of Global Administrator or Privileged Role Administrator is required.
-- GMM is **not** granted a tenant-wide group write permission. Membership changes are authorized by GMM being added as an **owner** of each destination group, not by `GroupMember.ReadWrite.All`.
+- GMM is **not** granted a tenant-wide group write permission. Membership changes are authorized by GMM being added as an **owner** of each destination group, not by `GroupMember.ReadWrite.All`. `Group.Create` only allows GMM to create new groups, which the create-group feature requires.
 - The **WebApi** application additionally exposes a `user_impersonation` scope and pre-authorizes the UI application to call it, so end users are never prompted to consent.
 - The **FunctionAuth** application exposes only a `client_impersonation` scope; it requests no Microsoft Graph permissions.
 - The script does not grant admin consent silently. After deployment it prints a consent URL for each application that needs it — see [Post Deployment](#post-deployment).
@@ -133,6 +134,7 @@ Notes:
 
 When `authenticationType` is `UserAssignedManagedIdentity`, the script assigns these Microsoft Graph **application** permissions to the user-assigned managed identity `<solutionAbbreviation>-identity-<environmentAbbreviation>-Graph`:
 
+- `Group.Create`
 - `GroupMember.Read.All`
 - `Member.Read.Hidden`
 - `User.Read.All`

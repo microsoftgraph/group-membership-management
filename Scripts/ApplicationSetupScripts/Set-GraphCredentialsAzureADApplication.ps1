@@ -7,7 +7,7 @@ Be aware that running this in VS Code doesn't work for some reason, it works bet
 You may have to open the created Azure AD app in your demo tenant and consent to the permissions!
 
 Basically, this script is designed to create an Azure AD app with the appropriate permissions in a given tenant
-(application permissions User.Read.All and GroupMember.Read.All) and write its credentials to a key vault in another tenant.
+(application permissions User.Read.All, GroupMember.Read.All, Member.Read.Hidden and Group.Create) and write its credentials to a key vault in another tenant.
 This should be able to work when the AD app and the target key vault are in the same tenant. Just pass the same tenant ID to both
 parameters.
 
@@ -423,7 +423,7 @@ function New-GraphCredentialsValidationConfiguration {
 	$mgGraphServicePrincipal = Get-MgServicePrincipal -Filter "appId eq '00000003-0000-0000-c000-000000000000'"
 	
 	$appPermissions = $mgGraphServicePrincipal.AppRoles `
-		| Where-Object { ($_.Value -eq "User.Read.All") -or ($_.Value -eq "GroupMember.Read.All") -or ($_.Value -eq "Member.Read.Hidden") } `
+		| Where-Object { ($_.Value -eq "User.Read.All") -or ($_.Value -eq "GroupMember.Read.All") -or ($_.Value -eq "Member.Read.Hidden") -or ($_.Value -eq "Group.Create") } `
 		| ForEach-Object { @{Id = $_.Id; Type = "Role" } }
 
 	$delegatedPermissions = $mgGraphServicePrincipal.Oauth2PermissionScopes `
