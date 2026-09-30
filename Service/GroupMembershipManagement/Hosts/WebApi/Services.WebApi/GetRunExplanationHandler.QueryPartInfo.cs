@@ -28,6 +28,7 @@ namespace Services
             public string? ManagerId { get; set; }
             public int? ManagerDepth { get; set; }
             public bool Exclusionary { get; set; }
+            public IdentityTypeSet? IdentityTypes { get; set; }
 
             public string Key => !string.IsNullOrEmpty(Source)
                 ? $"{Type}|{Source}"

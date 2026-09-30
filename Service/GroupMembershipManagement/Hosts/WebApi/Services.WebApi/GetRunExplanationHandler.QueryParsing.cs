@@ -49,7 +49,7 @@ namespace Services
 
         private static string? NormalizeQuery(string? query)
         {
-            return string.IsNullOrWhiteSpace(query) ? null : query.Trim();
+            return ChangeHistoryQueryNormalizer.Normalize(query);
         }
 
         // Inlined from GetSyncExplanationHandler for now; see plan.md follow-up to extract into a shared helper.
@@ -144,9 +144,36 @@ namespace Services
                 {
                     sb.AppendLine($"- Manager scope (SqlMembership recursive-CTE root) changed from {FormatManagerScopeWithName(prevPart, managerNames)} to {FormatManagerScopeWithName(currPart, managerNames)}");
                 }
+
+                if (prevPart.IdentityTypes != currPart.IdentityTypes)
+                {
+                    sb.AppendLine($"- Identity types changed from {DescribeIdentitySelection(prevPart.IdentityTypes)} to {DescribeIdentitySelection(currPart.IdentityTypes)}");
+                }
             }
 
             return sb.ToString().TrimEnd();
+        }
+
+        private static string DescribeIdentitySelection(IdentityTypeSet? selection)
+        {
+            if (selection == null)
+            {
+                return "an unreadable selection";
+            }
+
+            var includesUsers =
+                selection.Value.Includes(IdentityType.Users);
+            var includesAgents =
+                selection.Value.Includes(IdentityType.Agents);
+
+            if (includesUsers && includesAgents)
+            {
+                return "employees and the AI agents they own";
+            }
+
+            return includesAgents
+                ? "only the AI agents owned by matching employees"
+                : "only employees";
         }
 
         // Inlined from GetSyncExplanationHandler for now; see plan.md follow-up to extract into a shared helper.
@@ -205,12 +232,29 @@ namespace Services
                     if (element.TryGetProperty("exclusionary", out var exclEl))
                         part.Exclusionary = exclEl.ValueKind == JsonValueKind.True;
 
+                    if (string.Equals(
+                        part.Type,
+                        "SqlMembership",
+                        StringComparison.OrdinalIgnoreCase))
+                    {
+                        part.IdentityTypes = IdentityTypeSelection.TryParse(
+                            element,
+                            IdentityTypeSet.UsersOnly,
+                            out var selection,
+                            out _)
+                            ? selection
+                            : null;
+                    }
+
                     parts.Add(part);
                 }
 
                 return parts;
             }
-            catch (JsonException)
+            catch (Exception exception) when (
+                exception is JsonException ||
+                exception is ArgumentException ||
+                exception is InvalidOperationException)
             {
                 return null;
             }

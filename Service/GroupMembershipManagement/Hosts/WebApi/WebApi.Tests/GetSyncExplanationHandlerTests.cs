@@ -14,6 +14,7 @@ using Services.Messages.Responses;
 using Services.WebApi;
 using Services.WebApi.Contracts;
 using System.Net;
+using System.Text.Json;
 using System.Threading;
 
 namespace WebApi.Tests
@@ -416,6 +417,89 @@ namespace WebApi.Tests
                 "Prompt should indicate config was unchanged when queries match");
             Assert.IsFalse(capturedUserPrompt.Contains("Previous configuration:"),
                 "Prompt should not show previous/current diff when config unchanged");
+        }
+
+        [TestMethod]
+        public async Task ExecuteAsync_ShowsUnchangedConfiguration_WhenOnlyTheUsersOnlyDefaultWasWrittenOut()
+        {
+            SetupBlobWithUser(MembershipAction.Add);
+            SetupAdfData(new Dictionary<string, string> { { "Building", "B40" } });
+
+            var capturedUserPrompt = await ExplainWithConfigChangesAsync(
+                currentQuery: "[{\"type\":\"SqlMembership\",\"source\":{\"filter\":\"Building = 'B40'\"},\"identityTypes\":[\"users\"],\"exclusionary\":true}]",
+                previousQuery: "[{\"type\":\"SqlMembership\",\"source\":{\"filter\":\"Building = 'B40'\"},\"exclusionary\":true}]");
+
+            Assert.IsTrue(capturedUserPrompt.Contains("Configuration (unchanged)"),
+                "Writing out the users-only default is not a configuration change");
+            Assert.IsFalse(capturedUserPrompt.Contains("Previous configuration:"),
+                "Writing out the users-only default must not be shown as a previous/current diff");
+        }
+
+        [TestMethod]
+        public async Task ExecuteAsync_ShowsUnchangedConfiguration_WhenOnlyTheSelectionOrderChanged()
+        {
+            SetupBlobWithUser(MembershipAction.Add);
+            SetupAdfData(new Dictionary<string, string> { { "Building", "B40" } });
+
+            var capturedUserPrompt = await ExplainWithConfigChangesAsync(
+                currentQuery: "[{\"type\":\"SqlMembership\",\"source\":{\"filter\":\"Building = 'B40'\"},\"identityTypes\":[\"agents\",\"users\"]}]",
+                previousQuery: "[{\"type\":\"SqlMembership\",\"source\":{\"filter\":\"Building = 'B40'\"},\"identityTypes\":[\"users\",\"agents\"]}]");
+
+            Assert.IsTrue(capturedUserPrompt.Contains("Configuration (unchanged)"),
+                "The same identity types in another order are not a configuration change");
+            Assert.IsFalse(capturedUserPrompt.Contains("Previous configuration:"),
+                "Reordering the identity types must not be shown as a previous/current diff");
+        }
+
+        [TestMethod]
+        public async Task ExecuteAsync_IncludesConfigDiff_WhenAgentsAreAddedToAnOmittedSelection()
+        {
+            SetupBlobWithUser(MembershipAction.Add);
+            SetupAdfData(new Dictionary<string, string> { { "Building", "B40" } });
+
+            var capturedUserPrompt = await ExplainWithConfigChangesAsync(
+                currentQuery: "[{\"type\":\"SqlMembership\",\"filter\":\"Building = 'B40'\",\"identityTypes\":[\"users\",\"agents\"]}]",
+                previousQuery: "[{\"type\":\"SqlMembership\",\"filter\":\"Building = 'B40'\"}]");
+
+            Assert.IsTrue(capturedUserPrompt.Contains("Previous configuration:"),
+                "Adding agents to a users-only selection is a configuration change");
+        }
+
+        private async Task<string> ExplainWithConfigChangesAsync(string currentQuery, string previousQuery)
+        {
+            _mockSyncJobChangeRepository
+                .Setup(x => x.GetRecentConfigChangesBySyncJobIdAsync(
+                    _syncJobId, It.IsAny<DateTime>(), It.IsAny<int>()))
+                .ReturnsAsync(new List<SyncJobChange>
+                {
+                    new SyncJobChange
+                    {
+                        ChangeTime = DateTime.UtcNow.AddDays(-1),
+                        ChangeReason = "Update",
+                        ChangedByDisplayName = "Admin User",
+                        ChangeDetails = JsonSerializer.Serialize(new { Query = currentQuery })
+                    },
+                    new SyncJobChange
+                    {
+                        ChangeTime = DateTime.UtcNow.AddDays(-10),
+                        ChangeReason = "Update",
+                        ChangedByDisplayName = "Admin User",
+                        ChangeDetails = JsonSerializer.Serialize(new { Query = previousQuery })
+                    }
+                });
+
+            string? capturedUserPrompt = null;
+            _mockOpenAIService
+                .Setup(x => x.GetCompletionAsync(It.IsAny<string>(), It.IsAny<string>()))
+                .Callback<string, string>((systemPrompt, userPrompt) => capturedUserPrompt = userPrompt)
+                .ReturnsAsync("The user was added because their Building matches the filter.");
+
+            var response = await _handler.ExecuteAsync(
+                new GetSyncExplanationRequest(_syncJobId, _runId, _userObjectId, TestUserIdentity, hasAiSyncJobRole: true));
+
+            Assert.AreEqual(HttpStatusCode.OK, response.StatusCode);
+            Assert.IsNotNull(capturedUserPrompt);
+            return capturedUserPrompt!;
         }
 
         [TestMethod]

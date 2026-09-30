@@ -11,7 +11,9 @@ using Services;
 using Services.Contracts;
 using Services.Messages.Requests;
 using Services.WebApi.Contracts;
+using SqlMembershipObtainer.Entities;
 using System.Net;
+using System.Text.Json;
 using System.Threading;
 
 namespace WebApi.Tests
@@ -726,6 +728,51 @@ namespace WebApi.Tests
                 "[{\"type\":\"SqlMembership\",\"filter\":\"topLevel\",\"source\":{\"filter\":\"nested\"}}]");
             Assert.IsNotNull(parts);
             Assert.AreEqual("nested", parts![0].Filter);
+        }
+
+        [TestMethod]
+        public void ParseQueryParts_QualifiedFilterAndSelection_ArePreserved()
+        {
+            const string filter =
+                "users.EmployeeType_Code = 'FTE' AND agents.BlueprintId = 'approved'";
+            var parts = GetRunExplanationHandler.ParseQueryParts(
+                "[{\"type\":\"SqlMembership\",\"source\":{\"filter\":\"" +
+                filter +
+                "\"},\"identityTypes\":[\"agents\",\"users\"]}]");
+
+            Assert.IsNotNull(parts);
+            Assert.AreEqual(filter, parts![0].Filter);
+            Assert.AreEqual(IdentityTypeSet.All, parts[0].IdentityTypes);
+        }
+
+        [TestMethod]
+        public void ParseQueryParts_OmittedSelection_DefaultsToUsersOnly()
+        {
+            var parts = GetRunExplanationHandler.ParseQueryParts(
+                "[{\"type\":\"SqlMembership\",\"source\":{\"filter\":\"Department = 'Sales'\"}}]");
+
+            Assert.IsNotNull(parts);
+            Assert.AreEqual(IdentityTypeSet.UsersOnly, parts![0].IdentityTypes);
+        }
+
+        [TestMethod]
+        public void ParseQueryParts_MisplacedSelection_IsUndetermined()
+        {
+            var parts = GetRunExplanationHandler.ParseQueryParts(
+                "[{\"type\":\"SqlMembership\",\"source\":{\"filter\":\"Department = 'Sales'\",\"identityTypes\":[\"agents\"]}}]");
+
+            Assert.IsNotNull(parts);
+            Assert.IsNull(parts![0].IdentityTypes);
+        }
+
+        [TestMethod]
+        public void ParseQueryParts_SelectionKeyWithDifferentLetterCase_IsUndetermined()
+        {
+            var parts = GetRunExplanationHandler.ParseQueryParts(
+                "[{\"type\":\"SqlMembership\",\"source\":{\"filter\":\"Department = 'Sales'\"},\"IdentityTypes\":[\"agents\"]}]");
+
+            Assert.IsNotNull(parts);
+            Assert.IsNull(parts![0].IdentityTypes);
         }
 
         // ---------------- ParseMembershipDelta ----------------
@@ -1730,6 +1777,245 @@ namespace WebApi.Tests
         }
 
         [TestMethod]
+        public async Task ExecuteAsync_RemovesAttribution_AgentsOnlyWithValidEmptyCurrentResult_AttributesRemoval()
+        {
+            var currentAdfRunId = Guid.NewGuid();
+            var previousAdfRunId = Guid.NewGuid();
+            var previousRunId = Guid.NewGuid();
+            var currentTable = currentAdfRunId.ToString().Replace("-", string.Empty);
+            var previousTable = previousAdfRunId.ToString().Replace("-", string.Empty);
+            var removedAgent = Guid.NewGuid();
+            string? capturedPrompt = null;
+
+            _mockSyncJobRepository.Setup(x => x.GetSyncJobAsync(_syncJobId))
+                .ReturnsAsync(new SyncJob
+                {
+                    Id = _syncJobId,
+                    TargetOfficeGroupId = _targetGroupId,
+                    Query = "[{\"type\":\"SqlMembership\",\"identityTypes\":[\"agents\"],\"source\":{\"filter\":\"agents.BlueprintId = 'approved'\"}}]"
+                });
+            SetupCurrentRunAndPreviousRun(currentAdfRunId, previousAdfRunId, previousRunId, usersRemoved: 1);
+            SetupAggregatedRemovedUsers(removedAgent);
+            _mockSqlMembershipRepository.Setup(x => x.CheckIfTableExistsAsync(currentTable)).ReturnsAsync(true);
+            _mockSqlMembershipRepository.Setup(x => x.CheckIfTableExistsAsync(previousTable)).ReturnsAsync(true);
+            SetupSqlEvaluation(
+                "agents.BlueprintId = 'approved'",
+                currentTable,
+                IdentityTypeSet.Of(IdentityType.Agents));
+            SetupSqlEvaluation(
+                "agents.BlueprintId = 'approved'",
+                previousTable,
+                IdentityTypeSet.Of(IdentityType.Agents),
+                agentObjectIds: new[] { removedAgent });
+            _mockSqlMembershipRepository.Setup(x => x.GetUserAttributesBatchAsync(
+                    It.IsAny<IEnumerable<string>>(),
+                    currentTable))
+                .ReturnsAsync(new Dictionary<string, Dictionary<string, string>>());
+            _mockOpenAIService.Setup(x => x.GetCompletionAsync(It.IsAny<string>(), It.IsAny<string>()))
+                .Callback<string, string>((_, prompt) => capturedPrompt = prompt)
+                .ReturnsAsync("This sync completed successfully.");
+
+            var response = await _handler.ExecuteAsync(BuildRequest());
+
+            Assert.AreEqual(HttpStatusCode.OK, response.StatusCode);
+            Assert.IsNotNull(capturedPrompt);
+            StringAssert.Contains(capturedPrompt!, "no longer match this rule");
+            Assert.IsFalse(capturedPrompt!.Contains("no attributable source found"));
+        }
+
+        [TestMethod]
+        public async Task ExecuteAsync_RemovesAttribution_UsersAndAgents_CombinesSelectedIdentities()
+        {
+            var currentAdfRunId = Guid.NewGuid();
+            var previousAdfRunId = Guid.NewGuid();
+            var previousRunId = Guid.NewGuid();
+            var currentTable = currentAdfRunId.ToString().Replace("-", string.Empty);
+            var previousTable = previousAdfRunId.ToString().Replace("-", string.Empty);
+            var removedUser = Guid.NewGuid();
+            var removedAgent = Guid.NewGuid();
+            string? capturedPrompt = null;
+
+            _mockSyncJobRepository.Setup(x => x.GetSyncJobAsync(_syncJobId))
+                .ReturnsAsync(new SyncJob
+                {
+                    Id = _syncJobId,
+                    TargetOfficeGroupId = _targetGroupId,
+                    Query = "[{\"type\":\"SqlMembership\",\"identityTypes\":[\"users\",\"agents\"],\"source\":{\"filter\":\"Department = 'Engineering'\"}}]"
+                });
+            SetupCurrentRunAndPreviousRun(currentAdfRunId, previousAdfRunId, previousRunId, usersRemoved: 2);
+            SetupAggregatedRemovedUsers(removedUser, removedAgent);
+            _mockSqlMembershipRepository.Setup(x => x.CheckIfTableExistsAsync(currentTable)).ReturnsAsync(true);
+            _mockSqlMembershipRepository.Setup(x => x.CheckIfTableExistsAsync(previousTable)).ReturnsAsync(true);
+            SetupSqlEvaluation(
+                "Department = 'Engineering'",
+                currentTable,
+                IdentityTypeSet.All);
+            SetupSqlEvaluation(
+                "Department = 'Engineering'",
+                previousTable,
+                IdentityTypeSet.All,
+                userObjectIds: new[] { removedUser },
+                agentObjectIds: new[] { removedAgent });
+            _mockSqlMembershipRepository.Setup(x => x.GetUserAttributesBatchAsync(
+                    It.IsAny<IEnumerable<string>>(),
+                    currentTable))
+                .ReturnsAsync(new Dictionary<string, Dictionary<string, string>>());
+            _mockOpenAIService.Setup(x => x.GetCompletionAsync(It.IsAny<string>(), It.IsAny<string>()))
+                .Callback<string, string>((_, prompt) => capturedPrompt = prompt)
+                .ReturnsAsync("This sync completed successfully.");
+
+            var response = await _handler.ExecuteAsync(BuildRequest());
+
+            Assert.AreEqual(HttpStatusCode.OK, response.StatusCode);
+            Assert.IsNotNull(capturedPrompt);
+            StringAssert.Contains(capturedPrompt!, "all of the removed users no longer match this rule");
+            Assert.IsFalse(capturedPrompt!.Contains("no attributable source found"));
+        }
+
+        [TestMethod]
+        public async Task ExecuteAsync_AddsAttribution_UsersAndAgentsSharingAnId_CountsThatIdOnce()
+        {
+            var currentAdfRunId = Guid.NewGuid();
+            var previousAdfRunId = Guid.NewGuid();
+            var previousRunId = Guid.NewGuid();
+            var currentTable = currentAdfRunId.ToString().Replace("-", string.Empty);
+            var sharedIdentity = Guid.NewGuid();
+            var addedOutsideRule = Guid.NewGuid();
+            string? capturedPrompt = null;
+
+            _mockSyncJobRepository.Setup(x => x.GetSyncJobAsync(_syncJobId))
+                .ReturnsAsync(new SyncJob
+                {
+                    Id = _syncJobId,
+                    TargetOfficeGroupId = _targetGroupId,
+                    Query = "[{\"type\":\"SqlMembership\",\"identityTypes\":[\"users\",\"agents\"],\"source\":{\"filter\":\"Department = 'Engineering'\"}}]"
+                });
+            SetupCurrentRunAndPreviousRun(currentAdfRunId, previousAdfRunId, previousRunId, usersRemoved: 0, usersAdded: 2);
+            SetupAggregatedMembers(MembershipAction.Add, sharedIdentity, addedOutsideRule);
+            _mockSqlMembershipRepository.Setup(x => x.CheckIfTableExistsAsync(currentTable)).ReturnsAsync(true);
+            SetupSqlEvaluation(
+                "Department = 'Engineering'",
+                currentTable,
+                IdentityTypeSet.All,
+                userObjectIds: new[] { sharedIdentity },
+                agentObjectIds: new[] { sharedIdentity });
+            _mockSqlMembershipRepository.Setup(x => x.GetUserAttributesBatchAsync(
+                    It.IsAny<IEnumerable<string>>(),
+                    currentTable))
+                .ReturnsAsync(new Dictionary<string, Dictionary<string, string>>());
+            _mockOpenAIService.Setup(x => x.GetCompletionAsync(It.IsAny<string>(), It.IsAny<string>()))
+                .Callback<string, string>((_, prompt) => capturedPrompt = prompt)
+                .ReturnsAsync("This sync completed successfully.");
+
+            var response = await _handler.ExecuteAsync(BuildRequest());
+
+            Assert.AreEqual(HttpStatusCode.OK, response.StatusCode);
+            Assert.IsNotNull(capturedPrompt);
+            StringAssert.Contains(capturedPrompt!, "about half of the added users match this rule");
+            Assert.IsFalse(capturedPrompt!.Contains("all of the added users match this rule"));
+        }
+
+        [TestMethod]
+        public async Task ExecuteAsync_RemovesAttribution_MixedQualifiedFilter_PreservesCompleteFilter()
+        {
+            var currentAdfRunId = Guid.NewGuid();
+            var previousAdfRunId = Guid.NewGuid();
+            var previousRunId = Guid.NewGuid();
+            var currentTable = currentAdfRunId.ToString().Replace("-", string.Empty);
+            var previousTable = previousAdfRunId.ToString().Replace("-", string.Empty);
+            var removedAgent = Guid.NewGuid();
+            const string filter = "users.Department = 'Engineering' AND agents.BlueprintId = 'approved'";
+            string? capturedPrompt = null;
+
+            _mockSyncJobRepository.Setup(x => x.GetSyncJobAsync(_syncJobId))
+                .ReturnsAsync(new SyncJob
+                {
+                    Id = _syncJobId,
+                    TargetOfficeGroupId = _targetGroupId,
+                    Query = $"[{{\"type\":\"SqlMembership\",\"identityTypes\":[\"users\",\"agents\"],\"source\":{{\"filter\":\"{filter}\"}}}}]"
+                });
+            SetupCurrentRunAndPreviousRun(currentAdfRunId, previousAdfRunId, previousRunId, usersRemoved: 1);
+            SetupAggregatedRemovedUsers(removedAgent);
+            _mockSqlMembershipRepository.Setup(x => x.CheckIfTableExistsAsync(currentTable)).ReturnsAsync(true);
+            _mockSqlMembershipRepository.Setup(x => x.CheckIfTableExistsAsync(previousTable)).ReturnsAsync(true);
+            SetupSqlEvaluation(
+                filter,
+                currentTable,
+                IdentityTypeSet.All);
+            SetupSqlEvaluation(
+                filter,
+                previousTable,
+                IdentityTypeSet.All,
+                agentObjectIds: new[] { removedAgent });
+            _mockSqlMembershipRepository.Setup(x => x.GetUserAttributesBatchAsync(
+                    It.IsAny<IEnumerable<string>>(),
+                    currentTable))
+                .ReturnsAsync(new Dictionary<string, Dictionary<string, string>>());
+            _mockOpenAIService.Setup(x => x.GetCompletionAsync(It.IsAny<string>(), It.IsAny<string>()))
+                .Callback<string, string>((_, prompt) => capturedPrompt = prompt)
+                .ReturnsAsync("This sync completed successfully.");
+
+            var response = await _handler.ExecuteAsync(BuildRequest());
+
+            Assert.AreEqual(HttpStatusCode.OK, response.StatusCode);
+            Assert.IsNotNull(capturedPrompt);
+            StringAssert.Contains(capturedPrompt!, "no longer match this rule");
+            Assert.IsFalse(capturedPrompt!.Contains("no attributable source found"));
+        }
+
+        [TestMethod]
+        public async Task ExecuteAsync_RemovesAttribution_RequiredAgentsInputUnavailable_SkipsSqlAttribution()
+        {
+            var currentAdfRunId = Guid.NewGuid();
+            var previousAdfRunId = Guid.NewGuid();
+            var previousRunId = Guid.NewGuid();
+            var currentTable = currentAdfRunId.ToString().Replace("-", string.Empty);
+            var previousTable = previousAdfRunId.ToString().Replace("-", string.Empty);
+            var removedAgent = Guid.NewGuid();
+            const string filter = "agents.BlueprintId = 'approved'";
+            string? capturedPrompt = null;
+
+            _mockSyncJobRepository.Setup(x => x.GetSyncJobAsync(_syncJobId))
+                .ReturnsAsync(new SyncJob
+                {
+                    Id = _syncJobId,
+                    TargetOfficeGroupId = _targetGroupId,
+                    Query = "[{\"type\":\"SqlMembership\",\"identityTypes\":[\"agents\"],\"source\":{\"filter\":\"agents.BlueprintId = 'approved'\"}}]"
+                });
+            SetupCurrentRunAndPreviousRun(currentAdfRunId, previousAdfRunId, previousRunId, usersRemoved: 1);
+            SetupAggregatedRemovedUsers(removedAgent);
+            _mockSqlMembershipRepository.Setup(x => x.CheckIfTableExistsAsync(currentTable)).ReturnsAsync(true);
+            _mockSqlMembershipRepository.Setup(x => x.CheckIfTableExistsAsync(previousTable)).ReturnsAsync(true);
+            _mockSqlMembershipRepository.Setup(x => x.EvaluateMembershipAsync(
+                    It.Is<SqlMembershipEvaluationRequest>(request =>
+                        MatchesSqlEvaluationRequest(
+                            request,
+                            filter,
+                            currentTable,
+                            IdentityTypeSet.Of(IdentityType.Agents)))))
+                .ThrowsAsync(new InvalidOperationException("Required agents input is unavailable."));
+            SetupSqlEvaluation(
+                filter,
+                previousTable,
+                IdentityTypeSet.Of(IdentityType.Agents),
+                agentObjectIds: new[] { removedAgent });
+            _mockSqlMembershipRepository.Setup(x => x.GetUserAttributesBatchAsync(
+                    It.IsAny<IEnumerable<string>>(),
+                    currentTable))
+                .ReturnsAsync(new Dictionary<string, Dictionary<string, string>>());
+            _mockOpenAIService.Setup(x => x.GetCompletionAsync(It.IsAny<string>(), It.IsAny<string>()))
+                .Callback<string, string>((_, prompt) => capturedPrompt = prompt)
+                .ReturnsAsync("This sync completed successfully.");
+
+            var response = await _handler.ExecuteAsync(BuildRequest());
+
+            Assert.AreEqual(HttpStatusCode.OK, response.StatusCode);
+            Assert.IsNotNull(capturedPrompt);
+            StringAssert.Contains(capturedPrompt!, "no attributable source found");
+            Assert.IsFalse(capturedPrompt!.Contains("no longer match this rule"));
+        }
+
+        [TestMethod]
         public async Task ExecuteAsync_RemovesAttribution_WithSqlAndGroupDiffs_AddsPromptSection()
         {
             var currentAdfRunId = Guid.NewGuid();
@@ -1785,14 +2071,28 @@ namespace WebApi.Tests
 
             _mockSqlMembershipRepository.Setup(x => x.CheckIfTableExistsAsync(currentTable)).ReturnsAsync(true);
             _mockSqlMembershipRepository.Setup(x => x.CheckIfTableExistsAsync(previousTable)).ReturnsAsync(true);
-            _mockSqlMembershipRepository.Setup(x => x.FilterChildEntitiesAsync("Department = 'Engineering'", currentTable))
-                .ReturnsAsync(new List<SqlMembershipObtainer.Entities.PersonEntity>());
-            _mockSqlMembershipRepository.Setup(x => x.FilterChildEntitiesAsync("Department = 'Engineering'", previousTable))
-                .ReturnsAsync(new List<SqlMembershipObtainer.Entities.PersonEntity> { Person(sqlDropped) });
-            _mockSqlMembershipRepository.Setup(x => x.GetChildEntitiesAsync("EmployeeType = 'Vendor'", 42, currentTable, 2))
-                .ReturnsAsync(new List<SqlMembershipObtainer.Entities.PersonEntity> { Person(sqlNewlyExcluded) });
-            _mockSqlMembershipRepository.Setup(x => x.GetChildEntitiesAsync("EmployeeType = 'Vendor'", 42, previousTable, 2))
-                .ReturnsAsync(new List<SqlMembershipObtainer.Entities.PersonEntity>());
+            SetupSqlEvaluation(
+                "Department = 'Engineering'",
+                currentTable,
+                IdentityTypeSet.UsersOnly);
+            SetupSqlEvaluation(
+                "Department = 'Engineering'",
+                previousTable,
+                IdentityTypeSet.UsersOnly,
+                userObjectIds: new[] { sqlDropped });
+            SetupSqlEvaluation(
+                "EmployeeType = 'Vendor'",
+                currentTable,
+                IdentityTypeSet.UsersOnly,
+                managerEmployeeId: 42,
+                depth: 2,
+                userObjectIds: new[] { sqlNewlyExcluded });
+            SetupSqlEvaluation(
+                "EmployeeType = 'Vendor'",
+                previousTable,
+                IdentityTypeSet.UsersOnly,
+                managerEmployeeId: 42,
+                depth: 2);
             _mockSqlMembershipRepository.Setup(x => x.GetUserAttributesBatchAsync(It.IsAny<IEnumerable<string>>(), It.IsAny<string>()))
                 .ReturnsAsync(new Dictionary<string, Dictionary<string, string>>());
             _mockSqlMembershipRepository.Setup(x => x.GetOrgLeaderAsync(42, currentTable))
@@ -1850,7 +2150,9 @@ namespace WebApi.Tests
             // Section IS present but as a no-signal marker (no attributable source found) — enforces the anti-hallucination hard rule.
             StringAssert.Contains(capturedPrompt!, "Per-part attribution for removed users");
             StringAssert.Contains(capturedPrompt!, "no attributable source found");
-            _mockSqlMembershipRepository.Verify(x => x.FilterChildEntitiesAsync(It.IsAny<string>(), It.IsAny<string>()), Times.Never);
+            _mockSqlMembershipRepository.Verify(
+                x => x.EvaluateMembershipAsync(It.IsAny<SqlMembershipEvaluationRequest>()),
+                Times.Never);
         }
 
         [TestMethod]
@@ -1895,7 +2197,9 @@ namespace WebApi.Tests
             Assert.IsFalse(capturedPrompt!.Contains("no attributable source found"),
                 "Walk-back should have replaced the no-signal hedge marker with a real attribution.");
             // The walk-back reads blobs — it must NOT re-query the (pruned) ADF tables.
-            _mockSqlMembershipRepository.Verify(x => x.FilterChildEntitiesAsync(It.IsAny<string>(), It.IsAny<string>()), Times.Never);
+            _mockSqlMembershipRepository.Verify(
+                x => x.EvaluateMembershipAsync(It.IsAny<SqlMembershipEvaluationRequest>()),
+                Times.Never);
         }
 
         [TestMethod]
@@ -2043,7 +2347,9 @@ namespace WebApi.Tests
             StringAssert.Contains(capturedPrompt!, "per prior-run source history");
             Assert.IsFalse(capturedPrompt!.Contains("no attributable source found"),
                 "Walk-back should attribute despite a null previous AdfRunId, since blobs are keyed by RunId not by ADF table.");
-            _mockSqlMembershipRepository.Verify(x => x.FilterChildEntitiesAsync(It.IsAny<string>(), It.IsAny<string>()), Times.Never);
+            _mockSqlMembershipRepository.Verify(
+                x => x.EvaluateMembershipAsync(It.IsAny<SqlMembershipEvaluationRequest>()),
+                Times.Never);
         }
 
         [TestMethod]
@@ -2178,8 +2484,11 @@ namespace WebApi.Tests
             _mockSqlMembershipRepository.Setup(x => x.CheckIfTableExistsAsync(previousTable)).ReturnsAsync(false);
             // Latest ADF table is available and the removed user does NOT match the rule today.
             _mockDataFactoryRepository.Setup(x => x.GetMostRecentSucceededRunIdAsync()).ReturnsAsync(latestRunId.ToString());
-            _mockSqlMembershipRepository.Setup(x => x.FilterChildEntitiesAsync("Building = 'B40'", latestTable))
-                .ReturnsAsync(new List<SqlMembershipObtainer.Entities.PersonEntity> { Person(Guid.NewGuid()) });
+            SetupSqlEvaluation(
+                "Building = 'B40'",
+                latestTable,
+                IdentityTypeSet.UsersOnly,
+                userObjectIds: new[] { Guid.NewGuid() });
             _mockOpenAIService.Setup(x => x.GetCompletionAsync(It.IsAny<string>(), It.IsAny<string>()))
                 .Callback<string, string>((_, prompt) => capturedPrompt = prompt)
                 .ReturnsAsync("This sync completed successfully.");
@@ -2214,8 +2523,11 @@ namespace WebApi.Tests
             _mockSqlMembershipRepository.Setup(x => x.CheckIfTableExistsAsync(previousTable)).ReturnsAsync(false);
             _mockDataFactoryRepository.Setup(x => x.GetMostRecentSucceededRunIdAsync()).ReturnsAsync(latestRunId.ToString());
             // The removed user is still returned by the rule against the latest table, so the guard fires.
-            _mockSqlMembershipRepository.Setup(x => x.FilterChildEntitiesAsync("Building = 'B40'", latestTable))
-                .ReturnsAsync(new List<SqlMembershipObtainer.Entities.PersonEntity> { Person(removedUser) });
+            SetupSqlEvaluation(
+                "Building = 'B40'",
+                latestTable,
+                IdentityTypeSet.UsersOnly,
+                userObjectIds: new[] { removedUser });
             _mockOpenAIService.Setup(x => x.GetCompletionAsync(It.IsAny<string>(), It.IsAny<string>()))
                 .Callback<string, string>((_, prompt) => capturedPrompt = prompt)
                 .ReturnsAsync("This sync completed successfully.");
@@ -2232,7 +2544,7 @@ namespace WebApi.Tests
         [TestMethod]
         public async Task ExecuteAsync_RemovesCurrentState_ManagerChainPart_EmitsCurrentStateColorFromLatestTable()
         {
-            // Phase 3 evaluates the WHOLE manager-rooted part against the latest table (via GetChildEntitiesAsync), so a user no longer in the chain is colored even if they still match the filter attribute.
+            // Phase 3 evaluates the whole manager-rooted part against the latest table, so a user no longer in the chain is colored even if they still match the filter attribute.
             var currentAdfRunId = Guid.NewGuid();
             var previousAdfRunId = Guid.NewGuid();
             var previousRunId = Guid.NewGuid();
@@ -2257,8 +2569,13 @@ namespace WebApi.Tests
             _mockSqlMembershipRepository.Setup(x => x.CheckIfTableExistsAsync(previousTable)).ReturnsAsync(false);
             _mockDataFactoryRepository.Setup(x => x.GetMostRecentSucceededRunIdAsync()).ReturnsAsync(latestRunId.ToString());
             // The removed user is no longer in the management chain under 42 in the latest table.
-            _mockSqlMembershipRepository.Setup(x => x.GetChildEntitiesAsync("EmployeeType = 'FTE'", 42, latestTable, 2))
-                .ReturnsAsync(new List<SqlMembershipObtainer.Entities.PersonEntity> { Person(Guid.NewGuid()) });
+            SetupSqlEvaluation(
+                "EmployeeType = 'FTE'",
+                latestTable,
+                IdentityTypeSet.UsersOnly,
+                managerEmployeeId: 42,
+                depth: 2,
+                userObjectIds: new[] { Guid.NewGuid() });
             _mockOpenAIService.Setup(x => x.GetCompletionAsync(It.IsAny<string>(), It.IsAny<string>()))
                 .Callback<string, string>((_, prompt) => capturedPrompt = prompt)
                 .ReturnsAsync("This sync completed successfully.");
@@ -2289,14 +2606,22 @@ namespace WebApi.Tests
             // Both exact-run and previous snapshots present so the single-step diff attributes at removal time.
             _mockSqlMembershipRepository.Setup(x => x.CheckIfTableExistsAsync(currentTable)).ReturnsAsync(true);
             _mockSqlMembershipRepository.Setup(x => x.CheckIfTableExistsAsync(previousTable)).ReturnsAsync(true);
-            _mockSqlMembershipRepository.Setup(x => x.FilterChildEntitiesAsync("Building = 'B40'", currentTable))
-                .ReturnsAsync(new List<SqlMembershipObtainer.Entities.PersonEntity>());
-            _mockSqlMembershipRepository.Setup(x => x.FilterChildEntitiesAsync("Building = 'B40'", previousTable))
-                .ReturnsAsync(new List<SqlMembershipObtainer.Entities.PersonEntity> { Person(removedUser) });
+            SetupSqlEvaluation(
+                "Building = 'B40'",
+                currentTable,
+                IdentityTypeSet.UsersOnly);
+            SetupSqlEvaluation(
+                "Building = 'B40'",
+                previousTable,
+                IdentityTypeSet.UsersOnly,
+                userObjectIds: new[] { removedUser });
             _mockDataFactoryRepository.Setup(x => x.GetMostRecentSucceededRunIdAsync()).ReturnsAsync(latestRunId.ToString());
             // If Phase 3 wrongly ran, this latest-table match would let it emit color; the guard must prevent that.
-            _mockSqlMembershipRepository.Setup(x => x.FilterChildEntitiesAsync("Building = 'B40'", latestTable))
-                .ReturnsAsync(new List<SqlMembershipObtainer.Entities.PersonEntity> { Person(Guid.NewGuid()) });
+            SetupSqlEvaluation(
+                "Building = 'B40'",
+                latestTable,
+                IdentityTypeSet.UsersOnly,
+                userObjectIds: new[] { Guid.NewGuid() });
             _mockOpenAIService.Setup(x => x.GetCompletionAsync(It.IsAny<string>(), It.IsAny<string>()))
                 .Callback<string, string>((_, prompt) => capturedPrompt = prompt)
                 .ReturnsAsync("This sync completed successfully.");
@@ -2339,7 +2664,9 @@ namespace WebApi.Tests
             Assert.IsFalse(capturedPrompt!.Contains("in the latest HR data (current state, not the removal-time snapshot)"),
                 "Phase 3 must be skipped when there is no latest ADF table.");
             StringAssert.Contains(capturedPrompt!, "no attributable source found");
-            _mockSqlMembershipRepository.Verify(x => x.FilterChildEntitiesAsync(It.IsAny<string>(), It.IsAny<string>()), Times.Never);
+            _mockSqlMembershipRepository.Verify(
+                x => x.EvaluateMembershipAsync(It.IsAny<SqlMembershipEvaluationRequest>()),
+                Times.Never);
         }
 
         // ---- Phase 3 confirms the residual removes hedges (exact snapshot gone AND walk-back blobs gone) are now explained by the latest-ADF current-state fallback; no real job/run/ADF ids or names are used ----
@@ -2385,8 +2712,11 @@ namespace WebApi.Tests
                 .ReturnsAsync(new Dictionary<string, BlobResult>());
             // Latest ADF table is available and the proposed-removed user no longer matches the rule today.
             _mockDataFactoryRepository.Setup(x => x.GetMostRecentSucceededRunIdAsync()).ReturnsAsync(latestRunId.ToString());
-            _mockSqlMembershipRepository.Setup(x => x.FilterChildEntitiesAsync("Building = 'B40'", latestTable))
-                .ReturnsAsync(new List<SqlMembershipObtainer.Entities.PersonEntity> { Person(Guid.NewGuid()) });
+            SetupSqlEvaluation(
+                "Building = 'B40'",
+                latestTable,
+                IdentityTypeSet.UsersOnly,
+                userObjectIds: new[] { Guid.NewGuid() });
             _mockOpenAIService.Setup(x => x.GetCompletionAsync(It.IsAny<string>(), It.IsAny<string>()))
                 .Callback<string, string>((_, prompt) => capturedPrompt = prompt)
                 .ReturnsAsync("This sync proposed changes that were blocked because the change exceeded the configured threshold.");
@@ -2435,8 +2765,11 @@ namespace WebApi.Tests
                 .ReturnsAsync(new Dictionary<string, BlobResult>());
             // Latest ADF table is available and the removed user no longer matches the rule today.
             _mockDataFactoryRepository.Setup(x => x.GetMostRecentSucceededRunIdAsync()).ReturnsAsync(latestRunId.ToString());
-            _mockSqlMembershipRepository.Setup(x => x.FilterChildEntitiesAsync("Building = 'B40'", latestTable))
-                .ReturnsAsync(new List<SqlMembershipObtainer.Entities.PersonEntity> { Person(Guid.NewGuid()) });
+            SetupSqlEvaluation(
+                "Building = 'B40'",
+                latestTable,
+                IdentityTypeSet.UsersOnly,
+                userObjectIds: new[] { Guid.NewGuid() });
             _mockOpenAIService.Setup(x => x.GetCompletionAsync(It.IsAny<string>(), It.IsAny<string>()))
                 .Callback<string, string>((_, prompt) => capturedPrompt = prompt)
                 .ReturnsAsync("This sync completed successfully.");
@@ -2492,8 +2825,13 @@ namespace WebApi.Tests
                 .ReturnsAsync(new Dictionary<string, BlobResult>());
             _mockDataFactoryRepository.Setup(x => x.GetMostRecentSucceededRunIdAsync()).ReturnsAsync(latestRunId.ToString());
             // The proposed-removed user is STILL in the management chain today, so the contradiction guard must fire.
-            _mockSqlMembershipRepository.Setup(x => x.GetChildEntitiesAsync("EmployeeType = 'FTE'", 42, latestTable, 2))
-                .ReturnsAsync(new List<SqlMembershipObtainer.Entities.PersonEntity> { Person(removedUser) });
+            SetupSqlEvaluation(
+                "EmployeeType = 'FTE'",
+                latestTable,
+                IdentityTypeSet.UsersOnly,
+                managerEmployeeId: 42,
+                depth: 2,
+                userObjectIds: new[] { removedUser });
             _mockOpenAIService.Setup(x => x.GetCompletionAsync(It.IsAny<string>(), It.IsAny<string>()))
                 .Callback<string, string>((_, prompt) => capturedPrompt = prompt)
                 .ReturnsAsync("This sync completed successfully.");
@@ -3171,6 +3509,218 @@ namespace WebApi.Tests
             Assert.AreNotEqual(statusOnly, floor);
         }
 
+        private const string SqlPartBeforeMigration =
+            "[{\"type\":\"SqlMembership\",\"source\":{\"filter\":\"EmployeeType = 'FTE'\"},\"exclusionary\":true}]";
+        private const string SqlPartWrittenByMigration =
+            "[{\"type\":\"SqlMembership\",\"source\":{\"filter\":\"EmployeeType = 'FTE'\"},\"exclusionary\":true,\"identityTypes\":[\"users\"]}]";
+        private const string SqlPartSavedByUiAfterMigration =
+            "[{\"type\":\"SqlMembership\",\"source\":{\"filter\":\"EmployeeType = 'FTE'\"},\"identityTypes\":[\"users\"],\"exclusionary\":true}]";
+
+        private static readonly Type[] _explanationHandlerTypes =
+        {
+            typeof(GetRunExplanationHandler),
+            typeof(GetSyncExplanationHandler),
+        };
+
+        [TestMethod]
+        public void NormalizeQuery_UsersOnlyDefaultAndPropertyOrder_DoNotMakeSnapshotsDiffer()
+        {
+            foreach (var handlerType in _explanationHandlerTypes)
+            {
+                var beforeMigration = NormalizeWith(handlerType, SqlPartBeforeMigration);
+
+                Assert.AreEqual(beforeMigration, NormalizeWith(handlerType, SqlPartWrittenByMigration),
+                    $"{handlerType.Name}: the migration's explicit users-only selection is the same configuration.");
+                Assert.AreEqual(beforeMigration, NormalizeWith(handlerType, SqlPartSavedByUiAfterMigration),
+                    $"{handlerType.Name}: the UI's property order is the same configuration.");
+            }
+        }
+
+        [TestMethod]
+        public void NormalizeQuery_SelectionOrder_DoesNotMakeSnapshotsDiffer()
+        {
+            const string usersThenAgents = "[{\"type\":\"SqlMembership\",\"source\":{\"filter\":\"A = 1\"},\"identityTypes\":[\"users\",\"agents\"]}]";
+            const string agentsThenUsers = "[{\"type\":\"SqlMembership\",\"source\":{\"filter\":\"A = 1\"},\"identityTypes\":[\"agents\",\"users\"]}]";
+
+            foreach (var handlerType in _explanationHandlerTypes)
+            {
+                Assert.AreEqual(NormalizeWith(handlerType, usersThenAgents), NormalizeWith(handlerType, agentsThenUsers),
+                    $"{handlerType.Name}: the same identity types in another order are the same configuration.");
+            }
+        }
+
+        [TestMethod]
+        public void NormalizeQuery_InvalidSelection_IsKeptAsWritten()
+        {
+            const string validSelection = "[{\"type\":\"SqlMembership\",\"source\":{\"filter\":\"A = 1\"},\"identityTypes\":[\"users\"]}]";
+            var invalidSelections = new[]
+            {
+                "[{\"type\":\"SqlMembership\",\"source\":{\"filter\":\"A = 1\"},\"identityTypes\":[\"users\",\"users\"]}]",
+                "[{\"type\":\"SqlMembership\",\"source\":{\"filter\":\"A = 1\"},\"identityTypes\":[\"Users\"]}]",
+                "[{\"type\":\"SqlMembership\",\"source\":{\"filter\":\"A = 1\"},\"identityTypes\":\"users\"}]",
+                "[{\"type\":\"SqlMembership\",\"source\":{\"filter\":\"A = 1\"},\"identityTypes\":null}]",
+            };
+
+            foreach (var handlerType in _explanationHandlerTypes)
+            {
+                var valid = NormalizeWith(handlerType, validSelection);
+                foreach (var invalidSelection in invalidSelections)
+                {
+                    Assert.AreNotEqual(valid, NormalizeWith(handlerType, invalidSelection),
+                        $"{handlerType.Name}: {invalidSelection}");
+                }
+            }
+        }
+
+        [TestMethod]
+        public void NormalizeQuery_RealRuleAndSelectionChanges_StillMakeSnapshotsDiffer()
+        {
+            const string omittedSelection = "[{\"type\":\"SqlMembership\",\"source\":{\"filter\":\"A = 1\"}},{\"type\":\"SqlMembership\",\"source\":{\"filter\":\"B = 1\"}}]";
+            var changedConfigurations = new[]
+            {
+                "[{\"type\":\"SqlMembership\",\"source\":{\"filter\":\"A = 1\"},\"identityTypes\":[\"agents\"]},{\"type\":\"SqlMembership\",\"source\":{\"filter\":\"B = 1\"}}]",
+                "[{\"type\":\"SqlMembership\",\"source\":{\"filter\":\"A = 1\"},\"identityTypes\":[\"users\",\"agents\"]},{\"type\":\"SqlMembership\",\"source\":{\"filter\":\"B = 1\"}}]",
+                "[{\"type\":\"SqlMembership\",\"source\":{\"filter\":\"A = 2\"}},{\"type\":\"SqlMembership\",\"source\":{\"filter\":\"B = 1\"}}]",
+                "[{\"type\":\"SqlMembership\",\"source\":{\"filter\":\"A = 1\"},\"exclusionary\":true},{\"type\":\"SqlMembership\",\"source\":{\"filter\":\"B = 1\"}}]",
+                "[{\"type\":\"SqlMembership\",\"source\":{\"filter\":\"B = 1\"}},{\"type\":\"SqlMembership\",\"source\":{\"filter\":\"A = 1\"}}]",
+            };
+
+            foreach (var handlerType in _explanationHandlerTypes)
+            {
+                var original = NormalizeWith(handlerType, omittedSelection);
+                foreach (var changedConfiguration in changedConfigurations)
+                {
+                    Assert.AreNotEqual(original, NormalizeWith(handlerType, changedConfiguration),
+                        $"{handlerType.Name}: {changedConfiguration}");
+                }
+            }
+        }
+
+        [TestMethod]
+        public void NormalizeQuery_NonSqlPart_IsNotGivenTheUsersOnlyDefault()
+        {
+            const string groupPart = "[{\"type\":\"GroupMembership\",\"source\":\"11111111-1111-1111-1111-111111111111\"}]";
+            const string groupPartWithSelection = "[{\"type\":\"GroupMembership\",\"source\":\"11111111-1111-1111-1111-111111111111\",\"identityTypes\":[\"users\"]}]";
+
+            foreach (var handlerType in _explanationHandlerTypes)
+            {
+                Assert.AreNotEqual(NormalizeWith(handlerType, groupPart), NormalizeWith(handlerType, groupPartWithSelection), handlerType.Name);
+            }
+        }
+
+        [TestMethod]
+        public void NormalizeQuery_TextThatIsNotAQueryArray_IsOnlyTrimmed()
+        {
+            foreach (var handlerType in _explanationHandlerTypes)
+            {
+                Assert.IsNull(NormalizeWith(handlerType, "   "), handlerType.Name);
+                Assert.AreEqual("Q", NormalizeWith(handlerType, "  Q  "), handlerType.Name);
+                Assert.AreEqual("[{\"type\":", NormalizeWith(handlerType, " [{\"type\": "), handlerType.Name);
+                Assert.AreEqual("{\"type\":\"SqlMembership\"}", NormalizeWith(handlerType, " {\"type\":\"SqlMembership\"} "), handlerType.Name);
+            }
+        }
+
+        [TestMethod]
+        public void ComputeWalkBackFloor_FirstSaveAfterUsersOnlyMigration_IsNotAQueryBoundary()
+        {
+            var now = DateTime.UtcNow;
+            var changes = new List<SyncJobChange>
+            {
+                ChangeWithSerializedQuery(now.AddHours(-1), SqlPartSavedByUiAfterMigration),
+                ChangeWithSerializedQuery(now.AddHours(-10), SqlPartBeforeMigration),
+            };
+            var currentQueryNormalized = NormalizeWith(typeof(GetRunExplanationHandler), SqlPartSavedByUiAfterMigration);
+
+            var floor = InvokeStaticPrivate<DateTime>(typeof(GetRunExplanationHandler), "ComputeWalkBackFloor", new object?[] { changes, currentQueryNormalized });
+
+            Assert.AreEqual(DateTime.MinValue, floor, "Writing out the users-only default is not a rule change, so it must not truncate the removes walk-back.");
+        }
+
+        [TestMethod]
+        public async Task ExecuteAsync_FirstSaveAfterUsersOnlyMigration_IsNotReportedAsARuleChange()
+        {
+            var prompt = await ExplainRunWithConfigChangesAsync(
+                ChangeWithSerializedQuery(DateTime.UtcNow.AddMinutes(-30), SqlPartSavedByUiAfterMigration),
+                ChangeWithSerializedQuery(DateTime.UtcNow.AddDays(-10), SqlPartBeforeMigration));
+
+            Assert.IsFalse(prompt.Contains("Previous configuration:"),
+                "A save that only writes out the users-only default must not be shown as a previous/current configuration change.");
+        }
+
+        [TestMethod]
+        public async Task ExecuteAsync_ReorderedSelection_IsNotReportedAsARuleChange()
+        {
+            var prompt = await ExplainRunWithConfigChangesAsync(
+                ChangeWithSerializedQuery(DateTime.UtcNow.AddMinutes(-30), "[{\"type\":\"SqlMembership\",\"source\":{\"filter\":\"Building = 'B40'\"},\"identityTypes\":[\"users\",\"agents\"]}]"),
+                ChangeWithSerializedQuery(DateTime.UtcNow.AddDays(-10), "[{\"type\":\"SqlMembership\",\"source\":{\"filter\":\"Building = 'B40'\"},\"identityTypes\":[\"agents\",\"users\"]}]"));
+
+            Assert.IsFalse(prompt.Contains("Previous configuration:"),
+                "Saving the same identity types in another order must not be shown as a previous/current configuration change.");
+        }
+
+        [TestMethod]
+        public async Task ExecuteAsync_FirstSaveAfterUsersOnlyMigration_DiffsAgainstTheLastRealRuleChange()
+        {
+            var prompt = await ExplainRunWithConfigChangesAsync(
+                ChangeWithSerializedQuery(DateTime.UtcNow.AddMinutes(-30), SqlPartSavedByUiAfterMigration),
+                ChangeWithSerializedQuery(DateTime.UtcNow.AddDays(-10), SqlPartBeforeMigration),
+                ChangeWithSerializedQuery(DateTime.UtcNow.AddDays(-30), "[{\"type\":\"SqlMembership\",\"source\":{\"filter\":\"Building = 'B40'\"},\"exclusionary\":true}]"));
+
+            StringAssert.Contains(prompt, "Previous configuration:");
+            StringAssert.Contains(prompt, "Membership criteria changed",
+                "The diff must skip the save that only wrote out the default and compare with the real rule change before it.");
+        }
+
+        private async Task<string> ExplainRunWithConfigChangesAsync(params SyncJobChange[] changesNewestFirst)
+        {
+            _mockSyncJobHistoryRepository.Setup(x => x.GetByRunIdAsync(_runId))
+                .ReturnsAsync(new global::Models.SyncJobHistory.SyncJobHistory
+                {
+                    SyncJobId = _syncJobId,
+                    RunId = _runId,
+                    Status = "Idle",
+                    UpdatedAt = DateTime.UtcNow,
+                    StartTime = DateTime.UtcNow.AddMinutes(-5),
+                    EndTime = DateTime.UtcNow,
+                    UsersAdded = 5,
+                    UsersRemoved = 0,
+                });
+            _mockSyncJobHistoryRepository.Setup(x => x.GetBySyncJobIdAsync(_syncJobId, It.IsAny<int>(), It.IsAny<int>()))
+                .ReturnsAsync(new List<global::Models.SyncJobHistory.SyncJobHistory>
+                {
+                    new() { RunId = Guid.NewGuid(), UpdatedAt = DateTime.UtcNow.AddHours(-1) }
+                });
+            _mockSyncJobChangeRepository
+                .Setup(x => x.GetRecentConfigChangesBySyncJobIdAsync(_syncJobId, It.IsAny<DateTime>(), It.IsAny<int>()))
+                .ReturnsAsync(changesNewestFirst.ToList());
+
+            string? capturedUserPrompt = null;
+            _mockOpenAIService
+                .Setup(x => x.GetCompletionAsync(It.IsAny<string>(), It.IsAny<string>()))
+                .Callback<string, string>((systemPrompt, userPrompt) => capturedUserPrompt = userPrompt)
+                .ReturnsAsync("This sync completed successfully.");
+
+            var response = await _handler.ExecuteAsync(BuildRequest());
+
+            Assert.AreEqual(HttpStatusCode.OK, response.StatusCode);
+            Assert.IsNotNull(capturedUserPrompt);
+            StringAssert.Contains(capturedUserPrompt, "Last configuration change on");
+            return capturedUserPrompt!;
+        }
+
+        private static string? NormalizeWith(Type handlerType, string? query) =>
+            InvokeStaticPrivate<string?>(handlerType, "NormalizeQuery", new object?[] { query });
+
+        private static SyncJobChange ChangeWithSerializedQuery(DateTime changeTime, string query) =>
+            new()
+            {
+                Id = Guid.NewGuid(),
+                ChangeTime = changeTime,
+                ChangeReason = SyncJobChangeReason.Update.ToString(),
+                ChangedByDisplayName = "owner@contoso.com",
+                ChangeDetails = JsonSerializer.Serialize(new { query })
+            };
+
         [TestMethod]
         public async Task ExecuteAsync_RemovesCurrentState_MultiPartInclusionary_OnePartReadFails_SuppressesColor()
         {
@@ -3202,10 +3752,19 @@ namespace WebApi.Tests
             _mockSqlMembershipRepository.Setup(x => x.CheckIfTableExistsAsync(previousTable)).ReturnsAsync(false);
             _mockDataFactoryRepository.Setup(x => x.GetMostRecentSucceededRunIdAsync()).ReturnsAsync(latestRunId.ToString());
             // Part 1 reads successfully (removed user absent -> would be "colored" if we trusted the partial union)...
-            _mockSqlMembershipRepository.Setup(x => x.FilterChildEntitiesAsync("Building = 'B40'", latestTable))
-                .ReturnsAsync(new List<SqlMembershipObtainer.Entities.PersonEntity> { Person(Guid.NewGuid()) });
+            SetupSqlEvaluation(
+                "Building = 'B40'",
+                latestTable,
+                IdentityTypeSet.UsersOnly,
+                userObjectIds: new[] { Guid.NewGuid() });
             // ...but part 2 FAILS to read against the latest table, so no combined current-state signal is safe.
-            _mockSqlMembershipRepository.Setup(x => x.FilterChildEntitiesAsync("Department = 'Sales'", latestTable))
+            _mockSqlMembershipRepository.Setup(x => x.EvaluateMembershipAsync(
+                    It.Is<SqlMembershipEvaluationRequest>(request =>
+                        MatchesSqlEvaluationRequest(
+                            request,
+                            "Department = 'Sales'",
+                            latestTable,
+                            IdentityTypeSet.UsersOnly))))
                 .ThrowsAsync(new InvalidOperationException("transient read failure"));
             _mockOpenAIService.Setup(x => x.GetCompletionAsync(It.IsAny<string>(), It.IsAny<string>()))
                 .Callback<string, string>((_, prompt) => capturedPrompt = prompt)
@@ -3270,7 +3829,10 @@ namespace WebApi.Tests
             // Section IS present but as a no-signal marker — anti-hallucination enforcement.
             StringAssert.Contains(capturedPrompt!, "Per-part attribution for removed users");
             StringAssert.Contains(capturedPrompt!, "no attributable source found");
-            _mockSqlMembershipRepository.Verify(x => x.FilterChildEntitiesAsync("Building = 'B40'", It.IsAny<string>()), Times.Never);
+            _mockSqlMembershipRepository.Verify(
+                x => x.EvaluateMembershipAsync(It.Is<SqlMembershipEvaluationRequest>(request =>
+                    request.Filter == "Building = 'B40'")),
+                Times.Never);
         }
 
         [TestMethod]
@@ -3504,7 +4066,7 @@ namespace WebApi.Tests
             Assert.AreEqual(updated, result);
         }
 
-        private void SetupCurrentRunAndPreviousRun(Guid currentAdfRunId, Guid previousAdfRunId, Guid previousRunId, int usersRemoved)
+        private void SetupCurrentRunAndPreviousRun(Guid currentAdfRunId, Guid previousAdfRunId, Guid previousRunId, int usersRemoved, int usersAdded = 0)
         {
             var now = DateTime.UtcNow;
             _mockSyncJobHistoryRepository.Setup(x => x.GetByRunIdAsync(_runId))
@@ -3516,10 +4078,10 @@ namespace WebApi.Tests
                     UpdatedAt = now,
                     StartTime = now.AddMinutes(-5),
                     EndTime = now,
-                    UsersAdded = 0,
+                    UsersAdded = usersAdded,
                     UsersRemoved = usersRemoved,
                     BeforeSyncUserCount = 100,
-                    AfterSyncUserCount = 100 - usersRemoved,
+                    AfterSyncUserCount = 100 - usersRemoved + usersAdded,
                     AdfRunId = currentAdfRunId
                 });
 
@@ -3543,19 +4105,70 @@ namespace WebApi.Tests
 
         private void SetupAggregatedRemovedUsers(params Guid[] removedUsers)
         {
-            var members = string.Join(",", removedUsers.Select(id => $"{{\"ObjectId\":\"{id}\",\"MembershipAction\":2}}"));
+            SetupAggregatedMembers(MembershipAction.Remove, removedUsers);
+        }
+
+        private void SetupAggregatedMembers(MembershipAction membershipAction, params Guid[] objectIds)
+        {
+            var members = string.Join(",", objectIds.Select(id => $"{{\"ObjectId\":\"{id}\",\"MembershipAction\":{(int)membershipAction}}}"));
             _mockBlobStorageRepository.Setup(x => x.FindAggregatedFileByRunIdAsync(It.IsAny<string>(), It.IsAny<string>()))
-                .ReturnsAsync(new BlobResult { BlobStatus = BlobStatus.Found, Path = "test/removes.json" });
-            _mockBlobStorageRepository.Setup(x => x.DownloadFileAsync("test/removes.json"))
+                .ReturnsAsync(new BlobResult { BlobStatus = BlobStatus.Found, Path = "test/aggregated.json" });
+            _mockBlobStorageRepository.Setup(x => x.DownloadFileAsync("test/aggregated.json"))
                 .ReturnsAsync(new BlobResult { BlobStatus = BlobStatus.Found, Content = $"{{\"SourceMembers\":[{members}]}}" });
         }
 
-        private static SqlMembershipObtainer.Entities.PersonEntity Person(Guid azureObjectId) =>
-            new()
+        private void SetupSqlEvaluation(
+            string filter,
+            string tableName,
+            IdentityTypeSet identityTypes,
+            int? managerEmployeeId = null,
+            int depth = 0,
+            IReadOnlyCollection<Guid>? userObjectIds = null,
+            IReadOnlyCollection<Guid>? agentObjectIds = null)
+        {
+            var selectedUserObjectIds = userObjectIds ?? Array.Empty<Guid>();
+            var selectedAgentObjectIds = agentObjectIds ?? Array.Empty<Guid>();
+            var referencedIdentityTypes = new List<IdentityType>();
+
+            if (identityTypes.Includes(IdentityType.Users))
             {
-                PersonnelNumber = string.Empty,
-                AzureObjectId = azureObjectId.ToString()
-            };
+                referencedIdentityTypes.Add(IdentityType.Users);
+            }
+
+            if (identityTypes.Includes(IdentityType.Agents))
+            {
+                referencedIdentityTypes.Add(IdentityType.Agents);
+            }
+
+            _mockSqlMembershipRepository
+                .Setup(x => x.EvaluateMembershipAsync(
+                    It.Is<SqlMembershipEvaluationRequest>(request =>
+                        MatchesSqlEvaluationRequest(
+                            request,
+                            filter,
+                            tableName,
+                            identityTypes,
+                            managerEmployeeId,
+                            depth))))
+                .ReturnsAsync(new SqlMembershipEvaluationResult(
+                    selectedUserObjectIds,
+                    selectedAgentObjectIds,
+                    selectedUserObjectIds.Count,
+                    referencedIdentityTypes));
+        }
+
+        private static bool MatchesSqlEvaluationRequest(
+            SqlMembershipEvaluationRequest request,
+            string filter,
+            string tableName,
+            IdentityTypeSet identityTypes,
+            int? managerEmployeeId = null,
+            int depth = 0) =>
+            request.Filter == filter &&
+            request.TableName == tableName &&
+            request.IdentityTypes == identityTypes &&
+            request.ManagerEmployeeId == managerEmployeeId &&
+            request.Depth == depth;
 
         // Builds a SyncJobChange for ComputeWalkBackFloor tests: a config change carrying `query` in ChangeDetails, or a status-only change (no query) when query is null.
         private static SyncJobChange ChangeWithQuery(DateTime changeTime, string? query) =>
@@ -3879,6 +4492,19 @@ namespace WebApi.Tests
             var curr = "[{\"type\":\"SqlMembership\",\"source\":{\"filter\":\"Building = 'B40'\",\"manager\":{\"id\":200}}}]";
             StringAssert.Contains(GetRunExplanationHandler.DescribeQueryDiff(prev, curr),
                 "Manager scope");
+        }
+
+        [TestMethod]
+        public void DescribeQueryDiff_IdentitySelectionChanged()
+        {
+            var previous =
+                "[{\"type\":\"SqlMembership\",\"source\":{\"filter\":\"Building = 'B40'\"},\"identityTypes\":[\"users\"]}]";
+            var current =
+                "[{\"type\":\"SqlMembership\",\"source\":{\"filter\":\"Building = 'B40'\"},\"identityTypes\":[\"users\",\"agents\"]}]";
+
+            StringAssert.Contains(
+                GetRunExplanationHandler.DescribeQueryDiff(previous, current),
+                "Identity types changed from only employees to employees and the AI agents they own");
         }
 
         [TestMethod]

@@ -9,6 +9,7 @@ using Services.Contracts;
 using Services.Messages.Requests;
 using Services.Messages.Responses;
 using Services.WebApi.Contracts;
+using SqlMembershipObtainer.Entities;
 using System.Globalization;
 using System.Net;
 using System.Text;
@@ -144,30 +145,16 @@ namespace Services
         {
             try
             {
-                List<SqlMembershipObtainer.Entities.PersonEntity>? ruleMembers = null;
-                if (int.TryParse(part.ManagerId, out var mgrId) && mgrId > 0)
-                {
-                    // Manager-scoped variant: recursive CTE rooted at the manager. Pass depth=0
-                    // to mean unbounded (matches GetChildEntitiesAsync's contract).
-                    ruleMembers = await _sqlMembershipRepository.GetChildEntitiesAsync(
-                        part.Filter, mgrId, tableName, part.ManagerDepth ?? 0);
-                }
-                else if (!string.IsNullOrWhiteSpace(part.Filter))
-                {
-                    // Filter-only variant: plain WHERE clause over the whole HR table.
-                    ruleMembers = await _sqlMembershipRepository.FilterChildEntitiesAsync(
-                        part.Filter, tableName);
-                }
+                var ruleMembers = await FetchSqlPartMembersAsync(part, tableName);
+
                 if (ruleMembers == null || ruleMembers.Count == 0)
                 {
-                    // Empty rule output — Pattern 8 ("Empty membership rule result") in the prompt
-                    // already covers this case; don't emit an attribution line.
                     return null;
                 }
 
                 var matched = ruleMembers.Count(m =>
-                    !string.IsNullOrWhiteSpace(m.AzureObjectId)
-                    && addedSet.Contains(m.AzureObjectId));
+                    !string.IsNullOrWhiteSpace(m) &&
+                    addedSet.Contains(m));
                 var bucket = BucketAttribution(matched, totalSampled);
                 var label = FormatSqlPartLabel(part, managerNames);
                 return $"- {label}: {bucket} of the added users match this rule";
@@ -643,17 +630,39 @@ namespace Services
 
         private async Task<List<string?>?> FetchSqlPartMembersAsync(QueryPartInfo part, string tableName)
         {
-            List<SqlMembershipObtainer.Entities.PersonEntity>? members = null;
-            if (int.TryParse(part.ManagerId, out var mgrId) && mgrId > 0)
+            if (part.IdentityTypes == null)
             {
-                members = await _sqlMembershipRepository.GetChildEntitiesAsync(
-                    part.Filter, mgrId, tableName, part.ManagerDepth ?? 0);
+                return null;
             }
-            else if (!string.IsNullOrWhiteSpace(part.Filter))
+
+            int? managerEmployeeId = null;
+            if (int.TryParse(part.ManagerId, out var managerId) &&
+                managerId > 0)
             {
-                members = await _sqlMembershipRepository.FilterChildEntitiesAsync(part.Filter, tableName);
+                managerEmployeeId = managerId;
             }
-            return members?.Select(m => m.AzureObjectId).ToList();
+
+            if (!managerEmployeeId.HasValue &&
+                string.IsNullOrWhiteSpace(part.Filter))
+            {
+                return null;
+            }
+
+            var result =
+                await _sqlMembershipRepository.EvaluateMembershipAsync(
+                    new SqlMembershipEvaluationRequest(
+                        managerEmployeeId,
+                        part.ManagerDepth ?? 0,
+                        part.Filter ?? string.Empty,
+                        part.IdentityTypes.Value,
+                        tableName));
+            // An ID returned as both a user and an agent is one member, as in the uploaded membership file; counting it
+            // twice would overstate the attribution bucket.
+            return result.UserObjectIds
+                .Concat(result.AgentObjectIds)
+                .Distinct()
+                .Select(identifier => (string?)identifier.ToString("D"))
+                .ToList();
         }
 
         // Group-family removes: inclusionary parts flag users who left the source; exclusionary flag users newly in the excluded source.

@@ -631,9 +631,7 @@ Use only the provided data. If you cannot determine the reason with reasonable c
 
         private static string? NormalizeQuery(string? query)
         {
-            if (string.IsNullOrWhiteSpace(query))
-                return null;
-            return query.Trim();
+            return ChangeHistoryQueryNormalizer.Normalize(query);
         }
 
         private static HashSet<string> ExtractFilterAttributeNames(string query)
