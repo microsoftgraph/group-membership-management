@@ -459,7 +459,7 @@ Use only the provided data. Output 1-2 sentences normally, or up to 3 sentences 
         // Returns StartTime when available. When null (common for threshold-blocked / disabled runs), returns EndTime
         // minus a 30-second buffer to avoid capturing config updates that landed alongside the run's finalization.
         // Falls back to UpdatedAt only if both StartTime and EndTime are unavailable.
-        private static DateTime GetRunConfigCutoff(Models.SyncJobHistory.SyncJobHistory runHistory)
+        internal static DateTime GetRunConfigCutoff(Models.SyncJobHistory.SyncJobHistory runHistory)
         {
             if (runHistory.StartTime.HasValue) return runHistory.StartTime.Value;
             if (runHistory.EndTime.HasValue) return runHistory.EndTime.Value.AddSeconds(-30);

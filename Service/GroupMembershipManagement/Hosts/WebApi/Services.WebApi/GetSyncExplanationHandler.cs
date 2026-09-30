@@ -131,11 +131,14 @@ Use only the provided data. If you cannot determine the reason with reasonable c
                     return response;
                 }
 
-                var configChanges = await GetRecentConfigChangesAsync(request.SyncJobId, runHistory);
-                var configDiff = await GetConfigurationDiffAsync(request.SyncJobId, runHistory);
-                var userAttributes = await GetUserAttributesForPromptAsync(syncJob.Query, request.UserObjectId, runHistory.AdfRunId);
+                // JobTrigger sends the job's rule with the run when it starts it, so edits made after the start did not affect this run.
+                var runStart = GetRunExplanationHandler.GetRunConfigCutoff(runHistory);
+                var configChanges = await GetRecentConfigChangesAsync(request.SyncJobId, runStart);
+                var (configDiff, queryAtRunStart) = await GetConfigurationDiffAsync(request.SyncJobId, runStart);
+                var queryInEffect = queryAtRunStart ?? syncJob.Query;
+                var userAttributes = await GetUserAttributesForPromptAsync(queryInEffect, request.UserObjectId, runHistory.AdfRunId);
 
-                var userPrompt = BuildUserPrompt(request, runHistory, syncJob.Query, membershipChange.Value, configChanges, configDiff, userAttributes);
+                var userPrompt = BuildUserPrompt(request, runHistory, queryInEffect, membershipChange.Value, configChanges, configDiff, userAttributes);
                 var explanation = await _openAIService.GetCompletionAsync(SystemPrompt, userPrompt);
 
                 response.Explanation = string.IsNullOrWhiteSpace(explanation) ? FallbackExplanation : explanation.Trim();
@@ -314,7 +317,7 @@ Use only the provided data. If you cannot determine the reason with reasonable c
             catch (InvalidOperationException) { return null; }
         }
 
-        private async Task<string> GetRecentConfigChangesAsync(Guid syncJobId, Models.SyncJobHistory.SyncJobHistory runHistory)
+        private async Task<string> GetRecentConfigChangesAsync(Guid syncJobId, DateTime runStart)
         {
             try
             {
@@ -325,12 +328,10 @@ Use only the provided data. If you cannot determine the reason with reasonable c
                 if (changesPage?.Items == null || !changesPage.Items.Any())
                     return "None";
 
-                var runTime = runHistory.EndTime ?? runHistory.StartTime ?? runHistory.UpdatedAt;
-                var windowStart = runTime.AddDays(-1);
-                var windowEnd = runTime.AddHours(1);
+                var windowStart = runStart.AddDays(-1);
 
                 var nearbyChanges = changesPage.Items
-                    .Where(c => c.ChangeTime >= windowStart && c.ChangeTime <= windowEnd)
+                    .Where(c => c.ChangeTime >= windowStart && c.ChangeTime <= runStart)
                     .ToList();
 
                 if (!nearbyChanges.Any())
@@ -409,19 +410,21 @@ Use only the provided data. If you cannot determine the reason with reasonable c
             }
         }
 
-        private async Task<string> GetConfigurationDiffAsync(Guid syncJobId, Models.SyncJobHistory.SyncJobHistory runHistory)
+        // Returns the configuration history for the prompt and the rule saved by the last configuration change at or before
+        // the run started. That rule is null when no change was recorded or the change has no rule.
+        private async Task<(string Description, string? QueryAtRunStart)> GetConfigurationDiffAsync(Guid syncJobId, DateTime runStart)
         {
+            string? currentQuery = null;
             try
             {
-                var runTime = runHistory.EndTime ?? runHistory.StartTime ?? runHistory.UpdatedAt;
                 var recentChanges = await _syncJobChangeRepository.GetRecentConfigChangesBySyncJobIdAsync(
-                    syncJobId, runTime, count: 2);
+                    syncJobId, runStart, count: 2);
 
                 if (recentChanges == null || recentChanges.Count == 0)
-                    return "No configuration changes found.";
+                    return ("No configuration changes found.", null);
 
                 var currentChange = recentChanges[0];
-                var currentQuery = ExtractQueryFromChangeDetails(currentChange.ChangeDetails);
+                currentQuery = ExtractQueryFromChangeDetails(currentChange.ChangeDetails);
                 var previousQuery = recentChanges.Count > 1
                     ? ExtractQueryFromChangeDetails(recentChanges[1].ChangeDetails)
                     : null;
@@ -450,12 +453,12 @@ Use only the provided data. If you cannot determine the reason with reasonable c
                     sb.AppendLine($"Initial configuration: {currentQuery ?? "None"}");
                 }
 
-                return sb.ToString().TrimEnd();
+                return (sb.ToString().TrimEnd(), currentQuery);
             }
             catch (Exception ex)
             {
                 _logger.LogWarning(ex, "Failed to load configuration diff for SyncJob {SyncJobId}", syncJobId);
-                return "Unable to retrieve configuration history.";
+                return ("Unable to retrieve configuration history.", currentQuery);
             }
         }
 
@@ -763,7 +766,7 @@ Status: {runHistory.Status}
 Before sync: {runHistory.BeforeSyncUserCount ?? 0} members | After sync: {runHistory.AfterSyncUserCount ?? 0} members
 Users added: {runHistory.UsersAdded ?? 0} | Users removed: {runHistory.UsersRemoved ?? 0}
 
-Job filter: {query ?? "None"}
+Job filter in effect when this sync started: {query ?? "None"}
 
 User {request.UserObjectId} was {changeVerb} in this run.
 
@@ -773,7 +776,7 @@ User's current HR attributes (for filter-referenced fields):
 Configuration history:
 {configDiff}
 
-Recent configuration changes (near this run):
+Configuration changes in the day before this sync started:
 {configChanges}";
         }
 

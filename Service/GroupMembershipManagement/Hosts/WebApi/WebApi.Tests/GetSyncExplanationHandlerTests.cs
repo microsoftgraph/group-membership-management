@@ -39,6 +39,11 @@ namespace WebApi.Tests
         private Guid _runId;
         private Guid _userObjectId;
         private const string TestUserIdentity = "test-user-id";
+        private const string OmittedSelectionRule = "[{\"type\":\"SqlMembership\",\"source\":{\"filter\":\"EmployeeId <= 51\"}}]";
+        private const string UsersAndAgentsRule = "[{\"type\":\"SqlMembership\",\"source\":{\"filter\":\"EmployeeId <= 51\"},\"identityTypes\":[\"users\",\"agents\"]}]";
+        private const string UsersOnlyRule = "[{\"type\":\"SqlMembership\",\"source\":{\"filter\":\"EmployeeId <= 51\"},\"identityTypes\":[\"users\"]}]";
+        private const string BuildingRule = "[{\"type\":\"SqlMembership\",\"source\":{\"filter\":\"Building = 'B40'\"}}]";
+        private const string DepartmentRule = "[{\"type\":\"SqlMembership\",\"source\":{\"filter\":\"Department = 'Sales'\"}}]";
 
         [TestInitialize]
         public void Initialize()
@@ -295,7 +300,7 @@ namespace WebApi.Tests
                     {
                         new SyncJobChange
                         {
-                            ChangeTime = DateTime.UtcNow.AddMinutes(-5),
+                            ChangeTime = runHistory.StartTime.Value.AddMinutes(-5),
                             ChangeReason = "Update",
                             ChangedByDisplayName = "Admin User",
                             BusinessJustification = "Updated building filter"
@@ -533,6 +538,115 @@ namespace WebApi.Tests
                 "The filter's attributes should be read from the rule's source");
             Assert.IsFalse(capturedUserPrompt.Contains("Could not parse filter attributes."),
                 "A saved SQL rule's filter must be found");
+        }
+
+        [TestMethod]
+        public async Task ExecuteAsync_ShowsTheRuleInEffectWhenTheSyncStarted_WhenTheRuleWasEditedDuringTheSync()
+        {
+            var runStart = DateTime.UtcNow.AddHours(-2);
+            SetupRun(runStart, runStart.AddMinutes(2));
+            SetupJobQuery(UsersOnlyRule);
+            SetupBlobWithUser(MembershipAction.Add);
+            SetupConfigChanges(
+                CreateConfigChange(runStart.AddDays(-2), "Onboarding", OmittedSelectionRule),
+                CreateConfigChange(runStart.AddMinutes(-20), "Update", UsersAndAgentsRule),
+                CreateConfigChange(runStart.AddMinutes(1), "Update", UsersOnlyRule));
+
+            var userPrompt = await CaptureUserPromptAsync();
+
+            Assert.IsTrue(userPrompt.Contains($"Job filter in effect when this sync started: {UsersAndAgentsRule}"),
+                "The prompt should show the rule the sync ran with, not the job's current rule");
+            Assert.IsTrue(userPrompt.Contains(
+                    "- Identity types changed from only employees to employees and the AI agents they own"),
+                "The configuration history should end at the change the sync ran with");
+            Assert.IsFalse(userPrompt.Contains(UsersOnlyRule),
+                "A rule saved after the sync started did not affect it and must not be in the prompt");
+        }
+
+        [TestMethod]
+        public async Task ExecuteAsync_ListsOnlyTheChangesMadeBeforeTheSyncStarted()
+        {
+            var runStart = DateTime.UtcNow.AddHours(-2);
+            SetupRun(runStart, runStart.AddMinutes(2));
+            SetupJobQuery(UsersOnlyRule);
+            SetupBlobWithUser(MembershipAction.Add);
+            SetupConfigChanges(
+                CreateConfigChange(runStart.AddMinutes(-20), "Update", UsersAndAgentsRule, "Include the owned agents"),
+                CreateConfigChange(runStart.AddMinutes(1), "Update", UsersOnlyRule, "Edited during the sync"),
+                CreateConfigChange(runStart.AddMinutes(30), "Update", UsersOnlyRule, "Edited after the sync"));
+
+            var userPrompt = await CaptureUserPromptAsync();
+
+            Assert.IsTrue(userPrompt.Contains("Justification: Include the owned agents"),
+                "A change made before the sync started should be listed");
+            Assert.IsFalse(userPrompt.Contains("Edited during the sync"),
+                "A change made after the sync started should not be listed");
+            Assert.IsFalse(userPrompt.Contains("Edited after the sync"),
+                "A change made after the sync finished should not be listed");
+        }
+
+        [TestMethod]
+        public async Task ExecuteAsync_ReadsHrAttributesForTheRuleInEffectWhenTheSyncStarted()
+        {
+            var runStart = DateTime.UtcNow.AddHours(-2);
+            var adfRunId = Guid.NewGuid();
+            var tableName = adfRunId.ToString().Replace("-", "");
+            SetupRun(runStart, runStart.AddMinutes(2), adfRunId);
+            SetupJobQuery(DepartmentRule);
+            SetupBlobWithUser(MembershipAction.Add);
+            SetupConfigChanges(
+                CreateConfigChange(runStart.AddMinutes(-20), "Update", BuildingRule),
+                CreateConfigChange(runStart.AddMinutes(30), "Update", DepartmentRule));
+
+            _mockSqlMembershipRepository
+                .Setup(x => x.CheckIfTableExistsAsync(tableName))
+                .ReturnsAsync(true);
+            _mockSqlMembershipRepository
+                .Setup(x => x.GetUserAttributesAsync(_userObjectId.ToString(), tableName))
+                .ReturnsAsync(new Dictionary<string, string> { { "Building", "B40" }, { "Department", "Sales" } });
+
+            var userPrompt = await CaptureUserPromptAsync();
+
+            Assert.IsTrue(userPrompt.Contains("Building: B40"),
+                "The HR attributes should be the ones the sync's rule filtered on");
+            Assert.IsFalse(userPrompt.Contains("Department: Sales"),
+                "Attributes used only by a rule saved after the sync started are not relevant to it");
+        }
+
+        [TestMethod]
+        public async Task ExecuteAsync_ShowsTheJobsCurrentRule_WhenNoConfigurationChangeWasRecorded()
+        {
+            var runStart = DateTime.UtcNow.AddHours(-2);
+            SetupRun(runStart, runStart.AddMinutes(2));
+            SetupJobQuery(UsersAndAgentsRule);
+            SetupBlobWithUser(MembershipAction.Add);
+            SetupConfigChanges();
+
+            var userPrompt = await CaptureUserPromptAsync();
+
+            Assert.IsTrue(userPrompt.Contains($"Job filter in effect when this sync started: {UsersAndAgentsRule}"),
+                "Without a recorded change, the job's current rule is the only rule available");
+            Assert.IsTrue(userPrompt.Contains("No configuration changes found."),
+                "The configuration history should say that no change was recorded");
+        }
+
+        [TestMethod]
+        public async Task ExecuteAsync_IgnoresChangesMadeInTheLast30SecondsOfTheSync_WhenTheRunHasNoStartTime()
+        {
+            var runEnd = DateTime.UtcNow.AddHours(-2);
+            SetupRun(null, runEnd);
+            SetupJobQuery(UsersOnlyRule);
+            SetupBlobWithUser(MembershipAction.Add);
+            SetupConfigChanges(
+                CreateConfigChange(runEnd.AddMinutes(-5), "Update", UsersAndAgentsRule),
+                CreateConfigChange(runEnd.AddSeconds(-10), "Update", UsersOnlyRule));
+
+            var userPrompt = await CaptureUserPromptAsync();
+
+            Assert.IsTrue(userPrompt.Contains($"Job filter in effect when this sync started: {UsersAndAgentsRule}"),
+                "Without a start time, a change saved while the sync was finishing did not affect it");
+            Assert.IsFalse(userPrompt.Contains(UsersOnlyRule),
+                "A change saved while the sync was finishing must not be in the prompt");
         }
 
         private async Task<string> ExplainWithConfigChangesAsync(string currentQuery, string previousQuery)
@@ -1088,6 +1202,94 @@ namespace WebApi.Tests
             _mockSqlMembershipRepository
                 .Setup(x => x.GetUserAttributesAsync(_userObjectId.ToString(), tableName))
                 .ReturnsAsync(userAttributes);
+        }
+
+        private void SetupRun(DateTime? startTime, DateTime endTime, Guid? adfRunId = null)
+        {
+            _mockSyncJobHistoryRepository
+                .Setup(x => x.GetByRunIdAsync(_runId))
+                .ReturnsAsync(new global::Models.SyncJobHistory.SyncJobHistory
+                {
+                    SyncJobId = _syncJobId,
+                    RunId = _runId,
+                    Status = SyncStatus.Idle.ToString(),
+                    StartTime = startTime,
+                    EndTime = endTime,
+                    UpdatedAt = endTime,
+                    UsersAdded = 1,
+                    UsersRemoved = 0,
+                    BeforeSyncUserCount = 100,
+                    AfterSyncUserCount = 101,
+                    AdfRunId = adfRunId
+                });
+        }
+
+        private void SetupJobQuery(string query)
+        {
+            _mockSyncJobRepository
+                .Setup(x => x.GetSyncJobAsync(_syncJobId))
+                .ReturnsAsync(new SyncJob
+                {
+                    Id = _syncJobId,
+                    TargetOfficeGroupId = _targetGroupId,
+                    Query = query
+                });
+        }
+
+        // Mirrors the repository: configuration changes are onboardings and updates made at or before the cut-off, newest first.
+        private void SetupConfigChanges(params SyncJobChange[] changes)
+        {
+            var configurationReasons = new[]
+            {
+                SyncJobChangeReason.Onboarding.ToString(),
+                SyncJobChangeReason.OnboardingAutoApproved.ToString(),
+                SyncJobChangeReason.Update.ToString()
+            };
+
+            _mockSyncJobChangeRepository
+                .Setup(x => x.GetRecentConfigChangesBySyncJobIdAsync(_syncJobId, It.IsAny<DateTime>(), It.IsAny<int>()))
+                .ReturnsAsync((Guid syncJobId, DateTime asOf, int count) => changes
+                    .Where(c => configurationReasons.Contains(c.ChangeReason) && c.ChangeTime <= asOf)
+                    .OrderByDescending(c => c.ChangeTime)
+                    .Take(count)
+                    .ToList());
+
+            _mockSyncJobChangeRepository
+                .Setup(x => x.GetPageBySyncJobId(
+                    _syncJobId, It.IsAny<int>(), It.IsAny<int>(),
+                    It.IsAny<SyncJobChangeSortingField>(), It.IsAny<bool>()))
+                .ReturnsAsync(new RepositoryPage<SyncJobChange>
+                {
+                    Items = changes.OrderByDescending(c => c.ChangeTime).ToList()
+                });
+        }
+
+        private static SyncJobChange CreateConfigChange(DateTime changeTime, string changeReason, string query, string? businessJustification = null)
+        {
+            return new SyncJobChange
+            {
+                ChangeTime = changeTime,
+                ChangeReason = changeReason,
+                ChangedByDisplayName = "Admin User",
+                BusinessJustification = businessJustification,
+                ChangeDetails = JsonSerializer.Serialize(new { Query = query })
+            };
+        }
+
+        private async Task<string> CaptureUserPromptAsync()
+        {
+            string? capturedUserPrompt = null;
+            _mockOpenAIService
+                .Setup(x => x.GetCompletionAsync(It.IsAny<string>(), It.IsAny<string>()))
+                .Callback<string, string>((systemPrompt, userPrompt) => capturedUserPrompt = userPrompt)
+                .ReturnsAsync("The member was added.");
+
+            var response = await _handler.ExecuteAsync(
+                new GetSyncExplanationRequest(_syncJobId, _runId, _userObjectId, TestUserIdentity, hasAiSyncJobRole: true));
+
+            Assert.AreEqual(HttpStatusCode.OK, response.StatusCode);
+            Assert.IsNotNull(capturedUserPrompt);
+            return capturedUserPrompt!;
         }
     }
 }
