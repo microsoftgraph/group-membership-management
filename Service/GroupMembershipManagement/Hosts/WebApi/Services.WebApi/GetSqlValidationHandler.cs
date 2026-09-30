@@ -16,8 +16,6 @@ namespace Services
         private readonly ISqlMembershipRepository _sqlMembershipRepository;
         private readonly IDataFactoryRepository _dataFactoryRepository;
 
-        private SemaphoreSlim _adfRunIdSemaphore = new SemaphoreSlim(1, 1);
-
         public GetSqlValidationHandler(ILogger<GetSqlValidationHandler> logger,
                                 ISqlMembershipRepository sqlMembershipRepository,
                                 IDataFactoryRepository dataFactoryRepository) : base(logger)
@@ -84,11 +82,7 @@ namespace Services
 
         private async Task<string> GetADFRunIdAsync()
         {
-            await _adfRunIdSemaphore.WaitAsync();
-
             var lastSqlMembershipRunId = await _dataFactoryRepository.GetMostRecentSucceededRunIdAsync();
-
-            _adfRunIdSemaphore.Release();
 
             if (string.IsNullOrWhiteSpace(lastSqlMembershipRunId))
             {

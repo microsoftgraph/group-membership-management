@@ -11,6 +11,7 @@ using System.Linq;
 using System.Net;
 using System.Text.Json;
 using System.Threading.Tasks;
+using SqlMembershipObtainer.Entities;
 using WebApi.Models.DTOs;
 
 namespace Services
@@ -189,6 +190,21 @@ namespace Services
                 return null;
             }
 
+            if (!IdentityTypeSelection.TryParse(
+                part,
+                IdentityTypeSet.UsersOnly,
+                out var selection,
+                out _))
+            {
+                return null;
+            }
+
+            if (!Guid.TryParse(userId, out var objectId) ||
+                objectId == Guid.Empty)
+            {
+                return null;
+            }
+
             string filter = null;
             if (source.TryGetProperty("filter", out var filterProp) && filterProp.ValueKind == JsonValueKind.String)
             {
@@ -209,21 +225,43 @@ namespace Services
                 }
             }
 
+            // The producer builds no membership for a part with no manager and no filter.
+            if (managerId <= 0 && string.IsNullOrWhiteSpace(filter))
+            {
+                return false;
+            }
+
             try
             {
-                if (managerId > 0)
+                var evaluationRequest = new SqlMembershipEvaluationRequest(
+                    managerId > 0 ? managerId : null,
+                    depth,
+                    filter ?? string.Empty,
+                    selection,
+                    tableName);
+
+                if (selection.Includes(IdentityType.Users))
                 {
-                    // Org-structure part: build the manager's reporting tree (optionally filtered) and check membership.
-                    var children = await _sqlMembershipRepository.GetChildEntitiesAsync(filter, managerId, tableName, depth);
-                    return children.Any(c => string.Equals(c.AzureObjectId, userId, StringComparison.OrdinalIgnoreCase));
+                    var userSelected =
+                        await _sqlMembershipRepository.IsIdentitySelectedAsync(
+                            evaluationRequest,
+                            objectId,
+                            IdentityType.Users);
+
+                    if (userSelected)
+                    {
+                        return true;
+                    }
                 }
 
-                if (!string.IsNullOrWhiteSpace(filter))
+                if (selection.Includes(IdentityType.Agents))
                 {
-                    return await _sqlMembershipRepository.IsUserInFilterAsync(filter, tableName, userId);
+                    return await _sqlMembershipRepository.IsIdentitySelectedAsync(
+                        evaluationRequest,
+                        objectId,
+                        IdentityType.Agents);
                 }
 
-                // No manager and no filter - the part resolves to an empty set.
                 return false;
             }
             catch (Exception ex)
