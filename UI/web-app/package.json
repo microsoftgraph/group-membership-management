@@ -20,7 +20,7 @@
     "@types/react": "18.0.27",
     "@types/react-dom": "18.0.10",
     "ajv": "8.18.0",
-    "axios": "1.18.0",
+    "axios": "1.20.0",
     "base32-encode": "^2.0.0",
     "history": "5.3.0",
     "i18next": "23.6.0",
@@ -94,7 +94,7 @@
     "overrides": {
       "@remix-run/router": ">=1.23.2",
       "ajv": ">=8.18.0",
-      "axios": ">=1.18.0",
+      "axios": ">=1.20.0",
       "body-parser": ">=1.20.3",
       "brace-expansion@5": ">=5.0.12",
       "braces": ">=3.0.3",
@@ -138,7 +138,7 @@
     "x-override-notes": {
       "@remix-run/router>=1.23.2": "Security fix - Open redirect via basename parameter",
       "ajv>=8.18.0": "Precautionary version floor - prototype pollution hardening (CVE-2020-15366 affected 6.x)",
-      "axios>=1.18.0": "CVE-2025-27152 - SSRF via absolute URL bypass of baseURL; GHSA-42h9-826w-cgv3 / GHSA-pmv8-rq9r-6j72 / GHSA-xj6q-8x83-jv6g fixed in 1.18.0",
+      "axios>=1.20.0": "GHSA-3pq3-5fj3-cg6v (CVE-2026-101898) - HTTP/2 adapter bypasses configured DNS lookup and proxy controls, GHSA-542g-h47m-68v8 (CVE-2026-101901) - DoS via unhandled 'error' event in HTTP/2 session initialization, GHSA-c29m-xwm3-cm6r (CVE-2026-101903) - ReDoS in the data: URL parser, GHSA-mghh-pgcx-3jjj (CVE-2026-101906) - ReDoS in shouldBypassProxy host normalization, and GHSA-x97p-jq2g-jp4f (CVE-2026-101909) - prototype pollution gadget in toFormData options; all fixed in 1.20.0. Supersedes CVE-2025-27152 - SSRF via absolute URL bypass of baseURL; GHSA-42h9-826w-cgv3 / GHSA-pmv8-rq9r-6j72 / GHSA-xj6q-8x83-jv6g fixed in 1.18.0",
       "body-parser>=1.20.3": "CVE-2024-45590 - Asymmetric DoS via malformed URL-encoded payload",
       "brace-expansion@5>=5.0.12": "GHSA-6j4f-fj2g-mc7p (CVE-2026-102276) - DoS via uncontrolled recursion in parseCommaParts (fixed 5.0.10), GHSA-qhr7-859c-m2p7 (CVE-2026-102278) - DoS via uncontrolled recursion on nested brace groups (fixed 5.0.11), and GHSA-q2hr-2g5m-vwhr (CVE-2026-102277) - quadratic-time expansion of the `{a},b}` rewrite (fixed 5.0.12). Supersedes GHSA-rgw5-rvv9-x895 - DoS via unbounded intermediate arrays, bypassing the CVE-2026-14257 mitigation (fixed 5.0.9), GHSA-mh99-v99m-4gvg - DoS via unbounded expansion length causing OOM process crash (fixed 5.0.8), GHSA-3jxr-9vmj-r5cp - DoS via exponential-time expansion of consecutive non-expanding {} groups (fixed 5.0.7), and GHSA-jxxr-4gwj-5jf2 - large numeric range defeats the documented `max` DoS protection (affects 5.0.0-5.0.5, fixed 5.0.6).",
       "braces>=3.0.3": "CVE-2024-4068 - Memory exhaustion via unbalanced braces",
