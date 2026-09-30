@@ -458,11 +458,81 @@ namespace WebApi.Tests
             SetupAdfData(new Dictionary<string, string> { { "Building", "B40" } });
 
             var capturedUserPrompt = await ExplainWithConfigChangesAsync(
-                currentQuery: "[{\"type\":\"SqlMembership\",\"filter\":\"Building = 'B40'\",\"identityTypes\":[\"users\",\"agents\"]}]",
-                previousQuery: "[{\"type\":\"SqlMembership\",\"filter\":\"Building = 'B40'\"}]");
+                currentQuery: "[{\"type\":\"SqlMembership\",\"source\":{\"filter\":\"Building = 'B40'\"},\"identityTypes\":[\"users\",\"agents\"]}]",
+                previousQuery: "[{\"type\":\"SqlMembership\",\"source\":{\"filter\":\"Building = 'B40'\"}}]");
 
             Assert.IsTrue(capturedUserPrompt.Contains("Previous configuration:"),
                 "Adding agents to a users-only selection is a configuration change");
+            Assert.IsTrue(capturedUserPrompt.Contains(
+                    "- Identity types changed from only employees to employees and the AI agents they own"),
+                "The prompt should say in plain words that agents were added to the selection");
+            Assert.IsFalse(capturedUserPrompt.Contains("Filter changed from"),
+                "The filter itself did not change");
+        }
+
+        [TestMethod]
+        public async Task ExecuteAsync_IncludesConfigDiff_WhenAgentsAreRemovedFromASavedSqlRule()
+        {
+            SetupBlobWithUser(MembershipAction.Remove);
+
+            var capturedUserPrompt = await ExplainWithConfigChangesAsync(
+                currentQuery: "[{\"type\":\"SqlMembership\",\"source\":{\"filter\":\"EmployeeId <= 51\"},\"identityTypes\":[\"users\"],\"exclusionary\":false}]",
+                previousQuery: "[{\"type\":\"SqlMembership\",\"source\":{\"filter\":\"EmployeeId <= 51\"},\"identityTypes\":[\"users\",\"agents\"],\"exclusionary\":false}]");
+
+            Assert.IsFalse(capturedUserPrompt.Contains("Unable to retrieve configuration history."),
+                "A SQL rule whose source is an object must not break the configuration history");
+            Assert.IsTrue(capturedUserPrompt.Contains(
+                    "- Identity types changed from employees and the AI agents they own to only employees"),
+                "The prompt should say that agents were removed from the selection");
+            Assert.IsFalse(capturedUserPrompt.Contains("Filter changed from"),
+                "The filter itself did not change");
+        }
+
+        [TestMethod]
+        public async Task ExecuteAsync_DescribesTheFilterChange_WhenTheSavedSqlRuleKeepsItsFilterInsideTheSource()
+        {
+            SetupBlobWithUser(MembershipAction.Remove);
+            SetupAdfData(new Dictionary<string, string> { { "Building", "B99" } });
+
+            var capturedUserPrompt = await ExplainWithConfigChangesAsync(
+                currentQuery: "[{\"type\":\"SqlMembership\",\"source\":{\"filter\":\"Building = 'B50'\"},\"identityTypes\":[\"users\"]}]",
+                previousQuery: "[{\"type\":\"SqlMembership\",\"source\":{\"filter\":\"Building = 'B40'\"},\"identityTypes\":[\"users\"]}]");
+
+            Assert.IsTrue(capturedUserPrompt.Contains("- Filter changed from \"Building = 'B40'\" to \"Building = 'B50'\""),
+                "The filter change should be read from the rule's source");
+            Assert.IsFalse(capturedUserPrompt.Contains("Identity types changed"),
+                "The selection did not change");
+        }
+
+        [TestMethod]
+        public async Task ExecuteAsync_ReadsFilterAttributesFromTheRuleSource_WhenTheJobQueryIsSaved()
+        {
+            _mockSyncJobRepository
+                .Setup(x => x.GetSyncJobAsync(_syncJobId))
+                .ReturnsAsync(new SyncJob
+                {
+                    Id = _syncJobId,
+                    TargetOfficeGroupId = _targetGroupId,
+                    Query = "[{\"type\":\"SqlMembership\",\"source\":{\"filter\":\"Building = 'B40'\"},\"identityTypes\":[\"users\",\"agents\"]}]"
+                });
+            SetupBlobWithUser(MembershipAction.Add);
+            SetupRunHrAttributes(new Dictionary<string, string> { { "Building", "B40" } });
+
+            string? capturedUserPrompt = null;
+            _mockOpenAIService
+                .Setup(x => x.GetCompletionAsync(It.IsAny<string>(), It.IsAny<string>()))
+                .Callback<string, string>((systemPrompt, userPrompt) => capturedUserPrompt = userPrompt)
+                .ReturnsAsync("The user was added because their Building matches the filter.");
+
+            var response = await _handler.ExecuteAsync(
+                new GetSyncExplanationRequest(_syncJobId, _runId, _userObjectId, TestUserIdentity, hasAiSyncJobRole: true));
+
+            Assert.AreEqual(HttpStatusCode.OK, response.StatusCode);
+            Assert.IsNotNull(capturedUserPrompt);
+            Assert.IsTrue(capturedUserPrompt!.Contains("Building: B40"),
+                "The filter's attributes should be read from the rule's source");
+            Assert.IsFalse(capturedUserPrompt.Contains("Could not parse filter attributes."),
+                "A saved SQL rule's filter must be found");
         }
 
         private async Task<string> ExplainWithConfigChangesAsync(string currentQuery, string previousQuery)
@@ -986,6 +1056,37 @@ namespace WebApi.Tests
             _mockSqlMembershipRepository
                 .Setup(x => x.GetUserAttributesAsync(
                     _userObjectId.ToString(), tableName))
+                .ReturnsAsync(userAttributes);
+        }
+
+        // The handler reads HR attributes from the snapshot recorded on the run, so the run must carry its id.
+        private void SetupRunHrAttributes(Dictionary<string, string> userAttributes)
+        {
+            var adfRunId = Guid.NewGuid();
+            var tableName = adfRunId.ToString().Replace("-", "");
+
+            _mockSyncJobHistoryRepository
+                .Setup(x => x.GetByRunIdAsync(_runId))
+                .ReturnsAsync(new global::Models.SyncJobHistory.SyncJobHistory
+                {
+                    SyncJobId = _syncJobId,
+                    RunId = _runId,
+                    Status = SyncStatus.Idle.ToString(),
+                    StartTime = DateTime.UtcNow.AddMinutes(-10),
+                    EndTime = DateTime.UtcNow,
+                    UsersAdded = 5,
+                    UsersRemoved = 2,
+                    BeforeSyncUserCount = 100,
+                    AfterSyncUserCount = 103,
+                    AdfRunId = adfRunId
+                });
+
+            _mockSqlMembershipRepository
+                .Setup(x => x.CheckIfTableExistsAsync(tableName))
+                .ReturnsAsync(true);
+
+            _mockSqlMembershipRepository
+                .Setup(x => x.GetUserAttributesAsync(_userObjectId.ToString(), tableName))
                 .ReturnsAsync(userAttributes);
         }
     }

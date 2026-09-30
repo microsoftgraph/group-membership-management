@@ -28,7 +28,7 @@ Given context about a sync run and a specific user, explain in 1-2 sentences why
 
 GMM syncs membership from source parts into a destination group. A sync job's configuration (its ""query"") is a list of source parts, each of which can be:
 - A **GroupMembership** source: includes or excludes members of another Entra ID group.
-- A **SqlMembership** source: includes or excludes employees matching an HR data filter (e.g., Building, Department).
+- A **SqlMembership** source: includes or excludes employees matching an HR data filter (e.g., Building, Department). Its identity types can instead select the AI agents those employees own, or both.
 - A **PlaceMembership** source: includes or excludes users returned by a Microsoft Graph query with applied filters (e.g., users associated with a specific place or location).
 - A **GroupOwnership** source: includes or excludes owners of a specified Entra ID group.
 - A **TeamsChannelMembership** source: includes or excludes members of a Microsoft Teams channel.
@@ -43,6 +43,7 @@ When explaining, use the most specific explanation that fits the data. Follow th
 4. **Exclusionary part added**: ""This user was removed because a new exclusion rule was added on [date] that excludes employees where [criteria], and they match that exclusion.""
 5. **User attribute changed (no config change)**: ""This user was removed because their [attribute] changed from [old value] to [new value], which no longer matches the filter criteria [filter].""
 6. **No config change, user matches filter**: ""This user was added because their current attributes match the sync filter criteria.""
+7. **Identity types changed**: ""This member was removed because the HR rule was changed on [date] from [previous identity types] to [new identity types], and they are not an employee in the HR data.""
 
 Always reference specific dates, attribute names, and values from the provided data when available.
 Use only the provided data. If you cannot determine the reason with reasonable confidence, say ""The specific reason could not be determined from the available data.""";
@@ -535,6 +536,13 @@ Use only the provided data. If you cannot determine the reason with reasonable c
                     {
                         sb.AppendLine($"- Filter changed from \"{prevPart.Filter ?? "none"}\" to \"{currPart.Filter ?? "none"}\"");
                     }
+
+                    if (prevPart.IdentityTypes != currPart.IdentityTypes)
+                    {
+                        var previousSelection = GetRunExplanationHandler.DescribeIdentitySelection(prevPart.IdentityTypes);
+                        var currentSelection = GetRunExplanationHandler.DescribeIdentitySelection(currPart.IdentityTypes);
+                        sb.AppendLine($"- Identity types changed from {previousSelection} to {currentSelection}");
+                    }
                 }
             }
 
@@ -561,18 +569,28 @@ Use only the provided data. If you cannot determine the reason with reasonable c
 
                     part.Type = GetStringProperty(element, "type") ?? "Unknown";
                     part.Source = GetStringProperty(element, "source");
-                    part.Filter = GetStringProperty(element, "filter");
+                    part.Filter = GetFilter(element);
 
                     var exclEl = GetProperty(element, "exclusionary");
                     if (exclEl.HasValue)
                         part.Exclusionary = exclEl.Value.ValueKind == JsonValueKind.True;
+
+                    if (string.Equals(part.Type, "SqlMembership", StringComparison.OrdinalIgnoreCase))
+                    {
+                        part.IdentityTypes = IdentityTypeSelection.TryParse(element, IdentityTypeSet.UsersOnly, out var selection, out _)
+                            ? selection
+                            : null;
+                    }
 
                     parts.Add(part);
                 }
 
                 return parts;
             }
-            catch (JsonException)
+            catch (Exception exception) when (
+                exception is JsonException ||
+                exception is ArgumentException ||
+                exception is InvalidOperationException)
             {
                 return null;
             }
@@ -586,6 +604,9 @@ Use only the provided data. If you cannot determine the reason with reasonable c
             public string? Filter { get; set; }
             public bool Exclusionary { get; set; }
 
+            // Null for non-SQL parts and for a SQL selection that cannot be read.
+            public IdentityTypeSet? IdentityTypes { get; set; }
+
             // Key for matching parts across configs: type + source for group-based parts,
             // type + index for SQL parts (since they don't have a unique source ID)
             public string Key => !string.IsNullOrEmpty(Source)
@@ -598,6 +619,9 @@ Use only the provided data. If you cannot determine the reason with reasonable c
         /// </summary>
         private static JsonElement? GetProperty(JsonElement element, string camelCaseName)
         {
+            if (element.ValueKind != JsonValueKind.Object)
+                return null;
+
             if (element.TryGetProperty(camelCaseName, out var value))
                 return value;
 
@@ -610,7 +634,25 @@ Use only the provided data. If you cannot determine the reason with reasonable c
 
         private static string? GetStringProperty(JsonElement element, string camelCaseName)
         {
-            return GetProperty(element, camelCaseName)?.GetString();
+            var value = GetProperty(element, camelCaseName);
+            if (value == null || value.Value.ValueKind != JsonValueKind.String)
+                return null;
+
+            return value.Value.GetString();
+        }
+
+        // Saved SQL parts keep their filter inside an object "source"; older parts put it at the top level.
+        private static string? GetFilter(JsonElement part)
+        {
+            var source = GetProperty(part, "source");
+            if (source != null && source.Value.ValueKind == JsonValueKind.Object)
+            {
+                var nestedFilter = GetStringProperty(source.Value, "filter");
+                if (!string.IsNullOrWhiteSpace(nestedFilter))
+                    return nestedFilter;
+            }
+
+            return GetStringProperty(part, "filter");
         }
 
         private static string? ExtractQueryFromChangeDetails(string? changeDetails)
@@ -646,7 +688,7 @@ Use only the provided data. If you cannot determine the reason with reasonable c
 
                 foreach (var part in parts)
                 {
-                    var filter = GetStringProperty(part, "filter");
+                    var filter = GetFilter(part);
                     if (!string.IsNullOrWhiteSpace(filter))
                     {
                         ExtractAttributeNamesFromSqlFilter(filter, attributeNames);

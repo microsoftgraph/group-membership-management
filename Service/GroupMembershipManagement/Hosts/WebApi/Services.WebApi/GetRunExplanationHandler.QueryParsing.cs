@@ -154,7 +154,7 @@ namespace Services
             return sb.ToString().TrimEnd();
         }
 
-        private static string DescribeIdentitySelection(IdentityTypeSet? selection)
+        internal static string DescribeIdentitySelection(IdentityTypeSet? selection)
         {
             if (selection == null)
             {
