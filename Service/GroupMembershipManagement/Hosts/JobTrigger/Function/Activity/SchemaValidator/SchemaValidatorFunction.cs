@@ -51,7 +51,7 @@ namespace JobTrigger.Activity.SchemaValidator
                 if (AnyPartMatches(
                     syncJob.Query,
                     IdentityTypeSelection.IsExplicitlySelected) &&
-                    !_schemaProvider.Schemas.ContainsKey(QuerySchemaKey))
+                    !_schemaProvider.Schemas.Keys.Any(key => key.Equals(QuerySchemaKey, StringComparison.InvariantCultureIgnoreCase)))
                 {
                     _logger.SchemaNotValid(QuerySchemaKey);
                     return false;

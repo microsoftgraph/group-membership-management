@@ -193,6 +193,17 @@ namespace Services.Tests
         }
 
         [TestMethod]
+        public async Task IdentityTypes_FindsQuerySchemaRegardlessOfKeyCase()
+        {
+            var selectedQuery = "[{\"type\":\"SqlMembership\",\"source\":{\"manager\":{\"id\":1}},\"identityTypes\":[\"agents\"]}]";
+
+            var providerWithLowercaseKey = new JsonSchemaProvider();
+            providerWithLowercaseKey.Schemas.Add("query", _jsonSchemaProvider.Schemas["Query"]);
+
+            Assert.IsTrue(await ValidateAsync(selectedQuery, providerWithLowercaseKey));
+        }
+
+        [TestMethod]
         public async Task IdentityTypes_LoadedSchemaStillAcceptsLegacySqlParts()
         {
             var legacyQueries = new[]
