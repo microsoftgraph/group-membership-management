@@ -36,6 +36,15 @@ namespace SqlMembershipObtainer
 
                 var isValidJson = true;
 
+                if (IdentityTypeSelection.IsExplicitlySelected(request.Query) &&
+                    !_schemaProvider.Schemas.ContainsKey(
+                        Schema.SqlMembershipSchema))
+                {
+                    _logger.SchemaQueryNotValid(
+                        $"'{IdentityTypeSelection.PropertyName}' cannot be validated because the SQL membership schema is not loaded.");
+                    return false;
+                }
+
                 if (_schemaProvider.Schemas.Count == 0)
                 {
                     _logger.NoJsonSchemasLoaded();

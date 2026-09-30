@@ -314,6 +314,83 @@ namespace Services.Tests
                                                      It.IsAny<TaskOptions>()), Times.Never());
         }
 
+        [TestMethod]
+        public async Task IdentityTypes_OrchestratorCarriesExplicitSelection()
+        {
+            _syncJob.Query =
+                "[{\"type\":\"SqlMembership\",\"source\":{\"manager\":{\"id\":1}},\"identityTypes\":[\"agents\",\"users\"]}]";
+            _mainRequest.TotalParts = 1;
+
+            OrganizationProcessorRequest capturedRequest = null;
+            _context.Setup(x => x.CallSubOrchestratorAsync<MembershipFileResult>(
+                    nameof(OrganizationProcessorFunction),
+                    It.IsAny<OrganizationProcessorRequest>(),
+                    It.IsAny<TaskOptions>()))
+                .Callback<TaskName, object, TaskOptions>(
+                    (_, request, _) =>
+                        capturedRequest = request as OrganizationProcessorRequest)
+                .ReturnsAsync(_groupMembershipSenderResponse);
+
+            await new OrchestratorFunction().RunOrchestratorAsync(
+                _context.Object);
+
+            Assert.IsNotNull(capturedRequest);
+            CollectionAssert.AreEqual(
+                new[] { "users", "agents" },
+                capturedRequest.IdentityTypes.ToArray());
+        }
+
+        [TestMethod]
+        public async Task IdentityTypes_OrchestratorDefaultsOmissionToUsers()
+        {
+            _syncJob.Query =
+                "[{\"type\":\"SqlMembership\",\"source\":{\"manager\":{\"id\":1}}}]";
+            _mainRequest.TotalParts = 1;
+
+            OrganizationProcessorRequest capturedRequest = null;
+            _context.Setup(x => x.CallSubOrchestratorAsync<MembershipFileResult>(
+                    nameof(OrganizationProcessorFunction),
+                    It.IsAny<OrganizationProcessorRequest>(),
+                    It.IsAny<TaskOptions>()))
+                .Callback<TaskName, object, TaskOptions>(
+                    (_, request, _) =>
+                        capturedRequest = request as OrganizationProcessorRequest)
+                .ReturnsAsync(_groupMembershipSenderResponse);
+
+            await new OrchestratorFunction().RunOrchestratorAsync(
+                _context.Object);
+
+            Assert.IsNotNull(capturedRequest);
+            CollectionAssert.AreEqual(
+                new[] { "users" },
+                capturedRequest.IdentityTypes.ToArray());
+        }
+
+        [TestMethod]
+        public async Task IdentityTypes_OrchestratorRoutesInvalidSelectionToSchemaError()
+        {
+            _syncJob.Query =
+                "[{\"type\":\"SqlMembership\",\"source\":{\"manager\":{\"id\":1}},\"identityTypes\":[\"Users\"]}]";
+            _mainRequest.TotalParts = 1;
+
+            await new OrchestratorFunction().RunOrchestratorAsync(
+                _context.Object);
+
+            _context.Verify(
+                x => x.CallActivityAsync(
+                    nameof(JobStatusUpdaterFunction),
+                    It.Is<JobStatusUpdaterRequest>(
+                        request => request.Status == SyncStatus.SchemaError),
+                    It.IsAny<TaskOptions>()),
+                Times.Once());
+            _context.Verify(
+                x => x.CallSubOrchestratorAsync<MembershipFileResult>(
+                    nameof(OrganizationProcessorFunction),
+                    It.IsAny<OrganizationProcessorRequest>(),
+                    It.IsAny<TaskOptions>()),
+                Times.Never());
+        }
+
         public static SqlException MakeSqlException()
         {
             SqlException exception = null;

@@ -28,9 +28,9 @@ namespace Repositories.Contracts
         /// Evaluates one SQL membership rule and returns the selected user and agent object IDs.
         /// </summary>
         /// <param name="request">
-        /// The table, optional manager scope, optional filter, selected identity types, and raw ADF run ID to evaluate.
-        /// Null throws <see cref="ArgumentNullException"/>. An empty identity selection, blank table name, invalid table
-        /// name, or blank raw ADF run ID is rejected before SQL execution.
+        /// The table, optional manager scope, optional filter, and selected identity types to evaluate.
+        /// Null throws <see cref="ArgumentNullException"/>. An empty identity selection, blank table name, or invalid
+        /// table name is rejected before SQL execution.
         /// </param>
         /// <returns>
         /// The selected identities and logging counts. The user and agent lists can be empty. Agent rows whose object ID
@@ -44,7 +44,7 @@ namespace Repositories.Contracts
         /// Answers whether one user or agent object ID is selected by one SQL membership rule.
         /// </summary>
         /// <param name="request">
-        /// The table, optional manager scope, optional filter, selected identity types, and raw ADF run ID to evaluate.
+        /// The table, optional manager scope, optional filter, and selected identity types to evaluate.
         /// Null throws <see cref="ArgumentNullException"/>. If the requested <paramref name="identityType"/> is not in
         /// the request's identity selection, the result is false unless validation fails first.
         /// </param>

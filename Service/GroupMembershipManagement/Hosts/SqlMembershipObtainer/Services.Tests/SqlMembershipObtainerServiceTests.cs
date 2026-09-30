@@ -787,5 +787,174 @@ namespace Services.Tests
             // AdfRunId is parsed from the ADF API response regardless of whether the table exists.
             Assert.AreEqual(expectedAdfRunGuid, result.AdfRunId);
         }
+
+        [TestMethod]
+        public async Task EvaluateMembershipAsync_ReturnsCompleteRepositoryResult()
+        {
+            var repository = new Mock<ISqlMembershipRepository>();
+            var request = new SqlMembershipEvaluationRequest(
+                managerEmployeeId: null,
+                depth: 0,
+                filter: "Department = 'Sales'",
+                IdentityTypeSet.All,
+                tableName: "run123");
+            var expected = new SqlMembershipEvaluationResult(
+                new[] { Guid.NewGuid() },
+                new[] { Guid.NewGuid() },
+                1,
+                new[] { IdentityType.Users });
+            repository.Setup(
+                    current => current.EvaluateMembershipAsync(request))
+                .ReturnsAsync(expected);
+
+            var service = CreateService(
+                repository,
+                new Mock<IBlobStorageRepository>());
+            var result = await service.EvaluateMembershipAsync(
+                request,
+                new SyncJob { RunId = Guid.NewGuid() },
+                Guid.NewGuid(),
+                currentPart: 1);
+
+            Assert.AreSame(expected, result);
+            repository.Verify(
+                current => current.EvaluateMembershipAsync(request),
+                Times.Once());
+        }
+
+        [TestMethod]
+        public async Task UploadMembershipEvaluationAsync_PublishesDistinctCanonicalUnion()
+        {
+            var blobStorageRepository = new Mock<IBlobStorageRepository>();
+            GroupMembership publishedMembership = null;
+            blobStorageRepository.Setup(
+                    repository => repository.UploadFileAsync(
+                        It.IsAny<string>(),
+                        It.IsAny<string>(),
+                        It.IsAny<Dictionary<string, string>>()))
+                .Callback<string, string, Dictionary<string, string>>(
+                    (_, content, _) =>
+                        publishedMembership =
+                            JsonSerializer.Deserialize<GroupMembership>(content))
+                .Returns(Task.CompletedTask);
+
+            var duplicateAcrossTypes =
+                Guid.Parse("00000000-0000-0000-0000-000000000002");
+            var first =
+                Guid.Parse("00000000-0000-0000-0000-000000000001");
+            var last =
+                Guid.Parse("00000000-0000-0000-0000-000000000003");
+            var evaluation = new SqlMembershipEvaluationResult(
+                new[] { last, duplicateAcrossTypes },
+                new[] { duplicateAcrossTypes, first },
+                selectedHumanCount: 2,
+                Array.Empty<IdentityType>());
+            var syncJob = new SyncJob
+            {
+                Id = Guid.NewGuid(),
+                RunId = Guid.NewGuid(),
+                MembershipType = "GroupMembership",
+            };
+            var groupId = Guid.NewGuid();
+            syncJob.Group = new Group
+            {
+                SyncJobId = syncJob.Id,
+                GroupId = groupId,
+            };
+
+            var service = CreateService(
+                new Mock<ISqlMembershipRepository>(),
+                blobStorageRepository);
+            await service.UploadMembershipEvaluationAsync(
+                evaluation,
+                syncJob,
+                groupId,
+                currentPart: 1,
+                exclusionary: true);
+
+            Assert.IsNotNull(publishedMembership);
+            CollectionAssert.AreEqual(
+                new[] { first, duplicateAcrossTypes, last },
+                publishedMembership.SourceMembers
+                    .Select(member => member.ObjectId)
+                    .ToArray());
+            Assert.IsTrue(publishedMembership.Exclusionary);
+        }
+
+        [TestMethod]
+        public async Task UploadMembershipEvaluationAsync_WritesTheSameFileAsTheProfileUpload()
+        {
+            var uploadedContents = new List<string>();
+            var blobStorageRepository = new Mock<IBlobStorageRepository>();
+            blobStorageRepository.Setup(
+                    repository => repository.UploadFileAsync(
+                        It.IsAny<string>(),
+                        It.IsAny<string>(),
+                        It.IsAny<Dictionary<string, string>>()))
+                .Callback<string, string, Dictionary<string, string>>(
+                    (_, content, _) => uploadedContents.Add(content))
+                .Returns(Task.CompletedTask);
+            var service = CreateService(
+                new Mock<ISqlMembershipRepository>(),
+                blobStorageRepository);
+            var syncJob = new SyncJob
+            {
+                Id = Guid.NewGuid(),
+                RunId = Guid.NewGuid(),
+                MembershipType = "GroupMembership",
+                Query = """[{"type":"SqlMembership","source":{"filter":"Department = 'Sales'"}}]""",
+            };
+            var groupId = Guid.NewGuid();
+            var userObjectIds = new HashSet<Guid>(_conformanceCorpus.Select(Guid.Parse));
+            var agentObjectIds = new HashSet<Guid>
+            {
+                Guid.Parse("11111111-2222-3333-4444-555555555555"),
+                userObjectIds.First(objectId => objectId != Guid.Empty),
+            };
+            var selections = new[]
+            {
+                (Users: userObjectIds, Agents: new HashSet<Guid>()),
+                (Users: userObjectIds, Agents: agentObjectIds),
+                (Users: new HashSet<Guid>(), Agents: agentObjectIds),
+            };
+
+            foreach (var (users, agents) in selections)
+            {
+                uploadedContents.Clear();
+                var evaluation = new SqlMembershipEvaluationResult(
+                    users,
+                    agents,
+                    selectedHumanCount: users.Count,
+                    Array.Empty<IdentityType>());
+                var profiles = users
+                    .Concat(agents)
+                    .Distinct()
+                    .Select(objectId => new GraphProfileInformation { Id = objectId.ToString("D") })
+                    .ToList();
+
+                await service.UploadMembershipEvaluationAsync(evaluation, syncJob, groupId, currentPart: 1, exclusionary: true);
+                await service.UploadMembershipFileAsync(profiles, syncJob, groupId, currentPart: 1, exclusionary: true);
+
+                Assert.AreEqual(2, uploadedContents.Count);
+                Assert.AreEqual(uploadedContents[1], uploadedContents[0]);
+            }
+        }
+
+        private static SqlMembershipObtainerService CreateService(
+            Mock<ISqlMembershipRepository> repository,
+            Mock<IBlobStorageRepository> blobStorageRepository)
+        {
+            return new SqlMembershipObtainerService(
+                repository.Object,
+                blobStorageRepository.Object,
+                new Mock<ISyncJobStatusService>().Object,
+                new MockDestinationResolver(
+                    new Mock<IDatabaseGroupsRepository>().Object,
+                    new Mock<IDatabaseChannelsRepository>().Object),
+                NullLogger<SqlMembershipObtainerService>.Instance,
+                new TelemetryClient(new TelemetryConfiguration()),
+                new Mock<IDryRunValue>().Object,
+                new Mock<IDataFactoryService>().Object);
+        }
     }
 }

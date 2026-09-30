@@ -8,7 +8,7 @@ namespace SqlMembershipObtainer.Entities
 {
     /// <summary>
     /// Describes one SQL membership evaluation: which users table to read, which optional manager scope and filter to
-    /// apply, which identity types to emit, and which raw ADF run identifier should be carried into logs.
+    /// apply, and which identity types to emit.
     /// </summary>
     public sealed class SqlMembershipEvaluationRequest
     {
@@ -34,20 +34,16 @@ namespace SqlMembershipObtainer.Entities
         /// The identities to emit. Pass users, agents, or both; an empty set throws <see cref="ArgumentException"/>.
         /// </param>
         /// <param name="tableName">
-        /// The same-run table name without schema, for example <c>adfRun123</c>. Null, empty, or whitespace throws
-        /// <see cref="ArgumentException"/>. Character validation happens in the repository before SQL execution.
-        /// </param>
-        /// <param name="adfRunId">
-        /// The raw ADF run identifier to log with the evaluation. Null, empty, or whitespace throws
-        /// <see cref="ArgumentException"/>.
+        /// The same-run table name without schema: the ADF run ID with its hyphens removed, for example
+        /// <c>0f8fad5bd9cb469fa16570867728950e</c>. Null, empty, or whitespace throws <see cref="ArgumentException"/>.
+        /// Character validation happens in the repository before SQL execution.
         /// </param>
         public SqlMembershipEvaluationRequest(
             int? managerEmployeeId,
             int depth,
             string filter,
             IdentityTypeSet identityTypes,
-            string tableName,
-            string adfRunId)
+            string tableName)
         {
             if (identityTypes.IsEmpty)
             {
@@ -63,19 +59,16 @@ namespace SqlMembershipObtainer.Entities
                     nameof(tableName));
             }
 
-            if (string.IsNullOrWhiteSpace(adfRunId))
-            {
-                throw new ArgumentException(
-                    "The raw ADF run identifier is required.",
-                    nameof(adfRunId));
-            }
-
             ManagerEmployeeId = managerEmployeeId;
             Depth = depth;
             Filter = filter;
             IdentityTypes = identityTypes;
             TableName = tableName;
-            AdfRunId = adfRunId;
+
+            if (Guid.TryParseExact(tableName, "N", out var adfRunId))
+            {
+                AdfRunId = adfRunId;
+            }
         }
 
         /// <summary>
@@ -107,9 +100,11 @@ namespace SqlMembershipObtainer.Entities
         public string TableName { get; }
 
         /// <summary>
-        /// Gets the raw ADF run identifier that should be written to membership-evaluation logs.
+        /// Gets the ADF run ID that produced <see cref="TableName"/>, for membership-evaluation logs. For example, table
+        /// <c>0f8fad5bd9cb469fa16570867728950e</c> gives <c>0f8fad5b-d9cb-469f-a165-70867728950e</c>. Null when the table
+        /// name is not a 32-digit run ID without hyphens.
         /// </summary>
-        public string AdfRunId { get; }
+        public Guid? AdfRunId { get; }
 
         /// <summary>
         /// Gets whether the request has no manager scope. True means the repository starts from every row in the users
@@ -136,10 +131,8 @@ namespace SqlMembershipObtainer.Entities
         /// <see cref="InvalidOperationException"/>.
         /// </param>
         /// <param name="tableName">
-        /// The same-run table name without schema. Null, empty, or whitespace throws <see cref="ArgumentException"/>.
-        /// </param>
-        /// <param name="adfRunId">
-        /// The raw ADF run identifier for logging. Null, empty, or whitespace throws <see cref="ArgumentException"/>.
+        /// The same-run table name without schema: the ADF run ID with its hyphens removed, for example
+        /// <c>0f8fad5bd9cb469fa16570867728950e</c>. Null, empty, or whitespace throws <see cref="ArgumentException"/>.
         /// </param>
         /// <returns>A request whose identity type set is valid and never empty.</returns>
         public static SqlMembershipEvaluationRequest FromIdentityTypeNames(
@@ -147,8 +140,7 @@ namespace SqlMembershipObtainer.Entities
             int depth,
             string filter,
             IReadOnlyList<string> identityTypes,
-            string tableName,
-            string adfRunId)
+            string tableName)
         {
             if (!IdentityTypeSet.TryResolve(
                 identityTypes,
@@ -164,8 +156,7 @@ namespace SqlMembershipObtainer.Entities
                 depth,
                 filter,
                 selection,
-                tableName,
-                adfRunId);
+                tableName);
         }
     }
 }

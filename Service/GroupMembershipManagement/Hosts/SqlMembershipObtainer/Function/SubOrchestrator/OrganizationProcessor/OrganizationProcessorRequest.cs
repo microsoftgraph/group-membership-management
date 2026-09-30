@@ -3,6 +3,7 @@
 using Models;
 using SqlMembershipObtainer.Entities;
 using System;
+using System.Collections.Generic;
 
 namespace SqlMembershipObtainer
 {
@@ -14,5 +15,6 @@ namespace SqlMembershipObtainer
         public required int CurrentPart { get; init; }
         public required int TotalParts { get; init; }
         public required bool Exclusionary { get; init; }
+        public IReadOnlyList<string> IdentityTypes { get; init; }
     }
 }

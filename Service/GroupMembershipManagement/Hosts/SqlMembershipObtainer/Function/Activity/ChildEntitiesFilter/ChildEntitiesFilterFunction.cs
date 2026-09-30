@@ -34,7 +34,26 @@ namespace SqlMembershipObtainer
             {
                 _logger.FunctionStarted(nameof(ChildEntitiesFilterFunction));
 
-                var response = await _sqlMembershipObtainerService.FilterChildEntitiesAsync(request.Query, request.TableName, request.SyncJob, request.GroupId, request.CurrentPart, request.Exclusionary);
+                var evaluationRequest =
+                    SqlMembershipEvaluationRequest.FromIdentityTypeNames(
+                        managerEmployeeId: null,
+                        depth: 0,
+                        request.Query,
+                        request.IdentityTypes,
+                        request.TableName);
+                var evaluation =
+                    await _sqlMembershipObtainerService.EvaluateMembershipAsync(
+                        evaluationRequest,
+                        request.SyncJob,
+                        request.GroupId,
+                        request.CurrentPart);
+                var response =
+                    await _sqlMembershipObtainerService.UploadMembershipEvaluationAsync(
+                        evaluation,
+                        request.SyncJob,
+                        request.GroupId,
+                        request.CurrentPart,
+                        request.Exclusionary);
 
                 _logger.FunctionCompleted(nameof(ChildEntitiesFilterFunction));
 

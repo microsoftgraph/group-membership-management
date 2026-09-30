@@ -26,8 +26,7 @@ namespace Services.Tests
                 depth: 3,
                 filter,
                 IdentityTypeSet.All,
-                tableName: "run123",
-                adfRunId: "run-123");
+                tableName: "run123");
 
             var plan = SqlMembershipQueryBuilder.BuildEvaluation(
                 request,
@@ -76,8 +75,7 @@ namespace Services.Tests
                 depth: 1,
                 filter: string.Empty,
                 IdentityTypeSet.All,
-                tableName: "run123",
-                adfRunId: "run-123");
+                tableName: "run123");
             var plan = SqlMembershipQueryBuilder.BuildEvaluation(
                 request,
                 SqlFilterCompilationResult.Valid(Array.Empty<IdentityType>(), Array.Empty<string>()));
@@ -108,8 +106,7 @@ namespace Services.Tests
                 depth: 0,
                 filter,
                 IdentityTypeSet.Of(IdentityType.Agents),
-                tableName: "run123",
-                adfRunId: "run-123");
+                tableName: "run123");
             var plan = SqlMembershipQueryBuilder.BuildEvaluation(
                 request,
                 Analyze(filter));
@@ -147,8 +144,7 @@ namespace Services.Tests
                 depth: 0,
                 filter,
                 IdentityTypeSet.UsersOnly,
-                tableName: "run123",
-                adfRunId: "run-123");
+                tableName: "run123");
             var plan = SqlMembershipQueryBuilder.BuildEvaluation(
                 request,
                 Analyze(filter));
@@ -175,8 +171,7 @@ namespace Services.Tests
                 depth: 0,
                 filter,
                 IdentityTypeSet.UsersOnly,
-                tableName: "run123",
-                adfRunId: "run-123");
+                tableName: "run123");
             var plan = SqlMembershipQueryBuilder.BuildEvaluation(
                 request,
                 Analyze(filter));
@@ -200,8 +195,7 @@ namespace Services.Tests
                 depth: 0,
                 filter,
                 IdentityTypeSet.UsersOnly,
-                tableName: "run123",
-                adfRunId: "run-123");
+                tableName: "run123");
             var compilation = SqlMembershipRepository.CheckFilter(
                 filter,
                 "run123",
@@ -244,8 +238,7 @@ namespace Services.Tests
                         depth: 2,
                         filter,
                         IdentityTypeSet.All,
-                        tableName: "run123",
-                        adfRunId: "run-123");
+                        tableName: "run123");
                     var compilation = string.IsNullOrEmpty(filter)
                         ? SqlFilterCompilationResult.Valid(Array.Empty<IdentityType>(), Array.Empty<string>())
                         : Analyze(filter);
@@ -269,8 +262,7 @@ namespace Services.Tests
                 depth: 0,
                 filter,
                 IdentityTypeSet.UsersOnly,
-                tableName: "run123",
-                adfRunId: "run-123");
+                tableName: "run123");
 
             var evaluation = SqlMembershipQueryBuilder.BuildEvaluation(request, Analyze(filter));
             var probe = SqlMembershipQueryBuilder.BuildProbe(request, Analyze(filter), IdentityType.Users);
@@ -294,8 +286,7 @@ namespace Services.Tests
                 depth: 0,
                 filter,
                 IdentityTypeSet.UsersOnly,
-                tableName: "run123",
-                adfRunId: "run-123");
+                tableName: "run123");
             var plan = SqlMembershipQueryBuilder.BuildProbe(
                 request,
                 Analyze(filter),
@@ -325,8 +316,7 @@ namespace Services.Tests
                 depth: 0,
                 filter,
                 IdentityTypeSet.Of(IdentityType.Agents),
-                tableName: "run123",
-                adfRunId: "run-123");
+                tableName: "run123");
             var plan = SqlMembershipQueryBuilder.BuildProbe(
                 request,
                 Analyze(filter),
@@ -358,8 +348,7 @@ namespace Services.Tests
                 depth: 0,
                 filter,
                 IdentityTypeSet.UsersOnly,
-                tableName: "run123",
-                adfRunId: "run-123");
+                tableName: "run123");
             var plan = SqlMembershipQueryBuilder.BuildProbe(
                 request,
                 Analyze(filter),

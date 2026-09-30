@@ -12,6 +12,17 @@ namespace Services.Contracts
     {
         Task<MembershipFileResult> GetChildEntitiesAsync(string filter, int personnelNumber, string tableName, int depth, SyncJob syncJob, Guid targetOfficeGroupId, int currentPart, bool exclusionary);
         Task<MembershipFileResult> FilterChildEntitiesAsync(string query, string sourceTableName, SyncJob syncJob, Guid targetOfficeGroupId, int currentPart, bool exclusionary);
+        Task<SqlMembershipEvaluationResult> EvaluateMembershipAsync(
+            SqlMembershipEvaluationRequest request,
+            SyncJob syncJob,
+            Guid targetOfficeGroupId,
+            int currentPart);
+        Task<MembershipFileResult> UploadMembershipEvaluationAsync(
+            SqlMembershipEvaluationResult evaluation,
+            SyncJob syncJob,
+            Guid groupId,
+            int currentPart,
+            bool exclusionary);
         Task<MembershipFileResult> UploadMembershipFileAsync(List<GraphProfileInformation> profiles, SyncJob syncJob, Guid groupId, int currentPart, bool exclusionary);
         Task<TableNameResult> GetTableNameAsync(Guid? runId, Guid? targetOfficeGroupId);
         Task UpdateSyncJobStatusToIdleAsync(SyncJob job);

@@ -56,7 +56,8 @@ namespace SqlMembershipObtainer
                                                         CurrentPart = request.CurrentPart,
                                                         TotalParts = request.TotalParts,
                                                         Exclusionary = request.Exclusionary,
-                                                        TableName = tableName
+                                                        TableName = tableName,
+                                                        IdentityTypes = request.IdentityTypes
                                                     });
                 response.AdfRunId = tableNameResult?.AdfRunId;
             }
@@ -74,7 +75,8 @@ namespace SqlMembershipObtainer
                                                                     CurrentPart = request.CurrentPart,
                                                                     TotalParts = request.TotalParts,
                                                                     Exclusionary = request.Exclusionary,
-                                                                    TableName = tableName
+                                                                    TableName = tableName,
+                                                                    IdentityTypes = request.IdentityTypes
                                                                 });
                     response.AdfRunId = tableNameResult?.AdfRunId;
                 }

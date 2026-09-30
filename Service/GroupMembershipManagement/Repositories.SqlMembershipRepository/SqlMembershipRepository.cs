@@ -547,9 +547,9 @@ namespace Repositories.SqlMembershipRepository
         /// Evaluates one SQL membership rule and returns the selected user and agent object IDs.
         /// </summary>
         /// <param name="request">
-        /// The table, optional manager scope, optional filter, selected identity types, and raw ADF run ID to evaluate.
-        /// Null throws <see cref="ArgumentNullException"/>. Empty identity selections, blank or invalid table names, and
-        /// blank raw ADF run IDs are rejected before the query is built. A null or empty filter means no filter.
+        /// The table, optional manager scope, optional filter, and selected identity types to evaluate.
+        /// Null throws <see cref="ArgumentNullException"/>. Empty identity selections and blank or invalid table names
+        /// are rejected before the query is built. A null or empty filter means no filter.
         /// </param>
         /// <returns>
         /// A result containing distinct emitted users and agents. The lists can be empty. Users are emitted only when
@@ -657,7 +657,7 @@ namespace Repositories.SqlMembershipRepository
         /// Answers whether one user or agent object ID is selected by one SQL membership rule.
         /// </summary>
         /// <param name="request">
-        /// The table, optional manager scope, optional filter, selected identity types, and raw ADF run ID to evaluate.
+        /// The table, optional manager scope, optional filter, and selected identity types to evaluate.
         /// Null throws <see cref="ArgumentNullException"/>. If <paramref name="identityType"/> is not selected by the
         /// request, the method returns false after any required scope, filter, and agents-input validation succeeds.
         /// </param>
@@ -764,13 +764,6 @@ namespace Repositories.SqlMembershipRepository
             {
                 throw new ArgumentException(
                     "At least one identity type must be selected.",
-                    nameof(request));
-            }
-
-            if (string.IsNullOrWhiteSpace(request.AdfRunId))
-            {
-                throw new ArgumentException(
-                    "The raw ADF run identifier is required.",
                     nameof(request));
             }
         }

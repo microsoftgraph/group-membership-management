@@ -85,6 +85,36 @@ namespace SqlMembershipObtainer
                     }
                 }
 
+                if (!IdentityTypeSelection.TryParse(
+                    currentQueryPart.ToJsonString(),
+                    IdentityTypeSet.UsersOnly,
+                    out var identitySelection,
+                    out _))
+                {
+                    logger.SourceQueryNotValid(syncJob.Id);
+
+                    await context.CallActivityAsync(
+                        nameof(JobStatusUpdaterFunction),
+                        new JobStatusUpdaterRequest
+                        {
+                            Status = SyncStatus.SchemaError,
+                            SyncJob = syncJob,
+                            CurrentPart = currentPart,
+                            TotalParts = totalParts
+                        });
+                    await context.CallActivityAsync(
+                        nameof(TelemetryTrackerFunction),
+                        new TelemetryTrackerRequest
+                        {
+                            JobStatus = SyncStatus.SchemaError,
+                            ResultStatus = ResultStatus.Failure,
+                            SyncJob = syncJob,
+                            CurrentPart = currentPart,
+                            TotalParts = totalParts
+                        });
+                    return;
+                }
+
                 var groupId = await context.CallActivityAsync<Guid>(nameof(GetGroupFunction), new GetGroupRequest { SyncJob = syncJob, CurrentPart = currentPart, TotalParts = totalParts });
                 if (groupId.Equals(Guid.Empty))
                 {
@@ -106,7 +136,8 @@ namespace SqlMembershipObtainer
                                 GroupId = groupId,
                                 CurrentPart = currentPart,
                                 TotalParts = totalParts,
-                                Exclusionary = mainRequest.Exclusionary
+                                Exclusionary = mainRequest.Exclusionary,
+                                IdentityTypes = identitySelection.ToTypeNames()
                             });
 
                 adfRunId = senderResponse.AdfRunId;

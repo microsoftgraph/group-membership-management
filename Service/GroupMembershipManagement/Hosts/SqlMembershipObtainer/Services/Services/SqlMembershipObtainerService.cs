@@ -123,6 +123,186 @@ namespace Services
             return senderResponse;
         }
 
+        public async Task<SqlMembershipEvaluationResult> EvaluateMembershipAsync(
+            SqlMembershipEvaluationRequest request,
+            SyncJob syncJob,
+            Guid targetOfficeGroupId,
+            int currentPart)
+        {
+            if (request == null)
+            {
+                throw new ArgumentNullException(nameof(request));
+            }
+
+            if (syncJob == null)
+            {
+                throw new ArgumentNullException(nameof(syncJob));
+            }
+
+            try
+            {
+                var result =
+                    await _sqlMembershipRepository.EvaluateMembershipAsync(request);
+
+                _logger.RecordsRetrieved(
+                    result.UserObjectIds.Count + result.AgentObjectIds.Count,
+                    request.TableName);
+                _logger.MembershipEvaluationCompleted(
+                    syncJob.Id,
+                    syncJob.RunId,
+                    currentPart,
+                    request.AdfRunId,
+                    request.IdentityTypes.ToString(),
+                    FormatReferencedIdentityTypes(result.ReferencedIdentityTypes),
+                    result.SelectedHumanCount,
+                    result.UserObjectIds.Count,
+                    result.AgentObjectIds.Count);
+
+                if (result.SkippedAgentRowCount > 0)
+                {
+                    _logger.InvalidAgentObjectIdsSkipped(
+                        result.SkippedAgentRowCount,
+                        request.TableName,
+                        syncJob.Id,
+                        syncJob.RunId,
+                        currentPart,
+                        request.AdfRunId);
+                }
+
+                return result;
+            }
+            catch (SqlException exception)
+            {
+                TrackMembershipEvaluationFailure(
+                    exception,
+                    request,
+                    syncJob,
+                    targetOfficeGroupId,
+                    currentPart);
+
+                var exceptionMessage =
+                    $"Sql Exception in SqlMembershipObtainer with RunId: {syncJob.RunId}, TargetOfficeGroupId: {targetOfficeGroupId}";
+                var sqlMembershipException =
+                    new SqlMembershipObtainerSQLException(
+                        exceptionMessage,
+                        exception,
+                        targetOfficeGroupId,
+                        syncJob.RunId);
+
+                throw sqlMembershipException;
+            }
+            catch (Exception exception)
+            {
+                TrackMembershipEvaluationFailure(
+                    exception,
+                    request,
+                    syncJob,
+                    targetOfficeGroupId,
+                    currentPart);
+                throw;
+            }
+        }
+
+        public async Task<MembershipFileResult> UploadMembershipEvaluationAsync(
+            SqlMembershipEvaluationResult evaluation,
+            SyncJob syncJob,
+            Guid groupId,
+            int currentPart,
+            bool exclusionary)
+        {
+            if (evaluation == null)
+            {
+                throw new ArgumentNullException(nameof(evaluation));
+            }
+
+            var sourceMembers = new List<AzureADUser>(
+                evaluation.UserObjectIds.Count + evaluation.AgentObjectIds.Count);
+
+            // Each list is already distinct, so only an agent ID that is also a user ID can repeat.
+            var agentObjectIdsNotSelectedAsUsers = evaluation.AgentObjectIds.Count == 0
+                ? null
+                : new HashSet<Guid>(evaluation.AgentObjectIds);
+
+            foreach (var userObjectId in evaluation.UserObjectIds)
+            {
+                sourceMembers.Add(new AzureADUser { ObjectId = userObjectId });
+                agentObjectIdsNotSelectedAsUsers?.Remove(userObjectId);
+            }
+
+            if (agentObjectIdsNotSelectedAsUsers != null)
+            {
+                foreach (var agentObjectId in evaluation.AgentObjectIds)
+                {
+                    if (agentObjectIdsNotSelectedAsUsers.Contains(agentObjectId))
+                    {
+                        sourceMembers.Add(new AzureADUser { ObjectId = agentObjectId });
+                    }
+                }
+            }
+
+            return await UploadSourceMembersAsync(
+                sourceMembers,
+                syncJob,
+                groupId,
+                currentPart,
+                exclusionary);
+        }
+
+        private void TrackMembershipEvaluationFailure(
+            Exception exception,
+            SqlMembershipEvaluationRequest request,
+            SyncJob syncJob,
+            Guid targetOfficeGroupId,
+            int currentPart)
+        {
+            var identityTypes = request.IdentityTypes.ToString();
+
+            _logger.MembershipEvaluationFailed(
+                syncJob.Id,
+                syncJob.RunId,
+                currentPart,
+                request.AdfRunId,
+                identityTypes,
+                exception);
+            _telemetryClient.TrackException(
+                exception,
+                new Dictionary<string, string>
+                {
+                    ["JobId"] = syncJob.Id.ToString("D"),
+                    ["RunId"] =
+                        syncJob.RunId?.ToString("D") ?? string.Empty,
+                    ["SyncRunId"] =
+                        syncJob.RunId?.ToString("D") ?? string.Empty,
+                    ["CurrentPart"] = currentPart.ToString(),
+                    ["AdfRunId"] =
+                        request.AdfRunId?.ToString("D") ?? string.Empty,
+                    ["IdentityTypes"] = identityTypes,
+                    ["TargetOfficeGroupId"] =
+                        targetOfficeGroupId.ToString("D"),
+                });
+        }
+
+        private static string FormatReferencedIdentityTypes(
+            IReadOnlyCollection<IdentityType> referencedIdentityTypes)
+        {
+            if (referencedIdentityTypes.Count == 0)
+            {
+                return "none";
+            }
+
+            var orderedIdentityTypes = new[]
+            {
+                IdentityType.Users,
+                IdentityType.Agents,
+            };
+
+            return string.Join(
+                ",",
+                orderedIdentityTypes
+                    .Where(referencedIdentityTypes.Contains)
+                    .Select(identityType => identityType.ToString().ToLowerInvariant()));
+        }
+
         private void ThrowIfNullIdentityColumns(
             List<PersonEntity> entities, string tableName, SyncJob syncJob, Guid targetOfficeGroupId, bool isFilterPath)
         {
@@ -158,6 +338,11 @@ namespace Services
         public async Task<MembershipFileResult> UploadMembershipFileAsync(List<GraphProfileInformation> profiles, SyncJob syncJob, Guid groupId, int currentPart, bool exclusionary)
         {
             var sourceMembers = profiles.Select(x => new AzureADUser { ObjectId = Guid.Parse(x.Id) }).ToList();
+            return await UploadSourceMembersAsync(sourceMembers, syncJob, groupId, currentPart, exclusionary);
+        }
+
+        private async Task<MembershipFileResult> UploadSourceMembersAsync(List<AzureADUser> sourceMembers, SyncJob syncJob, Guid groupId, int currentPart, bool exclusionary)
+        {
             sourceMembers.Sort(CanonicalMemberComparer<AzureADUser>.Instance);
             var groupMemberToBeSent = new GroupMembership
             {
@@ -201,7 +386,7 @@ namespace Services
             return new TableNameResult
             {
                 TableName = tableExists ? tableName : "",
-                AdfRunId = ParseAdfRunIdGuid(adfRunId)
+                AdfRunId = ParseAdfRunIdGuid(adfRunId),
             };
         }
 

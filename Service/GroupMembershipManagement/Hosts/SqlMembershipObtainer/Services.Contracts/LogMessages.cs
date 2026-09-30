@@ -139,5 +139,56 @@ namespace Hosts.SqlMembershipObtainer
         [LoggerMessage(EventId = 160071, Level = LogLevel.Warning,
             Message = "No SqlMembershipObtainer pipeline run has been found")]
         public static partial void NoPipelineRunFound(this ILogger logger);
+
+        [LoggerMessage(
+            EventId = 160072,
+            Level = LogLevel.Information,
+            Message =
+                "SQL membership evaluation completed for job {JobId}, sync run {SyncRunId}, " +
+                "source part {CurrentPart}, and ADF run {AdfRunId}. Selection: {IdentityTypes}; " +
+                "identity types referenced by the filter: {ReferencedIdentityTypes}; selected humans: {SelectedHumanCount}; " +
+                "emitted users: {EmittedUserCount}; emitted agents: {EmittedAgentCount}.")]
+        public static partial void MembershipEvaluationCompleted(
+            this ILogger logger,
+            Guid jobId,
+            Guid? syncRunId,
+            int currentPart,
+            Guid? adfRunId,
+            string identityTypes,
+            string referencedIdentityTypes,
+            int selectedHumanCount,
+            int emittedUserCount,
+            int emittedAgentCount);
+
+        [LoggerMessage(
+            EventId = 160073,
+            Level = LogLevel.Error,
+            Message =
+                "SQL membership evaluation failed for job {JobId}, sync run {SyncRunId}, " +
+                "source part {CurrentPart}, and ADF run {AdfRunId}. Selection: {IdentityTypes}.")]
+        public static partial void MembershipEvaluationFailed(
+            this ILogger logger,
+            Guid jobId,
+            Guid? syncRunId,
+            int currentPart,
+            Guid? adfRunId,
+            string identityTypes,
+            Exception exception);
+
+        [LoggerMessage(
+            EventId = 160074,
+            Level = LogLevel.Warning,
+            Message =
+                "SQL membership evaluation skipped {SkippedAgentRowCount} selected agent row(s) in table {TableName} " +
+                "for job {JobId}, sync run {SyncRunId}, source part {CurrentPart}, and ADF run {AdfRunId} " +
+                "because the AgentObjectId is all zeros or not a hyphenated GUID. The sync continued without those agents.")]
+        public static partial void InvalidAgentObjectIdsSkipped(
+            this ILogger logger,
+            int skippedAgentRowCount,
+            string tableName,
+            Guid jobId,
+            Guid? syncRunId,
+            int currentPart,
+            Guid? adfRunId);
     }
 }

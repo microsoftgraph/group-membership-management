@@ -1370,7 +1370,6 @@ namespace Services.Tests
                 depth,
                 filter,
                 identityTypes,
-                resolvedTableName,
                 resolvedTableName);
         }
 
