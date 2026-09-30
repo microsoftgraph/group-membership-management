@@ -30,6 +30,8 @@ namespace JobTrigger.Activity.SchemaValidator
             _schemaProvider = jsonSchemaProvider ?? throw new ArgumentNullException(nameof(jsonSchemaProvider));
         }
 
+        private const string QuerySchemaKey = nameof(SyncJob.Query);
+
         [Function(nameof(SchemaValidatorFunction))]
         public async Task<bool> ValidateSchemasAsync([ActivityTrigger] SyncJob syncJob)
         {
@@ -37,6 +39,23 @@ namespace JobTrigger.Activity.SchemaValidator
             {
                 _logger.FunctionStarted(nameof(SchemaValidatorFunction));
                 var isValidJson = true;
+
+                if (AnyPartMatches(
+                    syncJob.Query,
+                    IdentityTypeSelection.IsMisplaced))
+                {
+                    _logger.SchemaNotValid(QuerySchemaKey);
+                    return false;
+                }
+
+                if (AnyPartMatches(
+                    syncJob.Query,
+                    IdentityTypeSelection.IsExplicitlySelected) &&
+                    !_schemaProvider.Schemas.ContainsKey(QuerySchemaKey))
+                {
+                    _logger.SchemaNotValid(QuerySchemaKey);
+                    return false;
+                }
 
                 if (_schemaProvider.Schemas.Count == 0)
                 {
@@ -82,6 +101,40 @@ namespace JobTrigger.Activity.SchemaValidator
                 _logger.FunctionCompleted(nameof(SchemaValidatorFunction));
                 return isValidJson;
             }
+        }
+
+        private static bool AnyPartMatches(
+            string query,
+            Func<JsonElement, bool> matches)
+        {
+            if (string.IsNullOrWhiteSpace(query))
+            {
+                return false;
+            }
+
+            try
+            {
+                using var document = JsonDocument.Parse(query);
+
+                if (document.RootElement.ValueKind != JsonValueKind.Array)
+                {
+                    return false;
+                }
+
+                foreach (var part in document.RootElement.EnumerateArray())
+                {
+                    if (matches(part))
+                    {
+                        return true;
+                    }
+                }
+            }
+            catch (JsonException)
+            {
+                return false;
+            }
+
+            return false;
         }
     }
 }
