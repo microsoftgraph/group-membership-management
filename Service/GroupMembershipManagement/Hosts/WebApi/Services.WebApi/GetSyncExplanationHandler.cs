@@ -43,7 +43,10 @@ When explaining, use the most specific explanation that fits the data. Follow th
 4. **Exclusionary part added**: ""This user was removed because a new exclusion rule was added on [date] that excludes employees where [criteria], and they match that exclusion.""
 5. **User attribute changed (no config change)**: ""This user was removed because their [attribute] changed from [old value] to [new value], which no longer matches the filter criteria [filter].""
 6. **No config change, user matches filter**: ""This user was added because their current attributes match the sync filter criteria.""
-7. **Identity types changed**: ""This member was removed because the HR rule was changed on [date] from [previous identity types] to [new identity types], and they are not an employee in the HR data.""
+7. **Identity types changed**: ""This member was removed because the HR rule was changed on [date] from [previous identity types] to [new identity types], and they are not an employee in the HR data."" For an addition: ""This member was added because the HR rule was changed on [date] from [previous identity types] to [new identity types], and they are not an employee in the HR data, so they were included as an AI agent that a matching employee owns.""
+8. **AI agent included (no identity type change)**: ""This member was added because the HR rule includes the AI agents that employees matching [filter] own, and they are not an employee in the HR data.""
+
+Use pattern 8, or the addition form of pattern 7, only when the user is not found in the HR data and the rule in effect includes AI agents.
 
 Always reference specific dates, attribute names, and values from the provided data when available.
 Use only the provided data. If you cannot determine the reason with reasonable confidence, say ""The specific reason could not be determined from the available data.""";

@@ -649,6 +649,49 @@ namespace WebApi.Tests
                 "A change saved while the sync was finishing must not be in the prompt");
         }
 
+        [TestMethod]
+        public async Task ExecuteAsync_GivesTheAiWhatItNeedsToExplainAnAgentAddedByTheHrRule()
+        {
+            var runStart = DateTime.UtcNow.AddHours(-2);
+            var adfRunId = Guid.NewGuid();
+            var tableName = adfRunId.ToString().Replace("-", "");
+            SetupRun(runStart, runStart.AddMinutes(2), adfRunId);
+            SetupJobQuery(UsersOnlyRule);
+            SetupBlobWithUser(MembershipAction.Add);
+            SetupConfigChanges(
+                CreateConfigChange(runStart.AddDays(-2), "Onboarding", UsersOnlyRule),
+                CreateConfigChange(runStart.AddMinutes(-20), "Update", UsersAndAgentsRule),
+                CreateConfigChange(runStart.AddMinutes(30), "Update", UsersOnlyRule));
+
+            _mockSqlMembershipRepository
+                .Setup(x => x.CheckIfTableExistsAsync(tableName))
+                .ReturnsAsync(true);
+            _mockSqlMembershipRepository
+                .Setup(x => x.GetUserAttributesAsync(_userObjectId.ToString(), tableName))
+                .ReturnsAsync(new Dictionary<string, string>());
+
+            var (systemPrompt, userPrompt) = await CapturePromptsAsync();
+
+            Assert.IsTrue(systemPrompt.Contains(
+                    "This member was added because the HR rule includes the AI agents that employees matching [filter] own"),
+                "The AI should have a pattern for an agent added by a rule that already included agents");
+            Assert.IsTrue(systemPrompt.Contains(
+                    "so they were included as an AI agent that a matching employee owns"),
+                "The AI should have a pattern for an agent added when a rule changed to include agents");
+            Assert.IsTrue(systemPrompt.Contains(
+                    "only when the user is not found in the HR data and the rule in effect includes AI agents"),
+                "The agent wording must be limited to members missing from the HR data under a rule that includes agents");
+
+            Assert.IsTrue(userPrompt.Contains($"User {_userObjectId} was Added in this run."));
+            Assert.IsTrue(userPrompt.Contains("User not found in HR data."),
+                "The prompt should say that the member is not an employee in the HR data");
+            Assert.IsTrue(userPrompt.Contains($"Job filter in effect when this sync started: {UsersAndAgentsRule}"),
+                "The prompt should show that the rule in effect included agents");
+            Assert.IsTrue(userPrompt.Contains(
+                    "- Identity types changed from only employees to employees and the AI agents they own"),
+                "The prompt should show that the rule changed to include agents before the sync");
+        }
+
         private async Task<string> ExplainWithConfigChangesAsync(string currentQuery, string previousQuery)
         {
             _mockSyncJobChangeRepository
@@ -1278,18 +1321,30 @@ namespace WebApi.Tests
 
         private async Task<string> CaptureUserPromptAsync()
         {
+            var (_, userPrompt) = await CapturePromptsAsync();
+            return userPrompt;
+        }
+
+        private async Task<(string SystemPrompt, string UserPrompt)> CapturePromptsAsync()
+        {
+            string? capturedSystemPrompt = null;
             string? capturedUserPrompt = null;
             _mockOpenAIService
                 .Setup(x => x.GetCompletionAsync(It.IsAny<string>(), It.IsAny<string>()))
-                .Callback<string, string>((systemPrompt, userPrompt) => capturedUserPrompt = userPrompt)
+                .Callback<string, string>((systemPrompt, userPrompt) =>
+                {
+                    capturedSystemPrompt = systemPrompt;
+                    capturedUserPrompt = userPrompt;
+                })
                 .ReturnsAsync("The member was added.");
 
             var response = await _handler.ExecuteAsync(
                 new GetSyncExplanationRequest(_syncJobId, _runId, _userObjectId, TestUserIdentity, hasAiSyncJobRole: true));
 
             Assert.AreEqual(HttpStatusCode.OK, response.StatusCode);
+            Assert.IsNotNull(capturedSystemPrompt);
             Assert.IsNotNull(capturedUserPrompt);
-            return capturedUserPrompt!;
+            return (capturedSystemPrompt!, capturedUserPrompt!);
         }
     }
 }
