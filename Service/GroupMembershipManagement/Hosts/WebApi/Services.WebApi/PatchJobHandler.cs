@@ -7,6 +7,7 @@ using Models;
 using Models.ServiceBus;
 using Models.SyncJobChange;
 using Repositories.Contracts;
+using Repositories.Contracts.Helpers;
 using Services.Contracts;
 using Services.Helpers;
 using Services.Messages.Requests;
@@ -19,6 +20,7 @@ using System.Text.Json;
 using WebApi.Models.DTOs;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.ApplicationInsights;
 using SyncJob = Models.SyncJob;
 using SyncJobChange = Models.SyncJobChange.SyncJobChange;
 
@@ -34,6 +36,7 @@ namespace Services.WebApi
         private readonly IDatabaseSettingsRepository _databaseSettingsRepository;
         private readonly INotificationService _notificationService;
         private readonly IServiceBusQueueRepository? _autoApproverQueueRepository;
+        private readonly TelemetryClient _telemetryClient;
 
         // Explicit allowlist of low-risk configuration fields that may be auto-approved on the config-only fast path.
         // Everything NOT listed here (notably /Destination and /TargetOfficeGroupId, which redirect the sync to a
@@ -65,6 +68,7 @@ namespace Services.WebApi
             IDatabaseTitlesRepository titlesRepository,
             IDatabaseSettingsRepository databaseSettingsRepository,
             INotificationService notificationService,
+            TelemetryClient telemetryClient,
             [FromKeyedServices("AutoApprover")] IServiceBusQueueRepository? autoApproverQueueRepository = null)
             : base(logger)
         {
@@ -76,6 +80,7 @@ namespace Services.WebApi
             _databaseSettingsRepository = databaseSettingsRepository ?? throw new ArgumentNullException(nameof(databaseSettingsRepository));
             _notificationService = notificationService ?? throw new ArgumentNullException(nameof(notificationService));
             _autoApproverQueueRepository = autoApproverQueueRepository;
+            _telemetryClient = telemetryClient ?? throw new ArgumentNullException(nameof(telemetryClient));
         }
 
         protected override async Task<PatchJobResponse> ExecuteCoreAsync(PatchJobRequest request)
@@ -230,6 +235,16 @@ namespace Services.WebApi
                 }
                 else if (newStatus == SyncStatus.Idle.ToString())
                 {
+                    // ValidateAndUpdateSyncJob returned null, so the job update and its SubmissionApproved
+                    // audit row are both persisted. Emitted before the notification send so that a
+                    // notification failure cannot suppress a review that already took effect.
+                    JobReviewedTelemetryHelper.TrackManualReview(
+                        _telemetryClient,
+                        request.SyncJobId,
+                        (Guid)groupId,
+                        syncJob.MembershipType,
+                        request.UserIdentity);
+
                     await _notificationService.SendSubmissionApprovedNotificationAsync(syncJob, syncJobChange);
                 }
             }

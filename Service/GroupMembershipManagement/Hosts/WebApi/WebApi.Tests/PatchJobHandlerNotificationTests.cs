@@ -29,6 +29,7 @@ namespace WebApi.Tests
         private Mock<IDatabaseTitlesRepository> _mockTitle = null!;
         private Mock<IDatabaseSettingsRepository> _mockSettingsRepository = null!;
         private Mock<INotificationService> _mockNotificationService = null!;
+        private CapturingTelemetryChannel _capturingTelemetryChannel = null!;
         private PatchJobHandler _patchJobHandler = null!;
         private SyncJob _testSyncJob = null!;
         private SyncJobChange _testSubmission = null!;
@@ -42,6 +43,7 @@ namespace WebApi.Tests
             _mockTitle = new Mock<IDatabaseTitlesRepository>();
             _mockSettingsRepository = new Mock<IDatabaseSettingsRepository>();
             _mockNotificationService = new Mock<INotificationService>();
+            _capturingTelemetryChannel = new CapturingTelemetryChannel();
 
             _patchJobHandler = new PatchJobHandler(
                 NullLogger<PatchJobHandler>.Instance,
@@ -50,7 +52,8 @@ namespace WebApi.Tests
                 _mockSyncJobChangeRepository.Object,
                 _mockTitle.Object,
                 _mockSettingsRepository.Object,
-                _mockNotificationService.Object);
+                _mockNotificationService.Object,
+                _capturingTelemetryChannel.CreateClient());
 
             var groupId = Guid.NewGuid();
             _testSyncJob = new SyncJob
@@ -252,6 +255,153 @@ namespace WebApi.Tests
                     It.IsAny<SyncStatus?>()),
                 Times.Once,
                 "Approval on an initial sync should update the single job to Idle exactly once");
+        }
+
+        // ── JobReviewed telemetry ──
+
+        private PatchJobRequest ReviewRequest(string newStatus, string changeReason, string userIdentity, bool canApproveJob = true)
+        {
+            var patchDocument = new JsonPatchDocument<SyncJobPatch>();
+            patchDocument.Replace(x => x.Status, newStatus);
+
+            return new PatchJobRequest(
+                isAllowed: true,
+                isOnBehalfAllowed: true,
+                userIdentity: userIdentity,
+                syncJobId: _testSyncJob.Id,
+                patchDocument: patchDocument,
+                userDisplayName: "Ada Lovelace",
+                changeReason: changeReason,
+                businessJustification: "Reviewed for testing",
+                canApproveJob: canApproveJob
+            );
+        }
+
+        [TestMethod]
+        public async Task JobReviewed_WhenApproved_EmitsOneManualMetric()
+        {
+            var reviewerId = Guid.NewGuid().ToString();
+
+            var response = await _patchJobHandler.ExecuteAsync(
+                ReviewRequest(SyncStatus.Idle.ToString(), SyncJobChangeReason.SubmissionApproved.ToString(), reviewerId));
+
+            Assert.AreEqual(HttpStatusCode.OK, response.StatusCode);
+
+            var metrics = _capturingTelemetryChannel.GetMetrics("JobReviewed");
+            Assert.AreEqual(1, metrics.Count, "Exactly one JobReviewed metric is expected per persisted approval.");
+
+            // One approval per item is what lets the dashboard sum valueSum for an exact count.
+            Assert.AreEqual(1, metrics[0].Sum);
+            Assert.AreEqual(1, metrics[0].Count);
+
+            // Recorded as a metric rather than a custom event because custom events are sampled.
+            Assert.AreEqual(0, _capturingTelemetryChannel.GetEvents("JobReviewed").Count, "JobReviewed must not be emitted as a sampled custom event.");
+
+            var properties = metrics[0].Properties;
+            Assert.AreEqual(_testSyncJob.Id.ToString(), properties["SyncJobId"]);
+            Assert.AreEqual(_testSyncJob.Group!.GroupId.ToString(), properties["TargetOfficeGroupId"]);
+            Assert.AreEqual(MembershipTypes.GroupMembership.ToString(), properties["MembershipType"]);
+            Assert.AreEqual("Manual", properties["ReviewalType"]);
+
+            // The reviewer's object id, which is what makes the per-reviewer panel reconcile against
+            // SyncJobChanges.ChangedByObjectId.
+            Assert.AreEqual(reviewerId, properties["ReviewerId"]);
+        }
+
+        [TestMethod]
+        public async Task JobReviewed_WhenApproved_CarriesNoPersonallyIdentifyingAttribute()
+        {
+            await _patchJobHandler.ExecuteAsync(
+                ReviewRequest(SyncStatus.Idle.ToString(), SyncJobChangeReason.SubmissionApproved.ToString(), Guid.NewGuid().ToString()));
+
+            var properties = _capturingTelemetryChannel.GetMetrics("JobReviewed").Single().Properties;
+
+            CollectionAssert.AreEquivalent(
+                new[] { "SyncJobId", "TargetOfficeGroupId", "MembershipType", "ReviewalType", "ReviewerId" },
+                properties.Keys.ToArray(),
+                "The metric must carry exactly the five contracted dimensions.");
+
+            foreach (var value in properties.Values)
+            {
+                Assert.IsFalse(string.IsNullOrWhiteSpace(value), "No dimension may be emitted empty.");
+                Assert.IsFalse(value.Contains('@'), $"'{value}' looks like a UPN or email address.");
+                Assert.IsFalse(value.Contains(' '), $"'{value}' looks like a display name.");
+            }
+        }
+
+        [TestMethod]
+        public async Task JobReviewed_WhenApprovalNotificationFails_MetricIsStillEmitted()
+        {
+            _mockNotificationService
+                .Setup(x => x.SendSubmissionApprovedNotificationAsync(It.IsAny<SyncJob>(), It.IsAny<SyncJobChange>()))
+                .ThrowsAsync(new InvalidOperationException("Notification failed"));
+
+            await Assert.ThrowsExceptionAsync<InvalidOperationException>(() => _patchJobHandler.ExecuteAsync(
+                ReviewRequest(SyncStatus.Idle.ToString(), SyncJobChangeReason.SubmissionApproved.ToString(), Guid.NewGuid().ToString())));
+
+            // The approval was already persisted, so a notification failure must not suppress the record.
+            Assert.AreEqual(1, _capturingTelemetryChannel.GetMetrics("JobReviewed").Count);
+        }
+
+        [TestMethod]
+        public async Task JobReviewed_WhenRejected_EmitsNothing()
+        {
+            var response = await _patchJobHandler.ExecuteAsync(
+                ReviewRequest(SyncStatus.SubmissionRejected.ToString(), SyncJobChangeReason.SubmissionRejected.ToString(), Guid.NewGuid().ToString()));
+
+            Assert.AreEqual(HttpStatusCode.OK, response.StatusCode);
+            Assert.AreEqual(0, _capturingTelemetryChannel.GetMetrics("JobReviewed").Count);
+        }
+
+        [TestMethod]
+        public async Task JobReviewed_WhenCallerIsNotASubmissionReviewer_EmitsNothing()
+        {
+            var response = await _patchJobHandler.ExecuteAsync(
+                ReviewRequest(SyncStatus.Idle.ToString(), SyncJobChangeReason.SubmissionApproved.ToString(), Guid.NewGuid().ToString(), canApproveJob: false));
+
+            Assert.AreEqual(HttpStatusCode.BadRequest, response.StatusCode);
+            Assert.AreEqual("OnlySubmissionReviewerCanApproveSubmission", response.ErrorCode);
+            Assert.AreEqual(0, _capturingTelemetryChannel.GetMetrics("JobReviewed").Count);
+        }
+
+        [TestMethod]
+        public async Task JobReviewed_WhenReviewerIsTheSubmitterAndSelfReviewIsDisabled_EmitsNothing()
+        {
+            _mockSettingsRepository.Setup(x => x.GetSettingByKeyAsync(SettingKey.CanReviewOwnSubmissions))
+                .ReturnsAsync(new Setting { SettingValue = "false" });
+
+            var response = await _patchJobHandler.ExecuteAsync(
+                ReviewRequest(SyncStatus.Idle.ToString(), SyncJobChangeReason.SubmissionApproved.ToString(), _testSubmission.ChangedByObjectId!.Value.ToString()));
+
+            Assert.AreEqual(HttpStatusCode.BadRequest, response.StatusCode);
+            Assert.AreEqual("ReviewerCannotReviewOwnSubmission", response.ErrorCode);
+            Assert.AreEqual(0, _capturingTelemetryChannel.GetMetrics("JobReviewed").Count);
+        }
+
+        [TestMethod]
+        public async Task JobReviewed_WhenSubmitterIsNoLongerAnOwner_EmitsNothing()
+        {
+            _mockGraphGroupRepository.Setup(x => x.GetDestinationOwnersAsync(It.IsAny<List<Guid>>()))
+                .ReturnsAsync(new Dictionary<Guid, List<Guid>> { { _testSyncJob.TargetOfficeGroupId, new List<Guid>() } });
+
+            var response = await _patchJobHandler.ExecuteAsync(
+                ReviewRequest(SyncStatus.Idle.ToString(), SyncJobChangeReason.SubmissionApproved.ToString(), Guid.NewGuid().ToString()));
+
+            Assert.AreEqual("SubmitterNotOwner", response.ErrorCode);
+
+            // The submission was force-rejected, not approved.
+            Assert.AreEqual(0, _capturingTelemetryChannel.GetMetrics("JobReviewed").Count);
+        }
+
+        [TestMethod]
+        public async Task JobReviewed_WhenRequestedStatusIsNeitherIdleNorRejected_EmitsNothing()
+        {
+            var response = await _patchJobHandler.ExecuteAsync(
+                ReviewRequest(SyncStatus.CustomerPaused.ToString(), SyncJobChangeReason.SubmissionApproved.ToString(), Guid.NewGuid().ToString()));
+
+            Assert.AreEqual(HttpStatusCode.BadRequest, response.StatusCode);
+            Assert.AreEqual("ValidUpdateStatusIsRequired", response.ErrorCode);
+            Assert.AreEqual(0, _capturingTelemetryChannel.GetMetrics("JobReviewed").Count);
         }
     }
 }

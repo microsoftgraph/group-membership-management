@@ -94,6 +94,7 @@ namespace WebApi.Tests
                 _titles.Object,
                 _settings.Object,
                 _notifications.Object,
+                new CapturingTelemetryChannel().CreateClient(),
                 withQueueRepository ? _autoApproverQueue.Object : null);
         }
 

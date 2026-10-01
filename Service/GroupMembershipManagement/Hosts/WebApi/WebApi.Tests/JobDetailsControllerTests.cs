@@ -284,7 +284,8 @@ namespace Services.Tests
                                                    _syncJobChangeRepository.Object,
                                                    _titlesRepository.Object,
                                                    _settingsRepository.Object,
-                                                   _notificationService.Object);
+                                                   _notificationService.Object,
+                                                   new global::WebApi.Tests.CapturingTelemetryChannel().CreateClient());
 
             _removeGMMHandler = new RemoveGMMHandler(NullLogger<RemoveGMMHandler>.Instance,
                                                     _graphGroupRepository.Object,

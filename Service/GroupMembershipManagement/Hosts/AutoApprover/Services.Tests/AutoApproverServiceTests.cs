@@ -1,6 +1,8 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
+using Microsoft.ApplicationInsights;
+using Microsoft.ApplicationInsights.Extensibility;
 using Microsoft.Extensions.Logging;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Models;
@@ -27,7 +29,8 @@ namespace Services.Tests
             Mock<ILogger<AutoApproverService>> logger,
             Mock<ISqlMembershipRepository> sqlMembershipRepository = null,
             Mock<IDataFactoryRepository> dataFactoryRepository = null,
-            Mock<IDatabaseSqlMembershipSourcesRepository> sqlMembershipSourcesRepository = null)
+            Mock<IDatabaseSqlMembershipSourcesRepository> sqlMembershipSourcesRepository = null,
+            CapturingTelemetryChannel telemetryChannel = null)
         {
             return new AutoApproverService(
                 syncJobsRepository.Object,
@@ -37,8 +40,12 @@ namespace Services.Tests
                 (sqlMembershipRepository ?? new Mock<ISqlMembershipRepository>()).Object,
                 (dataFactoryRepository ?? new Mock<IDataFactoryRepository>()).Object,
                 (sqlMembershipSourcesRepository ?? new Mock<IDatabaseSqlMembershipSourcesRepository>()).Object,
-                logger.Object);
+                logger.Object,
+                CreateTelemetryClient(telemetryChannel ?? new CapturingTelemetryChannel()));
         }
+
+        private static TelemetryClient CreateTelemetryClient(CapturingTelemetryChannel channel) =>
+            new TelemetryClient(new TelemetryConfiguration { TelemetryChannel = channel, ConnectionString = "InstrumentationKey=00000000-0000-0000-0000-000000000000" });
 
         /// <summary>Turns on every qualification path.</summary>
         private static void EnableAllPaths(Mock<IDatabaseSettingsRepository> settingsRepository) =>
@@ -1929,6 +1936,202 @@ namespace Services.Tests
             changes.Verify(x => x.Save(It.Is<SyncJobChange>(c =>
                 c.SyncJobId == syncJobId && c.ChangeReason == SyncJobChangeReason.OnboardingAutoApproved.ToString())), Times.Once);
             Assert.IsTrue(syncJob.StartDate > DateTime.UtcNow, "Missing-origin message must behave like onboarding and push StartDate.");
+        }
+
+        // ── JobReviewed telemetry ──
+
+        /// <summary>
+        /// Builds a job that satisfies the group-based rule, so the approval path runs to completion.
+        /// </summary>
+        private static (Guid SyncJobId, Guid GroupId, string RequestorId, SyncJob Job,
+                        Mock<IDatabaseSyncJobsRepository> Jobs, Mock<IDatabaseSettingsRepository> Settings,
+                        Mock<IGraphGroupRepository> Graph, Mock<ISyncJobChangeRepository> Changes,
+                        Mock<ILogger<AutoApproverService>> Logger) ApprovableGroupSubmission()
+        {
+            var syncJobId = Guid.NewGuid();
+            var groupId = Guid.NewGuid();
+            var requestorId = Guid.NewGuid().ToString();
+
+            var syncJob = new SyncJob
+            {
+                Id = syncJobId,
+                TargetOfficeGroupId = Guid.NewGuid(),
+                MembershipType = MembershipTypes.GroupMembership.ToString(),
+                Status = SyncStatus.PendingAutoApproval.ToString(),
+                Query = $"[{{\"type\":\"GroupMembership\",\"source\":\"{groupId}\"}}]"
+            };
+
+            var jobs = new Mock<IDatabaseSyncJobsRepository>();
+            var settings = new Mock<IDatabaseSettingsRepository>();
+            var graph = new Mock<IGraphGroupRepository>();
+            var changes = new Mock<ISyncJobChangeRepository>();
+            var logger = new Mock<ILogger<AutoApproverService>>();
+
+            jobs.Setup(x => x.GetSyncJobAsync(syncJobId)).ReturnsAsync(syncJob);
+            EnableGroupAndOrgLeaderPaths(settings);
+            graph.Setup(x => x.GetGroupsAsync(It.IsAny<List<Guid>>()))
+                 .ReturnsAsync(new List<AzureADGroup> { new AzureADGroup { ObjectId = groupId, Visibility = "Public" } });
+
+            return (syncJobId, groupId, requestorId, syncJob, jobs, settings, graph, changes, logger);
+        }
+
+        [TestMethod]
+        public async Task JobReviewed_AutoApprovalSucceeds_EmitsOneAutoMetricAsync()
+        {
+            var m = ApprovableGroupSubmission();
+            var channel = new CapturingTelemetryChannel();
+
+            var service = CreateService(m.Jobs, m.Settings, m.Graph, m.Changes, m.Logger, telemetryChannel: channel);
+            await service.ProcessAutoApprovalAsync(Message(m.SyncJobId, m.RequestorId));
+
+            VerifyApproved(m.Jobs, m.Changes, m.SyncJobId);
+
+            var metrics = channel.GetMetrics("JobReviewed");
+            Assert.AreEqual(1, metrics.Count, "Exactly one JobReviewed metric is expected per persisted approval.");
+
+            // One approval per item is what lets the dashboard sum valueSum for an exact count.
+            Assert.AreEqual(1, metrics[0].Sum);
+            Assert.AreEqual(1, metrics[0].Count);
+
+            // Recorded as a metric rather than a custom event because custom events are sampled.
+            Assert.AreEqual(0, channel.GetEvents("JobReviewed").Count, "JobReviewed must not be emitted as a sampled custom event.");
+
+            var properties = metrics[0].Properties;
+            Assert.AreEqual(m.SyncJobId.ToString(), properties["SyncJobId"]);
+            Assert.AreEqual(m.Job.TargetOfficeGroupId.ToString(), properties["TargetOfficeGroupId"]);
+            Assert.AreEqual(MembershipTypes.GroupMembership.ToString(), properties["MembershipType"]);
+            Assert.AreEqual("Auto", properties["ReviewalType"]);
+
+            // The reserved literal, never the requestor's object id - the requestor submitted the job,
+            // they did not review it.
+            Assert.AreEqual("AutoApprover", properties["ReviewerId"]);
+            Assert.AreNotEqual(m.RequestorId, properties["ReviewerId"]);
+        }
+
+        [TestMethod]
+        public async Task JobReviewed_AutoApproval_CarriesNoPersonallyIdentifyingAttributeAsync()
+        {
+            var m = ApprovableGroupSubmission();
+            var channel = new CapturingTelemetryChannel();
+
+            var service = CreateService(m.Jobs, m.Settings, m.Graph, m.Changes, m.Logger, telemetryChannel: channel);
+            await service.ProcessAutoApprovalAsync(new AutoApprovalQueueMessage
+            {
+                SyncJobId = m.SyncJobId,
+                RequestorObjectId = m.RequestorId,
+                RequestorDisplayName = "Ada Lovelace",
+                ChangedOnBehalfOfDisplayName = "Grace Hopper",
+                BusinessJustification = "Quarterly onboarding for ada@contoso.com"
+            });
+
+            var properties = channel.GetMetrics("JobReviewed").Single().Properties;
+
+            CollectionAssert.AreEquivalent(
+                new[] { "SyncJobId", "TargetOfficeGroupId", "MembershipType", "ReviewalType", "ReviewerId" },
+                properties.Keys.ToArray(),
+                "The metric must carry exactly the five contracted dimensions.");
+
+            foreach (var value in properties.Values)
+            {
+                Assert.IsFalse(string.IsNullOrWhiteSpace(value), "No dimension may be emitted empty.");
+                Assert.IsFalse(value.Contains("@"), $"'{value}' looks like a UPN or email address.");
+                Assert.IsFalse(value.Contains(" "), $"'{value}' looks like a display name.");
+            }
+        }
+
+        [TestMethod]
+        public async Task JobReviewed_JobNotFound_EmitsNothingAsync()
+        {
+            var syncJobId = Guid.NewGuid();
+            var jobs = new Mock<IDatabaseSyncJobsRepository>();
+            jobs.Setup(x => x.GetSyncJobAsync(syncJobId)).ReturnsAsync((SyncJob)null);
+
+            var channel = new CapturingTelemetryChannel();
+            var service = CreateService(jobs, new Mock<IDatabaseSettingsRepository>(), new Mock<IGraphGroupRepository>(),
+                                        new Mock<ISyncJobChangeRepository>(), new Mock<ILogger<AutoApproverService>>(),
+                                        telemetryChannel: channel);
+
+            await service.ProcessAutoApprovalAsync(Message(syncJobId, Guid.NewGuid().ToString()));
+
+            Assert.AreEqual(0, channel.GetMetrics("JobReviewed").Count);
+        }
+
+        [TestMethod]
+        public async Task JobReviewed_JobPendingConfiguration_EmitsNothingAsync()
+        {
+            await AssertNoEventForJobStatusAsync(SyncStatus.PendingConfiguration);
+        }
+
+        [TestMethod]
+        public async Task JobReviewed_StatusNotPendingAutoApproval_EmitsNothingAsync()
+        {
+            await AssertNoEventForJobStatusAsync(SyncStatus.Idle);
+        }
+
+        private static async Task AssertNoEventForJobStatusAsync(SyncStatus status)
+        {
+            var syncJobId = Guid.NewGuid();
+            var syncJob = new SyncJob { Id = syncJobId, Status = status.ToString(), Query = "[]" };
+
+            var jobs = new Mock<IDatabaseSyncJobsRepository>();
+            jobs.Setup(x => x.GetSyncJobAsync(syncJobId)).ReturnsAsync(syncJob);
+
+            var channel = new CapturingTelemetryChannel();
+            var service = CreateService(jobs, new Mock<IDatabaseSettingsRepository>(), new Mock<IGraphGroupRepository>(),
+                                        new Mock<ISyncJobChangeRepository>(), new Mock<ILogger<AutoApproverService>>(),
+                                        telemetryChannel: channel);
+
+            await service.ProcessAutoApprovalAsync(Message(syncJobId, Guid.NewGuid().ToString()));
+
+            Assert.AreEqual(0, channel.GetMetrics("JobReviewed").Count);
+        }
+
+        [TestMethod]
+        public async Task JobReviewed_RequestorObjectIdDoesNotParse_EmitsNothingAsync()
+        {
+            var m = ApprovableGroupSubmission();
+            var channel = new CapturingTelemetryChannel();
+
+            var service = CreateService(m.Jobs, m.Settings, m.Graph, m.Changes, m.Logger, telemetryChannel: channel);
+            await service.ProcessAutoApprovalAsync(Message(m.SyncJobId, "not-a-guid"));
+
+            Assert.AreEqual(0, channel.GetMetrics("JobReviewed").Count);
+        }
+
+        [TestMethod]
+        public async Task JobReviewed_CriteriaNotMet_MovesToPendingReviewAndEmitsNothingAsync()
+        {
+            var m = ApprovableGroupSubmission();
+
+            // A private group whose owners the requestor is not among fails the group-based rule.
+            m.Graph.Setup(x => x.GetGroupsAsync(It.IsAny<List<Guid>>()))
+                   .ReturnsAsync(new List<AzureADGroup> { new AzureADGroup { ObjectId = m.GroupId, Visibility = "Private" } });
+            m.Graph.Setup(x => x.GetGroupOwnersAsync(It.IsAny<Guid>(), It.IsAny<int>()))
+                   .ReturnsAsync(new List<AzureADUser>());
+
+            var channel = new CapturingTelemetryChannel();
+            var service = CreateService(m.Jobs, m.Settings, m.Graph, m.Changes, m.Logger, telemetryChannel: channel);
+            await service.ProcessAutoApprovalAsync(Message(m.SyncJobId, m.RequestorId));
+
+            VerifyPendingReview(m.Jobs, m.Changes);
+            Assert.AreEqual(0, channel.GetMetrics("JobReviewed").Count);
+        }
+
+        [TestMethod]
+        public async Task JobReviewed_AuditSaveFailsAndJobIsReverted_EmitsNothingAsync()
+        {
+            var m = ApprovableGroupSubmission();
+            m.Changes.Setup(x => x.Save(It.IsAny<SyncJobChange>())).ThrowsAsync(new InvalidOperationException("Save failed"));
+
+            var channel = new CapturingTelemetryChannel();
+            var service = CreateService(m.Jobs, m.Settings, m.Graph, m.Changes, m.Logger, telemetryChannel: channel);
+
+            await Assert.ThrowsExceptionAsync<InvalidOperationException>(() =>
+                service.ProcessAutoApprovalAsync(Message(m.SyncJobId, m.RequestorId)));
+
+            // The approval was undone, so counting it would break reconciliation against SyncJobChanges.
+            Assert.AreEqual(0, channel.GetMetrics("JobReviewed").Count);
+            Assert.AreEqual(SyncStatus.PendingAutoApproval.ToString(), m.Job.Status);
         }
     }
 }

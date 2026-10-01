@@ -4796,6 +4796,251 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
               }
             }
           }
+          '65': {
+            position: {
+              x: 1
+              y: 76
+              colSpan: 17
+              rowSpan: 2
+            }
+            metadata: {
+              inputs: []
+              type: 'Extension/HubsExtension/PartType/MarkdownPart'
+              settings: {
+                content: {
+                  content: '# <span style="color:DarkOrange">Onboarding Review Visibility</span>\r\n\r\n## <span style="color:DarkOrange">Summary</span>\r\n\r\nUse this section to see how onboarding submissions are reviewed. Each approval that took effect emits one `JobReviewed` metric, tagged `Auto` when the approval rules approved it without a person and `Manual` when a Submission Reviewer approved it. Rejections and submissions merely routed to human review are not counted. Manual reviewers are shown by directory object id; display names are deliberately kept out of telemetry and remain in the sync job change history.\r\n\r\nThe chart on the left shows the daily trend. The table on the right covers the selected time range: the first rows give the totals and the auto-review share, and the indented rows underneath break the manual total down by reviewer.'
+                  title: ''
+                  subtitle: ''
+                  markdownSource: 1
+                  markdownUri: null
+                }
+              }
+            }
+          }
+          '66': {
+            position: {
+              x: 1
+              y: 78
+              colSpan: 8
+              rowSpan: 6
+            }
+            metadata: {
+              inputs: [
+                {
+                  name: 'resourceTypeMode'
+                  isOptional: true
+                }
+                {
+                  name: 'ComponentId'
+                  isOptional: true
+                }
+                {
+                  name: 'Scope'
+                  value: {
+                    resourceIds: [
+                      '/subscriptions/${subscriptionId}/resourceGroups/${resourceGroup}/providers/microsoft.insights/components/${resourceGroup}'
+                    ]
+                  }
+                  isOptional: true
+                }
+                {
+                  name: 'PartId'
+                  value: '5e5f1234-0001-4b5e-a5e5-b1c2d3e4f066'
+                  isOptional: true
+                }
+                {
+                  name: 'Version'
+                  value: '2.0'
+                  isOptional: true
+                }
+                {
+                  name: 'TimeRange'
+                  value: 'P1D'
+                  isOptional: true
+                }
+                {
+                  name: 'DashboardId'
+                  isOptional: true
+                }
+                {
+                  name: 'DraftRequestParameters'
+                  isOptional: true
+                }
+                {
+                  name: 'Query'
+                  value: 'customMetrics\n| where name == "JobReviewed"\n| extend Series = tostring(customDimensions["ReviewalType"])\n| summarize count = tolong(sum(valueSum)) by bin(timestamp, 1d), Series\n| order by timestamp asc\n'
+                  isOptional: true
+                }
+                {
+                  name: 'ControlType'
+                  value: 'FrameControlChart'
+                  isOptional: true
+                }
+                {
+                  name: 'SpecificChart'
+                  value: 'StackedColumn'
+                  isOptional: true
+                }
+                {
+                  name: 'PartTitle'
+                  value: 'Onboardings Reviewed Per Day: Auto vs Manual'
+                  isOptional: true
+                }
+                {
+                  name: 'PartSubTitle'
+                  value: resourceGroup
+                  isOptional: true
+                }
+                {
+                  name: 'Dimensions'
+                  isOptional: true
+                }
+                {
+                  name: 'LegendOptions'
+                  isOptional: true
+                }
+                {
+                  name: 'IsQueryContainTimeRange'
+                  value: false
+                  isOptional: true
+                }
+              ]
+              type: 'Extension/Microsoft_OperationsManagementSuite_Workspace/PartType/LogsDashboardPart'
+              settings: {
+                content: {
+                  Query: 'customMetrics\n| where name == "JobReviewed"\n| extend Series = tostring(customDimensions["ReviewalType"])\n| summarize count = tolong(sum(valueSum)) by bin(timestamp, 1d), Series\n| order by timestamp asc\n'
+                  ControlType: 'FrameControlChart'
+                  SpecificChart: 'StackedColumn'
+                  PartTitle: 'Onboardings Reviewed Per Day: Auto vs Manual'
+                  Dimensions: {
+                    xAxis: {
+                      name: 'timestamp'
+                      type: 'datetime'
+                    }
+                    yAxis: [
+                      {
+                        name: 'count'
+                        type: 'long'
+                      }
+                    ]
+                    splitBy: [
+                      {
+                        name: 'Series'
+                        type: 'string'
+                      }
+                    ]
+                    aggregation: 'Sum'
+                  }
+                  LegendOptions: {
+                    isEnabled: true
+                    position: 'Bottom'
+                  }
+                }
+              }
+            }
+          }
+          '67': {
+            position: {
+              x: 9
+              y: 78
+              colSpan: 9
+              rowSpan: 6
+            }
+            metadata: {
+              inputs: [
+                {
+                  name: 'resourceTypeMode'
+                  isOptional: true
+                }
+                {
+                  name: 'ComponentId'
+                  isOptional: true
+                }
+                {
+                  name: 'Scope'
+                  value: {
+                    resourceIds: [
+                      '/subscriptions/${subscriptionId}/resourceGroups/${resourceGroup}/providers/microsoft.insights/components/${resourceGroup}'
+                    ]
+                  }
+                  isOptional: true
+                }
+                {
+                  name: 'PartId'
+                  value: '5e5f1234-0001-4b5e-a5e5-b1c2d3e4f067'
+                  isOptional: true
+                }
+                {
+                  name: 'Version'
+                  value: '2.0'
+                  isOptional: true
+                }
+                {
+                  name: 'TimeRange'
+                  value: 'P1D'
+                  isOptional: true
+                }
+                {
+                  name: 'DashboardId'
+                  isOptional: true
+                }
+                {
+                  name: 'DraftRequestParameters'
+                  isOptional: true
+                }
+                {
+                  name: 'Query'
+                  value: 'let reviews = customMetrics\n| where name == "JobReviewed"\n| extend ReviewalType = tostring(customDimensions["ReviewalType"]), ReviewerId = tostring(customDimensions["ReviewerId"]);\nlet manualByReviewer = reviews\n| where ReviewalType == "Manual"\n| summarize Reviews = tolong(sum(valueSum)) by ReviewerId;\nlet reviewers = toscalar(manualByReviewer | count);\nlet summary = reviews\n| summarize Total = tolong(coalesce(sum(valueSum), 0.0)),\n            Auto = tolong(coalesce(sumif(valueSum, ReviewalType == "Auto"), 0.0)),\n            Manual = tolong(coalesce(sumif(valueSum, ReviewalType == "Manual"), 0.0));\nlet total = toscalar(summary | project Total);\nunion\n(summary | project Sort = 0, Reviewer = "All reviews", Reviews = Total, PercentOfReviews = iff(Total == 0, 0.0, 100.0)),\n(summary | project Sort = 1, Reviewer = "Auto (approval rules)", Reviews = Auto, PercentOfReviews = iff(Total == 0, 0.0, round(100.0 * Auto / Total, 1))),\n(summary | project Sort = 2, Reviewer = strcat("Manual (", reviewers, " reviewers)"), Reviews = Manual, PercentOfReviews = iff(Total == 0, 0.0, round(100.0 * Manual / Total, 1))),\n(manualByReviewer\n| project Sort = 3, Reviewer = strcat("- ", ReviewerId), Reviews, PercentOfReviews = iff(total == 0, 0.0, round(100.0 * Reviews / total, 1)))\n| order by Sort asc, Reviews desc\n| project Reviewer, Reviews, PercentOfReviews\n'
+                  isOptional: true
+                }
+                {
+                  name: 'ControlType'
+                  value: 'AnalyticsGrid'
+                  isOptional: true
+                }
+                {
+                  name: 'SpecificChart'
+                  isOptional: true
+                }
+                {
+                  name: 'PartTitle'
+                  value: 'Auto-Review Rate and Reviewer Breakdown'
+                  isOptional: true
+                }
+                {
+                  name: 'PartSubTitle'
+                  value: resourceGroup
+                  isOptional: true
+                }
+                {
+                  name: 'Dimensions'
+                  isOptional: true
+                }
+                {
+                  name: 'LegendOptions'
+                  isOptional: true
+                }
+                {
+                  name: 'IsQueryContainTimeRange'
+                  value: false
+                  isOptional: true
+                }
+              ]
+              type: 'Extension/Microsoft_OperationsManagementSuite_Workspace/PartType/LogsDashboardPart'
+              settings: {
+                content: {
+                  Query: 'let reviews = customMetrics\n| where name == "JobReviewed"\n| extend ReviewalType = tostring(customDimensions["ReviewalType"]), ReviewerId = tostring(customDimensions["ReviewerId"]);\nlet manualByReviewer = reviews\n| where ReviewalType == "Manual"\n| summarize Reviews = tolong(sum(valueSum)) by ReviewerId;\nlet reviewers = toscalar(manualByReviewer | count);\nlet summary = reviews\n| summarize Total = tolong(coalesce(sum(valueSum), 0.0)),\n            Auto = tolong(coalesce(sumif(valueSum, ReviewalType == "Auto"), 0.0)),\n            Manual = tolong(coalesce(sumif(valueSum, ReviewalType == "Manual"), 0.0));\nlet total = toscalar(summary | project Total);\nunion\n(summary | project Sort = 0, Reviewer = "All reviews", Reviews = Total, PercentOfReviews = iff(Total == 0, 0.0, 100.0)),\n(summary | project Sort = 1, Reviewer = "Auto (approval rules)", Reviews = Auto, PercentOfReviews = iff(Total == 0, 0.0, round(100.0 * Auto / Total, 1))),\n(summary | project Sort = 2, Reviewer = strcat("Manual (", reviewers, " reviewers)"), Reviews = Manual, PercentOfReviews = iff(Total == 0, 0.0, round(100.0 * Manual / Total, 1))),\n(manualByReviewer\n| project Sort = 3, Reviewer = strcat("- ", ReviewerId), Reviews, PercentOfReviews = iff(total == 0, 0.0, round(100.0 * Reviews / total, 1)))\n| order by Sort asc, Reviews desc\n| project Reviewer, Reviews, PercentOfReviews\n'
+                  ControlType: 'AnalyticsGrid'
+                  PartTitle: 'Auto-Review Rate and Reviewer Breakdown'
+                  PartSubTitle: 'Selected time range; manual reviewers are listed by directory object id'
+                }
+              }
+              partHeader: {
+                title: 'Auto-Review Rate and Reviewer Breakdown'
+                subtitle: ''
+              }
+            }
+          }
         }
       }
     }

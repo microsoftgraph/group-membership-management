@@ -2,6 +2,7 @@
 // Licensed under the MIT license.
 
 using Hosts.AutoApprover;
+using Microsoft.ApplicationInsights;
 using Microsoft.Extensions.Logging;
 using Models;
 using Models.ServiceBus;
@@ -28,6 +29,7 @@ namespace Services.AutoApprover
         private readonly IDataFactoryRepository _dataFactoryRepository;
         private readonly IDatabaseSqlMembershipSourcesRepository _sqlMembershipSourcesRepository;
         private readonly ILogger<AutoApproverService> _logger;
+        private readonly TelemetryClient _telemetryClient;
 
         // A submitted filter is caller-supplied text, so bound the match.
         private static readonly TimeSpan SensitiveMatchTimeout = TimeSpan.FromSeconds(2);
@@ -40,7 +42,8 @@ namespace Services.AutoApprover
             ISqlMembershipRepository sqlMembershipRepository,
             IDataFactoryRepository dataFactoryRepository,
             IDatabaseSqlMembershipSourcesRepository sqlMembershipSourcesRepository,
-            ILogger<AutoApproverService> logger)
+            ILogger<AutoApproverService> logger,
+            TelemetryClient telemetryClient)
         {
             _syncJobRepository = syncJobRepository ?? throw new ArgumentNullException(nameof(syncJobRepository));
             _databaseSettingsRepository = databaseSettingsRepository ?? throw new ArgumentNullException(nameof(databaseSettingsRepository));
@@ -50,6 +53,7 @@ namespace Services.AutoApprover
             _dataFactoryRepository = dataFactoryRepository ?? throw new ArgumentNullException(nameof(dataFactoryRepository));
             _sqlMembershipSourcesRepository = sqlMembershipSourcesRepository ?? throw new ArgumentNullException(nameof(sqlMembershipSourcesRepository));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+            _telemetryClient = telemetryClient ?? throw new ArgumentNullException(nameof(telemetryClient));
         }
 
         public async Task ProcessAutoApprovalAsync(AutoApprovalQueueMessage message)
@@ -160,6 +164,14 @@ namespace Services.AutoApprover
             }
 
             _logger.SyncJobAutoApproved(message.SyncJobId);
+
+            // Emitted only once the approval and its audit row are durably persisted, so the dashboard
+            // count reconciles one-to-one with the OnboardingAutoApproved rows in SyncJobChanges.
+            JobReviewedTelemetryHelper.TrackAutoReview(
+                _telemetryClient,
+                message.SyncJobId,
+                syncJob.TargetOfficeGroupId,
+                syncJob.MembershipType);
         }
 
         // Each setting switches on one way a part may qualify; with every path off nothing auto-approves.
