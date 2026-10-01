@@ -35,8 +35,8 @@ namespace Hosts.JobTrigger
                     { "RunId", request.RunId.ToString() }
                 };
 
-                const string eventName = "NumberOfJobsCompleted";
-                _telemetryClient.TrackEvent(eventName, jobsCompletedEvent);
+                const string eventName = Repositories.Contracts.Constants.TelemetryConstants.NumberOfJobsCompletedName;
+                JobCountTelemetryHelper.TrackEventAndMetric(_telemetryClient, eventName, jobsCompletedEvent);
                 _logger.TrackedTelemetryEvent(eventName);
                 _logger.FunctionCompleted(nameof(TelemetryTrackerFunction));
             }

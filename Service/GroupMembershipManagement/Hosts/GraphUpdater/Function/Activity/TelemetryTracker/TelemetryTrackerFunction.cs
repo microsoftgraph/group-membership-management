@@ -3,6 +3,8 @@
 using Microsoft.ApplicationInsights;
 using Microsoft.Azure.Functions.Worker;
 using Microsoft.Extensions.Logging;
+using Repositories.Contracts.Constants;
+using Repositories.Contracts.Helpers;
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
@@ -31,7 +33,10 @@ namespace Hosts.GraphUpdater
                 { "ResultStatus", request.ResultStatus.ToString() },
                 { "RunId", request.SyncJob.RunId.GetValueOrDefault().ToString() }
             };
-            _telemetryClient.TrackEvent("NumberOfJobsCompleted", jobsCompletedEvent);
+            JobCountTelemetryHelper.TrackEventAndMetric(
+                _telemetryClient,
+                TelemetryConstants.NumberOfJobsCompletedName,
+                jobsCompletedEvent);
             _logger.FunctionCompleted(nameof(TelemetryTrackerFunction));
             return Task.CompletedTask;
         }

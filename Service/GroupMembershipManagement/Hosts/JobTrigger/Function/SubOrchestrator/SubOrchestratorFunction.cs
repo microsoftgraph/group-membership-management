@@ -303,7 +303,10 @@ namespace Hosts.JobTrigger
             {
                 { "RunId", runId.ToString() }
             };
-            _telemetryClient.TrackEvent("NumberOfJobsStarted", jobsStartedEvent);
+            JobCountTelemetryHelper.TrackEventAndMetric(
+                _telemetryClient,
+                Repositories.Contracts.Constants.TelemetryConstants.NumberOfJobsStartedName,
+                jobsStartedEvent);
         }
 
         private void TrackIdleJobsEvent(int frequency, Guid destinationGroupObjectId)

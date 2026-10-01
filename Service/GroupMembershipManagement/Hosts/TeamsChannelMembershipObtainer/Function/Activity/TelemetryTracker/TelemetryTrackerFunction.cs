@@ -36,7 +36,10 @@ namespace Hosts.TeamsChannelMembershipObtainer
                 { "ResultStatus", request.ResultStatus.ToString() },
                 { "RunId", request.RunId.ToString() }
             };
-            _telemetryClient.TrackEvent("NumberOfJobsCompleted", jobsCompletedEvent);
+            JobCountTelemetryHelper.TrackEventAndMetric(
+                _telemetryClient,
+                Repositories.Contracts.Constants.TelemetryConstants.NumberOfJobsCompletedName,
+                jobsCompletedEvent);
 
             _logger.FunctionCompleted(nameof(TelemetryTrackerFunction));
 

@@ -39,7 +39,10 @@ namespace Hosts.GroupOwnershipObtainer
                 { "RunId", request.SyncJob?.RunId?.ToString() ?? string.Empty }
             };
 
-            _telemetryClient.TrackEvent("NumberOfJobsCompleted", jobsCompletedEvent);
+            JobCountTelemetryHelper.TrackEventAndMetric(
+                _telemetryClient,
+                Repositories.Contracts.Constants.TelemetryConstants.NumberOfJobsCompletedName,
+                jobsCompletedEvent);
 
             _logger.FunctionCompleted(nameof(TelemetryTrackerFunction));
             return Task.CompletedTask;

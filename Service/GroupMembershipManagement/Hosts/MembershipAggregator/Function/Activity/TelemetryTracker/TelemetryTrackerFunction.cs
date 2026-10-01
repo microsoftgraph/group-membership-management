@@ -39,7 +39,10 @@ namespace Hosts.MembershipAggregator
                     { "ResultStatus", request.ResultStatus.ToString() },
                     { "RunId", runId.ToString() }
                 };
-                _telemetryClient.TrackEvent("NumberOfJobsCompleted", jobsCompletedEvent);
+                JobCountTelemetryHelper.TrackEventAndMetric(
+                    _telemetryClient,
+                    Repositories.Contracts.Constants.TelemetryConstants.NumberOfJobsCompletedName,
+                    jobsCompletedEvent);
                 _logger.FunctionCompleted(nameof(TelemetryTrackerFunction));
             }
         }

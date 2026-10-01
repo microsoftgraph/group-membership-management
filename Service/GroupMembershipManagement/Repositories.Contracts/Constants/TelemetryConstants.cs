@@ -10,6 +10,10 @@ namespace Repositories.Contracts.Constants
         public const string ResourceUnitsEventName = "ResourceUnitsUsedByType";
         public const string SyncCompleteName = "SyncComplete";
         public const string SyncJobTimeElapsedSecondsMetricName = "SyncJobTimeElapsedSeconds";
+        public const string NumberOfJobsStartedName = "NumberOfJobsStarted";
+        public const string NumberOfJobsCompletedName = "NumberOfJobsCompleted";
+        public const string TelemetrySchemaVersionPropertyName = "TelemetrySchemaVersion";
+        public const string RichMetricSchemaVersion = "2";
 
         // Dimension names for the SyncComplete custom metric.
         public const string ResultDimensionName = "Result";

@@ -38,7 +38,10 @@ namespace SqlMembershipObtainer
                     { "ResultStatus", request.ResultStatus.ToString() },
                     { "RunId", (request.SyncJob.RunId ?? Guid.Empty).ToString() }
                 };
-                _telemetryClient.TrackEvent("NumberOfJobsCompleted", jobsCompletedEvent);
+                JobCountTelemetryHelper.TrackEventAndMetric(
+                    _telemetryClient,
+                    Repositories.Contracts.Constants.TelemetryConstants.NumberOfJobsCompletedName,
+                    jobsCompletedEvent);
                 _logger.FunctionCompleted(nameof(TelemetryTrackerFunction));
             }
         }
