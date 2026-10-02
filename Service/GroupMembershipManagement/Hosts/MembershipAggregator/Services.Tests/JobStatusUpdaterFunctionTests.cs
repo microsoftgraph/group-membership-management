@@ -30,7 +30,7 @@ namespace Services.Tests
         {
             _syncJobRepository = new Mock<IDatabaseSyncJobsRepository>(MockBehavior.Strict);
             _historyRepository = new Mock<ISyncJobHistoryRepository>(MockBehavior.Strict);
-            ISyncJobStatusService syncJobStatusService = new SyncJobStatusService(_syncJobRepository.Object, _historyRepository.Object);
+            ISyncJobStatusService syncJobStatusService = new SyncJobStatusService(_syncJobRepository.Object, _historyRepository.Object, NullLogger<SyncJobStatusService>.Instance);
 
             _function = new JobStatusUpdaterFunction(
                 NullLogger<JobStatusUpdaterFunction>.Instance,

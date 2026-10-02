@@ -2,6 +2,7 @@
 // Licensed under the MIT license.
 
 using BusinessLogic.SyncJobUpdater;
+using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Models;
 using Models.SyncJobHistory;
@@ -28,7 +29,7 @@ namespace Services.Tests
             _databaseSyncJobsRepository = new Mock<IDatabaseSyncJobsRepository>(MockBehavior.Strict);
             _syncJobHistoryRepository = new Mock<ISyncJobHistoryRepository>(MockBehavior.Strict);
 
-            _service = new SyncJobStatusService(_databaseSyncJobsRepository.Object, _syncJobHistoryRepository.Object);
+            _service = new SyncJobStatusService(_databaseSyncJobsRepository.Object, _syncJobHistoryRepository.Object, NullLogger<SyncJobStatusService>.Instance);
 
             _job = new SyncJob
             {

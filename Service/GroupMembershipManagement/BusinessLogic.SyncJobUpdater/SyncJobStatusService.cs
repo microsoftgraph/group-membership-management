@@ -1,10 +1,12 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
+using Microsoft.Extensions.Logging;
 using Models;
 using Models.ServiceBus;
 using Models.SyncJobHistory;
 using Repositories.Contracts;
+using Repositories.Contracts.Helpers;
 using Services.Contracts;
 using System;
 using System.Threading.Tasks;
@@ -15,13 +17,16 @@ namespace BusinessLogic.SyncJobUpdater
     {
         private readonly IDatabaseSyncJobsRepository _databaseSyncJobsRepository;
         private readonly ISyncJobHistoryRepository _syncJobHistoryRepository;
+        private readonly ILogger<SyncJobStatusService> _logger;
 
         public SyncJobStatusService(
             IDatabaseSyncJobsRepository databaseSyncJobsRepository,
-            ISyncJobHistoryRepository syncJobHistoryRepository)
+            ISyncJobHistoryRepository syncJobHistoryRepository,
+            ILogger<SyncJobStatusService> logger)
         {
             _databaseSyncJobsRepository = databaseSyncJobsRepository;
             _syncJobHistoryRepository = syncJobHistoryRepository;
+            _logger = logger;
         }
 
         public async Task UpdateJobStatusAsync(SyncJob job, SyncStatus? status, SyncJobHistory? history = null, string? functionName = null)
@@ -31,6 +36,14 @@ namespace BusinessLogic.SyncJobUpdater
             if (status.HasValue)
             {
                 await _databaseSyncJobsRepository.UpdateSyncJobStatusAsync(new[] { job }, status);
+
+                // Emitted from the shared service so every host produces a status-change log line.
+                // The "Jobs in Error or Blocked Statuses" dashboard tile matches on this exact wording.
+                using (_logger.BeginRunIdScope(job.RunId))
+                {
+                    _logger.LogInformation("Set job status to {Status}. JobId: {JobId}, Function: {FunctionName}",
+                        status.Value.ToString(), job.Id, functionName ?? "Unknown");
+                }
             }
 
             // When both status and history are null there is nothing to persist (no status change,

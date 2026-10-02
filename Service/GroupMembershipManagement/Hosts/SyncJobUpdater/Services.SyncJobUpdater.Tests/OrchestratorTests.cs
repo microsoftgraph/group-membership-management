@@ -46,7 +46,8 @@ namespace Services.Tests
 
             var syncJobStatusService = new SyncJobStatusService(
                 _mockDatabaseSyncJobsRepository.Object,
-                _mockSyncJobHistoryRepository.Object);
+                _mockSyncJobHistoryRepository.Object,
+                NullLogger<SyncJobStatusService>.Instance);
 
             _syncJobUpdaterService = new SyncJobUpdaterService( 
                                                                _mockDatabaseSyncJobsRepository.Object,
