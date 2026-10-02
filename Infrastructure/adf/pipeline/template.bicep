@@ -32,7 +32,7 @@ param functionAuthAppClientId string
 @description('Enable function authentication.')
 param enableFunctionAuthentication bool = false
 
-@description('Number of most recent tables to retain in each of the users and mappings schemas. Cleanup of older tables is attempted after all non-cleanup activities succeed.')
+@description('Number of most recent tables to retain in each of the users, mappings and agents schemas. Cleanup of older users and mappings tables is attempted after all non-cleanup activities succeed, and of older agents tables after the agents load completes.')
 @minValue(2)
 param tablesToRetain int = 30
 

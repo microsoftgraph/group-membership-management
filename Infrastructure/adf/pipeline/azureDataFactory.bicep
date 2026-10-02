@@ -45,7 +45,7 @@ param enableFunctionAuthentication bool = false
 @description('Maximum number of users whose ManagerId is missing from the extract before PopulateDestinationPipeline fails.')
 param maxInvalidUserCount int = 25
 
-@description('Number of most recent tables to retain in each of the users and mappings schemas. Cleanup of older tables is attempted after all non-cleanup activities succeed.')
+@description('Number of most recent tables to retain in each of the users, mappings and agents schemas. Cleanup of older users and mappings tables is attempted after all non-cleanup activities succeed, and of older agents tables after the agents load completes.')
 @minValue(2)
 param tablesToRetain int = 30
 
@@ -68,6 +68,7 @@ var populateDestinationDataFlow = 'PopulateDestinationDataFlow_${resourceSuffix}
 var tableCleanupScriptTemplate = 'DECLARE @SchemaName NVARCHAR(128);\nDECLARE @TableName NVARCHAR(128);\nDECLARE @SQL NVARCHAR(MAX);\n\nDECLARE table_cursor CURSOR FOR\nSELECT s.[name], t.[name]\nFROM sys.tables AS t\nINNER JOIN sys.schemas AS s ON t.schema_id = s.schema_id\nWHERE s.name = \'__SCHEMA__\'\nAND t.[name] NOT IN (\n    SELECT TOP (${tablesToRetain}) t.[name]\n    FROM sys.tables AS t\n    INNER JOIN sys.schemas AS s ON t.schema_id = s.schema_id\n    WHERE s.name = \'__SCHEMA__\'\n    ORDER BY t.create_date DESC\n);\n\nOPEN table_cursor;\nFETCH NEXT FROM table_cursor INTO @SchemaName, @TableName;\n\nWHILE @@FETCH_STATUS = 0\nBEGIN\n    BEGIN TRY\n        SET @SQL = N\'DROP TABLE \' + QUOTENAME(@SchemaName) + \'.\' + QUOTENAME(@TableName);\n        EXEC sp_executesql @SQL;\n    END TRY\n    BEGIN CATCH\n        PRINT \'Error dropping \' + @TableName + \': \' + ERROR_MESSAGE();\n    END CATCH\n    FETCH NEXT FROM table_cursor INTO @SchemaName, @TableName;\nEND;\n\nCLOSE table_cursor;\nDEALLOCATE table_cursor;'
 var cleanUpUsersTablesScript = replace(tableCleanupScriptTemplate, '__SCHEMA__', 'users')
 var cleanUpMappingsTablesScript = replace(tableCleanupScriptTemplate, '__SCHEMA__', 'mappings')
+var cleanUpAgentsTablesScript = replace(tableCleanupScriptTemplate, '__SCHEMA__', 'agents')
 
 resource dataFactory 'Microsoft.DataFactory/factories@2018-06-01' = {
   name: dataFactoryName
@@ -807,6 +808,39 @@ resource Pipeline_PopulateDestinationPipeline 'Microsoft.DataFactory/factories/p
             {
               type: 'NonQuery'
               text: cleanUpMappingsTablesScript
+            }
+          ]
+          scriptBlockExecutionTimeout: '02:00:00'
+        }
+      }
+      {
+        name: 'Clean Up Old Agents Tables'
+        type: 'Script'
+        dependsOn: [
+          {
+            activity: 'Gate AgentReader Terminal Status'
+            dependencyConditions: [
+              'Succeeded'
+            ]
+          }
+        ]
+        policy: {
+          timeout: '0.12:00:00'
+          retry: 0
+          retryIntervalInSeconds: 30
+          secureOutput: false
+          secureInput: false
+        }
+        userProperties: []
+        linkedServiceName: {
+          referenceName: destinationDatabaseLinkedService
+          type: 'LinkedServiceReference'
+        }
+        typeProperties: {
+          scripts: [
+            {
+              type: 'NonQuery'
+              text: cleanUpAgentsTablesScript
             }
           ]
           scriptBlockExecutionTimeout: '02:00:00'
