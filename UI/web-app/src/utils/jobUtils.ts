@@ -46,8 +46,8 @@ export const processJob = (job: Job): Job => {
     case SyncStatus.NotOwnerOfDestinationGroup:
       job['actionRequired'] = ActionRequired.NotOwnerOfDestinationGroup;
       break;
-    case SyncStatus.SecurityGroupNotFound:
-      job['actionRequired'] = ActionRequired.SecurityGroupNotFound;
+    case SyncStatus.SourceGroupNotFound:
+      job['actionRequired'] = ActionRequired.SourceGroupNotFound;
       break;
     case SyncStatus.ManagerNotFound:
       job['actionRequired'] = ActionRequired.ManagerNotFound;
@@ -152,8 +152,8 @@ export const getStatusDisplayText = (status: string): string => {
       return statusStrings.failed;
     case RunHistoryStatus.DestinationGroupNotFound:
       return statusStrings.destinationGroupNotFound;
-    case RunHistoryStatus.SecurityGroupNotFound:
-      return statusStrings.securityGroupNotFound;
+    case RunHistoryStatus.SourceGroupNotFound:
+      return statusStrings.sourceGroupNotFound;
     case RunHistoryStatus.ManagerNotFound:
       return statusStrings.managerNotFound;
     case RunHistoryStatus.MembershipDataNotFound:

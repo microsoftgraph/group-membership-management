@@ -594,7 +594,7 @@ export type IStrings = {
         membershipDataNotFound: string;
         destinationGroupNotFound: string;
         notOwnerOfDestinationGroup: string;
-        securityGroupNotFound: string;
+        sourceGroupNotFound: string;
         managerNotFound: string;
         guestUsersNotSupported: string;
       };
@@ -698,7 +698,7 @@ export type IStrings = {
             membershipDataNotFound: string;
             destinationGroupNotFound: string;
             notOwnerOfDestinationGroup: string;
-            securityGroupNotFound: string;
+            sourceGroupNotFound: string;
             managerNotFound: string;
             pendingReview: string;
             pendingConfiguration: string;

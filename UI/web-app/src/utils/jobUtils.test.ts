@@ -73,9 +73,9 @@ describe('processJob', () => {
     expect(job.actionRequired).toBe(ActionRequired.NotOwnerOfDestinationGroup);
   });
 
-  it('sets actionRequired for SecurityGroupNotFound', () => {
-    const job = processJob(makeJob(SyncStatus.SecurityGroupNotFound));
-    expect(job.actionRequired).toBe(ActionRequired.SecurityGroupNotFound);
+  it('sets actionRequired for SourceGroupNotFound', () => {
+    const job = processJob(makeJob(SyncStatus.SourceGroupNotFound));
+    expect(job.actionRequired).toBe(ActionRequired.SourceGroupNotFound);
   });
 
   it('sets actionRequired for ManagerNotFound', () => {
@@ -176,8 +176,8 @@ describe('getStatusDisplayText', () => {
     expect(result).toBeDefined();
   });
 
-  it('returns specific text for SecurityGroupNotFound', () => {
-    const result = getStatusDisplayText(RunHistoryStatus.SecurityGroupNotFound);
+  it('returns specific text for SourceGroupNotFound', () => {
+    const result = getStatusDisplayText(RunHistoryStatus.SourceGroupNotFound);
     expect(result).toBeDefined();
   });
 

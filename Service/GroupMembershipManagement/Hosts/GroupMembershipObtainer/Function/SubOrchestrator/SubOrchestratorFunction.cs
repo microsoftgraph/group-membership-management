@@ -63,7 +63,7 @@ namespace Hosts.GroupMembershipObtainer
                         logger.FunctionStarted(nameof(SubOrchestratorFunction));
                         var isExistingGroup = await context.CallActivityAsync<bool>(nameof(GroupValidatorFunction), new GroupValidatorRequest { SyncJob = request.SyncJob, GroupId = request.GroupId, CurrentPart = request.CurrentPart, TotalParts = request.TotalParts, ObjectId = request.SourceGroup.ObjectId });
                         if (!isExistingGroup)
-                            return new SubOrchestratorResponse { Status = SyncStatus.SecurityGroupNotFound };
+                            return new SubOrchestratorResponse { Status = SyncStatus.SourceGroupNotFound };
 
                         var transitiveGroupCount = await context.CallActivityAsync<int>(nameof(GetTransitiveGroupCountFunction),
                                                                     new GetTransitiveGroupCountRequest

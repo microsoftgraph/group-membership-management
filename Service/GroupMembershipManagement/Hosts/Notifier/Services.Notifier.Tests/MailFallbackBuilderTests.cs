@@ -621,7 +621,7 @@ namespace Services.Notifier.Tests
         [DataRow("CustomerPaused")]
         [DataRow("MembershipDataNotFound")]
         [DataRow("DestinationGroupNotFound")]
-        [DataRow("SecurityGroupNotFound")]
+        [DataRow("SourceGroupNotFound")]
         [DataRow("NotOwnerOfDestinationGroup")]
         [DataRow("SubmissionRejected")]
         [DataRow("GuestUsersCannotBeAddedToUnifiedGroup")]
@@ -809,7 +809,7 @@ namespace Services.Notifier.Tests
 
         [TestMethod]
         [DataRow("DestinationGroupNotFound",          "destination group not found")]
-        [DataRow("SecurityGroupNotFound",             "source group not found")]
+        [DataRow("SourceGroupNotFound",               "source group not found")]
         [DataRow("NotOwnerOfDestinationGroup",        "GMM is not an owner")]
         [DataRow("MembershipDataNotFound",            "membership rules returned no users")]
         [DataRow("GuestUsersCannotBeAddedToUnifiedGroup", "guest users not supported")]
@@ -892,7 +892,7 @@ namespace Services.Notifier.Tests
             };
         }
 
-        private static EmailMessage MakeFinalNoticeEmail(string priorStatus = "SecurityGroupNotFound")
+        private static EmailMessage MakeFinalNoticeEmail(string priorStatus = "SourceGroupNotFound")
         {
             return new EmailMessage
             {

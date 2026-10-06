@@ -887,7 +887,7 @@ namespace Tests.Services
             var response = await subOrchestratorFunction.RunSubOrchestratorAsync(_durableOrchestrationContext.Object);
             _graphGroupRepository.Verify(x => x.GroupExists(It.IsAny<Guid>()), Times.Once);
 
-            Assert.AreEqual(SyncStatus.SecurityGroupNotFound, response.Status);
+            Assert.AreEqual(SyncStatus.SourceGroupNotFound, response.Status);
         }
 
         [TestMethod]

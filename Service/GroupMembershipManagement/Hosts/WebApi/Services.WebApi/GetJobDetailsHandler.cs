@@ -150,7 +150,7 @@ namespace Services
                 SyncStatus.DestinationGroupNotFound.ToString(),
                 SyncStatus.MembershipDataNotFound.ToString(),
                 SyncStatus.NotOwnerOfDestinationGroup.ToString(),
-                SyncStatus.SecurityGroupNotFound.ToString(),
+                SyncStatus.SourceGroupNotFound.ToString(),
                 SyncStatus.ThresholdExceeded.ToString(),
                 SyncStatus.SubmissionRejected.ToString(),
                 SyncStatus.GuestUsersCannotBeAddedToUnifiedGroup.ToString(),

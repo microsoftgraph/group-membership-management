@@ -47,7 +47,7 @@ namespace Hosts.GroupMembershipObtainer
                     {
                         if (groupExistsResult.Outcome == OutcomeType.Successful)
                         {
-                            _logger.GroupNotExists(request.ObjectId, SyncStatus.SecurityGroupNotFound.ToString());
+                            _logger.GroupNotExists(request.ObjectId, SyncStatus.SourceGroupNotFound.ToString());
                             var targetGroupName = await _calculator.GetGroupNameAsync(request.GroupId);
                             if (request.SyncJob != null && request.ObjectId != default(Guid))
                                 await _calculator.SendEmailAsync(request.SyncJob,

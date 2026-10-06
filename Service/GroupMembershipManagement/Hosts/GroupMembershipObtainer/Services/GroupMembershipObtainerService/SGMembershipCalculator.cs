@@ -216,7 +216,7 @@ namespace Hosts.GroupMembershipObtainer
 
             // If we're reading from the target group itself, store the before sync user count during transitive/delta call.
             // Status is deliberately passed as null: the intent of this call is to persist BeforeSyncUserCount on SyncJobHistory,
-            // not to change SyncJob.Status. Passing null prevents overwriting a terminal status (e.g. SecurityGroupNotFound)
+            // not to change SyncJob.Status. Passing null prevents overwriting a terminal status (e.g. SourceGroupNotFound)
             // that a concurrent sibling part may have already written.
             if (objectId == targetOfficeGroupId)
             {

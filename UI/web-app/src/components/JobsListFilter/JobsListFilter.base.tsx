@@ -128,8 +128,8 @@ export const JobsListFilterBase: React.FunctionComponent<IJobsListFilterProps> =
       text: strings.JobsList.JobsListFilter.filters.actionRequired.options.notOwnerOfDestinationGroup,
     },
     {
-      key: SyncStatus.SecurityGroupNotFound,
-      text: strings.JobsList.JobsListFilter.filters.actionRequired.options.securityGroupNotFound,
+      key: SyncStatus.SourceGroupNotFound,
+      text: strings.JobsList.JobsListFilter.filters.actionRequired.options.sourceGroupNotFound,
     },
     {
       key: SyncStatus.ManagerNotFound,

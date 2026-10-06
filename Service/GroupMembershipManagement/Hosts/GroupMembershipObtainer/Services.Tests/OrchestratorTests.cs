@@ -302,7 +302,7 @@ namespace Tests.Services
         [TestMethod]
         public async Task TestGroupMembershipNotFoundAsync()
         {
-            _subOrchestratorResponseStatus = SyncStatus.SecurityGroupNotFound;
+            _subOrchestratorResponseStatus = SyncStatus.SourceGroupNotFound;
 
             var orchestratorFunction = new OrchestratorFunction();
 
@@ -310,7 +310,7 @@ namespace Tests.Services
 
             _syncJobStatusService.Verify(x => x.UpdateJobStatusAsync(
                                                 It.IsAny<SyncJob>(),
-                                                SyncStatus.SecurityGroupNotFound,
+                                                SyncStatus.SourceGroupNotFound,
                                                 It.IsAny<SyncJobHistory>(),
                                                 "GroupMembershipObtainer"
                                             ), Times.Once);

@@ -714,7 +714,7 @@ namespace Tests.FunctionApps
             // Regression test for the SGNF-overwrite bug.
             //
             // Scenario: a sibling part (e.g. a SubOrchestrator Parallel.ForEach branch) has already
-            // detected the destination group is missing and written Status=SecurityGroupNotFound
+            // detected the destination group is missing and written Status=SourceGroupNotFound
             // to the SyncJob row. THIS part is the destination-delta / transitive path that
             // persists BeforeSyncUserCount to SyncJobHistory. The stash path must NOT reset the
             // status back to InProgress.
@@ -756,7 +756,7 @@ namespace Tests.FunctionApps
                 Id = Guid.NewGuid(),
                 RunId = runId,
                 MembershipType = "GroupMembership",
-                Status = SyncStatus.SecurityGroupNotFound.ToString(),
+                Status = SyncStatus.SourceGroupNotFound.ToString(),
                 Query = _querySample.GetQuery()
             };
             _syncJobs.Jobs.Add(syncJob);
@@ -774,7 +774,7 @@ namespace Tests.FunctionApps
                     (SyncStatus?)null,
                     It.Is<Models.SyncJobHistory.SyncJobHistory>(h =>
                         h.BeforeSyncUserCount == expectedUserCount &&
-                        h.Status == SyncStatus.SecurityGroupNotFound.ToString() &&
+                        h.Status == SyncStatus.SourceGroupNotFound.ToString() &&
                         h.EndTime == null &&
                         h.UpdatedByFunction == "GroupMembershipObtainer"),
                     "GroupMembershipObtainer"),

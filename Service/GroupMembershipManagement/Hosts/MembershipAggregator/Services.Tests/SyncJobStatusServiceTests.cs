@@ -230,13 +230,13 @@ namespace Services.Tests
             // Arrange — a caller in the "stash" pattern: persist SyncJobHistory fields (e.g.
             // BeforeSyncUserCount) without changing SyncJob.Status. The service must NOT write
             // to the SyncJob row in this case, otherwise a concurrent sibling's terminal status
-            // (e.g. SecurityGroupNotFound) could be clobbered by a whole-row EF update.
+            // (e.g. SourceGroupNotFound) could be clobbered by a whole-row EF update.
             var runId = Guid.NewGuid();
             var history = new SyncJobHistory
             {
                 SyncJobId = _job.Id,
                 RunId = runId,
-                Status = SyncStatus.SecurityGroupNotFound.ToString(),
+                Status = SyncStatus.SourceGroupNotFound.ToString(),
                 BeforeSyncUserCount = 42,
                 UpdatedByFunction = "GroupMembershipObtainer"
             };
@@ -248,7 +248,7 @@ namespace Services.Tests
             _syncJobHistoryRepository
                 .Setup(repo => repo.CreateAsync(It.Is<SyncJobHistory>(h =>
                     h.BeforeSyncUserCount == 42 &&
-                    h.Status == SyncStatus.SecurityGroupNotFound.ToString())))
+                    h.Status == SyncStatus.SourceGroupNotFound.ToString())))
                 .Returns(Task.CompletedTask)
                 .Verifiable();
 

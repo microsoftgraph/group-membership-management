@@ -32,7 +32,7 @@ namespace Repositories.EntityFramework.Contexts.Migrations
                 SyncStatus.DestinationGroupNotFound,
                 SyncStatus.MembershipDataNotFound,
                 SyncStatus.NotOwnerOfDestinationGroup,
-                SyncStatus.SecurityGroupNotFound,
+                SyncStatus.SourceGroupNotFound,
                 SyncStatus.ThresholdExceeded
             };
 
@@ -55,7 +55,7 @@ namespace Repositories.EntityFramework.Contexts.Migrations
                 { Guid.Parse("B03604F9-5869-EE11-9937-6045BDE913DD"), SyncStatus.NotOwnerOfDestinationGroup },
                 { Guid.Parse("B13604F9-5869-EE11-9937-6045BDE913DD"), SyncStatus.QueryNotValid },
                 { Guid.Parse("B23604F9-5869-EE11-9937-6045BDE913DD"), SyncStatus.SchemaError },
-                { Guid.Parse("B33604F9-5869-EE11-9937-6045BDE913DD"), SyncStatus.SecurityGroupNotFound },
+                { Guid.Parse("B33604F9-5869-EE11-9937-6045BDE913DD"), SyncStatus.SourceGroupNotFound },
                 { Guid.Parse("B43604F9-5869-EE11-9937-6045BDE913DD"), SyncStatus.StandardTeamsChannel },
                 { Guid.Parse("B53604F9-5869-EE11-9937-6045BDE913DD"), SyncStatus.StuckInProgress },
                 { Guid.Parse("B63604F9-5869-EE11-9937-6045BDE913DD"), SyncStatus.TeamsChannelError },

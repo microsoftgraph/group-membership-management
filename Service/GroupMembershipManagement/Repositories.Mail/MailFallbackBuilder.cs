@@ -536,7 +536,7 @@ namespace Repositories.Mail
             {
                 case "DestinationGroupNotFound":
                     bodyKey = "SyncDisabledFallback.ActionChecklist.NoDestinationGroup.Body"; break;
-                case "SecurityGroupNotFound":
+                case "SourceGroupNotFound":
                     bodyKey = "SyncDisabledFallback.ActionChecklist.NoSourceGroup.Body"; break;
                 case "ManagerNotFound":
                     bodyKey = "SyncDisabledFallback.ActionChecklist.NoManager.Body"; break;
@@ -833,7 +833,7 @@ namespace Repositories.Mail
             string syncDisabledReason = statusKey switch
             {
                 "DestinationGroupNotFound"            => "NoDestinationGroup",
-                "SecurityGroupNotFound"               => "NoSourceGroup",
+                "SourceGroupNotFound"                 => "NoSourceGroup",
                 "ManagerNotFound"                     => "NoManager",
                 "NotOwnerOfDestinationGroup"          => "NoOwner",
                 "MembershipDataNotFound"              => "NoData",

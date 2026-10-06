@@ -131,7 +131,7 @@ namespace Hosts.GroupMembershipObtainer
                                                                                                                                 Exclusionary = mainRequest.Exclusionary
                                                                                                                             });
 
-                            if (sgResponse.Status == SyncStatus.SecurityGroupNotFound || sgResponse.Status == SyncStatus.NestedGroupsFound)
+                            if (sgResponse.Status == SyncStatus.SourceGroupNotFound || sgResponse.Status == SyncStatus.NestedGroupsFound)
                             {
                                 await context.CallActivityAsync(nameof(JobStatusUpdaterFunction), new JobStatusUpdaterRequest { SyncJob = syncJob, Status = sgResponse.Status, CurrentPart = mainRequest.CurrentPart, TotalParts = mainRequest.TotalParts });
                                 await context.CallActivityAsync(nameof(TelemetryTrackerFunction), new TelemetryTrackerRequest { JobStatus = sgResponse.Status, ResultStatus = ResultStatus.Success, SyncJob = syncJob, CurrentPart = mainRequest.CurrentPart, TotalParts = mainRequest.TotalParts });

@@ -20,7 +20,7 @@ namespace Models
             SyncStatus.DestinationGroupNotFound,
             SyncStatus.MembershipDataNotFound,
             SyncStatus.NotOwnerOfDestinationGroup,
-            SyncStatus.SecurityGroupNotFound,
+            SyncStatus.SourceGroupNotFound,
             SyncStatus.ThresholdExceeded,
             SyncStatus.SubmissionRejected,
             SyncStatus.GuestUsersCannotBeAddedToUnifiedGroup,

@@ -130,7 +130,7 @@ namespace Services.Notifier.Tests
             if (content == NotificationConstants.SyncPurgedForInactivityEmailBody)
             {
                 contentParams[1] = GroupName;
-                contentParams[3] = nameof(SyncStatus.SecurityGroupNotFound);
+                contentParams[3] = nameof(SyncStatus.SourceGroupNotFound);
             }
 
             return new EmailMessage

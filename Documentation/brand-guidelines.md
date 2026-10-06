@@ -66,7 +66,7 @@ These map to Fluent UI semantic color tokens and are used for status badges and 
 | `ThresholdExceeded` | Awaiting owner action | Warning / orange badge |
 | `CustomerPaused` / `DeveloperPaused` | Paused | Neutral gray badge |
 | `PendingReview` / `PendingConfiguration` | Workflow pending | Info / blue badge |
-| `DestinationGroupNotFound` / `SecurityGroupNotFound` | Error | Red error badge |
+| `DestinationGroupNotFound` / `SourceGroupNotFound` | Error | Red error badge |
 | `MembershipDataNotFound` | No source users | Red / warning badge |
 | `SubmissionRejected` | Rejected | Red badge + ErrorBadgeIcon |
 | `NestedGroupsFound` | Structural warning | Warning badge |
