@@ -595,6 +595,7 @@ export type IStrings = {
         destinationGroupNotFound: string;
         notOwnerOfDestinationGroup: string;
         securityGroupNotFound: string;
+        managerNotFound: string;
         guestUsersNotSupported: string;
       };
       downloadAriaLabel: string;
@@ -698,6 +699,7 @@ export type IStrings = {
             destinationGroupNotFound: string;
             notOwnerOfDestinationGroup: string;
             securityGroupNotFound: string;
+            managerNotFound: string;
             pendingReview: string;
             pendingConfiguration: string;
             pendingAutoApproval: string;

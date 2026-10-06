@@ -132,6 +132,10 @@ export const JobsListFilterBase: React.FunctionComponent<IJobsListFilterProps> =
       text: strings.JobsList.JobsListFilter.filters.actionRequired.options.securityGroupNotFound,
     },
     {
+      key: SyncStatus.ManagerNotFound,
+      text: strings.JobsList.JobsListFilter.filters.actionRequired.options.managerNotFound,
+    },
+    {
       key: SyncStatus.PendingReview,
       text: strings.JobsList.JobsListFilter.filters.actionRequired.options.pendingReview,
     },

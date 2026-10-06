@@ -78,6 +78,11 @@ describe('processJob', () => {
     expect(job.actionRequired).toBe(ActionRequired.SecurityGroupNotFound);
   });
 
+  it('sets actionRequired for ManagerNotFound', () => {
+    const job = processJob(makeJob(SyncStatus.ManagerNotFound));
+    expect(job.actionRequired).toBe(ActionRequired.ManagerNotFound);
+  });
+
   it('sets actionRequired for PendingReview', () => {
     const job = processJob(makeJob(SyncStatus.PendingReview));
     expect(job.actionRequired).toBe(ActionRequired.PendingReview);
@@ -173,6 +178,11 @@ describe('getStatusDisplayText', () => {
 
   it('returns specific text for SecurityGroupNotFound', () => {
     const result = getStatusDisplayText(RunHistoryStatus.SecurityGroupNotFound);
+    expect(result).toBeDefined();
+  });
+
+  it('returns specific text for ManagerNotFound', () => {
+    const result = getStatusDisplayText(RunHistoryStatus.ManagerNotFound);
     expect(result).toBeDefined();
   });
 
