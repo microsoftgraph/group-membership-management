@@ -13,3 +13,8 @@
 # genuinely no installable fix, and always include an `ignoreUntil` date and an
 # ACTION describing what unblocks the real fix.
 
+[[IgnoredVulns]]
+id = "GHSA-68fv-2mgg-jv7q"          # source-map-js: event-loop denial of service through indexed source-map section offsets (High, CVSS 8.7, CVE-2026-93749), published 2026-09-18, GitHub-reviewed 2026-10-05
+ignoreUntil = 2026-10-14            # revisit as soon as source-map-js 1.2.2 lands on the internal feed
+reason = "No installable fix on the internal feed yet, and only build and test tooling uses the package. FIX AVAILABILITY: the advisory covers 1.0.0 through 1.2.1, and the only fix is 1.2.2, published to npm on 2026-09-30 14:08 UTC. It is not on the internal feeds yet (verified 2026-10-06: both top out at 1.2.1) because it is still inside the 7-day Minimum Release hold, which must not be bypassed. EXPOSURE: source-map-js's only dependents in this lockfile are postcss@8.5.24 (used by vite) and magicast@0.5.2 (used by @vitest/coverage-v8). vite and @vitest/coverage-v8 are devDependencies, so the package runs only during build and test. The GMM web-app has zero imports of source-map-js, postcss or magicast in src/ (verified by source grep on 2026-10-06). ACTION: once source-map-js 1.2.2 is available on the internal feed, add a pnpm override `source-map-js: >=1.2.2`, regenerate the lockfile, and delete this entry."
+
