@@ -606,6 +606,12 @@ namespace Repositories.EntityFramework.Contexts.Migrations
                             Id = 15,
                             Disabled = false,
                             Name = "NestedGroupsFoundNotification"
+                        },
+                        new
+                        {
+                            Id = 16,
+                            Disabled = false,
+                            Name = "ManagerNotExistNotification"
                         });
                 });
 
