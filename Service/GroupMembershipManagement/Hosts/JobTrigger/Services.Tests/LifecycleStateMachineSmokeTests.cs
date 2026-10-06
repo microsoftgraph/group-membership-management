@@ -802,5 +802,38 @@ namespace Services.Tests
         }
 
         #endregion
+
+        #region Scenario 11: ManagerNotFound jobs are parked (never requested for triggering)
+
+        [TestMethod]
+        [TestCategory("SmokeTest")]
+        public async Task Scenario11_ManagerNotFoundStatus_IsParked_NotRequestedFromDatabase()
+        {
+            // JobTrigger only requests jobs in the Idle/InProgress/StuckInProgress/TransientError
+            // allowlist. ManagerNotFound is intentionally omitted so those jobs stay parked until a
+            // group owner corrects the source data. Capture the status filter the service passes to
+            // the repository and assert ManagerNotFound is never among the requested statuses.
+            // (A ManagerNotFound job would otherwise pass ApplyJobTriggerFilters, so the repository
+            // allowlist is the sole parking mechanism.)
+            SyncStatus[] requestedStatuses = null;
+            _mockSyncJobRepo.Setup(x => x.GetSyncJobsAsync(It.IsAny<bool>(), It.IsAny<SyncStatus[]>()))
+                .Callback<bool, SyncStatus[]>((_, statuses) => requestedStatuses = statuses)
+                .ReturnsAsync(new List<SyncJob>().AsEnumerable());
+
+            // Act
+            await _jobTriggerService.GetSyncJobsAsync();
+
+            // Assert
+            Assert.IsNotNull(requestedStatuses,
+                "JobTrigger should request jobs from the repository with an explicit status allowlist.");
+            CollectionAssert.DoesNotContain(requestedStatuses, SyncStatus.ManagerNotFound,
+                "ManagerNotFound jobs must be parked — JobTrigger must never request them for triggering.");
+            CollectionAssert.AreEquivalent(
+                new[] { SyncStatus.Idle, SyncStatus.InProgress, SyncStatus.StuckInProgress, SyncStatus.TransientError },
+                requestedStatuses,
+                "JobTrigger status allowlist changed unexpectedly; verify ManagerNotFound remains excluded.");
+        }
+
+        #endregion
     }
 }
