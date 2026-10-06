@@ -14,7 +14,8 @@ namespace Models.Notifications
             { NotificationMessageType.NotValidSourceNotification, "Source Not Valid" },
             { NotificationMessageType.SourceNotExistNotification, "Source Does Not Exist" },
             { NotificationMessageType.GuestUserFailureNotification, "Guest Users Cannot Be Added To Unified Group" },
-            { NotificationMessageType.NestedGroupsFoundNotification, "Nested Groups Found" }
+            { NotificationMessageType.NestedGroupsFoundNotification, "Nested Groups Found" },
+            { NotificationMessageType.ManagerNotExistNotification, "Source Manager Not Found" }
         };
     }
 }

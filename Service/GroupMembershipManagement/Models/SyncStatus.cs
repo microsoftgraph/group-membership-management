@@ -33,6 +33,7 @@ namespace Models
         SubmissionRejected = 25,
         PendingConfiguration = 26,
         NestedGroupsFound = 27,
-        PendingAutoApproval = 28
+        PendingAutoApproval = 28,
+        ManagerNotFound = 29
     }
 }

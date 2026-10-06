@@ -24,7 +24,8 @@ namespace Models
             SyncStatus.ThresholdExceeded,
             SyncStatus.SubmissionRejected,
             SyncStatus.GuestUsersCannotBeAddedToUnifiedGroup,
-            SyncStatus.NestedGroupsFound
+            SyncStatus.NestedGroupsFound,
+            SyncStatus.ManagerNotFound
         ];
     }
 }
