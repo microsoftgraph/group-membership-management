@@ -86,6 +86,13 @@ namespace Hosts.Notifier
                     await context.CallActivityAsync(nameof(SendNotification), message);
                     break;
 
+                case nameof(NotificationMessageType.ManagerNotExistNotification):
+                    message.MessageTitle = NotificationConstants.ManagerNotExistTitle;
+                    message.SubjectTemplate = NotificationConstants.DisabledNotificationSubject;
+                    message.ContentTemplate = NotificationConstants.SyncDisabledNoManagerContent;
+                    await context.CallActivityAsync(nameof(SendNotification), message);
+                    break;
+
                 case nameof(NotificationMessageType.NoDataNotification):
                     message.MessageTitle = NotificationConstants.NoDataTitle;
                     message.SubjectTemplate = NotificationConstants.NoDataSubject;

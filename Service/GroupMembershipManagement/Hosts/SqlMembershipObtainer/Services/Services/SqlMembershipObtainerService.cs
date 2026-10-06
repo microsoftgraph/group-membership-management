@@ -123,6 +123,28 @@ namespace Services
             return senderResponse;
         }
 
+        public async Task<bool> ManagerExistsAsync(int personnelNumber, string tableName, SyncJob syncJob, Guid targetOfficeGroupId)
+        {
+            try
+            {
+                return await _sqlMembershipRepository.ManagerExistsAsync(personnelNumber, tableName);
+            }
+            catch (SqlException ex)
+            {
+                var exceptionMessage = $"Sql Exception in SqlMembershipObtainer with RunId: {syncJob.RunId}, TargetOfficeGroupId: {targetOfficeGroupId}";
+                var ocSQLException = new SqlMembershipObtainerSQLException(exceptionMessage, ex, targetOfficeGroupId, syncJob.RunId);
+
+                _telemetryClient.TrackException(ocSQLException, new Dictionary<string, string>()
+                {
+                    {"TargetOfficeGroupId", targetOfficeGroupId.ToString() },
+                    {"RunId", syncJob.RunId.ToString() ?? string.Empty },
+                    {"Exception", ex.Message }
+                });
+
+                throw ocSQLException;
+            }
+        }
+
         public async Task<SqlMembershipEvaluationResult> EvaluateMembershipAsync(
             SqlMembershipEvaluationRequest request,
             SyncJob syncJob,

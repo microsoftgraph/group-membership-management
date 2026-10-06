@@ -65,6 +65,18 @@ namespace Repositories.Contracts
             Guid objectId,
             IdentityType identityType);
         Task<(int maxDepth, string azureObjectId)> GetOrgLeaderAsync(int employeeId, string tableName);
+
+        /// <summary>
+        /// Answers whether a row for the given manager <paramref name="employeeId"/> exists in the users table.
+        /// </summary>
+        /// <param name="employeeId">The configured manager's personnel number (EmployeeId).</param>
+        /// <param name="tableName">The same-run users table name without schema. Invalid names are rejected before SQL execution.</param>
+        /// <returns>
+        /// True when a row with that <c>EmployeeId</c> exists, regardless of the row's status columns; false when no such row
+        /// exists. A failed or transient read surfaces the underlying <see cref="Microsoft.Data.SqlClient.SqlException"/> so the
+        /// caller never treats an unreadable table as an absent manager.
+        /// </returns>
+        Task<bool> ManagerExistsAsync(int employeeId, string tableName);
         Task<List<(string Name, string Type)>> GetColumnDetailsAsync(string tableName);
         Task<bool> CheckIfMappingsTableExistsAsync(string tableName);
         Task<List<(string Code, string Description)>> GetAttributeMappingsAsync(string attribute, string tableName);

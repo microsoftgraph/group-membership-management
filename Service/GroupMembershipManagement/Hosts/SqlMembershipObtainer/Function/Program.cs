@@ -9,6 +9,7 @@ using Hosts.FunctionBase;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 using Microsoft.Azure.Functions.Worker;
 using Microsoft.Azure.Functions.Worker.ApplicationInsights;
 using Repositories.BlobStorage;
@@ -86,6 +87,21 @@ namespace Hosts.SqlMembershipObtainer
                         var client = services.GetRequiredService<ServiceBusClient>();
                         var sender = client.CreateSender(membershipAggregatorQueue);
                         return new ServiceBusQueueRepository(sender);
+                    });
+
+                    // The notifications queue repository is built inline (not resolved from DI) so it targets the
+                    // notifications queue rather than the membership-aggregator queue registered above as the default
+                    // IServiceBusQueueRepository.
+                    services.AddScoped<INotificationSenderService, NotificationSenderService>(services =>
+                    {
+                        var notificationsQueue = configuration["serviceBusNotificationsQueue"];
+                        var client = services.GetRequiredService<ServiceBusClient>();
+                        var sender = client.CreateSender(notificationsQueue);
+                        var notificationsQueueRepository = new ServiceBusQueueRepository(sender);
+
+                        return new NotificationSenderService(
+                            notificationsQueueRepository,
+                            services.GetRequiredService<ILogger<NotificationSenderService>>());
                     });
                 })
                 .Build();

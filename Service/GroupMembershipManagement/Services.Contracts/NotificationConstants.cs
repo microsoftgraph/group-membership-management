@@ -26,6 +26,8 @@ namespace Services.Contracts
         public const string SyncCompletedContent = "SyncCompletedEmailBody";
         public const string NoValidGroupIdsContent = "SyncDisabledNoValidGroupIds";
         public const string SyncDisabledNoGroupContent = "SyncDisabledNoSourceGroupEmailBody";
+        public const string ManagerNotExistTitle = "ManagerNotExistTitle";
+        public const string SyncDisabledNoManagerContent = "SyncDisabledNoManagerEmailBody";
         public const string NoDataTitle = "NoDataEmailTitle";
         public const string NoDataSubject = "NoDataEmailSubject";
         public const string NoDataContent = "NoDataEmailContent";

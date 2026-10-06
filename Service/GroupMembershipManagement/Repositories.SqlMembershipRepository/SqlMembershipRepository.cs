@@ -989,6 +989,44 @@ namespace Repositories.SqlMembershipRepository
             return (maxDepth, azureObjectId);
         }
 
+        public async Task<bool> ManagerExistsAsync(int employeeId, string tableName)
+        {
+            ValidateTableName(tableName);
+
+            var retryPolicy = GetRetryPolicyAsync();
+            bool exists = false;
+
+            try
+            {
+                // EXISTS is evaluated on the anchor row only and ignores any status columns, so a present-but-inactive
+                // manager still returns true. A missing or unreadable table throws SqlException instead of returning false.
+                var existsQuery = $"SELECT CASE WHEN EXISTS (SELECT 1 FROM [users].[{tableName}] WHERE EmployeeId = @EmployeeId) THEN 1 ELSE 0 END";
+
+                await retryPolicy.ExecuteAsync(async () =>
+                {
+                    using (var conn = new SqlConnection(_sqlServerConnectionString))
+                    {
+                        await conn.OpenAsync();
+                        using (var cmd = new SqlCommand(existsQuery, conn))
+                        {
+                            cmd.Parameters.Add(new SqlParameter("@EmployeeId", SqlDbType.Int) { Value = employeeId });
+
+                            var result = await cmd.ExecuteScalarAsync();
+                            exists = result != null && result != DBNull.Value && Convert.ToInt32(result) == 1;
+                        }
+
+                        await conn.CloseAsync();
+                    }
+                });
+            }
+            catch (SqlException ex)
+            {
+                throw ex;
+            }
+
+            return exists;
+        }
+
         public async Task<List<(string Name, string Type)>> GetColumnDetailsAsync(string tableName)
         {
             ValidateTableName(tableName);

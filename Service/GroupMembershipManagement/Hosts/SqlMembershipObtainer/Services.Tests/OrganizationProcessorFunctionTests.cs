@@ -6,6 +6,7 @@ using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Moq;
 using Models;
+using Models.Notifications;
 using SqlMembershipObtainer;
 using SqlMembershipObtainer.Entities;
 using System;
@@ -19,12 +20,14 @@ namespace Services.Tests
     public class OrganizationProcessorFunctionTests
     {
         private Mock<ISqlMembershipObtainerService> _sqlMembershipObtainerService = null;
+        private Mock<INotificationSenderService> _notificationSenderService = null;
         private MembershipFileResult _groupMembershipSenderResponse = null;
 
         [TestInitialize]
         public void Setup()
         {
             _sqlMembershipObtainerService = new Mock<ISqlMembershipObtainerService>();
+            _notificationSenderService = new Mock<INotificationSenderService>();
             _groupMembershipSenderResponse = new MembershipFileResult
             {
                 Status = SyncStatus.InProgress,
@@ -214,6 +217,14 @@ namespace Services.Tests
                 .Callback(() => callOrder.Add("upload"))
                 .ReturnsAsync(_groupMembershipSenderResponse);
 
+            _sqlMembershipObtainerService.Setup(
+                    service => service.ManagerExistsAsync(
+                        It.IsAny<int>(),
+                        It.IsAny<string>(),
+                        It.IsAny<SyncJob>(),
+                        It.IsAny<Guid>()))
+                .ReturnsAsync(true);
+
             var request = new ManagerOrgReaderRequest
             {
                 PersonnelNumber = 123,
@@ -230,7 +241,8 @@ namespace Services.Tests
 
             var function = new ManagerOrgReaderFunction(
                 NullLogger<ManagerOrgReaderFunction>.Instance,
-                _sqlMembershipObtainerService.Object);
+                _sqlMembershipObtainerService.Object,
+                _notificationSenderService.Object);
             var response = await function.ReadUsersAsync(request);
 
             Assert.AreSame(_groupMembershipSenderResponse, response);
@@ -245,6 +257,67 @@ namespace Services.Tests
             CollectionAssert.AreEqual(
                 new[] { "evaluate", "upload" },
                 callOrder);
+        }
+
+        [TestMethod]
+        public async Task ManagerActivity_ManagerAbsent_DisablesJobAndNotifies()
+        {
+            _sqlMembershipObtainerService.Setup(
+                    service => service.ManagerExistsAsync(
+                        It.IsAny<int>(),
+                        It.IsAny<string>(),
+                        It.IsAny<SyncJob>(),
+                        It.IsAny<Guid>()))
+                .ReturnsAsync(false);
+
+            var request = new ManagerOrgReaderRequest
+            {
+                PersonnelNumber = 999,
+                Depth = 2,
+                Filter = "users.Department = 'Sales'",
+                IdentityTypes = new[] { "users" },
+                TableName = "9ff66298c27f4f4295e8633e90648241",
+                SyncJob = new SyncJob { Id = Guid.NewGuid(), RunId = Guid.NewGuid() },
+                GroupId = Guid.NewGuid(),
+                CurrentPart = 1,
+                TotalParts = 1,
+                Exclusionary = false,
+            };
+
+            var function = new ManagerOrgReaderFunction(
+                NullLogger<ManagerOrgReaderFunction>.Instance,
+                _sqlMembershipObtainerService.Object,
+                _notificationSenderService.Object);
+
+            var response = await function.ReadUsersAsync(request);
+
+            Assert.AreEqual(SyncStatus.ManagerNotFound, response.Status);
+            Assert.IsNull(response.FilePath);
+
+            // An absent manager must not evaluate or upload membership, so the job produces zero adds/removes.
+            _sqlMembershipObtainerService.Verify(
+                service => service.EvaluateMembershipAsync(
+                    It.IsAny<SqlMembershipEvaluationRequest>(),
+                    It.IsAny<SyncJob>(),
+                    It.IsAny<Guid>(),
+                    It.IsAny<int>()),
+                Times.Never);
+            _sqlMembershipObtainerService.Verify(
+                service => service.UploadMembershipEvaluationAsync(
+                    It.IsAny<SqlMembershipEvaluationResult>(),
+                    It.IsAny<SyncJob>(),
+                    It.IsAny<Guid>(),
+                    It.IsAny<int>(),
+                    It.IsAny<bool>()),
+                Times.Never);
+
+            // The group owner is notified exactly once with the dedicated manager-not-found notification type.
+            _notificationSenderService.Verify(
+                sender => sender.SendEmailAsync(
+                    request.SyncJob,
+                    NotificationMessageType.ManagerNotExistNotification,
+                    It.IsAny<string[]>()),
+                Times.Once);
         }
 
         [TestMethod]

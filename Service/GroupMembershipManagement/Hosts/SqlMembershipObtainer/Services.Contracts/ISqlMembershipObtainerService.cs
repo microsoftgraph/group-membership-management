@@ -17,6 +17,7 @@ namespace Services.Contracts
             SyncJob syncJob,
             Guid targetOfficeGroupId,
             int currentPart);
+        Task<bool> ManagerExistsAsync(int personnelNumber, string tableName, SyncJob syncJob, Guid targetOfficeGroupId);
         Task<MembershipFileResult> UploadMembershipEvaluationAsync(
             SqlMembershipEvaluationResult evaluation,
             SyncJob syncJob,
