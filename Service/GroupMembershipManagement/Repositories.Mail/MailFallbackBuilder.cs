@@ -64,6 +64,11 @@ namespace Repositories.Mail
         // [0]=GroupId, [1]=TargetGroupName, [2]=SourceObjectId, [3]=StatusDescription, [4]=PausedAtUtc (ISO 8601)
         private const int NoSourceGroupPausedAtIndex = 4;
 
+        // SyncDisabled NoManager AdditionalContentParams indices
+        // (set by SqlMembershipObtainer ManagerOrgReaderFunction for ManagerNotExistNotification):
+        // [0]=GroupId, [1]=GroupId, [2]=ManagerPersonnelNumber, [3]=StatusDescription, [4]=PausedAtUtc (ISO 8601)
+        private const int NoManagerPausedAtIndex = 4;
+
         // SyncDisabled Threshold AdditionalContentParams indices (set by
         // NotifierService.SendThresholdEmailAsync when CardState == DisabledCard, and
         // NotifierService.SendNormalThresholdEmailAsync when sendDisableJobNotification=true;
@@ -88,12 +93,13 @@ namespace Repositories.Mail
         // "What to do" action-checklist with a PausedAt + NumberOfDaysBeforePurging deadline.
         // Add a reason here to opt into the shared rendering; per-reason knob is GetPausedAtIndex.
         private static readonly HashSet<string> _compactDetailReasons =
-            new HashSet<string>(StringComparer.Ordinal) { "NoDestinationGroup", "NoSourceGroup", "NoOwner", "NoData", "GuestUsers", "NestedGroupsFound", "Threshold" };
+            new HashSet<string>(StringComparer.Ordinal) { "NoDestinationGroup", "NoSourceGroup", "NoManager", "NoOwner", "NoData", "GuestUsers", "NestedGroupsFound", "Threshold" };
 
         private static int GetPausedAtIndex(string disableReason) => disableReason switch
         {
             "NoDestinationGroup" => NoDestinationGroupPausedAtIndex,
             "NoSourceGroup" => NoSourceGroupPausedAtIndex,
+            "NoManager" => NoManagerPausedAtIndex,
             "NoOwner" => NoOwnerPausedAtIndex,
             "NoData" => NoDataPausedAtIndex,
             "GuestUsers" => GuestUsersPausedAtIndex,
@@ -532,6 +538,8 @@ namespace Repositories.Mail
                     bodyKey = "SyncDisabledFallback.ActionChecklist.NoDestinationGroup.Body"; break;
                 case "SecurityGroupNotFound":
                     bodyKey = "SyncDisabledFallback.ActionChecklist.NoSourceGroup.Body"; break;
+                case "ManagerNotFound":
+                    bodyKey = "SyncDisabledFallback.ActionChecklist.NoManager.Body"; break;
                 case "NotOwnerOfDestinationGroup":
                     bodyKey = "SyncDisabledFallback.ActionChecklist.NoOwner.Body";
                     args = new[] { gmmOwnerAppName ?? "GMM", groupId ?? string.Empty };
@@ -826,6 +834,7 @@ namespace Repositories.Mail
             {
                 "DestinationGroupNotFound"            => "NoDestinationGroup",
                 "SecurityGroupNotFound"               => "NoSourceGroup",
+                "ManagerNotFound"                     => "NoManager",
                 "NotOwnerOfDestinationGroup"          => "NoOwner",
                 "MembershipDataNotFound"              => "NoData",
                 "GuestUsersCannotBeAddedToUnifiedGroup" => "GuestUsers",
@@ -1257,6 +1266,7 @@ namespace Repositories.Mail
             {
                 "SyncDisabledNoGroupEmailBody" => "NoDestinationGroup",
                 "SyncDisabledNoSourceGroupEmailBody" => "NoSourceGroup",
+                "SyncDisabledNoManagerEmailBody" => "NoManager",
                 "SyncDisabledNoOwnerEmailBody" => "NoOwner",
                 "GuestUserFailureEmailBody" => "GuestUsers",
                 "NestedGroupsFoundEmailBody" => "NestedGroupsFound",

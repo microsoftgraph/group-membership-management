@@ -232,6 +232,7 @@ namespace Services.Notifier.Tests
         [TestMethod]
         [DataRow("SyncDisabledNoGroupEmailBody")]
         [DataRow("SyncDisabledNoSourceGroupEmailBody")]
+        [DataRow("SyncDisabledNoManagerEmailBody")]
         [DataRow("SyncDisabledNoOwnerEmailBody")]
         [DataRow("GuestUserFailureEmailBody")]
         [DataRow("NoDataEmailContent")]

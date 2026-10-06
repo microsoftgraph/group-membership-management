@@ -179,6 +179,17 @@ Membership syncs for group **{1}**, are now **disabled** because its pre-defined
 Please reach out to support to update the source definition and re-enable the membership syncs.
 </value>
   </data>
+  <data name="ManagerNotExistTitle" xml:space="preserve">
+    <value>Sync Disabled with Status {3}</value>
+  </data>
+  <data name="SyncDisabledNoManagerEmailBody" xml:space="preserve">
+    <value>You received this notification because you are listed as an owner of **{1}**.
+
+Membership syncs for group **{1}**, are now **disabled** because its configured source manager with personnel number: {2} **no longer exists** in the HR data.
+
+Please reach out to support to update the source definition and re-enable the membership syncs.
+</value>
+  </data>
   <data name="NotOwnerTitle" xml:space="preserve">
     <value>Sync Disabled with Status {2}</value>
   </data>
@@ -442,6 +453,9 @@ If you intentionally require nested groups, GMM will not be able to manage this 
   <data name="SyncDisabledFallback.HeaderReason.NoSourceGroup" xml:space="preserve">
     <value>source group not found</value>
   </data>
+  <data name="SyncDisabledFallback.HeaderReason.NoManager" xml:space="preserve">
+    <value>source manager not found</value>
+  </data>
   <data name="SyncDisabledFallback.HeaderReason.NoOwner" xml:space="preserve">
     <value>GMM is not an owner</value>
   </data>
@@ -462,6 +476,9 @@ If you intentionally require nested groups, GMM will not be able to manage this 
   </data>
   <data name="SyncDisabledFallback.Description.NoSourceGroup" xml:space="preserve">
     <value>This sync is paused because GMM could **no longer find one of the source groups** referenced by this group's membership rules in GMM.</value>
+  </data>
+  <data name="SyncDisabledFallback.Description.NoManager" xml:space="preserve">
+    <value>This sync is paused because GMM could **no longer find the source manager** referenced by this group's membership rules in GMM.</value>
   </data>
   <data name="SyncDisabledFallback.Description.NoOwner" xml:space="preserve">
     <value>This sync is paused because **GMM isn't an owner** of this group.</value>
@@ -569,6 +586,10 @@ For paused jobs older than {0} days, the GMM affiliation will be removed. This d
   <data name="SyncDisabledFallback.ActionChecklist.NoSourceGroup.Body" xml:space="preserve">
     <value>1. Review the membership rules in the GMM UI to identify which rule contains the non-existent source group.
 2. Replace it with a valid source group, or delete the empty rule altogether, then re-submit.</value>
+  </data>
+  <data name="SyncDisabledFallback.ActionChecklist.NoManager.Body" xml:space="preserve">
+    <value>1. Review the membership rules in the GMM UI to identify which rule references the non-existent source manager.
+2. Replace it with a valid manager, or delete the rule altogether, then re-submit.</value>
   </data>
   <data name="SyncDisabledFallback.ActionChecklist.NoOwner.Body" xml:space="preserve">
     <value>1. Go to [Microsoft Entra](https://portal.azure.com/#view/Microsoft_AAD_IAM/GroupDetailsMenuBlade/~/Owners/groupId/{1}/menuId/) and add `{0}` as an owner. If the GMM owner was removed intentionally, no further action is needed.
