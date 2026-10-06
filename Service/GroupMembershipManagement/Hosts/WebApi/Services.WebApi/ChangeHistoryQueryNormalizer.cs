@@ -10,10 +10,12 @@ namespace Services
     // Produces comparison text for change-history query snapshots. Snapshots that describe the same rules produce the
     // same text: property order is ignored, a valid identityTypes list is written in one fixed order, and a SQL part
     // without identityTypes is read as the users-only default, which is the value the post-deployment migration writes
-    // explicitly. An invalid identityTypes value is kept as written. The result is for comparison only.
+    // explicitly. A part of any type without exclusionary is read as false, the same way the jobs read it. Invalid
+    // identityTypes and exclusionary values are kept as written. The result is for comparison only.
     internal static class ChangeHistoryQueryNormalizer
     {
         private const string SqlMembershipType = "SqlMembership";
+        private const string ExclusionaryPropertyName = "exclusionary";
 
         public static string? Normalize(string? query)
         {
@@ -58,6 +60,11 @@ namespace Services
                 foreach (var property in jsonObject)
                 {
                     properties.Add(property.Key, Canonicalize(property.Value, isQueryPart: false));
+                }
+
+                if (isQueryPart && !properties.ContainsKey(ExclusionaryPropertyName))
+                {
+                    properties.Add(ExclusionaryPropertyName, JsonValue.Create(false));
                 }
 
                 if (isQueryPart && IsSqlMembershipPart(jsonObject))

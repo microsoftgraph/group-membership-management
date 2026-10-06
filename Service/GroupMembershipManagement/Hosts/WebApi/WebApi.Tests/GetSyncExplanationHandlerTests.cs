@@ -441,6 +441,22 @@ namespace WebApi.Tests
         }
 
         [TestMethod]
+        public async Task ExecuteAsync_ShowsUnchangedConfiguration_WhenOnlyExclusionaryFalseWasDropped()
+        {
+            SetupBlobWithUser(MembershipAction.Add);
+            SetupAdfData(new Dictionary<string, string> { { "Building", "B40" } });
+
+            var capturedUserPrompt = await ExplainWithConfigChangesAsync(
+                currentQuery: "[{\"type\":\"SqlMembership\",\"source\":{\"filter\":\"Building = 'B40'\"}}]",
+                previousQuery: "[{\"type\":\"SqlMembership\",\"source\":{\"filter\":\"Building = 'B40'\"},\"exclusionary\":false}]");
+
+            Assert.IsTrue(capturedUserPrompt.Contains("Configuration (unchanged)"),
+                "Dropping \"exclusionary\":false is not a configuration change");
+            Assert.IsFalse(capturedUserPrompt.Contains("Previous configuration:"),
+                "Dropping \"exclusionary\":false must not be shown as a previous/current diff");
+        }
+
+        [TestMethod]
         public async Task ExecuteAsync_ShowsUnchangedConfiguration_WhenOnlyTheSelectionOrderChanged()
         {
             SetupBlobWithUser(MembershipAction.Add);

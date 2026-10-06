@@ -3609,6 +3609,57 @@ namespace WebApi.Tests
         }
 
         [TestMethod]
+        public void NormalizeQuery_MissingExclusionary_IsTheSameAsFalse()
+        {
+            var equivalentPairs = new[]
+            {
+                (
+                    "[{\"type\":\"SqlMembership\",\"source\":{\"filter\":\"A = 1\"},\"exclusionary\":false}]",
+                    "[{\"type\":\"SqlMembership\",\"source\":{\"filter\":\"A = 1\"}}]"
+                ),
+                (
+                    "[{\"type\":\"GroupMembership\",\"source\":\"11111111-1111-1111-1111-111111111111\",\"exclusionary\":false}]",
+                    "[{\"type\":\"GroupMembership\",\"source\":\"11111111-1111-1111-1111-111111111111\"}]"
+                ),
+                (
+                    "[{\"type\":\"SqlMembership\",\"source\":{\"filter\":\"A = 1\"},\"exclusionary\":false},{\"type\":\"SqlMembership\",\"source\":{\"filter\":\"B = 1\"},\"exclusionary\":true}]",
+                    "[{\"type\":\"SqlMembership\",\"source\":{\"filter\":\"A = 1\"}},{\"type\":\"SqlMembership\",\"source\":{\"filter\":\"B = 1\"},\"exclusionary\":true}]"
+                ),
+            };
+
+            foreach (var handlerType in _explanationHandlerTypes)
+            {
+                foreach (var (withFalse, withoutExclusionary) in equivalentPairs)
+                {
+                    Assert.AreEqual(NormalizeWith(handlerType, withFalse), NormalizeWith(handlerType, withoutExclusionary),
+                        $"{handlerType.Name}: {withoutExclusionary}");
+                }
+            }
+        }
+
+        [TestMethod]
+        public void NormalizeQuery_ExclusionaryTrueOrInvalid_StillDiffersFromMissing()
+        {
+            const string groupPart = "[{\"type\":\"GroupMembership\",\"source\":\"11111111-1111-1111-1111-111111111111\"}]";
+            var changedGroupParts = new[]
+            {
+                "[{\"type\":\"GroupMembership\",\"source\":\"11111111-1111-1111-1111-111111111111\",\"exclusionary\":true}]",
+                "[{\"type\":\"GroupMembership\",\"source\":\"11111111-1111-1111-1111-111111111111\",\"exclusionary\":null}]",
+                "[{\"type\":\"GroupMembership\",\"source\":\"11111111-1111-1111-1111-111111111111\",\"exclusionary\":\"false\"}]",
+            };
+
+            foreach (var handlerType in _explanationHandlerTypes)
+            {
+                var original = NormalizeWith(handlerType, groupPart);
+                foreach (var changedGroupPart in changedGroupParts)
+                {
+                    Assert.AreNotEqual(original, NormalizeWith(handlerType, changedGroupPart),
+                        $"{handlerType.Name}: {changedGroupPart}");
+                }
+            }
+        }
+
+        [TestMethod]
         public void NormalizeQuery_TextThatIsNotAQueryArray_IsOnlyTrimmed()
         {
             foreach (var handlerType in _explanationHandlerTypes)
@@ -3645,6 +3696,17 @@ namespace WebApi.Tests
 
             Assert.IsFalse(prompt.Contains("Previous configuration:"),
                 "A save that only writes out the users-only default must not be shown as a previous/current configuration change.");
+        }
+
+        [TestMethod]
+        public async Task ExecuteAsync_SaveThatOnlyDropsExclusionaryFalse_IsNotReportedAsARuleChange()
+        {
+            var prompt = await ExplainRunWithConfigChangesAsync(
+                ChangeWithSerializedQuery(DateTime.UtcNow.AddMinutes(-30), "[{\"type\":\"SqlMembership\",\"source\":{\"filter\":\"Building = 'B40'\"}}]"),
+                ChangeWithSerializedQuery(DateTime.UtcNow.AddDays(-10), "[{\"type\":\"SqlMembership\",\"source\":{\"filter\":\"Building = 'B40'\"},\"exclusionary\":false}]"));
+
+            Assert.IsFalse(prompt.Contains("Previous configuration:"),
+                "A save that only drops \"exclusionary\":false must not be shown as a previous/current configuration change.");
         }
 
         [TestMethod]
