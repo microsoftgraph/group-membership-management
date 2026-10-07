@@ -57,17 +57,31 @@ namespace SqlMembershipObtainer
                         request.TableName,
                         SyncStatus.ManagerNotFound);
 
-                    await _notificationSenderService.SendEmailAsync(
-                        request.SyncJob,
-                        NotificationMessageType.ManagerNotExistNotification,
-                        new[]
-                        {
-                            request.GroupId.ToString(),
-                            request.GroupId.ToString(),
-                            request.PersonnelNumber.ToString(CultureInfo.InvariantCulture),
-                            DisabledNotificationType.StatusDescriptions[NotificationMessageType.ManagerNotExistNotification],
-                            DateTime.UtcNow.ToString("o", CultureInfo.InvariantCulture)
-                        });
+                    // The ManagerNotFound status is what parks the job and prevents any membership changes, so it must be
+                    // surfaced to the orchestrator even if the best-effort owner notification cannot be enqueued. A failed
+                    // send is logged and swallowed here rather than faulting the activity and erroring the entire run.
+                    try
+                    {
+                        await _notificationSenderService.SendEmailAsync(
+                            request.SyncJob,
+                            NotificationMessageType.ManagerNotExistNotification,
+                            new[]
+                            {
+                                request.GroupId.ToString(),
+                                request.GroupId.ToString(),
+                                request.PersonnelNumber.ToString(CultureInfo.InvariantCulture),
+                                DisabledNotificationType.StatusDescriptions[NotificationMessageType.ManagerNotExistNotification],
+                                DateTime.UtcNow.ToString("o", CultureInfo.InvariantCulture)
+                            });
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError(
+                            ex,
+                            "Failed to enqueue missing-manager notification for personnel number {PersonnelNumber} in table {TableName}.",
+                            request.PersonnelNumber,
+                            request.TableName);
+                    }
 
                     _logger.FunctionCompleted(nameof(ManagerOrgReaderFunction));
 
