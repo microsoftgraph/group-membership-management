@@ -32,6 +32,38 @@ function Set-AksWorkload {
 
     $tenantId = $connection.TenantId
 
+    # The Container Insights agent reads this from kube-system. Without it the agent
+    # keeps only non-Normal events, so pod kills and autoscaler rescales go
+    # unrecorded. env_var stays off: the pods load connection strings and passwords
+    # into their environment from Key Vault.
+    $containerInsightsAgentConfigMap = @'
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  name: container-azm-ms-agentconfig
+  namespace: kube-system
+data:
+  schema-version: v1
+  config-version: ver1
+  log-data-collection-settings: |-
+    [log_collection_settings]
+       [log_collection_settings.stdout]
+          enabled = true
+          exclude_namespaces = ["kube-system","gatekeeper-system","kube-public","kube-node-lease"]
+       [log_collection_settings.stderr]
+          enabled = true
+          exclude_namespaces = ["kube-system","gatekeeper-system","kube-public","kube-node-lease"]
+       [log_collection_settings.env_var]
+          enabled = false
+       [log_collection_settings.collect_all_kube_events]
+          enabled = true
+       [log_collection_settings.schema]
+          containerlog_schema_version = "v2"
+'@
+    $containerInsightsAgentConfigMap | kubectl apply -f -
+    if ($LASTEXITCODE -ne 0) { throw "kubectl apply failed for the Container Insights agent ConfigMap." }
+    Write-DeployLog -Level Success -Message "Applied the Container Insights agent ConfigMap."
+
     foreach ($service in $Services) {
         Set-AksServiceWorkload `
             -SolutionAbbreviation    $SolutionAbbreviation `

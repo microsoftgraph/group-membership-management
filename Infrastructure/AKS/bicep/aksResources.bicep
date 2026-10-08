@@ -53,6 +53,16 @@ var _aksVnetName = '${_aksClusterName}-vnet'
 var _aksNodeSubnetName = 'aks-nodes'
 var _aksNodeSubnetId = resourceId('Microsoft.Network/virtualNetworks/subnets', _aksVnetName, _aksNodeSubnetName)
 
+var _containerInsightsDcrName = '${_aksClusterName}-dcr'
+
+var _containerInsightsStreams = [
+  'Microsoft-ContainerLogV2'
+  'Microsoft-KubeEvents'
+  'Microsoft-KubePodInventory'
+  'Microsoft-KubeMonAgentEvents'
+  'Microsoft-Perf'
+]
+
 resource logAnalytics 'Microsoft.OperationalInsights/workspaces@2022-10-01' existing = {
   name: _logAnalyticsName
   scope: resourceGroup(_dataResourceGroupName)
@@ -138,6 +148,13 @@ resource aks 'Microsoft.ContainerService/managedClusters@2024-09-01' = {
       azureKeyvaultSecretsProvider: {
         enabled: true
       }
+      omsagent: {
+        enabled: true
+        config: {
+          logAnalyticsWorkspaceResourceID: logAnalytics.id
+          useAADAuth: 'true'
+        }
+      }
     }
     workloadAutoScalerProfile: {
       keda: {
@@ -159,6 +176,57 @@ resource aks 'Microsoft.ContainerService/managedClusters@2024-09-01' = {
         intervalHours: 168
       }
     }
+  }
+}
+
+resource containerInsightsDcr 'Microsoft.Insights/dataCollectionRules@2023-03-11' = {
+  name: _containerInsightsDcrName
+  location: location
+  kind: 'Linux'
+  properties: {
+    dataSources: {
+      extensions: [
+        {
+          name: 'ContainerInsightsExtension'
+          extensionName: 'ContainerInsights'
+          streams: _containerInsightsStreams
+          extensionSettings: {
+            dataCollectionSettings: {
+              interval: '1m'
+              namespaceFilteringMode: 'Include'
+              namespaces: [
+                namespaceName
+              ]
+              enableContainerLogV2: true
+            }
+          }
+        }
+      ]
+    }
+    destinations: {
+      logAnalytics: [
+        {
+          name: 'ciworkspace'
+          workspaceResourceId: logAnalytics.id
+        }
+      ]
+    }
+    dataFlows: [
+      {
+        streams: _containerInsightsStreams
+        destinations: [
+          'ciworkspace'
+        ]
+      }
+    ]
+  }
+}
+
+resource containerInsightsDcra 'Microsoft.Insights/dataCollectionRuleAssociations@2023-03-11' = {
+  name: 'ContainerInsightsExtension'
+  scope: aks
+  properties: {
+    dataCollectionRuleId: containerInsightsDcr.id
   }
 }
 

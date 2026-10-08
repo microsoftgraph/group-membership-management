@@ -276,6 +276,8 @@ Required only when `deployAks` is `true`. Specifies the Microsoft Entra ID secur
 
 The cluster runs with local accounts disabled, so every administrative login is authenticated through Microsoft Entra ID and authorized through this group. There is no default and no fallback to another group, so the deployment fails if it is not supplied. See [Create an AKS Administrators Security Group](#create-an-aks-administrators-security-group) for instructions on creating this group.
 
+When `deployAks` is `true`, the cluster also sends Container Insights data to the `<solution>-data-<env>` Log Analytics workspace: Kubernetes events, pod inventory, container CPU/memory, and container stdout/stderr from the workload namespace. App Insights records only what the Functions host logs after it starts. This covers what it misses: pods that crash before telemetry connects, OOMKills, restarts, scheduling failures, and autoscaler activity. Container environment variables are deliberately not collected, because the pods load secrets into their environment.
+
 ---
 
 ### Deployment
