@@ -5,11 +5,15 @@ param tenantId string
 param functionAuthAppClientId string
 param enableFunctionAuthentication bool = false
 
+@description('When true, ADF connects through the SQL failover group listener so it follows a failover.')
+param enableMultiRegion bool = false
+
 @description('Number of most recent tables to retain in each of the users, mappings and agents schemas. Cleanup of older users and mappings tables is attempted after all non-cleanup activities succeed, and of older agents tables after the agents load completes.')
 @minValue(2)
 param tablesToRetain int = 30
 
-var sqlServerName = '${solutionAbbreviation}-data-${environmentAbbreviation}'
+var primarySqlServerName = '${solutionAbbreviation}-data-${environmentAbbreviation}'
+var sqlServerName = enableMultiRegion ? '${primarySqlServerName}-fog' : primarySqlServerName
 var sqlDataBaseName = '${solutionAbbreviation}-data-${environmentAbbreviation}-adf'
 
 // The ADF SQL database and its key-vault secrets are created by the data template
