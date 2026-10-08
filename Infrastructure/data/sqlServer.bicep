@@ -61,7 +61,6 @@ var replicaSqlServerName = '${sqlServerName}-R'
 var replicaSqlDatabaseName = '${primaryDatabaseName}-R'
 var sqlDatabaseName = '${solutionAbbreviation}-data-${environmentAbbreviation}'
 var logAnalyticsName = '${solutionAbbreviation}-data-${environmentAbbreviation}'
-var sqlServerUrl = 'Server=tcp:${sqlServerName}${environment().suffixes.sqlServerHostname},1433;'
 var sqlServerDataBaseName = 'Initial Catalog=${sqlServerName};'
 var sqlServerAdditionalSettings = 'MultipleActiveResultSets=False;Encrypt=True;TrustServerCertificate=False;Connection Timeout=90;'
 var jobsSqlDataBaseName = 'Initial Catalog=${solutionAbbreviation}-data-${environmentAbbreviation};'
@@ -75,9 +74,9 @@ var writeServerHost = enableMultiRegion
   ? '${failoverGroupName}${environment().suffixes.sqlServerHostname}'
   : '${sqlServerName}${environment().suffixes.sqlServerHostname}'
 var jobsMSIConnectionString = 'Server=tcp:${writeServerHost},1433;${jobsSqlDataBaseName}Authentication=Active Directory Default;Connection Timeout=90;'
-var adfSqlServerUrl = 'Server=tcp:${writeServerHost},1433;'
-var adfSqlServerConnectionString = '${adfSqlServerUrl}${adfSqlDataBaseName}${sqlServerAdditionalSettings}'
-var adfSqlServerMSIConnectionString = '${adfSqlServerUrl}${adfSqlDataBaseName}Authentication=Active Directory Default;TrustServerCertificate=True;Encrypt=True;'
+var writeServerUrl = 'Server=tcp:${writeServerHost},1433;'
+var adfSqlServerConnectionString = '${writeServerUrl}${adfSqlDataBaseName}${sqlServerAdditionalSettings}'
+var adfSqlServerMSIConnectionString = '${writeServerUrl}${adfSqlDataBaseName}Authentication=Active Directory Default;TrustServerCertificate=True;Encrypt=True;'
 var replicaJobsMSIConnectionString = 'Server=tcp:${replicaSqlServerName}${environment().suffixes.sqlServerHostname},1433;${replicaJobsSqlDataBaseName}Authentication=Active Directory Default;Connection Timeout=90;'
 
 // primary sql server resources
@@ -350,11 +349,11 @@ module secureKeyvaultSecrets 'keyVaultSecretsSecure.bicep' = {
         }
         {
           name: 'sqlDatabaseConnectionString'
-          value: '${sqlServerUrl}${jobsSqlDataBaseName}${sqlServerAdditionalSettings}'
+          value: '${writeServerUrl}${jobsSqlDataBaseName}${sqlServerAdditionalSettings}'
         }
         {
           name: 'sqlServerName'
-          value: '${sqlServerName}${environment().suffixes.sqlServerHostname}'
+          value: writeServerHost
         }
         {
           name: 'replicaSqlServerConnectionString'
