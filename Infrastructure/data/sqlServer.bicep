@@ -29,10 +29,25 @@ param sqlSkuFamily string
 @description('SQL SKU Capacity')
 param sqlSkuCapacity int
 
+@description('ADF SQL SKU Name.')
+param adfDBSqlSkuName string
+
+@description('ADF SQL SKU Tier.')
+param adfDBSqlSkuTier string
+
+@description('ADF SQL SKU Family.')
+param adfDBSqlSkuFamily string
+
+@description('ADF SQL SKU Capacity.')
+param adfDBSqlSkuCapacity int
+
+@description('Maximum size of the ADF database in GB (1 GB = 1,073,741,824 bytes).')
+param adfDatabaseMaxSizeGb int
+
 @description('Administrators Azure AD Group Object Id')
 param sqlAdministratorsGroupId string
 
-@description('Deploy GMM across two Azure regions. A single switch for the whole multi-region posture: every tier that becomes multi-region gates on it, so enabling it provisions all of them. Today that is the SyncJobs database - a secondary SQL server, a read replica in the secondary region, and an auto-failover group.')
+@description('Deploy GMM across two Azure regions. This switch enables the SyncJobs secondary SQL server and read replica, the auto-failover group, and the ADF database partner in that failover group.')
 param enableMultiRegion bool = false
 
 @description('Resource id of the secondary SQL server that partners the primary server in the failover group.')
@@ -41,6 +56,7 @@ param secondaryServerId string = ''
 var dataKeyVaultName = '${solutionAbbreviation}-data-${environmentAbbreviation}'
 var sqlServerName = '${solutionAbbreviation}-data-${environmentAbbreviation}'
 var primaryDatabaseName = '${sqlDatabaseName}'
+var adfDatabaseName = '${solutionAbbreviation}-data-${environmentAbbreviation}-adf'
 var replicaSqlServerName = '${sqlServerName}-R'
 var replicaSqlDatabaseName = '${primaryDatabaseName}-R'
 var sqlDatabaseName = '${solutionAbbreviation}-data-${environmentAbbreviation}'
@@ -49,6 +65,7 @@ var sqlServerUrl = 'Server=tcp:${sqlServerName}${environment().suffixes.sqlServe
 var sqlServerDataBaseName = 'Initial Catalog=${sqlServerName};'
 var sqlServerAdditionalSettings = 'MultipleActiveResultSets=False;Encrypt=True;TrustServerCertificate=False;Connection Timeout=90;'
 var jobsSqlDataBaseName = 'Initial Catalog=${solutionAbbreviation}-data-${environmentAbbreviation};'
+var adfSqlDataBaseName = 'Initial Catalog=${adfDatabaseName};'
 var replicaJobsSqlDataBaseName = 'Initial Catalog=${solutionAbbreviation}-data-${environmentAbbreviation}-R;'
 var replicaConnectionString = 'Server=tcp:${replicaSqlServerName}${environment().suffixes.sqlServerHostname},1433;Initial Catalog=${replicaSqlDatabaseName};${sqlServerAdditionalSettings}'
 var failoverGroupName = '${sqlServerName}-fog'
@@ -58,6 +75,9 @@ var writeServerHost = enableMultiRegion
   ? '${failoverGroupName}${environment().suffixes.sqlServerHostname}'
   : '${sqlServerName}${environment().suffixes.sqlServerHostname}'
 var jobsMSIConnectionString = 'Server=tcp:${writeServerHost},1433;${jobsSqlDataBaseName}Authentication=Active Directory Default;Connection Timeout=90;'
+var adfSqlServerUrl = 'Server=tcp:${writeServerHost},1433;'
+var adfSqlServerConnectionString = '${adfSqlServerUrl}${adfSqlDataBaseName}${sqlServerAdditionalSettings}'
+var adfSqlServerMSIConnectionString = '${adfSqlServerUrl}${adfSqlDataBaseName}Authentication=Active Directory Default;TrustServerCertificate=True;Encrypt=True;'
 var replicaJobsMSIConnectionString = 'Server=tcp:${replicaSqlServerName}${environment().suffixes.sqlServerHostname},1433;${replicaJobsSqlDataBaseName}Authentication=Active Directory Default;Connection Timeout=90;'
 
 // primary sql server resources
@@ -116,11 +136,34 @@ resource primaryDatabase 'Microsoft.Sql/servers/databases@2021-02-01-preview' = 
   properties: {
     autoPauseDelay: -1
   }
+
   sku: {
     name: sqlSkuName
     tier: sqlSkuTier
     family: sqlSkuFamily
     capacity: sqlSkuCapacity
+  }
+  dependsOn: [
+    sqlServer::aadAuthentication
+    sqlServer::sqlServerFirewall
+    sqlServer::masterDataBase
+    sqlServer::auditingSettings
+  ]
+}
+
+resource adfDatabase 'Microsoft.Sql/servers/databases@2021-02-01-preview' = {
+  name: adfDatabaseName
+  parent: sqlServer
+  location: location
+  properties: {
+    autoPauseDelay: -1
+    maxSizeBytes: adfDatabaseMaxSizeGb > 0 ? adfDatabaseMaxSizeGb * 1073741824 : null
+  }
+  sku: {
+    name: adfDBSqlSkuName
+    tier: adfDBSqlSkuTier
+    family: adfDBSqlSkuFamily
+    capacity: adfDBSqlSkuCapacity
   }
   dependsOn: [
     sqlServer::aadAuthentication
@@ -232,7 +275,7 @@ resource readReplicaDb 'Microsoft.Sql/servers/databases@2021-11-01-preview' = {
 // The failover group is a child of the primary server and references the secondary server across
 // resource groups by resource id. Listing the primary database in `databases` makes Azure create
 // the partner copy on the secondary server automatically, so the partner database is not created
-// here. It is declared in `secondaryReadReplicaDb.bicep`, which runs afterwards and sets the
+// here. It is declared in `secondaryPartnerDatabases.bicep`, which runs afterwards and sets the
 // properties the implicit copy does not inherit.
 resource failoverGroup 'Microsoft.Sql/servers/failoverGroups@2021-11-01-preview' = if (enableMultiRegion) {
   name: failoverGroupName
@@ -254,6 +297,7 @@ resource failoverGroup 'Microsoft.Sql/servers/failoverGroups@2021-11-01-preview'
     ]
     databases: [
       primaryDatabase.id
+      adfDatabase.id
     ]
   }
   dependsOn: [
@@ -272,6 +316,14 @@ resource SqlDatabase_DeleteLock 'Microsoft.Authorization/locks@2020-05-01' = if(
     diagnosticSettings
     readReplicaDb
   ]
+}
+
+resource AdfSqlDatabase_DeleteLock 'Microsoft.Authorization/locks@2020-05-01' = if(isProduction) {
+  scope: adfDatabase
+  name: 'Do Not Delete'
+  properties: {
+    level: 'CanNotDelete'
+  }
 }
 
 /// --- replica sql server locks
@@ -316,6 +368,22 @@ module secureKeyvaultSecrets 'keyVaultSecretsSecure.bicep' = {
           name: 'replicaJobsMSIConnectionString'
           value: replicaJobsMSIConnectionString
         }
+        {
+          name: 'sqlServerConnectionString'
+          value: adfSqlServerConnectionString
+        }
+        {
+          name: 'sqlServerBasicConnectionString'
+          value: adfSqlServerConnectionString
+        }
+        {
+          name: 'sqlServerMSIConnectionString'
+          value: adfSqlServerMSIConnectionString
+        }
+        {
+          name: 'sqlServerDataBaseName'
+          value: adfDatabaseName
+        }
       ]
     }
   }
@@ -324,3 +392,4 @@ module secureKeyvaultSecrets 'keyVaultSecretsSecure.bicep' = {
 output sqlServerId string = sqlServer.id
 output replicaSqlServerId string = replicaSqlServer.id
 output primaryDatabaseId string = primaryDatabase.id
+output adfDatabaseId string = adfDatabase.id

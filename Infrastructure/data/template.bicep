@@ -49,6 +49,21 @@ param sqlSkuFamily string = 'Gen5'
 @description('SQL SKU Capacity')
 param sqlSkuCapacity int = 4
 
+@description('ADF SQL SKU Name.')
+param adfDBSqlSkuName string = 'S0'
+
+@description('ADF SQL SKU Tier.')
+param adfDBSqlSkuTier string = 'Standard'
+
+@description('ADF SQL SKU Family. Leave empty for DTU-based SKUs.')
+param adfDBSqlSkuFamily string = ''
+
+@description('ADF SQL SKU Capacity.')
+param adfDBSqlSkuCapacity int = 10
+
+@description('Maximum size of the ADF database in GB (1 GB = 1,073,741,824 bytes). 0 leaves the database at its service-default max size.')
+param adfDatabaseMaxSizeGb int = 0
+
 @description('Key vault name.')
 @minLength(1)
 param keyVaultName string = '${solutionAbbreviation}-${resourceGroupClassification}-${environmentAbbreviation}'
@@ -641,7 +656,7 @@ param featureFlags object = {
   enableOpenAI: false
 }
 
-@description('Deploy GMM across two Azure regions. A single switch for the whole multi-region posture: every tier that becomes multi-region gates on it, so enabling it provisions all of them. Today that is the SyncJobs database - a secondary SQL server, a read replica in the secondary region, and an auto-failover group.')
+@description('Deploy GMM across two Azure regions. This switch enables the SyncJobs secondary SQL server and read replica, the auto-failover group, and the ADF database partner in that failover group.')
 param enableMultiRegion bool = false
 
 @description('Azure region that hosts the secondary-region resources. Required when enableMultiRegion is true.')
@@ -658,6 +673,7 @@ var secondarySqlServerName = '${solutionAbbreviation}-data-${environmentAbbrevia
 var secondaryReplicaSqlServerName = '${solutionAbbreviation}-data-${environmentAbbreviation}-${secondaryRegionToken}-R'
 var secondaryReplicaSqlDatabaseName = '${solutionAbbreviation}-data-${environmentAbbreviation}-R'
 var primaryDatabaseName = '${solutionAbbreviation}-data-${environmentAbbreviation}'
+var adfDatabaseName = '${solutionAbbreviation}-data-${environmentAbbreviation}-adf'
 
 // The secondary servers live in another resource group, so they are deployed as a module. This
 // module must not depend on the sqlServer module: sqlServer consumes its server id, so a reverse
@@ -686,6 +702,11 @@ module sqlServer 'sqlServer.bicep' = {
     sqlSkuTier: sqlSkuTier
     sqlSkuFamily: sqlSkuFamily
     sqlSkuCapacity: sqlSkuCapacity
+    adfDBSqlSkuName: adfDBSqlSkuName
+    adfDBSqlSkuTier: adfDBSqlSkuTier
+    adfDBSqlSkuFamily: adfDBSqlSkuFamily
+    adfDBSqlSkuCapacity: adfDBSqlSkuCapacity
+    adfDatabaseMaxSizeGb: adfDatabaseMaxSizeGb
     sqlAdministratorsGroupId: sqlAdministratorsGroupId
     tenantId: tenantId
     enableMultiRegion: enableMultiRegion
@@ -703,13 +724,11 @@ module sqlServer 'sqlServer.bicep' = {
 // `dependsOn` below only orders it after the secondary servers exist. Keep sourcing this value
 // from the module output - replacing it with a constructed resource id would drop that ordering
 // and let this module race the partner database the failover group creates.
-module secondaryReadReplicaDb 'secondaryReadReplicaDb.bicep' = if (enableMultiRegion) {
-  name: 'secondaryReadReplicaDbTemplate'
+module secondaryReadReplicaDatabase 'secondaryReadReplicaDatabase.bicep' = if (enableMultiRegion) {
+  name: 'secondaryReadReplicaDatabaseTemplate'
   scope: resourceGroup(secondaryDataResourceGroupName)
   params: {
     secondaryReplicaSqlServerName: secondaryReplicaSqlServerName
-    secondarySqlServerName: secondarySqlServerName
-    primaryDatabaseName: primaryDatabaseName
     replicaSqlDatabaseName: secondaryReplicaSqlDatabaseName
     secondaryLocation: secondaryLocation
     isProduction: isProduction
@@ -718,6 +737,31 @@ module secondaryReadReplicaDb 'secondaryReadReplicaDb.bicep' = if (enableMultiRe
     sqlSkuTier: sqlSkuTier
     sqlSkuFamily: sqlSkuFamily
     sqlSkuCapacity: sqlSkuCapacity
+  }
+  dependsOn: [
+    sqlServerSecondary
+  ]
+}
+
+module secondaryPartnerDatabases 'secondaryPartnerDatabases.bicep' = if (enableMultiRegion) {
+  name: 'secondaryPartnerDatabasesTemplate'
+  scope: resourceGroup(secondaryDataResourceGroupName)
+  params: {
+    secondarySqlServerName: secondarySqlServerName
+    primaryDatabaseName: primaryDatabaseName
+    adfDatabaseName: adfDatabaseName
+    secondaryLocation: secondaryLocation
+    isProduction: isProduction
+    sourceDatabaseId: sqlServer.outputs.primaryDatabaseId
+    adfSourceDatabaseId: sqlServer.outputs.adfDatabaseId
+    sqlSkuName: sqlSkuName
+    sqlSkuTier: sqlSkuTier
+    sqlSkuFamily: sqlSkuFamily
+    sqlSkuCapacity: sqlSkuCapacity
+    adfDBSqlSkuName: adfDBSqlSkuName
+    adfDBSqlSkuTier: adfDBSqlSkuTier
+    adfDBSqlSkuFamily: adfDBSqlSkuFamily
+    adfDBSqlSkuCapacity: adfDBSqlSkuCapacity
   }
   dependsOn: [
     sqlServerSecondary
