@@ -16,6 +16,11 @@ param sqlSkuCapacity int = 4
 param sqlSkuFamily string = 'Gen5'
 param sqlSkuName string = 'GP_S_Gen5'
 param sqlSkuTier string = 'GeneralPurpose'
+param adfDBSqlSkuName string = 'S0'
+param adfDBSqlSkuTier string = 'Standard'
+param adfDBSqlSkuFamily string = ''
+param adfDBSqlSkuCapacity int = 10
+param adfDatabaseMaxSizeGb int = 0
 param tenantId string
 param authenticationType string
 param isProduction bool = false
@@ -40,7 +45,7 @@ param featureFlags object = {
 @description('When true, networking resources (private endpoints, DCR, DCR association) are skipped.')
 param skipNetworkingDeployment bool = true
 
-@description('Deploy GMM across two Azure regions. A single switch for the whole multi-region posture: every tier that becomes multi-region gates on it, so enabling it provisions all of them. Today that is the SyncJobs database - a secondary SQL server, a read replica in the secondary region, and an auto-failover group.')
+@description('Deploy GMM across two Azure regions. This switch enables the SyncJobs secondary SQL server and read replica, the auto-failover group, and the ADF database partner in that failover group.')
 param enableMultiRegion bool = false
 
 @description('Azure region that hosts the secondary-region resources. Required when enableMultiRegion is true.')
@@ -413,6 +418,11 @@ module dataInfrastructureTemplate '../Infrastructure/data/template.bicep' = {
     sqlSkuFamily: sqlSkuFamily
     sqlSkuName: sqlSkuName
     sqlSkuTier: sqlSkuTier
+    adfDBSqlSkuName: adfDBSqlSkuName
+    adfDBSqlSkuTier: adfDBSqlSkuTier
+    adfDBSqlSkuFamily: adfDBSqlSkuFamily
+    adfDBSqlSkuCapacity: adfDBSqlSkuCapacity
+    adfDatabaseMaxSizeGb: adfDatabaseMaxSizeGb
     tenantId: tenantId
     authenticationType: authenticationType
     skipMailNotifications: skipMailNotifications

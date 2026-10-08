@@ -5,18 +5,6 @@ param tenantId string
 param functionAuthAppClientId string
 param enableFunctionAuthentication bool = false
 
-@description('ADF SQL SKU Name. Must be consistent with the tier/family/capacity params. Supported combinations: Basic/Basic/\'\'/5, S0|S1|S2/Standard/\'\'/10|20|50, GP_S_Gen5/GeneralPurpose/Gen5/<vCores>.')
-param adfDBSqlSkuName string = 'S0'
-
-@description('ADF SQL SKU Tier')
-param adfDBSqlSkuTier string = 'Standard'
-
-@description('ADF SQL SKU Family. Leave empty for DTU-based SKUs.')
-param adfDBSqlSkuFamily string = ''
-
-@description('ADF SQL SKU Capacity')
-param adfDBSqlSkuCapacity int = 10
-
 @description('Number of most recent tables to retain in each of the users, mappings and agents schemas. Cleanup of older users and mappings tables is attempted after all non-cleanup activities succeed, and of older agents tables after the agents load completes.')
 @minValue(2)
 param tablesToRetain int = 30
@@ -24,19 +12,15 @@ param tablesToRetain int = 30
 var sqlServerName = '${solutionAbbreviation}-data-${environmentAbbreviation}'
 var sqlDataBaseName = '${solutionAbbreviation}-data-${environmentAbbreviation}-adf'
 
-module sqlForHRData '../Infrastructure/adf/sql/template.bicep' = {
-  name: 'sqlForHRDataTemplate'
+// The ADF SQL database and its key-vault secrets are created by the data template
+// (Infrastructure/data/sqlServer.bicep), which also makes the database a member of the SQL
+// auto-failover group. This module provisions only the ADF CSV-staging storage account.
+module storageForHRData '../Infrastructure/adf/storage/template.bicep' = {
+  name: 'storageForHRDataTemplate'
   params: {
     location: location
     environmentAbbreviation: environmentAbbreviation
     solutionAbbreviation: solutionAbbreviation
-    tenantId: tenantId
-    sqlServerName: sqlServerName
-    adfSqlDataBaseName: sqlDataBaseName
-    adfDBSqlSkuName: adfDBSqlSkuName
-    adfDBSqlSkuTier: adfDBSqlSkuTier
-    adfDBSqlSkuFamily: adfDBSqlSkuFamily
-    adfDBSqlSkuCapacity: adfDBSqlSkuCapacity
   }
 }
 
@@ -54,6 +38,6 @@ module adfForHRData '../Infrastructure/adf/pipeline/template.bicep' = {
     tablesToRetain: tablesToRetain
   }
   dependsOn: [
-    sqlForHRData
+    storageForHRData
   ]
 }
