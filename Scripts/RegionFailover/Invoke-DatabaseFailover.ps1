@@ -13,7 +13,9 @@
     addressed directly by server name.
 
     Promoting the GROUP covers every database in it, which is why this is not named after any single
-    database. Only the read-endpoint handling is SyncJobs-specific.
+    database. The group holds the SyncJobs and ADF (HR) databases, which fail over together. Before
+    promoting, the step confirms both are members, and afterwards it confirms both are Online on the
+    new primary. Only the read-endpoint handling is SyncJobs-specific.
 
 .EXAMPLE
     ./Invoke-DatabaseFailover.ps1 -EnvironmentAbbreviation <env> -TargetRegion Secondary -WhatIf
@@ -65,7 +67,8 @@ function Get-DataGoodThroughUtc {
         Best effort - a failure here is reported but does not stop the failover.
     #>
     param (
-        [Parameter(Mandatory = $true)][pscustomobject]$Context
+        [Parameter(Mandatory = $true)][pscustomobject]$Context,
+        [Parameter(Mandatory = $true)][string]$DatabaseName
     )
 
     $query = @"
@@ -81,7 +84,7 @@ WHERE is_target_role = 1
 
     if (-not (Get-Command -Name 'Invoke-Sqlcmd' -ErrorAction SilentlyContinue)) {
         Write-DeployLog -Level Warn -Message 'The SqlServer module is not available, so the data-loss boundary could not be read.'
-        Write-DeployLog -Level Warn -Message "Run the following against $serverHostName / $($Context.JobsDatabaseName) BEFORE promoting, and record the result:"
+        Write-DeployLog -Level Warn -Message "Run the following against $serverHostName / $($DatabaseName) BEFORE promoting, and record the result:"
         Write-DeployLog -Level Warn -Message $query
         return $null
     }
@@ -91,11 +94,11 @@ WHERE is_target_role = 1
             -ServerHostName $serverHostName `
             -ServerName $Context.PromotionServerName `
             -ResourceGroupName $Context.PromotionResourceGroupName `
-            -DatabaseName $Context.JobsDatabaseName `
+            -DatabaseName $DatabaseName `
             -Query $query | Select-Object -First 1
 
         if ($null -eq $row -or $null -eq $row.DataGoodThrough -or $row.DataGoodThrough -is [DBNull]) {
-            Write-DeployLog -Level Warn -Message "The data-loss boundary could not be determined: $serverHostName reported no replication target for '$($Context.JobsDatabaseName)'. Confirm it is the geo-secondary being promoted."
+            Write-DeployLog -Level Warn -Message "The data-loss boundary could not be determined: $serverHostName reported no replication target for '$($DatabaseName)'. Confirm it is the geo-secondary being promoted."
             return $null
         }
 
@@ -337,6 +340,23 @@ try {
     $group = Get-FailoverGroup -Context $context
     $activeRole = if ($group.ReplicationRole -eq 'Primary') { 'Primary' } else { 'Secondary' }
 
+    # Only members fail over. A database missing from the group stays on the demoted server, and
+    # every site addressing the listener would then fail to find it on the new primary.
+    $memberNames = @($group.DatabaseNames)
+    $missingMembers = @($context.GroupDatabaseNames | Where-Object { $memberNames -notcontains $_ })
+    if ($missingMembers.Count -gt 0) {
+        $missingText = "The failover group $($context.FailoverGroupName) does not contain: $($missingMembers -join ', '). Those databases will not follow the promotion."
+        if ($Force) {
+            Write-DeployLog -Level Warn -Message "$missingText Continuing because this is a forced failover."
+        }
+        else {
+            throw "HALTED: $missingText Add them to the group (re-run the deployment with multi-region enabled) before failing over."
+        }
+    }
+    else {
+        Write-DeployLog -Level Success -Message "Failover group members: $($memberNames -join ', ')"
+    }
+
     $dataGoodThrough = $null
     $lagSeconds = $null
     if ($Force) {
@@ -344,7 +364,7 @@ try {
         # describes the pre-failover state.
         Write-DeployLog -Level Info -Message 'Forced failover - reading the recoverable data boundary.'
         if ($PSCmdlet.ShouldProcess("$($context.PromotionServerName) / $($context.JobsDatabaseName)", 'read the recoverable data boundary')) {
-            $boundaryInfo = Get-DataGoodThroughUtc -Context $context
+            $boundaryInfo = Get-DataGoodThroughUtc -Context $context -DatabaseName $context.JobsDatabaseName
             if ($null -ne $boundaryInfo) {
                 $dataGoodThrough = $boundaryInfo.DataGoodThroughUtc
 
@@ -372,6 +392,21 @@ try {
         }
         else {
             Write-DeployLog -Level Info -Message "WhatIf: the recoverable data boundary would be read from $($context.PromotionServerName) before promoting."
+        }
+    }
+
+    # The ADF database replicates on its own link, so its boundary can differ from SyncJobs'. HR data
+    # is reloaded by the ADF pipeline, so this is reported for the operator, not used as the bound.
+    $adfDataGoodThrough = $null
+    if ($Force -and $PSCmdlet.ShouldProcess("$($context.PromotionServerName) / $($context.AdfDatabaseName)", 'read the recoverable data boundary')) {
+        $adfBoundaryInfo = Get-DataGoodThroughUtc -Context $context -DatabaseName $context.AdfDatabaseName
+        if ($null -ne $adfBoundaryInfo) {
+            $adfDataGoodThrough = $adfBoundaryInfo.DataGoodThroughUtc
+            Write-DeployLog -Level Info -Message "ADF DataGoodThrough (UTC): $($adfDataGoodThrough.ToString('yyyy-MM-ddTHH:mm:ss.fffZ')) (state $($adfBoundaryInfo.ReplicationState))"
+            Write-DeployLog -Level Warn -Message 'HR data loaded after that instant is lost by this promotion; re-run the ADF pipeline once GMM is up.'
+        }
+        else {
+            Write-DeployLog -Level Warn -Message 'ADF DataGoodThrough (UTC): unknown - the boundary could not be read.'
         }
     }
 
@@ -426,6 +461,26 @@ try {
     }
     else {
         Write-DeployLog -Level Success -Message "Listener $($context.ListenerHostName) now resolves to $($context.PromotionServerName)."
+    }
+
+    # ----- member databases ----------------------------------------------------
+    # The listener proves the server moved, not that each member database came up with it. An ARM
+    # read, so it also runs under -WhatIf (where it checks the partner copies about to be promoted).
+    Write-DeploySection -Name 'Member databases'
+
+    foreach ($databaseName in $context.GroupDatabaseNames) {
+        $memberDatabase = Invoke-WithRetry `
+            -Operation {
+                Get-AzSqlDatabase -ResourceGroupName $context.PromotionResourceGroupName `
+                    -ServerName $context.PromotionServerName -DatabaseName $databaseName -ErrorAction Stop
+            } `
+            -OperationName "Read the status of $($context.PromotionServerName)/$databaseName"
+
+        if ($memberDatabase.Status -ne 'Online') {
+            throw "HALTED: '$databaseName' on '$($context.PromotionServerName)' reports status '$($memberDatabase.Status)', not 'Online'. GMM must not be restarted against a database that is not available."
+        }
+
+        Write-DeployLog -Level Success -Message "$($context.PromotionServerName)/$databaseName is Online."
     }
 
     # ----- read endpoint -------------------------------------------------------
@@ -544,11 +599,12 @@ SELECT @@ROWCOUNT AS ResetCount;
         SitesRepointed = $repointedSites.Count
     }
     if ($null -ne $dataGoodThrough) { $state['DataGoodThroughUtc'] = $dataGoodThrough }
+    if ($null -ne $adfDataGoodThrough) { $state['AdfDataGoodThroughUtc'] = $adfDataGoodThrough }
     if ($null -ne $lagSeconds) { $state['ReplicationLagSeconds'] = $lagSeconds }
     if ($null -ne $resetCount) { $state['JobsResetToIdle'] = $resetCount }
 
     return New-StepResult -Step $stepName -State $state `
-        -Detail "Promoted $($context.PromotionServerName); $($repointedSites.Count) site(s) repointed$(if ($null -ne $resetCount) { "; $resetCount job(s) reset to Idle" })."
+        -Detail "Promoted $($context.PromotionServerName) with $($context.GroupDatabaseNames.Count) database(s); $($repointedSites.Count) site(s) repointed$(if ($null -ne $resetCount) { "; $resetCount job(s) reset to Idle" })."
 }
 catch {
     return New-StepResult -Step $stepName -Ok $false -Blockers @($_.Exception.Message) -Detail 'Database failover failed.'

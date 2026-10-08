@@ -261,8 +261,10 @@ function Get-GmmContext {
         FailoverGroupName          = $failoverGroupName
         ListenerHostName           = "$failoverGroupName$sqlHostSuffix"
         JobsDatabaseName           = "$SolutionAbbreviation-data-$EnvironmentAbbreviation"
+        AdfDatabaseName            = "$SolutionAbbreviation-data-$EnvironmentAbbreviation-adf"
+        GroupDatabaseNames         = @("$SolutionAbbreviation-data-$EnvironmentAbbreviation", "$SolutionAbbreviation-data-$EnvironmentAbbreviation-adf")
         ReplicaDatabaseName        = "$SolutionAbbreviation-data-$EnvironmentAbbreviation-R"
-        ReadSecretName             = 'replicaJobsMSIConnectionString'
+        ReadSecretName              = 'replicaJobsMSIConnectionString'
         WebApiSiteName             = "$SolutionAbbreviation-compute-$EnvironmentAbbreviation-webapi"
     }
 }
