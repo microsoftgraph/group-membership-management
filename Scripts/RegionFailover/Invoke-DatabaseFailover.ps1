@@ -14,7 +14,8 @@
 
     Promoting the GROUP covers every database in it, which is why this is not named after any single
     database. The group holds the SyncJobs and ADF (HR) databases, which fail over together. Before
-    promoting, the step confirms both are members, and afterwards it confirms both are Online on the
+    promoting, the step confirms both are members and that replication is in the transactionally
+    consistent CATCH_UP state for a planned promotion. Afterwards it confirms both are Online on the
     new primary. Only the read-endpoint handling is SyncJobs-specific.
 
 .EXAMPLE
@@ -160,10 +161,9 @@ function Set-ReadConnectionSecretVersion {
     )
 
     if (-not $PSCmdlet.ShouldProcess("Key Vault $KeyVaultName", "write a new version of secret '$SecretName'")) {
-        $current = Get-KeyVaultSecretWithFirewallRetry -VaultName $KeyVaultName `
-            -ResourceGroup $KeyVaultName -SecretName $SecretName
-        Write-DeployLog -Level Info -Message "WhatIf: a new version of '$SecretName' would be written; the current version is $($current.Version)."
-        return $current.Id
+        $whatIfVersion = 'whatif-new-version'
+        Write-DeployLog -Level Info -Message "WhatIf: a new version of '$SecretName' would be written. Key Vault data-plane and temporary firewall access are not exercised in WhatIf mode."
+        return "https://$KeyVaultName.vault.azure.net/secrets/$SecretName/$whatIfVersion"
     }
 
     $secret = Set-KeyVaultSecretWithFirewallRetry -VaultName $KeyVaultName `
@@ -351,6 +351,19 @@ try {
     }
     else {
         Write-DeployLog -Level Success -Message "Failover group members: $($memberNames -join ', ')"
+    }
+
+    # Azure SQL reports CATCH_UP while a geo-secondary is transactionally consistent and applying
+    # changes. Planned promotion waits for outstanding changes; any other state indicates that the
+    # replication link is not ready. Forced promotion deliberately bypasses this data-safety gate.
+    if ($activeRole -ne $TargetRegion -and -not $Force) {
+        $replicationState = [string]$group.ReplicationState
+        if ($replicationState -ne 'CATCH_UP') {
+            $reportedState = if ([string]::IsNullOrWhiteSpace($replicationState)) { '<not reported>' } else { $replicationState }
+            throw "HALTED: failover group '$($context.FailoverGroupName)' reports replication state '$reportedState', not 'CATCH_UP'. A planned promotion requires a transactionally consistent secondary. Wait for replication to recover or investigate the geo-replication link; do not use -Force unless data loss is explicitly acceptable."
+        }
+
+        Write-DeployLog -Level Success -Message "Replication state: $replicationState (ready for planned promotion)"
     }
 
     $dataGoodThrough = $null
