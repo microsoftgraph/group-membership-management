@@ -1869,7 +1869,9 @@ function Set-RBACPermissions {
         [Parameter(Mandatory = $false)]
         [bool] $SkipNetworkingDeployment = $false,
         [Parameter(Mandatory = $false)]
-        [string] $BastionVnetAddressPrefix = '10.0.0.0/24'
+        [string] $BastionVnetAddressPrefix = '10.0.0.0/24',
+        [Parameter(Mandatory = $false)]
+        [bool] $DeployAks = $false
     )
 
     # grant permissions to resources
@@ -1884,7 +1886,8 @@ function Set-RBACPermissions {
         -SetUserAssignedManagedIdentityPermissions $SetUserAssignedManagedIdentityPermissions `
         -SkipPrivilegedDirectoryActions $SkipPrivilegedDirectoryActions `
         -SkipNetworkingDeployment $SkipNetworkingDeployment `
-        -BastionVnetAddressPrefix $BastionVnetAddressPrefix
+        -BastionVnetAddressPrefix $BastionVnetAddressPrefix `
+        -DeployAks $DeployAks
     Write-DeployPhase -Name 'Granting Resource Permissions' -Event End
 
 }
@@ -4093,7 +4096,8 @@ function Deploy-Resources {
         -SetUserAssignedManagedIdentityPermissions $isUserAssignedManagedIdentityAuth `
         -SkipPrivilegedDirectoryActions $skipPrivilegedDirectoryActions `
         -SkipNetworkingDeployment $skipNetworkingDeployment `
-        -BastionVnetAddressPrefix $bastionVnetAddressPrefix
+        -BastionVnetAddressPrefix $bastionVnetAddressPrefix `
+        -DeployAks $deployAks
     }
     elseif ($true -eq $skipRBACPermissions) {
         Write-DeployLog -Level Warn -Message "Skipping RBAC permissions as per configuration [skipRBACPermissions = $skipRBACPermissions]."

@@ -28,6 +28,7 @@ namespace WebApi.BackgroundServices
     {
         private readonly OperationsSettings _operationsSettings;
         private readonly IResourceManagerService _resourceManagerService;
+        private readonly IAksWorkloadService _aksWorkloadService;
         private readonly IOperationsTaskQueue _backgroundTaskQueue;
         private readonly ILogger<OperationsBackgroundService> _logger;
         private readonly IServiceProvider _services;
@@ -37,12 +38,14 @@ namespace WebApi.BackgroundServices
 
         public OperationsBackgroundService(OperationsSettings operationsSettings,
                                            IResourceManagerService resourceManagerService,
+                                           IAksWorkloadService aksWorkloadService,
                                            IOperationsTaskQueue backgroundTaskQueue,
                                            ILogger<OperationsBackgroundService> logger,
                                            IServiceProvider services)
         {
             _operationsSettings = operationsSettings ?? throw new ArgumentNullException(nameof(operationsSettings));
             _resourceManagerService = resourceManagerService ?? throw new ArgumentNullException(nameof(resourceManagerService));
+            _aksWorkloadService = aksWorkloadService ?? throw new ArgumentNullException(nameof(aksWorkloadService));
             _backgroundTaskQueue = backgroundTaskQueue ?? throw new ArgumentNullException(nameof(backgroundTaskQueue));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _services = services ?? throw new ArgumentNullException(nameof(services));
@@ -78,7 +81,7 @@ namespace WebApi.BackgroundServices
                     {
                         if (operationDetails.Operation == Operations.Reset)
                         {
-                            await _resourceManagerService.StopWebSitesAsync(operationDetails.RequestorId, cancellationToken);
+                            await StopHostsAsync(operationDetails.RequestorId, cancellationToken);
                             var internalTQs = ClearInternalTablesAndQueuesAsync(cancellationToken);
                             var maQueue = ClearQueueAsync(_operationsSettings.MembershipAggregatorQueue, cancellationToken);
                             await Task.WhenAll(internalTQs, maQueue);
@@ -92,7 +95,7 @@ namespace WebApi.BackgroundServices
                         }
                         else if (operationDetails.Operation == Operations.Stop)
                         {
-                            await _resourceManagerService.StopWebSitesAsync(operationDetails.RequestorId, cancellationToken);
+                            await StopHostsAsync(operationDetails.RequestorId, cancellationToken);
                             var internalTQs = ClearInternalTablesAndQueuesAsync(cancellationToken);
                             var maQueue = ClearQueueAsync(_operationsSettings.MembershipAggregatorQueue, cancellationToken);
                             await Task.WhenAll(internalTQs, maQueue);
@@ -115,7 +118,7 @@ namespace WebApi.BackgroundServices
 
                     await Task.Delay(TimeSpan.FromSeconds(30), cancellationToken);
                 }
-                catch (OperationCanceledException)
+                catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
                 {
                     // No op, handle cancellation
                 }
@@ -131,8 +134,36 @@ namespace WebApi.BackgroundServices
 
         private async Task StartGMMAsync(OperationDetails operationDetails, CancellationToken cancellationToken)
         {
-            await _resourceManagerService.StartWebSitesAsync(operationDetails.RequestorId, cancellationToken);
+            await StartHostsAsync(operationDetails.RequestorId, cancellationToken);
             await SetStatusAsync(ServiceStatuses.Running, operationDetails.RequestorId);
+        }
+
+        private async Task StopHostsAsync(Guid requestorId, CancellationToken cancellationToken)
+        {
+            if (_operationsSettings.DeployAks)
+            {
+                await _aksWorkloadService.StopAllWorkloadsAsync(cancellationToken);
+            }
+
+            await _resourceManagerService.StopWebSitesAsync(requestorId, cancellationToken);
+        }
+
+        private async Task StartHostsAsync(Guid requestorId, CancellationToken cancellationToken)
+        {
+            string[] aksServices = _operationsSettings.DeployAks ? _operationsSettings.AksServices : [];
+            await _resourceManagerService.StartWebSitesAsync(requestorId, aksServices, cancellationToken);
+
+            // JobTrigger dispatches to the other services, so it starts last
+            var startOrder = aksServices.OrderBy(service => service.Equals("JobTrigger", StringComparison.OrdinalIgnoreCase));
+            foreach (var service in startOrder)
+            {
+                await _aksWorkloadService.StartWorkloadAsync(service.ToLowerInvariant(), cancellationToken);
+            }
+
+            if (!aksServices.Contains("JobTrigger", StringComparer.OrdinalIgnoreCase))
+            {
+                await _resourceManagerService.StartJobTriggerWebSiteAsync(requestorId, cancellationToken);
+            }
         }
 
         private async Task SetStatusAsync(ServiceStatuses status, Guid requestorId)

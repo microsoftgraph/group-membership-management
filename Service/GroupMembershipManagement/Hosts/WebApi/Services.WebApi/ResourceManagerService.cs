@@ -17,6 +17,8 @@ namespace Services.WebApi
     [ExcludeFromCodeCoverage]
     public class ResourceManagerService : IResourceManagerService
     {
+        private const string JobTriggerService = "JobTrigger";
+
         private readonly ArmClient _client;
         private readonly SubscriptionResource _subscription;
         private readonly string _dataResourceGroupName;
@@ -51,31 +53,69 @@ namespace Services.WebApi
             }
         }
 
-        public async Task StartWebSitesAsync(Guid requestorId, CancellationToken cancellationToken)
+        public async Task StartWebSitesAsync(Guid requestorId, IReadOnlyCollection<string> servicesOnAks, CancellationToken cancellationToken)
         {
             _logger.GmmStarting();
 
-            var webSites = await GetWebSitesAsync(cancellationToken);
-            WebSiteResource? jobTrigger = null;
+            var webSites = (await GetWebSitesAsync(cancellationToken)).ToDictionary(x => x.Data.Name, StringComparer.OrdinalIgnoreCase);
+            var classification = ClassifyWebSites(webSites.Keys, _computeResourceGroupName, servicesOnAks);
 
-            foreach (var webSite in webSites)
+            foreach (var service in classification.UnmatchedServices)
             {
-                // JobTrigger should be started last
-                if (webSite.Data.Name.Contains("-JobTrigger", StringComparison.InvariantCultureIgnoreCase))
+                _logger.AksServiceWebsiteNotFound(service, $"{_computeResourceGroupName}-{service}");
+            }
+
+            foreach (var siteName in classification.KeptStopped)
+            {
+                var webSite = webSites[siteName];
+                if (webSite.Data.State != "Stopped")
                 {
-                    jobTrigger = webSite;
-                    continue;
+                    await webSite.StopAsync(cancellationToken);
                 }
 
-                await webSite.StartAsync(cancellationToken);
-                _logger.WebsiteStarted(webSite.Data.Name);
+                _logger.WebsiteKeptStoppedOnAks(siteName);
             }
 
-            if (jobTrigger != null)
+            foreach (var siteName in classification.ToStart)
             {
-                await jobTrigger.StartAsync(cancellationToken);
-                _logger.WebsiteStarted(jobTrigger.Data.Name);
+                await webSites[siteName].StartAsync(cancellationToken);
+                _logger.WebsiteStarted(siteName);
             }
+        }
+
+        public async Task StartJobTriggerWebSiteAsync(Guid requestorId, CancellationToken cancellationToken)
+        {
+            var websiteName = $"{_computeResourceGroupName}-{JobTriggerService}";
+
+            await GetResourceGroupsAsync(cancellationToken);
+            var website = await _computeResourceGroup.GetWebSiteAsync(websiteName, cancellationToken);
+            await website.Value.StartAsync(cancellationToken);
+            _logger.WebsiteStarted(websiteName);
+        }
+
+        private static WebSiteClassification ClassifyWebSites(IEnumerable<string> siteNames, string computeResourceGroupName, IReadOnlyCollection<string> servicesOnAks)
+        {
+            var jobTriggerSiteName = $"{computeResourceGroupName}-{JobTriggerService}";
+            var toStart = new List<string>();
+            var keptStopped = new List<string>();
+            var matchedServices = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+            foreach (var siteName in siteNames)
+            {
+                var service = servicesOnAks.FirstOrDefault(s => siteName.Equals($"{computeResourceGroupName}-{s}", StringComparison.OrdinalIgnoreCase));
+                if (service != null)
+                {
+                    matchedServices.Add(service);
+                    keptStopped.Add(siteName);
+                }
+                else if (!siteName.Equals(jobTriggerSiteName, StringComparison.OrdinalIgnoreCase))
+                {
+                    toStart.Add(siteName);
+                }
+            }
+
+            var unmatchedServices = servicesOnAks.Where(s => !matchedServices.Contains(s)).ToList();
+            return new WebSiteClassification(toStart, keptStopped, unmatchedServices);
         }
 
         public async Task StartWebSiteAsync(Guid requestorId, string websiteName, CancellationToken cancellationToken)
@@ -153,4 +193,6 @@ namespace Services.WebApi
         }
 
     }
+
+    internal sealed record WebSiteClassification(IReadOnlyList<string> ToStart, IReadOnlyList<string> KeptStopped, IReadOnlyList<string> UnmatchedServices);
 }

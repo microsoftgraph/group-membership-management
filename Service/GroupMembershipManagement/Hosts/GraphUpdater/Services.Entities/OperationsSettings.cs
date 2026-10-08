@@ -18,6 +18,8 @@ namespace Services.Entities
         public string ComputeResourceGroupName { get; set; }
         public string FunctionAuthAppClientId { get; set; }
         public string FunctionsStorageAccountName { get; set; }
+        public bool DeployAks { get; set; }
+        public string[] AksServices { get; set; }
 
     }
 }

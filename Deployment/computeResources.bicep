@@ -6,6 +6,13 @@ param solutionAbbreviation string
 param tenantId string
 param functionAuthAppClientId string
 param enableFunctionAuthentication bool = false
+param deployAks bool = false
+param services array = [
+  {
+    name: 'JobTrigger'
+    serviceAccount: 'jobtrigger-sa'
+  }
+]
 param managedResourceGroupName string = ''
 param isManagedApplication bool = false
 param appConfigurationName string
@@ -983,6 +990,8 @@ module webApiComputeResources '../Service/GroupMembershipManagement/Hosts/WebApi
     featureFlags: featureFlags
     skipNetworkingDeployment: skipNetworkingDeployment
     enableFunctionAuthentication: enableFunctionAuthentication
+    deployAks: deployAks
+    aksServices: map(services, s => s.name)
   }
   dependsOn: [
     sqlMembershipObtainerComputeResources

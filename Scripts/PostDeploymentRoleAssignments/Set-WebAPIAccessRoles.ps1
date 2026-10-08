@@ -14,6 +14,9 @@ A 2-6 character abbreviation for your environment.
 .PARAMETER ErrorActionPreference
 Parameter description
 
+.PARAMETER DeployAks
+True when services run on the AKS cluster. Grants the Web API the access its Stop, Start and Reset operations need to scale the cluster's workloads.
+
 .EXAMPLE
 Set-WebAPIAccessRoles	-SolutionAbbreviation "<solution>" `
 						-EnvironmentAbbreviation "<env>" `
@@ -32,7 +35,9 @@ function Set-WebAPIAccessRoles {
 		[Parameter(Mandatory = $False)]
 		[string] $ComputeResourceGroupName = $null,
 		[Parameter(Mandatory = $False)]
-		[string] $ErrorActionPreference = $Stop
+		[string] $ErrorActionPreference = $Stop,
+		[Parameter(Mandatory = $False)]
+		[bool] $DeployAks = $false
 	)
 
 	$scriptsDirectory = Split-Path $PSScriptRoot -Parent
@@ -100,6 +105,31 @@ function Set-WebAPIAccessRoles {
 				-DisplayName $webApi.Name `
 				-Scope $openAIResource.Id `
 				-RoleDefinitionName "Cognitive Services OpenAI User"
+			}
+
+			if ($DeployAks) {
+				$aksName = "$ComputeResourceGroupName-aks"
+				$aksCluster = Invoke-WithRetry `
+				-Operation { Get-AzResource -ResourceGroupName $ComputeResourceGroupName -ResourceType "Microsoft.ContainerService/managedClusters" -Name $aksName -ErrorAction SilentlyContinue } `
+				-OperationName "Get AKS cluster" `
+				-MaxAttempts 3 -BaseDelaySeconds 2
+
+				if ($null -ne $aksCluster) {
+					Set-RoleAssignment `
+					-ObjectId $webApiServicePrincipal.Id `
+					-DisplayName $webApi.Name `
+					-Scope $aksCluster.Id `
+					-RoleDefinitionName "Azure Kubernetes Service Cluster User Role"
+
+					Set-RoleAssignment `
+					-ObjectId $webApiServicePrincipal.Id `
+					-DisplayName $webApi.Name `
+					-Scope "$($aksCluster.Id)/namespaces/gmm" `
+					-RoleDefinitionName "Azure Kubernetes Service RBAC Writer"
+				}
+				else {
+					Write-Warning "AKS cluster $aksName was not found, so the Web API was not granted access to it. Deploy the cluster, then run this script again."
+				}
 			}
 		}
 		elseif ($null -eq $webApiServicePrincipal) {

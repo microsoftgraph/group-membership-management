@@ -44,7 +44,9 @@ function Set-PostDeploymentRoles {
         [Parameter(Mandatory = $False)]
         [bool] $SkipNetworkingDeployment = $false,
         [Parameter(Mandatory = $False)]
-        [string] $BastionVnetAddressPrefix = '10.0.0.0/24'
+        [string] $BastionVnetAddressPrefix = '10.0.0.0/24',
+        [Parameter(Mandatory = $False)]
+        [bool] $DeployAks = $false
     )
 
     $scriptsDirectory = Split-Path $PSScriptRoot -Parent
@@ -91,6 +93,7 @@ function Set-PostDeploymentRoles {
         -EnvironmentAbbreviation $EnvironmentAbbreviation `
         -ComputeResourceGroupName $ComputeResourceGroupName `
         -DataResourceGroupName $DataResourceGroupName `
+        -DeployAks $DeployAks `
         -Verbose
     
     if ($SetUserAssignedManagedIdentityPermissions) {

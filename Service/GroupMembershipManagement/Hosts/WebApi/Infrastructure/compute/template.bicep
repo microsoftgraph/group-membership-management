@@ -73,6 +73,12 @@ param skipNetworkingDeployment bool = true
 @description('When true, WebApi acquires an AAD bearer token (via FunctionAuth app registration) for the JobScheduler call. When false, WebApi relies on the function key alone. Must match the flag used by the callee function apps.')
 param enableFunctionAuthentication bool = false
 
+@description('True when services run on the AKS cluster instead of their function apps.')
+param deployAks bool = false
+
+@description('Services that run on the AKS cluster when deployAks is true.')
+param aksServices array = ['JobTrigger']
+
 param featureFlags object = {
   enableTeamsChannel: false
   enableOpenAI: false
@@ -304,6 +310,15 @@ var appSettings = concat([
   {
     name: 'Settings:FunctionAuthAppClientId'
     value: '@Microsoft.KeyVault(SecretUri=${reference(functionAuthAppClientId, '2019-09-01').secretUriWithVersion})'
+  }
+] : [], deployAks ? [
+  {
+    name: 'Settings:DeployAks'
+    value: 'true'
+  }
+  {
+    name: 'Settings:AksServices'
+    value: join(aksServices, ',')
   }
 ] : [])
 

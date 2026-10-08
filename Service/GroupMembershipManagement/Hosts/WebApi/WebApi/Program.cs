@@ -440,6 +440,13 @@ namespace WebApi
                 return new ResourceManagerService(settings.Value, logger);
             });
 
+            builder.Services.AddSingleton<IAksWorkloadService, AksWorkloadService>(services =>
+            {
+                var settings = services.GetRequiredService<IOptions<ResourceManagerServiceConfiguration>>();
+                var logger = services.GetRequiredService<ILogger<AksWorkloadService>>();
+                return new AksWorkloadService(settings.Value, logger);
+            });
+
             builder.Services.AddOptions<OperationsSettings>().Configure<IConfiguration, IServiceProvider>((settings, configuration, services) =>
             {
                 var rmsc = services.GetRequiredService<IOptions<ResourceManagerServiceConfiguration>>();
@@ -453,6 +460,11 @@ namespace WebApi
                 settings.DataResourceGroupName = rmsc.Value.DataResourceGroup;
                 settings.ComputeResourceGroupName = rmsc.Value.ComputeResourceGroup;
                 settings.FunctionsStorageAccountName = configuration.GetValue<string>("Settings:FunctionsStorageAccountName");
+                settings.DeployAks = GetBoolSetting(configuration, "Settings:DeployAks", false);
+                settings.AksServices = configuration.GetValue<string>("Settings:AksServices")?
+                    .Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries)
+                    .Distinct(StringComparer.OrdinalIgnoreCase)
+                    .ToArray() ?? [];
             });
 
             builder.Services.AddOptions<PendingConfigurationConfig>().Configure<IConfiguration>((settings, configuration) =>

@@ -571,6 +571,52 @@ namespace Hosts.WebApi
             Message = "Getting websites...")]
         public static partial void GettingWebsites(this ILogger logger);
 
+        [LoggerMessage(EventId = 93211, Level = LogLevel.Information,
+            Message = "{WebsiteName} left stopped because it runs on AKS.")]
+        public static partial void WebsiteKeptStoppedOnAks(this ILogger logger, string websiteName);
+
+        [LoggerMessage(EventId = 93212, Level = LogLevel.Warning,
+            Message = "No website named {WebsiteName} was found for AKS service {ServiceName}.")]
+        public static partial void AksServiceWebsiteNotFound(this ILogger logger, string serviceName, string websiteName);
+
+        // ── AksWorkloadService (93300-93349) ──
+
+        [LoggerMessage(EventId = 93300, Level = LogLevel.Information,
+            Message = "AKS cluster {ClusterName} not found; no AKS workloads to manage.")]
+        public static partial void AksClusterNotFound(this ILogger logger, string clusterName);
+
+        [LoggerMessage(EventId = 93301, Level = LogLevel.Information,
+            Message = "AKS cluster {ClusterName} is stopped; no AKS workloads to manage.")]
+        public static partial void AksClusterStopped(this ILogger logger, string clusterName);
+
+        [LoggerMessage(EventId = 93302, Level = LogLevel.Information,
+            Message = "No Deployments found in namespace {NamespaceName}.")]
+        public static partial void AksNoDeployments(this ILogger logger, string namespaceName);
+
+        [LoggerMessage(EventId = 93303, Level = LogLevel.Information,
+            Message = "Scaling Deployment {DeploymentName} in namespace {NamespaceName} to {Replicas} replicas.")]
+        public static partial void AksDeploymentScaling(this ILogger logger, string deploymentName, string namespaceName, int replicas);
+
+        [LoggerMessage(EventId = 93304, Level = LogLevel.Warning,
+            Message = "Pod count for {DeploymentName} is unknown, not zero; retrying.")]
+        public static partial void AksPodCountUnknown(this ILogger logger, string deploymentName, Exception exception);
+
+        [LoggerMessage(EventId = 93305, Level = LogLevel.Information,
+            Message = "Deployment {DeploymentName} has no pods.")]
+        public static partial void AksDeploymentScaledToZero(this ILogger logger, string deploymentName);
+
+        [LoggerMessage(EventId = 93306, Level = LogLevel.Information,
+            Message = "Deployment {DeploymentName} is ready and stayed stable for {StabilitySeconds} seconds.")]
+        public static partial void AksDeploymentReady(this ILogger logger, string deploymentName, int stabilitySeconds);
+
+        [LoggerMessage(EventId = 93307, Level = LogLevel.Warning,
+            Message = "Could not scale Deployment {DeploymentName} back to 0 after its start failed; its replica count is UNKNOWN.")]
+        public static partial void AksStartRollbackFailed(this ILogger logger, string deploymentName, Exception exception);
+
+        [LoggerMessage(EventId = 93308, Level = LogLevel.Information,
+            Message = "Deployment {DeploymentName} is already running with {ReadyReplicas} ready replicas; leaving it as is.")]
+        public static partial void AksDeploymentAlreadyRunning(this ILogger logger, string deploymentName, int readyReplicas);
+
         // ── SqlMembership handlers (91700-91799) ──
 
         [LoggerMessage(EventId = 91700, Level = LogLevel.Warning,
