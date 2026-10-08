@@ -341,17 +341,13 @@ try {
     $activeRole = if ($group.ReplicationRole -eq 'Primary') { 'Primary' } else { 'Secondary' }
 
     # Only members fail over. A database missing from the group stays on the demoted server, and
-    # every site addressing the listener would then fail to find it on the new primary.
+    # every site addressing the listener would then fail to find it on the new primary. This halts
+    # even under -Force: -Force allows data loss on promotion, not an incomplete group.
     $memberNames = @($group.DatabaseNames)
     $missingMembers = @($context.GroupDatabaseNames | Where-Object { $memberNames -notcontains $_ })
     if ($missingMembers.Count -gt 0) {
         $missingText = "The failover group $($context.FailoverGroupName) does not contain: $($missingMembers -join ', '). Those databases will not follow the promotion."
-        if ($Force) {
-            Write-DeployLog -Level Warn -Message "$missingText Continuing because this is a forced failover."
-        }
-        else {
-            throw "HALTED: $missingText Add them to the group (re-run the deployment with multi-region enabled) before failing over."
-        }
+        throw "HALTED: $missingText Add them to the group (re-run the deployment with multi-region enabled) before failing over."
     }
     else {
         Write-DeployLog -Level Success -Message "Failover group members: $($memberNames -join ', ')"
