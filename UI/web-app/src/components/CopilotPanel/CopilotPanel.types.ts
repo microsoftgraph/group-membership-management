@@ -24,20 +24,17 @@ export interface ICopilotPanelStyles {
     header: IStyle;
     headerTitle: IStyle;
     headerSubtitle: IStyle;
-    sparkleStar1: IStyle;
-    sparkleStar2: IStyle;
     chatContainer: IStyle;
     messagesContainer: IStyle;
     messageRow: IStyle;
     botMessage: IStyle;
     userMessage: IStyle;
-    botAvatar: IStyle;
     messageContent: IStyle;
     suggestedPromptsContainer: IStyle;
-    suggestedPromptsHeader: IStyle;
     suggestedPromptsGrid: IStyle;
     suggestedPromptButton: IStyle;
     welcomeCard: IStyle;
+    welcomeDisclaimer: IStyle;
     welcomeStepList: IStyle;
     welcomeStep: IStyle;
     welcomeStepNumber: IStyle;
@@ -56,6 +53,7 @@ export interface ICopilotPanelStyles {
 export interface ICopilotPanelStyleProps {
     className?: string;
     theme: ITheme;
+    experience: 'onboarding' | 'update';
 }
 
 export interface IChatMessage {
@@ -64,6 +62,8 @@ export interface IChatMessage {
     content: string;
     timestamp: string; // ISO string for Redux serialization
     isError?: boolean; // Marks a failed turn surfaced inline in the transcript (not sent back to the model)
+    action?: 'applyAndReview'; // UI-only acknowledgment, excluded from model history.
+    isMembershipSummary?: boolean;
 }
 
 export interface ISuggestedPrompt {
@@ -94,11 +94,15 @@ export interface ICopilotPanelProps extends React.AllHTMLAttributes<HTMLElement>
      * @param sourceParts - The generated source parts
      * Each source part already carries its own org leader info (useOrgStructure, managerToAutoSelect, depthToAutoSelect).
      */
-    onSourcePartsGenerated?: (sourceParts: ISourcePart[]) => void;
+    onSourcePartsGenerated?: (sourceParts: ISourcePart[]) => ISourcePart[] | Promise<ISourcePart[]>;
     /**
      * ID of the source part this Copilot session is for (used to track session per source part)
      */
     sourcePartId?: string;
+    /**
+     * Selects update-specific copy and interaction states without changing onboarding.
+     */
+    experience?: 'onboarding' | 'update';
     /**
      * HR attributes available for filtering
      */

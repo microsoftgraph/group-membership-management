@@ -5,61 +5,44 @@ import {
     type ICopilotPanelStyleProps,
     type ICopilotPanelStyles,
 } from './CopilotPanel.types';
-import { keyframes } from '@fluentui/react';
 
 export const getStyles = (props: ICopilotPanelStyleProps): ICopilotPanelStyles => {
-    const { className, theme } = props;
-
-    const sparkleAnim1 = keyframes({
-        '0%, 100%': { opacity: 1, transform: 'scale(1)' },
-        '50%': { opacity: 0.2, transform: 'scale(0.5)' },
-    });
-
-    const sparkleAnim2 = keyframes({
-        '0%, 100%': { opacity: 0.3, transform: 'scale(0.5)' },
-        '50%': { opacity: 1, transform: 'scale(1)' },
-    });
+    const { className, theme, experience } = props;
+    const isUpdateExperience = experience === 'update';
 
     return {
         root: [{
             display: 'flex',
             flexDirection: 'column',
             height: '100%',
+            minHeight: 0,
+            backgroundColor: theme.palette.neutralLighterAlt,
         }, className],
 
         header: {
-            padding: '14px 16px',
-            borderBottom: `1px solid ${theme.palette.neutralLight}`,
-            backgroundColor: theme.palette.white,
+            minHeight: 67,
+            boxSizing: 'border-box',
+            flexShrink: 0,
+            padding: '0 16px',
+            borderBottom: `4px solid ${theme.palette.themePrimary}`,
+            borderImage: isUpdateExperience ? undefined : `linear-gradient(90deg, ${theme.palette.themePrimary}, ${theme.palette.themeLight}, ${theme.palette.themeLighter}) 1`,
+            backgroundColor: theme.palette.neutralLighterAlt,
+            display: 'flex',
+            flexDirection: 'column',
+            justifyContent: 'center',
         },
 
         headerTitle: {
-            fontSize: '16px',
+            fontSize: '20px',
             fontWeight: 600,
-            color: theme.palette.themePrimary,
+            lineHeight: '28px',
+            color: theme.palette.neutralPrimary,
         },
 
         headerSubtitle: {
-            fontSize: '12px',
-            color: theme.palette.neutralSecondary,
-        },
-
-        sparkleStar1: {
-            animationName: sparkleAnim1,
-            animationDuration: '2s',
-            animationTimingFunction: 'ease-in-out',
-            animationIterationCount: 'infinite',
-            transformOrigin: 'center',
-            transformBox: 'fill-box',
-        },
-
-        sparkleStar2: {
-            animationName: sparkleAnim2,
-            animationDuration: '2s',
-            animationTimingFunction: 'ease-in-out',
-            animationIterationCount: 'infinite',
-            transformOrigin: 'center',
-            transformBox: 'fill-box',
+            fontSize: '10px',
+            lineHeight: '14px',
+            color: theme.palette.neutralPrimary,
         },
 
         chatContainer: {
@@ -67,27 +50,37 @@ export const getStyles = (props: ICopilotPanelStyleProps): ICopilotPanelStyles =
             flexDirection: 'column',
             flex: 1,
             overflow: 'hidden',
+            minHeight: 0,
         },
 
         messagesContainer: {
             flex: 1,
             overflowY: 'auto',
-            scrollbarGutter: 'stable',
-            padding: '16px 20px',
+            scrollbarGutter: isUpdateExperience ? 'stable' : undefined,
+            padding: '10px 16px',
             display: 'flex',
             flexDirection: 'column',
-            gap: '16px',
+            gap: isUpdateExperience ? '10px' : 0,
+            minHeight: 0,
+            selectors: {
+                '> *': { flexShrink: 0 },
+                // Only one auto margin: keep the transcript together without internal gaps.
+                '> :first-child': { marginTop: 'auto' },
+            },
         },
 
         messageRow: {
             display: 'flex',
-            gap: '12px',
+            flexDirection: 'column',
+            gap: '4px',
             alignItems: 'flex-start',
+            selectors: isUpdateExperience ? undefined : { '& + &': { marginTop: 10 } },
         },
 
         botMessage: {
             alignSelf: 'flex-start',
-            maxWidth: '90%',
+            maxWidth: '100%',
+            width: '100%',
         },
 
         userMessage: {
@@ -95,44 +88,21 @@ export const getStyles = (props: ICopilotPanelStyleProps): ICopilotPanelStyles =
             maxWidth: '85%',
         },
 
-        botAvatar: {
-            width: '32px',
-            height: '32px',
-            borderRadius: '50%',
-            backgroundColor: theme.palette.themePrimary,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            color: theme.palette.white,
-            fontSize: '14px',
-            fontWeight: 600,
-            flexShrink: 0,
-        },
-
         messageContent: {
-            padding: '12px 16px',
-            borderRadius: '8px',
+            padding: '4px 6px',
+            borderRadius: '6px',
             backgroundColor: theme.palette.neutralLighter,
             fontSize: '14px',
-            lineHeight: '20px',
+            lineHeight: '24px',
             color: theme.palette.neutralPrimary,
         },
 
         suggestedPromptsContainer: {
             display: 'flex',
             flexDirection: 'column',
-            gap: '6px',
+            gap: '8px',
             marginTop: '10px',
             width: '100%',
-        },
-
-        suggestedPromptsHeader: {
-            fontSize: '12px',
-            fontWeight: 600,
-            color: theme.palette.neutralSecondary,
-            letterSpacing: '0.8px',
-            textTransform: 'uppercase',
-            marginBottom: '2px',
         },
 
         suggestedPromptsGrid: {
@@ -141,22 +111,22 @@ export const getStyles = (props: ICopilotPanelStyleProps): ICopilotPanelStyles =
 
         suggestedPromptButton: {
             width: '100%',
-            minHeight: '34px',
-            padding: '8px 14px',
-            borderRadius: '12px',
-            border: `1px solid #7ab8ff`,
-            backgroundColor: theme.palette.white,
-            color: theme.palette.themePrimary,
-            fontSize: '12px',
-            fontWeight: 500,
-            lineHeight: '16px',
+            minHeight: '32px',
+            padding: isUpdateExperience ? '6px 8px' : '5px 8px',
+            borderRadius: '10px',
+            border: `1px solid ${theme.palette.neutralTertiaryAlt}`,
+            backgroundColor: isUpdateExperience ? theme.palette.white : theme.palette.neutralLighterAlt,
+            color: theme.palette.neutralPrimary,
+            fontSize: '14px',
+            fontWeight: 400,
+            lineHeight: '20px',
             textAlign: 'left',
             cursor: 'pointer',
             transition: 'all 0.15s ease',
-            boxShadow: '0 1px 2px rgba(0, 120, 212, 0.08)',
+            boxShadow: isUpdateExperience ? '0 1px 2px rgba(0, 120, 212, 0.08)' : undefined,
             selectors: {
                 ':hover': {
-                    backgroundColor: '#f7fbff',
+                    backgroundColor: theme.palette.themeLighterAlt,
                     borderColor: theme.palette.themePrimary,
                     boxShadow: '0 2px 6px rgba(0, 120, 212, 0.12)',
                 },
@@ -168,10 +138,10 @@ export const getStyles = (props: ICopilotPanelStyleProps): ICopilotPanelStyles =
         },
 
         welcomeCard: {
-            padding: '14px 16px',
-            borderRadius: '12px',
-            backgroundColor: theme.palette.neutralLighterAlt,
-            border: `1px solid ${theme.palette.neutralLight}`,
+            padding: isUpdateExperience ? '4px 6px' : '12px 6px 10px',
+            borderRadius: '6px',
+            backgroundColor: theme.palette.neutralLighter,
+            border: 'none',
             color: theme.palette.neutralPrimary,
             position: 'relative',
             overflow: 'hidden',
@@ -180,23 +150,24 @@ export const getStyles = (props: ICopilotPanelStyleProps): ICopilotPanelStyles =
         welcomeStepList: {
             display: 'flex',
             flexDirection: 'column',
-            gap: '6px',
+            gap: '4px',
             marginTop: '10px',
         },
 
         welcomeStep: {
             display: 'flex',
             alignItems: 'flex-start',
-            gap: '10px',
+            gap: '4px',
         },
 
         welcomeStepNumber: {
-            width: '20px',
-            height: '20px',
+            width: '16px',
+            height: '16px',
+            marginTop: '4px',
             borderRadius: '50%',
-            backgroundColor: '#0078d4',
+            backgroundColor: theme.palette.themePrimary,
             border: 'none',
-            color: '#ffffff',
+            color: theme.palette.white,
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
@@ -206,23 +177,35 @@ export const getStyles = (props: ICopilotPanelStyleProps): ICopilotPanelStyles =
         },
 
         welcomeStepText: {
-            fontSize: '13px',
-            lineHeight: '18px',
+            fontSize: '14px',
+            lineHeight: '24px',
             color: theme.palette.neutralPrimary,
             flex: 1,
         },
 
+        welcomeDisclaimer: {
+            marginTop: '10px',
+            padding: '8px',
+            borderRadius: '10px',
+            backgroundColor: theme.palette.white,
+            color: theme.palette.neutralPrimary,
+            fontSize: '10px',
+            lineHeight: '14px',
+        },
+
         inputContainer: {
             display: 'flex',
-            gap: '8px',
-            padding: '16px 20px',
+            gap: 0,
+            padding: '10px 16px',
             borderTop: `1px solid ${theme.palette.neutralLight}`,
             backgroundColor: theme.palette.white,
             alignItems: 'flex-end',
+            flexShrink: 0,
         },
 
         inputField: {
             flex: 1,
+            minWidth: 0,
         },
 
         sendButton: {
@@ -306,29 +289,10 @@ export const getStyles = (props: ICopilotPanelStyleProps): ICopilotPanelStyles =
         },
 
         inlineAcceptButton: {
-            backgroundColor: theme.palette.green,
-            color: theme.palette.white,
-            border: 'none',
+            width: '100%',
+            height: 32,
+            marginTop: 8,
             borderRadius: '4px',
-            padding: '8px 16px',
-            fontSize: '13px',
-            fontWeight: 600,
-            cursor: 'pointer',
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: '6px',
-            transition: 'background-color 0.15s ease',
-            alignSelf: 'flex-start',
-            selectors: {
-                ':hover': {
-                    backgroundColor: theme.palette.greenDark,
-                },
-                ':disabled': {
-                    backgroundColor: theme.palette.neutralLighter,
-                    color: theme.palette.neutralTertiary,
-                    cursor: 'not-allowed',
-                },
-            },
         },
     };
 };

@@ -11,11 +11,8 @@ import {
     IconButton,
     Spinner,
     SpinnerSize,
+    ProgressIndicator,
     useTheme,
-    Icon,
-    Dialog,
-    DialogType,
-    DialogFooter,
     PrimaryButton,
     DefaultButton,
 } from '@fluentui/react';
@@ -42,12 +39,19 @@ import {
     addMessage,
     clearMessages,
     clearLastSourcePart,
+    setError,
 } from '../../store/copilot.slice';
 import { sendCopilotMessage, UserContext } from '../../store/copilot.api';
 import { selectCopilotSuggestedPrompts } from '../../store/settings.slice';
-import { getSourcePartsFromState } from '../../store/manageMembership.slice';
 import { HRSourcePartSource } from '../../models/HRSourcePart';
 import { SourcePartType } from '../../models/SourcePartType';
+import { CopilotAvatar } from './CopilotAvatar';
+import { getSourcePartsFromState } from '../../store/manageMembership.slice';
+import { ISourcePart } from '../../models/ISourcePart';
+import { extractProposedMembership, formatMembershipDescription } from '../../utils/copilotMembershipSummary';
+
+const getMembershipSnapshot = (parts: ISourcePart[]) =>
+    JSON.stringify(parts.map(({ id, query }) => ({ id, query })));
 
 const getClassNames = classNamesFunction<
     ICopilotPanelStyleProps,
@@ -57,12 +61,26 @@ const getClassNames = classNamesFunction<
 export const CopilotPanelBase: React.FunctionComponent<ICopilotPanelProps> = (
     props: ICopilotPanelProps
 ) => {
-    const { className, styles, isOpen, dismissPanel, onSourcePartsGenerated, sourcePartId, hrAttributes } = props;
+    const {
+        className,
+        styles,
+        isOpen,
+        dismissPanel,
+        onSourcePartsGenerated,
+        sourcePartId,
+        hrAttributes,
+        experience = 'onboarding',
+    } = props;
+    const isUpdateExperience = experience === 'update';
     const strings = useStrings();
     const theme = useTheme();
     const dispatch = useDispatch<AppDispatch>();
 
-    const classNames: IProcessedStyleSet<ICopilotPanelStyles> = getClassNames(styles, { className, theme });
+    const classNames: IProcessedStyleSet<ICopilotPanelStyles> = getClassNames(styles, {
+        className,
+        theme,
+        experience,
+    });
 
     const messages = useSelector(selectCopilotMessages);
     const conversationId = useSelector(selectCopilotConversationId);
@@ -74,7 +92,7 @@ export const CopilotPanelBase: React.FunctionComponent<ICopilotPanelProps> = (
     const warning = useSelector(selectCopilotWarning);
     const sourceParts = useSelector(getSourcePartsFromState);
 
-    // Index of the most recent non-error message. Accept & Apply anchors here so a
+    // Index of the most recent non-error message. Apply & Review anchors here so a
     // previously-proposed change stays acceptable even after a failed turn — but only
     // when everything after it is an error (a later user/bot turn would move this index
     // forward, correctly retiring the offer).
@@ -86,23 +104,61 @@ export const CopilotPanelBase: React.FunctionComponent<ICopilotPanelProps> = (
     }, [messages]);
 
     const [inputValue, setInputValue] = useState('');
-    const [showResumeDialog, setShowResumeDialog] = useState(false);
+    const [showUpdateResumePrompt, setShowUpdateResumePrompt] = useState(false);
+    const [resumeMessageIndex, setResumeMessageIndex] = useState<number | null>(null);
+    const [membershipSummaryRequested, setMembershipSummaryRequested] = useState(false);
+    const [showMembershipSummaryActions, setShowMembershipSummaryActions] = useState(false);
+    const [isRefreshingMembership, setIsRefreshingMembership] = useState(false);
+    const [updateIntro, setUpdateIntro] = useState<'none' | 'reset'>('none');
+    const [appliedMembership, setAppliedMembership] = useState<{
+        summary: string;
+        isSummary: boolean;
+        snapshot: string;
+    } | null>(null);
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const inputRef = useRef<HTMLDivElement>(null);
     const wasLoadingRef = useRef(false);
     const wasOpenRef = useRef(false);
+    const applyGenerationRef = useRef(0);
 
-    // When the panel transitions from closed -> open and there are existing messages,
-    // ask the user whether to continue the previous conversation or start over.
+    // Updates always offer resume; onboarding offers it once a conversation exists.
     useEffect(() => {
-        if (isOpen && !wasOpenRef.current && messages.length > 0) {
-            setShowResumeDialog(true);
+        if (isOpen && !wasOpenRef.current) {
+            if (isUpdateExperience || appliedMembership || messages.length > 0) {
+                setUpdateIntro('none');
+                setResumeMessageIndex(messages.length);
+                setShowUpdateResumePrompt(true);
+                setShowMembershipSummaryActions(false);
+                const snapshot = getMembershipSnapshot(sourceParts);
+                const needsInitialDescription = isUpdateExperience && !appliedMembership &&
+                    messages.length === 0 && sourceParts.length > 0;
+                if ((needsInitialDescription || (appliedMembership && appliedMembership.snapshot !== snapshot)) && !isRefreshingMembership) {
+                    const generation = applyGenerationRef.current;
+                    setIsRefreshingMembership(true);
+                    dispatch(sendCopilotMessage({
+                        message: 'What is my current membership?',
+                        purpose: 'resumeMembershipSummary',
+                        hrAttributes,
+                    })).then(result => {
+                        if (generation !== applyGenerationRef.current) return;
+                        setIsRefreshingMembership(false);
+                        if (sendCopilotMessage.fulfilled.match(result)) {
+                            setAppliedMembership({
+                                summary: result.payload.message.content,
+                                isSummary: true,
+                                snapshot,
+                            });
+                        }
+                    });
+                }
+            }
         }
         if (!isOpen) {
-            setShowResumeDialog(false);
+            setShowUpdateResumePrompt(false);
+            setResumeMessageIndex(null);
         }
         wasOpenRef.current = isOpen;
-    }, [isOpen, messages.length]);
+    }, [isOpen, isUpdateExperience, messages.length, appliedMembership, sourceParts, isRefreshingMembership, dispatch, hrAttributes]);
 
     // Re-focus input after AI response completes
     useEffect(() => {
@@ -135,6 +191,7 @@ export const CopilotPanelBase: React.FunctionComponent<ICopilotPanelProps> = (
         return [];
     }, [suggestedPromptsJson]);
 
+    const showSuggestedPrompts = !membershipSummaryRequested && messages.length === 0 && suggestedPrompts.length > 0;
 
     // Scroll to bottom when new messages arrive
     useEffect(() => {
@@ -162,6 +219,8 @@ export const CopilotPanelBase: React.FunctionComponent<ICopilotPanelProps> = (
 
         dispatch(addMessage(userMessage));
         setInputValue('');
+        setShowUpdateResumePrompt(false);
+        setShowMembershipSummaryActions(false);
 
         const userContext: UserContext = {
             managerName: undefined,
@@ -180,15 +239,39 @@ export const CopilotPanelBase: React.FunctionComponent<ICopilotPanelProps> = (
         }
     }, [dispatch, isLoading, hrAttributes]);
 
-    const handleAcceptAndApply = useCallback(() => {
+    const handleAcceptAndApply = useCallback(async () => {
         if (lastSourceParts.length === 0 || !onSourcePartsGenerated) return;
-        
-        // Each source part already carries its own org leader info (useOrgStructure, managerToAutoSelect, depthToAutoSelect)
-        // from the backend response — no need to assemble managerInfo here
-        onSourcePartsGenerated(lastSourceParts);
-        dispatch(clearLastSourcePart());
-        dismissPanel();
-    }, [lastSourceParts, onSourcePartsGenerated, dismissPanel, dispatch]);
+
+        const response = messages[lastNonErrorIndex]?.content ?? '';
+        const generation = ++applyGenerationRef.current;
+        // Invalidates any in-flight refresh, whose handler would otherwise never clear this flag.
+        setIsRefreshingMembership(false);
+        try {
+            // Keep the proposal and panel until the apply succeeds so a failure can be retried.
+            const appliedParts = await onSourcePartsGenerated(lastSourceParts);
+            if (generation !== applyGenerationRef.current) return;
+            dispatch(clearLastSourcePart());
+            dismissPanel();
+            dispatch(addMessage({
+                id: uuidv4(),
+                role: 'user',
+                content: strings.Copilot.applyAndReview,
+                timestamp: new Date().toISOString(),
+                action: 'applyAndReview',
+            }));
+            // The existing response contract puts the complete proposal in this paragraph.
+            const summary = extractProposedMembership(response);
+            setAppliedMembership({
+                summary: summary ? formatMembershipDescription(summary) : response,
+                isSummary: !!summary,
+                snapshot: getMembershipSnapshot(appliedParts ?? lastSourceParts),
+            });
+        } catch (error) {
+            const message = error instanceof Error ? error.message : strings.Copilot.errorMessage;
+            dispatch(addMessage({ id: uuidv4(), role: 'assistant', content: message, timestamp: new Date().toISOString(), isError: true }));
+            dispatch(setError(message));
+        }
+    }, [lastSourceParts, onSourcePartsGenerated, dismissPanel, dispatch, messages, lastNonErrorIndex, strings.Copilot.errorMessage, strings.Copilot.applyAndReview]);
 
     const handleSuggestedPromptClick = useCallback((prompt: string, label: string) => {
         handleSendMessage(prompt, label);
@@ -202,9 +285,46 @@ export const CopilotPanelBase: React.FunctionComponent<ICopilotPanelProps> = (
     }, [handleSendMessage, inputValue]);
 
     const handleNewConversation = useCallback(() => {
+        const generation = ++applyGenerationRef.current;
         dispatch(clearMessages());
         setInputValue('');
-    }, [dispatch]);
+        setShowUpdateResumePrompt(false);
+        setResumeMessageIndex(null);
+        setIsRefreshingMembership(false);
+        setUpdateIntro('reset');
+        const hasMembership = sourceParts.length > 0;
+        const reusableMembership = hasMembership && appliedMembership?.isSummary &&
+            appliedMembership.snapshot === getMembershipSnapshot(sourceParts)
+            ? appliedMembership
+            : null;
+        setAppliedMembership(reusableMembership);
+        setMembershipSummaryRequested(hasMembership);
+        setShowMembershipSummaryActions(hasMembership);
+        if (reusableMembership) {
+            dispatch(addMessage({
+                id: uuidv4(),
+                role: 'assistant',
+                content: `**${strings.Copilot.currentMembership}**\n${reusableMembership.summary}`,
+                timestamp: new Date().toISOString(),
+                isMembershipSummary: true,
+            }));
+        } else if (hasMembership) {
+            const snapshot = getMembershipSnapshot(sourceParts);
+            dispatch(sendCopilotMessage({
+                message: 'What is my current membership?',
+                purpose: 'membershipSummary',
+                hrAttributes,
+            })).then(result => {
+                if (generation === applyGenerationRef.current && sendCopilotMessage.fulfilled.match(result)) {
+                    setAppliedMembership({
+                        summary: result.payload.message.content,
+                        isSummary: true,
+                        snapshot,
+                    });
+                }
+            });
+        }
+    }, [dispatch, sourceParts, appliedMembership, hrAttributes, strings.Copilot.currentMembership]);
 
     const copiedTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const isMountedRef = useRef(true);
@@ -276,36 +396,34 @@ export const CopilotPanelBase: React.FunctionComponent<ICopilotPanelProps> = (
         }
     }, [messages, conversationId, error, warning]);
 
-    const handleResumeStartOver = useCallback(() => {
-        dispatch(clearMessages());
-        setInputValue('');
-        setShowResumeDialog(false);
-    }, [dispatch]);
-
     const handleResumeContinue = useCallback(() => {
-        setShowResumeDialog(false);
+        setShowUpdateResumePrompt(false);
+        setShowMembershipSummaryActions(false);
+        inputRef.current?.querySelector('textarea')?.focus();
     }, []);
 
-    const renderBotAvatar = () => (
-        <div className={classNames.botAvatar} style={{ position: 'relative' }}>
-            <Icon iconName="Contact" style={{ color: '#ffffff', fontSize: '14px' }} />
-            <svg
-                width="14" height="14"
-                viewBox="0 0 16 16"
-                fill="none"
-                style={{ position: 'absolute', top: '-5px', right: '-5px' }}
-            >
-                <path className={classNames.sparkleStar1} d="M8 4 L9 7 L12 8 L9 9 L8 12 L7 9 L4 8 L7 7 Z" fill="#0078d4" />
-                <path className={classNames.sparkleStar2} d="M13 1 L13.5 2.5 L15 3 L13.5 3.5 L13 5 L12.5 3.5 L11 3 L12.5 2.5 Z" fill="#0078d4" />
-            </svg>
+    const renderBotAvatar = () => <CopilotAvatar />;
+
+    const renderResumeActions = () => (
+        <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+            <PrimaryButton
+                text={strings.Copilot.resumeContinue}
+                onClick={handleResumeContinue}
+                styles={{ root: { flex: 1 } }}
+            />
+            <DefaultButton
+                text={strings.Copilot.newConversation}
+                onClick={handleNewConversation}
+                styles={{ root: { flex: 1 } }}
+            />
         </div>
     );
 
     const onRenderHeader = (): JSX.Element => {
         return (
-            <div className={classNames.header}>
+            <div className={classNames.header} data-testid="copilot-header">
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: isUpdateExperience ? '10px' : '6px' }}>
                         {renderBotAvatar()}
                         <div>
                             <div className={classNames.headerTitle}>
@@ -314,19 +432,10 @@ export const CopilotPanelBase: React.FunctionComponent<ICopilotPanelProps> = (
                             <div className={classNames.headerSubtitle}>
                                 {strings.Copilot?.subtitle || 'Your AI-powered membership builder'}
                             </div>
-                            <div
-                                className={classNames.headerSubtitle}
-                                data-testid="copilot-mode-indicator"
-                                style={{ fontStyle: 'italic' }}
-                            >
-                                {sourceParts.length > 0
-                                    ? (strings.Copilot?.modeRefining || 'Refining your existing query')
-                                    : (strings.Copilot?.modeNew || 'Creating a new query')}
-                            </div>
                         </div>
                     </div>
                     <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
-                        <IconButton
+                        {!isUpdateExperience && (messages.length > 0 || error || warning) && <IconButton
                             iconProps={{ 
                                 iconName: copyStatus === 'success' ? 'CheckMark' 
                                     : copyStatus === 'error' ? 'StatusErrorFull' 
@@ -353,7 +462,7 @@ export const CopilotPanelBase: React.FunctionComponent<ICopilotPanelProps> = (
                                     backgroundColor: theme.palette.neutralLighter,
                                 },
                             }}
-                        />
+                        />}
                         {/* Screen reader announcement for copy status */}
                         <span 
                             role="status" 
@@ -377,21 +486,26 @@ export const CopilotPanelBase: React.FunctionComponent<ICopilotPanelProps> = (
                                     : ''}
                         </span>
                         {messages.length > 0 && (
-                            <IconButton
-                                iconProps={{ iconName: 'EditNote' }}
-                                title={strings.Copilot?.newConversation || 'New conversation'}
-                                ariaLabel={strings.Copilot?.newConversation || 'New conversation'}
+                            <DefaultButton
+                                iconProps={{ iconName: 'CommentAdd' }}
+                                text={strings.Copilot.newConversation}
+                                ariaLabel={strings.Copilot.newConversation}
                                 onClick={handleNewConversation}
                                 styles={{
                                     root: {
-                                        color: theme.palette.neutralSecondary,
-                                        height: '28px',
-                                        width: '28px',
+                                        height: 28,
+                                        width: 92,
+                                        minWidth: 92,
+                                        flexShrink: 0,
+                                        padding: '0 8px',
+                                        borderColor: theme.palette.themePrimary,
+                                        borderRadius: 16,
+                                        fontSize: 12,
+                                        color: theme.palette.neutralPrimary,
+                                        backgroundColor: theme.palette.themeLighter,
                                     },
-                                    rootHovered: {
-                                        color: theme.palette.themePrimary,
-                                        backgroundColor: theme.palette.neutralLighter,
-                                    },
+                                    label: { fontSize: 12, fontWeight: 400, whiteSpace: 'nowrap', margin: 0 },
+                                    icon: { color: theme.palette.themePrimary, margin: '0 4px 0 0' },
                                 }}
                             />
                         )}
@@ -418,47 +532,90 @@ export const CopilotPanelBase: React.FunctionComponent<ICopilotPanelProps> = (
         );
     };
 
-    const renderWelcomeMessage = (): JSX.Element => {
+    const renderWelcomeMessage = (): JSX.Element | null => {
+        if (membershipSummaryRequested) return null;
+        if (isUpdateExperience) {
+            if (updateIntro === 'none' || showUpdateResumePrompt) return null;
+
+            return (
+                <div
+                    className={`${classNames.messageRow} ${classNames.botMessage}`}
+                    data-testid="copilot-update-welcome"
+                >
+                    {renderBotAvatar()}
+                    <div style={{ width: '100%' }}>
+                        <div className={classNames.welcomeCard}>
+                            <div style={{ fontWeight: 600, fontSize: '14px', lineHeight: '24px' }}>
+                                {strings.Copilot.updateWelcomeTitle}
+                            </div>
+                            <div style={{ fontSize: '14px', lineHeight: '24px' }}>
+                                {strings.Copilot.updateWelcomeDescription}
+                            </div>
+                        </div>
+                        {updateIntro === 'reset' && showSuggestedPrompts && (
+                            <div className={classNames.suggestedPromptsContainer}>
+                                {suggestedPrompts.map((prompt) => (
+                                    <button
+                                        key={prompt.id}
+                                        className={classNames.suggestedPromptButton}
+                                        onClick={() => handleSuggestedPromptClick(prompt.prompt, prompt.label)}
+                                        disabled={isLoading}
+                                        type="button"
+                                    >
+                                        {prompt.label}
+                                    </button>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+                </div>
+            );
+        }
+
         return (
-            <div className={`${classNames.messageRow} ${classNames.botMessage}`} style={{ width: '90%', maxWidth: '90%' }}>
+            <div
+                className={`${classNames.messageRow} ${classNames.botMessage}`}
+                style={{ flexShrink: 0 }}
+                data-testid="copilot-onboarding-welcome"
+            >
                 {renderBotAvatar()}
-                <div>
+                <div style={{ width: '100%' }}>
                     <div className={classNames.welcomeCard}>
-                        <div style={{ fontWeight: 600, fontSize: '14px', marginBottom: '4px', color: theme.palette.neutralPrimary }}>
+                        <div style={{ fontWeight: 600, fontSize: '14px', lineHeight: '24px', color: theme.palette.neutralPrimary }}>
                             {strings.Copilot?.welcomeMessage || "Hi, I'm GMM Copilot."}
                         </div>
-                        <div style={{ fontSize: '13px', lineHeight: '18px', color: theme.palette.neutralSecondary }}>
+                        <div style={{ fontSize: '14px', lineHeight: '24px', color: theme.palette.neutralPrimary }}>
                             {strings.Copilot?.welcomeDescription || "Describe your membership and I'll build the rules for you to review. You'll have everything ready in no time."}
                         </div>
                         <div className={classNames.welcomeStepList}>
                             <div className={classNames.welcomeStep}>
                                 <div className={classNames.welcomeStepNumber}>1</div>
                                 <div className={classNames.welcomeStepText}>
-                                    <strong>{strings.Copilot?.welcomeStep1Bold || 'Tell me what you need.'}</strong>
+                                    <span>{strings.Copilot?.welcomeStep1Bold || 'Tell me what you need.'}</span>
                                     {strings.Copilot?.welcomeStep1 || ' Pick a suggestion below to start with or type your own membership description.'}
                                 </div>
                             </div>
                             <div className={classNames.welcomeStep}>
                                 <div className={classNames.welcomeStepNumber}>2</div>
                                 <div className={classNames.welcomeStepText}>
-                                    <strong>{strings.Copilot?.welcomeStep2Bold || "I'll ask a few questions"}</strong>
+                                    <span>{strings.Copilot?.welcomeStep2Bold || "I'll ask a few questions"}</span>
                                     {strings.Copilot?.welcomeStep2 || ' to fill in any details needed.'}
                                 </div>
                             </div>
                             <div className={classNames.welcomeStep}>
                                 <div className={classNames.welcomeStepNumber}>3</div>
                                 <div className={classNames.welcomeStepText}>
-                                    <strong>{strings.Copilot?.welcomeStep3Bold || 'Review and confirm.'}</strong>
+                                    <span>{strings.Copilot?.welcomeStep3Bold || 'Review and confirm.'}</span>
                                     {strings.Copilot?.welcomeStep3 || " I'll show all the filters built based on your description before anything is saved."}
                                 </div>
                             </div>
                         </div>
-                    </div>
-                    {suggestedPrompts.length > 0 && (
-                    <div className={classNames.suggestedPromptsContainer}>
-                        <div className={classNames.suggestedPromptsHeader}>
-                            {strings.Copilot?.tryOneOfTheseToGetStarted || 'TRY ONE OF THESE TO GET STARTED'}
+                        <div className={classNames.welcomeDisclaimer} data-testid="copilot-disclaimer">
+                            {strings.Copilot.welcomeDisclaimer}
                         </div>
+                    </div>
+                    {showSuggestedPrompts && (
+                    <div className={classNames.suggestedPromptsContainer}>
                         {suggestedPrompts.map((prompt) => (
                             <button
                                 key={prompt.id}
@@ -472,6 +629,46 @@ export const CopilotPanelBase: React.FunctionComponent<ICopilotPanelProps> = (
                         ))}
                     </div>
                     )}
+                </div>
+            </div>
+        );
+    };
+
+    const renderUpdateResumePrompt = (): JSX.Element | null => {
+        if (resumeMessageIndex === null) {
+            return null;
+        }
+
+        return (
+            <div
+                className={`${classNames.messageRow} ${classNames.botMessage}`}
+                data-testid="copilot-update-resume"
+            >
+                {renderBotAvatar()}
+                <div className={classNames.messageContent} style={{ width: '100%', boxSizing: 'border-box' }}>
+                    <div style={{ marginBottom: 8 }}><strong>{strings.Copilot?.updateResumeTitle || 'Welcome back.'}</strong></div>
+                    {isRefreshingMembership
+                        ? <ProgressIndicator label={strings.Copilot.gettingCurrentMembership} />
+                        : appliedMembership && (
+                        <div data-testid="copilot-applied-summary">
+                            {appliedMembership.snapshot !== getMembershipSnapshot(sourceParts)
+                                ? strings.Copilot.appliedMembershipChanged
+                                : <>
+                                    <div><strong>{appliedMembership.isSummary
+                                        ? strings.Copilot.currentMembership
+                                        : strings.Copilot.lastAppliedResponse}</strong></div>
+                                    <div data-testid="copilot-membership-description" style={{ fontWeight: appliedMembership.isSummary ? 700 : undefined }}>
+                                        {renderMarkdown(appliedMembership.summary)}
+                                    </div>
+                                </>}
+                        </div>
+                    )}
+                    {!isRefreshingMembership && <div>
+                        {appliedMembership
+                            ? strings.Copilot.appliedResumeDescription
+                            : strings.Copilot.updateResumeDescription}
+                    </div>}
+                    {showUpdateResumePrompt && !isRefreshingMembership && renderResumeActions()}
                 </div>
             </div>
         );
@@ -575,48 +772,65 @@ export const CopilotPanelBase: React.FunctionComponent<ICopilotPanelProps> = (
 
         const isBot = message.role === 'assistant';
         const isLastBotMessage = isBot && index === lastNonErrorIndex;
-        // Show Accept & Apply only if this is the last bot message, we have a resulting query,
+        // Show Apply & Review only if this is the last bot message, we have a resulting query,
         // AND the server actually applied at least one operation this turn. A no-op turn
         // (describe/clarify/refuse) returns the query unchanged with no applied operations, so
-        // offering "Accept & Apply" there would re-apply an identical query and mislead the user.
-        const canAccept = isLastBotMessage && lastSourceParts.length > 0 && lastAppliedOperations.length > 0 && !isLoading;
+        // offering "Apply & Review" there would re-apply an identical query and mislead the user.
+        const canAccept = !message.isMembershipSummary && isLastBotMessage && lastSourceParts.length > 0 && lastAppliedOperations.length > 0 && !isLoading;
         
-        const displayContent = message.content;
+        const isApplyAction = message.action === 'applyAndReview';
+        const compactUserMessage = isUpdateExperience || isApplyAction;
+        const displayContent = isApplyAction ? strings.Copilot.applyAndReview : message.content;
         
         return (
             <div
                 key={message.id}
                 className={`${classNames.messageRow} ${isBot ? classNames.botMessage : classNames.userMessage}`}
+                data-testid={message.isMembershipSummary ? 'copilot-current-membership' : isApplyAction ? 'copilot-apply-action' : undefined}
             >
                 {isBot && (
                     renderBotAvatar()
                 )}
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxWidth: isBot ? '85%' : undefined }}>
+                <div
+                    style={{
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: '8px',
+                        width: isBot ? '100%' : undefined,
+                    }}
+                >
                     <div 
                         className={classNames.messageContent} 
                         style={!isBot ? { 
-                            backgroundColor: theme.palette.themePrimary, 
-                            color: theme.palette.white,
-                            borderRadius: '20px',
-                            padding: '10px 20px',
+                            backgroundColor: compactUserMessage ? theme.palette.themeLighter : theme.palette.themePrimary,
+                            color: compactUserMessage ? theme.palette.neutralPrimary : theme.palette.white,
+                            borderRadius: compactUserMessage ? '6px' : '20px',
+                            padding: compactUserMessage ? '4px 8px' : '10px 20px',
                             fontSize: '14px',
-                            fontWeight: 500,
+                            lineHeight: compactUserMessage ? '20px' : undefined,
+                            fontWeight: compactUserMessage ? 400 : 500,
                             wordBreak: 'break-word'
                         } : {}}
                     >
-                        {isBot ? renderMarkdown(displayContent) : displayContent}
-                    </div>
-                    {canAccept && (
-                        <>
-                            <button
+                        {message.isMembershipSummary
+                            ? <div data-testid="copilot-membership-description" style={{ fontWeight: 700 }}>
+                                {renderMarkdown(displayContent)}
+                            </div>
+                            : isBot ? renderMarkdown(displayContent) : displayContent}
+                        {message.isMembershipSummary && (
+                            <>
+                                <div>{strings.Copilot.appliedResumeDescription}</div>
+                                {showMembershipSummaryActions && isLastBotMessage && renderResumeActions()}
+                            </>
+                        )}
+                        {canAccept && (
+                            <PrimaryButton
                                 className={classNames.inlineAcceptButton}
+                                text={strings.Copilot.applyAndReview}
                                 onClick={handleAcceptAndApply}
-                            >
-                                <Icon iconName="CheckMark" />
-                                {strings.Copilot?.acceptAndApply || 'Accept & Apply'}
-                            </button>
-                        </>
-                    )}
+                            />
+                        )}
+                    </div>
                 </div>
             </div>
         );
@@ -624,50 +838,50 @@ export const CopilotPanelBase: React.FunctionComponent<ICopilotPanelProps> = (
 
     return (
         <Panel
-            type={PanelType.medium}
+            type={PanelType.custom}
+            customWidth="529px"
             isOpen={isOpen}
             onDismiss={dismissPanel}
             hasCloseButton={false}
             onRenderHeader={onRenderHeader}
             isLightDismiss
             styles={{
-                main: { maxWidth: '480px' },
+                main: {
+                    width: '529px',
+                    maxWidth: '100vw',
+                },
+                commands: { paddingTop: 0 },
                 scrollableContent: { display: 'flex', flexDirection: 'column', height: '100%' },
                 content: { display: 'flex', flexDirection: 'column', flex: 1, padding: 0, overflow: 'hidden' },
                 header: { padding: 0 },
             }}
         >
-            <Dialog
-                hidden={!showResumeDialog}
-                onDismiss={handleResumeContinue}
-                dialogContentProps={{
-                    type: DialogType.normal,
-                    title: strings.Copilot?.resumeDialogTitle,
-                    subText: strings.Copilot?.resumeDialogDescription,
-                }}
-                modalProps={{ isBlocking: true }}
-            >
-                <DialogFooter>
-                    <DefaultButton
-                        onClick={handleResumeStartOver}
-                        text={strings.Copilot?.resumeDialogStartOver}
-                    />
-                    <PrimaryButton
-                        onClick={handleResumeContinue}
-                        text={strings.Copilot?.resumeDialogContinue}
-                    />
-                </DialogFooter>
-            </Dialog>
             <div className={classNames.root}>
                 <div className={classNames.chatContainer}>
-                    <div className={classNames.messagesContainer}>
+                    <div className={classNames.messagesContainer} data-testid="copilot-transcript">
                         {renderWelcomeMessage()}
-                        {messages.map((msg, idx) => renderMessage(msg, idx))}
+                        {messages.map((msg, idx) => (
+                            <React.Fragment key={msg.id}>
+                                {idx === resumeMessageIndex && renderUpdateResumePrompt()}
+                                {renderMessage(msg, idx)}
+                            </React.Fragment>
+                        ))}
+                        {resumeMessageIndex === messages.length && renderUpdateResumePrompt()}
 
-                        {isLoading && (
-                            <div className={classNames.loadingIndicator}>
-                                <Spinner size={SpinnerSize.small} />
-                                <span>{strings.Copilot?.thinking || 'Thinking...'}</span>
+                        {isLoading && !isRefreshingMembership && (
+                            <div
+                                className={classNames.loadingIndicator}
+                                role="status"
+                            >
+                                {membershipSummaryRequested && messages.length === 0
+                                    ? <ProgressIndicator
+                                        label={strings.Copilot.gettingCurrentMembership}
+                                        styles={{ root: { width: '100%' } }}
+                                    />
+                                    : <>
+                                        <Spinner size={SpinnerSize.small} />
+                                        <span>{strings.Copilot?.thinking || 'Thinking...'}</span>
+                                    </>}
                             </div>
                         )}
                         {warning && !error && (
@@ -680,7 +894,7 @@ export const CopilotPanelBase: React.FunctionComponent<ICopilotPanelProps> = (
                         )}
                         <div ref={messagesEndRef} />
                     </div>
-                    <div className={classNames.inputContainer}>
+                    <div className={classNames.inputContainer} data-testid="copilot-composer">
                         <TextField
                             elementRef={inputRef}
                             className={classNames.inputField}
@@ -690,6 +904,7 @@ export const CopilotPanelBase: React.FunctionComponent<ICopilotPanelProps> = (
                             onKeyDown={handleInputKeyDown}
                             disabled={isLoading}
                             multiline
+                            rows={1}
                             autoAdjustHeight
                             resizable={false}
                             borderless
@@ -698,12 +913,19 @@ export const CopilotPanelBase: React.FunctionComponent<ICopilotPanelProps> = (
                                     border: `1px solid ${theme.palette.neutralTertiary}`,
                                     borderRadius: '4px',
                                     padding: '4px 8px',
+                                    paddingRight: '40px',
+                                    borderBottomColor: isUpdateExperience ? undefined : theme.palette.themePrimary,
+                                    minHeight: '40px',
+                                    boxSizing: 'border-box',
                                 },
+                                fieldGroup: { minHeight: 0 },
                                 field: {
                                     fontSize: '14px',
                                     minHeight: '20px',
                                     maxHeight: '100px',
                                     overflow: 'auto',
+                                    lineHeight: '20px',
+                                    padding: '4px 2px',
                                 },
                             }}
                         />
@@ -716,14 +938,16 @@ export const CopilotPanelBase: React.FunctionComponent<ICopilotPanelProps> = (
                             disabled={isLoading || !inputValue.trim()}
                             styles={{
                                 root: {
-                                    backgroundColor: theme.palette.themePrimary,
+                                    backgroundColor: 'transparent',
                                     borderRadius: '4px',
+                                    marginLeft: '-40px',
+                                    zIndex: 1,
                                 },
                                 rootDisabled: {
-                                    backgroundColor: theme.palette.neutralLighter,
+                                    backgroundColor: 'transparent',
                                 },
                                 icon: {
-                                    color: theme.palette.white,
+                                    color: theme.palette.neutralSecondary,
                                 },
                             }}
                         />
