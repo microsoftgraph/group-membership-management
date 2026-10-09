@@ -129,7 +129,7 @@ function Set-ADFManagedIdentityRoles
     $servicePrincipalsToBeGrantedStorageRoles = @($dataFactoryPrincipal, $azureUserReaderPrincipal)
     $dataRGName = "$SolutionAbbreviation-data-$EnvironmentAbbreviation"
     $dataKeyVaultName = "$SolutionAbbreviation-data-$EnvironmentAbbreviation"
-    $secretNames = @("adfStorageAccountName", "sqlMembershipStorageAccountName")
+    $secretNames = @("adfStorageAccountName")
 
     foreach($secret in $secretNames)
     {
