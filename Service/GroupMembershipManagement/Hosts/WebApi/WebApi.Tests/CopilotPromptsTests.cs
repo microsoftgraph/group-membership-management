@@ -67,6 +67,30 @@ namespace WebApi.Tests
         }
 
         [TestMethod]
+        public void ChatPrompt_UsesApplyAndReviewConsistently()
+        {
+            Assert.IsFalse(CopilotPrompts.ChatPrompt.Contains("Accept & Apply"));
+            Assert.IsTrue(CopilotPrompts.NonEditablePrefix.Contains("Always refer to the UI action as **Apply & Review**."));
+            Assert.IsTrue(CopilotPrompts.DefaultInstructions.Contains("Click **Apply & Review**"));
+        }
+
+        [TestMethod]
+        public void ChatPrompt_BoldsCompleteMembershipDefinitionsInExamples()
+        {
+            Assert.IsTrue(CopilotPrompts.NonEditablePrefix.Contains("Bold the entire proposed membership definition, not just the label"));
+            var definitions = System.Text.RegularExpressions.Regex.Matches(
+                CopilotPrompts.ChatPrompt, @"\\n\\n\*\*Proposed Membership:\*\* (.*?)(?=\\n\\n|"")");
+
+            Assert.AreEqual(8, definitions.Count);
+            foreach (System.Text.RegularExpressions.Match definition in definitions)
+            {
+                var content = definition.Groups[1].Value;
+                Assert.IsTrue(content.StartsWith("**") && content.EndsWith("**"),
+                    $"The complete proposed membership definition must be bold: {content}");
+            }
+        }
+
+        [TestMethod]
         public void ChatPrompt_PlaceholderCanBeReplaced()
         {
             var attributes = "- Attr1 (Description 1)\n- Attr2 (Description 2)";
