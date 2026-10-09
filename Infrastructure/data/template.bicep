@@ -656,7 +656,7 @@ param featureFlags object = {
   enableOpenAI: false
 }
 
-@description('Deploy GMM across two Azure regions. This switch enables the SyncJobs secondary SQL server and read replica, the auto-failover group, and the ADF database partner in that failover group.')
+@description('Deploy GMM across two Azure regions. This switch enables the secondary SQL topology and its secondary-region prerequisites resource group and network security perimeter.')
 param enableMultiRegion bool = false
 
 @description('Azure region that hosts the secondary-region resources. Required when enableMultiRegion is true.')
@@ -669,11 +669,36 @@ var networkingResourceGroupName = '${solutionAbbreviation}-networking-${environm
 // Fixed naming token for the secondary region. Must match the value in sqlServer.bicep.
 var secondaryRegionToken = 'sec'
 var secondaryDataResourceGroupName = '${solutionAbbreviation}-data-${environmentAbbreviation}-${secondaryRegionToken}'
+var secondaryPrereqsResourceGroupName = '${solutionAbbreviation}-${prereqsResourceGroupClassification}-${environmentAbbreviation}-${secondaryRegionToken}'
+var secondaryNspName = '${solutionAbbreviation}-nsp-${environmentAbbreviation}-${secondaryRegionToken}'
 var secondarySqlServerName = '${solutionAbbreviation}-data-${environmentAbbreviation}-${secondaryRegionToken}'
 var secondaryReplicaSqlServerName = '${solutionAbbreviation}-data-${environmentAbbreviation}-${secondaryRegionToken}-R'
 var secondaryReplicaSqlDatabaseName = '${solutionAbbreviation}-data-${environmentAbbreviation}-R'
 var primaryDatabaseName = '${solutionAbbreviation}-data-${environmentAbbreviation}'
 var adfDatabaseName = '${solutionAbbreviation}-data-${environmentAbbreviation}-adf'
+
+module secondaryNetworkSecurityPerimeter 'networkSecurityPerimeter.bicep' = if (enableMultiRegion) {
+  name: 'secondaryNetworkSecurityPerimeterTemplate'
+  scope: resourceGroup(secondaryPrereqsResourceGroupName)
+  params: {
+    nspName: secondaryNspName
+    nspLocation: secondaryLocation
+  }
+}
+
+module secondaryNetworkSecurityPerimeterProfiles 'networkSecurityPerimeterProfiles.bicep' = if (enableMultiRegion) {
+  name: 'secondaryNetworkSecurityPerimeterProfilesTemplate'
+  scope: resourceGroup(secondaryPrereqsResourceGroupName)
+  params: {
+    nspName: secondaryNspName
+    nspProfileNames: [
+      'sql'
+    ]
+  }
+  dependsOn: [
+    secondaryNetworkSecurityPerimeter
+  ]
+}
 
 // The secondary servers live in another resource group, so they are deployed as a module. This
 // module must not depend on the sqlServer module: sqlServer consumes its server id, so a reverse
@@ -689,6 +714,9 @@ module sqlServerSecondary 'sqlServerSecondary.bicep' = if (enableMultiRegion) {
     tenantId: tenantId
     logAnalyticsWorkspaceId: logAnalyticsTemplate.outputs.resourceId
   }
+  dependsOn: [
+    secondaryNetworkSecurityPerimeterProfiles
+  ]
 }
 
 module sqlServer 'sqlServer.bicep' = {
@@ -764,6 +792,34 @@ module secondaryPartnerDatabases 'secondaryPartnerDatabases.bicep' = if (enableM
     adfDBSqlSkuCapacity: adfDBSqlSkuCapacity
   }
   dependsOn: [
+    sqlServerSecondary
+  ]
+}
+
+module secondarySqlServerNspAssociation 'networkSecurityPerimeterResourceAssociation.bicep' = if (enableMultiRegion) {
+  name: 'secondarySqlServerNspAssociationTemplate'
+  scope: resourceGroup(secondaryPrereqsResourceGroupName)
+  params: {
+    nspName: secondaryNspName
+    profileName: 'sql'
+    resourceId: sqlServerSecondary.outputs.serverId
+  }
+  dependsOn: [
+    secondaryNetworkSecurityPerimeterProfiles
+    sqlServerSecondary
+  ]
+}
+
+module secondaryReplicaSqlServerNspAssociation 'networkSecurityPerimeterResourceAssociation.bicep' = if (enableMultiRegion) {
+  name: 'secondaryReplicaSqlServerNspAssociationTemplate'
+  scope: resourceGroup(secondaryPrereqsResourceGroupName)
+  params: {
+    nspName: secondaryNspName
+    profileName: 'sql'
+    resourceId: sqlServerSecondary.outputs.replicaServerId
+  }
+  dependsOn: [
+    secondaryNetworkSecurityPerimeterProfiles
     sqlServerSecondary
   ]
 }

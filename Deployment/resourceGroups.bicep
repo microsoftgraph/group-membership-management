@@ -14,6 +14,7 @@ param secondaryLocation string = ''
 // templates, which compose the secondary resource group name the same way.
 var secondaryRegionToken = 'sec'
 var secondaryDataResourceGroupName = '${dataResourceGroupName}-${secondaryRegionToken}'
+var secondaryPrereqsResourceGroupName = '${prereqsResourceGroupName}-${secondaryRegionToken}'
 
 resource prereqsResourceGroup 'Microsoft.Resources/resourceGroups@2023-07-01' = {
   name: prereqsResourceGroupName
@@ -37,6 +38,11 @@ resource networkingResourceGroup 'Microsoft.Resources/resourceGroups@2023-07-01'
 
 resource secondaryDataResourceGroup 'Microsoft.Resources/resourceGroups@2023-07-01' = if (enableMultiRegion) {
   name: secondaryDataResourceGroupName
+  location: secondaryLocation
+}
+
+resource secondaryPrereqsResourceGroup 'Microsoft.Resources/resourceGroups@2023-07-01' = if (enableMultiRegion) {
+  name: secondaryPrereqsResourceGroupName
   location: secondaryLocation
 }
 

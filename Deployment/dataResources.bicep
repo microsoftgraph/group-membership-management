@@ -45,7 +45,7 @@ param featureFlags object = {
 @description('When true, networking resources (private endpoints, DCR, DCR association) are skipped.')
 param skipNetworkingDeployment bool = true
 
-@description('Deploy GMM across two Azure regions. This switch enables the SyncJobs secondary SQL server and read replica, the auto-failover group, and the ADF database partner in that failover group.')
+@description('Deploy GMM across two Azure regions. This switch enables the secondary SQL topology and its secondary-region prerequisites resource group and network security perimeter.')
 param enableMultiRegion bool = false
 
 @description('Azure region that hosts the secondary-region resources. Required when enableMultiRegion is true.')
