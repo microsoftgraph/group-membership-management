@@ -111,6 +111,16 @@ async function addFirstRule(page: Page) {
 test.beforeEach(async ({ page }) => {
   await setupMockPage(page);
   await page.goto('/ManageMembership');
+  // These tests cover the rule-card editor itself; Copilot's onboarding choices replace the rules header and empty state.
+  await page.evaluate(async () => {
+    const response = await fetch('/api/v1/settings/IsAICopilotEnabled', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify('false'),
+    });
+    if (!response.ok) throw new Error(`Mock settings update failed: ${response.status}`);
+  });
+  await page.reload();
   await page.waitForTimeout(1000);
   await navigateToMembershipConfiguration(page);
 });

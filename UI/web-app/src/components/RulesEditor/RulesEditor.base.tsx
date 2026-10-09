@@ -7,6 +7,7 @@ import {
   classNamesFunction,
   IProcessedStyleSet,
   PrimaryButton,
+  Icon,
 } from '@fluentui/react';
 import { useTheme } from '@fluentui/react/lib/Theme';
 import { v4 as uuidv4 } from 'uuid';
@@ -30,6 +31,10 @@ import { ISourcePart } from '../../models/ISourcePart';
 import { SourcePartType } from '../../models/SourcePartType';
 import { HRSourcePartSource } from '../../models/HRSourcePart';
 import { CopilotTriggerButton } from '../CopilotTriggerButton';
+import { selectShowCopilotOnboardingChoices } from '../../store/copilot.slice';
+import lightbulb from '../../assets/copilot-lightbulb.svg';
+import sparkle from '../../assets/copilot-entry-sparkle.svg';
+import addIcon from '../../assets/copilot-entry-add.svg';
 
 const getClassNames = classNamesFunction<RulesEditorStyleProps, RulesEditorStyles>();
 
@@ -62,6 +67,7 @@ export const RulesEditorBase: React.FunctionComponent<RulesEditorProps> = (
   const sourceParts = useSelector(getSourcePartsFromState);
   const isJobWriter = useSelector(selectIsJobWriter);
   const canEdit = isEditable && isJobWriter;
+  const showOnboardingChoices = useSelector(selectShowCopilotOnboardingChoices);
 
   const [selectedPartId, setSelectedPartId] = useState<string | null>(null);
 
@@ -135,10 +141,52 @@ export const RulesEditorBase: React.FunctionComponent<RulesEditorProps> = (
 
   return (
     <div className={classNames.root}>
+      {showOnboardingChoices ? (
+        <div className={classNames.onboardingChoices} data-testid="copilot-onboarding-choices">
+          <div className={classNames.recommendation}>
+            <img src={lightbulb} alt="" width={20} height={20} />
+            <div>
+              <h3 className={classNames.recommendationTitle}>{labels.copilotGettingStartedTitle}</h3>
+              <div>{labels.copilotGettingStartedDescription}</div>
+            </div>
+          </div>
+          <div className={classNames.choiceCards}>
+            <section className={classNames.choiceCard} aria-label={strings.Copilot.triggerButton}>
+              <div className={classNames.choiceCopy}>
+                <h4 className={classNames.choiceTitle}>{strings.Copilot.triggerButton}</h4>
+                <div>{labels.copilotChoiceDescription}</div>
+              </div>
+              <CopilotTriggerButton
+                disabled={!canEdit}
+                icon={<img src={sparkle} alt="" width={16} height={16} />}
+              />
+            </section>
+            <section className={classNames.choiceCard} aria-label={labels.manualChoiceTitle}>
+              <div className={classNames.choiceCopy}>
+                <h4 className={classNames.choiceTitle}>{labels.manualChoiceTitle}</h4>
+                <div>{labels.manualChoiceDescription}</div>
+              </div>
+              <PrimaryButton
+                className={classNames.addButton}
+                data-testid="add-rule-button"
+                onClick={handleAdd}
+                disabled={!canEdit}
+              >
+                <img src={addIcon} alt="" width={20} height={20} />
+                {labels.addRule}
+              </PrimaryButton>
+            </section>
+          </div>
+          <div className={classNames.switchHint}>
+            <Icon iconName="Info" aria-hidden="true" />
+            <span>{labels.copilotSwitchHint}</span>
+          </div>
+        </div>
+      ) : (<>
       <div className={classNames.headerBar}>
         <div className={classNames.description}>{labels.rulesDescription}</div>
         <div className={classNames.headerActions}>
-          <CopilotTriggerButton />
+          <CopilotTriggerButton disabled={!canEdit} />
           <PrimaryButton
             className={classNames.addButton}
             data-testid="add-rule-button"
@@ -184,6 +232,7 @@ export const RulesEditorBase: React.FunctionComponent<RulesEditorProps> = (
           )}
         </>
       )}
+      </>)}
     </div>
   );
 };

@@ -90,6 +90,7 @@ import { DestinationType } from '../../models/DestinationType';
 import { ChannelOnboardingStatusRequest } from '../../models/ChannelOnboardingStatusRequest';
 import { GroupSettings } from '../../models/GroupSettings';
 import { NewGroupType } from '../../models/NewGroupType';
+import { selectShowCopilotOnboardingChoices } from '../../store/copilot.slice';
 
 const getClassNames = classNamesFunction<
   IManageMembershipStyleProps,
@@ -234,6 +235,7 @@ export const ManageMembershipBase: React.FunctionComponent<IManageMembershipProp
   const businessJustification: string = useSelector(manageMembershipBusinessJustification) ?? '';
   const isBusinessJustificationProvided = businessJustification !== '';
   const sourceParts = useSelector(getSourcePartsFromState);
+  const showCopilotOnboardingChoices = useSelector(selectShowCopilotOnboardingChoices) && !isAdvancedViewActive;
   const aiGeneratedTitles = useSelector(selectTitles);
 
   const finalQuery: SyncJobQuery = useMemo(() => {
@@ -592,7 +594,7 @@ export const ManageMembershipBase: React.FunctionComponent<IManageMembershipProp
           />}
           {currentStep === OnboardingSteps.MembershipConfiguration && <OnboardingStep
             stepTitle={strings.ManageMembership.labels.step2title}
-            stepDescription={strings.ManageMembership.labels.step2description}
+            stepDescription={showCopilotOnboardingChoices ? '' : strings.ManageMembership.labels.step2description}
             headerAction={
               <Stack
                 horizontal

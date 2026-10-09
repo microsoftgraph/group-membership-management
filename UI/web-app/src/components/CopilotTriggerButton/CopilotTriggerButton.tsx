@@ -8,9 +8,8 @@ import { mergeStyles, useTheme } from '@fluentui/react';
 import { SparkleIcon } from '../SparkleIcon';
 import { AppDispatch } from '../../store';
 import { useStrings } from '../../store/hooks';
-import { selectIsJobWriter, selectIsAIOnboardingChat } from '../../store/roles.slice';
-import { selectIsAICopilotEnabled } from '../../store/settings.slice';
-import { openPanel, selectCopilotMessages } from '../../store/copilot.slice';
+import { selectIsJobWriter } from '../../store/roles.slice';
+import { openPanel, selectCopilotMessages, selectIsCopilotAvailable } from '../../store/copilot.slice';
 
 const getCopilotButtonClass = (theme: ReturnType<typeof useTheme>) => mergeStyles({
   display: 'flex',
@@ -57,13 +56,15 @@ const getCopilotButtonClass = (theme: ReturnType<typeof useTheme>) => mergeStyle
   },
 });
 
-export const CopilotTriggerButton: React.FunctionComponent = () => {
+export const CopilotTriggerButton: React.FunctionComponent<{
+  disabled?: boolean;
+  icon?: React.ReactNode;
+}> = ({ disabled = false, icon }) => {
   const dispatch = useDispatch<AppDispatch>();
   const strings = useStrings();
   const theme = useTheme();
   const isJobWriter = useSelector(selectIsJobWriter);
-  const isAIOnboardingChat = useSelector(selectIsAIOnboardingChat);
-  const isAICopilotEnabled = useSelector(selectIsAICopilotEnabled);
+  const isCopilotAvailable = useSelector(selectIsCopilotAvailable);
   const hasCopilotHistory = useSelector(selectCopilotMessages).length > 0;
 
   // Derive edit-state synchronously from the route (mirrors the parent's jobId derivation)
@@ -74,19 +75,19 @@ export const CopilotTriggerButton: React.FunctionComponent = () => {
   const locationState = location.state as { jobId?: string } | undefined;
   const isEditingExistingJob = !!(locationState?.jobId ?? urlJobId);
 
-  // Only offer Copilot during a new onboarding, never when updating an existing job.
-  if (!isAIOnboardingChat || isAICopilotEnabled === false || isEditingExistingJob) return null;
+  if (!isCopilotAvailable) return null;
 
   return (
     <button
       onClick={() => dispatch(openPanel())}
-      disabled={!isJobWriter}
+      type="button"
+      disabled={disabled || !isJobWriter}
       data-testid="copilot-trigger-button"
       className={getCopilotButtonClass(theme)}
     >
-      <SparkleIcon />
+      {icon ?? <SparkleIcon />}
       <span>
-        {hasCopilotHistory
+        {hasCopilotHistory || isEditingExistingJob
           ? (strings.Copilot?.triggerButtonResume || 'Let Copilot resume building it for you')
           : (strings.Copilot?.triggerButton || 'Let Copilot build it for you')}
       </span>

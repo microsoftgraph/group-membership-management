@@ -13,6 +13,14 @@ export type RulesEditorStyles = {
   emptyState: IStyle;
   emptyTitle: IStyle;
   emptyDescription: IStyle;
+  onboardingChoices: IStyle;
+  recommendation: IStyle;
+  recommendationTitle: IStyle;
+  choiceCards: IStyle;
+  choiceCard: IStyle;
+  choiceCopy: IStyle;
+  choiceTitle: IStyle;
+  switchHint: IStyle;
 };
 
 export type RulesEditorStyleProps = {

@@ -157,6 +157,7 @@ export const MembershipConfigurationBase: React.FunctionComponent<MembershipConf
         return next;
       });
       dispatch(closePanel());
+      return merged;
     } finally {
       // Resolution + commit are done (even if a lookup threw): let the overlay dismiss.
       setCopilotOrgLeadersResolved(true);
@@ -362,6 +363,7 @@ export const MembershipConfigurationBase: React.FunctionComponent<MembershipConf
       )}
       <CopilotPanel
         isOpen={isCopilotPanelOpen}
+        experience={isEditingExistingJob ? 'update' : 'onboarding'}
         dismissPanel={() => dispatch(closePanel())}
         onSourcePartsGenerated={handleCopilotSourcePartsGenerated}
         hrAttributes={hrAttributes?.filter(attr => attr.enabled).map(attr => ({
