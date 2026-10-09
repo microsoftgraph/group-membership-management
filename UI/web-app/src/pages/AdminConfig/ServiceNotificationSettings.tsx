@@ -2,7 +2,19 @@
 // Licensed under the MIT license.
 
 import React from 'react';
-import { DatePicker, MessageBar, MessageBarType, TextField, Toggle } from '@fluentui/react';
+import {
+  DatePicker,
+  Icon,
+  IRenderFunction,
+  ITextFieldProps,
+  Label,
+  MessageBar,
+  MessageBarType,
+  Stack,
+  TextField,
+  Toggle,
+  TooltipHost,
+} from '@fluentui/react';
 import { AlertBannerConfig } from '../../models/AlertBannerConfig';
 import { ServiceNotificationSettingsProps } from './AdminConfig.types';
 import type { IStrings } from '../../services/localization';
@@ -32,6 +44,10 @@ export const validateServiceNotification = (
     errors.message = errorStrings.messageTooLong;
   }
 
+  if ((config.linkText ?? '').length > MAX_NOTIFICATION_MESSAGE_LENGTH) {
+    errors.linkText = errorStrings.linkTextTooLong;
+  }
+
   const start = toDate(config.startDate);
   const end = toDate(config.endDate);
   if (!start || !end) {
@@ -59,15 +75,51 @@ export const ServiceNotificationSettings: React.FunctionComponent<ServiceNotific
 ) => {
   const { classNames, strings, config, setConfig, errors, saveError, canEdit } = props;
   const labels = strings.ServiceNotifications.labels;
+  const tooltips = strings.ServiceNotifications.tooltips;
 
   const update = (partial: Partial<AlertBannerConfig>) => {
     setConfig((previous) => ({ ...previous, ...partial }));
   };
 
+  // Info icon with a tooltip describing the validation rules for a field.
+  // The icon carries a generic accessible name so it does not collide with the
+  // field's own label; the validation text is exposed as the tooltip content
+  // (announced via aria-describedby when the icon is focused).
+  const infoIcon = (tooltip: string): JSX.Element => (
+    <TooltipHost content={tooltip} calloutProps={{ gapSpace: 0 }}>
+      <Icon
+        iconName="Info"
+        tabIndex={0}
+        aria-label={tooltips.infoAriaLabel}
+        className={classNames.serviceNotificationInfoIcon}
+      />
+    </TooltipHost>
+  );
+
+  // onRenderLabel that keeps the control's native label (and its accessibility
+  // association) and appends the validation info icon beside it.
+  const renderLabelWithInfo =
+    <T,>(tooltip: string): IRenderFunction<T> =>
+    (labelProps, defaultRender) =>
+      (
+        <Stack horizontal verticalAlign="center" tokens={{ childrenGap: 4 }}>
+          {defaultRender?.(labelProps)}
+          {infoIcon(tooltip)}
+        </Stack>
+      );
+
+  // DatePicker and Toggle do not expose onRenderLabel, so build a label row with
+  // the validation info icon that can be rendered above/alongside them.
+  const labelWithInfo = (label: string, tooltip: string, required?: boolean): JSX.Element => (
+    <Stack horizontal verticalAlign="center" tokens={{ childrenGap: 4 }}>
+      <Label required={required}>{label}</Label>
+      {infoIcon(tooltip)}
+    </Stack>
+  );
+
   return (
     <div className={classNames.serviceNotificationCard}>
       <div className={classNames.serviceNotificationTitle}>{labels.serviceDisruptionTitle}</div>
-      <div className={classNames.serviceNotificationDescription}>{labels.serviceDisruptionDescription}</div>
 
       {saveError && (
         <MessageBar
@@ -79,22 +131,26 @@ export const ServiceNotificationSettings: React.FunctionComponent<ServiceNotific
         </MessageBar>
       )}
 
-      <Toggle
-        className={classNames.serviceNotificationToggle}
-        label={labels.enabled}
-        checked={config.isEnabled}
-        onText={labels.enabledOn}
-        offText={labels.enabledOff}
-        inlineLabel={false}
-        disabled={!canEdit}
-        onChange={(_event, checked) => update({ isEnabled: !!checked })}
-      />
+      <Stack className={classNames.serviceNotificationToggle} tokens={{ childrenGap: 4 }}>
+        {labelWithInfo(labels.enabled, tooltips.enabled)}
+        <Toggle
+          ariaLabel={labels.enabled}
+          checked={config.isEnabled}
+          onText={labels.enabledOn}
+          offText={labels.enabledOff}
+          inlineLabel={false}
+          disabled={!canEdit}
+          onChange={(_event, checked) => update({ isEnabled: !!checked })}
+        />
+      </Stack>
 
       <TextField
         label={labels.message}
+        onRenderLabel={renderLabelWithInfo<ITextFieldProps>(tooltips.message)}
         placeholder={labels.messagePlaceholder}
         value={config.message}
         maxLength={MAX_NOTIFICATION_MESSAGE_LENGTH}
+        required={config.isEnabled}
         errorMessage={errors.message}
         styles={{ fieldGroup: classNames.serviceNotificationTextFieldGroup }}
         disabled={!canEdit}
@@ -104,14 +160,18 @@ export const ServiceNotificationSettings: React.FunctionComponent<ServiceNotific
       <div className={classNames.serviceNotificationFieldRow}>
         <TextField
           label={labels.linkLabel}
+          onRenderLabel={renderLabelWithInfo<ITextFieldProps>(tooltips.linkLabel)}
           placeholder={labels.linkLabelPlaceholder}
           value={config.linkText ?? ''}
+          maxLength={MAX_NOTIFICATION_MESSAGE_LENGTH}
+          errorMessage={errors.linkText}
           styles={{ fieldGroup: classNames.serviceNotificationTextFieldGroup }}
           disabled={!canEdit}
           onChange={(_event, newValue) => update({ linkText: newValue ?? '' })}
         />
         <TextField
           label={labels.linkUrl}
+          onRenderLabel={renderLabelWithInfo<ITextFieldProps>(tooltips.linkUrl)}
           placeholder={labels.linkUrlPlaceholder}
           value={config.linkUrl ?? ''}
           errorMessage={errors.linkUrl}
@@ -122,22 +182,30 @@ export const ServiceNotificationSettings: React.FunctionComponent<ServiceNotific
       </div>
 
       <div className={classNames.serviceNotificationFieldRow}>
-        <DatePicker
-          label={labels.startDate}
-          placeholder={labels.startDatePlaceholder}
-          value={toDate(config.startDate)}
-          textField={{ styles: { fieldGroup: classNames.serviceNotificationTextFieldGroup } }}
-          disabled={!canEdit}
-          onSelectDate={(date) => date && update({ startDate: date.toISOString() })}
-        />
-        <DatePicker
-          label={labels.endDate}
-          placeholder={labels.endDatePlaceholder}
-          value={toDate(config.endDate)}
-          textField={{ styles: { fieldGroup: classNames.serviceNotificationTextFieldGroup } }}
-          disabled={!canEdit}
-          onSelectDate={(date) => date && update({ endDate: date.toISOString() })}
-        />
+        <Stack tokens={{ childrenGap: 4 }}>
+          {labelWithInfo(labels.startDate, tooltips.startDate, config.isEnabled)}
+          <DatePicker
+            ariaLabel={labels.startDate}
+            placeholder={labels.startDatePlaceholder}
+            value={toDate(config.startDate)}
+            isRequired={config.isEnabled}
+            textField={{ styles: { fieldGroup: classNames.serviceNotificationTextFieldGroup } }}
+            disabled={!canEdit}
+            onSelectDate={(date) => date && update({ startDate: date.toISOString() })}
+          />
+        </Stack>
+        <Stack tokens={{ childrenGap: 4 }}>
+          {labelWithInfo(labels.endDate, tooltips.endDate, config.isEnabled)}
+          <DatePicker
+            ariaLabel={labels.endDate}
+            placeholder={labels.endDatePlaceholder}
+            value={toDate(config.endDate)}
+            isRequired={config.isEnabled}
+            textField={{ styles: { fieldGroup: classNames.serviceNotificationTextFieldGroup } }}
+            disabled={!canEdit}
+            onSelectDate={(date) => date && update({ endDate: date.toISOString() })}
+          />
+        </Stack>
       </div>
 
       {errors.dates && (

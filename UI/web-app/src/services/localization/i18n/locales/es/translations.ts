@@ -290,7 +290,7 @@ export const strings: IStrings = {
       labels: {
         general: "General",
         featureControl: "Control de Funciones",
-        featureControlDescription: "Habilite o deshabilite la funcionalidad disponible para los usuarios en toda la experiencia de Membership Manager.",
+        featureControlDescription: "Habilite o deshabilite la funcionalidad disponible para los usuarios en toda la experiencia del servicio.",
         userResources: "Recursos para Usuarios",
         reviewOwnSubmissionTitle: "Permisos de los Verificadores de Solicitud",
         reviewOwnSubmissionDescription: "¿Pueden los Verificadores de Solicitud aceptar o rechazar su propia solicitud?",
@@ -305,9 +305,8 @@ export const strings: IStrings = {
     ServiceNotifications: {
       labels: {
         serviceNotifications: "Notificaciones de Servicio",
-        description: "Configure las notificaciones que se muestran a los usuarios durante interrupciones del servicio, cortes u otros eventos que puedan afectar la disponibilidad de Membership Manager.",
-        serviceDisruptionTitle: "Notificación de Interrupción del Servicio",
-        serviceDisruptionDescription: "Configure la notificación que se muestra en la página principal cuando ocurre una interrupción o corte del servicio. Use este mensaje para informar a los usuarios sobre el problema y dirigirlos a información adicional.",
+        description: "Configure el banner de anuncios que se muestra en la parte superior de la página principal. Úselo para interrupciones y cortes del servicio, o para anuncios más generales, como mantenimiento planificado, nuevas funciones u otras actualizaciones del servicio. Establezca una fecha de inicio y de fin para controlar cuándo aparece.",
+        serviceDisruptionTitle: "Banner de Notificación",
         enabled: "Habilitado",
         enabledOn: "Sí",
         enabledOff: "No",
@@ -322,9 +321,19 @@ export const strings: IStrings = {
         endDate: "Fecha de Fin (UTC)",
         endDatePlaceholder: "Seleccione la fecha en la que la notificación deja de mostrarse.",
       },
+      tooltips: {
+        enabled: "Cuando está activado, el banner se mostrará.",
+        message: "Obligatorio cuando el banner está habilitado. Máximo 250 caracteres.",
+        linkLabel: "Opcional. El texto en el que se puede hacer clic que se muestra para el enlace. Máximo 250 caracteres.",
+        linkUrl: "Opcional. Debe ser una URL absoluta que comience con https://.",
+        startDate: "Obligatorio. Se interpreta como UTC y debe ser anterior a la fecha de fin. El banner se muestra a partir de esta fecha (inclusive).",
+        endDate: "Obligatorio. Se interpreta como UTC y debe ser posterior a la fecha de inicio. El banner se oculta a partir de esta fecha (exclusivo).",
+        infoAriaLabel: "Detalles de validación",
+      },
       errors: {
         messageRequired: "El mensaje de la notificación es obligatorio cuando la notificación está habilitada.",
         messageTooLong: "El mensaje de la notificación debe tener 250 caracteres o menos.",
+        linkTextTooLong: "El texto del enlace debe tener 250 caracteres o menos.",
         datesRequired: "Se requieren fechas de inicio y fin válidas.",
         dateOrder: "La fecha de inicio debe ser anterior a la fecha de fin.",
         linkUrlInvalid: "La URL del enlace debe comenzar con https://.",

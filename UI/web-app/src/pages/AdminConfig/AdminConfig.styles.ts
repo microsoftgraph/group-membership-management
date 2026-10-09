@@ -296,10 +296,6 @@ export const getStyles = (props: AdminConfigStyleProps): AdminConfigStyles => {
             fontWeight: 600,
             fontSize: 16,
         },
-        serviceNotificationDescription: {
-            fontSize: 14,
-            fontWeight: 400,
-        },
         serviceNotificationToggle: {
             marginTop: 12,
             marginBottom: 0,
@@ -324,6 +320,10 @@ export const getStyles = (props: AdminConfigStyleProps): AdminConfigStyles => {
         },
         serviceNotificationErrorMessage: {
             marginTop: 8,
+        },
+        serviceNotificationInfoIcon: {
+            fontSize: 14,
+            color: theme.palette.themePrimary,
         },
     };
 };

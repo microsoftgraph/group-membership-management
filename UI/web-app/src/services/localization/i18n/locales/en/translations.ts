@@ -289,7 +289,7 @@ export const strings: IStrings = {
       labels: {
         general: "General",
         featureControl: "Feature Control",
-        featureControlDescription: "Enable or disable functionality available to users throughout the Membership Manager experience.",
+        featureControlDescription: "Enable or disable functionality available to users throughout the service experience.",
         userResources: "User Resources",
         reviewOwnSubmissionTitle: "Submission Reviewers permissions",
         reviewOwnSubmissionDescription: "Can submission reviewers review their own submissions?",
@@ -304,9 +304,8 @@ export const strings: IStrings = {
     ServiceNotifications: {
       labels: {
         serviceNotifications: "Service Notifications",
-        description: "Configure notifications displayed to users during service disruptions, outages, or other events that may affect Membership Manager availability.",
-        serviceDisruptionTitle: "Service Disruption Notification",
-        serviceDisruptionDescription: "Configure the notification displayed on the home page when a service disruption or outage occurs. Use this message to inform users about the issue and direct them to additional information.",
+        description: "Configure the announcement banner shown at the top of the home page. Use it for service disruptions and outages or broader announcements\u2014such as planned maintenance, new features, or other updates to the service. Set a start and end date to control when it appears.",
+        serviceDisruptionTitle: "Notification Banner",
         enabled: "Enabled",
         enabledOn: "On",
         enabledOff: "Off",
@@ -321,9 +320,19 @@ export const strings: IStrings = {
         endDate: "End Date (UTC)",
         endDatePlaceholder: "Select the date the notification stops displaying.",
       },
+      tooltips: {
+        enabled: "When on, the banner will be displayed.",
+        message: "Required when the banner is enabled. Maximum 250 characters.",
+        linkLabel: "Optional. The clickable text shown for the link. Maximum 250 characters.",
+        linkUrl: "Optional. Must be an absolute URL that starts with https://.",
+        startDate: "Required. Interpreted as UTC and must be earlier than the end date. The banner shows starting from this date (inclusive).",
+        endDate: "Required. Interpreted as UTC and must be later than the start date. The banner hides starting from this date (exclusive).",
+        infoAriaLabel: "Validation details",
+      },
       errors: {
         messageRequired: "Notification message is required when the notification is enabled.",
         messageTooLong: "Notification message must be 250 characters or fewer.",
+        linkTextTooLong: "Link label must be 250 characters or fewer.",
         datesRequired: "Valid start and end dates are required.",
         dateOrder: "Start date must be earlier than end date.",
         linkUrlInvalid: "Link URL must start with https://.",

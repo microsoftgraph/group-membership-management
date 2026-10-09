@@ -316,6 +316,11 @@ namespace WebApi.Controllers.v1.Settings
                 return $"Message must be {AlertBannerMaxMessageLength} characters or fewer.";
             }
 
+            if (!string.IsNullOrEmpty(config.LinkText) && config.LinkText.Length > AlertBannerMaxMessageLength)
+            {
+                return $"Link text must be {AlertBannerMaxMessageLength} characters or fewer.";
+            }
+
             if (config.StartDate >= config.EndDate)
             {
                 return "Start date must be earlier than end date.";

@@ -44,7 +44,7 @@ test.describe('Admin Tests', () => {
 
     await page.getByRole('tab', { name: 'General', exact: true }).click();
 
-    await expect(page.getByText('Service Disruption Notification')).toBeVisible({ timeout: 20000 });
+    await expect(page.getByText('Notification Banner')).toBeVisible({ timeout: 20000 });
     await expect(page.getByLabel('Notification Message')).toBeVisible();
     await expect(page.getByLabel('Link Label')).toBeVisible();
     await expect(page.getByLabel('Link URL')).toBeVisible();

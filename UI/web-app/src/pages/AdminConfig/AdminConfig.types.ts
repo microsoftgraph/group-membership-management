@@ -54,11 +54,11 @@ export type AdminConfigStyles = {
   operationsGrid: IStyle;
   serviceNotificationCard: IStyle;
   serviceNotificationTitle: IStyle;
-  serviceNotificationDescription: IStyle;
   serviceNotificationToggle: IStyle;
   serviceNotificationFieldRow: IStyle;
   serviceNotificationTextFieldGroup: IStyle;
   serviceNotificationErrorMessage: IStyle;
+  serviceNotificationInfoIcon: IStyle;
 };
 
 export type AdminConfigStyleProps = {

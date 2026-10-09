@@ -303,7 +303,6 @@ export type IStrings = {
         serviceNotifications: string;
         description: string;
         serviceDisruptionTitle: string;
-        serviceDisruptionDescription: string;
         enabled: string;
         enabledOn: string;
         enabledOff: string;
@@ -318,9 +317,19 @@ export type IStrings = {
         endDate: string;
         endDatePlaceholder: string;
       },
+      tooltips: {
+        enabled: string;
+        message: string;
+        linkLabel: string;
+        linkUrl: string;
+        startDate: string;
+        endDate: string;
+        infoAriaLabel: string;
+      },
       errors: {
         messageRequired: string;
         messageTooLong: string;
+        linkTextTooLong: string;
         datesRequired: string;
         dateOrder: string;
         linkUrlInvalid: string;
