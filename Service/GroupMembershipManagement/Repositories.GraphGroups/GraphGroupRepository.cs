@@ -3,7 +3,9 @@
 using Microsoft.ApplicationInsights;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Options;
 using Microsoft.Graph;
+using Common.DependencyInjection;
 using Models;
 using Models.Entities;
 using Repositories.Contracts;
@@ -25,24 +27,28 @@ namespace Repositories.GraphGroups
         private readonly GraphGroupMembershipUpdater _graphGroupMembershipUpdater;
         private readonly GraphGroupDeltaReader _graphGroupDeltaReader;
         private readonly GraphGroupPlacesReader _graphGroupPlacesReader;
+        private readonly GraphCredentials _graphCredentials;
 
         public Guid RunId { get; set; }
 
         public GraphGroupRepository(GraphServiceClient graphServiceClient,
                                     TelemetryClient telemetryClient,
-                                    ILoggerFactory loggerFactory = null)
-            : this(graphServiceClient, telemetryClient, null, loggerFactory)
+                                    ILoggerFactory loggerFactory = null,
+                                    IOptions<GraphCredentials> graphCredentials = null)
+            : this(graphServiceClient, telemetryClient, null, loggerFactory, graphCredentials)
         {
         }
 
         public GraphGroupRepository(GraphServiceClient graphServiceClient,
                                     TelemetryClient telemetryClient,
                                     IGraphRepositorySettings graphRepositorySettings,
-                                    ILoggerFactory loggerFactory = null)
+                                    ILoggerFactory loggerFactory = null,
+                                    IOptions<GraphCredentials> graphCredentials = null)
         {
             if (graphServiceClient == null) throw new ArgumentNullException(nameof(graphServiceClient));
             _ = telemetryClient ?? throw new ArgumentNullException(nameof(telemetryClient));
             _graphGroupRepositoryLogger = loggerFactory?.CreateLogger<GraphGroupRepository>() ?? NullLogger<GraphGroupRepository>.Instance;
+            _graphCredentials = graphCredentials?.Value;
 
             var graphGroupMetricTracker = new GraphGroupMetricTracker(
                 graphServiceClient,
@@ -211,9 +217,37 @@ namespace Repositories.GraphGroups
             return await _graphGroupOwnerReader.GetGroupIdsOwnedByServicePrincipalAsync(servicePrincipalObjectId, ResolveRunId());
         }
 
-        public async Task<AzureADGroup> CreateGroupFromUI(string groupName, Guid groupOwnerId, string groupAlias)
+        public async Task<AzureADGroup> CreateGroupFromUI(string groupName, Guid groupOwnerId, string groupAlias, NewGroupType groupType = NewGroupType.Microsoft365)
         {
-            return await _graphGroupInformationReader.CreateGroupFromUIAsync(groupName, groupOwnerId, groupAlias, ResolveRunId());
+            var runId = ResolveRunId();
+            var gmmOwnerObjectId = await ResolveGmmOwnerObjectIdAsync(runId);
+
+            return await _graphGroupInformationReader.CreateGroupFromUIAsync(groupName, groupOwnerId, groupAlias, gmmOwnerObjectId, groupType, runId);
+        }
+
+        /// <summary>
+        /// Resolves GMM's owner object id using the same application id lookup as the
+        /// destination ownership check.
+        /// </summary>
+        private async Task<string> ResolveGmmOwnerObjectIdAsync(Guid? runId)
+        {
+            var gmmOwnerAppId = _graphCredentials?.GMMOwnerAppId;
+
+            if (!string.IsNullOrWhiteSpace(gmmOwnerAppId))
+            {
+                var servicePrincipalObjectId = await _graphGroupOwnerReader.GetServicePrincipalObjectIdAsync(gmmOwnerAppId, runId);
+
+                if (!string.IsNullOrWhiteSpace(servicePrincipalObjectId))
+                {
+                    return servicePrincipalObjectId;
+                }
+            }
+
+            _graphGroupRepositoryLogger.LogErrorWithRunId(runId,
+                "Unable to resolve GMM's own directory object id for the group creation owner binding. "
+                + $"Application id available for the service principal lookup: {!string.IsNullOrWhiteSpace(gmmOwnerAppId)}.");
+
+            throw new InvalidOperationException("Unable to resolve GMM's own directory object id for the group creation owner binding.");
         }
 
         public async Task<List<AzureADUser>> GetTenantUsers(int userCount)

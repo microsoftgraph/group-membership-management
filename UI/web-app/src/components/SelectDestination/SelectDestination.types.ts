@@ -11,6 +11,7 @@ import {
 } from '@fluentui/react';
 import type React from 'react';
 import { Destination } from '../../models/Destination';
+import { NewGroupType } from '../../models/NewGroupType';
 
 export interface ISelectDestinationStyles {
   root: IStyle;
@@ -54,5 +55,5 @@ export interface ISelectDestinationProps
   onSearchDestinationChange: (selectedDestinations: IPersonaProps[] | undefined) => void;
   onSearchChannelChange: (selectedDestinations: IPersonaProps[] | undefined) => void;
   selectedDestination?: Destination;
-  onGroupCreated: (groupName: string, groupAlias: string) => void;
+  onGroupCreated: (groupName: string, groupAlias: string, groupType: NewGroupType) => void;
 };

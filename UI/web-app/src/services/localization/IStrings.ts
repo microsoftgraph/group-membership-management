@@ -901,6 +901,11 @@ export type IStrings = {
       hiddenFromExchangeClientsToolTip: string
       welcomeMessageEnabled: string;
       welcomeMessageEnabledToolTip: string;
+      groupType: string;
+      groupTypeMicrosoft365: string;
+      groupTypeMicrosoft365Description: string;
+      groupTypeSecurity: string;
+      groupTypeSecurityDescription: string;
     }
   };
   excludePrefix: string;

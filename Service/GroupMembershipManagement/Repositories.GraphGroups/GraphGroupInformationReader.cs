@@ -726,18 +726,50 @@ namespace Repositories.GraphGroups
             _graphGroupInformationRepositoryLogger.LogDebugWithRunId(runId, $"Finished adding owners to group {groupId}.");
         }
 
-        public async Task<AzureADGroup> CreateGroupFromUIAsync(string newGroupName, Guid groupOwnerId, string newGroupAlias, Guid? runId)
+        public async Task<AzureADGroup> CreateGroupFromUIAsync(string newGroupName, Guid groupOwnerId, string newGroupAlias, string gmmOwnerObjectId, NewGroupType groupType, Guid? runId)
         {
+            if (string.IsNullOrWhiteSpace(gmmOwnerObjectId))
+            {
+                // Creating the group without GMM as an owner would leave a group GMM cannot manage,
+                // so fail before any Graph write rather than producing one.
+                throw new ArgumentException("GMM's own directory object id is required to create a group.", nameof(gmmOwnerObjectId));
+            }
+
             try
             {
+                var isSecurityGroup = groupType == NewGroupType.Security;
+
                 var groupDefinition = new Group
                 {
                     DisplayName = newGroupName,
-                    MailEnabled = false,
-                    SecurityEnabled = true,
+                    // A Microsoft 365 group is mail enabled and carries the Unified group type.
+                    // A security group is neither: it is mail disabled with no group types at all.
+                    // Graph requires a mail nickname either way.
+                    MailEnabled = !isSecurityGroup,
+                    SecurityEnabled = isSecurityGroup,
                     Description = $"{newGroupName}",
-                    GroupTypes = new List<string> { "Unified" },
-                    MailNickname = newGroupAlias ?? Guid.NewGuid().ToString()
+                    GroupTypes = isSecurityGroup ? new List<string>() : new List<string> { "Unified" },
+                    MailNickname = MailNicknameBuilder.Build(newGroupAlias, newGroupName)
+                };
+
+                // The SDK has no typed property for owners@odata.bind and does not serialize the
+                // Owners navigation property on create, so the binding goes through AdditionalData.
+                var ownerBindings = new List<string>
+                {
+                    $"https://graph.microsoft.com/v1.0/directoryObjects/{groupOwnerId}"
+                };
+
+                var gmmOwnerBinding = $"https://graph.microsoft.com/v1.0/directoryObjects/{gmmOwnerObjectId}";
+
+                // Graph rejects a repeated binding.
+                if (!ownerBindings.Contains(gmmOwnerBinding, StringComparer.OrdinalIgnoreCase))
+                {
+                    ownerBindings.Add(gmmOwnerBinding);
+                }
+
+                groupDefinition.AdditionalData = new Dictionary<string, object>
+                {
+                    ["owners@odata.bind"] = ownerBindings
                 };
 
                 Group createdGroup = null;
@@ -770,46 +802,22 @@ namespace Repositories.GraphGroups
                     return null;
                 }
 
-                var ownerResponseHandler = new NativeResponseHandler();
+                var createdGroupId = new Guid(createdGroup.Id);
 
-                await _graphServiceClient.Groups[createdGroup.Id]
-                                            .Owners
-                                            .Ref
-                                            .PostAsync(new ReferenceCreate
-                                            {
-                                                OdataId = $"https://graph.microsoft.com/v1.0/directoryObjects/{groupOwnerId}"
-                                            }, requestConfiguration =>
-                                            {
-                                                requestConfiguration.Options.Add(new ResponseHandlerOption { ResponseHandler = ownerResponseHandler });
-                                            });
-
-                var ownerResponse = ownerResponseHandler.Value as HttpResponseMessage;
-
-                if (ownerResponse != null)
+                // Graph has already confirmed the group exists by returning 201, but the new object is not
+                // immediately readable from every replica. Reading it back is only a best-effort sanity check:
+                // reporting failure here would leave a group behind that the caller believes was never created.
+                if (!await WaitForGroupToBecomeReadableAsync(createdGroupId, runId))
                 {
-                    var ownerHeaders = ownerResponse.Headers.ToImmutableDictionary(x => x.Key, x => x.Value);
-                    await _graphGroupMetricTracker.TrackMetricsAsync(ownerHeaders, QueryType.Other, runId);
-
-                    if (!ownerResponse.IsSuccessStatusCode)
-                    {
-                        throw new HttpRequestException($"Failed to assign owner to newly created group. Status code: {ownerResponse.StatusCode}");
-                    }
+                    _graphGroupInformationRepositoryLogger.LogWarningWithRunId(runId,
+                        $"Group {createdGroupId} was created but is not readable yet after {GroupReadbackMaxAttempts} attempts. Continuing based on the successful create response.");
                 }
 
-
-                if (await GroupExistsAsync(new Guid(createdGroup.Id), runId))
+                return new AzureADGroup
                 {
-                    return new AzureADGroup
-                    {
-                        ObjectId = new Guid(createdGroup.Id),
-                        Name = createdGroup.DisplayName
-                    };
-                }
-                else
-                {
-                    _graphGroupInformationRepositoryLogger.LogErrorWithRunId(runId, "Error creating group");
-                    return null;
-                }
+                    ObjectId = createdGroupId,
+                    Name = createdGroup.DisplayName
+                };
             }
             catch (ODataError ex)
             {
@@ -822,6 +830,44 @@ namespace Repositories.GraphGroups
                 _graphGroupInformationRepositoryLogger.LogErrorWithRunId(runId, $"Error creating group: {e}", e);
                 return null;
             }
+        }
+
+        private const int GroupReadbackMaxAttempts = 5;
+        private static readonly TimeSpan GroupReadbackInitialDelay = TimeSpan.FromMilliseconds(500);
+        private static readonly TimeSpan GroupReadbackMaxDelay = TimeSpan.FromSeconds(2);
+
+        /// <summary>
+        /// Polls Graph until a freshly created group becomes readable, to absorb directory replication delay.
+        /// Never throws: verification is advisory, so a transient read failure must not be mistaken for a
+        /// failed creation.
+        /// </summary>
+        private async Task<bool> WaitForGroupToBecomeReadableAsync(Guid groupId, Guid? runId)
+        {
+            var delay = GroupReadbackInitialDelay;
+
+            for (var attempt = 1; attempt <= GroupReadbackMaxAttempts; attempt++)
+            {
+                try
+                {
+                    if (await GroupExistsAsync(groupId, runId))
+                    {
+                        return true;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _graphGroupInformationRepositoryLogger.LogWarningWithRunId(runId,
+                        $"Attempt {attempt} to read back group {groupId} failed: {ex.Message}", ex);
+                }
+
+                if (attempt < GroupReadbackMaxAttempts)
+                {
+                    await Task.Delay(delay);
+                    delay = TimeSpan.FromTicks(Math.Min(delay.Ticks * 2, GroupReadbackMaxDelay.Ticks));
+                }
+            }
+
+            return false;
         }
 
         public async Task<List<AzureADGroup>> GetGroupsAsync(List<Guid> groupIds, Guid? runId)

@@ -89,6 +89,7 @@ import { selectIsBusinessJustificationRequired } from '../../store/settings.slic
 import { DestinationType } from '../../models/DestinationType';
 import { ChannelOnboardingStatusRequest } from '../../models/ChannelOnboardingStatusRequest';
 import { GroupSettings } from '../../models/GroupSettings';
+import { NewGroupType } from '../../models/NewGroupType';
 
 const getClassNames = classNamesFunction<
   IManageMembershipStyleProps,
@@ -321,9 +322,9 @@ export const ManageMembershipBase: React.FunctionComponent<IManageMembershipProp
     }
   };
 
-  const handleGroupCreated = async (groupName: string, groupAlias: string) => {
+  const handleGroupCreated = async (groupName: string, groupAlias: string, groupType: NewGroupType) => {
     await dispatch(setCreatedGroupName(groupName));
-    await dispatch(createGroup({ groupName, groupAlias }));
+    await dispatch(createGroup({ groupName, groupAlias, groupType }));
   };
 
   useEffect(() => {

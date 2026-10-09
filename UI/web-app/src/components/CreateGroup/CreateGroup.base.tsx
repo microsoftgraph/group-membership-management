@@ -3,14 +3,15 @@
 
 import * as React from 'react';
 import { useState, useEffect } from 'react';
-import { ActionButton, MessageBar, MessageBarType, Stack, TextField } from '@fluentui/react';
+import { ActionButton, ChoiceGroup, IChoiceGroupOption, MessageBar, MessageBarType, Stack, TextField } from '@fluentui/react';
 import { IProcessedStyleSet, classNamesFunction, useTheme } from '@fluentui/react';
 import { ICreateGroupProps, ICreateGroupStyleProps, ICreateGroupStyles } from './CreateGroup.types';
 import { useStrings } from '../../store/hooks';
 import { useDispatch, useSelector } from 'react-redux';
-import { manageMembershipCreatedGroupId, manageMembershipCreateGroupErrorMessage, manageMembershipCreateGroupLoading, setCreateGroupErrorMessage } from '../../store/manageMembership.slice';
+import { manageMembershipCreatedGroupId, manageMembershipCreateGroupErrorMessage, manageMembershipCreateGroupLoading, setCreateGroupErrorMessage, setGroupSettings } from '../../store/manageMembership.slice';
 import { AppDispatch } from '../../store';
 import { GroupSetting } from '../GroupSetting';
+import { NewGroupType } from '../../models/NewGroupType';
 
 const getClassNames = classNamesFunction<ICreateGroupStyleProps, ICreateGroupStyles>();
 
@@ -25,6 +26,9 @@ export const CreateGroupBase: React.FunctionComponent<ICreateGroupProps> = (prop
   const [groupName, setGroupName] = useState('');
   const [groupAlias, setGroupAlias] = useState('');
   const [groupAliasEdited, setGroupAliasEdited] = useState(false);
+  const [groupType, setGroupType] = useState<NewGroupType>(NewGroupType.Microsoft365);
+
+  const isSecurityGroup = groupType === NewGroupType.Security;
 
   const isCreateGroupLoading = useSelector(manageMembershipCreateGroupLoading);
   const errorMessage = useSelector(manageMembershipCreateGroupErrorMessage);
@@ -32,6 +36,33 @@ export const CreateGroupBase: React.FunctionComponent<ICreateGroupProps> = (prop
 
   const sanitizeAlias = (name: string): string => {
     return name.replace(/[^a-zA-Z0-9\.\-]/g, '');
+  };
+
+  const groupTypeOptions: IChoiceGroupOption[] = [
+    {
+      key: NewGroupType.Microsoft365.toString(),
+      text: strings.ManageMembership.CreateGroup.groupTypeMicrosoft365,
+    },
+    {
+      key: NewGroupType.Security.toString(),
+      text: strings.ManageMembership.CreateGroup.groupTypeSecurity,
+    },
+  ];
+
+  const handleGroupTypeChange = (
+    event?: React.FormEvent<HTMLElement | HTMLInputElement>,
+    option?: IChoiceGroupOption
+  ) => {
+    if (!option) {
+      return;
+    }
+    const newGroupType = Number(option.key) as NewGroupType;
+    setGroupType(newGroupType);
+    if (newGroupType === NewGroupType.Security) {
+      // Clear Microsoft 365 settings so they aren't submitted for a security group.
+      dispatch(setGroupSettings(undefined));
+    }
+    dispatch(setCreateGroupErrorMessage(''));
   };
 
   const handleGroupNameChange = async (
@@ -56,13 +87,23 @@ export const CreateGroupBase: React.FunctionComponent<ICreateGroupProps> = (prop
   };
 
   const handleCreateGroup = async () => {
-    onGroupCreated(groupName, groupAlias);
+    // Microsoft Graph requires a mail nickname on every group, security groups included.
+    // Security groups do not surface the alias field, so derive it from the name instead
+    // of sending the value a user may have typed while Microsoft 365 was selected.
+    const aliasToSubmit = isSecurityGroup ? sanitizeAlias(groupName) : groupAlias;
+    onGroupCreated(groupName, aliasToSubmit, groupType);
   };
 
   return (
     <div className={classNames.root}>
       <Stack>
         <Stack.Item>
+          <ChoiceGroup
+            label={strings.ManageMembership.CreateGroup.groupType}
+            options={groupTypeOptions}
+            selectedKey={groupType.toString()}
+            onChange={handleGroupTypeChange}
+          />
           <TextField
             label={strings.ManageMembership.CreateGroup.groupName}
             placeholder={strings.ManageMembership.CreateGroup.groupNamePlaceholder}
@@ -71,15 +112,19 @@ export const CreateGroupBase: React.FunctionComponent<ICreateGroupProps> = (prop
             value={groupName}
             onChange={handleGroupNameChange}
           />
-          <TextField
-            label={strings.ManageMembership.CreateGroup.groupAlias}
-            placeholder={strings.ManageMembership.CreateGroup.groupAliasPlaceholder}
-            styles={{ fieldGroup: classNames.textField }}
-            required
-            value={groupAlias}
-            onChange={handleGroupAliasChange}
-          />
-          <GroupSetting />
+          {!isSecurityGroup && (
+            <TextField
+              label={strings.ManageMembership.CreateGroup.groupAlias}
+              placeholder={strings.ManageMembership.CreateGroup.groupAliasPlaceholder}
+              styles={{ fieldGroup: classNames.textField }}
+              required
+              value={groupAlias}
+              onChange={handleGroupAliasChange}
+            />
+          )}
+          {/* Authorized senders, welcome message and Exchange visibility are Microsoft 365
+              concepts that do not apply to a security group. */}
+          {!isSecurityGroup && <GroupSetting />}
         </Stack.Item>
         { (
           <Stack.Item>

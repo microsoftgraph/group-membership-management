@@ -906,7 +906,12 @@ export const strings: IStrings = {
       hiddenFromExchangeClients: 'Hidden from Exchange clients',
       hiddenFromExchangeClientsToolTip: 'When hidden, this group will not appear in the Groups section of the Outlook client. Setting this to true also removes member access to the group mailbox, including historical messages and calendar invites.',
       welcomeMessageEnabled: 'Welcome message enabled',
-      welcomeMessageEnabledToolTip: 'Controls whether a welcome message is delivered in email when new members are added to the group.'
+      welcomeMessageEnabledToolTip: 'Controls whether a welcome message is delivered in email when new members are added to the group.',
+      groupType: 'Group type',
+      groupTypeMicrosoft365: 'Microsoft 365',
+      groupTypeMicrosoft365Description: 'Use Microsoft 365 Groups to send email to a group of users, establish a team in Teams, or create a Sharepoint site.',
+      groupTypeSecurity: 'Security',
+      groupTypeSecurityDescription: 'Security groups are used to secure resources. Resource permissions assigned to a Security Group apply to all its members.'
     }
   },
   Disclaimer: {

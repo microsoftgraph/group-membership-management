@@ -854,6 +854,105 @@ namespace Services.Tests
         }
 
         [TestMethod]
+        public async Task CreateGroupWhenClaimIsNotFoundAsync()
+        {
+            _destinationController = new DestinationController(_searchGroupsHandler, _searchChannelsHandler, _getGroupEndpointsHandler, _getGroupOwnersHandler, _getGroupOnboardingStatusHandler, _getChannelOnboardingStatusHandler, _postGroupHandler, NullLogger<DestinationController>.Instance)
+            {
+                ControllerContext = CreateControllerContext(new List<Claim>
+                {
+                    new Claim(ClaimTypes.Name, "user@domain.com"),
+                    new Claim(ClaimTypes.Role, Roles.JOB_OWNER_WRITER),
+                })
+            };
+
+            var response = await _destinationController.CreateGroupAsync(_newGroup);
+
+            Assert.IsInstanceOfType(response.Result, typeof(ForbidResult),
+                "The requester is bound as a group owner, so an unidentifiable caller must not create a group.");
+            _graphGroupRepository.Verify(x => x.CreateGroupFromUI(It.IsAny<string>(), It.IsAny<Guid>(), It.IsAny<string>()), Times.Never);
+        }
+
+        [TestMethod]
+        public async Task CreateGroupIgnoresTheUserIdentityInTheRequestBodyAsync()
+        {
+            var callerObjectId = Guid.NewGuid();
+
+            _destinationController = new DestinationController(_searchGroupsHandler, _searchChannelsHandler, _getGroupEndpointsHandler, _getGroupOwnersHandler, _getGroupOnboardingStatusHandler, _getChannelOnboardingStatusHandler, _postGroupHandler, NullLogger<DestinationController>.Instance)
+            {
+                ControllerContext = CreateControllerContext(new List<Claim>
+                {
+                    new Claim(ClaimTypes.Name, "user@domain.com"),
+                    new Claim("http://schemas.microsoft.com/identity/claims/objectidentifier", callerObjectId.ToString())
+                })
+            };
+
+            _graphGroupRepository.Setup(x => x.CreateGroupFromUI(It.IsAny<string>(), It.IsAny<Guid>(), It.IsAny<string>())).ReturnsAsync(new AzureADGroup());
+
+            var spoofed = new NewGroupDTO
+            {
+                UserIdentity = Guid.NewGuid(),
+                GroupName = _newGroup.GroupName,
+                GroupAlias = _newGroup.GroupAlias
+            };
+
+            await _destinationController.CreateGroupAsync(spoofed);
+
+            _graphGroupRepository.Verify(x => x.CreateGroupFromUI(It.IsAny<string>(), It.Is<Guid>(g => g == callerObjectId), It.IsAny<string>()), Times.Once,
+                "Ownership must follow the authenticated caller, never an identity supplied in the request body.");
+        }
+
+        [TestMethod]
+        public async Task CreateGroupForwardsTheRequestedGroupTypeAsync()
+        {
+            var callerObjectId = Guid.NewGuid();
+            _destinationController = new DestinationController(_searchGroupsHandler, _searchChannelsHandler, _getGroupEndpointsHandler, _getGroupOwnersHandler, _getGroupOnboardingStatusHandler, _getChannelOnboardingStatusHandler, _postGroupHandler, NullLogger<DestinationController>.Instance)
+            {
+                ControllerContext = CreateControllerContext(new List<Claim>
+                {
+                    new Claim(ClaimTypes.Name, "user@domain.com"),
+                    new Claim("http://schemas.microsoft.com/identity/claims/objectidentifier", callerObjectId.ToString())
+                })
+            };
+
+            _graphGroupRepository.Setup(x => x.CreateGroupFromUI(It.IsAny<string>(), It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<NewGroupType>())).ReturnsAsync(new AzureADGroup());
+
+            var securityGroup = new NewGroupDTO
+            {
+                UserIdentity = callerObjectId,
+                GroupName = _newGroup.GroupName,
+                GroupAlias = _newGroup.GroupAlias,
+                GroupType = NewGroupType.Security
+            };
+
+            await _destinationController.CreateGroupAsync(securityGroup);
+
+            _graphGroupRepository.Verify(x => x.CreateGroupFromUI(It.IsAny<string>(), It.IsAny<Guid>(), It.IsAny<string>(), NewGroupType.Security), Times.Once,
+                "The requested group type must reach the repository, otherwise every group is created as Microsoft 365.");
+        }
+
+        [TestMethod]
+        public async Task CreateGroupDefaultsToMicrosoftThreeSixFiveWhenNoTypeIsSuppliedAsync()
+        {
+            var callerObjectId = Guid.NewGuid();
+            _destinationController = new DestinationController(_searchGroupsHandler, _searchChannelsHandler, _getGroupEndpointsHandler, _getGroupOwnersHandler, _getGroupOnboardingStatusHandler, _getChannelOnboardingStatusHandler, _postGroupHandler, NullLogger<DestinationController>.Instance)
+            {
+                ControllerContext = CreateControllerContext(new List<Claim>
+                {
+                    new Claim(ClaimTypes.Name, "user@domain.com"),
+                    new Claim("http://schemas.microsoft.com/identity/claims/objectidentifier", callerObjectId.ToString())
+                })
+            };
+
+            _graphGroupRepository.Setup(x => x.CreateGroupFromUI(It.IsAny<string>(), It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<NewGroupType>())).ReturnsAsync(new AzureADGroup());
+
+            // _newGroup never sets GroupType, standing in for a request body that predates the field.
+            await _destinationController.CreateGroupAsync(_newGroup);
+
+            _graphGroupRepository.Verify(x => x.CreateGroupFromUI(It.IsAny<string>(), It.IsAny<Guid>(), It.IsAny<string>(), NewGroupType.Microsoft365), Times.Once,
+                "A body without a group type must keep creating Microsoft 365 groups.");
+        }
+
+        [TestMethod]
         public async Task GetGroupOwnersSucceedsAsync()
         {
             _destinationController = new DestinationController(_searchGroupsHandler, _searchChannelsHandler, _getGroupEndpointsHandler, _getGroupOwnersHandler, _getGroupOnboardingStatusHandler, _getChannelOnboardingStatusHandler, _postGroupHandler, NullLogger<DestinationController>.Instance)

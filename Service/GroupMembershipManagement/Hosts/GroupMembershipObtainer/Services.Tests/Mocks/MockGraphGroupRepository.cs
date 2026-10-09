@@ -189,7 +189,7 @@ namespace Tests.FunctionApps.Mocks
             throw new NotImplementedException();
         }
 
-        public Task<AzureADGroup> CreateGroupFromUI(string newGroupName, Guid groupOwnerId, string newGroupAlias)
+        public Task<AzureADGroup> CreateGroupFromUI(string newGroupName, Guid groupOwnerId, string newGroupAlias, NewGroupType groupType = NewGroupType.Microsoft365)
         {
             throw new NotImplementedException();
         }

@@ -3,6 +3,7 @@
 
 import { type IStyle, type IStyleFunctionOrObject, type ITheme } from '@fluentui/react';
 import type React from 'react';
+import { NewGroupType } from '../../models/NewGroupType';
 
 export interface ICreateGroupStyles {
   root: IStyle;
@@ -24,5 +25,5 @@ export interface ICreateGroupProps extends React.AllHTMLAttributes<HTMLDivElemen
    * Call to provide customized styling that will layer on top of the variant rules.
    */
   styles?: IStyleFunctionOrObject<ICreateGroupStyleProps, ICreateGroupStyles>;
-  onGroupCreated: (groupName: string, groupAlias: string) => void;
+  onGroupCreated: (groupName: string, groupAlias: string, groupType: NewGroupType) => void;
 };

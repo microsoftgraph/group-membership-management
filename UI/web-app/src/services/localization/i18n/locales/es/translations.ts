@@ -907,7 +907,12 @@ export const strings: IStrings = {
       hiddenFromExchangeClients: 'Ocultar de los clientes de Exchange',
       hiddenFromExchangeClientsToolTip: 'Cuando está oculto, este grupo no aparecerá en la sección de Grupos del cliente de Outlook. También elimina el acceso de los miembros al buzón del grupo, incluidos el historial de mensajes y las invitaciones del calendario.',
       welcomeMessageEnabled: 'Mensaje de bienvenida habilitado',
-      welcomeMessageEnabledToolTip: 'Controla si se envía un mensaje de bienvenida por correo electrónico cuando se agregan nuevos miembros al grupo.'
+      welcomeMessageEnabledToolTip: 'Controla si se envía un mensaje de bienvenida por correo electrónico cuando se agregan nuevos miembros al grupo.',
+      groupType: 'Tipo de grupo',
+      groupTypeMicrosoft365: 'Microsoft 365',
+      groupTypeMicrosoft365Description: 'Usa los grupos de Microsoft 365 para enviar correo electrónico a un conjunto de usuarios, crear un equipo en Teams o crear un sitio de SharePoint.',
+      groupTypeSecurity: 'Seguridad',
+      groupTypeSecurityDescription: 'Los grupos de seguridad se usan para proteger recursos. Los permisos de recursos asignados a un grupo de seguridad se aplican a todos sus miembros.'
     }
   },
   Disclaimer: {

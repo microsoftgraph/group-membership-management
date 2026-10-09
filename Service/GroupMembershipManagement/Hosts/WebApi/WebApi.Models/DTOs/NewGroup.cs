@@ -1,6 +1,8 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
+using Models;
+
 namespace WebApi.Models.DTOs
 {
     public class NewGroup
@@ -11,5 +13,7 @@ namespace WebApi.Models.DTOs
         public Guid UserIdentity { get; set; }
         public string GroupName { get; set; }
         public string GroupAlias { get; set; }
+
+        public NewGroupType GroupType { get; set; }
     }
 }

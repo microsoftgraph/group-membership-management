@@ -37,6 +37,22 @@ namespace Repositories.GraphGroups
         public async Task<bool> IsAppIDOwnerOfGroupAsync(string appId, Guid groupObjectId, Guid? runId)
         {
             // get the service principal ID by its app ID
+            var servicePrincipalObjectId = await GetServicePrincipalObjectIdAsync(appId, runId);
+
+            if (servicePrincipalObjectId == null)
+                return false;
+
+            _graphGroupOwnerReaderLogger.LogInformationWithRunId(runId, $"Checking if app ID {appId} (service principal with object ID {servicePrincipalObjectId}) owns the group {groupObjectId}.");
+
+            return await IsGroupOwnerAsync($"id eq '{servicePrincipalObjectId}'", groupObjectId, runId);
+        }
+
+        /// <summary>
+        /// Resolves an application id to the object id of its service principal, or null when no
+        /// service principal matches or the lookup does not succeed.
+        /// </summary>
+        public async Task<string> GetServicePrincipalObjectIdAsync(string appId, Guid? runId)
+        {
             var nativeResponseHandler = new NativeResponseHandler();
             var response = new DirectoryObjectCollectionResponse();
 
@@ -64,18 +80,16 @@ namespace Repositories.GraphGroups
                 headers = nativeResponse.Headers.ToImmutableDictionary(x => x.Key, x => x.Value);
 
                 if (!response.Value.Any())
-                    return false;
+                    return null;
 
                 var servicePrincipal = response.Value.First();
 
                 await _graphGroupMetricTracker.TrackMetricsAsync(headers, QueryType.Other, runId);
 
-                _graphGroupOwnerReaderLogger.LogInformationWithRunId(runId, $"Checking if app ID {appId} (service principal with object ID {servicePrincipal.Id}) owns the group {groupObjectId}.");
-
-                return await IsGroupOwnerAsync($"id eq '{servicePrincipal.Id}'", groupObjectId, runId);
+                return servicePrincipal.Id;
             }
 
-            return false;
+            return null;
         }
 
         public async Task<bool> IsServiceAccountOwnerOfGroupAsync(Guid serviceAccountObjectId, Guid groupObjectId, Guid? runId)
