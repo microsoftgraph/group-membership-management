@@ -19,8 +19,7 @@ Once GMM is setup you should have all the resources required by this function to
 2. Azure KeyVault  
  This is the keyvault containing the secret that holds the connection string of the Azure Storage Account. 
  The ARM templates creating this function are referencing `<SolutionAbbreviation>`-data-`<EnvironmentAbbreviation>` keyvault.
-   - Locate the connection string from step one and create a new keyvault secret, the name of the secret can be anything of your choice (i.e. myNewConnectionString) and the value of the secret will be the connection string.   
-   - Update the parameter file for your enviroment which can be located at AzureUserReader/Infrastructure/compute/parameters/parameter.`<environment>`.json, open the file and locate the parameter "storageAccountSecretName" replace its value’s placeholder with the secret's name you just created (i.e. myNewConnectionString).
+   - Locate the connection string from step one and create a new keyvault secret, the name of the secret must be `adfStorageAccountName` and the value of the secret will be the connection string.   
 
 3. Azure Application with Microsoft API Graph API permissions  
  This application should be already created, see "Create <solutionAbbreviation>-Graph-<environmentAbbreviation> Azure Application" section in the main GMM README.md for more information.

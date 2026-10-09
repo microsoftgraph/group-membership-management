@@ -747,9 +747,8 @@ function Set-ComputeResources {
 
     Write-DeployPhase -Name 'Setting Key Vault Secrets' -Event Begin
     
-    $storageAccountSecretName  = Get-DefaultString -Value $ParameterHashtable.storageAccountSecretName.value -Default "adfStorageAccountName"
     $dataResourceGroup = "$SolutionAbbreviation-data-$EnvironmentAbbreviation"
-    $secrets = @("sqlServerMSIConnectionString", $storageAccountSecretName, "sqlServerBasicConnectionString")
+    $secrets = @("sqlServerMSIConnectionString", "adfStorageAccountName", "sqlServerBasicConnectionString")
     Set-DefaultSecretsIfMissing `
         -KeyVaultName $dataResourceGroup `
         -SecretNames $secrets

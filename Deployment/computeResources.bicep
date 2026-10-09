@@ -43,9 +43,6 @@ param availableMessageSplitterSubscriptions array = [
   }
 ]
 
-//AzureUserReader
-param storageAccountSecretName string = 'adfStorageAccountName'
-
 // GraphUpdater
 param concurrentAddRequests int = 1
 param concurrentRemoveRequests int = 1
@@ -601,7 +598,6 @@ module azureUserReaderComputeResources '../Service/GroupMembershipManagement/Hos
     tenantId: tenantId
     prereqsKeyVaultResourceGroup: prereqsResourceGroupName
     dataKeyVaultResourceGroup: dataResourceGroupName
-    storageAccountSecretName: storageAccountSecretName
     setRBACPermissions: setRBACPermissions
     featureFlags: featureFlags
     functionAuthAppClientId: functionAuthAppClientId

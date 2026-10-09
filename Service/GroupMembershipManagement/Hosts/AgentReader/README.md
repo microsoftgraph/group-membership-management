@@ -200,7 +200,7 @@ not match `(localdb)\GmmAgentReader-*`.
 `AzureUserReader` layout, which is the closest structural match (Graph credentials + durable task hub +
 HTTP starter). Two intentional differences:
 
-- `AzureUserReader` owns a dedicated storage account, so it takes a `storageAccountSecretName` parameter
+- `AzureUserReader` owns a dedicated storage account, so it reads its storage account name from the fixed `adfStorageAccountName` Key Vault secret
   and publishes a `storageAccountName` app setting. `AgentReader` has no such account, so the parameter,
   the variable and the app setting are all absent, and `parameters/*.json` are empty.
 - `sqlServerMSIConnectionString` is added (cloned from `SqlMembershipObtainer`), because
