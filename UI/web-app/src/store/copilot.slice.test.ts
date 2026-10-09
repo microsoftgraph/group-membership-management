@@ -142,6 +142,24 @@ describe('copilot.slice', () => {
   });
 
   describe('extraReducers (sendCopilotMessage)', () => {
+    it('ignores responses and failures from requests superseded by New chat', () => {
+      const request = { message: 'What is my current membership?', purpose: 'membershipSummary' as const };
+      const oldPending = copilotReducer(initialState, sendCopilotMessage.pending('old', request));
+      const reset = copilotReducer(oldPending, clearMessages());
+      expect(reset.isLoading).toBe(false);
+      expect(reset.currentRequestId).toBeUndefined();
+      const newPending = copilotReducer(reset, sendCopilotMessage.pending('new', request));
+      const payload = { message: mockAssistantMessage, sourceParts: [], useOrgStructure: false, appliedOperations: [] };
+      const afterOldSuccess = copilotReducer(newPending, sendCopilotMessage.fulfilled(payload, 'old', request));
+      expect(afterOldSuccess).toEqual(newPending);
+      const afterOldFailure = copilotReducer(newPending, sendCopilotMessage.rejected(new Error('Old error'), 'old', request));
+      expect(afterOldFailure).toEqual(newPending);
+      const completed = copilotReducer(newPending, sendCopilotMessage.fulfilled(payload, 'new', request));
+      expect(completed.messages).toEqual([mockAssistantMessage]);
+      expect(completed.isLoading).toBe(false);
+      expect(completed.currentRequestId).toBeUndefined();
+    });
+
     it('pending should set isLoading and clear error', () => {
       const stateWithError = { ...initialState, error: 'old' };
       const state = copilotReducer(stateWithError, { type: sendCopilotMessage.pending.type });

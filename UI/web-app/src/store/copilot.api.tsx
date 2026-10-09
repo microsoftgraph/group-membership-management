@@ -11,6 +11,8 @@ import { ISourcePart } from '../models/ISourcePart';
 import { HRSourcePart, HRSourcePartSource, IdentityType } from '../models/HRSourcePart';
 import { GroupMembershipSourcePart } from '../models/GroupMembershipSourcePart';
 import { SourcePartType } from '../models/SourcePartType';
+import { fetchOrgLeaderDetailsUsingId } from './orgLeaderDetails.api';
+import { formatMembershipDescription } from '../utils/copilotMembershipSummary';
 
 // A single operation the server actually applied to the working query (empty list = nothing changed).
 export interface CopilotOperationSummary {
@@ -48,19 +50,24 @@ interface ApiSourcePart {
     orgLeaderName?: string;
     orgLeaderEmail?: string;
     orgLeaderObjectId?: string;
-    orgLeaderDepth?: number;
+    orgLeaderDepth?: number | null;
     groupId?: string; // For GroupMembership: the Entra ID group's objectId
     groupName?: string; // For GroupMembership: the group's display name
     identityTypes?: IdentityType[];
 }
+
+type WorkingQueryPart = Omit<ApiSourcePart, 'title'> & { title?: string };
 
 /**
  * Builds the full working query the Copilot endpoint refines: every current source part
  * (including unsupported types Copilot cannot manipulate) is projected onto an ApiSourcePart
  * keyed by its stable `id` as `partId`, so the server can preserve unreferenced parts.
  */
-export function buildWorkingQuery(sourceParts: ISourcePart[]): ApiSourcePart[] {
-    return (sourceParts ?? []).map((part): ApiSourcePart => {
+export function buildWorkingQuery(
+    sourceParts: ISourcePart[],
+    orgLeaders: RootState['orgLeaderDetails']['mapping'] = {}
+): WorkingQueryPart[] {
+    return (sourceParts ?? []).map((part): WorkingQueryPart => {
         const sourceType = part.query?.type ?? SourcePartType.HR;
         const isExclusion = !!part.query?.exclusionary;
 
@@ -80,17 +87,22 @@ export function buildWorkingQuery(sourceParts: ISourcePart[]): ApiSourcePart[] {
 
         if (sourceType === SourcePartType.HR) {
             const hrSource = (part.query as HRSourcePart).source as HRSourcePartSource;
-            const apiPart: ApiSourcePart = {
+            const manager = hrSource?.manager;
+            const leader = manager?.id != null ? orgLeaders[manager.id] : undefined;
+            const resolvedLeader = leader?.objectId && leader.text ? leader : undefined;
+            const hint = manager?.id != null ? part.managerToAutoSelect : undefined;
+            const hintMatchesLeader = !!resolvedLeader &&
+                resolvedLeader.objectId.toLowerCase() === hint?.objectId?.toLowerCase();
+            const apiPart: WorkingQueryPart = {
                 partId: part.id,
                 sourceType,
                 filter: hrSource?.filter ?? null,
-                title: part.title ?? '',
                 isExclusion,
-                useOrgStructure: !!part.useOrgStructure || hrSource?.manager?.id != null,
-                orgLeaderName: part.managerToAutoSelect?.displayName,
-                orgLeaderEmail: part.managerToAutoSelect?.email,
-                orgLeaderObjectId: part.managerToAutoSelect?.objectId,
-                orgLeaderDepth: part.depthToAutoSelect ?? hrSource?.manager?.depth,
+                useOrgStructure: manager?.id != null,
+                orgLeaderName: resolvedLeader ? resolvedLeader.text : hint?.displayName,
+                orgLeaderEmail: resolvedLeader ? (hintMatchesLeader ? hint?.email : undefined) : hint?.email,
+                orgLeaderObjectId: resolvedLeader ? resolvedLeader.objectId : hint?.objectId,
+                orgLeaderDepth: manager?.id != null ? manager.depth ?? null : undefined,
             };
             const identityTypes = (part.query as HRSourcePart).identityTypes;
             if (identityTypes !== undefined) {
@@ -169,13 +181,16 @@ export interface UserContext {
 
 export interface SendMessagePayload {
     message: string;
+    purpose?: 'membershipSummary' | 'resumeMembershipSummary';
     userContext?: UserContext;
     hrAttributes?: { name: string; hasMapping: boolean; customLabel?: string; description?: string }[];
 }
 
 export const sendCopilotMessage = createAsyncThunk<CopilotResponse, SendMessagePayload, ThunkConfig>(
     'copilot/sendMessage',
-    async ({ message: userMessage, userContext, hrAttributes }, { extra, getState, rejectWithValue }) => {
+    async ({ message: userMessage, purpose, userContext, hrAttributes }, { extra, getState, dispatch, rejectWithValue }) => {
+        const isMembershipSummary = purpose === 'membershipSummary' || purpose === 'resumeMembershipSummary';
+        const state = getState() as RootState;
         const { authenticationService } = extra.services;
         const token = await authenticationService.getTokenAsync(TokenType.GMM);
         const headers = new Headers();
@@ -183,23 +198,45 @@ export const sendCopilotMessage = createAsyncThunk<CopilotResponse, SendMessageP
         headers.append('Authorization', bearer);
         headers.append('Content-Type', 'application/json');
 
-        // Get conversation history and the current working query from state.
-        // Exclude inline error entries (isError): they are UI-only failure markers and
-        // must not be replayed to the model as assistant turns.
-        const state = getState() as RootState;
-        const conversationHistory = state.copilot.messages
-            .filter(msg => !msg.isError)
+        // A successful description refresh starts new model context without erasing the UI transcript.
+        const modelContext = state.copilot.modelContext;
+        const subsequentHistory = state.copilot.messages
+            .slice(modelContext?.startIndex ?? 0)
+            .filter(msg => !msg.isError && !msg.action)
             .map(msg => ({
                 role: msg.role,
                 content: msg.content,
             }));
-        const currentSourceParts = state.manageMembership.sourceParts;
-        const workingQuery = buildWorkingQuery(currentSourceParts);
+        const conversationHistory = isMembershipSummary ? [] : [
+            ...(modelContext ? [{ role: 'assistant', content: modelContext.summary }] : []),
+            ...subsequentHistory,
+        ];
+        const orgLeaders = { ...(getState() as RootState).orgLeaderDetails.mapping };
+        const missingLeaders = new Map<number, string>();
+        for (const part of state.manageMembership.sourceParts) {
+            if (part.query.type !== SourcePartType.HR) continue;
+            const employeeId = part.query.source.manager?.id;
+            if (employeeId == null || (orgLeaders[employeeId]?.objectId && orgLeaders[employeeId]?.text)) continue;
+            if (!missingLeaders.has(employeeId)) missingLeaders.set(employeeId, part.id);
+        }
+        await Promise.all([...missingLeaders].map(async ([employeeId, partId]) => {
+            try {
+                const leader = await dispatch(fetchOrgLeaderDetailsUsingId({ employeeId, partId })).unwrap();
+                orgLeaders[employeeId] = { objectId: leader.objectId, text: leader.text, maxDepth: leader.maxDepth };
+            } catch {
+                // An unresolvable leader falls back to the part's stored hint instead of blocking chat.
+            }
+        }));
+        // Re-read after the lookups so manual edits made meanwhile are neither hidden from the model nor overwritten.
+        const currentSourceParts = (getState() as RootState).manageMembership.sourceParts;
+        const workingQuery = buildWorkingQuery(currentSourceParts, orgLeaders);
         const priorIds = new Set(currentSourceParts.map(p => p.id));
         const existingById = new Map(currentSourceParts.map(p => [p.id, p]));
 
         const requestBody = {
-            message: userMessage,
+            message: isMembershipSummary
+                ? `What is my current membership? Describe only the current working query rules without changing them. Return only one concise membership description, preserving all criteria and exclusions. Start directly with "Includes", not "Your current membership includes". Do not include a greeting, headings, a Proposed Membership section, repeated descriptions, or instructions about UI buttons.`
+                : `The current working query (sent with this request, including any manual edits) is authoritative. Earlier messages may describe outdated membership; preserve rules the user has not asked to change.\n\nUser request:\n${userMessage}`,
             conversationHistory,
             userContext,
             hrAttributes,
@@ -237,11 +274,19 @@ export const sendCopilotMessage = createAsyncThunk<CopilotResponse, SendMessageP
                 });
             }
 
+            if (isMembershipSummary &&
+                (typeof data.message !== 'string' || !data.message.trim() || (data.appliedOperations?.length ?? 0) > 0)) {
+                return rejectWithValue({
+                    message: 'Copilot could not describe the current membership without proposing changes. Please try again.',
+                });
+            }
+
             const assistantMessage: IChatMessage = {
                 id: uuidv4(),
                 role: 'assistant',
-                content: data.message,
+                content: isMembershipSummary ? formatMembershipDescription(data.message) : data.message,
                 timestamp: new Date().toISOString(),
+                ...(isMembershipSummary ? { isMembershipSummary: true } : {}),
             };
 
             // v2 returns the complete resulting query; fall back to v1 sourceParts for compatibility.
@@ -256,6 +301,10 @@ export const sendCopilotMessage = createAsyncThunk<CopilotResponse, SendMessageP
                 const existing = existingById.get(apiPart.partId);
                 if (!isSupported && existing) {
                     return existing;
+                }
+                // HR display titles are local-only; echoed parts may have no server title.
+                if ((!apiPart.sourceType || apiPart.sourceType === SourcePartType.HR) && !apiPart.title && existing) {
+                    return transformSourcePart({ ...apiPart, title: existing.title ?? '' }, priorIds);
                 }
                 return transformSourcePart(apiPart, priorIds);
             });
@@ -272,12 +321,12 @@ export const sendCopilotMessage = createAsyncThunk<CopilotResponse, SendMessageP
 
             return {
                 message: assistantMessage,
-                sourceParts,
-                useOrgStructure: sourceParts.some(p => p.useOrgStructure),
+                sourceParts: isMembershipSummary ? [] : sourceParts,
+                useOrgStructure: !isMembershipSummary && sourceParts.some(p => p.useOrgStructure),
                 // The server is authoritative about what changed. An empty list means the turn
                 // was a no-op (describe/clarify/refuse) or the operation set was rejected, so the
                 // UI should not offer "Accept & Apply" even though resultingQuery is non-empty.
-                appliedOperations,
+                appliedOperations: isMembershipSummary ? [] : appliedOperations,
                 warning: data.warning,
                 errorCode: data.errorCode,
             };

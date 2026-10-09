@@ -9,6 +9,8 @@ import { ISourcePart } from '../models/ISourcePart';
 import { HRSourcePart } from '../models/HRSourcePart';
 import { SourcePartType } from '../models/SourcePartType';
 import { sendCopilotMessage, CopilotOperationSummary } from './copilot.api';
+import { selectIsAIOnboardingChat } from './roles.slice';
+import { selectIsAICopilotEnabled } from './settings.slice';
 
 /**
  * Merges the complete resulting query returned by Copilot into the current source parts
@@ -79,6 +81,8 @@ export interface CopilotState {
     messages: IChatMessage[];
     conversationId: string;
     isLoading: boolean;
+    currentRequestId?: string;
+    modelContext?: { startIndex: number; summary: string };
     error: string | null;
     isPanelOpen: boolean;
     lastSourceParts: ISourcePart[]; // Source parts from last chat response (each with its own org leader info)
@@ -109,6 +113,9 @@ const copilotSlice = createSlice({
         },
         clearMessages: (state) => {
             state.messages = [];
+            state.isLoading = false;
+            state.currentRequestId = undefined;
+            state.modelContext = undefined;
             state.conversationId = uuidv4();
             state.error = null;
             state.lastSourceParts = [];
@@ -134,13 +141,24 @@ const copilotSlice = createSlice({
     },
     extraReducers: (builder) => {
         builder
-            .addCase(sendCopilotMessage.pending, (state) => {
+            .addCase(sendCopilotMessage.pending, (state, action) => {
+                state.currentRequestId = action.meta?.requestId;
                 state.isLoading = true;
                 state.error = null;
             })
             .addCase(sendCopilotMessage.fulfilled, (state, action) => {
+                if (state.currentRequestId !== action.meta?.requestId) return;
+                state.currentRequestId = undefined;
                 state.isLoading = false;
-                state.messages.push(action.payload.message);
+                if (action.meta?.arg.purpose !== 'resumeMembershipSummary') {
+                    state.messages.push(action.payload.message);
+                }
+                if (action.meta?.arg.purpose === 'membershipSummary' || action.meta?.arg.purpose === 'resumeMembershipSummary') {
+                    state.modelContext = {
+                        startIndex: state.messages.length,
+                        summary: action.payload.message.content,
+                    };
+                }
                 // Store source parts from chat response (each with its own org leader info)
                 state.lastSourceParts = action.payload.sourceParts;
                 // Ops the server actually applied this turn. Empty means nothing changed
@@ -152,6 +170,8 @@ const copilotSlice = createSlice({
                 state.warning = action.payload.warning ?? null;
             })
             .addCase(sendCopilotMessage.rejected, (state, action) => {
+                if (state.currentRequestId !== action.meta?.requestId) return;
+                state.currentRequestId = undefined;
                 state.isLoading = false;
                 const payload = action.payload as { message?: string } | undefined;
                 const errorText = payload?.message || action.error.message || 'An error occurred';
@@ -174,6 +194,12 @@ const copilotSlice = createSlice({
 export const { addMessage, clearMessages, setError, clearLastSourcePart, openPanel, closePanel } = copilotSlice.actions;
 
 // Selectors
+export const selectIsCopilotAvailable = (state: RootState) =>
+    selectIsAIOnboardingChat(state) && selectIsAICopilotEnabled(state) !== false;
+export const selectShowCopilotOnboardingChoices = (state: RootState) =>
+    selectIsCopilotAvailable(state) &&
+    !state.manageMembership.isEditingExistingJob &&
+    state.manageMembership.sourceParts.length === 0;
 export const selectCopilotMessages = (state: RootState) => state.copilot.messages;
 export const selectCopilotConversationId = (state: RootState) => state.copilot.conversationId;
 export const selectCopilotIsLoading = (state: RootState) => state.copilot.isLoading;
