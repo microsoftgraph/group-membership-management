@@ -56,7 +56,6 @@ $aksScriptsDirectory = Join-Path $sharedScriptsDirectory 'AKS'
 . (Join-Path $aksScriptsDirectory 'Connect-AksCluster.ps1')
 . (Join-Path $aksScriptsDirectory 'Set-AksResources.ps1')
 . (Join-Path $aksScriptsDirectory 'Test-AksWorkloadDependencies.ps1')
-. (Join-Path $aksScriptsDirectory 'Stop-AksWorkloads.ps1')
 . (Join-Path $aksScriptsDirectory 'Start-AksWorkloads.ps1')
 . (Join-Path $aksScriptsDirectory 'Set-AksWorkload.ps1')
 
@@ -3994,16 +3993,6 @@ function Deploy-Resources {
     if(!$isInitialDeployment) {
 
         . "$scriptsDirectory/GMM-WebAPI-Operations.ps1"
-
-        if ($deployAks -eq $true) {
-            Stop-AksWorkloads `
-                -SolutionAbbreviation    $solutionAbbreviation `
-                -EnvironmentAbbreviation $environmentAbbreviation `
-                -DeploymentPackagePath   $templateFilesDirectory
-        }
-        else {
-            Write-DeployLog -Level Info -Message "Skipping the AKS workload stop as per configuration [deployAks = $deployAks]. Standing a running workload down is a manual step before this flag is turned off."
-        }
 
         if($resetGMMType -eq "Credentials" -or $resetGMMType -eq "ServicePrincipal") {
             Write-DeployLog -Level Info -Message "Stopping GMM via WebApi Stop endpoint before deployment..."
