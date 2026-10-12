@@ -97,5 +97,27 @@ namespace Hosts.AzureUserReader
         [LoggerMessage(EventId = 60053, Level = LogLevel.Error,
             Message = "An error occurred while downloading the file. StatusCode: {StatusCode}, Reason: {ReasonPhrase}")]
         public static partial void FileDownloadError(this ILogger logger, int statusCode, string reasonPhrase);
+
+        // ── Demo agents (60060–60069) ──
+
+        [LoggerMessage(EventId = 60060, Level = LogLevel.Warning,
+            Message = "Requested {Requested} demo agents but only {Capacity} can be assigned to the available users.")]
+        public static partial void DemoAgentCapacityShortfall(this ILogger logger, int requested, int capacity);
+
+        [LoggerMessage(EventId = 60061, Level = LogLevel.Information,
+            Message = "Demo agents: Requested={Requested}, Capacity={Capacity}, Expected={Expected}, AlreadyPresent={AlreadyPresent}, Created={Created}, ManagersFixed={ManagersFixed}, Failed={Failed}.")]
+        public static partial void DemoAgentSummary(this ILogger logger, int requested, int capacity, int expected, int alreadyPresent, int created, int managersFixed, int failed);
+
+        [LoggerMessage(EventId = 60062, Level = LogLevel.Error,
+            Message = "Failed to create demo agent {UserPrincipalName}.")]
+        public static partial void DemoAgentCreateFailed(this ILogger logger, string userPrincipalName, Exception ex);
+
+        [LoggerMessage(EventId = 60063, Level = LogLevel.Warning,
+            Message = "Setting manager for demo agent {AgentId} failed on attempt {Attempt}: {Reason}")]
+        public static partial void DemoAgentManagerRetry(this ILogger logger, string agentId, int attempt, string reason);
+
+        [LoggerMessage(EventId = 60064, Level = LogLevel.Error,
+            Message = "Failed to set manager for demo agent {AgentId}.")]
+        public static partial void DemoAgentManagerFailed(this ILogger logger, string agentId, Exception ex);
     }
 }

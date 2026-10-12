@@ -5,6 +5,7 @@ using Microsoft.Azure.Functions.Worker;
 using Microsoft.Azure.Functions.Worker.Http;
 using Microsoft.DurableTask.Client;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Configuration;
 using System;
 using System.Net;
 using System.Text.Json;
@@ -15,10 +16,12 @@ namespace Hosts.AzureUserReader
     public class StarterFunction
     {
         private readonly ILogger<StarterFunction> _logger;
+        private readonly IConfiguration _configuration;
 
-        public StarterFunction(ILogger<StarterFunction> logger)
+        public StarterFunction(ILogger<StarterFunction> logger, IConfiguration configuration)
         {
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+            _configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
         }
 
         [Function(nameof(StarterFunction))]
@@ -52,6 +55,11 @@ namespace Hosts.AzureUserReader
 
             try
             {
+                var agentCount = _configuration.GetValue<int?>("AzureUserReader:AgentCount") ?? 0;
+                var maxAgentsPerUser = _configuration.GetValue<int?>("AzureUserReader:MaxAgentsPerUser") ?? 1;
+                if (agentCount < 0 || maxAgentsPerUser < 1)
+                    throw new InvalidOperationException("AzureUserReader agent configuration requires AgentCount >= 0 and MaxAgentsPerUser >= 1.");
+
                 var content = await request.ReadAsStringAsync();
 
                 if (string.IsNullOrWhiteSpace(content))
@@ -61,6 +69,8 @@ namespace Hosts.AzureUserReader
                 }
 
                 userReaderRequest = JsonSerializer.Deserialize<AzureUserReaderRequest>(content);
+                userReaderRequest.AgentCount = agentCount;
+                userReaderRequest.MaxAgentsPerUser = maxAgentsPerUser;
 
                 if (string.IsNullOrWhiteSpace(userReaderRequest.ContainerName) || string.IsNullOrWhiteSpace(userReaderRequest.BlobPath))
                 {
@@ -68,7 +78,7 @@ namespace Hosts.AzureUserReader
                     return (HttpStatusCode.BadRequest, null);
                 }
 
-                if (userReaderRequest.ShouldCreateNewUsers)
+                if (userReaderRequest.ShouldCreateNewUsers || agentCount > 0)
                 {
                     if (userReaderRequest.TenantInformation == null ||
                         string.IsNullOrWhiteSpace(userReaderRequest.TenantInformation.TenantDomain) ||

@@ -4,6 +4,7 @@
 using Microsoft.Azure.Functions.Worker;
 using Microsoft.DurableTask;
 using Models;
+using Services.Entities;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -37,6 +38,19 @@ namespace Hosts.AzureUserReader
 
                     var newUsers = await context.CallSubOrchestratorAsync<List<GraphProfileInformation>>(nameof(UserCreatorSubOrchestratorFunction), userCreatorRequest);
                     users.AddRange(newUsers);
+                }
+
+                if (request.AgentCount > 0)
+                {
+                    var demoAgentRequest = new DemoAgentRequest
+                    {
+                        AgentCount = request.AgentCount,
+                        MaxAgentsPerUser = request.MaxAgentsPerUser,
+                        TenantDomain = request.TenantInformation?.TenantDomain,
+                        Managers = users
+                    };
+
+                    await context.CallSubOrchestratorAsync<DemoAgentWriterResult>(nameof(DemoAgentSubOrchestratorFunction), demoAgentRequest);
                 }
 
                 if (users.Count > 0)

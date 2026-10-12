@@ -27,6 +27,9 @@ Solution Abbreviation
 .PARAMETER EnvironmentAbbreviation
 Environment Abbreviation
 
+.PARAMETER EnableDemoAgentPermissions
+Include application permissions for demo agent creation. Disabled by default.
+
 .PARAMETER TenantIdToCreateAppIn
 Azure tenant id where the application is going to be created.
 
@@ -58,6 +61,7 @@ function Set-GraphCredentialsAzureADApplication {
 		[string] $SolutionAbbreviation,
 		[Parameter(Mandatory=$True)]
 		[string] $EnvironmentAbbreviation,
+		[switch] $EnableDemoAgentPermissions,
 		[Parameter(Mandatory=$True)]
 		[Guid] $AppTenantId,
 		[Parameter(Mandatory=$False)]
@@ -178,6 +182,7 @@ function Set-GraphCredentialsAzureADApplication {
 		Write-Host "Creating Azure AD app $graphAppDisplayName"
 
 		$appCreationParameters = New-GraphCredentialsValidationConfiguration -SolutionAbbreviation $SolutionAbbreviation `
+			-EnableDemoAgentPermissions:$EnableDemoAgentPermissions `
 			-EnvironmentAbbreviation $EnvironmentAbbreviation
 		
 		# Create application body for Microsoft Graph
@@ -204,6 +209,7 @@ function Set-GraphCredentialsAzureADApplication {
 
 		# Update with identifier URI
 		$updatedAppParameters = New-GraphCredentialsValidationConfiguration -SolutionAbbreviation $SolutionAbbreviation `
+			-EnableDemoAgentPermissions:$EnableDemoAgentPermissions `
 			-EnvironmentAbbreviation $EnvironmentAbbreviation `
 			-AppId $graphApp.AppId
 
@@ -218,6 +224,7 @@ function Set-GraphCredentialsAzureADApplication {
 		Write-Host "Checking if app needs update..."
 
 		$expectedAppConfig = New-GraphCredentialsValidationConfiguration -SolutionAbbreviation $SolutionAbbreviation `
+			-EnableDemoAgentPermissions:$EnableDemoAgentPermissions `
 			-EnvironmentAbbreviation $EnvironmentAbbreviation `
 			-AppId $graphApp.AppId
 
@@ -406,6 +413,7 @@ function New-GraphCredentialsValidationConfiguration {
 		
 		[Parameter(Mandatory = $true)]
 		[string] $EnvironmentAbbreviation,
+		[switch] $EnableDemoAgentPermissions,
 		
 		[AllowNull()]
 		[Parameter(Mandatory = $false)]
@@ -422,8 +430,29 @@ function New-GraphCredentialsValidationConfiguration {
 	# Get Microsoft Graph service principal to retrieve current permission IDs
 	$mgGraphServicePrincipal = Get-MgServicePrincipal -Filter "appId eq '00000003-0000-0000-c000-000000000000'"
 	
+	$applicationPermissionNames = @("User.Read.All", "GroupMember.Read.All", "Member.Read.Hidden", "Group.Create")
+	if ($EnableDemoAgentPermissions) {
+		$applicationPermissionNames += @(
+			"User.ReadWrite.All",
+			"AgentIdentityBlueprint.Read.All",
+			"AgentIdentityBlueprint.Create",
+			"AgentIdentityBlueprintPrincipal.Read.All",
+			"AgentIdentityBlueprintPrincipal.Create",
+			"AgentIdentity.Create.All",
+			"AgentIdentity.Read.All"
+		)
+	}
+
+	foreach ($permissionName in $applicationPermissionNames) {
+		if (-not ($mgGraphServicePrincipal.AppRoles | Where-Object {
+			$_.Value -eq $permissionName -and $_.IsEnabled -and "Application" -in $_.AllowedMemberTypes
+		})) {
+			throw "Microsoft Graph application permission '$permissionName' is unavailable in this tenant."
+		}
+	}
+
 	$appPermissions = $mgGraphServicePrincipal.AppRoles `
-		| Where-Object { ($_.Value -eq "User.Read.All") -or ($_.Value -eq "GroupMember.Read.All") -or ($_.Value -eq "Member.Read.Hidden") -or ($_.Value -eq "Group.Create") } `
+		| Where-Object { $_.Value -in $applicationPermissionNames -and $_.IsEnabled -and "Application" -in $_.AllowedMemberTypes } `
 		| ForEach-Object { @{Id = $_.Id; Type = "Role" } }
 
 	$delegatedPermissions = $mgGraphServicePrincipal.Oauth2PermissionScopes `
@@ -466,7 +495,8 @@ function Test-GraphCredentialsApplication {
         [string] $SolutionAbbreviation,
         
         [Parameter(Mandatory = $true)]
-        [string] $EnvironmentAbbreviation
+        [string] $EnvironmentAbbreviation,
+        [switch] $EnableDemoAgentPermissions
     )
     
     $scriptsDirectory = Split-Path $PSScriptRoot -Parent
@@ -503,6 +533,7 @@ function Test-GraphCredentialsApplication {
     # Step 3: Validate configuration
     Write-Host "`n[3/3] Validating configuration..." -ForegroundColor Yellow
     $expectedAppConfig = New-GraphCredentialsValidationConfiguration -SolutionAbbreviation $SolutionAbbreviation `
+        -EnableDemoAgentPermissions:$EnableDemoAgentPermissions `
         -EnvironmentAbbreviation $EnvironmentAbbreviation `
         -AppId $graphApp.AppId
     

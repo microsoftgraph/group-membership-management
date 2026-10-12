@@ -12,6 +12,14 @@ namespace Hosts.AzureUserReader
         /// Required when ShouldCreateNewUsers = true
         /// </summary>
         public TenantInformation TenantInformation { get; set; }
+        /// <summary>
+        /// Number of demo agent identities to ensure exist. 0 skips the step.
+        /// </summary>
+        public int AgentCount { get; set; }
+        /// <summary>
+        /// Maximum demo agents managed by a single user. Must be at least 1.
+        /// </summary>
+        public int MaxAgentsPerUser { get; set; } = 1;
     }
 
     public class TenantInformation

@@ -77,6 +77,21 @@ Regardless of the approach used to populate the database with HR data, GMM has s
   | `Description` | Human-readable description shown in the UI |
 
 
+### Demo agent permissions
+
+When explicitly enabled with `-EnableDemoAgentPermissions`, `Scripts/ApplicationSetupScripts/Set-GraphCredentialsAzureADApplication.ps1` declares these additional Microsoft Graph application permissions:
+
+- `User.ReadWrite.All` for demo user/agent-user creation and manager updates.
+- `AgentIdentityBlueprint.Read.All` and `AgentIdentityBlueprint.Create`.
+- `AgentIdentityBlueprintPrincipal.Read.All` and `AgentIdentityBlueprintPrincipal.Create`.
+- `AgentIdentity.Create.All` and `AgentIdentity.Read.All` for creation and safe retry/reuse.
+
+Agent creation reuses a unique deterministic-name identity only when its blueprint and sole sponsor match. Existing UPNs must be agent users parented by that identity; conflicts fail without writes. Ambiguous POST outcomes are read back up to three times (two-second intervals), never immediately reposted or deleted. Retry after a user-creation failure reuses the retained identity. Graph has no atomic name uniqueness guarantee: concurrent creators or replication delays longer than this recovery window can still require operator investigation. Do not run overlapping demo-agent provisioning runs. Newly added read permissions require updating the registration and granting admin consent.
+
+Sponsor validation uses `$expand=sponsors($select=id)` on the documented typed identity list endpoint. Missing or incomplete sponsor data fails closed. This beta expansion has not been validated against a live tenant: the separate sponsors endpoint documents `AgentIdentity.ReadWrite.All`, which is deliberately not requested because it also permits deletion. If the read-only list expansion is denied or omits sponsors in your tenant, provisioning fails rather than weakening validation or requesting write/delete privileges.
+
+The option is disabled by default and should only be enabled for demo tenants, not production. Run the setup script with `-EnableDemoAgentPermissions -SkipIfApplicationExists $false` to update an existing registration, then grant tenant admin consent. Use the same option when calling `Test-GraphCredentialsApplication`. The script configures requested permissions; it does not grant consent. Existing service-principal grants alone do not add permissions to the registration's configured list.
+
 ### Demo Setup Steps
 
 Below is an example of how GMM populates users in `<SolutionAbbreviation>-data-<EnvironmentAbbreviation>-adf`. 
@@ -138,6 +153,7 @@ Below is an example of how GMM populates users in `<SolutionAbbreviation>-data-<
         - Two additional columns are added to the destination table by the AzureUserReader: `AzureObjectId` and `Email`.
         - The columns that have mappings are renamed to follow the pattern of `<ColumnName>_Code` (EX: JobTitleCode -> JobTitle_Code). The GMM UI uses this pattern to recognize columns that have mappings. 
         - GMM expects the destination table to contain the columns `EmployeeId`, `ManagerId`, and `AzureObjectId`. 
+        - Set `AzureUserReader:AgentCount` (default 0) and `AzureUserReader:MaxAgentsPerUser` (default 1) in the environment's Azure App Configuration, alongside the existing user/group count settings. AzureUserReader snapshots these settings when starting each run; request-body values do not override them. A count of 0 skips agent creation. Users are taken in ascending personnel-number order and each gets up to the configured maximum agents as their manager. Agents are named `GMM Demo Agent {N}` / `gmm-demo-agent-{N}@<domain>` (and `{N}-{k}` for the k-th agent of user N). Missing agents are created and wrong managers fixed; nothing is deleted when the count is lowered. Count must be nonnegative and maximum must be at least 1.
 
     Here are the columns in the mappings table `[mappings].<ADF-Pipeline-Run-Id>`:
     - ColumnName

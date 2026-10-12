@@ -8,6 +8,7 @@ using Microsoft.Azure.Functions.Worker.Http;
 using Microsoft.DurableTask;
 using Microsoft.DurableTask.Client;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
@@ -62,7 +63,7 @@ namespace Services.Tests
                                                   new Uri("http://localhost/api/StarterFunction"),
                                                   new MemoryStream(Encoding.UTF8.GetBytes(content)));
 
-            var starterFunction = new StarterFunction(NullLogger<StarterFunction>.Instance);
+            var starterFunction = new StarterFunction(NullLogger<StarterFunction>.Instance, new Microsoft.Extensions.Configuration.ConfigurationBuilder().Build());
             var result = await starterFunction.HttpStart(
                 request,
                 _durableClientMock.Object
@@ -84,7 +85,7 @@ namespace Services.Tests
                                                   new Uri("http://localhost/api/StarterFunction"),
                                                   new MemoryStream(Encoding.UTF8.GetBytes("{ \"ContainerName\":\"myContainer\",\"BlobPath\":\"folder1/folder2/myfile.csv\"}")));
 
-            var starterFunction = new StarterFunction(NullLogger<StarterFunction>.Instance);
+            var starterFunction = new StarterFunction(NullLogger<StarterFunction>.Instance, new Microsoft.Extensions.Configuration.ConfigurationBuilder().Build());
             var result = await starterFunction.HttpStart(
                 request,
                 durableClient
@@ -92,11 +93,56 @@ namespace Services.Tests
 
             Assert.AreEqual(HttpStatusCode.Accepted, result.StatusCode);
         }
+
+        [DataTestMethod]
+        [DataRow(null, null, 0, 1)]
+        [DataRow("5", "2", 5, 2)]
+        public async Task AgentSettingsAreSnapshottedFromConfiguration(string count, string maximum, int expectedCount, int expectedMaximum)
+        {
+            var configuration = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string>
+            {
+                ["AzureUserReader:AgentCount"] = count,
+                ["AzureUserReader:MaxAgentsPerUser"] = maximum
+            }).Build();
+            var client = new FakeDurableTaskClient("test") { InstanceId = _instanceId };
+            var body = "{\"ContainerName\":\"data\",\"BlobPath\":\"users.csv\",\"AgentCount\":99,\"MaxAgentsPerUser\":99,\"TenantInformation\":{\"TenantDomain\":\"contoso.onmicrosoft.com\",\"EmailPrefix\":\"User\",\"CountryCode\":\"US\"}}";
+            var request = new FakeHttpRequestData(new FakeFunctionContext(), new Uri("http://localhost/api/StarterFunction"),
+                new MemoryStream(Encoding.UTF8.GetBytes(body)));
+
+            var response = await new StarterFunction(NullLogger<StarterFunction>.Instance, configuration).HttpStart(request, client);
+
+            Assert.AreEqual(HttpStatusCode.Accepted, response.StatusCode);
+            var input = (AzureUserReaderRequest)client.Input;
+            Assert.AreEqual(expectedCount, input.AgentCount);
+            Assert.AreEqual(expectedMaximum, input.MaxAgentsPerUser);
+        }
+
+        [DataTestMethod]
+        [DataRow("-1", "1")]
+        [DataRow("1", "0")]
+        [DataRow("invalid", "1")]
+        public async Task InvalidAgentConfigurationDoesNotStartRun(string count, string maximum)
+        {
+            var configuration = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string>
+            {
+                ["AzureUserReader:AgentCount"] = count,
+                ["AzureUserReader:MaxAgentsPerUser"] = maximum
+            }).Build();
+            var client = new FakeDurableTaskClient("test") { InstanceId = _instanceId };
+            var request = new FakeHttpRequestData(new FakeFunctionContext(), new Uri("http://localhost/api/StarterFunction"),
+                new MemoryStream(Encoding.UTF8.GetBytes("{\"ContainerName\":\"data\",\"BlobPath\":\"users.csv\"}")));
+
+            var response = await new StarterFunction(NullLogger<StarterFunction>.Instance, configuration).HttpStart(request, client);
+
+            Assert.AreEqual(HttpStatusCode.InternalServerError, response.StatusCode);
+            Assert.IsNull(client.Input);
+        }
     }
 
     public class FakeDurableTaskClient : DurableTaskClient
     {
         public string InstanceId { get; set; }
+        public object Input { get; private set; }
 
         public FakeDurableTaskClient(string name) : base(name)
         {
@@ -129,6 +175,7 @@ namespace Services.Tests
 
         public override Task<string> ScheduleNewOrchestrationInstanceAsync(TaskName orchestratorName, object input = null, StartOrchestrationOptions options = null, CancellationToken cancellation = default)
         {
+            Input = input;
             return Task.FromResult(InstanceId);
         }
 

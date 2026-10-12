@@ -2323,7 +2323,8 @@ function Set-GMMAppRegistrationsProgrammatically {
         [Parameter(Mandatory = $false)]
         [boolean]$SaveToKeyVault = $false,
         [Parameter(Mandatory = $false)]
-        [switch]$SkipFunctionAuthApp
+        [switch]$SkipFunctionAuthApp,
+        [boolean]$EnableDemoAgentPermissions = $false
     )
 
     Write-DeployLog -Level Info -Message "Creating app registrations programmatically...`n"
@@ -2352,6 +2353,7 @@ function Set-GMMAppRegistrationsProgrammatically {
 
     . ($ScriptsDirectory + '/ApplicationSetupScripts/Set-GraphCredentialsAzureADApplication.ps1')
     $graphInformation = Set-GraphCredentialsAzureADApplication `
+        -EnableDemoAgentPermissions:$EnableDemoAgentPermissions `
         -SolutionAbbreviation $SolutionAbbreviation `
         -EnvironmentAbbreviation $EnvironmentAbbreviation `
         -AppTenantId $DirectoryTenantId `
@@ -2695,7 +2697,8 @@ function Set-GMMAppRegistrationsManually {
         [Parameter(Mandatory = $false)]
         [string]$DirectoryTenantId,
         [Parameter(Mandatory = $false)]
-        [boolean]$EnableFunctionAuthentication = $false
+        [boolean]$EnableFunctionAuthentication = $false,
+        [boolean]$EnableDemoAgentPermissions = $false
     )
 
     Write-DeployLog -Level Warn -Message "MANUAL APP REGISTRATION SETUP REQUIRED"
@@ -2765,6 +2768,7 @@ function Set-GMMAppRegistrationsManually {
     Write-DeployLog -Level Success -Message "# 3. Graph Application"
     Write-DeployLog -Level Info -Message ". `"$ScriptsDirectory/ApplicationSetupScripts/Set-GraphCredentialsAzureADApplication.ps1`""
     Write-DeployLog -Level Info -Message "Set-GraphCredentialsAzureADApplication ``"
+    Write-DeployLog -Level Info -Message "-EnableDemoAgentPermissions:`$$EnableDemoAgentPermissions ``"
     Write-DeployLog -Level Info -Message "-SolutionAbbreviation `"$SolutionAbbreviation`" ``"
     Write-DeployLog -Level Info -Message "-EnvironmentAbbreviation `"$EnvironmentAbbreviation`" ``"
     Write-DeployLog -Level Info -Message "-AppTenantId `"$DirectoryTenantId`" ``"
@@ -2824,7 +2828,7 @@ function Set-GMMAppRegistrationsManually {
     # Validate each application
     $uiValid = Test-UIApplication -SolutionAbbreviation $SolutionAbbreviation -EnvironmentAbbreviation $EnvironmentAbbreviation
     $webApiValid = Test-WebApiApplication -SolutionAbbreviation $SolutionAbbreviation -EnvironmentAbbreviation $EnvironmentAbbreviation
-    $graphValid = Test-GraphCredentialsApplication -SolutionAbbreviation $SolutionAbbreviation -EnvironmentAbbreviation $EnvironmentAbbreviation
+    $graphValid = Test-GraphCredentialsApplication -SolutionAbbreviation $SolutionAbbreviation -EnvironmentAbbreviation $EnvironmentAbbreviation -EnableDemoAgentPermissions:$EnableDemoAgentPermissions
     $teamsChannelValid = Test-TeamsChannelApplication -SolutionAbbreviation $SolutionAbbreviation -EnvironmentAbbreviation $EnvironmentAbbreviation
     $functionAuthValid = if ($EnableFunctionAuthentication) {
         Test-FunctionAuthApplication -SolutionAbbreviation $SolutionAbbreviation -EnvironmentAbbreviation $EnvironmentAbbreviation
@@ -2918,7 +2922,8 @@ function Set-GMMAppRegistrations {
         [Parameter(Mandatory = $true)]
         [boolean] $SkipPrivilegedDirectoryActions,
         [Parameter(Mandatory = $false)]
-        [boolean] $EnableFunctionAuthentication = $false
+        [boolean] $EnableFunctionAuthentication = $false,
+        [boolean] $EnableDemoAgentPermissions = $false
     )
 
     Write-DeployPhase -Name 'Creating/Updating App Registrations' -Event Begin
@@ -2926,6 +2931,7 @@ function Set-GMMAppRegistrations {
     if ($SkipPrivilegedDirectoryActions -eq $true) {
         # Manual flow - prompt user to create app registrations
         $appCreationResult = Set-GMMAppRegistrationsManually `
+            -EnableDemoAgentPermissions $EnableDemoAgentPermissions `
             -SolutionAbbreviation $SolutionAbbreviation `
             -EnvironmentAbbreviation $EnvironmentAbbreviation `
             -ScriptsDirectory $ScriptsDirectory `
@@ -2940,6 +2946,7 @@ function Set-GMMAppRegistrations {
             $skipFunctionAuthAppParam = @{ SkipFunctionAuthApp = $true }
         }
         $appCreationResult = Set-GMMAppRegistrationsProgrammatically `
+            -EnableDemoAgentPermissions $EnableDemoAgentPermissions `
             -SolutionAbbreviation $SolutionAbbreviation `
             -EnvironmentAbbreviation $EnvironmentAbbreviation `
             -ScriptsDirectory $ScriptsDirectory `
@@ -3978,6 +3985,7 @@ function Deploy-Resources {
     if ($parameterHashtable.skipAppRegistrationSetup.value -ne $true) {
         $isClientSecretAuth = if ($ParameterHashtable.authenticationType.value -eq "ClientSecret") { $true } else { $false }
         $appRegistrationSetupResult = Set-GMMAppRegistrations `
+                                        -EnableDemoAgentPermissions (Get-Default -Value $parameterHashtable['enableDemoAgentPermissions'].value -Default $false) `
                                         -SolutionAbbreviation $solutionAbbreviation `
                                         -EnvironmentAbbreviation $environmentAbbreviation `
                                         -ScriptsDirectory $scriptsDirectory `

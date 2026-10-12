@@ -53,6 +53,7 @@ namespace Hosts.AzureUserReader
                         new StorageAccountSecret(CommonServices.GetValueOrThrowBase(configuration, "storageAccountName")));
 
                     services.AddScoped<IGraphUserRepository, GraphUserRepository>();
+                    services.AddScoped<IDemoAgentGraphService, DemoAgentGraphService>();
                     services.AddScoped<IBlobClientFactory, BlobClientFactory>();
                     services.AddScoped<IAzureUserReaderService, AzureUserReaderService>();
                 })
