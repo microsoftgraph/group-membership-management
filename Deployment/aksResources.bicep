@@ -36,10 +36,7 @@ param namespaceName string = 'gmm'
 
 @description('Services to create a federated credential for.')
 param services array = [
-  {
-    name: 'JobTrigger'
-    serviceAccount: 'jobtrigger-sa'
-  }
+  'JobTrigger'
 ]
 
 module aksResourcesTemplate '../Infrastructure/AKS/bicep/aksResources.bicep' = {

@@ -34,10 +34,7 @@ param namespaceName string = 'gmm'
 
 @description('Services to create a federated credential for.')
 param services array = [
-  {
-    name: 'JobTrigger'
-    serviceAccount: 'jobtrigger-sa'
-  }
+  'JobTrigger'
 ]
 
 
@@ -231,15 +228,15 @@ resource containerInsightsDcra 'Microsoft.Insights/dataCollectionRuleAssociation
 }
 
 resource workloadIdentities 'Microsoft.ManagedIdentity/userAssignedIdentities@2024-11-30' existing = [for svc in services: {
-  name: '${solutionAbbreviation}-identity-${environmentAbbreviation}-aks-${svc.name}'
+  name: '${solutionAbbreviation}-identity-${environmentAbbreviation}-aks-${svc}'
 }]
 
 resource federatedCredentials 'Microsoft.ManagedIdentity/userAssignedIdentities/federatedIdentityCredentials@2024-11-30' = [for (svc, i) in services: {
   parent: workloadIdentities[i]
-  name: '${namespaceName}-${svc.serviceAccount}'
+  name: '${namespaceName}-${toLower(svc)}-sa'
   properties: {
     issuer: aks.properties.oidcIssuerProfile.issuerURL
-    subject: 'system:serviceaccount:${namespaceName}:${svc.serviceAccount}'
+    subject: 'system:serviceaccount:${namespaceName}:${toLower(svc)}-sa'
     audiences: [
       'api://AzureADTokenExchange'
     ]

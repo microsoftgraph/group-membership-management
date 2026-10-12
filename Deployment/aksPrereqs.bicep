@@ -15,10 +15,7 @@ param location string
 
 @description('Services to create a workload identity + federated credential for.')
 param services array = [
-  {
-    name: 'JobTrigger'
-    serviceAccount: 'jobtrigger-sa'
-  }
+  'JobTrigger'
 ]
 
 @description('When true, this deployment also creates the role assignments.')

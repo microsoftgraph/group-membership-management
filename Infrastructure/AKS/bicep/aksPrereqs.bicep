@@ -15,10 +15,7 @@ param location string
 
 @description('Services to create a workload identity + federated credential for.')
 param services array = [
-  {
-    name: 'JobTrigger'
-    serviceAccount: 'jobtrigger-sa'
-  }
+  'JobTrigger'
 ]
 
 @description('When true, this deployment also creates the role assignments.')
@@ -220,6 +217,6 @@ resource controlPlaneOutboundPipNetworkContributor 'Microsoft.Authorization/role
 }
 
 resource workloadIdentities 'Microsoft.ManagedIdentity/userAssignedIdentities@2024-11-30' = [for svc in services: {
-  name: '${solutionAbbreviation}-identity-${environmentAbbreviation}-aks-${svc.name}'
+  name: '${solutionAbbreviation}-identity-${environmentAbbreviation}-aks-${svc}'
   location: location
 }]
