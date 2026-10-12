@@ -41,6 +41,7 @@ import {
   manageMembershipLoadingSearchResults,
   manageMembershipGroupOnboardingStatus,
   manageMembershipGroupMembers,
+  manageMembershipCreateGroupLoading,
 } from '../../store/manageMembership.slice';
 import { Destination } from '../../models/Destination';
 import { SearchChannelRequest } from '../../models/SearchChannelRequest';
@@ -155,6 +156,7 @@ export const SelectDestinationBase: React.FunctionComponent<ISelectDestinationPr
   const selectedDestinationPersona = mapDestinationToPersonaProps(selectedDestination);
   const [createNewGroup, setCreateNewGroup] = useState(false);
   const isCreateGroupEnabled = useSelector(selectCreateGroupFeatureEnabled);
+  const isCreateGroupLoading = useSelector(manageMembershipCreateGroupLoading);
   const isTenantJobWriter: boolean | undefined = useSelector(selectIsJobTenantWriter);
   const isTeamsChannelOnboarder: boolean | undefined = useSelector(selectIsTeamsChannelOnboarder);
 
@@ -420,6 +422,7 @@ export const SelectDestinationBase: React.FunctionComponent<ISelectDestinationPr
               options={destinationActionOptions}
               onChange={(ev, option) => onDestinationActionChange(ev, option)}
               selectedKey={createNewGroup ? 'Create' : 'Select'}
+              disabled={isCreateGroupLoading}
             />
           )}
           {createNewGroup ? (

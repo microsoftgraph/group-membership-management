@@ -35,7 +35,7 @@ export const CreateGroupBase: React.FunctionComponent<ICreateGroupProps> = (prop
   const newGroupId = useSelector(manageMembershipCreatedGroupId)
 
   const sanitizeAlias = (name: string): string => {
-    return name.replace(/[^a-zA-Z0-9\.\-]/g, '');
+    return name.replace(/[^\x21-\x7e]|[@()\\[\]";:<>,]/g, '');
   };
 
   const groupTypeOptions: IChoiceGroupOption[] = [
@@ -103,6 +103,7 @@ export const CreateGroupBase: React.FunctionComponent<ICreateGroupProps> = (prop
             options={groupTypeOptions}
             selectedKey={groupType.toString()}
             onChange={handleGroupTypeChange}
+            disabled={isCreateGroupLoading}
           />
           <TextField
             label={strings.ManageMembership.CreateGroup.groupName}
@@ -111,6 +112,7 @@ export const CreateGroupBase: React.FunctionComponent<ICreateGroupProps> = (prop
             required
             value={groupName}
             onChange={handleGroupNameChange}
+            disabled={isCreateGroupLoading}
           />
           {!isSecurityGroup && (
             <TextField
@@ -120,11 +122,12 @@ export const CreateGroupBase: React.FunctionComponent<ICreateGroupProps> = (prop
               required
               value={groupAlias}
               onChange={handleGroupAliasChange}
+              disabled={isCreateGroupLoading}
             />
           )}
           {/* Authorized senders, welcome message and Exchange visibility are Microsoft 365
               concepts that do not apply to a security group. */}
-          {!isSecurityGroup && <GroupSetting />}
+          {!isSecurityGroup && <GroupSetting disabled={isCreateGroupLoading} />}
         </Stack.Item>
         { (
           <Stack.Item>

@@ -7,7 +7,7 @@ namespace Repositories.GraphGroups
 {
     /// <summary>
     /// Produces a mail nickname that Microsoft Graph accepts for a Microsoft 365 group.
-    /// Graph rejects values containing whitespace or any of @ ( ) \ [ ] " ; : &lt; &gt; , and
+    /// Keeps printable ASCII except @ ( ) \ [ ] " ; : &lt; &gt; , and
     /// limits the value to 64 characters.
     /// </summary>
     public static class MailNicknameBuilder
@@ -15,6 +15,7 @@ namespace Repositories.GraphGroups
         public const int MaxLength = 64;
         private const string EmptyDisplayNameFallbackPrefix = "gmm-group";
         private const int SuffixLength = 8;
+        private const string RejectedCharacters = "@()\\[]\";:<>,";
 
         public static string Build(string suppliedAlias, string displayName)
         {
@@ -73,12 +74,8 @@ namespace Repositories.GraphGroups
 
         private static bool IsPermitted(char character)
         {
-            return (character >= 'A' && character <= 'Z')
-                || (character >= 'a' && character <= 'z')
-                || (character >= '0' && character <= '9')
-                || character == '-'
-                || character == '_'
-                || character == '.';
+            return character >= '!' && character <= '~'
+                && RejectedCharacters.IndexOf(character) < 0;
         }
 
         private static string CreateSuffix()

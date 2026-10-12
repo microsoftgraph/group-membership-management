@@ -2,11 +2,13 @@
 // Licensed under the MIT license.
 
 import React from 'react';
-import { fireEvent, screen } from '@testing-library/react';
+import { act, fireEvent, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { CreateGroup } from './CreateGroup';
 import { renderWithProviders } from '../../testing/renderWithProviders';
 import manageMembershipReducer from '../../store/manageMembership.slice';
 import { NewGroupType } from '../../models/NewGroupType';
+import { createGroup } from '../../store/groups.api';
 
 const getManageMembershipState = () =>
   manageMembershipReducer(undefined, { type: 'test/init' });
@@ -46,12 +48,12 @@ describe('CreateGroup', () => {
     const onGroupCreated = vi.fn();
     renderWithProviders(<CreateGroup onGroupCreated={onGroupCreated} />);
 
-    fireEvent.change(screen.getByPlaceholderText('Enter the name of the group'), { target: { value: 'Finance Admins!' } });
+    fireEvent.change(screen.getByPlaceholderText('Enter the name of the group'), { target: { value: 'Finance Admins@' } });
     selectSecurity();
     fireEvent.click(screen.getByRole('button', { name: /create group/i }));
 
     // Graph requires a mail nickname on a security group even though the field is hidden.
-    expect(onGroupCreated).toHaveBeenCalledWith('Finance Admins!', 'FinanceAdmins', NewGroupType.Security);
+    expect(onGroupCreated).toHaveBeenCalledWith('Finance Admins@', 'FinanceAdmins', NewGroupType.Security);
   });
 
   it('ignores an alias typed before switching to Security', () => {
@@ -84,5 +86,79 @@ describe('CreateGroup', () => {
 
     // Otherwise Exchange-only settings would be onboarded against a group that has no mailbox.
     expect(store.getState().manageMembership.groupSettings).toBeUndefined();
+  });
+
+  it.each([NewGroupType.Microsoft365, NewGroupType.Security])(
+    'preserves supported punctuation and removes rejected characters in a generated alias for group type %s',
+    (groupType) => {
+      const onGroupCreated = vi.fn();
+      renderWithProviders(<CreateGroup onGroupCreated={onGroupCreated} />);
+
+      fireEvent.change(screen.getByPlaceholderText('Enter the name of the group'), {
+        target: { value: 'Finance+Ops!#$%&\'*-/=?^_`{|}~@()\\[]";:<>, \u00e9\u007f' },
+      });
+      if (groupType === NewGroupType.Security) {
+        selectSecurity();
+      }
+      fireEvent.click(screen.getByRole('button', { name: /create group/i }));
+
+      expect(onGroupCreated).toHaveBeenCalledWith(
+        'Finance+Ops!#$%&\'*-/=?^_`{|}~@()\\[]";:<>, \u00e9\u007f',
+        'Finance+Ops!#$%&\'*-/=?^_`{|}~',
+        groupType
+      );
+    }
+  );
+
+  it.each(['fulfilled', 'rejected'] as const)('locks the form without clearing Microsoft 365 settings and unlocks when creation is %s', async outcome => {
+    const groupSettings = {
+      authorizedSenders: [],
+      hiddenFromExchangeClients: false,
+      welcomeMessageEnabled: false,
+    };
+    const request = { groupName: 'Finance+Ops', groupAlias: 'Finance+Ops', groupType: NewGroupType.Microsoft365 };
+    const { store } = renderWithProviders(
+      <CreateGroup onGroupCreated={() => { store.dispatch(createGroup.pending('request', request)); }} />,
+      {
+        preloadedState: {
+          manageMembership: {
+            ...getManageMembershipState(),
+            groupSettings,
+          },
+        },
+      }
+    );
+    fireEvent.change(screen.getByPlaceholderText('Enter the name of the group'), {
+      target: { value: request.groupName },
+    });
+    fireEvent.click(screen.getByRole('button', { name: /create group/i }));
+
+    screen.getAllByRole('radio').forEach(radio => expect(radio).toBeDisabled());
+    screen.getAllByRole('textbox').forEach(textbox => expect(textbox).toBeDisabled());
+    expect(screen.getByRole('combobox', { name: 'Authorized Senders' })).toBeDisabled();
+    screen.getAllByRole('switch').forEach(toggle => expect(toggle).toBeDisabled());
+    expect(screen.getByRole('button', { name: /creating/i })).toBeDisabled();
+
+    await userEvent.click(screen.getByRole('radio', { name: /security/i }));
+    await userEvent.click(screen.getAllByRole('switch')[0]);
+    await userEvent.type(screen.getByPlaceholderText('Enter the name of the group'), 'changed');
+
+    expect(screen.getByRole('radio', { name: /microsoft 365/i })).toBeChecked();
+    expect(screen.getByPlaceholderText('Enter the name of the group')).toHaveValue(request.groupName);
+    expect(store.getState().manageMembership.groupSettings).toEqual(groupSettings);
+
+    act(() => {
+      if (outcome === 'fulfilled') {
+        store.dispatch(createGroup.fulfilled({ ok: true, statusCode: 201, groupId: 'created-group' }, 'request', request));
+      } else {
+        store.dispatch(createGroup.rejected(new Error('Creation failed'), 'request', request));
+      }
+    });
+
+    screen.getAllByRole('radio').forEach(radio => expect(radio).toBeEnabled());
+    screen.getAllByRole('textbox').forEach(textbox => expect(textbox).toBeEnabled());
+    expect(screen.getByRole('combobox', { name: 'Authorized Senders' })).toBeEnabled();
+    expect(screen.getAllByRole('switch')[0]).toBeEnabled();
+    expect(store.getState().manageMembership.groupSettings).toEqual(groupSettings);
   });
 });

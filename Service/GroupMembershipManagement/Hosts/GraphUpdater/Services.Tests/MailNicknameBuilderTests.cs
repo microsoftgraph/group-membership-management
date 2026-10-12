@@ -16,12 +16,38 @@ namespace Services.Tests
         }
 
         [TestMethod]
+        [DataRow("finance+ops")]
+        [DataRow("finance!#$%&'*+-/=?^_`{|}~ops")]
+        public void KeepsSupportedAliasPunctuation(string alias)
+        {
+            Assert.AreEqual(alias, MailNicknameBuilder.Build(alias, "Finance Team"));
+        }
+
+        [TestMethod]
+        public void KeepsExactlyTheSupportedPrintableAsciiCharacters()
+        {
+            const string rejectedCharacters = "@()\\[]\";:<>,";
+            for (var code = 0; code <= 127; code++)
+            {
+                var character = (char)code;
+                var expected = code >= 33 && code <= 126 && rejectedCharacters.IndexOf(character) < 0
+                    ? $"finance{character}ops"
+                    : "financeops";
+
+                Assert.AreEqual(expected, MailNicknameBuilder.Build($"finance{character}ops", "Finance Team"),
+                    $"Unexpected handling of ASCII character {code}.");
+            }
+        }
+
+        [TestMethod]
         [DataRow("finance team", "financeteam")]
         [DataRow("finance@team", "financeteam")]
         [DataRow("finance(team)", "financeteam")]
         [DataRow("finance[team]", "financeteam")]
         [DataRow("finance;team:a<b>c,d", "financeteamabcd")]
         [DataRow("finance\"team\\x", "financeteamx")]
+        [DataRow("finance\t\r\nteam\u007f", "financeteam")]
+        [DataRow("finance\u00e9\u200bteam", "financeteam")]
         public void StripsCharactersMicrosoftGraphRejects(string alias, string expected)
         {
             Assert.AreEqual(expected, MailNicknameBuilder.Build(alias, "Finance Team"));

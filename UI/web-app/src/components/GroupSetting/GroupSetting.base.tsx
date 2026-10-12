@@ -19,7 +19,7 @@ import { manageMembershipGroupSettings } from '../../store/manageMembership.slic
 const getClassNames = classNamesFunction<IGroupSettingStyleProps, IGroupSettingStyles>();
 
 export const GroupSettingBase: React.FunctionComponent<IGroupSettingProps> = (props) => {
-    const { className, styles } = props;
+    const { className, styles, disabled = false } = props;
     const strings = useStrings();
     const dispatch = useDispatch<AppDispatch>();
     const classNames: IProcessedStyleSet<IGroupSettingStyles> = getClassNames(styles, {
@@ -157,6 +157,7 @@ export const GroupSettingBase: React.FunctionComponent<IGroupSettingProps> = (pr
                 pickerCalloutProps={{ directionalHint: DirectionalHint.bottomAutoEdge, calloutWidth: 500 }}
                 pickerSuggestionsProps={{ className: classNames.suggestionItems }}
                 selectedItems={selectedItems()}
+                disabled={disabled}
             />
             <div className={classNames.labelContainer}>
                 <Label>{strings.ManageMembership.CreateGroup.hiddenFromExchangeClients}</Label>
@@ -169,6 +170,7 @@ export const GroupSettingBase: React.FunctionComponent<IGroupSettingProps> = (pr
                     inlineLabel
                     onChange={handleToggleChange}
                     checked={groupSettings?.hiddenFromExchangeClients ?? true}
+                    disabled={disabled}
                 />
             </div>
             <div className={classNames.labelContainer}>
