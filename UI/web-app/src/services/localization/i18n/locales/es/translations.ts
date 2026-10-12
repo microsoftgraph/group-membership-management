@@ -942,6 +942,7 @@ export const strings: IStrings = {
     welcomeStep3Bold: 'Revisa y confirma.',
     welcomeStep3: ' Te mostraré todos los filtros construidos según tu descripción antes de guardar nada.',
     inputPlaceholder: 'Haz una pregunta o describe la membresía que deseas',
+    disclaimer: 'El contenido generado por IA puede ser incorrecto.',
     sendButton: 'Enviar',
     closeButton: 'Cerrar',
     thinking: 'Pensando...',

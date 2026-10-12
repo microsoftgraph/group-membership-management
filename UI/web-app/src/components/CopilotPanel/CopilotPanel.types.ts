@@ -40,6 +40,7 @@ export interface ICopilotPanelStyles {
     welcomeStepNumber: IStyle;
     welcomeStepText: IStyle;
     inputContainer: IStyle;
+    disclaimer: IStyle;
     inputField: IStyle;
     sendButton: IStyle;
     loadingIndicator: IStyle;

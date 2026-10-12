@@ -203,6 +203,16 @@ export const getStyles = (props: ICopilotPanelStyleProps): ICopilotPanelStyles =
             flexShrink: 0,
         },
 
+        disclaimer: {
+            padding: '0 16px 10px',
+            backgroundColor: theme.palette.white,
+            color: theme.palette.neutralSecondary,
+            fontSize: '12px',
+            lineHeight: '16px',
+            textAlign: 'center',
+            flexShrink: 0,
+        },
+
         inputField: {
             flex: 1,
             minWidth: 0,

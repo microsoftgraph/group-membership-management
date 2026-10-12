@@ -952,6 +952,9 @@ export const CopilotPanelBase: React.FunctionComponent<ICopilotPanelProps> = (
                             }}
                         />
                     </div>
+                    <div className={classNames.disclaimer} data-testid="copilot-disclaimer">
+                        {strings.Copilot?.disclaimer || 'AI-generated content may be incorrect.'}
+                    </div>
                 </div>
             </div>
         </Panel>

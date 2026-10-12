@@ -963,6 +963,7 @@ export type IStrings = {
       welcomeStep3Bold: string;
       welcomeStep3: string;
       inputPlaceholder: string;
+      disclaimer: string;
       sendButton: string;
       closeButton: string;
       thinking: string;
