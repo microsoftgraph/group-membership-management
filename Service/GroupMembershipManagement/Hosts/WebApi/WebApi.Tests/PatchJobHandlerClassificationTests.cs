@@ -18,7 +18,6 @@ using System.Text.Json;
 using WebApi.Models.DTOs;
 using SyncJob = Models.SyncJob;
 using SyncJobChange = Models.SyncJobChange.SyncJobChange;
-using Setting = Models.Setting;
 
 namespace WebApi.Tests
 {
@@ -83,14 +82,6 @@ namespace WebApi.Tests
                               .Callback<ServiceBusMessage>(m => _enqueued.Add(m))
                               .Returns(Task.CompletedTask);
 
-            // Feature flag ON by default; individual tests override for the OFF case.
-            EnableConfigUpdateAutoApproval(true);
-        }
-
-        private void EnableConfigUpdateAutoApproval(bool enabled)
-        {
-            _settings.Setup(x => x.GetSettingByKeyAsync(SettingKey.IsAutoApprovalForConfigurationUpdatesEnabled))
-                     .ReturnsAsync(new Setting { SettingKey = SettingKey.IsAutoApprovalForConfigurationUpdatesEnabled, SettingValue = enabled ? "true" : "false" });
         }
 
         private PatchJobHandler CreateHandler(bool withQueueRepository = true)
@@ -311,6 +302,23 @@ namespace WebApi.Tests
         }
 
         [TestMethod]
+        public async Task Update_QueryChanges_WithUiStatusAndOnBehalfMetadata_SetsPendingAutoApprovalAndEnqueues()
+        {
+            var patch = new JsonPatchDocument<SyncJobPatch>();
+            patch.Replace(x => x.Query, "[{\"type\":\"GroupMembership\",\"source\":\"22222222-2222-2222-2222-222222222222\"}]");
+            patch.Replace(x => x.Status, SyncStatus.PendingReview.ToString());
+            patch.Replace(x => x.LastModifiedOnBehalfOfDisplayName, string.Empty);
+            patch.Replace(x => x.LastModifiedOnBehalfOfObjectId, string.Empty);
+
+            var response = await CreateHandler().ExecuteAsync(UpdateRequest(patch));
+
+            Assert.AreEqual(HttpStatusCode.OK, response.StatusCode);
+            Assert.AreEqual(SyncStatus.PendingAutoApproval.ToString(), _syncJob.Status);
+            Assert.AreEqual(1, _enqueued.Count);
+            Assert.AreEqual(AutoApprovalOrigin.Update, DecodeEnqueued(_enqueued.Single()).Origin);
+        }
+
+        [TestMethod]
         public async Task Update_RepeatedQueryChanges_UseDistinctMessageIds()
         {
             var firstPatch = new JsonPatchDocument<SyncJobPatch>();
@@ -424,56 +432,33 @@ namespace WebApi.Tests
             Assert.AreEqual(submittedStartDate, _syncJob.StartDate, "A user-submitted StartDate is applied as-is; the handler forces nothing.");
         }
 
-        // ---------- User Story 4: off switch and disabled AutoApprover ----------
+        // ---------- User Story 4: disabled AutoApprover ----------
 
         [TestMethod]
-        public async Task Update_FlagOff_ConfigOnlyAndQueryChanging_BothGoToPendingReview()
+        public async Task Update_NullQueueRepository_ConfigOnlyAndQueryChanging_BothGoToPendingReview()
         {
-            EnableConfigUpdateAutoApproval(false);
-
-            // Config-only submission with the flag off.
+            // Config-only submission with the AutoApprover host disabled.
             var configPatch = new JsonPatchDocument<SyncJobPatch>();
             configPatch.Replace(x => x.ThresholdPercentageForAdditions, 55);
-            await CreateHandler().ExecuteAsync(UpdateRequest(configPatch));
+            await CreateHandler(withQueueRepository: false).ExecuteAsync(UpdateRequest(configPatch));
 
             Assert.AreEqual(SyncStatus.PendingReview.ToString(), _syncJob.Status);
             Assert.AreEqual(0, _enqueued.Count);
             Assert.IsFalse(_savedChanges.Any(c => c.ChangeReason == SyncJobChangeReason.UpdateAutoApproved.ToString()),
-                "With the flag off there is no UpdateAutoApproved audit reason.");
+                "With the AutoApprover host disabled there is no UpdateAutoApproved audit reason.");
             Assert.AreEqual(SyncJobChangeReason.Update.ToString(), _savedChanges.Single().ChangeReason);
+            _notifications.Verify(x => x.SendSubmissionApprovedNotificationAsync(It.IsAny<SyncJob>(), It.IsAny<SyncJobChange>()), Times.Never);
 
-            // Reset and repeat with a query-changing submission, still flag off.
+            // Reset and repeat with a query-changing submission, still with the host disabled.
             _savedChanges.Clear();
             _syncJob.Status = SyncStatus.Idle.ToString();
             var queryPatch = new JsonPatchDocument<SyncJobPatch>();
             queryPatch.Replace(x => x.Query, "[{\"type\":\"GroupMembership\",\"source\":\"33333333-3333-3333-3333-333333333333\"}]");
-            await CreateHandler().ExecuteAsync(UpdateRequest(queryPatch));
+            await CreateHandler(withQueueRepository: false).ExecuteAsync(UpdateRequest(queryPatch));
 
             Assert.AreEqual(SyncStatus.PendingReview.ToString(), _syncJob.Status);
             Assert.AreEqual(0, _enqueued.Count);
-        }
-
-        [TestMethod]
-        public async Task Update_FlagOn_NullQueueRepository_QueryChangeGoesToPendingReview_ConfigOnlyStillAutoApproved()
-        {
-            // Query change with a null AutoApprover queue repository (host disabled) → PendingReview, no enqueue.
-            var queryPatch = new JsonPatchDocument<SyncJobPatch>();
-            queryPatch.Replace(x => x.Query, "[{\"type\":\"GroupMembership\",\"source\":\"44444444-4444-4444-4444-444444444444\"}]");
-            await CreateHandler(withQueueRepository: false).ExecuteAsync(UpdateRequest(queryPatch));
-
-            Assert.AreEqual(SyncStatus.PendingReview.ToString(), _syncJob.Status,
-                "With a null queue repository a query change must go to PendingReview, never left in PendingAutoApproval.");
-            Assert.AreEqual(0, _enqueued.Count);
-
-            // A config-only submission is still auto-approved even with the queue repository disabled.
-            _savedChanges.Clear();
-            _syncJob.Status = SyncStatus.Idle.ToString();
-            var configPatch = new JsonPatchDocument<SyncJobPatch>();
-            configPatch.Replace(x => x.ThresholdPercentageForAdditions, 77);
-            await CreateHandler(withQueueRepository: false).ExecuteAsync(UpdateRequest(configPatch));
-
-            Assert.AreEqual(SyncStatus.Idle.ToString(), _syncJob.Status);
-            Assert.AreEqual(SyncJobChangeReason.UpdateAutoApproved.ToString(), _savedChanges.Single().ChangeReason);
+            Assert.AreEqual(SyncJobChangeReason.Update.ToString(), _savedChanges.Single().ChangeReason);
         }
     }
 }

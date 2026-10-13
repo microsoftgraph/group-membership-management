@@ -733,9 +733,5 @@ namespace Hosts.WebApi
         [LoggerMessage(EventId = 91627, Level = LogLevel.Information,
             Message = "Configuration-only update to sync job {SyncJobId} was auto-approved; pre-edit status preserved and no reviewer action required")]
         public static partial void ConfigurationUpdateAutoApproved(this ILogger logger, Guid syncJobId);
-
-        [LoggerMessage(EventId = 91628, Level = LogLevel.Warning,
-            Message = "Failed to retrieve the IsAutoApprovalForConfigurationUpdatesEnabled setting; defaulting the feature to off")]
-        public static partial void AutoApprovalForConfigurationUpdatesSettingRetrievalFailed(this ILogger logger, Exception exception);
     }
 }

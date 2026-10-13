@@ -102,6 +102,7 @@ namespace WebApi
                     .Select("Mail:*")
                     .Select("GraphAPI:*")
                     .Select("PendingConfiguration:*")
+                    .Select("AutoApprover:*")
                     .Select("TeamsChannel:*")
                     .Select("AzureMaintenance:*");
             });

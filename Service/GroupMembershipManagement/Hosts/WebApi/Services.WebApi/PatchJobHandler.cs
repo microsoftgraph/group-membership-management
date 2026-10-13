@@ -51,7 +51,10 @@ namespace Services.WebApi
             "/ThresholdPercentageForRemovals",
             "/IsDryRunEnabled",
             "/DryRunTimeStamp",
-            "/Titles"
+            "/Titles",
+            "/Status",
+            "/LastModifiedOnBehalfOfDisplayName",
+            "/LastModifiedOnBehalfOfObjectId"
         };
 
         public PatchJobHandler(
@@ -265,11 +268,10 @@ namespace Services.WebApi
             {
                 // Capture the status the job had before this edit; the config-only fast path must preserve it.
                 var preEditStatus = syncJob.Status;
-                var isConfigUpdateAutoApprovalEnabled = await IsAutoApprovalForConfigurationUpdatesEnabledAsync();
 
-                if (!isConfigUpdateAutoApprovalEnabled)
+                if (_autoApproverQueueRepository == null)
                 {
-                    // Feature off: preserve today's behavior byte-for-byte — every update goes to PendingReview.
+                    // The AutoApprover host is disabled: preserve the legacy behavior for every update.
                     var result = await ValidateAndUpdateSyncJob(request, syncJob, syncJobChange, SyncStatus.PendingReview.ToString());
                     if (result != null) return result;
                 }
@@ -352,13 +354,6 @@ namespace Services.WebApi
                     {
                         // Any non-allowlisted field requires human review, even when /Query also changed. The
                         // AutoApprover evaluates only the query and must not implicitly approve unrelated changes.
-                        var result = await ValidateAndUpdateSyncJob(request, syncJob, syncJobChange, SyncStatus.PendingReview.ToString());
-                        if (result != null) return result;
-                    }
-                    else if (_autoApproverQueueRepository == null)
-                    {
-                        // Query changed but the AutoApprover host is disabled: fall back to human review; never leave
-                        // the job in PendingAutoApproval, which nothing would resolve (FR-014).
                         var result = await ValidateAndUpdateSyncJob(request, syncJob, syncJobChange, SyncStatus.PendingReview.ToString());
                         if (result != null) return result;
                     }
@@ -558,20 +553,6 @@ namespace Services.WebApi
             catch (Exception ex)
             {
                 _logger.AITitleSettingRetrievalFailed(ex);
-                return false;
-            }
-        }
-
-        private async Task<bool> IsAutoApprovalForConfigurationUpdatesEnabledAsync()
-        {
-            try
-            {
-                var setting = await _databaseSettingsRepository.GetSettingByKeyAsync(SettingKey.IsAutoApprovalForConfigurationUpdatesEnabled);
-                return setting != null && bool.TryParse(setting.SettingValue, out bool result) && result;
-            }
-            catch (Exception ex)
-            {
-                _logger.AutoApprovalForConfigurationUpdatesSettingRetrievalFailed(ex);
                 return false;
             }
         }

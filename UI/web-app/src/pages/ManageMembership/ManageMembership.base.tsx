@@ -397,11 +397,6 @@ export const ManageMembershipBase: React.FunctionComponent<IManageMembershipProp
         },
         {
           op: "replace",
-          path: "/Status",
-          value: SyncStatus.PendingReview
-        },
-        {
-          op: "replace",
           path: "/StartDate",
           value: startDate
         },
