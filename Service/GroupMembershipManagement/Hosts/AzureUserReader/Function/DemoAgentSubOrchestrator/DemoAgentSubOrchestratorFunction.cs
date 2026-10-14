@@ -47,12 +47,13 @@ namespace Hosts.AzureUserReader
                     var result = await context.CallActivityAsync<DemoAgentWriterResult>(nameof(DemoAgentWriterFunction), batch);
                     total.Created += result.Created;
                     total.ManagersFixed += result.ManagersFixed;
+                    total.ManagerFailures += result.ManagerFailures;
                     total.Failed += result.Failed;
                 }
             }
 
             logger.DemoAgentSummary(plan.Requested, plan.Capacity, plan.Agents.Count, reconciliation.AlreadyPresent,
-                total.Created, total.ManagersFixed, total.Failed);
+                total.Created, total.ManagersFixed, total.ManagerFailures, total.Failed);
 
             if (reconciliation.ToCreate.Count > 0 && total.Created == 0)
                 throw new InvalidOperationException($"All {reconciliation.ToCreate.Count} demo agent creations failed.");

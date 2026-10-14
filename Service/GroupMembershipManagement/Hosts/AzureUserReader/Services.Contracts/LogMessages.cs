@@ -105,8 +105,8 @@ namespace Hosts.AzureUserReader
         public static partial void DemoAgentCapacityShortfall(this ILogger logger, int requested, int capacity);
 
         [LoggerMessage(EventId = 60061, Level = LogLevel.Information,
-            Message = "Demo agents: Requested={Requested}, Capacity={Capacity}, Expected={Expected}, AlreadyPresent={AlreadyPresent}, Created={Created}, ManagersFixed={ManagersFixed}, Failed={Failed}.")]
-        public static partial void DemoAgentSummary(this ILogger logger, int requested, int capacity, int expected, int alreadyPresent, int created, int managersFixed, int failed);
+            Message = "Demo agents: Requested={Requested}, Capacity={Capacity}, Expected={Expected}, AlreadyPresent={AlreadyPresent}, Created={Created}, ManagersFixed={ManagersFixed}, ManagerFailures={ManagerFailures}, Failed={Failed}.")]
+        public static partial void DemoAgentSummary(this ILogger logger, int requested, int capacity, int expected, int alreadyPresent, int created, int managersFixed, int managerFailures, int failed);
 
         [LoggerMessage(EventId = 60062, Level = LogLevel.Error,
             Message = "Failed to create demo agent {UserPrincipalName}.")]
@@ -119,5 +119,9 @@ namespace Hosts.AzureUserReader
         [LoggerMessage(EventId = 60064, Level = LogLevel.Error,
             Message = "Failed to set manager for demo agent {AgentId}.")]
         public static partial void DemoAgentManagerFailed(this ILogger logger, string agentId, Exception ex);
+
+        [LoggerMessage(EventId = 60065, Level = LogLevel.Warning,
+            Message = "Demo agent provisioning completed with failures: Created={Created}, ManagersFixed={ManagersFixed}, CreationFailures={CreationFailures}, ManagerFailures={ManagerFailures}.")]
+        public static partial void DemoAgentProvisioningDegraded(this ILogger logger, int created, int managersFixed, int creationFailures, int managerFailures);
     }
 }

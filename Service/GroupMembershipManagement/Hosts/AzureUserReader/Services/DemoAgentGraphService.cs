@@ -34,11 +34,14 @@ namespace Services
 
         private readonly GraphServiceClient _graphClient;
         private readonly Func<CancellationToken, Task> _recoveryDelay;
+        private readonly Func<TimeSpan, CancellationToken, Task> _parentPropagationDelay;
 
-        public DemoAgentGraphService(GraphServiceClient graphClient, Func<CancellationToken, Task> recoveryDelay = null)
+        public DemoAgentGraphService(GraphServiceClient graphClient, Func<CancellationToken, Task> recoveryDelay = null,
+            Func<TimeSpan, CancellationToken, Task> parentPropagationDelay = null)
         {
             _graphClient = graphClient ?? throw new ArgumentNullException(nameof(graphClient));
             _recoveryDelay = recoveryDelay ?? (token => Task.Delay(TimeSpan.FromSeconds(2), token));
+            _parentPropagationDelay = parentPropagationDelay ?? ((delay, token) => Task.Delay(delay, token));
         }
 
         public async Task<List<ExistingDemoAgent>> GetDemoAgentsAsync(CancellationToken cancellationToken = default)
@@ -152,18 +155,33 @@ namespace Services
                 ["userPrincipalName"] = spec.UserPrincipalName,
                 ["identityParentId"] = identityId
             };
-            try
+            for (var attempt = 0; ; attempt++)
             {
-                using var user = await SendAsync(Method.POST, $"{BetaBaseUrl}/users/microsoft.graph.agentUser", userBody, cancellationToken);
-                return GetString(user.RootElement, "id") ?? throw new InvalidDataException("Agent user creation returned no id.");
-            }
-            catch (Exception exception) when (IsAmbiguousWrite(exception, cancellationToken) ||
-                exception is ApiException { ResponseStatusCode: 400 or 409 })
-            {
-                var recovered = await RecoverAsync(() => FindUserAsync(spec, identityId, cancellationToken), cancellationToken);
-                if (recovered == null)
-                    throw;
-                return recovered;
+                cancellationToken.ThrowIfCancellationRequested();
+                try
+                {
+                    using var user = await SendAsync(Method.POST, $"{BetaBaseUrl}/users/microsoft.graph.agentUser", userBody, cancellationToken);
+                    return GetString(user.RootElement, "id") ?? throw new InvalidDataException("Agent user creation returned no id.");
+                }
+                catch (ODataError exception) when (exception.ResponseStatusCode == 400 &&
+                    exception.Error?.Message?.StartsWith("Agent user IdentityParent does not exist in the directory",
+                        StringComparison.OrdinalIgnoreCase) == true)
+                {
+                    if (attempt >= 5)
+                        throw;
+                    await _parentPropagationDelay(TimeSpan.FromSeconds(2 << attempt), cancellationToken);
+                    var recovered = await FindUserAsync(spec, identityId, cancellationToken);
+                    if (recovered != null)
+                        return recovered;
+                }
+                catch (Exception exception) when (IsAmbiguousWrite(exception, cancellationToken) ||
+                    exception is ApiException { ResponseStatusCode: 400 or 409 })
+                {
+                    var recovered = await RecoverAsync(() => FindUserAsync(spec, identityId, cancellationToken), cancellationToken);
+                    if (recovered == null)
+                        throw;
+                    return recovered;
+                }
             }
         }
 

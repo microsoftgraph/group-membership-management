@@ -214,6 +214,88 @@ namespace Services.Tests
             private static Stream Stream(string json) => new MemoryStream(Encoding.UTF8.GetBytes(json));
         }
 
+        [DataTestMethod]
+        [DataRow(1, false, false)]
+        [DataRow(5, false, false)]
+        [DataRow(6, false, false)]
+        [DataRow(1, true, false)]
+        [DataRow(1, false, true)]
+        public async Task ParentPropagation_RetriesSameIdentityWithBoundedBackoff(int failures, bool existingIdentity, bool recoveredUser)
+        {
+            using var transport = new Transport();
+            const string identityPath = "/beta/servicePrincipals/microsoft.graph.agentIdentity";
+            const string userPath = "/beta/users/microsoft.graph.agentUser";
+            var lookupPath = "/beta/users/" + Uri.EscapeDataString(Spec.UserPrincipalName);
+            const string error = "{\"error\":{\"code\":\"Request_BadRequest\",\"message\":\"Agent user IdentityParent does not exist in the directory. paramName: UserIdentityParent, paramValue: identity\"}}";
+            transport.Expect(HttpMethod.Get, identityPath, HttpStatusCode.OK,
+                existingIdentity ? "{\"value\":[" + Identity + "]}" : "{\"value\":[]}");
+            transport.Expect(HttpMethod.Get, lookupPath, HttpStatusCode.NotFound);
+            if (!existingIdentity)
+                transport.Expect(HttpMethod.Post, identityPath, HttpStatusCode.Created, "{\"id\":\"identity\"}");
+            for (var attempt = 0; attempt < failures; attempt++)
+            {
+                transport.Expect(HttpMethod.Post, userPath, HttpStatusCode.BadRequest, error);
+                if (attempt < 5)
+                    transport.Expect(HttpMethod.Get, lookupPath, recoveredUser ? HttpStatusCode.OK : HttpStatusCode.NotFound,
+                        recoveredUser ? User : "{}");
+            }
+            if (failures <= 5 && !recoveredUser)
+                transport.Expect(HttpMethod.Post, userPath, HttpStatusCode.Created, "{\"id\":\"user\"}");
+
+            using var httpClient = KiotaClientFactory.Create(transport);
+            using var adapter = new HttpClientRequestAdapter(new AnonymousAuthenticationProvider(), httpClient: httpClient);
+            var delays = new List<TimeSpan>();
+            var service = new DemoAgentGraphService(new GraphServiceClient(adapter),
+                _ => throw new AssertFailedException("Parent propagation must not use ambiguous-write recovery."),
+                (delay, token) =>
+                {
+                    delays.Add(delay);
+                    return Task.CompletedTask;
+                });
+
+            if (failures > 5)
+            {
+                var exception = await Assert.ThrowsExceptionAsync<Microsoft.Graph.Models.ODataErrors.ODataError>(
+                    () => service.CreateAgentAsync(Spec, "blueprint"));
+                StringAssert.Contains(exception.Error.Message, "IdentityParent does not exist");
+            }
+            else
+                Assert.AreEqual("user", await service.CreateAgentAsync(Spec, "blueprint"));
+            Assert.AreEqual(existingIdentity ? 0 : 1,
+                transport.Requests.FindAll(r => r.Method == HttpMethod.Post && r.Path == identityPath).Count);
+            Assert.AreEqual(recoveredUser ? 1 : Math.Min(failures + 1, 6),
+                transport.Requests.FindAll(r => r.Method == HttpMethod.Post && r.Path == userPath).Count);
+            Assert.AreEqual(Math.Min(failures, 5), delays.Count);
+            for (var attempt = 0; attempt < delays.Count; attempt++)
+                Assert.AreEqual(TimeSpan.FromSeconds(2 << attempt), delays[attempt]);
+            Assert.AreEqual(0, transport.Responses.Count);
+        }
+
+        [TestMethod]
+        public async Task ParentPropagation_CancellationStopsWithoutReposting()
+        {
+            using var transport = new Transport();
+            transport.Expect(HttpMethod.Get, "/beta/servicePrincipals/microsoft.graph.agentIdentity", HttpStatusCode.OK,
+                "{\"value\":[" + Identity + "]}");
+            transport.Expect(HttpMethod.Get, "/beta/users/" + Uri.EscapeDataString(Spec.UserPrincipalName), HttpStatusCode.NotFound);
+            transport.Expect(HttpMethod.Post, "/beta/users/microsoft.graph.agentUser", HttpStatusCode.BadRequest,
+                "{\"error\":{\"code\":\"Request_BadRequest\",\"message\":\"Agent user IdentityParent does not exist in the directory.\"}}");
+            using var httpClient = KiotaClientFactory.Create(transport);
+            using var adapter = new HttpClientRequestAdapter(new AnonymousAuthenticationProvider(), httpClient: httpClient);
+            using var cancellation = new CancellationTokenSource();
+            var service = new DemoAgentGraphService(new GraphServiceClient(adapter), parentPropagationDelay: (delay, token) =>
+            {
+                cancellation.Cancel();
+                token.ThrowIfCancellationRequested();
+                return Task.CompletedTask;
+            });
+
+            await Assert.ThrowsExceptionAsync<OperationCanceledException>(
+                () => service.CreateAgentAsync(Spec, "blueprint", cancellation.Token));
+            Assert.AreEqual(1, transport.Requests.FindAll(r => r.Method == HttpMethod.Post).Count);
+            Assert.AreEqual(0, transport.Responses.Count);
+        }
+
         [TestMethod]
         public async Task NormalCreation_PostsEachObjectOnce()
         {

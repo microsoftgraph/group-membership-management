@@ -47,7 +47,10 @@ namespace Hosts.AzureUserReader
 
                 // A new agent user may not be replicated yet, so retry the manager assignment.
                 if (!await TrySetManagerAsync(agentId, spec.ManagerId))
+                {
+                    result.ManagerFailures++;
                     result.Failed++;
+                }
             }
 
             foreach (var assignment in request.ToFixManager ?? new List<ManagerAssignment>())
@@ -55,7 +58,10 @@ namespace Hosts.AzureUserReader
                 if (await TrySetManagerAsync(assignment.AgentId, assignment.ManagerId))
                     result.ManagersFixed++;
                 else
+                {
+                    result.ManagerFailures++;
                     result.Failed++;
+                }
             }
 
             return result;

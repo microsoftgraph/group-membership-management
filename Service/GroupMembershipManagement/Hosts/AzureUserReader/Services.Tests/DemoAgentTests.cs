@@ -3,6 +3,7 @@
 
 using Hosts.AzureUserReader;
 using Microsoft.DurableTask;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Models;
@@ -198,6 +199,28 @@ namespace Services.Tests
             Assert.AreEqual(0, result.Failed);
         }
 
+        [TestMethod]
+        public async Task Writer_ManagerRetriesExhausted_ReportsManagerFailure()
+        {
+            var graph = new Mock<IDemoAgentGraphService>();
+            graph.Setup(x => x.SetManagerAsync("a", "m", It.IsAny<CancellationToken>()))
+                .ThrowsAsync(new InvalidOperationException());
+
+            var functions = new DemoAgentWriterFunction(graph.Object, NullLogger<DemoAgentWriterFunction>.Instance)
+            {
+                Delay = _ => Task.CompletedTask
+            };
+            var result = await functions.RunAsync(new DemoAgentWriterRequest
+            {
+                ToFixManager = new List<ManagerAssignment> { new() { AgentId = "a", ManagerId = "m" } }
+            });
+
+            Assert.AreEqual(0, result.ManagersFixed);
+            Assert.AreEqual(1, result.ManagerFailures);
+            Assert.AreEqual(1, result.Failed);
+            graph.Verify(x => x.SetManagerAsync("a", "m", It.IsAny<CancellationToken>()), Times.Exactly(3));
+        }
+
         private static Mock<TaskOrchestrationContext> SubOrchestratorContext(DemoAgentRequest request, List<ExistingDemoAgent> existing, DemoAgentWriterResult writerResult)
         {
             var context = new Mock<TaskOrchestrationContext>();
@@ -245,6 +268,25 @@ namespace Services.Tests
         }
 
         [TestMethod]
+        public async Task SubOrchestrator_RepairOnlyManagerFailure_ReturnsDegradedResult()
+        {
+            var request = new DemoAgentRequest { AgentCount = 1, TenantDomain = Domain, Managers = Users("1") };
+            var existing = new List<ExistingDemoAgent>
+            {
+                new() { Id = "a", UserPrincipalName = $"gmm-demo-agent-1@{Domain}", ManagerId = "wrong-manager" }
+            };
+            var context = SubOrchestratorContext(request, existing,
+                new DemoAgentWriterResult { ManagerFailures = 1, Failed = 1 });
+
+            var result = await new DemoAgentSubOrchestratorFunction().RunAsync(context.Object);
+
+            Assert.AreEqual(0, result.Created);
+            Assert.AreEqual(0, result.ManagersFixed);
+            Assert.AreEqual(1, result.ManagerFailures);
+            Assert.AreEqual(1, result.Failed);
+        }
+
+        [TestMethod]
         public async Task Orchestrator_AgentCountZero_SkipsDemoAgents()
         {
             var context = new Mock<TaskOrchestrationContext>();
@@ -275,6 +317,40 @@ namespace Services.Tests
                 It.Is<TaskName>(n => n.Name == nameof(DemoAgentSubOrchestratorFunction)),
                 It.Is<object>(o => ((DemoAgentRequest)o).AgentCount == 2 && ((DemoAgentRequest)o).Managers.Count == 2 && ((DemoAgentRequest)o).TenantDomain == Domain),
                 It.IsAny<TaskOptions>()), Times.Once());
+        }
+
+        [TestMethod]
+        public async Task Orchestrator_AgentFailures_LogDegradedWarningAndContinue()
+        {
+            var context = new Mock<TaskOrchestrationContext>();
+            var logger = new Mock<ILogger>();
+            logger.Setup(x => x.IsEnabled(LogLevel.Warning)).Returns(true);
+            var request = new AzureUserReaderRequest
+            {
+                AgentCount = 1,
+                MaxAgentsPerUser = 1,
+                TenantInformation = new TenantInformation { TenantDomain = Domain }
+            };
+            context.Setup(x => x.CreateReplaySafeLogger(It.IsAny<string>())).Returns(logger.Object);
+            context.Setup(x => x.GetInput<AzureUserReaderRequest>()).Returns(request);
+            context.Setup(x => x.CallActivityAsync<IList<string>>(
+                It.IsAny<TaskName>(), It.IsAny<AzureUserReaderRequest>(), It.IsAny<TaskOptions>()))
+                .ReturnsAsync(new List<string> { "1" });
+            context.Setup(x => x.CallSubOrchestratorAsync<List<GraphProfileInformation>>(
+                It.IsAny<TaskName>(), It.IsAny<object>(), It.IsAny<TaskOptions>()))
+                .ReturnsAsync(Users("1"));
+            context.Setup(x => x.CallSubOrchestratorAsync<DemoAgentWriterResult>(
+                It.IsAny<TaskName>(), It.IsAny<object>(), It.IsAny<TaskOptions>()))
+                .ReturnsAsync(new DemoAgentWriterResult { Created = 1, ManagerFailures = 1, Failed = 1 });
+
+            await new OrchestratorFunction().RunOrchestrator(context.Object);
+
+            logger.Verify(x => x.Log(
+                LogLevel.Warning,
+                It.Is<EventId>(eventId => eventId.Id == 60065),
+                It.Is<It.IsAnyType>((value, _) => value.ToString().Contains("ManagerFailures=1")),
+                It.IsAny<Exception>(),
+                It.IsAny<Func<It.IsAnyType, Exception, string>>()), Times.Once);
         }
     }
 }

@@ -61,6 +61,7 @@ namespace Services.Entities
     {
         public int Created { get; set; }
         public int ManagersFixed { get; set; }
+        public int ManagerFailures { get; set; }
         public int Failed { get; set; }
     }
 }

@@ -50,7 +50,11 @@ namespace Hosts.AzureUserReader
                         Managers = users
                     };
 
-                    await context.CallSubOrchestratorAsync<DemoAgentWriterResult>(nameof(DemoAgentSubOrchestratorFunction), demoAgentRequest);
+                    var result = await context.CallSubOrchestratorAsync<DemoAgentWriterResult>(
+                        nameof(DemoAgentSubOrchestratorFunction), demoAgentRequest);
+                    if (result.Failed > 0)
+                        logger.DemoAgentProvisioningDegraded(result.Created, result.ManagersFixed,
+                            result.Failed - result.ManagerFailures, result.ManagerFailures);
                 }
 
                 if (users.Count > 0)
