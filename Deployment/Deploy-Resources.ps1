@@ -3757,6 +3757,15 @@ function Assert-RequiredParameters {
         throw "Required parameter appConfigurationDataOwners is missing or empty. Please replace `<guid>` with a valid GUID."
     }
 
+    $deployAks = Get-Default -Value $ParameterHashtable['deployAks'].value -Default $false
+    if ($deployAks -eq $true -and $ParameterHashtable.ContainsKey('aksPodCidr')) {
+        $podCidr = $ParameterHashtable['aksPodCidr'].value
+        if ($podCidr -isnot [string] -or
+            ($podCidr -cne '' -and $podCidr -cnotmatch '^\S+/19\z')) {
+            throw 'aksPodCidr must be an empty string or a whitespace-free string ending in /19.'
+        }
+    }
+
     Write-DeployLog -Level Success -Message "All required parameters are provided."
 }
 

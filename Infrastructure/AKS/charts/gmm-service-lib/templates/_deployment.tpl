@@ -25,6 +25,8 @@ spec:
       annotations:
         checksum/config: {{ include "gmm.configMap" . | sha256sum }}
     spec:
+      nodeSelector:
+        kubernetes.azure.com/agentpool: apppool
       serviceAccountName: {{ include "gmm.serviceAccountName" . }}
       automountServiceAccountToken: false
       terminationGracePeriodSeconds: {{ .Values.terminationGracePeriodSeconds | default 60 }}

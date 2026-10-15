@@ -16,20 +16,11 @@ param location string
 @description('Object ID of the Entra security group whose members become Kubernetes cluster-admins.')
 param aksAdministratorsGroupId string
 
-@description('Node pool VM size.')
-param nodeVmSize string = 'Standard_D4s_v5'
+@description('Whether to use the production AKS control-plane tier.')
+param isProduction bool = false
 
-@description('System node pool count.')
-@minValue(1)
-@maxValue(100)
-param nodeCount int = 2
-
-@description('AKS control-plane tier.')
-@allowed([
-  'Free'
-  'Standard'
-])
-param aksSkuTier string = 'Free'
+@description('Overlay pod IPv4 /19; missing or empty uses project default 10.244.0.0/19. Override with a valid non-overlapping /19 and audit enterprise routes before deployment.')
+param aksPodCidr string = '10.244.0.0/19'
 
 @description('Kubernetes namespace the workloads run in.')
 param namespaceName string = 'gmm'
@@ -46,9 +37,8 @@ module aksResourcesTemplate '../Infrastructure/AKS/bicep/aksResources.bicep' = {
     environmentAbbreviation: environmentAbbreviation
     location: location
     aksAdministratorsGroupId: aksAdministratorsGroupId
-    nodeVmSize: nodeVmSize
-    nodeCount: nodeCount
-    aksSkuTier: aksSkuTier
+    isProduction: isProduction
+    aksPodCidr: aksPodCidr
     namespaceName: namespaceName
     services: services
   }
