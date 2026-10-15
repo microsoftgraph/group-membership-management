@@ -12,6 +12,10 @@
   </ItemGroup>
 
   <ItemGroup>
+    <None Update="TestData\refine-feedback-golden.json" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+  <ItemGroup>
     <PackageReference Include="coverlet.msbuild">
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>

@@ -457,6 +457,7 @@ export const strings: IStrings = {
       refiningFeedback: 'Refining...',
       restoreFeedback: 'Restore original',
       refineFeedbackEmptyGuidance: 'Enter feedback before refining it.',
+      refineFeedbackDisclaimer: 'AI-generated content may be inaccurate. Review before sending.',
       refineFeedbackStaleEdit: 'Your feedback changed while it was being refined, so the result was discarded. Select Refine feedback with AI to try again.',
       removeGMM: 'Stop membership management',
       removeGMMWarning: 'Are you sure you want to remove GMM management from this group? You will need to manually remove GMM as a group owner in Microsoft Entra ID.',

@@ -1265,28 +1265,34 @@ const SubmissionReviewActions: React.FunctionComponent<IStatusContentProps> = (
           description={isRefinementEnabled && !rejectionFeedback.trim() ? strings.JobDetails.labels.refineFeedbackEmptyGuidance : undefined}
         />
         {isRefinementEnabled && (
-          <Stack horizontal tokens={{ childrenGap: 8 }} verticalAlign="center" style={{ marginTop: 8 }}>
-            <DefaultButton
-              onClick={handleRefineFeedback}
-              disabled={!rejectionFeedback.trim() || isRefiningFeedback || isSubmittingRejection}
-              ariaLabel={strings.JobDetails.labels.refineFeedback}
-              styles={{ root: { borderRadius: 4 } }}
-            >
-              {isRefiningFeedback ? (
-                <Spinner size={SpinnerSize.xSmall} style={{ marginRight: 8 }} />
-              ) : (
-                <SparkleIcon animated={false} className={classNames.refineFeedbackIcon} />
-              )}
-              {isRefiningFeedback ? strings.JobDetails.labels.refiningFeedback : strings.JobDetails.labels.refineFeedback}
-            </DefaultButton>
-            {preRefinementFeedback !== null && (
+          <Stack tokens={{ childrenGap: 8 }} style={{ marginTop: 8 }}>
+            <Stack horizontal tokens={{ childrenGap: 8 }} verticalAlign="center">
               <DefaultButton
-                onClick={handleRestoreFeedback}
-                disabled={isSubmittingRejection}
-                text={strings.JobDetails.labels.restoreFeedback}
+                onClick={handleRefineFeedback}
+                disabled={!rejectionFeedback.trim() || isRefiningFeedback || isSubmittingRejection}
+                ariaLabel={strings.JobDetails.labels.refineFeedback}
+                aria-describedby="feedback-refinement-disclaimer"
                 styles={{ root: { borderRadius: 4 } }}
-              />
-            )}
+              >
+                {isRefiningFeedback ? (
+                  <Spinner size={SpinnerSize.xSmall} style={{ marginRight: 8 }} />
+                ) : (
+                  <SparkleIcon animated={false} className={classNames.refineFeedbackIcon} />
+                )}
+                {isRefiningFeedback ? strings.JobDetails.labels.refiningFeedback : strings.JobDetails.labels.refineFeedback}
+              </DefaultButton>
+              {preRefinementFeedback !== null && (
+                <DefaultButton
+                  onClick={handleRestoreFeedback}
+                  disabled={isSubmittingRejection}
+                  text={strings.JobDetails.labels.restoreFeedback}
+                  styles={{ root: { borderRadius: 4 } }}
+                />
+              )}
+            </Stack>
+            <Text id="feedback-refinement-disclaimer" variant="small" block>
+              {strings.JobDetails.labels.refineFeedbackDisclaimer}
+            </Text>
           </Stack>
         )}
         {isRefinementEnabled && refinementMessage && (

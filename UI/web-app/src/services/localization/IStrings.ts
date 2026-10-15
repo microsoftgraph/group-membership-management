@@ -454,6 +454,7 @@ export type IStrings = {
       refiningFeedback: string;
       restoreFeedback: string;
       refineFeedbackEmptyGuidance: string;
+      refineFeedbackDisclaimer: string;
       refineFeedbackStaleEdit: string;
       removeGMM: string;
       removeGMMWarning: string;

@@ -11,6 +11,8 @@ import { GMMApi } from '../../apis/GMMApi';
 import { GraphApi } from '../../apis/GraphApi';
 import { SettingKey } from '../../models/SettingKey';
 import { JobDetails } from './JobDetails';
+import { strings as enStrings } from '../../services/localization/i18n/locales/en/translations';
+import { strings as esStrings } from '../../services/localization/i18n/locales/es/translations';
 
 vi.mock('react-router-dom', async () => {
   const actual = await vi.importActual<typeof import('react-router-dom')>('react-router-dom');
@@ -172,7 +174,7 @@ const axiosErrorWith = (status: number, code: string) => ({
   response: { status, data: { code, error: 'Feedback refinement failed.' } },
 });
 
-function renderJobDetails(isRefinementEnabled = true) {
+function renderJobDetails(isRefinementEnabled = true, language = 'en') {
   const refineFeedbackMock = vi.fn();
   const getTokenAsync = async () => 'mock-token';
 
@@ -186,7 +188,10 @@ function renderJobDetails(isRefinementEnabled = true) {
   });
 
   const store = setupStore(
-    createState(isRefinementEnabled) as any,
+    {
+      ...createState(isRefinementEnabled),
+      localization: { language, strings: language === 'es' ? esStrings : enStrings },
+    } as any,
     { authenticationService: mockAuthService as any },
     {
       gmmApi: gmmApi as any,
@@ -231,6 +236,38 @@ describe('JobDetails - rejection feedback refinement', () => {
     await openRejectionDialog();
 
     expect(screen.queryByRole('button', { name: /refine feedback/i })).not.toBeInTheDocument();
+    expect(screen.queryByText('AI-generated content may be inaccurate. Review before sending.')).not.toBeInTheDocument();
+  });
+
+  it('keeps the reliance disclaimer available before and after refinement and restore', async () => {
+    const { refineFeedbackMock } = renderJobDetails();
+    const editor = await openRejectionDialog();
+    const disclaimer = 'AI-generated content may be inaccurate. Review before sending.';
+
+    expect(screen.getByText(disclaimer)).toBeInTheDocument();
+    expect(getRefineButton()).toHaveAccessibleDescription(disclaimer);
+
+    refineFeedbackMock.mockResolvedValue({ data: { refinedText: 'Please clarify the scope.' } });
+    type(editor, 'scope unclear');
+    fireEvent.click(getRefineButton());
+
+    await waitFor(() => expect(editor).toHaveValue('Please clarify the scope.'));
+    expect(screen.getByText(disclaimer)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /restore original/i }));
+    expect(screen.getByText(disclaimer)).toBeInTheDocument();
+    expect(editor).toHaveValue('scope unclear');
+    expect(patchCalls).toHaveLength(0);
+  });
+
+  it('localizes the reliance disclaimer and accessible description in Spanish', async () => {
+    renderJobDetails(true, 'es');
+    fireEvent.click(await screen.findByRole('button', { name: 'Rechazar' }));
+    await screen.findByRole('textbox', { name: /razón del rechazo/i });
+
+    const disclaimer = 'El contenido generado por IA puede ser inexacto. Revísalo antes de enviarlo.';
+    expect(screen.getByText(disclaimer)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Refinar comentarios con IA' }))
+      .toHaveAccessibleDescription(disclaimer);
   });
 
   it('disables Refine and shows guidance for empty or whitespace feedback', async () => {

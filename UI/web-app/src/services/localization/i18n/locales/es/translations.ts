@@ -458,6 +458,7 @@ export const strings: IStrings = {
       refiningFeedback: 'Refinando...',
       restoreFeedback: 'Restaurar original',
       refineFeedbackEmptyGuidance: 'Escribe tus comentarios antes de refinarlos.',
+      refineFeedbackDisclaimer: 'El contenido generado por IA puede ser inexacto. Revísalo antes de enviarlo.',
       refineFeedbackStaleEdit: 'Tus comentarios cambiaron mientras se refinaban, por lo que se descartó el resultado. Selecciona Refinar comentarios con IA para intentarlo de nuevo.',
       removeGMM: 'Dejar de administrar la membresía',
       removeGMMWarning: '¿Estás seguro de que deseas dejar de administrar este grupo con GMM? Deberás eliminar manualmente a GMM de los dueños del grupo.',
