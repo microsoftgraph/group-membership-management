@@ -38,6 +38,7 @@ namespace WebApi.Tests
         private Mock<IDatabaseSettingsRepository> _settings = null!;
         private Mock<INotificationService> _notifications = null!;
         private Mock<IServiceBusQueueRepository> _autoApproverQueue = null!;
+        private CapturingTelemetryChannel _telemetry = null!;
         private SyncJob _syncJob = null!;
         private Guid _groupId;
 
@@ -54,6 +55,7 @@ namespace WebApi.Tests
             _settings = new Mock<IDatabaseSettingsRepository>();
             _notifications = new Mock<INotificationService>();
             _autoApproverQueue = new Mock<IServiceBusQueueRepository>();
+            _telemetry = new CapturingTelemetryChannel();
 
             _groupId = Guid.NewGuid();
             _syncJob = new SyncJob
@@ -94,7 +96,7 @@ namespace WebApi.Tests
                 _titles.Object,
                 _settings.Object,
                 _notifications.Object,
-                new CapturingTelemetryChannel().CreateClient(),
+                _telemetry.CreateClient(),
                 withQueueRepository ? _autoApproverQueue.Object : null);
         }
 
@@ -132,6 +134,44 @@ namespace WebApi.Tests
             _notifications.Verify(x => x.SendSubmissionApprovedNotificationAsync(_syncJob, It.IsAny<SyncJobChange>()), Times.Once);
             _notifications.Verify(x => x.SendSubmissionRejectedNotificationAsync(It.IsAny<SyncJob>(), It.IsAny<SyncJobChange>()), Times.Never);
             _notifications.Verify(x => x.SendReviewStatusChangeNotificationAsync(It.IsAny<SyncJob>(), It.IsAny<SyncJobChange>(), It.IsAny<NotificationMessageType>()), Times.Never);
+
+            // This path approves the update inside the WebApi, so nothing else would record it.
+            var properties = _telemetry.GetMetrics("JobReviewed").Single().Properties;
+            Assert.AreEqual("Update", properties["RequestType"]);
+            Assert.AreEqual("Auto", properties["ReviewalType"]);
+            Assert.AreEqual("Approved", properties["Outcome"]);
+            Assert.AreEqual("AutoApprover", properties["ReviewerId"]);
+            Assert.AreEqual(_groupId.ToString(), properties["TargetOfficeGroupId"]);
+        }
+
+        [TestMethod]
+        public async Task Update_RoutedToPendingReview_EmitsNoReviewMetric()
+        {
+            EnableConfigUpdateAutoApproval(false);
+
+            var patch = new JsonPatchDocument<SyncJobPatch>();
+            patch.Replace(x => x.ThresholdPercentageForAdditions, 42);
+
+            await CreateHandler().ExecuteAsync(UpdateRequest(patch));
+
+            Assert.AreEqual(SyncStatus.PendingReview.ToString(), _syncJob.Status);
+
+            // Routing to a human is not a review decision; the record is emitted once that human decides.
+            Assert.AreEqual(0, _telemetry.GetMetrics("JobReviewed").Count);
+        }
+
+        [TestMethod]
+        public async Task Update_QueryChanged_EnqueuedForAutoApprover_EmitsNoReviewMetric()
+        {
+            var patch = new JsonPatchDocument<SyncJobPatch>();
+            patch.Replace(x => x.Query, "[{\"type\":\"GroupMembership\",\"source\":\"22222222-2222-2222-2222-222222222222\"}]");
+
+            await CreateHandler().ExecuteAsync(UpdateRequest(patch));
+
+            Assert.AreEqual(1, _enqueued.Count);
+
+            // The AutoApprover emits the record once it actually approves, so emitting here would double-count.
+            Assert.AreEqual(0, _telemetry.GetMetrics("JobReviewed").Count);
         }
 
         [TestMethod]

@@ -183,6 +183,12 @@ namespace Services.WebApi
 
                 var submission = await _syncJobChangeRepository.GetLastSyncJobChangeBySyncJobIdAsync(request.SyncJobId);
 
+                // The submission under review is what distinguishes an onboarding from an edit to an
+                // existing job; the patch itself carries only SubmissionApproved/SubmissionRejected and
+                // so cannot tell them apart. Resolved once here so every review outcome below reports
+                // the same request type.
+                var reviewRequestType = JobReviewedTelemetryHelper.ToRequestType(submission?.ChangeReason);
+
                 if (canReviewOwnSubmissionsValue == false && (requestorUserId == submission.ChangedByObjectId) && 
                     (submission.ChangeReason == SyncJobChangeReason.Onboarding.ToString() || (submission.ChangeReason == SyncJobChangeReason.Update.ToString()))
                 )
@@ -214,6 +220,16 @@ namespace Services.WebApi
                         syncJobChange.ChangeReason = SyncJobChangeReason.SubmissionRejected.ToString();
                         await _syncJobChangeRepository.Save(syncJobChange);
 
+                        // The ownership precheck rejected this regardless of what the reviewer chose, so it
+                        // is attributed to the system rather than to the reviewer who opened it. Emitted
+                        // after the rejection and its audit row are persisted.
+                        JobReviewedTelemetryHelper.TrackSystemRejection(
+                            _telemetryClient,
+                            request.SyncJobId,
+                            (Guid)groupId,
+                            syncJob.MembershipType,
+                            reviewRequestType);
+
                         return response;
                     }
                 }
@@ -231,6 +247,17 @@ namespace Services.WebApi
 
                 if (newStatus == SyncStatus.SubmissionRejected.ToString())
                 {
+                    // ValidateAndUpdateSyncJob returned null, so the job update and its SubmissionRejected
+                    // audit row are both persisted. Emitted before the notification send so that a
+                    // notification failure cannot suppress a review that already took effect.
+                    JobReviewedTelemetryHelper.TrackManualRejection(
+                        _telemetryClient,
+                        request.SyncJobId,
+                        (Guid)groupId,
+                        syncJob.MembershipType,
+                        reviewRequestType,
+                        request.UserIdentity);
+
                     await _notificationService.SendSubmissionRejectedNotificationAsync(syncJob, syncJobChange);
                 }
                 else if (newStatus == SyncStatus.Idle.ToString())
@@ -238,11 +265,12 @@ namespace Services.WebApi
                     // ValidateAndUpdateSyncJob returned null, so the job update and its SubmissionApproved
                     // audit row are both persisted. Emitted before the notification send so that a
                     // notification failure cannot suppress a review that already took effect.
-                    JobReviewedTelemetryHelper.TrackManualReview(
+                    JobReviewedTelemetryHelper.TrackManualApproval(
                         _telemetryClient,
                         request.SyncJobId,
                         (Guid)groupId,
                         syncJob.MembershipType,
+                        reviewRequestType,
                         request.UserIdentity);
 
                     await _notificationService.SendSubmissionApprovedNotificationAsync(syncJob, syncJobChange);
@@ -356,6 +384,17 @@ namespace Services.WebApi
                         if (result != null) return result;
 
                         _logger.ConfigurationUpdateAutoApproved(request.SyncJobId);
+
+                        // This path approves an update outright inside the WebApi, so the AutoApprover host
+                        // never sees it and would otherwise leave it out of the auto-review figures entirely.
+                        // Always an update: the fast path is reachable only from the Update change reason.
+                        JobReviewedTelemetryHelper.TrackAutoApproval(
+                            _telemetryClient,
+                            request.SyncJobId,
+                            (Guid)groupId,
+                            syncJob.MembershipType,
+                            JobReviewRequestType.Update);
+
                         await _notificationService.SendSubmissionApprovedNotificationAsync(syncJob, syncJobChange);
                     }
                     else if (isConfigurationOnly)

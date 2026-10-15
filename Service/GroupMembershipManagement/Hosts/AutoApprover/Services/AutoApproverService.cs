@@ -166,12 +166,15 @@ namespace Services.AutoApprover
             _logger.SyncJobAutoApproved(message.SyncJobId);
 
             // Emitted only once the approval and its audit row are durably persisted, so the dashboard
-            // count reconciles one-to-one with the OnboardingAutoApproved rows in SyncJobChanges.
-            JobReviewedTelemetryHelper.TrackAutoReview(
+            // count reconciles one-to-one with the OnboardingAutoApproved / UpdateAutoApproved rows in
+            // SyncJobChanges. The request type comes from the same message origin that chose the audit
+            // reason above, so the two can never disagree about whether this was an onboarding.
+            JobReviewedTelemetryHelper.TrackAutoApproval(
                 _telemetryClient,
                 message.SyncJobId,
                 syncJob.TargetOfficeGroupId,
-                syncJob.MembershipType);
+                syncJob.MembershipType,
+                JobReviewedTelemetryHelper.ToRequestType(message.Origin));
         }
 
         // Each setting switches on one way a part may qualify; with every path off nothing auto-approves.

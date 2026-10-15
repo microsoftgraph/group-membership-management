@@ -303,9 +303,29 @@ namespace WebApi.Tests
             Assert.AreEqual(MembershipTypes.GroupMembership.ToString(), properties["MembershipType"]);
             Assert.AreEqual("Manual", properties["ReviewalType"]);
 
+            // The fixture submission under review is an Update, so this approval must not land in the
+            // onboarding figures.
+            Assert.AreEqual("Update", properties["RequestType"]);
+            Assert.AreEqual("Approved", properties["Outcome"]);
+
             // The reviewer's object id, which is what makes the per-reviewer panel reconcile against
             // SyncJobChanges.ChangedByObjectId.
             Assert.AreEqual(reviewerId, properties["ReviewerId"]);
+        }
+
+        [TestMethod]
+        public async Task JobReviewed_WhenApprovedSubmissionIsAnOnboarding_EmitsOnboardingRequestType()
+        {
+            _testSubmission.ChangeReason = SyncJobChangeReason.Onboarding.ToString();
+
+            await _patchJobHandler.ExecuteAsync(
+                ReviewRequest(SyncStatus.Idle.ToString(), SyncJobChangeReason.SubmissionApproved.ToString(), Guid.NewGuid().ToString()));
+
+            // The patch itself carries SubmissionApproved either way, so only the submission under review
+            // can tell an onboarding from an edit.
+            var properties = _capturingTelemetryChannel.GetMetrics("JobReviewed").Single().Properties;
+            Assert.AreEqual("Onboarding", properties["RequestType"]);
+            Assert.AreEqual("Approved", properties["Outcome"]);
         }
 
         [TestMethod]
@@ -317,9 +337,9 @@ namespace WebApi.Tests
             var properties = _capturingTelemetryChannel.GetMetrics("JobReviewed").Single().Properties;
 
             CollectionAssert.AreEquivalent(
-                new[] { "SyncJobId", "TargetOfficeGroupId", "MembershipType", "ReviewalType", "ReviewerId" },
+                new[] { "SyncJobId", "TargetOfficeGroupId", "MembershipType", "ReviewalType", "ReviewerId", "RequestType", "Outcome" },
                 properties.Keys.ToArray(),
-                "The metric must carry exactly the five contracted dimensions.");
+                "The metric must carry exactly the seven contracted dimensions.");
 
             foreach (var value in properties.Values)
             {
@@ -344,13 +364,39 @@ namespace WebApi.Tests
         }
 
         [TestMethod]
-        public async Task JobReviewed_WhenRejected_EmitsNothing()
+        public async Task JobReviewed_WhenRejected_EmitsOneManualRejection()
         {
+            var reviewerId = Guid.NewGuid().ToString();
+
             var response = await _patchJobHandler.ExecuteAsync(
-                ReviewRequest(SyncStatus.SubmissionRejected.ToString(), SyncJobChangeReason.SubmissionRejected.ToString(), Guid.NewGuid().ToString()));
+                ReviewRequest(SyncStatus.SubmissionRejected.ToString(), SyncJobChangeReason.SubmissionRejected.ToString(), reviewerId));
 
             Assert.AreEqual(HttpStatusCode.OK, response.StatusCode);
-            Assert.AreEqual(0, _capturingTelemetryChannel.GetMetrics("JobReviewed").Count);
+
+            var metrics = _capturingTelemetryChannel.GetMetrics("JobReviewed");
+            Assert.AreEqual(1, metrics.Count, "Exactly one JobReviewed metric is expected per persisted rejection.");
+
+            var properties = metrics[0].Properties;
+            Assert.AreEqual("Rejected", properties["Outcome"]);
+            Assert.AreEqual("Manual", properties["ReviewalType"]);
+            Assert.AreEqual("Update", properties["RequestType"]);
+
+            // A rejection the reviewer chose is attributed to that reviewer, unlike one a precheck forced.
+            Assert.AreEqual(reviewerId, properties["ReviewerId"]);
+        }
+
+        [TestMethod]
+        public async Task JobReviewed_WhenRejectionNotificationFails_MetricIsStillEmitted()
+        {
+            _mockNotificationService
+                .Setup(x => x.SendSubmissionRejectedNotificationAsync(It.IsAny<SyncJob>(), It.IsAny<SyncJobChange>()))
+                .ThrowsAsync(new InvalidOperationException("Notification failed"));
+
+            await Assert.ThrowsExceptionAsync<InvalidOperationException>(() => _patchJobHandler.ExecuteAsync(
+                ReviewRequest(SyncStatus.SubmissionRejected.ToString(), SyncJobChangeReason.SubmissionRejected.ToString(), Guid.NewGuid().ToString())));
+
+            // The rejection was already persisted, so a notification failure must not suppress the record.
+            Assert.AreEqual(1, _capturingTelemetryChannel.GetMetrics("JobReviewed").Count);
         }
 
         [TestMethod]
@@ -379,18 +425,27 @@ namespace WebApi.Tests
         }
 
         [TestMethod]
-        public async Task JobReviewed_WhenSubmitterIsNoLongerAnOwner_EmitsNothing()
+        public async Task JobReviewed_WhenSubmitterIsNoLongerAnOwner_EmitsSystemRejection()
         {
             _mockGraphGroupRepository.Setup(x => x.GetDestinationOwnersAsync(It.IsAny<List<Guid>>()))
                 .ReturnsAsync(new Dictionary<Guid, List<Guid>> { { _testSyncJob.TargetOfficeGroupId, new List<Guid>() } });
 
+            var reviewerId = Guid.NewGuid().ToString();
             var response = await _patchJobHandler.ExecuteAsync(
-                ReviewRequest(SyncStatus.Idle.ToString(), SyncJobChangeReason.SubmissionApproved.ToString(), Guid.NewGuid().ToString()));
+                ReviewRequest(SyncStatus.Idle.ToString(), SyncJobChangeReason.SubmissionApproved.ToString(), reviewerId));
 
             Assert.AreEqual("SubmitterNotOwner", response.ErrorCode);
 
             // The submission was force-rejected, not approved.
-            Assert.AreEqual(0, _capturingTelemetryChannel.GetMetrics("JobReviewed").Count);
+            var properties = _capturingTelemetryChannel.GetMetrics("JobReviewed").Single().Properties;
+            Assert.AreEqual("Rejected", properties["Outcome"]);
+            Assert.AreEqual("Update", properties["RequestType"]);
+
+            // The reviewer asked to approve and the precheck overruled them, so crediting them with this
+            // rejection would misstate their manual review record.
+            Assert.AreEqual("System", properties["ReviewerId"]);
+            Assert.AreNotEqual(reviewerId, properties["ReviewerId"]);
+            Assert.AreEqual("Auto", properties["ReviewalType"]);
         }
 
         [TestMethod]

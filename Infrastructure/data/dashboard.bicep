@@ -4808,7 +4808,7 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
               type: 'Extension/HubsExtension/PartType/MarkdownPart'
               settings: {
                 content: {
-                  content: '# <span style="color:DarkOrange">Onboarding Review Visibility</span>\r\n\r\n## <span style="color:DarkOrange">Summary</span>\r\n\r\nUse this section to see how onboarding submissions are reviewed. Each approval that took effect emits one `JobReviewed` metric, tagged `Auto` when the approval rules approved it without a person and `Manual` when a Submission Reviewer approved it. Rejections and submissions merely routed to human review are not counted. Manual reviewers are shown by directory object id; display names are deliberately kept out of telemetry and remain in the sync job change history.\r\n\r\nThe chart on the left shows the daily trend. The table on the right covers the selected time range: the first rows give the totals and the auto-review share, and the indented rows underneath break the manual total down by reviewer.'
+                  content: '# <span style="color:DarkOrange">Review Visibility</span>\r\n\r\nCompleted review decisions include approvals and rejections for both onboardings and updates. The left chart shows daily decisions split by Auto, Manual, or System and outcome; the right compares approved/rejected totals per reviewer over the selected time range. Forced ownership-policy rejections appear as System, not AutoApprover or a human reviewer. Manual reviewers use directory object ids, not display names.\r\n\r\nThe summary below shows counts, request types, and AutoPercent (approval-rule decisions / all decisions); System decisions are separate. Pending reviews are not counted. Historical metrics without RequestType appear as Unclassified; missing Outcome means Approved.'
                   title: ''
                   subtitle: ''
                   markdownSource: 1
@@ -4822,7 +4822,7 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
               x: 1
               y: 78
               colSpan: 8
-              rowSpan: 6
+              rowSpan: 4
             }
             metadata: {
               inputs: [
@@ -4868,7 +4868,7 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
                 }
                 {
                   name: 'Query'
-                  value: 'customMetrics\n| where name == "JobReviewed"\n| extend Series = tostring(customDimensions["ReviewalType"])\n| summarize count = tolong(sum(valueSum)) by bin(timestamp, 1d), Series\n| order by timestamp asc\n'
+                  value: 'customMetrics\n| where name == "JobReviewed"\n| extend RequestType = tostring(customDimensions["RequestType"]),\n         ReviewalType = tostring(customDimensions["ReviewalType"]),\n         ReviewerId = tostring(customDimensions["ReviewerId"]),\n         Outcome = tostring(customDimensions["Outcome"])\n| extend RequestType = iff(isempty(RequestType), "Unclassified", RequestType),\n         Outcome = iff(isempty(Outcome), "Approved", Outcome)\n| extend ReviewMode = case(\n    ReviewerId == "System", "System",\n    ReviewalType == "Auto", "Auto",\n    ReviewalType == "Manual", "Manual",\n    "Unclassified")\n\n| extend Series = strcat(ReviewMode, " / ", Outcome)\n| summarize Decisions = tolong(sum(valueSum)) by Day = bin(timestamp, 1d), Series\n| order by Day asc, Series asc\n'
                   isOptional: true
                 }
                 {
@@ -4883,7 +4883,7 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
                 }
                 {
                   name: 'PartTitle'
-                  value: 'Onboardings Reviewed Per Day: Auto vs Manual'
+                  value: 'Review Decisions Per Day'
                   isOptional: true
                 }
                 {
@@ -4908,18 +4908,18 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
               type: 'Extension/Microsoft_OperationsManagementSuite_Workspace/PartType/LogsDashboardPart'
               settings: {
                 content: {
-                  Query: 'customMetrics\n| where name == "JobReviewed"\n| extend Series = tostring(customDimensions["ReviewalType"])\n| summarize count = tolong(sum(valueSum)) by bin(timestamp, 1d), Series\n| order by timestamp asc\n'
+                  Query: 'customMetrics\n| where name == "JobReviewed"\n| extend RequestType = tostring(customDimensions["RequestType"]),\n         ReviewalType = tostring(customDimensions["ReviewalType"]),\n         ReviewerId = tostring(customDimensions["ReviewerId"]),\n         Outcome = tostring(customDimensions["Outcome"])\n| extend RequestType = iff(isempty(RequestType), "Unclassified", RequestType),\n         Outcome = iff(isempty(Outcome), "Approved", Outcome)\n| extend ReviewMode = case(\n    ReviewerId == "System", "System",\n    ReviewalType == "Auto", "Auto",\n    ReviewalType == "Manual", "Manual",\n    "Unclassified")\n\n| extend Series = strcat(ReviewMode, " / ", Outcome)\n| summarize Decisions = tolong(sum(valueSum)) by Day = bin(timestamp, 1d), Series\n| order by Day asc, Series asc\n'
                   ControlType: 'FrameControlChart'
                   SpecificChart: 'StackedColumn'
-                  PartTitle: 'Onboardings Reviewed Per Day: Auto vs Manual'
+                  PartTitle: 'Review Decisions Per Day'
                   Dimensions: {
                     xAxis: {
-                      name: 'timestamp'
+                      name: 'Day'
                       type: 'datetime'
                     }
                     yAxis: [
                       {
-                        name: 'count'
+                        name: 'Decisions'
                         type: 'long'
                       }
                     ]
@@ -4944,7 +4944,7 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
               x: 9
               y: 78
               colSpan: 9
-              rowSpan: 6
+              rowSpan: 4
             }
             metadata: {
               inputs: [
@@ -4990,21 +4990,22 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
                 }
                 {
                   name: 'Query'
-                  value: 'let reviews = customMetrics\n| where name == "JobReviewed"\n| extend ReviewalType = tostring(customDimensions["ReviewalType"]), ReviewerId = tostring(customDimensions["ReviewerId"]);\nlet manualByReviewer = reviews\n| where ReviewalType == "Manual"\n| summarize Reviews = tolong(sum(valueSum)) by ReviewerId;\nlet reviewers = toscalar(manualByReviewer | count);\nlet summary = reviews\n| summarize Total = tolong(coalesce(sum(valueSum), 0.0)),\n            Auto = tolong(coalesce(sumif(valueSum, ReviewalType == "Auto"), 0.0)),\n            Manual = tolong(coalesce(sumif(valueSum, ReviewalType == "Manual"), 0.0));\nlet total = toscalar(summary | project Total);\nunion\n(summary | project Sort = 0, Reviewer = "All reviews", Reviews = Total, PercentOfReviews = iff(Total == 0, 0.0, 100.0)),\n(summary | project Sort = 1, Reviewer = "Auto (approval rules)", Reviews = Auto, PercentOfReviews = iff(Total == 0, 0.0, round(100.0 * Auto / Total, 1))),\n(summary | project Sort = 2, Reviewer = strcat("Manual (", reviewers, " reviewers)"), Reviews = Manual, PercentOfReviews = iff(Total == 0, 0.0, round(100.0 * Manual / Total, 1))),\n(manualByReviewer\n| project Sort = 3, Reviewer = strcat("- ", ReviewerId), Reviews, PercentOfReviews = iff(total == 0, 0.0, round(100.0 * Reviews / total, 1)))\n| order by Sort asc, Reviews desc\n| project Reviewer, Reviews, PercentOfReviews\n'
+                  value: 'customMetrics\n| where name == "JobReviewed"\n| extend RequestType = tostring(customDimensions["RequestType"]),\n         ReviewalType = tostring(customDimensions["ReviewalType"]),\n         ReviewerId = tostring(customDimensions["ReviewerId"]),\n         Outcome = tostring(customDimensions["Outcome"])\n| extend RequestType = iff(isempty(RequestType), "Unclassified", RequestType),\n         Outcome = iff(isempty(Outcome), "Approved", Outcome)\n| extend ReviewMode = case(\n    ReviewerId == "System", "System",\n    ReviewalType == "Auto", "Auto",\n    ReviewalType == "Manual", "Manual",\n    "Unclassified")\n\n| extend Reviewer = case(\n    ReviewMode == "System", "System policy",\n    ReviewMode == "Auto", "AutoApprover",\n    ReviewMode == "Manual" and isnotempty(ReviewerId), strcat("Reviewer ", ReviewerId),\n    ReviewMode == "Manual", "Manual (unknown reviewer)",\n    "Unclassified")\n| summarize Approved = tolong(sumif(valueSum, Outcome == "Approved")),\n            Rejected = tolong(sumif(valueSum, Outcome == "Rejected")) by Reviewer\n| extend Total = Approved + Rejected\n| order by Total desc, Reviewer asc\n| project Reviewer, Approved, Rejected\n'
                   isOptional: true
                 }
                 {
                   name: 'ControlType'
-                  value: 'AnalyticsGrid'
+                  value: 'FrameControlChart'
                   isOptional: true
                 }
                 {
                   name: 'SpecificChart'
+                  value: 'StackedColumn'
                   isOptional: true
                 }
                 {
                   name: 'PartTitle'
-                  value: 'Auto-Review Rate and Reviewer Breakdown'
+                  value: 'Review Outcomes by Reviewer'
                   isOptional: true
                 }
                 {
@@ -5029,14 +5030,111 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
               type: 'Extension/Microsoft_OperationsManagementSuite_Workspace/PartType/LogsDashboardPart'
               settings: {
                 content: {
-                  Query: 'let reviews = customMetrics\n| where name == "JobReviewed"\n| extend ReviewalType = tostring(customDimensions["ReviewalType"]), ReviewerId = tostring(customDimensions["ReviewerId"]);\nlet manualByReviewer = reviews\n| where ReviewalType == "Manual"\n| summarize Reviews = tolong(sum(valueSum)) by ReviewerId;\nlet reviewers = toscalar(manualByReviewer | count);\nlet summary = reviews\n| summarize Total = tolong(coalesce(sum(valueSum), 0.0)),\n            Auto = tolong(coalesce(sumif(valueSum, ReviewalType == "Auto"), 0.0)),\n            Manual = tolong(coalesce(sumif(valueSum, ReviewalType == "Manual"), 0.0));\nlet total = toscalar(summary | project Total);\nunion\n(summary | project Sort = 0, Reviewer = "All reviews", Reviews = Total, PercentOfReviews = iff(Total == 0, 0.0, 100.0)),\n(summary | project Sort = 1, Reviewer = "Auto (approval rules)", Reviews = Auto, PercentOfReviews = iff(Total == 0, 0.0, round(100.0 * Auto / Total, 1))),\n(summary | project Sort = 2, Reviewer = strcat("Manual (", reviewers, " reviewers)"), Reviews = Manual, PercentOfReviews = iff(Total == 0, 0.0, round(100.0 * Manual / Total, 1))),\n(manualByReviewer\n| project Sort = 3, Reviewer = strcat("- ", ReviewerId), Reviews, PercentOfReviews = iff(total == 0, 0.0, round(100.0 * Reviews / total, 1)))\n| order by Sort asc, Reviews desc\n| project Reviewer, Reviews, PercentOfReviews\n'
-                  ControlType: 'AnalyticsGrid'
-                  PartTitle: 'Auto-Review Rate and Reviewer Breakdown'
+                  Query: 'customMetrics\n| where name == "JobReviewed"\n| extend RequestType = tostring(customDimensions["RequestType"]),\n         ReviewalType = tostring(customDimensions["ReviewalType"]),\n         ReviewerId = tostring(customDimensions["ReviewerId"]),\n         Outcome = tostring(customDimensions["Outcome"])\n| extend RequestType = iff(isempty(RequestType), "Unclassified", RequestType),\n         Outcome = iff(isempty(Outcome), "Approved", Outcome)\n| extend ReviewMode = case(\n    ReviewerId == "System", "System",\n    ReviewalType == "Auto", "Auto",\n    ReviewalType == "Manual", "Manual",\n    "Unclassified")\n\n| extend Reviewer = case(\n    ReviewMode == "System", "System policy",\n    ReviewMode == "Auto", "AutoApprover",\n    ReviewMode == "Manual" and isnotempty(ReviewerId), strcat("Reviewer ", ReviewerId),\n    ReviewMode == "Manual", "Manual (unknown reviewer)",\n    "Unclassified")\n| summarize Approved = tolong(sumif(valueSum, Outcome == "Approved")),\n            Rejected = tolong(sumif(valueSum, Outcome == "Rejected")) by Reviewer\n| extend Total = Approved + Rejected\n| order by Total desc, Reviewer asc\n| project Reviewer, Approved, Rejected\n'
+                  ControlType: 'FrameControlChart'
+                  SpecificChart: 'StackedColumn'
+                  PartTitle: 'Review Outcomes by Reviewer'
                   PartSubTitle: 'Selected time range; manual reviewers are listed by directory object id'
+                  Dimensions: {
+                    xAxis: {
+                      name: 'Reviewer'
+                      type: 'string'
+                    }
+                    yAxis: [
+                      {
+                        name: 'Approved'
+                        type: 'long'
+                      }
+                      {
+                        name: 'Rejected'
+                        type: 'long'
+                      }
+                    ]
+                    splitBy: []
+                    aggregation: 'Sum'
+                  }
+                  LegendOptions: {
+                    isEnabled: true
+                    position: 'Bottom'
+                  }
                 }
               }
               partHeader: {
-                title: 'Auto-Review Rate and Reviewer Breakdown'
+                title: 'Review Outcomes by Reviewer'
+                subtitle: ''
+              }
+            }
+          }
+          '68': {
+            position: {
+              x: 1
+              y: 82
+              colSpan: 17
+              rowSpan: 2
+            }
+            metadata: {
+              inputs: [
+                {
+                  name: 'Scope'
+                  value: {
+                    resourceIds: [
+                      '/subscriptions/${subscriptionId}/resourceGroups/${resourceGroup}/providers/microsoft.insights/components/${resourceGroup}'
+                    ]
+                  }
+                  isOptional: true
+                }
+                {
+                  name: 'PartId'
+                  value: '5e5f1234-0001-4b5e-a5e5-b1c2d3e4f068'
+                  isOptional: true
+                }
+                {
+                  name: 'Version'
+                  value: '2.0'
+                  isOptional: true
+                }
+                {
+                  name: 'TimeRange'
+                  value: 'P1D'
+                  isOptional: true
+                }
+                {
+                  name: 'Query'
+                  value: 'let reviews = customMetrics\n| where name == "JobReviewed"\n| extend RequestType = tostring(customDimensions["RequestType"]),\n         ReviewalType = tostring(customDimensions["ReviewalType"]),\n         ReviewerId = tostring(customDimensions["ReviewerId"]),\n         Outcome = tostring(customDimensions["Outcome"])\n| extend RequestType = iff(isempty(RequestType), "Unclassified", RequestType),\n         Outcome = iff(isempty(Outcome), "Approved", Outcome)\n| extend ReviewMode = case(\n    ReviewerId == "System", "System",\n    ReviewalType == "Auto", "Auto",\n    ReviewalType == "Manual", "Manual",\n    "Unclassified")\n;\nlet manualReviewers = toscalar(\n    reviews\n    | where ReviewMode == "Manual" and isnotempty(ReviewerId)\n    | distinct ReviewerId\n    | count);\nreviews\n| summarize Total = tolong(coalesce(sum(valueSum), 0.0)),\n            Auto = tolong(coalesce(sumif(valueSum, ReviewMode == "Auto"), 0.0)),\n            Manual = tolong(coalesce(sumif(valueSum, ReviewMode == "Manual"), 0.0)),\n            System = tolong(coalesce(sumif(valueSum, ReviewMode == "System"), 0.0)),\n            Approved = tolong(coalesce(sumif(valueSum, Outcome == "Approved"), 0.0)),\n            Rejected = tolong(coalesce(sumif(valueSum, Outcome == "Rejected"), 0.0)),\n            Onboardings = tolong(coalesce(sumif(valueSum, RequestType == "Onboarding"), 0.0)),\n            Updates = tolong(coalesce(sumif(valueSum, RequestType == "Update"), 0.0)),\n            Unclassified = tolong(coalesce(sumif(valueSum, RequestType == "Unclassified"), 0.0))\n| extend AutoPercent = iff(Total == 0, 0.0, round(100.0 * Auto / Total, 1)),\n         ManualReviewers = manualReviewers\n| project Total, Auto, AutoPercent, Manual, ManualReviewers, System,\n          Approved, Rejected, Onboardings, Updates, Unclassified\n'
+                  isOptional: true
+                }
+                {
+                  name: 'ControlType'
+                  value: 'AnalyticsGrid'
+                  isOptional: true
+                }
+                {
+                  name: 'PartTitle'
+                  value: 'Review Summary'
+                  isOptional: true
+                }
+                {
+                  name: 'PartSubTitle'
+                  value: resourceGroup
+                  isOptional: true
+                }
+                {
+                  name: 'IsQueryContainTimeRange'
+                  value: false
+                  isOptional: true
+                }
+              ]
+              type: 'Extension/Microsoft_OperationsManagementSuite_Workspace/PartType/LogsDashboardPart'
+              settings: {
+                content: {
+                  Query: 'let reviews = customMetrics\n| where name == "JobReviewed"\n| extend RequestType = tostring(customDimensions["RequestType"]),\n         ReviewalType = tostring(customDimensions["ReviewalType"]),\n         ReviewerId = tostring(customDimensions["ReviewerId"]),\n         Outcome = tostring(customDimensions["Outcome"])\n| extend RequestType = iff(isempty(RequestType), "Unclassified", RequestType),\n         Outcome = iff(isempty(Outcome), "Approved", Outcome)\n| extend ReviewMode = case(\n    ReviewerId == "System", "System",\n    ReviewalType == "Auto", "Auto",\n    ReviewalType == "Manual", "Manual",\n    "Unclassified")\n;\nlet manualReviewers = toscalar(\n    reviews\n    | where ReviewMode == "Manual" and isnotempty(ReviewerId)\n    | distinct ReviewerId\n    | count);\nreviews\n| summarize Total = tolong(coalesce(sum(valueSum), 0.0)),\n            Auto = tolong(coalesce(sumif(valueSum, ReviewMode == "Auto"), 0.0)),\n            Manual = tolong(coalesce(sumif(valueSum, ReviewMode == "Manual"), 0.0)),\n            System = tolong(coalesce(sumif(valueSum, ReviewMode == "System"), 0.0)),\n            Approved = tolong(coalesce(sumif(valueSum, Outcome == "Approved"), 0.0)),\n            Rejected = tolong(coalesce(sumif(valueSum, Outcome == "Rejected"), 0.0)),\n            Onboardings = tolong(coalesce(sumif(valueSum, RequestType == "Onboarding"), 0.0)),\n            Updates = tolong(coalesce(sumif(valueSum, RequestType == "Update"), 0.0)),\n            Unclassified = tolong(coalesce(sumif(valueSum, RequestType == "Unclassified"), 0.0))\n| extend AutoPercent = iff(Total == 0, 0.0, round(100.0 * Auto / Total, 1)),\n         ManualReviewers = manualReviewers\n| project Total, Auto, AutoPercent, Manual, ManualReviewers, System,\n          Approved, Rejected, Onboardings, Updates, Unclassified\n'
+                  ControlType: 'AnalyticsGrid'
+                  PartTitle: 'Review Summary'
+                  PartSubTitle: 'Selected time range; AutoPercent is approval-rule decisions / all decisions, excluding System from the numerator'
+                }
+              }
+              partHeader: {
+                title: 'Review Summary'
                 subtitle: ''
               }
             }
@@ -5113,6 +5211,9 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
                 'StartboardPart-LogsDashboardPart-a2bd3c8b-8f16-4ac8-b4f4-15310600bb36'
                 'StartboardPart-LogsDashboardPart-a2bd3c8b-8f16-4ac8-b4f4-15310600bb38'
                 'StartboardPart-LogsDashboardPart-a2bd3c8b-8f16-4ac8-b4f4-15310600bb3a'
+                'StartboardPart-LogsDashboardPart-5e5f1234-0001-4b5e-a5e5-b1c2d3e4f066'
+                'StartboardPart-LogsDashboardPart-5e5f1234-0001-4b5e-a5e5-b1c2d3e4f067'
+                'StartboardPart-LogsDashboardPart-5e5f1234-0001-4b5e-a5e5-b1c2d3e4f068'
               ]
             }
           }

@@ -2002,10 +2002,38 @@ namespace Services.Tests
             Assert.AreEqual(MembershipTypes.GroupMembership.ToString(), properties["MembershipType"]);
             Assert.AreEqual("Auto", properties["ReviewalType"]);
 
+            // The default message origin is onboarding, and only a decision that took effect is recorded.
+            Assert.AreEqual("Onboarding", properties["RequestType"]);
+            Assert.AreEqual("Approved", properties["Outcome"]);
+
             // The reserved literal, never the requestor's object id - the requestor submitted the job,
             // they did not review it.
             Assert.AreEqual("AutoApprover", properties["ReviewerId"]);
             Assert.AreNotEqual(m.RequestorId, properties["ReviewerId"]);
+        }
+
+        [TestMethod]
+        public async Task JobReviewed_UpdateOriginAutoApproval_EmitsUpdateRequestTypeAsync()
+        {
+            var m = ApprovableGroupSubmission();
+            var channel = new CapturingTelemetryChannel();
+
+            var service = CreateService(m.Jobs, m.Settings, m.Graph, m.Changes, m.Logger, telemetryChannel: channel);
+            await service.ProcessAutoApprovalAsync(new AutoApprovalQueueMessage
+            {
+                SyncJobId = m.SyncJobId,
+                RequestorObjectId = m.RequestorId,
+                Origin = AutoApprovalOrigin.Update
+            });
+
+            var properties = channel.GetMetrics("JobReviewed").Single().Properties;
+
+            // The same origin drives the audit reason, so the two can never disagree about this.
+            Assert.AreEqual("Update", properties["RequestType"]);
+            Assert.AreEqual("Auto", properties["ReviewalType"]);
+            Assert.AreEqual("Approved", properties["Outcome"]);
+            m.Changes.Verify(x => x.Save(It.Is<SyncJobChange>(
+                c => c.ChangeReason == SyncJobChangeReason.UpdateAutoApproved.ToString())), Times.Once);
         }
 
         [TestMethod]
@@ -2027,9 +2055,9 @@ namespace Services.Tests
             var properties = channel.GetMetrics("JobReviewed").Single().Properties;
 
             CollectionAssert.AreEquivalent(
-                new[] { "SyncJobId", "TargetOfficeGroupId", "MembershipType", "ReviewalType", "ReviewerId" },
+                new[] { "SyncJobId", "TargetOfficeGroupId", "MembershipType", "ReviewalType", "ReviewerId", "RequestType", "Outcome" },
                 properties.Keys.ToArray(),
-                "The metric must carry exactly the five contracted dimensions.");
+                "The metric must carry exactly the seven contracted dimensions.");
 
             foreach (var value in properties.Values)
             {
