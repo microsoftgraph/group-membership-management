@@ -197,7 +197,7 @@ function Set-AksServiceWorkload {
     helm dependency build $chartPath
     if ($LASTEXITCODE -ne 0) { throw "helm dependency build failed for $chartName." }
 
-    Write-DeployLog -Level Info -Message "replicaCount = 0 - the deploy installs the artifact; Start-AksWorkloads activates it."
+    Write-DeployLog -Level Info -Message "replicaCount = 0 - the deploy installs the artifact; the WebApi Start activates it."
 
     $existingJson = kubectl get deployment $chartName -n $NamespaceName -o json 2>$null
     if ($LASTEXITCODE -eq 0 -and $existingJson) {

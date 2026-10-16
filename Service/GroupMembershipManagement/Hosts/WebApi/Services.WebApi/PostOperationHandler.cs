@@ -59,17 +59,6 @@ namespace Services.WebApi
                     };
                 }
 
-                if (request.Operation == Operations.Start && currentStatus == ServiceStatuses.Running)
-                {
-                    _logger.OperationServiceAlreadyInStatus(request.Operation, currentStatus);
-
-                    return new PostOperationResponse
-                    {
-                        StatusCode = HttpStatusCode.OK,
-                        Status = currentStatus
-                    };
-                }
-
                 var tempStatus = request.Operation switch
                 {
                     Operations.Start => ServiceStatuses.Starting,

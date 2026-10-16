@@ -56,7 +56,6 @@ $aksScriptsDirectory = Join-Path $sharedScriptsDirectory 'AKS'
 . (Join-Path $aksScriptsDirectory 'Connect-AksCluster.ps1')
 . (Join-Path $aksScriptsDirectory 'Set-AksResources.ps1')
 . (Join-Path $aksScriptsDirectory 'Test-AksWorkloadDependencies.ps1')
-. (Join-Path $aksScriptsDirectory 'Start-AksWorkloads.ps1')
 . (Join-Path $aksScriptsDirectory 'Set-AksWorkload.ps1')
 
 function Set-PostDeploymentUpdates {
@@ -2116,6 +2115,7 @@ function Set-KeyVaultFirewallRules {
     Write-DeployPhase -Name 'Configuring Firewall Rules' -Event End
 }
 
+# Unused: the WebApi Stop operation is used instead. Remove after the full transition to Kubernetes.
 function Stop-FunctionApps {
     param (
         [Parameter(Mandatory = $true)]
@@ -2141,6 +2141,7 @@ function Stop-FunctionApps {
     }
 }
 
+# Unused: the WebApi Reschedule and Start operations are used instead. Remove after the full transition to Kubernetes.
 function Start-FunctionApps {
     param (
         [Parameter(Mandatory = $true)]
@@ -3954,10 +3955,9 @@ function Deploy-Resources {
     $location                                       = $parameterHashtable.location.value
     $subscriptionId                                 = $parameterHashtable.subscriptionId.value
     $skipResourceProvidersCheck                     = $parameterHashtable.skipResourceProvidersCheck.value
-    $startFunctions                                 = $parameterHashtable.startFunctions.value
     $assertUserPermissions                          = $parameterHashtable.assertUserPermissions.value
     $isInitialDeployment                            = $parameterHashtable.isInitialDeployment.value
-    $resetGMMType                                   = $parameterHashtable.resetGMMType.value
+    $webApiOperationsAuthMethod                     = Get-DefaultString -Value $parameterHashtable.webApiOperationsAuthMethod.value -Default 'ServicePrincipal'
     $useDeviceAuthentication                        = $parameterHashtable.useDeviceAuthentication.value
     $skipModuleInstallation                         = $parameterHashtable.skipModuleInstallation.value
     $skipNetworkingDeployment                       = Get-Default -Value $ParameterHashtable['skipNetworkingDeployment'].value -Default $true
@@ -4020,14 +4020,10 @@ function Deploy-Resources {
 
         . "$scriptsDirectory/GMM-WebAPI-Operations.ps1"
 
-        if($resetGMMType -eq "Credentials" -or $resetGMMType -eq "ServicePrincipal") {
-            Write-DeployLog -Level Info -Message "Stopping GMM via WebApi Stop endpoint before deployment..."
-            Invoke-GMMOperation -OperationName "Stop" -AuthMethod $resetGMMType `
-                -SolutionAbbreviation $solutionAbbreviation `
-                -EnvironmentAbbreviation $environmentAbbreviation
-        } else {
-            Write-DeployLog -Level Warn -Message "Skipping pre-deployment stop - resetGMMType is '$resetGMMType'."
-        }
+        Write-DeployLog -Level Info -Message "Stopping GMM via WebApi Stop endpoint before deployment..."
+        Invoke-GMMOperation -OperationName "Stop" -AuthMethod $webApiOperationsAuthMethod `
+            -SolutionAbbreviation $solutionAbbreviation `
+            -EnvironmentAbbreviation $environmentAbbreviation
 
         $connectionString = Get-KeyVaultSecretWithFirewallRetry `
             -VaultName "$SolutionAbbreviation-data-$environmentAbbreviation" `
@@ -4195,29 +4191,14 @@ function Deploy-Resources {
         Write-DeployLog -Level Warn -Message "Skipping post-deployment updates as per configuration [skipPostDeploymentUpdates = $skipPostDeploymentUpdates]."
     }
 
-    if (!$isInitialDeployment -and $resetGMMType -ne "Skip") {
-        Write-DeployLog -Level Info -Message "Calling Reschedule endpoint via WebApi..."
-        if ($resetGMMType -eq "Credentials" -or $resetGMMType -eq "ServicePrincipal") {
-            Invoke-GMMOperation -OperationName "Reschedule" -AuthMethod $resetGMMType `
-                -SolutionAbbreviation $solutionAbbreviation `
-                -EnvironmentAbbreviation $environmentAbbreviation
-        }
-        if ($deployAks -eq $true) {
-            Write-DeployLog -Level Info -Message "Starting all remaining function apps (JobTrigger EXCLUDED - it runs on AKS in this environment [deployAks = true])..."
-        }
-        else {
-            Write-DeployLog -Level Info -Message "Starting all remaining function apps..."
-        }
-        Start-FunctionApps -ResourceGroupName $computeResourceGroup -SkipJobTrigger $deployAks
-    } elseif ($startFunctions) {
-        Start-FunctionApps -ResourceGroupName $computeResourceGroup -SkipJobTrigger $deployAks
-    }
+    # The WebApi Start is the only thing that activates an AKS workload, so with deployAks it also runs on an initial deployment.
+    $startThroughWebApi = !$isInitialDeployment -or $deployAks -eq $true
 
-    if ($deployAks -eq $true) {
-        Start-AksWorkloads `
-            -SolutionAbbreviation    $solutionAbbreviation `
-            -EnvironmentAbbreviation $environmentAbbreviation `
-            -DeploymentPackagePath   $templateFilesDirectory
+    if ($startThroughWebApi) {
+        Write-DeployLog -Level Info -Message "Calling Reschedule and Start endpoints via WebApi..."
+        Invoke-GMMRescheduleAndStart -AuthMethod $webApiOperationsAuthMethod `
+            -SolutionAbbreviation $solutionAbbreviation `
+            -EnvironmentAbbreviation $environmentAbbreviation
     }
 
     Write-DeployPhase -Name 'Deployment Complete' -Event Begin

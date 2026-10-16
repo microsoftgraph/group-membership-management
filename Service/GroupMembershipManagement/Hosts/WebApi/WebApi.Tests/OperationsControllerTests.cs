@@ -192,15 +192,27 @@ namespace WebApi.Tests
         [TestMethod]
         public async Task StartWhenRunningAsync()
         {
+            var statusChecks = 0;
             _serviceStatusRepository.Setup(x => x.GetCurrentServiceStatusAsync())
-                                    .ReturnsAsync(ServiceStatuses.Running);
+                                    .ReturnsAsync(() =>
+                                    {
+                                        if (statusChecks == 0)
+                                        {
+                                            statusChecks++;
+                                            return ServiceStatuses.Running;
+                                        }
+
+                                        return ServiceStatuses.Starting;
+                                    });
 
             var response = await _operationsController.ProcessOperationAsync(Operations.Start);
             var result = response as OkObjectResult;
             var postOperationResponse = result.Value as PostOperationResponse;
             Assert.IsNotNull(postOperationResponse);
             Assert.AreEqual(HttpStatusCode.OK, postOperationResponse.StatusCode);
-            Assert.AreEqual(ServiceStatuses.Running, postOperationResponse.Status);
+            Assert.AreEqual(ServiceStatuses.Starting, postOperationResponse.Status);
+            _backgroundTaskService.Verify(x => x.QueueAsync(It.Is<OperationDetails>(o => o.Operation == Operations.Start)), Times.Once);
+            _serviceStatusRepository.Verify(x => x.SetServiceStatusAsync(ServiceStatuses.Starting, It.IsAny<Guid>()), Times.Once);
         }
 
         [TestMethod]

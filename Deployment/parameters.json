@@ -345,13 +345,6 @@
         "required": true
       }
     },
-    "startFunctions": {
-      "value": true,
-      "metadata": {
-        "description": "Flag to indicate whether to start Azure Functions after deployment.",
-        "required": true
-      }
-    },
     "createResourceGroups": {
       "value": true,
       "metadata": {
@@ -394,12 +387,12 @@
         "required": true
       }
     },
-    "resetGMMType": {
-      "value": "Skip",
+    "webApiOperationsAuthMethod": {
+      "value": "ServicePrincipal",
       "metadata": {
-        "description": "The type of reset to perform on GMM.",
+        "description": "How the deployment authenticates to the WebApi operations (Stop, Reschedule and Start). ServicePrincipal requests a token as the signed-in Azure identity, which needs the Operations.Reset role on the WebApi. Credentials uses the WebApi's own client credentials from the prereqs key vault.",
         "required": true,
-        "options": ["Credentials", "ServicePrincipal","Skip"]
+        "options": ["Credentials", "ServicePrincipal"]
       }
     },
     "aiLocation": {

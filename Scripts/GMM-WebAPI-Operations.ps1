@@ -1,12 +1,13 @@
 <#
-    Consolidated helper functions for GMM WebAPI operations (Stop, Reschedule, Reset).
+    Consolidated helper functions for GMM WebAPI operations (Stop, Start, Reschedule, Reset).
     Replaces the previously separate Stop-GMM.ps1, Reschedule-GMM.ps1, and Reset-GMM.ps1 scripts.
 
     Exports:
       Address lookup:       Resolve-WebApiBaseUri
-      Auth helpers:         Get-WebApiTokenWithServicePrincipal, Get-WebApiTokenWithCredentials
+      Auth helpers:         Get-WebApiTokenWithServicePrincipal, Get-WebApiTokenWithCredentials, Get-WebApiTokenForAuthMethod
       Low-level operation:  Invoke-GMMWebApiOperation
       Main entry point:     Invoke-GMMOperation
+      Deployment sequence:  Invoke-GMMRescheduleAndStart
       (Admin utilities moved to Set-WebApiAzureADApplication.ps1)
 
     Dot-sourcing this file only defines helpers. It performs no sign-in, token acquisition,
@@ -156,6 +157,26 @@ function Get-WebApiTokenWithCredentials {
     return $response.access_token
 }
 
+function Get-WebApiTokenForAuthMethod {
+    [CmdletBinding()]
+    param (
+        [Parameter(Mandatory = $true)]
+        [ValidateSet("ServicePrincipal", "Credentials")]
+        [string]$AuthMethod,
+        [Parameter(Mandatory = $true)]
+        [ValidateNotNullOrEmpty()]
+        [string]$SolutionAbbreviation,
+        [Parameter(Mandatory = $true)]
+        [ValidateNotNullOrEmpty()]
+        [string]$EnvironmentAbbreviation
+    )
+
+    switch ($AuthMethod) {
+        "ServicePrincipal" { Get-WebApiTokenWithServicePrincipal -SolutionAbbreviation $SolutionAbbreviation -EnvironmentAbbreviation $EnvironmentAbbreviation }
+        "Credentials"      { Get-WebApiTokenWithCredentials -SolutionAbbreviation $SolutionAbbreviation -EnvironmentAbbreviation $EnvironmentAbbreviation }
+    }
+}
+
 # ─────────────────────────────────────────────────────────────────────────────
 # Generic WebAPI Operation
 # ─────────────────────────────────────────────────────────────────────────────
@@ -178,10 +199,12 @@ function Invoke-GMMWebApiOperation {
         until the expected status is reached or a timeout occurs.
 
     .PARAMETER OperationName
-        The operation endpoint name (e.g., "Stop", "Reschedule", "Reset").
+        The operation endpoint name: "Stop", "Start", "Reschedule", or "Reset".
 
     .PARAMETER ExpectedStatus
-        The numeric status code to wait for (0 = Running, 1 = Stopped).
+        The numeric status code to wait for (0 = Running, 1 = Stopped). Start and Reschedule both
+        wait for 0, so a poll that begins while the status is already 0 returns immediately; Start
+        is only safe because the WebApi sets Starting before it answers the POST.
 
     .PARAMETER ThrowOnTimeout
         If $true (default), throws on timeout. If $false, emits a warning and returns.
@@ -198,7 +221,7 @@ function Invoke-GMMWebApiOperation {
         [ValidateNotNullOrEmpty()]
         [string]$AccessToken,
         [Parameter(Mandatory = $true)]
-        [ValidateSet("Stop", "Reschedule", "Reset")]
+        [ValidateSet("Stop", "Start", "Reschedule", "Reset")]
         [string]$OperationName,
         [Parameter(Mandatory = $true)]
         [ValidateRange(0, 7)]
@@ -265,6 +288,23 @@ function Invoke-GMMWebApiOperation {
     return $script:ServiceStatuses[$statusCode]
 }
 
+function Get-GMMOperationParameters {
+    [CmdletBinding()]
+    param (
+        [Parameter(Mandatory = $true)]
+        [ValidateSet("Stop", "Start", "Reschedule", "Reset")]
+        [string]$OperationName
+    )
+
+    switch ($OperationName) {
+        "Stop"       { @{ ExpectedStatus = 1 } }
+        # Start waits for the AKS workload to become ready (up to 10 minutes) plus its 60 second stability window.
+        "Start"      { @{ ExpectedStatus = 0; MaxPollRetries = 120; PollIntervalSeconds = 10; ThrowOnTimeout = $true } }
+        "Reschedule" { @{ ExpectedStatus = 0 } }
+        "Reset"      { @{ ExpectedStatus = 0; MaxPollRetries = 20; PollIntervalSeconds = 30; ThrowOnTimeout = $false } }
+    }
+}
+
 # ─────────────────────────────────────────────────────────────────────────────
 # Main Entry Point
 # ─────────────────────────────────────────────────────────────────────────────
@@ -276,7 +316,7 @@ function Invoke-GMMOperation {
         web app validation, and delegates to Invoke-GMMWebApiOperation.
 
     .PARAMETER OperationName
-        The operation to perform: "Stop", "Reschedule", or "Reset".
+        The operation to perform: "Stop", "Start", "Reschedule", or "Reset".
 
     .PARAMETER AuthMethod
         Authentication method: "ServicePrincipal" (Az module token) or "Credentials" (client_credentials flow).
@@ -284,7 +324,7 @@ function Invoke-GMMOperation {
     [CmdletBinding()]
     param (
         [Parameter(Mandatory = $true)]
-        [ValidateSet("Stop", "Reschedule", "Reset")]
+        [ValidateSet("Stop", "Start", "Reschedule", "Reset")]
         [string]$OperationName,
         [Parameter(Mandatory = $true)]
         [ValidateSet("ServicePrincipal", "Credentials")]
@@ -297,17 +337,8 @@ function Invoke-GMMOperation {
         [string]$EnvironmentAbbreviation
     )
 
-    $token = switch ($AuthMethod) {
-        "ServicePrincipal" { Get-WebApiTokenWithServicePrincipal -SolutionAbbreviation $SolutionAbbreviation -EnvironmentAbbreviation $EnvironmentAbbreviation }
-        "Credentials"      { Get-WebApiTokenWithCredentials -SolutionAbbreviation $SolutionAbbreviation -EnvironmentAbbreviation $EnvironmentAbbreviation }
-    }
-
-    # Operation-specific parameters
-    $operationParams = switch ($OperationName) {
-        "Stop"       { @{ ExpectedStatus = 1 } }
-        "Reschedule" { @{ ExpectedStatus = 0 } }
-        "Reset"      { @{ ExpectedStatus = 0; MaxPollRetries = 20; PollIntervalSeconds = 30; ThrowOnTimeout = $false } }
-    }
+    $token = Get-WebApiTokenForAuthMethod -AuthMethod $AuthMethod -SolutionAbbreviation $SolutionAbbreviation -EnvironmentAbbreviation $EnvironmentAbbreviation
+    $operationParams = Get-GMMOperationParameters -OperationName $OperationName
 
     try {
         Invoke-GMMWebApiOperation `
@@ -318,6 +349,48 @@ function Invoke-GMMOperation {
             @operationParams
 
         Write-Host "Call $($OperationName.ToLower()) endpoint is complete"
+    }
+    finally {
+        $token = $null
+    }
+}
+
+function Invoke-GMMRescheduleAndStart {
+    <#
+    .SYNOPSIS
+        Deployment sequence: Reschedule and wait for Running, then Start and wait for Running.
+        Authenticates once. Throws if either step times out or GMM reports Error, naming the step.
+
+    .PARAMETER AuthMethod
+        Authentication method: "ServicePrincipal" (Az module token) or "Credentials" (client_credentials flow).
+    #>
+    [CmdletBinding()]
+    param (
+        [Parameter(Mandatory = $true)]
+        [ValidateSet("ServicePrincipal", "Credentials")]
+        [string]$AuthMethod,
+        [Parameter(Mandatory = $true)]
+        [ValidateNotNullOrEmpty()]
+        [string]$SolutionAbbreviation,
+        [Parameter(Mandatory = $true)]
+        [ValidateNotNullOrEmpty()]
+        [string]$EnvironmentAbbreviation
+    )
+
+    $token = Get-WebApiTokenForAuthMethod -AuthMethod $AuthMethod -SolutionAbbreviation $SolutionAbbreviation -EnvironmentAbbreviation $EnvironmentAbbreviation
+
+    try {
+        foreach ($operationName in "Reschedule", "Start") {
+            $operationParams = Get-GMMOperationParameters -OperationName $operationName
+            $null = Invoke-GMMWebApiOperation `
+                -SolutionAbbreviation $SolutionAbbreviation `
+                -EnvironmentAbbreviation $EnvironmentAbbreviation `
+                -AccessToken $token `
+                -OperationName $operationName `
+                @operationParams
+
+            Write-Host "Call $($operationName.ToLower()) endpoint is complete"
+        }
     }
     finally {
         $token = $null
