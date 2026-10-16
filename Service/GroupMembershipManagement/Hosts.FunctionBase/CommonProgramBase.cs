@@ -78,7 +78,7 @@ namespace Hosts.FunctionBase
             services.AddDbContext<GMMContext>(options =>
                 options.UseSqlServer(GetValueOrThrowBase(configuration, "ConnectionStrings__JobsContext"), sqlServerOptions =>
                 {
-                    sqlServerOptions.EnableRetryOnFailure();
+                    sqlServerOptions.EnableGmmRetryOnFailure();
                 }),
                 ServiceLifetime.Scoped
             );
@@ -86,7 +86,7 @@ namespace Hosts.FunctionBase
             services.AddDbContext<GMMReadContext>(options =>
                 options.UseSqlServer(GetValueOrThrowBase(configuration, "ConnectionStrings__JobsContextReadOnly"), sqlServerOptions =>
                 {
-                    sqlServerOptions.EnableRetryOnFailure();
+                    sqlServerOptions.EnableGmmRetryOnFailure();
                 }),
                 ServiceLifetime.Scoped
             );

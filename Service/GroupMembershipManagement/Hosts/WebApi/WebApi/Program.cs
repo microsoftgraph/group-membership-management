@@ -78,13 +78,13 @@ namespace WebApi
             builder.Services.AddDbContext<GMMContext>(options =>
                 options.UseSqlServer(builder.Configuration.GetConnectionString("JobsContext"), sqlServerOptions =>
                 {
-                    sqlServerOptions.EnableRetryOnFailure();
+                    sqlServerOptions.EnableGmmRetryOnFailure();
                 }));
 
             builder.Services.AddDbContext<GMMReadContext>(options =>
                 options.UseSqlServer(builder.Configuration.GetConnectionString("JobsContextReadOnly"), sqlServerOptions =>
                 {
-                    sqlServerOptions.EnableRetryOnFailure();
+                    sqlServerOptions.EnableGmmRetryOnFailure();
                 }));
 
             builder.Services.Configure<WebAPISettings>(builder.Configuration.GetSection("WebAPI:Settings"));

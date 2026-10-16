@@ -13,7 +13,7 @@ namespace Repositories.EntityFramework.Contexts
             var optionsBuilder = new DbContextOptionsBuilder<GMMContext>();
             optionsBuilder.UseSqlServer(@"<write connection string>", sqlServerOptions =>
             {
-                sqlServerOptions.EnableRetryOnFailure();
+                sqlServerOptions.EnableGmmRetryOnFailure();
             });
             return new GMMContext(optionsBuilder.Options);
         }
@@ -26,7 +26,7 @@ namespace Repositories.EntityFramework.Contexts
             var optionsBuilder = new DbContextOptionsBuilder<GMMContext>();
             optionsBuilder.UseSqlServer(@"<read connection string>", sqlServerOptions =>
             {
-                sqlServerOptions.EnableRetryOnFailure();
+                sqlServerOptions.EnableGmmRetryOnFailure();
             });
             return new GMMReadContext(optionsBuilder.Options);
         }
