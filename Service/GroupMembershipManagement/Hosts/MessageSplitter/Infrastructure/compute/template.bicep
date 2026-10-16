@@ -123,6 +123,7 @@ var baseAppSettings = {
   AzureWebJobsStorage__credential: 'managedidentity'
   AzureFunctionsJobHost__extensions__durableTask__hubName: '${solutionAbbreviation}compute${environmentAbbreviation}MessageSplitter${instanceIdentifier}'
   AzureFunctionsWebHost__hostid: 'MessageSplitter${instanceIdentifier}'
+  'AzureWebJobs.LeaseRenewListenerFunction.Disabled': instanceIdentifier == 's1' ? 1 : 0
   APPLICATIONINSIGHTS_CONNECTION_STRING: '@Microsoft.KeyVault(SecretUri=${reference(appInsightsConnectionString, '2019-09-01').secretUriWithVersion})'
   appConfigurationEndpoint: appConfigurationEndpoint
   membershipStorageAccountName: '@Microsoft.KeyVault(SecretUri=${reference(membershipStorageAccountName, '2019-09-01').secretUriWithVersion})'
