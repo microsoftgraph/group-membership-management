@@ -72,7 +72,16 @@ namespace Services.AutoApprover.Helpers
         Sensitive_Filter,
 
         /// <summary>The Sensitive attribute list could not be read, so no filter can be cleared.</summary>
-        Sensitive_List_Unavailable
+        Sensitive_List_Unavailable,
+
+        /// <summary>The configured-attribute path is on, but its configuration or the requestor's data could not be read.</summary>
+        Configured_Rule_Unavailable,
+
+        /// <summary>The requestor's attribute values do not match the configured-attribute values.</summary>
+        Configured_Values_Mismatch,
+
+        /// <summary>The requestor is not in the reporting chain of the manager referenced in the query.</summary>
+        Configured_Not_In_Manager_Chain
     }
 
     /// <summary>
@@ -119,6 +128,7 @@ namespace Services.AutoApprover.Helpers
         // Counted separately so an operator can tell which path approved a part.
         public int SqlManagerSelf;
         public int SqlAssistant;
+        public int SqlConfigured;
         public int GroupPublic;
         public int GroupOwner;
     }

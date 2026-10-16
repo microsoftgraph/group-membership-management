@@ -26,6 +26,7 @@ import { PageHeader } from '../../components/PageHeader';
 import { SettingKey, SettingKeyMap, SqlMembershipAttribute, SqlMembershipSource } from '../../models';
 import { GeneralSetting } from '../../components/GeneralSetting';
 import { ServiceNotificationSettings, validateServiceNotification } from './ServiceNotificationSettings';
+import { ConfiguredAttributeRules, ConfiguredAttributeToggleCard, useConfiguredAttributeApproval } from './ConfiguredAttributeApprovalSettings';
 import type { AlertBannerConfig } from '../../models/AlertBannerConfig';
 
 const getClassNames = classNamesFunction<AdminConfigStyleProps, AdminConfigStyles>();
@@ -61,6 +62,7 @@ export const AdminConfigView: React.FunctionComponent<AdminConfigViewProps> = (p
   const [hasAttributeValidationErrors, setHasAttributeValidationErrors] = useState<boolean>(false);
   const [newServiceNotification, setNewServiceNotification] = useState<AlertBannerConfig>(serviceNotification);
   const [selectedTabKey, setSelectedTabKey] = useState<string | undefined>(undefined);
+  const configured = useConfiguredAttributeApproval(strings.AutoApproverSettings.labels, isAutoApproverAdministrator, canViewAutoApproverSettings);
 
   const visibleTabKeys = useMemo(() => [
     ...(canViewGeneralSettings ? ['general'] : []),
@@ -108,7 +110,8 @@ export const AdminConfigView: React.FunctionComponent<AdminConfigViewProps> = (p
 
   // setup ui event handlers
   const handleOnSaveButtonClick = () => {
-    onSave(newSettings, newSource, newAttributes, newServiceNotification);
+    if (hasChanges()) onSave(newSettings, newSource, newAttributes, newServiceNotification);
+    if (configured.isDirty) void configured.save();
   };
 
   return (
@@ -122,7 +125,7 @@ export const AdminConfigView: React.FunctionComponent<AdminConfigViewProps> = (p
             onClick={handleOnSaveButtonClick}
             className={classNames.saveButton}
             title={isReadOnly ? strings.labels.readOnlyTooltip : undefined}
-            disabled={isReadOnly || !hasChanges() || hasUrlValidationErrors || hasAttributeValidationErrors || hasServiceNotificationErrors || isSaving}
+            disabled={isReadOnly || !(hasChanges() || configured.isDirty) || hasUrlValidationErrors || hasAttributeValidationErrors || hasServiceNotificationErrors || configured.hasErrors || isSaving}
           ></PrimaryButton>
         </div>
         {isReadOnly &&
@@ -228,6 +231,7 @@ export const AdminConfigView: React.FunctionComponent<AdminConfigViewProps> = (p
                     setSettings={setNewSettings}
                     sqlMembershipSourceAttributes={newAttributes}
                     canViewCustomSourceSettings={canViewCustomSourceSettings}
+                    configured={configured}
                     onNavigateToCustomSource={() => setSelectedTabKey('customSource')} />
                 </PivotItem>
               }
@@ -353,7 +357,7 @@ const GeneralSettings: React.FunctionComponent<GeneralSettingsProps> = (props: G
 }
 
 const AutoApproverSettings: React.FunctionComponent<AutoApproverSettingsProps> = (props: AutoApproverSettingsProps) => {
-  const { classNames, strings, settings, setSettings, canEdit, sqlMembershipSourceAttributes, canViewCustomSourceSettings, onNavigateToCustomSource } = props;
+  const { classNames, strings, settings, setSettings, canEdit, sqlMembershipSourceAttributes, canViewCustomSourceSettings, onNavigateToCustomSource, configured } = props;
 
   const handleSettingChange = (settingKey: SettingKey) => (newValue: string) => {
     setSettings((settings) => ({ ...settings, [settingKey]: newValue }));
@@ -418,6 +422,7 @@ const AutoApproverSettings: React.FunctionComponent<AutoApproverSettingsProps> =
         generalSettingValue={settings[SettingKey.IsAutoApprovalForLeaderAssistantEnabled]}
         disabled={!canEdit}
       />
+      <ConfiguredAttributeToggleCard labels={labels} canEdit={canEdit} state={configured} />
       </div>
     </SettingsSection>
     <SettingsSection
@@ -437,6 +442,15 @@ const AutoApproverSettings: React.FunctionComponent<AutoApproverSettingsProps> =
       />
       </div>
     </SettingsSection>
+    {(configured.enabled || configured.loadFailed) && (
+      <SettingsSection
+        classNames={classNames}
+        title={labels.configuredRulesTitle}
+        subtitle={labels.configuredRulesDescription}
+      >
+        <ConfiguredAttributeRules labels={labels} canEdit={canEdit} state={configured} />
+      </SettingsSection>
+    )}
     </>
   );
 }

@@ -236,6 +236,20 @@ namespace Services.AutoApprover
             }
         }
 
+        private async Task<bool> IsAutoApprovalForConfiguredAttributeEnabledAsync()
+        {
+            try
+            {
+                var setting = await _databaseSettingsRepository.GetSettingByKeyAsync(SettingKey.IsAutoApprovalForConfiguredAttributeEnabled);
+                return setting != null && string.Equals(setting.SettingValue, "true", StringComparison.OrdinalIgnoreCase);
+            }
+            catch (Exception ex)
+            {
+                _logger.ConfiguredAttributeSettingRetrievalError(ex);
+                return false;
+            }
+        }
+
         // Approved only when every part qualifies through an enabled path; any failure rejects.
         private async Task<bool> ShouldAutoApprovePerPartAsync(string query, string userIdentity, bool isGroupBasedEnabled, bool isOrgLeaderEnabled)
         {
@@ -255,6 +269,7 @@ namespace Services.AutoApprover
 
                 // Read only when a SQL part exists, so it costs nothing elsewhere.
                 var isLeaderAssistantEnabled = false;
+                var isConfiguredEnabled = false;
                 var isSensitiveScreeningEnabled = false;
                 var sensitiveAttributes = new SensitiveAttributeCache();
 
@@ -262,6 +277,9 @@ namespace Services.AutoApprover
                 {
                     isLeaderAssistantEnabled = await IsAutoApprovalForLeaderAssistantEnabledAsync();
                     _logger.LeaderAssistantPathResolved(isLeaderAssistantEnabled);
+
+                    isConfiguredEnabled = await IsAutoApprovalForConfiguredAttributeEnabledAsync();
+                    _logger.ConfiguredAttributePathResolved(isConfiguredEnabled);
 
                     // Loaded even when screening is off so the logged count always reflects what is configured.
                     isSensitiveScreeningEnabled = await IsSensitiveAttributeScreeningEnabledAsync();
@@ -271,7 +289,7 @@ namespace Services.AutoApprover
                 }
 
                 // Resolved only when a SQL path is on, so a disabled path costs no lookup.
-                if ((isOrgLeaderEnabled || isLeaderAssistantEnabled) && parts.Any(p => p.Type == SourcePart.SqlMembershipType))
+                if ((isOrgLeaderEnabled || isLeaderAssistantEnabled || isConfiguredEnabled) && parts.Any(p => p.Type == SourcePart.SqlMembershipType))
                 {
                     tableName = await ResolveUsersTableNameAsync();
 
@@ -289,6 +307,7 @@ namespace Services.AutoApprover
                 var assistantCache = new Dictionary<int, AssistantLookup>();
 
                 var mix = new PartApprovalMix();
+                var configuredState = new ConfiguredAttributeState();
 
                 for (var i = 0; i < parts.Count; i++)
                 {
@@ -301,8 +320,8 @@ namespace Services.AutoApprover
                             rejection = await EvaluateGroupPartAsync(part, userIdentity, isGroupBasedEnabled, i, mix);
                             break;
                         case SourcePart.SqlMembershipType:
-                            rejection = await EvaluateSqlPartAsync(part, employeeId, userIdentity, tableName, isOrgLeaderEnabled, isLeaderAssistantEnabled, isSensitiveScreeningEnabled, sensitiveAttributes, assistantCache, i, mix);
-                            break;
+                            rejection = await EvaluateSqlPartAsync(part, employeeId, userIdentity, tableName, isOrgLeaderEnabled, isLeaderAssistantEnabled, isConfiguredEnabled, isSensitiveScreeningEnabled, sensitiveAttributes, assistantCache, i, mix, configuredState);
+                                                        break;
                         default:
                             rejection = Reject(part, i, SourcePartRejectionReason.Unknown_Type,
                                 $"'{part.Type}' is not a source type that can be evaluated");
@@ -312,12 +331,12 @@ namespace Services.AutoApprover
                     if (rejection != null)
                     {
                         _logger.PerPartRuleDeclined(i, part.Type, part.SourceDescriptor, rejection.Value.Reason.ToString(),
-                            rejection.Value.Details, i + 1, parts.Count, mix.SqlManagerSelf, mix.SqlAssistant, mix.GroupPublic, mix.GroupOwner);
+                            rejection.Value.Details, i + 1, parts.Count, mix.SqlManagerSelf, mix.SqlAssistant, mix.SqlConfigured, mix.GroupPublic, mix.GroupOwner);
                         return false;
                     }
                 }
 
-                _logger.PerPartRuleApproved(mix.SqlManagerSelf, mix.SqlAssistant, mix.GroupPublic, mix.GroupOwner, parts.Count);
+                _logger.PerPartRuleApproved(mix.SqlManagerSelf, mix.SqlAssistant, mix.SqlConfigured, mix.GroupPublic, mix.GroupOwner, parts.Count);
                 return true;
             }
             catch (Exception ex)
@@ -406,6 +425,160 @@ namespace Services.AutoApprover
             }
 
             return null;
+        }
+
+        // Cached once per submission and shared across its parts.
+        private sealed class ConfiguredAttributeState
+        {
+            public bool Loaded;
+            public string UnavailableReason;
+            public int RequestorEmployeeId;
+            public bool ValuesMatch;
+            public Dictionary<int, bool> InManagerOrg { get; } = new();
+        }
+
+        // Approves when the requestor's configured attributes match the admin-configured values and the requestor
+        // is in the manager's reporting chain. Returns null when the part qualifies.
+        private async Task<PartRejection?> EvaluateConfiguredAttributeAsync(SourcePart part, string requestorObjectId, string tableName, ConfiguredAttributeState state)
+        {
+            try
+            {
+                if (!state.Loaded)
+                {
+                    state.Loaded = true;
+                    state.UnavailableReason = await LoadConfiguredAttributeAsync(state, requestorObjectId, tableName);
+                }
+
+                if (state.UnavailableReason != null)
+                    return ConfiguredRuleUnavailable(state.UnavailableReason);
+
+                if (!state.ValuesMatch)
+                    return new PartRejection(SourcePartRejectionReason.Configured_Values_Mismatch,
+                        "the requestor's attribute values do not match the configured-attribute values");
+
+                if (await IsInManagerOrgAsync(part.ManagerId.Value, tableName, state))
+                    return null;
+
+                return new PartRejection(SourcePartRejectionReason.Configured_Not_In_Manager_Chain,
+                    "the requestor is not in the reporting chain of the manager referenced in the query");
+            }
+            catch (Exception ex)
+            {
+                _logger.ConfiguredAttributeRuleError("evaluation_failed", ex);
+                return ConfiguredRuleUnavailable("evaluation_failed");
+            }
+        }
+
+        private static PartRejection ConfiguredRuleUnavailable(string reason) =>
+            new(SourcePartRejectionReason.Configured_Rule_Unavailable,
+                $"the configured-attribute path could not be evaluated ({reason}); the submission needs manual review");
+
+        // The manager's own row is part of the result, so a requestor who is the manager is in the chain.
+        private async Task<bool> IsInManagerOrgAsync(int managerId, string tableName, ConfiguredAttributeState state)
+        {
+            if (state.InManagerOrg.TryGetValue(managerId, out var cached))
+                return cached;
+
+            var requestorId = state.RequestorEmployeeId.ToString();
+            var members = await _sqlMembershipRepository.GetChildEntitiesAsync($"EmployeeId = {requestorId}", managerId, tableName, 0);
+            return state.InManagerOrg[managerId] = members.Any(member => member.PersonnelNumber == requestorId);
+        }
+
+        // Returns why the rule cannot apply to this submission, or null when it can.
+        private async Task<string> LoadConfiguredAttributeAsync(ConfiguredAttributeState state, string requestorObjectId, string tableName)
+        {
+            ConfiguredAttributeApprovalConfiguration configuration;
+
+            try
+            {
+                configuration = await _databaseSettingsRepository.GetConfiguredAttributeApprovalAsync();
+            }
+            catch (Exception ex)
+            {
+                _logger.ConfiguredAttributeRuleError("configuration_unavailable", ex);
+                return "configuration_unavailable";
+            }
+
+            try
+            {
+                configuration.Validate();
+            }
+            catch (Exception ex)
+            {
+                _logger.ConfiguredAttributeRuleError("configuration_invalid", ex);
+                return "configuration_invalid";
+            }
+
+            if (string.IsNullOrEmpty(tableName))
+                return "table_unresolved";
+
+            List<SqlMembershipAttribute> attributes;
+            try
+            {
+                var settings = await _sqlMembershipSourcesRepository.GetDefaultSourceAttributesAsync();
+                var columns = await _sqlMembershipRepository.GetColumnDetailsAsync(tableName);
+                attributes = ConfiguredAttributeApprovalMetadata.Resolve(columns, settings);
+            }
+            catch (Exception ex)
+            {
+                _logger.ConfiguredAttributeRuleError("metadata_unavailable", ex);
+                return "metadata_unavailable";
+            }
+
+            var rows = new List<(ConfiguredAttributeApprovalRow Row, SqlMembershipAttribute Attribute)>();
+            foreach (var row in configuration.Attributes)
+            {
+                var attribute = attributes.FirstOrDefault(a => string.Equals(a.Name, row.Attribute, StringComparison.OrdinalIgnoreCase));
+                if (!ConfiguredAttributeApprovalMetadata.IsEligible(attribute))
+                    return "attribute_ineligible";
+                rows.Add((row, attribute));
+            }
+
+            Dictionary<string, string> profile;
+            try
+            {
+                profile = await _sqlMembershipRepository.GetUserAttributesAsync(requestorObjectId, tableName);
+            }
+            catch (Exception ex)
+            {
+                _logger.ConfiguredAttributeRuleError("profile_unavailable", ex);
+                return "profile_unavailable";
+            }
+
+            if (profile == null)
+                return "requestor_not_found";
+            if (!profile.TryGetValue("EmployeeId", out var employeeIdText) || !int.TryParse(employeeIdText, out var employeeId))
+                return "requestor_employee_id_unavailable";
+            state.RequestorEmployeeId = employeeId;
+
+            // Every configured attribute must match (AND); the requestor's value may match any configured value (OR).
+            state.ValuesMatch = rows.All(entry =>
+            {
+                var column = ConfiguredAttributeApprovalMetadata.GetColumnName(entry.Attribute);
+                if (!profile.TryGetValue(column, out var raw)
+                    || !ConfiguredAttributeApprovalMetadata.TryCanonicalize(NormalizeRaw(raw, entry.Attribute.Type), entry.Attribute.Type, out var canonical))
+                    return false;
+
+                return entry.Row.Values.Any(value =>
+                    ConfiguredAttributeApprovalMetadata.TryCanonicalize(value, entry.Attribute.Type, out var configured)
+                    && string.Equals(configured, canonical, StringComparison.Ordinal));
+            });
+
+            return null;
+        }
+
+        // GetUserAttributesAsync stringifies values with ToString, so bit and date need mapping back to their canonical forms.
+        private static string NormalizeRaw(string raw, string type)
+        {
+            switch (type?.ToLowerInvariant())
+            {
+                case "bit":
+                    return bool.TryParse(raw, out var flag) ? (flag ? "1" : "0") : raw;
+                case "date":
+                    return DateTime.TryParse(raw, out var date) ? date.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture) : raw;
+                default:
+                    return raw;
+            }
         }
 
         private async Task<string> ResolveUsersTableNameAsync()
@@ -509,14 +682,16 @@ namespace Services.AutoApprover
             string tableName,
             bool isOrgLeaderEnabled,
             bool isLeaderAssistantEnabled,
+            bool isConfiguredEnabled,
             bool isSensitiveScreeningEnabled,
             SensitiveAttributeCache sensitiveAttributes,
             Dictionary<int, AssistantLookup> assistantCache,
             int partIndex,
-            PartApprovalMix mix)
+            PartApprovalMix mix,
+            ConfiguredAttributeState configuredState)
         {
             // Reported ahead of the data-driven reasons: the remedy is an admin setting.
-            if (!isOrgLeaderEnabled && !isLeaderAssistantEnabled)
+            if (!isOrgLeaderEnabled && !isLeaderAssistantEnabled && !isConfiguredEnabled)
                 return Reject(part, partIndex, SourcePartRejectionReason.Sql_Paths_Disabled,
                     "every auto-approval path for SQL sources is switched off, so this part has no enabled way to qualify; the submission needs manual review");
 
@@ -543,20 +718,21 @@ namespace Services.AutoApprover
                 return null;
             }
 
+            // Held back so a part the configured-attribute path approves is never logged as rejected.
+            PartRejection? rejection = null;
+
             if (isLeaderAssistantEnabled)
             {
                 var lookup = await ResolveAssistantsAsync(part.ManagerId.Value, tableName, assistantCache, partIndex);
 
                 if (lookup.Status == AssistantLookupStatus.LeaderUnresolved)
-                    return Reject(part, partIndex, SourcePartRejectionReason.Manager_Identity_Unresolved,
+                    rejection = new PartRejection(SourcePartRejectionReason.Manager_Identity_Unresolved,
                         "the manager referenced in the query has no resolvable directory identity, so an assistant relationship could not be verified; the submission needs manual review");
-
-                if (lookup.Status == AssistantLookupStatus.Unavailable)
-                    return Reject(part, partIndex, SourcePartRejectionReason.Assistant_Lookup_Unavailable,
+                else if (lookup.Status == AssistantLookupStatus.Unavailable)
+                    rejection = new PartRejection(SourcePartRejectionReason.Assistant_Lookup_Unavailable,
                         "the manager's published assistant could not be read, so an assistant relationship could not be verified; the submission needs manual review");
-
                 // The object id is the match key; the manager published this person as acting for them.
-                if (lookup.Assistants.Any(a => string.Equals(a.ObjectId.ToString(), userIdentity, StringComparison.OrdinalIgnoreCase)))
+                else if (lookup.Assistants.Any(a => string.Equals(a.ObjectId.ToString(), userIdentity, StringComparison.OrdinalIgnoreCase)))
                 {
                     // An assistant is further from the data owner, so screening applies here too.
                     var screened = ScreenFilter(part, isSensitiveScreeningEnabled, sensitiveAttributes, partIndex);
@@ -567,25 +743,42 @@ namespace Services.AutoApprover
                     mix.SqlAssistant++;
                     return null;
                 }
-
                 // A missing EmployeeId means the manager-self check could not run either.
-                if (isOrgLeaderEnabled && employeeId == null)
-                    return Reject(part, partIndex, SourcePartRejectionReason.EmployeeId_Missing,
+                else if (isOrgLeaderEnabled && employeeId == null)
+                    rejection = new PartRejection(SourcePartRejectionReason.EmployeeId_Missing,
                         "the requestor is not a published assistant of the manager referenced in the query, and has no EmployeeId in the users table, so the manager-self relationship could not be verified either");
-
-                return Reject(part, partIndex, SourcePartRejectionReason.Requestor_Not_Assistant,
-                    isOrgLeaderEnabled
-                        ? "the requestor is neither the manager referenced in the query nor a published assistant of that manager"
-                        : "the requestor is not a published assistant of the manager referenced in the query, and auto-approval for the requestor as org leader is switched off");
+                else
+                    rejection = new PartRejection(SourcePartRejectionReason.Requestor_Not_Assistant,
+                        isOrgLeaderEnabled
+                            ? "the requestor is neither the manager referenced in the query nor a published assistant of that manager"
+                            : "the requestor is not a published assistant of the manager referenced in the query, and auto-approval for the requestor as org leader is switched off");
+            }
+            // Only the manager-self path is enabled here, so the assistant relationship is never consulted.
+            else if (isOrgLeaderEnabled)
+            {
+                rejection = employeeId == null
+                    ? new PartRejection(SourcePartRejectionReason.EmployeeId_Missing, "the requestor has no EmployeeId in the users table")
+                    : new PartRejection(SourcePartRejectionReason.Requestor_Manager_Mismatch, "the requestor is not the manager referenced in the query");
             }
 
-            // Only the manager-self path is enabled here, so the assistant relationship is never consulted.
-            if (employeeId == null)
-                return Reject(part, partIndex, SourcePartRejectionReason.EmployeeId_Missing,
-                    "the requestor has no EmployeeId in the users table");
+            if (isConfiguredEnabled)
+            {
+                var configuredRejection = await EvaluateConfiguredAttributeAsync(part, userIdentity, tableName, configuredState);
+                if (configuredRejection == null)
+                {
+                    var screened = ScreenFilter(part, isSensitiveScreeningEnabled, sensitiveAttributes, partIndex);
+                    if (screened != null)
+                        return screened;
 
-            return Reject(part, partIndex, SourcePartRejectionReason.Requestor_Manager_Mismatch,
-                "the requestor is not the manager referenced in the query");
+                    _logger.SqlPartApprovedByConfiguredAttribute(partIndex);
+                    mix.SqlConfigured++;
+                    return null;
+                }
+
+                rejection ??= configuredRejection;
+            }
+
+            return Reject(part, partIndex, rejection.Value.Reason, rejection.Value.Details);
         }
 
         private async Task<AssistantLookup> ResolveAssistantsAsync(int managerId, string tableName, Dictionary<int, AssistantLookup> cache, int partIndex)

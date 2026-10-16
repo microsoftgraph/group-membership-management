@@ -473,6 +473,47 @@ namespace Services.Tests
             _settingsRepository.Verify(x => x.PatchSettingAsync(It.IsAny<SettingKey>(), It.IsAny<string>()), Times.Never());
         }
 
+        [DataTestMethod]
+        [DataRow(SettingKey.IsAutoApprovalForConfiguredAttributeEnabled)]
+        [DataRow(SettingKey.ConfiguredAttributeAutoApprovalConfiguration)]
+        public async Task CompositeConfigurationCannotBePatchedAsIndividualSettings(SettingKey key)
+        {
+            _settingsController.ControllerContext = CreateControllerContext(new List<Claim>
+            {
+                new Claim(ClaimTypes.Role, Roles.AUTO_APPROVER_ADMINISTRATOR)
+            });
+            Assert.IsInstanceOfType(await _settingsController.PatchSettingAsync(key, "true"), typeof(ForbidResult));
+            _settingsRepository.Verify(repository => repository.PatchSettingAsync(
+                It.IsAny<SettingKey>(), It.IsAny<string>()), Times.Never());
+        }
+
+        [DataTestMethod]
+        [DataRow(SettingKey.IsAutoApprovalForConfiguredAttributeEnabled)]
+        [DataRow(SettingKey.ConfiguredAttributeAutoApprovalConfiguration)]
+        public async Task ConfiguredAllowlistIsNotReadableWithoutAutoApproverRole(SettingKey key)
+        {
+            Assert.IsInstanceOfType(await _settingsController.GetSettingByKeyAsync(key), typeof(ForbidResult));
+            _settings.Add(new Setting { SettingKey = key, SettingValue = "restricted configuration" });
+
+            var result = (OkObjectResult)await _settingsController.GetAllSettingsAsync();
+            Assert.IsFalse(((List<SettingDTO>)result.Value!).Any(setting => setting.SettingKey == key));
+        }
+
+        [DataTestMethod]
+        [DataRow(SettingKey.IsAutoApprovalForConfiguredAttributeEnabled)]
+        [DataRow(SettingKey.ConfiguredAttributeAutoApprovalConfiguration)]
+        public async Task ConfiguredAllowlistIsListedForAutoApproverReader(SettingKey key)
+        {
+            _settingsController.ControllerContext = CreateControllerContext(new List<Claim>
+            {
+                new Claim(ClaimTypes.Role, Roles.AUTO_APPROVER_READER)
+            });
+            _settings.Add(new Setting { SettingKey = key, SettingValue = "configuration" });
+
+            var result = (OkObjectResult)await _settingsController.GetAllSettingsAsync();
+            Assert.IsTrue(((List<SettingDTO>)result.Value!).Any(setting => setting.SettingKey == key));
+        }
+
         [TestMethod]
         public async Task PatchLeaderAssistantAutoApprovalSettingWhenUserHasAutoApproverRoleReturnsNoContentTestAsync()
         {

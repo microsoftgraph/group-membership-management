@@ -87,8 +87,8 @@ namespace Hosts.AutoApprover
         // ── Per-Part Rule ──
 
         [LoggerMessage(EventId = 250116, Level = LogLevel.Information,
-            Message = "Per-Part Rule approved the submission. Approved parts — SqlMembership(manager-self): {SqlManagerSelfCount}, SqlMembership(assistant): {SqlAssistantCount}, GroupMembership(public): {GroupPublicCount}, GroupMembership(owner): {GroupOwnerCount}; total parts: {TotalParts}.")]
-        public static partial void PerPartRuleApproved(this ILogger logger, int sqlManagerSelfCount, int sqlAssistantCount, int groupPublicCount, int groupOwnerCount, int totalParts);
+            Message = "Per-Part Rule approved the submission. Approved parts — SqlMembership(manager-self): {SqlManagerSelfCount}, SqlMembership(assistant): {SqlAssistantCount}, SqlMembership(configured attribute): {SqlConfiguredCount}, GroupMembership(public): {GroupPublicCount}, GroupMembership(owner): {GroupOwnerCount}; total parts: {TotalParts}.")]
+                    public static partial void PerPartRuleApproved(this ILogger logger, int sqlManagerSelfCount, int sqlAssistantCount, int sqlConfiguredCount, int groupPublicCount, int groupOwnerCount, int totalParts);
 
         // EventId 250118 retired with the per-part setting reader; not reused.
 
@@ -138,8 +138,8 @@ namespace Hosts.AutoApprover
         public static partial void AutoApprovalModesResolved(this ILogger logger, bool groupBasedEnabled, bool orgLeaderEnabled);
 
         [LoggerMessage(EventId = 250132, Level = LogLevel.Information,
-            Message = "Per-Part Rule declined the submission at {PartType} part {PartIndex} ({Source}): {Reason} — {Details}. Evaluated {PartsEvaluated} of {TotalParts} parts. Approved before the failure — SqlMembership(manager-self): {SqlManagerSelfCount}, SqlMembership(assistant): {SqlAssistantCount}, GroupMembership(public): {GroupPublicCount}, GroupMembership(owner): {GroupOwnerCount}.")]
-        public static partial void PerPartRuleDeclined(this ILogger logger, int partIndex, string partType, string source, string reason, string details, int partsEvaluated, int totalParts, int sqlManagerSelfCount, int sqlAssistantCount, int groupPublicCount, int groupOwnerCount);
+            Message = "Per-Part Rule declined the submission at {PartType} part {PartIndex} ({Source}): {Reason} — {Details}. Evaluated {PartsEvaluated} of {TotalParts} parts. Approved before the failure — SqlMembership(manager-self): {SqlManagerSelfCount}, SqlMembership(assistant): {SqlAssistantCount}, SqlMembership(configured attribute): {SqlConfiguredCount}, GroupMembership(public): {GroupPublicCount}, GroupMembership(owner): {GroupOwnerCount}.")]
+                    public static partial void PerPartRuleDeclined(this ILogger logger, int partIndex, string partType, string source, string reason, string details, int partsEvaluated, int totalParts, int sqlManagerSelfCount, int sqlAssistantCount, int sqlConfiguredCount, int groupPublicCount, int groupOwnerCount);
 
         // EmployeeId is an HR identifier, so its value is never logged — only whether it resolved.
         [LoggerMessage(EventId = 250133, Level = LogLevel.Information,
@@ -192,5 +192,21 @@ namespace Hosts.AutoApprover
         [LoggerMessage(EventId = 250142, Level = LogLevel.Information,
             Message = "Sensitive attribute screening resolved — enabled: {ScreeningEnabled}, attributes marked Sensitive: {SensitiveAttributeCount}.")]
         public static partial void SensitiveScreeningResolved(this ILogger logger, bool screeningEnabled, int sensitiveAttributeCount);
+
+        [LoggerMessage(EventId = 250150, Level = LogLevel.Information,
+            Message = "SqlMembership part {PartIndex} approved: the requestor's configured attributes match and the requestor is in the manager's reporting chain.")]
+        public static partial void SqlPartApprovedByConfiguredAttribute(this ILogger logger, int partIndex);
+
+        [LoggerMessage(EventId = 250154, Level = LogLevel.Information,
+            Message = "Auto-approval paths resolved — configured-attribute: {ConfiguredAttributeEnabled}.")]
+        public static partial void ConfiguredAttributePathResolved(this ILogger logger, bool configuredAttributeEnabled);
+
+        [LoggerMessage(EventId = 250153, Level = LogLevel.Error,
+            Message = "Error retrieving the configured-attribute auto-approval setting.")]
+        public static partial void ConfiguredAttributeSettingRetrievalError(this ILogger logger, Exception exception);
+
+        [LoggerMessage(EventId = 250152, Level = LogLevel.Error,
+            Message = "The configured-attribute rule could not be evaluated: {Reason}.")]
+        public static partial void ConfiguredAttributeRuleError(this ILogger logger, string reason, Exception exception);
     }
 }

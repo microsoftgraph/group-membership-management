@@ -7,6 +7,7 @@ import type { SettingKey, SqlMembershipAttribute, SqlMembershipSource } from '..
 import type { AlertBannerConfig } from '../../models/AlertBannerConfig';
 import type { IStrings } from '../../services/localization';
 import { MouseEventHandler } from 'react';
+import type { useConfiguredAttributeApproval } from './ConfiguredAttributeApprovalSettings';
 
 export type AdminConfigStyles = {
   root: IStyle;
@@ -149,6 +150,7 @@ export type AutoApproverSettingsProps = {
   sqlMembershipSourceAttributes: SqlMembershipAttribute[] | undefined;
   canViewCustomSourceSettings: boolean;
   onNavigateToCustomSource: () => void;
+  configured: ReturnType<typeof useConfiguredAttributeApproval>;
 };
 
 export type SettingsSectionProps = {

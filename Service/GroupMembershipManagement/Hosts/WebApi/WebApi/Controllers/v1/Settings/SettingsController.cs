@@ -104,6 +104,10 @@ namespace WebApi.Controllers.v1.Settings
         [HttpGet("{settingKey}")]
         public async Task<IActionResult> GetSettingByKeyAsync(SettingKey settingKey)
         {
+            if (ConfiguredAttributeApprovalConfiguration.IsConfigurationKey(settingKey)
+                && !CanReadAutoApproverSettings())
+                return Forbid();
+
             if (AISettingKeys.Contains(settingKey) && !CanReadAISettings())
             {
                 return Forbid();
@@ -132,6 +136,8 @@ namespace WebApi.Controllers.v1.Settings
             {
                 var response = await _getAllSettingsRequestHandler.ExecuteAsync(new GetAllSettingsRequest());
                 var settings = response.Settings;
+                if (!CanReadAutoApproverSettings())
+                    settings = settings.Where(setting => !ConfiguredAttributeApprovalConfiguration.IsConfigurationKey(setting.SettingKey)).ToList();
                 if (!CanReadAISettings())
                 {
                     var canReadOnboardingAISettings = User.IsInRole(Models.Roles.AI_ONBOARDING_CHAT);
@@ -210,6 +216,10 @@ namespace WebApi.Controllers.v1.Settings
             return User.IsInRole(Models.Roles.AI_SETTINGS_ADMINISTRATOR)
                 || User.IsInRole(Models.Roles.AI_SETTINGS_READER);
         }
+
+        private bool CanReadAutoApproverSettings() =>
+            User.IsInRole(Models.Roles.AUTO_APPROVER_ADMINISTRATOR)
+            || User.IsInRole(Models.Roles.AUTO_APPROVER_READER);
 
         [Authorize()]
         [HttpGet("supportEmail")]

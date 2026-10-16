@@ -9,6 +9,7 @@ import { IOperationsApi } from './operations';
 import { IDestinationsApi } from './destinations/IDestinationsApi';
 import { ITitleApi } from './titles';
 import { IFeedbackApi } from './feedback';
+import { IConfiguredAttributeApprovalApi } from './configuredAttributeApproval';
 
 export interface IGMMApi {
   title: ITitleApi;
@@ -19,4 +20,5 @@ export interface IGMMApi {
   sqlMembershipSources: ISqlMembershipSourcesApi;
   operationsApi: IOperationsApi;
   feedback: IFeedbackApi;
+  configuredAttributeApproval: IConfiguredAttributeApprovalApi;
 };

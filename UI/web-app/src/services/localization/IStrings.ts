@@ -355,6 +355,25 @@ export type IStrings = {
         sensitiveAttributesMarked: string;
         noSensitiveAttributesMarked: string;
         manageOnCustomSource: string;
+        configuredTitle: string;
+        configuredDescription: string;
+        configuredRulesTitle: string;
+        configuredRulesDescription: string;
+        configuredAttributesHeading: string;
+        configuredAttribute: string;
+        configuredAttributePlaceholder: string;
+        configuredValues: string;
+        configuredValuesPlaceholder: string;
+        configuredAddAttribute: string;
+        configuredRemoveAttribute: string;
+        configuredLoading: string;
+        configuredLoadError: string;
+        configuredRetry: string;
+        configuredSaveError: string;
+        configuredNoResults: string;
+        configuredSearchError: string;
+        configuredIncompleteRow: string;
+        configuredLoadMore: string;
       }
     },
     AISettings: {

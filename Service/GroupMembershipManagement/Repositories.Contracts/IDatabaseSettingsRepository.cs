@@ -12,5 +12,8 @@ namespace Repositories.Contracts
         Task<Setting> GetSettingByKeyAsync(SettingKey settingKey);
         Task<IEnumerable<Setting>> GetAllSettingsAsync();
         Task PatchSettingAsync(SettingKey settingKey, string newSettingValue);
+        Task<ConfiguredAttributeApprovalConfiguration> GetConfiguredAttributeApprovalAsync();
+        Task<ConfiguredAttributeApprovalConfiguration> SaveConfiguredAttributeApprovalAsync(
+            ConfiguredAttributeApprovalConfiguration configuration);
     }
 }

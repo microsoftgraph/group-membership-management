@@ -18,6 +18,12 @@ vi.mock('../../components/PageHeader', () => ({
   PageHeader: () => <div data-testid="page-header" />,
 }));
 
+vi.mock('./ConfiguredAttributeApprovalSettings', () => ({
+  useConfiguredAttributeApproval: () => ({ enabled: true, loadFailed: false, isDirty: false, hasErrors: false }),
+  ConfiguredAttributeToggleCard: () => <div data-testid="configured-attribute-toggle-stub" />,
+  ConfiguredAttributeRules: () => <div data-testid="configured-attribute-approval-stub" />,
+}));
+
 vi.mock('../../components/Page', () => ({
   Page: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
 }));

@@ -55,7 +55,7 @@ export const fetchAttributeMappings = createAsyncThunk<GetAttributeMappingsRespo
       }
       return payload;
     } catch (error) {
-      payload = { mappings: [], attribute: request.attribute, type: request.type, hasMore: false, search: request.search };
+      payload = { mappings: [], attribute: request.attribute, type: request.type, hasMore: false, search: request.search, failed: true };
       return payload;
     }
   }

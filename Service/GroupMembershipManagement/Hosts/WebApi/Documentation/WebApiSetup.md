@@ -84,6 +84,50 @@ The roles are:
     - Users with this role can view **AI-generated sync explanations** for all destinations in the tenant.
     - Group owners can always see AI explanations for their own groups without this role.
 
+## Configured-attribute approval configuration API
+
+The draft configured-attribute configuration backend uses
+`/api/v1/autoApprover/configuredAttribute`. This configuration surface does not
+yet enable a new AutoApprover decision path; evaluation and UI integration are
+separate implementation work.
+
+Reads require `AutoApprover.Read.All` or `AutoApprover.ReadWrite.All`; writes
+require `AutoApprover.ReadWrite.All`.
+
+| Method | Suffix | Purpose |
+|---|---|---|
+| GET | `/configuration` | Read the saved configuration |
+| PUT | `/configuration` | Validate and save the flag and allowlist atomically |
+
+With no stored configuration, GET returns disabled with no rows. PUT accepts `enabled`, `schemaVersion` (currently `1`), and `attributes` (`attribute` plus a `values` array per row), saves them (last write wins), and returns the saved configuration. Individual generic settings PATCH operations cannot write either underlying setting.
+
+Example PUT body:
+
+```json
+{
+  "enabled": true,
+  "schemaVersion": 1,
+  "attributes": [
+    { "attribute": "Department", "values": ["example-code"] }
+  ]
+}
+```
+
+The UI lists attributes and searches/resolves values through the existing
+`sqlMembershipSources` mapping endpoints, so only mapped attributes can be picked.
+Save validates on the server that each attribute is enabled, non-sensitive and of
+a supported type, and that each value exists in the source. Missing-data markers
+(blank, `-1`, `NULL`, `N/A`, `UNKNOWN`) are not eligible values. String codes retain
+their case and leading zeros; numeric duplicates are rejected according to source type.
+
+The limits are 32 fields, 100 values per field, 256 characters per value, and a
+64 KiB configuration request/document. A disabled empty configuration is valid;
+any present row must be complete.
+
+Error responses distinguish invalid input (`400`) and any other failure (`500`).
+No schema migration or seeded configuration is needed; the existing Unicode
+Settings value column is unbounded.
+
 ## Add a role to a group
 
 Login and follow these steps in the tenant that was set in "AppTenantId" to run the Set-WebApiAzureADApplication.ps1 script in the previous step.

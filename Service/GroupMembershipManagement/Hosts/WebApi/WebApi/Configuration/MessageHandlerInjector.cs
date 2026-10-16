@@ -36,6 +36,9 @@ namespace WebApi.Configuration
             services.AddTransient<IRequestHandler<PatchDefaultSqlMembershipSourceAttributesRequest, NullResponse>, PatchDefaultSqlMembershipSourceAttributesHandler>();
             services.AddTransient<IRequestHandler<GetSqlValidationRequest, GetSqlValidationResponse>, GetSqlValidationHandler>();
 
+            services.AddTransient<IRequestHandler<GetConfiguredAttributeApprovalRequest, GetConfiguredAttributeApprovalResponse>, GetConfiguredAttributeApprovalHandler>();
+            services.AddTransient<IRequestHandler<SaveConfiguredAttributeApprovalRequest, SaveConfiguredAttributeApprovalResponse>, SaveConfiguredAttributeApprovalHandler>();
+
             services.AddTransient<IRequestHandler<GetJobsRequest, GetJobsResponse>, GetJobsHandler>();
             services.AddTransient<IRequestHandler<PatchJobsRequest, PatchJobsResponse>, PatchJobsHandler>();
             services.AddTransient<IRequestHandler<GetJobDetailsRequest, GetJobDetailsResponse>, GetJobDetailsHandler>();

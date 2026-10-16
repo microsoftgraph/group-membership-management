@@ -9,4 +9,5 @@ export interface GetAttributeMappingsResponse {
     type: string | undefined;
     hasMore: boolean;
     search?: string;
+    failed?: boolean;
 };
