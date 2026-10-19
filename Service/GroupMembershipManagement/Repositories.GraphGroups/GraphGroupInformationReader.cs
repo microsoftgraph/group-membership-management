@@ -726,7 +726,7 @@ namespace Repositories.GraphGroups
             _graphGroupInformationRepositoryLogger.LogDebugWithRunId(runId, $"Finished adding owners to group {groupId}.");
         }
 
-        public async Task<AzureADGroup> CreateGroupFromUIAsync(string newGroupName, Guid groupOwnerId, string newGroupAlias, string gmmOwnerObjectId, NewGroupType groupType, Guid? runId)
+        public async Task<AzureADGroup> CreateGroupFromUIAsync(string newGroupName, Guid groupOwnerId, string newGroupAlias, string gmmOwnerObjectId, NewGroupType groupType, Guid? runId, string? description = null)
         {
             if (string.IsNullOrWhiteSpace(gmmOwnerObjectId))
             {
@@ -747,7 +747,7 @@ namespace Repositories.GraphGroups
                     // Graph requires a mail nickname either way.
                     MailEnabled = !isSecurityGroup,
                     SecurityEnabled = isSecurityGroup,
-                    Description = $"{newGroupName}",
+                    Description = description ?? newGroupName,
                     GroupTypes = isSecurityGroup ? new List<string>() : new List<string> { "Unified" },
                     MailNickname = MailNicknameBuilder.Build(newGroupAlias, newGroupName)
                 };
@@ -793,7 +793,7 @@ namespace Repositories.GraphGroups
                     }
                     else
                     {
-                        throw new HttpRequestException($"Failed to create group. Status code: {createResponse.StatusCode}");
+                        throw new HttpRequestException($"Failed to create group. Status code: {createResponse.StatusCode}", null, createResponse.StatusCode);
                     }
                 }
 
@@ -823,6 +823,12 @@ namespace Repositories.GraphGroups
             {
                 _graphGroupInformationRepositoryLogger.LogErrorWithRunId(runId, ex.GetBaseException().ToString(), ex);
 
+                throw new HttpRequestException("Group creation failed.", ex,
+                    ex.ResponseStatusCode > 0 ? (HttpStatusCode)ex.ResponseStatusCode : null);
+            }
+            catch (HttpRequestException ex) when (ex.StatusCode.HasValue)
+            {
+                _graphGroupInformationRepositoryLogger.LogErrorWithRunId(runId, ex.GetBaseException().ToString(), ex);
                 throw;
             }
             catch (Exception e)

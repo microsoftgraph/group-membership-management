@@ -217,12 +217,12 @@ namespace Repositories.GraphGroups
             return await _graphGroupOwnerReader.GetGroupIdsOwnedByServicePrincipalAsync(servicePrincipalObjectId, ResolveRunId());
         }
 
-        public async Task<AzureADGroup> CreateGroupFromUI(string groupName, Guid groupOwnerId, string groupAlias, NewGroupType groupType = NewGroupType.Microsoft365)
+        public async Task<AzureADGroup> CreateGroupFromUI(string groupName, Guid groupOwnerId, string groupAlias, NewGroupType groupType = NewGroupType.Microsoft365, string? description = null)
         {
             var runId = ResolveRunId();
             var gmmOwnerObjectId = await ResolveGmmOwnerObjectIdAsync(runId);
 
-            return await _graphGroupInformationReader.CreateGroupFromUIAsync(groupName, groupOwnerId, groupAlias, gmmOwnerObjectId, groupType, runId);
+            return await _graphGroupInformationReader.CreateGroupFromUIAsync(groupName, groupOwnerId, groupAlias, gmmOwnerObjectId, groupType, runId, description);
         }
 
         /// <summary>

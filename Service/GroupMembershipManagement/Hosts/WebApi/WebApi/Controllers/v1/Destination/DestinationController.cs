@@ -231,7 +231,7 @@ namespace WebApi.Controllers.v1.Destination
                     return new ForbidResult();
                 }
 
-                var response = await _postGroupHandler.ExecuteAsync(new PostGroupRequest (new Guid(userId), newGroupDTO.GroupName, newGroupDTO.GroupAlias, newGroupDTO.GroupType));
+                var response = await _postGroupHandler.ExecuteAsync(new PostGroupRequest(new Guid(userId), newGroupDTO.GroupName, newGroupDTO.GroupAlias, newGroupDTO.GroupType, newGroupDTO.Description));
 
                 if (response.StatusCode == HttpStatusCode.OK)
                 {

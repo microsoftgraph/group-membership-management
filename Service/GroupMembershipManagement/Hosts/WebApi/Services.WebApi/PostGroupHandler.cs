@@ -6,6 +6,7 @@ using Services.Contracts;
 using Services.Messages.Requests;
 using Services.Messages.Responses;
 using System.Net;
+using System.Net.Http;
 using Microsoft.Extensions.Logging;
 
 namespace Services
@@ -26,7 +27,7 @@ namespace Services
             var response = new PostGroupResponse();
             try
             {
-                var group = await _graphGroupRepository.CreateGroupFromUI(request.GroupName, request.UserIdentity, request.GroupAlias, request.GroupType);
+                var group = await _graphGroupRepository.CreateGroupFromUI(request.GroupName, request.UserIdentity, request.GroupAlias, request.GroupType, request.Description);
 
                 if (group == null)
                 {
@@ -50,7 +51,12 @@ namespace Services
             }
             catch (Exception ex)
             {
-                response.StatusCode = HttpStatusCode.InternalServerError;
+                response.StatusCode = ex is HttpRequestException
+                {
+                    StatusCode: HttpStatusCode.BadRequest or HttpStatusCode.Unauthorized or HttpStatusCode.Forbidden
+                        or HttpStatusCode.NotFound or HttpStatusCode.MethodNotAllowed or HttpStatusCode.Conflict
+                        or HttpStatusCode.UnprocessableEntity
+                } rejection ? rejection.StatusCode.Value : HttpStatusCode.InternalServerError;
                 response.ErrorCode = "GroupCreationException";
                 response.ResponseData = new List<string> { "Group creation failed." };
 

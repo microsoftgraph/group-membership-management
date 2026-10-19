@@ -116,7 +116,7 @@ namespace Services.Tests.Mocks
             throw new NotImplementedException();
         }
 
-        public Task<AzureADGroup> CreateGroupFromUI(string newGroupName, Guid groupOwnerId, string newGroupAlias, NewGroupType groupType = NewGroupType.Microsoft365)
+        public Task<AzureADGroup> CreateGroupFromUI(string newGroupName, Guid groupOwnerId, string newGroupAlias, NewGroupType groupType = NewGroupType.Microsoft365, string? description = null)
         {
             throw new NotImplementedException();
         }

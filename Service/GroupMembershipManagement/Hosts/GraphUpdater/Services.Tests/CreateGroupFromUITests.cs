@@ -7,6 +7,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using Microsoft.Graph;
 using Microsoft.Graph.Models;
+using Microsoft.Graph.Models.ODataErrors;
 using Microsoft.Kiota.Abstractions;
 using Microsoft.Kiota.Abstractions.Serialization;
 using Microsoft.Kiota.Serialization.Json;
@@ -87,6 +88,85 @@ namespace Services.Tests
         }
 
         [TestMethod]
+        [DataRow(NewGroupType.Microsoft365, null)]
+        [DataRow(NewGroupType.Microsoft365, "")]
+        [DataRow(NewGroupType.Microsoft365, " ")]
+        [DataRow(NewGroupType.Microsoft365, "Project documentation")]
+        [DataRow(NewGroupType.Security, null)]
+        [DataRow(NewGroupType.Security, "")]
+        [DataRow(NewGroupType.Security, " ")]
+        [DataRow(NewGroupType.Security, "Project documentation")]
+        public async Task PreservesDescriptionAndOwnerBindings(NewGroupType groupType, string description)
+        {
+            var ownerId = Guid.NewGuid();
+            var gmmOwnerId = Guid.NewGuid().ToString();
+            var repository = CreateRepository(servicePrincipalObjectId: gmmOwnerId);
+
+            var group = await repository.CreateGroupFromUI("Finance Team", ownerId, "finance+team", groupType, description);
+
+            Assert.IsNotNull(group);
+            var body = GetCreateRequestBody();
+            Assert.AreEqual(description ?? "Finance Team", body["description"].GetValue<string>());
+            Assert.AreEqual("finance+team", body["mailNickname"].GetValue<string>());
+            Assert.AreEqual(groupType == NewGroupType.Microsoft365, body["mailEnabled"].GetValue<bool>());
+            Assert.AreEqual(groupType == NewGroupType.Security, body["securityEnabled"].GetValue<bool>());
+            CollectionAssert.AreEquivalent(
+                new List<string> { $"{DirectoryObjectUrlPrefix}{ownerId}", $"{DirectoryObjectUrlPrefix}{gmmOwnerId}" },
+                GetOwnerBindings());
+        }
+
+        [TestMethod]
+        [DataRow(HttpStatusCode.BadRequest, false)]
+        [DataRow(HttpStatusCode.Unauthorized, false)]
+        [DataRow(HttpStatusCode.Forbidden, false)]
+        [DataRow(HttpStatusCode.NotFound, false)]
+        [DataRow(HttpStatusCode.MethodNotAllowed, false)]
+        [DataRow(HttpStatusCode.Conflict, false)]
+        [DataRow(HttpStatusCode.UnprocessableEntity, false)]
+        [DataRow(HttpStatusCode.RequestTimeout, false)]
+        [DataRow(HttpStatusCode.TooManyRequests, false)]
+        [DataRow(HttpStatusCode.InternalServerError, false)]
+        [DataRow(HttpStatusCode.BadRequest, true)]
+        [DataRow(HttpStatusCode.InternalServerError, true)]
+        public async Task PreservesTheCreateResponseStatus(HttpStatusCode statusCode, bool sdkError)
+        {
+            var repository = CreateRepository(servicePrincipalObjectId: Guid.NewGuid().ToString());
+            _requestAdapter.Setup(x => x.SendAsync(It.IsAny<RequestInformation>(),
+                                                   It.IsAny<ParsableFactory<Group>>(),
+                                                   It.IsAny<Dictionary<string, ParsableFactory<IParsable>>>(),
+                                                   It.IsAny<CancellationToken>()))
+                .Callback<object, object, object, object>((request, factory, errorMapping, cancellationToken) =>
+                {
+                    var requestInformation = (RequestInformation)request;
+                    Record(requestInformation);
+                    if (sdkError) throw new ODataError { ResponseStatusCode = (int)statusCode };
+                    SetResponse(requestInformation, JsonResponse(statusCode, "{}"));
+                });
+
+            var exception = await Assert.ThrowsExceptionAsync<HttpRequestException>(
+                () => repository.CreateGroupFromUI("Finance Team", Guid.NewGuid(), "financeteam"));
+
+            Assert.AreEqual(statusCode, exception.StatusCode);
+            Assert.AreEqual(1, _requests.Count(x => x.Method == "POST"));
+            Assert.IsFalse(_requests.Any(x => x.Method == "GET" && x.Uri.Contains("/groups/")));
+        }
+
+        [TestMethod]
+        public async Task DoesNotTreatATransportFailureAsAConfirmedRejection()
+        {
+            var repository = CreateRepository(servicePrincipalObjectId: Guid.NewGuid().ToString());
+            _requestAdapter.Setup(x => x.SendAsync(It.IsAny<RequestInformation>(),
+                                                   It.IsAny<ParsableFactory<Group>>(),
+                                                   It.IsAny<Dictionary<string, ParsableFactory<IParsable>>>(),
+                                                   It.IsAny<CancellationToken>()))
+                .ThrowsAsync(new HttpRequestException("Connection lost"));
+
+            var group = await repository.CreateGroupFromUI("Finance Team", Guid.NewGuid(), "financeteam");
+
+            Assert.IsNull(group);
+        }
+
+        [TestMethod]
         public async Task CreatesAMicrosoftThreeSixFiveGroup()
         {
             var repository = CreateRepository(servicePrincipalObjectId: Guid.NewGuid().ToString());
@@ -101,6 +181,7 @@ namespace Services.Tests
             CollectionAssert.AreEqual(new List<string> { "Unified" }, body["groupTypes"].AsArray().Select(x => x.GetValue<string>()).ToList());
             Assert.AreEqual("financeteam", body["mailNickname"].GetValue<string>());
             Assert.AreEqual("Finance Team", body["displayName"].GetValue<string>());
+            Assert.AreEqual("Finance Team", body["description"].GetValue<string>(), "Legacy callers retain the name description.");
         }
 
         [TestMethod]
@@ -118,6 +199,7 @@ namespace Services.Tests
             Assert.AreEqual(0, body["groupTypes"].AsArray().Count, "A security group carries no group types; Unified would make it a Microsoft 365 group.");
             Assert.AreEqual("financeadmins", body["mailNickname"].GetValue<string>(), "Graph requires a mail nickname on a security group too.");
             Assert.AreEqual("Finance Admins", body["displayName"].GetValue<string>());
+            Assert.AreEqual("Finance Admins", body["description"].GetValue<string>(), "Omitting description retains the group name for security groups too.");
         }
 
         [TestMethod]
@@ -269,9 +351,11 @@ namespace Services.Tests
         }
 
         [TestMethod]
-        public async Task ReturnsTheGroupWhenTheReadBackNeverSucceeds()
+        [DataRow(HttpStatusCode.NotFound)]
+        [DataRow(HttpStatusCode.BadRequest)]
+        public async Task ReturnsTheGroupWhenTheReadBackNeverSucceeds(HttpStatusCode readBackStatus)
         {
-            SetupCreateFollowedByReadBack(notFoundReadBacks: int.MaxValue);
+            SetupCreateFollowedByReadBack(notFoundReadBacks: int.MaxValue, readBackStatus: readBackStatus);
 
             var repository = CreateRepository(servicePrincipalObjectId: Guid.NewGuid().ToString());
 
@@ -283,10 +367,10 @@ namespace Services.Tests
         }
 
         /// <summary>
-        /// Answers the create with a 201 and the first <paramref name="notFoundReadBacks"/> read-backs with a 404,
+        /// Answers the create with a 201 and the first <paramref name="notFoundReadBacks"/> read-backs with a failure,
         /// reproducing the directory replication delay that follows a successful group creation.
         /// </summary>
-        private void SetupCreateFollowedByReadBack(int notFoundReadBacks)
+        private void SetupCreateFollowedByReadBack(int notFoundReadBacks, HttpStatusCode readBackStatus = HttpStatusCode.NotFound)
         {
             var readBackCount = 0;
 
@@ -307,7 +391,7 @@ namespace Services.Tests
 
                                if (++readBackCount <= notFoundReadBacks)
                                {
-                                   SetResponse(requestInformation, JsonResponse(HttpStatusCode.NotFound, "{}"));
+                                   SetResponse(requestInformation, JsonResponse(readBackStatus, "{}"));
                                    return;
                                }
 

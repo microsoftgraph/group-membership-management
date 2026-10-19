@@ -13,6 +13,7 @@ namespace WebApi.Models.DTOs
         public Guid UserIdentity { get; set; }
         public string GroupName { get; set; }
         public string GroupAlias { get; set; }
+        public string? Description { get; set; }
 
         public NewGroupType GroupType { get; set; }
     }

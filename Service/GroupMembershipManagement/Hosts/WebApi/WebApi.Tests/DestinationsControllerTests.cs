@@ -824,7 +824,7 @@ namespace Services.Tests
                 })
             };
 
-            _graphGroupRepository.Setup(x => x.CreateGroupFromUI(It.IsAny<string>(), It.IsAny<Guid>(), It.IsAny<string>())).ReturnsAsync(new AzureADGroup());
+            _graphGroupRepository.Setup(x => x.CreateGroupFromUI(It.IsAny<string>(), It.IsAny<Guid>(), It.IsAny<string>(), NewGroupType.Microsoft365, null)).ReturnsAsync(new AzureADGroup());
 
             var response = await _destinationController.CreateGroupAsync(_newGroup);
             var result = response.Result as OkObjectResult;
@@ -834,7 +834,14 @@ namespace Services.Tests
         }
 
         [TestMethod]
-        public async Task CreateGroupThrowsExceptionAsync()
+        [DataRow(null, 500)]
+        [DataRow(400, 400)]
+        [DataRow(409, 409)]
+        [DataRow(422, 422)]
+        [DataRow(408, 500)]
+        [DataRow(429, 500)]
+        [DataRow(500, 500)]
+        public async Task CreateGroupFailurePreservesOnlyConfirmedRejectionsAsync(int? graphStatus, int expectedStatus)
         {
             _destinationController = new DestinationController(_searchGroupsHandler, _searchChannelsHandler, _getGroupEndpointsHandler, _getGroupOwnersHandler, _getGroupOnboardingStatusHandler, _getChannelOnboardingStatusHandler, _postGroupHandler, NullLogger<DestinationController>.Instance)
             {
@@ -845,12 +852,15 @@ namespace Services.Tests
                 })
             };
 
-            _graphGroupRepository.Setup(x => x.CreateGroupFromUI(It.IsAny<string>(), It.IsAny<Guid>(), It.IsAny<string>())).ThrowsAsync(new Exception("Graph error"));
+            Exception exception = graphStatus.HasValue
+                ? new HttpRequestException("Graph error", null, (System.Net.HttpStatusCode)graphStatus.Value)
+                : new Exception("Graph error");
+            _graphGroupRepository.Setup(x => x.CreateGroupFromUI(It.IsAny<string>(), It.IsAny<Guid>(), It.IsAny<string>(), NewGroupType.Microsoft365, null)).ThrowsAsync(exception);
 
             var response = await _destinationController.CreateGroupAsync(_newGroup);
             var result = response.Result as ObjectResult;
             Assert.IsNotNull(result);
-            Assert.AreEqual(500, result?.StatusCode);
+            Assert.AreEqual(expectedStatus, result?.StatusCode);
         }
 
         [TestMethod]
@@ -869,7 +879,7 @@ namespace Services.Tests
 
             Assert.IsInstanceOfType(response.Result, typeof(ForbidResult),
                 "The requester is bound as a group owner, so an unidentifiable caller must not create a group.");
-            _graphGroupRepository.Verify(x => x.CreateGroupFromUI(It.IsAny<string>(), It.IsAny<Guid>(), It.IsAny<string>()), Times.Never);
+            _graphGroupRepository.Verify(x => x.CreateGroupFromUI(It.IsAny<string>(), It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<NewGroupType>(), It.IsAny<string?>()), Times.Never);
         }
 
         [TestMethod]
@@ -886,7 +896,7 @@ namespace Services.Tests
                 })
             };
 
-            _graphGroupRepository.Setup(x => x.CreateGroupFromUI(It.IsAny<string>(), It.IsAny<Guid>(), It.IsAny<string>())).ReturnsAsync(new AzureADGroup());
+            _graphGroupRepository.Setup(x => x.CreateGroupFromUI(It.IsAny<string>(), It.IsAny<Guid>(), It.IsAny<string>(), NewGroupType.Microsoft365, null)).ReturnsAsync(new AzureADGroup());
 
             var spoofed = new NewGroupDTO
             {
@@ -897,7 +907,7 @@ namespace Services.Tests
 
             await _destinationController.CreateGroupAsync(spoofed);
 
-            _graphGroupRepository.Verify(x => x.CreateGroupFromUI(It.IsAny<string>(), It.Is<Guid>(g => g == callerObjectId), It.IsAny<string>()), Times.Once,
+            _graphGroupRepository.Verify(x => x.CreateGroupFromUI(It.IsAny<string>(), It.Is<Guid>(g => g == callerObjectId), It.IsAny<string>(), NewGroupType.Microsoft365, null), Times.Once,
                 "Ownership must follow the authenticated caller, never an identity supplied in the request body.");
         }
 
@@ -914,7 +924,7 @@ namespace Services.Tests
                 })
             };
 
-            _graphGroupRepository.Setup(x => x.CreateGroupFromUI(It.IsAny<string>(), It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<NewGroupType>())).ReturnsAsync(new AzureADGroup());
+            _graphGroupRepository.Setup(x => x.CreateGroupFromUI(It.IsAny<string>(), It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<NewGroupType>(), null)).ReturnsAsync(new AzureADGroup());
 
             var securityGroup = new NewGroupDTO
             {
@@ -926,7 +936,7 @@ namespace Services.Tests
 
             await _destinationController.CreateGroupAsync(securityGroup);
 
-            _graphGroupRepository.Verify(x => x.CreateGroupFromUI(It.IsAny<string>(), It.IsAny<Guid>(), It.IsAny<string>(), NewGroupType.Security), Times.Once,
+            _graphGroupRepository.Verify(x => x.CreateGroupFromUI(It.IsAny<string>(), It.IsAny<Guid>(), It.IsAny<string>(), NewGroupType.Security, null), Times.Once,
                 "The requested group type must reach the repository, otherwise every group is created as Microsoft 365.");
         }
 
@@ -943,12 +953,12 @@ namespace Services.Tests
                 })
             };
 
-            _graphGroupRepository.Setup(x => x.CreateGroupFromUI(It.IsAny<string>(), It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<NewGroupType>())).ReturnsAsync(new AzureADGroup());
+            _graphGroupRepository.Setup(x => x.CreateGroupFromUI(It.IsAny<string>(), It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<NewGroupType>(), null)).ReturnsAsync(new AzureADGroup());
 
             // _newGroup never sets GroupType, standing in for a request body that predates the field.
             await _destinationController.CreateGroupAsync(_newGroup);
 
-            _graphGroupRepository.Verify(x => x.CreateGroupFromUI(It.IsAny<string>(), It.IsAny<Guid>(), It.IsAny<string>(), NewGroupType.Microsoft365), Times.Once,
+            _graphGroupRepository.Verify(x => x.CreateGroupFromUI(It.IsAny<string>(), It.IsAny<Guid>(), It.IsAny<string>(), NewGroupType.Microsoft365, null), Times.Once,
                 "A body without a group type must keep creating Microsoft 365 groups.");
         }
 
@@ -1395,5 +1405,4 @@ namespace Services.Tests
         }
     }
 }
-
 

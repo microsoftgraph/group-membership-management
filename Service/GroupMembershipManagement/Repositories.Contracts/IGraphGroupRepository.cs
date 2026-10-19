@@ -41,7 +41,7 @@ namespace Repositories.Contracts
         Task<AzureADGroup> CreateGroup(string newGroupName, TestGroupType testGroupType);
         Task AddGroupOwners(string groupId, List<Guid> ownerIds);
         Task<List<Guid>> GetGroupIdsOwnedByServicePrincipalAsync(Guid servicePrincipalObjectId);
-        Task<AzureADGroup> CreateGroupFromUI(string newGroupName, Guid groupOwnerId, string newGroupAlias, NewGroupType groupType = NewGroupType.Microsoft365);
+        Task<AzureADGroup> CreateGroupFromUI(string newGroupName, Guid groupOwnerId, string newGroupAlias, NewGroupType groupType = NewGroupType.Microsoft365, string? description = null);
         Task<List<AzureADUser>> GetTenantUsers(int userCount);
         Task<List<AzureADUser>> GetUsersInGroupTransitively(Guid objectId);
         Task<(ResponseCode ResponseCode, int SuccessCount, List<AzureADUser> UsersNotFound, List<AzureADUser> UsersAlreadyExist)> AddUsersToGroup(IEnumerable<AzureADUser> users, AzureADGroup targetGroup);
