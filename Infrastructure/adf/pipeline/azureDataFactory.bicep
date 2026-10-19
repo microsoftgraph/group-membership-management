@@ -1,6 +1,9 @@
 @description('Name of Azure Data Factory')
 param factoryName string
 
+@description('When enabled, connect this ADF instance through the shared SQL failover-group listener.')
+param enableMultiRegion bool = false
+
 @description('Resource name suffix')
 param resourceSuffix string
 
@@ -55,6 +58,9 @@ param runHistoryRetentionDays int = 30
 @description('Number of most recent AdfRunHistory rows to retain when no rows fall inside the retention window.')
 param runHistoryMinimumRowsToRetain int = 10
 
+@description('Resource ID of the Log Analytics workspace that receives ADF diagnostics.')
+param logAnalyticsWorkspaceId string
+
 var dataFactoryName = factoryName
 var azureBlobStorageLinkedService = 'AzureBlobStorage_${resourceSuffix}'
 var destinationDatabaseLinkedService = 'DestinationDatabase_${resourceSuffix}'
@@ -70,6 +76,8 @@ var memberIdsDataSet = 'MemberIds_${resourceSuffix}'
 var memberHRDataDataSet = 'MemberHRData_${resourceSuffix}'
 var populateMappingsTableDataFlow = 'PopulateMappingsTableDataFlow_${resourceSuffix}'
 var populateDestinationDataFlow = 'PopulateDestinationDataFlow_${resourceSuffix}'
+var failoverGroupName = '${sqlServerName}-fog'
+var sqlServerHostName = enableMultiRegion ? failoverGroupName : sqlServerName
 
 var tableCleanupScriptTemplate = 'DECLARE @SchemaName NVARCHAR(128);\nDECLARE @TableName NVARCHAR(128);\nDECLARE @SQL NVARCHAR(MAX);\n\nDECLARE table_cursor CURSOR FOR\nSELECT s.[name], t.[name]\nFROM sys.tables AS t\nINNER JOIN sys.schemas AS s ON t.schema_id = s.schema_id\nWHERE s.name = \'__SCHEMA__\'\nAND t.[name] NOT IN (\n    SELECT TOP (${tablesToRetain}) t.[name]\n    FROM sys.tables AS t\n    INNER JOIN sys.schemas AS s ON t.schema_id = s.schema_id\n    WHERE s.name = \'__SCHEMA__\'\n    ORDER BY t.create_date DESC\n);\n\nOPEN table_cursor;\nFETCH NEXT FROM table_cursor INTO @SchemaName, @TableName;\n\nWHILE @@FETCH_STATUS = 0\nBEGIN\n    BEGIN TRY\n        SET @SQL = N\'DROP TABLE \' + QUOTENAME(@SchemaName) + \'.\' + QUOTENAME(@TableName);\n        EXEC sp_executesql @SQL;\n    END TRY\n    BEGIN CATCH\n        PRINT \'Error dropping \' + @TableName + \': \' + ERROR_MESSAGE();\n    END CATCH\n    FETCH NEXT FROM table_cursor INTO @SchemaName, @TableName;\nEND;\n\nCLOSE table_cursor;\nDEALLOCATE table_cursor;'
 var cleanUpUsersTablesScript = replace(tableCleanupScriptTemplate, '__SCHEMA__', 'users')
@@ -82,6 +90,7 @@ resource dataFactory 'Microsoft.DataFactory/factories@2018-06-01' = {
   identity: {
     type: 'SystemAssigned'
   }
+
   properties: {
     globalParameters: {
       environment: {
@@ -91,6 +100,29 @@ resource dataFactory 'Microsoft.DataFactory/factories@2018-06-01' = {
     }
   }
   location: location
+}
+
+resource diagnosticSettings 'Microsoft.Insights/diagnosticSettings@2021-05-01-preview' = {
+  scope: dataFactory
+  name: 'diagnosticSettings'
+  properties: {
+    workspaceId: logAnalyticsWorkspaceId
+    logAnalyticsDestinationType: 'Dedicated'
+    logs: [
+      {
+        category: 'PipelineRuns'
+        enabled: true
+      }
+      {
+        category: 'ActivityRuns'
+        enabled: true
+      }
+      {
+        category: 'TriggerRuns'
+        enabled: true
+      }
+    ]
+  }
 }
 
 resource linkedService_AzureBlobStorage 'Microsoft.DataFactory/factories/linkedServices@2018-06-01' = {
@@ -113,7 +145,7 @@ resource linkedService_DestinationDatabase 'Microsoft.DataFactory/factories/link
     annotations: []
     type: 'AzureSqlDatabase'
     typeProperties: {
-      connectionString: 'Integrated Security=False;Encrypt=True;Connection Timeout=90;Data Source=${sqlServerName}.database.windows.net;Initial Catalog=${sqlDatabaseName}'
+      connectionString: 'Integrated Security=False;Encrypt=True;Connection Timeout=90;Data Source=${sqlServerHostName}.database.windows.net;Initial Catalog=${sqlDatabaseName}'
     }
   }
 }

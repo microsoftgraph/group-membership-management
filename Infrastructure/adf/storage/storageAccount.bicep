@@ -10,6 +10,12 @@ param sku string
 @description('Key vault name.')
 param keyVaultName string
 
+@description('Resource group containing the Key Vault that stores the account name.')
+param keyVaultResourceGroupName string = resourceGroup().name
+
+@description('Key Vault secret used by the regional ADF pipeline.')
+param storageAccountSecretName string = 'adfStorageAccountName'
+
 @description('Resource location, azure region.')
 param location string
 
@@ -39,18 +45,17 @@ resource storageAccountContainer 'Microsoft.Storage/storageAccounts/blobServices
 }
 
 module secureSecretsTemplate 'keyVaultSecretsSecure.bicep' = {
-  name: 'adfStorageSecureSecretsTemplate'
+  name: 'adfStorageSecureSecrets-${uniqueString(storageAccountName, keyVaultName, keyVaultResourceGroupName)}'
+  scope: resourceGroup(keyVaultResourceGroupName)
   params: {
     keyVaultName: keyVaultName
     keyVaultSecrets: {
       secrets: [
         {
-          name: 'adfStorageAccountName'
+          name: storageAccountSecretName
           value: storageAccount.name
         }
       ]
     }
   }
 }
-
-
