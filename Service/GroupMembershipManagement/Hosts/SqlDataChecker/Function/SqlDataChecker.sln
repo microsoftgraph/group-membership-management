@@ -25,8 +25,6 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Repositories.FeatureFlag", 
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Repositories.ServiceBusQueue", "..\..\..\Repositories.ServiceBusQueue\Repositories.ServiceBusQueue.csproj", "{1B8B12E6-6B8B-4133-8466-44839084AB74}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Repositories.DataFactory", "..\..\..\Repositories.DataFactory\Repositories.DataFactory.csproj", "{133A7DC9-C50C-4D8F-AD6E-41A33F6A047E}"
-EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{CFA3C389-A359-4428-976C-5023C2BD039E}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Models", "..\..\..\Models\Models.csproj", "{2789FDE9-0AA2-4E7E-976E-0DF0464C6289}"
@@ -89,10 +87,6 @@ Global
 		{1B8B12E6-6B8B-4133-8466-44839084AB74}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{1B8B12E6-6B8B-4133-8466-44839084AB74}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{1B8B12E6-6B8B-4133-8466-44839084AB74}.Release|Any CPU.Build.0 = Release|Any CPU
-		{133A7DC9-C50C-4D8F-AD6E-41A33F6A047E}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{133A7DC9-C50C-4D8F-AD6E-41A33F6A047E}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{133A7DC9-C50C-4D8F-AD6E-41A33F6A047E}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{133A7DC9-C50C-4D8F-AD6E-41A33F6A047E}.Release|Any CPU.Build.0 = Release|Any CPU
 		{2789FDE9-0AA2-4E7E-976E-0DF0464C6289}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{2789FDE9-0AA2-4E7E-976E-0DF0464C6289}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{2789FDE9-0AA2-4E7E-976E-0DF0464C6289}.Release|Any CPU.ActiveCfg = Release|Any CPU

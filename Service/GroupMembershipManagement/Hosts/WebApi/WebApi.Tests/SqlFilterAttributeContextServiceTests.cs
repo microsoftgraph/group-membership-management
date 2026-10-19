@@ -3,6 +3,7 @@
 
 using Microsoft.Extensions.Logging.Abstractions;
 using Models;
+using Models.AdfRunHistory;
 using Moq;
 using Repositories.Contracts;
 using Services;
@@ -19,7 +20,7 @@ namespace WebApi.Tests
         private const string AdfRunId = "11111111-2222-3333-4444-555555555555";
 
         private Mock<IDatabaseSqlMembershipSourcesRepository> _sourcesRepository = null!;
-        private Mock<IDataFactoryRepository> _dataFactoryRepository = null!;
+        private Mock<IAdfRunHistoryRepository> _adfRunHistoryRepository = null!;
         private Mock<ISqlMembershipRepository> _sqlMembershipRepository = null!;
         private ISqlFilterAttributeContextService _service = null!;
 
@@ -27,7 +28,7 @@ namespace WebApi.Tests
         public void Initialize()
         {
             _sourcesRepository = new Mock<IDatabaseSqlMembershipSourcesRepository>();
-            _dataFactoryRepository = new Mock<IDataFactoryRepository>();
+            _adfRunHistoryRepository = new Mock<IAdfRunHistoryRepository>();
             _sqlMembershipRepository = new Mock<ISqlMembershipRepository>();
 
             _sourcesRepository
@@ -39,9 +40,9 @@ namespace WebApi.Tests
                     new() { Name = "EmployeeId", CustomLabel = "" }
                 });
 
-            _dataFactoryRepository
-                .Setup(x => x.GetMostRecentSucceededRunIdAsync())
-                .ReturnsAsync(AdfRunId);
+            _adfRunHistoryRepository
+                .Setup(x => x.GetLatestAdfRunAsync(It.IsAny<string?>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new AdfRunHistory { AdfRunId = Guid.Parse(AdfRunId) });
 
             _sqlMembershipRepository
                 .Setup(x => x.CheckIfMappingsTableExistsAsync(It.IsAny<string>()))
@@ -60,7 +61,7 @@ namespace WebApi.Tests
             _service = new SqlFilterAttributeContextService(
                 NullLogger<SqlFilterAttributeContextService>.Instance,
                 _sourcesRepository.Object,
-                _dataFactoryRepository.Object,
+                _adfRunHistoryRepository.Object,
                 _sqlMembershipRepository.Object,
                 new SqlFilterAttributeContextCache());
         }
@@ -233,7 +234,7 @@ namespace WebApi.Tests
 
             // Title generation re-runs on a debounce while a query is edited, so the ARM run id
             // lookup and the admin label read must not repeat per request.
-            _dataFactoryRepository.Verify(x => x.GetMostRecentSucceededRunIdAsync(), Times.Once);
+            _adfRunHistoryRepository.Verify(x => x.GetLatestAdfRunAsync(It.IsAny<string?>(), It.IsAny<CancellationToken>()), Times.Once);
             _sqlMembershipRepository.Verify(x => x.CheckIfMappingsTableExistsAsync(It.IsAny<string>()), Times.Once);
             _sourcesRepository.Verify(x => x.GetDefaultSourceAttributesAsync(), Times.Once);
         }
@@ -250,7 +251,7 @@ namespace WebApi.Tests
             await first.BuildAttributeContextAsync(new[] { ReportedFilter });
             var context = await second.BuildAttributeContextAsync(new[] { ReportedFilter });
 
-            _dataFactoryRepository.Verify(x => x.GetMostRecentSucceededRunIdAsync(), Times.Once);
+            _adfRunHistoryRepository.Verify(x => x.GetLatestAdfRunAsync(It.IsAny<string?>(), It.IsAny<CancellationToken>()), Times.Once);
             StringAssert.Contains(context, "'CA' means \"Canada\"");
         }
 
@@ -258,12 +259,12 @@ namespace WebApi.Tests
         public async Task ConcurrentRequests_ResolveTheRunIdOnceAsync()
         {
             var gate = new TaskCompletionSource();
-            _dataFactoryRepository
-                .Setup(x => x.GetMostRecentSucceededRunIdAsync())
+            _adfRunHistoryRepository
+                .Setup(x => x.GetLatestAdfRunAsync(It.IsAny<string?>(), It.IsAny<CancellationToken>()))
                 .Returns(async () =>
                 {
                     await gate.Task;
-                    return AdfRunId;
+                    return new AdfRunHistory { AdfRunId = Guid.Parse(AdfRunId) };
                 });
 
             var cache = new SqlFilterAttributeContextCache();
@@ -274,7 +275,7 @@ namespace WebApi.Tests
             gate.SetResult();
             var contexts = await Task.WhenAll(requests);
 
-            _dataFactoryRepository.Verify(x => x.GetMostRecentSucceededRunIdAsync(), Times.Once);
+            _adfRunHistoryRepository.Verify(x => x.GetLatestAdfRunAsync(It.IsAny<string?>(), It.IsAny<CancellationToken>()), Times.Once);
             Assert.IsTrue(contexts.All(context => context.Contains("'CA' means \"Canada\"")));
         }
 
@@ -306,7 +307,7 @@ namespace WebApi.Tests
             var context = await _service.BuildAttributeContextAsync(new[] { overlong });
 
             Assert.AreEqual(string.Empty, context, "An oversized filter must not reach the parser.");
-            _dataFactoryRepository.Verify(x => x.GetMostRecentSucceededRunIdAsync(), Times.Never);
+            _adfRunHistoryRepository.Verify(x => x.GetLatestAdfRunAsync(It.IsAny<string?>(), It.IsAny<CancellationToken>()), Times.Never);
         }
 
         [TestMethod]
@@ -380,7 +381,7 @@ namespace WebApi.Tests
             return new SqlFilterAttributeContextService(
                 NullLogger<SqlFilterAttributeContextService>.Instance,
                 _sourcesRepository.Object,
-                _dataFactoryRepository.Object,
+                _adfRunHistoryRepository.Object,
                 _sqlMembershipRepository.Object,
                 cache);
         }

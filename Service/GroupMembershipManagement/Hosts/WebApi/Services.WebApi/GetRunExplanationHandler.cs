@@ -101,7 +101,7 @@ Use only the provided data. Output 1-2 sentences normally, or up to 3 sentences 
         private readonly IGraphGroupRepository _graphGroupRepository;
         private readonly IBlobStorageRepository _blobStorageRepository;
         private readonly ISqlMembershipRepository _sqlMembershipRepository;
-        private readonly IDataFactoryRepository _dataFactoryRepository;
+        private readonly IAdfRunHistoryRepository _adfRunHistoryRepository;
         private readonly IOpenAIService _openAIService;
         private readonly IDestinationResolver _destinationResolver;
 
@@ -113,7 +113,7 @@ Use only the provided data. Output 1-2 sentences normally, or up to 3 sentences 
             IGraphGroupRepository graphGroupRepository,
             IBlobStorageRepository blobStorageRepository,
             ISqlMembershipRepository sqlMembershipRepository,
-            IDataFactoryRepository dataFactoryRepository,
+            IAdfRunHistoryRepository adfRunHistoryRepository,
             IOpenAIService openAIService,
             IDestinationResolver destinationResolver) : base(logger)
         {
@@ -124,7 +124,7 @@ Use only the provided data. Output 1-2 sentences normally, or up to 3 sentences 
             _graphGroupRepository = graphGroupRepository ?? throw new ArgumentNullException(nameof(graphGroupRepository));
             _blobStorageRepository = blobStorageRepository ?? throw new ArgumentNullException(nameof(blobStorageRepository));
             _sqlMembershipRepository = sqlMembershipRepository ?? throw new ArgumentNullException(nameof(sqlMembershipRepository));
-            _dataFactoryRepository = dataFactoryRepository ?? throw new ArgumentNullException(nameof(dataFactoryRepository));
+            _adfRunHistoryRepository = adfRunHistoryRepository ?? throw new ArgumentNullException(nameof(adfRunHistoryRepository));
             _openAIService = openAIService ?? throw new ArgumentNullException(nameof(openAIService));
             _destinationResolver = destinationResolver ?? throw new ArgumentNullException(nameof(destinationResolver));
         }
@@ -300,7 +300,7 @@ Use only the provided data. Output 1-2 sentences normally, or up to 3 sentences 
                         .Select(part => part.Filter),
                     runHistory.AdfRunId,
                     _sqlMembershipRepository,
-                    _dataFactoryRepository,
+                    _adfRunHistoryRepository,
                     _logger);
                 var membershipRules = DescribeMembershipRulesForOwner(parts, mappingDescriptions, groupNames, managerNames);
 

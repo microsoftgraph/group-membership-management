@@ -7,6 +7,7 @@ using Microsoft.DurableTask;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using Services.Entities;
+using System;
 
 namespace SqlDataChecker
 {
@@ -20,7 +21,8 @@ namespace SqlDataChecker
 
             logger.FunctionStarted(nameof(OrchestratorFunction));
 
-            var tableNames = await context.CallActivityAsync<TableName>(nameof(TableNameReaderFunction), null);
+            var runId = context.GetInput<Guid>();
+            var tableNames = await context.CallActivityAsync<TableName>(nameof(TableNameReaderFunction), runId);
 
             if (!string.IsNullOrWhiteSpace(tableNames.Latest) && !string.IsNullOrWhiteSpace(tableNames.Previous))
             {

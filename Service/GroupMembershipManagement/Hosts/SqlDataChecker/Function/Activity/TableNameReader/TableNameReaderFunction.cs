@@ -6,6 +6,7 @@ using Microsoft.Azure.Functions.Worker;
 using Microsoft.Extensions.Logging;
 using Services;
 using Services.Entities;
+using System;
 using System.Threading.Tasks;
 
 namespace SqlDataChecker
@@ -22,11 +23,11 @@ namespace SqlDataChecker
         }
 
         [Function(nameof(TableNameReaderFunction))]
-        public async Task<TableName> GetSqlDataCheckerTableName([ActivityTrigger] object obj)
+        public async Task<TableName> GetSqlDataCheckerTableName([ActivityTrigger] Guid runId)
         {
             _logger.FunctionStarted(nameof(TableNameReaderFunction));
 
-            var tableNames = await _sqlDataCheckerValidator.GetTableNamesAsync();
+            var tableNames = await _sqlDataCheckerValidator.GetTableNamesAsync(runId);
 
             _logger.FunctionCompleted(nameof(TableNameReaderFunction));
 

@@ -11,8 +11,9 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Repositories.Contracts;
 using Repositories.Contracts.InjectConfig;
-using Repositories.DataFactory;
+using Microsoft.EntityFrameworkCore;
 using Repositories.EntityFramework;
+using Repositories.EntityFramework.AdfContexts;
 using Repositories.GraphGroups;
 using Repositories.SqlMembershipRepository;
 using Services.AutoApprover;
@@ -56,12 +57,12 @@ namespace Hosts.AutoApprover
                         new KeyVaultSecret<ISqlMembershipRepository>(CommonServices.GetValueOrThrowBase(configuration, "sqlServerMSIConnectionString")));
                     services.AddSingleton<ISqlMembershipRepository, SqlMembershipRepository>();
 
-                    services.AddSingleton<IDataFactorySecret<IDataFactoryRepository>>(new DataFactorySecrets<IDataFactoryRepository>(
-                        CommonServices.GetValueOrThrowBase(configuration, "pipeline"),
-                        CommonServices.GetValueOrThrowBase(configuration, "dataFactoryName"),
-                        CommonServices.GetValueOrThrowBase(configuration, "subscriptionId"),
-                        CommonServices.GetValueOrThrowBase(configuration, "dataResourceGroup")));
-                    services.AddSingleton<IDataFactoryRepository, DataFactoryRepository>();
+                    services.AddDbContext<AdfContext>(options =>
+                        options.UseSqlServer(CommonServices.GetValueOrThrowBase(configuration, "sqlServerMSIConnectionString"), sqlServerOptions =>
+                        {
+                            sqlServerOptions.EnableRetryOnFailure();
+                        }));
+                    services.AddScoped<IAdfRunHistoryRepository, AdfRunHistoryRepository>();
 
                     // Supplies the admin-curated Sensitive attribute list used to screen SQL filters.
                     services.AddScoped<IDatabaseSqlMembershipSourcesRepository, DatabaseSqlMembershipSourcesRepository>();

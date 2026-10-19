@@ -11,6 +11,7 @@ using Models;
 using Polly;
 using Polly.Retry;
 using Repositories.Contracts;
+using Repositories.Contracts.Helpers;
 using Repositories.Contracts.InjectConfig;
 using Services.Entities;
 using System.Data;
@@ -25,35 +26,50 @@ namespace Services
         private readonly ILogger<SqlDataCheckerValidatorService> _logger;
         private readonly TelemetryClient _telemetryClient;
         private readonly string _sqlServerConnectionString;
-        private readonly IDataFactoryRepository _dataFactoryRepository;
+        private readonly IAdfRunHistoryRepository _adfRunHistoryRepository;
         private readonly IDatabaseSqlMembershipSourcesRepository _sqlMembershipSourcesRepository;
         private static readonly Regex _safeIdentifierRegex = new(@"^[a-zA-Z0-9_]+$", RegexOptions.Compiled);
 
         public SqlDataCheckerValidatorService(ILogger<SqlDataCheckerValidatorService> logger,
                                     TelemetryClient telemetryClient,
                                     IKeyVaultSecret<SqlDataCheckerValidatorService> sqlServerConnectionString,
-                                    IDataFactoryRepository dataFactoryRepository,
+                                    IAdfRunHistoryRepository adfRunHistoryRepository,
                                     IDatabaseSqlMembershipSourcesRepository sqlMembershipSourcesRepository)
         {
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _telemetryClient = telemetryClient ?? throw new ArgumentNullException(nameof(telemetryClient));
             _sqlServerConnectionString = sqlServerConnectionString?.Secret ?? throw new ArgumentNullException(nameof(sqlServerConnectionString));
-            _dataFactoryRepository = dataFactoryRepository ?? throw new ArgumentNullException(nameof(dataFactoryRepository));
+            _adfRunHistoryRepository = adfRunHistoryRepository ?? throw new ArgumentNullException(nameof(adfRunHistoryRepository));
             _sqlMembershipSourcesRepository = sqlMembershipSourcesRepository ?? throw new ArgumentNullException(nameof(sqlMembershipSourcesRepository));
         }
 
-        public async Task<TableName> GetTableNamesAsync()
+        public async Task<TableName> GetTableNamesAsync(Guid runId)
         {
-            var adfRunId = await GetADFRunIdsAsync();
-            var latestTableName = adfRunId.latest.Replace("-", "");
-            var previousTableName = adfRunId.previous.Replace("-", "");
+            var previousAdfRun =
+                await _adfRunHistoryRepository.GetLatestAdfRunAsync(runId.ToString("D"));
+
+            var latestTableName = runId.ToString("N");
             var latestTableExists = CheckIfTableExists(latestTableName);
-            var previousTableExists = CheckIfTableExists(previousTableName);
 
             if (latestTableExists)
                 _logger.TableExists(latestTableName);
             else
                 _logger.TableDoesNotExist(latestTableName);
+
+            // No prior run (e.g. the first run after AdfRunHistory is introduced): there is nothing
+            // to compare against, so return an empty previous table and let the orchestrator skip validation.
+            if (previousAdfRun is null)
+            {
+                _logger.MissingPipelineRuns();
+                return new TableName
+                {
+                    Latest = latestTableExists ? latestTableName : "",
+                    Previous = ""
+                };
+            }
+
+            var previousTableName = previousAdfRun.GetTableName();
+            var previousTableExists = CheckIfTableExists(previousTableName);
 
             if (previousTableExists)
                 _logger.TableExists(previousTableName);
@@ -71,19 +87,6 @@ namespace Services
         {
             if (string.IsNullOrWhiteSpace(name) || !_safeIdentifierRegex.IsMatch(name))
                 throw new ArgumentException($"Invalid SQL identifier for {paramName}: '{name}'");
-        }
-
-        private async Task<(string latest, string previous)> GetADFRunIdsAsync()
-        {
-            var pipelineRunIds = await _dataFactoryRepository.GetCurrentRunAndPreviousSucceededRunIdsAsync();
-
-            if (string.IsNullOrWhiteSpace(pipelineRunIds.current) || string.IsNullOrWhiteSpace(pipelineRunIds.previousSucceeded))
-            {
-                _logger.MissingPipelineRuns();
-                throw new ArgumentException("Missing SqlDataChecker pipeline run(s)");
-            }
-
-            return (pipelineRunIds.current, pipelineRunIds.previousSucceeded);
         }
 
         public int GetRows(string tableName)

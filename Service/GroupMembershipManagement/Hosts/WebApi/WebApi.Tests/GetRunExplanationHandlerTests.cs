@@ -3,6 +3,7 @@
 
 using Microsoft.Extensions.Logging.Abstractions;
 using Models;
+using Models.AdfRunHistory;
 using Models.SyncJobChange;
 using Moq;
 using Repositories.Contracts;
@@ -27,7 +28,7 @@ namespace WebApi.Tests
         private Mock<IGraphGroupRepository> _mockGraphGroupRepository = null!;
         private Mock<IBlobStorageRepository> _mockBlobStorageRepository = null!;
         private Mock<ISqlMembershipRepository> _mockSqlMembershipRepository = null!;
-        private Mock<IDataFactoryRepository> _mockDataFactoryRepository = null!;
+        private Mock<IAdfRunHistoryRepository> _mockAdfRunHistoryRepository = null!;
         private Mock<IOpenAIService> _mockOpenAIService = null!;
         private Mock<IDestinationResolver> _mockDestinationResolver = null!;
         private GetRunExplanationHandler _handler = null!;
@@ -46,7 +47,7 @@ namespace WebApi.Tests
             _mockGraphGroupRepository = new Mock<IGraphGroupRepository>();
             _mockBlobStorageRepository = new Mock<IBlobStorageRepository>();
             _mockSqlMembershipRepository = new Mock<ISqlMembershipRepository>();
-            _mockDataFactoryRepository = new Mock<IDataFactoryRepository>();
+            _mockAdfRunHistoryRepository = new Mock<IAdfRunHistoryRepository>();
             _mockOpenAIService = new Mock<IOpenAIService>();
             _mockDestinationResolver = new Mock<IDestinationResolver>();
 
@@ -58,7 +59,7 @@ namespace WebApi.Tests
                 _mockGraphGroupRepository.Object,
                 _mockBlobStorageRepository.Object,
                 _mockSqlMembershipRepository.Object,
-                _mockDataFactoryRepository.Object,
+                _mockAdfRunHistoryRepository.Object,
                 _mockOpenAIService.Object,
                 _mockDestinationResolver.Object);
 
@@ -1673,9 +1674,9 @@ namespace WebApi.Tests
                 .Setup(x => x.GetUserByUpnOrIdAsync(It.IsAny<string>(), It.IsAny<bool>()))
                 .ReturnsAsync(new AzureADUser { ObjectId = Guid.Parse("00000000-0000-0000-0000-000000000042"), DisplayName = "Alice Smith" });
 
-            _mockDataFactoryRepository
-                .Setup(x => x.GetMostRecentSucceededRunIdAsync())
-                .ReturnsAsync(Guid.NewGuid().ToString());
+            _mockAdfRunHistoryRepository
+                .Setup(x => x.GetLatestAdfRunAsync(It.IsAny<string?>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new AdfRunHistory { AdfRunId = Guid.NewGuid() });
 
             var response = await _handler.ExecuteAsync(BuildRequest());
 
@@ -2483,7 +2484,7 @@ namespace WebApi.Tests
             _mockSqlMembershipRepository.Setup(x => x.CheckIfTableExistsAsync(currentTable)).ReturnsAsync(false);
             _mockSqlMembershipRepository.Setup(x => x.CheckIfTableExistsAsync(previousTable)).ReturnsAsync(false);
             // Latest ADF table is available and the removed user does NOT match the rule today.
-            _mockDataFactoryRepository.Setup(x => x.GetMostRecentSucceededRunIdAsync()).ReturnsAsync(latestRunId.ToString());
+            _mockAdfRunHistoryRepository.Setup(x => x.GetLatestAdfRunAsync(It.IsAny<string?>(), It.IsAny<CancellationToken>())).ReturnsAsync(new AdfRunHistory { AdfRunId = latestRunId });
             SetupSqlEvaluation(
                 "Building = 'B40'",
                 latestTable,
@@ -2521,7 +2522,7 @@ namespace WebApi.Tests
             SetupAggregatedRemovedUsers(removedUser);
             _mockSqlMembershipRepository.Setup(x => x.CheckIfTableExistsAsync(currentTable)).ReturnsAsync(false);
             _mockSqlMembershipRepository.Setup(x => x.CheckIfTableExistsAsync(previousTable)).ReturnsAsync(false);
-            _mockDataFactoryRepository.Setup(x => x.GetMostRecentSucceededRunIdAsync()).ReturnsAsync(latestRunId.ToString());
+            _mockAdfRunHistoryRepository.Setup(x => x.GetLatestAdfRunAsync(It.IsAny<string?>(), It.IsAny<CancellationToken>())).ReturnsAsync(new AdfRunHistory { AdfRunId = latestRunId });
             // The removed user is still returned by the rule against the latest table, so the guard fires.
             SetupSqlEvaluation(
                 "Building = 'B40'",
@@ -2567,7 +2568,7 @@ namespace WebApi.Tests
             SetupAggregatedRemovedUsers(removedUser);
             _mockSqlMembershipRepository.Setup(x => x.CheckIfTableExistsAsync(currentTable)).ReturnsAsync(false);
             _mockSqlMembershipRepository.Setup(x => x.CheckIfTableExistsAsync(previousTable)).ReturnsAsync(false);
-            _mockDataFactoryRepository.Setup(x => x.GetMostRecentSucceededRunIdAsync()).ReturnsAsync(latestRunId.ToString());
+            _mockAdfRunHistoryRepository.Setup(x => x.GetLatestAdfRunAsync(It.IsAny<string?>(), It.IsAny<CancellationToken>())).ReturnsAsync(new AdfRunHistory { AdfRunId = latestRunId });
             // The removed user is no longer in the management chain under 42 in the latest table.
             SetupSqlEvaluation(
                 "EmployeeType = 'FTE'",
@@ -2615,7 +2616,7 @@ namespace WebApi.Tests
                 previousTable,
                 IdentityTypeSet.UsersOnly,
                 userObjectIds: new[] { removedUser });
-            _mockDataFactoryRepository.Setup(x => x.GetMostRecentSucceededRunIdAsync()).ReturnsAsync(latestRunId.ToString());
+            _mockAdfRunHistoryRepository.Setup(x => x.GetLatestAdfRunAsync(It.IsAny<string?>(), It.IsAny<CancellationToken>())).ReturnsAsync(new AdfRunHistory { AdfRunId = latestRunId });
             // If Phase 3 wrongly ran, this latest-table match would let it emit color; the guard must prevent that.
             SetupSqlEvaluation(
                 "Building = 'B40'",
@@ -2652,7 +2653,7 @@ namespace WebApi.Tests
             _mockSqlMembershipRepository.Setup(x => x.CheckIfTableExistsAsync(currentTable)).ReturnsAsync(false);
             _mockSqlMembershipRepository.Setup(x => x.CheckIfTableExistsAsync(previousTable)).ReturnsAsync(false);
             // No latest ADF run id available so Phase 3 bails before any latest-table read.
-            _mockDataFactoryRepository.Setup(x => x.GetMostRecentSucceededRunIdAsync()).ReturnsAsync((string?)null);
+            _mockAdfRunHistoryRepository.Setup(x => x.GetLatestAdfRunAsync(It.IsAny<string?>(), It.IsAny<CancellationToken>())).ReturnsAsync((AdfRunHistory?)null);
             _mockOpenAIService.Setup(x => x.GetCompletionAsync(It.IsAny<string>(), It.IsAny<string>()))
                 .Callback<string, string>((_, prompt) => capturedPrompt = prompt)
                 .ReturnsAsync("This sync completed successfully.");
@@ -2711,7 +2712,7 @@ namespace WebApi.Tests
             _mockBlobStorageRepository.Setup(x => x.FindPartFilesByRunIdAsync(_targetGroupId.ToString(), previousRunId.ToString()))
                 .ReturnsAsync(new Dictionary<string, BlobResult>());
             // Latest ADF table is available and the proposed-removed user no longer matches the rule today.
-            _mockDataFactoryRepository.Setup(x => x.GetMostRecentSucceededRunIdAsync()).ReturnsAsync(latestRunId.ToString());
+            _mockAdfRunHistoryRepository.Setup(x => x.GetLatestAdfRunAsync(It.IsAny<string?>(), It.IsAny<CancellationToken>())).ReturnsAsync(new AdfRunHistory { AdfRunId = latestRunId });
             SetupSqlEvaluation(
                 "Building = 'B40'",
                 latestTable,
@@ -2764,7 +2765,7 @@ namespace WebApi.Tests
             _mockBlobStorageRepository.Setup(x => x.FindPartFilesByRunIdAsync(_targetGroupId.ToString(), previousRunId.ToString()))
                 .ReturnsAsync(new Dictionary<string, BlobResult>());
             // Latest ADF table is available and the removed user no longer matches the rule today.
-            _mockDataFactoryRepository.Setup(x => x.GetMostRecentSucceededRunIdAsync()).ReturnsAsync(latestRunId.ToString());
+            _mockAdfRunHistoryRepository.Setup(x => x.GetLatestAdfRunAsync(It.IsAny<string?>(), It.IsAny<CancellationToken>())).ReturnsAsync(new AdfRunHistory { AdfRunId = latestRunId });
             SetupSqlEvaluation(
                 "Building = 'B40'",
                 latestTable,
@@ -2823,7 +2824,7 @@ namespace WebApi.Tests
                 });
             _mockBlobStorageRepository.Setup(x => x.FindPartFilesByRunIdAsync(_targetGroupId.ToString(), previousRunId.ToString()))
                 .ReturnsAsync(new Dictionary<string, BlobResult>());
-            _mockDataFactoryRepository.Setup(x => x.GetMostRecentSucceededRunIdAsync()).ReturnsAsync(latestRunId.ToString());
+            _mockAdfRunHistoryRepository.Setup(x => x.GetLatestAdfRunAsync(It.IsAny<string?>(), It.IsAny<CancellationToken>())).ReturnsAsync(new AdfRunHistory { AdfRunId = latestRunId });
             // The proposed-removed user is STILL in the management chain today, so the contradiction guard must fire.
             SetupSqlEvaluation(
                 "EmployeeType = 'FTE'",
@@ -3812,7 +3813,7 @@ namespace WebApi.Tests
             // Exact-run and previous ADF tables pruned so single-step and walk-back hedge, making Phase 3 eligible.
             _mockSqlMembershipRepository.Setup(x => x.CheckIfTableExistsAsync(currentTable)).ReturnsAsync(false);
             _mockSqlMembershipRepository.Setup(x => x.CheckIfTableExistsAsync(previousTable)).ReturnsAsync(false);
-            _mockDataFactoryRepository.Setup(x => x.GetMostRecentSucceededRunIdAsync()).ReturnsAsync(latestRunId.ToString());
+            _mockAdfRunHistoryRepository.Setup(x => x.GetLatestAdfRunAsync(It.IsAny<string?>(), It.IsAny<CancellationToken>())).ReturnsAsync(new AdfRunHistory { AdfRunId = latestRunId });
             // Part 1 reads successfully (removed user absent -> would be "colored" if we trusted the partial union)...
             SetupSqlEvaluation(
                 "Building = 'B40'",

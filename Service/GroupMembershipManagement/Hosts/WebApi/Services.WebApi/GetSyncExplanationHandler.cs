@@ -56,7 +56,7 @@ Use only the provided data. If you cannot determine the reason with reasonable c
         private readonly ISyncJobHistoryRepository _syncJobHistoryRepository;
         private readonly ISyncJobChangeRepository _syncJobChangeRepository;
         private readonly IBlobStorageRepository _blobStorageRepository;
-        private readonly IDataFactoryRepository _dataFactoryRepository;
+        private readonly IAdfRunHistoryRepository _adfRunHistoryRepository;
         private readonly ISqlMembershipRepository _sqlMembershipRepository;
         private readonly IDatabaseSqlMembershipSourcesRepository _databaseSqlMembershipSourcesRepository;
         private readonly IGraphGroupRepository _graphGroupRepository;
@@ -69,7 +69,7 @@ Use only the provided data. If you cannot determine the reason with reasonable c
             ISyncJobHistoryRepository syncJobHistoryRepository,
             ISyncJobChangeRepository syncJobChangeRepository,
             IBlobStorageRepository blobStorageRepository,
-            IDataFactoryRepository dataFactoryRepository,
+            IAdfRunHistoryRepository adfRunHistoryRepository,
             ISqlMembershipRepository sqlMembershipRepository,
             IDatabaseSqlMembershipSourcesRepository databaseSqlMembershipSourcesRepository,
             IGraphGroupRepository graphGroupRepository,
@@ -81,7 +81,7 @@ Use only the provided data. If you cannot determine the reason with reasonable c
             _syncJobHistoryRepository = syncJobHistoryRepository ?? throw new ArgumentNullException(nameof(syncJobHistoryRepository));
             _syncJobChangeRepository = syncJobChangeRepository ?? throw new ArgumentNullException(nameof(syncJobChangeRepository));
             _blobStorageRepository = blobStorageRepository ?? throw new ArgumentNullException(nameof(blobStorageRepository));
-            _dataFactoryRepository = dataFactoryRepository ?? throw new ArgumentNullException(nameof(dataFactoryRepository));
+            _adfRunHistoryRepository = adfRunHistoryRepository ?? throw new ArgumentNullException(nameof(adfRunHistoryRepository));
             _sqlMembershipRepository = sqlMembershipRepository ?? throw new ArgumentNullException(nameof(sqlMembershipRepository));
             _databaseSqlMembershipSourcesRepository = databaseSqlMembershipSourcesRepository ?? throw new ArgumentNullException(nameof(databaseSqlMembershipSourcesRepository));
             _graphGroupRepository = graphGroupRepository ?? throw new ArgumentNullException(nameof(graphGroupRepository));

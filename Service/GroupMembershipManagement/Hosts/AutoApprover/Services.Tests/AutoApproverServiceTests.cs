@@ -6,6 +6,7 @@ using Microsoft.ApplicationInsights.Extensibility;
 using Microsoft.Extensions.Logging;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Models;
+using Models.AdfRunHistory;
 using Models.ServiceBus;
 using Models.SyncJobChange;
 using Moq;
@@ -13,6 +14,7 @@ using Repositories.Contracts;
 using Services.AutoApprover;
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 
@@ -28,7 +30,7 @@ namespace Services.Tests
             Mock<ISyncJobChangeRepository> syncJobChangeRepository,
             Mock<ILogger<AutoApproverService>> logger,
             Mock<ISqlMembershipRepository> sqlMembershipRepository = null,
-            Mock<IDataFactoryRepository> dataFactoryRepository = null,
+            Mock<IAdfRunHistoryRepository> adfRunHistoryRepository = null,
             Mock<IDatabaseSqlMembershipSourcesRepository> sqlMembershipSourcesRepository = null,
             CapturingTelemetryChannel telemetryChannel = null)
         {
@@ -38,7 +40,7 @@ namespace Services.Tests
                 graphGroupRepository.Object,
                 syncJobChangeRepository.Object,
                 (sqlMembershipRepository ?? new Mock<ISqlMembershipRepository>()).Object,
-                (dataFactoryRepository ?? new Mock<IDataFactoryRepository>()).Object,
+                (adfRunHistoryRepository ?? new Mock<IAdfRunHistoryRepository>()).Object,
                 (sqlMembershipSourcesRepository ?? new Mock<IDatabaseSqlMembershipSourcesRepository>()).Object,
                 logger.Object,
                 CreateTelemetryClient(telemetryChannel ?? new CapturingTelemetryChannel()));
@@ -377,14 +379,14 @@ namespace Services.Tests
             var syncJobChangeRepository = new Mock<ISyncJobChangeRepository>();
             var logger = new Mock<ILogger<AutoApproverService>>();
             var sqlMembershipRepository = new Mock<ISqlMembershipRepository>();
-            var dataFactoryRepository = new Mock<IDataFactoryRepository>();
+            var adfRunHistoryRepository = new Mock<IAdfRunHistoryRepository>();
 
             syncJobsRepository.Setup(x => x.GetSyncJobAsync(syncJobId)).ReturnsAsync(syncJob);
             EnableGroupAndOrgLeaderPaths(settingsRepository);
-            dataFactoryRepository.Setup(x => x.GetMostRecentSucceededRunIdAsync()).ReturnsAsync("abc-def");
+            adfRunHistoryRepository.Setup(x => x.GetLatestAdfRunAsync(It.IsAny<string>(), It.IsAny<System.Threading.CancellationToken>())).ReturnsAsync(new AdfRunHistory { AdfRunId = Guid.NewGuid(), PublishedAtUtc = DateTime.UtcNow });
             sqlMembershipRepository.Setup(x => x.GetUserEmployeeIdAsync(requestorId, It.IsAny<string>())).ReturnsAsync(managerId);
 
-            var service = CreateService(syncJobsRepository, settingsRepository, graphGroupRepository, syncJobChangeRepository, logger, sqlMembershipRepository, dataFactoryRepository);
+            var service = CreateService(syncJobsRepository, settingsRepository, graphGroupRepository, syncJobChangeRepository, logger, sqlMembershipRepository, adfRunHistoryRepository);
             await service.ProcessAutoApprovalAsync(Message(syncJobId, requestorId));
 
             VerifyApproved(syncJobsRepository, syncJobChangeRepository, syncJobId);
@@ -407,14 +409,14 @@ namespace Services.Tests
             var syncJobChangeRepository = new Mock<ISyncJobChangeRepository>();
             var logger = new Mock<ILogger<AutoApproverService>>();
             var sqlMembershipRepository = new Mock<ISqlMembershipRepository>();
-            var dataFactoryRepository = new Mock<IDataFactoryRepository>();
+            var adfRunHistoryRepository = new Mock<IAdfRunHistoryRepository>();
 
             syncJobsRepository.Setup(x => x.GetSyncJobAsync(syncJobId)).ReturnsAsync(syncJob);
             EnableGroupAndOrgLeaderPaths(settingsRepository);
-            dataFactoryRepository.Setup(x => x.GetMostRecentSucceededRunIdAsync()).ReturnsAsync("abc-def");
+            adfRunHistoryRepository.Setup(x => x.GetLatestAdfRunAsync(It.IsAny<string>(), It.IsAny<System.Threading.CancellationToken>())).ReturnsAsync(new AdfRunHistory { AdfRunId = Guid.NewGuid(), PublishedAtUtc = DateTime.UtcNow });
             sqlMembershipRepository.Setup(x => x.GetUserEmployeeIdAsync(requestorId, It.IsAny<string>())).ReturnsAsync(managerId);
 
-            var service = CreateService(syncJobsRepository, settingsRepository, graphGroupRepository, syncJobChangeRepository, logger, sqlMembershipRepository, dataFactoryRepository);
+            var service = CreateService(syncJobsRepository, settingsRepository, graphGroupRepository, syncJobChangeRepository, logger, sqlMembershipRepository, adfRunHistoryRepository);
             await service.ProcessAutoApprovalAsync(Message(syncJobId, requestorId));
 
             VerifyApproved(syncJobsRepository, syncJobChangeRepository, syncJobId);
@@ -436,14 +438,14 @@ namespace Services.Tests
             var syncJobChangeRepository = new Mock<ISyncJobChangeRepository>();
             var logger = new Mock<ILogger<AutoApproverService>>();
             var sqlMembershipRepository = new Mock<ISqlMembershipRepository>();
-            var dataFactoryRepository = new Mock<IDataFactoryRepository>();
+            var adfRunHistoryRepository = new Mock<IAdfRunHistoryRepository>();
 
             syncJobsRepository.Setup(x => x.GetSyncJobAsync(syncJobId)).ReturnsAsync(syncJob);
             EnableGroupAndOrgLeaderPaths(settingsRepository);
-            dataFactoryRepository.Setup(x => x.GetMostRecentSucceededRunIdAsync()).ReturnsAsync("abc-def");
+            adfRunHistoryRepository.Setup(x => x.GetLatestAdfRunAsync(It.IsAny<string>(), It.IsAny<System.Threading.CancellationToken>())).ReturnsAsync(new AdfRunHistory { AdfRunId = Guid.NewGuid(), PublishedAtUtc = DateTime.UtcNow });
             sqlMembershipRepository.Setup(x => x.GetUserEmployeeIdAsync(requestorId, It.IsAny<string>())).ReturnsAsync(4242);
 
-            var service = CreateService(syncJobsRepository, settingsRepository, graphGroupRepository, syncJobChangeRepository, logger, sqlMembershipRepository, dataFactoryRepository);
+            var service = CreateService(syncJobsRepository, settingsRepository, graphGroupRepository, syncJobChangeRepository, logger, sqlMembershipRepository, adfRunHistoryRepository);
             await service.ProcessAutoApprovalAsync(Message(syncJobId, requestorId));
 
             VerifyPendingReview(syncJobsRepository, syncJobChangeRepository);
@@ -463,14 +465,14 @@ namespace Services.Tests
             var syncJobChangeRepository = new Mock<ISyncJobChangeRepository>();
             var logger = new Mock<ILogger<AutoApproverService>>();
             var sqlMembershipRepository = new Mock<ISqlMembershipRepository>();
-            var dataFactoryRepository = new Mock<IDataFactoryRepository>();
+            var adfRunHistoryRepository = new Mock<IAdfRunHistoryRepository>();
 
             syncJobsRepository.Setup(x => x.GetSyncJobAsync(syncJobId)).ReturnsAsync(syncJob);
             EnableGroupAndOrgLeaderPaths(settingsRepository);
-            dataFactoryRepository.Setup(x => x.GetMostRecentSucceededRunIdAsync()).ReturnsAsync("abc-def");
+            adfRunHistoryRepository.Setup(x => x.GetLatestAdfRunAsync(It.IsAny<string>(), It.IsAny<System.Threading.CancellationToken>())).ReturnsAsync(new AdfRunHistory { AdfRunId = Guid.NewGuid(), PublishedAtUtc = DateTime.UtcNow });
             sqlMembershipRepository.Setup(x => x.GetUserEmployeeIdAsync(requestorId, It.IsAny<string>())).ReturnsAsync(999);
 
-            var service = CreateService(syncJobsRepository, settingsRepository, graphGroupRepository, syncJobChangeRepository, logger, sqlMembershipRepository, dataFactoryRepository);
+            var service = CreateService(syncJobsRepository, settingsRepository, graphGroupRepository, syncJobChangeRepository, logger, sqlMembershipRepository, adfRunHistoryRepository);
             await service.ProcessAutoApprovalAsync(Message(syncJobId, requestorId));
 
             VerifyPendingReview(syncJobsRepository, syncJobChangeRepository);
@@ -490,14 +492,14 @@ namespace Services.Tests
             var syncJobChangeRepository = new Mock<ISyncJobChangeRepository>();
             var logger = new Mock<ILogger<AutoApproverService>>();
             var sqlMembershipRepository = new Mock<ISqlMembershipRepository>();
-            var dataFactoryRepository = new Mock<IDataFactoryRepository>();
+            var adfRunHistoryRepository = new Mock<IAdfRunHistoryRepository>();
 
             syncJobsRepository.Setup(x => x.GetSyncJobAsync(syncJobId)).ReturnsAsync(syncJob);
             EnableGroupAndOrgLeaderPaths(settingsRepository);
-            dataFactoryRepository.Setup(x => x.GetMostRecentSucceededRunIdAsync()).ReturnsAsync("abc-def");
+            adfRunHistoryRepository.Setup(x => x.GetLatestAdfRunAsync(It.IsAny<string>(), It.IsAny<System.Threading.CancellationToken>())).ReturnsAsync(new AdfRunHistory { AdfRunId = Guid.NewGuid(), PublishedAtUtc = DateTime.UtcNow });
             sqlMembershipRepository.Setup(x => x.GetUserEmployeeIdAsync(requestorId, It.IsAny<string>())).ReturnsAsync((int?)null);
 
-            var service = CreateService(syncJobsRepository, settingsRepository, graphGroupRepository, syncJobChangeRepository, logger, sqlMembershipRepository, dataFactoryRepository);
+            var service = CreateService(syncJobsRepository, settingsRepository, graphGroupRepository, syncJobChangeRepository, logger, sqlMembershipRepository, adfRunHistoryRepository);
             await service.ProcessAutoApprovalAsync(Message(syncJobId, requestorId));
 
             VerifyPendingReview(syncJobsRepository, syncJobChangeRepository);
@@ -517,13 +519,13 @@ namespace Services.Tests
             var syncJobChangeRepository = new Mock<ISyncJobChangeRepository>();
             var logger = new Mock<ILogger<AutoApproverService>>();
             var sqlMembershipRepository = new Mock<ISqlMembershipRepository>();
-            var dataFactoryRepository = new Mock<IDataFactoryRepository>();
+            var adfRunHistoryRepository = new Mock<IAdfRunHistoryRepository>();
 
             syncJobsRepository.Setup(x => x.GetSyncJobAsync(syncJobId)).ReturnsAsync(syncJob);
             EnableGroupAndOrgLeaderPaths(settingsRepository);
-            dataFactoryRepository.Setup(x => x.GetMostRecentSucceededRunIdAsync()).ThrowsAsync(new Exception("adf down"));
+            adfRunHistoryRepository.Setup(x => x.GetLatestAdfRunAsync(It.IsAny<string>(), It.IsAny<System.Threading.CancellationToken>())).ThrowsAsync(new Exception("adf down"));
 
-            var service = CreateService(syncJobsRepository, settingsRepository, graphGroupRepository, syncJobChangeRepository, logger, sqlMembershipRepository, dataFactoryRepository);
+            var service = CreateService(syncJobsRepository, settingsRepository, graphGroupRepository, syncJobChangeRepository, logger, sqlMembershipRepository, adfRunHistoryRepository);
             await service.ProcessAutoApprovalAsync(Message(syncJobId, requestorId));
 
             VerifyPendingReview(syncJobsRepository, syncJobChangeRepository);
@@ -544,14 +546,14 @@ namespace Services.Tests
             var syncJobChangeRepository = new Mock<ISyncJobChangeRepository>();
             var logger = new Mock<ILogger<AutoApproverService>>();
             var sqlMembershipRepository = new Mock<ISqlMembershipRepository>();
-            var dataFactoryRepository = new Mock<IDataFactoryRepository>();
+            var adfRunHistoryRepository = new Mock<IAdfRunHistoryRepository>();
 
             syncJobsRepository.Setup(x => x.GetSyncJobAsync(syncJobId)).ReturnsAsync(syncJob);
             EnableGroupAndOrgLeaderPaths(settingsRepository);
-            dataFactoryRepository.Setup(x => x.GetMostRecentSucceededRunIdAsync()).ReturnsAsync("abc-def");
+            adfRunHistoryRepository.Setup(x => x.GetLatestAdfRunAsync(It.IsAny<string>(), It.IsAny<System.Threading.CancellationToken>())).ReturnsAsync(new AdfRunHistory { AdfRunId = Guid.NewGuid(), PublishedAtUtc = DateTime.UtcNow });
             sqlMembershipRepository.Setup(x => x.GetUserEmployeeIdAsync(requestorId, It.IsAny<string>())).ThrowsAsync(new Exception("sql down"));
 
-            var service = CreateService(syncJobsRepository, settingsRepository, graphGroupRepository, syncJobChangeRepository, logger, sqlMembershipRepository, dataFactoryRepository);
+            var service = CreateService(syncJobsRepository, settingsRepository, graphGroupRepository, syncJobChangeRepository, logger, sqlMembershipRepository, adfRunHistoryRepository);
             await service.ProcessAutoApprovalAsync(Message(syncJobId, requestorId));
 
             VerifyPendingReview(syncJobsRepository, syncJobChangeRepository);
@@ -573,16 +575,16 @@ namespace Services.Tests
             var syncJobChangeRepository = new Mock<ISyncJobChangeRepository>();
             var logger = new Mock<ILogger<AutoApproverService>>();
             var sqlMembershipRepository = new Mock<ISqlMembershipRepository>();
-            var dataFactoryRepository = new Mock<IDataFactoryRepository>();
+            var adfRunHistoryRepository = new Mock<IAdfRunHistoryRepository>();
 
             syncJobsRepository.Setup(x => x.GetSyncJobAsync(syncJobId)).ReturnsAsync(syncJob);
             EnableGroupAndOrgLeaderPaths(settingsRepository);
             graphGroupRepository.Setup(x => x.GetGroupsAsync(It.IsAny<List<Guid>>()))
                                 .ReturnsAsync(new List<AzureADGroup> { new AzureADGroup { ObjectId = groupId, Visibility = "Public" } });
-            dataFactoryRepository.Setup(x => x.GetMostRecentSucceededRunIdAsync()).ReturnsAsync("abc-def");
+            adfRunHistoryRepository.Setup(x => x.GetLatestAdfRunAsync(It.IsAny<string>(), It.IsAny<System.Threading.CancellationToken>())).ReturnsAsync(new AdfRunHistory { AdfRunId = Guid.NewGuid(), PublishedAtUtc = DateTime.UtcNow });
             sqlMembershipRepository.Setup(x => x.GetUserEmployeeIdAsync(requestorId, It.IsAny<string>())).ReturnsAsync(managerId);
 
-            var service = CreateService(syncJobsRepository, settingsRepository, graphGroupRepository, syncJobChangeRepository, logger, sqlMembershipRepository, dataFactoryRepository);
+            var service = CreateService(syncJobsRepository, settingsRepository, graphGroupRepository, syncJobChangeRepository, logger, sqlMembershipRepository, adfRunHistoryRepository);
             await service.ProcessAutoApprovalAsync(Message(syncJobId, requestorId));
 
             VerifyApproved(syncJobsRepository, syncJobChangeRepository, syncJobId);
@@ -660,14 +662,14 @@ namespace Services.Tests
             var syncJobChangeRepository = new Mock<ISyncJobChangeRepository>();
             var logger = new Mock<ILogger<AutoApproverService>>();
             var sqlMembershipRepository = new Mock<ISqlMembershipRepository>();
-            var dataFactoryRepository = new Mock<IDataFactoryRepository>();
+            var adfRunHistoryRepository = new Mock<IAdfRunHistoryRepository>();
 
             syncJobsRepository.Setup(x => x.GetSyncJobAsync(syncJobId)).ReturnsAsync(syncJob);
             EnablePaths(settingsRepository, groupBased: false, orgLeader: false, leaderAssistant: false);
 
             logger.Setup(x => x.IsEnabled(It.IsAny<LogLevel>())).Returns(true);
 
-            var service = CreateService(syncJobsRepository, settingsRepository, graphGroupRepository, syncJobChangeRepository, logger, sqlMembershipRepository, dataFactoryRepository);
+            var service = CreateService(syncJobsRepository, settingsRepository, graphGroupRepository, syncJobChangeRepository, logger, sqlMembershipRepository, adfRunHistoryRepository);
             await service.ProcessAutoApprovalAsync(Message(syncJobId, Guid.NewGuid().ToString()));
 
             VerifyPendingReview(syncJobsRepository, syncJobChangeRepository);
@@ -680,7 +682,7 @@ namespace Services.Tests
                 It.IsAny<Func<It.IsAnyType, Exception, string>>()), Times.Once);
 
             // Neither SQL path is enabled, so none of their lookups should happen.
-            dataFactoryRepository.Verify(x => x.GetMostRecentSucceededRunIdAsync(), Times.Never);
+            adfRunHistoryRepository.Verify(x => x.GetLatestAdfRunAsync(It.IsAny<string>(), It.IsAny<System.Threading.CancellationToken>()), Times.Never);
             sqlMembershipRepository.Verify(x => x.GetUserEmployeeIdAsync(It.IsAny<string>(), It.IsAny<string>()), Times.Never);
             sqlMembershipRepository.Verify(x => x.GetUserAzureObjectIdAsync(It.IsAny<int>(), It.IsAny<string>()), Times.Never);
             graphGroupRepository.Verify(x => x.GetAssistantsAsync(It.IsAny<Guid>()), Times.Never);
@@ -737,20 +739,20 @@ namespace Services.Tests
             var syncJobChangeRepository = new Mock<ISyncJobChangeRepository>();
             var logger = new Mock<ILogger<AutoApproverService>>();
             var sqlMembershipRepository = new Mock<ISqlMembershipRepository>();
-            var dataFactoryRepository = new Mock<IDataFactoryRepository>();
+            var adfRunHistoryRepository = new Mock<IAdfRunHistoryRepository>();
 
             syncJobsRepository.Setup(x => x.GetSyncJobAsync(syncJobId)).ReturnsAsync(syncJob);
             EnablePaths(settingsRepository, groupBased: true, orgLeader: false);
-            dataFactoryRepository.Setup(x => x.GetMostRecentSucceededRunIdAsync()).ReturnsAsync("abc-def");
+            adfRunHistoryRepository.Setup(x => x.GetLatestAdfRunAsync(It.IsAny<string>(), It.IsAny<System.Threading.CancellationToken>())).ReturnsAsync(new AdfRunHistory { AdfRunId = Guid.NewGuid(), PublishedAtUtc = DateTime.UtcNow });
             sqlMembershipRepository.Setup(x => x.GetUserEmployeeIdAsync(requestorId, It.IsAny<string>())).ReturnsAsync(managerId);
 
-            var service = CreateService(syncJobsRepository, settingsRepository, graphGroupRepository, syncJobChangeRepository, logger, sqlMembershipRepository, dataFactoryRepository);
+            var service = CreateService(syncJobsRepository, settingsRepository, graphGroupRepository, syncJobChangeRepository, logger, sqlMembershipRepository, adfRunHistoryRepository);
             await service.ProcessAutoApprovalAsync(Message(syncJobId, requestorId));
 
             VerifyPendingReview(syncJobsRepository, syncJobChangeRepository);
 
             // A disabled SQL path must not cost a run lookup or a users-table read.
-            dataFactoryRepository.Verify(x => x.GetMostRecentSucceededRunIdAsync(), Times.Never);
+            adfRunHistoryRepository.Verify(x => x.GetLatestAdfRunAsync(It.IsAny<string>(), It.IsAny<System.Threading.CancellationToken>()), Times.Never);
             sqlMembershipRepository.Verify(x => x.GetUserEmployeeIdAsync(It.IsAny<string>(), It.IsAny<string>()), Times.Never);
         }
 
@@ -776,7 +778,7 @@ namespace Services.Tests
             var syncJobChangeRepository = new Mock<ISyncJobChangeRepository>();
             var logger = new Mock<ILogger<AutoApproverService>>();
             var sqlMembershipRepository = new Mock<ISqlMembershipRepository>();
-            var dataFactoryRepository = new Mock<IDataFactoryRepository>();
+            var adfRunHistoryRepository = new Mock<IAdfRunHistoryRepository>();
 
             syncJobsRepository.Setup(x => x.GetSyncJobAsync(syncJobId)).ReturnsAsync(syncJob);
             EnablePaths(settingsRepository, groupBased: true, orgLeader: false);
@@ -784,7 +786,7 @@ namespace Services.Tests
                                 .ReturnsAsync(new List<AzureADGroup> { new AzureADGroup { ObjectId = groupId, Visibility = "Public" } });
             sqlMembershipRepository.Setup(x => x.GetUserEmployeeIdAsync(requestorId, It.IsAny<string>())).ReturnsAsync(managerId);
 
-            var service = CreateService(syncJobsRepository, settingsRepository, graphGroupRepository, syncJobChangeRepository, logger, sqlMembershipRepository, dataFactoryRepository);
+            var service = CreateService(syncJobsRepository, settingsRepository, graphGroupRepository, syncJobChangeRepository, logger, sqlMembershipRepository, adfRunHistoryRepository);
             await service.ProcessAutoApprovalAsync(Message(syncJobId, requestorId));
 
             VerifyPendingReview(syncJobsRepository, syncJobChangeRepository);
@@ -806,14 +808,14 @@ namespace Services.Tests
             var syncJobChangeRepository = new Mock<ISyncJobChangeRepository>();
             var logger = new Mock<ILogger<AutoApproverService>>();
             var sqlMembershipRepository = new Mock<ISqlMembershipRepository>();
-            var dataFactoryRepository = new Mock<IDataFactoryRepository>();
+            var adfRunHistoryRepository = new Mock<IAdfRunHistoryRepository>();
 
             syncJobsRepository.Setup(x => x.GetSyncJobAsync(syncJobId)).ReturnsAsync(syncJob);
             EnablePaths(settingsRepository, groupBased: false, orgLeader: true);
-            dataFactoryRepository.Setup(x => x.GetMostRecentSucceededRunIdAsync()).ReturnsAsync("abc-def");
+            adfRunHistoryRepository.Setup(x => x.GetLatestAdfRunAsync(It.IsAny<string>(), It.IsAny<System.Threading.CancellationToken>())).ReturnsAsync(new AdfRunHistory { AdfRunId = Guid.NewGuid(), PublishedAtUtc = DateTime.UtcNow });
             sqlMembershipRepository.Setup(x => x.GetUserEmployeeIdAsync(requestorId, It.IsAny<string>())).ReturnsAsync(managerId);
 
-            var service = CreateService(syncJobsRepository, settingsRepository, graphGroupRepository, syncJobChangeRepository, logger, sqlMembershipRepository, dataFactoryRepository);
+            var service = CreateService(syncJobsRepository, settingsRepository, graphGroupRepository, syncJobChangeRepository, logger, sqlMembershipRepository, adfRunHistoryRepository);
             await service.ProcessAutoApprovalAsync(Message(syncJobId, requestorId));
 
             VerifyApproved(syncJobsRepository, syncJobChangeRepository, syncJobId);
@@ -998,14 +1000,14 @@ namespace Services.Tests
             var syncJobChangeRepository = new Mock<ISyncJobChangeRepository>();
             var logger = new Mock<ILogger<AutoApproverService>>();
             var sqlMembershipRepository = new Mock<ISqlMembershipRepository>();
-            var dataFactoryRepository = new Mock<IDataFactoryRepository>();
+            var adfRunHistoryRepository = new Mock<IAdfRunHistoryRepository>();
 
             syncJobsRepository.Setup(x => x.GetSyncJobAsync(syncJobId)).ReturnsAsync(syncJob);
             EnableGroupAndOrgLeaderPaths(settingsRepository);
-            dataFactoryRepository.Setup(x => x.GetMostRecentSucceededRunIdAsync()).ReturnsAsync("abc-def");
+            adfRunHistoryRepository.Setup(x => x.GetLatestAdfRunAsync(It.IsAny<string>(), It.IsAny<System.Threading.CancellationToken>())).ReturnsAsync(new AdfRunHistory { AdfRunId = Guid.NewGuid(), PublishedAtUtc = DateTime.UtcNow });
             sqlMembershipRepository.Setup(x => x.GetUserEmployeeIdAsync(requestorId, It.IsAny<string>())).ReturnsAsync(managerId);
 
-            var service = CreateService(syncJobsRepository, settingsRepository, graphGroupRepository, syncJobChangeRepository, logger, sqlMembershipRepository, dataFactoryRepository);
+            var service = CreateService(syncJobsRepository, settingsRepository, graphGroupRepository, syncJobChangeRepository, logger, sqlMembershipRepository, adfRunHistoryRepository);
             await service.ProcessAutoApprovalAsync(Message(syncJobId, requestorId));
 
             VerifyApproved(syncJobsRepository, syncJobChangeRepository, syncJobId);
@@ -1070,11 +1072,11 @@ namespace Services.Tests
             var syncJobChangeRepository = new Mock<ISyncJobChangeRepository>();
             var logger = new Mock<ILogger<AutoApproverService>>();
             var sqlMembershipRepository = new Mock<ISqlMembershipRepository>();
-            var dataFactoryRepository = new Mock<IDataFactoryRepository>();
+            var adfRunHistoryRepository = new Mock<IAdfRunHistoryRepository>();
 
             syncJobsRepository.Setup(x => x.GetSyncJobAsync(syncJobId)).ReturnsAsync(syncJob);
             EnableAllPaths(settingsRepository);
-            dataFactoryRepository.Setup(x => x.GetMostRecentSucceededRunIdAsync()).ReturnsAsync("abc-def");
+            adfRunHistoryRepository.Setup(x => x.GetLatestAdfRunAsync(It.IsAny<string>(), It.IsAny<System.Threading.CancellationToken>())).ReturnsAsync(new AdfRunHistory { AdfRunId = Guid.NewGuid(), PublishedAtUtc = DateTime.UtcNow });
 
             // The requestor is not the manager, so only the assistant relationship can approve.
             sqlMembershipRepository.Setup(x => x.GetUserEmployeeIdAsync(requestorId, It.IsAny<string>())).ReturnsAsync(999);
@@ -1084,7 +1086,7 @@ namespace Services.Tests
 
             logger.Setup(x => x.IsEnabled(It.IsAny<LogLevel>())).Returns(true);
 
-            var service = CreateService(syncJobsRepository, settingsRepository, graphGroupRepository, syncJobChangeRepository, logger, sqlMembershipRepository, dataFactoryRepository);
+            var service = CreateService(syncJobsRepository, settingsRepository, graphGroupRepository, syncJobChangeRepository, logger, sqlMembershipRepository, adfRunHistoryRepository);
             await service.ProcessAutoApprovalAsync(Message(syncJobId, requestorId));
 
             VerifyApproved(syncJobsRepository, syncJobChangeRepository, syncJobId);
@@ -1123,11 +1125,11 @@ namespace Services.Tests
             var syncJobChangeRepository = new Mock<ISyncJobChangeRepository>();
             var logger = new Mock<ILogger<AutoApproverService>>();
             var sqlMembershipRepository = new Mock<ISqlMembershipRepository>();
-            var dataFactoryRepository = new Mock<IDataFactoryRepository>();
+            var adfRunHistoryRepository = new Mock<IAdfRunHistoryRepository>();
 
             syncJobsRepository.Setup(x => x.GetSyncJobAsync(syncJobId)).ReturnsAsync(syncJob);
             EnableAllPaths(settingsRepository);
-            dataFactoryRepository.Setup(x => x.GetMostRecentSucceededRunIdAsync()).ReturnsAsync("abc-def");
+            adfRunHistoryRepository.Setup(x => x.GetLatestAdfRunAsync(It.IsAny<string>(), It.IsAny<System.Threading.CancellationToken>())).ReturnsAsync(new AdfRunHistory { AdfRunId = Guid.NewGuid(), PublishedAtUtc = DateTime.UtcNow });
             sqlMembershipRepository.Setup(x => x.GetUserEmployeeIdAsync(requestorId, It.IsAny<string>())).ReturnsAsync(999);
             sqlMembershipRepository.Setup(x => x.GetUserAzureObjectIdAsync(managerId, It.IsAny<string>())).Returns(Task.FromResult<string?>(leaderObjectId.ToString()));
             graphGroupRepository.Setup(x => x.GetAssistantsAsync(leaderObjectId))
@@ -1135,7 +1137,7 @@ namespace Services.Tests
 
             logger.Setup(x => x.IsEnabled(It.IsAny<LogLevel>())).Returns(true);
 
-            var service = CreateService(syncJobsRepository, settingsRepository, graphGroupRepository, syncJobChangeRepository, logger, sqlMembershipRepository, dataFactoryRepository);
+            var service = CreateService(syncJobsRepository, settingsRepository, graphGroupRepository, syncJobChangeRepository, logger, sqlMembershipRepository, adfRunHistoryRepository);
             await service.ProcessAutoApprovalAsync(Message(syncJobId, requestorId));
 
             // The paths-resolved log covers only the two eagerly read settings, so the assistant
@@ -1201,19 +1203,19 @@ namespace Services.Tests
             var syncJobChangeRepository = new Mock<ISyncJobChangeRepository>();
             var logger = new Mock<ILogger<AutoApproverService>>();
             var sqlMembershipRepository = new Mock<ISqlMembershipRepository>();
-            var dataFactoryRepository = new Mock<IDataFactoryRepository>();
+            var adfRunHistoryRepository = new Mock<IAdfRunHistoryRepository>();
 
             syncJobsRepository.Setup(x => x.GetSyncJobAsync(syncJobId)).ReturnsAsync(syncJob);
 
             // A genuine assistant relationship must still be ignored while that path is off.
             EnableGroupAndOrgLeaderPaths(settingsRepository);
-            dataFactoryRepository.Setup(x => x.GetMostRecentSucceededRunIdAsync()).ReturnsAsync("abc-def");
+            adfRunHistoryRepository.Setup(x => x.GetLatestAdfRunAsync(It.IsAny<string>(), It.IsAny<System.Threading.CancellationToken>())).ReturnsAsync(new AdfRunHistory { AdfRunId = Guid.NewGuid(), PublishedAtUtc = DateTime.UtcNow });
             sqlMembershipRepository.Setup(x => x.GetUserEmployeeIdAsync(requestorId, It.IsAny<string>())).ReturnsAsync(999);
             sqlMembershipRepository.Setup(x => x.GetUserAzureObjectIdAsync(managerId, It.IsAny<string>())).Returns(Task.FromResult<string?>(leaderObjectId.ToString()));
             graphGroupRepository.Setup(x => x.GetAssistantsAsync(leaderObjectId))
                                 .ReturnsAsync(new List<AzureADUser> { new AzureADUser { ObjectId = requestorObjectId } });
 
-            var service = CreateService(syncJobsRepository, settingsRepository, graphGroupRepository, syncJobChangeRepository, logger, sqlMembershipRepository, dataFactoryRepository);
+            var service = CreateService(syncJobsRepository, settingsRepository, graphGroupRepository, syncJobChangeRepository, logger, sqlMembershipRepository, adfRunHistoryRepository);
             await service.ProcessAutoApprovalAsync(Message(syncJobId, requestorId));
 
             VerifyPendingReview(syncJobsRepository, syncJobChangeRepository);
@@ -1237,18 +1239,18 @@ namespace Services.Tests
             var syncJobChangeRepository = new Mock<ISyncJobChangeRepository>();
             var logger = new Mock<ILogger<AutoApproverService>>();
             var sqlMembershipRepository = new Mock<ISqlMembershipRepository>();
-            var dataFactoryRepository = new Mock<IDataFactoryRepository>();
+            var adfRunHistoryRepository = new Mock<IAdfRunHistoryRepository>();
 
             syncJobsRepository.Setup(x => x.GetSyncJobAsync(syncJobId)).ReturnsAsync(syncJob);
 
             // The assistant path stands on its own without manager-self approval.
             EnablePaths(settingsRepository, groupBased: false, orgLeader: false, leaderAssistant: true);
-            dataFactoryRepository.Setup(x => x.GetMostRecentSucceededRunIdAsync()).ReturnsAsync("abc-def");
+            adfRunHistoryRepository.Setup(x => x.GetLatestAdfRunAsync(It.IsAny<string>(), It.IsAny<System.Threading.CancellationToken>())).ReturnsAsync(new AdfRunHistory { AdfRunId = Guid.NewGuid(), PublishedAtUtc = DateTime.UtcNow });
             sqlMembershipRepository.Setup(x => x.GetUserAzureObjectIdAsync(managerId, It.IsAny<string>())).Returns(Task.FromResult<string?>(leaderObjectId.ToString()));
             graphGroupRepository.Setup(x => x.GetAssistantsAsync(leaderObjectId))
                                 .ReturnsAsync(new List<AzureADUser> { new AzureADUser { ObjectId = requestorObjectId } });
 
-            var service = CreateService(syncJobsRepository, settingsRepository, graphGroupRepository, syncJobChangeRepository, logger, sqlMembershipRepository, dataFactoryRepository);
+            var service = CreateService(syncJobsRepository, settingsRepository, graphGroupRepository, syncJobChangeRepository, logger, sqlMembershipRepository, adfRunHistoryRepository);
             await service.ProcessAutoApprovalAsync(Message(syncJobId, requestorId));
 
             VerifyApproved(syncJobsRepository, syncJobChangeRepository, syncJobId);
@@ -1274,7 +1276,7 @@ namespace Services.Tests
             var syncJobChangeRepository = new Mock<ISyncJobChangeRepository>();
             var logger = new Mock<ILogger<AutoApproverService>>();
             var sqlMembershipRepository = new Mock<ISqlMembershipRepository>();
-            var dataFactoryRepository = new Mock<IDataFactoryRepository>();
+            var adfRunHistoryRepository = new Mock<IAdfRunHistoryRepository>();
 
             syncJobsRepository.Setup(x => x.GetSyncJobAsync(syncJobId)).ReturnsAsync(syncJob);
 
@@ -1283,7 +1285,7 @@ namespace Services.Tests
             graphGroupRepository.Setup(x => x.GetAssistantsAsync(leaderObjectId))
                                 .ReturnsAsync(new List<AzureADUser> { new AzureADUser { ObjectId = requestorObjectId } });
 
-            var service = CreateService(syncJobsRepository, settingsRepository, graphGroupRepository, syncJobChangeRepository, logger, sqlMembershipRepository, dataFactoryRepository);
+            var service = CreateService(syncJobsRepository, settingsRepository, graphGroupRepository, syncJobChangeRepository, logger, sqlMembershipRepository, adfRunHistoryRepository);
             await service.ProcessAutoApprovalAsync(Message(syncJobId, requestorId));
 
             VerifyPendingReview(syncJobsRepository, syncJobChangeRepository);
@@ -1307,11 +1309,11 @@ namespace Services.Tests
             var syncJobChangeRepository = new Mock<ISyncJobChangeRepository>();
             var logger = new Mock<ILogger<AutoApproverService>>();
             var sqlMembershipRepository = new Mock<ISqlMembershipRepository>();
-            var dataFactoryRepository = new Mock<IDataFactoryRepository>();
+            var adfRunHistoryRepository = new Mock<IAdfRunHistoryRepository>();
 
             syncJobsRepository.Setup(x => x.GetSyncJobAsync(syncJobId)).ReturnsAsync(syncJob);
             EnableAllPaths(settingsRepository);
-            dataFactoryRepository.Setup(x => x.GetMostRecentSucceededRunIdAsync()).ReturnsAsync("abc-def");
+            adfRunHistoryRepository.Setup(x => x.GetLatestAdfRunAsync(It.IsAny<string>(), It.IsAny<System.Threading.CancellationToken>())).ReturnsAsync(new AdfRunHistory { AdfRunId = Guid.NewGuid(), PublishedAtUtc = DateTime.UtcNow });
             sqlMembershipRepository.Setup(x => x.GetUserEmployeeIdAsync(requestorId, It.IsAny<string>())).ReturnsAsync(999);
             sqlMembershipRepository.Setup(x => x.GetUserAzureObjectIdAsync(managerId, It.IsAny<string>())).Returns(Task.FromResult<string?>(leaderObjectId.ToString()));
 
@@ -1319,7 +1321,7 @@ namespace Services.Tests
             graphGroupRepository.Setup(x => x.GetAssistantsAsync(leaderObjectId))
                                 .ReturnsAsync(new List<AzureADUser> { new AzureADUser { ObjectId = Guid.NewGuid() } });
 
-            var service = CreateService(syncJobsRepository, settingsRepository, graphGroupRepository, syncJobChangeRepository, logger, sqlMembershipRepository, dataFactoryRepository);
+            var service = CreateService(syncJobsRepository, settingsRepository, graphGroupRepository, syncJobChangeRepository, logger, sqlMembershipRepository, adfRunHistoryRepository);
             await service.ProcessAutoApprovalAsync(Message(syncJobId, requestorId));
 
             VerifyPendingReview(syncJobsRepository, syncJobChangeRepository);
@@ -1341,18 +1343,18 @@ namespace Services.Tests
             var syncJobChangeRepository = new Mock<ISyncJobChangeRepository>();
             var logger = new Mock<ILogger<AutoApproverService>>();
             var sqlMembershipRepository = new Mock<ISqlMembershipRepository>();
-            var dataFactoryRepository = new Mock<IDataFactoryRepository>();
+            var adfRunHistoryRepository = new Mock<IAdfRunHistoryRepository>();
 
             syncJobsRepository.Setup(x => x.GetSyncJobAsync(syncJobId)).ReturnsAsync(syncJob);
             EnableAllPaths(settingsRepository);
-            dataFactoryRepository.Setup(x => x.GetMostRecentSucceededRunIdAsync()).ReturnsAsync("abc-def");
+            adfRunHistoryRepository.Setup(x => x.GetLatestAdfRunAsync(It.IsAny<string>(), It.IsAny<System.Threading.CancellationToken>())).ReturnsAsync(new AdfRunHistory { AdfRunId = Guid.NewGuid(), PublishedAtUtc = DateTime.UtcNow });
             sqlMembershipRepository.Setup(x => x.GetUserEmployeeIdAsync(requestorId, It.IsAny<string>())).ReturnsAsync(999);
             sqlMembershipRepository.Setup(x => x.GetUserAzureObjectIdAsync(managerId, It.IsAny<string>())).Returns(Task.FromResult<string?>(leaderObjectId.ToString()));
 
             // A successful read returning no assistant is an authoritative "no", not an outage.
             graphGroupRepository.Setup(x => x.GetAssistantsAsync(leaderObjectId)).ReturnsAsync(new List<AzureADUser>());
 
-            var service = CreateService(syncJobsRepository, settingsRepository, graphGroupRepository, syncJobChangeRepository, logger, sqlMembershipRepository, dataFactoryRepository);
+            var service = CreateService(syncJobsRepository, settingsRepository, graphGroupRepository, syncJobChangeRepository, logger, sqlMembershipRepository, adfRunHistoryRepository);
             await service.ProcessAutoApprovalAsync(Message(syncJobId, requestorId));
 
             VerifyPendingReview(syncJobsRepository, syncJobChangeRepository);
@@ -1374,11 +1376,11 @@ namespace Services.Tests
             var syncJobChangeRepository = new Mock<ISyncJobChangeRepository>();
             var logger = new Mock<ILogger<AutoApproverService>>();
             var sqlMembershipRepository = new Mock<ISqlMembershipRepository>();
-            var dataFactoryRepository = new Mock<IDataFactoryRepository>();
+            var adfRunHistoryRepository = new Mock<IAdfRunHistoryRepository>();
 
             syncJobsRepository.Setup(x => x.GetSyncJobAsync(syncJobId)).ReturnsAsync(syncJob);
             EnableAllPaths(settingsRepository);
-            dataFactoryRepository.Setup(x => x.GetMostRecentSucceededRunIdAsync()).ReturnsAsync("abc-def");
+            adfRunHistoryRepository.Setup(x => x.GetLatestAdfRunAsync(It.IsAny<string>(), It.IsAny<System.Threading.CancellationToken>())).ReturnsAsync(new AdfRunHistory { AdfRunId = Guid.NewGuid(), PublishedAtUtc = DateTime.UtcNow });
             sqlMembershipRepository.Setup(x => x.GetUserEmployeeIdAsync(requestorId, It.IsAny<string>())).ReturnsAsync(999);
             sqlMembershipRepository.Setup(x => x.GetUserAzureObjectIdAsync(managerId, It.IsAny<string>())).Returns(Task.FromResult<string?>(leaderObjectId.ToString()));
 
@@ -1387,7 +1389,7 @@ namespace Services.Tests
 
             logger.Setup(x => x.IsEnabled(It.IsAny<LogLevel>())).Returns(true);
 
-            var service = CreateService(syncJobsRepository, settingsRepository, graphGroupRepository, syncJobChangeRepository, logger, sqlMembershipRepository, dataFactoryRepository);
+            var service = CreateService(syncJobsRepository, settingsRepository, graphGroupRepository, syncJobChangeRepository, logger, sqlMembershipRepository, adfRunHistoryRepository);
             await service.ProcessAutoApprovalAsync(Message(syncJobId, requestorId));
 
             VerifyPendingReview(syncJobsRepository, syncJobChangeRepository);
@@ -1415,11 +1417,11 @@ namespace Services.Tests
             var syncJobChangeRepository = new Mock<ISyncJobChangeRepository>();
             var logger = new Mock<ILogger<AutoApproverService>>();
             var sqlMembershipRepository = new Mock<ISqlMembershipRepository>();
-            var dataFactoryRepository = new Mock<IDataFactoryRepository>();
+            var adfRunHistoryRepository = new Mock<IAdfRunHistoryRepository>();
 
             syncJobsRepository.Setup(x => x.GetSyncJobAsync(syncJobId)).ReturnsAsync(syncJob);
             EnableAllPaths(settingsRepository);
-            dataFactoryRepository.Setup(x => x.GetMostRecentSucceededRunIdAsync()).ReturnsAsync("abc-def");
+            adfRunHistoryRepository.Setup(x => x.GetLatestAdfRunAsync(It.IsAny<string>(), It.IsAny<System.Threading.CancellationToken>())).ReturnsAsync(new AdfRunHistory { AdfRunId = Guid.NewGuid(), PublishedAtUtc = DateTime.UtcNow });
             sqlMembershipRepository.Setup(x => x.GetUserEmployeeIdAsync(requestorId, It.IsAny<string>())).ReturnsAsync(999);
 
             // The manager has no usable directory object id, so there is nobody to read a profile for.
@@ -1427,7 +1429,7 @@ namespace Services.Tests
 
             logger.Setup(x => x.IsEnabled(It.IsAny<LogLevel>())).Returns(true);
 
-            var service = CreateService(syncJobsRepository, settingsRepository, graphGroupRepository, syncJobChangeRepository, logger, sqlMembershipRepository, dataFactoryRepository);
+            var service = CreateService(syncJobsRepository, settingsRepository, graphGroupRepository, syncJobChangeRepository, logger, sqlMembershipRepository, adfRunHistoryRepository);
             await service.ProcessAutoApprovalAsync(Message(syncJobId, requestorId));
 
             VerifyPendingReview(syncJobsRepository, syncJobChangeRepository);
@@ -1456,16 +1458,16 @@ namespace Services.Tests
             var syncJobChangeRepository = new Mock<ISyncJobChangeRepository>();
             var logger = new Mock<ILogger<AutoApproverService>>();
             var sqlMembershipRepository = new Mock<ISqlMembershipRepository>();
-            var dataFactoryRepository = new Mock<IDataFactoryRepository>();
+            var adfRunHistoryRepository = new Mock<IAdfRunHistoryRepository>();
 
             syncJobsRepository.Setup(x => x.GetSyncJobAsync(syncJobId)).ReturnsAsync(syncJob);
             EnableAllPaths(settingsRepository);
-            dataFactoryRepository.Setup(x => x.GetMostRecentSucceededRunIdAsync()).ReturnsAsync("abc-def");
+            adfRunHistoryRepository.Setup(x => x.GetLatestAdfRunAsync(It.IsAny<string>(), It.IsAny<System.Threading.CancellationToken>())).ReturnsAsync(new AdfRunHistory { AdfRunId = Guid.NewGuid(), PublishedAtUtc = DateTime.UtcNow });
 
             // The requestor is the manager, so no profile read should be added.
             sqlMembershipRepository.Setup(x => x.GetUserEmployeeIdAsync(requestorId, It.IsAny<string>())).ReturnsAsync(managerId);
 
-            var service = CreateService(syncJobsRepository, settingsRepository, graphGroupRepository, syncJobChangeRepository, logger, sqlMembershipRepository, dataFactoryRepository);
+            var service = CreateService(syncJobsRepository, settingsRepository, graphGroupRepository, syncJobChangeRepository, logger, sqlMembershipRepository, adfRunHistoryRepository);
             await service.ProcessAutoApprovalAsync(Message(syncJobId, requestorId));
 
             VerifyApproved(syncJobsRepository, syncJobChangeRepository, syncJobId);
@@ -1490,11 +1492,11 @@ namespace Services.Tests
             var syncJobChangeRepository = new Mock<ISyncJobChangeRepository>();
             var logger = new Mock<ILogger<AutoApproverService>>();
             var sqlMembershipRepository = new Mock<ISqlMembershipRepository>();
-            var dataFactoryRepository = new Mock<IDataFactoryRepository>();
+            var adfRunHistoryRepository = new Mock<IAdfRunHistoryRepository>();
 
             syncJobsRepository.Setup(x => x.GetSyncJobAsync(syncJobId)).ReturnsAsync(syncJob);
             EnableAllPaths(settingsRepository);
-            dataFactoryRepository.Setup(x => x.GetMostRecentSucceededRunIdAsync()).ReturnsAsync("abc-def");
+            adfRunHistoryRepository.Setup(x => x.GetLatestAdfRunAsync(It.IsAny<string>(), It.IsAny<System.Threading.CancellationToken>())).ReturnsAsync(new AdfRunHistory { AdfRunId = Guid.NewGuid(), PublishedAtUtc = DateTime.UtcNow });
 
             // Matched on object id, so an assistant absent from the HR table still approves.
             sqlMembershipRepository.Setup(x => x.GetUserEmployeeIdAsync(requestorId, It.IsAny<string>())).ReturnsAsync((int?)null);
@@ -1502,7 +1504,7 @@ namespace Services.Tests
             graphGroupRepository.Setup(x => x.GetAssistantsAsync(leaderObjectId))
                                 .ReturnsAsync(new List<AzureADUser> { new AzureADUser { ObjectId = requestorObjectId } });
 
-            var service = CreateService(syncJobsRepository, settingsRepository, graphGroupRepository, syncJobChangeRepository, logger, sqlMembershipRepository, dataFactoryRepository);
+            var service = CreateService(syncJobsRepository, settingsRepository, graphGroupRepository, syncJobChangeRepository, logger, sqlMembershipRepository, adfRunHistoryRepository);
             await service.ProcessAutoApprovalAsync(Message(syncJobId, requestorId));
 
             VerifyApproved(syncJobsRepository, syncJobChangeRepository, syncJobId);
@@ -1530,17 +1532,17 @@ namespace Services.Tests
             var syncJobChangeRepository = new Mock<ISyncJobChangeRepository>();
             var logger = new Mock<ILogger<AutoApproverService>>();
             var sqlMembershipRepository = new Mock<ISqlMembershipRepository>();
-            var dataFactoryRepository = new Mock<IDataFactoryRepository>();
+            var adfRunHistoryRepository = new Mock<IAdfRunHistoryRepository>();
 
             syncJobsRepository.Setup(x => x.GetSyncJobAsync(syncJobId)).ReturnsAsync(syncJob);
             EnableAllPaths(settingsRepository);
-            dataFactoryRepository.Setup(x => x.GetMostRecentSucceededRunIdAsync()).ReturnsAsync("abc-def");
+            adfRunHistoryRepository.Setup(x => x.GetLatestAdfRunAsync(It.IsAny<string>(), It.IsAny<System.Threading.CancellationToken>())).ReturnsAsync(new AdfRunHistory { AdfRunId = Guid.NewGuid(), PublishedAtUtc = DateTime.UtcNow });
             sqlMembershipRepository.Setup(x => x.GetUserEmployeeIdAsync(requestorId, It.IsAny<string>())).ReturnsAsync(999);
             sqlMembershipRepository.Setup(x => x.GetUserAzureObjectIdAsync(managerId, It.IsAny<string>())).Returns(Task.FromResult<string?>(leaderObjectId.ToString()));
             graphGroupRepository.Setup(x => x.GetAssistantsAsync(leaderObjectId))
                                 .ReturnsAsync(new List<AzureADUser> { new AzureADUser { ObjectId = requestorObjectId } });
 
-            var service = CreateService(syncJobsRepository, settingsRepository, graphGroupRepository, syncJobChangeRepository, logger, sqlMembershipRepository, dataFactoryRepository);
+            var service = CreateService(syncJobsRepository, settingsRepository, graphGroupRepository, syncJobChangeRepository, logger, sqlMembershipRepository, adfRunHistoryRepository);
             await service.ProcessAutoApprovalAsync(Message(syncJobId, requestorId));
 
             VerifyApproved(syncJobsRepository, syncJobChangeRepository, syncJobId);
@@ -1557,7 +1559,7 @@ namespace Services.Tests
         /// <summary>Builds the mocks a manager-self SQL submission needs, with the given filter.</summary>
         private static (Mock<IDatabaseSyncJobsRepository> Jobs, Mock<IDatabaseSettingsRepository> Settings, Mock<IGraphGroupRepository> Graph,
                         Mock<ISyncJobChangeRepository> Changes, Mock<ILogger<AutoApproverService>> Logger, Mock<ISqlMembershipRepository> Sql,
-                        Mock<IDataFactoryRepository> DataFactory, Guid SyncJobId, string RequestorId)
+                        Mock<IAdfRunHistoryRepository> adfRunHistory, Guid SyncJobId, string RequestorId)
             ManagerSelfSubmission(string filter, int managerId = 4242)
         {
             var syncJobId = Guid.NewGuid();
@@ -1577,15 +1579,15 @@ namespace Services.Tests
             var changes = new Mock<ISyncJobChangeRepository>();
             var logger = new Mock<ILogger<AutoApproverService>>();
             var sql = new Mock<ISqlMembershipRepository>();
-            var dataFactory = new Mock<IDataFactoryRepository>();
+            var adfRunHistory = new Mock<IAdfRunHistoryRepository>();
 
             jobs.Setup(x => x.GetSyncJobAsync(syncJobId)).ReturnsAsync(syncJob);
             EnableAllPaths(settings);
-            dataFactory.Setup(x => x.GetMostRecentSucceededRunIdAsync()).ReturnsAsync("abc-def");
+            adfRunHistory.Setup(x => x.GetLatestAdfRunAsync(It.IsAny<string>(), It.IsAny<System.Threading.CancellationToken>())).ReturnsAsync(new AdfRunHistory { AdfRunId = Guid.NewGuid(), PublishedAtUtc = DateTime.UtcNow });
             sql.Setup(x => x.GetUserEmployeeIdAsync(requestorId, It.IsAny<string>())).ReturnsAsync(managerId);
             logger.Setup(x => x.IsEnabled(It.IsAny<LogLevel>())).Returns(true);
 
-            return (jobs, settings, graph, changes, logger, sql, dataFactory, syncJobId, requestorId);
+            return (jobs, settings, graph, changes, logger, sql, adfRunHistory, syncJobId, requestorId);
         }
 
         private static void VerifyLogged(Mock<ILogger<AutoApproverService>> logger, int eventId, Times times) =>
@@ -1602,7 +1604,7 @@ namespace Services.Tests
             var m = ManagerSelfSubmission("Department eq 'Sales'");
             var sources = EnableScreening(m.Settings, "PayScaleStockLevelNbr");
 
-            var service = CreateService(m.Jobs, m.Settings, m.Graph, m.Changes, m.Logger, m.Sql, m.DataFactory, sources);
+            var service = CreateService(m.Jobs, m.Settings, m.Graph, m.Changes, m.Logger, m.Sql, m.adfRunHistory, sources);
             await service.ProcessAutoApprovalAsync(Message(m.SyncJobId, m.RequestorId));
 
             VerifyApproved(m.Jobs, m.Changes, m.SyncJobId);
@@ -1615,7 +1617,7 @@ namespace Services.Tests
             var m = ManagerSelfSubmission("PayScaleStockLevelNbr eq 60");
             var sources = EnableScreening(m.Settings, "PayScaleStockLevelNbr");
 
-            var service = CreateService(m.Jobs, m.Settings, m.Graph, m.Changes, m.Logger, m.Sql, m.DataFactory, sources);
+            var service = CreateService(m.Jobs, m.Settings, m.Graph, m.Changes, m.Logger, m.Sql, m.adfRunHistory, sources);
             await service.ProcessAutoApprovalAsync(Message(m.SyncJobId, m.RequestorId));
 
             VerifyPendingReview(m.Jobs, m.Changes);
@@ -1644,11 +1646,11 @@ namespace Services.Tests
             var changes = new Mock<ISyncJobChangeRepository>();
             var logger = new Mock<ILogger<AutoApproverService>>();
             var sql = new Mock<ISqlMembershipRepository>();
-            var dataFactory = new Mock<IDataFactoryRepository>();
+            var adfRunHistory = new Mock<IAdfRunHistoryRepository>();
 
             jobs.Setup(x => x.GetSyncJobAsync(syncJobId)).ReturnsAsync(syncJob);
             EnableAllPaths(settings);
-            dataFactory.Setup(x => x.GetMostRecentSucceededRunIdAsync()).ReturnsAsync("abc-def");
+            adfRunHistory.Setup(x => x.GetLatestAdfRunAsync(It.IsAny<string>(), It.IsAny<System.Threading.CancellationToken>())).ReturnsAsync(new AdfRunHistory { AdfRunId = Guid.NewGuid(), PublishedAtUtc = DateTime.UtcNow });
 
             // Not the manager, so only the assistant relationship could have approved this part.
             sql.Setup(x => x.GetUserEmployeeIdAsync(requestorId, It.IsAny<string>())).ReturnsAsync(999);
@@ -1659,7 +1661,7 @@ namespace Services.Tests
 
             var sources = EnableScreening(settings, "PayScaleStockLevelNbr");
 
-            var service = CreateService(jobs, settings, graph, changes, logger, sql, dataFactory, sources);
+            var service = CreateService(jobs, settings, graph, changes, logger, sql, adfRunHistory, sources);
             await service.ProcessAutoApprovalAsync(Message(syncJobId, requestorId));
 
             VerifyPendingReview(jobs, changes);
@@ -1672,7 +1674,7 @@ namespace Services.Tests
             var m = ManagerSelfSubmission(null);
             var sources = EnableScreening(m.Settings, "PayScaleStockLevelNbr");
 
-            var service = CreateService(m.Jobs, m.Settings, m.Graph, m.Changes, m.Logger, m.Sql, m.DataFactory, sources);
+            var service = CreateService(m.Jobs, m.Settings, m.Graph, m.Changes, m.Logger, m.Sql, m.adfRunHistory, sources);
             await service.ProcessAutoApprovalAsync(Message(m.SyncJobId, m.RequestorId));
 
             VerifyApproved(m.Jobs, m.Changes, m.SyncJobId);
@@ -1684,7 +1686,7 @@ namespace Services.Tests
             var m = ManagerSelfSubmission("PayScaleStockLevelNbr eq 60");
             var sources = EnableScreening(m.Settings);
 
-            var service = CreateService(m.Jobs, m.Settings, m.Graph, m.Changes, m.Logger, m.Sql, m.DataFactory, sources);
+            var service = CreateService(m.Jobs, m.Settings, m.Graph, m.Changes, m.Logger, m.Sql, m.adfRunHistory, sources);
             await service.ProcessAutoApprovalAsync(Message(m.SyncJobId, m.RequestorId));
 
             // Nothing is marked Sensitive, so turning screening on must not reject everything.
@@ -1699,7 +1701,7 @@ namespace Services.Tests
             var sources = EnableScreening(m.Settings);
             sources.Setup(x => x.GetDefaultSourceAttributesAsync()).ThrowsAsync(new Exception("database unavailable"));
 
-            var service = CreateService(m.Jobs, m.Settings, m.Graph, m.Changes, m.Logger, m.Sql, m.DataFactory, sources);
+            var service = CreateService(m.Jobs, m.Settings, m.Graph, m.Changes, m.Logger, m.Sql, m.adfRunHistory, sources);
             await service.ProcessAutoApprovalAsync(Message(m.SyncJobId, m.RequestorId));
 
             VerifyPendingReview(m.Jobs, m.Changes);
@@ -1712,7 +1714,7 @@ namespace Services.Tests
             var m = ManagerSelfSubmission("PayScaleStockLevelNbr eq 60");
             var sources = new Mock<IDatabaseSqlMembershipSourcesRepository>();
 
-            var service = CreateService(m.Jobs, m.Settings, m.Graph, m.Changes, m.Logger, m.Sql, m.DataFactory, sources);
+            var service = CreateService(m.Jobs, m.Settings, m.Graph, m.Changes, m.Logger, m.Sql, m.adfRunHistory, sources);
             await service.ProcessAutoApprovalAsync(Message(m.SyncJobId, m.RequestorId));
 
             VerifyApproved(m.Jobs, m.Changes, m.SyncJobId);
@@ -1728,7 +1730,7 @@ namespace Services.Tests
             var sources = new Mock<IDatabaseSqlMembershipSourcesRepository>();
             sources.Setup(x => x.GetDefaultSourceAttributesAsync()).ThrowsAsync(new Exception("database unavailable"));
 
-            var service = CreateService(m.Jobs, m.Settings, m.Graph, m.Changes, m.Logger, m.Sql, m.DataFactory, sources);
+            var service = CreateService(m.Jobs, m.Settings, m.Graph, m.Changes, m.Logger, m.Sql, m.adfRunHistory, sources);
             await service.ProcessAutoApprovalAsync(Message(m.SyncJobId, m.RequestorId));
 
             // Reading the list is best-effort while screening is off, so a failure must not fail the part or raise an error.
@@ -1742,7 +1744,7 @@ namespace Services.Tests
             var m = ManagerSelfSubmission("SalaryBand eq 'A'");
             var sources = EnableScreening(m.Settings, "Salary");
 
-            var service = CreateService(m.Jobs, m.Settings, m.Graph, m.Changes, m.Logger, m.Sql, m.DataFactory, sources);
+            var service = CreateService(m.Jobs, m.Settings, m.Graph, m.Changes, m.Logger, m.Sql, m.adfRunHistory, sources);
             await service.ProcessAutoApprovalAsync(Message(m.SyncJobId, m.RequestorId));
 
             VerifyApproved(m.Jobs, m.Changes, m.SyncJobId);
@@ -1763,7 +1765,7 @@ namespace Services.Tests
                        new SqlMembershipAttribute { Name = "PayScaleStockLevelNbr", IsSensitive = true, Enabled = false }
                    });
 
-            var service = CreateService(m.Jobs, m.Settings, m.Graph, m.Changes, m.Logger, m.Sql, m.DataFactory, sources);
+            var service = CreateService(m.Jobs, m.Settings, m.Graph, m.Changes, m.Logger, m.Sql, m.adfRunHistory, sources);
             await service.ProcessAutoApprovalAsync(Message(m.SyncJobId, m.RequestorId));
 
             VerifyPendingReview(m.Jobs, m.Changes);
@@ -1776,7 +1778,7 @@ namespace Services.Tests
             var m = ManagerSelfSubmission("payscalestocklevelnbr eq 60");
             var sources = EnableScreening(m.Settings, "PayScaleStockLevelNbr");
 
-            var service = CreateService(m.Jobs, m.Settings, m.Graph, m.Changes, m.Logger, m.Sql, m.DataFactory, sources);
+            var service = CreateService(m.Jobs, m.Settings, m.Graph, m.Changes, m.Logger, m.Sql, m.adfRunHistory, sources);
             await service.ProcessAutoApprovalAsync(Message(m.SyncJobId, m.RequestorId));
 
             VerifyPendingReview(m.Jobs, m.Changes);

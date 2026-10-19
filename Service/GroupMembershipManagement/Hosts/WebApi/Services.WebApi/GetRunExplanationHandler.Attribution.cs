@@ -15,6 +15,7 @@ using System.Net;
 using System.Text;
 using System.Text.Json;
 using System.Text.RegularExpressions;
+using Models.AdfRunHistory;
 
 namespace Services
 {
@@ -498,18 +499,16 @@ namespace Services
                 }
             }
 
-            string? latestRunId;
+            string latestTable;
             try
             {
-                latestRunId = await _dataFactoryRepository.GetMostRecentSucceededRunIdAsync();
+                latestTable = (await _adfRunHistoryRepository.GetLatestAdfRunAsync() ?? throw new InvalidOperationException(AdfRunHistory.NoEligibleRunMessage)).GetTableName();
             }
             catch (Exception ex)
             {
                 _logger.LogWarning(ex, "Current-state color: failed to fetch latest ADF run id; skipping.");
                 return empty;
             }
-            if (string.IsNullOrWhiteSpace(latestRunId)) return empty;
-            var latestTable = latestRunId.Replace("-", string.Empty);
 
             // Union of members currently matching each inclusionary SQL part (whole part: manager root + filter) in the latest table.
             // Emit combined current-state color ONLY when EVERY inclusionary SQL part was read successfully. A partial union (one part

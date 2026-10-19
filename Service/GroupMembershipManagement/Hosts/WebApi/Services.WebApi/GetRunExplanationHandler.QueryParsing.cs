@@ -14,6 +14,7 @@ using System.Net;
 using System.Text;
 using System.Text.Json;
 using System.Text.RegularExpressions;
+using Models.AdfRunHistory;
 
 namespace Services
 {
@@ -438,18 +439,17 @@ namespace Services
             var stillMissing = toResolve.Where(id => !resolved.ContainsKey(id)).ToList();
             if (stillMissing.Count > 0)
             {
-                string? latestAdfRunId = null;
+                string? latestTable = null;
                 try
                 {
-                    latestAdfRunId = await _dataFactoryRepository.GetMostRecentSucceededRunIdAsync();
+                    latestTable = (await _adfRunHistoryRepository.GetLatestAdfRunAsync() ?? throw new InvalidOperationException(AdfRunHistory.NoEligibleRunMessage)).GetTableName();
                 }
                 catch (Exception ex)
                 {
                     _logger.LogWarning(ex, "Failed to fetch latest ADF run id for manager-name fallback.");
                 }
-                if (!string.IsNullOrWhiteSpace(latestAdfRunId))
+                if (!string.IsNullOrWhiteSpace(latestTable))
                 {
-                    var latestTable = latestAdfRunId.Replace("-", string.Empty);
                     // Only bother if the fallback table differs from the tier-1 table.
                     var historicalTable = runAdfRunId.HasValue ? runAdfRunId.Value.ToString().Replace("-", string.Empty) : null;
                     if (!string.Equals(latestTable, historicalTable, StringComparison.OrdinalIgnoreCase))

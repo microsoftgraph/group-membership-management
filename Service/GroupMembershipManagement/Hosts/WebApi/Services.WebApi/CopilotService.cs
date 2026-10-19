@@ -17,6 +17,7 @@ using Repositories.Contracts;
 using Models;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Graph;
+using Models.AdfRunHistory;
 
 namespace Services.WebApi
 {
@@ -740,7 +741,7 @@ namespace Services.WebApi
             {
                 using var scope = _serviceScopeFactory.CreateScope();
                 var sqlRepo = scope.ServiceProvider.GetService<ISqlMembershipRepository>();
-                var adfRepo = scope.ServiceProvider.GetService<IDataFactoryRepository>();
+                var adfRepo = scope.ServiceProvider.GetService<IAdfRunHistoryRepository>();
 
                 if (sqlRepo == null || adfRepo == null)
                 {
@@ -748,11 +749,7 @@ namespace Services.WebApi
                     return (false, 0, 0);
                 }
 
-                var adfRunId = await adfRepo.GetMostRecentSucceededRunIdAsync();
-                var tableName = adfRunId?.Replace("-", "") ?? "";
-                
-                if (string.IsNullOrEmpty(tableName))
-                    return (false, 0, 0);
+                var tableName = (await adfRepo.GetLatestAdfRunAsync() ?? throw new InvalidOperationException(AdfRunHistory.NoEligibleRunMessage)).GetTableName();
 
                 // Use GetOrgLeaderDetailsAsync to get both employeeId and maxDepth in one call
                 var (maxDepth, employeeId) = await sqlRepo.GetOrgLeaderDetailsAsync(azureObjectId, tableName);
@@ -1028,7 +1025,7 @@ namespace Services.WebApi
 
             using var scope = _serviceScopeFactory.CreateScope();
             var sqlMembershipRepository = scope.ServiceProvider.GetService<ISqlMembershipRepository>();
-            var dataFactoryRepository = scope.ServiceProvider.GetService<IDataFactoryRepository>();
+            var dataFactoryRepository = scope.ServiceProvider.GetService<IAdfRunHistoryRepository>();
 
             if (sqlMembershipRepository == null || dataFactoryRepository == null)
             {
@@ -1038,8 +1035,7 @@ namespace Services.WebApi
             string tableName;
             try
             {
-                var adfRunId = await dataFactoryRepository.GetMostRecentSucceededRunIdAsync();
-                tableName = adfRunId?.Replace("-", "") ?? "";
+                tableName = (await dataFactoryRepository.GetLatestAdfRunAsync() ?? throw new InvalidOperationException(AdfRunHistory.NoEligibleRunMessage)).GetTableName();
             }
             catch (Exception ex)
             {

@@ -9,6 +9,7 @@ using Models.ServiceBus;
 using Models.SyncJobChange;
 using Repositories.Contracts;
 using Repositories.Contracts.Helpers;
+using Repositories.Contracts.Helpers;
 using Services.AutoApprover.Contracts;
 using Services.AutoApprover.Helpers;
 using System;
@@ -26,7 +27,7 @@ namespace Services.AutoApprover
         private readonly IGraphGroupRepository _graphGroupRepository;
         private readonly ISyncJobChangeRepository _syncJobChangeRepository;
         private readonly ISqlMembershipRepository _sqlMembershipRepository;
-        private readonly IDataFactoryRepository _dataFactoryRepository;
+        private readonly IAdfRunHistoryRepository _adfRunHistoryRepository;
         private readonly IDatabaseSqlMembershipSourcesRepository _sqlMembershipSourcesRepository;
         private readonly ILogger<AutoApproverService> _logger;
         private readonly TelemetryClient _telemetryClient;
@@ -40,7 +41,7 @@ namespace Services.AutoApprover
             IGraphGroupRepository graphGroupRepository,
             ISyncJobChangeRepository syncJobChangeRepository,
             ISqlMembershipRepository sqlMembershipRepository,
-            IDataFactoryRepository dataFactoryRepository,
+            IAdfRunHistoryRepository adfRunHistoryRepository,
             IDatabaseSqlMembershipSourcesRepository sqlMembershipSourcesRepository,
             ILogger<AutoApproverService> logger,
             TelemetryClient telemetryClient)
@@ -50,7 +51,7 @@ namespace Services.AutoApprover
             _graphGroupRepository = graphGroupRepository ?? throw new ArgumentNullException(nameof(graphGroupRepository));
             _syncJobChangeRepository = syncJobChangeRepository ?? throw new ArgumentNullException(nameof(syncJobChangeRepository));
             _sqlMembershipRepository = sqlMembershipRepository ?? throw new ArgumentNullException(nameof(sqlMembershipRepository));
-            _dataFactoryRepository = dataFactoryRepository ?? throw new ArgumentNullException(nameof(dataFactoryRepository));
+            _adfRunHistoryRepository = adfRunHistoryRepository ?? throw new ArgumentNullException(nameof(adfRunHistoryRepository));
             _sqlMembershipSourcesRepository = sqlMembershipSourcesRepository ?? throw new ArgumentNullException(nameof(sqlMembershipSourcesRepository));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _telemetryClient = telemetryClient ?? throw new ArgumentNullException(nameof(telemetryClient));
@@ -411,14 +412,14 @@ namespace Services.AutoApprover
         {
             try
             {
-                var runId = await _dataFactoryRepository.GetMostRecentSucceededRunIdAsync();
-                if (string.IsNullOrEmpty(runId))
+                var adfRun = await _adfRunHistoryRepository.GetLatestAdfRunAsync();
+                if (adfRun is null)
                 {
-                    _logger.RunIdRetrievalError(new InvalidOperationException("GetMostRecentSucceededRunIdAsync returned an empty run id."));
+                    _logger.RunIdRetrievalError(new InvalidOperationException("No eligible ADF run is available; see the AdfRunHistoryRepository warning for the cause."));
                     return null;
                 }
 
-                return runId.Replace("-", string.Empty);
+                return adfRun.GetTableName();
             }
             catch (Exception ex)
             {

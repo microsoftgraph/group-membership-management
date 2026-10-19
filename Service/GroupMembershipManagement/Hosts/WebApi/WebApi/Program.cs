@@ -27,8 +27,8 @@ using Microsoft.OpenApi.Models;
 using Repositories.BlobStorage;
 using Repositories.Contracts;
 using Repositories.Contracts.InjectConfig;
-using Repositories.DataFactory;
 using Repositories.EntityFramework;
+using Repositories.EntityFramework.AdfContexts;
 using Repositories.EntityFramework.Contexts;
 using Repositories.GraphGroups;
 using Repositories.Localization;
@@ -303,27 +303,14 @@ namespace WebApi
             });
             builder.Services.AddSingleton<ILocalizationRepository, LocalizationRepository>();
 
-            builder.Services.AddOptions<DataFactorySecrets<IDataFactoryRepository>>().Configure<IConfiguration>((settings, configuration) =>
-            {
-                settings.Pipeline = configuration.GetValue<string>("ADF:Pipeline");
-                settings.DataFactoryName = configuration.GetValue<string>("ADF:DataFactoryName");
-                settings.SubscriptionId = configuration.GetValue<string>("ADF:SubscriptionId");
-                settings.ResourceGroup = configuration.GetValue<string>("ADF:ResourceGroup");
-            });
-
-            builder.Services.AddSingleton<IDataFactorySecret<IDataFactoryRepository>>(services =>
-            {
-                var settings = services.GetRequiredService<IOptions<DataFactorySecrets<IDataFactoryRepository>>>();
-                return new DataFactorySecrets<IDataFactoryRepository>(
-                    settings.Value.Pipeline,
-                    settings.Value.DataFactoryName,
-                    settings.Value.SubscriptionId,
-                    settings.Value.ResourceGroup
-                );
-            });
-
-            builder.Services.AddSingleton<IKeyVaultSecret<ISqlMembershipRepository>>(services => new KeyVaultSecret<ISqlMembershipRepository>(services.GetService<IConfiguration>().GetValue<string>("Settings:SqlServerConnectionString")));
+            builder.Services.AddSingleton<IKeyVaultSecret<ISqlMembershipRepository>>(_ => new KeyVaultSecret<ISqlMembershipRepository>(builder.Configuration.GetValue<string>("Settings:SqlServerConnectionString")));
             builder.Services.AddSingleton<ISqlMembershipRepository, SqlMembershipRepository>();
+            builder.Services.AddDbContext<AdfContext>(options =>
+                options.UseSqlServer(builder.Configuration.GetValue<string>("Settings:SqlServerConnectionString"), sqlServerOptions =>
+                {
+                    sqlServerOptions.EnableRetryOnFailure();
+                }));
+            builder.Services.AddScoped<IAdfRunHistoryRepository, AdfRunHistoryRepository>();
 
             builder.Services.AddScoped<INotificationRepository, NotificationRepository>();
 
@@ -401,7 +388,6 @@ namespace WebApi
                 settings.KeyVaultName = configuration.GetValue<string>("Settings:GraphCredentials:KeyVaultName");
             });
 
-            builder.Services.AddScoped<IDataFactoryRepository, DataFactoryRepository>();
             builder.Services.AddScoped<IDatabaseSyncJobsRepository, DatabaseSyncJobsRepository>();
             builder.Services.AddSingleton<IBlobStorageRepository>(sp =>
             {
@@ -425,11 +411,12 @@ namespace WebApi
             builder.Services.AddScoped<IServiceStatusRepository, ServiceStatusRepository>();
 
             builder.Services.AddOptions<ResourceManagerServiceConfiguration>()
-                            .Configure<IConfiguration, IDataFactorySecret<IDataFactoryRepository>>((settings, configuration, dataFactorySecrets) =>
+                            .Configure<IConfiguration>((settings, configuration) =>
                             {
-                                var computeResourceGroup = dataFactorySecrets.ResourceGroup.Replace("data", "compute", StringComparison.InvariantCultureIgnoreCase);
-                                settings.SubscriptionId = dataFactorySecrets.SubscriptionId;
-                                settings.DataResourceGroup = dataFactorySecrets.ResourceGroup;
+                                var dataResourceGroup = configuration.GetValue<string>("ADF:ResourceGroup");
+                                var computeResourceGroup = dataResourceGroup.Replace("data", "compute", StringComparison.InvariantCultureIgnoreCase);
+                                settings.SubscriptionId = configuration.GetValue<string>("ADF:SubscriptionId");
+                                settings.DataResourceGroup = dataResourceGroup;
                                 settings.ComputeResourceGroup = computeResourceGroup;
                             });
 
@@ -597,6 +584,13 @@ namespace WebApi
             {
                 var db = scope.ServiceProvider.GetRequiredService<GMMContext>();
                 db.Database.Migrate();
+            }
+
+            // AdfRunHistory lives in the ADF database, so it is migrated through its own context.
+            using (var scope = app.Services.CreateScope())
+            {
+                var adfContext = scope.ServiceProvider.GetRequiredService<AdfContext>();
+                adfContext.Database.Migrate();
             }
 
             app.UseAzureAppConfiguration();

@@ -3,6 +3,7 @@
 
 using Microsoft.Extensions.Logging.Abstractions;
 using Models;
+using Models.AdfRunHistory;
 using Models.SyncJobChange;
 using Moq;
 using Repositories.Contracts;
@@ -26,7 +27,7 @@ namespace WebApi.Tests
         private Mock<ISyncJobHistoryRepository> _mockSyncJobHistoryRepository = null!;
         private Mock<ISyncJobChangeRepository> _mockSyncJobChangeRepository = null!;
         private Mock<IBlobStorageRepository> _mockBlobStorageRepository = null!;
-        private Mock<IDataFactoryRepository> _mockDataFactoryRepository = null!;
+        private Mock<IAdfRunHistoryRepository> _mockAdfRunHistoryRepository = null!;
         private Mock<ISqlMembershipRepository> _mockSqlMembershipRepository = null!;
         private Mock<IDatabaseSqlMembershipSourcesRepository> _mockSqlMembershipSourcesRepository = null!;
         private Mock<IGraphGroupRepository> _mockGraphGroupRepository = null!;
@@ -52,7 +53,7 @@ namespace WebApi.Tests
             _mockSyncJobHistoryRepository = new Mock<ISyncJobHistoryRepository>();
             _mockSyncJobChangeRepository = new Mock<ISyncJobChangeRepository>();
             _mockBlobStorageRepository = new Mock<IBlobStorageRepository>();
-            _mockDataFactoryRepository = new Mock<IDataFactoryRepository>();
+            _mockAdfRunHistoryRepository = new Mock<IAdfRunHistoryRepository>();
             _mockSqlMembershipRepository = new Mock<ISqlMembershipRepository>();
             _mockSqlMembershipSourcesRepository = new Mock<IDatabaseSqlMembershipSourcesRepository>();
             _mockGraphGroupRepository = new Mock<IGraphGroupRepository>();
@@ -65,7 +66,7 @@ namespace WebApi.Tests
                 _mockSyncJobHistoryRepository.Object,
                 _mockSyncJobChangeRepository.Object,
                 _mockBlobStorageRepository.Object,
-                _mockDataFactoryRepository.Object,
+                _mockAdfRunHistoryRepository.Object,
                 _mockSqlMembershipRepository.Object,
                 _mockSqlMembershipSourcesRepository.Object,
                 _mockGraphGroupRepository.Object,
@@ -1126,8 +1127,8 @@ namespace WebApi.Tests
             Assert.AreEqual(HttpStatusCode.OK, response.StatusCode);
             Assert.AreEqual("User was added because their Building is B40.", response.Explanation);
 
-            _mockDataFactoryRepository.Verify(
-                x => x.GetMostRecentSucceededRunIdAsync(), Times.Never,
+            _mockAdfRunHistoryRepository.Verify(
+                x => x.GetLatestAdfRunAsync(It.IsAny<string?>(), It.IsAny<CancellationToken>()), Times.Never,
                 "Should use AdfRunId from history instead of fetching the most recent run.");
 
             _mockSqlMembershipRepository.Verify(
@@ -1171,8 +1172,8 @@ namespace WebApi.Tests
 
             Assert.AreEqual(HttpStatusCode.OK, response.StatusCode);
 
-            _mockDataFactoryRepository.Verify(
-                x => x.GetMostRecentSucceededRunIdAsync(), Times.Never,
+            _mockAdfRunHistoryRepository.Verify(
+                x => x.GetLatestAdfRunAsync(It.IsAny<string?>(), It.IsAny<CancellationToken>()), Times.Never,
                 "Should not attempt fallback when AdfRunId is null.");
         }
 
@@ -1208,8 +1209,8 @@ namespace WebApi.Tests
 
             Assert.AreEqual(HttpStatusCode.OK, response.StatusCode);
 
-            _mockDataFactoryRepository.Verify(
-                x => x.GetMostRecentSucceededRunIdAsync(), Times.Never,
+            _mockAdfRunHistoryRepository.Verify(
+                x => x.GetLatestAdfRunAsync(It.IsAny<string?>(), It.IsAny<CancellationToken>()), Times.Never,
                 "Should not attempt fallback when AdfRunId is Guid.Empty.");
         }
 
@@ -1218,9 +1219,9 @@ namespace WebApi.Tests
             var adfRunId = Guid.NewGuid().ToString();
             var tableName = adfRunId.Replace("-", "");
 
-            _mockDataFactoryRepository
-                .Setup(x => x.GetMostRecentSucceededRunIdAsync())
-                .ReturnsAsync(adfRunId);
+            _mockAdfRunHistoryRepository
+                .Setup(x => x.GetLatestAdfRunAsync(It.IsAny<string?>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new AdfRunHistory { AdfRunId = Guid.Parse(adfRunId) });
 
             _mockSqlMembershipRepository
                 .Setup(x => x.CheckIfTableExistsAsync(tableName))

@@ -15,7 +15,9 @@ using Microsoft.Azure.Functions.Worker.ApplicationInsights;
 using Repositories.BlobStorage;
 using Repositories.Contracts;
 using Repositories.Contracts.InjectConfig;
-using Repositories.DataFactory;
+using Microsoft.EntityFrameworkCore;
+using Repositories.EntityFramework;
+using Repositories.EntityFramework.AdfContexts;
 using Repositories.ServiceBusQueue;
 using Repositories.SqlMembershipRepository;
 using Models;
@@ -67,18 +69,16 @@ namespace Hosts.SqlMembershipObtainer
                         new KeyVaultSecret<ISqlMembershipRepository>(CommonServices.GetValueOrThrowBase(configuration, "sqlServerMSIConnectionString")));
                     services.AddSingleton<ISqlMembershipRepository, SqlMembershipRepository>();
 
-                    services.AddSingleton<IDataFactorySecret<IDataFactoryRepository>>(new DataFactorySecrets<IDataFactoryRepository>(
-                        CommonServices.GetValueOrThrowBase(configuration, "pipeline"),
-                        CommonServices.GetValueOrThrowBase(configuration, "dataFactoryName"),
-                        CommonServices.GetValueOrThrowBase(configuration, "subscriptionId"),
-                        CommonServices.GetValueOrThrowBase(configuration, "dataResourceGroup")));
-
-                    services.AddSingleton<IDataFactoryRepository, DataFactoryRepository>();
+                    services.AddDbContext<AdfContext>(options =>
+                        options.UseSqlServer(CommonServices.GetValueOrThrowBase(configuration, "sqlServerMSIConnectionString"), sqlServerOptions =>
+                        {
+                            sqlServerOptions.EnableRetryOnFailure();
+                        }));
+                    services.AddScoped<IAdfRunHistoryRepository, AdfRunHistoryRepository>();
 
                     services.AddGraphAPIClient();
 
                     services.AddScoped<ISyncJobStatusService, SyncJobStatusService>();
-                    services.AddSingleton<IDataFactoryService, DataFactoryService>();
                     services.AddScoped<ISqlMembershipObtainerService, SqlMembershipObtainerService>();
 
                     services.AddSingleton<IServiceBusQueueRepository, ServiceBusQueueRepository>(services =>

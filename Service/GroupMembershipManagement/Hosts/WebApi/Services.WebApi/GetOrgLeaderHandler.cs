@@ -5,27 +5,27 @@ using Services.Contracts;
 using Services.Messages.Requests;
 using Services.Messages.Responses;
 using Microsoft.Extensions.Logging;
+using Models.AdfRunHistory;
 
 namespace Services
 {
     public class GetOrgLeaderHandler : RequestHandlerBase<GetOrgLeaderRequest, GetOrgLeaderResponse>
     {
-        private readonly IDataFactoryRepository _dataFactoryRepository;
+        private readonly IAdfRunHistoryRepository _adfRunHistoryRepository;
         private readonly ISqlMembershipRepository _sqlMembershipRepository;
 
         public GetOrgLeaderHandler(ILogger<GetOrgLeaderHandler> logger,
                                 ISqlMembershipRepository sqlMembershipRepository,
-                                IDataFactoryRepository dataFactoryRepository) : base(logger)
+                                IAdfRunHistoryRepository adfRunHistoryRepository) : base(logger)
         {
-            _dataFactoryRepository = dataFactoryRepository ?? throw new ArgumentNullException(nameof(dataFactoryRepository));
+            _adfRunHistoryRepository = adfRunHistoryRepository ?? throw new ArgumentNullException(nameof(adfRunHistoryRepository));
             _sqlMembershipRepository = sqlMembershipRepository ?? throw new ArgumentNullException(nameof(sqlMembershipRepository));
         }
 
         protected override async Task<GetOrgLeaderResponse> ExecuteCoreAsync(GetOrgLeaderRequest request)
         {
             var response = new GetOrgLeaderResponse();
-            var adfRunId = await _dataFactoryRepository.GetMostRecentSucceededRunIdAsync();
-            var tableName = adfRunId.Replace("-", "");
+            var tableName = (await _adfRunHistoryRepository.GetLatestAdfRunAsync() ?? throw new InvalidOperationException(AdfRunHistory.NoEligibleRunMessage)).GetTableName();
             var (maxDepth, azureObjectId) = await _sqlMembershipRepository.GetOrgLeaderAsync(request.EmployeeId, tableName);
             response.MaxDepth = maxDepth;
             response.AzureObjectId = azureObjectId;

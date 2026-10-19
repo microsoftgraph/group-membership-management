@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Models;
+using Models.AdfRunHistory;
 using Moq;
 using Repositories.Contracts;
 using Services.Messages.Responses;
@@ -23,7 +24,7 @@ namespace Services.Tests
     public class SqlMembershipSourcesControllerTests
     {
         private Mock<IDatabaseSqlMembershipSourcesRepository> _databaseSqlMembershipSourcesRepository = null!;
-        private Mock<IDataFactoryRepository> _dataFactoryRepository = null!;
+        private Mock<IAdfRunHistoryRepository> _adfRunHistoryRepository = null!;
         private Mock<ISqlMembershipRepository> _sqlMembershipRepository = null!;
 
         private GetDefaultSqlMembershipSourceHandler _getDefaultSqlMembershipSourceHandler = null!;
@@ -40,17 +41,17 @@ namespace Services.Tests
         public void Initialize()
         {
             _databaseSqlMembershipSourcesRepository = new Mock<IDatabaseSqlMembershipSourcesRepository>();
-            _dataFactoryRepository = new Mock<IDataFactoryRepository>();
+            _adfRunHistoryRepository = new Mock<IAdfRunHistoryRepository>();
             _sqlMembershipRepository = new Mock<ISqlMembershipRepository>();
 
             _getDefaultSqlMembershipSourceHandler = new GetDefaultSqlMembershipSourceHandler(NullLogger<GetDefaultSqlMembershipSourceHandler>.Instance, _databaseSqlMembershipSourcesRepository.Object);
-            _getDefaultSqlMembershipSourceAttributesHandler = new GetDefaultSqlMembershipSourceAttributesHandler(NullLogger<GetDefaultSqlMembershipSourceAttributesHandler>.Instance, _databaseSqlMembershipSourcesRepository.Object, _dataFactoryRepository.Object, _sqlMembershipRepository.Object);
-            _getDefaultSqlMembershipSourceAttributeMappingsHandler = new GetDefaultSqlMembershipSourceAttributeMappingsHandler(NullLogger<GetDefaultSqlMembershipSourceAttributeMappingsHandler>.Instance, _dataFactoryRepository.Object, _sqlMembershipRepository.Object);
-            _resolveDefaultSqlMembershipSourceAttributeMappingsHandler = new ResolveDefaultSqlMembershipSourceAttributeMappingsHandler(NullLogger<ResolveDefaultSqlMembershipSourceAttributeMappingsHandler>.Instance, _dataFactoryRepository.Object, _sqlMembershipRepository.Object);
-            _getDefaultSqlMembershipSourceAttributeValuesHandler = new GetDefaultSqlMembershipSourceAttributeValuesHandler(NullLogger<GetDefaultSqlMembershipSourceAttributeValuesHandler>.Instance, _dataFactoryRepository.Object, _sqlMembershipRepository.Object);
+            _getDefaultSqlMembershipSourceAttributesHandler = new GetDefaultSqlMembershipSourceAttributesHandler(NullLogger<GetDefaultSqlMembershipSourceAttributesHandler>.Instance, _databaseSqlMembershipSourcesRepository.Object, _adfRunHistoryRepository.Object, _sqlMembershipRepository.Object);
+            _getDefaultSqlMembershipSourceAttributeMappingsHandler = new GetDefaultSqlMembershipSourceAttributeMappingsHandler(NullLogger<GetDefaultSqlMembershipSourceAttributeMappingsHandler>.Instance, _adfRunHistoryRepository.Object, _sqlMembershipRepository.Object);
+            _resolveDefaultSqlMembershipSourceAttributeMappingsHandler = new ResolveDefaultSqlMembershipSourceAttributeMappingsHandler(NullLogger<ResolveDefaultSqlMembershipSourceAttributeMappingsHandler>.Instance, _adfRunHistoryRepository.Object, _sqlMembershipRepository.Object);
+            _getDefaultSqlMembershipSourceAttributeValuesHandler = new GetDefaultSqlMembershipSourceAttributeValuesHandler(NullLogger<GetDefaultSqlMembershipSourceAttributeValuesHandler>.Instance, _adfRunHistoryRepository.Object, _sqlMembershipRepository.Object);
             _patchDefaultSqlMembershipSourceCustomLabelHandler = new PatchDefaultSqlMembershipSourceCustomLabelHandler(NullLogger<PatchDefaultSqlMembershipSourceCustomLabelHandler>.Instance, _databaseSqlMembershipSourcesRepository.Object);
             _patchDefaultSqlMembershipSourceAttributesHandler = new PatchDefaultSqlMembershipSourceAttributesHandler(NullLogger<PatchDefaultSqlMembershipSourceAttributesHandler>.Instance, _databaseSqlMembershipSourcesRepository.Object);
-            _getSqlValidationHandler = new GetSqlValidationHandler(NullLogger<GetSqlValidationHandler>.Instance, _sqlMembershipRepository.Object, _dataFactoryRepository.Object);
+            _getSqlValidationHandler = new GetSqlValidationHandler(NullLogger<GetSqlValidationHandler>.Instance, _sqlMembershipRepository.Object, _adfRunHistoryRepository.Object);
 
             _sqlMembershipSourcesController = new SqlMembershipSourcesController(_getDefaultSqlMembershipSourceHandler,
                 _getDefaultSqlMembershipSourceAttributesHandler,
@@ -95,7 +96,7 @@ namespace Services.Tests
             _sqlMembershipRepository.Setup(x => x.GetAttributeValuesAsync(It.IsAny<string>(), It.IsAny<bool>(), It.IsAny<string>())).ReturnsAsync(new List<string> { "Value1", "Value2", "Value3" });
             _sqlMembershipRepository.Setup(x => x.CheckIfTableExistsAsync(It.IsAny<string>())).ReturnsAsync(true);
             _sqlMembershipRepository.Setup(x => x.CheckIfMappingsTableExistsAsync(It.IsAny<string>())).ReturnsAsync(true);
-            _dataFactoryRepository.Setup(x => x.GetMostRecentSucceededRunIdAsync()).ReturnsAsync("RUN ID");
+            _adfRunHistoryRepository.Setup(x => x.GetLatestAdfRunAsync(It.IsAny<string?>(), It.IsAny<CancellationToken>())).ReturnsAsync(new AdfRunHistory { AdfRunId = Guid.Parse("0f8fad5b-d9cb-469f-a165-70867728950e") });
         }
 
         [TestMethod]
@@ -511,7 +512,7 @@ namespace Services.Tests
         [TestMethod]
         public async Task SuccessfulValidateGoodFiltersAsync()
         {
-            _sqlMembershipRepository.Setup(x => x.ValidateFiltersAsync(It.IsAny<Dictionary<int, string>>(), "RUN ID")).ReturnsAsync(new Dictionary<int, string>());
+            _sqlMembershipRepository.Setup(x => x.ValidateFiltersAsync(It.IsAny<Dictionary<int, string>>(), "0f8fad5bd9cb469fa16570867728950e")).ReturnsAsync(new Dictionary<int, string>());
 
             var sqlFilters = new Dictionary<int, string>() { { 0, "filter1" }, { 1, "filter2" } };
             var response = await _sqlMembershipSourcesController.ValidateSqlFilterAsync(sqlFilters);
@@ -531,7 +532,7 @@ namespace Services.Tests
         public async Task SuccessfulValidateBadFiltersAsync()
         {
             var exceptionsDictionary = new Dictionary<int, string>() { { 0, "Sql Error"} };
-            _sqlMembershipRepository.Setup(x => x.ValidateFiltersAsync(It.IsAny<Dictionary<int, string>>(), "RUN ID")).ReturnsAsync(exceptionsDictionary);
+            _sqlMembershipRepository.Setup(x => x.ValidateFiltersAsync(It.IsAny<Dictionary<int, string>>(), "0f8fad5bd9cb469fa16570867728950e")).ReturnsAsync(exceptionsDictionary);
 
             var sqlFilters = new Dictionary<int, string>() { { 0, "filter1" }, { 1, "filter2" } };
             var response = await _sqlMembershipSourcesController.ValidateSqlFilterAsync(sqlFilters);

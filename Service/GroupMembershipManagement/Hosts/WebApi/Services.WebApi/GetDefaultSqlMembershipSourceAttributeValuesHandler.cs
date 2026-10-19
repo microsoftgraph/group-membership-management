@@ -8,21 +8,22 @@ using Services.Contracts;
 using Services.Messages.Requests;
 using Services.Messages.Responses;
 using Microsoft.Extensions.Logging;
+using Models.AdfRunHistory;
 
 namespace Services
 {
     public class GetDefaultSqlMembershipSourceAttributeValuesHandler : RequestHandlerBase<GetDefaultSqlMembershipSourceAttributeValuesRequest, GetDefaultSqlMembershipSourceAttributeValuesResponse>
     {
         private readonly ILogger<GetDefaultSqlMembershipSourceAttributeValuesHandler> _logger;
-        private readonly IDataFactoryRepository _dataFactoryRepository;
+        private readonly IAdfRunHistoryRepository _adfRunHistoryRepository;
         private readonly ISqlMembershipRepository _sqlMembershipRepository;
 
         public GetDefaultSqlMembershipSourceAttributeValuesHandler(ILogger<GetDefaultSqlMembershipSourceAttributeValuesHandler> logger,
-                              IDataFactoryRepository dataFactoryRepository,
+                              IAdfRunHistoryRepository adfRunHistoryRepository,
                               ISqlMembershipRepository sqlMembershipRepository) : base(logger)
         {
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-            _dataFactoryRepository = dataFactoryRepository ?? throw new ArgumentNullException(nameof(dataFactoryRepository));
+            _adfRunHistoryRepository = adfRunHistoryRepository ?? throw new ArgumentNullException(nameof(adfRunHistoryRepository));
             _sqlMembershipRepository = sqlMembershipRepository ?? throw new ArgumentNullException(nameof(sqlMembershipRepository));
         }
 
@@ -69,8 +70,7 @@ namespace Services
 
         private async Task<string> GetTableNameAsync()
         {
-            var adfRunId = await GetADFRunIdAsync();
-            var tableName = adfRunId.Replace("-", "");
+            var tableName = (await _adfRunHistoryRepository.GetLatestAdfRunAsync() ?? throw new InvalidOperationException(AdfRunHistory.NoEligibleRunMessage)).GetTableName();
             var tableExists = await CheckIfTableExistsAsync(tableName);
 
             return tableExists ? tableName : "";
@@ -91,19 +91,6 @@ namespace Services
             }
 
             return tableExists;
-        }
-
-        private async Task<string> GetADFRunIdAsync()
-        {
-            var lastSqlMembershipRunId = await _dataFactoryRepository.GetMostRecentSucceededRunIdAsync();
-
-            if (string.IsNullOrWhiteSpace(lastSqlMembershipRunId))
-            {
-                _logger.SqlMembershipAdfRunIdNotFound();
-                throw new ArgumentException("No SqlMembershipObtainer pipeline run has been found");
-            }
-
-            return lastSqlMembershipRunId;
         }
     }
 }

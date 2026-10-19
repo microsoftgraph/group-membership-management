@@ -6,6 +6,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Models;
+using Models.AdfRunHistory;
 using Models.ServiceBus;
 using Moq;
 using Repositories.Contracts;
@@ -16,6 +17,7 @@ using Services.Tests.Helpers;
 using SqlMembershipObtainer.Entities;
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Text.Json;
 using System.Threading.Tasks;
@@ -42,8 +44,7 @@ namespace Services.Tests
             var dryRunValue = new Mock<IDryRunValue>();
             var groupMembership = default(GroupMembership);
             var messages = new List<string>();
-            var dfRepository = new Mock<IDataFactoryRepository>();
-            var dfService = new Mock<IDataFactoryService>();
+            var dfService = new Mock<IAdfRunHistoryRepository>();
 
             blobStorageRepository.Setup(x => x.UploadFileAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<Dictionary<string, string>>()))
                                     .Callback<string, string, Dictionary<string, string>>((path, content, metadata) =>
@@ -132,7 +133,7 @@ namespace Services.Tests
                                 NullLogger<SqlMembershipObtainerService>.Instance,
                                 new TelemetryClient(new TelemetryConfiguration()),
                                 new Mock<IDryRunValue>().Object,
-                                new Mock<IDataFactoryService>().Object);
+                                new Mock<IAdfRunHistoryRepository>().Object);
 
             var syncJob = new SyncJob { Id = Guid.NewGuid(), RunId = Guid.NewGuid(), MembershipType = "GroupMembership" };
             syncJob.Group = new Group { SyncJobId = syncJob.Id, GroupId = Guid.NewGuid() };
@@ -162,7 +163,7 @@ namespace Services.Tests
             var logger = NullLogger<SqlMembershipObtainerService>.Instance;
             var telemetryClient = new TelemetryClient(new TelemetryConfiguration());
             var dryRunValue = new Mock<IDryRunValue>();
-            var dfService = new Mock<IDataFactoryService>();
+            var dfService = new Mock<IAdfRunHistoryRepository>();
 
             var syncJob = new SyncJob { Id = Guid.NewGuid(), RunId = Guid.NewGuid() };
             var groupId = Guid.NewGuid();
@@ -209,7 +210,7 @@ namespace Services.Tests
             var logger = NullLogger<SqlMembershipObtainerService>.Instance;
             var telemetryClient = new TelemetryClient(new TelemetryConfiguration());
             var dryRunValue = new Mock<IDryRunValue>();
-            var dfService = new Mock<IDataFactoryService>();
+            var dfService = new Mock<IAdfRunHistoryRepository>();
 
             var syncJob = new SyncJob { Id = Guid.NewGuid(), RunId = Guid.NewGuid() };
             var groupId = Guid.NewGuid();
@@ -255,7 +256,7 @@ namespace Services.Tests
             var logger = NullLogger<SqlMembershipObtainerService>.Instance;
             var telemetryClient = new TelemetryClient(new TelemetryConfiguration());
             var dryRunValue = new Mock<IDryRunValue>();
-            var dfService = new Mock<IDataFactoryService>();
+            var dfService = new Mock<IAdfRunHistoryRepository>();
 
             var syncJob = new SyncJob { Id = Guid.NewGuid(), RunId = Guid.NewGuid() };
             var groupId = Guid.NewGuid();
@@ -303,7 +304,7 @@ namespace Services.Tests
             var logger = NullLogger<SqlMembershipObtainerService>.Instance;
             var telemetryClient = new TelemetryClient(new TelemetryConfiguration());
             var dryRunValue = new Mock<IDryRunValue>();
-            var dfService = new Mock<IDataFactoryService>();
+            var dfService = new Mock<IAdfRunHistoryRepository>();
 
             var syncJob = new SyncJob { Id = Guid.NewGuid(), RunId = Guid.NewGuid() };
             var groupId = Guid.NewGuid();
@@ -351,7 +352,7 @@ namespace Services.Tests
             var logger = NullLogger<SqlMembershipObtainerService>.Instance;
             var telemetryClient = new TelemetryClient(new TelemetryConfiguration());
             var dryRunValue = new Mock<IDryRunValue>();
-            var dfService = new Mock<IDataFactoryService>();
+            var dfService = new Mock<IAdfRunHistoryRepository>();
 
             var syncJob = new SyncJob { Id = Guid.NewGuid(), RunId = Guid.NewGuid() };
             var groupId = Guid.NewGuid();
@@ -402,7 +403,7 @@ namespace Services.Tests
             var logger = NullLogger<SqlMembershipObtainerService>.Instance;
             var telemetryClient = new TelemetryClient(new TelemetryConfiguration());
             var dryRunValue = new Mock<IDryRunValue>();
-            var dfService = new Mock<IDataFactoryService>();
+            var dfService = new Mock<IAdfRunHistoryRepository>();
 
             var syncJob = new SyncJob { Id = Guid.NewGuid(), RunId = Guid.NewGuid() };
             var groupId = Guid.NewGuid();
@@ -453,7 +454,7 @@ namespace Services.Tests
             var logger = NullLogger<SqlMembershipObtainerService>.Instance;
             var telemetryClient = new TelemetryClient(new TelemetryConfiguration());
             var dryRunValue = new Mock<IDryRunValue>();
-            var dfService = new Mock<IDataFactoryService>();
+            var dfService = new Mock<IAdfRunHistoryRepository>();
 
             var syncJob = new SyncJob { Id = Guid.NewGuid(), RunId = Guid.NewGuid() };
             var groupId = Guid.NewGuid();
@@ -503,7 +504,7 @@ namespace Services.Tests
             var logger = NullLogger<SqlMembershipObtainerService>.Instance;
             var telemetryClient = new TelemetryClient(new TelemetryConfiguration());
             var dryRunValue = new Mock<IDryRunValue>();
-            var dfService = new Mock<IDataFactoryService>();
+            var dfService = new Mock<IAdfRunHistoryRepository>();
 
             var syncJob = new SyncJob { Id = Guid.NewGuid(), RunId = Guid.NewGuid() };
             var groupId = Guid.NewGuid();
@@ -551,7 +552,7 @@ namespace Services.Tests
             var logger = NullLogger<SqlMembershipObtainerService>.Instance;
             var telemetryClient = new TelemetryClient(new TelemetryConfiguration());
             var dryRunValue = new Mock<IDryRunValue>();
-            var dfService = new Mock<IDataFactoryService>();
+            var dfService = new Mock<IAdfRunHistoryRepository>();
             var groupMembership = default(GroupMembership);
 
             blobStorageRepository.Setup(x => x.UploadFileAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<Dictionary<string, string>>()))
@@ -614,7 +615,7 @@ namespace Services.Tests
             var logger = NullLogger<SqlMembershipObtainerService>.Instance;
             var telemetryClient = new TelemetryClient(new TelemetryConfiguration());
             var dryRunValue = new Mock<IDryRunValue>();
-            var dfService = new Mock<IDataFactoryService>();
+            var dfService = new Mock<IAdfRunHistoryRepository>();
             var groupMembership = default(GroupMembership);
 
             blobStorageRepository.Setup(x => x.UploadFileAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<Dictionary<string, string>>()))
@@ -663,7 +664,7 @@ namespace Services.Tests
         }
 
         [TestMethod]
-        public async Task GetTableNameAsync_ReturnsAdfRunIdGuid_WhenAdfReturnsValidGuid()
+        public async Task GetTableNameAsync_ReturnsAdfRunIdAndTable()
         {
             var sqlMembershipRepository = new Mock<ISqlMembershipRepository>();
             var blobStorageRepository = new Mock<IBlobStorageRepository>();
@@ -673,19 +674,19 @@ namespace Services.Tests
             var logger = NullLogger<SqlMembershipObtainerService>.Instance;
             var telemetryClient = new TelemetryClient(new TelemetryConfiguration());
             var dryRunValue = new Mock<IDryRunValue>();
-            var dfService = new Mock<IDataFactoryService>();
+            var dfService = new Mock<IAdfRunHistoryRepository>();
 
             var runId = Guid.NewGuid();
             var targetGroupId = Guid.NewGuid();
-            var adfRunIdString = "12345678-1234-1234-1234-123456789012";
-            var expectedTableName = adfRunIdString.Replace("-", "");
-            var expectedAdfRunGuid = Guid.Parse(adfRunIdString);
+            var expectedAdfRunGuid = Guid.Parse("12345678-1234-1234-1234-123456789012");
+            var expectedTableName = expectedAdfRunGuid.ToString("N");
 
-            dfService.Setup(x => x.GetMostRecentSucceededRunIdAsync(runId))
-                .ReturnsAsync(adfRunIdString);
-
-            sqlMembershipRepository.Setup(x => x.CheckIfTableExistsAsync(expectedTableName))
-                .ReturnsAsync(true);
+            dfService.Setup(x => x.GetLatestAdfRunAsync(runId.ToString("D")))
+                .ReturnsAsync(new AdfRunHistory
+                {
+                    AdfRunId = expectedAdfRunGuid,
+                    PublishedAtUtc = DateTime.UtcNow,
+                });
 
             var sqlMembershipObtainerService = new SqlMembershipObtainerService(
                                             sqlMembershipRepository.Object,
@@ -705,7 +706,7 @@ namespace Services.Tests
         }
 
         [TestMethod]
-        public async Task GetTableNameAsync_ReturnsNullAdfRunId_WhenAdfReturnsNonGuidString()
+        public async Task GetTableNameAsync_DerivesTableNameFromAdfRunId()
         {
             var sqlMembershipRepository = new Mock<ISqlMembershipRepository>();
             var blobStorageRepository = new Mock<IBlobStorageRepository>();
@@ -715,18 +716,19 @@ namespace Services.Tests
             var logger = NullLogger<SqlMembershipObtainerService>.Instance;
             var telemetryClient = new TelemetryClient(new TelemetryConfiguration());
             var dryRunValue = new Mock<IDryRunValue>();
-            var dfService = new Mock<IDataFactoryService>();
+            var dfService = new Mock<IAdfRunHistoryRepository>();
 
             var runId = Guid.NewGuid();
             var targetGroupId = Guid.NewGuid();
-            var adfRunIdString = "not-a-guid";
-            var expectedTableName = adfRunIdString.Replace("-", "");
+            var expectedAdfRunGuid = Guid.NewGuid();
+            var expectedTableName = expectedAdfRunGuid.ToString("N");
 
-            dfService.Setup(x => x.GetMostRecentSucceededRunIdAsync(runId))
-                .ReturnsAsync(adfRunIdString);
-
-            sqlMembershipRepository.Setup(x => x.CheckIfTableExistsAsync(expectedTableName))
-                .ReturnsAsync(true);
+            dfService.Setup(x => x.GetLatestAdfRunAsync(runId.ToString("D")))
+                .ReturnsAsync(new AdfRunHistory
+                {
+                    AdfRunId = expectedAdfRunGuid,
+                    PublishedAtUtc = DateTime.UtcNow,
+                });
 
             var sqlMembershipObtainerService = new SqlMembershipObtainerService(
                                             sqlMembershipRepository.Object,
@@ -742,50 +744,32 @@ namespace Services.Tests
 
             Assert.IsNotNull(result);
             Assert.AreEqual(expectedTableName, result.TableName);
-            Assert.IsNull(result.AdfRunId);
+            Assert.AreEqual(expectedAdfRunGuid, result.AdfRunId);
         }
 
         [TestMethod]
-        public async Task GetTableNameAsync_ReturnsEmptyTableName_WhenTableDoesNotExist()
+        public async Task GetTableNameAsync_Throws_WhenNoEligibleAdfRun()
         {
-            var sqlMembershipRepository = new Mock<ISqlMembershipRepository>();
-            var blobStorageRepository = new Mock<IBlobStorageRepository>();
-            var syncJobStatusService = new Mock<ISyncJobStatusService>();
+            var adfRunHistoryRepository = new Mock<IAdfRunHistoryRepository>();
             var groupsRepository = new Mock<IDatabaseGroupsRepository>();
             var channelsRepository = new Mock<IDatabaseChannelsRepository>();
-            var logger = NullLogger<SqlMembershipObtainerService>.Instance;
-            var telemetryClient = new TelemetryClient(new TelemetryConfiguration());
-            var dryRunValue = new Mock<IDryRunValue>();
-            var dfService = new Mock<IDataFactoryService>();
-
             var runId = Guid.NewGuid();
-            var targetGroupId = Guid.NewGuid();
-            var adfRunIdString = "12345678-1234-1234-1234-123456789012";
-            var expectedTableName = adfRunIdString.Replace("-", "");
-            var expectedAdfRunGuid = Guid.Parse(adfRunIdString);
 
-            dfService.Setup(x => x.GetMostRecentSucceededRunIdAsync(runId))
-                .ReturnsAsync(adfRunIdString);
-
-            sqlMembershipRepository.Setup(x => x.CheckIfTableExistsAsync(expectedTableName))
-                .ReturnsAsync(false);
+            adfRunHistoryRepository.Setup(x => x.GetLatestAdfRunAsync(runId.ToString("D"), default))
+                .ReturnsAsync((AdfRunHistory?)null);
 
             var sqlMembershipObtainerService = new SqlMembershipObtainerService(
-                                            sqlMembershipRepository.Object,
-                                            blobStorageRepository.Object,
-                                            syncJobStatusService.Object,
+                                            new Mock<ISqlMembershipRepository>().Object,
+                                            new Mock<IBlobStorageRepository>().Object,
+                                            new Mock<ISyncJobStatusService>().Object,
                                             new MockDestinationResolver(groupsRepository.Object, channelsRepository.Object),
-                                            logger,
-                                            telemetryClient,
-                                            dryRunValue.Object,
-                                            dfService.Object);
+                                            NullLogger<SqlMembershipObtainerService>.Instance,
+                                            new TelemetryClient(new TelemetryConfiguration()),
+                                            new Mock<IDryRunValue>().Object,
+                                            adfRunHistoryRepository.Object);
 
-            var result = await sqlMembershipObtainerService.GetTableNameAsync(runId, targetGroupId);
-
-            Assert.IsNotNull(result);
-            Assert.AreEqual("", result.TableName);
-            // AdfRunId is parsed from the ADF API response regardless of whether the table exists.
-            Assert.AreEqual(expectedAdfRunGuid, result.AdfRunId);
+            await Assert.ThrowsExceptionAsync<InvalidOperationException>(
+                () => sqlMembershipObtainerService.GetTableNameAsync(runId, Guid.NewGuid()));
         }
 
         [TestMethod]
@@ -954,7 +938,7 @@ namespace Services.Tests
                 NullLogger<SqlMembershipObtainerService>.Instance,
                 new TelemetryClient(new TelemetryConfiguration()),
                 new Mock<IDryRunValue>().Object,
-                new Mock<IDataFactoryService>().Object);
+                new Mock<IAdfRunHistoryRepository>().Object);
         }
     }
 }

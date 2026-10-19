@@ -13,6 +13,7 @@ using Repositories.Contracts.InjectConfig;
 using Services;
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Threading.Tasks;
 
 namespace SqlDataChecker.Tests
@@ -358,13 +359,13 @@ namespace SqlDataChecker.Tests
 
             var mockKvSecret = new Mock<IKeyVaultSecret<SqlDataCheckerValidatorService>>();
             mockKvSecret.Setup(x => x.Secret).Returns("Server=fake;Database=fake;");
-            var mockDataFactory = new Mock<IDataFactoryRepository>();
+            var publishedRunRepository = new Mock<IAdfRunHistoryRepository>();
 
             return new SqlDataCheckerValidatorService(
                 NullLogger<SqlDataCheckerValidatorService>.Instance,
                 telemetryClient,
                 mockKvSecret.Object,
-                mockDataFactory.Object,
+                publishedRunRepository.Object,
                 sqlMembershipSourcesRepository);
         }
     }

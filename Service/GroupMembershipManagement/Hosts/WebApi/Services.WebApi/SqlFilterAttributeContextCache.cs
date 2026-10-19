@@ -10,8 +10,7 @@ namespace Services
     /// ADF run id lookup (an ARM control-plane call that enumerates a month of pipeline runs) and
     /// the admin-configured attribute labels would otherwise be re-fetched many times per minute
     /// per editing user. Both change at most once per pipeline run or admin edit, so they are
-    /// memoized here. Mirrors the semaphore + TTL cache SqlMembershipObtainer's DataFactoryService
-    /// applies to the same ADF call.
+    /// memoized here.
     /// </para>
     /// <para>Registered as a singleton; the owning service is scoped, so the cache cannot live on it.</para>
     /// </summary>

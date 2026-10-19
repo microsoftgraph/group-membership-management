@@ -3,6 +3,7 @@
 
 using Microsoft.Extensions.Logging;
 using Models;
+using Models.AdfRunHistory;
 using Repositories.Contracts;
 using Services.WebApi.Contracts;
 using System.Text;
@@ -28,20 +29,20 @@ namespace Services
 
         private readonly ILogger<SqlFilterAttributeContextService> _logger;
         private readonly IDatabaseSqlMembershipSourcesRepository _databaseSqlMembershipSourcesRepository;
-        private readonly IDataFactoryRepository _dataFactoryRepository;
+        private readonly IAdfRunHistoryRepository _adfRunHistoryRepository;
         private readonly ISqlMembershipRepository _sqlMembershipRepository;
         private readonly SqlFilterAttributeContextCache _cache;
 
         public SqlFilterAttributeContextService(
             ILogger<SqlFilterAttributeContextService> logger,
             IDatabaseSqlMembershipSourcesRepository databaseSqlMembershipSourcesRepository,
-            IDataFactoryRepository dataFactoryRepository,
+            IAdfRunHistoryRepository adfRunHistoryRepository,
             ISqlMembershipRepository sqlMembershipRepository,
             SqlFilterAttributeContextCache cache)
         {
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _databaseSqlMembershipSourcesRepository = databaseSqlMembershipSourcesRepository ?? throw new ArgumentNullException(nameof(databaseSqlMembershipSourcesRepository));
-            _dataFactoryRepository = dataFactoryRepository ?? throw new ArgumentNullException(nameof(dataFactoryRepository));
+            _adfRunHistoryRepository = adfRunHistoryRepository ?? throw new ArgumentNullException(nameof(adfRunHistoryRepository));
             _sqlMembershipRepository = sqlMembershipRepository ?? throw new ArgumentNullException(nameof(sqlMembershipRepository));
             _cache = cache ?? throw new ArgumentNullException(nameof(cache));
         }
@@ -156,14 +157,14 @@ namespace Services
             {
                 try
                 {
-                    var adfRunId = await _dataFactoryRepository.GetMostRecentSucceededRunIdAsync();
-                    if (string.IsNullOrWhiteSpace(adfRunId))
+                    var adfRun = await _adfRunHistoryRepository.GetLatestAdfRunAsync();
+                    if (adfRun is null)
                     {
                         _logger.LogWarning("No succeeded ADF run was found; AI titles will not describe coded attribute values.");
                         return (null, SqlFilterAttributeContextCache.UnresolvedDuration);
                     }
 
-                    var tableName = adfRunId.Replace("-", string.Empty);
+                    var tableName = adfRun.GetTableName();
 
                     if (!await _sqlMembershipRepository.CheckIfMappingsTableExistsAsync(tableName))
                     {

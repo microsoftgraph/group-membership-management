@@ -3,6 +3,7 @@
 
 using Microsoft.Extensions.Logging.Abstractions;
 using Models;
+using Models.AdfRunHistory;
 using Moq;
 using Repositories.Contracts;
 using Services;
@@ -18,7 +19,7 @@ namespace WebApi.Tests
         private Mock<IDatabaseSyncJobsRepository> _mockSyncJobRepository = null!;
         private Mock<IGraphGroupRepository> _mockGraphGroupRepository = null!;
         private Mock<ISqlMembershipRepository> _mockSqlMembershipRepository = null!;
-        private Mock<IDataFactoryRepository> _mockDataFactoryRepository = null!;
+        private Mock<IAdfRunHistoryRepository> _mockAdfRunHistoryRepository = null!;
         private SpotCheckUserMembershipHandler _handler = null!;
 
         private Guid _syncJobId;
@@ -34,7 +35,7 @@ namespace WebApi.Tests
             _mockSyncJobRepository = new Mock<IDatabaseSyncJobsRepository>();
             _mockGraphGroupRepository = new Mock<IGraphGroupRepository>();
             _mockSqlMembershipRepository = new Mock<ISqlMembershipRepository>();
-            _mockDataFactoryRepository = new Mock<IDataFactoryRepository>();
+            _mockAdfRunHistoryRepository = new Mock<IAdfRunHistoryRepository>();
 
             _syncJobId = Guid.NewGuid();
             _userId = Guid.NewGuid().ToString();
@@ -44,7 +45,7 @@ namespace WebApi.Tests
                 _mockSyncJobRepository.Object,
                 _mockGraphGroupRepository.Object,
                 _mockSqlMembershipRepository.Object,
-                _mockDataFactoryRepository.Object);
+                _mockAdfRunHistoryRepository.Object);
         }
 
         private void SetupJob(string query)
@@ -143,7 +144,7 @@ namespace WebApi.Tests
         {
             SetupJob("[{\"type\":\"SqlMembership\",\"source\":{\"filter\":\"Department = 'Sales'\"},\"exclusionary\":false}]");
             _mockGraphGroupRepository.Setup(x => x.GetUserAccountEnabledAsync(_userId)).ReturnsAsync(true);
-            _mockDataFactoryRepository.Setup(x => x.GetMostRecentSucceededRunIdAsync()).ReturnsAsync(AdfRunId);
+            _mockAdfRunHistoryRepository.Setup(x => x.GetLatestAdfRunAsync(It.IsAny<string?>(), It.IsAny<CancellationToken>())).ReturnsAsync(new AdfRunHistory { AdfRunId = Guid.Parse(AdfRunId) });
             _mockSqlMembershipRepository.Setup(x => x.CheckIfTableExistsAsync(AdfTableName)).ReturnsAsync(true);
             _mockSqlMembershipRepository
                 .Setup(x => x.IsIdentitySelectedAsync(
@@ -171,8 +172,8 @@ namespace WebApi.Tests
         {
             SetupJob("[{\"type\":\"SqlMembership\",\"source\":{\"filter\":\"\",\"manager\":{\"id\":1234,\"depth\":2}},\"exclusionary\":false}]");
             _mockGraphGroupRepository.Setup(x => x.GetUserAccountEnabledAsync(_userId)).ReturnsAsync(true);
-            _mockDataFactoryRepository.Setup(x => x.GetMostRecentSucceededRunIdAsync()).ReturnsAsync("table1");
-            _mockSqlMembershipRepository.Setup(x => x.CheckIfTableExistsAsync("table1")).ReturnsAsync(true);
+            _mockAdfRunHistoryRepository.Setup(x => x.GetLatestAdfRunAsync(It.IsAny<string?>(), It.IsAny<CancellationToken>())).ReturnsAsync(new AdfRunHistory { AdfRunId = Guid.Parse(AdfRunId) });
+            _mockSqlMembershipRepository.Setup(x => x.CheckIfTableExistsAsync(AdfTableName)).ReturnsAsync(true);
             _mockSqlMembershipRepository
                 .Setup(x => x.IsIdentitySelectedAsync(
                     It.Is<SqlMembershipEvaluationRequest>(request =>
@@ -182,7 +183,7 @@ namespace WebApi.Tests
                             2,
                             string.Empty,
                             IdentityTypeSet.UsersOnly,
-                            "table1")),
+                            AdfTableName)),
                     Guid.Parse(_userId),
                     IdentityType.Users))
                 .ReturnsAsync(true);
@@ -213,7 +214,7 @@ namespace WebApi.Tests
         {
             SetupJob("[{\"type\":\"SqlMembership\",\"source\":{\"filter\":\"Department = 'Sales'\"},\"exclusionary\":false}]");
             _mockGraphGroupRepository.Setup(x => x.GetUserAccountEnabledAsync(_userId)).ReturnsAsync(true);
-            _mockDataFactoryRepository.Setup(x => x.GetMostRecentSucceededRunIdAsync()).ReturnsAsync((string)null!);
+            _mockAdfRunHistoryRepository.Setup(x => x.GetLatestAdfRunAsync(It.IsAny<string?>(), It.IsAny<CancellationToken>())).ReturnsAsync((AdfRunHistory?)null);
 
             var response = await _handler.ExecuteAsync(new SpotCheckUserMembershipRequest(_syncJobId, _userId));
 
@@ -227,7 +228,7 @@ namespace WebApi.Tests
         {
             SetupJob("[{\"type\":\"SqlMembership\",\"source\":{\"filter\":\"users.Department = 'Sales' AND agents.BlueprintId = 'approved'\"},\"identityTypes\":[\"agents\"]}]");
             _mockGraphGroupRepository.Setup(x => x.GetUserAccountEnabledAsync(_userId)).ReturnsAsync(true);
-            _mockDataFactoryRepository.Setup(x => x.GetMostRecentSucceededRunIdAsync()).ReturnsAsync(AdfRunId);
+            _mockAdfRunHistoryRepository.Setup(x => x.GetLatestAdfRunAsync(It.IsAny<string?>(), It.IsAny<CancellationToken>())).ReturnsAsync(new AdfRunHistory { AdfRunId = Guid.Parse(AdfRunId) });
             _mockSqlMembershipRepository.Setup(x => x.CheckIfTableExistsAsync(AdfTableName)).ReturnsAsync(true);
             _mockSqlMembershipRepository
                 .Setup(x => x.IsIdentitySelectedAsync(
@@ -259,8 +260,8 @@ namespace WebApi.Tests
         {
             SetupJob("[{\"type\":\"SqlMembership\",\"source\":{\"filter\":\"Department = 'Sales'\"},\"identityTypes\":[\"users\",\"agents\"]}]");
             _mockGraphGroupRepository.Setup(x => x.GetUserAccountEnabledAsync(_userId)).ReturnsAsync(true);
-            _mockDataFactoryRepository.Setup(x => x.GetMostRecentSucceededRunIdAsync()).ReturnsAsync("table1");
-            _mockSqlMembershipRepository.Setup(x => x.CheckIfTableExistsAsync("table1")).ReturnsAsync(true);
+            _mockAdfRunHistoryRepository.Setup(x => x.GetLatestAdfRunAsync(It.IsAny<string?>(), It.IsAny<CancellationToken>())).ReturnsAsync(new AdfRunHistory { AdfRunId = Guid.Parse(AdfRunId) });
+            _mockSqlMembershipRepository.Setup(x => x.CheckIfTableExistsAsync(AdfTableName)).ReturnsAsync(true);
             _mockSqlMembershipRepository
                 .Setup(x => x.IsIdentitySelectedAsync(
                     It.Is<SqlMembershipEvaluationRequest>(request =>
@@ -286,8 +287,8 @@ namespace WebApi.Tests
         {
             SetupJob("[{\"type\":\"SqlMembership\",\"source\":{\"filter\":\"agents.BlueprintId = 'approved'\"},\"identityTypes\":[\"users\"]}]");
             _mockGraphGroupRepository.Setup(x => x.GetUserAccountEnabledAsync(_userId)).ReturnsAsync(true);
-            _mockDataFactoryRepository.Setup(x => x.GetMostRecentSucceededRunIdAsync()).ReturnsAsync("table1");
-            _mockSqlMembershipRepository.Setup(x => x.CheckIfTableExistsAsync("table1")).ReturnsAsync(true);
+            _mockAdfRunHistoryRepository.Setup(x => x.GetLatestAdfRunAsync(It.IsAny<string?>(), It.IsAny<CancellationToken>())).ReturnsAsync(new AdfRunHistory { AdfRunId = Guid.Parse(AdfRunId) });
+            _mockSqlMembershipRepository.Setup(x => x.CheckIfTableExistsAsync(AdfTableName)).ReturnsAsync(true);
             _mockSqlMembershipRepository
                 .Setup(x => x.IsIdentitySelectedAsync(
                     It.IsAny<SqlMembershipEvaluationRequest>(),
@@ -311,8 +312,8 @@ namespace WebApi.Tests
         {
             SetupJob("[{\"type\":\"SqlMembership\",\"source\":{\"filter\":\"Department = 'Sales'\"}," + selectionJson + "}]");
             _mockGraphGroupRepository.Setup(x => x.GetUserAccountEnabledAsync(_userId)).ReturnsAsync(true);
-            _mockDataFactoryRepository.Setup(x => x.GetMostRecentSucceededRunIdAsync()).ReturnsAsync("table1");
-            _mockSqlMembershipRepository.Setup(x => x.CheckIfTableExistsAsync("table1")).ReturnsAsync(true);
+            _mockAdfRunHistoryRepository.Setup(x => x.GetLatestAdfRunAsync(It.IsAny<string?>(), It.IsAny<CancellationToken>())).ReturnsAsync(new AdfRunHistory { AdfRunId = Guid.Parse(AdfRunId) });
+            _mockSqlMembershipRepository.Setup(x => x.CheckIfTableExistsAsync(AdfTableName)).ReturnsAsync(true);
 
             var response = await _handler.ExecuteAsync(new SpotCheckUserMembershipRequest(_syncJobId, _userId));
 
@@ -334,8 +335,8 @@ namespace WebApi.Tests
         {
             SetupJob("[{\"type\":\"SqlMembership\",\"source\":" + sourceJson + ",\"identityTypes\":[\"users\",\"agents\"]}]");
             _mockGraphGroupRepository.Setup(x => x.GetUserAccountEnabledAsync(_userId)).ReturnsAsync(true);
-            _mockDataFactoryRepository.Setup(x => x.GetMostRecentSucceededRunIdAsync()).ReturnsAsync("table1");
-            _mockSqlMembershipRepository.Setup(x => x.CheckIfTableExistsAsync("table1")).ReturnsAsync(true);
+            _mockAdfRunHistoryRepository.Setup(x => x.GetLatestAdfRunAsync(It.IsAny<string?>(), It.IsAny<CancellationToken>())).ReturnsAsync(new AdfRunHistory { AdfRunId = Guid.Parse(AdfRunId) });
+            _mockSqlMembershipRepository.Setup(x => x.CheckIfTableExistsAsync(AdfTableName)).ReturnsAsync(true);
 
             var response = await _handler.ExecuteAsync(new SpotCheckUserMembershipRequest(_syncJobId, _userId));
 
@@ -354,8 +355,8 @@ namespace WebApi.Tests
         {
             SetupJob("[{\"type\":\"SqlMembership\",\"source\":{\"filter\":\"Department = 'Sales'\",\"identityTypes\":[\"agents\"]}}]");
             _mockGraphGroupRepository.Setup(x => x.GetUserAccountEnabledAsync(_userId)).ReturnsAsync(true);
-            _mockDataFactoryRepository.Setup(x => x.GetMostRecentSucceededRunIdAsync()).ReturnsAsync("table1");
-            _mockSqlMembershipRepository.Setup(x => x.CheckIfTableExistsAsync("table1")).ReturnsAsync(true);
+            _mockAdfRunHistoryRepository.Setup(x => x.GetLatestAdfRunAsync(It.IsAny<string?>(), It.IsAny<CancellationToken>())).ReturnsAsync(new AdfRunHistory { AdfRunId = Guid.Parse(AdfRunId) });
+            _mockSqlMembershipRepository.Setup(x => x.CheckIfTableExistsAsync(AdfTableName)).ReturnsAsync(true);
 
             var response = await _handler.ExecuteAsync(new SpotCheckUserMembershipRequest(_syncJobId, _userId));
 
@@ -367,8 +368,8 @@ namespace WebApi.Tests
         {
             SetupJob("[{\"type\":\"SqlMembership\",\"source\":{\"filter\":\"Department = 'Sales'\"},\"IdentityTypes\":[\"agents\"]}]");
             _mockGraphGroupRepository.Setup(x => x.GetUserAccountEnabledAsync(_userId)).ReturnsAsync(true);
-            _mockDataFactoryRepository.Setup(x => x.GetMostRecentSucceededRunIdAsync()).ReturnsAsync("table1");
-            _mockSqlMembershipRepository.Setup(x => x.CheckIfTableExistsAsync("table1")).ReturnsAsync(true);
+            _mockAdfRunHistoryRepository.Setup(x => x.GetLatestAdfRunAsync(It.IsAny<string?>(), It.IsAny<CancellationToken>())).ReturnsAsync(new AdfRunHistory { AdfRunId = Guid.Parse(AdfTableName) });
+            _mockSqlMembershipRepository.Setup(x => x.CheckIfTableExistsAsync(AdfTableName)).ReturnsAsync(true);
 
             var response = await _handler.ExecuteAsync(new SpotCheckUserMembershipRequest(_syncJobId, _userId));
 

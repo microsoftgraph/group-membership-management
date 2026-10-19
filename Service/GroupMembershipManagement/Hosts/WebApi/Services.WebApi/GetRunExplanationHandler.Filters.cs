@@ -14,6 +14,7 @@ using System.Net;
 using System.Text;
 using System.Text.Json;
 using System.Text.RegularExpressions;
+using Models.AdfRunHistory;
 
 namespace Services
 {
@@ -391,7 +392,7 @@ namespace Services
                 IEnumerable<string?> filters,
                 Guid? runAdfRunId,
                 ISqlMembershipRepository sqlMembershipRepository,
-                IDataFactoryRepository dataFactoryRepository,
+                IAdfRunHistoryRepository dataFactoryRepository,
                 ILogger logger)
             {
                 var unresolvedAttributes = OwnerFriendlyFilterFormatter.CollectCodeAttributes(filters);
@@ -420,19 +421,15 @@ namespace Services
                 {
                     try
                     {
-                        var latestAdfRunId = await dataFactoryRepository.GetMostRecentSucceededRunIdAsync();
-                        if (!string.IsNullOrWhiteSpace(latestAdfRunId))
+                        var latestTable = (await dataFactoryRepository.GetLatestAdfRunAsync() ?? throw new InvalidOperationException(AdfRunHistory.NoEligibleRunMessage)).GetTableName();
+                        if (!string.Equals(latestTable, historicalTable, StringComparison.OrdinalIgnoreCase))
                         {
-                            var latestTable = latestAdfRunId.Replace("-", string.Empty);
-                            if (!string.Equals(latestTable, historicalTable, StringComparison.OrdinalIgnoreCase))
-                            {
-                                await LoadMappingsAsync(
-                                    latestTable,
-                                    unresolvedAttributes,
-                                    resolved,
-                                    sqlMembershipRepository,
-                                    logger);
-                            }
+                            await LoadMappingsAsync(
+                                latestTable,
+                                unresolvedAttributes,
+                                resolved,
+                                sqlMembershipRepository,
+                                logger);
                         }
                     }
                     catch (Exception ex)

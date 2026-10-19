@@ -274,7 +274,7 @@ namespace Hosts.WebApi
         public static partial void CopilotUnknownToolRequested(this ILogger logger, string functionName);
 
         [LoggerMessage(EventId = 93104, Level = LogLevel.Warning,
-            Message = "HR DB services (ISqlMembershipRepository/IDataFactoryRepository) unavailable")]
+            Message = "HR DB services (ISqlMembershipRepository/IAdfRunHistoryRepository) unavailable")]
         public static partial void CopilotHrDbServicesUnavailable(this ILogger logger);
 
         [LoggerMessage(EventId = 93105, Level = LogLevel.Warning,

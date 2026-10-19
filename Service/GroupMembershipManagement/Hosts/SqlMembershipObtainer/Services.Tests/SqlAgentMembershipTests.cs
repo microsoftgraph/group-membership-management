@@ -1069,7 +1069,7 @@ namespace Services.Tests
                 logger,
                 telemetryClient ?? new TelemetryClient(new TelemetryConfiguration()),
                 dryRunValue.Object,
-                new Mock<IDataFactoryService>().Object);
+                new Mock<IAdfRunHistoryRepository>().Object);
         }
 
         private static async Task<GroupMembership> PublishEvaluationAsync(

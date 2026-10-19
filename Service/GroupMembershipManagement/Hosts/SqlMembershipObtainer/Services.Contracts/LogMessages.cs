@@ -110,14 +110,6 @@ namespace Hosts.SqlMembershipObtainer
             Message = "SqlMembershipObtainer service completed at: {CompletionTime}")]
         public static partial void ServiceCompleted(this ILogger logger, DateTime completionTime);
 
-        [LoggerMessage(EventId = 160065, Level = LogLevel.Information,
-            Message = "{TableName} exists")]
-        public static partial void TableNameExists(this ILogger logger, string tableName);
-
-        [LoggerMessage(EventId = 160066, Level = LogLevel.Information,
-            Message = "{TableName} does not exist")]
-        public static partial void TableNameDoesNotExist(this ILogger logger, string tableName);
-
         [LoggerMessage(EventId = 160067, Level = LogLevel.Information,
             Message = "Updating status of job {JobId} to Idle.")]
         public static partial void UpdatingJobStatusToIdle(this ILogger logger, Guid jobId);
@@ -129,16 +121,6 @@ namespace Hosts.SqlMembershipObtainer
         [LoggerMessage(EventId = 160069, Level = LogLevel.Error,
             Message = "SqlMembershipObtainer failed the sync because {AffectedCount} HR row(s) in table {TableName} have a null/empty {ColumnName} for RunId: {RunId}, TargetOfficeGroupId: {TargetOfficeGroupId}. This indicates bad HR source data (null {ColumnName}), not a code defect. Correct the HR data and re-run.")]
         public static partial void NullHrColumnValuesDetected(this ILogger logger, int affectedCount, string tableName, string columnName, Guid? runId, Guid targetOfficeGroupId);
-
-        // ── DataFactoryService ──
-
-        [LoggerMessage(EventId = 160070, Level = LogLevel.Information,
-            Message = "Getting most recent ADF run id.")]
-        public static partial void GettingAdfRunId(this ILogger logger);
-
-        [LoggerMessage(EventId = 160071, Level = LogLevel.Warning,
-            Message = "No SqlMembershipObtainer pipeline run has been found")]
-        public static partial void NoPipelineRunFound(this ILogger logger);
 
         [LoggerMessage(
             EventId = 160072,

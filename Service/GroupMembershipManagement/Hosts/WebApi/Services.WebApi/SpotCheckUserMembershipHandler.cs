@@ -13,6 +13,7 @@ using System.Text.Json;
 using System.Threading.Tasks;
 using SqlMembershipObtainer.Entities;
 using WebApi.Models.DTOs;
+using Models.AdfRunHistory;
 
 namespace Services
 {
@@ -25,20 +26,20 @@ namespace Services
         private readonly IDatabaseSyncJobsRepository _databaseSyncJobsRepository;
         private readonly IGraphGroupRepository _graphGroupRepository;
         private readonly ISqlMembershipRepository _sqlMembershipRepository;
-        private readonly IDataFactoryRepository _dataFactoryRepository;
+        private readonly IAdfRunHistoryRepository _adfRunHistoryRepository;
 
         public SpotCheckUserMembershipHandler(
             ILogger<SpotCheckUserMembershipHandler> logger,
             IDatabaseSyncJobsRepository databaseSyncJobsRepository,
             IGraphGroupRepository graphGroupRepository,
             ISqlMembershipRepository sqlMembershipRepository,
-            IDataFactoryRepository dataFactoryRepository) : base(logger)
+            IAdfRunHistoryRepository adfRunHistoryRepository) : base(logger)
         {
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _databaseSyncJobsRepository = databaseSyncJobsRepository ?? throw new ArgumentNullException(nameof(databaseSyncJobsRepository));
             _graphGroupRepository = graphGroupRepository ?? throw new ArgumentNullException(nameof(graphGroupRepository));
             _sqlMembershipRepository = sqlMembershipRepository ?? throw new ArgumentNullException(nameof(sqlMembershipRepository));
-            _dataFactoryRepository = dataFactoryRepository ?? throw new ArgumentNullException(nameof(dataFactoryRepository));
+            _adfRunHistoryRepository = adfRunHistoryRepository ?? throw new ArgumentNullException(nameof(adfRunHistoryRepository));
         }
 
         protected override async Task<SpotCheckUserMembershipResponse> ExecuteCoreAsync(SpotCheckUserMembershipRequest request)
@@ -275,13 +276,7 @@ namespace Services
         {
             try
             {
-                var adfRunId = await _dataFactoryRepository.GetMostRecentSucceededRunIdAsync();
-                if (string.IsNullOrWhiteSpace(adfRunId))
-                {
-                    return null;
-                }
-
-                var tableName = adfRunId.Replace("-", "");
+                var tableName = (await _adfRunHistoryRepository.GetLatestAdfRunAsync() ?? throw new InvalidOperationException(AdfRunHistory.NoEligibleRunMessage)).GetTableName();
                 return await _sqlMembershipRepository.CheckIfTableExistsAsync(tableName) ? tableName : null;
             }
             catch (Exception ex)

@@ -12,8 +12,9 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Repositories.Contracts;
 using Repositories.Contracts.InjectConfig;
-using Repositories.DataFactory;
+using Microsoft.EntityFrameworkCore;
 using Repositories.EntityFramework;
+using Repositories.EntityFramework.AdfContexts;
 using Services;
 using System;
 
@@ -51,13 +52,12 @@ namespace SqlDataChecker
                     services.AddSingleton<IKeyVaultSecret<SqlDataCheckerValidatorService>>(services =>
                         new KeyVaultSecret<SqlDataCheckerValidatorService>(CommonServices.GetValueOrThrowBase(configuration, "sqlServerBasicConnectionString")));
 
-                    services.AddSingleton<IDataFactorySecret<IDataFactoryRepository>>(new DataFactorySecrets<IDataFactoryRepository>(
-                        CommonServices.GetValueOrThrowBase(configuration, "pipeline"),
-                        CommonServices.GetValueOrThrowBase(configuration, "dataFactoryName"),
-                        CommonServices.GetValueOrThrowBase(configuration, "subscriptionId"),
-                        CommonServices.GetValueOrThrowBase(configuration, "dataResourceGroup")));
-
-                    services.AddSingleton<IDataFactoryRepository, DataFactoryRepository>();
+                    services.AddDbContext<AdfContext>(options =>
+                        options.UseSqlServer(CommonServices.GetValueOrThrowBase(configuration, "sqlServerMSIConnectionString"), sqlServerOptions =>
+                        {
+                            sqlServerOptions.EnableRetryOnFailure();
+                        }));
+                    services.AddScoped<IAdfRunHistoryRepository, AdfRunHistoryRepository>();
                     services.AddScoped<IDatabaseSqlMembershipSourcesRepository, DatabaseSqlMembershipSourcesRepository>();
                     services.AddScoped<SqlDataCheckerValidatorService>();
                 })

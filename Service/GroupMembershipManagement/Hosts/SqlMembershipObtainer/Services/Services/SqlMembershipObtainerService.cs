@@ -27,7 +27,7 @@ namespace Services
         private readonly ILogger<SqlMembershipObtainerService> _logger;
         private readonly TelemetryClient _telemetryClient;
         private readonly bool _isSqlMembershipObtainerDryRunEnabled;
-        private readonly IDataFactoryService _dataFactoryService;
+        private readonly IAdfRunHistoryRepository _adfRunHistoryRepository;
 
         private enum Metric
         {
@@ -41,7 +41,7 @@ namespace Services
                                     ILogger<SqlMembershipObtainerService> logger,
                                     TelemetryClient telemetryClient,
                                     IDryRunValue dryRun,
-                                    IDataFactoryService dataFactoryService)
+                                    IAdfRunHistoryRepository adfRunHistoryRepository)
         {
             _blobStorageRepository = blobStorageRepository ?? throw new ArgumentNullException(nameof(blobStorageRepository));
             _syncJobStatusService = syncJobStatusService ?? throw new ArgumentNullException(nameof(syncJobStatusService));
@@ -50,7 +50,7 @@ namespace Services
             _telemetryClient = telemetryClient ?? throw new ArgumentNullException(nameof(telemetryClient));
             _sqlMembershipRepository = sqlMembershipRepository ?? throw new ArgumentNullException(nameof(sqlMembershipRepository));
             _isSqlMembershipObtainerDryRunEnabled = dryRun == null ? throw new ArgumentNullException(nameof(dryRun)) : dryRun.DryRunEnabled;
-            _dataFactoryService = dataFactoryService ?? throw new ArgumentNullException(nameof(dataFactoryService));
+            _adfRunHistoryRepository = adfRunHistoryRepository ?? throw new ArgumentNullException(nameof(adfRunHistoryRepository));
         }
         public async Task<MembershipFileResult> GetChildEntitiesAsync(string filter, int personnelNumber, string tableName, int depth, SyncJob syncJob, Guid targetOfficeGroupId, int currentPart, bool exclusionary)
         {
@@ -396,46 +396,15 @@ namespace Services
 
         public async Task<TableNameResult> GetTableNameAsync(Guid? runId, Guid? targetOfficeGroupId)
         {
-            var adfRunId = await GetADFRunIdAsync(runId);
-            var tableName = adfRunId.Replace("-", "");
-            var tableExists = await CheckIfTableExists(tableName, runId, targetOfficeGroupId);
-
-            if (tableExists)
-                _logger.TableNameExists(tableName);
-            else
-                _logger.TableNameDoesNotExist(tableName);
+            var adfRun = await _adfRunHistoryRepository.GetLatestAdfRunAsync(runId?.ToString("D"))
+                ?? throw new InvalidOperationException("No eligible ADF run is available; see the AdfRunHistoryRepository warning for the cause.");
+            var tableName = adfRun.GetTableName();
 
             return new TableNameResult
             {
-                TableName = tableExists ? tableName : "",
-                AdfRunId = ParseAdfRunIdGuid(adfRunId),
+                TableName = tableName,
+                AdfRunId = adfRun.AdfRunId
             };
-        }
-
-        private async Task<bool> CheckIfTableExists(string tableName, Guid? runId, Guid? targetOfficeGroupId)
-        {
-            bool tableExists = false;
-
-            try
-            {
-                tableExists = await _sqlMembershipRepository.CheckIfTableExistsAsync(tableName);
-            }
-            catch (SqlException ex)
-            {
-                var exceptionMessage = $"Sql Exception in SqlMembershipObtainer with RunId: {runId}, TargetOfficeGroupId: {targetOfficeGroupId}";
-                var ocSQLException = new SqlMembershipObtainerSQLException(exceptionMessage, ex, targetOfficeGroupId, runId);
-
-                _telemetryClient.TrackException(ocSQLException, new Dictionary<string, string>()
-                    {
-                        {"TargetOfficeGroupId", targetOfficeGroupId.ToString() },
-                        {"RunId", runId.ToString() },
-                        {"Exception", ex.Message }
-                    });
-
-                throw ocSQLException;
-            }
-
-            return tableExists;
         }
 
         public async Task UpdateSyncJobStatusToIdleAsync(SyncJob job)
@@ -476,22 +445,6 @@ namespace Services
             syncJob.Status = status.ToString();
 
             await _syncJobStatusService.UpdateJobStatusAsync(syncJob, status, history, functionName: "SqlMembershipObtainer");
-        }
-
-        private async Task<string> GetADFRunIdAsync(Guid? runId)
-        {
-            return await _dataFactoryService.GetMostRecentSucceededRunIdAsync(runId);
-        }
-
-        private Guid? ParseAdfRunIdGuid(string adfRunIdString)
-        {
-            if (Guid.TryParse(adfRunIdString, out var adfRunGuid))
-            {
-                return adfRunGuid;
-            }
-
-            _logger.LogWarning("AdfRunId is not a valid GUID: {AdfRunId}", adfRunIdString);
-            return null;
         }
     }
 }

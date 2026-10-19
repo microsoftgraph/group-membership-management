@@ -3,6 +3,7 @@
 
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Models.AdfRunHistory;
 using Moq;
 using Repositories.Contracts;
 using Services.Messages.Responses;
@@ -16,7 +17,7 @@ namespace Services.Tests
     [TestClass]
     public class OrgLeaderDetailsControllerTests
     {
-        private Mock<IDataFactoryRepository> _dataFactoryRepository = null!;
+        private Mock<IAdfRunHistoryRepository> _adfRunHistoryRepository = null!;
         private Mock<ISqlMembershipRepository> _sqlMembershipRepository = null!;
 
         private GetOrgLeaderDetailsHandler _getOrgLeaderDetailsHandler = null!;
@@ -26,11 +27,11 @@ namespace Services.Tests
         [TestInitialize]
         public void Initialize()
         {
-            _dataFactoryRepository = new Mock<IDataFactoryRepository>();
+            _adfRunHistoryRepository = new Mock<IAdfRunHistoryRepository>();
             _sqlMembershipRepository = new Mock<ISqlMembershipRepository>();
 
-            _getOrgLeaderDetailsHandler = new GetOrgLeaderDetailsHandler(NullLogger<GetOrgLeaderDetailsHandler>.Instance, _sqlMembershipRepository.Object, _dataFactoryRepository.Object);
-            _getOrgLeaderHandler = new GetOrgLeaderHandler(NullLogger<GetOrgLeaderHandler>.Instance, _sqlMembershipRepository.Object, _dataFactoryRepository.Object);
+            _getOrgLeaderDetailsHandler = new GetOrgLeaderDetailsHandler(NullLogger<GetOrgLeaderDetailsHandler>.Instance, _sqlMembershipRepository.Object, _adfRunHistoryRepository.Object);
+            _getOrgLeaderHandler = new GetOrgLeaderHandler(NullLogger<GetOrgLeaderHandler>.Instance, _sqlMembershipRepository.Object, _adfRunHistoryRepository.Object);
             _orgLeaderDetailsController = new OrgLeaderDetailsController(_getOrgLeaderDetailsHandler, _getOrgLeaderHandler)
             {
                 ControllerContext = CreateControllerContext(new List<Claim>
@@ -43,7 +44,7 @@ namespace Services.Tests
             _sqlMembershipRepository.Setup(x => x.CheckIfTableExistsAsync(It.IsAny<string>())).ReturnsAsync(true);
             _sqlMembershipRepository.Setup(x => x.GetOrgLeaderDetailsAsync(It.IsAny<string>(), It.IsAny<string>())).ReturnsAsync((5, 123));
             _sqlMembershipRepository.Setup(x => x.GetOrgLeaderAsync(It.IsAny<int>(), It.IsAny<string>())).ReturnsAsync((5, "123"));
-            _dataFactoryRepository.Setup(x => x.GetMostRecentSucceededRunIdAsync()).ReturnsAsync("RUN ID");
+            _adfRunHistoryRepository.Setup(x => x.GetLatestAdfRunAsync(It.IsAny<string?>(), It.IsAny<CancellationToken>())).ReturnsAsync(new AdfRunHistory { AdfRunId = Guid.NewGuid() });
         }
 
         [TestMethod]
