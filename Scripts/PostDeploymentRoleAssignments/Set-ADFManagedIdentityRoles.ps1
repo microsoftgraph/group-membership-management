@@ -11,6 +11,9 @@ The abbreviation for your solution.
 .PARAMETER EnvironmentAbbreviation
 A 2-6 character abbreviation for your environment.
 
+.PARAMETER EnableMultiRegion
+Include the secondary regional ADF and its storage account when enabled.
+
 .PARAMETER ErrorActionPreference
 Parameter description
 
@@ -28,7 +31,9 @@ function Set-ADFManagedIdentityRoles
 		[Parameter(Mandatory = $True)]
 		[string] $EnvironmentAbbreviation,
         [Parameter(Mandatory = $False)]
-		[array] $UserPrincipalNames
+		[array] $UserPrincipalNames,
+        [Parameter(Mandatory = $False)]
+        [bool] $EnableMultiRegion = $false
 	)
 
     $scriptsDirectory = Split-Path $PSScriptRoot -Parent
@@ -37,17 +42,34 @@ function Set-ADFManagedIdentityRoles
 
 	$functionApps = @("SqlMembershipObtainer", "SqlDataChecker", "AutoApprover")
     $appServices = @("webapi")
-    $azureDataFactoryName = "$SolutionAbbreviation-data-$EnvironmentAbbreviation-adf"
+    $dataResourceGroupName = "$SolutionAbbreviation-data-$EnvironmentAbbreviation"
+    $azureDataFactories = @(
+        @{
+            Name = "$SolutionAbbreviation-data-$EnvironmentAbbreviation-adf"
+            ResourceGroup = $dataResourceGroupName
+        }
+    )
+    if ($EnableMultiRegion) {
+        $azureDataFactories += @{
+            Name = "$SolutionAbbreviation-data-$EnvironmentAbbreviation-adf-sec"
+            ResourceGroup = "$dataResourceGroupName-sec"
+        }
+    }
     $servicePrincipals = @()
-    $azureDataFactoryObject = Invoke-WithRetry `
-        -Operation { Get-AzResource -Name $azureDataFactoryName -ResourceType "Microsoft.DataFactory/factories" } `
-        -OperationName "Get ADF resource '$azureDataFactoryName'" `
-        -MaxAttempts 3 -BaseDelaySeconds 2
+    $azureDataFactoryObjects = @()
+    foreach ($factory in $azureDataFactories) {
+        $factoryObject = Invoke-WithRetry `
+            -Operation { Get-AzResource -ResourceGroupName $factory.ResourceGroup -Name $factory.Name -ResourceType "Microsoft.DataFactory/factories" -ErrorAction SilentlyContinue } `
+            -OperationName "Get ADF resource '$($factory.Name)'" `
+            -MaxAttempts 3 -BaseDelaySeconds 2
+        if ($null -ne $factoryObject) {
+            $azureDataFactoryObjects += $factoryObject
+        }
+    }
 
-    if ($null -eq $azureDataFactoryObject)
-    {
-        Write-Host "The $azureDataFactoryName ADF resource was not found!";
-        return;
+    if ($azureDataFactoryObjects.Count -eq 0) {
+        Write-Host "No regional ADF resources were found."
+        return
     }
 
     foreach ($name in $UserPrincipalNames)
@@ -101,19 +123,29 @@ function Set-ADFManagedIdentityRoles
         }
     }
 
-    foreach ($servicePrincipal in $servicePrincipals)
-    {
-        $servicePrincipalName = $servicePrincipal.DisplayName
+    foreach ($azureDataFactoryObject in $azureDataFactoryObjects) {
+        $factoryServicePrincipals = $servicePrincipals
+        if ($azureDataFactoryObject.Name -eq "$SolutionAbbreviation-data-$EnvironmentAbbreviation-adf-sec") {
+            # The public HR pipeline no longer calls SqlDataChecker; do not extend its legacy factory role to the standby.
+            $factoryServicePrincipals = @($servicePrincipals | Where-Object {
+                $_.DisplayName -ne "$SolutionAbbreviation-compute-$EnvironmentAbbreviation-SqlDataChecker"
+            })
+        }
 
-        Invoke-WithCreateRetry `
-            -GetExistingOperation { Get-AzRoleAssignment -ObjectId $servicePrincipal.Id -Scope $azureDataFactoryObject.Id } `
-            -CreateOperation {
-                New-AzRoleAssignment -ObjectId $servicePrincipal.Id -Scope $azureDataFactoryObject.Id -RoleDefinitionName "Data Factory Contributor"
-                Write-Host "Added role assignment to allow $servicePrincipalName to access the $azureDataFactoryName ADF resource."
-            } `
-            -OperationName "Assign Data Factory Contributor to $servicePrincipalName" `
-            -MaxAttempts 3 -BaseDelaySeconds 2 `
-            -ExistsMessage "Data Factory Contributor role is already assigned to '$servicePrincipalName'. Skipping."
+        foreach ($servicePrincipal in $factoryServicePrincipals)
+        {
+            $servicePrincipalName = $servicePrincipal.DisplayName
+
+            Invoke-WithCreateRetry `
+                -GetExistingOperation { Get-AzRoleAssignment -ObjectId $servicePrincipal.Id -Scope $azureDataFactoryObject.Id } `
+                -CreateOperation {
+                    New-AzRoleAssignment -ObjectId $servicePrincipal.Id -Scope $azureDataFactoryObject.Id -RoleDefinitionName "Data Factory Contributor"
+                    Write-Host "Added role assignment to allow $servicePrincipalName to access the $($azureDataFactoryObject.Name) ADF resource."
+                } `
+                -OperationName "Assign Data Factory Contributor to $servicePrincipalName" `
+                -MaxAttempts 3 -BaseDelaySeconds 2 `
+                -ExistsMessage "Data Factory Contributor role is already assigned to '$servicePrincipalName'. Skipping."
+        }
     }
 
     Write-Host "Grant ADF identity access to the storage account";
@@ -122,25 +154,53 @@ function Set-ADFManagedIdentityRoles
         -Operation { Get-AzADServicePrincipal -DisplayName "$SolutionAbbreviation-compute-$EnvironmentAbbreviation-AzureUserReader" } `
         -OperationName "Get AzureUserReader principal" `
         -MaxAttempts 3 -BaseDelaySeconds 2
-    $dataFactoryPrincipal = Invoke-WithRetry `
-        -Operation { Get-AzADServicePrincipal -DisplayName $azureDataFactoryName } `
-        -OperationName "Get ADF principal" `
+    $primaryAdfName = $azureDataFactories[0].Name
+    $primaryAdfPrincipal = Invoke-WithRetry `
+        -Operation { Get-AzADServicePrincipal -DisplayName $primaryAdfName } `
+        -OperationName "Get ADF principal '$primaryAdfName'" `
         -MaxAttempts 3 -BaseDelaySeconds 2
-    $servicePrincipalsToBeGrantedStorageRoles = @($dataFactoryPrincipal, $azureUserReaderPrincipal)
+    $secondaryAdfPrincipal = $null
+    if ($EnableMultiRegion) {
+        $secondaryAdfName = $azureDataFactories[1].Name
+        $secondaryAdfPrincipal = Invoke-WithRetry `
+            -Operation { Get-AzADServicePrincipal -DisplayName $secondaryAdfName } `
+            -OperationName "Get ADF principal '$secondaryAdfName'" `
+            -MaxAttempts 3 -BaseDelaySeconds 2
+    }
+    $sharedStoragePrincipals = @($azureUserReaderPrincipal) | Where-Object { $null -ne $_ }
     $dataRGName = "$SolutionAbbreviation-data-$EnvironmentAbbreviation"
     $dataKeyVaultName = "$SolutionAbbreviation-data-$EnvironmentAbbreviation"
-    $secretNames = @("adfStorageAccountName")
+    $secretNames = @("adfStorageAccountName", "sqlMembershipStorageAccountName")
+    if ($EnableMultiRegion) {
+        $secretNames += "adfStorageAccountNameSec"
+    }
 
     foreach($secret in $secretNames)
     {
+        # Each regional factory is granted only its own ADF storage account; shared identities keep access to all.
+        $servicePrincipalsToBeGrantedStorageRoles = @(
+            switch ($secret) {
+                "adfStorageAccountName"    { $primaryAdfPrincipal }
+                "adfStorageAccountNameSec" { $secondaryAdfPrincipal }
+                default                    { $primaryAdfPrincipal; $secondaryAdfPrincipal }
+            }
+        ) + $sharedStoragePrincipals | Where-Object { $null -ne $_ }
+
         $storageAccountName = Get-KeyVaultSecretWithFirewallRetry -VaultName $dataKeyVaultName -ResourceGroup $dataRGName -SecretName $secret -AsPlainText
 
         if ($null -eq $storageAccountName) {
             continue;
         }
 
+        $storageResourceGroupName = if ($secret -eq "adfStorageAccountNameSec") {
+            "$dataRGName-sec"
+        }
+        else {
+            $dataRGName
+        }
+
         $adfStorageAccount = Invoke-WithRetry `
-            -Operation { Get-AzStorageAccount -ResourceGroupName $dataRGName -Name $storageAccountName } `
+            -Operation { Get-AzStorageAccount -ResourceGroupName $storageResourceGroupName -Name $storageAccountName } `
             -OperationName "Get storage account '$storageAccountName'" `
             -MaxAttempts 3 -BaseDelaySeconds 2
         $storageAccountRoles = @("Storage Queue Data Contributor","Storage Table Data Contributor","Storage Blob Data Contributor")

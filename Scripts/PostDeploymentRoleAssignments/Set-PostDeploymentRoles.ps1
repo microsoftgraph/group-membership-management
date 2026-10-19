@@ -12,6 +12,9 @@ Abbreviation for the environment
 .PARAMETER AppConfigName
 App config name
 
+.PARAMETER EnableMultiRegion
+Include secondary regional ADF role assignments when enabled.
+
 .PARAMETER ErrorActionPreference
 Parameter description
 
@@ -46,7 +49,9 @@ function Set-PostDeploymentRoles {
         [Parameter(Mandatory = $False)]
         [string] $BastionVnetAddressPrefix = '10.0.0.0/24',
         [Parameter(Mandatory = $False)]
-        [bool] $DeployAks = $false
+        [bool] $DeployAks = $false,
+        [Parameter(Mandatory = $False)]
+        [bool] $EnableMultiRegion = $false
     )
 
     $scriptsDirectory = Split-Path $PSScriptRoot -Parent
@@ -72,7 +77,8 @@ function Set-PostDeploymentRoles {
     . ($scriptsDirectory + '/PostDeploymentRoleAssignments/Set-ADFManagedIdentityRoles.ps1')
     Set-ADFManagedIdentityRoles	-SolutionAbbreviation $SolutionAbbreviation `
                                 -EnvironmentAbbreviation $EnvironmentAbbreviation `
-                                -UserPrincipalNames $UserPrincipalNames
+                                -UserPrincipalNames $UserPrincipalNames `
+                                -EnableMultiRegion $EnableMultiRegion
 
     . ($scriptsDirectory + '/PostDeploymentRoleAssignments/Set-ServiceBusManagedIdentityRoles.ps1')
     Set-ServiceBusManagedIdentityRoles -SolutionAbbreviation $SolutionAbbreviation `
