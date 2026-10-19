@@ -8,6 +8,16 @@ import { TokenType } from '../services/auth';
 import { Destination, PostGroupResponse } from '../models';
 import { IPersonaProps } from '@fluentui/react';
 import { PostGroupRequest } from '../models/PostGroupRequest';
+import { isAxiosError } from 'axios';
+import { ThunkConfigWithErrors } from './store';
+
+export interface CreateGroupFailure {
+    kind: 'rejected' | 'uncertain';
+    statusCode?: number;
+}
+
+export const isConfirmedGroupRejection = (statusCode?: number): boolean =>
+    statusCode !== undefined && [400, 401, 403, 404, 405, 409, 422].includes(statusCode);
 
 interface ValidateGroupResponse {
     groupId: string;
@@ -80,18 +90,28 @@ export const validateGroup = createAsyncThunk<ValidateGroupResponse, string, Thu
     }
 );
 
-export const createGroup = createAsyncThunk<PostGroupResponse, PostGroupRequest, ThunkConfig>(
+export const createGroup = createAsyncThunk<PostGroupResponse, PostGroupRequest, ThunkConfigWithErrors<CreateGroupFailure>>(
     '/groups',
     async (postGroupRequest: PostGroupRequest, { extra, rejectWithValue } ) => {
         const { gmmApi } = extra.apis;
+        const { groupName, groupAlias, groupType, description } = postGroupRequest;
+        const payload: PostGroupRequest = {
+            groupName, groupAlias, groupType,
+            ...(description !== undefined ? { description } : {}),
+        };
         try {
-            const response = await gmmApi.destinations.createGroup(postGroupRequest);
+            const response = await gmmApi.destinations.createGroup(payload);
             return response.data;
-        } catch (error: any) {
-            if (error.response && error.response.data && error.response.data.detail) {
-                return rejectWithValue(error.response.data.detail);
-            }
-            throw new Error('Failed to call createGroup endpoint');
+        } catch (error) {
+            const statusCode = isAxiosError(error) ? error.response?.status : undefined;
+            const kind = isConfirmedGroupRejection(statusCode) ? 'rejected' : 'uncertain';
+            return rejectWithValue({ kind, statusCode });
         }
+    },
+    {
+        condition: (_, { getState }) => {
+            const state = getState().manageMembership;
+            return !state.createGroupLoading && !state.createdGroupId && !state.createGroupUncertain;
+        },
     }
 );

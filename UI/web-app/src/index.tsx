@@ -7,7 +7,7 @@ import { createRoot } from 'react-dom/client';
 import { ApplicationInsights } from '@microsoft/applicationinsights-web';
 import { ReactPlugin } from '@microsoft/applicationinsights-react-js';
 import { Provider, useSelector } from 'react-redux';
-import { BrowserRouter, Route, Routes } from 'react-router-dom';
+import { createBrowserRouter, RouterProvider } from 'react-router-dom';
 import './index.css';
 
 import { App } from './App';
@@ -17,6 +17,7 @@ import { store } from './store';
 import { selectIsDarkMode } from './store/theme.slice';
 import { darkPalette } from './theme/palette';
 import { darkModeStatusColors } from './theme/accessibleColors';
+import { PendingGroupCreationGuard } from './components/CreateGroup/PendingGroupCreationGuard';
 
 const connectionString = process.env.REACT_APP_APPINSIGHTS_CONNECTIONSTRING;
 if (!connectionString || connectionString === '') {
@@ -56,6 +57,23 @@ const OwnerPageWithMaintenanceCheck = MaintenanceCheckWrapper(OwnerPage);
 const ManageMembershipWithMaintenanceCheck = MaintenanceCheckWrapper(ManageMembership);
 const NotFoundWithMaintenanceCheck = MaintenanceCheckWrapper(NotFound);
 
+const router = createBrowserRouter([{
+  path: '/',
+  element: <><PendingGroupCreationGuard /><App /></>,
+  children: [
+    { index: true, element: <JobsPageWithMaintenanceCheck /> },
+    { path: 'JobDetails/:jobId', element: <JobDetailsWithMaintenanceCheck /> },
+    { path: 'JobDetails/:jobId/history', element: <JobDetailsWithMaintenanceCheck /> },
+    { path: 'Groups/:groupId', element: <JobDetailsWithMaintenanceCheck /> },
+    { path: 'Groups/:groupId/Channels/:channelId', element: <JobDetailsWithMaintenanceCheck /> },
+    { path: 'OwnerPage', element: <OwnerPageWithMaintenanceCheck /> },
+    { path: 'Admin', element: <AdminConfig /> },
+    { path: 'ManageMembership', element: <ManageMembershipWithMaintenanceCheck /> },
+    { path: 'ManageMembership/:jobId', element: <ManageMembershipWithMaintenanceCheck /> },
+    { path: 'NotFound', element: <NotFoundWithMaintenanceCheck /> },
+  ],
+}], { basename: '/' });
+
 const lightTheme = createTheme({});
 // The dark palette only inverts the neutral ramp, so Fluent keeps deriving link colors from
 // themePrimary (#0078d4), which only reaches ~3.2:1 against the near-black dark surface. Override
@@ -79,22 +97,7 @@ const ThemedApp: React.FC = () => {
 
   return (
     <ThemeProvider theme={theme}>
-      <BrowserRouter basename="/">
-        <Routes>
-          <Route path="" element={<App />}>
-            <Route path="/" element={<JobsPageWithMaintenanceCheck />} />
-            <Route path="/JobDetails/:jobId" element={<JobDetailsWithMaintenanceCheck />} />
-            <Route path="/JobDetails/:jobId/history" element={<JobDetailsWithMaintenanceCheck />} />
-            <Route path="/Groups/:groupId" element={<JobDetailsWithMaintenanceCheck />} />
-            <Route path="/Groups/:groupId/Channels/:channelId" element={<JobDetailsWithMaintenanceCheck />} />
-            <Route path="/OwnerPage" element={<OwnerPageWithMaintenanceCheck />} />
-            <Route path="/Admin" element={<AdminConfig />} />
-            <Route path="/ManageMembership" element={<ManageMembershipWithMaintenanceCheck />} />
-            <Route path="/ManageMembership/:jobId" element={<ManageMembershipWithMaintenanceCheck />} />
-            <Route path="/NotFound" element={<NotFoundWithMaintenanceCheck />} />
-          </Route>
-        </Routes>
-      </BrowserRouter>
+      <RouterProvider router={router} />
     </ThemeProvider>
   );
 };

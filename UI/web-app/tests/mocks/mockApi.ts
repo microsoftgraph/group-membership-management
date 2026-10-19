@@ -327,8 +327,12 @@ function getJobDetailsById(syncJobId: string) {
   };
 }
 
-export async function registerMockApiRoutes(page: Page): Promise<void> {
-  const settingsState = defaultSettings.map((setting) => ({ ...setting }));
+export async function registerMockApiRoutes(page: Page, options?: { createGroupFeatureEnabled?: boolean }): Promise<void> {
+  const settingsState = defaultSettings.map(setting => ({
+    ...setting,
+    ...(setting.settingKey === 5 && options?.createGroupFeatureEnabled !== undefined
+      ? { settingValue: String(options.createGroupFeatureEnabled) } : {}),
+  }));
   const jobsState: MockJobItem[] = mockJobsPage.items.map((job) => ({ ...job }));
   const groupNamesById = new Map<string, string>();
   let lastCreatedGroupId = 'group-created-001';

@@ -7,80 +7,13 @@ import { setupMockPage } from '../mocks/setupMockPage';
 const welcomeMessage = "Hi, I'm GMM Copilot.";
 const assistantResponse = 'Here is a filter for FTEs in your department.';
 
-async function typeIntoPicker(page: Page, pickerInputLocator: any, text: string) {
-  await pickerInputLocator.focus();
-  await pickerInputLocator.evaluate(async (el: HTMLInputElement, val: string) => {
-    el.focus();
-    const nativeInputValueSetter = Object.getOwnPropertyDescriptor(
-      window.HTMLInputElement.prototype,
-      'value'
-    )!.set!;
-    nativeInputValueSetter.call(el, val);
-
-    const fiberKey = Object.keys(el).find((key) => key.startsWith('__reactFiber$'));
-    if (!fiberKey) {
-      throw new Error('React fiber not found on picker input');
-    }
-
-    let autofillInstance: any = null;
-    let basePickerInstance: any = null;
-    let current = (el as any)[fiberKey];
-
-    while (current) {
-      if (current.stateNode) {
-        if (current.stateNode._onInputChanged && !autofillInstance) {
-          autofillInstance = current.stateNode;
-        }
-        if (current.stateNode._onResolveSuggestions && !basePickerInstance) {
-          basePickerInstance = current.stateNode;
-          break;
-        }
-      }
-      current = current.return;
-    }
-
-    if (!basePickerInstance || !autofillInstance) {
-      throw new Error('BasePicker or Autofill instance not found in fiber tree');
-    }
-
-    autofillInstance.setState({ inputValue: val });
-    basePickerInstance.setState({ isFocused: true });
-    await new Promise((resolve) => setTimeout(resolve, 50));
-
-    const suggestions = await basePickerInstance.props.onResolveSuggestions(
-      val,
-      basePickerInstance.state.items || []
-    );
-
-    if (suggestions && suggestions.length > 0) {
-      basePickerInstance.suggestionStore.updateSuggestions(suggestions, -1);
-      basePickerInstance.setState({
-        suggestionsVisible: true,
-        suggestionsLoading: false,
-        moreSuggestionsAvailable: false,
-      });
-    }
-  }, text);
-  await page.waitForTimeout(500);
-}
-
 async function navigateToMembershipConfiguration(page: Page) {
   await page.getByText('Create a new group').click();
+  await page.getByRole('button', { name: 'Create M365 Group', exact: true }).click();
 
   const groupNameInput = page.getByPlaceholder('Enter the name of the group');
   await groupNameInput.click();
   await groupNameInput.fill(`pw-copilot-${Date.now()}`);
-
-  const pickerInput = page.locator('.ms-BasePicker-input').first();
-  await pickerInput.click();
-  await page.waitForTimeout(500);
-
-  await typeIntoPicker(page, pickerInput, 'adele');
-  await page.getByRole('option', { name: 'Adele Vance' }).click();
-  await page.waitForTimeout(500);
-
-  await typeIntoPicker(page, pickerInput, 'alex');
-  await page.getByRole('option', { name: 'Alex Wilber' }).first().click();
 
   await page.getByRole('button', { name: 'Create group' }).click();
   await page.waitForSelector('button:has-text("Next")');

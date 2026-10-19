@@ -251,6 +251,7 @@ test.describe('Admin Tests', () => {
 
     await expect(page.getByText('Create a new group')).toBeVisible({ timeout: 10000 });
     await page.getByText('Create a new group').click();
+    await page.getByRole('button', { name: 'Create M365 Group', exact: true }).click();
     await expect(page.getByPlaceholder('Enter the name of the group')).toBeVisible({ timeout: 10000 });
     console.log('✅ Group creation enabled and confirmed.');
 

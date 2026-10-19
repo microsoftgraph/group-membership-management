@@ -29,8 +29,6 @@ import manageMembershipReducer, {
   deleteSourcePart,
   clearSourceParts,
   setIsEditingExistingJob,
-  setCreatedGroupName,
-  setCreateGroupErrorMessage,
   setBusinessJustification,
   setGroupSettings,
   clearGroupMembers,
@@ -172,14 +170,6 @@ describe('manageMembership.slice — simple reducers', () => {
 
   it('setIsAdvancedQueryValid', () => {
     expect(manageMembershipReducer(initial, setIsAdvancedQueryValid(true)).isAdvancedQueryValid).toBe(true);
-  });
-
-  it('setCreatedGroupName', () => {
-    expect(manageMembershipReducer(initial, setCreatedGroupName('New Group')).createdGroupName).toBe('New Group');
-  });
-
-  it('setCreateGroupErrorMessage', () => {
-    expect(manageMembershipReducer(initial, setCreateGroupErrorMessage('Error!')).createGroupErrorMessage).toBe('Error!');
   });
 
   it('setBusinessJustification', () => {
@@ -453,7 +443,8 @@ describe('manageMembership.slice — extraReducers', () => {
   it('createGroup.rejected sets error', () => {
     const state = manageMembershipReducer(initial, createGroup.rejected(new Error('create fail'), 'req1', {} as any));
     expect(state.createGroupLoading).toBe(false);
-    expect(state.createGroupErrorMessage).toBe('create fail');
+    expect(state.createGroupErrorMessage).toBe('Group creation failed.');
+    expect(state.createGroupUncertain).toBe(true);
   });
 });
 

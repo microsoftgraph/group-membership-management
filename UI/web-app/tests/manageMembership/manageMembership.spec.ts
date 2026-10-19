@@ -20,13 +20,15 @@ test('preserves the generated alias and locks group creation controls while the 
 
   await page.goto(`${DOMAIN}/ManageMembership`);
   await page.getByRole('radio', { name: 'Create a new group', exact: true }).check();
+  await page.getByRole('button', { name: 'Create M365 Group', exact: true }).click();
+  const dialog = page.getByRole('dialog', { name: 'New Microsoft 365 group', exact: true });
   const groupName = page.getByPlaceholder('Enter the name of the group');
   const groupAlias = page.getByPlaceholder('Enter the alias of the group');
   await groupName.fill('Finance+Ops');
   await expect(groupAlias).toHaveValue('Finance+Ops');
-  const exchangeToggle = page.getByRole('switch').first();
-  await exchangeToggle.click();
-  await expect(exchangeToggle).not.toBeChecked();
+  const behaviorPreview = page.getByRole('checkbox', { name: 'Show group mailbox and calendar in Outlook', exact: true });
+  await behaviorPreview.press('Space');
+  await expect(behaviorPreview).not.toBeChecked();
 
   const requestPromise = page.waitForRequest(request =>
     request.method() === 'POST' && request.url().endsWith('/api/v1/destinations/groups')
@@ -37,23 +39,19 @@ test('preserves the generated alias and locks group creation controls while the 
     groupName: 'Finance+Ops',
     groupAlias: 'Finance+Ops',
     groupType: 0,
+    description: '',
   });
 
-  await expect(page.getByRole('radio', { name: 'Microsoft 365', exact: true })).toBeDisabled();
-  await expect(page.getByRole('radio', { name: 'Security', exact: true })).toBeDisabled();
-  await expect(page.getByRole('radio', { name: 'Select existing destination', exact: true })).toBeDisabled();
   await expect(groupName).toBeDisabled();
   await expect(groupAlias).toBeDisabled();
-  await expect(page.getByRole('combobox', { name: 'Authorized Senders', exact: true })).toBeDisabled();
-  await expect(exchangeToggle).toBeDisabled();
+  await expect(behaviorPreview).toBeDisabled();
+  await expect(dialog.getByRole('button', { name: 'Cancel', exact: true })).toBeDisabled();
   await expect(page.getByRole('button', { name: 'Creating...', exact: true })).toBeDisabled();
 
   releaseResponse();
-  await expect(page.getByRole('button', { name: 'Created', exact: true })).toBeEnabled();
-  await expect(page.getByRole('radio', { name: 'Microsoft 365', exact: true })).toBeChecked();
-  await expect(groupName).toBeEnabled();
-  await expect(exchangeToggle).toBeEnabled();
-  await expect(exchangeToggle).not.toBeChecked();
+  await expect(dialog).toHaveCount(0);
+  await expect(page.getByRole('status').filter({ hasText: 'Preview-only selections were not saved or applied.' })).toBeVisible();
+  await expect(page.getByRole('button', { name: /^Next/ })).toBeEnabled();
 });
 
 test('restores an existing job query after refreshing ManageMembership', async ({ page }) => {

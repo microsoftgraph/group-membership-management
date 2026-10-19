@@ -8,6 +8,9 @@ import { NewGroupType } from '../../models/NewGroupType';
 export interface ICreateGroupStyles {
   root: IStyle;
   textField: IStyle;
+  alias: IStyle;
+  help: IStyle;
+  label: IStyle;
 }
 
 export interface ICreateGroupStyleProps {
@@ -25,5 +28,7 @@ export interface ICreateGroupProps extends React.AllHTMLAttributes<HTMLDivElemen
    * Call to provide customized styling that will layer on top of the variant rules.
    */
   styles?: IStyleFunctionOrObject<ICreateGroupStyleProps, ICreateGroupStyles>;
-  onGroupCreated: (groupName: string, groupAlias: string, groupType: NewGroupType) => void;
+  groupType: NewGroupType;
+  onDismiss: () => void;
+  onGroupCreated: (groupName: string, groupAlias: string, groupType: NewGroupType, description: string) => void | Promise<void>;
 };

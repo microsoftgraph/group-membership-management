@@ -9,3 +9,4 @@ This document outlines some of GMM's current features.
 | Group Owner Submission | Allows group owners to onboard themselves. Includes a submission approval workflow for admins. |
 | Multi-Source Support | Integrates with multiple data sources like Workday, SAP SuccessFactors, Oracle HCM, ADP Workforce Now, PowerSchool, Blackboard and other custom sources. |
 | Multi-Destination Support | Supports Teams Channels membership in addition to Groups. |
+| Group Creation | Allows owners to create Microsoft 365 or security groups and continue membership onboarding when enabled. Saves the name, Microsoft 365 email alias, and optional description; other settings are previews only and are not saved or applied. |

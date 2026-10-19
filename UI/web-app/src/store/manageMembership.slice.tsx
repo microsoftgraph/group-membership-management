@@ -23,7 +23,7 @@ import { SourcePartType } from '../models/SourcePartType';
 import { PLACEHOLDER_OPERATOR } from '../models/HRFilterConstants';
 import { SourcePartQuery } from '../models/SourcePartQuery';
 import { isSourcePartValid, removeUnusedProperties, hasStandaloneTeamsChannelSource } from '../utils/sourcePartUtils';
-import { createGroup } from './groups.api';
+import { createGroup, isConfirmedGroupRejection } from './groups.api';
 import { GroupSettings } from '../models/GroupSettings';
 import { DestinationType } from '../models/DestinationType';
 import { GroupMember } from '../models/GroupMember';
@@ -59,6 +59,10 @@ export interface ManageMembershipState {
     groupSettings?: GroupSettings | undefined;
     createGroupLoading: boolean;
     createGroupErrorMessage?: string | undefined;
+    createGroupUncertain?: boolean;
+    createGroupRequestId?: string;
+    createdGroupDestinationLoading?: boolean;
+    createdGroupDestinationLoadError?: boolean;
     businessJustification?: string;
 }
 
@@ -102,6 +106,10 @@ const initialState: ManageMembershipState = {
     groupSettings: undefined,
     createGroupLoading: false,
     createGroupErrorMessage: undefined,
+    createGroupUncertain: false,
+    createGroupRequestId: undefined,
+    createdGroupDestinationLoading: false,
+    createdGroupDestinationLoadError: false,
     businessJustification: '',
 };
 
@@ -168,7 +176,7 @@ const manageMembershipSlice = createSlice({
         setShowDecreaseDropdown: (state, action: PayloadAction<boolean>) => {
             state.showDecreaseDropdown = action.payload;
         },
-        resetManageMembership: () =>  initialState
+        resetManageMembership: state => state.createGroupLoading ? state : initialState
         ,
         setIsAdvancedView: (state, action: PayloadAction<boolean>) => {
             if (action.payload) {
@@ -391,11 +399,16 @@ const manageMembershipSlice = createSlice({
                 Object.assign(state, initialState);
             }
         },
-        setCreatedGroupName: (state, action: PayloadAction<string | undefined>) => {
-            state.createdGroupName = action.payload;
-        },
-        setCreateGroupErrorMessage: (state, action: PayloadAction<string>) => {
-            state.createGroupErrorMessage = action.payload;
+        resetCreateGroup: state => {
+            if (!state.createGroupLoading) {
+                state.createdGroupId = undefined;
+                state.createdGroupName = undefined;
+                state.createGroupErrorMessage = undefined;
+                state.createGroupUncertain = false;
+                state.createGroupRequestId = undefined;
+                state.createdGroupDestinationLoading = false;
+                state.createdGroupDestinationLoadError = false;
+            }
         },
         setBusinessJustification: (state, action: PayloadAction<string>) => {
             state.businessJustification = action.payload;
@@ -444,29 +457,53 @@ const manageMembershipSlice = createSlice({
             if (state.selectedDestination?.id === action.meta.arg) {
                 state.selectedDestination.endpoints = action.payload;
             }
+            if (state.createdGroupId === action.meta.arg) {
+                state.createdGroupDestinationLoading = false;
+                state.createdGroupDestinationLoadError = false;
+            }
         });
-        builder.addCase(createGroup.pending, (state) => {
+        builder.addCase(getGroupEndpoints.pending, (state, action) => {
+            if (state.createdGroupId === action.meta.arg) {
+                state.createdGroupDestinationLoading = true;
+                state.createdGroupDestinationLoadError = false;
+            }
+        });
+        builder.addCase(getGroupEndpoints.rejected, (state, action) => {
+            if (state.createdGroupId === action.meta.arg) {
+                state.createdGroupDestinationLoading = false;
+                state.createdGroupDestinationLoadError = true;
+            }
+        });
+        builder.addCase(createGroup.pending, (state, action) => {
             state.createGroupLoading = true;
+            state.createGroupRequestId = action.meta.requestId;
+            state.createdGroupName = action.meta.arg.groupName;
+            state.createGroupErrorMessage = undefined;
+            state.createGroupUncertain = false;
         });
         builder.addCase(createGroup.fulfilled, (state, action) => {
+            if (state.createGroupRequestId && state.createGroupRequestId !== action.meta.requestId) return;
             state.createGroupLoading = false;
-            if (action.payload.groupId && state.createdGroupName) {
+            if (action.payload.groupId) {
                 state.createdGroupId = action.payload.groupId;
+                state.createdGroupName = action.meta.arg.groupName ?? state.createdGroupName;
                 state.selectedDestination = {
-                    ...state.selectedDestination,
                     id: action.payload.groupId,
-                    name: state.createdGroupName,
+                    name: state.createdGroupName ?? '',
                     type: DestinationType.GroupMembership,
                 };
+                state.groupSettings = undefined;
                 state.onboardingStatus = { status : OnboardingStatus.ReadyForOnboarding };
-            }
-            if (action.payload.responseData){
-                state.createGroupErrorMessage = action.payload.responseData;
+            } else {
+                state.createGroupUncertain = !isConfirmedGroupRejection(action.payload.statusCode);
+                state.createGroupErrorMessage = 'Group creation failed.';
             }
         });
         builder.addCase(createGroup.rejected, (state, action) => {
+            if (action.meta.condition || (state.createGroupRequestId && state.createGroupRequestId !== action.meta.requestId)) return;
             state.createGroupLoading = false;
-            state.createGroupErrorMessage = action.error.message;
+            state.createGroupUncertain = action.payload?.kind !== 'rejected';
+            state.createGroupErrorMessage = 'Group creation failed.';
         });
         builder.addCase(getGroupOwners.fulfilled, (state, action) => {
             state.groupOwners = action.payload;
@@ -516,8 +553,7 @@ export const {
     clearSourceParts,
     setJobDetailsForExistingJob,
     setIsEditingExistingJob,
-    setCreatedGroupName,
-    setCreateGroupErrorMessage,
+    resetCreateGroup,
     setBusinessJustification,
     setGroupSettings,
     clearGroupMembers
@@ -546,9 +582,15 @@ export const manageMembershipLoadingSearchResults = (state: RootState) => state.
 export const manageMembershipSelectedDestinationEndpoints = (state: RootState) => state.manageMembership.selectedDestination?.endpoints;
 export const manageMembershipGroupOnboardingStatus = (state: RootState) => state.manageMembership.onboardingStatus;
 export const manageMembershipCreatedGroupId = (state: RootState) => state.manageMembership.createdGroupId;
-export const manageMembershipCreatedGroupName = (state: RootState) => state.manageMembership.createdGroupName;
 export const manageMembershipCreateGroupLoading = (state: RootState) => state.manageMembership.createGroupLoading;
 export const manageMembershipCreateGroupErrorMessage = (state: RootState) => state.manageMembership.createGroupErrorMessage;
+export const manageMembershipCreateGroupUncertain = (state: RootState) => state.manageMembership.createGroupUncertain === true;
+export const manageMembershipCreatedGroupDestinationLoading = (state: RootState) =>
+    state.manageMembership.selectedDestination?.id === state.manageMembership.createdGroupId &&
+    state.manageMembership.createdGroupDestinationLoading === true;
+export const manageMembershipCreatedGroupDestinationLoadError = (state: RootState) =>
+    state.manageMembership.selectedDestination?.id === state.manageMembership.createdGroupId &&
+    state.manageMembership.createdGroupDestinationLoadError === true;
 export const manageMembershipIsGroupReadyForOnboarding = (state: RootState): boolean => {
     return state.manageMembership.onboardingStatus?.status === OnboardingStatus.ReadyForOnboarding;
 };

@@ -51,8 +51,6 @@ import {
   manageMembershipRequestor,
   manageMembershipAdvancedViewQuery,
   manageMembershipCreatedGroupId,
-  setCreatedGroupName,
-  manageMembershipCreatedGroupName,
   manageMembershipBusinessJustification,
   setBusinessJustification,
   manageMembershipLastModifiedOnBehalfOfDisplayName,
@@ -60,7 +58,10 @@ import {
   setGroupSettings,
   manageMembershipGroupSettings,
   getSourcePartsFromState,
-  manageMembershipGroupMembers
+  manageMembershipGroupMembers,
+  manageMembershipCreateGroupLoading,
+  manageMembershipCreatedGroupDestinationLoading,
+  manageMembershipCreatedGroupDestinationLoadError,
 } from '../../store/manageMembership.slice';
 import { getGroupEndpoints, getGroupOnboardingStatus, getChannelOnboardingStatus, getGroupMembers } from '../../store/manageMembership.api';
 import { clearGroupMembers } from '../../store/manageMembership.slice';
@@ -201,7 +202,9 @@ export const ManageMembershipBase: React.FunctionComponent<IManageMembershipProp
   const thresholdPercentageForAdditions = useSelector(manageMembershipThresholdPercentageForAdditions);
   const thresholdPercentageForRemovals = useSelector(manageMembershipThresholdPercentageForRemovals);
   const createdGroupId = useSelector(manageMembershipCreatedGroupId);
-  const createdGroupName = useSelector(manageMembershipCreatedGroupName);
+  const isCreateGroupLoading = useSelector(manageMembershipCreateGroupLoading);
+  const createdDestinationLoading = useSelector(manageMembershipCreatedGroupDestinationLoading);
+  const createdDestinationLoadError = useSelector(manageMembershipCreatedGroupDestinationLoadError);
   const groupSettings = useSelector(manageMembershipGroupSettings);
   const currentUser = useSelector(selectAccountUsername) ?? '';
   const inputRequestor = useSelector(manageMembershipRequestor);
@@ -324,29 +327,22 @@ export const ManageMembershipBase: React.FunctionComponent<IManageMembershipProp
     }
   };
 
-  const handleGroupCreated = async (groupName: string, groupAlias: string, groupType: NewGroupType) => {
-    await dispatch(setCreatedGroupName(groupName));
-    await dispatch(createGroup({ groupName, groupAlias, groupType }));
+  const handleGroupCreated = async (groupName: string, groupAlias: string, groupType: NewGroupType, description: string) => {
+    await dispatch(createGroup({ groupName, groupAlias, groupType, description }));
   };
 
   useEffect(() => {
-    if(createdGroupId && createdGroupName){
-      const selectedDestination: Destination = {
-        id: createdGroupId,
-        name: createdGroupName,
-        type: DestinationType.GroupMembership, // Make type configurable once we support Teams Channel creation
-        groupSettings: groupSettings
-      };
-      dispatch(setSelectedDestination(selectedDestination));
+    if (createdGroupId) {
       dispatch(getGroupEndpoints(createdGroupId));
     }
-  }, [createdGroupId, createdGroupName, groupSettings, dispatch]);
+  }, [createdGroupId, dispatch]);
 
   const handleEditBusinessJustification = (justification: string) => {
     dispatch(setBusinessJustification(justification));
   };
 
   const handleBackToDashboardButtonClick = () => {
+    if (isCreateGroupLoading) return;
     if (hasChanges){
       setShowLeaveManageMembershipDialog(true);
     }
@@ -357,14 +353,17 @@ export const ManageMembershipBase: React.FunctionComponent<IManageMembershipProp
   };
 
   const onEditButtonClick = (stepToEdit: number) => {
+    if (isCreateGroupLoading) return;
     dispatch(setCurrentStep(stepToEdit));
   };
 
   const onNextStepClick = () => {
+    if (isCreateGroupLoading) return;
     dispatch(setCurrentStep(currentStep + 1));
   };
 
   const onBackStepClick = () => {
+    if (isCreateGroupLoading) return;
     dispatch(setCurrentStep(currentStep - 1));
   };
 
@@ -373,6 +372,7 @@ export const ManageMembershipBase: React.FunctionComponent<IManageMembershipProp
   };
 
   const onConfirmExit = () => {
+    if (isCreateGroupLoading) return;
     navigate('/');
     setShowLeaveManageMembershipDialog(false);
     dispatch(resetManageMembership());
@@ -658,7 +658,7 @@ export const ManageMembershipBase: React.FunctionComponent<IManageMembershipProp
                     text={strings.nextStep as string}
                     iconProps={{ iconName: 'ChevronRight' }}
                     onClick={onNextStepClick}
-                    disabled={isNextDisabled}
+                    disabled={isNextDisabled || isCreateGroupLoading || createdDestinationLoading || createdDestinationLoadError}
                     styles={getNavButtonStyles(theme, true)}
                   />}
             </div>

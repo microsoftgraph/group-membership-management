@@ -13,6 +13,42 @@ export const getStyles = (props: ISelectDestinationStyleProps): ISelectDestinati
   return {
     root: [{
     }, className],
+    creationCards: {
+      display: 'grid',
+      gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
+      gap: 18,
+      borderTop: `1px solid ${theme.palette.neutralLight}`,
+      paddingTop: 16,
+      selectors: { '@media (max-width: 700px)': { gridTemplateColumns: '1fr' } },
+    },
+    creationCard: {
+      border: `1px solid ${theme.palette.neutralQuaternary}`,
+      borderRadius: 10,
+      padding: 24,
+      background: theme.semanticColors.bodyBackground,
+    },
+    creationCardHeader: {
+      display: 'flex',
+      alignItems: 'center',
+      gap: 24,
+      selectors: {
+        '& h3': { margin: '0 0 8px', fontSize: 18, fontWeight: 600 },
+        '& p': { margin: 0, lineHeight: 22 },
+      },
+    },
+    creationCardIcon: {
+      flexShrink: 0,
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      width: 54,
+      height: 54,
+      borderRadius: '50%',
+      background: theme.palette.themePrimary,
+      color: theme.palette.white,
+      fontSize: 28,
+    },
+    creationCardAction: { display: 'flex', justifyContent: 'center', marginTop: 18 },
     dropdownTitle: {
       borderRadius: 4,
       borderStyle: 'solid',

@@ -7,5 +7,5 @@ export interface PostGroupRequest {
     groupName: string;
     groupAlias: string;
     groupType: NewGroupType;
+    description?: string | null;
 };
-

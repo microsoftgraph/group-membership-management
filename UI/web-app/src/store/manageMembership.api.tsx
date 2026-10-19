@@ -140,7 +140,7 @@ export const getChannelOnboardingStatus = createAsyncThunk<GroupOnboardingStatus
 
 export const getGroupEndpoints = createAsyncThunk<string[], string, ThunkConfig>(
   'groupEndpoints',
-  async (groupId: string, { extra }) => {
+  async (groupId: string, { extra, getState }) => {
     const { authenticationService } = extra.services;
     const token = await authenticationService.getTokenAsync(TokenType.GMM);
     const headers = new Headers();
@@ -153,10 +153,13 @@ export const getGroupEndpoints = createAsyncThunk<string[], string, ThunkConfig>
     };
 
     try {
-      const response = await fetch(`${config.getGroupEndpoints(groupId)}`, options).then(
-        async (response) => await response.json()
-      );
-      const payload: string[] = response;
+      const response = await fetch(`${config.getGroupEndpoints(groupId)}`, options);
+      const isCreatedGroup = getState().manageMembership.createdGroupId === groupId;
+      if (isCreatedGroup && !response.ok) throw new Error('Failed to load the created destination.');
+      const payload: string[] = await response.json();
+      if (isCreatedGroup && (!Array.isArray(payload) || !payload.every(endpoint => typeof endpoint === 'string'))) {
+        throw new Error('Invalid created destination response.');
+      }
       return payload;
     } catch (error) {
       throw new Error('Failed to fetch destination data!');

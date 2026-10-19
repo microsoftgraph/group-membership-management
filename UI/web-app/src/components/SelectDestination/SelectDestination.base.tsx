@@ -1,7 +1,7 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import {
   IProcessedStyleSet,
@@ -24,6 +24,8 @@ import {
   MessageBarType,
   Persona,
   PersonaSize,
+  Icon,
+  IBasePicker,
 } from '@fluentui/react';
 import {
   ISelectDestinationProps,
@@ -33,7 +35,7 @@ import {
 import { useStrings } from '../../store/hooks';
 import { PageSection } from '../PageSection';
 import { AppDispatch } from '../../store';
-import { searchChannels, searchDestinations, getGroupOnboardingStatus, getChannelOnboardingStatus, getGroupMembers } from '../../store/manageMembership.api';
+import { searchChannels, searchDestinations, getGroupOnboardingStatus, getChannelOnboardingStatus, getGroupMembers, getGroupEndpoints } from '../../store/manageMembership.api';
 import {
   manageMembershipSelectedDestinationEndpoints,
   manageMembershipSearchResults,
@@ -42,6 +44,10 @@ import {
   manageMembershipGroupOnboardingStatus,
   manageMembershipGroupMembers,
   manageMembershipCreateGroupLoading,
+  manageMembershipCreatedGroupId,
+  resetCreateGroup,
+  manageMembershipCreatedGroupDestinationLoadError,
+  manageMembershipCreatedGroupDestinationLoading,
 } from '../../store/manageMembership.slice';
 import { Destination } from '../../models/Destination';
 import { SearchChannelRequest } from '../../models/SearchChannelRequest';
@@ -56,6 +62,7 @@ import { DestinationType } from '../../models/DestinationType';
 import { GroupSetting } from '../GroupSetting/GroupSetting';
 import { jsxFormat } from '../../utils/stringUtils';
 import { ChannelOnboardingStatusRequest } from '../../models/ChannelOnboardingStatusRequest';
+import { NewGroupType } from '../../models/NewGroupType';
 
 const getClassNames = classNamesFunction<ISelectDestinationStyleProps, ISelectDestinationStyles>();
 
@@ -155,10 +162,38 @@ export const SelectDestinationBase: React.FunctionComponent<ISelectDestinationPr
   const selectedDestinationChannelPersona = mapDestinationToChannelPersonaProps(selectedDestination);
   const selectedDestinationPersona = mapDestinationToPersonaProps(selectedDestination);
   const [createNewGroup, setCreateNewGroup] = useState(false);
+  const [dialogType, setDialogType] = useState<NewGroupType>();
+  const [showPreviewSuccess, setShowPreviewSuccess] = useState(false);
+  const destinationPickerRef = useRef<IBasePicker<IPersonaProps>>(null);
   const isCreateGroupEnabled = useSelector(selectCreateGroupFeatureEnabled);
   const isCreateGroupLoading = useSelector(manageMembershipCreateGroupLoading);
+  const createdGroupId = useSelector(manageMembershipCreatedGroupId);
+  const createdDestinationLoadError = useSelector(manageMembershipCreatedGroupDestinationLoadError);
+  const createdDestinationLoading = useSelector(manageMembershipCreatedGroupDestinationLoading);
   const isTenantJobWriter: boolean | undefined = useSelector(selectIsJobTenantWriter);
   const isTeamsChannelOnboarder: boolean | undefined = useSelector(selectIsTeamsChannelOnboarder);
+
+  useEffect(() => {
+    if (dialogType !== undefined && createdGroupId) {
+      setDialogType(undefined);
+      setCreateNewGroup(false);
+      setShowPreviewSuccess(true);
+    }
+  }, [createdGroupId, dialogType]);
+
+  useEffect(() => {
+    if (showPreviewSuccess) {
+      const frame = requestAnimationFrame(() => destinationPickerRef.current?.focusInput());
+      return () => cancelAnimationFrame(frame);
+    }
+  }, [showPreviewSuccess]);
+
+  const openCreateDialog = (groupType: NewGroupType) => {
+    if (isCreateGroupLoading) return;
+    dispatch(resetCreateGroup());
+    setShowPreviewSuccess(false);
+    setDialogType(groupType);
+  };
 
   const optionsDestinationType: IComboBoxOption[] = [
     {
@@ -405,6 +440,7 @@ export const SelectDestinationBase: React.FunctionComponent<ISelectDestinationPr
     ev?: React.FormEvent<HTMLElement | HTMLInputElement>,
     option?: IChoiceGroupOption
   ): void => {
+    if (isCreateGroupLoading) return;
     if (option?.key === 'Create') {
       setCreateNewGroup(true);
     } else {
@@ -425,8 +461,26 @@ export const SelectDestinationBase: React.FunctionComponent<ISelectDestinationPr
               disabled={isCreateGroupLoading}
             />
           )}
-          {createNewGroup ? (
-            <CreateGroup onGroupCreated={onGroupCreated} />
+          {isCreateGroupEnabled && createNewGroup ? (
+            <div className={classNames.creationCards}>
+              {[
+                { type: NewGroupType.Microsoft365, title: strings.ManageMembership.CreateGroup.collaborate, description: strings.ManageMembership.CreateGroup.groupTypeMicrosoft365Description, action: strings.ManageMembership.CreateGroup.createMicrosoft365, icon: 'AddGroup' },
+                { type: NewGroupType.Security, title: strings.ManageMembership.CreateGroup.controlAccess, description: strings.ManageMembership.CreateGroup.groupTypeSecurityDescription, action: strings.ManageMembership.CreateGroup.createSecurity, icon: 'Shield' },
+              ].map(card => (
+                <article key={card.type} className={classNames.creationCard}>
+                  <div className={classNames.creationCardHeader}>
+                    <div style={{ flex: 1 }}>
+                      <h3>{card.title}</h3>
+                      <p>{card.description}</p>
+                    </div>
+                    <span className={classNames.creationCardIcon} aria-hidden="true"><Icon iconName={card.icon} /></span>
+                  </div>
+                  <div className={classNames.creationCardAction}>
+                    <DefaultButton text={card.action} onClick={() => openCreateDialog(card.type)} disabled={isCreateGroupLoading} />
+                  </div>
+                </article>
+              ))}
+            </div>
           ) : (
             <>
               <ComboBox
@@ -445,6 +499,7 @@ export const SelectDestinationBase: React.FunctionComponent<ISelectDestinationPr
               <div>
                 {selectedDestination?.type == DestinationType.TeamsChannelMembership ? strings.ManageMembership.labels.searchTeam: strings.ManageMembership.labels.searchGroup}
                 <NormalPeoplePicker
+                  componentRef={destinationPickerRef}
                   onResolveSuggestions={getPickerSuggestions}
                   onRenderSuggestionsItem={renderSuggestionItem}
                   pickerSuggestionsProps={{
@@ -538,6 +593,25 @@ export const SelectDestinationBase: React.FunctionComponent<ISelectDestinationPr
           )}
         </div>
       </PageSection>
+      {isCreateGroupEnabled && showPreviewSuccess && (
+        <MessageBar messageBarType={MessageBarType.success} role="status" delayedRender={false}>
+          {strings.ManageMembership.CreateGroup.previewSuccess}
+        </MessageBar>
+      )}
+      {isCreateGroupEnabled && createdDestinationLoading && (
+        <div role="status"><Spinner /></div>
+      )}
+      {isCreateGroupEnabled && createdDestinationLoadError && createdGroupId && (
+        <MessageBar messageBarType={MessageBarType.error} delayedRender={false}>
+          {strings.ManageMembership.CreateGroup.destinationLoadFailure}
+          <DefaultButton text={strings.ManageMembership.labels.checkAgain} onClick={() => dispatch(getGroupEndpoints(createdGroupId))} />
+        </MessageBar>
+      )}
+      {isCreateGroupEnabled && dialogType !== undefined && (
+        <CreateGroup key={dialogType} groupType={dialogType} onGroupCreated={onGroupCreated} onDismiss={() => {
+          if (!isCreateGroupLoading) setDialogType(undefined);
+        }} />
+      )}
     </div>
   );
 };

@@ -129,9 +129,8 @@ test.describe('Job Details Tests', () => {
     }
   });
 
-  test('Create a group with AuthorizedSenders', { tag: '@main' }, async ({ page }) => {
+  test('Create a group with unapplied behavior previews', { tag: '@main' }, async ({ page }) => {
     const AUTHORIZED_SENDERS_LABEL = 'Authorized Senders';
-    const EXPECTED_SENDER_TEXT = 'adele';
     const GROUP_NAME = 'contoso';
     const url = DOMAIN.startsWith('http://') || DOMAIN.startsWith('https://') ? DOMAIN : `https://${DOMAIN}`;
     await page.goto(url);
@@ -140,6 +139,7 @@ test.describe('Job Details Tests', () => {
     // Click the Add button to navigate to ManageMembership
     await page.locator('#manage-membership-button').click();
     await page.getByText('Create a new group').click();
+    await page.getByRole('button', { name: 'Create M365 Group', exact: true }).click();
     await page.getByPlaceholder('Enter the name of the group').click();
 
     const groupName = `pw-test-${uuidv4().replace(/-/g, '').slice(0, 10)}`;
@@ -147,17 +147,8 @@ test.describe('Job Details Tests', () => {
     // Fill group name
     await page.getByPlaceholder('Enter the name of the group').fill(groupName);
 
-    // Select authorized senders
-    const pickerInput = page.locator('.ms-BasePicker-input').first();
-    await pickerInput.click();
-    await page.waitForTimeout(500);
-
-    await typeIntoPicker(page, pickerInput, 'adele');
-    await page.getByRole('option', { name: 'Adele Vance' }).click();
-    await page.waitForTimeout(1000);
-
-    await typeIntoPicker(page, pickerInput, 'alex');
-    await page.getByRole('option', { name: 'Alex Wilber' }).first().click();
+    await page.getByRole('checkbox', { name: 'Send welcome emails', exact: true }).press('Space');
+    await expect(page.getByRole('checkbox', { name: 'Send welcome emails', exact: true })).toBeChecked();
 
     // Create group
     await page.getByRole('button', { name: 'Create group' }).click();
@@ -206,11 +197,7 @@ test.describe('Job Details Tests', () => {
     await page.getByRole('button', { name: 'Next' }).click();
     await page.getByRole('button', { name: 'Next' }).click();
 
-    // Verify authorized sender
-    const siblingSpan = page.locator(`text=${AUTHORIZED_SENDERS_LABEL}`).locator('xpath=following-sibling::span');
-    await expect(siblingSpan).toHaveText(new RegExp(`${EXPECTED_SENDER_TEXT}`, 'i'));
-
-    console.log('✅ Authorized senders test completed successfully.');
+    await expect(page.getByText(AUTHORIZED_SENDERS_LABEL, { exact: true })).toHaveCount(0);
 
     // Test: Verify dropdown for RequestedOnBehalfOf displays current user since they are the creator/owner of the group
     const requestedOnBehalfOfDropdown = page.locator('#groupOwnersDropdown');
@@ -231,21 +218,13 @@ test.describe('Job Details Tests', () => {
     // Click the Add button to navigate to ManageMembership
     await page.locator('#manage-membership-button').click();
     await page.getByText('Create a new group').click();
+    await page.getByRole('button', { name: 'Create M365 Group', exact: true }).click();
     await page.getByPlaceholder('Enter the name of the group').click();
 
     const groupName = `pw-test-${uuidv4().replace(/-/g, '').slice(0, 10)}`;
 
     // Fill group name
     await page.getByPlaceholder('Enter the name of the group').fill(groupName);
-
-    // Select authorized senders
-    const pickerInputUnsupported = page.locator('.ms-BasePicker-input').first();
-    await pickerInputUnsupported.click();
-    await typeIntoPicker(page, pickerInputUnsupported, 'adele');
-    await page.getByRole('option', { name: 'Adele Vance' }).click();
-    await page.waitForTimeout(1000);
-    await typeIntoPicker(page, pickerInputUnsupported, 'alex');
-    await page.getByRole('option', { name: 'Alex Wilber' }).first().click();
 
     // Create group
     await page.getByRole('button', { name: 'Create group' }).click();
@@ -304,6 +283,7 @@ test.describe('Job Details Tests', () => {
     await page.locator('#manage-membership-button').click();
     await page.getByText('Create a new group').waitFor({ state: 'visible', timeout: 10000 });
     await page.getByText('Create a new group').click();
+    await page.getByRole('button', { name: 'Create M365 Group', exact: true }).click();
 
     const groupNameInput = page.getByPlaceholder('Enter the name of the group');
     await groupNameInput.waitFor({ state: 'visible', timeout: 10000 });
@@ -313,15 +293,6 @@ test.describe('Job Details Tests', () => {
 
     // Fill group name
     await groupNameInput.fill(groupName);
-
-    // Select authorized senders
-    const pickerInputInclusionary = page.locator('.ms-BasePicker-input').first();
-    await pickerInputInclusionary.click();
-    await typeIntoPicker(page, pickerInputInclusionary, 'adele');
-    await page.getByRole('option', { name: 'Adele Vance' }).click();
-    await page.waitForTimeout(1000);
-    await typeIntoPicker(page, pickerInputInclusionary, 'alex');
-    await page.getByRole('option', { name: 'Alex Wilber' }).first().click();
 
     // Create group
     await page.getByRole('button', { name: 'Create group' }).click();
@@ -370,20 +341,17 @@ test.describe('Job Details Tests', () => {
     // Click the Add button to navigate to ManageMembership
     await page.locator('#manage-membership-button').click();
     await page.getByText('Create a new group').click();
+    await page.getByRole('button', { name: 'Create M365 Group', exact: true }).click();
     await page.getByPlaceholder('Enter the name of the group').click();
     const groupName = `pw-test-${uuidv4().replace(/-/g, '').slice(0, 10)}`;
     createdGroupName = groupName;
     console.log(`Group name: ${groupName}`);
     // Fill group name
     await page.getByPlaceholder('Enter the name of the group').fill(groupName);
-    // Select authorized senders
-    const pickerInputOnboarding = page.locator('.ms-BasePicker-input').first();
-    await pickerInputOnboarding.click();
-    await typeIntoPicker(page, pickerInputOnboarding, 'adele');
-    await page.getByRole('option', { name: 'Adele Vance' }).click();
-    await page.waitForTimeout(1000);
-    await typeIntoPicker(page, pickerInputOnboarding, 'alex');
-    await page.getByRole('option', { name: 'Alex Wilber' }).first().click();
+    await page.getByRole('checkbox', { name: 'Send welcome emails', exact: true }).press('Space');
+    await page.getByRole('checkbox', { name: 'Show group mailbox and calendar in Outlook', exact: true }).press('Space');
+    await expect(page.getByRole('checkbox', { name: 'Send welcome emails', exact: true })).toBeChecked();
+    await expect(page.getByRole('checkbox', { name: 'Show group mailbox and calendar in Outlook', exact: true })).not.toBeChecked();
     // Create group
     await page.getByRole('button', { name: 'Create group' }).click();
     await page.waitForSelector('button:has-text("Next")');
@@ -509,7 +477,15 @@ test.describe('Job Details Tests', () => {
     console.log('✅ Group owner selected');
 
     // Complete onboarding and submit for review
+    const onboardingRequest = page.waitForRequest(request =>
+      request.method() === 'POST' && /\/api\/v1\/jobs\/?$/.test(new URL(request.url()).pathname)
+    );
     await page.getByRole('button', { name: 'Submit'}).click();
+    const onboardingPayload = (await onboardingRequest).postDataJSON();
+    expect(onboardingPayload).not.toHaveProperty('groupSettings');
+    for (const preview of ['sensitivityLabel', 'visibility', 'policy', 'welcomeEmails', 'autoFollow', 'showInOutlook']) {
+      expect(onboardingPayload).not.toHaveProperty(preview);
+    }
     try {
       await page.waitForURL((url) => url.pathname === '/' || url.pathname.startsWith('/?'), { timeout: 15000 });
     } catch (navError) {
@@ -620,18 +596,11 @@ test.describe('Job Details Tests', () => {
     // Click the Add button to navigate to ManageMembership
     await page.locator('#manage-membership-button').click();
     await page.getByText('Create a new group').click();
+    await page.getByRole('button', { name: 'Create M365 Group', exact: true }).click();
     await page.getByPlaceholder('Enter the name of the group').click();
 
     const groupName = `pw-test-${uuidv4().replace(/-/g, '').slice(0, 10)}`;
     await page.getByPlaceholder('Enter the name of the group').fill(groupName);
-
-    // Minimal required fields to proceed
-    const pickerInputPeople = page.locator('.ms-BasePicker-input').first();
-    await pickerInputPeople.click();
-    await typeIntoPicker(page, pickerInputPeople, 'user');
-    const senderOptions = page.locator('[role="listbox"] [role="option"]');
-    await expect(senderOptions.first()).toBeVisible({ timeout: 10000 });
-    await senderOptions.first().click();
 
     await page.getByRole('button', { name: 'Create group' }).click();
     await page.waitForSelector('button:has-text("Next")');

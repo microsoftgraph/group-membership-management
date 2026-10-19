@@ -32,6 +32,11 @@ export interface ISelectDestinationStyles {
   linkButton: IStyle;
   checkAgainButton: IStyle;
   suggestionItem: IStyle;
+  creationCards: IStyle;
+  creationCard: IStyle;
+  creationCardHeader: IStyle;
+  creationCardIcon: IStyle;
+  creationCardAction: IStyle;
 }
 
 export interface ISelectDestinationStyleProps {
@@ -55,5 +60,5 @@ export interface ISelectDestinationProps
   onSearchDestinationChange: (selectedDestinations: IPersonaProps[] | undefined) => void;
   onSearchChannelChange: (selectedDestinations: IPersonaProps[] | undefined) => void;
   selectedDestination?: Destination;
-  onGroupCreated: (groupName: string, groupAlias: string, groupType: NewGroupType) => void;
+  onGroupCreated: (groupName: string, groupAlias: string, groupType: NewGroupType, description: string) => void | Promise<void>;
 };
