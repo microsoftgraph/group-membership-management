@@ -72,6 +72,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Repositories.AgentsTable", 
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Repositories.GraphAgents", "Repositories.GraphAgents\Repositories.GraphAgents.csproj", "{655C9239-5D74-45C8-84D6-EE168E4808DF}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Repositories.EntityFramework.AdfContexts", "Repositories.EntityFramework.AdfContexts\Repositories.EntityFramework.AdfContexts.csproj", "{FF650190-FD93-4A15-896C-99E031016A29}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -466,6 +468,18 @@ Global
 		{655C9239-5D74-45C8-84D6-EE168E4808DF}.Release|x64.Build.0 = Release|Any CPU
 		{655C9239-5D74-45C8-84D6-EE168E4808DF}.Release|x86.ActiveCfg = Release|Any CPU
 		{655C9239-5D74-45C8-84D6-EE168E4808DF}.Release|x86.Build.0 = Release|Any CPU
+		{FF650190-FD93-4A15-896C-99E031016A29}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{FF650190-FD93-4A15-896C-99E031016A29}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{FF650190-FD93-4A15-896C-99E031016A29}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{FF650190-FD93-4A15-896C-99E031016A29}.Debug|x64.Build.0 = Debug|Any CPU
+		{FF650190-FD93-4A15-896C-99E031016A29}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{FF650190-FD93-4A15-896C-99E031016A29}.Debug|x86.Build.0 = Debug|Any CPU
+		{FF650190-FD93-4A15-896C-99E031016A29}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{FF650190-FD93-4A15-896C-99E031016A29}.Release|Any CPU.Build.0 = Release|Any CPU
+		{FF650190-FD93-4A15-896C-99E031016A29}.Release|x64.ActiveCfg = Release|Any CPU
+		{FF650190-FD93-4A15-896C-99E031016A29}.Release|x64.Build.0 = Release|Any CPU
+		{FF650190-FD93-4A15-896C-99E031016A29}.Release|x86.ActiveCfg = Release|Any CPU
+		{FF650190-FD93-4A15-896C-99E031016A29}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
