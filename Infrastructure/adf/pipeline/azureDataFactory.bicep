@@ -49,6 +49,12 @@ param maxInvalidUserCount int = 25
 @minValue(2)
 param tablesToRetain int = 30
 
+@description('Number of days of AdfRunHistory rows to retain. When no rows fall inside this window, the most recent runHistoryMinimumRowsToRetain rows are kept instead.')
+param runHistoryRetentionDays int = 30
+
+@description('Number of most recent AdfRunHistory rows to retain when no rows fall inside the retention window.')
+param runHistoryMinimumRowsToRetain int = 10
+
 var dataFactoryName = factoryName
 var azureBlobStorageLinkedService = 'AzureBlobStorage_${resourceSuffix}'
 var destinationDatabaseLinkedService = 'DestinationDatabase_${resourceSuffix}'
@@ -69,6 +75,7 @@ var tableCleanupScriptTemplate = 'DECLARE @SchemaName NVARCHAR(128);\nDECLARE @T
 var cleanUpUsersTablesScript = replace(tableCleanupScriptTemplate, '__SCHEMA__', 'users')
 var cleanUpMappingsTablesScript = replace(tableCleanupScriptTemplate, '__SCHEMA__', 'mappings')
 var cleanUpAgentsTablesScript = replace(tableCleanupScriptTemplate, '__SCHEMA__', 'agents')
+var cleanUpRunHistoryScript = 'DECLARE @Cutoff DATETIME = DATEADD(DAY, -${runHistoryRetentionDays}, GETUTCDATE());\n\nIF EXISTS (SELECT 1 FROM [dbo].[AdfRunHistory] WHERE [DateCreated] >= @Cutoff)\nBEGIN\n    DELETE FROM [dbo].[AdfRunHistory] WHERE [DateCreated] < @Cutoff;\nEND\nELSE\nBEGIN\n    DELETE FROM [dbo].[AdfRunHistory]\n    WHERE [AdfRunId] NOT IN (\n        SELECT TOP (${runHistoryMinimumRowsToRetain}) [AdfRunId]\n        FROM [dbo].[AdfRunHistory]\n        ORDER BY [DateCreated] DESC, [AdfRunId] DESC\n    );\nEND;'
 
 resource dataFactory 'Microsoft.DataFactory/factories@2018-06-01' = {
   name: dataFactoryName
@@ -844,6 +851,93 @@ resource Pipeline_PopulateDestinationPipeline 'Microsoft.DataFactory/factories/p
             }
           ]
           scriptBlockExecutionTimeout: '02:00:00'
+        }
+      }
+      {
+        name: 'Record ADF Run History'
+        type: 'Script'
+        dependsOn: [
+          {
+            activity: 'Calculate Height'
+            dependencyConditions: [
+              'Succeeded'
+            ]
+          }
+          {
+            activity: 'PopulateMappingsTableDataFlow'
+            dependencyConditions: [
+              'Succeeded'
+            ]
+          }
+          {
+            activity: 'Create Agents Index'
+            dependencyConditions: [
+              'Succeeded'
+            ]
+          }
+          {
+            activity: 'Gate AgentReader Terminal Status'
+            dependencyConditions: [
+              'Succeeded'
+            ]
+          }
+        ]
+        policy: {
+          timeout: '0.12:00:00'
+          retry: 0
+          retryIntervalInSeconds: 30
+          secureOutput: false
+          secureInput: false
+        }
+        userProperties: []
+        linkedServiceName: {
+          referenceName: destinationDatabaseLinkedService
+          type: 'LinkedServiceReference'
+        }
+        typeProperties: {
+          scripts: [
+            {
+              type: 'NonQuery'
+              text: {
+                value: '@concat(\'IF NOT EXISTS (SELECT 1 FROM [dbo].[AdfRunHistory] WHERE [AdfRunId] = \'\'\',pipeline().RunId,\'\'\') INSERT INTO [dbo].[AdfRunHistory] ([AdfRunId], [DateCreated]) VALUES (\'\'\',pipeline().RunId,\'\'\', SYSUTCDATETIME())\')'
+                type: 'Expression'
+              }
+            }
+          ]
+          scriptBlockExecutionTimeout: '00:10:00'
+        }
+      }
+      {
+        name: 'Clean Up Old Run History'
+        type: 'Script'
+        dependsOn: [
+          {
+            activity: 'Record ADF Run History'
+            dependencyConditions: [
+              'Succeeded'
+            ]
+          }
+        ]
+        policy: {
+          timeout: '0.12:00:00'
+          retry: 0
+          retryIntervalInSeconds: 30
+          secureOutput: false
+          secureInput: false
+        }
+        userProperties: []
+        linkedServiceName: {
+          referenceName: destinationDatabaseLinkedService
+          type: 'LinkedServiceReference'
+        }
+        typeProperties: {
+          scripts: [
+            {
+              type: 'NonQuery'
+              text: cleanUpRunHistoryScript
+            }
+          ]
+          scriptBlockExecutionTimeout: '00:10:00'
         }
       }
     ]
