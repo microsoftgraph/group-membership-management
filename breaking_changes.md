@@ -1,5 +1,13 @@
 # Breaking Changes
 
+## Release 11/1/2026 (ADF run history moved to the database)
+
+GMM no longer discovers the latest ADF run by querying Azure Data Factory run history. It now reads `dbo.AdfRunHistory` in the ADF database (table owned by Entity Framework; the WebApi applies its migration at startup).
+- The table starts empty. Until the ADF pipeline completes one run after this release, which records its run in `AdfRunHistory`, consumers find no published run and SqlDataChecker fails because it has no previous run to compare against. Run the ADF pipeline once after deploying.
+- Your ADF pipeline must add a final script activity that records `pipeline().RunId` in `dbo.AdfRunHistory` after the data has been fully published.
+- `SqlDataChecker`'s `StarterFunction` now requires a POST body of `{"RunId": "<pipeline().RunId>"}` and returns 400 otherwise. Update any pipeline that calls it. No external or public deployment is known to use SqlDataChecker today.
+- `GMMRunIdHistory` is replaced by `AdfRunHistory`.
+
 ## Release 4/1/2025
 Disabled storage account access keys for all storage accounts.
 - Run PostDeployment.ps1 script to grant proper RBAC roles.

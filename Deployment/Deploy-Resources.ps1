@@ -1641,11 +1641,13 @@ function Set-SqlContainedUser {
     $roleClauses = ($Roles | ForEach-Object { "ALTER ROLE $_ ADD MEMBER [$PrincipalName]" }) -join "
             "
 
+    # Role membership is reconciled on every run so existing principals pick up added roles;
+    # ADD MEMBER is a no-op when the principal is already a member.
     $sqlScript = "IF NOT EXISTS (SELECT * FROM sys.database_principals WHERE name = N'$PrincipalName')
         BEGIN
             CREATE USER [$PrincipalName] FROM EXTERNAL PROVIDER
-            $roleClauses
-        END"
+        END
+        $roleClauses"
 
     $roleCommand = $connection.CreateCommand()
     $roleCommand.CommandText = $sqlScript
@@ -1840,12 +1842,19 @@ function Set-SQLServerPermissions {
 
         foreach ($functionApp in $functionAppsADF) {
 
+            # WebApi applies the AdfContext migration (dbo.AdfRunHistory) at startup, which needs DDL rights.
+            # AgentReader inserts into the agents table. The remaining apps only read the ADF database.
+            $adfRoles = if ($functionApp.Name -match "-webapi") { @('db_datareader', 'db_datawriter', 'db_ddladmin') }
+                        elseif ($functionApp.Name -match "-AgentReader") { @('db_datareader', 'db_datawriter') }
+                        else { @('db_datareader') }
+
             Set-SqlContainedUser `
                 -PrincipalName           $functionApp.Name `
                 -ConnectionString        $ConnectionStringADF `
                 -DatabaseName            $databaseNameADF `
                 -SolutionAbbreviation    $SolutionAbbreviation `
-                -EnvironmentAbbreviation $EnvironmentAbbreviation
+                -EnvironmentAbbreviation $EnvironmentAbbreviation `
+                -Roles                   $adfRoles
         }
     }
     Write-DeployPhase -Name 'Granting SQL Database Permissions' -Event End
