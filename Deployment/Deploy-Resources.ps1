@@ -949,6 +949,8 @@ function Set-FunctionAuthenticationAllowedIdentities {
         [Parameter(Mandatory = $false)]
         [bool]$SkipAzureDataFactoryDeployment = $false,
         [Parameter(Mandatory = $false)]
+        [bool]$EnableMultiRegion = $false,
+        [Parameter(Mandatory = $false)]
         [string[]]$AdditionalAdfFunctionAppNames = @(),
         [Parameter(Mandatory = $false)]
         [string[]]$AdditionalWebApiFunctionAppNames = @()
@@ -960,22 +962,34 @@ function Set-FunctionAuthenticationAllowedIdentities {
     $computeResourceGroup = "$SolutionAbbreviation-compute-$EnvironmentAbbreviation"
 
     # Get ADF Managed Identity Principal ID (if ADF is deployed)
-    $adfMSIPrincipalId = $null
+    $adfMSIPrincipalIds = @()
     if ($SkipAzureDataFactoryDeployment -eq $false) {
-        Write-DeployLog -Level Info -Message "Retrieving ADF Managed Identity..."
-        $adfResourceName = "$SolutionAbbreviation-data-$EnvironmentAbbreviation-adf"
-        $adfResource = Invoke-WithRetry `
-            -Operation { Get-AzResource -ResourceGroupName $dataResourceGroup -ResourceType "Microsoft.DataFactory/factories" -Name $adfResourceName -ErrorAction SilentlyContinue } `
-            -OperationName "Get ADF resource" `
-            -MaxAttempts 3 -BaseDelaySeconds 2
-        if ($null -ne $adfResource -and $null -ne $adfResource.Identity) {
-            $adfMSIPrincipalId = $adfResource.Identity.PrincipalId
-            if (-not [string]::IsNullOrWhiteSpace($adfMSIPrincipalId)) {
-                Write-DeployLog -Level Success -Message "ADF Managed Identity: $adfMSIPrincipalId"
+        $adfResources = @(
+            @{
+                Name = "$SolutionAbbreviation-data-$EnvironmentAbbreviation-adf"
+                ResourceGroup = $dataResourceGroup
+            }
+        )
+        if ($EnableMultiRegion) {
+            $adfResources += @{
+                Name = "$SolutionAbbreviation-data-$EnvironmentAbbreviation-adf-sec"
+                ResourceGroup = "$dataResourceGroup-sec"
             }
         }
-        else {
-            Write-DeployLog -Level Warn -Message "ADF resource not found or has no managed identity"
+
+        foreach ($adfResourceDescriptor in $adfResources) {
+            Write-DeployLog -Level Info -Message "Retrieving ADF Managed Identity for $($adfResourceDescriptor.Name)..."
+            $adfResource = Invoke-WithRetry `
+                -Operation { Get-AzResource -ResourceGroupName $adfResourceDescriptor.ResourceGroup -ResourceType "Microsoft.DataFactory/factories" -Name $adfResourceDescriptor.Name -ErrorAction SilentlyContinue } `
+                -OperationName "Get ADF resource $($adfResourceDescriptor.Name)" `
+                -MaxAttempts 3 -BaseDelaySeconds 2
+            if ($null -ne $adfResource -and $null -ne $adfResource.Identity) {
+                $principalId = $adfResource.Identity.PrincipalId
+                if (-not [string]::IsNullOrWhiteSpace($principalId)) {
+                    $adfMSIPrincipalIds += $principalId
+                    Write-DeployLog -Level Success -Message "ADF Managed Identity: $principalId"
+                }
+            }
         }
     }
     else {
@@ -1011,10 +1025,10 @@ function Set-FunctionAuthenticationAllowedIdentities {
     
 
     # Update function apps that need ADF access
-    if ([string]::IsNullOrWhiteSpace($adfMSIPrincipalId) -eq $false) {
+    if ($adfMSIPrincipalIds.Count -gt 0) {
         Write-DeployLog -Level Info -Message "Updating function apps for ADF access..."
         Update-FunctionAppAuthSettings -FunctionAppNames $adfFunctionAppNames `
-            -AllowedPrincipalIds @($adfMSIPrincipalId) `
+            -AllowedPrincipalIds $adfMSIPrincipalIds `
             -SolutionAbbreviation $SolutionAbbreviation `
             -EnvironmentAbbreviation $EnvironmentAbbreviation `
             -SubscriptionId $SubscriptionId
@@ -1581,11 +1595,13 @@ function Set-GMMResources {
     $enableFunctionAuthentication = Get-Default -Value $ParameterHashtable['enableFunctionAuthentication'].value -Default $false
 
     if ($enableFunctionAuthentication -eq $true) {
+        $enableMultiRegion = Get-Default -Value $ParameterHashtable['enableMultiRegion'].value -Default $false
         Set-FunctionAuthenticationAllowedIdentities `
             -SolutionAbbreviation $SolutionAbbreviation `
             -EnvironmentAbbreviation $EnvironmentAbbreviation `
             -SubscriptionId $SubscriptionId `
-            -SkipAzureDataFactoryDeployment $skipAzureDataFactoryDeployment
+            -SkipAzureDataFactoryDeployment $skipAzureDataFactoryDeployment `
+            -EnableMultiRegion $enableMultiRegion
     }
     else {
         Write-DeployLog -Level Warn -Message "Skipping function authentication allowed identities (enableFunctionAuthentication = false)"
@@ -1894,7 +1910,9 @@ function Set-RBACPermissions {
         [Parameter(Mandatory = $false)]
         [string] $BastionVnetAddressPrefix = '10.0.0.0/24',
         [Parameter(Mandatory = $false)]
-        [bool] $DeployAks = $false
+        [bool] $DeployAks = $false,
+        [Parameter(Mandatory = $false)]
+        [bool] $EnableMultiRegion = $false
     )
 
     # grant permissions to resources
@@ -1910,7 +1928,8 @@ function Set-RBACPermissions {
         -SkipPrivilegedDirectoryActions $SkipPrivilegedDirectoryActions `
         -SkipNetworkingDeployment $SkipNetworkingDeployment `
         -BastionVnetAddressPrefix $BastionVnetAddressPrefix `
-        -DeployAks $DeployAks
+        -DeployAks $DeployAks `
+        -EnableMultiRegion $EnableMultiRegion
     Write-DeployPhase -Name 'Granting Resource Permissions' -Event End
 
 }
@@ -4123,6 +4142,7 @@ function Deploy-Resources {
     if (($true -eq $setRBACPermissions) -and ($false -eq $skipRBACPermissions)) {
         $isUserAssignedManagedIdentityAuth = if ($parameterHashtable.authenticationType.value -eq "UserAssignedManagedIdentity") { $true } else { $false }
         $bastionVnetAddressPrefix = Get-Default -Value $parameterHashtable['bastionVnetAddressPrefix'].value -Default '10.0.0.0/24'
+        $enableMultiRegion = Get-Default -Value $parameterHashtable['enableMultiRegion'].value -Default $false
         Set-RBACPermissions `
         -SolutionAbbreviation $solutionAbbreviation `
         -EnvironmentAbbreviation $environmentAbbreviation `
@@ -4132,7 +4152,8 @@ function Deploy-Resources {
         -SkipPrivilegedDirectoryActions $skipPrivilegedDirectoryActions `
         -SkipNetworkingDeployment $skipNetworkingDeployment `
         -BastionVnetAddressPrefix $bastionVnetAddressPrefix `
-        -DeployAks $deployAks
+        -DeployAks $deployAks `
+        -EnableMultiRegion $enableMultiRegion
     }
     elseif ($true -eq $skipRBACPermissions) {
         Write-DeployLog -Level Warn -Message "Skipping RBAC permissions as per configuration [skipRBACPermissions = $skipRBACPermissions]."
