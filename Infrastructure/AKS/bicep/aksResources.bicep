@@ -113,9 +113,6 @@ resource aks 'Microsoft.ContainerService/managedClusters@2024-09-01' = {
         nodeTaints: [
           'CriticalAddonsOnly=true:NoSchedule'
         ]
-        availabilityZones: [
-          '1'
-        ]
         upgradeSettings: {
           maxSurge: '1'
         }
@@ -133,9 +130,6 @@ resource aks 'Microsoft.ContainerService/managedClusters@2024-09-01' = {
         minCount: 2
         maxCount: 8
         maxPods: 30
-        availabilityZones: [
-          '1'
-        ]
         upgradeSettings: {
           maxSurge: '1'
         }
