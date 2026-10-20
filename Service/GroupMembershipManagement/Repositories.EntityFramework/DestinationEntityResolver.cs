@@ -7,6 +7,7 @@ using Repositories.Contracts;
 using Repositories.Contracts.DestinationResolution;
 using Repositories.EntityFramework.Contexts;
 using System;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -43,8 +44,11 @@ namespace Repositories.EntityFramework
 
             var syncJobId = syncJob.Id;
 
+            // Project scalars, never materialize the abstract TPT base: orphan base rows have
+            // no CLR subtype, and conflicting detail rows must be rejected rather than chosen.
             var baseRow = await _readContext.Destinations
                 .AsNoTracking()
+                .Select(d => new { d.SyncJobId, d.DestinationType })
                 .SingleOrDefaultAsync(d => d.SyncJobId == syncJobId, cancellationToken);
 
             // No consolidated base row: not eligible for a consolidated read (no per-job fallback).
@@ -55,10 +59,12 @@ namespace Repositories.EntityFramework
 
             var group = await _readContext.GroupDestinations
                 .AsNoTracking()
+                .Select(g => new { g.SyncJobId, g.GroupId })
                 .SingleOrDefaultAsync(g => g.SyncJobId == syncJobId, cancellationToken);
 
             var channel = await _readContext.TeamsChannelDestinations
                 .AsNoTracking()
+                .Select(c => new { c.SyncJobId, c.TeamId, c.ChannelId })
                 .SingleOrDefaultAsync(c => c.SyncJobId == syncJobId, cancellationToken);
 
             // A base row must have exactly one matching per-type row; both is a structural violation.

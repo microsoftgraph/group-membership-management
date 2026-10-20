@@ -18,7 +18,9 @@ namespace Repositories.EntityFramework.Tests
     /// Typed group and Teams-channel identity must match the legacy resolver for equivalent
     /// records, and missing / wrong-type / both-type structures must be rejected with no
     /// per-job fallback (FR-016/FR-017, resolver-json-cutover.md Section Resolver behavior).
-    /// The consolidated model is exercised over the EF in-memory provider.
+    /// Valid entity reads use the EF in-memory provider. Malformed relational rows are covered
+    /// by <see cref="DestinationInheritanceSqlTests"/> because EF's inheritance identity map
+    /// cannot represent orphan bases or two sibling subtypes with the same key.
     /// </summary>
     [TestClass]
     public class DestinationEntityResolverTests
@@ -41,14 +43,12 @@ namespace Repositories.EntityFramework.Tests
 
         private static void SeedGroup(GMMReadContext context, Guid syncJobId, Guid objectId)
         {
-            context.Destinations.Add(new Destination { SyncJobId = syncJobId, DestinationType = MembershipTypes.GroupMembership.ToString() });
             context.GroupDestinations.Add(new GroupDestination { SyncJobId = syncJobId, GroupId = objectId });
             context.SaveChanges();
         }
 
         private static void SeedChannel(GMMReadContext context, Guid syncJobId, Guid teamObjectId, string channelId)
         {
-            context.Destinations.Add(new Destination { SyncJobId = syncJobId, DestinationType = MembershipTypes.TeamsChannelMembership.ToString() });
             context.TeamsChannelDestinations.Add(new TeamsChannelDestination
             {
                 SyncJobId = syncJobId,
@@ -127,64 +127,10 @@ namespace Repositories.EntityFramework.Tests
         }
 
         [TestMethod]
-        public async Task ResolveAsync_BaseWithoutMatchingPerTypeRow_ReturnsNull()
-        {
-            var syncJobId = Guid.NewGuid();
-            using var context = NewReadContext();
-            context.Destinations.Add(new Destination { SyncJobId = syncJobId, DestinationType = MembershipTypes.GroupMembership.ToString() });
-            context.SaveChanges();
-
-            var result = await new DestinationEntityResolver(context)
-                .ResolveAsync(new SyncJob { Id = syncJobId });
-            Assert.IsNull(result);
-        }
-
-        [TestMethod]
-        public async Task ResolveAsync_WrongTypePerTypeRow_ReturnsNull()
-        {
-            // Base says Group but only a Teams-channel per-type row exists.
-            var syncJobId = Guid.NewGuid();
-            using var context = NewReadContext();
-            context.Destinations.Add(new Destination { SyncJobId = syncJobId, DestinationType = MembershipTypes.GroupMembership.ToString() });
-            context.TeamsChannelDestinations.Add(new TeamsChannelDestination
-            {
-                SyncJobId = syncJobId,
-                TeamId = Guid.NewGuid(),
-                ChannelId = "19:x@thread.tacv2"
-            });
-            context.SaveChanges();
-
-            var result = await new DestinationEntityResolver(context)
-                .ResolveAsync(new SyncJob { Id = syncJobId });
-            Assert.IsNull(result);
-        }
-
-        [TestMethod]
-        public async Task ResolveAsync_BothPerTypeRows_ReturnsNull()
-        {
-            var syncJobId = Guid.NewGuid();
-            using var context = NewReadContext();
-            context.Destinations.Add(new Destination { SyncJobId = syncJobId, DestinationType = MembershipTypes.GroupMembership.ToString() });
-            context.GroupDestinations.Add(new GroupDestination { SyncJobId = syncJobId, GroupId = Guid.NewGuid() });
-            context.TeamsChannelDestinations.Add(new TeamsChannelDestination
-            {
-                SyncJobId = syncJobId,
-                TeamId = Guid.NewGuid(),
-                ChannelId = "19:x@thread.tacv2"
-            });
-            context.SaveChanges();
-
-            var result = await new DestinationEntityResolver(context)
-                .ResolveAsync(new SyncJob { Id = syncJobId });
-            Assert.IsNull(result);
-        }
-
-        [TestMethod]
         public async Task ResolveAsync_ChannelWithEmptyChannelId_ReturnsNull()
         {
             var syncJobId = Guid.NewGuid();
             using var context = NewReadContext();
-            context.Destinations.Add(new Destination { SyncJobId = syncJobId, DestinationType = MembershipTypes.TeamsChannelMembership.ToString() });
             context.TeamsChannelDestinations.Add(new TeamsChannelDestination
             {
                 SyncJobId = syncJobId,

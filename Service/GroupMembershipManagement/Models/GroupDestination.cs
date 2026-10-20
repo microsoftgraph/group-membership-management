@@ -11,13 +11,11 @@ namespace Models
     /// (Table-Per-Type shared key). Name and email are nullable, per-job,
     /// rebuildable caches sourced from the authoritative directory.
     /// </summary>
-    public class GroupDestination
+    public class GroupDestination : Destination
     {
-        /// <summary>
-        /// Primary key and foreign key to <c>Destinations.SyncJobId</c>.
-        /// Cascade-deleted with the base destination / owning SyncJob.
-        /// </summary>
-        public Guid SyncJobId { get; set; }
+        public GroupDestination() : base(MembershipTypes.GroupMembership)
+        {
+        }
 
         /// <summary>
         /// Required group object identifier. Indexed for lookup.

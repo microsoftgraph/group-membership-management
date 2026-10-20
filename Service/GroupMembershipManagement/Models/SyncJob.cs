@@ -6,6 +6,7 @@ using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations.Schema;
 using System.Data.SqlTypes;
+using System.Text.Json.Serialization;
 
 namespace Models
 {
@@ -38,6 +39,14 @@ namespace Models
         /// </summary>
         public Guid TargetOfficeGroupId { get; set; }
         public string Destination { get; set; }
+
+        /// <summary>
+        /// Consolidated TPT destination; null unless explicitly loaded. Include this single
+        /// navigation to materialize a GroupDestination or TeamsChannelDestination.
+        /// </summary>
+        [IgnoreLogging]
+        [JsonIgnore]
+        public Destination DestinationRecord { get; set; }
         public bool AllowEmptyDestination { get; set; }
         public string MembershipType { get; set; }
 

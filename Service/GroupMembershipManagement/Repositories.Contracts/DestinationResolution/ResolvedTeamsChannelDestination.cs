@@ -9,6 +9,8 @@ namespace Repositories.Contracts.DestinationResolution
     {
         public Guid TeamObjectId { get; init; }
         public string ChannelId { get; init; }
+        public string TeamName { get; init; }
+        public string ChannelName { get; init; }
         public override DestinationType DestinationType => DestinationType.TeamsChannel;
     }
 }

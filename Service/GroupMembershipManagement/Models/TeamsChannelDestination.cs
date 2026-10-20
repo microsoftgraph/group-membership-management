@@ -12,13 +12,11 @@ namespace Models
     /// channel identity; it must never be reduced to group-only semantics. TeamName and
     /// ChannelName are nullable, per-job, rebuildable caches. Teams channels have no email.
     /// </summary>
-    public class TeamsChannelDestination
+    public class TeamsChannelDestination : Destination
     {
-        /// <summary>
-        /// Primary key and foreign key to <c>Destinations.SyncJobId</c>.
-        /// Cascade-deleted with the base destination / owning SyncJob.
-        /// </summary>
-        public Guid SyncJobId { get; set; }
+        public TeamsChannelDestination() : base(MembershipTypes.TeamsChannelMembership)
+        {
+        }
 
         /// <summary>
         /// Required team object identifier. Indexed for lookup.

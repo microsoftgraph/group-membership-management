@@ -8,6 +8,8 @@ namespace Repositories.Contracts.DestinationResolution
     public class ResolvedGroupDestination : ResolvedDestination
     {
         public Guid ObjectId { get; init; }
+        public string Name { get; init; }
+        public string Email { get; init; }
         public override DestinationType DestinationType => DestinationType.Group;
     }
 }

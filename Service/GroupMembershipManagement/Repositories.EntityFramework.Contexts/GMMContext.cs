@@ -346,18 +346,21 @@ namespace Repositories.EntityFramework.Contexts
             modelBuilder.Entity<Destination>(entity =>
             {
                 entity.ToTable("Destinations");
+                entity.UseTptMappingStrategy();
 
                 entity.HasKey(d => d.SyncJobId);
 
                 // SyncJobId is both PK and FK to SyncJobs.Id; cascade with the owning job.
                 entity.HasOne<SyncJob>()
-                    .WithOne()
+                    .WithOne(s => s.DestinationRecord)
                     .HasForeignKey<Destination>(d => d.SyncJobId)
                     .HasPrincipalKey<SyncJob>(s => s.Id)
                     .OnDelete(DeleteBehavior.Cascade);
 
-                // Type discriminator; DB-level FK to MembershipTypes.Name (SyncJobs.MembershipType standard, not by Id).
+                // Persisted membership-type reference, not EF's discriminator (TPT computes that
+                // from detail tables). Use the validating setter even during materialization.
                 entity.Property(d => d.DestinationType)
+                    .UsePropertyAccessMode(PropertyAccessMode.Property)
                     .IsRequired()
                     .HasMaxLength(MembershipTypeNameMaxLength);
                 entity.HasIndex(d => d.DestinationType);
@@ -367,14 +370,6 @@ namespace Repositories.EntityFramework.Contexts
             modelBuilder.Entity<GroupDestination>(entity =>
             {
                 entity.ToTable("GroupDestinations");
-
-                entity.HasKey(g => g.SyncJobId);
-
-                entity.HasOne<Destination>()
-                    .WithOne()
-                    .HasForeignKey<GroupDestination>(g => g.SyncJobId)
-                    .HasPrincipalKey<Destination>(d => d.SyncJobId)
-                    .OnDelete(DeleteBehavior.Cascade);
 
                 entity.Property(g => g.GroupId).IsRequired();
                 entity.Property(g => g.Name);
@@ -387,14 +382,6 @@ namespace Repositories.EntityFramework.Contexts
             modelBuilder.Entity<TeamsChannelDestination>(entity =>
             {
                 entity.ToTable("TeamsChannelDestinations");
-
-                entity.HasKey(t => t.SyncJobId);
-
-                entity.HasOne<Destination>()
-                    .WithOne()
-                    .HasForeignKey<TeamsChannelDestination>(t => t.SyncJobId)
-                    .HasPrincipalKey<Destination>(d => d.SyncJobId)
-                    .OnDelete(DeleteBehavior.Cascade);
 
                 entity.Property(t => t.TeamId).IsRequired();
 

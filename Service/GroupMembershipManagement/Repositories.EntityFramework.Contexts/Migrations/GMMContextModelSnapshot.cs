@@ -359,6 +359,8 @@ namespace Repositories.EntityFramework.Contexts.Migrations
                     b.HasIndex("DestinationType");
 
                     b.ToTable("Destinations", (string)null);
+
+                    b.UseTptMappingStrategy();
                 });
 
             modelBuilder.Entity("Models.DestinationEmail", b =>
@@ -431,27 +433,6 @@ namespace Repositories.EntityFramework.Contexts.Migrations
                         .IsUnique();
 
                     b.ToTable("Groups");
-                });
-
-            modelBuilder.Entity("Models.GroupDestination", b =>
-                {
-                    b.Property<Guid>("SyncJobId")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<string>("Email")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("Name")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<Guid>("GroupId")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.HasKey("SyncJobId");
-
-                    b.HasIndex("GroupId");
-
-                    b.ToTable("GroupDestinations", (string)null);
                 });
 
             modelBuilder.Entity("Models.JobNotification", b =>
@@ -864,32 +845,6 @@ namespace Repositories.EntityFramework.Contexts.Migrations
                     b.ToTable("SyncJobHistory", (string)null);
                 });
 
-            modelBuilder.Entity("Models.TeamsChannelDestination", b =>
-                {
-                    b.Property<Guid>("SyncJobId")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<string>("ChannelId")
-                        .IsRequired()
-                        .HasMaxLength(255)
-                        .HasColumnType("nvarchar(255)");
-
-                    b.Property<string>("ChannelName")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<Guid>("TeamId")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<string>("TeamName")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.HasKey("SyncJobId");
-
-                    b.HasIndex("TeamId");
-
-                    b.ToTable("TeamsChannelDestinations", (string)null);
-                });
-
             modelBuilder.Entity("Models.Title", b =>
                 {
                     b.Property<Guid>("Id")
@@ -912,6 +867,47 @@ namespace Repositories.EntityFramework.Contexts.Migrations
                     b.HasIndex("SyncJobId");
 
                     b.ToTable("Titles");
+                });
+
+            modelBuilder.Entity("Models.GroupDestination", b =>
+                {
+                    b.HasBaseType("Models.Destination");
+
+                    b.Property<string>("Email")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<Guid>("GroupId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Name")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.HasIndex("GroupId");
+
+                    b.ToTable("GroupDestinations", (string)null);
+                });
+
+            modelBuilder.Entity("Models.TeamsChannelDestination", b =>
+                {
+                    b.HasBaseType("Models.Destination");
+
+                    b.Property<string>("ChannelId")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("nvarchar(255)");
+
+                    b.Property<string>("ChannelName")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<Guid>("TeamId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("TeamName")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.HasIndex("TeamId");
+
+                    b.ToTable("TeamsChannelDestinations", (string)null);
                 });
 
             modelBuilder.Entity("DestinationOwnerSyncJob", b =>
@@ -961,7 +957,7 @@ namespace Repositories.EntityFramework.Contexts.Migrations
             modelBuilder.Entity("Models.Destination", b =>
                 {
                     b.HasOne("Models.SyncJob", null)
-                        .WithOne()
+                        .WithOne("DestinationRecord")
                         .HasForeignKey("Models.Destination", "SyncJobId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
@@ -998,15 +994,6 @@ namespace Repositories.EntityFramework.Contexts.Migrations
                         .IsRequired();
                 });
 
-            modelBuilder.Entity("Models.GroupDestination", b =>
-                {
-                    b.HasOne("Models.Destination", null)
-                        .WithOne()
-                        .HasForeignKey("Models.GroupDestination", "SyncJobId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-                });
-
             modelBuilder.Entity("Models.JobNotification", b =>
                 {
                     b.HasOne("Models.NotificationType", "NotificationType")
@@ -1037,20 +1024,29 @@ namespace Repositories.EntityFramework.Contexts.Migrations
                     b.Navigation("StatusDetails");
                 });
 
-            modelBuilder.Entity("Models.TeamsChannelDestination", b =>
-                {
-                    b.HasOne("Models.Destination", null)
-                        .WithOne()
-                        .HasForeignKey("Models.TeamsChannelDestination", "SyncJobId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-                });
-
             modelBuilder.Entity("Models.Title", b =>
                 {
                     b.HasOne("Models.SyncJob", null)
                         .WithMany("Titles")
                         .HasForeignKey("SyncJobId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Models.GroupDestination", b =>
+                {
+                    b.HasOne("Models.Destination", null)
+                        .WithOne()
+                        .HasForeignKey("Models.GroupDestination", "SyncJobId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Models.TeamsChannelDestination", b =>
+                {
+                    b.HasOne("Models.Destination", null)
+                        .WithOne()
+                        .HasForeignKey("Models.TeamsChannelDestination", "SyncJobId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
                 });
@@ -1062,6 +1058,8 @@ namespace Repositories.EntityFramework.Contexts.Migrations
                     b.Navigation("DestinationEmail");
 
                     b.Navigation("DestinationName");
+
+                    b.Navigation("DestinationRecord");
 
                     b.Navigation("Group");
 
