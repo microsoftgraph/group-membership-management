@@ -2,6 +2,7 @@
 // Licensed under the MIT license.
 
 using System.Net;
+using System.Text.Json;
 using Microsoft.ApplicationInsights;
 using Microsoft.ApplicationInsights.Extensibility;
 using Microsoft.Extensions.Logging;
@@ -11,6 +12,7 @@ using Repositories.Contracts.InjectConfig;
 using Services;
 using Services.Messages.Requests;
 using AzureADUser = Models.AzureADUser;
+using AzureADTeamsChannel = Models.Entities.AzureADTeamsChannel;
 using SyncJobEntity = Models.SyncJob;
 using NewSyncJobDTO = WebApi.Models.DTOs.NewSyncJob;
 
@@ -25,6 +27,7 @@ namespace WebApi.Tests
 
         private Mock<IDatabaseSyncJobsRepository> _syncJobRepository = null!;
         private Mock<IGraphGroupRepository> _graphGroupRepository = null!;
+        private Mock<ITeamsChannelRepository> _teamsChannelRepository = null!;
         private PostJobHandler _handler = null!;
 
         [TestInitialize]
@@ -32,6 +35,7 @@ namespace WebApi.Tests
         {
             _syncJobRepository = new Mock<IDatabaseSyncJobsRepository>();
             _graphGroupRepository = new Mock<IGraphGroupRepository>();
+            _teamsChannelRepository = new Mock<ITeamsChannelRepository>();
 
             _handler = new PostJobHandler(
                 Mock.Of<ILogger<PostJobHandler>>(),
@@ -43,7 +47,8 @@ namespace WebApi.Tests
                 Mock.Of<IDatabaseSettingsRepository>(),
                 Mock.Of<IPendingConfigurationConfig>(),
                 Mock.Of<IServiceBusQueueRepository>(),
-                new TelemetryClient(new TelemetryConfiguration()));
+                new TelemetryClient(new TelemetryConfiguration()),
+                _teamsChannelRepository.Object);
         }
 
         private static string TeamsChannelDestination(string groupId = GroupId, string channelId = ChannelId) =>
@@ -71,6 +76,85 @@ namespace WebApi.Tests
             };
 
             return new PostJobRequest(Guid.NewGuid().ToString(), newSyncJob, false, "Test User", "justification", false);
+        }
+
+        [DataTestMethod]
+        [DataRow(false)]
+        [DataRow(true)]
+        public async Task Onboarding_PassesCompleteDestinationGraphToSingleCreate(bool isChannel)
+        {
+            _graphGroupRepository.Setup(r => r.GetUserByUpnOrIdAsync(It.IsAny<string>(), false))
+                .ReturnsAsync(new AzureADUser { UserPrincipalName = "owner@contoso.com" });
+            _graphGroupRepository.Setup(r => r.IsEmailRecipientOwnerOfGroupAsync(It.IsAny<string>(), It.IsAny<Guid>()))
+                .ReturnsAsync(true);
+            _graphGroupRepository.Setup(r => r.GetGroupNameAsync(Guid.Parse(GroupId))).ReturnsAsync("Display name");
+            _graphGroupRepository.Setup(r => r.GetGroupEmailAsync(Guid.Parse(GroupId))).ReturnsAsync("group@contoso.com");
+            _teamsChannelRepository.Setup(r => r.GetTeamsChannelNameAsync(It.IsAny<AzureADTeamsChannel>()))
+                .ReturnsAsync("Channel name");
+            SyncJobEntity? captured = null;
+            _syncJobRepository.Setup(r => r.CreateSyncJobAsync(It.IsAny<SyncJobEntity>()))
+                .Callback<SyncJobEntity>(job => captured = job).ReturnsAsync(Guid.Empty);
+            var request = BuildRequest(GroupSourcePart(), isChannel ? TeamsChannelDestination() : GroupDestination());
+
+            await _handler.ExecuteAsync(request);
+
+            _syncJobRepository.Verify(r => r.CreateSyncJobAsync(It.IsAny<SyncJobEntity>()), Times.Once);
+            Assert.IsNotNull(captured);
+            Assert.AreEqual(request.NewSyncJob.Destination, captured.Destination);
+            Assert.AreEqual(captured.MembershipType, captured.DestinationRecord.DestinationType);
+            using var audit = JsonDocument.Parse(SyncJobSerializationHelper.SerializeSyncJob(captured));
+            Assert.AreEqual(request.NewSyncJob.Destination, audit.RootElement.GetProperty("Destination").GetString());
+            Assert.IsFalse(audit.RootElement.TryGetProperty("DestinationRecord", out _),
+                "The EF-only abstract navigation must not change audit or queue JSON.");
+            Assert.IsFalse(global::Models.DictionaryHelper.ToDictionary(captured).ContainsKey("DestinationRecord"));
+            var roundTrip = JsonSerializer.Deserialize<SyncJobEntity>(JsonSerializer.Serialize(captured));
+            Assert.IsNotNull(roundTrip);
+            Assert.AreEqual(captured.Destination, roundTrip.Destination);
+            Assert.IsNull(roundTrip.DestinationRecord);
+            if (isChannel)
+            {
+                var channel = captured.DestinationRecord as global::Models.TeamsChannelDestination;
+                Assert.IsNotNull(channel);
+                Assert.AreEqual(captured.Channel.GroupId, channel.TeamId);
+                Assert.AreEqual(captured.Channel.ChannelId, channel.ChannelId);
+                Assert.AreEqual("Display name", channel.TeamName);
+                Assert.AreEqual("Channel name", channel.ChannelName);
+            }
+            else
+            {
+                var group = captured.DestinationRecord as global::Models.GroupDestination;
+                Assert.IsNotNull(group);
+                Assert.AreEqual(captured.Group.GroupId, group.GroupId);
+                Assert.AreEqual("Display name", group.Name);
+                Assert.AreEqual("group@contoso.com", group.Email);
+            }
+        }
+
+        [DataTestMethod]
+        [DataRow(false)]
+        [DataRow(true)]
+        public async Task Onboarding_AttributeLookupFailure_DoesNotCreateJob(bool isChannel)
+        {
+            _graphGroupRepository.Setup(r => r.GetUserByUpnOrIdAsync(It.IsAny<string>(), false))
+                .ReturnsAsync(new AzureADUser { UserPrincipalName = "owner@contoso.com" });
+            _graphGroupRepository.Setup(r => r.IsEmailRecipientOwnerOfGroupAsync(It.IsAny<string>(), It.IsAny<Guid>()))
+                .ReturnsAsync(true);
+            if (isChannel)
+            {
+                _teamsChannelRepository.Setup(r => r.GetTeamsChannelNameAsync(It.IsAny<AzureADTeamsChannel>()))
+                    .ThrowsAsync(new InvalidOperationException("Directory unavailable"));
+            }
+            else
+            {
+                _graphGroupRepository.Setup(r => r.GetGroupNameAsync(It.IsAny<Guid>()))
+                    .ThrowsAsync(new InvalidOperationException("Directory unavailable"));
+            }
+
+            var response = await _handler.ExecuteAsync(
+                BuildRequest(GroupSourcePart(), isChannel ? TeamsChannelDestination() : GroupDestination()));
+
+            Assert.AreEqual(HttpStatusCode.InternalServerError, response.StatusCode);
+            _syncJobRepository.Verify(r => r.CreateSyncJobAsync(It.IsAny<SyncJobEntity>()), Times.Never);
         }
 
         [TestMethod]

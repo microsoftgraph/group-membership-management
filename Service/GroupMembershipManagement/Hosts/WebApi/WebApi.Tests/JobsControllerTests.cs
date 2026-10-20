@@ -10,6 +10,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.OData.Query;
 using Microsoft.Graph;
 using Microsoft.Kiota.Abstractions;
+using System.Threading;
 using Microsoft.OData.ModelBuilder;
 using Microsoft.OData.UriParser;
 using Models;
@@ -256,6 +257,7 @@ namespace Services.Tests
                                                  _pendingConfigurationConfig.Object,
                                                  _serviceBusQueueRepository.Object,
                                                  _telemetryClient,
+                                                 Mock.Of<ITeamsChannelRepository>(),
                                                  _autoApproverQueueRepository.Object);
 
             _getJobDetailsHandler = new GetJobDetailsHandler(NullLogger<GetJobDetailsHandler>.Instance,
@@ -416,6 +418,7 @@ namespace Services.Tests
                                                  _pendingConfigurationConfig.Object,
                                                  _serviceBusQueueRepository.Object,
                                                  _telemetryClient,
+                                                 Mock.Of<ITeamsChannelRepository>(),
                                                  _autoApproverQueueRepository.Object);
 
             _jobsController = new JobsController(_getJobsHandler, _patchJobsHandler, _postJobHandler, _getJobDetailsHandler, _postResetRequestHandler, NullLogger<JobsController>.Instance);
@@ -683,6 +686,7 @@ namespace Services.Tests
                                                  _pendingConfigurationConfig.Object,
                                                  _serviceBusQueueRepository.Object,
                                                  _telemetryClient,
+                                                 Mock.Of<ITeamsChannelRepository>(),
                                                  _autoApproverQueueRepository.Object);
 
             _jobsController = new JobsController(_getJobsHandler, _patchJobsHandler, _postJobHandler, _getJobDetailsHandler, _postResetRequestHandler, NullLogger<JobsController>.Instance);
@@ -733,6 +737,7 @@ namespace Services.Tests
                                                  _pendingConfigurationConfig.Object,
                                                  _serviceBusQueueRepository.Object,
                                                  _telemetryClient,
+                                                 Mock.Of<ITeamsChannelRepository>(),
                                                  _autoApproverQueueRepository.Object);
 
             _jobsController = new JobsController(_getJobsHandler, _patchJobsHandler, _postJobHandler, _getJobDetailsHandler, _postResetRequestHandler, NullLogger<JobsController>.Instance);
@@ -799,6 +804,7 @@ namespace Services.Tests
                                                  _pendingConfigurationConfig.Object,
                                                  _serviceBusQueueRepository.Object,
                                                  _telemetryClient,
+                                                 Mock.Of<ITeamsChannelRepository>(),
                                                  _autoApproverQueueRepository.Object);
 
             _jobsController = new JobsController(_getJobsHandler, _patchJobsHandler, _postJobHandler, _getJobDetailsHandler, _postResetRequestHandler, NullLogger<JobsController>.Instance);
@@ -848,6 +854,7 @@ namespace Services.Tests
                                                  _pendingConfigurationConfig.Object,
                                                  _serviceBusQueueRepository.Object,
                                                  _telemetryClient,
+                                                 Mock.Of<ITeamsChannelRepository>(),
                                                  _autoApproverQueueRepository.Object);
 
             _jobsController = new JobsController(_getJobsHandler, _patchJobsHandler, _postJobHandler, _getJobDetailsHandler, _postResetRequestHandler, NullLogger<JobsController>.Instance);
@@ -890,6 +897,7 @@ namespace Services.Tests
                                                  _pendingConfigurationConfig.Object,
                                                  _serviceBusQueueRepository.Object,
                                                  _telemetryClient,
+                                                 Mock.Of<ITeamsChannelRepository>(),
                                                  _autoApproverQueueRepository.Object);
 
             _jobsController = new JobsController(_getJobsHandler, _patchJobsHandler, _postJobHandler, _getJobDetailsHandler, _postResetRequestHandler, NullLogger<JobsController>.Instance);
@@ -929,6 +937,7 @@ namespace Services.Tests
                                                  _pendingConfigurationConfig.Object,
                                                  _serviceBusQueueRepository.Object,
                                                  _telemetryClient,
+                                                 Mock.Of<ITeamsChannelRepository>(),
                                                  _autoApproverQueueRepository.Object);
 
             _jobsController = new JobsController(_getJobsHandler, _patchJobsHandler, _postJobHandler, _getJobDetailsHandler, _postResetRequestHandler, NullLogger<JobsController>.Instance);
@@ -971,6 +980,7 @@ namespace Services.Tests
                                                  _pendingConfigurationConfig.Object,
                                                  _serviceBusQueueRepository.Object,
                                                  _telemetryClient,
+                                                 Mock.Of<ITeamsChannelRepository>(),
                                                  _autoApproverQueueRepository.Object);
 
             _jobsController = new JobsController(_getJobsHandler, _patchJobsHandler, _postJobHandler, _getJobDetailsHandler, _postResetRequestHandler, NullLogger<JobsController>.Instance);
@@ -1016,6 +1026,7 @@ namespace Services.Tests
                                                  _pendingConfigurationConfig.Object,
                                                  _serviceBusQueueRepository.Object,
                                                  _telemetryClient,
+                                                 Mock.Of<ITeamsChannelRepository>(),
                                                  _autoApproverQueueRepository.Object);
 
             _jobsController = new JobsController(_getJobsHandler, _patchJobsHandler, _postJobHandler, _getJobDetailsHandler, _postResetRequestHandler, NullLogger<JobsController>.Instance);
@@ -2437,6 +2448,7 @@ namespace Services.Tests
                                                  _pendingConfigurationConfig.Object,
                                                  _serviceBusQueueRepository.Object,
                                                  _telemetryClient,
+                                                 Mock.Of<ITeamsChannelRepository>(),
                                                  _autoApproverQueueRepository.Object);
 
             _jobsController = new JobsController(_getJobsHandler, _patchJobsHandler, _postJobHandler, _getJobDetailsHandler, _postResetRequestHandler, NullLogger<JobsController>.Instance);
@@ -2496,6 +2508,7 @@ namespace Services.Tests
                                                  _pendingConfigurationConfig.Object,
                                                  _serviceBusQueueRepository.Object,
                                                  _telemetryClient,
+                                                 Mock.Of<ITeamsChannelRepository>(),
                                                  _autoApproverQueueRepository.Object);
 
             _jobsController = new JobsController(_getJobsHandler, _patchJobsHandler, _postJobHandler, _getJobDetailsHandler, _postResetRequestHandler, NullLogger<JobsController>.Instance);
@@ -2557,6 +2570,7 @@ namespace Services.Tests
                                                  _pendingConfigurationConfig.Object,
                                                  _serviceBusQueueRepository.Object,
                                                  _telemetryClient,
+                                                 Mock.Of<ITeamsChannelRepository>(),
                                                  _autoApproverQueueRepository.Object);
 
             _jobsController = new JobsController(_getJobsHandler, _patchJobsHandler, _postJobHandler, _getJobDetailsHandler, _postResetRequestHandler, NullLogger<JobsController>.Instance);
@@ -2617,6 +2631,7 @@ namespace Services.Tests
                                                  _pendingConfigurationConfig.Object,
                                                  _serviceBusQueueRepository.Object,
                                                  _telemetryClient,
+                                                 Mock.Of<ITeamsChannelRepository>(),
                                                  _autoApproverQueueRepository.Object);
 
             _jobsController = new JobsController(_getJobsHandler, _patchJobsHandler, _postJobHandler, _getJobDetailsHandler, _postResetRequestHandler, NullLogger<JobsController>.Instance);
@@ -2669,6 +2684,7 @@ namespace Services.Tests
                                                  _pendingConfigurationConfig.Object,
                                                  _serviceBusQueueRepository.Object,
                                                  _telemetryClient,
+                                                 Mock.Of<ITeamsChannelRepository>(),
                                                  _autoApproverQueueRepository.Object);
 
             _jobsController = new JobsController(_getJobsHandler, _patchJobsHandler, _postJobHandler, _getJobDetailsHandler, _postResetRequestHandler, NullLogger<JobsController>.Instance);
@@ -2736,6 +2752,7 @@ namespace Services.Tests
                                                  _pendingConfigurationConfig.Object,
                                                  _serviceBusQueueRepository.Object,
                                                  _telemetryClient,
+                                                 Mock.Of<ITeamsChannelRepository>(),
                                                  _autoApproverQueueRepository.Object);
 
             _jobsController = new JobsController(_getJobsHandler, _patchJobsHandler, _postJobHandler, _getJobDetailsHandler, _postResetRequestHandler, NullLogger<JobsController>.Instance);
@@ -2798,6 +2815,7 @@ namespace Services.Tests
                                                  _pendingConfigurationConfig.Object,
                                                  _serviceBusQueueRepository.Object,
                                                  _telemetryClient,
+                                                 Mock.Of<ITeamsChannelRepository>(),
                                                  _autoApproverQueueRepository.Object);
 
             _jobsController = new JobsController(_getJobsHandler, _patchJobsHandler, _postJobHandler, _getJobDetailsHandler, _postResetRequestHandler, NullLogger<JobsController>.Instance);
@@ -2859,6 +2877,7 @@ namespace Services.Tests
                                                  _pendingConfigurationConfig.Object,
                                                  _serviceBusQueueRepository.Object,
                                                  _telemetryClient,
+                                                 Mock.Of<ITeamsChannelRepository>(),
                                                  _autoApproverQueueRepository.Object);
 
             _jobsController = new JobsController(_getJobsHandler, _patchJobsHandler, _postJobHandler, _getJobDetailsHandler, _postResetRequestHandler, NullLogger<JobsController>.Instance);
@@ -2920,6 +2939,7 @@ namespace Services.Tests
                                                  _pendingConfigurationConfig.Object,
                                                  _serviceBusQueueRepository.Object,
                                                  _telemetryClient,
+                                                 Mock.Of<ITeamsChannelRepository>(),
                                                  _autoApproverQueueRepository.Object);
 
             _jobsController = new JobsController(_getJobsHandler, _patchJobsHandler, _postJobHandler, _getJobDetailsHandler, _postResetRequestHandler, NullLogger<JobsController>.Instance);
@@ -2982,6 +3002,7 @@ namespace Services.Tests
                                                  _pendingConfigurationConfig.Object,
                                                  _serviceBusQueueRepository.Object,
                                                  _telemetryClient,
+                                                 Mock.Of<ITeamsChannelRepository>(),
                                                  _autoApproverQueueRepository.Object);
 
             _jobsController = new JobsController(_getJobsHandler, _patchJobsHandler, _postJobHandler, _getJobDetailsHandler, _postResetRequestHandler, NullLogger<JobsController>.Instance);
@@ -3043,6 +3064,7 @@ namespace Services.Tests
                                                  _pendingConfigurationConfig.Object,
                                                  _serviceBusQueueRepository.Object,
                                                  _telemetryClient,
+                                                 Mock.Of<ITeamsChannelRepository>(),
                                                  _autoApproverQueueRepository.Object);
 
             _jobsController = new JobsController(_getJobsHandler, _patchJobsHandler, _postJobHandler, _getJobDetailsHandler, _postResetRequestHandler, NullLogger<JobsController>.Instance);
@@ -3114,6 +3136,7 @@ namespace Services.Tests
                                                  _pendingConfigurationConfig.Object,
                                                  _serviceBusQueueRepository.Object,
                                                  _telemetryClient,
+                                                 Mock.Of<ITeamsChannelRepository>(),
                                                  _autoApproverQueueRepository.Object);
 
             _jobsController = new JobsController(_getJobsHandler, _patchJobsHandler, _postJobHandler, _getJobDetailsHandler, _postResetRequestHandler, NullLogger<JobsController>.Instance);
@@ -3177,6 +3200,7 @@ namespace Services.Tests
                                                  _pendingConfigurationConfig.Object,
                                                  _serviceBusQueueRepository.Object,
                                                  _telemetryClient,
+                                                 Mock.Of<ITeamsChannelRepository>(),
                                                  _autoApproverQueueRepository.Object);
 
             _jobsController = new JobsController(_getJobsHandler, _patchJobsHandler, _postJobHandler, _getJobDetailsHandler, _postResetRequestHandler, NullLogger<JobsController>.Instance);
@@ -3232,6 +3256,7 @@ namespace Services.Tests
                                                  _pendingConfigurationConfig.Object,
                                                  _serviceBusQueueRepository.Object,
                                                  _telemetryClient,
+                                                 Mock.Of<ITeamsChannelRepository>(),
                                                  _autoApproverQueueRepository.Object);
 
             _jobsController = new JobsController(_getJobsHandler, _patchJobsHandler, _postJobHandler, _getJobDetailsHandler, _postResetRequestHandler, NullLogger<JobsController>.Instance);
@@ -3291,6 +3316,7 @@ namespace Services.Tests
                                                  _pendingConfigurationConfig.Object,
                                                  _serviceBusQueueRepository.Object,
                                                  _telemetryClient,
+                                                 Mock.Of<ITeamsChannelRepository>(),
                                                  _autoApproverQueueRepository.Object);
 
             _jobsController = new JobsController(_getJobsHandler, _patchJobsHandler, _postJobHandler, _getJobDetailsHandler, _postResetRequestHandler, NullLogger<JobsController>.Instance);
@@ -3366,6 +3392,7 @@ namespace Services.Tests
                                                  _pendingConfigurationConfig.Object,
                                                  _serviceBusQueueRepository.Object,
                                                  _telemetryClient,
+                                                 Mock.Of<ITeamsChannelRepository>(),
                                                  _autoApproverQueueRepository.Object);
 
             _jobsController = new JobsController(_getJobsHandler, _patchJobsHandler, _postJobHandler, _getJobDetailsHandler, _postResetRequestHandler, NullLogger<JobsController>.Instance);
@@ -3440,6 +3467,7 @@ namespace Services.Tests
                                                  _pendingConfigurationConfig.Object,
                                                  _serviceBusQueueRepository.Object,
                                                  _telemetryClient,
+                                                 Mock.Of<ITeamsChannelRepository>(),
                                                  _autoApproverQueueRepository.Object);
 
             _jobsController = new JobsController(_getJobsHandler, _patchJobsHandler, _postJobHandler, _getJobDetailsHandler, _postResetRequestHandler, NullLogger<JobsController>.Instance);
@@ -3504,6 +3532,7 @@ namespace Services.Tests
                                                  _pendingConfigurationConfig.Object,
                                                  _serviceBusQueueRepository.Object,
                                                  _telemetryClient,
+                                                 Mock.Of<ITeamsChannelRepository>(),
                                                  _autoApproverQueueRepository.Object);
 
             _jobsController = new JobsController(_getJobsHandler, _patchJobsHandler, _postJobHandler, _getJobDetailsHandler, _postResetRequestHandler, NullLogger<JobsController>.Instance);
@@ -3565,6 +3594,7 @@ namespace Services.Tests
                                                  _pendingConfigurationConfig.Object,
                                                  _serviceBusQueueRepository.Object,
                                                  _telemetryClient,
+                                                 Mock.Of<ITeamsChannelRepository>(),
                                                  _autoApproverQueueRepository.Object);
 
             _jobsController = new JobsController(_getJobsHandler, _patchJobsHandler, _postJobHandler, _getJobDetailsHandler, _postResetRequestHandler, NullLogger<JobsController>.Instance);
@@ -3620,6 +3650,7 @@ namespace Services.Tests
                                                  _pendingConfigurationConfig.Object,
                                                  _serviceBusQueueRepository.Object,
                                                  _telemetryClient,
+                                                 Mock.Of<ITeamsChannelRepository>(),
                                                  _autoApproverQueueRepository.Object);
 
             _jobsController = new JobsController(_getJobsHandler, _patchJobsHandler, _postJobHandler, _getJobDetailsHandler, _postResetRequestHandler, NullLogger<JobsController>.Instance);
@@ -3674,6 +3705,7 @@ namespace Services.Tests
                                                  _pendingConfigurationConfig.Object,
                                                  _serviceBusQueueRepository.Object,
                                                  _telemetryClient,
+                                                 Mock.Of<ITeamsChannelRepository>(),
                                                  _autoApproverQueueRepository.Object);
 
             _jobsController = new JobsController(_getJobsHandler, _patchJobsHandler, _postJobHandler, _getJobDetailsHandler, _postResetRequestHandler, NullLogger<JobsController>.Instance);
@@ -3734,6 +3766,7 @@ namespace Services.Tests
                                                  _pendingConfigurationConfig.Object,
                                                  _serviceBusQueueRepository.Object,
                                                  _telemetryClient,
+                                                 Mock.Of<ITeamsChannelRepository>(),
                                                  _autoApproverQueueRepository.Object);
 
             _jobsController = new JobsController(_getJobsHandler, _patchJobsHandler, _postJobHandler, _getJobDetailsHandler, _postResetRequestHandler, NullLogger<JobsController>.Instance);
@@ -3792,6 +3825,7 @@ namespace Services.Tests
                                                  _pendingConfigurationConfig.Object,
                                                  _serviceBusQueueRepository.Object,
                                                  _telemetryClient,
+                                                 Mock.Of<ITeamsChannelRepository>(),
                                                  _autoApproverQueueRepository.Object);
 
             _jobsController = new JobsController(_getJobsHandler, _patchJobsHandler, _postJobHandler, _getJobDetailsHandler, _postResetRequestHandler, NullLogger<JobsController>.Instance);
@@ -3843,6 +3877,7 @@ namespace Services.Tests
                                                  _pendingConfigurationConfig.Object,
                                                  _serviceBusQueueRepository.Object,
                                                  _telemetryClient,
+                                                 Mock.Of<ITeamsChannelRepository>(),
                                                  _autoApproverQueueRepository.Object);
 
             _jobsController = new JobsController(_getJobsHandler, _patchJobsHandler, _postJobHandler, _getJobDetailsHandler, _postResetRequestHandler, NullLogger<JobsController>.Instance);

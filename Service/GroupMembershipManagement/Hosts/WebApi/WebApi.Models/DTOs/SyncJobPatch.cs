@@ -9,6 +9,7 @@ namespace WebApi.Models.DTOs
         public string Requestor { get; set; }
         public string? LastModifiedOnBehalfOfDisplayName { get; set; }
         public string? LastModifiedOnBehalfOfObjectId { get; set; }
+        // Retained for mapping existing jobs; PATCH operations on destination identity are rejected.
         public Guid TargetOfficeGroupId { get; set; }
         public string Destination { get; set; }
         public NewTitle[] Titles { get; set; }

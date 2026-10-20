@@ -35,6 +35,7 @@ namespace Services
         private readonly IServiceBusQueueRepository _serviceBusQueueRepository;
         private readonly TelemetryClient _telemetryClient;
         private readonly IServiceBusQueueRepository? _autoApproverQueueRepository;
+        private readonly ITeamsChannelRepository _teamsChannelRepository;
 
         public PostJobHandler(
             ILogger<PostJobHandler> logger,
@@ -47,6 +48,7 @@ namespace Services
             IPendingConfigurationConfig pendingConfigurationConfig,
             IServiceBusQueueRepository serviceBusQueueRepository,
             TelemetryClient telemetryClient,
+            ITeamsChannelRepository teamsChannelRepository,
             [FromKeyedServices("AutoApprover")] IServiceBusQueueRepository? autoApproverQueueRepository = null) : base(logger)
         {
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
@@ -59,6 +61,7 @@ namespace Services
             _pendingConfigurationConfig = pendingConfigurationConfig ?? throw new ArgumentNullException(nameof(pendingConfigurationConfig));
             _serviceBusQueueRepository = serviceBusQueueRepository ?? throw new ArgumentNullException(nameof(serviceBusQueueRepository));
             _telemetryClient = telemetryClient ?? throw new ArgumentNullException(nameof(telemetryClient));
+            _teamsChannelRepository = teamsChannelRepository ?? throw new ArgumentNullException(nameof(teamsChannelRepository));
             _autoApproverQueueRepository = autoApproverQueueRepository;
         }
 
@@ -143,6 +146,21 @@ namespace Services
                     return response;
                 }
 
+                var destinationName = await _graphGroupRepository.GetGroupNameAsync(destinationId);
+                var destinationEmail = await _graphGroupRepository.GetGroupEmailAsync(destinationId);
+                if (newSyncJobEntity.DestinationRecord is GroupDestination group)
+                {
+                    group.Name = destinationName;
+                    group.Email = destinationEmail;
+                }
+                else if (newSyncJobEntity.DestinationRecord is TeamsChannelDestination channel)
+                {
+                    channel.TeamName = destinationName;
+                    channel.ChannelName = await _teamsChannelRepository.GetTeamsChannelNameAsync(
+                        new Models.Entities.AzureADTeamsChannel { ObjectId = channel.TeamId, ChannelId = channel.ChannelId });
+                }
+
+                // Save legacy and consolidated identity together until cutover.
                 var newSyncJobId = await _syncJobRepository.CreateSyncJobAsync(newSyncJobEntity);
 
                 if (newSyncJobId != Guid.Empty)
@@ -160,9 +178,8 @@ namespace Services
                         { "OnboardedUsingAIQB", request.NewSyncJob.OnboardedUsingAIQB.ToString() }
                     });
 
-                    var destinationName = await _graphGroupRepository.GetGroupNameAsync(destinationId);
-                    var destinationEmail = await _graphGroupRepository.GetGroupEmailAsync(destinationId);
                     var ownersDictionary = await _graphGroupRepository.GetDestinationOwnersAsync(new List<Guid> { destinationId });
+                    // Remove legacy Name/Email writes after the cutover rollback window; retain owner updates.
                     var destinationAttributes = new DestinationAttributes
                     {
                         Id = newSyncJobId,
@@ -352,6 +369,15 @@ namespace Services
 
             var targetGroupId = !string.IsNullOrEmpty(targetOfficeGroupId) ? new Guid(targetOfficeGroupId) : Guid.Empty;
             string membershipType = !string.IsNullOrEmpty(type) ? type : MembershipTypes.GroupMembership.ToString();
+            if (targetGroupId == Guid.Empty)
+            {
+                throw new ArgumentException("A destination requires a non-empty object id.", nameof(syncJob));
+            }
+            if (membershipType != MembershipTypes.GroupMembership.ToString()
+                && membershipType != MembershipTypes.TeamsChannelMembership.ToString())
+            {
+                throw new ArgumentException($"Unsupported destination type '{membershipType}'.", nameof(syncJob));
+            }
 
             return new SyncJob
             {
@@ -367,7 +393,10 @@ namespace Services
                 Status = SyncStatus.PendingReview.ToString(),
                 MembershipType = membershipType,
                 Channel = membershipType == MembershipTypes.TeamsChannelMembership.ToString() ? new Channel { GroupId = targetGroupId, ChannelId = channelId } : null,
-                Group = membershipType == MembershipTypes.GroupMembership.ToString() ? new Group { GroupId = targetGroupId } : null
+                Group = membershipType == MembershipTypes.GroupMembership.ToString() ? new Group { GroupId = targetGroupId } : null,
+                DestinationRecord = membershipType == MembershipTypes.GroupMembership.ToString()
+                    ? new GroupDestination { GroupId = targetGroupId }
+                    : new TeamsChannelDestination { TeamId = targetGroupId, ChannelId = channelId }
             };
         }
     }

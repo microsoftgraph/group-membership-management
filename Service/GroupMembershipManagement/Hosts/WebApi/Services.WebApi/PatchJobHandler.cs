@@ -38,12 +38,7 @@ namespace Services.WebApi
         private readonly IServiceBusQueueRepository? _autoApproverQueueRepository;
         private readonly TelemetryClient _telemetryClient;
 
-        // Explicit allowlist of low-risk configuration fields that may be auto-approved on the config-only fast path.
-        // Everything NOT listed here (notably /Destination and /TargetOfficeGroupId, which redirect the sync to a
-        // different group, plus /Status, /RunId, /Requestor, /AllowEmptyDestination and the Last*/OnBehalfOf fields)
-        // must go through human review: ownership is authorized against the ORIGINAL group only (never the post-patch
-        // destination), so a non-allowlisted change must never be silently auto-approved. /Query is intentionally
-        // absent — it is classified separately via a dry-run query comparison.
+        // Only these configuration fields may bypass human review; /Query is classified separately.
         private static readonly HashSet<string> AutoApprovableConfigurationPaths = new(StringComparer.OrdinalIgnoreCase)
         {
             "/Period",
@@ -109,6 +104,15 @@ namespace Services.WebApi
             if (!isGroupOwner && !request.IsAllowed)
             {
                 response.StatusCode = HttpStatusCode.Forbidden;
+                return response;
+            }
+
+            if (request.PatchDocument.Operations.Any(operation =>
+                IsDestinationPath(operation.path)
+                || (operation.from != null && IsDestinationPath(operation.from))))
+            {
+                response.StatusCode = HttpStatusCode.BadRequest;
+                response.ErrorCode = "DestinationCannotBeChanged";
                 return response;
             }
 
@@ -529,8 +533,6 @@ namespace Services.WebApi
 
             var updatedSyncJob = MapDtoToEntity(syncJob, syncJobToPatch, request.SyncJobId);
 
-            // Re-run the US3 TeamsChannel source validation whenever the query is edited, so an update
-            // cannot persist a TeamsChannel source that the create path (PostJobHandler) would reject.
             if (updatesQuery)
             {
                 var teamsChannelSourceError = TeamsChannelSourcePartValidator.Validate(updatedSyncJob);
@@ -549,6 +551,14 @@ namespace Services.WebApi
 
             await _syncJobChangeRepository.Save(syncJobChange);
             return null;
+        }
+
+        private static bool IsDestinationPath(string? path)
+        {
+            var property = path?.Split('/').ElementAtOrDefault(1);
+            return string.IsNullOrEmpty(property)
+                || string.Equals(property, nameof(SyncJobPatch.Destination), StringComparison.OrdinalIgnoreCase)
+                || string.Equals(property, nameof(SyncJobPatch.TargetOfficeGroupId), StringComparison.OrdinalIgnoreCase);
         }
 
         private static bool IsEmptyQuery(string query)
