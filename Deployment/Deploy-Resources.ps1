@@ -953,7 +953,9 @@ function Set-FunctionAuthenticationAllowedIdentities {
         [Parameter(Mandatory = $false)]
         [string[]]$AdditionalAdfFunctionAppNames = @(),
         [Parameter(Mandatory = $false)]
-        [string[]]$AdditionalWebApiFunctionAppNames = @()
+        [string[]]$AdditionalWebApiFunctionAppNames = @(),
+        [Parameter(Mandatory = $false)]
+        [string[]]$AdditionalAdfFactoryNames = @()
     )
 
     Write-DeployLog -Level Info -Message "Setting Allowed Identities for Function Authentication"
@@ -964,18 +966,22 @@ function Set-FunctionAuthenticationAllowedIdentities {
     # Get ADF Managed Identity Principal ID (if ADF is deployed)
     $adfMSIPrincipalIds = @()
     if ($SkipAzureDataFactoryDeployment -eq $false) {
+        $adfFactoryNames = @("$SolutionAbbreviation-data-$EnvironmentAbbreviation-adf") + $AdditionalAdfFactoryNames |
+            Select-Object -Unique
         $adfResources = @(
-            @{
-                Name = "$SolutionAbbreviation-data-$EnvironmentAbbreviation-adf"
-                ResourceGroup = $dataResourceGroup
+            foreach ($factoryName in $adfFactoryNames) {
+                @{
+                    Name = $factoryName
+                    ResourceGroup = $dataResourceGroup
+                }
+                if ($EnableMultiRegion) {
+                    @{
+                        Name = "$factoryName-sec"
+                        ResourceGroup = "$dataResourceGroup-sec"
+                    }
+                }
             }
         )
-        if ($EnableMultiRegion) {
-            $adfResources += @{
-                Name = "$SolutionAbbreviation-data-$EnvironmentAbbreviation-adf-sec"
-                ResourceGroup = "$dataResourceGroup-sec"
-            }
-        }
 
         foreach ($adfResourceDescriptor in $adfResources) {
             Write-DeployLog -Level Info -Message "Retrieving ADF Managed Identity for $($adfResourceDescriptor.Name)..."
