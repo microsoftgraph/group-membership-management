@@ -155,7 +155,17 @@ function Set-Subscription {
 }
 
 function Set-ResourceProviders {
-    foreach ($namespace in @("Microsoft.ServiceBus", "Microsoft.Insights", "Microsoft.OperationalInsights", "Microsoft.AlertsManagement", "Microsoft.Storage", "Microsoft.AppConfiguration", "Microsoft.Sql", "Microsoft.Web", "Microsoft.Cdn", "Microsoft.DataFactory", "Microsoft.SignalRService", "Microsoft.DevTestLab", "Microsoft.ContainerService")) {
+    param (
+        [Parameter(Mandatory = $false)]
+        [bool]$DeployAks = $false
+    )
+
+    $namespaces = @("Microsoft.ServiceBus", "Microsoft.Insights", "Microsoft.OperationalInsights", "Microsoft.AlertsManagement", "Microsoft.Storage", "Microsoft.AppConfiguration", "Microsoft.Sql", "Microsoft.Web", "Microsoft.Cdn", "Microsoft.DataFactory", "Microsoft.SignalRService", "Microsoft.DevTestLab", "Microsoft.ContainerService")
+    if ($DeployAks) {
+        $namespaces += @("Microsoft.ContainerRegistry", "Microsoft.Compute")
+    }
+
+    foreach ($namespace in $namespaces) {
         Write-DeployLog -Level Info -Message "Checking if the resource provider $namespace is registered..."
         $provider = Invoke-WithRetry `
             -Operation { Get-AzResourceProvider -ProviderNamespace $namespace } `
@@ -4008,7 +4018,7 @@ function Deploy-Resources {
 
     if (!$skipResourceProvidersCheck) {
         Write-DeployPhase -Name 'Registering Resource Providers' -Event Begin
-        Set-ResourceProviders
+        Set-ResourceProviders -DeployAks $deployAks
         Write-DeployPhase -Name 'Registering Resource Providers' -Event End
     }
 
