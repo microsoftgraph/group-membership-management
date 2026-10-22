@@ -32,7 +32,7 @@ namespace Models
 
         /// <summary>When on, a SqlMembership part whose filter references a Sensitive attribute is never auto-approved.</summary>
         IsSensitiveAttributeScreeningEnabled = 23,
-        IsAutoApprovalForConfiguredAttributeEnabled = 25,
-        ConfiguredAttributeAutoApprovalConfiguration = 26
+        IsAutoApprovalForConfiguredAttributeEnabled = 24,
+        ConfiguredAttributeAutoApprovalConfiguration = 25
     }
 }

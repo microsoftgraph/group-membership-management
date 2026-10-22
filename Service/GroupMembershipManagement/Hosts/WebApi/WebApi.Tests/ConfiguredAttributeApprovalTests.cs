@@ -14,12 +14,25 @@ using System.Reflection;
 using System.Text.Json;
 using WebApi.Controllers.v1.AutoApprover;
 using WebApi.Models;
+using SettingDTO = WebApi.Models.DTOs.Setting;
 
 namespace Services.Tests;
 
 [TestClass]
 public class ConfiguredAttributeApprovalTests
 {
+    [DataTestMethod]
+    [DataRow(SettingKey.IsAutoApprovalForConfiguredAttributeEnabled, 24)]
+    [DataRow(SettingKey.ConfiguredAttributeAutoApprovalConfiguration, 25)]
+    public void SettingKeysUseExpectedWireValues(SettingKey key, int expected)
+    {
+        var setting = new SettingDTO(key, "value");
+        var json = JsonSerializer.Serialize(setting);
+        using var document = JsonDocument.Parse(json);
+        Assert.AreEqual(expected, document.RootElement.GetProperty("SettingKey").GetInt32());
+        Assert.AreEqual(key, JsonSerializer.Deserialize<SettingDTO>(json)!.SettingKey);
+    }
+
     private readonly Mock<IDatabaseSettingsRepository> _settings = new();
     private readonly Mock<IDatabaseSqlMembershipSourcesRepository> _sources = new();
     private readonly Mock<IAdfRunHistoryRepository> _dataFactory = new();

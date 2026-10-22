@@ -23,7 +23,9 @@ export const enum SettingKey {
     // Ordinal 20 (IsPerPartAutoApprovalEnabled) is retired and not reused.
     IsAIRejectionFeedbackRefinementEnabled = 21,
     IsAutoApprovalForLeaderAssistantEnabled = 22,
-    IsSensitiveAttributeScreeningEnabled = 23
+    IsSensitiveAttributeScreeningEnabled = 23,
+    IsAutoApprovalForConfiguredAttributeEnabled = 24,
+    ConfiguredAttributeAutoApprovalConfiguration = 25
 }
 
 export const SettingKeyMap: Record<SettingKey, string> = {
@@ -47,5 +49,7 @@ export const SettingKeyMap: Record<SettingKey, string> = {
     [SettingKey.IsAIRunExplanationEnabled]: 'IsAIRunExplanationEnabled',
     [SettingKey.IsAIRejectionFeedbackRefinementEnabled]: 'IsAIRejectionFeedbackRefinementEnabled',
     [SettingKey.IsAutoApprovalForLeaderAssistantEnabled]: 'IsAutoApprovalForLeaderAssistantEnabled',
-    [SettingKey.IsSensitiveAttributeScreeningEnabled]: 'IsSensitiveAttributeScreeningEnabled'
+    [SettingKey.IsSensitiveAttributeScreeningEnabled]: 'IsSensitiveAttributeScreeningEnabled',
+    [SettingKey.IsAutoApprovalForConfiguredAttributeEnabled]: 'IsAutoApprovalForConfiguredAttributeEnabled',
+    [SettingKey.ConfiguredAttributeAutoApprovalConfiguration]: 'ConfiguredAttributeAutoApprovalConfiguration'
 };

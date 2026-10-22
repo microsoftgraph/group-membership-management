@@ -9,6 +9,7 @@ import { ConfiguredAttributeRules, ConfiguredAttributeToggleCard, useConfiguredA
 import { defaultStrings } from '../../services/localization';
 import { renderWithProviders } from '../../testing/renderWithProviders';
 import { GMMApi } from '../../apis/GMMApi';
+import { SettingKey, SettingKeyMap } from '../../models/SettingKey';
 
 const labels = defaultStrings.AdminConfig.AutoApproverSettings.labels;
 
@@ -44,6 +45,13 @@ const Harness: React.FunctionComponent<{ canEdit: boolean }> = ({ canEdit }) => 
 };
 
 describe('ConfiguredAttributeApprovalSettings', () => {
+  it('uses the WebAPI setting key ordinals and names', () => {
+    expect(SettingKey.IsAutoApprovalForConfiguredAttributeEnabled).toBe(24);
+    expect(SettingKey.ConfiguredAttributeAutoApprovalConfiguration).toBe(25);
+    expect(SettingKeyMap[SettingKey.IsAutoApprovalForConfiguredAttributeEnabled]).toBe('IsAutoApprovalForConfiguredAttributeEnabled');
+    expect(SettingKeyMap[SettingKey.ConfiguredAttributeAutoApprovalConfiguration]).toBe('ConfiguredAttributeAutoApprovalConfiguration');
+  });
+
   it('shows a retry option when loading fails', async () => {
     mockApi({ fetchConfiguration: vi.fn().mockRejectedValue(new Error('boom')) });
     renderWithProviders(<Harness canEdit={true} />);
