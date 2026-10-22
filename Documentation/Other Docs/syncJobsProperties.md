@@ -59,21 +59,32 @@ Defines the type of sync and the Azure ObjectId of the security group that will 
         [
             {
                 "type": "GroupMembership",
-                "source": "<guid-group-objet-id-1>"
+                "source": "<guid-group-object-id-1>",
+                "identityTypes": ["users"]
             },
             {
                 "type": "GroupMembership",
-                "source": "<guid-group-objet-id-2>"
+                "source": "<guid-group-object-id-2>",
+                "identityTypes": ["agents"]
             },
             {
                 "type": "GroupMembership",
-                "source": "<guid-group-objet-id-n>"
+                "source": "<guid-group-object-id-n>",
+                "identityTypes": ["users", "agents"]
             }
         ]
 - DataType: string
-- Format: Guid
+- Format: Serialized JSON array of query-part objects; each `GroupMembership` `source` is a Guid
 
-       
+For a `GroupMembership` part, `identityTypes` is optional and is available through the advanced JSON query:
+
+- `users` selects people.
+- `agents` selects agent users. It does not select agent identities or other service principals.
+- `["users","agents"]` and `["agents","users"]` both select people and agent users.
+- Omitting `identityTypes` also selects people and agent users, preserving existing group-source behavior.
+- A present list must be nonempty, contain each supported lower-case value at most once, and can be used only when `source` is one group identifier.
+
+The omitted default differs by source type: a `GroupMembership` part defaults to users and agents, while a `SqlMembership` part defaults to users only. `GroupOwnership`, `PlaceMembership`, and `TeamsChannelMembership` parts do not support `identityTypes`.
 
 ### StartDate
 Defines the date and time when the synchronization job should start running, this allows to schedule jobs to run in the future.

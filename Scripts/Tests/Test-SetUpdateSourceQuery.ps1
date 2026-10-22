@@ -72,6 +72,7 @@ function Assert-Conversion {
     Assert-Equal $Expected $converted.TransformedQuery $Because
     Assert-Equal 'Changed' $converted.Status "$Because (reported as changed)"
     Assert-Equal 0 $converted.UnconvertedSqlParts "$Because (nothing reported as unrecognised)"
+    Assert-Equal 0 $converted.InvalidGroupIdentityTypeParts "$Because (no invalid group selection reported)"
 
     $convertedAgain = Convert-SqlSourceQuery -Query $converted.TransformedQuery
     Assert-Equal 'NoChanges' $convertedAgain.Status "$Because (a second run changes nothing)"
@@ -198,6 +199,197 @@ Assert-Equal `
     $convertedLegacyGroup.TransformedQuery `
     'legacy SecurityGroup expansion remains unchanged'
 
+$selectedLegacyGroupQuery = '[{"type":"SecurityGroup","source":["11111111-1111-1111-1111-111111111111","22222222-2222-2222-2222-222222222222"],"identityTypes":["agents"]}]'
+Assert-Conversion `
+    -Query $selectedLegacyGroupQuery `
+    -Expected `
+    '[{"type":"GroupMembership","source":"11111111-1111-1111-1111-111111111111","identityTypes":["agents"]},{"type":"GroupMembership","source":"22222222-2222-2222-2222-222222222222","identityTypes":["agents"]}]' `
+    -Because 'legacy SecurityGroup expansion preserves the explicit identity-type selection on every part'
+
+$selectedArrayGroupQuery = '[{"type":"GroupMembership","source":["11111111-1111-1111-1111-111111111111","22222222-2222-2222-2222-222222222222"],"identityTypes":["users","agents"]}]'
+Assert-Conversion `
+    -Query $selectedArrayGroupQuery `
+    -Expected `
+    '[{"type":"GroupMembership","source":"11111111-1111-1111-1111-111111111111","identityTypes":["users","agents"]},{"type":"GroupMembership","source":"22222222-2222-2222-2222-222222222222","identityTypes":["users","agents"]}]' `
+    -Because 'legacy array-source GroupMembership expansion preserves the explicit identity-type selection on every part'
+
+$invalidSelectedLegacyGroupQuery = '[{"type":"SecurityGroup","source":["11111111-1111-1111-1111-111111111111"],"identityTypes":["Agents"]}]'
+$invalidSelectedLegacyGroup = Convert-SqlSourceQuery -Query $invalidSelectedLegacyGroupQuery
+Assert-Equal $invalidSelectedLegacyGroupQuery $invalidSelectedLegacyGroup.TransformedQuery `
+    'a legacy group part with an invalid identity-type selection is not widened by conversion'
+Assert-Equal 1 $invalidSelectedLegacyGroup.UnrewritableParts `
+    'a legacy group part with an invalid identity-type selection is reported as unrewritable'
+Assert-Equal 1 $invalidSelectedLegacyGroup.InvalidGroupIdentityTypeParts `
+    'a legacy group part with an invalid identity-type selection is reported specifically'
+
+$invalidGroupSelectionCases = @(
+    @{
+        Query = '[{"type":"SecurityGroup","source":["11111111-1111-1111-1111-111111111111"],"IdentityTypes":["users"]}]'
+        Because = 'a wrong-case identityTypes property'
+    },
+    @{
+        Query = '[{"type":"SecurityGroup","source":["11111111-1111-1111-1111-111111111111"],"identityTypes":["users"],"IdentityTypes":["agents"]}]'
+        Because = 'case-variant duplicate identityTypes properties'
+        KeptAsStoredReason = 'UnrewritablePart'
+    },
+    @{
+        Query = '[{"type":"SecurityGroup","source":["11111111-1111-1111-1111-111111111111"],"identityTypes":["users"],"identityTypes":["agents"]}]'
+        Because = 'duplicate identityTypes properties'
+    },
+    @{
+        Query = '[{"type":"SecurityGroup","source":["11111111-1111-1111-1111-111111111111"],"identityTypes":null}]'
+        Because = 'a null identityTypes value'
+    },
+    @{
+        Query = '[{"type":"SecurityGroup","source":["11111111-1111-1111-1111-111111111111"],"identityTypes":[]}]'
+        Because = 'an empty identityTypes array'
+    },
+    @{
+        Query = '[{"type":"SecurityGroup","source":["11111111-1111-1111-1111-111111111111"],"identityTypes":"users"}]'
+        Because = 'a scalar identityTypes value'
+    },
+    @{
+        Query = '[{"type":"SecurityGroup","source":["11111111-1111-1111-1111-111111111111"],"identityTypes":[1]}]'
+        Because = 'a non-string identityTypes value'
+    },
+    @{
+        Query = '[{"type":"SecurityGroup","source":["11111111-1111-1111-1111-111111111111"],"identityTypes":["users","users"]}]'
+        Because = 'a duplicate identityTypes value'
+    }
+)
+foreach ($case in $invalidGroupSelectionCases) {
+    $keptAsStoredReason = if ($case.ContainsKey('KeptAsStoredReason')) {
+        $case.KeptAsStoredReason
+    }
+    else {
+        'None'
+    }
+    Assert-KeptAsStored `
+        -Query $case.Query `
+        -UnconvertedSqlParts 0 `
+        -KeptAsStoredReason $keptAsStoredReason `
+        -Because "$($case.Because) is preserved"
+    $converted = Convert-SqlSourceQuery -Query $case.Query
+    Assert-Equal 1 $converted.UnrewritableParts "$($case.Because) is unrewritable"
+    Assert-Equal 1 $converted.InvalidGroupIdentityTypeParts "$($case.Because) is reported specifically"
+}
+
+$invalidSelectedFalsySourceCases = @(
+    @{
+        Query = '[{"type":"SecurityGroup","source":[],"identityTypes":["Agents"]}]'
+        Because = 'an empty source array'
+    },
+    @{
+        Query = '[{"type":"SecurityGroup","source":"","identityTypes":["Agents"]}]'
+        Because = 'an empty source string'
+    },
+    @{
+        Query = '[{"type":"SecurityGroup","source":null,"identityTypes":["Agents"]}]'
+        Because = 'a null source'
+    }
+)
+foreach ($case in $invalidSelectedFalsySourceCases) {
+    Assert-KeptAsStored `
+        -Query $case.Query `
+        -UnconvertedSqlParts 0 `
+        -KeptAsStoredReason 'None' `
+        -Because "a selected legacy group part with $($case.Because) and an invalid selection is not rewritten"
+    $converted = Convert-SqlSourceQuery -Query $case.Query
+    Assert-Equal 1 $converted.UnrewritableParts `
+        "a selected legacy group part with $($case.Because) and an invalid selection is reported as unrewritable"
+    Assert-Equal 1 $converted.InvalidGroupIdentityTypeParts `
+        "a selected legacy group part with $($case.Because) is reported specifically"
+}
+
+$invalidSelectedCurrentScalarQuery =
+    '[{"type":"GroupMembership","source":"11111111-1111-1111-1111-111111111111","identityTypes":["Agents"]}]'
+Assert-KeptAsStored `
+    -Query $invalidSelectedCurrentScalarQuery `
+    -UnconvertedSqlParts 0 `
+    -KeptAsStoredReason 'None' `
+    -Because 'a current scalar group part with an invalid selection is not rewritten'
+$invalidSelectedCurrentScalar =
+    Convert-SqlSourceQuery -Query $invalidSelectedCurrentScalarQuery
+Assert-Equal 1 $invalidSelectedCurrentScalar.UnrewritableParts `
+    'a current scalar group part with an invalid selection is reported as unrewritable'
+Assert-Equal 1 $invalidSelectedCurrentScalar.InvalidGroupIdentityTypeParts `
+    'a current scalar group part with an invalid selection is reported specifically'
+
+$wrongCaseSelectedLegacyTypeCases = @(
+    '[{"type":"securitygroup","source":["11111111-1111-1111-1111-111111111111"],"identityTypes":["agents"]}]',
+    '[{"type":"groupmembership","source":["11111111-1111-1111-1111-111111111111"],"identityTypes":["users"]}]'
+)
+foreach ($query in $wrongCaseSelectedLegacyTypeCases) {
+    Assert-KeptAsStored `
+        -Query $query `
+        -UnconvertedSqlParts 0 `
+        -KeptAsStoredReason 'None' `
+        -Because 'a selected legacy group part with a wrong-case type is not widened by conversion'
+    Assert-Equal 1 (Convert-SqlSourceQuery -Query $query).UnrewritableParts `
+        'a selected legacy group part with a wrong-case type is reported as unrewritable'
+}
+
+$wrongCaseSelectedGroupTypePropertyCases = @(
+    @{
+        Query = '[{"Type":"SecurityGroup","source":["11111111-1111-1111-1111-111111111111"],"identityTypes":["agents"]}]'
+        Because = 'a selected legacy group part with a Type property'
+    },
+    @{
+        Query = '[{"TYPE":"GroupMembership","source":["11111111-1111-1111-1111-111111111111"],"identityTypes":["users"]}]'
+        Because = 'a selected legacy group part with a TYPE property'
+    },
+    @{
+        Query = '[{"Type":"GroupMembership","source":"11111111-1111-1111-1111-111111111111","identityTypes":["agents"]}]'
+        Because = 'a selected current scalar group part with a Type property'
+    },
+    @{
+        Query = '[{"TYPE":"GroupMembership","source":"11111111-1111-1111-1111-111111111111","identityTypes":["users"]}]'
+        Because = 'a selected current scalar group part with a TYPE property'
+    }
+)
+foreach ($case in $wrongCaseSelectedGroupTypePropertyCases) {
+    Assert-KeptAsStored `
+        -Query $case.Query `
+        -UnconvertedSqlParts 0 `
+        -KeptAsStoredReason 'None' `
+        -Because "$($case.Because) is not rewritten"
+    $converted = Convert-SqlSourceQuery -Query $case.Query
+    Assert-Equal 1 $converted.UnrewritableParts "$($case.Because) is reported as unrewritable"
+    Assert-Equal 1 $converted.InvalidGroupIdentityTypeParts "$($case.Because) is reported specifically"
+}
+
+$nestedSelectedLegacyCases = @(
+    @{
+        Query = '[{"type":"SecurityGroup","source":["11111111-1111-1111-1111-111111111111"],"sourceOptions":{"identityTypes":["agents"]}}]'
+        Because = 'a legacy SecurityGroup part with a nested selection'
+    },
+    @{
+        Query = '[{"type":"GroupMembership","source":["11111111-1111-1111-1111-111111111111"],"sourceOptions":{"IdentityTypes":["users"]}}]'
+        Because = 'a legacy array-source group part with a nested wrong-case selection'
+    }
+)
+
+foreach ($case in $nestedSelectedLegacyCases) {
+    Assert-KeptAsStored `
+        -Query $case.Query `
+        -UnconvertedSqlParts 0 `
+        -KeptAsStoredReason 'None' `
+        -Because "$($case.Because) is not widened by conversion"
+    Assert-Equal 1 (Convert-SqlSourceQuery -Query $case.Query).UnrewritableParts `
+        "$($case.Because) is reported as unrewritable"
+}
+
+$identityMigrationScript = Join-Path $scriptsRoot 'PostDeploymentMigrations\Set-SqlIdentityTypesMigration.ps1'
+. $identityMigrationScript
+foreach ($case in $nestedSelectedLegacyCases) {
+    $sourceResult = Convert-SqlSourceQuery -Query $case.Query
+    $identityResult = Convert-SqlIdentityTypesQuery -Query $sourceResult.TransformedQuery
+    Assert-Equal 'NoChanges' $identityResult.Status `
+        "$($case.Because) is not widened by the following SQL identity migration"
+    Assert-Equal $case.Query $identityResult.TransformedQuery `
+        "$($case.Because) stays byte-identical through the ordered release chain"
+}
+
 $legacyGroupGuid = '33333333-3333-3333-3333-333333333333'
 $oldNonExclusionaryGroupPart = '{"type":"GroupMembership","source":"' + $legacyGroupGuid + '"}'
 $oldExclusionaryGroupPart = '{"type":"GroupMembership","source":"' + $legacyGroupGuid + '","exclusionary":true}'
@@ -205,6 +397,10 @@ Assert-Equal $oldNonExclusionaryGroupPart (Build-GroupMembershipQueryPart -Sourc
     'object-built GroupMembership output matches the old concatenated GUID output'
 Assert-Equal $oldExclusionaryGroupPart (Build-GroupMembershipQueryPart -Source $legacyGroupGuid -Exclusionary $true) `
     'object-built exclusionary GroupMembership output matches the old concatenated GUID output'
+Assert-Equal `
+    ('{"type":"GroupMembership","source":"' + $legacyGroupGuid + '","identityTypes":["agents"]}') `
+    (Build-GroupMembershipQueryPart -Source $legacyGroupGuid -Exclusionary $false -IdentityTypes @('agents')) `
+    'object-built GroupMembership output preserves an explicit identity-type selection'
 
 $quotedGroupValue = 'abc"def'
 $convertedQuotedGroup = Convert-SqlSourceQuery -Query '[{"type":"SecurityGroup","source":["abc\"def"]}]'
@@ -317,6 +513,10 @@ Assert-Conversion `
     -Query '[{"type":"SecurityGroup","source":[]}]' `
     -Expected '[{"type":"GroupMembership","source":[]}]' `
     -Because 'a SecurityGroup part without group IDs is renamed'
+Assert-Conversion `
+    -Query '[{"type":"SecurityGroup","source":[],"identityTypes":["agents"]}]' `
+    -Expected '[{"type":"GroupMembership","source":[],"identityTypes":["agents"]}]' `
+    -Because 'a SecurityGroup part without group IDs keeps a valid explicit selection when renamed'
 
 if ((Get-Command ConvertFrom-Json).Parameters.ContainsKey('DateKind')) {
     Assert-Conversion `
@@ -489,6 +689,9 @@ foreach ($case in $oldPortalFlagCases) {
 
 $unchangedPartQueries = @(
     '[{"type":"GroupMembership","source":"11111111-1111-1111-1111-111111111111","exclusionary":false}]',
+    '[{"type":"GroupMembership","source":"11111111-1111-1111-1111-111111111111","identityTypes":["agents","users"],"exclusionary":false}]',
+    '[{"type":"GroupMembership","source":"11111111-1111-1111-1111-111111111111","identityTypes":["robots"]}]',
+    '[{"type":"GroupMembership","source":"11111111-1111-1111-1111-111111111111","identityTypes":["users"]},{"type":"SqlMembership","source":{"filter":"users.Department = ''Sales''"},"identityTypes":["users"]}]',
     '[{"type":"GroupMembership","source":"11111111-1111-1111-1111-111111111111","future":1e3}]',
     '[ {"type": "GroupMembership", "source": "11111111-1111-1111-1111-111111111111"} ]',
     '[{"type":"GroupOwnership","source":["All"],"weight":1e3}]',
@@ -502,6 +705,11 @@ foreach ($query in $unchangedPartQueries) {
     Assert-KeptAsStored -Query $query -UnconvertedSqlParts 0 -KeptAsStoredReason 'None' `
         -Because 'a part that needs no change keeps its exact text'
 }
+
+$invalidCurrentSelectedGroupQuery =
+    '[{"type":"GroupMembership","source":"11111111-1111-1111-1111-111111111111","identityTypes":["robots"]}]'
+Assert-Equal 1 (Convert-SqlSourceQuery -Query $invalidCurrentSelectedGroupQuery).UnrewritableParts `
+    'an invalid current-format group selection is reported as unrewritable while staying byte-identical'
 
 $mixedRawQuery = '[{"type":"PlaceMembership", "source":{"weight":1e3}},{"type":"GroupMembership","source":"11111111-1111-1111-1111-111111111111","exclusionary":false},{"type":"SecurityGroup","source":["22222222-2222-2222-2222-222222222222"]}]'
 $mixedRawExpected = '[{"type":"PlaceMembership", "source":{"weight":1e3}},{"type":"GroupMembership","source":"11111111-1111-1111-1111-111111111111","exclusionary":false},{"type":"GroupMembership","source":"22222222-2222-2222-2222-222222222222"}]'
@@ -681,6 +889,9 @@ try {
     $unreadableLoggingJob = '00000000-0000-0000-0000-00000000000c'
     $convertedLoggingJob = '00000000-0000-0000-0000-00000000000d'
     $keptRepeatLoggingJob = '00000000-0000-0000-0000-00000000000e'
+    $invalidSelectionLoggingJob = '00000000-0000-0000-0000-00000000000f'
+    $invalidFalsySelectionLoggingJob = '00000000-0000-0000-0000-000000000010'
+    $invalidCurrentSelectionLoggingJob = '00000000-0000-0000-0000-000000000011'
     [void]$script:loggingRows.Rows.Add($mixedLoggingJob,
         '[{"type":"SqlMembership","source":"not-an-object"},{"type":"SqlMembership","source":[{"ids":[7]}],"future":' + $deeplyNestedValue + '},]')
     [void]$script:loggingRows.Rows.Add($repeatedLoggingJob,
@@ -688,6 +899,15 @@ try {
     [void]$script:loggingRows.Rows.Add($unreadableLoggingJob, 'not json')
     [void]$script:loggingRows.Rows.Add($convertedLoggingJob, '[{"type":"SecurityGroup","source":["' + $groupId + '"]}]')
     [void]$script:loggingRows.Rows.Add($keptRepeatLoggingJob, '[' + $keptCurrentRepeatPart + ']')
+    [void]$script:loggingRows.Rows.Add(
+        $invalidSelectionLoggingJob,
+        '[{"type":"SecurityGroup","source":["' + $groupId + '"],"identityTypes":["Agents"]}]')
+    [void]$script:loggingRows.Rows.Add(
+        $invalidFalsySelectionLoggingJob,
+        '[{"type":"SecurityGroup","source":null,"identityTypes":["Agents"]}]')
+    [void]$script:loggingRows.Rows.Add(
+        $invalidCurrentSelectionLoggingJob,
+        '[{"type":"GroupMembership","source":"' + $groupId + '","identityTypes":["Agents"]}]')
 
     $script:sqlOperationCalls = 0
     function New-SourceQueryMigrationConnection {
@@ -723,14 +943,36 @@ try {
     Assert-Equal 1 $keptRepeatLines.Count 'a kept current SQL part that repeats a name logs one finding'
     Assert-True ($keptRepeatLines[0] -like '*left 1 part(s) unchanged because their values cannot be written back exactly*') `
         'a kept current SQL part that repeats a name is logged as a part that cannot be written back'
+    $invalidSelectionLines = @(
+        $loggedLines |
+            Where-Object { $_.StartsWith("Job ${invalidSelectionLoggingJob}:") }
+    )
+    Assert-Equal 1 $invalidSelectionLines.Count 'an invalid group selection logs one specific finding'
+    Assert-True (
+        $invalidSelectionLines[0] -like '*left 1 group part(s) unchanged because identityTypes is invalid or misplaced*'
+    ) 'an invalid group selection is not reported as a generic write-back problem'
+    foreach ($jobId in @(
+        $invalidFalsySelectionLoggingJob,
+        $invalidCurrentSelectionLoggingJob
+    )) {
+        $jobLines = @(
+            $loggedLines |
+                Where-Object { $_.StartsWith("Job ${jobId}:") }
+        )
+        Assert-Equal 1 $jobLines.Count 'each additional invalid group selection logs one specific finding'
+        Assert-True (
+            $jobLines[0] -like '*left 1 group part(s) unchanged because identityTypes is invalid or misplaced*'
+        ) 'falsy-source and current-scalar invalid selections use the specific operator message'
+    }
 
     $expectedSummary = @(
         'Queries updated from old format: 1',
-        'Queries not updated: 4',
+        'Queries not updated: 7',
         'Queries with SQL parts left unchanged because their format is not recognised: 1',
         'Queries left whole because such a SQL part could not be kept exactly as stored: 1',
         'Queries with parts left unchanged because their values cannot be written back exactly: 2',
         'Queries left whole because such a part could not be kept exactly as stored: 0',
+        'Queries with group parts left unchanged because identityTypes is invalid or misplaced: 3',
         'Queries with SQL parts that do not match the current schema and may stop with a schema error: 1',
         'Queries left whole because they may repeat a property name: 1',
         'Queries left unchanged because they are not valid JSON: 1'

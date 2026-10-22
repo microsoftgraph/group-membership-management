@@ -109,10 +109,11 @@ The script creates the following app registrations and requests these Microsoft 
 
 | Application | Permission | Type | Admin consent required |
 |-------------|-----------|------|------------------------|
-| `<solutionAbbreviation>-Graph-<environmentAbbreviation>` | `User.Read.All` | Application | Yes |
+| `<solutionAbbreviation>-Graph-<environmentAbbreviation>` | `Application.Read.All` | Application | Yes |
+| | `Group.Create` | Application | Yes |
 | | `GroupMember.Read.All` | Application | Yes |
 | | `Member.Read.Hidden` | Application | Yes |
-| | `Group.Create` | Application | Yes |
+| | `User.Read.All` | Application | Yes |
 | | `ChannelMember.ReadWrite.All` | Delegated | Yes |
 | | `Mail.Send` | Delegated | No |
 | `<solutionAbbreviation>-TeamsChannel-<environmentAbbreviation>` | `ChannelMember.ReadWrite.All` | Delegated | Yes |
@@ -125,6 +126,8 @@ The script creates the following app registrations and requests these Microsoft 
 Notes:
 
 - The **Graph** application is the only one granted Microsoft Graph *application* permissions. These always require admin consent, which is why a directory role of Global Administrator or Privileged Role Administrator is required.
+- The supported application-role baseline is `Application.Read.All`, `Group.Create`, `GroupMember.Read.All`, `Member.Read.Hidden`, and `User.Read.All`. GMM's read-only group-source classification probe was verified with this combined set; testing did not isolate which individual role authorizes the lookup.
+- `Application.Read.All` permits GMM to read application registrations and service principals across the tenant.
 - GMM is **not** granted a tenant-wide group write permission. Membership changes are authorized by GMM being added as an **owner** of each destination group, not by `GroupMember.ReadWrite.All`. `Group.Create` only allows GMM to create new groups, which the create-group feature requires.
 - The **WebApi** application additionally exposes a `user_impersonation` scope and pre-authorizes the UI application to call it, so end users are never prompted to consent.
 - The **FunctionAuth** application exposes only a `client_impersonation` scope; it requests no Microsoft Graph permissions.
@@ -134,6 +137,7 @@ Notes:
 
 When `authenticationType` is `UserAssignedManagedIdentity`, the script assigns these Microsoft Graph **application** permissions to the user-assigned managed identity `<solutionAbbreviation>-identity-<environmentAbbreviation>-Graph`:
 
+- `Application.Read.All`
 - `Group.Create`
 - `GroupMember.Read.All`
 - `Member.Read.Hidden`

@@ -75,10 +75,14 @@ The Graph Credentials application serves as the primary service application for 
 4. Select **Microsoft Graph**
 5. Choose **Application permissions**
 6. Search for and select the following permissions:
-   - **User.Read.All** - Read all users' profiles
+   - **Application.Read.All** - Read application registrations and service principals across the tenant
+   - **Group.Create** - Create groups
    - **GroupMember.Read.All** - Read group memberships
    - **Member.Read.Hidden** - Read hidden memberships
+   - **User.Read.All** - Read all users' profiles
 7. Click **Add permissions**
+
+The required application-role baseline is `Application.Read.All`, `Group.Create`, `GroupMember.Read.All`, `Member.Read.Hidden`, and `User.Read.All`.
 
 #### 5.2 Add Microsoft Graph Delegated Permissions
 1. In the same **API permissions** section
@@ -152,9 +156,11 @@ Verify your application has the following configuration:
 
 #### Permissions
 - [ ] **Microsoft Graph Application Permissions**:
-  - [ ] `User.Read.All` with admin consent
+  - [ ] `Application.Read.All` with admin consent
+  - [ ] `Group.Create` with admin consent
   - [ ] `GroupMember.Read.All` with admin consent
   - [ ] `Member.Read.Hidden` with admin consent
+  - [ ] `User.Read.All` with admin consent
 - [ ] **Microsoft Graph Delegated Permissions**:
   - [ ] `ChannelMember.ReadWrite.All` with admin consent
   - [ ] `Mail.Send` with admin consent
@@ -179,7 +185,7 @@ Verify your application has the following configuration:
 - **Check**: "Allow public client flows" is set to "Yes" and redirect URIs match deployed services
 
 ### Issue: "Access denied when reading group memberships"
-- **Solution**: Ensure GroupMember.Read.All and Member.Read.Hidden permissions are granted
+- **Solution**: Ensure the complete five-role application baseline is granted, including Application.Read.All
 - **Check**: Application permissions are properly consented by administrator
 
 ### Issue: "Application secret expired"

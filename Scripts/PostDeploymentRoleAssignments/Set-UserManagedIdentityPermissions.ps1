@@ -15,8 +15,11 @@ A 2-6 character abbreviation for your environment.
 When set to true, prints manual instructions instead of performing the actions.
 
 .EXAMPLE
-Set-UserManagedIdentityPermissions -SolutionAbbreviation "gmm" `
-								   -EnvironmentAbbreviation "<env>"
+. .\Scripts\PostDeploymentRoleAssignments\Set-UserManagedIdentityPermissions.ps1
+Set-UserManagedIdentityPermissions `
+	-SolutionAbbreviation "gmm" `
+	-EnvironmentAbbreviation "<env>" `
+	-TenantId "<tenant-id>"
 #>
 
 function Write-UserManagedIdentityPermissionsInstructions {
@@ -31,7 +34,7 @@ function Write-UserManagedIdentityPermissionsInstructions {
 	)
 
 	$uamiName = "$SolutionAbbreviation-identity-$EnvironmentAbbreviation-Graph"
-	$appRoles = @("GroupMember.Read.All", "Member.Read.Hidden", "User.Read.All", "Group.Create")
+	$appRoles = @("Application.Read.All", "Group.Create", "GroupMember.Read.All", "Member.Read.Hidden", "User.Read.All")
 
 	Write-Host ""
 	Write-Host "=============================================================================" -ForegroundColor Cyan
@@ -47,6 +50,9 @@ function Write-UserManagedIdentityPermissionsInstructions {
 	foreach ($appRole in $appRoles) {
 		Write-Host "    - $appRole" -ForegroundColor Green
 	}
+	Write-Host ""
+	Write-Host "  Application.Read.All permits tenant-wide reads of application registrations" -ForegroundColor White
+	Write-Host "  and service principals." -ForegroundColor White
 	Write-Host ""
 	Write-Host "=============================================================================" -ForegroundColor Cyan
 	Write-Host "OPTION 1: Automated Setup (Recommended)" -ForegroundColor Yellow
@@ -173,7 +179,7 @@ function Set-UserManagedIdentityPermissions {
 	$currentAppRoleAssignments = Invoke-WithRetry -Operation {
 		Get-MgServicePrincipalAppRoleAssignment -ServicePrincipalId $uamiSPN.Id
 	} -OperationName "Get current app role assignments for UAMI"
-	$appRoles = @("GroupMember.Read.All", "Member.Read.Hidden", "User.Read.All", "Group.Create")
+	$appRoles = @("Application.Read.All", "Group.Create", "GroupMember.Read.All", "Member.Read.Hidden", "User.Read.All")
 	foreach ($appRoleName in $appRoles) {
 
 		$appRole = $graphApiSPN.AppRoles | Where-Object { $_.Value -eq $appRoleName -and $_.AllowedMemberTypes -contains "Application" }

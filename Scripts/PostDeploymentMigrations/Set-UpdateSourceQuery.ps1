@@ -47,7 +47,11 @@ function Build-GroupMembershipQueryPart {
         [string]$Source,
 
         [Parameter(Mandatory = $true)]
-        [bool]$Exclusionary
+        [bool]$Exclusionary,
+
+        [Parameter()]
+        [AllowNull()]
+        [string[]]$IdentityTypes
     )
 
     $part = [ordered]@{
@@ -57,6 +61,10 @@ function Build-GroupMembershipQueryPart {
 
     if ($Exclusionary) {
         $part.exclusionary = $true
+    }
+
+    if ($null -ne $IdentityTypes) {
+        $part.identityTypes = @($IdentityTypes)
     }
 
     return ConvertTo-Json -InputObject ([PSCustomObject]$part) -Compress -Depth 100
@@ -92,6 +100,79 @@ function Test-SourceQueryIdentityTypesSelection {
     }
 
     return $values.Count -gt 0
+}
+
+function Test-SourceQueryIdentityTypesValue {
+    [CmdletBinding()]
+    [OutputType([bool])]
+    param(
+        [Parameter()]
+        [AllowNull()]
+        $Selection
+    )
+
+    if ($Selection -isnot [System.Array]) {
+        return $false
+    }
+
+    $values = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
+    foreach ($item in $Selection) {
+        if ($item -isnot [string] -or
+            (-not [string]::Equals($item, 'users', [StringComparison]::Ordinal) -and
+             -not [string]::Equals($item, 'agents', [StringComparison]::Ordinal)) -or
+            -not $values.Add($item)) {
+            return $false
+        }
+    }
+
+    return $values.Count -gt 0
+}
+
+function Test-SourceQueryHasNestedIdentityTypesProperty {
+    [CmdletBinding()]
+    [OutputType([bool])]
+    param(
+        [Parameter()]
+        [AllowNull()]
+        $Value,
+
+        [Parameter()]
+        [int]$Depth = 0
+    )
+
+    $isObject = $Value -is [System.Management.Automation.PSCustomObject]
+    if (-not $isObject -and $Value -isnot [array]) {
+        return $false
+    }
+
+    if ($isObject) {
+        foreach ($property in $Value.PSObject.Properties) {
+            if ($Depth -gt 0 -and
+                [string]::Equals(
+                    $property.Name,
+                    'identityTypes',
+                    [StringComparison]::OrdinalIgnoreCase)) {
+                return $true
+            }
+
+            if (Test-SourceQueryHasNestedIdentityTypesProperty `
+                    -Value $property.Value `
+                    -Depth ($Depth + 1)) {
+                return $true
+            }
+        }
+    }
+    else {
+        foreach ($item in $Value) {
+            if (Test-SourceQueryHasNestedIdentityTypesProperty `
+                    -Value $item `
+                    -Depth ($Depth + 1)) {
+                return $true
+            }
+        }
+    }
+
+    return $false
 }
 
 function Test-JsonIntegerInRange {
@@ -586,6 +667,108 @@ function Test-JsonElementRepeatedName {
     return $false
 }
 
+function Test-JsonElementContainsIdentityTypes {
+    [CmdletBinding()]
+    [OutputType([bool])]
+    param(
+        [Parameter(Mandatory = $true)]
+        [System.Text.Json.JsonElement]$Element
+    )
+
+    if ($Element.ValueKind -eq [System.Text.Json.JsonValueKind]::Object) {
+        foreach ($property in $Element.EnumerateObject()) {
+            if ([string]::Equals(
+                $property.Name,
+                'identityTypes',
+                [StringComparison]::OrdinalIgnoreCase)) {
+                return $true
+            }
+
+            if ($property.Value.ValueKind -in @(
+                [System.Text.Json.JsonValueKind]::Object,
+                [System.Text.Json.JsonValueKind]::Array
+            ) -and (Test-JsonElementContainsIdentityTypes -Element $property.Value)) {
+                return $true
+            }
+        }
+    }
+    elseif ($Element.ValueKind -eq [System.Text.Json.JsonValueKind]::Array) {
+        foreach ($item in $Element.EnumerateArray()) {
+            if ($item.ValueKind -in @(
+                [System.Text.Json.JsonValueKind]::Object,
+                [System.Text.Json.JsonValueKind]::Array
+            ) -and (Test-JsonElementContainsIdentityTypes -Element $item)) {
+                return $true
+            }
+        }
+    }
+
+    return $false
+}
+
+function Test-JsonElementInvalidGroupIdentityTypes {
+    [CmdletBinding()]
+    [OutputType([bool])]
+    param(
+        [Parameter(Mandatory = $true)]
+        [System.Text.Json.JsonElement]$Element
+    )
+
+    if ($Element.ValueKind -ne [System.Text.Json.JsonValueKind]::Object) {
+        return $false
+    }
+
+    $properties = @($Element.EnumerateObject())
+    $typeProperties = @(
+        $properties | Where-Object {
+            [string]::Equals(
+                $_.Name,
+                'type',
+                [StringComparison]::OrdinalIgnoreCase)
+        }
+    )
+    if ($typeProperties.Count -ne 1 -or
+        $typeProperties[0].Value.ValueKind -ne [System.Text.Json.JsonValueKind]::String) {
+        return $false
+    }
+
+    $typeName = $typeProperties[0].Value.GetString()
+    if ($typeName -ine 'SecurityGroup' -and
+        $typeName -ine 'GroupMembership') {
+        return $false
+    }
+
+    $selectionProperties = @(
+        $properties | Where-Object {
+            [string]::Equals(
+                $_.Name,
+                'identityTypes',
+                [StringComparison]::OrdinalIgnoreCase)
+        }
+    )
+    $hasNestedSelection = @(
+        $properties | Where-Object {
+            $_.Name -cne 'identityTypes' -and
+            $_.Value.ValueKind -in @(
+                [System.Text.Json.JsonValueKind]::Object,
+                [System.Text.Json.JsonValueKind]::Array
+            ) -and
+            (Test-JsonElementContainsIdentityTypes -Element $_.Value)
+        }
+    ).Count -gt 0
+
+    if ($selectionProperties.Count -eq 0 -and -not $hasNestedSelection) {
+        return $false
+    }
+
+    return $typeProperties[0].Name -cne 'type' -or
+        $typeName -cnotin @('SecurityGroup', 'GroupMembership') -or
+        $hasNestedSelection -or
+        $selectionProperties.Count -ne 1 -or
+        $selectionProperties[0].Name -cne 'identityTypes' -or
+        -not (Test-SourceQueryIdentityTypesSelection -Selection $selectionProperties[0].Value)
+}
+
 # For a query without exact part text. True when a property name repeats, or when the query uses
 # syntax System.Text.Json cannot read even leniently, so repeats cannot be ruled out.
 function Test-SourceQueryPossibleRepeatedName {
@@ -607,6 +790,42 @@ function Test-SourceQueryPossibleRepeatedName {
     }
     catch {
         return $true
+    }
+    finally {
+        if ($null -ne $document) {
+            $document.Dispose()
+        }
+    }
+}
+
+function Get-SourceQueryInvalidGroupIdentityTypePartCount {
+    [CmdletBinding()]
+    [OutputType([int])]
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$Query
+    )
+
+    $document = $null
+    try {
+        $documentOptions = [System.Text.Json.JsonDocumentOptions]::new()
+        $documentOptions.MaxDepth = 1024
+        $documentOptions.AllowTrailingCommas = $true
+        $documentOptions.CommentHandling = [System.Text.Json.JsonCommentHandling]::Skip
+        $document = [System.Text.Json.JsonDocument]::Parse($Query, $documentOptions)
+        if ($document.RootElement.ValueKind -ne [System.Text.Json.JsonValueKind]::Array) {
+            return 0
+        }
+
+        return @(
+            $document.RootElement.EnumerateArray() |
+                Where-Object {
+                    Test-JsonElementInvalidGroupIdentityTypes -Element $_
+                }
+        ).Count
+    }
+    catch {
+        return 0
     }
     finally {
         if ($null -ne $document) {
@@ -664,6 +883,7 @@ function Get-SourceQueryRawParts {
                 RawText = $part.GetRawText()
                 Preserve = $preserve
                 HasRepeatedNames = Test-JsonElementRepeatedName -Element $part
+                InvalidGroupIdentityTypes = Test-JsonElementInvalidGroupIdentityTypes -Element $part
             })
         }
 
@@ -694,6 +914,7 @@ function Convert-SqlSourceQuery {
             Category = 'None'
             UnconvertedSqlParts = 0
             UnrewritableParts = 0
+            InvalidGroupIdentityTypeParts = 0
             SqlPartsOutsideSchema = 0
             KeptAsStoredReason = 'None'
         }
@@ -703,12 +924,28 @@ function Convert-SqlSourceQuery {
         $currentQuery = @(ConvertFrom-SourceQueryJson -Query $Query)
     }
     catch {
+        $invalidGroupIdentityTypeParts =
+            Get-SourceQueryInvalidGroupIdentityTypePartCount -Query $Query
+        if ($invalidGroupIdentityTypeParts -gt 0) {
+            return [PSCustomObject]@{
+                Status = 'NoChanges'
+                TransformedQuery = $Query
+                Category = 'None'
+                UnconvertedSqlParts = 0
+                UnrewritableParts = $invalidGroupIdentityTypeParts
+                InvalidGroupIdentityTypeParts = $invalidGroupIdentityTypeParts
+                SqlPartsOutsideSchema = 0
+                KeptAsStoredReason = 'UnrewritablePart'
+            }
+        }
+
         return [PSCustomObject]@{
             Status = 'NoChanges'
             TransformedQuery = $Query
             Category = 'None'
             UnconvertedSqlParts = 0
             UnrewritableParts = 0
+            InvalidGroupIdentityTypeParts = 0
             SqlPartsOutsideSchema = 0
             KeptAsStoredReason = 'UnreadableJson'
         }
@@ -724,6 +961,7 @@ function Convert-SqlSourceQuery {
             Category = 'None'
             UnconvertedSqlParts = 0
             UnrewritableParts = 0
+            InvalidGroupIdentityTypeParts = 0
             SqlPartsOutsideSchema = 0
             KeptAsStoredReason = 'PossibleRepeatedNames'
         }
@@ -736,6 +974,7 @@ function Convert-SqlSourceQuery {
     $fromNewFormat = $false
     $unconvertedSqlParts = 0
     $unrewritableParts = 0
+    $invalidGroupIdentityTypeParts = 0
     $sqlPartsOutsideSchema = 0
     $keptAsStoredReason = 'None'
     $knownTypes = @('SqlMembership', 'GroupMembership')
@@ -743,6 +982,15 @@ function Convert-SqlSourceQuery {
     for ($partIndex = 0; $partIndex -lt $currentQuery.Count; $partIndex++) {
         $part = $currentQuery[$partIndex]
         $rawText = if ($hasRawParts) { $rawParts[$partIndex].RawText } else { $null }
+        $rawInvalidGroupIdentityTypes =
+            $hasRawParts -and $rawParts[$partIndex].InvalidGroupIdentityTypes
+
+        if ($rawInvalidGroupIdentityTypes) {
+            $newQueryParts.Add($rawText)
+            $unrewritableParts++
+            $invalidGroupIdentityTypeParts++
+            continue
+        }
 
         if ($hasRawParts -and $rawParts[$partIndex].Preserve) {
             $rewrittenPart = if ($rawParts[$partIndex].HasRepeatedNames) { $null } else { Convert-CurrentSqlPartNotEqualOperator -Part $part }
@@ -783,7 +1031,59 @@ function Convert-SqlSourceQuery {
             continue
         }
 
+        $identityTypeProperties = @(
+            $part.PSObject.Properties |
+                Where-Object {
+                    [string]::Equals(
+                        $_.Name,
+                        'identityTypes',
+                        [StringComparison]::OrdinalIgnoreCase)
+                }
+        )
+        $hasIdentityTypesProperty =
+            (Test-SourceQueryHasNestedIdentityTypesProperty -Value $part) -or
+            $identityTypeProperties.Count -gt 0
+        $hasWrongCaseLegacyGroupType =
+            (($part.type -ieq 'SecurityGroup') -and
+                ($part.type -cne 'SecurityGroup')) -or
+            (($part.type -ieq 'GroupMembership') -and
+                ($part.type -cne 'GroupMembership'))
+        if ($hasIdentityTypesProperty -and $hasWrongCaseLegacyGroupType) {
+            $unrewritableParts++
+            $invalidGroupIdentityTypeParts++
+            if ($hasRawParts) {
+                $newQueryParts.Add($rawText)
+            }
+            elseif ($keptAsStoredReason -eq 'None') {
+                $keptAsStoredReason = 'UnrewritablePart'
+            }
+
+            continue
+        }
+
         $partType = if ($part.type -eq 'SecurityGroup') { 'GroupMembership' } else { $part.type }
+        $identityTypes = $null
+        if ($partType -eq 'GroupMembership' -and $hasIdentityTypesProperty) {
+            $selectionIsInvalid =
+                (Test-SourceQueryHasNestedIdentityTypesProperty -Value $part) -or
+                ($identityTypeProperties.Count -ne 1 -or
+                 $identityTypeProperties[0].Name -cne 'identityTypes' -or
+                 -not (Test-SourceQueryIdentityTypesValue -Selection $identityTypeProperties[0].Value))
+            if ($selectionIsInvalid) {
+                $unrewritableParts++
+                $invalidGroupIdentityTypeParts++
+                if ($hasRawParts) {
+                    $newQueryParts.Add($rawText)
+                }
+                elseif ($keptAsStoredReason -eq 'None') {
+                    $keptAsStoredReason = 'UnrewritablePart'
+                }
+
+                continue
+            }
+
+            $identityTypes = [string[]]$identityTypeProperties[0].Value
+        }
 
         if ($partType -eq 'GroupMembership' -and $part.source) {
             if ($part.type -ceq 'GroupMembership' -and $part.source -isnot [array]) {
@@ -813,7 +1113,10 @@ function Convert-SqlSourceQuery {
 
             foreach ($id in $part.source) {
                 $newQueryParts.Add(
-                    (Build-GroupMembershipQueryPart -Source $id -Exclusionary ($part.exclusionary -eq $true)))
+                    (Build-GroupMembershipQueryPart `
+                        -Source $id `
+                        -Exclusionary ($part.exclusionary -eq $true) `
+                        -IdentityTypes $identityTypes))
             }
 
             $rewrittenParts++
@@ -953,6 +1256,7 @@ function Convert-SqlSourceQuery {
         Category = $category
         UnconvertedSqlParts = $unconvertedSqlParts
         UnrewritableParts = $unrewritableParts
+        InvalidGroupIdentityTypeParts = $invalidGroupIdentityTypeParts
         SqlPartsOutsideSchema = $sqlPartsOutsideSchema
         KeptAsStoredReason = $keptAsStoredReason
     }
@@ -1066,6 +1370,7 @@ function Set-UpdateSourceQuery {
         $queriesKeptWholeForUnconvertedSqlParts = 0
         $queriesWithUnrewritableParts = 0
         $queriesKeptWholeForUnrewritableParts = 0
+        $queriesWithInvalidGroupIdentityTypes = 0
         $queriesWithSqlPartsOutsideSchema = 0
         $queriesKeptWholeForRepeatedNames = 0
         $queriesNotReadable = 0
@@ -1093,7 +1398,12 @@ function Set-UpdateSourceQuery {
                 }
                 elseif ($converted.KeptAsStoredReason -eq 'UnrewritablePart') {
                     $queriesKeptWholeForUnrewritableParts++
-                    Write-Host "Job $($row['Id']): left the whole query unchanged because a part whose values cannot be written back exactly could not be kept exactly as stored."
+                    if ($converted.InvalidGroupIdentityTypeParts -gt 0) {
+                        Write-Host "Job $($row['Id']): left the whole query unchanged because an invalid group identityTypes selection could not be safely rewritten."
+                    }
+                    else {
+                        Write-Host "Job $($row['Id']): left the whole query unchanged because a part whose values cannot be written back exactly could not be kept exactly as stored."
+                    }
                 }
 
                 if ($converted.UnconvertedSqlParts -gt 0) {
@@ -1101,9 +1411,17 @@ function Set-UpdateSourceQuery {
                     Write-Host "Job $($row['Id']): left $($converted.UnconvertedSqlParts) SQL part(s) unchanged because their format is not recognised."
                 }
 
-                if ($converted.UnrewritableParts -gt 0) {
+                $otherUnrewritableParts =
+                    $converted.UnrewritableParts -
+                    $converted.InvalidGroupIdentityTypeParts
+                if ($otherUnrewritableParts -gt 0) {
                     $queriesWithUnrewritableParts++
-                    Write-Host "Job $($row['Id']): left $($converted.UnrewritableParts) part(s) unchanged because their values cannot be written back exactly."
+                    Write-Host "Job $($row['Id']): left $otherUnrewritableParts part(s) unchanged because their values cannot be written back exactly."
+                }
+
+                if ($converted.InvalidGroupIdentityTypeParts -gt 0) {
+                    $queriesWithInvalidGroupIdentityTypes++
+                    Write-Host "Job $($row['Id']): left $($converted.InvalidGroupIdentityTypeParts) group part(s) unchanged because identityTypes is invalid or misplaced."
                 }
 
                 if ($converted.SqlPartsOutsideSchema -gt 0) {
@@ -1239,6 +1557,7 @@ WHERE DATALENGTH(jobs.[Query]) = DATALENGTH(rewritten.OriginalQuery)
         Write-Host "Queries left whole because such a SQL part could not be kept exactly as stored: $queriesKeptWholeForUnconvertedSqlParts"
         Write-Host "Queries with parts left unchanged because their values cannot be written back exactly: $queriesWithUnrewritableParts"
         Write-Host "Queries left whole because such a part could not be kept exactly as stored: $queriesKeptWholeForUnrewritableParts"
+        Write-Host "Queries with group parts left unchanged because identityTypes is invalid or misplaced: $queriesWithInvalidGroupIdentityTypes"
         Write-Host "Queries with SQL parts that do not match the current schema and may stop with a schema error: $queriesWithSqlPartsOutsideSchema"
         Write-Host "Queries left whole because they may repeat a property name: $queriesKeptWholeForRepeatedNames"
         Write-Host "Queries left unchanged because they are not valid JSON: $queriesNotReadable"

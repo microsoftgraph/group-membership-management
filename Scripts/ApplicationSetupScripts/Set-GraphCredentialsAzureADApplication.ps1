@@ -7,7 +7,8 @@ Be aware that running this in VS Code doesn't work for some reason, it works bet
 You may have to open the created Azure AD app in your demo tenant and consent to the permissions!
 
 Basically, this script is designed to create an Azure AD app with the appropriate permissions in a given tenant
-(application permissions User.Read.All, GroupMember.Read.All, Member.Read.Hidden and Group.Create) and write its credentials to a key vault in another tenant.
+(application permissions Application.Read.All, Group.Create, GroupMember.Read.All, Member.Read.Hidden and User.Read.All) and write its credentials to a key vault in another tenant.
+Application.Read.All allows GMM to read application registrations and service principals across the tenant.
 This should be able to work when the AD app and the target key vault are in the same tenant. Just pass the same tenant ID to both
 parameters.
 
@@ -45,13 +46,15 @@ When re-running the script, this flag is used to indicate if we need to recreate
 
 .EXAMPLE
 # these are arbitrary guids and subscription names, you'll have to change them.
-Set-GraphCredentialsAzureADApplication	-SubscriptionName "<subscription-name>" `
-									-SolutionAbbreviation "<solution-abbreviation>" `
-									-EnvironmentAbbreviation "<environment-abbreviation>" `
-									-TenantIdToCreateAppIn "<app-tenant-id>" `
-									-TenantIdWithKeyVault "<keyvault-tenant-id>" `
-									-Clean $false `
-									-Verbose
+. .\Scripts\ApplicationSetupScripts\Set-GraphCredentialsAzureADApplication.ps1
+Set-GraphCredentialsAzureADApplication `
+	-SubscriptionName "<subscription-name>" `
+	-SolutionAbbreviation "<solution-abbreviation>" `
+	-EnvironmentAbbreviation "<environment-abbreviation>" `
+	-AppTenantId "<app-tenant-id>" `
+	-KeyVaultTenantId "<keyvault-tenant-id>" `
+	-Clean $false `
+	-Verbose
 #>
 
 function Set-GraphCredentialsAzureADApplication {
@@ -430,7 +433,7 @@ function New-GraphCredentialsValidationConfiguration {
 	# Get Microsoft Graph service principal to retrieve current permission IDs
 	$mgGraphServicePrincipal = Get-MgServicePrincipal -Filter "appId eq '00000003-0000-0000-c000-000000000000'"
 	
-	$applicationPermissionNames = @("User.Read.All", "GroupMember.Read.All", "Member.Read.Hidden", "Group.Create")
+	$applicationPermissionNames = @("Application.Read.All", "User.Read.All", "GroupMember.Read.All", "Member.Read.Hidden", "Group.Create")
 	if ($EnableDemoAgentPermissions) {
 		$applicationPermissionNames += @(
 			"User.ReadWrite.All",

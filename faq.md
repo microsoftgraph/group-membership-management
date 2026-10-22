@@ -64,24 +64,32 @@ A: Make sure the Azure Function has the right role assigned 'Azure Service Bus D
 Note: remember to verify both the queue and the topic role assignments.
 
 Q: GMM cannot read/write from/to the Microsoft Graph API
-A: GMM creates an application `<SolutionAbbreviation>`-Graph-`<EnvironmentAbbreviation>` which requests the permissions to read and write from/to the Microsoft Graph API, those permissions need to be explicitely granted on the Azure Portal.
+A: GMM uses either the `<SolutionAbbreviation>`-Graph-`<EnvironmentAbbreviation>` app registration or the `<SolutionAbbreviation>`-identity-`<EnvironmentAbbreviation>`-Graph user-assigned managed identity. Grant its Microsoft Graph application roles in the Azure portal for the app registration, or with `Set-UserManagedIdentityPermissions.ps1` for the managed identity, as described below.
 
-1. In the [Azure Portal](https://portal.azure.com/) locate and open 'Azure Active Directory'.
-2. Click on 'App registrations' on the left menu.
-3. Click on 'All applications'
-4. Locate and open `<SolutionAbbreviation>`-Graph-`<EnvironmentAbbreviation>` application from the list.
-5. Click on 'API Permissions'.
-6. Make sure the application has the right Microsoft Graph permissions and that admin consent was granted.
-    - Application permissions: GroupMember.Read.All, User.Read.All. If you want Teams channel management, you'll also need ChannelMember.ReadWrite.All.
+The required application-role baseline is `Application.Read.All`, `Group.Create`, `GroupMember.Read.All`, `Member.Read.Hidden`, and `User.Read.All`. `Application.Read.All` permits tenant-wide reads of application registrations and service principals.
 
-In order to add permissions to the application:
+**Existing app-registration installation (client secret or certificate):**
 
--   On the 'API permissions' (step 5) screen, locate and click on 'Add a permission',
--   Click on 'Microsoft Graph'
--   Click on 'Application permissions'
--   Locate and check GroupMember.ReadWrite.All, User.Read.All permissions. If you want Teams channel management, you'll also need ChannelMember.ReadWrite.All.
--   Click on 'Add permissions' button.
--   Click on 'Grant admin consent for `<organization-name>` button.
+1. In the [Azure Portal](https://portal.azure.com/), open Microsoft Entra ID, then **App registrations** > **All applications**.
+2. Open `<SolutionAbbreviation>`-Graph-`<EnvironmentAbbreviation>` and select **API permissions**.
+3. Add any missing role from the five-role baseline as a Microsoft Graph **Application** permission.
+4. Select **Grant admin consent for `<organization-name>`**.
+5. Verify that all five baseline roles show granted admin consent.
+
+**Existing user-assigned-managed-identity installation:**
+
+1. From the repository root, run the following commands in PowerShell with a Privileged Role Administrator or Global Administrator account:
+
+   ```powershell
+   . .\Scripts\PostDeploymentRoleAssignments\Set-UserManagedIdentityPermissions.ps1
+   Set-UserManagedIdentityPermissions `
+       -SolutionAbbreviation "<solution-abbreviation>" `
+       -EnvironmentAbbreviation "<environment-abbreviation>" `
+       -TenantId "<tenant-id>"
+   ```
+
+2. If privileged directory actions are skipped, follow the script's manual instructions to grant the five-role baseline to `<SolutionAbbreviation>`-identity-`<EnvironmentAbbreviation>`-Graph and grant admin consent.
+3. Verify that the managed identity has the same five Microsoft Graph app-role assignments.
 
 Q: GMM cannot update any onboarded group even with the right Microsoft Graph API permissions
 A: Make sure to add `<SolutionAbbreviation>`-Graph-`<EnvironmentAbbreviation>` application as an owner to each group you want to manage.

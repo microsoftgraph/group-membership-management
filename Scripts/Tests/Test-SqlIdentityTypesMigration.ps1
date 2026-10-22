@@ -222,6 +222,18 @@ $nonSqlWithSelectionResult = Convert-SqlIdentityTypesQuery -Query $nonSqlWithSel
 Assert-Equal 'NoChanges' $nonSqlWithSelectionResult.Status 'non-SQL parts are neither rewritten nor rejected'
 Assert-Equal $nonSqlWithSelection $nonSqlWithSelectionResult.TransformedQuery 'a non-SQL part is byte-identical'
 
+$groupSelectionPreservationCases = @(
+    '[{"type":"GroupMembership","source":"11111111-1111-1111-1111-111111111111","identityTypes":["agents","users"]}]',
+    '[{"type":"GroupMembership","source":"11111111-1111-1111-1111-111111111111","identityTypes":["robots"]}]',
+    '[{"type":"GroupMembership","source":"11111111-1111-1111-1111-111111111111","identityTypes":["users"]},{"type":"SqlMembership","source":{"filter":"users.Department = ''Sales''"},"identityTypes":["users"]}]'
+)
+
+foreach ($query in $groupSelectionPreservationCases) {
+    $result = Convert-SqlIdentityTypesQuery -Query $query
+    Assert-Equal 'NoChanges' $result.Status "a current group selection is outside the SQL migration scope: $query"
+    Assert-Equal $query $result.TransformedQuery 'the SQL migration keeps the group selection byte-for-byte'
+}
+
 $mixed = '[{"type":"GroupMembership","source":"11111111-1111-1111-1111-111111111111"},{"type":"SqlMembership","source":{"manager":{"id":7}}}]'
 $mixedResult = Convert-SqlIdentityTypesQuery -Query $mixed
 Assert-Equal 'Changed' $mixedResult.Status 'only the SQL part in a mixed query is changed'
