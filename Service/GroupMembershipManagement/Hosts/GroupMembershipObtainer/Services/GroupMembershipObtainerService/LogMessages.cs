@@ -98,6 +98,23 @@ namespace Hosts.GroupMembershipObtainer
             Message = "Caught Exception, marking sync job status as error.")]
         public static partial void SubOrchestratorUnexpectedException(this ILogger logger, Exception exception);
 
+        [LoggerMessage(EventId = 150048, Level = LogLevel.Warning,
+            Message = "Temporary group-part cleanup failed for group {ObjectId}: {ErrorMessage}")]
+        public static partial void GroupPartCleanupFailed(this ILogger logger, Guid objectId, string errorMessage);
+
+        [LoggerMessage(EventId = 150049, Level = LogLevel.Information,
+            Message = "Falling back to the full read for group {ObjectId}: {Reason}. Abandoned read kind: {ReadKind}; selection: {IdentityTypes}.")]
+        public static partial void FallingBackToFullRead(
+            this ILogger logger,
+            Guid objectId,
+            string reason,
+            string readKind,
+            string identityTypes);
+
+        [LoggerMessage(EventId = 150050, Level = LogLevel.Error,
+            Message = "Cleanup before the replacement read of group {ObjectId} did not complete: {Reason}. The replacement read was not started; the part fails and publishes no membership set.")]
+        public static partial void ReplacementReadCleanupIncomplete(this ILogger logger, Guid objectId, string reason);
+
         // ── GroupValidatorFunction (150060-150069) ──
 
         [LoggerMessage(EventId = 150060, Level = LogLevel.Information,
@@ -229,6 +246,166 @@ namespace Hosts.GroupMembershipObtainer
                       "Both writers produce identical content for the same source group, so the committed cache is valid. Skipping.")]
         public static partial void CacheWriteRaceConditionSkipped(this ILogger logger, Guid groupId);
 
+        [LoggerMessage(EventId = 150149, Level = LogLevel.Information,
+            Message = "Write-once {BlobKind} blob {Path} for group {GroupId} already exists: an execution with the same file timestamp already wrote it. Keeping the existing blob.")]
+        public static partial void WriteOnceBlobAlreadyWritten(this ILogger logger, string blobKind, string path, Guid groupId);
+
+        [LoggerMessage(EventId = 150150, Level = LogLevel.Information,
+            Message = "Saved delta for group {GroupId} lists {OverlapCount} identifiers as both added and removed. The result is ambiguous, so the cache is treated as mismatched and the initial delta read runs.")]
+        public static partial void DeltaAddRemoveOverlap(this ILogger logger, Guid groupId, int overlapCount);
+
+        [LoggerMessage(EventId = 150151, Level = LogLevel.Warning,
+            Message = "Could not delete the saved-delta inputs for group {GroupId}; continuing.")]
+        public static partial void SavedDeltaInputCleanupFailed(this ILogger logger, Exception exception, Guid groupId);
+
+        // ── Group membership read counts and selection (150180-150199) ──
+
+        [LoggerMessage(EventId = 150180, Level = LogLevel.Information,
+            Message = "Reader counts for group {ObjectId}: members {MemberCount}; users {UserCount}; agents {AgentCount}; skipped: service principals {ServicePrincipalCount}, devices {DeviceCount}, contacts {ContactCount}, groups {GroupCount}, unknown type {UnknownTypeCount}, other {OtherCount}. Read kind: {ReadKind}; selection: {IdentityTypes}.")]
+        public static partial void FullReaderCounts(
+            this ILogger logger,
+            Guid objectId,
+            int memberCount,
+            int userCount,
+            int agentCount,
+            int servicePrincipalCount,
+            int deviceCount,
+            int contactCount,
+            int groupCount,
+            int unknownTypeCount,
+            int otherCount,
+            string readKind,
+            string identityTypes);
+
+        [LoggerMessage(EventId = 150181, Level = LogLevel.Information,
+            Message = "Reader counts for group {ObjectId}: members {MemberCount}; selected {SelectedIdentityType} {MemberCount}; returned users {UserCount}; returned agents {AgentCount}; skipped: service principals {ServicePrincipalCount}, devices {DeviceCount}, contacts {ContactCount}, groups {GroupCount}, unknown type {UnknownTypeCount}, other {OtherCount}. Read kind: {ReadKind}; selection: {IdentityTypes}.")]
+        public static partial void SelectedFullReaderCounts(
+            this ILogger logger,
+            Guid objectId,
+            int memberCount,
+            string selectedIdentityType,
+            int userCount,
+            int agentCount,
+            int servicePrincipalCount,
+            int deviceCount,
+            int contactCount,
+            int groupCount,
+            int unknownTypeCount,
+            int otherCount,
+            string readKind,
+            string identityTypes);
+
+        [LoggerMessage(EventId = 150182, Level = LogLevel.Information,
+            Message = "Reader counts for group {ObjectId}: members {MemberCount}; skipped: service principals {ServicePrincipalCount}, devices {DeviceCount}, contacts {ContactCount}, groups {GroupCount}, unknown type {UnknownTypeCount}, other {OtherCount}. Read kind: {ReadKind}; selection: {IdentityTypes}.")]
+        public static partial void DeltaReaderCounts(
+            this ILogger logger,
+            Guid objectId,
+            int memberCount,
+            int servicePrincipalCount,
+            int deviceCount,
+            int contactCount,
+            int groupCount,
+            int unknownTypeCount,
+            int otherCount,
+            string readKind,
+            string identityTypes);
+
+        [LoggerMessage(EventId = 150183, Level = LogLevel.Information,
+            Message = "Selected {MemberCount} members for group {ObjectId}: users {UserCount}; agents {AgentCount}; users excluded {ExcludedUserCount}; agents excluded {ExcludedAgentCount}; not identified {NotIdentifiedCount}; looked up {LookupCount} in {SegmentCount} segments; finalize duration ms {DurationMs}. Read kind: {ReadKind}; selection: {IdentityTypes}.")]
+        public static partial void SelectionCompleted(
+            this ILogger logger,
+            int memberCount,
+            Guid objectId,
+            int userCount,
+            int agentCount,
+            int excludedUserCount,
+            int excludedAgentCount,
+            int notIdentifiedCount,
+            int lookupCount,
+            int segmentCount,
+            long durationMs,
+            string readKind,
+            string identityTypes);
+
+        [LoggerMessage(EventId = 150184, Level = LogLevel.Information,
+            Message = "Classified segment {SegmentIndex}/{SegmentCount} for group {ObjectId}: looked up {LookupCount}; identified {IdentifiedCount}; not identified {NotIdentifiedCount}; call duration ms {DurationMs}. Read kind: {ReadKind}; selection: {IdentityTypes}.")]
+        public static partial void SegmentClassified(
+            this ILogger logger,
+            int segmentIndex,
+            int segmentCount,
+            Guid objectId,
+            int lookupCount,
+            int identifiedCount,
+            int notIdentifiedCount,
+            long durationMs,
+            string readKind,
+            string identityTypes);
+
+        [LoggerMessage(EventId = 150185, Level = LogLevel.Warning,
+            Message = "Could not read recorded member types for group {ObjectId}; this call will identify its members again. {ErrorMessage}")]
+        public static partial void RecordedTypesReadFailed(
+            this ILogger logger,
+            Guid objectId,
+            string errorMessage);
+
+        [LoggerMessage(EventId = 150186, Level = LogLevel.Warning,
+            Message = "Could not update recorded member types for group {ObjectId}; a later run will identify those members again. {ErrorMessage}")]
+        public static partial void RecordedTypesWriteFailed(
+            this ILogger logger,
+            Guid objectId,
+            string errorMessage);
+
+        [LoggerMessage(EventId = 150187, Level = LogLevel.Warning,
+            Message = "Members not identified for group {ObjectId} ({BatchIndex}/{BatchCount}): {MemberIds}. They are not contributed in this run and will be looked up again. Read kind: {ReadKind}; selection: {IdentityTypes}.")]
+        public static partial void MembersNotIdentified(
+            this ILogger logger,
+            Guid objectId,
+            int batchIndex,
+            int batchCount,
+            string memberIds,
+            string readKind,
+            string identityTypes);
+
+        [LoggerMessage(EventId = 150188, Level = LogLevel.Warning,
+            Message = "Could not identify member types for group {ObjectId}; batch size {BatchSize}; exception {ExceptionType}; HTTP status {HttpStatusCode}. {ErrorMessage}")]
+        public static partial void MemberTypeLookupFailed(
+            this ILogger logger,
+            Guid objectId,
+            int batchSize,
+            string exceptionType,
+            string errorMessage,
+            string httpStatusCode);
+
+        [LoggerMessage(EventId = 150189, Level = LogLevel.Warning,
+            Message = "Recorded member types for group {ObjectId} were not updated after {AttemptCount} conditional attempts; a later run will look those members up again.")]
+        public static partial void RecordedTypesMergeExhausted(
+            this ILogger logger,
+            Guid objectId,
+            int attemptCount);
+
+        [LoggerMessage(EventId = 150190, Level = LogLevel.Warning,
+            Message = "The member-type lookup for group {ObjectId} was refused with HTTP status {HttpStatus}; this read falls back to the selected full read and the next run probes the lookup again.")]
+        public static partial void MemberTypeLookupRefused(
+            this ILogger logger,
+            Guid objectId,
+            int httpStatus);
+
+        [LoggerMessage(EventId = 150191, Level = LogLevel.Warning,
+            Message = "Selection step {StepName} for group {ObjectId} ended with {Outcome}.")]
+        public static partial void SelectionStepOutcome(
+            this ILogger logger,
+            string stepName,
+            Guid objectId,
+            string outcome);
+
+        [LoggerMessage(EventId = 150192, Level = LogLevel.Warning,
+            Message = "Selection step {StepName} for group {ObjectId} failed: {ErrorMessage}")]
+        public static partial void SelectionStepFailed(
+            this ILogger logger,
+            string stepName,
+            Guid objectId,
+            string errorMessage);
+
         // ── CacheUploaderFunction (150160-150169) ──
 
         [LoggerMessage(EventId = 150160, Level = LogLevel.Information,
@@ -247,8 +424,14 @@ namespace Hosts.GroupMembershipObtainer
         public static partial void ReadingUsersFromGroup(this ILogger logger, Guid objectId);
 
         [LoggerMessage(EventId = 150202, Level = LogLevel.Information,
-            Message = "Read {MemberCount} users from group {ObjectId} to be synced into the destination group {TargetGroupId}.")]
-        public static partial void ReadUsersFromGroup(this ILogger logger, int memberCount, Guid objectId, Guid targetGroupId);
+            Message = "Read {MemberCount} members from group {ObjectId} to be synced into the destination group {TargetGroupId}. Read kind: {ReadKind}; selection: {IdentityTypes}.")]
+        public static partial void ReadMembersFromGroup(
+            this ILogger logger,
+            int memberCount,
+            Guid objectId,
+            Guid targetGroupId,
+            string readKind,
+            string identityTypes);
 
         [LoggerMessage(EventId = 150203, Level = LogLevel.Information,
             Message = "After initial delta call, successfully uploaded deltaLink {DeltaLink} to cache for group {GroupId}.")]

@@ -30,9 +30,23 @@ namespace Hosts.GroupMembershipObtainer
                 _logger.FunctionStarted(nameof(SchemaValidatorFunction));
 
                 var isValidJson = true;
+                if (IdentityTypeSelection.IsMisplaced(request.Query))
+                {
+                    _logger.SchemaValidationFailed("identityTypes is not valid in this location.");
+                    return false;
+                }
+
+                var hasExplicitSelection = IdentityTypeSelection.IsExplicitlySelected(request.Query);
 
                 if (_schemaProvider.Schemas.Count == 0)
                 {
+                    if (hasExplicitSelection)
+                    {
+                        _logger.SchemaValidationFailed(
+                            "'identityTypes' cannot be validated because the GroupMembership schema is not loaded.");
+                        return false;
+                    }
+
                     _logger.NoSchemasLoaded();
                     return isValidJson;
                 }
@@ -50,6 +64,13 @@ namespace Hosts.GroupMembershipObtainer
 
                 else
                 {
+                    if (hasExplicitSelection)
+                    {
+                        _logger.SchemaValidationFailed(
+                            "'identityTypes' cannot be validated because the GroupMembership schema is not loaded.");
+                        return false;
+                    }
+
                     _logger.NoGroupMembershipSchema();
                     return isValidJson;
                 }

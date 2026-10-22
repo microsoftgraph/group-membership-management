@@ -2,6 +2,7 @@
 // Licensed under the MIT license.
 using Models;
 using System;
+using System.Collections.Generic;
 
 namespace Hosts.GroupMembershipObtainer
 {
@@ -14,5 +15,7 @@ namespace Hosts.GroupMembershipObtainer
         public int PageCount { get; set; }
         public int TotalParts { get; set; }
         public SyncJob SyncJob { get; set; }
+        public List<string> IdentityTypes { get; set; }
+        public GroupMembershipReadKind? ReadKind { get; set; }
     }
 }

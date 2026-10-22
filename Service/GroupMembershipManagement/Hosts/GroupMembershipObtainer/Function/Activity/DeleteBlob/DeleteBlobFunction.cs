@@ -28,8 +28,18 @@ namespace Hosts.GroupMembershipObtainer
             using (_logger.BeginSyncJobScope(request.SyncJob, new Dictionary<string, object> { ["CurrentPart"] = request.CurrentPart, ["TotalParts"] = request.TotalParts }))
             {
                 _logger.FunctionStarted(nameof(DeleteBlobFunction));
-                string prefix = $"{request.GroupId}/userUploads/{request.SyncJob.RunId.GetValueOrDefault()}_GroupMembership_{request.CurrentPart}_";
-                await _blobStorageRepository.DeleteBlobsAsync(prefix);
+                if (request.Prefixes is { Count: > 0 })
+                {
+                    foreach (var requestedPrefix in request.Prefixes)
+                    {
+                        await _blobStorageRepository.DeleteBlobsAsync(requestedPrefix);
+                    }
+                }
+                else
+                {
+                    string prefix = $"{request.GroupId}/userUploads/{request.SyncJob.RunId.GetValueOrDefault()}_GroupMembership_{request.CurrentPart}_";
+                    await _blobStorageRepository.DeleteBlobsAsync(prefix);
+                }
                 _logger.FunctionCompleted(nameof(DeleteBlobFunction));
             }
         }

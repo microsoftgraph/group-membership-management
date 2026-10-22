@@ -3,6 +3,7 @@
 using Microsoft.Azure.Functions.Worker;
 using Microsoft.Extensions.Logging;
 using Models;
+using Models.Helpers;
 using Repositories.Contracts;
 using Repositories.Contracts.Helpers;
 using System;
@@ -32,15 +33,27 @@ namespace Hosts.GroupMembershipObtainer
             using (_logger.BeginSyncJobScope(request.SyncJob, new Dictionary<string, object> { ["CurrentPart"] = request.CurrentPart, ["TotalParts"] = request.TotalParts }))
             {
                 _logger.FunctionStarted(nameof(SubsequentMembersReaderFunction));
-                var response = await _calculator.GetNextTransitiveMembersPageAsync(request.GroupId, request.NextPageUrl);
+                // FR-020: a page that still fails after the shared retry policies' attempts throws, so the activity
+                // fails, nothing is uploaded or logged for this call, and the job reaches TransientError.
+                var response = await _calculator.GetNextTransitiveMembersPageAsync(
+                    request.GroupId,
+                    request.NextPageUrl,
+                    request.IdentityTypes);
 
-                if (request.GroupId != request.TargetGroupId)
+                // FR-010: every part except the job's destination part carries its source group, including a
+                // source part whose group equals the destination. Older requests (null) keep the group comparison.
+                var isDestinationPart = request.IsDestinationPart ?? request.GroupId == request.TargetGroupId;
+                if (!isDestinationPart)
                 {
                     for (int i = 0; i < response.Users.Count; i++)
                     {
                         response.Users[i].SourceGroup = request.GroupId;
                     }
                 }
+
+                // The merge streams the page uploads as a k-way merge, so each upload is written in canonical order.
+                // Stable, so a member listed twice in one page keeps its first record, as the merge did before.
+                CanonicalMemberSort.SortStable(response.Users);
 
                 var serializerSettings = new JsonSerializerOptions
                 {
@@ -50,6 +63,12 @@ namespace Hosts.GroupMembershipObtainer
                 var runId = request.SyncJob.RunId.GetValueOrDefault();
                 var fileName = $"/{request.TargetGroupId}/userUploads/{runId}_GroupMembership_{request.CurrentPart}_{Guid.NewGuid()}.json";
                 await _blobStorageRepository.UploadFileAsync(fileName, JsonSerializer.Serialize(response.Users, serializerSettings));
+                GroupReadLogWriter.ReaderSucceeded(
+                    _logger,
+                    request.GroupId,
+                    response.Counts,
+                    request.IdentityTypes,
+                    request.ReadKind ?? GroupMembershipReadKind.Full);
                 _logger.FunctionCompleted(nameof(SubsequentMembersReaderFunction));
                 return response.NextPageUrl;
             }

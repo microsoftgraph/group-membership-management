@@ -13,5 +13,11 @@ namespace Hosts.GroupMembershipObtainer
         public int CurrentPart { get; set; }
         public int TotalParts { get; set; }
         public SyncJob SyncJob { get; set; }
+
+        /// <summary>
+        /// The replay-safe time of the conversion, used for the converted cache name. Null in histories
+        /// scheduled before this field existed; the activity then uses the current UTC time.
+        /// </summary>
+        public DateTime? FileTimestamp { get; set; }
     }
 }

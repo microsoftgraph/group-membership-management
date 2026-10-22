@@ -72,25 +72,27 @@ namespace Hosts.GroupMembershipObtainer
             return await graphRetryPolicy.ExecuteAndCaptureAsync(() => _graphGroupRepository.GroupExists(objectId));
         }
 
-        public async Task<DeltaGroupInformation> GetFirstDeltaLinkUsersPageAsync(Guid objectId, string deltaLink, int numberOfPages)
+        public async Task<DeltaMemberPage> GetFirstDeltaLinkUsersPageAsync(Guid objectId, string deltaLink, int numberOfPages)
         {
             var result = await _graphGroupRepository.GetFirstDeltaLinkUsersPageAsync(objectId, deltaLink, numberOfPages);
-            return new DeltaGroupInformation
+            return new DeltaMemberPage
             {
                 UsersToAdd = result.usersToAdd,
                 UsersToRemove = result.usersToRemove,
+                Counts = result.counts,
                 NextPageUrl = result.nextPageUrl,
                 DeltaUrl = result.deltaUrl
             };
         }
 
-        public async Task<DeltaGroupInformation> GetNextDeltaLinkUsersPageAsync(Guid objectId, string nextPageUrl, int numberOfPages)
+        public async Task<DeltaMemberPage> GetNextDeltaLinkUsersPageAsync(Guid objectId, string nextPageUrl, int numberOfPages)
         {
             var result = await _graphGroupRepository.GetNextDeltaLinkUsersPagesAsync(objectId, nextPageUrl, numberOfPages);
-            return new DeltaGroupInformation
+            return new DeltaMemberPage
             {
                 UsersToAdd = result.usersToAdd,
                 UsersToRemove = result.usersToRemove,
+                Counts = result.counts,
                 NextPageUrl = result.nextPageUrl,
                 DeltaUrl = result.deltaUrl
             };
@@ -106,84 +108,68 @@ namespace Hosts.GroupMembershipObtainer
             return await _graphGroupRepository.GetUsersCountAsync(objectId);
         }
 
-        public async Task<int> GetAgentUserCountAsync(Guid objectId)
+        public async Task<int?> GetAgentUserCountAsync(Guid objectId)
         {
-            // The repository now reports null when the count could not be read; this caller keeps its previous 0.
-            return await _graphGroupRepository.GetAgentUserCountAsync(objectId) ?? 0;
+            return await _graphGroupRepository.GetAgentUserCountAsync(objectId);
         }
 
-        public async Task<DeltaGroupInformation> GetFirstDeltaUsersPageAsync(Guid objectId, Guid runId, int numberOfPages)
+        public async Task<DeltaMemberPage> GetFirstDeltaUsersPageAsync(Guid objectId, Guid runId, int numberOfPages)
         {
             _logger.ReadingUsersFromGroup(objectId);
             var result = await _graphGroupRepository.GetFirstDeltaUsersPageAsync(objectId, numberOfPages);
-            return new DeltaGroupInformation
+            return new DeltaMemberPage
             {
                 UsersToAdd = result.users,
+                UsersToRemove = new List<AzureADUser>(),
+                Counts = result.counts,
                 NextPageUrl = result.nextPageUrl,
                 DeltaUrl = result.deltaUrl
             };
         }
 
-        public async Task<DeltaGroupInformation> GetNextDeltaUsersPagesAsync(Guid objectId, string nextPageUrl, int numberOfPages)
+        public async Task<DeltaMemberPage> GetNextDeltaUsersPagesAsync(Guid objectId, string nextPageUrl, int numberOfPages)
         {
             var result = await _graphGroupRepository.GetNextDeltaUsersPagesAsync(objectId, nextPageUrl, numberOfPages);
-            return new DeltaGroupInformation
+            return new DeltaMemberPage
             {
                 UsersToAdd = result.users,
+                UsersToRemove = new List<AzureADUser>(),
+                Counts = result.counts,
                 NextPageUrl = result.nextPageUrl,
                 DeltaUrl = result.deltaUrl
             };
         }
 
-        public async Task<GroupInformation> GetFirstTransitiveMembersPageAsync(Guid objectId, Guid runId)
+        public async Task<GroupMemberPage> GetFirstTransitiveMembersPageAsync(
+            Guid objectId,
+            Guid runId,
+            IReadOnlyList<string> identityTypes = null)
         {
             _logger.ReadingUsersFromGroup(objectId);
-            var result = await _graphGroupRepository.GetFirstTransitiveMembersPageAsync(objectId);
-            return new GroupInformation
+            var result = await _graphGroupRepository.GetFirstTransitiveMembersPageAsync(objectId, identityTypes);
+            return new GroupMemberPage
             {
                 Users = result.users,
-                NonUserGraphObjects = ToNonUserGraphObjects(result.counts),
+                Counts = result.counts,
                 NextPageUrl = result.nextPageUrl
             };
         }
 
-        public async Task<GroupInformation> GetNextTransitiveMembersPageAsync(Guid objectId, string nextPageUrl)
+        public async Task<GroupMemberPage> GetNextTransitiveMembersPageAsync(
+            Guid objectId,
+            string nextPageUrl,
+            IReadOnlyList<string> identityTypes = null)
         {
-            var result = await _graphGroupRepository.GetNextTransitiveMembersPageAsync(objectId, nextPageUrl);
-            return new GroupInformation
+            var result = await _graphGroupRepository.GetNextTransitiveMembersPageAsync(
+                objectId,
+                nextPageUrl,
+                identityTypes);
+            return new GroupMemberPage
             {
                 Users = result.users,
-                NonUserGraphObjects = ToNonUserGraphObjects(result.counts),
+                Counts = result.counts,
                 NextPageUrl = result.nextPageUrl
             };
-        }
-
-        /// <summary>
-        /// Rebuilds the per-type count of non-user members, keyed by the Graph OData type as before, from the
-        /// repository's read counts.
-        /// </summary>
-        private static Dictionary<string, int> ToNonUserGraphObjects(MemberReadCounts counts)
-        {
-            var nonUserGraphObjects = new Dictionary<string, int>();
-            if (counts == null)
-            {
-                return nonUserGraphObjects;
-            }
-
-            void Add(string odataType, int count)
-            {
-                if (count > 0)
-                {
-                    nonUserGraphObjects[odataType] = count;
-                }
-            }
-
-            Add("#microsoft.graph.servicePrincipal", counts.ServicePrincipalCount);
-            Add("#microsoft.graph.device", counts.DeviceCount);
-            Add("#microsoft.graph.orgContact", counts.ContactCount);
-            Add("#microsoft.graph.group", counts.GroupCount);
-            Add("other", counts.OtherCount + counts.UnknownTypeCount);
-            return nonUserGraphObjects;
         }
 
         public async Task<Guid> GetGroupIdAsync(SyncJob syncJob)
@@ -220,34 +206,66 @@ namespace Hosts.GroupMembershipObtainer
             return fileName;
         }
 
-        public async Task<GroupMembershipFileResult> SendTransitiveAndDeltaMembershipAsync(SyncJob syncJob, Guid objectId, int currentPart, bool exclusionary)
+        public async Task<GroupMembershipFileResult> SendTransitiveAndDeltaMembershipAsync(
+            SyncJob syncJob,
+            Guid objectId,
+            int currentPart,
+            bool exclusionary,
+            bool writeStaging = false,
+            bool updateBeforeSyncCount = true,
+            DateTime? fileTimestamp = null)
         {
             var runId = syncJob.RunId.GetValueOrDefault();
             var targetOfficeGroupId = await GetGroupIdAsync(syncJob);
 
             // build paths
             string prefix = $"{targetOfficeGroupId}/userUploads/{runId}_GroupMembership_{currentPart}_";
-            var timeStamp = DateTime.UtcNow.ToString("MMddyyyy-HHmm");
+            var timeStamp = (fileTimestamp ?? DateTime.UtcNow).ToString("MMddyyyy-HHmm");
             var fileName = $"/{targetOfficeGroupId}/{timeStamp}_{runId}_GroupMembership_{currentPart}.json";
+            var outputPath = writeStaging
+                ? GroupPartStoragePaths.BuildStagingPath(targetOfficeGroupId, runId, currentPart)
+                : fileName;
 
             // Stream merge: reads source blobs one at a time, deduplicates by ObjectId, writes directly to output
-            var memberCount = await _blobStorageRepository.MergeAndStreamUserBlobsAsync(
-                prefix,
-                fileName,
-                new AzureADGroup { ObjectId = targetOfficeGroupId },
-                runId,
-                syncJob.Id,
-                exclusionary,
-                _isGroupMembershipDryRunEnabled,
-                syncJob.Query);
+            int memberCount;
+            if (fileTimestamp.HasValue)
+            {
+                // Write-once: a re-run after the page uploads were cleaned up must not replace the published
+                // output with an empty or partial merge; it keeps and reports the existing blob instead.
+                var result = await _blobStorageRepository.MergeAndStreamUserBlobsWriteOnceAsync(
+                    prefix,
+                    outputPath,
+                    new AzureADGroup { ObjectId = targetOfficeGroupId },
+                    runId,
+                    syncJob.Id,
+                    exclusionary,
+                    _isGroupMembershipDryRunEnabled,
+                    syncJob.Query);
+                if (result.AlreadyExisted)
+                {
+                    _logger.WriteOnceBlobAlreadyWritten(writeStaging ? "staging" : "part", outputPath, objectId);
+                }
 
-            _logger.ReadUsersFromGroup(memberCount, objectId, targetOfficeGroupId);
+                memberCount = result.Count;
+            }
+            else
+            {
+                memberCount = await _blobStorageRepository.MergeAndStreamUserBlobsAsync(
+                    prefix,
+                    outputPath,
+                    new AzureADGroup { ObjectId = targetOfficeGroupId },
+                    runId,
+                    syncJob.Id,
+                    exclusionary,
+                    _isGroupMembershipDryRunEnabled,
+                    syncJob.Query);
+            }
 
             // If we're reading from the target group itself, store the before sync user count during transitive/delta call.
             // Status is deliberately passed as null: the intent of this call is to persist BeforeSyncUserCount on SyncJobHistory,
             // not to change SyncJob.Status. Passing null prevents overwriting a terminal status (e.g. SourceGroupNotFound)
             // that a concurrent sibling part may have already written.
-            if (objectId == targetOfficeGroupId)
+            if (updateBeforeSyncCount && objectId == targetOfficeGroupId)
             {
                 await UpdateSyncJobStatusAsync(syncJob, status: null, memberCount);
             }
@@ -259,24 +277,59 @@ namespace Hosts.GroupMembershipObtainer
             };
         }
 
-        public async Task UploadDeltaLinkAsync(Guid id, string deltaLink, Guid runId)
+        /// <summary>
+        /// Uploads the delta link. With <paramref name="fileTimestamp"/> the name comes from it and the blob is
+        /// written once (an existing blob is kept); without it the current UTC time names an overwriting write.
+        /// </summary>
+        public async Task UploadDeltaLinkAsync(Guid id, string deltaLink, Guid runId, DateTime? fileTimestamp = null)
         {
-            var timeStamp = DateTime.UtcNow.ToString("MMddyyyy-HHmm");
+            var timeStamp = (fileTimestamp ?? DateTime.UtcNow).ToString("MMddyyyy-HHmm");
             var fileName = $"/cache/delta_{id}_{timeStamp}.json";
-            await _blobStorageRepository.UploadFileAsync(fileName, deltaLink);
+            if (fileTimestamp.HasValue)
+            {
+                var result = await _blobStorageRepository.UploadFileWriteOnceAsync(fileName, deltaLink);
+                if (result.AlreadyExisted)
+                {
+                    _logger.WriteOnceBlobAlreadyWritten("delta link", fileName, id);
+                }
+            }
+            else
+            {
+                await _blobStorageRepository.UploadFileAsync(fileName, deltaLink);
+            }
+
             _logger.DeltaLinkUploadedToCache(deltaLink, id);
         }
 
-        public async Task UploadCacheAsync(Guid id, Guid runId, GroupMembershipFileResult fileResult)
+        /// <summary>
+        /// Streams a membership file into the source group's cache. With <paramref name="fileTimestamp"/> the
+        /// name comes from it and the blob is written once (an existing blob is kept); without it the current
+        /// UTC time names an overwriting write.
+        /// </summary>
+        public async Task UploadCacheAsync(Guid id, Guid runId, GroupMembershipFileResult fileResult, DateTime? fileTimestamp = null)
         {
-            var fileName = CacheFileNaming.BuildCacheFileName(id, DateTime.UtcNow);
+            var fileName = CacheFileNaming.BuildCacheFileName(id, fileTimestamp ?? DateTime.UtcNow);
             var metadata = new Dictionary<string, string>
             {
                 { "RunId", runId.ToString() }
             };
 
             // Stream directly from membership file to cache file to avoid loading all GUIDs into memory
-            var count = await _blobStorageRepository.StreamMembershipToCacheAsync(fileResult.FilePath, fileName, metadata);
+            int count;
+            if (fileTimestamp.HasValue)
+            {
+                var result = await _blobStorageRepository.StreamMembershipToCacheWriteOnceAsync(fileResult.FilePath, fileName, metadata);
+                if (result.AlreadyExisted)
+                {
+                    _logger.WriteOnceBlobAlreadyWritten("cache", fileName, id);
+                }
+
+                count = result.Count;
+            }
+            else
+            {
+                count = await _blobStorageRepository.StreamMembershipToCacheAsync(fileResult.FilePath, fileName, metadata);
+            }
 
             _logger.CacheUploadedForGroup(count, id);
         }

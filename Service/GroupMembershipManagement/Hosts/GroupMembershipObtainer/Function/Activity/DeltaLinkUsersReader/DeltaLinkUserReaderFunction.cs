@@ -60,6 +60,12 @@ namespace Hosts.GroupMembershipObtainer
                 var fileNameRemove = $"/{request.TargetGroupId}/userUploads/deltaLink/removes/{runId}_GroupMembership_{request.CurrentPart}_{Guid.NewGuid()}.json";
                 await _blobStorageRepository.UploadFileAsync(fileNameRemove, JsonSerializer.Serialize(response.UsersToRemove, serializerSettings));
 
+                GroupReadLogWriter.ReaderSucceeded(
+                    _logger,
+                    request.GroupId,
+                    response.Counts,
+                    request.IdentityTypes,
+                    request.ReadKind ?? GroupMembershipReadKind.DeltaLink);
                 _logger.FunctionCompleted(nameof(DeltaLinkUserReaderFunction));
                 return new DeltaUrls
                 {

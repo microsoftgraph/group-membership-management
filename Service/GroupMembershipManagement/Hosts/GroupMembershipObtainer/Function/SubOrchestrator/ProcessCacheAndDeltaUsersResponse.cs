@@ -7,5 +7,6 @@ namespace Hosts.GroupMembershipObtainer
         public string MembershipFilePath { get; set; }
         public bool CacheMatchesGroupCount { get; set; }
         public int CacheCount { get; set; }
+        public string StagingPath { get; set; }
     }
 }

@@ -15,5 +15,7 @@ namespace Hosts.GroupMembershipObtainer
         public int NumberOfPages { get; set; }
         public int TotalParts { get; set; }
         public SyncJob SyncJob { get; set; }
+        public List<string> IdentityTypes { get; set; }
+        public GroupMembershipReadKind? ReadKind { get; set; }
     }
 }

@@ -31,9 +31,11 @@ namespace Hosts.GroupMembershipObtainer
 
                 try
                 {
-                    await _calculator.UploadCacheAsync(request.ObjectId, request.SyncJob.RunId.GetValueOrDefault(), request.MembershipFileResult);
+                    await _calculator.UploadCacheAsync(request.ObjectId, request.SyncJob.RunId.GetValueOrDefault(), request.MembershipFileResult, request.FileTimestamp);
                 }
-                catch (RequestFailedException ex) when (ex.ErrorCode == "InvalidBlockList")
+                // With a FileTimestamp the write-once upload already maps a lost race to success after
+                // confirming the blob exists; an InvalidBlockList that reaches here then is a real failure.
+                catch (RequestFailedException ex) when (ex.ErrorCode == "InvalidBlockList" && !request.FileTimestamp.HasValue)
                 {
                     _logger.CacheUploadRaceConditionSkipped(request.ObjectId);
                 }

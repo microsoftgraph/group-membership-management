@@ -1133,6 +1133,61 @@ namespace Services.Tests
         }
 
         [TestMethod]
+        public async Task UsersOnlyPart_RemovesPreviouslySyncedAgentUserThroughNormalThresholdFlow()
+        {
+            var personId = Guid.NewGuid();
+            var agentUserId = Guid.NewGuid();
+            SetMembershipInputBlob(_jobState.CompletedParts[1], personId);
+            SetMembershipInputBlob(_jobState.CompletedParts[2]);
+            SetMembershipInputBlob(_jobState.DestinationPart, personId, agentUserId);
+            _syncJob.ThresholdPercentageForAdditions = -1;
+            _syncJob.ThresholdPercentageForRemovals = 20;
+
+            var orchestratorFunction = new MembershipSubOrchestratorFunction(
+                _graphAPIService.Object,
+                _telemetryClient,
+                _multiLaneConfig);
+            var response = await orchestratorFunction.RunMembershipSubOrchestratorFunctionAsync(
+                _durableContext.Object);
+
+            Assert.AreEqual(MembershipDeltaStatus.ThresholdExceeded, response.MembershipDeltaStatus);
+            Assert.IsNotNull(_deltaCalculatorResponse);
+            Assert.AreEqual(0, _deltaCalculatorResponse.MembersToAddCount);
+            Assert.AreEqual(1, _deltaCalculatorResponse.MembersToRemoveCount);
+        }
+
+        [TestMethod]
+        public async Task EmptySelectedContribution_PreservesMembershipDataNotFoundBehavior()
+        {
+            SetMembershipInputBlob(_jobState.CompletedParts[1]);
+            SetMembershipInputBlob(_jobState.CompletedParts[2]);
+            SetMembershipInputBlob(_jobState.DestinationPart, Guid.NewGuid());
+            _syncJob.AllowEmptyDestination = false;
+
+            var orchestratorFunction = new MembershipSubOrchestratorFunction(
+                _graphAPIService.Object,
+                _telemetryClient,
+                _multiLaneConfig);
+            var response = await orchestratorFunction.RunMembershipSubOrchestratorFunctionAsync(
+                _durableContext.Object);
+
+            Assert.AreEqual(MembershipDeltaStatus.Error, response.MembershipDeltaStatus);
+            _durableContext.Verify(
+                context => context.CallActivityAsync(
+                    nameof(JobStatusUpdaterFunction),
+                    It.Is<JobStatusUpdaterRequest>(
+                        request => request.Status == SyncStatus.MembershipDataNotFound),
+                    It.IsAny<TaskOptions>()),
+                Times.Once);
+            _durableContext.Verify(
+                context => context.CallActivityAsync<DeltaCalculatorResponse>(
+                    nameof(DeltaCalculatorFunction),
+                    It.IsAny<DeltaCalculatorRequest>(),
+                    It.IsAny<TaskOptions>()),
+                Times.Never);
+        }
+
+        [TestMethod]
         public async Task TestNoMembershipChangesAsync()
         {
             _numberOfUsersForSourcePart = 5;
@@ -1469,6 +1524,27 @@ namespace Services.Tests
 		        Options.Create(new MembershipMergeOptions()));
 		    return await function.CalculateDeltaAsync(request);
 		}
+
+        private void SetMembershipInputBlob(string path, params Guid[] memberIds)
+        {
+            var membership = new GroupMembership
+            {
+                SyncJobId = _syncJob.Id,
+                MembershipObtainerDryRunEnabled = false,
+                RunId = _syncJob.RunId ?? Guid.Empty,
+                Exclusionary = false,
+                SourceMembers = memberIds
+                    .Select(memberId => new AzureADUser { ObjectId = memberId })
+                    .ToList(),
+                Destination = new AzureADGroup { ObjectId = _group.GroupId }
+            };
+
+            _membershipInputBlobs[path] = new BlobResult
+            {
+                BlobStatus = BlobStatus.Found,
+                Content = TextCompressor.Compress(JsonSerializer.Serialize(membership))
+            };
+        }
 
         private void VerifyAggregatedMembershipWrites(Times times)
         {

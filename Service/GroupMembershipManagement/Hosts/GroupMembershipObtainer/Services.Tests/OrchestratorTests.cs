@@ -355,6 +355,74 @@ namespace Tests.Services
                                     ), Times.Once);
         }
 
+        [DataTestMethod]
+        [DataRow("retries exhausted", "TransientError")]
+        [DataRow("function timeout", "TransientError")]
+        [DataRow("nested retries exhausted", "TransientError")]
+        [DataRow("not found", "Error")]
+        public async Task TestSubOrchestratorFailure_SetsTransientErrorOnlyForRetryExhaustionAsync(string kind, string expected)
+        {
+            // Owner, 2026-10-21: retry exhaustion (and an activity cut short by the function timeout) is transient: the
+            // job is set to TransientError, so JobTrigger picks it up again on its next tick. It never takes the
+            // legacy 30-minute Idle reschedule and never sends a membership message. Other failures still set Error.
+            TaskFailureDetails details = kind switch
+            {
+                "retries exhausted" => TaskFailureDetails.FromException(new GraphRetriesExhaustedException(
+                    "A Graph request for group 00000000-0000-0000-0000-000000000001 still failed after the configured retries. No membership is published for this part.")),
+                "function timeout" => new TaskFailureDetails(
+                    OrchestratorFunction.FunctionTimeoutErrorType,
+                    "Timeout value of 00:20:00 was exceeded by function: Functions.GroupPartSegmentClassifyFunction",
+                    null,
+                    null, null),
+                "nested retries exhausted" => new TaskFailureDetails(
+                    typeof(TaskFailedException).FullName,
+                    "Task 'MembersReaderFunction' (#3) failed with an unhandled exception.",
+                    null,
+                    TaskFailureDetails.FromException(new GraphRetriesExhaustedException(
+                        "The transitive-members request failed with status 429 (TooManyRequests). The configured retries are exhausted.",
+                        null,
+                        System.Net.HttpStatusCode.TooManyRequests)),
+                    null),
+                _ => TaskFailureDetails.FromException(new System.Net.Http.HttpRequestException(
+                    "The transitive-members request failed with status 404 (NotFound).", null, System.Net.HttpStatusCode.NotFound)),
+            };
+            var failure = new TaskFailedException(nameof(SubOrchestratorFunction), 1, details);
+            _durableOrchestrationContext.Setup(x => x.CallSubOrchestratorAsync<SubOrchestratorResponse>(It.IsAny<TaskName>(), It.IsAny<GroupMembershipRequest>(), It.IsAny<TaskOptions>()))
+                                .Throws(failure);
+            Assert.IsFalse(failure.Message.Contains("The request timed out", StringComparison.Ordinal), failure.Message);
+            var expectedStatus = Enum.Parse<SyncStatus>(expected);
+
+            var orchestratorFunction = new OrchestratorFunction();
+
+            await Assert.ThrowsExceptionAsync<TaskFailedException>(async () => await orchestratorFunction.RunOrchestratorAsync(_durableOrchestrationContext.Object));
+
+            _syncJobStatusService.Verify(x => x.UpdateJobStatusAsync(
+                                        It.IsAny<SyncJob>(),
+                                        expectedStatus,
+                                        It.IsAny<SyncJobHistory>(),
+                                        "GroupMembershipObtainer"
+                                    ), Times.Once);
+            foreach (var other in new[] { SyncStatus.Idle, SyncStatus.Error, SyncStatus.TransientError })
+            {
+                if (other == expectedStatus)
+                {
+                    continue;
+                }
+
+                _syncJobStatusService.Verify(x => x.UpdateJobStatusAsync(
+                                            It.IsAny<SyncJob>(),
+                                            other,
+                                            It.IsAny<SyncJobHistory>(),
+                                            It.IsAny<string>()
+                                        ), Times.Never);
+            }
+
+            _durableOrchestrationContext.Verify(x => x.CallActivityAsync(
+                                        It.Is<TaskName>(name => name.Name == nameof(QueueMessageSenderFunction)),
+                                        It.IsAny<object>(),
+                                        It.IsAny<TaskOptions>()), Times.Never);
+        }
+
         [TestMethod]
         public async Task TestValidPartRequestAsync()
         {
@@ -378,6 +446,20 @@ namespace Tests.Services
                                         It.IsAny<SyncJobHistory>(),
                                         It.IsAny<string>()
                                     ), Times.Never);
+        }
+
+        [TestMethod]
+        public async Task TestSubOrchestratorRequestCarriesIsDestinationPartAsync()
+        {
+            var captured = new List<GroupMembershipRequest>();
+            _durableOrchestrationContext.Setup(x => x.CallSubOrchestratorAsync<SubOrchestratorResponse>(It.IsAny<TaskName>(), It.IsAny<GroupMembershipRequest>(), It.IsAny<TaskOptions>()))
+                               .Callback<TaskName, object, TaskOptions>((_, input, _) => captured.Add((GroupMembershipRequest)input))
+                               .ReturnsAsync(() => new SubOrchestratorResponse { Status = _subOrchestratorResponseStatus });
+
+            await new OrchestratorFunction().RunOrchestratorAsync(_durableOrchestrationContext.Object);
+
+            Assert.AreEqual(1, captured.Count);
+            Assert.AreEqual(false, captured[0].IsDestinationPart);
         }
 
         [TestMethod]

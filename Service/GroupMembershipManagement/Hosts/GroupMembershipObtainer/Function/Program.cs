@@ -77,16 +77,18 @@ namespace Hosts.GroupMembershipObtainer
                     {
                         return new DeltaCachingConfig(services.GetService<IOptions<DeltaCachingConfig>>().Value.DeltaCacheEnabled);
                     });
+                    services.AddSingleton(TimeProvider.System);
                     services.AddScoped<ISyncJobStatusService, SyncJobStatusService>();
-                    services.AddGraphAPIClient()
-                    .AddScoped<IGraphGroupRepository, GraphGroupRepository>()
-                    .AddSingleton<IBlobStorageRepository, BlobStorageRepository>((s) =>
+                    ConfigureGraphRepository(services);
+                    services.AddSingleton<IBlobStorageRepository, BlobStorageRepository>((s) =>
                     {
                         var configuration = s.GetService<IConfiguration>();
                         var storageAccountName = configuration["membershipStorageAccountName"];
                         var containerName = configuration["membershipContainerName"];
 
-                        return new BlobStorageRepository($"https://{storageAccountName}.blob.core.windows.net/{containerName}");
+                        return new BlobStorageRepository(
+                            $"https://{storageAccountName}.blob.core.windows.net/{containerName}",
+                            s.GetService<ILogger<BlobStorageRepository>>());
                     })
                     .AddScoped<SGMembershipCalculator>(services =>
                     {
@@ -119,6 +121,12 @@ namespace Hosts.GroupMembershipObtainer
                 })
                 .Build();
             host.Run();
+        }
+
+        internal static void ConfigureGraphRepository(IServiceCollection services)
+        {
+            services.AddGraphAPIClient()
+                .AddScoped<IGraphGroupRepository, GraphGroupRepository>();
         }
     }
 }

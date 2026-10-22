@@ -32,7 +32,15 @@ namespace Hosts.GroupMembershipObtainer
             using (_logger.BeginSyncJobScope(request.SyncJob, new Dictionary<string, object> { ["CurrentPart"] = request.CurrentPart, ["TotalParts"] = request.TotalParts }))
             {
                 _logger.FunctionStarted(nameof(TransitiveAndDeltaUsersSenderFunction));
-                membershipFileResult = await _calculator.SendTransitiveAndDeltaMembershipAsync(request.SyncJob, request.ObjectId, request.CurrentPart, request.Exclusionary);
+                var updateBeforeSyncCount = !GroupIdentitySelection.IsOneType(request.IdentityTypes);
+                membershipFileResult = await _calculator.SendTransitiveAndDeltaMembershipAsync(
+                    request.SyncJob,
+                    request.ObjectId,
+                    request.CurrentPart,
+                    request.Exclusionary,
+                    request.WriteStaging,
+                    updateBeforeSyncCount,
+                    request.FileTimestamp);
                 _logger.FunctionCompleted(nameof(TransitiveAndDeltaUsersSenderFunction));
                 return membershipFileResult;
             }

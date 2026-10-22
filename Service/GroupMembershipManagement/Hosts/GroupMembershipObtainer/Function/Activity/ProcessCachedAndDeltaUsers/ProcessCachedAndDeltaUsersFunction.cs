@@ -29,6 +29,16 @@ namespace Hosts.GroupMembershipObtainer
             _blobStorageRepository = blobStorageRepository ?? throw new ArgumentNullException(nameof(blobStorageRepository));
         }
 
+        /// <summary>
+        /// Applies the run's saved-delta additions and removals to the cached source membership and, when the
+        /// result matches the group's count, publishes the part (or staging) file, the cache and the delta link.
+        /// </summary>
+        /// <remarks>
+        /// The add/remove inputs are not deleted here; the sub-orchestrator deletes them after this activity
+        /// completes, so a retried or duplicate execution reads the same inputs. When the request carries a
+        /// <see cref="ProcessCachedAndDeltaUsersRequest.FileTimestamp"/>, the three outputs are named from it and
+        /// written once: an execution that finds them already written keeps the existing blobs and succeeds.
+        /// </remarks>
         [Function(nameof(ProcessCachedAndDeltaUsersFunction))]
         public async Task<ProcessCachedAndDeltaUsersResponse> RunAsync([ActivityTrigger] ProcessCachedAndDeltaUsersRequest request)
         {
@@ -39,6 +49,7 @@ namespace Hosts.GroupMembershipObtainer
                 if (!string.IsNullOrEmpty(request.CacheFilePath))
                 {
                     var membershipFilePath = string.Empty;
+                    var stagingPath = string.Empty;
 
                     // Get the cached users
                     var parser = new Func<string, Guid>(s => Guid.Parse(s));
@@ -48,21 +59,29 @@ namespace Hosts.GroupMembershipObtainer
 
                     // Get the delta users to add and remove from blob storage
                     var runId = request.SyncJob.RunId.GetValueOrDefault();
-                    string prefixAdds = $"{request.TargetGroupId}/userUploads/deltaLink/adds/{runId}_GroupMembership_{request.CurrentPart}_";
+                    string prefixAdds = BuildDeltaAddsPrefix(request.TargetGroupId, runId, request.CurrentPart);
+                    var usersToAdd = new HashSet<Guid>();
                     var deltaUsersToAddCount = 0;
                     await foreach (var user in _blobStorageRepository.StreamUsersFromBlobsAsync(prefixAdds))
                     {
                         deltaUsersToAddCount++;
-                        cachedUsers.Add(user.ObjectId);
+                        usersToAdd.Add(user.ObjectId);
                     }
 
-                    string prefixRemoves = $"{request.TargetGroupId}/userUploads/deltaLink/removes/{runId}_GroupMembership_{request.CurrentPart}_";
+                    string prefixRemoves = BuildDeltaRemovesPrefix(request.TargetGroupId, runId, request.CurrentPart);
+                    var usersToRemove = new HashSet<Guid>();
                     var deltaUsersToRemoveCount = 0;
                     await foreach (var user in _blobStorageRepository.StreamUsersFromBlobsAsync(prefixRemoves))
                     {
                         deltaUsersToRemoveCount++;
-                        cachedUsers.Remove(user.ObjectId);
+                        usersToRemove.Add(user.ObjectId);
                     }
+
+                    // An identifier both added and removed in one read is ambiguous: the order of the two
+                    // changes is unknown, so the result cannot be trusted even when the count matches.
+                    var overlapCount = usersToAdd.Count(usersToRemove.Contains);
+                    cachedUsers.UnionWith(usersToAdd);
+                    cachedUsers.ExceptWith(usersToRemove);
 
                     if (deltaUsersToAddCount == 0)
                     {
@@ -80,43 +99,76 @@ namespace Hosts.GroupMembershipObtainer
                         _logger.DeltaLinkUpdateSummary(request.SourceGroupId, deltaUsersToAddCount, deltaUsersToRemoveCount, cachedUsers.Count);
                     }
 
+                    if (overlapCount > 0)
+                    {
+                        _logger.DeltaAddRemoveOverlap(request.SourceGroupId, overlapCount);
+                        return new ProcessCachedAndDeltaUsersResponse
+                        {
+                            MembershipFilePath = string.Empty,
+                            CacheMatchesGroupCount = false,
+                            CacheCount = cachedUsers.Count,
+                            StagingPath = string.Empty
+                        };
+                    }
+
                     // Check if cache matches the AAD group
                     if (cachedUsers.Count == request.CountOfUsersFromAADGroup)
                     {
                         _logger.CacheMatchesUploading(request.SourceGroupId, request.CountOfUsersFromAADGroup, cachedUsers.Count);
 
-                        var utcNow = DateTime.UtcNow;
-                        var timeStamp = utcNow.ToString("MMddyyyy-HHmm");
+                        var fileTime = request.FileTimestamp ?? DateTime.UtcNow;
+                        var timeStamp = fileTime.ToString("MMddyyyy-HHmm");
 
                         // Upload membership file
                         membershipFilePath = $"{request.TargetGroupId}/{timeStamp}_{runId}_GroupMembership_{request.CurrentPart}.json";
-                        await UploadMembershipFileAsync(cachedUsers, request, membershipFilePath);
+                        stagingPath = request.WriteStaging
+                            ? GroupPartStoragePaths.BuildStagingPath(
+                                request.TargetGroupId,
+                                runId,
+                                request.CurrentPart)
+                            : string.Empty;
 
                         // Upload the updated cache
-                        var fileName = CacheFileNaming.BuildCacheFileName(request.SourceGroupId, utcNow);
+                        var fileName = CacheFileNaming.BuildCacheFileName(request.SourceGroupId, fileTime);
                         var metadata = new Dictionary<string, string>
                         {
                             { "RunId", runId.ToString() },
                             { "NumberOfUsers", cachedUsers.Count.ToString() }
                         };
-                        try
-                        {
-                            await _blobStorageRepository.UploadCacheFromGuidsAsync(fileName, cachedUsers, metadata);
-                        }
-                        catch (RequestFailedException ex) when (ex.ErrorCode == "InvalidBlockList")
-                        {
-                            _logger.CacheWriteRaceConditionSkipped(request.SourceGroupId);
-                        }
 
                         // Update delta link and upload
                         var deltaLinkFile = $"/cache/delta_{request.SourceGroupId}_{timeStamp}.json";
-                        await _blobStorageRepository.UploadFileAsync(deltaLinkFile, request.DeltaUrl);
+
+                        if (request.FileTimestamp.HasValue)
+                        {
+                            await PublishWriteOnceAsync(
+                                request,
+                                cachedUsers,
+                                request.WriteStaging ? stagingPath : membershipFilePath,
+                                fileName,
+                                metadata,
+                                deltaLinkFile);
+                        }
+                        else
+                        {
+                            // Histories scheduled before FileTimestamp existed keep the overwriting writes.
+                            await UploadMembershipFileAsync(
+                                cachedUsers,
+                                request,
+                                request.WriteStaging ? stagingPath : membershipFilePath);
+                            try
+                            {
+                                await _blobStorageRepository.UploadCacheFromGuidsAsync(fileName, cachedUsers, metadata);
+                            }
+                            catch (RequestFailedException ex) when (ex.ErrorCode == "InvalidBlockList")
+                            {
+                                _logger.CacheWriteRaceConditionSkipped(request.SourceGroupId);
+                            }
+
+                            await _blobStorageRepository.UploadFileAsync(deltaLinkFile, request.DeltaUrl);
+                        }
 
                         _logger.DeltaLinkCacheUploaded(cachedUsers.Count, request.DeltaUrl, request.SourceGroupId);
-
-                        // Delete blobs for adds and removes using prefix, not exact names
-                        await _blobStorageRepository.DeleteFilesAsync(prefixAdds);
-                        await _blobStorageRepository.DeleteFilesAsync(prefixRemoves);
                     }
                     else
                     {
@@ -126,7 +178,8 @@ namespace Hosts.GroupMembershipObtainer
                     {
                         MembershipFilePath = membershipFilePath,
                         CacheMatchesGroupCount = cachedUsers.Count == request.CountOfUsersFromAADGroup,
-                        CacheCount = cachedUsers.Count
+                        CacheCount = cachedUsers.Count,
+                        StagingPath = stagingPath
                     };
                 }
                 else
@@ -140,6 +193,58 @@ namespace Hosts.GroupMembershipObtainer
                         CacheCount = 0
                     };
                 }
+            }
+        }
+
+        /// <summary>The blob-name prefix of the saved-delta additions written for one run and part.</summary>
+        public static string BuildDeltaAddsPrefix(Guid targetGroupId, Guid runId, int currentPart) =>
+            $"{targetGroupId}/userUploads/deltaLink/adds/{runId}_GroupMembership_{currentPart}_";
+
+        /// <summary>The blob-name prefix of the saved-delta removals written for one run and part.</summary>
+        public static string BuildDeltaRemovesPrefix(Guid targetGroupId, Guid runId, int currentPart) =>
+            $"{targetGroupId}/userUploads/deltaLink/removes/{runId}_GroupMembership_{currentPart}_";
+
+        /// <summary>
+        /// Writes the part (or staging) file, the cache and the delta link, each one write-once. Each blob is
+        /// checked on its own: a rejected cache does not imply that the delta link was written by the same
+        /// execution, so the delta link is also written only when absent.
+        /// </summary>
+        private async Task PublishWriteOnceAsync(
+            ProcessCachedAndDeltaUsersRequest request,
+            HashSet<Guid> cachedUsers,
+            string membershipPath,
+            string cachePath,
+            Dictionary<string, string> cacheMetadata,
+            string deltaLinkPath)
+        {
+            var membership = await _blobStorageRepository.UploadGroupMembershipFromGuidsWriteOnceAsync(
+                membershipPath,
+                cachedUsers,
+                new AzureADGroup { ObjectId = request.TargetGroupId },
+                request.SyncJob.RunId.GetValueOrDefault(),
+                request.SyncJob.Id,
+                request.Exclusionary,
+                request.SyncJob.IsDryRunEnabled,
+                request.SyncJob.Query);
+            LogIfAlreadyWritten(membership, request.WriteStaging ? "staging" : "part", membershipPath, request.SourceGroupId);
+
+            var cache = await _blobStorageRepository.UploadCacheFromGuidsWriteOnceAsync(
+                cachePath,
+                cachedUsers,
+                cacheMetadata);
+            LogIfAlreadyWritten(cache, "cache", cachePath, request.SourceGroupId);
+
+            var deltaLink = await _blobStorageRepository.UploadFileWriteOnceAsync(
+                deltaLinkPath,
+                request.DeltaUrl);
+            LogIfAlreadyWritten(deltaLink, "delta link", deltaLinkPath, request.SourceGroupId);
+        }
+
+        private void LogIfAlreadyWritten(WriteOnceResult result, string blobKind, string path, Guid groupId)
+        {
+            if (result.AlreadyExisted)
+            {
+                _logger.WriteOnceBlobAlreadyWritten(blobKind, path, groupId);
             }
         }
 

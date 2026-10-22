@@ -22,7 +22,7 @@ namespace Hosts.GroupMembershipObtainer
         }
 
         [Function(nameof(GetAgentUserCountFunction))]
-        public async Task<int> GetAgentUserCountAsync([ActivityTrigger] GetAgentUserCountRequest request)
+        public async Task<int?> GetAgentUserCountAsync([ActivityTrigger] GetAgentUserCountRequest request)
         {
             using (_logger.BeginSyncJobScope(request.SyncJob, new Dictionary<string, object> { ["CurrentPart"] = request.CurrentPart, ["TotalParts"] = request.TotalParts }))
             {

@@ -29,7 +29,7 @@ namespace Hosts.GroupMembershipObtainer
                 _logger.FunctionStarted(nameof(CacheConverterFunction));
                 // Reuse the UploadCacheAsync method to convert the cache file to parquet format
                 var gmfResult = new GroupMembershipFileResult { FilePath = request.FilePath };
-                await _calculator.UploadCacheAsync(request.ObjectId, request.SyncJob.RunId.GetValueOrDefault(), gmfResult);
+                await _calculator.UploadCacheAsync(request.ObjectId, request.SyncJob.RunId.GetValueOrDefault(), gmfResult, request.FileTimestamp);
                 _logger.FunctionCompleted(nameof(CacheConverterFunction));
             }
         }

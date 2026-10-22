@@ -27,7 +27,7 @@ namespace Hosts.GroupMembershipObtainer
             using (_logger.BeginSyncJobScope(request.SyncJob, new Dictionary<string, object> { ["CurrentPart"] = request.CurrentPart, ["TotalParts"] = request.TotalParts }))
             {
                 _logger.FunctionStarted(nameof(DeltaLinkUploaderFunction));
-                await _calculator.UploadDeltaLinkAsync(request.ObjectId, request.DeltaLink, request.SyncJob.RunId.GetValueOrDefault());
+                await _calculator.UploadDeltaLinkAsync(request.ObjectId, request.DeltaLink, request.SyncJob.RunId.GetValueOrDefault(), request.FileTimestamp);
                 _logger.FunctionCompleted(nameof(DeltaLinkUploaderFunction));
             }
         }
