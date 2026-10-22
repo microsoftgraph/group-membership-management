@@ -110,6 +110,10 @@ export const AdminConfigView: React.FunctionComponent<AdminConfigViewProps> = (p
 
   // setup ui event handlers
   const handleOnSaveButtonClick = () => {
+    if (configured.hasIncompleteRows) {
+      configured.revealErrors();
+      return;
+    }
     if (hasChanges()) onSave(newSettings, newSource, newAttributes, newServiceNotification);
     if (configured.isDirty) void configured.save();
   };
@@ -125,7 +129,7 @@ export const AdminConfigView: React.FunctionComponent<AdminConfigViewProps> = (p
             onClick={handleOnSaveButtonClick}
             className={classNames.saveButton}
             title={isReadOnly ? strings.labels.readOnlyTooltip : undefined}
-            disabled={isReadOnly || !(hasChanges() || configured.isDirty) || hasUrlValidationErrors || hasAttributeValidationErrors || hasServiceNotificationErrors || configured.hasErrors || isSaving}
+            disabled={isReadOnly || !(hasChanges() || configured.isDirty || configured.hasIncompleteRows) || hasUrlValidationErrors || hasAttributeValidationErrors || hasServiceNotificationErrors || configured.hasNoRules || isSaving}
           ></PrimaryButton>
         </div>
         {isReadOnly &&

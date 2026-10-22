@@ -49,6 +49,36 @@ public class ConfiguredAttributeApprovalTests
     }
 
     [TestMethod]
+    public void MaxDepthDefaultsToTwoForLegacyDocumentsAndRoundTrips()
+    {
+        var legacy = "{\"schemaVersion\":1,\"attributes\":[{\"attribute\":\"JobTitle\",\"values\":[\"001\"]}]}";
+        var loaded = ConfiguredAttributeApprovalConfiguration.FromSettings([
+            new Setting { SettingKey = SettingKey.IsAutoApprovalForConfiguredAttributeEnabled, SettingValue = "true" },
+            new Setting { SettingKey = SettingKey.ConfiguredAttributeAutoApprovalConfiguration, SettingValue = legacy }
+        ]);
+        Assert.AreEqual(2, loaded.MaxDepth);
+
+        var configuration = ValidConfiguration();
+        configuration.MaxDepth = 4;
+        var result = ConfiguredAttributeApprovalConfiguration.FromSettings([
+            new Setting { SettingKey = SettingKey.IsAutoApprovalForConfiguredAttributeEnabled, SettingValue = "true" },
+            new Setting { SettingKey = SettingKey.ConfiguredAttributeAutoApprovalConfiguration, SettingValue = configuration.SerializeDocument() }
+        ]);
+        Assert.AreEqual(4, result.MaxDepth);
+    }
+
+    [DataTestMethod]
+    [DataRow(0)]
+    [DataRow(6)]
+    [DataRow(-1)]
+    public void RejectsMaxDepthOutsideAllowedRange(int maxDepth)
+    {
+        var configuration = ValidConfiguration();
+        configuration.MaxDepth = maxDepth;
+        Assert.ThrowsException<ArgumentException>(() => configuration.Validate());
+    }
+
+    [TestMethod]
     public void RejectsDuplicateAttributesAndValues()
     {
         var configuration = ValidConfiguration();

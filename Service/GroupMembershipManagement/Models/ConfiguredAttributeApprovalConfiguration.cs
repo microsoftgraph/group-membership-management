@@ -23,6 +23,9 @@ namespace Models
         public const int MaxValuesPerAttribute = 100;
         public const int MaxValueLength = 256;
         public const int MaxDocumentBytes = 65536;
+        public const int MinDepth = 1;
+        public const int MaxDepthLimit = 5;
+        public const int DefaultDepth = 2;
 
         private static readonly JsonSerializerOptions JsonOptions = new()
         {
@@ -32,12 +35,15 @@ namespace Models
 
         public bool Enabled { get; set; }
         public int SchemaVersion { get; set; } = 1;
+        public int MaxDepth { get; set; } = DefaultDepth;
         public List<ConfiguredAttributeApprovalRow> Attributes { get; set; } = new();
 
         public void Validate()
         {
             if (SchemaVersion != 1)
                 throw new ArgumentException("The configuration schema version is not supported.");
+            if (MaxDepth < MinDepth || MaxDepth > MaxDepthLimit)
+                throw new ArgumentException($"The allowed levels below the manager must be between {MinDepth} and {MaxDepthLimit}.");
             if (Attributes == null || Attributes.Count > MaxAttributes || (Enabled && Attributes.Count == 0))
                 throw new ArgumentException($"Configure between one and {MaxAttributes} fields before enabling this rule.");
 
@@ -71,6 +77,7 @@ namespace Models
             var json = JsonSerializer.Serialize(new StoredDocument
             {
                 SchemaVersion = SchemaVersion,
+                MaxDepth = MaxDepth,
                 Attributes = Attributes
             }, JsonOptions);
             if (Encoding.UTF8.GetByteCount(json) > MaxDocumentBytes)
@@ -106,6 +113,7 @@ namespace Models
                 {
                     Enabled = enabled,
                     SchemaVersion = stored.SchemaVersion,
+                    MaxDepth = stored.MaxDepth ?? DefaultDepth,
                     Attributes = stored.Attributes
                 };
                 result.Validate();
@@ -124,6 +132,7 @@ namespace Models
         private sealed class StoredDocument
         {
             public int SchemaVersion { get; set; }
+            public int? MaxDepth { get; set; }
             public List<ConfiguredAttributeApprovalRow> Attributes { get; set; }
         }
     }

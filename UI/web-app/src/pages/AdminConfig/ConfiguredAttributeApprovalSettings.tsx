@@ -8,12 +8,15 @@ import {
   DefaultButton,
   Dropdown,
   getTheme,
+  Icon,
   IDropdownOption,
+  Label,
   MessageBar,
   MessageBarType,
   PrimaryButton,
   Spinner,
   TagPicker,
+  TooltipHost,
   ITag,
 } from '@fluentui/react';
 import { GeneralSetting } from '../../components/GeneralSetting';
@@ -37,6 +40,9 @@ type Row = { attribute: string; tags: ITag[] };
 
 const codeColumn = (attribute: SqlMembershipAttribute) => `${attribute.name}_Code`;
 
+const defaultMaxDepth = 2;
+const maxDepthOptions = [1, 2, 3, 4, 5];
+
 type Props = {
   labels: Labels;
   canEdit: boolean;
@@ -52,13 +58,15 @@ export const useConfiguredAttributeApproval = (labels: Labels, canEdit: boolean,
   const [configuration, setConfiguration] = useState<ConfiguredAttributeApprovalConfiguration>();
   const [attributes, setAttributes] = useState<SqlMembershipAttribute[]>([]);
   const [enabled, setEnabled] = useState(false);
+  const [maxDepth, setMaxDepth] = useState(defaultMaxDepth);
   const [rows, setRows] = useState<Row[]>([]);
+  const [saveAttempted, setSaveAttempted] = useState(false);
   const [savedSnapshot, setSavedSnapshot] = useState('');
   const [message, setMessage] = useState<{ type: MessageBarType; text: string }>();
   const [searchFailed, setSearchFailed] = useState(false);
 
   const snapshotOf = (config: ConfiguredAttributeApprovalConfiguration) =>
-    JSON.stringify({ enabled: config.enabled, attributes: (config.attributes ?? []).map((a) => ({ attribute: a.attribute, values: a.values })) });
+    JSON.stringify({ enabled: config.enabled, maxDepth: config.maxDepth ?? defaultMaxDepth, attributes: (config.attributes ?? []).map((a) => ({ attribute: a.attribute, values: a.values })) });
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -87,6 +95,7 @@ export const useConfiguredAttributeApproval = (labels: Labels, canEdit: boolean,
       setSavedSnapshot(snapshotOf(config));
       setAttributes(eligible);
       setEnabled(config.enabled);
+      setMaxDepth(config.maxDepth ?? defaultMaxDepth);
       setRows(loadedRows);
     } catch {
       setLoadFailed(true);
@@ -123,29 +132,33 @@ export const useConfiguredAttributeApproval = (labels: Labels, canEdit: boolean,
 
   const completeRows = rows.filter((row) => row.attribute && row.tags.length > 0);
   const pendingAttributes = completeRows.map((row) => ({ attribute: row.attribute, values: row.tags.map((t) => String(t.key)) }));
-  const isDirty = !loading && !loadFailed && JSON.stringify({ enabled, attributes: pendingAttributes }) !== savedSnapshot;
+  const isDirty = !loading && !loadFailed && JSON.stringify({ enabled, maxDepth, attributes: pendingAttributes }) !== savedSnapshot;
   // The server rejects an enabled rule that has no attribute.
   // A half-filled row would be dropped on save, leaving a rule different from what is shown.
   const hasIncompleteRows = rows.some((row) => Boolean(row.attribute) !== (row.tags.length > 0));
-  const hasErrors = hasIncompleteRows || (enabled && completeRows.length === 0);
+  const hasNoRules = enabled && completeRows.length === 0;
+  const hasErrors = hasIncompleteRows || hasNoRules;
+  const showIncompleteWarning = hasIncompleteRows && saveAttempted;
+  const revealErrors = () => setSaveAttempted(true);
 
   const save = async () => {
     if (!configuration) return;
     setMessage(undefined);
     try {
       const saved = await dispatch(
-        saveConfiguredAttributeApproval({ ...configuration, enabled, attributes: pendingAttributes })
+        saveConfiguredAttributeApproval({ ...configuration, enabled, maxDepth, attributes: pendingAttributes })
       ).unwrap();
       setConfiguration(saved);
       setSavedSnapshot(snapshotOf(saved));
+      setSaveAttempted(false);
     } catch {
       setMessage({ type: MessageBarType.error, text: labels.configuredSaveError });
     }
   };
 
   return {
-    searchFailed, loading, loadFailed, load, enabled, setEnabled, rows, setRows, attributes, attributeOptions,
-    message, searchValues, updateRow, isDirty, hasErrors, hasIncompleteRows, save,
+    searchFailed, loading, loadFailed, load, enabled, setEnabled, maxDepth, setMaxDepth, rows, setRows, attributes, attributeOptions,
+    message, searchValues, updateRow, isDirty, hasErrors, hasNoRules, hasIncompleteRows, showIncompleteWarning, revealErrors, save,
   };
 };
 
@@ -163,9 +176,11 @@ export const ConfiguredAttributeToggleCard: React.FunctionComponent<Props & { st
 );
 
 export const ConfiguredAttributeRules: React.FunctionComponent<Props & { state: State }> = ({ labels, canEdit, state }) => {
-  const { searchFailed, loading, loadFailed, load, rows, setRows, attributes, attributeOptions, message, searchValues, updateRow, hasIncompleteRows } = state;
+  const { searchFailed, loading, loadFailed, load, rows, setRows, attributes, attributeOptions, message, searchValues, updateRow, showIncompleteWarning, maxDepth, setMaxDepth } = state;
   const theme = getTheme();
   const gridColumns = '260px minmax(0, 1fr) 32px';
+  const fieldBorder = { borderRadius: 4, border: '1px solid', borderColor: theme.palette.neutralQuaternary, background: theme.palette.white };
+  const dropdownStyles = { title: { borderRadius: 4, borderColor: theme.palette.neutralQuaternary }, dropdown: { ':hover .ms-Dropdown-title': { borderColor: theme.palette.neutralQuaternary } } };
 
   if (loading) return <Spinner label={labels.configuredLoading} data-testid="configured-attribute-loading" />;
 
@@ -185,20 +200,16 @@ export const ConfiguredAttributeRules: React.FunctionComponent<Props & { state: 
   return (
     <div
       data-testid="configured-attribute-approval"
-      style={{ border: `1px solid ${theme.palette.neutralQuaternaryAlt}`, borderRadius: 8, padding: '20px 24px' }}
+      style={{
+        outline: `1px solid ${theme.palette.neutralQuaternary}`,
+        borderRadius: 10,
+        backgroundColor: theme.palette.white,
+        width: '100%',
+        minWidth: 0,
+        boxSizing: 'border-box',
+        padding: 24,
+      }}
     >
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-        <span style={{ fontWeight: 600 }}>{labels.configuredAttributesHeading}</span>
-        {canEdit && (
-          <PrimaryButton
-            iconProps={{ iconName: 'Add' }}
-            disabled={usedAttributes.size >= attributes.length}
-            onClick={() => setRows((current) => [...current, { attribute: '', tags: [] }])}
-          >
-            {labels.configuredAddAttribute}
-          </PrimaryButton>
-        )}
-      </div>
       {message && <MessageBar messageBarType={message.type}>{message.text}</MessageBar>}
       {searchFailed && (
         <MessageBar
@@ -208,27 +219,68 @@ export const ConfiguredAttributeRules: React.FunctionComponent<Props & { state: 
           {labels.configuredSearchError}
         </MessageBar>
       )}
-      {hasIncompleteRows && (
+      {showIncompleteWarning && (
         <MessageBar messageBarType={MessageBarType.warning} data-testid="configured-attribute-incomplete">
           {labels.configuredIncompleteRow}
         </MessageBar>
       )}
-      <div style={{ display: 'grid', gridTemplateColumns: gridColumns, gap: 12, fontWeight: 600, fontSize: 12, marginBottom: 4 }}>
-        <span>{labels.configuredAttribute}</span>
-        <span>{labels.configuredValues}</span>
+      <div data-testid="configured-attribute-depth" style={{ marginBottom: 12 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+          <Label>{labels.configuredDepthLabel}</Label>
+          <TooltipHost content={labels.configuredDepthHelp} id="configuredDepthTooltip" calloutProps={{ gapSpace: 0 }}>
+            <Icon
+              iconName="Info"
+              tabIndex={0}
+              aria-label={labels.configuredDepthHelp}
+              aria-describedby="configuredDepthTooltip"
+              style={{ fontSize: 14, color: theme.palette.themePrimary }}
+            />
+          </TooltipHost>
+        </div>
+        <Dropdown
+          aria-label={labels.configuredDepthLabel}
+          style={{ width: 160 }}
+          styles={dropdownStyles}
+          options={maxDepthOptions.map((n) => ({
+            key: n,
+            text: (n === 1 ? labels.configuredLevelDown : labels.configuredLevelsDown).replace('{0}', String(n)),
+          }))}
+          selectedKey={maxDepth}
+          disabled={!canEdit}
+          onChange={(_, option) => setMaxDepth(Number(option?.key ?? defaultMaxDepth))}
+        />
+      </div>
+      <div style={{ display: 'grid', gridTemplateColumns: gridColumns, gap: 12, marginBottom: 12, alignItems: 'end' }}>
+        <Label>{labels.configuredAttribute}</Label>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <Label>{labels.configuredValues}</Label>
+          {canEdit && (
+            <PrimaryButton
+              styles={{ root: { borderRadius: 4, height: 28, minWidth: 0, padding: '0 12px' } }}
+              disabled={usedAttributes.size >= attributes.length}
+              onClick={() => setRows((current) => [...current, { attribute: '', tags: [] }])}
+            >
+              {labels.configuredAddAttribute}
+            </PrimaryButton>
+          )}
+        </div>
       </div>
       {rows.map((row, index) => (
         <div key={index} data-testid="configured-attribute-row" style={{ display: 'grid', gridTemplateColumns: gridColumns, gap: 12, alignItems: 'start', marginBottom: 8 }}>
           <Dropdown
+            ariaLabel={labels.configuredAttribute}
             placeholder={labels.configuredAttributePlaceholder}
+            styles={dropdownStyles}
             options={attributeOptions.filter((o) => o.key === row.attribute || !usedAttributes.has(String(o.key)))}
             selectedKey={row.attribute || undefined}
             disabled={!canEdit}
             onChange={(_, option) => updateRow(index, { attribute: String(option?.key ?? ''), tags: [] })}
           />
+          <div style={{ position: 'relative', minWidth: 0 }}>
           <TagPicker
             key={row.attribute}
             disabled={!canEdit || !row.attribute}
+            styles={{ text: fieldBorder }}
             selectedItems={row.tags}
             onChange={(items) => updateRow(index, { tags: items ?? [] })}
             onResolveSuggestions={(filter, selected) =>
@@ -239,8 +291,14 @@ export const ConfiguredAttributeRules: React.FunctionComponent<Props & { state: 
             }
             getTextFromItem={(item) => item.name}
             pickerSuggestionsProps={{ noResultsFoundText: searchFailed ? labels.configuredSearchError : labels.configuredNoResults }}
-            inputProps={{ placeholder: labels.configuredValuesPlaceholder }}
+            inputProps={{ placeholder: labels.configuredValuesPlaceholder, 'aria-label': labels.configuredValues }}
           />
+          <Icon
+            iconName="Search"
+            aria-hidden
+            style={{ position: 'absolute', right: 10, top: 9, fontSize: 12, pointerEvents: 'none', color: theme.palette.neutralSecondary }}
+          />
+          </div>
           {canEdit && (
             <ActionButton
               iconProps={{ iconName: 'Delete' }}

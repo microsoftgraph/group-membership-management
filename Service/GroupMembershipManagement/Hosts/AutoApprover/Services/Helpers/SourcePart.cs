@@ -3,6 +3,7 @@
 
 using Models;
 using System.Collections.Generic;
+using System.Linq;
 
 namespace Services.AutoApprover.Helpers
 {
@@ -80,7 +81,7 @@ namespace Services.AutoApprover.Helpers
         /// <summary>The requestor's attribute values do not match the configured-attribute values.</summary>
         Configured_Values_Mismatch,
 
-        /// <summary>The requestor is not in the reporting chain of the manager referenced in the query.</summary>
+        /// <summary>The requestor is not within the configured number of levels below the manager.</summary>
         Configured_Not_In_Manager_Chain
     }
 
@@ -109,14 +110,31 @@ namespace Services.AutoApprover.Helpers
     internal readonly struct PartRejection
     {
         public PartRejection(SourcePartRejectionReason reason, string details)
+            : this(reason, reason.ToString(), details)
+        {
+        }
+
+        private PartRejection(SourcePartRejectionReason reason, string reasonText, string details)
         {
             Reason = reason;
+            ReasonText = reasonText;
             Details = details;
         }
 
         public SourcePartRejectionReason Reason { get; }
 
+        /// <summary>The reason name logged; comma-separated when several paths failed.</summary>
+        public string ReasonText { get; }
+
         public string Details { get; }
+
+        /// <summary>One rejection listing every failed path's reason and detail, in path order.</summary>
+        public static PartRejection Combine(IReadOnlyList<PartRejection> failures) =>
+            failures.Count == 1
+                ? failures[0]
+                : new PartRejection(failures[0].Reason,
+                    string.Join(",", failures.Select(f => f.ReasonText)),
+                    string.Join("; ", failures.Select(f => f.Details)));
     }
 
     /// <summary>
@@ -139,6 +157,17 @@ namespace Services.AutoApprover.Helpers
         public bool Loaded;
         public bool Failed;
         public List<string> Names = new List<string>();
+    }
+
+    /// <summary>The configured-attribute rule's settings and chain results, cached per submission.</summary>
+    internal sealed class ConfiguredAttributeState
+    {
+        public bool Loaded;
+        public string UnavailableReason;
+        public int RequestorEmployeeId;
+        public bool ValuesMatch;
+        public int MaxDepth;
+        public Dictionary<int, bool> InManagerOrg { get; } = new();
     }
 
     /// <summary>Outcome of reading a leader's published assistants; only Resolved is authoritative.</summary>

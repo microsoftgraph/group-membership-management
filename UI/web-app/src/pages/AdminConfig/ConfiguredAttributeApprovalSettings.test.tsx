@@ -4,7 +4,7 @@
 import React from 'react';
 import { screen, waitFor } from '@testing-library/react';
 import { vi, beforeAll } from 'vitest';
-import { initializeIcons } from '@fluentui/react';
+import { getTheme, initializeIcons } from '@fluentui/react';
 import { ConfiguredAttributeRules, ConfiguredAttributeToggleCard, useConfiguredAttributeApproval } from './ConfiguredAttributeApprovalSettings';
 import { defaultStrings } from '../../services/localization';
 import { renderWithProviders } from '../../testing/renderWithProviders';
@@ -72,6 +72,34 @@ describe('ConfiguredAttributeApprovalSettings', () => {
     expect(await screen.findByText('Contoso')).toBeTruthy();
   });
 
+  it('matches the settings card and label styles without a redundant Attributes heading', async () => {
+    mockApi({
+      fetchConfiguration: vi.fn().mockResolvedValue({
+        enabled: true,
+        schemaVersion: 1,
+        maxDepth: 1,
+        attributes: [{ attribute: 'Company', values: ['100'] }],
+      }),
+    });
+    renderWithProviders(<Harness canEdit={true} />);
+
+    const card = await screen.findByTestId('configured-attribute-approval');
+    expect(card).toHaveStyle({
+      outline: `1px solid ${getTheme().palette.neutralQuaternary}`,
+      borderRadius: '10px',
+      padding: '24px',
+      boxSizing: 'border-box',
+    });
+    expect(screen.queryByText('Attributes', { exact: true })).not.toBeInTheDocument();
+    for (const label of [labels.configuredDepthLabel, labels.configuredAttribute, labels.configuredValues]) {
+      expect(screen.getAllByText(label, { exact: true }).some((el) => el.classList.contains('ms-Label'))).toBe(true);
+    }
+    expect(screen.getByRole('combobox', { name: labels.configuredDepthLabel })).toBeInTheDocument();
+    expect(await screen.findByText('1 level down')).toBeInTheDocument();
+    expect(screen.getAllByRole('combobox', { name: labels.configuredAttribute })).toHaveLength(1);
+    expect(screen.getAllByPlaceholderText(labels.configuredValuesPlaceholder)).toHaveLength(1);
+  });
+
   it('flags a row that has an attribute but no values, and ignores a fully empty row', async () => {
     mockApi({
       fetchConfiguration: vi.fn().mockResolvedValue({
@@ -99,9 +127,34 @@ describe('ConfiguredAttributeApprovalSettings', () => {
     expect(screen.getByTestId('has-errors').textContent).toBe('true');
   });
 
+  it('defaults depth to 2 for a legacy configuration and marks a change as dirty', async () => {
+    mockApi({
+      fetchConfiguration: vi.fn().mockResolvedValue({ enabled: true, schemaVersion: 1, attributes: [{ attribute: 'Company', values: ['100'] }] }),
+    });
+    const Probe: React.FunctionComponent = () => {
+      const state = useConfiguredAttributeApproval(labels, true);
+      return (
+        <>
+          <span data-testid="depth">{state.maxDepth}</span>
+          <span data-testid="dirty">{String(state.isDirty)}</span>
+          <span data-testid="loading">{String(state.loading)}</span>
+          <button onClick={() => state.setMaxDepth(4)}>deeper</button>
+        </>
+      );
+    };
+    const { default: userEvent } = await import('@testing-library/user-event');
+    renderWithProviders(<Probe />);
+    await waitFor(() => expect(screen.getByTestId('loading').textContent).toBe('false'));
+    expect(screen.getByTestId('depth').textContent).toBe('2');
+    expect(screen.getByTestId('dirty').textContent).toBe('false');
+    await userEvent.click(screen.getByText('deeper'));
+    expect(screen.getByTestId('depth').textContent).toBe('4');
+    expect(screen.getByTestId('dirty').textContent).toBe('true');
+  });
+
   it('hides add and delete controls for read-only users', async () => {
     mockApi({
-      fetchConfiguration: vi.fn().mockResolvedValue({ enabled: false, schemaVersion: 1, attributes: [] }),
+      fetchConfiguration: vi.fn().mockResolvedValue({ enabled: false, schemaVersion: 1, maxDepth: 2, attributes: [] }),
     });
     renderWithProviders(<Harness canEdit={false} />);
     await screen.findByTestId('configured-attribute-approval');

@@ -359,7 +359,6 @@ export type IStrings = {
         configuredDescription: string;
         configuredRulesTitle: string;
         configuredRulesDescription: string;
-        configuredAttributesHeading: string;
         configuredAttribute: string;
         configuredAttributePlaceholder: string;
         configuredValues: string;
@@ -373,6 +372,10 @@ export type IStrings = {
         configuredNoResults: string;
         configuredSearchError: string;
         configuredIncompleteRow: string;
+        configuredDepthLabel: string;
+        configuredDepthHelp: string;
+        configuredLevelDown: string;
+        configuredLevelsDown: string;
         configuredLoadMore: string;
       }
     },

@@ -330,7 +330,7 @@ namespace Services.AutoApprover
 
                     if (rejection != null)
                     {
-                        _logger.PerPartRuleDeclined(i, part.Type, part.SourceDescriptor, rejection.Value.Reason.ToString(),
+                        _logger.PerPartRuleDeclined(i, part.Type, part.SourceDescriptor, rejection.Value.ReasonText,
                             rejection.Value.Details, i + 1, parts.Count, mix.SqlManagerSelf, mix.SqlAssistant, mix.SqlConfigured, mix.GroupPublic, mix.GroupOwner);
                         return false;
                     }
@@ -427,16 +427,6 @@ namespace Services.AutoApprover
             return null;
         }
 
-        // Cached once per submission and shared across its parts.
-        private sealed class ConfiguredAttributeState
-        {
-            public bool Loaded;
-            public string UnavailableReason;
-            public int RequestorEmployeeId;
-            public bool ValuesMatch;
-            public Dictionary<int, bool> InManagerOrg { get; } = new();
-        }
-
         // Approves when the requestor's configured attributes match the admin-configured values and the requestor
         // is in the manager's reporting chain. Returns null when the part qualifies.
         private async Task<PartRejection?> EvaluateConfiguredAttributeAsync(SourcePart part, string requestorObjectId, string tableName, ConfiguredAttributeState state)
@@ -460,7 +450,7 @@ namespace Services.AutoApprover
                     return null;
 
                 return new PartRejection(SourcePartRejectionReason.Configured_Not_In_Manager_Chain,
-                    "the requestor is not in the reporting chain of the manager referenced in the query");
+                    $"the requestor is not within the configured depth of {state.MaxDepth}");
             }
             catch (Exception ex)
             {
@@ -473,14 +463,14 @@ namespace Services.AutoApprover
             new(SourcePartRejectionReason.Configured_Rule_Unavailable,
                 $"the configured-attribute path could not be evaluated ({reason}); the submission needs manual review");
 
-        // The manager's own row is part of the result, so a requestor who is the manager is in the chain.
+        // Manager is level 1, so the allowed levels below the manager are queried as MaxDepth + 1.
         private async Task<bool> IsInManagerOrgAsync(int managerId, string tableName, ConfiguredAttributeState state)
         {
             if (state.InManagerOrg.TryGetValue(managerId, out var cached))
                 return cached;
 
             var requestorId = state.RequestorEmployeeId.ToString();
-            var members = await _sqlMembershipRepository.GetChildEntitiesAsync($"EmployeeId = {requestorId}", managerId, tableName, 0);
+            var members = await _sqlMembershipRepository.GetChildEntitiesAsync($"EmployeeId = {requestorId}", managerId, tableName, state.MaxDepth + 1);
             return state.InManagerOrg[managerId] = members.Any(member => member.PersonnelNumber == requestorId);
         }
 
@@ -512,6 +502,7 @@ namespace Services.AutoApprover
             if (string.IsNullOrEmpty(tableName))
                 return "table_unresolved";
 
+            state.MaxDepth = configuration.MaxDepth;
             List<SqlMembershipAttribute> attributes;
             try
             {
@@ -718,19 +709,24 @@ namespace Services.AutoApprover
                 return null;
             }
 
-            // Held back so a part the configured-attribute path approves is never logged as rejected.
-            PartRejection? rejection = null;
+            // One failure per path that ran; held back so a part another path approves is never logged as rejected.
+            var failures = new List<PartRejection>();
+
+            if (isOrgLeaderEnabled)
+                failures.Add(employeeId == null
+                    ? new PartRejection(SourcePartRejectionReason.EmployeeId_Missing, "the requestor has no EmployeeId in the users table")
+                    : new PartRejection(SourcePartRejectionReason.Requestor_Manager_Mismatch, "the requestor is not the manager referenced in the query"));
 
             if (isLeaderAssistantEnabled)
             {
                 var lookup = await ResolveAssistantsAsync(part.ManagerId.Value, tableName, assistantCache, partIndex);
 
                 if (lookup.Status == AssistantLookupStatus.LeaderUnresolved)
-                    rejection = new PartRejection(SourcePartRejectionReason.Manager_Identity_Unresolved,
-                        "the manager referenced in the query has no resolvable directory identity, so an assistant relationship could not be verified; the submission needs manual review");
+                    failures.Add(new PartRejection(SourcePartRejectionReason.Manager_Identity_Unresolved,
+                        "the manager referenced in the query has no resolvable directory identity, so an assistant relationship could not be verified"));
                 else if (lookup.Status == AssistantLookupStatus.Unavailable)
-                    rejection = new PartRejection(SourcePartRejectionReason.Assistant_Lookup_Unavailable,
-                        "the manager's published assistant could not be read, so an assistant relationship could not be verified; the submission needs manual review");
+                    failures.Add(new PartRejection(SourcePartRejectionReason.Assistant_Lookup_Unavailable,
+                        "the manager's published assistant could not be read, so an assistant relationship could not be verified"));
                 // The object id is the match key; the manager published this person as acting for them.
                 else if (lookup.Assistants.Any(a => string.Equals(a.ObjectId.ToString(), userIdentity, StringComparison.OrdinalIgnoreCase)))
                 {
@@ -743,22 +739,9 @@ namespace Services.AutoApprover
                     mix.SqlAssistant++;
                     return null;
                 }
-                // A missing EmployeeId means the manager-self check could not run either.
-                else if (isOrgLeaderEnabled && employeeId == null)
-                    rejection = new PartRejection(SourcePartRejectionReason.EmployeeId_Missing,
-                        "the requestor is not a published assistant of the manager referenced in the query, and has no EmployeeId in the users table, so the manager-self relationship could not be verified either");
                 else
-                    rejection = new PartRejection(SourcePartRejectionReason.Requestor_Not_Assistant,
-                        isOrgLeaderEnabled
-                            ? "the requestor is neither the manager referenced in the query nor a published assistant of that manager"
-                            : "the requestor is not a published assistant of the manager referenced in the query, and auto-approval for the requestor as org leader is switched off");
-            }
-            // Only the manager-self path is enabled here, so the assistant relationship is never consulted.
-            else if (isOrgLeaderEnabled)
-            {
-                rejection = employeeId == null
-                    ? new PartRejection(SourcePartRejectionReason.EmployeeId_Missing, "the requestor has no EmployeeId in the users table")
-                    : new PartRejection(SourcePartRejectionReason.Requestor_Manager_Mismatch, "the requestor is not the manager referenced in the query");
+                    failures.Add(new PartRejection(SourcePartRejectionReason.Requestor_Not_Assistant,
+                        "the requestor is not a published assistant of the manager referenced in the query"));
             }
 
             if (isConfiguredEnabled)
@@ -775,10 +758,10 @@ namespace Services.AutoApprover
                     return null;
                 }
 
-                rejection ??= configuredRejection;
+                failures.Add(configuredRejection.Value);
             }
 
-            return Reject(part, partIndex, rejection.Value.Reason, rejection.Value.Details);
+            return Reject(part, partIndex, PartRejection.Combine(failures));
         }
 
         private async Task<AssistantLookup> ResolveAssistantsAsync(int managerId, string tableName, Dictionary<int, AssistantLookup> cache, int partIndex)
@@ -825,10 +808,13 @@ namespace Services.AutoApprover
             }
         }
 
-        private PartRejection Reject(SourcePart part, int partIndex, SourcePartRejectionReason reason, string details)
+        private PartRejection Reject(SourcePart part, int partIndex, SourcePartRejectionReason reason, string details) =>
+            Reject(part, partIndex, new PartRejection(reason, details));
+
+        private PartRejection Reject(SourcePart part, int partIndex, PartRejection rejection)
         {
-            _logger.SourcePartRejected(partIndex, part.Type, part.SourceDescriptor, reason.ToString(), details);
-            return new PartRejection(reason, details);
+            _logger.SourcePartRejected(partIndex, part.Type, part.SourceDescriptor, rejection.ReasonText, rejection.Details);
+            return rejection;
         }
     }
 }

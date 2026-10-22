@@ -88,7 +88,7 @@ namespace Services.Tests
             if (requestorEmployeeId != null)
                 profile["EmployeeId"] = requestorEmployeeId;
             f.Sql.Setup(x => x.GetUserAttributesAsync(f.RequestorId, It.IsAny<string>())).ReturnsAsync(profile);
-            f.Sql.Setup(x => x.GetChildEntitiesAsync(It.IsAny<string>(), PartManagerId, It.IsAny<string>(), 0))
+            f.Sql.Setup(x => x.GetChildEntitiesAsync(It.IsAny<string>(), PartManagerId, It.IsAny<string>(), It.IsAny<int>()))
                  .ReturnsAsync(inManagerOrg
                      ? new List<PersonEntity> { new() { PersonnelNumber = RequestorEmployeeId.ToString() } }
                      : new List<PersonEntity>());
@@ -124,7 +124,7 @@ namespace Services.Tests
         public async Task Onboarding_RequestorIsTheManager_ApprovesWhenAttributesMatchAsync()
         {
             var f = Build(requestorEmployeeId: PartManagerId.ToString());
-            f.Sql.Setup(x => x.GetChildEntitiesAsync(It.IsAny<string>(), PartManagerId, It.IsAny<string>(), 0))
+            f.Sql.Setup(x => x.GetChildEntitiesAsync(It.IsAny<string>(), PartManagerId, It.IsAny<string>(), It.IsAny<int>()))
                 .ReturnsAsync(new List<PersonEntity> { new() { PersonnelNumber = PartManagerId.ToString() } });
             await f.Create().ProcessAutoApprovalAsync(Message(f));
             AssertApproved(f);
@@ -196,11 +196,69 @@ namespace Services.Tests
         public async Task Onboarding_HierarchyLookupFails_StaysInReviewAsync()
         {
             var f = Build();
-            f.Sql.Setup(x => x.GetChildEntitiesAsync(It.IsAny<string>(), PartManagerId, It.IsAny<string>(), 0))
+            f.Sql.Setup(x => x.GetChildEntitiesAsync(It.IsAny<string>(), PartManagerId, It.IsAny<string>(), It.IsAny<int>()))
                  .ThrowsAsync(new InvalidOperationException("boom"));
             await f.Create().ProcessAutoApprovalAsync(Message(f));
             AssertPendingReview(f);
         }
+
+        [TestMethod]
+        public async Task Onboarding_OrgLeaderAndConfiguredBothFail_LogsEveryReasonAsync()
+        {
+            var f = Build(requestorCompany: "300");
+            f.Settings.Setup(x => x.GetSettingByKeyAsync(SettingKey.IsAutoApprovalForRequestorIsOrgLeaderSyncsEnabled))
+                .ReturnsAsync(new Setting { SettingKey = SettingKey.IsAutoApprovalForRequestorIsOrgLeaderSyncsEnabled, SettingValue = "true" });
+            f.Sql.Setup(x => x.GetUserEmployeeIdAsync(f.RequestorId, It.IsAny<string>())).ReturnsAsync(RequestorEmployeeId);
+            await f.Create().ProcessAutoApprovalAsync(Message(f));
+            AssertPendingReview(f);
+            f.Logger.Verify(x => x.Log(LogLevel.Information, It.IsAny<EventId>(),
+                It.Is<It.IsAnyType>((v, t) => v.ToString().Contains("rejected: Requestor_Manager_Mismatch,Configured_Values_Mismatch")),
+                null, It.IsAny<Func<It.IsAnyType, Exception, string>>()), Times.Once);
+        }
+
+        [TestMethod]
+        public async Task Onboarding_RequestorWithinConfiguredDepth_ApprovesAsync()
+        {
+            var f = Build(inManagerOrg: false);
+            var requestor = new List<PersonEntity> { new() { PersonnelNumber = RequestorEmployeeId.ToString() } };
+            f.Settings.Setup(x => x.GetConfiguredAttributeApprovalAsync()).ReturnsAsync(DepthConfiguration(3));
+            f.Sql.Setup(x => x.GetChildEntitiesAsync(It.IsAny<string>(), PartManagerId, It.IsAny<string>(), 4)).ReturnsAsync(requestor);
+            await f.Create().ProcessAutoApprovalAsync(Message(f));
+            AssertApproved(f);
+        }
+
+        [TestMethod]
+        public async Task Onboarding_RequestorNotWithinConfiguredDepth_StaysInReviewWithSingleQueryAsync()
+        {
+            var f = Build(inManagerOrg: false);
+            f.Settings.Setup(x => x.GetConfiguredAttributeApprovalAsync()).ReturnsAsync(DepthConfiguration(2));
+            await f.Create().ProcessAutoApprovalAsync(Message(f));
+            AssertPendingReview(f);
+            f.Sql.Verify(x => x.GetChildEntitiesAsync(It.IsAny<string>(), PartManagerId, It.IsAny<string>(), 3), Times.Once);
+            f.Sql.Verify(x => x.GetChildEntitiesAsync(It.IsAny<string>(), It.IsAny<int>(), It.IsAny<string>(), It.IsAny<int>()), Times.Once);
+        }
+
+        [DataTestMethod]
+        [DataRow(0)]
+        [DataRow(6)]
+        public async Task Onboarding_InvalidMaxDepth_StaysInReviewAsync(int maxDepth)
+        {
+            var f = Build();
+            f.Settings.Setup(x => x.GetConfiguredAttributeApprovalAsync()).ReturnsAsync(DepthConfiguration(maxDepth));
+            await f.Create().ProcessAutoApprovalAsync(Message(f));
+            AssertPendingReview(f);
+            f.Sql.Verify(x => x.GetChildEntitiesAsync(It.IsAny<string>(), It.IsAny<int>(), It.IsAny<string>(), It.IsAny<int>()), Times.Never);
+        }
+
+        private static ConfiguredAttributeApprovalConfiguration DepthConfiguration(int maxDepth) => new()
+        {
+            Enabled = true,
+            MaxDepth = maxDepth,
+            Attributes = new List<ConfiguredAttributeApprovalRow>
+            {
+                new() { Attribute = "Company", Values = new List<string> { "100", "200" } }
+            }
+        };
 
         [TestMethod]
         public async Task Onboarding_ConfiguredAttributeIsSensitive_IsApprovedAsync()

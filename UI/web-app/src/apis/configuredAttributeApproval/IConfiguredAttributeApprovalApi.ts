@@ -9,6 +9,7 @@ export interface ConfiguredAttributeApprovalRow {
 export interface ConfiguredAttributeApprovalConfiguration {
   enabled: boolean;
   schemaVersion: number;
+  maxDepth: number;
   attributes: ConfiguredAttributeApprovalRow[];
 }
 
