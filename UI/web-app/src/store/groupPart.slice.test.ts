@@ -4,6 +4,7 @@
 import { describe, expect, it } from 'vitest';
 import groupPartReducer, { selectSelectedGroupById } from './groupPart.slice';
 import { searchDestinations } from './manageMembership.api';
+import { searchGroups, validateGroup } from './groups.api';
 
 const initial = groupPartReducer(undefined, { type: '@@INIT' });
 
@@ -12,6 +13,30 @@ describe('groupPart.slice — extraReducers', () => {
     const results = [{ id: 'g1', name: 'Group 1' }, { id: 'g2', name: 'Group 2' }];
     const state = groupPartReducer(initial, searchDestinations.fulfilled(results as any, 'r1', '' as any));
     expect(state.searchResults).toEqual(results);
+  });
+
+  it('validateGroup.fulfilled does not run the destination-search reducer', () => {
+    const state = groupPartReducer(
+      initial,
+      validateGroup.fulfilled({ groupId: 'g1', isValid: true }, 'r1', 'g1')
+    );
+
+    expect(state).toEqual(initial);
+  });
+
+  it('uses distinct action types for destination search, group search, and validation', () => {
+    expect(searchGroups.fulfilled.type).not.toBe(searchDestinations.fulfilled.type);
+    expect(validateGroup.fulfilled.type).not.toBe(searchDestinations.fulfilled.type);
+    expect(validateGroup.fulfilled.type).not.toBe(searchGroups.fulfilled.type);
+  });
+
+  it('ignores a non-array destination-search payload defensively', () => {
+    const state = groupPartReducer(
+      initial,
+      searchDestinations.fulfilled({ groupId: 'g1', isValid: true } as any, 'r1', '')
+    );
+
+    expect(state).toEqual(initial);
   });
 });
 

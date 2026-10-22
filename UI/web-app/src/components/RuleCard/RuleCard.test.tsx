@@ -98,6 +98,35 @@ describe('RuleCard', () => {
     expect(screen.getAllByText('group_alias').length).toBeGreaterThan(0);
   });
 
+  it('renders an agents-only Group rule without exposing an identity-selection control', () => {
+    const agentsOnlyPart = groupPart({
+      title: 'All Agents in Group test 1',
+      query: {
+        type: SourcePartType.GroupMembership,
+        source: 'group-guid',
+        exclusionary: false,
+        identityTypes: ['agents'],
+      },
+    });
+    const preloadedState: Partial<RootState> = {
+      groupPart: {
+        ...getGroupPartState(),
+        searchResults: [
+          { key: 0, text: 'Group Test 1', secondaryText: 'group_alias', id: 'group-guid' },
+        ],
+      },
+    };
+
+    renderWithProviders(<RuleCard part={agentsOnlyPart} onSelect={() => {}} />, { preloadedState });
+
+    expect(screen.getByRole('button', { name: /All Agents in Group test 1/ })).toBeInTheDocument();
+    expect(screen.getByText('Group')).toBeInTheDocument();
+    expect(screen.getAllByText('Group Test 1').length).toBeGreaterThan(0);
+    expect(screen.queryByText(/identity types?/i)).not.toBeInTheDocument();
+    expect(screen.queryByRole('checkbox', { name: /agents?|people|users/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('combobox', { name: /identity|agents?|people|users/i })).not.toBeInTheDocument();
+  });
+
   it('renders a Teams Channel rule with its badge plus Team name and Channel name from the destination', () => {
     const base = manageMembershipReducer(undefined, { type: 'test/init' });
     const preloadedState: Partial<RootState> = {

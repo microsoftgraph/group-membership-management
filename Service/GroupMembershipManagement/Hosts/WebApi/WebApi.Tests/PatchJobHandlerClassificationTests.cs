@@ -113,6 +113,18 @@ namespace WebApi.Tests
                 businessJustification: "config change",
                 canApproveJob: false);
 
+        private PatchJobRequest ScheduledNowRequest(JsonPatchDocument<SyncJobPatch> patch) =>
+            new PatchJobRequest(
+                isAllowed: true,
+                isOnBehalfAllowed: false,
+                userIdentity: Guid.NewGuid().ToString(),
+                syncJobId: _syncJob.Id,
+                patchDocument: patch,
+                userDisplayName: "Owner",
+                changeReason: SyncJobChangeReason.ScheduledNow.ToString(),
+                businessJustification: "run now",
+                canApproveJob: false);
+
         private AutoApprovalQueueMessage DecodeEnqueued(ServiceBusMessage message) =>
             JsonSerializer.Deserialize<AutoApprovalQueueMessage>(Encoding.UTF8.GetString(message.Body))!;
 
@@ -219,6 +231,104 @@ namespace WebApi.Tests
             Assert.AreEqual(6, _syncJob.Period);
             Assert.AreEqual(SyncJobChangeReason.Update.ToString(), _savedChanges.Single().ChangeReason);
             Assert.AreEqual(AutoApprovalOrigin.ConfigUpdate, DecodeEnqueued(_enqueued.Single()).Origin);
+        }
+
+        [TestMethod]
+        public async Task Update_SelectedLegacyArrayGroupSource_IsRejected()
+        {
+            var patch = new JsonPatchDocument<SyncJobPatch>();
+            patch.Replace(
+                syncJob => syncJob.Query,
+                "[{\"type\":\"GroupMembership\",\"source\":[\"22222222-2222-2222-2222-222222222222\"],\"identityTypes\":[\"users\"]}]");
+
+            var response = await CreateHandler().ExecuteAsync(UpdateRequest(patch));
+
+            Assert.AreEqual(HttpStatusCode.BadRequest, response.StatusCode);
+            Assert.AreEqual("InvalidGroupIdentitySelection", response.ErrorCode);
+            _jobs.Verify(
+                repository => repository.UpdateSyncJobsAsync(
+                    It.IsAny<IEnumerable<SyncJob>>(),
+                    It.IsAny<SyncStatus?>()),
+                Times.Never);
+        }
+
+        [TestMethod]
+        public async Task ScheduledNow_InvalidSelectedGroupSource_IsRejected()
+        {
+            var patch = new JsonPatchDocument<SyncJobPatch>();
+            patch.Replace(
+                syncJob => syncJob.Query,
+                "[{\"type\":\"GroupMembership\",\"source\":\"not-a-guid\",\"identityTypes\":[\"users\"]}]");
+
+            var response = await CreateHandler().ExecuteAsync(
+                ScheduledNowRequest(patch));
+
+            Assert.AreEqual(HttpStatusCode.BadRequest, response.StatusCode);
+            Assert.AreEqual("InvalidGroupIdentitySelection", response.ErrorCode);
+            _jobs.Verify(
+                repository => repository.UpdateSyncJobsAsync(
+                    It.IsAny<IEnumerable<SyncJob>>(),
+                    It.IsAny<SyncStatus?>()),
+                Times.Never);
+        }
+
+        [TestMethod]
+        public async Task ScheduledNow_EmptyQueryPatch_IsRejected()
+        {
+            var patch = new JsonPatchDocument<SyncJobPatch>();
+            patch.Replace(syncJob => syncJob.Query, "[]");
+
+            var response = await CreateHandler().ExecuteAsync(
+                ScheduledNowRequest(patch));
+
+            Assert.AreEqual(HttpStatusCode.BadRequest, response.StatusCode);
+            Assert.AreEqual("EmptyQueryIsNotAllowed", response.ErrorCode);
+            _jobs.Verify(
+                repository => repository.UpdateSyncJobsAsync(
+                    It.IsAny<IEnumerable<SyncJob>>(),
+                    It.IsAny<SyncStatus?>()),
+                Times.Never);
+        }
+
+        [TestMethod]
+        public async Task ScheduledNow_PatchWithoutQuery_DoesNotRevalidateStoredSelection()
+        {
+            const string storedInvalidSelection =
+                "[{\"type\":\"GroupMembership\",\"source\":\"not-a-guid\",\"identityTypes\":[\"users\"]}]";
+            _syncJob.Query = storedInvalidSelection;
+            var patch = new JsonPatchDocument<SyncJobPatch>();
+            patch.Replace(syncJob => syncJob.Period, 12);
+
+            var response = await CreateHandler().ExecuteAsync(
+                ScheduledNowRequest(patch));
+
+            Assert.AreEqual(HttpStatusCode.OK, response.StatusCode);
+            Assert.AreEqual(storedInvalidSelection, _syncJob.Query);
+            Assert.AreEqual(12, _syncJob.Period);
+            _jobs.Verify(
+                repository => repository.UpdateSyncJobsAsync(
+                    It.IsAny<IEnumerable<SyncJob>>(),
+                    It.IsAny<SyncStatus?>()),
+                Times.Once);
+        }
+
+        [TestMethod]
+        public async Task Update_ValidSelectedGroupSource_IsAccepted()
+        {
+            var patch = new JsonPatchDocument<SyncJobPatch>();
+            patch.Replace(
+                syncJob => syncJob.Query,
+                "[{\"type\":\"GroupMembership\",\"source\":\"22222222-2222-4222-8222-222222222222\",\"identityTypes\":[\"agents\"]}]");
+
+            var response = await CreateHandler().ExecuteAsync(UpdateRequest(patch));
+
+            Assert.AreEqual(HttpStatusCode.OK, response.StatusCode);
+            Assert.AreEqual(1, _enqueued.Count);
+            _jobs.Verify(
+                repository => repository.UpdateSyncJobsAsync(
+                    It.IsAny<IEnumerable<SyncJob>>(),
+                    It.IsAny<SyncStatus?>()),
+                Times.Once);
         }
 
         [TestMethod]

@@ -13,6 +13,7 @@ import type { ISourcePart } from '../../models/ISourcePart';
 import { SourcePartType } from '../../models/SourcePartType';
 import { DestinationType } from '../../models/DestinationType';
 import type { HRSourcePart, HRSourcePartSource, IdentityType } from '../../models/HRSourcePart';
+import type { GroupMembershipSourcePart } from '../../models/GroupMembershipSourcePart';
 
 type HRQuerySourceStubProps = {
   onSourceChange: (source: HRSourcePartSource, partId: string, title?: string) => void;
@@ -35,6 +36,14 @@ vi.mock('../HRQuerySource', () => ({
       }
     >
       Edit SQL filter
+    </button>
+  ),
+}));
+
+vi.mock('../GroupQuerySource', () => ({
+  GroupQuerySource: ({ onSourceChange }: { onSourceChange: (sourceId: string, title: string) => void }) => (
+    <button onClick={() => onSourceChange('22222222-2222-4222-8222-222222222222', 'Changed group')}>
+      Change group source
     </button>
   ),
 }));
@@ -80,10 +89,15 @@ const mismatchedTeamsChannelDestination = {
   channelName: 'Other Channel',
 };
 
-const groupPart = (): ISourcePart => ({
+const groupPart = (identityTypes?: IdentityType[]): ISourcePart => ({
   id: 'part-1',
   title: 'All Users in Group',
-  query: { type: SourcePartType.GroupMembership, source: '', exclusionary: false },
+  query: {
+    type: SourcePartType.GroupMembership,
+    source: '11111111-1111-4111-8111-111111111111',
+    exclusionary: false,
+    ...(identityTypes === undefined ? {} : { identityTypes }),
+  },
   isNew: false,
   isExpanded: true,
 });
@@ -224,6 +238,7 @@ describe('SourcePart — SQL identity compatibility', () => {
       manager: { id: 1234, depth: 2 },
       filter: "users.EmployeeType_Code = 'FTE' AND agents.BlueprintId = 'approved'",
     });
+
     expect(updated.title).toBe('Generated SQL title');
   });
 
@@ -265,5 +280,44 @@ describe('SourcePart — SQL identity compatibility', () => {
     const query = store.getState().manageMembership.sourceParts[0].query;
     expect(query.type).toBe(SourcePartType.GroupMembership);
     expect(query).not.toHaveProperty('identityTypes');
+  });
+});
+
+describe('SourcePart — group identity compatibility', () => {
+  it('preserves the exact selection when the group picker changes the source', () => {
+    const { store } = renderSourcePart(groupPart(['agents', 'users']), groupDestination);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Change group source' }));
+
+    const updated = store.getState().manageMembership.sourceParts[0];
+    expect((updated.query as GroupMembershipSourcePart).identityTypes).toEqual(['agents', 'users']);
+    expect((updated.query as GroupMembershipSourcePart).source).toBe('22222222-2222-4222-8222-222222222222');
+    expect(updated.title).toBe('Changed group');
+  });
+
+  it('does not synthesize identityTypes when the group picker changes a legacy part', () => {
+    const { store } = renderSourcePart(groupPart(), groupDestination);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Change group source' }));
+
+    expect(store.getState().manageMembership.sourceParts[0].query).not.toHaveProperty('identityTypes');
+  });
+
+  it('preserves the exact selection when inclusion changes', () => {
+    const { store } = renderSourcePart(groupPart(['users']), groupDestination);
+
+    fireEvent.click(screen.getByRole('radio', { name: 'Remove people that match this rule' }));
+
+    const query = store.getState().manageMembership.sourceParts[0].query as GroupMembershipSourcePart;
+    expect(query.exclusionary).toBe(true);
+    expect(query.identityTypes).toEqual(['users']);
+  });
+
+  it('does not render a visible identity selection control', () => {
+    renderSourcePart(groupPart(['agents']), groupDestination);
+
+    expect(screen.queryByText(/identity types?/i)).not.toBeInTheDocument();
+    expect(screen.queryByRole('checkbox', { name: /agents?|people|users/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('combobox', { name: /identity|agents?|people|users/i })).not.toBeInTheDocument();
   });
 });

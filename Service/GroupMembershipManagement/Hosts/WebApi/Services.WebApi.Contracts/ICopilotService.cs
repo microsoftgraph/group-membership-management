@@ -112,6 +112,12 @@ namespace Services.WebApi.Contracts
         /// For GroupMembership source type: the group's display name.
         /// </summary>
         public string? GroupName { get; set; }
+        /// <summary>
+        /// The identityTypes value already stored on this SQL or group source part.
+        /// Null means the property is omitted. Copilot cannot choose this value; deterministic query handling
+        /// may copy it from a matching earlier part.
+        /// </summary>
+        public List<string>? IdentityTypes { get; set; }
     }
 
     public class CopilotUserContext

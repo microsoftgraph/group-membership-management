@@ -116,6 +116,7 @@ export const SourcePartBase: React.FunctionComponent<SourcePartProps> = (props: 
       ...part,
       title: title,
       query: {
+        ...(part.query.type === SourcePartType.GroupMembership ? part.query : {}),
         type: SourcePartType.GroupMembership,
         source: sourceId,
         exclusionary: !isInclusionary,

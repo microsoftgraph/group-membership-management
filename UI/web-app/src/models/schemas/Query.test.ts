@@ -98,8 +98,84 @@ describe('identityTypes scope', () => {
   const ajv = new Ajv();
   const validate = ajv.compile(Query);
 
+  const groupPart = {
+    type: 'GroupMembership',
+    source: '123e4567-e89b-12d3-a456-426614174000',
+    exclusionary: false,
+  };
+
   it.each([
-    ['GroupMembership', '123e4567-e89b-12d3-a456-426614174000'],
+    ['omitted', undefined],
+    ['users only', ['users']],
+    ['agents only', ['agents']],
+    ['users then agents', ['users', 'agents']],
+    ['agents then users', ['agents', 'users']],
+  ])('accepts %s on a single-source GroupMembership part', (_description, identityTypes) => {
+    const part = identityTypes === undefined
+      ? { ...groupPart }
+      : { ...groupPart, identityTypes };
+
+    expect(validate([part])).toBe(true);
+  });
+
+  it.each([
+    ['an empty array', []],
+    ['duplicate values', ['users', 'users']],
+    ['wrong case', ['Users']],
+    ['an unsupported value', ['devices']],
+    ['a future SQL-only value', ['alternates']],
+    ['a scalar', 'users'],
+    ['null', null],
+    ['a non-string value', [42]],
+  ])('rejects %s on a GroupMembership part', (_description, identityTypes) => {
+    expect(validate([{ ...groupPart, identityTypes }])).toBe(false);
+  });
+
+  it('rejects identityTypes on a legacy array-source GroupMembership part', () => {
+    expect(validate([{
+      type: 'GroupMembership',
+      source: ['123e4567-e89b-12d3-a456-426614174000'],
+      identityTypes: ['users'],
+    }])).toBe(false);
+  });
+
+  it('keeps a legacy array-source GroupMembership part valid when the property is omitted', () => {
+    expect(validate([{
+      type: 'GroupMembership',
+      source: ['123e4567-e89b-12d3-a456-426614174000'],
+    }])).toBe(true);
+  });
+
+  it('accepts selected group and SQL membership parts in the same query', () => {
+    expect(validate([
+      {
+        ...groupPart,
+        identityTypes: ['users'],
+      },
+      {
+        ...sqlMembershipPart,
+        identityTypes: ['agents'],
+      },
+    ])).toBe(true);
+  });
+
+  it('rejects a wrong-case IdentityTypes property', () => {
+    expect(validate([{
+      ...groupPart,
+      IdentityTypes: ['users'],
+    }])).toBe(false);
+  });
+
+  it('leaves a nested identityTypes key in a legacy object source for server validation', () => {
+    expect(validate([{
+      type: 'GroupMembership',
+      source: {
+        identityTypes: ['agents'],
+      },
+    }])).toBe(true);
+  });
+
+  it.each([
     ['GroupOwnership', ['All']],
     ['PlaceMembership', 'building-1'],
     ['TeamsChannelMembership', { objectId: 'team-1', channelId: 'channel-1' }],

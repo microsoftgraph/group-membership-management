@@ -7,6 +7,7 @@ import { RootState } from './store';
 import { IChatMessage } from '../components/CopilotPanel/CopilotPanel.types';
 import { ISourcePart } from '../models/ISourcePart';
 import { HRSourcePart } from '../models/HRSourcePart';
+import { GroupMembershipSourcePart } from '../models/GroupMembershipSourcePart';
 import { SourcePartType } from '../models/SourcePartType';
 import { sendCopilotMessage, CopilotOperationSummary } from './copilot.api';
 import { selectIsAIOnboardingChat } from './roles.slice';
@@ -61,10 +62,18 @@ export function mergeResultingParts(existing: ISourcePart[], resulting: ISourceP
             }
         }
 
-        // Copilot does not handle identityTypes, so a matched part keeps the user's existing selection.
-        if (merged.query.type === SourcePartType.HR && prev.query.type === SourcePartType.HR) {
-            const existingIdentityTypes = (prev.query as HRSourcePart).identityTypes;
-            const nextQuery: HRSourcePart = { ...(merged.query as HRSourcePart) };
+        // Copilot cannot choose identityTypes, so a matched supported part keeps the user's exact selection.
+        const matchedSqlPart =
+            merged.query.type === SourcePartType.HR &&
+            prev.query.type === SourcePartType.HR;
+        const matchedGroupPart =
+            merged.query.type === SourcePartType.GroupMembership &&
+            prev.query.type === SourcePartType.GroupMembership;
+        if (matchedSqlPart || matchedGroupPart) {
+            const existingIdentityTypes = matchedSqlPart
+                ? (prev.query as HRSourcePart).identityTypes
+                : (prev.query as GroupMembershipSourcePart).identityTypes;
+            const nextQuery = { ...merged.query } as HRSourcePart | GroupMembershipSourcePart;
             if (existingIdentityTypes === undefined) {
                 delete nextQuery.identityTypes;
             } else {

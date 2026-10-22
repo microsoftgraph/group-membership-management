@@ -1,6 +1,7 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
+using Models;
 using Services.WebApi.Contracts;
 
 namespace Services.WebApi
@@ -13,6 +14,13 @@ namespace Services.WebApi
     /// </summary>
     public static class CopilotOperationApplier
     {
+        /// <summary>
+        /// The warning returned when a full Copilot rebuild finds matching earlier group parts whose explicit
+        /// identity selections do not agree. The rebuilt parts omit identityTypes so Copilot never chooses a value.
+        /// </summary>
+        public const string IdentitySelectionConflictWarning =
+            "Some group-source identity selections were not preserved because matching earlier parts disagreed. Review those group sources in advanced JSON before saving.";
+
         /// <summary>
         /// Source types Copilot can manipulate. Any other type (e.g., GroupOwnership, PlaceMembership,
         /// TeamsChannelMembership) is carried into the resulting query unchanged.
@@ -75,7 +83,28 @@ namespace Services.WebApi
                             var unsupported = current.Where(p => !IsSupported(p)).ToList();
                             var supportedNew = (op.Parts ?? new List<CopilotSourcePartResult>())
                                 .Where(p => p != null)
-                                .Select(p => Mint(p, idFactory))
+                                .Select(p =>
+                                {
+                                    p.IdentityTypes = null;
+
+                                    if (IsGroupMembership(p))
+                                    {
+                                        var selection = FindMatchingGroupSelection(
+                                            inbound,
+                                            p,
+                                            out var selectionConflict);
+                                        if (selectionConflict)
+                                        {
+                                            result.Warning = IdentitySelectionConflictWarning;
+                                        }
+                                        else if (selection != null)
+                                        {
+                                            p.IdentityTypes = new List<string>(selection);
+                                        }
+                                    }
+
+                                    return Mint(p, idFactory);
+                                })
                                 .ToList();
                             current = supportedNew.Concat(unsupported).ToList();
                             result.PreservedUnsupportedCount += unsupported.Count;
@@ -86,6 +115,7 @@ namespace Services.WebApi
                         {
                             if (op.Part != null)
                             {
+                                op.Part.IdentityTypes = null;
                                 var added = Mint(op.Part, idFactory);
                                 current.Add(added);
                                 result.AddCount++;
@@ -95,9 +125,15 @@ namespace Services.WebApi
                         }
                     case "remove":
                         {
+                            var canonicalPartId = inbound
+                                .First(p => string.Equals(
+                                    p.PartId,
+                                    op.PartId,
+                                    StringComparison.OrdinalIgnoreCase))
+                                .PartId;
                             current.RemoveAll(p => string.Equals(p.PartId, op.PartId, StringComparison.OrdinalIgnoreCase));
                             result.RemoveCount++;
-                            result.AppliedOperations.Add(new CopilotOperationSummary { Op = "remove", PartId = op.PartId });
+                            result.AppliedOperations.Add(new CopilotOperationSummary { Op = "remove", PartId = canonicalPartId });
                             break;
                         }
                     case "replace":
@@ -105,11 +141,18 @@ namespace Services.WebApi
                             var idx = current.FindIndex(p => string.Equals(p.PartId, op.PartId, StringComparison.OrdinalIgnoreCase));
                             if (idx >= 0 && op.Part != null)
                             {
+                                var replacedPart = current[idx];
                                 var replacement = op.Part;
-                                replacement.PartId = op.PartId!; // keep the same stable id
+                                replacement.IdentityTypes = null;
+                                if (SameSourceType(replacedPart, replacement) &&
+                                    replacedPart.IdentityTypes != null)
+                                {
+                                    replacement.IdentityTypes = new List<string>(replacedPart.IdentityTypes);
+                                }
+                                replacement.PartId = replacedPart.PartId;
                                 current[idx] = replacement;
                                 result.ReplaceCount++;
-                                result.AppliedOperations.Add(new CopilotOperationSummary { Op = "replace", PartId = op.PartId });
+                                result.AppliedOperations.Add(new CopilotOperationSummary { Op = "replace", PartId = replacedPart.PartId });
                             }
                             break;
                         }
@@ -134,6 +177,86 @@ namespace Services.WebApi
         private static bool IsTargetedOp(string? op) =>
             string.Equals(op, "remove", StringComparison.OrdinalIgnoreCase) ||
             string.Equals(op, "replace", StringComparison.OrdinalIgnoreCase);
+
+        private static bool IsGroupMembership(CopilotSourcePartResult part) =>
+            string.Equals(
+                NormalizeSourceType(part.SourceType),
+                "GroupMembership",
+                StringComparison.OrdinalIgnoreCase);
+
+        private static bool SameSourceType(
+            CopilotSourcePartResult left,
+            CopilotSourcePartResult right) =>
+            string.Equals(
+                NormalizeSourceType(left.SourceType),
+                NormalizeSourceType(right.SourceType),
+                StringComparison.OrdinalIgnoreCase);
+
+        private static string NormalizeSourceType(string? sourceType) =>
+            string.IsNullOrWhiteSpace(sourceType) ? "SqlMembership" : sourceType;
+
+        private static IReadOnlyList<string>? FindMatchingGroupSelection(
+            IReadOnlyList<CopilotSourcePartResult> inbound,
+            CopilotSourcePartResult rebuiltPart,
+            out bool conflict)
+        {
+            conflict = false;
+            if (string.IsNullOrWhiteSpace(rebuiltPart.GroupId))
+            {
+                return null;
+            }
+
+            var matchingParts = inbound
+                .Where(IsGroupMembership)
+                .Where(part =>
+                    !string.IsNullOrWhiteSpace(part.GroupId) &&
+                    string.Equals(part.GroupId, rebuiltPart.GroupId, StringComparison.OrdinalIgnoreCase) &&
+                    part.IsExclusion == rebuiltPart.IsExclusion)
+                .ToList();
+
+            if (matchingParts.Count == 0)
+            {
+                return null;
+            }
+
+            var earliestSelection = matchingParts[0].IdentityTypes;
+            for (var index = 1; index < matchingParts.Count; index++)
+            {
+                if (!SelectionsAgree(earliestSelection, matchingParts[index].IdentityTypes))
+                {
+                    conflict = true;
+                    return null;
+                }
+            }
+
+            return earliestSelection == null
+                ? null
+                : new List<string>(earliestSelection);
+        }
+
+        private static bool SelectionsAgree(
+            IReadOnlyList<string>? left,
+            IReadOnlyList<string>? right)
+        {
+            if (left == null || right == null)
+            {
+                return left == null && right == null;
+            }
+
+            return IdentityTypeSet.TryResolve(
+                    left,
+                    IdentityTypeSet.GroupDefault,
+                    IdentityTypeSet.GroupDefault,
+                    out var leftSelection,
+                    out _) &&
+                IdentityTypeSet.TryResolve(
+                    right,
+                    IdentityTypeSet.GroupDefault,
+                    IdentityTypeSet.GroupDefault,
+                    out var rightSelection,
+                    out _) &&
+                leftSelection == rightSelection;
+        }
 
         private static CopilotSourcePartResult Mint(CopilotSourcePartResult part, Func<string> idFactory)
         {

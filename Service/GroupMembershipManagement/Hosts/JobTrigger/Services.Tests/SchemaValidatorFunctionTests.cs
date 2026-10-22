@@ -27,7 +27,7 @@ namespace Services.Tests
             _jsonSchemaProvider = SchemaProviderFactory.CreateJsonSchemaProvider();
         }
 
-        [TestMethod]
+        [DataTestMethod]
         public async Task TestValidQueriesAsync()
         {
             var schemaValidatorFunction = new SchemaValidatorFunction(NullLogger<SchemaValidatorFunction>.Instance, _jobTriggerService.Object, _jsonSchemaProvider);
@@ -78,7 +78,6 @@ namespace Services.Tests
         }
 
         [TestMethod]
-        [DataRow("[{\"type\":\"GroupMembership\",\"source\":\"00000000-0000-0000-0000-000000000000\",\"identityTypes\":[\"users\"]}]")]
         [DataRow("[{\"type\":\"SqlMembership\",\"source\":{\"filter\":\"Department = 'Sales'\"},\"identityTypes\":[]}]")]
         [DataRow("[{\"type\":\"SqlMembership\",\"source\":{\"filter\":\"Department = 'Sales'\"},\"identityTypes\":[\"devices\"]}]")]
         [DataRow("[{\"type\":\"SqlMembership\",\"source\":{\"filter\":\"Department = 'Sales'\"},\"identityTypes\":[\"users\",\"users\"]}]")]
@@ -154,27 +153,125 @@ namespace Services.Tests
         }
 
         [TestMethod]
-        public async Task IdentityTypes_RejectsNonSqlParts()
+        public async Task IdentityTypes_AcceptsGroupSelections()
         {
-            var nonSqlQueries = new[]
+            foreach (var selection in new[] { "[\"users\"]", "[\"agents\"]", "[\"users\",\"agents\"]", "[\"agents\",\"users\"]" })
             {
-                "[{\"type\":\"GroupMembership\",\"source\":\"00000000-0000-0000-0000-000000000000\",\"identityTypes\":[\"users\"]}]",
-                "[{\"type\":\"GroupOwnership\",\"source\":[\"GroupMembership\"],\"identityTypes\":[\"agents\"]}]",
-                "[{\"type\":\"GroupMembership\",\"source\":\"00000000-0000-0000-0000-000000000000\",\"identityTypes\":[\"users\"]},{\"type\":\"SqlMembership\",\"source\":{\"manager\":{\"id\":1}},\"identityTypes\":[\"users\"]}]",
-            };
+                var query = "[{\"type\":\"GroupMembership\",\"source\":\"00000000-0000-4000-8000-000000000001\",\"identityTypes\":" + selection + "}]";
 
-            foreach (var query in nonSqlQueries)
-            {
-                Assert.IsFalse(
+                Assert.IsTrue(
                     await ValidateAsync(query),
-                    "identityTypes must remain forbidden on non-SQL parts");
+                    $"expected {selection} to be accepted on a single-source group part");
             }
         }
 
         [TestMethod]
-        public async Task IdentityTypes_FailsWhenQuerySchemaIsMissing()
+        public async Task IdentityTypes_RejectsInvalidGroupSelections()
         {
-            var selectedQuery = "[{\"type\":\"SqlMembership\",\"source\":{\"manager\":{\"id\":1}},\"identityTypes\":[\"agents\"]}]";
+            var invalidSelections = new[]
+            {
+                "[]",
+                "null",
+                "\"users\"",
+                "[\"users\",\"users\"]",
+                "[\"Users\"]",
+                "[\"devices\"]",
+                "[\"alternates\"]",
+                "[1]",
+            };
+
+            foreach (var selection in invalidSelections)
+            {
+                var query = "[{\"type\":\"GroupMembership\",\"source\":\"00000000-0000-4000-8000-000000000001\",\"identityTypes\":" + selection + "}]";
+
+                Assert.IsFalse(
+                    await ValidateAsync(query),
+                    $"expected {selection} to be rejected on a group part");
+            }
+        }
+
+        [TestMethod]
+        [DataRow("[{\"type\":\"GroupMembership\",\"source\":\"00000000-0000-4000-8000-000000000001\",\"IdentityTypes\":[\"users\"]}]")]
+        [DataRow("[{\"type\":\"GroupMembership\",\"source\":{\"identityTypes\":[\"agents\"]}}]")]
+        [DataRow("[{\"type\":\"GroupMembership\",\"source\":\"not-a-guid\",\"identityTypes\":[\"users\"]}]")]
+        [DataRow("[{\"type\":\"GroupMembership\",\"source\":\"00000000-0000-4000-8000-00000000000A\",\"identityTypes\":[\"users\"]}]")]
+        [DataRow("[{\"type\":\"GroupMembership\",\"source\":\"00000000-0000-4000-8000-000000000001\\n\",\"identityTypes\":[\"users\"]}]")]
+        public async Task IdentityTypes_RejectsInvalidSelectedGroupSources(string query)
+        {
+            Assert.IsFalse(await ValidateAsync(query));
+        }
+
+        [TestMethod]
+        public async Task IdentityTypes_RejectsUnsupportedParts()
+        {
+            var unsupportedQueries = new[]
+            {
+                "[{\"type\":\"GroupOwnership\",\"source\":[\"GroupMembership\"],\"identityTypes\":[\"agents\"]}]",
+                "[{\"type\":\"PlaceMembership\",\"source\":\"building-1\",\"identityTypes\":[\"users\"]}]",
+                "[{\"type\":\"TeamsChannelMembership\",\"source\":{\"objectId\":\"team-1\",\"channelId\":\"channel-1\"},\"identityTypes\":[\"users\"]}]",
+            };
+
+            foreach (var query in unsupportedQueries)
+            {
+                Assert.IsFalse(
+                    await ValidateAsync(query),
+                    "identityTypes must remain forbidden on unsupported parts");
+            }
+        }
+
+        [TestMethod]
+        public async Task IdentityTypes_AcceptsMixedGroupAndSqlSelections()
+        {
+            const string query =
+                "[{\"type\":\"GroupMembership\",\"source\":\"00000000-0000-4000-8000-000000000001\",\"identityTypes\":[\"users\"]}," +
+                "{\"type\":\"SqlMembership\",\"source\":{\"manager\":{\"id\":1}},\"identityTypes\":[\"agents\"]}]";
+
+            Assert.IsTrue(await ValidateAsync(query));
+        }
+
+        [TestMethod]
+        public async Task IdentityTypes_ValidationPreservesTheOriginalQuery()
+        {
+            const string query =
+                "[{\"type\":\"GroupMembership\",\"source\":\"00000000-0000-4000-8000-000000000001\",\"identityTypes\":[\"agents\",\"users\"],\"exclusionary\":true}," +
+                "{\"type\":\"SqlMembership\",\"source\":{\"manager\":{\"id\":1}},\"identityTypes\":[\"agents\"]}]";
+            var syncJob = new SyncJob
+            {
+                RunId = Guid.Empty,
+                Query = query,
+            };
+            var schemaValidatorFunction = new SchemaValidatorFunction(
+                NullLogger<SchemaValidatorFunction>.Instance,
+                _jobTriggerService.Object,
+                _jsonSchemaProvider);
+
+            Assert.IsTrue(await schemaValidatorFunction.ValidateSchemasAsync(syncJob));
+            Assert.AreEqual(query, syncJob.Query);
+        }
+
+        [TestMethod]
+        public async Task IdentityTypes_RejectsSelectionOnLegacyArrayGroupSource()
+        {
+            const string query =
+                "[{\"type\":\"GroupMembership\",\"source\":[\"00000000-0000-0000-0000-000000000000\"],\"identityTypes\":[\"users\"]}]";
+
+            Assert.IsFalse(await ValidateAsync(query));
+        }
+
+        [TestMethod]
+        public async Task IdentityTypes_LegacyArrayGroupSourceWithoutSelectionRemainsValid()
+        {
+            const string query =
+                "[{\"type\":\"GroupMembership\",\"source\":[\"00000000-0000-0000-0000-000000000000\"]}]";
+
+            Assert.IsTrue(await ValidateAsync(query));
+        }
+
+        [TestMethod]
+        [DataRow("[{\"type\":\"GroupMembership\",\"source\":\"00000000-0000-4000-8000-000000000001\",\"identityTypes\":[\"agents\"]}]")]
+        [DataRow("[{\"type\":\"SqlMembership\",\"source\":{\"manager\":{\"id\":1}},\"identityTypes\":[\"agents\"]}]")]
+        public async Task IdentityTypes_FailsWhenQuerySchemaIsMissing(string selectedQuery)
+        {
             var legacyQuery = "[{\"type\":\"GroupMembership\",\"source\":\"00000000-0000-0000-0000-000000000000\"}]";
 
             var emptyProvider = new JsonSchemaProvider();
@@ -190,6 +287,15 @@ namespace Services.Tests
                 await ValidateAsync(selectedQuery, providerWithoutQuerySchema));
             Assert.IsTrue(
                 await ValidateAsync(legacyQuery, providerWithoutQuerySchema));
+        }
+
+        [TestMethod]
+        public async Task IdentityTypes_RejectsInvalidGroupSourceIdentifier()
+        {
+            const string query =
+                "[{\"type\":\"GroupMembership\",\"source\":\"not-a-guid\",\"identityTypes\":[\"users\"]}]";
+
+            Assert.IsFalse(await ValidateAsync(query));
         }
 
         [TestMethod]
@@ -229,6 +335,8 @@ namespace Services.Tests
             {
                 "[{\"type\":\"SqlMembership\",\"source\":{\"manager\":{\"id\":1},\"identityTypes\":[\"agents\"]}}]",
                 "[{\"type\":\"SqlMembership\",\"identityTypes\":[\"users\"],\"source\":{\"manager\":{\"id\":1},\"identityTypes\":[\"agents\"]}}]",
+                "[{\"type\":\"GroupMembership\",\"source\":{\"value\":\"00000000-0000-0000-0000-000000000000\",\"identityTypes\":[\"agents\"]}}]",
+                "[{\"type\":\"GroupMembership\",\"source\":\"00000000-0000-4000-8000-000000000001\",\"identityTypes\":[\"users\"],\"identityTypes\":[\"agents\"]}]",
             };
 
             foreach (var query in misplacedQueries)

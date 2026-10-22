@@ -337,5 +337,46 @@ namespace WebApi.Tests
             // No TeamsChannel source, so validation is a no-op; the request proceeds to the owner gate.
             Assert.AreEqual(HttpStatusCode.Forbidden, response.StatusCode);
         }
+
+        [TestMethod]
+        public async Task RejectsSelectedLegacyArrayGroupSource()
+        {
+            var selectedLegacySource =
+                $@"{{""type"":""GroupMembership"",""source"":[""{OtherGroupSource}""],""identityTypes"":[""agents""]}}";
+            var request = BuildRequest(selectedLegacySource, GroupDestination());
+
+            var response = await _handler.ExecuteAsync(request);
+
+            Assert.AreEqual(HttpStatusCode.BadRequest, response.StatusCode);
+            Assert.AreEqual("InvalidGroupIdentitySelection", response.ErrorCode);
+            _syncJobRepository.Verify(
+                repository => repository.CreateSyncJobAsync(It.IsAny<SyncJobEntity>()),
+                Times.Never);
+        }
+
+        [TestMethod]
+        public async Task AcceptsValidSelectedGroupSourceThroughGroupValidation()
+        {
+            _graphGroupRepository
+                .Setup(repository => repository.GetUserByUpnOrIdAsync(
+                    It.IsAny<string>(),
+                    It.IsAny<bool>()))
+                .ReturnsAsync(new AzureADUser { ObjectId = Guid.NewGuid() });
+            _graphGroupRepository
+                .Setup(repository => repository.IsEmailRecipientOwnerOfGroupAsync(
+                    It.IsAny<string>(),
+                    It.IsAny<Guid>()))
+                .ReturnsAsync(false);
+            var selectedGroupSource =
+                @"{""type"":""GroupMembership"",""source"":""00000000-0000-4000-8000-000000000001"",""identityTypes"":[""agents""]}";
+            var request = BuildRequest(selectedGroupSource, GroupDestination());
+
+            var response = await _handler.ExecuteAsync(request);
+
+            Assert.AreEqual(
+                HttpStatusCode.Forbidden,
+                response.StatusCode,
+                "A valid selection must pass group validation and continue to the existing owner gate.");
+        }
     }
 }

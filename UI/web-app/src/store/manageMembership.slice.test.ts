@@ -57,6 +57,10 @@ import { createGroup } from './groups.api';
 import { SourcePartType } from '../models/SourcePartType';
 import { OnboardingStatus } from '../models/GroupOnboardingStatus';
 import type { ISourcePart } from '../models/ISourcePart';
+import type { GroupMembershipSourcePart } from '../models/GroupMembershipSourcePart';
+import type { HRSourcePart } from '../models/HRSourcePart';
+import type { Job } from '../models/Job';
+import type { SourcePartQuery } from '../models/SourcePartQuery';
 
 const initial: ManageMembershipState = manageMembershipReducer(undefined, { type: '@@INIT' });
 
@@ -66,6 +70,31 @@ const makeSourcePart = (id: string, type = SourcePartType.GroupMembership, title
   isNew: false,
   isExpanded: false,
   query: { type, source: '12345678-1234-1234-1234-123456789abc' } as any,
+});
+
+const makeJob = (query: SourcePartQuery[], title: string): Job => ({
+  syncJobId: 'job-1',
+  targetGroupId: '123e4567-e89b-12d3-a456-426614174001',
+  targetChannelId: '',
+  targetDestinationType: '',
+  targetGroupName: '',
+  targetChannelName: '',
+  email: '',
+  startDate: '',
+  lastSuccessfulStartTime: '',
+  lastSuccessfulRunTime: '',
+  query: JSON.stringify(query),
+  titles: [{ partId: 'part-1', name: title }],
+  actionRequired: '',
+  enabledOrNot: true,
+  status: '',
+  period: 0,
+  arrow: '',
+  estimatedNextRunTime: '',
+  thresholdPercentageForAdditions: 0,
+  thresholdPercentageForRemovals: 0,
+  endpoints: [],
+  requestor: '',
 });
 
 const buildRoot = (overrides: Partial<ManageMembershipState> = {}) =>
@@ -522,7 +551,7 @@ describe('buildCompositeQuery', () => {
   });
 
   it('preserves the exact SQL identity selection and qualified filter', () => {
-    const query = {
+    const query: HRSourcePart = {
       type: SourcePartType.HR,
       source: {
         filter: "users.EmployeeType_Code = 'FTE' AND agents.BlueprintId = 'approved'",
@@ -530,7 +559,19 @@ describe('buildCompositeQuery', () => {
       exclusionary: false,
       identityTypes: ['agents', 'users'],
     };
-    const result = buildCompositeQuery([{ ...makeSourcePart('p1'), query } as any]);
+    const result = buildCompositeQuery([{ ...makeSourcePart('p1'), query }]);
+
+    expect(result[0]).toEqual(query);
+  });
+
+  it('preserves the exact group identity selection', () => {
+    const query: GroupMembershipSourcePart = {
+      type: SourcePartType.GroupMembership,
+      source: '123e4567-e89b-12d3-a456-426614174000',
+      exclusionary: true,
+      identityTypes: ['agents', 'users'],
+    };
+    const result = buildCompositeQuery([{ ...makeSourcePart('p1'), query }]);
 
     expect(result[0]).toEqual(query);
   });
@@ -538,7 +579,7 @@ describe('buildCompositeQuery', () => {
 
 describe('setJobDetailsForExistingJob', () => {
   it('loads and reprojects the exact SQL identity selection', () => {
-    const query = [{
+    const query: HRSourcePart[] = [{
       type: SourcePartType.HR,
       source: {
         filter: "users.EmployeeType_Code = 'FTE' AND agents.BlueprintId = 'approved'",
@@ -546,10 +587,22 @@ describe('setJobDetailsForExistingJob', () => {
       exclusionary: false,
       identityTypes: ['users', 'agents'],
     }];
-    const job = {
-      query: JSON.stringify(query),
-      titles: [{ partId: 'part-1', name: 'SQL rule' }],
-    } as any;
+    const job = makeJob(query, 'SQL rule');
+
+    const state = manageMembershipReducer(initial, setJobDetailsForExistingJob(job));
+
+    expect(state.sourceParts[0].query).toEqual(query[0]);
+    expect(state.compositeQuery).toEqual(query);
+  });
+
+  it('loads and reprojects the exact group identity selection', () => {
+    const query: GroupMembershipSourcePart[] = [{
+      type: SourcePartType.GroupMembership,
+      source: '123e4567-e89b-12d3-a456-426614174000',
+      exclusionary: false,
+      identityTypes: ['users', 'agents'],
+    }];
+    const job = makeJob(query, 'Group rule');
 
     const state = manageMembershipReducer(initial, setJobDetailsForExistingJob(job));
 

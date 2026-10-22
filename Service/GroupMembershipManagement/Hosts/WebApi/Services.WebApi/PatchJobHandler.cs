@@ -517,7 +517,10 @@ namespace Services.WebApi
 
             var response = new PatchJobResponse();
 
-            if(request.ChangeReason == SyncJobChangeReason.Update.ToString() || request.ChangeReason == SyncJobChangeReason.ScheduledNow.ToString())
+            var appliesPatchDocument =
+                request.ChangeReason == SyncJobChangeReason.Update.ToString()
+                || request.ChangeReason == SyncJobChangeReason.ScheduledNow.ToString();
+            if (appliesPatchDocument)
             {
                 try
                 {
@@ -531,7 +534,7 @@ namespace Services.WebApi
             }
             syncJobToPatch.Status = status;
 
-            var updatesQuery = request.ChangeReason == SyncJobChangeReason.Update.ToString()
+            var updatesQuery = appliesPatchDocument
                 && request.PatchDocument.Operations.Any(operation =>
                     string.Equals(operation.path, "/Query", StringComparison.OrdinalIgnoreCase));
             if (updatesQuery && IsEmptyQuery(syncJobToPatch.Query))
@@ -553,6 +556,15 @@ namespace Services.WebApi
 
             if (updatesQuery)
             {
+                var groupIdentitySelectionError =
+                    GroupIdentitySelectionValidator.Validate(updatedSyncJob.Query);
+                if (groupIdentitySelectionError != null)
+                {
+                    response.StatusCode = HttpStatusCode.BadRequest;
+                    response.ErrorCode = groupIdentitySelectionError.ErrorCode;
+                    return response;
+                }
+
                 var teamsChannelSourceError = TeamsChannelSourcePartValidator.Validate(updatedSyncJob);
                 if (teamsChannelSourceError != null)
                 {

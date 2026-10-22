@@ -13,8 +13,31 @@
     },
     "exclusionary": {
       "type": "boolean"
+    },
+    "identityTypes": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "enum": ["users", "agents"]
+      }
     }
   },
   "required": [ "type", "source" ],
+  "anyOf": [
+    {
+      "not": {
+        "required": ["identityTypes"]
+      }
+    },
+    {
+      "properties": {
+        "source": {
+          "type": "string"
+        }
+      }
+    }
+  ],
   "additionalProperties": false
 }

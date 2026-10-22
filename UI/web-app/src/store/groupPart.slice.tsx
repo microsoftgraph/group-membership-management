@@ -31,6 +31,9 @@ export const groupPartSlice = createSlice({
   },
   extraReducers: (builder) => {
     builder.addCase(searchDestinations.fulfilled, (state, action) => {
+      if (!Array.isArray(action.payload)) {
+        return;
+      }
       state.searchResults = action.payload;
       if (!state.resolvedGroupsById) {
         state.resolvedGroupsById = {};

@@ -122,6 +122,39 @@ namespace Models
             FindMisplacedSelection(queryPart) != null;
 
         /// <summary>
+        /// Checks whether the JSON text of a query part puts identityTypes anywhere other than one exactly-cased
+        /// top-level property. For example, {"type":"GroupMembership","IdentityTypes":["agents"]}, a nested
+        /// identityTypes property, or a repeated identityTypes property returns true. A valid top-level property
+        /// and a part with no identityTypes return false.
+        /// </summary>
+        /// <param name="queryPartJson">
+        /// The JSON text of one query part. Null, empty, whitespace-only, and valid non-object JSON return false.
+        /// Invalid JSON, text nested more than 64 levels deep, and unreadable property names return true because
+        /// their placement cannot be validated.
+        /// </param>
+        /// <returns>True when identityTypes is misplaced or the text cannot be safely inspected; otherwise false.</returns>
+        public static bool IsMisplaced(string queryPartJson)
+        {
+            if (string.IsNullOrWhiteSpace(queryPartJson))
+            {
+                return false;
+            }
+
+            try
+            {
+                using var document = JsonDocument.Parse(queryPartJson, _documentOptions);
+                return IsMisplaced(document.RootElement);
+            }
+            catch (Exception exception) when (
+                exception is JsonException ||
+                exception is ArgumentException ||
+                exception is InvalidOperationException)
+            {
+                return true;
+            }
+        }
+
+        /// <summary>
         /// Works out which identity types one query part selects, from the part's JSON text.
         /// <list type="bullet">
         /// <item>{"type":"SqlMembership","identityTypes":["users","agents"]} selects users and agents.</item>
@@ -152,6 +185,41 @@ namespace Models
             out IdentityTypeSet selection,
             out string error)
         {
+            return TryParse(
+                queryPartJson,
+                whenOmitted,
+                IdentityTypeSet.All,
+                out selection,
+                out error);
+        }
+
+        /// <summary>
+        /// Works out which allowed identity types one query part selects from its JSON text.
+        /// For example, with <see cref="IdentityTypeSet.UsersOnly"/> allowed,
+        /// {"type":"GroupMembership","identityTypes":["users"]} succeeds and the same part with ["agents"] fails.
+        /// {"type":"GroupMembership"} returns <paramref name="whenOmitted"/>.
+        /// </summary>
+        /// <param name="queryPartJson">
+        /// The JSON text of one query part. Null, empty, whitespace-only, invalid JSON, non-object JSON, text
+        /// nested more than 64 levels deep, misplaced or repeated identityTypes, and invalid property values fail.
+        /// </param>
+        /// <param name="whenOmitted">
+        /// The set returned unchanged when the part has no identityTypes property, even when it contains a type
+        /// not present in <paramref name="allowedTypes"/>.
+        /// </param>
+        /// <param name="allowedTypes">
+        /// The identity types accepted when the property is present. An empty set rejects every explicit list.
+        /// </param>
+        /// <param name="selection">The resolved set on success; otherwise the default value.</param>
+        /// <param name="error">Null on success; otherwise a message describing the invalid input.</param>
+        /// <returns>True when the part omits the property or contains a valid allowed selection; otherwise false.</returns>
+        public static bool TryParse(
+            string queryPartJson,
+            IdentityTypeSet whenOmitted,
+            IdentityTypeSet allowedTypes,
+            out IdentityTypeSet selection,
+            out string error)
+        {
             selection = default;
             error = null;
 
@@ -167,6 +235,7 @@ namespace Models
                 return TryParse(
                     document.RootElement,
                     whenOmitted,
+                    allowedTypes,
                     out selection,
                     out error);
             }
@@ -210,6 +279,41 @@ namespace Models
             out IdentityTypeSet selection,
             out string error)
         {
+            return TryParse(
+                queryPart,
+                whenOmitted,
+                IdentityTypeSet.All,
+                out selection,
+                out error);
+        }
+
+        /// <summary>
+        /// Works out which allowed identity types an already-parsed query part selects.
+        /// For example, with <see cref="IdentityTypeSet.UsersOnly"/> allowed, a part containing
+        /// "identityTypes":["users"] succeeds and one containing "identityTypes":["agents"] fails. A part with no
+        /// identityTypes property returns <paramref name="whenOmitted"/>.
+        /// </summary>
+        /// <param name="queryPart">
+        /// One parsed query part. Values other than a JSON object, misplaced or repeated identityTypes, and
+        /// invalid property values fail.
+        /// </param>
+        /// <param name="whenOmitted">
+        /// The set returned unchanged when the part has no identityTypes property, even when it contains a type
+        /// not present in <paramref name="allowedTypes"/>.
+        /// </param>
+        /// <param name="allowedTypes">
+        /// The identity types accepted when the property is present. An empty set rejects every explicit list.
+        /// </param>
+        /// <param name="selection">The resolved set on success; otherwise the default value.</param>
+        /// <param name="error">Null on success; otherwise a message describing the invalid input.</param>
+        /// <returns>True when the part omits the property or contains a valid allowed selection; otherwise false.</returns>
+        public static bool TryParse(
+            JsonElement queryPart,
+            IdentityTypeSet whenOmitted,
+            IdentityTypeSet allowedTypes,
+            out IdentityTypeSet selection,
+            out string error)
+        {
             selection = default;
             error = null;
 
@@ -233,7 +337,7 @@ namespace Models
                 return true;
             }
 
-            return TryParseProperty(rawSelection, out selection, out error);
+            return TryParseProperty(rawSelection, allowedTypes, out selection, out error);
         }
 
         /// <summary>
@@ -253,6 +357,36 @@ namespace Models
         /// <returns>True when the value is a valid list.</returns>
         public static bool TryParseProperty(
             JsonElement rawSelection,
+            out IdentityTypeSet selection,
+            out string error)
+        {
+            return TryParseProperty(
+                rawSelection,
+                IdentityTypeSet.All,
+                out selection,
+                out error);
+        }
+
+        /// <summary>
+        /// Works out which allowed identity types a parsed identityTypes value selects.
+        /// For example, with <see cref="IdentityTypeSet.UsersOnly"/> allowed, ["users"] succeeds and ["agents"]
+        /// fails. The value must be a nonempty array of unique, lower-case strings from
+        /// <paramref name="allowedTypes"/>.
+        /// </summary>
+        /// <param name="rawSelection">
+        /// The parsed value of an existing identityTypes property. Null, scalars, objects, empty arrays,
+        /// non-string or undecodable entries, null or empty names, wrong-case or unknown names, duplicates, and
+        /// values outside the allowed set fail.
+        /// </param>
+        /// <param name="allowedTypes">
+        /// The identity types accepted in the array. An empty set rejects every explicit list.
+        /// </param>
+        /// <param name="selection">The resolved set on success; otherwise the default value.</param>
+        /// <param name="error">Null on success; otherwise a message describing the invalid value.</param>
+        /// <returns>True when the value is a valid allowed selection; otherwise false.</returns>
+        public static bool TryParseProperty(
+            JsonElement rawSelection,
+            IdentityTypeSet allowedTypes,
             out IdentityTypeSet selection,
             out string error)
         {
@@ -295,6 +429,7 @@ namespace Models
             return IdentityTypeSet.TryResolve(
                 typeNames,
                 default,
+                allowedTypes,
                 out selection,
                 out error);
         }

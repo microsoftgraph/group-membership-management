@@ -31,6 +31,21 @@ namespace WebApi.Tests
         }
 
         [TestMethod]
+        public void OperationResponseSchema_DoesNotExposeIdentityTypes()
+        {
+            using var doc = JsonDocument.Parse(CopilotPrompts.OperationResponseJsonSchema);
+            var sourcePart = doc.RootElement
+                .GetProperty("$defs")
+                .GetProperty("sourcePart");
+
+            Assert.IsFalse(sourcePart.GetProperty("additionalProperties").GetBoolean());
+            Assert.IsFalse(
+                sourcePart
+                    .GetProperty("properties")
+                    .TryGetProperty("identityTypes", out _));
+        }
+
+        [TestMethod]
         public void SingleHrFilter_DeserializesToOneAddOperation()
         {
             var json = @"{

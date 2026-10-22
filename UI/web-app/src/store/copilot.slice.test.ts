@@ -23,6 +23,7 @@ import { sendCopilotMessage } from './copilot.api';
 import { IChatMessage } from '../components/CopilotPanel/CopilotPanel.types';
 import { ISourcePart } from '../models/ISourcePart';
 import { HRSourcePart } from '../models/HRSourcePart';
+import { GroupMembershipSourcePart } from '../models/GroupMembershipSourcePart';
 import { SourcePartType } from '../models/SourcePartType';
 import { RootState } from './store';
 
@@ -438,6 +439,65 @@ describe('copilot.slice', () => {
           identityTypes: ['users'],
         },
       })];
+
+      const merged = mergeResultingParts(existing, resulting);
+
+      expect(merged[0].query).not.toHaveProperty('identityTypes');
+    });
+
+    it('preserves the exact group identity selection on a matched Copilot rewrite', () => {
+      const existing: ISourcePart[] = [{
+        id: 'group-a',
+        title: 'Original group',
+        query: {
+          type: SourcePartType.GroupMembership,
+          source: '11111111-1111-4111-8111-111111111111',
+          exclusionary: false,
+          identityTypes: ['agents', 'users'],
+        },
+        isNew: false,
+        isExpanded: true,
+      }];
+      const resulting: ISourcePart[] = [{
+        id: 'GROUP-A',
+        title: 'Renamed group',
+        query: {
+          type: SourcePartType.GroupMembership,
+          source: '11111111-1111-4111-8111-111111111111',
+          exclusionary: false,
+        },
+        isNew: true,
+        isExpanded: false,
+      }];
+
+      const merged = mergeResultingParts(existing, resulting);
+
+      expect(merged[0].id).toBe('group-a');
+      expect(merged[0].title).toBe('Renamed group');
+      expect((merged[0].query as GroupMembershipSourcePart).identityTypes).toEqual(['agents', 'users']);
+    });
+
+    it('does not synthesize identityTypes for a matched legacy group part', () => {
+      const existing: ISourcePart[] = [{
+        id: 'group-a',
+        title: 'Original group',
+        query: {
+          type: SourcePartType.GroupMembership,
+          source: '11111111-1111-4111-8111-111111111111',
+          exclusionary: false,
+        },
+        isNew: false,
+        isExpanded: false,
+      }];
+      const resulting: ISourcePart[] = [{
+        ...existing[0],
+        query: {
+          type: SourcePartType.GroupMembership,
+          source: '11111111-1111-4111-8111-111111111111',
+          exclusionary: false,
+          identityTypes: ['users'],
+        },
+      }];
 
       const merged = mergeResultingParts(existing, resulting);
 

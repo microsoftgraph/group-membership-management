@@ -73,6 +73,16 @@ namespace Services
             {
                 var newSyncJobEntity = MapSyncJobDTOtoEntity(request.NewSyncJob);
 
+                var groupIdentitySelectionError =
+                    GroupIdentitySelectionValidator.Validate(newSyncJobEntity.Query);
+                if (groupIdentitySelectionError != null)
+                {
+                    response.StatusCode = HttpStatusCode.BadRequest;
+                    response.ErrorCode = groupIdentitySelectionError.ErrorCode;
+                    response.Message = groupIdentitySelectionError.Message;
+                    return response;
+                }
+
                 // Validate TeamsChannel jobs for a channel id and exact duplicate destination.
                 if (newSyncJobEntity.MembershipType == MembershipTypes.TeamsChannelMembership.ToString())
                 {

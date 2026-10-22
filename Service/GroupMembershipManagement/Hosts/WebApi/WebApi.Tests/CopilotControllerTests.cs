@@ -114,7 +114,8 @@ namespace WebApi.Tests
                         Filter = "category_code = 'value1'",
                         Title = "Sample Title",
                         IsExclusion = false,
-                        UseOrgStructure = false
+                        UseOrgStructure = false,
+                        IdentityTypes = new List<string> { "agents" }
                     }
                 },
                 AppliedOperations = new List<CopilotOperationSummary>
@@ -137,6 +138,9 @@ namespace WebApi.Tests
             Assert.AreEqual(1, dto.ResultingQuery.Count);
             Assert.AreEqual("category_code = 'value1'", dto.ResultingQuery[0].Filter);
             Assert.AreEqual("Sample Title", dto.ResultingQuery[0].Title);
+            CollectionAssert.AreEqual(
+                new List<string> { "agents" },
+                dto.ResultingQuery[0].IdentityTypes);
             Assert.AreEqual(1, dto.AppliedOperations.Count);
             Assert.AreEqual("add", dto.AppliedOperations[0].Op);
             Assert.AreEqual("p1", dto.AppliedOperations[0].PartId);
@@ -189,7 +193,12 @@ namespace WebApi.Tests
                 },
                 WorkingQuery = new List<SourcePartDto>
                 {
-                    new SourcePartDto { PartId = "w1", Filter = "category_code = 'value1'" }
+                    new SourcePartDto
+                    {
+                        PartId = "w1",
+                        Filter = "category_code = 'value1'",
+                        IdentityTypes = new List<string> { "users", "agents" }
+                    }
                 }
             };
 
@@ -201,7 +210,9 @@ namespace WebApi.Tests
                     r.WorkingQuery != null &&
                     r.WorkingQuery.Count == 1 &&
                     r.WorkingQuery[0].PartId == "w1" &&
-                    r.WorkingQuery[0].Filter == "category_code = 'value1'")),
+                    r.WorkingQuery[0].Filter == "category_code = 'value1'" &&
+                    r.WorkingQuery[0].IdentityTypes != null &&
+                    r.WorkingQuery[0].IdentityTypes.SequenceEqual(new[] { "users", "agents" }))),
                 Times.Once);
         }
 

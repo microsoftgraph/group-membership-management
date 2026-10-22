@@ -132,7 +132,10 @@ namespace WebApi.Controllers.v1.Copilot
             OrgLeaderObjectId = dto.OrgLeaderObjectId,
             OrgLeaderDepth = dto.OrgLeaderDepth,
             GroupId = dto.GroupId,
-            GroupName = dto.GroupName
+            GroupName = dto.GroupName,
+            IdentityTypes = dto.IdentityTypes == null
+                ? null
+                : new List<string>(dto.IdentityTypes)
         };
 
         private static SourcePartDto MapToDto(CopilotSourcePartResult sp) => new()
@@ -148,7 +151,10 @@ namespace WebApi.Controllers.v1.Copilot
             OrgLeaderObjectId = sp.OrgLeaderObjectId,
             OrgLeaderDepth = sp.OrgLeaderDepth,
             GroupId = sp.GroupId,
-            GroupName = sp.GroupName
+            GroupName = sp.GroupName,
+            IdentityTypes = sp.IdentityTypes == null
+                ? null
+                : new List<string>(sp.IdentityTypes)
         };
     }
 
@@ -203,6 +209,7 @@ namespace WebApi.Controllers.v1.Copilot
         public int? OrgLeaderDepth { get; set; }
         public string? GroupId { get; set; }
         public string? GroupName { get; set; }
+        public List<string>? IdentityTypes { get; set; }
     }
 
     /// <summary>

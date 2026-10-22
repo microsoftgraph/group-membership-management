@@ -13,6 +13,7 @@ import { SettingKey } from '../../models/SettingKey';
 import type { RootState } from '../../store';
 import type { ISourcePart } from '../../models/ISourcePart';
 import type { HRSourcePart } from '../../models/HRSourcePart';
+import type { GroupMembershipSourcePart } from '../../models/GroupMembershipSourcePart';
 import { SourcePartType } from '../../models/SourcePartType';
 
 const makePart = (id: string, title: string): ISourcePart => ({
@@ -166,6 +167,25 @@ describe('RulesEditor', () => {
 
     const parts = store.getState().manageMembership.sourceParts;
     expect((parts[1].query as HRSourcePart).identityTypes).toEqual(['agents', 'users']);
+    expect(parts[1].query).not.toBe(parts[0].query);
+  });
+
+  it('duplicates the exact group identity selection without sharing the query object', () => {
+    const source = makePart('a', 'Rule A');
+    source.query = {
+      type: SourcePartType.GroupMembership,
+      source: '123e4567-e89b-12d3-a456-426614174000',
+      exclusionary: true,
+      identityTypes: ['agents', 'users'],
+    };
+    const { store } = renderEditor({
+      preloadedState: buildState([source]),
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Duplicate rule: Rule A' }));
+
+    const parts = store.getState().manageMembership.sourceParts;
+    expect((parts[1].query as GroupMembershipSourcePart).identityTypes).toEqual(['agents', 'users']);
     expect(parts[1].query).not.toBe(parts[0].query);
   });
 

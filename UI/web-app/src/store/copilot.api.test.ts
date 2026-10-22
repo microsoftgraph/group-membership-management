@@ -274,6 +274,37 @@ describe('copilot.api transformSourcePart contract', () => {
       expect(store.getState().manageMembership.sourceParts).toEqual([part]);
     });
 
+    it('preserves the local HR title when the response partId casing differs', async () => {
+      const base = setupStore().getState();
+      const part: ISourcePart = {
+        id: 'hr-local',
+        title: 'Local display summary',
+        query: { type: SourcePartType.HR, source: { filter: "Country = 'USA'" }, exclusionary: true },
+        isNew: false,
+        isExpanded: false,
+      };
+      const store = setupStore({
+        ...base,
+        manageMembership: { ...base.manageMembership, sourceParts: [part] },
+      }, { authenticationService: mockAuthService as never });
+      global.fetch = vi.fn<typeof fetch>().mockResolvedValue(new Response(JSON.stringify({
+        message: 'Updated membership.',
+        resultingQuery: [{
+          partId: 'HR-LOCAL', sourceType: SourcePartType.HR, title: null,
+          filter: "Country = 'Canada'", isExclusion: true, useOrgStructure: false,
+        }],
+        appliedOperations: [{ op: 'replace', partId: 'HR-LOCAL' }],
+      }), { status: 200 }));
+
+      await store.dispatch(sendCopilotMessage({ message: 'Refine this rule' }));
+
+      expect(store.getState().copilot.lastSourceParts[0]).toEqual(expect.objectContaining({
+        id: 'HR-LOCAL',
+        title: part.title,
+        isNew: false,
+      }));
+    });
+
     it('keeps an automatic membership summary read-only even for a legacy response', async () => {
       global.fetch = vi.fn<typeof fetch>().mockResolvedValue(new Response(JSON.stringify({
         message: 'Your current membership includes FTEs.',
@@ -495,6 +526,64 @@ describe('copilot.api transformSourcePart contract', () => {
       expect(payload.sourceParts[0].query.type).toBe(SourcePartType.GroupMembership);
     });
 
+    it('restores identityTypes returned for group and HR source parts', async () => {
+      const result = await dispatchWithMockedFetch({
+        message: 'ok',
+        resultingQuery: [
+          {
+            partId: 'g1',
+            sourceType: 'GroupMembership',
+            filter: null,
+            title: 'Agents group',
+            isExclusion: false,
+            useOrgStructure: false,
+            groupId: '00000000-0000-0000-0000-000000000001',
+            identityTypes: ['agents', 'users'],
+          },
+          {
+            partId: 'hr1',
+            sourceType: 'SqlMembership',
+            filter: "Country = 'USA'",
+            title: 'US people',
+            isExclusion: false,
+            useOrgStructure: false,
+            identityTypes: ['users'],
+          },
+        ],
+        appliedOperations: [{ op: 'set' }],
+      });
+
+      const payload = result.payload as {
+        sourceParts: { query: { identityTypes?: string[] } }[];
+      };
+      expect(payload.sourceParts[0].query.identityTypes).toEqual(['agents', 'users']);
+      expect(payload.sourceParts[1].query.identityTypes).toEqual(['users']);
+    });
+
+    it('treats a null response selection as omitted', async () => {
+      const result = await dispatchWithMockedFetch({
+        message: 'ok',
+        resultingQuery: [
+          {
+            partId: 'g1',
+            sourceType: 'GroupMembership',
+            filter: null,
+            title: 'Legacy group',
+            isExclusion: false,
+            useOrgStructure: false,
+            groupId: '00000000-0000-0000-0000-000000000001',
+            identityTypes: null,
+          },
+        ],
+        appliedOperations: [],
+      });
+
+      const payload = result.payload as {
+        sourceParts: { query: { identityTypes?: string[] } }[];
+      };
+      expect(payload.sourceParts[0].query).not.toHaveProperty('identityTypes');
+    });
+
     it('tags a mixed HR + GroupMembership response with createdViaAIQB: true on every part', async () => {
       const result = await dispatchWithMockedFetch({
         message: 'ok',
@@ -612,7 +701,12 @@ describe('copilot.api transformSourcePart contract', () => {
     const groupPart: ISourcePart = {
       id: 'grp-1',
       title: 'Leads',
-      query: { type: SourcePartType.GroupMembership, source: 'group-guid', exclusionary: true },
+      query: {
+        type: SourcePartType.GroupMembership,
+        source: 'group-guid',
+        exclusionary: true,
+        identityTypes: ['agents', 'users'],
+      },
       isNew: false,
       isExpanded: false,
     };
@@ -679,6 +773,7 @@ describe('copilot.api transformSourcePart contract', () => {
       expect(wq[1].groupName).toBe('Leads');
       expect(wq[1].groupId).toBe('group-guid');
       expect(wq[1].isExclusion).toBe(true);
+      expect(wq[1].identityTypes).toEqual(['agents', 'users']);
     });
 
     it('does not synthesize identityTypes for a legacy HR part', () => {
@@ -688,6 +783,19 @@ describe('copilot.api transformSourcePart contract', () => {
           type: SourcePartType.HR,
           source: { filter: "Country = 'USA'" },
           exclusionary: false,
+        },
+      };
+
+      expect(buildWorkingQuery([legacyPart])[0]).not.toHaveProperty('identityTypes');
+    });
+
+    it('does not synthesize identityTypes for a legacy group part', () => {
+      const legacyPart: ISourcePart = {
+        ...groupPart,
+        query: {
+          type: SourcePartType.GroupMembership,
+          source: 'group-guid',
+          exclusionary: true,
         },
       };
 

@@ -15,7 +15,7 @@ interface ValidateGroupResponse {
   }
 
 export const searchGroups = createAsyncThunk<IPersonaProps[], string, ThunkConfig>(
-    'destinations/searchDestinations',
+    'groups/searchGroups',
     async (query: string, { extra }) => {
         const { authenticationService } = extra.services;
         const token = await authenticationService.getTokenAsync(TokenType.GMM);
@@ -53,7 +53,7 @@ export const searchGroups = createAsyncThunk<IPersonaProps[], string, ThunkConfi
 
 
 export const validateGroup = createAsyncThunk<ValidateGroupResponse, string, ThunkConfig>(
-    'destinations/searchDestinations',
+    'groups/validateGroup',
     async (groupId: string, { extra }) => {
         const { authenticationService } = extra.services;
         const token = await authenticationService.getTokenAsync(TokenType.GMM);

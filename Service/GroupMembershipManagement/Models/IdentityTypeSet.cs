@@ -29,6 +29,12 @@ namespace Models
 
         public static IdentityTypeSet UsersOnly => Of(IdentityType.Users);
 
+        /// <summary>
+        /// Gets the permanent omitted selection for group membership sources: people and agent users.
+        /// This pair is explicit so adding another supported identity type does not widen existing group jobs.
+        /// </summary>
+        public static IdentityTypeSet GroupDefault => Of(IdentityType.Users, IdentityType.Agents);
+
         public static IdentityTypeSet All =>
             new IdentityTypeSet(_typeNames.Aggregate(0, (bits, entry) => bits | BitOf(entry.Type)));
 
@@ -110,6 +116,41 @@ namespace Models
             out IdentityTypeSet selection,
             out string error)
         {
+            return TryResolve(
+                typeNames,
+                whenOmitted,
+                All,
+                out selection,
+                out error);
+        }
+
+        /// <summary>
+        /// Converts identity type names into a set while limiting explicit values to a caller-selected subset.
+        /// For example, with <see cref="UsersOnly"/> allowed, ["users"] succeeds and ["agents"] fails.
+        /// A null list returns <paramref name="whenOmitted"/> unchanged.
+        /// </summary>
+        /// <param name="typeNames">
+        /// The explicit names, or null when the property was omitted. Order does not matter. A present list must
+        /// be nonempty and contain unique lower-case names from <paramref name="allowedTypes"/>. Null or empty
+        /// entries, unknown or wrong-case names, repeated names, and names outside the allowed set fail.
+        /// </param>
+        /// <param name="whenOmitted">
+        /// The set returned unchanged when <paramref name="typeNames"/> is null, even when it contains a type not
+        /// present in <paramref name="allowedTypes"/>.
+        /// </param>
+        /// <param name="allowedTypes">
+        /// The identity types accepted in a present list. An empty set rejects every present list.
+        /// </param>
+        /// <param name="selection">The resolved set on success; otherwise the default value.</param>
+        /// <param name="error">Null on success; otherwise a message describing the invalid list.</param>
+        /// <returns>True for an omitted or valid list; otherwise false.</returns>
+        public static bool TryResolve(
+            IReadOnlyList<string> typeNames,
+            IdentityTypeSet whenOmitted,
+            IdentityTypeSet allowedTypes,
+            out IdentityTypeSet selection,
+            out string error)
+        {
             selection = default;
             error = null;
 
@@ -121,7 +162,7 @@ namespace Models
 
             if (typeNames.Count == 0)
             {
-                error = $"identityTypes must not be empty; supported values are {DescribeSupportedValues()}.";
+                error = $"identityTypes must not be empty; supported values are {DescribeSupportedValues(allowedTypes)}.";
                 return false;
             }
 
@@ -143,11 +184,18 @@ namespace Models
 
                 if (matchIndex < 0)
                 {
-                    error = $"identityTypes entry at index {index} is not supported; supported values are {DescribeSupportedValues()}, lower case.";
+                    error = UnsupportedTypeError(index, allowedTypes);
                     return false;
                 }
 
-                var typeBit = BitOf(_typeNames[matchIndex].Type);
+                var identityType = _typeNames[matchIndex].Type;
+                if (!allowedTypes.Includes(identityType))
+                {
+                    error = UnsupportedTypeError(index, allowedTypes);
+                    return false;
+                }
+
+                var typeBit = BitOf(identityType);
 
                 if ((selectedTypeBits & typeBit) != 0)
                 {
@@ -201,7 +249,25 @@ namespace Models
             return 1 << matchIndex;
         }
 
-        private static string DescribeSupportedValues() =>
-            string.Join(", ", _typeNames.Select(entry => $"'{entry.Name}'"));
+        private static string DescribeSupportedValues(IdentityTypeSet allowedTypes)
+        {
+            var supportedValues = _typeNames
+                .Where(entry => allowedTypes.Includes(entry.Type))
+                .Select(entry => $"'{entry.Name}'")
+                .ToList();
+
+            return supportedValues.Count == 0
+                ? "none"
+                : string.Join(
+                    ", ",
+                    supportedValues);
+        }
+
+        private static string UnsupportedTypeError(
+            int index,
+            IdentityTypeSet allowedTypes) =>
+            allowedTypes.IsEmpty
+                ? $"identityTypes entry at index {index} is not supported; no explicit identity types are allowed."
+                : $"identityTypes entry at index {index} is not supported; supported values are {DescribeSupportedValues(allowedTypes)}, lower case.";
     }
 }

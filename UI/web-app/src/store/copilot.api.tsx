@@ -53,7 +53,7 @@ interface ApiSourcePart {
     orgLeaderDepth?: number | null;
     groupId?: string; // For GroupMembership: the Entra ID group's objectId
     groupName?: string; // For GroupMembership: the group's display name
-    identityTypes?: IdentityType[];
+    identityTypes?: IdentityType[] | null;
 }
 
 type WorkingQueryPart = Omit<ApiSourcePart, 'title'> & { title?: string };
@@ -72,17 +72,21 @@ export function buildWorkingQuery(
         const isExclusion = !!part.query?.exclusionary;
 
         if (sourceType === SourcePartType.GroupMembership) {
-            const source = (part.query as GroupMembershipSourcePart).source;
-            return {
+            const groupQuery = part.query as GroupMembershipSourcePart;
+            const apiPart: ApiSourcePart = {
                 partId: part.id,
                 sourceType,
                 filter: null,
                 title: part.title ?? '',
                 isExclusion,
                 useOrgStructure: false,
-                groupId: typeof source === 'string' ? source : undefined,
+                groupId: typeof groupQuery.source === 'string' ? groupQuery.source : undefined,
                 groupName: part.title,
             };
+            if (groupQuery.identityTypes !== undefined) {
+                apiPart.identityTypes = [...groupQuery.identityTypes];
+            }
+            return apiPart;
         }
 
         if (sourceType === SourcePartType.HR) {
@@ -124,10 +128,14 @@ export function buildWorkingQuery(
     });
 }
 
+function normalizePartId(partId: string): string {
+    return partId.toLowerCase();
+}
+
 function transformSourcePart(apiPart: ApiSourcePart, priorIds: Set<string>): ISourcePart {
     const isGroupMembership = apiPart.sourceType === 'GroupMembership' && !!apiPart.groupId;
     // A part is "new" only when the server minted an id we hadn't sent as working context.
-    const isNew = !priorIds.has(apiPart.partId);
+    const isNew = !priorIds.has(normalizePartId(apiPart.partId));
 
     if (isGroupMembership) {
         const groupQuery: GroupMembershipSourcePart = {
@@ -135,6 +143,9 @@ function transformSourcePart(apiPart: ApiSourcePart, priorIds: Set<string>): ISo
             source: apiPart.groupId!,
             exclusionary: apiPart.isExclusion,
         };
+        if (apiPart.identityTypes != null) {
+            groupQuery.identityTypes = [...apiPart.identityTypes];
+        }
 
         return {
             id: apiPart.partId || uuidv4(),
@@ -154,6 +165,9 @@ function transformSourcePart(apiPart: ApiSourcePart, priorIds: Set<string>): ISo
         },
         exclusionary: apiPart.isExclusion,
     };
+    if (apiPart.identityTypes != null) {
+        hrQuery.identityTypes = [...apiPart.identityTypes];
+    }
 
     return {
         id: apiPart.partId || uuidv4(),
@@ -230,8 +244,8 @@ export const sendCopilotMessage = createAsyncThunk<CopilotResponse, SendMessageP
         // Re-read after the lookups so manual edits made meanwhile are neither hidden from the model nor overwritten.
         const currentSourceParts = (getState() as RootState).manageMembership.sourceParts;
         const workingQuery = buildWorkingQuery(currentSourceParts, orgLeaders);
-        const priorIds = new Set(currentSourceParts.map(p => p.id));
-        const existingById = new Map(currentSourceParts.map(p => [p.id, p]));
+        const priorIds = new Set(currentSourceParts.map(p => normalizePartId(p.id)));
+        const existingById = new Map(currentSourceParts.map(p => [normalizePartId(p.id), p]));
 
         const requestBody = {
             message: isMembershipSummary
@@ -298,7 +312,7 @@ export const sendCopilotMessage = createAsyncThunk<CopilotResponse, SendMessageP
                 const isSupported = !apiPart.sourceType ||
                     apiPart.sourceType === SourcePartType.HR ||
                     apiPart.sourceType === SourcePartType.GroupMembership;
-                const existing = existingById.get(apiPart.partId);
+                const existing = existingById.get(normalizePartId(apiPart.partId));
                 if (!isSupported && existing) {
                     return existing;
                 }
