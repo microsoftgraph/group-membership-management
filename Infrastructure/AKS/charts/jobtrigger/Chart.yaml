@@ -8,3 +8,8 @@ dependencies:
   - name: gmm-service-lib
     version: 0.1.0
     repository: "file://../gmm-service-lib"
+
+annotations:
+  # Read by Get-AksServiceChart for services listed in the aksServices deployment parameter.
+  gmm.microsoft.com/service: JobTrigger
+  gmm.microsoft.com/scaling: fixed

@@ -5,14 +5,14 @@
 apiVersion: secrets-store.csi.x-k8s.io/v1
 kind: SecretProviderClass
 metadata:
-  name: {{ printf "%s-kv-%s" (include "gmm.name" $root) $vault.alias }}
+  name: {{ printf "%s-kv-%s" (include "gmm.names.resource" $root) $vault.alias }}
   namespace: {{ $root.Release.Namespace }}
   labels:
-    {{- include "gmm.labels" $root | nindent 4 }}
+    {{- include "gmm.names.labels" $root | nindent 4 }}
 spec:
   provider: azure
   secretObjects:
-    - secretName: {{ printf "%s-kv-%s" (include "gmm.name" $root) $vault.alias }}
+    - secretName: {{ printf "%s-kv-%s" (include "gmm.names.resource" $root) $vault.alias }}
       type: Opaque
       data:
         {{- range $vault.secrets }}

@@ -1,1 +1,1 @@
-{{ include "gmm.deployment" . }}
+{{ include "gmm.deployments.fixed" . }}
