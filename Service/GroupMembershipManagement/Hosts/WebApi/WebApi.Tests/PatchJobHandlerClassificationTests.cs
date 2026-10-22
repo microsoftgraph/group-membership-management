@@ -147,12 +147,10 @@ namespace WebApi.Tests
         [TestMethod]
         public async Task Update_RoutedToPendingReview_EmitsNoReviewMetric()
         {
-            EnableConfigUpdateAutoApproval(false);
-
             var patch = new JsonPatchDocument<SyncJobPatch>();
             patch.Replace(x => x.ThresholdPercentageForAdditions, 42);
 
-            await CreateHandler().ExecuteAsync(UpdateRequest(patch));
+            await CreateHandler(withQueueRepository: false).ExecuteAsync(UpdateRequest(patch));
 
             Assert.AreEqual(SyncStatus.PendingReview.ToString(), _syncJob.Status);
 
