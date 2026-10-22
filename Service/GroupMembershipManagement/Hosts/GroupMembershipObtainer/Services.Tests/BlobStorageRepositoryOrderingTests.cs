@@ -3,10 +3,12 @@
 using Azure;
 using Azure.Storage.Blobs;
 using Azure.Storage.Blobs.Models;
+using Azure.Storage.Blobs.Specialized;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Models;
 using Models.ServiceBus;
 using Moq;
+using Moq.Protected;
 using Repositories.BlobStorage;
 using System;
 using System.Collections.Generic;
@@ -83,8 +85,13 @@ namespace Tests.FunctionApps
                 "UploadGroupMembershipFromGuidsAsync wrote members in an order other than the canonical one.");
         }
 
-        [TestMethod]
-        public async Task MergeAndStreamUserBlobsAsync_WritesMergedMembersInCanonicalOrder()
+        // sortedPages: false is the original case (uploads in Graph order, as an older release wrote them: the merge
+        // falls back to materializing and uploads with Put Blob); true is the uploads the readers now write (the
+        // streaming merge stages blocks and commits them).
+        [DataTestMethod]
+        [DataRow(false)]
+        [DataRow(true)]
+        public async Task MergeAndStreamUserBlobsAsync_WritesMergedMembersInCanonicalOrder(bool sortedPages)
         {
             var duplicate = "00000000-0000-0000-0000-000000000001";
             var first = new[]
@@ -101,6 +108,11 @@ namespace Tests.FunctionApps
                 CompleteUser(duplicate, "second-duplicate"),
                 CompleteUser(_conformanceCorpus[6], "second-6")
             };
+            if (sortedPages)
+            {
+                first = first.OrderBy(user => user.ObjectId.ToString("D"), StringComparer.Ordinal).ToArray();
+                second = second.OrderBy(user => user.ObjectId.ToString("D"), StringComparer.Ordinal).ToArray();
+            }
 
             var container = new Mock<BlobContainerClient>();
 
@@ -123,6 +135,24 @@ namespace Tests.FunctionApps
                              .Callback<BinaryData, bool, CancellationToken>((data, overwrite, token) => uploaded = data)
                              .ReturnsAsync(Mock.Of<Response<BlobContentInfo>>());
             container.Setup(x => x.GetBlobClient("/group/aggregated.json")).Returns(destinationClient.Object);
+
+            var staged = new Dictionary<string, byte[]>();
+            var stagedDestination = new Mock<BlockBlobClient>();
+            stagedDestination.Setup(x => x.StageBlockAsync(It.IsAny<string>(), It.IsAny<Stream>(), It.IsAny<BlockBlobStageBlockOptions>(), It.IsAny<CancellationToken>()))
+                             .Callback<string, Stream, BlockBlobStageBlockOptions, CancellationToken>((id, content, options, token) =>
+                             {
+                                 using var copy = new MemoryStream();
+                                 content.CopyTo(copy);
+                                 staged[id] = copy.ToArray();
+                             })
+                             .ReturnsAsync(Mock.Of<Response<BlockInfo>>());
+            stagedDestination.Setup(x => x.CommitBlockListAsync(It.IsAny<IEnumerable<string>>(), It.IsAny<CommitBlockListOptions>(), It.IsAny<CancellationToken>()))
+                             .Callback<IEnumerable<string>, CommitBlockListOptions, CancellationToken>((ids, options, token) =>
+                                 uploaded = BinaryData.FromBytes(ids.SelectMany(id => staged[id]).ToArray()))
+                             .ReturnsAsync(Mock.Of<Response<BlobContentInfo>>());
+            container.Protected()
+                     .Setup<BlockBlobClient>("GetBlockBlobClientCore", "/group/aggregated.json")
+                     .Returns(stagedDestination.Object);
 
             var repository = new BlobStorageRepository(container.Object);
 

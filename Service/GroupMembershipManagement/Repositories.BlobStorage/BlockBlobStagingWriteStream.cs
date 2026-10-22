@@ -142,8 +142,18 @@ namespace Repositories.BlobStorage
         /// <summary>
         /// Stages the final partial block and publishes the complete block list with its metadata.
         /// </summary>
+        public Task CommitAsync(
+            IDictionary<string, string> metadata,
+            CancellationToken cancellationToken) =>
+            CommitAsync(metadata, conditions: null, cancellationToken);
+
+        /// <summary>
+        /// Stages the final partial block and publishes the complete block list with its metadata, applying
+        /// <paramref name="conditions"/> to the final Put Block List request (for example If-None-Match: *).
+        /// </summary>
         public async Task CommitAsync(
             IDictionary<string, string> metadata,
+            BlobRequestConditions conditions,
             CancellationToken cancellationToken)
         {
             ThrowIfNotWritable();
@@ -151,7 +161,8 @@ namespace Repositories.BlobStorage
 
             var options = new CommitBlockListOptions
             {
-                Metadata = metadata != null && metadata.Count > 0 ? metadata : null
+                Metadata = metadata != null && metadata.Count > 0 ? metadata : null,
+                Conditions = conditions
             };
             await _client.CommitBlockListAsync(_blockIds, options, cancellationToken);
             _committed = true;

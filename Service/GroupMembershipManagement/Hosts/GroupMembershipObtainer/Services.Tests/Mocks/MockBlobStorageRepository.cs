@@ -46,6 +46,9 @@ namespace Tests.FunctionApps.Mocks
             throw new NotImplementedException();
         }
 
+        public Task<BlobResult> DownloadFileAsync(string path, System.Threading.CancellationToken cancellationToken) =>
+            DownloadFileAsync(path);
+
         public Task<BlobResult> DownloadCacheFileAsync(string path)
         {
             throw new NotImplementedException();
@@ -65,6 +68,16 @@ namespace Tests.FunctionApps.Mocks
         {
             Sent.Add((path, content));
             return Task.CompletedTask;
+        }
+
+        public Task UploadFileAsync(
+            string path,
+            string content,
+            Dictionary<string, string> metadata,
+            CancellationToken cancellationToken)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            return UploadFileAsync(path, content, metadata);
         }
 
         public Task<bool> UploadFileIfAbsentAsync(
@@ -99,6 +112,32 @@ namespace Tests.FunctionApps.Mocks
         {
             return Task.CompletedTask;
         }
+
+        public Task UploadGroupMembershipFromGuidsAsync(
+            string filePath,
+            IReadOnlyCollection<Guid> sourceMemberIds,
+            AzureADGroup destination,
+            Guid runId,
+            Guid syncJobId,
+            bool exclusionary,
+            bool membershipObtainerDryRunEnabled,
+            string query,
+            Guid sourceGroupId,
+            CancellationToken cancellationToken = default) =>
+            Task.CompletedTask;
+
+        public Task<WriteOnceResult> UploadGroupMembershipFromGuidsWriteOnceAsync(
+            string filePath,
+            IReadOnlyCollection<Guid> sourceMemberIds,
+            AzureADGroup destination,
+            Guid runId,
+            Guid syncJobId,
+            bool exclusionary,
+            bool membershipObtainerDryRunEnabled,
+            string query,
+            Guid sourceGroupId,
+            CancellationToken cancellationToken = default) =>
+            Task.FromResult(new WriteOnceResult(false, sourceMemberIds.Count));
 
         public Task UploadCacheFromGuidsAsync(
             string destinationCacheFilePath,
@@ -144,6 +183,29 @@ namespace Tests.FunctionApps.Mocks
         public Task<string> UploadFileBlockAsync(string path, string content, Dictionary<string, string> metadata = null)
         {
             throw new NotImplementedException();
+        }
+
+        public Task UploadGroupMembershipFromGuidsAsync(
+            string membershipFilePath,
+            IReadOnlyCollection<Guid> sourceMemberIds,
+            AzureADGroup destination,
+            Guid runId,
+            Guid syncJobId,
+            bool exclusionary,
+            bool membershipObtainerDryRunEnabled,
+            string query,
+            CancellationToken cancellationToken)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            return UploadGroupMembershipFromGuidsAsync(
+                membershipFilePath,
+                sourceMemberIds,
+                destination,
+                runId,
+                syncJobId,
+                exclusionary,
+                membershipObtainerDryRunEnabled,
+                query);
         }
 
         public Task CommitFileAsync(string path, List<string> blockIds)
@@ -200,6 +262,15 @@ namespace Tests.FunctionApps.Mocks
             throw new NotImplementedException();
         }
 
+        public Task<HashSet<T>> ReadValuesFromBlobAsync<T>(
+            string path,
+            Func<string, T> parseFunction,
+            CancellationToken cancellationToken)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            return ReadValuesFromBlobAsync(path, parseFunction);
+        }
+
         public Task<HashSet<Guid>> ExtractGroupMembershipSourceMembersAsync(string path)
         {
             throw new NotImplementedException();
@@ -210,6 +281,83 @@ namespace Tests.FunctionApps.Mocks
             // For testing, just return 0 - tests can override this behavior if needed
             return Task.FromResult(0);
         }
+
+        public Task<WriteOnceResult> UploadFileWriteOnceAsync(
+            string path,
+            string content,
+            Dictionary<string, string> metadata = null,
+            CancellationToken cancellationToken = default)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            if (Sent.Any(file => file.Path == path))
+            {
+                return Task.FromResult(new WriteOnceResult(true));
+            }
+
+            Sent.Add((path, content));
+            return Task.FromResult(new WriteOnceResult(false));
+        }
+
+        public Task<WriteOnceResult> UploadGroupMembershipFromGuidsWriteOnceAsync(
+            string membershipFilePath,
+            IReadOnlyCollection<Guid> sourceMemberIds,
+            AzureADGroup destination,
+            Guid runId,
+            Guid syncJobId,
+            bool exclusionary,
+            bool membershipObtainerDryRunEnabled,
+            string query,
+            CancellationToken cancellationToken = default) =>
+            Task.FromResult(new WriteOnceResult(false, sourceMemberIds.Count));
+
+        public Task<WriteOnceResult> UploadCacheFromGuidsWriteOnceAsync(
+            string destinationCacheFilePath,
+            IEnumerable<Guid> sourceMemberIds,
+            Dictionary<string, string> metadata = null) =>
+            Task.FromResult(new WriteOnceResult(false, sourceMemberIds.Count()));
+
+        public Task<WriteOnceResult> StreamMembershipToCacheWriteOnceAsync(
+            string sourceMembershipFilePath,
+            string destinationCacheFilePath,
+            Dictionary<string, string> metadata = null) =>
+            Task.FromResult(new WriteOnceResult(false, 0));
+
+        public Task<WriteOnceResult> MergeAndStreamUserBlobsWriteOnceAsync(
+            string sourceBlobPrefix,
+            string destinationPath,
+            AzureADGroup destination,
+            Guid runId,
+            Guid syncJobId,
+            bool exclusionary,
+            bool membershipObtainerDryRunEnabled,
+            string query) =>
+            Task.FromResult(new WriteOnceResult(false, 0));
+
+        // Selection pipeline members (story 16751398, slice F). Not used by these tests.
+        public Task<WriteOnceResult> UploadGroupMembershipStreamWriteOnceAsync(
+            string path,
+            Models.ServiceBus.GroupMembership envelope,
+            IAsyncEnumerable<AzureADUser> members,
+            Action beforeCommit,
+            CancellationToken stagingCancellationToken,
+            CancellationToken commitCancellationToken) =>
+            throw new NotImplementedException();
+
+        public Task<BlobStreamWithETag> OpenReadWithETagAsync(string path, CancellationToken cancellationToken = default) =>
+            throw new NotImplementedException();
+
+        public Task<bool> UploadFileConditionalStreamAsync(
+            string path,
+            Func<System.IO.Stream, CancellationToken, Task> writeContent,
+            string ifMatchETag,
+            CancellationToken cancellationToken = default) =>
+            throw new NotImplementedException();
+
+        public Task<int> DeleteListedBlobsAsync(
+            IReadOnlyCollection<string> exactPaths,
+            IReadOnlyCollection<string> prefixes,
+            CancellationToken cancellationToken = default) =>
+            throw new NotImplementedException();
     }
 
     public class MockBlobContainerClient : BlobContainerClient
