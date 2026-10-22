@@ -278,6 +278,14 @@ The cluster runs with local accounts disabled, so every administrative login is 
 
 When `deployAks` is `true`, the cluster also sends Container Insights data to the `<solution>-data-<env>` Log Analytics workspace: Kubernetes events, pod inventory and container CPU/memory from the workload namespace, plus container stdout/stderr from every non-system namespace (today that is only the workload namespace). App Insights records only what the Functions host logs after it starts. This covers what it misses: pods that crash before telemetry connects, OOMKills, restarts, scheduling failures, and autoscaler activity. Container environment variables are deliberately not collected, because the pods load secrets into their environment.
 
+#### WebApi Stop, Start and Reset for KEDA-autoscaled workloads
+
+The WebApi Stop, Start and Reset operations handle autoscaled AKS workloads without writing `spec.replicas`, which the HPA would immediately undo. The WebApi finds them from the KEDA ScaledObjects in the `gmm` namespace. Stop sets `autoscaling.keda.sh/paused-replicas: "0"` and requires `Paused=True`, no HPA that is still scaling (KEDA leaves a disabled one behind), zero desired replicas and no live pods for 90 seconds before it clears shared state. Pods in phase `Failed` or `Succeeded` are ignored. Its stop budget is the Deployment's `terminationGracePeriodSeconds` plus 240 seconds, with a bounded fallback when the field is absent.
+
+Start sets `autoscaling.keda.sh/paused` to `"false"` and removes `paused-replicas` (KEDA keeps reporting `Paused=True` when the annotations are merely removed). It requires `Ready=True`, `Paused=False`, one HPA owned by the ScaledObject with `ScalingActive=True` and every desired replica ready, then a 60-second window without restarts or crash loops. On failure it pauses the workload at zero again. Fixed workloads keep their replica-count path.
+
+`Azure Kubernetes Service RBAC Writer` does not cover custom resources, so `Set-WebAPIAccessRoles -DeployAks $true` assigns the WebApi `Azure Kubernetes Service RBAC Admin` on the `gmm` namespace instead, which does. A built-in role is used because a tenant has a limit on custom role definitions. RBAC Admin is broader than pausing ScaledObjects needs: it also covers every custom resource in the namespace, including delete, and Roles and RoleBindings there. AKS can narrow custom-resource access to `keda.sh` only with ABAC conditions, which are in preview. Re-run the post-deployment role assignments so the WebApi receives the role.
+
 ---
 
 ### Deployment

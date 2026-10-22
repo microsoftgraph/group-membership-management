@@ -617,6 +617,26 @@ namespace Hosts.WebApi
             Message = "Deployment {DeploymentName} is already running with {ReadyReplicas} ready replicas; leaving it as is.")]
         public static partial void AksDeploymentAlreadyRunning(this ILogger logger, string deploymentName, int readyReplicas);
 
+        [LoggerMessage(EventId = 93309, Level = LogLevel.Information,
+            Message = "Pausing KEDA ScaledObject {ScaledObjectName} at zero replicas to stop autoscaled Deployment {DeploymentName}.")]
+        public static partial void AksScaledObjectPausing(this ILogger logger, string deploymentName, string scaledObjectName);
+
+        [LoggerMessage(EventId = 93310, Level = LogLevel.Information,
+            Message = "Autoscaled Deployment {DeploymentName} stayed paused at zero, with no scaling HPA and no pods, for {ObservationSeconds} seconds.")]
+        public static partial void AksScaledObjectStopped(this ILogger logger, string deploymentName, int observationSeconds);
+
+        [LoggerMessage(EventId = 93311, Level = LogLevel.Information,
+            Message = "Resuming KEDA ScaledObject {ScaledObjectName} to start autoscaled Deployment {DeploymentName}.")]
+        public static partial void AksScaledObjectResuming(this ILogger logger, string deploymentName, string scaledObjectName);
+
+        [LoggerMessage(EventId = 93312, Level = LogLevel.Information,
+            Message = "Autoscaled Deployment {DeploymentName} is active with {ReadyReplicas} ready replicas and stayed stable for {StabilitySeconds} seconds.")]
+        public static partial void AksAutoscaledDeploymentReady(this ILogger logger, string deploymentName, int readyReplicas, int stabilitySeconds);
+
+        [LoggerMessage(EventId = 93313, Level = LogLevel.Warning,
+            Message = "Scaling state of autoscaled Deployment {DeploymentName} is unknown, not stopped; retrying.")]
+        public static partial void AksScalingStateUnknown(this ILogger logger, string deploymentName, Exception exception);
+
         // ── SqlMembership handlers (91700-91799) ──
 
         [LoggerMessage(EventId = 91700, Level = LogLevel.Warning,

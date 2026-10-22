@@ -15,7 +15,7 @@ A 2-6 character abbreviation for your environment.
 Parameter description
 
 .PARAMETER DeployAks
-True when services run on the AKS cluster. Grants the Web API the access its Stop, Start and Reset operations need to scale the cluster's workloads.
+True when services run on the AKS cluster. Grants the Web API the access its Stop, Start and Reset operations need to scale the cluster's workloads, including pausing and resuming the KEDA ScaledObjects of autoscaled workloads, which the built-in "Azure Kubernetes Service RBAC Admin" role covers and "RBAC Writer" does not.
 
 .EXAMPLE
 Set-WebAPIAccessRoles	-SolutionAbbreviation "<solution>" `
@@ -121,11 +121,14 @@ function Set-WebAPIAccessRoles {
 					-Scope $aksCluster.Id `
 					-RoleDefinitionName "Azure Kubernetes Service Cluster User Role"
 
+					# RBAC Writer excludes custom resources, so pausing and resuming the KEDA ScaledObjects of
+					# autoscaled workloads needs RBAC Admin. A built-in role is used because the tenant's limit on
+					# custom role definitions can be reached.
 					Set-RoleAssignment `
 					-ObjectId $webApiServicePrincipal.Id `
 					-DisplayName $webApi.Name `
 					-Scope "$($aksCluster.Id)/namespaces/gmm" `
-					-RoleDefinitionName "Azure Kubernetes Service RBAC Writer"
+					-RoleDefinitionName "Azure Kubernetes Service RBAC Admin"
 				}
 				else {
 					Write-Warning "AKS cluster $aksName was not found, so the Web API was not granted access to it. Deploy the cluster, then run this script again."
