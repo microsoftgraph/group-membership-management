@@ -76,7 +76,7 @@ Prefer these patterns:
 1. **HR filter criteria changed**: ""This sync reflects an updated membership filter (changed on [date] from [old] to [new])."" Only usable when the ""Configuration history"" section contains an explicit ""Previous configuration:"" line AND a ""Current configuration:"" line AND a ""What changed:"" line — never when the stale marker is present. Do NOT use set-theory verbs like ""expanded"", ""shrunk"", ""broadened"", ""narrowed"", ""widened"" unless the new filter's set is a proven superset or subset of the old one. When the change is a shift (e.g. one bound moved, or one predicate replaced another), say ""changed"" or ""updated"". If you must describe the *direction* of the change, only use ""more restrictive"" / ""less restrictive"" when one filter is a clear subset of the other (single inequality bound tightened/loosened on the same column with the same operator family).
 2. **HR attributes changed (no config change)**: ""This sync reflects changes in HR data: some [added|removed] users had [attribute] change (e.g., [old] -> [new]), matching the membership rule."" NEVER use this pattern unless the prompt's ""HR attribute changes"" section contains actual change entries with concrete attribute names and old/new values. If that section reads ""(no HR cross-snapshot diff available)"" you MUST NOT claim any user's attribute value changed, MUST NOT invent a count, and MUST NOT name an attribute as the reason for the delta. A change to *which attribute the filter tests* (e.g. filter went from one HR attribute to a different HR attribute) is NOT a change to that attribute's value — it's a Pattern 1 config change.
 3. **New exclusionary part added**: ""This sync reflects a new exclusion rule added on [date] that excludes [criteria]."" Only usable when the ""Configuration history"" section shows an explicit ""What changed:"" line naming the new exclusionary part — never when the stale marker is present.
-4. **Threshold blocked**: ""This sync proposed changes that were blocked because the change exceeded the configured threshold."" This applies when Status is ""ThresholdExceeded"" (the proposed delta exceeded the configured threshold and the job was paused). When a ""Per-part attribution for removed users"" or ""for added users"" section is also present, cite the specific rule(s) from those sections (e.g., ""...blocked, and most of the proposed removals came from users leaving the source group `X`""). Do NOT invent a per-side cause (e.g., ""blocked because the removals exceeded the threshold"") unless the attribution section actually shows that split — the threshold check considers the total delta.
+4. **Threshold blocked**: ""This sync proposed changes that were blocked because the change exceeded the configured threshold."" This applies when Status is ""ThresholdExceeded"" (the proposed delta exceeded the configured threshold and the job was paused). When a ""Per-part attribution for removed users"" or ""for added users"" section is also present, cite the specific rule(s) from those sections (e.g., ""...blocked, and most of the proposed removals stopped contributing through the people-only rule for `X`""). Do NOT invent a per-side cause (e.g., ""blocked because the removals exceeded the threshold"") unless the attribution section actually shows that split — the threshold check considers the total delta.
 5. **Upstream sources changed (no in-GMM signal)**: ""This sync reflects changes in [upstream source]."" Fill in [upstream source] using the exact phrase from the ""Job source kind"" line in the prompt — ""upstream HR data"" for an HrData job, ""upstream source group memberships"" for a Group job, or ""upstream membership sources"" for a Mixed/Other job. NEVER say ""source group"" for an HrData job.
 6. **Insufficient signal (LAST resort only)**: ""The specific reason could not be determined from the available data."" Use this ONLY when there are NO added or removed users to explain, OR when the ""Membership rules as of this run:"" glossary is empty/absent so the group's rule cannot be described. When there ARE added or removed users AND that glossary describes the rule, you MUST use the Descriptive membership-rule fallback below instead of this hedge.
 **Descriptive membership-rule fallback (never hedge when the rule is known)**: When there ARE added or removed users but no ""Per-part attribution"" section names a specific source (the section is absent or shows a ""(no attributable source found …)"" marker) AND no applicable configuration change explains the delta, do NOT default to pattern 6. Build a descriptive explanation from the always-available ""Membership rules as of this run:"" glossary — for additions say the users were added because they match the group's membership rule, describing that rule in plain English; for removals say the users were in the group but no longer match its membership rule, describing that rule in plain English. Restating the group's OWN rule this way is an always-available fact, NOT naming a specific source as the mechanism, so it does NOT violate the anti-hallucination rule — you still MUST NOT claim the users joined or left a specific named source by process of elimination. For removals whose exact drop-out point is unknown, you MAY add that the exact date isn't available in the retained history, but keep the descriptive rule framing and NEVER say the reason could not be determined. Combine with pattern 4 for threshold-blocked runs.
@@ -84,9 +84,9 @@ Prefer these patterns:
 8. **Empty membership rule result**: ""This sync made no membership changes because the inclusionary membership rule matched no employees in the HR snapshot for this run."" Tailor the sentence to the variant: for filter-only, mention only the owner-friendly criteria; for manager+unbounded, mention the manager root and the criteria; for manager+depth-cap, mention the manager root, the depth cap, and the criteria. Never reconstruct the raw filter.
 9. **Per-rule attribution available**: When the prompt contains a ""Per-rule attribution for added users"" section, use those qualitative terms verbatim (e.g., ""most added users match the inclusionary HR rule scoped to id=100 (unbounded depth)""). Pair this with whichever change pattern (1, 7, etc.) is appropriate. NEVER translate ""most"" / ""almost all"" / ""a few"" into specific counts or percentages — the buckets are qualitative on purpose to avoid fabricated precision.
 10. **IgnoreThresholdOnce applied**: When the Configuration history section contains an explicit ""IgnoreThresholdOnce activated on [date]"" line, that's the direct cause of this sync's delta: the previous run was blocked by the configured threshold, an owner (or automation) activated IgnoreThresholdOnce, and this sync applied the previously-pending changes. Use pattern: ""This sync applied the [adds|removes|adds and removes] that were previously blocked by the threshold, because IgnoreThresholdOnce was activated on [date]."" NEVER use this pattern unless the explicit ""IgnoreThresholdOnce activated on [date]"" line is present in the prompt — the marker is emitted only when the event was activated in THIS sync's window; otherwise, the ITO event is stale and MUST NOT be cited (even if the historical event is technically still visible elsewhere). Combine with pattern 1 / 7 phrasing when a rule change also drove the previously-pending delta, using the owner-friendly old and new criteria from the prompt.
-11. **Per-part attribution for removed users available**: When the prompt contains a ""Per-part attribution for removed users"" section, use those qualitative terms verbatim to explain the removals (e.g., ""most removed users left the source group `TestGroupMember`"", or ""a few removed users no longer match the inclusionary HR rule"", or — when a source was dropped by a recent config update — ""all of the removed users were previously sourced from the group `X` which was removed from the query""). When the attribution line for a deleted source says ""per-part membership counts are unavailable, but this deleted source is the likely cause"", phrase it as: ""This sync's removals likely came from users who were previously sourced from the group `X`, which was removed from the query in a recent config update."" When the attribution line indicates a source ""flipped from inclusionary to exclusionary"", phrase it as: ""This sync's removals came from users who are members of `X`, which was recently flipped from an inclusionary source to an exclusionary source in the query."" When the attribution line indicates a ""New exclusionary source added"", phrase it as: ""This sync's removals came from users who are members of `X`, which was recently added to the query as an exclusionary source."" **When multiple ""Source removed from query"" attribution lines are present, you MUST name EVERY deleted source in your output — not just the first one. Combine them naturally: ""...from the groups `X` and `Y`"" for two, or ""...from the groups `X`, `Y`, and `Z`"" for three or more. Under no circumstances omit any deleted source that is cited in the attribution section.** Same rule applies to ""Source flipped"" and ""New exclusionary source added"" attribution lines — name EVERY cited source. **Under no circumstances name a source that is NOT cited in the attribution section.** If exactly one source is cited, name exactly that one source and do not add a second name to make the sentence plural. Prefer specific attribution over generic phrasing like ""the specific reason could not be determined"". Pair with pattern 4 for threshold-blocked runs (e.g., ""...blocked by the threshold. All of the proposed removals were previously sourced from the groups `X` and `Y`, both of which were removed from the query.""). If the section is absent and there are removed users, either omit any per-removal explanation or fall back to pattern 5 (upstream source changes — use the ""Job source kind"" phrasing) — NEVER invent an attribution. **CRITICAL anti-hallucination rule**: NEVER name a specific source group, HR rule, or exclusionary source as the cause of removals unless it is cited in the ""Per-part attribution for removed users"" section OR the ""Configuration history"" section shows an explicit ""What changed"" line involving that source in this window. The current query listed under ""Configuration as of this run"" is NOT proof of attribution — a source being listed as CURRENT does not mean users were removed FROM it. Removals typically come from sources that WERE in the query previously but are NO LONGER in the query, from users who no longer match the current sources' criteria, or from sources whose role flipped from inclusionary to exclusionary, or from newly-added exclusionary sources — do not conflate these cases. **BAD example — process-of-elimination hallucination**: given ""Per-part attribution for added users: all of the added users match source group `X`"" and NO removes attribution section (or a ""(no attributable source found)"" removes marker), it is FORBIDDEN to output ""all removals came from users leaving `Y`"" just because `Y` is the OTHER source in the current query. That reasoning is process-of-elimination guessing, not evidence — the correct output is to describe removals without naming any specific source (pattern 4 without a per-removal source, or pattern 5, or pattern 6). Same rule applies in reverse for adds — never mirror the removes attribution shape onto adds when the adds attribution section is empty or marked ""(no attributable source found)"". **BAD example — inventing a second name to make a sentence plural**: given a single attribution line like ""- Source removed from query (previously group `X`): all of the removed users were sourced from this now-deleted part"", it is FORBIDDEN to output ""...came from the groups `X` and `Y`"" — you must output ""...came from the group `X`"" (singular) since only ONE source is cited. Never pluralize by inventing a second source name from the current query or from prior conversations.
+11. **Per-part attribution for removed users available**: When the prompt contains a ""Per-part attribution for removed users"" section, use its qualitative terms verbatim. Describe the selected rule contribution, not an unproven physical change to the source group: say users ""stopped contributing through the people-only rule for `X`"" or ""now match the agent-user exclusion rule for `Y`"", not that they joined or left the source group. When a rule was removed, flipped, or newly added, state that configuration change and preserve the identity selection shown in the rule label. **When multiple removed, flipped, or added rule lines are present, name EVERY cited rule and no others.** If exactly one rule is cited, name exactly one. Prefer this evidence over generic wording and combine it with pattern 4 for threshold-blocked runs. If the section is absent or contains ""(no attributable source found)"", do not name a specific source or rule by process of elimination. The current query is not attribution evidence. Use the descriptive membership-rule fallback instead. **CRITICAL anti-hallucination rule**: NEVER name a specific source group, HR rule, or exclusionary rule as the cause of removals unless it is cited in the attribution section or in an explicit configuration change for this run.
 **Current-state color (latest HR data):** When a removes attribution line is qualified with ""in the latest HR data (current state, not the removal-time snapshot)"", it was evaluated against the CURRENT HR data because the exact removal-time snapshot is no longer retained. Phrase it in present tense (e.g., ""those removed users currently no longer match the group's rule in the latest HR data"") and NEVER assert it as the definitive reason at the moment of removal. This line is emitted only for removed users who still fail the rule today, so do not extrapolate it to users who may still match.
-12. **Per-part attribution for added users available**: When the prompt contains a ""Per-part attribution for added users"" section, use its qualitative terms verbatim to explain the additions. In particular, when the attribution line says ""Exclusionary source removed from query in the recent config update"", phrase it as: ""This sync's additions came from users who were previously excluded by `X`, which was removed from the query in a recent config update."" When the attribution line indicates a source ""flipped from exclusionary to inclusionary"", phrase it as: ""This sync's additions came from users who are members of `X`, which was recently flipped from an exclusionary source to an inclusionary source in the query."" **When multiple attribution lines are present for adds, you MUST name EVERY cited source, combining them naturally (""...from the groups `X` and `Y`"" for two, ""...from the groups `X`, `Y`, and `Z`"" for three or more).** All the anti-hallucination rules from pattern 11 apply symmetrically to adds — never invent a second name to make a sentence plural, never process-of-elimination guess a source, never name a source that is not cited in the attribution section.
+12. **Per-part attribution for added users available**: When the prompt contains a ""Per-part attribution for added users"" section, use its qualitative terms verbatim. Describe users as matching or beginning to contribute through the cited selected rule. For a removed exclusionary rule, say they were previously blocked by that rule; for a flip to inclusionary, say they now match that inclusionary rule. Preserve the identity selection in the label. **When multiple attribution lines are present, name EVERY cited rule and no others.** All anti-hallucination rules from pattern 11 apply symmetrically to additions.
 13. **First recorded run (initial population)**: When the prompt contains a ""Run sequence: This is the FIRST recorded run for this job"" line, this run established the destination group's membership for the first time. For THIS case ONLY, the ""Membership rules as of this run:"" section IS the cause — describe the initial population using those owner-friendly rule descriptions (e.g., ""This first sync populated the group from its configured rules: employees whose Cost Center is Field Sales - West, plus members of the source group `Contoso Sales Team`.""). You MUST NOT hedge with pattern 6 on a first run that added or removed members, and you MUST NOT use change-based patterns (1, 3, 7) or claim any prior configuration or membership existed — there is no previous state. When a ""Per-rule attribution"" section is also present, you may fold in its qualitative terms. Keep it to 1-2 sentences; when many rules are configured, summarize the most relevant inclusionary rules rather than listing every part, and never emit raw filter syntax or numeric codes.
 
 When the membership rule returns no users (UsersAdded and UsersRemoved are both 0 AND the run status is MembershipDataNotFound or similar), prefer pattern 8 over saying ""HR data was unavailable"" — the HR table itself exists; what's empty is the result for this specific scope+filter combination.
@@ -175,7 +175,10 @@ Use only the provided data. Output 1-2 sentences normally, or up to 3 sentences 
                 // Resolve the query active AT THE TIME OF THIS RUN, not the current syncJob.Query — prevents historical runs being explained against the wrong filter.
                 var asOfRunQuery = await GetAsOfRunQueryAsync(request.SyncJobId, runHistory) ?? syncJob.Query;
                 var parts = ParseQueryParts(asOfRunQuery) ?? new List<QueryPartInfo>();
-                var hasConfigChangeInWindow = await HasConfigChangeInWindowAsync(request.SyncJobId, runHistory);
+                var hasConfigChangeInWindow = await HasConfigChangeInWindowAsync(
+                    request.SyncJobId,
+                    runHistory,
+                    syncJob.DryRunTimeStamp);
 
                 // Detect threshold-blocked runs from the run status — the disable-cap path leaves Status=ThresholdExceeded.
                 var previousRun = await GetPreviousRunHistoryAsync(request.SyncJobId, runHistory);
@@ -221,63 +224,113 @@ Use only the provided data. Output 1-2 sentences normally, or up to 3 sentences 
                 // capturing near-simultaneous SubmissionApproved / IgnoreThresholdOnce events that happened during finalization.
                 var configRunTime = GetRunConfigCutoff(runHistory);
                 var recentChanges = await _syncJobChangeRepository.GetRecentConfigChangesBySyncJobIdAsync(
-                    request.SyncJobId, configRunTime, count: 10);
+                    request.SyncJobId, configRunTime, count: 0);
                 var recentIgnoreThresholdOnce = await _syncJobChangeRepository.GetRecentIgnoreThresholdOnceEventsAsync(
                     request.SyncJobId, configRunTime, count: 2);
 
-                // "Previous parts for names" = the union of every inclusionary source seen across recent past Updates
-                // that had a Query different from the current one. Owners frequently drop groups in successive Updates
-                // (e.g., 3-source query -> 2-source -> 1-source over multiple submits), and identical resubmits are common
-                // after a threshold block. Taking the union ensures we detect ALL removed sources, not just the last one.
                 var currentQueryForNames = recentChanges != null && recentChanges.Count > 0
                     ? ExtractQueryFromChangeDetails(recentChanges[0].ChangeDetails)
                     : null;
                 var currentQueryNormalized = NormalizeQuery(currentQueryForNames);
+                var historicalAttributionFloor = await GetHistoricalAttributionFloorAsync(
+                    request.SyncJobId,
+                    previousRun,
+                    recentChanges,
+                    syncJob.DryRunTimeStamp);
+                Models.SyncJobChange.SyncJobChange? appliedBaselineChange = null;
+                if (historicalAttributionFloor.HasValue)
+                {
+                    var appliedBaselineChanges =
+                        await _syncJobChangeRepository.GetRecentConfigChangesBySyncJobIdAsync(
+                            request.SyncJobId,
+                            historicalAttributionFloor.Value,
+                            count: 1);
+                    appliedBaselineChange = appliedBaselineChanges?
+                        .FirstOrDefault(change =>
+                            change.ChangeTime <= historicalAttributionFloor.Value
+                            && ExtractQueryFromChangeDetails(
+                                change.ChangeDetails) != null);
+                }
+                var historicalAttributionChanges = SelectHistoricalAttributionChanges(
+                    recentChanges,
+                    historicalAttributionFloor,
+                    appliedBaselineChange);
+                var historicalQuerySnapshots = BuildHistoricalQuerySnapshots(
+                    parts,
+                    historicalAttributionChanges.Select(change =>
+                        ExtractQueryFromChangeDetails(change.ChangeDetails)));
+                var historicalQueryTransitions =
+                    BuildHistoricalQueryTransitions(historicalQuerySnapshots);
                 var previousPartsForNames = new List<QueryPartInfo>();
                 var seenPrevSourceKeys = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-                if (recentChanges != null)
+                foreach (var snapshot in historicalQuerySnapshots.Skip(1))
                 {
-                    for (int i = 1; i < recentChanges.Count; i++)
+                    foreach (var part in snapshot)
                     {
-                        var candidate = ExtractQueryFromChangeDetails(recentChanges[i].ChangeDetails);
-                        if (string.Equals(NormalizeQuery(candidate), currentQueryNormalized, StringComparison.OrdinalIgnoreCase))
-                            continue;
-                        var candidateParts = ParseQueryParts(candidate);
-                        if (candidateParts == null) continue;
-                        foreach (var p in candidateParts)
+                        if (seenPrevSourceKeys.Add(
+                            GetQueryPartSemanticKey(part)))
                         {
-                            var key = $"{p.Type}|{p.Source ?? string.Empty}|{p.ManagerId ?? string.Empty}|{p.Exclusionary}";
-                            if (seenPrevSourceKeys.Add(key))
-                            {
-                                previousPartsForNames.Add(p);
-                            }
+                            previousPartsForNames.Add(part);
                         }
                     }
                 }
 
-                // Fix #3: reconstruct the PREVIOUS RUN's parsed parts (with their previous-run indices) so per-part removes
-                // attribution can look up previous blobs by the SAME source's previous-run index — not by the current-run index.
-                // Reordering (or middle-of-list deletions) shift indices, and blob filenames are position-based, so using the
-                // current index to key into previousPartFiles produces wrong-source comparisons.
+                // Reconstruct the previous run's parts so each current rule can be matched to its own position-based previous blob.
                 List<QueryPartInfo>? previousRunParts = null;
-                var previousRunIndexByGuid = new Dictionary<Guid, int>();
-                if (previousRun != null && recentChanges != null)
+                Models.SyncJobChange.SyncJobChange? previousRunChange = null;
+                if (previousRun != null)
                 {
                     var prevCutoff = GetRunConfigCutoff(previousRun);
-                    var prevRunChange = recentChanges.FirstOrDefault(c => c.ChangeTime <= prevCutoff);
-                    var prevRunQuery = prevRunChange != null ? ExtractQueryFromChangeDetails(prevRunChange.ChangeDetails) : null;
+                    var previousRunChanges =
+                        await _syncJobChangeRepository.GetRecentConfigChangesBySyncJobIdAsync(
+                            request.SyncJobId,
+                            prevCutoff,
+                            count: 1);
+                    previousRunChange = previousRunChanges?
+                        .FirstOrDefault(change =>
+                            change.ChangeTime <= prevCutoff
+                            && ExtractQueryFromChangeDetails(
+                                change.ChangeDetails) != null);
+                    var prevRunQuery = previousRunChange != null
+                        ? ExtractQueryFromChangeDetails(previousRunChange.ChangeDetails)
+                        : null;
                     previousRunParts = ParseQueryParts(prevRunQuery);
-                    if (previousRunParts != null)
+                }
+                if (previousRunParts != null)
+                {
+                    foreach (var part in previousRunParts)
                     {
-                        foreach (var pp in previousRunParts)
+                        if (seenPrevSourceKeys.Add(
+                            GetQueryPartSemanticKey(part)))
                         {
-                            if (IsGroupFamilyAttributionType(pp.Type) && Guid.TryParse(pp.Source, out var g))
-                            {
-                                previousRunIndexByGuid[g] = pp.Index;
-                            }
+                            previousPartsForNames.Add(part);
                         }
                     }
                 }
+                if (appliedBaselineChange == null
+                    && historicalQueryTransitions.Count == 0
+                    && previousRunParts != null
+                    && !string.Equals(
+                        GetQuerySnapshotKey(previousRunParts),
+                        GetQuerySnapshotKey(parts),
+                        StringComparison.OrdinalIgnoreCase))
+                {
+                    historicalQueryTransitions.Add(new QueryPartTransition(
+                        previousRunParts,
+                        parts));
+                }
+                var previousRunIndexByCurrentIndex = MatchQueryParts(
+                        previousRunParts ?? new List<QueryPartInfo>(),
+                        parts)
+                    .Matched
+                    .Where(match =>
+                        IsGroupFamilyAttributionType(match.Current.Type)
+                        && AreSemanticallyEqual(
+                            match.Previous,
+                            match.Current))
+                    .ToDictionary(
+                        match => match.Current.Index,
+                        match => match.Previous.Index);
 
                 // Was IgnoreThresholdOnce activated between the previous run and this sync? If so
                 // that's the CAUSE for this sync (see Pattern 4b in SystemPrompt).
@@ -306,12 +359,16 @@ Use only the provided data. Output 1-2 sentences normally, or up to 3 sentences 
 
                 var configDiff = BuildConfigurationDiff(
                     recentChanges,
+                    appliedBaselineChange ?? previousRunChange,
                     groupNames,
                     managerNames,
                     mappingDescriptions,
                     hasConfigChangeInWindow,
                     itoEvent,
-                    previousRun?.Status);
+                    previousRun?.Status,
+                    previousRun == null
+                        ? null
+                        : GetRunConfigCutoff(previousRun));
                 var hrDiff = await ComputeHrDiffSummaryAsync(
                     parts,
                     cappedAdded,
@@ -349,11 +406,11 @@ Use only the provided data. Output 1-2 sentences normally, or up to 3 sentences 
 
                 // Per-part attribution for added users. Silent skip on any missing data.
                 var addsAttribution = await ComputeAddsAttributionAsync(
-                    parts, previousPartsForNames, added, runHistory.AdfRunId, managerNames, groupNames, partFiles, previousPartFiles, previousRunIndexByGuid);
+                    parts, historicalQueryTransitions, previousRunParts ?? new List<QueryPartInfo>(), added, runHistory.AdfRunId, managerNames, groupNames, partFiles, previousPartFiles);
 
                 // Per-part attribution for removed users. Requires previous run's data; silent skip on any missing data.
                 var removesAttribution = await ComputeRemovesAttributionAsync(
-                    parts, previousPartsForNames, removed, runHistory.AdfRunId, previousRun?.AdfRunId, managerNames, groupNames, partFiles, previousPartFiles, previousRunIndexByGuid);
+                    parts, historicalQueryTransitions, previousRunParts ?? new List<QueryPartInfo>(), removed, runHistory.AdfRunId, previousRun?.AdfRunId, managerNames, groupNames, partFiles, previousPartFiles, previousRunIndexByCurrentIndex);
 
                 // Phase 2: when single-step attribution found nothing and the query was stable across the window, fall back to a durable walk-back over prior runs' per-part SOURCE blobs (persist ~30 days, independent of the ~1-day ADF tables) to recover attribution when the previous ADF table was pruned or users dropped out several runs back; floored at the last config change that actually CHANGED the query so identical resubmits don't truncate the same-query stretch.
                 if (removed.Count > 0 && !hasConfigChangeInWindow && HasNoRemovesAttribution(removesAttribution))
@@ -361,7 +418,7 @@ Use only the provided data. Output 1-2 sentences normally, or up to 3 sentences 
                     // Floor at the most recent change that actually changed the query (an identical resubmit does not); see ComputeWalkBackFloor.
                     var walkBackFloor = ComputeWalkBackFloor(recentChanges, currentQueryNormalized);
                     var priorRuns = (await GetPreviousRunHistoriesAsync(request.SyncJobId, runHistory, WalkBackMaxRuns))
-                        .Where(r => r.UpdatedAt >= walkBackFloor)
+                        .Where(r => GetRunConfigCutoff(r) >= walkBackFloor)
                         .ToList();
                     var walkBackAttribution = await ComputeRemovesWalkBackAttributionAsync(
                         parts, removed, targetGroupId, priorRuns, managerNames, groupNames);
@@ -466,18 +523,81 @@ Use only the provided data. Output 1-2 sentences normally, or up to 3 sentences 
             return runHistory.UpdatedAt;
         }
 
-        private async Task<bool> HasConfigChangeInWindowAsync(Guid syncJobId, Models.SyncJobHistory.SyncJobHistory runHistory)
+        private async Task<bool> HasConfigChangeInWindowAsync(
+            Guid syncJobId,
+            Models.SyncJobHistory.SyncJobHistory runHistory,
+            DateTime latestDryRunTime)
         {
-            var asOf = runHistory.EndTime ?? runHistory.StartTime ?? runHistory.UpdatedAt;
-            var recentChanges = await _syncJobChangeRepository.GetRecentConfigChangesBySyncJobIdAsync(syncJobId, asOf, count: 1);
+            var asOf = GetRunConfigCutoff(runHistory);
+            var recentChanges = await _syncJobChangeRepository.GetRecentConfigChangesBySyncJobIdAsync(
+                syncJobId,
+                asOf,
+                count: 0);
             if (recentChanges == null || recentChanges.Count == 0)
             {
                 return false;
             }
 
+            var comparison = ConfigurationChangeHistory.Analyze(
+                recentChanges,
+                change => ExtractQueryFromChangeDetails(change.ChangeDetails));
+            if (!ConfigurationChangeHistory.HasChangeEvidence(comparison))
+            {
+                return false;
+            }
+
             var previousRun = await GetPreviousRunHistoryAsync(syncJobId, runHistory);
-            var windowStart = previousRun?.UpdatedAt ?? DateTime.MinValue;
-            return recentChanges[0].ChangeTime > windowStart;
+            Models.SyncJobChange.SyncJobChange? baselineChange = null;
+            var historicalAttributionFloor = await GetHistoricalAttributionFloorAsync(
+                syncJobId,
+                previousRun,
+                recentChanges,
+                latestDryRunTime);
+            if (historicalAttributionFloor.HasValue)
+            {
+                var baselineChanges =
+                    await _syncJobChangeRepository.GetRecentConfigChangesBySyncJobIdAsync(
+                        syncJobId,
+                        historicalAttributionFloor.Value,
+                        count: 1);
+                baselineChange = baselineChanges?
+                    .FirstOrDefault(change =>
+                        change.ChangeTime <= historicalAttributionFloor.Value
+                        && ExtractQueryFromChangeDetails(
+                            change.ChangeDetails) != null);
+            }
+            else if (previousRun != null)
+            {
+                var previousCutoff = GetRunConfigCutoff(previousRun);
+                var previousChanges =
+                    await _syncJobChangeRepository.GetRecentConfigChangesBySyncJobIdAsync(
+                        syncJobId,
+                        previousCutoff,
+                        count: 1);
+                baselineChange = previousChanges?
+                    .FirstOrDefault(change =>
+                        change.ChangeTime <= previousCutoff
+                        && ExtractQueryFromChangeDetails(
+                            change.ChangeDetails) != null);
+            }
+
+            var currentChange = recentChanges
+                .FirstOrDefault(change =>
+                    change.ChangeTime <= asOf
+                    && ExtractQueryFromChangeDetails(
+                        change.ChangeDetails) != null);
+            if (currentChange != null && baselineChange != null)
+            {
+                return !string.Equals(
+                    NormalizeQuery(ExtractQueryFromChangeDetails(
+                        currentChange.ChangeDetails)),
+                    NormalizeQuery(ExtractQueryFromChangeDetails(
+                        baselineChange.ChangeDetails)),
+                    StringComparison.OrdinalIgnoreCase);
+            }
+
+            return previousRun == null
+                || recentChanges[0].ChangeTime > GetRunConfigCutoff(previousRun);
         }
 
         // Most recent history row strictly before this run's UpdatedAt — window baseline for stale-config, ITO, and threshold-violation delta.
@@ -504,20 +624,30 @@ Use only the provided data. Output 1-2 sentences normally, or up to 3 sentences 
             return null;
         }
 
-        // Floor the removes walk-back at the most recent config change that actually CHANGED the query. An identical resubmit (a no-op config update, common right after a threshold block) records a SyncJobChange but keeps the same normalized query, so flooring at the latest change unconditionally would truncate the same-query stretch and leave older removals unattributed. Changes without a query snapshot don't define a query boundary and are skipped; DateTime.MinValue means walk back as far as retained runs allow.
+        // Floor positional blob walk-back at the oldest retained snapshot known to use the current layout.
         private static DateTime ComputeWalkBackFloor(IReadOnlyList<Models.SyncJobChange.SyncJobChange>? recentChanges, string? currentQueryNormalized)
         {
             if (recentChanges == null) return DateTime.MinValue;
+            var oldestCurrentLayoutSnapshot = DateTime.MinValue;
             foreach (var change in recentChanges)
             {
                 var changeQuery = ExtractQueryFromChangeDetails(change.ChangeDetails);
                 if (changeQuery == null) continue;
-                if (!string.Equals(NormalizeQuery(changeQuery), currentQueryNormalized, StringComparison.OrdinalIgnoreCase))
+                if (string.Equals(
+                    NormalizeQuery(changeQuery),
+                    currentQueryNormalized,
+                    StringComparison.OrdinalIgnoreCase))
                 {
-                    return change.ChangeTime;
+                    oldestCurrentLayoutSnapshot = change.ChangeTime;
+                    continue;
                 }
+
+                return oldestCurrentLayoutSnapshot == DateTime.MinValue
+                    ? change.ChangeTime
+                    : oldestCurrentLayoutSnapshot;
             }
-            return DateTime.MinValue;
+
+            return oldestCurrentLayoutSnapshot;
         }
 
         // Phase 2 walk-back support: returns up to maxRuns history rows strictly before this run's UpdatedAt, most-recent-first (100/page, up to 20 pages, stops once enough are collected); generalizes GetPreviousRunHistoryAsync for the removes blob walk-back.
@@ -554,6 +684,165 @@ Use only the provided data. Output 1-2 sentences normally, or up to 3 sentences 
                 .OrderByDescending(h => h.UpdatedAt)
                 .Take(maxRuns)
                 .ToList();
+        }
+
+        private async Task<DateTime?> GetHistoricalAttributionFloorAsync(
+            Guid syncJobId,
+            Models.SyncJobHistory.SyncJobHistory? previousRun,
+            IReadOnlyList<Models.SyncJobChange.SyncJobChange>? configChanges,
+            DateTime latestDryRunTime)
+        {
+            if (previousRun == null)
+            {
+                return null;
+            }
+
+            if (DidRunAdvanceAppliedBoundary(
+                previousRun,
+                configChanges,
+                latestDryRunTime))
+            {
+                return GetRunConfigCutoff(previousRun);
+            }
+
+            var lastAppliedRun = await GetPreviousAppliedRunHistoryAsync(
+                syncJobId,
+                previousRun,
+                configChanges,
+                latestDryRunTime);
+            return lastAppliedRun == null
+                ? null
+                : GetRunConfigCutoff(lastAppliedRun);
+        }
+
+        private async Task<Models.SyncJobHistory.SyncJobHistory?>
+            GetPreviousAppliedRunHistoryAsync(
+                Guid syncJobId,
+                Models.SyncJobHistory.SyncJobHistory runHistory,
+                IReadOnlyList<Models.SyncJobChange.SyncJobChange>? configChanges,
+                DateTime latestDryRunTime)
+        {
+            const int pageSize = 100;
+            const int maxPages = 20;
+
+            for (var page = 1; page <= maxPages; page++)
+            {
+                var historyPage =
+                    await _syncJobHistoryRepository.GetBySyncJobIdAsync(
+                        syncJobId,
+                        pageSize,
+                        page);
+                if (historyPage == null || historyPage.Count == 0)
+                {
+                    return null;
+                }
+
+                var appliedRun = historyPage
+                    .Where(history =>
+                        history.RunId != runHistory.RunId
+                        && history.RunId != Guid.Empty
+                        && history.UpdatedAt < runHistory.UpdatedAt
+                        && DidRunAdvanceAppliedBoundary(
+                            history,
+                            configChanges,
+                            latestDryRunTime))
+                    .OrderByDescending(history => history.UpdatedAt)
+                    .FirstOrDefault();
+                if (appliedRun != null)
+                {
+                    return appliedRun;
+                }
+
+                if (historyPage.Count < pageSize)
+                {
+                    return null;
+                }
+            }
+
+            return null;
+        }
+
+        private static bool DidRunAdvanceAppliedBoundary(
+            Models.SyncJobHistory.SyncJobHistory run,
+            IReadOnlyList<Models.SyncJobChange.SyncJobChange>? configChanges,
+            DateTime latestDryRunTime)
+        {
+            if (!string.Equals(
+                run.Status,
+                "Idle",
+                StringComparison.OrdinalIgnoreCase))
+            {
+                return false;
+            }
+
+            if (string.Equals(
+                    run.UpdatedByFunction,
+                    "MembershipAggregator",
+                    StringComparison.OrdinalIgnoreCase)
+                && IsDryRunHistory(
+                    run,
+                    configChanges,
+                    latestDryRunTime))
+            {
+                return false;
+            }
+
+            return string.IsNullOrWhiteSpace(run.UpdatedByFunction)
+                || string.Equals(
+                    run.UpdatedByFunction,
+                    "GraphUpdater",
+                    StringComparison.OrdinalIgnoreCase)
+                || string.Equals(
+                    run.UpdatedByFunction,
+                    "MembershipAggregator",
+                    StringComparison.OrdinalIgnoreCase);
+        }
+
+        private static bool IsDryRunHistory(
+            Models.SyncJobHistory.SyncJobHistory run,
+            IReadOnlyList<Models.SyncJobChange.SyncJobChange>? configChanges,
+            DateTime latestDryRunTime)
+        {
+            if (run.EndTime.HasValue
+                && run.EndTime.Value == latestDryRunTime)
+            {
+                return true;
+            }
+
+            var cutoff = GetRunConfigCutoff(run);
+            var snapshot = configChanges?
+                .Where(change => change.ChangeTime <= cutoff)
+                .OrderByDescending(change => change.ChangeTime)
+                .FirstOrDefault(change =>
+                    ExtractQueryFromChangeDetails(change.ChangeDetails) != null);
+            return snapshot != null
+                && IsDryRunEnabledInChangeDetails(snapshot.ChangeDetails);
+        }
+
+        // Include one baseline snapshot so changes after the last applied run can still be reconstructed.
+        private static IReadOnlyList<Models.SyncJobChange.SyncJobChange> SelectHistoricalAttributionChanges(
+            IReadOnlyList<Models.SyncJobChange.SyncJobChange>? recentChanges,
+            DateTime? attributionFloor,
+            Models.SyncJobChange.SyncJobChange? baselineChange)
+        {
+            if (!attributionFloor.HasValue
+                || baselineChange == null
+                || ExtractQueryFromChangeDetails(
+                    baselineChange.ChangeDetails) == null)
+            {
+                return Array.Empty<Models.SyncJobChange.SyncJobChange>();
+            }
+
+            var orderedChanges = (recentChanges
+                    ?? Array.Empty<Models.SyncJobChange.SyncJobChange>())
+                .OrderByDescending(change => change.ChangeTime)
+                .ToList();
+            var selectedChanges = orderedChanges
+                .Where(change => change.ChangeTime > attributionFloor.Value)
+                .ToList();
+            selectedChanges.Add(baselineChange);
+
+            return selectedChanges;
         }
 
         // Explicitly handles both destination kinds per the resolver contract (ResolvedGroupDestination.ObjectId,

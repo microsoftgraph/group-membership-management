@@ -27,7 +27,7 @@ namespace Services
 Given context about a sync run and a specific user, explain in 1-2 sentences why the user was added to or removed from the group during this sync.
 
 GMM syncs membership from source parts into a destination group. A sync job's configuration (its ""query"") is a list of source parts, each of which can be:
-- A **GroupMembership** source: includes or excludes members of another Entra ID group.
+- A **GroupMembership** source: includes or excludes people, agent users, or both from another Entra ID group.
 - A **SqlMembership** source: includes or excludes employees matching an HR data filter (e.g., Building, Department). Its identity types can instead select the AI agents those employees own, or both.
 - A **PlaceMembership** source: includes or excludes users returned by a Microsoft Graph query with applied filters (e.g., users associated with a specific place or location).
 - A **GroupOwnership** source: includes or excludes owners of a specified Entra ID group.
@@ -43,10 +43,12 @@ When explaining, use the most specific explanation that fits the data. Follow th
 4. **Exclusionary part added**: ""This user was removed because a new exclusion rule was added on [date] that excludes employees where [criteria], and they match that exclusion.""
 5. **User attribute changed (no config change)**: ""This user was removed because their [attribute] changed from [old value] to [new value], which no longer matches the filter criteria [filter].""
 6. **No config change, user matches filter**: ""This user was added because their current attributes match the sync filter criteria.""
-7. **Identity types changed**: ""This member was removed because the HR rule was changed on [date] from [previous identity types] to [new identity types], and they are not an employee in the HR data."" For an addition: ""This member was added because the HR rule was changed on [date] from [previous identity types] to [new identity types], and they are not an employee in the HR data, so they were included as an AI agent that a matching employee owns.""
-8. **AI agent included (no identity type change)**: ""This member was added because the HR rule includes the AI agents that employees matching [filter] own, and they are not an employee in the HR data.""
+7. **Identity types changed**:
+   - For a GroupMembership source, describe the direct group-member selection in the configuration diff: people, agent users, or both. For example: ""This member was added because the rule for the source group was changed on [date] from only people to only agent users, and they are an agent user in that group."" Never describe a group source as an HR rule or say its agent users are owned by matching employees.
+   - For a SqlMembership source, use: ""This member was removed because the HR rule was changed on [date] from [previous identity types] to [new identity types], and they are not an employee in the HR data."" For an addition: ""This member was added because the HR rule was changed on [date] from [previous identity types] to [new identity types], and they are not an employee in the HR data, so they were included as an AI agent that a matching employee owns.""
+8. **AI agent included by a SqlMembership source (no identity type change)**: ""This member was added because the HR rule includes the AI agents that employees matching [filter] own, and they are not an employee in the HR data."" Never use this pattern for GroupMembership or any other non-SQL source.
 
-Use pattern 8, or the addition form of pattern 7, only when the user is not found in the HR data and the rule in effect includes AI agents.
+Use pattern 8, or the SqlMembership addition form of pattern 7, only for a SqlMembership source when the user is not found in the HR data and the rule in effect includes AI agents.
 
 Always reference specific dates, attribute names, and values from the provided data when available.
 Use only the provided data. If you cannot determine the reason with reasonable confidence, say ""The specific reason could not be determined from the available data.""";
@@ -421,16 +423,17 @@ Use only the provided data. If you cannot determine the reason with reasonable c
             try
             {
                 var recentChanges = await _syncJobChangeRepository.GetRecentConfigChangesBySyncJobIdAsync(
-                    syncJobId, runStart, count: 2);
+                    syncJobId, runStart, count: 0);
 
-                if (recentChanges == null || recentChanges.Count == 0)
-                    return ("No configuration changes found.", null);
+                var comparison = ConfigurationChangeHistory.Analyze(
+                    recentChanges,
+                    change => ExtractQueryFromChangeDetails(change.ChangeDetails));
+                if (!ConfigurationChangeHistory.HasChangeEvidence(comparison))
+                    return ("No configuration changes found.", comparison?.CurrentQuery);
 
-                var currentChange = recentChanges[0];
-                currentQuery = ExtractQueryFromChangeDetails(currentChange.ChangeDetails);
-                var previousQuery = recentChanges.Count > 1
-                    ? ExtractQueryFromChangeDetails(recentChanges[1].ChangeDetails)
-                    : null;
+                var currentChange = comparison.CurrentLayoutStart;
+                currentQuery = comparison.CurrentQuery;
+                var previousQuery = comparison.PreviousQuery;
 
                 var sb = new StringBuilder();
                 sb.AppendLine($"Last configuration change on {currentChange.ChangeTime:yyyy-MM-dd} by {currentChange.ChangedByDisplayName ?? "system"} ({currentChange.ChangeReason}):");
@@ -447,7 +450,7 @@ Use only the provided data. If you cannot determine the reason with reasonable c
                         sb.Append(structuralDiff);
                     }
                 }
-                else if (previousQuery != null)
+                else if (comparison.HasPriorSnapshot)
                 {
                     sb.AppendLine($"Configuration (unchanged): {currentQuery ?? "None"}");
                 }
@@ -474,86 +477,196 @@ Use only the provided data. If you cannot determine the reason with reasonable c
                 return string.Empty;
 
             var sb = new StringBuilder();
+            var comparison = MatchQueryParts(
+                previousParts ?? new List<QueryPartInfo>(),
+                currentParts ?? new List<QueryPartInfo>());
 
-            var previousByKey = (previousParts ?? new List<QueryPartInfo>())
-                .ToDictionary(p => p.Key, p => p);
-            var currentByKey = (currentParts ?? new List<QueryPartInfo>())
-                .ToDictionary(p => p.Key, p => p);
-
-            // Parts added
-            foreach (var kvp in currentByKey)
+            foreach (var part in comparison.Added)
             {
-                if (!previousByKey.ContainsKey(kvp.Key))
+                var role = part.Exclusionary ? "exclusionary" : "inclusionary";
+                if (part.Type.Equals("GroupMembership", StringComparison.OrdinalIgnoreCase))
                 {
-                    var part = kvp.Value;
-                    var role = part.Exclusionary ? "exclusionary" : "inclusionary";
-                    if (part.Type.Equals("GroupMembership", StringComparison.OrdinalIgnoreCase))
-                    {
-                        sb.AppendLine($"- New {role} group source added: {part.Source}");
-                    }
-                    else if (part.Type.Equals("SqlMembership", StringComparison.OrdinalIgnoreCase))
-                    {
-                        sb.AppendLine($"- New {role} HR/SQL filter source added: {part.Filter ?? "no filter"}");
-                    }
-                    else
-                    {
-                        sb.AppendLine($"- New {role} source added (type: {part.Type}): {part.Source}");
-                    }
+                    sb.AppendLine(
+                        $"- New {role} group source added: {part.Source} " +
+                        $"(selecting {GetRunExplanationHandler.DescribeIdentitySelection(part.IdentityTypes, part.Type)})");
+                }
+                else if (part.Type.Equals("SqlMembership", StringComparison.OrdinalIgnoreCase))
+                {
+                    sb.AppendLine($"- New {role} HR/SQL filter source added: {part.Filter ?? "no filter"}");
+                }
+                else
+                {
+                    sb.AppendLine($"- New {role} source added (type: {part.Type}): {part.Source}");
                 }
             }
 
-            // Parts removed
-            foreach (var kvp in previousByKey)
+            foreach (var part in comparison.Removed)
             {
-                if (!currentByKey.ContainsKey(kvp.Key))
+                var role = part.Exclusionary ? "exclusionary" : "inclusionary";
+                var roleLabel =
+                    char.ToUpperInvariant(role[0]) + role.Substring(1);
+                if (part.Type.Equals("GroupMembership", StringComparison.OrdinalIgnoreCase))
                 {
-                    var part = kvp.Value;
-                    var role = part.Exclusionary ? "exclusionary" : "inclusionary";
-                    if (part.Type.Equals("GroupMembership", StringComparison.OrdinalIgnoreCase))
-                    {
-                        sb.AppendLine($"- {role.Substring(0, 1).ToUpper() + role.Substring(1)} group source removed: {part.Source}");
-                    }
-                    else if (part.Type.Equals("SqlMembership", StringComparison.OrdinalIgnoreCase))
-                    {
-                        sb.AppendLine($"- {role.Substring(0, 1).ToUpper() + role.Substring(1)} HR/SQL filter source removed: {part.Filter ?? "no filter"}");
-                    }
-                    else
-                    {
-                        sb.AppendLine($"- {role.Substring(0, 1).ToUpper() + role.Substring(1)} source removed (type: {part.Type}): {part.Source}");
-                    }
+                    sb.AppendLine(
+                        $"- {roleLabel} group source removed: {part.Source} " +
+                        $"(selected {GetRunExplanationHandler.DescribeIdentitySelection(part.IdentityTypes, part.Type)})");
+                }
+                else if (part.Type.Equals("SqlMembership", StringComparison.OrdinalIgnoreCase))
+                {
+                    sb.AppendLine($"- {roleLabel} HR/SQL filter source removed: {part.Filter ?? "no filter"}");
+                }
+                else
+                {
+                    sb.AppendLine($"- {roleLabel} source removed (type: {part.Type}): {part.Source}");
                 }
             }
 
-            // Parts modified (same key but different properties)
-            foreach (var kvp in currentByKey)
+            foreach (var match in comparison.Matched)
             {
-                if (previousByKey.TryGetValue(kvp.Key, out var prevPart))
+                var prevPart = match.Previous;
+                var currPart = match.Current;
+
+                if (prevPart.Exclusionary != currPart.Exclusionary)
                 {
-                    var currPart = kvp.Value;
+                    var oldRole = prevPart.Exclusionary ? "exclusionary" : "inclusionary";
+                    var newRole = currPart.Exclusionary ? "exclusionary" : "inclusionary";
+                    sb.AppendLine($"- Source {currPart.Source ?? currPart.Filter ?? currPart.Type} changed from {oldRole} to {newRole}");
+                }
 
-                    if (prevPart.Exclusionary != currPart.Exclusionary)
-                    {
-                        var oldRole = prevPart.Exclusionary ? "exclusionary" : "inclusionary";
-                        var newRole = currPart.Exclusionary ? "exclusionary" : "inclusionary";
-                        sb.AppendLine($"- Source {currPart.Source ?? currPart.Filter ?? currPart.Type} changed from {oldRole} to {newRole}");
-                    }
+                if (!EqualsNormalized(prevPart.Filter, currPart.Filter))
+                {
+                    sb.AppendLine($"- Filter changed from \"{prevPart.Filter ?? "none"}\" to \"{currPart.Filter ?? "none"}\"");
+                }
 
-                    if (!string.Equals(prevPart.Filter?.Trim(), currPart.Filter?.Trim(), StringComparison.OrdinalIgnoreCase))
-                    {
-                        sb.AppendLine($"- Filter changed from \"{prevPart.Filter ?? "none"}\" to \"{currPart.Filter ?? "none"}\"");
-                    }
-
-                    if (prevPart.IdentityTypes != currPart.IdentityTypes)
-                    {
-                        var previousSelection = GetRunExplanationHandler.DescribeIdentitySelection(prevPart.IdentityTypes);
-                        var currentSelection = GetRunExplanationHandler.DescribeIdentitySelection(currPart.IdentityTypes);
-                        sb.AppendLine($"- Identity types changed from {previousSelection} to {currentSelection}");
-                    }
+                if (prevPart.IdentityTypes != currPart.IdentityTypes)
+                {
+                    var previousSelection = GetRunExplanationHandler.DescribeIdentitySelection(
+                        prevPart.IdentityTypes,
+                        prevPart.Type);
+                    var currentSelection = GetRunExplanationHandler.DescribeIdentitySelection(
+                        currPart.IdentityTypes,
+                        currPart.Type);
+                    sb.AppendLine($"- Identity types changed from {previousSelection} to {currentSelection}");
                 }
             }
 
             return sb.ToString();
         }
+
+        private static QueryPartComparison MatchQueryParts(
+            IReadOnlyList<QueryPartInfo> previousParts,
+            IReadOnlyList<QueryPartInfo> currentParts)
+        {
+            var unmatchedPrevious = previousParts.ToList();
+            var unmatchedCurrent = currentParts.ToList();
+            var matched = new List<QueryPartMatch>();
+
+            foreach (var currentPart in currentParts)
+            {
+                var previousPart = unmatchedPrevious.FirstOrDefault(
+                    candidate => AreSemanticallyEqual(candidate, currentPart));
+                if (previousPart == null)
+                {
+                    continue;
+                }
+
+                matched.Add(new QueryPartMatch(previousPart, currentPart));
+                unmatchedPrevious.Remove(previousPart);
+                unmatchedCurrent.Remove(currentPart);
+            }
+
+            foreach (var currentPart in unmatchedCurrent.ToList())
+            {
+                var previousPart = unmatchedPrevious
+                    .Where(candidate => HasSameBaseIdentity(candidate, currentPart))
+                    .OrderByDescending(candidate =>
+                        GetStructuralSimilarity(candidate, currentPart))
+                    .ThenBy(candidate =>
+                        Math.Abs(candidate.Index - currentPart.Index))
+                    .FirstOrDefault();
+                if (previousPart == null)
+                {
+                    continue;
+                }
+
+                matched.Add(new QueryPartMatch(previousPart, currentPart));
+                unmatchedPrevious.Remove(previousPart);
+                unmatchedCurrent.Remove(currentPart);
+            }
+
+            return new QueryPartComparison(
+                matched.OrderBy(match => match.Current.Index).ToList(),
+                unmatchedCurrent.OrderBy(part => part.Index).ToList(),
+                unmatchedPrevious.OrderBy(part => part.Index).ToList());
+        }
+
+        private static bool AreSemanticallyEqual(
+            QueryPartInfo previousPart,
+            QueryPartInfo currentPart) =>
+            HasSameBaseIdentity(previousPart, currentPart)
+            && EqualsNormalized(previousPart.Filter, currentPart.Filter)
+            && previousPart.Exclusionary == currentPart.Exclusionary
+            && previousPart.IdentityTypes == currentPart.IdentityTypes;
+
+        private static bool HasSameBaseIdentity(
+            QueryPartInfo previousPart,
+            QueryPartInfo currentPart)
+        {
+            if (!string.Equals(
+                previousPart.Type,
+                currentPart.Type,
+                StringComparison.OrdinalIgnoreCase))
+            {
+                return false;
+            }
+
+            var previousHasSource =
+                !string.IsNullOrWhiteSpace(previousPart.Source);
+            var currentHasSource =
+                !string.IsNullOrWhiteSpace(currentPart.Source);
+            return !previousHasSource && !currentHasSource
+                || previousHasSource
+                && currentHasSource
+                && EqualsNormalized(
+                    previousPart.Source,
+                    currentPart.Source);
+        }
+
+        private static int GetStructuralSimilarity(
+            QueryPartInfo previousPart,
+            QueryPartInfo currentPart)
+        {
+            var score = 0;
+            if (previousPart.IdentityTypes == currentPart.IdentityTypes)
+            {
+                score += 4;
+            }
+            if (previousPart.Exclusionary == currentPart.Exclusionary)
+            {
+                score += 2;
+            }
+            if (EqualsNormalized(previousPart.Filter, currentPart.Filter))
+            {
+                score++;
+            }
+
+            return score;
+        }
+
+        private static bool EqualsNormalized(string? first, string? second) =>
+            string.Equals(
+                first?.Trim(),
+                second?.Trim(),
+                StringComparison.OrdinalIgnoreCase);
+
+        private sealed record QueryPartMatch(
+            QueryPartInfo Previous,
+            QueryPartInfo Current);
+
+        private sealed record QueryPartComparison(
+            IReadOnlyList<QueryPartMatch> Matched,
+            IReadOnlyList<QueryPartInfo> Added,
+            IReadOnlyList<QueryPartInfo> Removed);
 
         private static List<QueryPartInfo>? ParseQueryParts(string? query)
         {
@@ -581,9 +694,24 @@ Use only the provided data. If you cannot determine the reason with reasonable c
                     if (exclEl.HasValue)
                         part.Exclusionary = exclEl.Value.ValueKind == JsonValueKind.True;
 
-                    if (string.Equals(part.Type, "SqlMembership", StringComparison.OrdinalIgnoreCase))
+                    var isSqlMembership =
+                        string.Equals(part.Type, "SqlMembership", StringComparison.OrdinalIgnoreCase);
+                    var isGroupMembership =
+                        string.Equals(part.Type, "GroupMembership", StringComparison.OrdinalIgnoreCase);
+                    if (isSqlMembership || isGroupMembership)
                     {
-                        part.IdentityTypes = IdentityTypeSelection.TryParse(element, IdentityTypeSet.UsersOnly, out var selection, out _)
+                        var omittedDefault = isGroupMembership
+                            ? IdentityTypeSet.GroupDefault
+                            : IdentityTypeSet.UsersOnly;
+                        var allowedTypes = isGroupMembership
+                            ? IdentityTypeSet.GroupDefault
+                            : IdentityTypeSet.All;
+                        part.IdentityTypes = IdentityTypeSelection.TryParse(
+                            element,
+                            omittedDefault,
+                            allowedTypes,
+                            out var selection,
+                            out _)
                             ? selection
                             : null;
                     }
@@ -610,14 +738,8 @@ Use only the provided data. If you cannot determine the reason with reasonable c
             public string? Filter { get; set; }
             public bool Exclusionary { get; set; }
 
-            // Null for non-SQL parts and for a SQL selection that cannot be read.
+            // Null for unsupported parts and for an identity selection that cannot be read.
             public IdentityTypeSet? IdentityTypes { get; set; }
-
-            // Key for matching parts across configs: type + source for group-based parts,
-            // type + index for SQL parts (since they don't have a unique source ID)
-            public string Key => !string.IsNullOrEmpty(Source)
-                ? $"{Type}|{Source}"
-                : $"{Type}|{Index}";
         }
 
         /// <summary>

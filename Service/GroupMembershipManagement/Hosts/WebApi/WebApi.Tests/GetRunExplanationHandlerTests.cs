@@ -256,6 +256,320 @@ namespace WebApi.Tests
         }
 
         [TestMethod]
+        public async Task ExecuteAsync_NoChangesAfterMembershipAggregatorIdle_ClearsEarlierConfigurationChange()
+        {
+            var now = DateTime.UtcNow;
+            var sourceGroupId = Guid.NewGuid();
+            var currentQuery =
+                $"[{{\"type\":\"GroupMembership\",\"source\":\"{sourceGroupId}\",\"identityTypes\":[\"agents\"]}}]";
+            var previousQuery =
+                $"[{{\"type\":\"GroupMembership\",\"source\":\"{sourceGroupId}\",\"identityTypes\":[\"users\"]}}]";
+            var currentChange = ChangeWithSerializedQuery(
+                now.AddMinutes(-90),
+                currentQuery);
+            var previousChange = ChangeWithSerializedQuery(
+                now.AddHours(-3),
+                previousQuery);
+            var changes = new[] { currentChange, previousChange };
+
+            _mockSyncJobRepository
+                .Setup(repository => repository.GetSyncJobAsync(_syncJobId))
+                .ReturnsAsync(new SyncJob
+                {
+                    Id = _syncJobId,
+                    TargetOfficeGroupId = _targetGroupId,
+                    Query = currentQuery
+                });
+            _mockSyncJobHistoryRepository
+                .Setup(repository => repository.GetByRunIdAsync(_runId))
+                .ReturnsAsync(new global::Models.SyncJobHistory.SyncJobHistory
+                {
+                    SyncJobId = _syncJobId,
+                    RunId = _runId,
+                    Status = "Idle",
+                    StartTime = now.AddMinutes(-10),
+                    EndTime = now,
+                    UpdatedAt = now,
+                    UsersAdded = 0,
+                    UsersRemoved = 0
+                });
+            _mockSyncJobHistoryRepository
+                .Setup(repository => repository.GetBySyncJobIdAsync(
+                    _syncJobId,
+                    It.IsAny<int>(),
+                    It.IsAny<int>()))
+                .ReturnsAsync(new List<global::Models.SyncJobHistory.SyncJobHistory>
+                {
+                    new()
+                    {
+                        SyncJobId = _syncJobId,
+                        RunId = Guid.NewGuid(),
+                        Status = "Idle",
+                        UpdatedByFunction = "MembershipAggregator",
+                        StartTime = now.AddMinutes(-65),
+                        EndTime = now.AddMinutes(-60),
+                        UpdatedAt = now.AddMinutes(-60)
+                    },
+                    new()
+                    {
+                        SyncJobId = _syncJobId,
+                        RunId = Guid.NewGuid(),
+                        Status = "Idle",
+                        UpdatedByFunction = "GraphUpdater",
+                        StartTime = now.AddMinutes(-130),
+                        EndTime = now.AddMinutes(-125),
+                        UpdatedAt = now.AddMinutes(-125)
+                    }
+                });
+            _mockSyncJobChangeRepository
+                .Setup(repository => repository.GetRecentConfigChangesBySyncJobIdAsync(
+                    _syncJobId,
+                    It.IsAny<DateTime>(),
+                    It.IsAny<int>()))
+                .ReturnsAsync((
+                    Guid _,
+                    DateTime asOf,
+                    int count) =>
+                {
+                    var matchingChanges = changes
+                        .Where(change => change.ChangeTime <= asOf)
+                        .OrderByDescending(change => change.ChangeTime);
+                    return count > 0
+                        ? matchingChanges.Take(count).ToList()
+                        : matchingChanges.ToList();
+                });
+
+            var response = await _handler.ExecuteAsync(BuildRequest());
+
+            Assert.AreEqual(HttpStatusCode.OK, response.StatusCode);
+            Assert.AreEqual(
+                GetRunExplanationHandler.NoMembershipChanges,
+                response.Explanation);
+            _mockOpenAIService.Verify(
+                service => service.GetCompletionAsync(
+                    It.IsAny<string>(),
+                    It.IsAny<string>()),
+                Times.Never);
+        }
+
+        [TestMethod]
+        public async Task ExecuteAsync_MembershipAggregatorDryRun_DoesNotAdvanceAppliedBoundary()
+        {
+            var now = DateTime.UtcNow;
+            var sourceGroupId = Guid.NewGuid();
+            var addedUser = Guid.NewGuid();
+            var currentQuery =
+                $"[{{\"type\":\"GroupMembership\",\"source\":\"{sourceGroupId}\",\"identityTypes\":[\"agents\"]}}]";
+            var previousQuery =
+                $"[{{\"type\":\"GroupMembership\",\"source\":\"{sourceGroupId}\",\"identityTypes\":[\"users\"]}}]";
+            var changes = new[]
+            {
+                new SyncJobChange
+                {
+                    Id = Guid.NewGuid(),
+                    ChangeTime = now.AddMinutes(-10),
+                    ChangeReason = SyncJobChangeReason.Update.ToString(),
+                    ChangeDetails = JsonSerializer.Serialize(new SyncJob
+                    {
+                        Query = currentQuery,
+                        IsDryRunEnabled = false
+                    })
+                },
+                new SyncJobChange
+                {
+                    Id = Guid.NewGuid(),
+                    ChangeTime = now.AddMinutes(-90),
+                    ChangeReason = SyncJobChangeReason.Update.ToString(),
+                    ChangeDetails = JsonSerializer.Serialize(new SyncJob
+                    {
+                        Query = currentQuery,
+                        IsDryRunEnabled = true
+                    })
+                },
+                ChangeWithSerializedQuery(now.AddHours(-3), previousQuery)
+            };
+
+            _mockSyncJobRepository
+                .Setup(repository => repository.GetSyncJobAsync(_syncJobId))
+                .ReturnsAsync(new SyncJob
+                {
+                    Id = _syncJobId,
+                    TargetOfficeGroupId = _targetGroupId,
+                    Query = currentQuery
+                });
+            _mockSyncJobHistoryRepository
+                .Setup(repository => repository.GetByRunIdAsync(_runId))
+                .ReturnsAsync(new global::Models.SyncJobHistory.SyncJobHistory
+                {
+                    SyncJobId = _syncJobId,
+                    RunId = _runId,
+                    Status = "Idle",
+                    StartTime = now.AddMinutes(-5),
+                    EndTime = now,
+                    UpdatedAt = now,
+                    UsersAdded = 1,
+                    UsersRemoved = 0
+                });
+            _mockSyncJobHistoryRepository
+                .Setup(repository => repository.GetBySyncJobIdAsync(
+                    _syncJobId,
+                    It.IsAny<int>(),
+                    It.IsAny<int>()))
+                .ReturnsAsync(new List<global::Models.SyncJobHistory.SyncJobHistory>
+                {
+                    new()
+                    {
+                        SyncJobId = _syncJobId,
+                        RunId = Guid.NewGuid(),
+                        Status = "Idle",
+                        UpdatedByFunction = "MembershipAggregator",
+                        StartTime = now.AddMinutes(-65),
+                        EndTime = now.AddMinutes(-60),
+                        UpdatedAt = now.AddMinutes(-60)
+                    },
+                    new()
+                    {
+                        SyncJobId = _syncJobId,
+                        RunId = Guid.NewGuid(),
+                        Status = "Idle",
+                        UpdatedByFunction = "GraphUpdater",
+                        StartTime = now.AddMinutes(-130),
+                        EndTime = now.AddMinutes(-125),
+                        UpdatedAt = now.AddMinutes(-125)
+                    }
+                });
+            _mockSyncJobChangeRepository
+                .Setup(repository => repository.GetRecentConfigChangesBySyncJobIdAsync(
+                    _syncJobId,
+                    It.IsAny<DateTime>(),
+                    It.IsAny<int>()))
+                .ReturnsAsync((
+                    Guid _,
+                    DateTime asOf,
+                    int count) =>
+                {
+                    var matchingChanges = changes
+                        .Where(change => change.ChangeTime <= asOf)
+                        .OrderByDescending(change => change.ChangeTime);
+                    return count > 0
+                        ? matchingChanges.Take(count).ToList()
+                        : matchingChanges.ToList();
+                });
+            SetupAggregatedMembers(MembershipAction.Add, addedUser);
+            string? capturedPrompt = null;
+            _mockOpenAIService
+                .Setup(service => service.GetCompletionAsync(
+                    It.IsAny<string>(),
+                    It.IsAny<string>()))
+                .Callback<string, string>((_, prompt) => capturedPrompt = prompt)
+                .ReturnsAsync("This sync reflects the configured identity selection.");
+
+            var response = await _handler.ExecuteAsync(BuildRequest());
+
+            Assert.AreEqual(HttpStatusCode.OK, response.StatusCode);
+            Assert.IsNotNull(capturedPrompt);
+            StringAssert.Contains(capturedPrompt, "Previous configuration:");
+            StringAssert.Contains(
+                capturedPrompt,
+                "Identity types changed from only people to only agent users");
+        }
+
+        [TestMethod]
+        public async Task ExecuteAsync_ScheduledNowOnlyHistory_WithItoActivation_PreservesItoExplanation()
+        {
+            var now = DateTime.UtcNow;
+            var query =
+                "[{\"type\":\"SqlMembership\",\"source\":{\"filter\":\"Building = 'B40'\"}}]";
+            var addedUser = Guid.NewGuid();
+
+            _mockSyncJobRepository
+                .Setup(repository => repository.GetSyncJobAsync(_syncJobId))
+                .ReturnsAsync(new SyncJob
+                {
+                    Id = _syncJobId,
+                    TargetOfficeGroupId = _targetGroupId,
+                    Query = query
+                });
+            _mockSyncJobHistoryRepository
+                .Setup(repository => repository.GetByRunIdAsync(_runId))
+                .ReturnsAsync(new global::Models.SyncJobHistory.SyncJobHistory
+                {
+                    SyncJobId = _syncJobId,
+                    RunId = _runId,
+                    Status = "Idle",
+                    StartTime = now.AddMinutes(-5),
+                    EndTime = now,
+                    UpdatedAt = now,
+                    UsersAdded = 1,
+                    UsersRemoved = 0
+                });
+            _mockSyncJobHistoryRepository
+                .Setup(repository => repository.GetBySyncJobIdAsync(
+                    _syncJobId,
+                    It.IsAny<int>(),
+                    It.IsAny<int>()))
+                .ReturnsAsync(new List<global::Models.SyncJobHistory.SyncJobHistory>
+                {
+                    new()
+                    {
+                        SyncJobId = _syncJobId,
+                        RunId = Guid.NewGuid(),
+                        Status = SyncStatus.ThresholdExceeded.ToString(),
+                        UpdatedAt = now.AddHours(-1)
+                    }
+                });
+            _mockSyncJobChangeRepository
+                .Setup(repository => repository.GetRecentConfigChangesBySyncJobIdAsync(
+                    _syncJobId,
+                    It.IsAny<DateTime>(),
+                    It.IsAny<int>()))
+                .ReturnsAsync(new List<SyncJobChange>
+                {
+                    new()
+                    {
+                        Id = Guid.NewGuid(),
+                        ChangeTime = now.AddMinutes(-10),
+                        ChangeReason = SyncJobChangeReason.ScheduledNow.ToString(),
+                        ChangedByDisplayName = "Configuration Owner",
+                        ChangeDetails = JsonSerializer.Serialize(new { query })
+                    }
+                });
+            _mockSyncJobChangeRepository
+                .Setup(repository => repository.GetRecentIgnoreThresholdOnceEventsAsync(
+                    _syncJobId,
+                    It.IsAny<DateTime>(),
+                    It.IsAny<int>()))
+                .ReturnsAsync(new List<SyncJobChange>
+                {
+                    new()
+                    {
+                        Id = Guid.NewGuid(),
+                        SyncJobId = _syncJobId,
+                        ChangeTime = now.AddMinutes(-15),
+                        ChangeReason = SyncJobChangeReason.IgnoreThresholdOnce.ToString(),
+                        ChangedByDisplayName = "Configuration Owner"
+                    }
+                });
+            SetupAggregatedMembers(MembershipAction.Add, addedUser);
+            string? capturedPrompt = null;
+            _mockOpenAIService
+                .Setup(service => service.GetCompletionAsync(
+                    It.IsAny<string>(),
+                    It.IsAny<string>()))
+                .Callback<string, string>((_, prompt) => capturedPrompt = prompt)
+                .ReturnsAsync("This sync reflects the configured membership rule.");
+
+            var response = await _handler.ExecuteAsync(BuildRequest());
+
+            Assert.AreEqual(HttpStatusCode.OK, response.StatusCode);
+            Assert.IsNotNull(capturedPrompt);
+            StringAssert.Contains(capturedPrompt, "No configuration changes found.");
+            Assert.IsFalse(capturedPrompt.Contains("Last configuration change"));
+            Assert.IsFalse(capturedPrompt.Contains("Initial configuration"));
+            StringAssert.Contains(capturedPrompt, "IgnoreThresholdOnce activated");
+        }
+
+        [TestMethod]
         public async Task ExecuteAsync_GroupOnlySourceWithAddsAndCompletedStatus_CallsOpenAI()
         {
             // Regression: previously "Skip Path B" (deleted) bailed with fallback text; now per-part blob attribution runs and OpenAI is called.
@@ -314,6 +628,7 @@ namespace WebApi.Tests
         [TestMethod]
         public async Task ExecuteAsync_ThresholdExceededStatus_CallsOpenAI()
         {
+            string? capturedSystemPrompt = null;
             _mockSyncJobHistoryRepository.Setup(x => x.GetByRunIdAsync(_runId))
                 .ReturnsAsync(new global::Models.SyncJobHistory.SyncJobHistory
                 {
@@ -330,10 +645,23 @@ namespace WebApi.Tests
                 {
                     new() { RunId = Guid.NewGuid(), UpdatedAt = DateTime.UtcNow.AddHours(-1) }
                 });
+            _mockOpenAIService
+                .Setup(x => x.GetCompletionAsync(It.IsAny<string>(), It.IsAny<string>()))
+                .Callback<string, string>((systemPrompt, _) =>
+                    capturedSystemPrompt = systemPrompt)
+                .ReturnsAsync("This sync completed successfully.");
 
             var response = await _handler.ExecuteAsync(BuildRequest());
 
             Assert.AreEqual(HttpStatusCode.OK, response.StatusCode);
+            Assert.IsNotNull(capturedSystemPrompt);
+            StringAssert.Contains(
+                capturedSystemPrompt,
+                "stopped contributing through the people-only rule");
+            Assert.IsFalse(
+                capturedSystemPrompt.Contains(
+                    "users leaving the source group",
+                    StringComparison.OrdinalIgnoreCase));
             _mockOpenAIService.Verify(x => x.GetCompletionAsync(It.IsAny<string>(), It.IsAny<string>()), Times.Once);
         }
 
@@ -754,6 +1082,34 @@ namespace WebApi.Tests
 
             Assert.IsNotNull(parts);
             Assert.AreEqual(IdentityTypeSet.UsersOnly, parts![0].IdentityTypes);
+        }
+
+        [TestMethod]
+        public void ParseQueryParts_GroupSelectionAndDefault_ArePreserved()
+        {
+            var explicitParts = GetRunExplanationHandler.ParseQueryParts(
+                "[{\"type\":\"GroupMembership\",\"source\":\"11111111-1111-4111-8111-111111111111\",\"identityTypes\":[\"agents\"]}]");
+            var omittedParts = GetRunExplanationHandler.ParseQueryParts(
+                "[{\"type\":\"GroupMembership\",\"source\":\"11111111-1111-4111-8111-111111111111\"}]");
+
+            Assert.IsNotNull(explicitParts);
+            Assert.AreEqual(
+                IdentityTypeSet.Of(IdentityType.Agents),
+                explicitParts![0].IdentityTypes);
+            Assert.IsNotNull(omittedParts);
+            Assert.AreEqual(
+                IdentityTypeSet.GroupDefault,
+                omittedParts![0].IdentityTypes);
+        }
+
+        [TestMethod]
+        public void ParseQueryParts_InvalidGroupSelection_IsUndetermined()
+        {
+            var parts = GetRunExplanationHandler.ParseQueryParts(
+                "[{\"type\":\"GroupMembership\",\"source\":\"11111111-1111-4111-8111-111111111111\",\"identityTypes\":[\"users\",\"users\"]}]");
+
+            Assert.IsNotNull(parts);
+            Assert.IsNull(parts![0].IdentityTypes);
         }
 
         [TestMethod]
@@ -1380,22 +1736,6 @@ namespace WebApi.Tests
             var s = part.FormatManagerScope();
             StringAssert.Contains(s, "id=42");
             StringAssert.Contains(s, "depth<=2");
-        }
-
-        // ---------------- QueryPartInfo.Key ----------------
-
-        [TestMethod]
-        public void QueryPartInfo_Key_WithSource_UsesTypeAndSource()
-        {
-            var part = new GetRunExplanationHandler.QueryPartInfo { Type = "GroupMembership", Source = "abc", Index = 5 };
-            Assert.AreEqual("GroupMembership|abc", part.Key);
-        }
-
-        [TestMethod]
-        public void QueryPartInfo_Key_NoSource_UsesTypeAndIndex()
-        {
-            var part = new GetRunExplanationHandler.QueryPartInfo { Type = "SqlMembership", Source = null, Index = 5 };
-            Assert.AreEqual("SqlMembership|5", part.Key);
         }
 
         // ---------------- ExtractAttributeNamesFromSqlFilter ----------------
@@ -2031,6 +2371,12 @@ namespace WebApi.Tests
             var inclusionaryGroup = Guid.NewGuid();
             var exclusionaryGroup = Guid.NewGuid();
             var managerObjectId = Guid.NewGuid();
+            var query = $"[" +
+                "{\"type\":\"SqlMembership\",\"source\":{\"filter\":\"Department = 'Engineering'\"}}," +
+                "{\"type\":\"SqlMembership\",\"source\":{\"manager\":{\"id\":42,\"depth\":2},\"filter\":\"EmployeeType = 'Vendor'\"},\"exclusionary\":true}," +
+                $"{{\"type\":\"GroupMembership\",\"source\":\"{inclusionaryGroup}\"}}," +
+                $"{{\"type\":\"GroupMembership\",\"source\":\"{exclusionaryGroup}\",\"exclusionary\":true}}" +
+                "]";
             string? capturedPrompt = null;
 
             _mockSyncJobRepository.Setup(x => x.GetSyncJobAsync(_syncJobId))
@@ -2038,16 +2384,26 @@ namespace WebApi.Tests
                 {
                     Id = _syncJobId,
                     TargetOfficeGroupId = _targetGroupId,
-                    Query = $"[" +
-                        "{\"type\":\"SqlMembership\",\"source\":{\"filter\":\"Department = 'Engineering'\"}}," +
-                        "{\"type\":\"SqlMembership\",\"source\":{\"manager\":{\"id\":42,\"depth\":2},\"filter\":\"EmployeeType = 'Vendor'\"},\"exclusionary\":true}," +
-                        $"{{\"type\":\"GroupMembership\",\"source\":\"{inclusionaryGroup}\"}}," +
-                        $"{{\"type\":\"GroupMembership\",\"source\":\"{exclusionaryGroup}\",\"exclusionary\":true}}" +
-                        "]"
+                    Query = query
                 });
 
             SetupCurrentRunAndPreviousRun(currentAdfRunId, previousAdfRunId, previousRunId, usersRemoved: 4);
             SetupAggregatedRemovedUsers(sqlDropped, sqlNewlyExcluded, groupLeft, groupNewlyExcluded);
+            _mockSyncJobChangeRepository
+                .Setup(repository =>
+                    repository.GetRecentConfigChangesBySyncJobIdAsync(
+                        _syncJobId,
+                        It.IsAny<DateTime>(),
+                        It.IsAny<int>()))
+                .ReturnsAsync(new List<SyncJobChange>
+                {
+                    ChangeWithSerializedQuery(
+                        DateTime.UtcNow.AddMinutes(-10),
+                        query),
+                    ChangeWithSerializedQuery(
+                        DateTime.UtcNow.AddMinutes(-70),
+                        query)
+                });
 
             _mockBlobStorageRepository.Setup(x => x.FindPartFilesByRunIdAsync(_targetGroupId.ToString(), _runId.ToString()))
                 .ReturnsAsync(new Dictionary<string, BlobResult>
@@ -2118,8 +2474,8 @@ namespace WebApi.Tests
             StringAssert.Contains(capturedPrompt!, "Per-part attribution for removed users");
             StringAssert.Contains(capturedPrompt!, "no longer match this rule");
             StringAssert.Contains(capturedPrompt!, "newly excluded by this rule");
-            StringAssert.Contains(capturedPrompt!, "left this source");
-            StringAssert.Contains(capturedPrompt!, "newly appear in this excluded source");
+            StringAssert.Contains(capturedPrompt!, "stopped contributing through this rule");
+            StringAssert.Contains(capturedPrompt!, "now match this exclusionary rule");
         }
 
         [TestMethod]
@@ -2255,7 +2611,7 @@ namespace WebApi.Tests
             Assert.AreEqual(HttpStatusCode.OK, response.StatusCode);
             Assert.IsNotNull(capturedPrompt);
             StringAssert.Contains(capturedPrompt!, "Per-part attribution for removed users");
-            StringAssert.Contains(capturedPrompt!, "left this source");
+            StringAssert.Contains(capturedPrompt!, "stopped contributing through this rule");
             StringAssert.Contains(capturedPrompt!, "per prior-run source history");
             Assert.IsFalse(capturedPrompt!.Contains("no attributable source found"),
                 "Walk-back should have resolved the blip from the older run's source blob.");
@@ -2952,6 +3308,71 @@ namespace WebApi.Tests
         }
 
         [TestMethod]
+        public async Task ExecuteAsync_AddsAttribution_ReadableGroupBlobWithZeroOverlap_UsesNoAttributableSourceGuard()
+        {
+            var addedUser = Guid.NewGuid();
+            var unrelatedUser = Guid.NewGuid();
+            var sourceGroupId = Guid.NewGuid();
+            var now = DateTime.UtcNow;
+            string? capturedPrompt = null;
+
+            _mockSyncJobRepository.Setup(x => x.GetSyncJobAsync(_syncJobId))
+                .ReturnsAsync(new SyncJob
+                {
+                    Id = _syncJobId,
+                    TargetOfficeGroupId = _targetGroupId,
+                    Query = $"[{{\"type\":\"GroupMembership\",\"source\":\"{sourceGroupId}\"}}]"
+                });
+            _mockSyncJobHistoryRepository.Setup(x => x.GetByRunIdAsync(_runId))
+                .ReturnsAsync(new global::Models.SyncJobHistory.SyncJobHistory
+                {
+                    SyncJobId = _syncJobId,
+                    RunId = _runId,
+                    Status = "Idle",
+                    UpdatedAt = now,
+                    StartTime = now.AddMinutes(-5),
+                    EndTime = now,
+                    UsersAdded = 1,
+                    UsersRemoved = 0,
+                    BeforeSyncUserCount = 100,
+                    AfterSyncUserCount = 101
+                });
+            SetupAggregatedMembers(MembershipAction.Add, addedUser);
+            _mockBlobStorageRepository.Setup(x =>
+                    x.FindPartFilesByRunIdAsync(
+                        _targetGroupId.ToString(),
+                        _runId.ToString()))
+                .ReturnsAsync(new Dictionary<string, BlobResult>
+                {
+                    ["GroupMembership_1"] = new()
+                    {
+                        BlobStatus = BlobStatus.Found,
+                        Path = "current/unrelated.json"
+                    }
+                });
+            _mockBlobStorageRepository.Setup(x =>
+                    x.ExtractGroupMembershipSourceMembersAsync(
+                        "current/unrelated.json"))
+                .ReturnsAsync(new HashSet<Guid> { unrelatedUser });
+            _mockGraphGroupRepository.Setup(x => x.GetGroupNamesAsync(It.IsAny<List<Guid>>()))
+                .ReturnsAsync(new Dictionary<Guid, string>
+                {
+                    [sourceGroupId] = "Unrelated Source"
+                });
+            _mockOpenAIService.Setup(x => x.GetCompletionAsync(It.IsAny<string>(), It.IsAny<string>()))
+                .Callback<string, string>((_, prompt) => capturedPrompt = prompt)
+                .ReturnsAsync("This sync added members.");
+
+            var response = await _handler.ExecuteAsync(BuildRequest());
+
+            Assert.AreEqual(HttpStatusCode.OK, response.StatusCode);
+            Assert.IsNotNull(capturedPrompt);
+            StringAssert.Contains(capturedPrompt!, "no attributable source found");
+            StringAssert.Contains(capturedPrompt, "HARD RULE");
+            Assert.IsFalse(capturedPrompt.Contains("none of the added users matched this rule"));
+        }
+
+        [TestMethod]
         public async Task ExecuteAsync_RemovesDescriptiveFallback_ManagerChainRule_RetainedHistoryExhausted_DescribesRuleInPlainEnglish()
         {
             // Mirrors the management-chain hedge where retained history is exhausted: no exact snapshot (null AdfRunId), walk-back blobs gone, no latest ADF table, so the descriptive fallback must restate the manager-chain rule the glossary already carries.
@@ -3267,7 +3688,7 @@ namespace WebApi.Tests
 
             Assert.AreEqual(HttpStatusCode.OK, response.StatusCode);
             Assert.IsFalse(response.Explanation!.Contains("could not be determined", StringComparison.OrdinalIgnoreCase));
-            StringAssert.Contains(response.Explanation!, "added people who newly match");
+            StringAssert.Contains(response.Explanation!, "added members who newly match");
             StringAssert.Contains(response.Explanation!, "Building is \"B40\"");
         }
 
@@ -3309,8 +3730,8 @@ namespace WebApi.Tests
 
             Assert.AreEqual(HttpStatusCode.OK, response.StatusCode);
             Assert.IsFalse(response.Explanation!.Contains("could not be determined", StringComparison.OrdinalIgnoreCase));
-            StringAssert.Contains(response.Explanation!, "added people who newly match");
-            StringAssert.Contains(response.Explanation!, "removed people who were in the group but no longer match");
+            StringAssert.Contains(response.Explanation!, "added members who newly match");
+            StringAssert.Contains(response.Explanation!, "removed members who were in the group but no longer match");
         }
 
         [TestMethod]
@@ -3413,11 +3834,11 @@ namespace WebApi.Tests
             Assert.IsFalse(blockedRemoves.Contains("could not be determined", StringComparison.OrdinalIgnoreCase));
 
             var addsOnly = InvokeStaticPrivate<string>(type, "BuildNonInitialRuleExplanation", new object?[] { 5, 0, false, rules })!;
-            StringAssert.Contains(addsOnly, "added people who newly match");
+            StringAssert.Contains(addsOnly, "added members who newly match");
 
             var mixed = InvokeStaticPrivate<string>(type, "BuildNonInitialRuleExplanation", new object?[] { 2, 3, false, rules })!;
-            StringAssert.Contains(mixed, "added people who newly match");
-            StringAssert.Contains(mixed, "removed people who were in the group but no longer match");
+            StringAssert.Contains(mixed, "added members who newly match");
+            StringAssert.Contains(mixed, "removed members who were in the group but no longer match");
         }
 
         [TestMethod]
@@ -3435,38 +3856,37 @@ namespace WebApi.Tests
         }
 
         [TestMethod]
-        public void ComputeWalkBackFloor_AllIdenticalResubmits_ReturnsMinValue()
+        public void ComputeWalkBackFloor_AllIdenticalResubmits_UsesOldestKnownCurrentLayout()
         {
-            // PR-comment #2: when every recorded change kept the same query (e.g. identical resubmits after a threshold block), there is no query boundary to floor at, so the removes walk-back should scan as far back as retained runs allow.
             var now = DateTime.UtcNow;
+            var oldestKnownCurrentLayout = now.AddHours(-10);
             var changes = new List<SyncJobChange>
             {
                 ChangeWithQuery(now.AddHours(-1), "Q"),
-                ChangeWithQuery(now.AddHours(-10), "Q"),
+                ChangeWithQuery(oldestKnownCurrentLayout, "Q"),
             };
 
             var floor = InvokeStaticPrivate<DateTime>(typeof(GetRunExplanationHandler), "ComputeWalkBackFloor", new object?[] { changes, "Q" });
 
-            Assert.AreEqual(DateTime.MinValue, floor);
+            Assert.AreEqual(oldestKnownCurrentLayout, floor);
         }
 
         [TestMethod]
-        public void ComputeWalkBackFloor_IdenticalResubmitThenDifferentQuery_FloorsAtQueryChangeNotResubmit()
+        public void ComputeWalkBackFloor_IdenticalResubmitThenDifferentQuery_UsesStartOfKnownCurrentLayout()
         {
-            // PR-comment #2: the most recent change is an identical resubmit; the floor must skip it and land on the older change that actually set the current query, so the whole same-query stretch stays inside the walk-back window and older removals remain attributable.
             var now = DateTime.UtcNow;
             var latestResubmit = now.AddHours(-1);
-            var realQueryChange = now.AddHours(-30);
+            var oldestKnownCurrentLayout = now.AddHours(-5);
             var changes = new List<SyncJobChange>
             {
                 ChangeWithQuery(latestResubmit, "Q"),
-                ChangeWithQuery(now.AddHours(-5), "Q"),
-                ChangeWithQuery(realQueryChange, "Q_OLD"),
+                ChangeWithQuery(oldestKnownCurrentLayout, "Q"),
+                ChangeWithQuery(now.AddHours(-30), "Q_OLD"),
             };
 
             var floor = InvokeStaticPrivate<DateTime>(typeof(GetRunExplanationHandler), "ComputeWalkBackFloor", new object?[] { changes, "Q" });
 
-            Assert.AreEqual(realQueryChange, floor, "Floor must be the most recent DIFFERING-query change, not an identical resubmit.");
+            Assert.AreEqual(oldestKnownCurrentLayout, floor);
             Assert.AreNotEqual(latestResubmit, floor);
         }
 
@@ -3598,14 +4018,37 @@ namespace WebApi.Tests
         }
 
         [TestMethod]
-        public void NormalizeQuery_NonSqlPart_IsNotGivenTheUsersOnlyDefault()
+        public void NormalizeQuery_GroupDefaultAndOrder_DoNotMakeSnapshotsDiffer()
         {
             const string groupPart = "[{\"type\":\"GroupMembership\",\"source\":\"11111111-1111-1111-1111-111111111111\"}]";
-            const string groupPartWithSelection = "[{\"type\":\"GroupMembership\",\"source\":\"11111111-1111-1111-1111-111111111111\",\"identityTypes\":[\"users\"]}]";
+            const string usersThenAgents = "[{\"type\":\"GroupMembership\",\"source\":\"11111111-1111-1111-1111-111111111111\",\"identityTypes\":[\"users\",\"agents\"]}]";
+            const string agentsThenUsers = "[{\"type\":\"GroupMembership\",\"source\":\"11111111-1111-1111-1111-111111111111\",\"identityTypes\":[\"agents\",\"users\"]}]";
 
             foreach (var handlerType in _explanationHandlerTypes)
             {
-                Assert.AreNotEqual(NormalizeWith(handlerType, groupPart), NormalizeWith(handlerType, groupPartWithSelection), handlerType.Name);
+                Assert.AreEqual(
+                    NormalizeWith(handlerType, groupPart),
+                    NormalizeWith(handlerType, usersThenAgents),
+                    handlerType.Name);
+                Assert.AreEqual(
+                    NormalizeWith(handlerType, usersThenAgents),
+                    NormalizeWith(handlerType, agentsThenUsers),
+                    handlerType.Name);
+            }
+        }
+
+        [TestMethod]
+        public void NormalizeQuery_RealGroupSelectionChange_MakesSnapshotsDiffer()
+        {
+            const string usersOnly = "[{\"type\":\"GroupMembership\",\"source\":\"11111111-1111-1111-1111-111111111111\",\"identityTypes\":[\"users\"]}]";
+            const string agentsOnly = "[{\"type\":\"GroupMembership\",\"source\":\"11111111-1111-1111-1111-111111111111\",\"identityTypes\":[\"agents\"]}]";
+
+            foreach (var handlerType in _explanationHandlerTypes)
+            {
+                Assert.AreNotEqual(
+                    NormalizeWith(handlerType, usersOnly),
+                    NormalizeWith(handlerType, agentsOnly),
+                    handlerType.Name);
             }
         }
 
@@ -3685,7 +4128,10 @@ namespace WebApi.Tests
 
             var floor = InvokeStaticPrivate<DateTime>(typeof(GetRunExplanationHandler), "ComputeWalkBackFloor", new object?[] { changes, currentQueryNormalized });
 
-            Assert.AreEqual(DateTime.MinValue, floor, "Writing out the users-only default is not a rule change, so it must not truncate the removes walk-back.");
+            Assert.AreEqual(
+                now.AddHours(-10),
+                floor,
+                "The semantically equivalent pre-migration snapshot is the oldest retained evidence that the positional layout was stable.");
         }
 
         [TestMethod]
@@ -3725,16 +4171,76 @@ namespace WebApi.Tests
         public async Task ExecuteAsync_FirstSaveAfterUsersOnlyMigration_DiffsAgainstTheLastRealRuleChange()
         {
             var prompt = await ExplainRunWithConfigChangesAsync(
+                DateTime.UtcNow.AddDays(-40),
                 ChangeWithSerializedQuery(DateTime.UtcNow.AddMinutes(-30), SqlPartSavedByUiAfterMigration),
                 ChangeWithSerializedQuery(DateTime.UtcNow.AddDays(-10), SqlPartBeforeMigration),
-                ChangeWithSerializedQuery(DateTime.UtcNow.AddDays(-30), "[{\"type\":\"SqlMembership\",\"source\":{\"filter\":\"Building = 'B40'\"},\"exclusionary\":true}]"));
+                ChangeWithSerializedQuery(DateTime.UtcNow.AddDays(-30), "[{\"type\":\"SqlMembership\",\"source\":{\"filter\":\"Building = 'B40'\"},\"exclusionary\":true}]"),
+                ChangeWithSerializedQuery(DateTime.UtcNow.AddDays(-50), "[{\"type\":\"SqlMembership\",\"source\":{\"filter\":\"Building = 'B40'\"},\"exclusionary\":true}]"));
 
             StringAssert.Contains(prompt, "Previous configuration:");
             StringAssert.Contains(prompt, "Membership criteria changed",
                 "The diff must skip the save that only wrote out the default and compare with the real rule change before it.");
         }
 
-        private async Task<string> ExplainRunWithConfigChangesAsync(params SyncJobChange[] changesNewestFirst)
+        [TestMethod]
+        public async Task ExecuteAsync_ScheduledNowQueryEdit_IsIncludedInConfigurationHistory()
+        {
+            var sourceGroupId = Guid.NewGuid();
+            var scheduledNowChange = ChangeWithSerializedQuery(
+                DateTime.UtcNow.AddMinutes(-30),
+                $"[{{\"type\":\"GroupMembership\",\"source\":\"{sourceGroupId}\",\"identityTypes\":[\"agents\"]}}]");
+            scheduledNowChange.ChangeReason =
+                SyncJobChangeReason.ScheduledNow.ToString();
+
+            var prompt = await ExplainRunWithConfigChangesAsync(
+                scheduledNowChange,
+                ChangeWithSerializedQuery(
+                    DateTime.UtcNow.AddDays(-10),
+                    $"[{{\"type\":\"GroupMembership\",\"source\":\"{sourceGroupId}\",\"identityTypes\":[\"users\"]}}]"));
+
+            StringAssert.Contains(
+                prompt,
+                "Identity types changed from only people to only agent users");
+        }
+
+        [TestMethod]
+        public async Task ExecuteAsync_NoOpScheduledNow_AttributesTheUnderlyingRuleChange()
+        {
+            var sourceGroupId = Guid.NewGuid();
+            var currentQuery =
+                $"[{{\"type\":\"GroupMembership\",\"source\":\"{sourceGroupId}\",\"identityTypes\":[\"agents\"]}}]";
+            var previousQuery =
+                $"[{{\"type\":\"GroupMembership\",\"source\":\"{sourceGroupId}\",\"identityTypes\":[\"users\"]}}]";
+            var noOpScheduledNow = ChangeWithSerializedQuery(
+                DateTime.UtcNow.AddDays(-1),
+                currentQuery);
+            noOpScheduledNow.ChangeReason = SyncJobChangeReason.ScheduledNow.ToString();
+            noOpScheduledNow.ChangedByDisplayName = "Sync Presser";
+            var ruleChangeTime = DateTime.UtcNow.AddDays(-2);
+            var ruleChange = ChangeWithSerializedQuery(ruleChangeTime, currentQuery);
+            ruleChange.ChangedByDisplayName = "Configuration Owner";
+
+            var prompt = await ExplainRunWithConfigChangesAsync(
+                DateTime.UtcNow.AddDays(-3),
+                noOpScheduledNow,
+                ruleChange,
+                ChangeWithSerializedQuery(DateTime.UtcNow.AddDays(-10), previousQuery));
+
+            StringAssert.Contains(
+                prompt,
+                $"Last configuration change on {ruleChangeTime:yyyy-MM-dd} by Configuration Owner (Update):");
+            Assert.IsFalse(prompt.Contains("Sync Presser"));
+        }
+
+        private Task<string> ExplainRunWithConfigChangesAsync(
+            params SyncJobChange[] changesNewestFirst) =>
+            ExplainRunWithConfigChangesAsync(
+                DateTime.UtcNow.AddHours(-1),
+                changesNewestFirst);
+
+        private async Task<string> ExplainRunWithConfigChangesAsync(
+            DateTime previousRunUpdatedAt,
+            params SyncJobChange[] changesNewestFirst)
         {
             _mockSyncJobHistoryRepository.Setup(x => x.GetByRunIdAsync(_runId))
                 .ReturnsAsync(new global::Models.SyncJobHistory.SyncJobHistory
@@ -3751,7 +4257,13 @@ namespace WebApi.Tests
             _mockSyncJobHistoryRepository.Setup(x => x.GetBySyncJobIdAsync(_syncJobId, It.IsAny<int>(), It.IsAny<int>()))
                 .ReturnsAsync(new List<global::Models.SyncJobHistory.SyncJobHistory>
                 {
-                    new() { RunId = Guid.NewGuid(), UpdatedAt = DateTime.UtcNow.AddHours(-1) }
+                    new()
+                    {
+                        RunId = Guid.NewGuid(),
+                        Status = "Idle",
+                        UpdatedByFunction = "GraphUpdater",
+                        UpdatedAt = previousRunUpdatedAt
+                    }
                 });
             _mockSyncJobChangeRepository
                 .Setup(x => x.GetRecentConfigChangesBySyncJobIdAsync(_syncJobId, It.IsAny<DateTime>(), It.IsAny<int>()))
@@ -3899,6 +4411,1693 @@ namespace WebApi.Tests
         }
 
         [TestMethod]
+        public async Task ExecuteAsync_SameSourceIndependentSelections_MapPreviousBlobsByPart()
+        {
+            var currentAdfRunId = Guid.NewGuid();
+            var previousAdfRunId = Guid.NewGuid();
+            var previousRunId = Guid.NewGuid();
+            var sourceGroupId = Guid.NewGuid();
+            var removedUser = Guid.NewGuid();
+            var unchangedAgent = Guid.NewGuid();
+            var now = DateTime.UtcNow;
+            var previousQuery =
+                $"[" +
+                $"{{\"type\":\"GroupMembership\",\"source\":\"{sourceGroupId}\",\"identityTypes\":[\"users\"]}}," +
+                $"{{\"type\":\"GroupMembership\",\"source\":\"{sourceGroupId}\",\"identityTypes\":[\"agents\"]}}" +
+                "]";
+            var currentQuery =
+                $"[" +
+                $"{{\"type\":\"GroupMembership\",\"source\":\"{sourceGroupId}\",\"identityTypes\":[\"agents\"]}}," +
+                $"{{\"type\":\"GroupMembership\",\"source\":\"{sourceGroupId}\",\"identityTypes\":[\"users\"]}}" +
+                "]";
+            string? capturedPrompt = null;
+
+            _mockSyncJobRepository.Setup(x => x.GetSyncJobAsync(_syncJobId))
+                .ReturnsAsync(new SyncJob
+                {
+                    Id = _syncJobId,
+                    TargetOfficeGroupId = _targetGroupId,
+                    Query = currentQuery
+                });
+            SetupCurrentRunAndPreviousRun(
+                currentAdfRunId,
+                previousAdfRunId,
+                previousRunId,
+                usersRemoved: 1);
+            SetupAggregatedRemovedUsers(removedUser);
+            _mockSyncJobChangeRepository
+                .Setup(repository =>
+                    repository.GetRecentConfigChangesBySyncJobIdAsync(
+                        _syncJobId,
+                        It.IsAny<DateTime>(),
+                        It.IsAny<int>()))
+                .ReturnsAsync(new List<SyncJobChange>
+                {
+                    ChangeWithSerializedQuery(
+                        now.AddMinutes(-10),
+                        currentQuery),
+                    ChangeWithSerializedQuery(
+                        now.AddMinutes(-70),
+                        previousQuery)
+                });
+            _mockBlobStorageRepository.Setup(repository =>
+                    repository.FindPartFilesByRunIdAsync(
+                        _targetGroupId.ToString(),
+                        _runId.ToString()))
+                .ReturnsAsync(new Dictionary<string, BlobResult>
+                {
+                    ["GroupMembership_1"] = new()
+                    {
+                        BlobStatus = BlobStatus.Found,
+                        Path = "current/agents.json"
+                    },
+                    ["GroupMembership_2"] = new()
+                    {
+                        BlobStatus = BlobStatus.Found,
+                        Path = "current/users.json"
+                    }
+                });
+            _mockBlobStorageRepository.Setup(repository =>
+                    repository.FindPartFilesByRunIdAsync(
+                        _targetGroupId.ToString(),
+                        previousRunId.ToString()))
+                .ReturnsAsync(new Dictionary<string, BlobResult>
+                {
+                    ["GroupMembership_1"] = new()
+                    {
+                        BlobStatus = BlobStatus.Found,
+                        Path = "previous/users.json"
+                    },
+                    ["GroupMembership_2"] = new()
+                    {
+                        BlobStatus = BlobStatus.Found,
+                        Path = "previous/agents.json"
+                    }
+                });
+            _mockBlobStorageRepository.Setup(repository =>
+                    repository.ExtractGroupMembershipSourceMembersAsync(
+                        "current/agents.json"))
+                .ReturnsAsync(new HashSet<Guid> { unchangedAgent });
+            _mockBlobStorageRepository.Setup(repository =>
+                    repository.ExtractGroupMembershipSourceMembersAsync(
+                        "previous/agents.json"))
+                .ReturnsAsync(new HashSet<Guid> { unchangedAgent });
+            _mockBlobStorageRepository.Setup(repository =>
+                    repository.ExtractGroupMembershipSourceMembersAsync(
+                        "current/users.json"))
+                .ReturnsAsync(new HashSet<Guid>());
+            _mockBlobStorageRepository.Setup(repository =>
+                    repository.ExtractGroupMembershipSourceMembersAsync(
+                        "previous/users.json"))
+                .ReturnsAsync(new HashSet<Guid> { removedUser });
+            _mockGraphGroupRepository.Setup(repository =>
+                    repository.GetGroupNamesAsync(It.IsAny<List<Guid>>()))
+                .ReturnsAsync(new Dictionary<Guid, string>
+                {
+                    [sourceGroupId] = "Shared Source"
+                });
+            _mockOpenAIService.Setup(service =>
+                    service.GetCompletionAsync(
+                        It.IsAny<string>(),
+                        It.IsAny<string>()))
+                .Callback<string, string>((_, prompt) =>
+                    capturedPrompt = prompt)
+                .ReturnsAsync("This sync completed successfully.");
+
+            var response = await _handler.ExecuteAsync(BuildRequest());
+
+            Assert.AreEqual(HttpStatusCode.OK, response.StatusCode);
+            Assert.IsNotNull(capturedPrompt);
+            StringAssert.Contains(
+                capturedPrompt!,
+                "only people");
+            StringAssert.Contains(
+                capturedPrompt!,
+                "stopped contributing through this rule");
+            Assert.IsFalse(
+                capturedPrompt!.Contains("no attributable source found"),
+                "The people-only part should compare with its own previous blob.");
+        }
+
+        [TestMethod]
+        public async Task ExecuteAsync_InsertedSameSourceRule_DoesNotReadAnotherRulesPreviousBlob()
+        {
+            var currentAdfRunId = Guid.NewGuid();
+            var previousAdfRunId = Guid.NewGuid();
+            var previousRunId = Guid.NewGuid();
+            var sourceGroupId = Guid.NewGuid();
+            var removedAgent = Guid.NewGuid();
+            var now = DateTime.UtcNow;
+            var previousQuery =
+                $"[{{\"type\":\"GroupMembership\",\"source\":\"{sourceGroupId}\",\"identityTypes\":[\"agents\"]}}]";
+            var currentQuery =
+                $"[" +
+                $"{{\"type\":\"GroupMembership\",\"source\":\"{sourceGroupId}\",\"identityTypes\":[\"users\"]}}," +
+                $"{{\"type\":\"GroupMembership\",\"source\":\"{sourceGroupId}\",\"identityTypes\":[\"agents\"]}}" +
+                "]";
+            string? capturedPrompt = null;
+
+            _mockSyncJobRepository.Setup(repository => repository.GetSyncJobAsync(_syncJobId))
+                .ReturnsAsync(new SyncJob
+                {
+                    Id = _syncJobId,
+                    TargetOfficeGroupId = _targetGroupId,
+                    Query = currentQuery
+                });
+            SetupCurrentRunAndPreviousRun(
+                currentAdfRunId,
+                previousAdfRunId,
+                previousRunId,
+                usersRemoved: 1);
+            SetupAggregatedRemovedUsers(removedAgent);
+            _mockSyncJobChangeRepository
+                .Setup(repository =>
+                    repository.GetRecentConfigChangesBySyncJobIdAsync(
+                        _syncJobId,
+                        It.IsAny<DateTime>(),
+                        It.IsAny<int>()))
+                .ReturnsAsync(new List<SyncJobChange>
+                {
+                    ChangeWithSerializedQuery(
+                        now.AddMinutes(-10),
+                        currentQuery),
+                    ChangeWithSerializedQuery(
+                        now.AddMinutes(-70),
+                        previousQuery)
+                });
+            _mockBlobStorageRepository.Setup(repository =>
+                    repository.FindPartFilesByRunIdAsync(
+                        _targetGroupId.ToString(),
+                        _runId.ToString()))
+                .ReturnsAsync(new Dictionary<string, BlobResult>
+                {
+                    ["GroupMembership_1"] = new()
+                    {
+                        BlobStatus = BlobStatus.Found,
+                        Path = "current/users.json"
+                    },
+                    ["GroupMembership_2"] = new()
+                    {
+                        BlobStatus = BlobStatus.Found,
+                        Path = "current/agents.json"
+                    }
+                });
+            _mockBlobStorageRepository.Setup(repository =>
+                    repository.FindPartFilesByRunIdAsync(
+                        _targetGroupId.ToString(),
+                        previousRunId.ToString()))
+                .ReturnsAsync(new Dictionary<string, BlobResult>
+                {
+                    ["GroupMembership_1"] = new()
+                    {
+                        BlobStatus = BlobStatus.Found,
+                        Path = "previous/agents.json"
+                    }
+                });
+            _mockBlobStorageRepository.Setup(repository =>
+                    repository.ExtractGroupMembershipSourceMembersAsync(
+                        "current/users.json"))
+                .ReturnsAsync(new HashSet<Guid>());
+            _mockBlobStorageRepository.Setup(repository =>
+                    repository.ExtractGroupMembershipSourceMembersAsync(
+                        "current/agents.json"))
+                .ReturnsAsync(new HashSet<Guid>());
+            _mockBlobStorageRepository.Setup(repository =>
+                    repository.ExtractGroupMembershipSourceMembersAsync(
+                        "previous/agents.json"))
+                .ReturnsAsync(new HashSet<Guid> { removedAgent });
+            _mockGraphGroupRepository.Setup(repository =>
+                    repository.GetGroupNamesAsync(It.IsAny<List<Guid>>()))
+                .ReturnsAsync(new Dictionary<Guid, string>
+                {
+                    [sourceGroupId] = "Shared Source"
+                });
+            _mockOpenAIService.Setup(service =>
+                    service.GetCompletionAsync(
+                        It.IsAny<string>(),
+                        It.IsAny<string>()))
+                .Callback<string, string>((_, prompt) =>
+                    capturedPrompt = prompt)
+                .ReturnsAsync("This sync completed successfully.");
+
+            var response = await _handler.ExecuteAsync(BuildRequest());
+
+            Assert.AreEqual(HttpStatusCode.OK, response.StatusCode);
+            Assert.IsNotNull(capturedPrompt);
+            StringAssert.Contains(
+                capturedPrompt!,
+                $"- Inclusionary GroupMembership part #2 ('Shared Source' ({sourceGroupId}); only agent users): all of the removed users stopped contributing through this rule");
+            Assert.IsFalse(
+                capturedPrompt!.Contains(
+                    $"- Inclusionary GroupMembership part #1 ('Shared Source' ({sourceGroupId}); only people):",
+                    StringComparison.Ordinal),
+                "An inserted rule must not compare against another same-source rule's previous positional blob.");
+            _mockBlobStorageRepository.Verify(
+                repository => repository.ExtractGroupMembershipSourceMembersAsync(
+                    "previous/agents.json"),
+                Times.Once);
+        }
+
+        [DataTestMethod]
+        [DataRow("ThresholdExceeded", "GroupMembershipObtainer", true)]
+        [DataRow("Error", "MembershipAggregator", true)]
+        [DataRow("MembershipDataNotFound", "GroupMembershipObtainer", true)]
+        [DataRow("Idle", "GraphUpdater", false)]
+        [DataRow("Idle", "MembershipAggregator", false)]
+        public async Task ExecuteAsync_RuleRemovedBeforePreviousRun_EmitsDeletedRuleSignalOnlyWhenPreviousRunDidNotApplyMembership(
+            string previousStatus,
+            string previousUpdatedByFunction,
+            bool expectsDeletedRuleSignal)
+        {
+            var currentAdfRunId = Guid.NewGuid();
+            var previousAdfRunId = Guid.NewGuid();
+            var previousRunId = Guid.NewGuid();
+            var deletedSourceGroupId = Guid.NewGuid();
+            var retainedSourceGroupId = Guid.NewGuid();
+            var removedUser = Guid.NewGuid();
+            var retainedUser = Guid.NewGuid();
+            var now = DateTime.UtcNow;
+            var currentQuery =
+                $"[{{\"type\":\"GroupMembership\",\"source\":\"{retainedSourceGroupId}\"}}]";
+            var historicalQuery =
+                $"[" +
+                $"{{\"type\":\"GroupMembership\",\"source\":\"{deletedSourceGroupId}\"}}," +
+                $"{{\"type\":\"GroupMembership\",\"source\":\"{retainedSourceGroupId}\"}}" +
+                "]";
+            string? capturedPrompt = null;
+
+            _mockSyncJobRepository.Setup(repository => repository.GetSyncJobAsync(_syncJobId))
+                .ReturnsAsync(new SyncJob
+                {
+                    Id = _syncJobId,
+                    TargetOfficeGroupId = _targetGroupId,
+                    Query = currentQuery
+                });
+            SetupCurrentRunAndPreviousRun(
+                currentAdfRunId,
+                previousAdfRunId,
+                previousRunId,
+                usersRemoved: 1,
+                previousStatus: previousStatus,
+                previousUpdatedByFunction: previousUpdatedByFunction);
+            if (expectsDeletedRuleSignal)
+            {
+                var histories = new List<global::Models.SyncJobHistory.SyncJobHistory>
+                {
+                    new()
+                    {
+                        SyncJobId = _syncJobId,
+                        RunId = previousRunId,
+                        Status = previousStatus,
+                        UpdatedByFunction = "GroupMembershipObtainer",
+                        UpdatedAt = now.AddHours(-1),
+                        EndTime = now.AddHours(-1),
+                        AdfRunId = previousAdfRunId
+                    }
+                };
+                if (string.Equals(
+                    previousStatus,
+                    "ThresholdExceeded",
+                    StringComparison.OrdinalIgnoreCase))
+                {
+                    histories.Add(new()
+                    {
+                        SyncJobId = _syncJobId,
+                        RunId = Guid.NewGuid(),
+                        Status = "Error",
+                        UpdatedByFunction = "MembershipAggregator",
+                        UpdatedAt = now.AddMinutes(-75),
+                        EndTime = now.AddMinutes(-75),
+                        AdfRunId = Guid.NewGuid()
+                    });
+                }
+
+                histories.Add(new()
+                {
+                    SyncJobId = _syncJobId,
+                    RunId = Guid.NewGuid(),
+                    Status = "Idle",
+                    UpdatedByFunction = "GraphUpdater",
+                    UpdatedAt = now.AddMinutes(-90),
+                    EndTime = now.AddMinutes(-90),
+                    AdfRunId = Guid.NewGuid()
+                });
+                _mockSyncJobHistoryRepository
+                    .Setup(repository =>
+                        repository.GetBySyncJobIdAsync(
+                            _syncJobId,
+                            It.IsAny<int>(),
+                            It.IsAny<int>()))
+                    .ReturnsAsync(histories);
+            }
+            SetupAggregatedRemovedUsers(removedUser);
+            _mockSyncJobChangeRepository
+                .Setup(repository =>
+                    repository.GetRecentConfigChangesBySyncJobIdAsync(
+                        _syncJobId,
+                        It.IsAny<DateTime>(),
+                        It.IsAny<int>()))
+                .ReturnsAsync(new List<SyncJobChange>
+                {
+                    ChangeWithSerializedQuery(
+                        now.AddMinutes(-10),
+                        currentQuery),
+                    ChangeWithSerializedQuery(
+                        now.AddMinutes(-70),
+                        currentQuery),
+                    ChangeWithSerializedQuery(
+                        now.AddMinutes(-120),
+                        historicalQuery)
+                });
+            _mockBlobStorageRepository.Setup(repository =>
+                    repository.FindPartFilesByRunIdAsync(
+                        _targetGroupId.ToString(),
+                        _runId.ToString()))
+                .ReturnsAsync(new Dictionary<string, BlobResult>
+                {
+                    ["GroupMembership_1"] = new()
+                    {
+                        BlobStatus = BlobStatus.Found,
+                        Path = "current/retained.json"
+                    }
+                });
+            _mockBlobStorageRepository.Setup(repository =>
+                    repository.FindPartFilesByRunIdAsync(
+                        _targetGroupId.ToString(),
+                        previousRunId.ToString()))
+                .ReturnsAsync(new Dictionary<string, BlobResult>
+                {
+                    ["GroupMembership_1"] = new()
+                    {
+                        BlobStatus = BlobStatus.Found,
+                        Path = "previous/retained.json"
+                    }
+                });
+            _mockBlobStorageRepository.Setup(repository =>
+                    repository.ExtractGroupMembershipSourceMembersAsync(
+                        "current/retained.json"))
+                .ReturnsAsync(new HashSet<Guid> { retainedUser });
+            _mockBlobStorageRepository.Setup(repository =>
+                    repository.ExtractGroupMembershipSourceMembersAsync(
+                        "previous/retained.json"))
+                .ReturnsAsync(new HashSet<Guid> { retainedUser });
+            _mockGraphGroupRepository.Setup(repository =>
+                    repository.GetGroupNamesAsync(It.IsAny<List<Guid>>()))
+                .ReturnsAsync(new Dictionary<Guid, string>
+                {
+                    [deletedSourceGroupId] = "Deleted Source",
+                    [retainedSourceGroupId] = "Retained Source"
+                });
+            _mockOpenAIService.Setup(service =>
+                    service.GetCompletionAsync(
+                        It.IsAny<string>(),
+                        It.IsAny<string>()))
+                .Callback<string, string>((_, prompt) =>
+                    capturedPrompt = prompt)
+                .ReturnsAsync("This sync completed successfully.");
+
+            var response = await _handler.ExecuteAsync(BuildRequest());
+
+            Assert.AreEqual(HttpStatusCode.OK, response.StatusCode);
+            Assert.IsNotNull(capturedPrompt);
+            if (expectsDeletedRuleSignal)
+            {
+                StringAssert.Contains(
+                    capturedPrompt!,
+                    "Rule removed from the query in the recent config update");
+                StringAssert.Contains(
+                    capturedPrompt,
+                    "Previous configuration:");
+                StringAssert.Contains(
+                    capturedPrompt,
+                    "What changed:");
+                Assert.IsFalse(
+                    capturedPrompt.Contains(
+                        "configuration is unchanged for THIS sync",
+                        StringComparison.Ordinal));
+                StringAssert.Contains(
+                    capturedPrompt!,
+                    "Deleted Source");
+                StringAssert.Contains(
+                    capturedPrompt!,
+                    "per-part membership counts are unavailable");
+            }
+            else
+            {
+                Assert.IsFalse(
+                    capturedPrompt!.Contains(
+                        "Rule removed from the query",
+                        StringComparison.Ordinal),
+                    capturedPrompt);
+            }
+            _mockBlobStorageRepository.Verify(
+                repository => repository.ExtractGroupMembershipSourceMembersAsync(
+                    "previous/retained.json"),
+                Times.AtLeastOnce);
+        }
+
+        [TestMethod]
+        public async Task ExecuteAsync_RuleDeletedThenRestoredWithDifferentSelection_DoesNotEmitDeletedRuleSignal()
+        {
+            var currentAdfRunId = Guid.NewGuid();
+            var previousAdfRunId = Guid.NewGuid();
+            var previousRunId = Guid.NewGuid();
+            var restoredSourceGroupId = Guid.NewGuid();
+            var retainedSourceGroupId = Guid.NewGuid();
+            var removedUser = Guid.NewGuid();
+            var retainedUser = Guid.NewGuid();
+            var now = DateTime.UtcNow;
+            var currentQuery =
+                $"[" +
+                $"{{\"type\":\"GroupMembership\",\"source\":\"{restoredSourceGroupId}\",\"identityTypes\":[\"agents\"]}}," +
+                $"{{\"type\":\"GroupMembership\",\"source\":\"{retainedSourceGroupId}\",\"identityTypes\":[\"users\"]}}" +
+                "]";
+            var restoredPeopleQuery =
+                $"[" +
+                $"{{\"type\":\"GroupMembership\",\"source\":\"{restoredSourceGroupId}\",\"identityTypes\":[\"users\"]}}," +
+                $"{{\"type\":\"GroupMembership\",\"source\":\"{retainedSourceGroupId}\",\"identityTypes\":[\"users\"]}}" +
+                "]";
+            var deletedQuery =
+                $"[{{\"type\":\"GroupMembership\",\"source\":\"{retainedSourceGroupId}\",\"identityTypes\":[\"users\"]}}]";
+            string? capturedPrompt = null;
+
+            _mockSyncJobRepository.Setup(repository => repository.GetSyncJobAsync(_syncJobId))
+                .ReturnsAsync(new SyncJob
+                {
+                    Id = _syncJobId,
+                    TargetOfficeGroupId = _targetGroupId,
+                    Query = currentQuery
+                });
+            SetupCurrentRunAndPreviousRun(
+                currentAdfRunId,
+                previousAdfRunId,
+                previousRunId,
+                usersRemoved: 1,
+                previousStatus: "ThresholdExceeded");
+            SetupAggregatedRemovedUsers(removedUser);
+            _mockSyncJobChangeRepository
+                .Setup(repository =>
+                    repository.GetRecentConfigChangesBySyncJobIdAsync(
+                        _syncJobId,
+                        It.IsAny<DateTime>(),
+                        It.IsAny<int>()))
+                .ReturnsAsync(new List<SyncJobChange>
+                {
+                    ChangeWithSerializedQuery(now.AddMinutes(-10), currentQuery),
+                    ChangeWithSerializedQuery(now.AddMinutes(-70), restoredPeopleQuery),
+                    ChangeWithSerializedQuery(now.AddMinutes(-90), deletedQuery),
+                    ChangeWithSerializedQuery(now.AddMinutes(-120), restoredPeopleQuery)
+                });
+            _mockBlobStorageRepository.Setup(repository =>
+                    repository.FindPartFilesByRunIdAsync(
+                        _targetGroupId.ToString(),
+                        _runId.ToString()))
+                .ReturnsAsync(new Dictionary<string, BlobResult>
+                {
+                    ["GroupMembership_1"] = new()
+                    {
+                        BlobStatus = BlobStatus.Found,
+                        Path = "current/restored.json"
+                    },
+                    ["GroupMembership_2"] = new()
+                    {
+                        BlobStatus = BlobStatus.Found,
+                        Path = "current/retained.json"
+                    }
+                });
+            _mockBlobStorageRepository.Setup(repository =>
+                    repository.FindPartFilesByRunIdAsync(
+                        _targetGroupId.ToString(),
+                        previousRunId.ToString()))
+                .ReturnsAsync(new Dictionary<string, BlobResult>
+                {
+                    ["GroupMembership_1"] = new()
+                    {
+                        BlobStatus = BlobStatus.Found,
+                        Path = "previous/restored.json"
+                    },
+                    ["GroupMembership_2"] = new()
+                    {
+                        BlobStatus = BlobStatus.Found,
+                        Path = "previous/retained.json"
+                    }
+                });
+            _mockBlobStorageRepository.Setup(repository =>
+                    repository.ExtractGroupMembershipSourceMembersAsync(
+                        It.Is<string>(path => path.EndsWith("restored.json", StringComparison.Ordinal))))
+                .ReturnsAsync(new HashSet<Guid>());
+            _mockBlobStorageRepository.Setup(repository =>
+                    repository.ExtractGroupMembershipSourceMembersAsync(
+                        It.Is<string>(path => path.EndsWith("retained.json", StringComparison.Ordinal))))
+                .ReturnsAsync(new HashSet<Guid> { retainedUser });
+            _mockGraphGroupRepository.Setup(repository =>
+                    repository.GetGroupNamesAsync(It.IsAny<List<Guid>>()))
+                .ReturnsAsync(new Dictionary<Guid, string>
+                {
+                    [restoredSourceGroupId] = "Restored Source",
+                    [retainedSourceGroupId] = "Retained Source"
+                });
+            _mockOpenAIService.Setup(service =>
+                    service.GetCompletionAsync(
+                        It.IsAny<string>(),
+                        It.IsAny<string>()))
+                .Callback<string, string>((_, prompt) =>
+                    capturedPrompt = prompt)
+                .ReturnsAsync("This sync completed successfully.");
+
+            var response = await _handler.ExecuteAsync(BuildRequest());
+
+            Assert.AreEqual(HttpStatusCode.OK, response.StatusCode);
+            Assert.IsNotNull(capturedPrompt);
+            Assert.IsFalse(
+                capturedPrompt!.Contains(
+                    "Rule removed from the query",
+                    StringComparison.Ordinal));
+            StringAssert.Contains(
+                capturedPrompt,
+                "Identity types changed from only people to only agent users");
+        }
+
+        [TestMethod]
+        public async Task ExecuteAsync_ExclusionaryRuleDeletedThenRestoredWithDifferentSelection_DoesNotEmitDeletedRuleSignal()
+        {
+            var currentAdfRunId = Guid.NewGuid();
+            var previousAdfRunId = Guid.NewGuid();
+            var previousRunId = Guid.NewGuid();
+            var retainedSourceGroupId = Guid.NewGuid();
+            var restoredSourceGroupId = Guid.NewGuid();
+            var addedUser = Guid.NewGuid();
+            var now = DateTime.UtcNow;
+            var currentQuery =
+                $"[" +
+                $"{{\"type\":\"GroupMembership\",\"source\":\"{retainedSourceGroupId}\",\"identityTypes\":[\"users\"]}}," +
+                $"{{\"type\":\"GroupMembership\",\"source\":\"{restoredSourceGroupId}\",\"identityTypes\":[\"agents\"],\"exclusionary\":true}}" +
+                "]";
+            var restoredPeopleQuery =
+                $"[" +
+                $"{{\"type\":\"GroupMembership\",\"source\":\"{retainedSourceGroupId}\",\"identityTypes\":[\"users\"]}}," +
+                $"{{\"type\":\"GroupMembership\",\"source\":\"{restoredSourceGroupId}\",\"identityTypes\":[\"users\"],\"exclusionary\":true}}" +
+                "]";
+            var deletedQuery =
+                $"[{{\"type\":\"GroupMembership\",\"source\":\"{retainedSourceGroupId}\",\"identityTypes\":[\"users\"]}}]";
+            string? capturedPrompt = null;
+
+            _mockSyncJobRepository.Setup(repository =>
+                    repository.GetSyncJobAsync(_syncJobId))
+                .ReturnsAsync(new SyncJob
+                {
+                    Id = _syncJobId,
+                    TargetOfficeGroupId = _targetGroupId,
+                    Query = currentQuery
+                });
+            SetupCurrentRunAndPreviousRun(
+                currentAdfRunId,
+                previousAdfRunId,
+                previousRunId,
+                usersRemoved: 0,
+                usersAdded: 1,
+                previousStatus: "ThresholdExceeded");
+            SetupAggregatedMembers(MembershipAction.Add, addedUser);
+            _mockSyncJobChangeRepository
+                .Setup(repository =>
+                    repository.GetRecentConfigChangesBySyncJobIdAsync(
+                        _syncJobId,
+                        It.IsAny<DateTime>(),
+                        It.IsAny<int>()))
+                .ReturnsAsync(new List<SyncJobChange>
+                {
+                    ChangeWithSerializedQuery(now.AddMinutes(-10), currentQuery),
+                    ChangeWithSerializedQuery(now.AddMinutes(-70), restoredPeopleQuery),
+                    ChangeWithSerializedQuery(now.AddMinutes(-90), deletedQuery),
+                    ChangeWithSerializedQuery(now.AddMinutes(-120), restoredPeopleQuery)
+                });
+            _mockBlobStorageRepository.Setup(repository =>
+                    repository.FindPartFilesByRunIdAsync(
+                        _targetGroupId.ToString(),
+                        _runId.ToString()))
+                .ReturnsAsync(new Dictionary<string, BlobResult>
+                {
+                    ["GroupMembership_1"] = new()
+                    {
+                        BlobStatus = BlobStatus.Found,
+                        Path = "current/retained.json"
+                    },
+                    ["GroupMembership_2"] = new()
+                    {
+                        BlobStatus = BlobStatus.Found,
+                        Path = "current/restored-exclusionary.json"
+                    }
+                });
+            _mockBlobStorageRepository.Setup(repository =>
+                    repository.FindPartFilesByRunIdAsync(
+                        _targetGroupId.ToString(),
+                        previousRunId.ToString()))
+                .ReturnsAsync(new Dictionary<string, BlobResult>
+                {
+                    ["GroupMembership_1"] = new()
+                    {
+                        BlobStatus = BlobStatus.Found,
+                        Path = "previous/retained.json"
+                    },
+                    ["GroupMembership_2"] = new()
+                    {
+                        BlobStatus = BlobStatus.Found,
+                        Path = "previous/restored-exclusionary.json"
+                    }
+                });
+            _mockBlobStorageRepository.Setup(repository =>
+                    repository.ExtractGroupMembershipSourceMembersAsync(
+                        "current/retained.json"))
+                .ReturnsAsync(new HashSet<Guid> { addedUser });
+            _mockBlobStorageRepository.Setup(repository =>
+                    repository.ExtractGroupMembershipSourceMembersAsync(
+                        "previous/retained.json"))
+                .ReturnsAsync(new HashSet<Guid>());
+            _mockBlobStorageRepository.Setup(repository =>
+                    repository.ExtractGroupMembershipSourceMembersAsync(
+                        It.Is<string>(path =>
+                            path.EndsWith(
+                                "restored-exclusionary.json",
+                                StringComparison.Ordinal))))
+                .ReturnsAsync(new HashSet<Guid>());
+            _mockGraphGroupRepository.Setup(repository =>
+                    repository.GetGroupNamesAsync(It.IsAny<List<Guid>>()))
+                .ReturnsAsync(new Dictionary<Guid, string>
+                {
+                    [retainedSourceGroupId] = "Retained Source",
+                    [restoredSourceGroupId] = "Restored Exclusionary Source"
+                });
+            _mockOpenAIService.Setup(service =>
+                    service.GetCompletionAsync(
+                        It.IsAny<string>(),
+                        It.IsAny<string>()))
+                .Callback<string, string>((_, prompt) =>
+                    capturedPrompt = prompt)
+                .ReturnsAsync("This sync completed successfully.");
+
+            var response = await _handler.ExecuteAsync(BuildRequest());
+
+            Assert.AreEqual(HttpStatusCode.OK, response.StatusCode);
+            Assert.IsNotNull(capturedPrompt);
+            Assert.IsFalse(
+                capturedPrompt!.Contains(
+                    "Exclusionary rule removed from the query",
+                    StringComparison.Ordinal),
+                capturedPrompt);
+            StringAssert.Contains(
+                capturedPrompt,
+                "Identity types changed from only people to only agent users");
+        }
+
+        [TestMethod]
+        public async Task ExecuteAsync_IdentitySelectionChanges_DoNotEmitDeletedRuleSignal()
+        {
+            var currentAdfRunId = Guid.NewGuid();
+            var previousAdfRunId = Guid.NewGuid();
+            var previousRunId = Guid.NewGuid();
+            var sourceGroupId = Guid.NewGuid();
+            var removedUser = Guid.NewGuid();
+            var retainedUser = Guid.NewGuid();
+            var now = DateTime.UtcNow;
+            var usersQuery =
+                $"[{{\"type\":\"GroupMembership\",\"source\":\"{sourceGroupId}\",\"identityTypes\":[\"users\"]}}]";
+            var agentsQuery =
+                $"[{{\"type\":\"GroupMembership\",\"source\":\"{sourceGroupId}\",\"identityTypes\":[\"agents\"]}}]";
+            var bothQuery =
+                $"[{{\"type\":\"GroupMembership\",\"source\":\"{sourceGroupId}\",\"identityTypes\":[\"users\",\"agents\"]}}]";
+            string? capturedPrompt = null;
+
+            _mockSyncJobRepository.Setup(repository =>
+                    repository.GetSyncJobAsync(_syncJobId))
+                .ReturnsAsync(new SyncJob
+                {
+                    Id = _syncJobId,
+                    TargetOfficeGroupId = _targetGroupId,
+                    Query = bothQuery
+                });
+            SetupCurrentRunAndPreviousRun(
+                currentAdfRunId,
+                previousAdfRunId,
+                previousRunId,
+                usersRemoved: 1);
+            SetupAggregatedRemovedUsers(removedUser);
+            _mockSyncJobChangeRepository
+                .Setup(repository =>
+                    repository.GetRecentConfigChangesBySyncJobIdAsync(
+                        _syncJobId,
+                        It.IsAny<DateTime>(),
+                        It.IsAny<int>()))
+                .ReturnsAsync(new List<SyncJobChange>
+                {
+                    ChangeWithSerializedQuery(
+                        now.AddMinutes(-10),
+                        bothQuery),
+                    ChangeWithSerializedQuery(
+                        now.AddMinutes(-70),
+                        agentsQuery),
+                    ChangeWithSerializedQuery(
+                        now.AddMinutes(-120),
+                        usersQuery)
+                });
+            _mockBlobStorageRepository.Setup(repository =>
+                    repository.FindPartFilesByRunIdAsync(
+                        _targetGroupId.ToString(),
+                        _runId.ToString()))
+                .ReturnsAsync(new Dictionary<string, BlobResult>
+                {
+                    ["GroupMembership_1"] = new()
+                    {
+                        BlobStatus = BlobStatus.Found,
+                        Path = "current/source.json"
+                    }
+                });
+            _mockBlobStorageRepository.Setup(repository =>
+                    repository.FindPartFilesByRunIdAsync(
+                        _targetGroupId.ToString(),
+                        previousRunId.ToString()))
+                .ReturnsAsync(new Dictionary<string, BlobResult>
+                {
+                    ["GroupMembership_1"] = new()
+                    {
+                        BlobStatus = BlobStatus.Found,
+                        Path = "previous/source.json"
+                    }
+                });
+            _mockBlobStorageRepository.Setup(repository =>
+                    repository.ExtractGroupMembershipSourceMembersAsync(
+                        "current/source.json"))
+                .ReturnsAsync(new HashSet<Guid> { retainedUser });
+            _mockBlobStorageRepository.Setup(repository =>
+                    repository.ExtractGroupMembershipSourceMembersAsync(
+                        "previous/source.json"))
+                .ReturnsAsync(new HashSet<Guid> { retainedUser });
+            _mockGraphGroupRepository.Setup(repository =>
+                    repository.GetGroupNamesAsync(It.IsAny<List<Guid>>()))
+                .ReturnsAsync(new Dictionary<Guid, string>
+                {
+                    [sourceGroupId] = "Retained Source"
+                });
+            _mockOpenAIService.Setup(service =>
+                    service.GetCompletionAsync(
+                        It.IsAny<string>(),
+                        It.IsAny<string>()))
+                .Callback<string, string>((_, prompt) =>
+                    capturedPrompt = prompt)
+                .ReturnsAsync("This sync completed successfully.");
+
+            var response = await _handler.ExecuteAsync(BuildRequest());
+
+            Assert.AreEqual(HttpStatusCode.OK, response.StatusCode);
+            Assert.IsNotNull(capturedPrompt);
+            Assert.IsFalse(
+                capturedPrompt!.Contains(
+                    "Rule removed from the query",
+                    StringComparison.Ordinal));
+            StringAssert.Contains(
+                capturedPrompt!,
+                "Identity types changed from");
+        }
+
+        [TestMethod]
+        public async Task ExecuteAsync_SelectionChangedSincePreviousRun_DoesNotCompareDifferentSelectionsByBlobPosition()
+        {
+            var currentAdfRunId = Guid.NewGuid();
+            var previousAdfRunId = Guid.NewGuid();
+            var previousRunId = Guid.NewGuid();
+            var sourceGroupId = Guid.NewGuid();
+            var removedAgent = Guid.NewGuid();
+            var now = DateTime.UtcNow;
+            var currentQuery =
+                $"[{{\"type\":\"GroupMembership\",\"source\":\"{sourceGroupId}\",\"identityTypes\":[\"users\"]}}]";
+            var previousQuery =
+                $"[{{\"type\":\"GroupMembership\",\"source\":\"{sourceGroupId}\",\"identityTypes\":[\"agents\"]}}]";
+            string? capturedPrompt = null;
+
+            _mockSyncJobRepository.Setup(repository =>
+                    repository.GetSyncJobAsync(_syncJobId))
+                .ReturnsAsync(new SyncJob
+                {
+                    Id = _syncJobId,
+                    TargetOfficeGroupId = _targetGroupId,
+                    Query = currentQuery
+                });
+            SetupCurrentRunAndPreviousRun(
+                currentAdfRunId,
+                previousAdfRunId,
+                previousRunId,
+                usersRemoved: 1);
+            SetupAggregatedRemovedUsers(removedAgent);
+            _mockSyncJobChangeRepository
+                .Setup(repository =>
+                    repository.GetRecentConfigChangesBySyncJobIdAsync(
+                        _syncJobId,
+                        It.IsAny<DateTime>(),
+                        It.IsAny<int>()))
+                .ReturnsAsync(new List<SyncJobChange>
+                {
+                    ChangeWithSerializedQuery(now.AddMinutes(-10), currentQuery),
+                    ChangeWithSerializedQuery(now.AddMinutes(-120), previousQuery)
+                });
+            _mockBlobStorageRepository.Setup(repository =>
+                    repository.FindPartFilesByRunIdAsync(
+                        _targetGroupId.ToString(),
+                        _runId.ToString()))
+                .ReturnsAsync(new Dictionary<string, BlobResult>
+                {
+                    ["GroupMembership_1"] = new()
+                    {
+                        BlobStatus = BlobStatus.Found,
+                        Path = "current/people.json"
+                    }
+                });
+            _mockBlobStorageRepository.Setup(repository =>
+                    repository.FindPartFilesByRunIdAsync(
+                        _targetGroupId.ToString(),
+                        previousRunId.ToString()))
+                .ReturnsAsync(new Dictionary<string, BlobResult>
+                {
+                    ["GroupMembership_1"] = new()
+                    {
+                        BlobStatus = BlobStatus.Found,
+                        Path = "previous/agents.json"
+                    }
+                });
+            _mockBlobStorageRepository.Setup(repository =>
+                    repository.ExtractGroupMembershipSourceMembersAsync(
+                        "current/people.json"))
+                .ReturnsAsync(new HashSet<Guid>());
+            _mockBlobStorageRepository.Setup(repository =>
+                    repository.ExtractGroupMembershipSourceMembersAsync(
+                        "previous/agents.json"))
+                .ReturnsAsync(new HashSet<Guid> { removedAgent });
+            _mockGraphGroupRepository.Setup(repository =>
+                    repository.GetGroupNamesAsync(It.IsAny<List<Guid>>()))
+                .ReturnsAsync(new Dictionary<Guid, string>
+                {
+                    [sourceGroupId] = "Selection-Changed Source"
+                });
+            _mockOpenAIService.Setup(service =>
+                    service.GetCompletionAsync(
+                        It.IsAny<string>(),
+                        It.IsAny<string>()))
+                .Callback<string, string>((_, prompt) =>
+                    capturedPrompt = prompt)
+                .ReturnsAsync("This sync completed successfully.");
+
+            var response = await _handler.ExecuteAsync(BuildRequest());
+
+            Assert.AreEqual(HttpStatusCode.OK, response.StatusCode);
+            Assert.IsNotNull(capturedPrompt);
+            Assert.IsFalse(
+                capturedPrompt!.Contains(
+                    "stopped contributing through this rule",
+                    StringComparison.Ordinal),
+                capturedPrompt);
+            StringAssert.Contains(
+                capturedPrompt,
+                "Identity types changed from only agent users to only people");
+        }
+
+        [TestMethod]
+        public async Task ExecuteAsync_RemovesWalkBack_SameSourceSelectionReorder_DoesNotCrossLayoutBoundary()
+        {
+            var previousRunId = Guid.NewGuid();
+            var olderRunId = Guid.NewGuid();
+            var sourceGroupId = Guid.NewGuid();
+            var removedPerson = Guid.NewGuid();
+            var now = DateTime.UtcNow;
+            var currentQuery =
+                $"[" +
+                $"{{\"type\":\"GroupMembership\",\"source\":\"{sourceGroupId}\",\"identityTypes\":[\"agents\"]}}," +
+                $"{{\"type\":\"GroupMembership\",\"source\":\"{sourceGroupId}\",\"identityTypes\":[\"users\"]}}" +
+                "]";
+            var previousLayoutQuery =
+                $"[" +
+                $"{{\"type\":\"GroupMembership\",\"source\":\"{sourceGroupId}\",\"identityTypes\":[\"users\"]}}," +
+                $"{{\"type\":\"GroupMembership\",\"source\":\"{sourceGroupId}\",\"identityTypes\":[\"agents\"]}}" +
+                "]";
+            string? capturedPrompt = null;
+
+            _mockSyncJobRepository.Setup(repository =>
+                    repository.GetSyncJobAsync(_syncJobId))
+                .ReturnsAsync(new SyncJob
+                {
+                    Id = _syncJobId,
+                    TargetOfficeGroupId = _targetGroupId,
+                    Query = currentQuery
+                });
+            SetupCurrentRunAndPreviousRun(
+                Guid.NewGuid(),
+                Guid.NewGuid(),
+                previousRunId,
+                usersRemoved: 1,
+                previousStatus: "ThresholdExceeded");
+            SetupAggregatedRemovedUsers(removedPerson);
+            _mockSyncJobHistoryRepository
+                .Setup(repository =>
+                    repository.GetBySyncJobIdAsync(
+                        _syncJobId,
+                        It.IsAny<int>(),
+                        It.IsAny<int>()))
+                .ReturnsAsync(new List<global::Models.SyncJobHistory.SyncJobHistory>
+                {
+                    new()
+                    {
+                        SyncJobId = _syncJobId,
+                        RunId = previousRunId,
+                        Status = "ThresholdExceeded",
+                        UpdatedByFunction = "GroupMembershipObtainer",
+                        UpdatedAt = now.AddHours(-1),
+                        EndTime = now.AddHours(-1)
+                    },
+                    new()
+                    {
+                        SyncJobId = _syncJobId,
+                        RunId = olderRunId,
+                        Status = "Idle",
+                        UpdatedByFunction = "GraphUpdater",
+                        StartTime = now.AddHours(-3),
+                        UpdatedAt = now.AddMinutes(-90),
+                        EndTime = now.AddMinutes(-90)
+                    }
+                });
+            _mockSyncJobChangeRepository
+                .Setup(repository =>
+                    repository.GetRecentConfigChangesBySyncJobIdAsync(
+                        _syncJobId,
+                        It.IsAny<DateTime>(),
+                        It.IsAny<int>()))
+                .ReturnsAsync(new List<SyncJobChange>
+                {
+                    ChangeWithSerializedQuery(now.AddHours(-2), currentQuery),
+                    ChangeWithSerializedQuery(
+                        now.AddHours(-4),
+                        previousLayoutQuery)
+                });
+            _mockBlobStorageRepository.Setup(repository =>
+                    repository.FindPartFilesByRunIdAsync(
+                        _targetGroupId.ToString(),
+                        _runId.ToString()))
+                .ReturnsAsync(new Dictionary<string, BlobResult>
+                {
+                    ["GroupMembership_1"] = new()
+                    {
+                        BlobStatus = BlobStatus.Found,
+                        Path = "current/agents.json"
+                    },
+                    ["GroupMembership_2"] = new()
+                    {
+                        BlobStatus = BlobStatus.Found,
+                        Path = "current/people.json"
+                    }
+                });
+            _mockBlobStorageRepository.Setup(repository =>
+                    repository.FindPartFilesByRunIdAsync(
+                        _targetGroupId.ToString(),
+                        previousRunId.ToString()))
+                .ReturnsAsync(new Dictionary<string, BlobResult>
+                {
+                    ["GroupMembership_1"] = new()
+                    {
+                        BlobStatus = BlobStatus.Found,
+                        Path = "previous/agents.json"
+                    },
+                    ["GroupMembership_2"] = new()
+                    {
+                        BlobStatus = BlobStatus.Found,
+                        Path = "previous/people.json"
+                    }
+                });
+            _mockBlobStorageRepository.Setup(repository =>
+                    repository.FindPartFilesByRunIdAsync(
+                        _targetGroupId.ToString(),
+                        olderRunId.ToString()))
+                .ReturnsAsync(new Dictionary<string, BlobResult>
+                {
+                    ["GroupMembership_1"] = new()
+                    {
+                        BlobStatus = BlobStatus.Found,
+                        Path = "older/people-at-index-1.json"
+                    }
+                });
+            _mockBlobStorageRepository.Setup(repository =>
+                    repository.ExtractGroupMembershipSourceMembersAsync(
+                        It.Is<string>(path =>
+                            path.StartsWith(
+                                "current/",
+                                StringComparison.Ordinal)
+                            || path.StartsWith(
+                                "previous/",
+                                StringComparison.Ordinal))))
+                .ReturnsAsync(new HashSet<Guid>());
+            _mockBlobStorageRepository.Setup(repository =>
+                    repository.ExtractGroupMembershipSourceMembersAsync(
+                        "older/people-at-index-1.json"))
+                .ReturnsAsync(new HashSet<Guid> { removedPerson });
+            _mockGraphGroupRepository.Setup(repository =>
+                    repository.GetGroupNamesAsync(It.IsAny<List<Guid>>()))
+                .ReturnsAsync(new Dictionary<Guid, string>
+                {
+                    [sourceGroupId] = "Reordered Source"
+                });
+            _mockOpenAIService.Setup(service =>
+                    service.GetCompletionAsync(
+                        It.IsAny<string>(),
+                        It.IsAny<string>()))
+                .Callback<string, string>((_, prompt) =>
+                    capturedPrompt = prompt)
+                .ReturnsAsync("This sync completed successfully.");
+
+            var response = await _handler.ExecuteAsync(BuildRequest());
+
+            Assert.AreEqual(HttpStatusCode.OK, response.StatusCode);
+            Assert.IsNotNull(capturedPrompt);
+            Assert.IsFalse(
+                capturedPrompt!.Contains(
+                    "selected contribution was last present",
+                    StringComparison.Ordinal),
+                capturedPrompt);
+            _mockBlobStorageRepository.Verify(repository =>
+                    repository.ExtractGroupMembershipSourceMembersAsync(
+                        "older/people-at-index-1.json"),
+                Times.Never);
+        }
+
+        [TestMethod]
+        public async Task ExecuteAsync_RoleFlipWithSameSelection_UsesPreviousBlobWhenCurrentBlobIsMissing()
+        {
+            var previousRunId = Guid.NewGuid();
+            var sourceGroupId = Guid.NewGuid();
+            var removedPerson = Guid.NewGuid();
+            var now = DateTime.UtcNow;
+            var currentQuery =
+                $"[{{\"type\":\"GroupMembership\",\"source\":\"{sourceGroupId}\",\"identityTypes\":[\"users\"],\"exclusionary\":true}}]";
+            var appliedQuery =
+                $"[{{\"type\":\"GroupMembership\",\"source\":\"{sourceGroupId}\",\"identityTypes\":[\"users\"]}}]";
+            string? capturedPrompt = null;
+
+            _mockSyncJobRepository.Setup(repository =>
+                    repository.GetSyncJobAsync(_syncJobId))
+                .ReturnsAsync(new SyncJob
+                {
+                    Id = _syncJobId,
+                    TargetOfficeGroupId = _targetGroupId,
+                    Query = currentQuery
+                });
+            SetupCurrentRunAndPreviousRun(
+                Guid.NewGuid(),
+                Guid.NewGuid(),
+                previousRunId,
+                usersRemoved: 1,
+                previousStatus: "ThresholdExceeded");
+            SetupAggregatedRemovedUsers(removedPerson);
+            _mockSyncJobChangeRepository
+                .Setup(repository =>
+                    repository.GetRecentConfigChangesBySyncJobIdAsync(
+                        _syncJobId,
+                        It.IsAny<DateTime>(),
+                        It.IsAny<int>()))
+                .ReturnsAsync(new List<SyncJobChange>
+                {
+                    ChangeWithSerializedQuery(now.AddMinutes(-10), currentQuery),
+                    ChangeWithSerializedQuery(now.AddMinutes(-120), appliedQuery)
+                });
+            _mockBlobStorageRepository.Setup(repository =>
+                    repository.FindPartFilesByRunIdAsync(
+                        _targetGroupId.ToString(),
+                        _runId.ToString()))
+                .ReturnsAsync(new Dictionary<string, BlobResult>());
+            _mockBlobStorageRepository.Setup(repository =>
+                    repository.FindPartFilesByRunIdAsync(
+                        _targetGroupId.ToString(),
+                        previousRunId.ToString()))
+                .ReturnsAsync(new Dictionary<string, BlobResult>
+                {
+                    ["GroupMembership_1"] = new()
+                    {
+                        BlobStatus = BlobStatus.Found,
+                        Path = "previous/people.json"
+                    }
+                });
+            _mockBlobStorageRepository.Setup(repository =>
+                    repository.ExtractGroupMembershipSourceMembersAsync(
+                        "previous/people.json"))
+                .ReturnsAsync(new HashSet<Guid> { removedPerson });
+            _mockGraphGroupRepository.Setup(repository =>
+                    repository.GetGroupNamesAsync(It.IsAny<List<Guid>>()))
+                .ReturnsAsync(new Dictionary<Guid, string>
+                {
+                    [sourceGroupId] = "Role-Flipped Source"
+                });
+            _mockOpenAIService.Setup(service =>
+                    service.GetCompletionAsync(
+                        It.IsAny<string>(),
+                        It.IsAny<string>()))
+                .Callback<string, string>((_, prompt) =>
+                    capturedPrompt = prompt)
+                .ReturnsAsync("This sync completed successfully.");
+
+            var response = await _handler.ExecuteAsync(BuildRequest());
+
+            Assert.AreEqual(HttpStatusCode.OK, response.StatusCode);
+            Assert.IsNotNull(capturedPrompt);
+            StringAssert.Contains(
+                capturedPrompt,
+                "of the removed users match this now-exclusionary rule");
+            _mockBlobStorageRepository.Verify(repository =>
+                    repository.ExtractGroupMembershipSourceMembersAsync(
+                        "previous/people.json"),
+                Times.Once);
+        }
+
+        [DataTestMethod]
+        [DataRow(false)]
+        [DataRow(true)]
+        public async Task ExecuteAsync_RoleFlipWithSelectionChange_DoesNotUsePreviousPopulation(
+            bool currentBlobIsUnreadable)
+        {
+            var previousRunId = Guid.NewGuid();
+            var sourceGroupId = Guid.NewGuid();
+            var removedPerson = Guid.NewGuid();
+            var now = DateTime.UtcNow;
+            var currentQuery =
+                $"[{{\"type\":\"GroupMembership\",\"source\":\"{sourceGroupId}\",\"identityTypes\":[\"agents\"],\"exclusionary\":true}}]";
+            var appliedQuery =
+                $"[{{\"type\":\"GroupMembership\",\"source\":\"{sourceGroupId}\",\"identityTypes\":[\"users\"]}}]";
+            string? capturedPrompt = null;
+
+            _mockSyncJobRepository.Setup(repository =>
+                    repository.GetSyncJobAsync(_syncJobId))
+                .ReturnsAsync(new SyncJob
+                {
+                    Id = _syncJobId,
+                    TargetOfficeGroupId = _targetGroupId,
+                    Query = currentQuery
+                });
+            SetupCurrentRunAndPreviousRun(
+                Guid.NewGuid(),
+                Guid.NewGuid(),
+                previousRunId,
+                usersRemoved: 1,
+                previousStatus: "ThresholdExceeded");
+            SetupAggregatedRemovedUsers(removedPerson);
+            _mockSyncJobChangeRepository
+                .Setup(repository =>
+                    repository.GetRecentConfigChangesBySyncJobIdAsync(
+                        _syncJobId,
+                        It.IsAny<DateTime>(),
+                        It.IsAny<int>()))
+                .ReturnsAsync(new List<SyncJobChange>
+                {
+                    ChangeWithSerializedQuery(now.AddMinutes(-10), currentQuery),
+                    ChangeWithSerializedQuery(now.AddMinutes(-120), appliedQuery)
+                });
+            var currentPartFiles = new Dictionary<string, BlobResult>();
+            if (currentBlobIsUnreadable)
+            {
+                currentPartFiles["GroupMembership_1"] = new()
+                {
+                    BlobStatus = BlobStatus.Found,
+                    Path = "current/agents.json"
+                };
+                _mockBlobStorageRepository.Setup(repository =>
+                        repository.ExtractGroupMembershipSourceMembersAsync(
+                            "current/agents.json"))
+                    .ThrowsAsync(new InvalidOperationException("Unreadable current contribution."));
+            }
+            _mockBlobStorageRepository.Setup(repository =>
+                    repository.FindPartFilesByRunIdAsync(
+                        _targetGroupId.ToString(),
+                        _runId.ToString()))
+                .ReturnsAsync(currentPartFiles);
+            _mockBlobStorageRepository.Setup(repository =>
+                    repository.FindPartFilesByRunIdAsync(
+                        _targetGroupId.ToString(),
+                        previousRunId.ToString()))
+                .ReturnsAsync(new Dictionary<string, BlobResult>
+                {
+                    ["GroupMembership_1"] = new()
+                    {
+                        BlobStatus = BlobStatus.Found,
+                        Path = "previous/people.json"
+                    }
+                });
+            _mockBlobStorageRepository.Setup(repository =>
+                    repository.ExtractGroupMembershipSourceMembersAsync(
+                        "previous/people.json"))
+                .ReturnsAsync(new HashSet<Guid> { removedPerson });
+            _mockGraphGroupRepository.Setup(repository =>
+                    repository.GetGroupNamesAsync(It.IsAny<List<Guid>>()))
+                .ReturnsAsync(new Dictionary<Guid, string>
+                {
+                    [sourceGroupId] = "Role-Flipped Source"
+                });
+            _mockOpenAIService.Setup(service =>
+                    service.GetCompletionAsync(
+                        It.IsAny<string>(),
+                        It.IsAny<string>()))
+                .Callback<string, string>((_, prompt) =>
+                    capturedPrompt = prompt)
+                .ReturnsAsync("This sync completed successfully.");
+
+            var response = await _handler.ExecuteAsync(BuildRequest());
+
+            Assert.AreEqual(HttpStatusCode.OK, response.StatusCode);
+            Assert.IsNotNull(capturedPrompt);
+            StringAssert.Contains(
+                capturedPrompt,
+                "per-part membership counts are unavailable");
+            Assert.IsFalse(
+                capturedPrompt!.Contains(
+                    "match this now-exclusionary rule",
+                    StringComparison.Ordinal),
+                capturedPrompt);
+            _mockBlobStorageRepository.Verify(repository =>
+                    repository.ExtractGroupMembershipSourceMembersAsync(
+                        "previous/people.json"),
+                Times.Never);
+        }
+
+        [DataTestMethod]
+        [DataRow(true, "Rule flipped from inclusionary to exclusionary")]
+        [DataRow(false, "Rule flipped from exclusionary to inclusionary")]
+        public async Task ExecuteAsync_RoleFlipFollowedBySelectionChange_EmitsOutstandingRoleFlip(
+            bool currentIsExclusionary,
+            string expectedSignal)
+        {
+            var currentAdfRunId = Guid.NewGuid();
+            var previousAdfRunId = Guid.NewGuid();
+            var previousRunId = Guid.NewGuid();
+            var sourceGroupId = Guid.NewGuid();
+            var affectedUser = Guid.NewGuid();
+            var now = DateTime.UtcNow;
+            var currentExclusionaryJson = currentIsExclusionary
+                ? ",\"exclusionary\":true"
+                : string.Empty;
+            var baselineExclusionaryJson = currentIsExclusionary
+                ? string.Empty
+                : ",\"exclusionary\":true";
+            var currentQuery =
+                $"[{{\"type\":\"GroupMembership\",\"source\":\"{sourceGroupId}\",\"identityTypes\":[\"agents\"]{currentExclusionaryJson}}}]";
+            var roleFlippedQuery =
+                $"[{{\"type\":\"GroupMembership\",\"source\":\"{sourceGroupId}\",\"identityTypes\":[\"users\"]{currentExclusionaryJson}}}]";
+            var appliedQuery =
+                $"[{{\"type\":\"GroupMembership\",\"source\":\"{sourceGroupId}\",\"identityTypes\":[\"users\"]{baselineExclusionaryJson}}}]";
+            string? capturedPrompt = null;
+
+            _mockSyncJobRepository.Setup(repository =>
+                    repository.GetSyncJobAsync(_syncJobId))
+                .ReturnsAsync(new SyncJob
+                {
+                    Id = _syncJobId,
+                    TargetOfficeGroupId = _targetGroupId,
+                    Query = currentQuery
+                });
+            SetupCurrentRunAndPreviousRun(
+                currentAdfRunId,
+                previousAdfRunId,
+                previousRunId,
+                usersRemoved: currentIsExclusionary ? 1 : 0,
+                usersAdded: currentIsExclusionary ? 0 : 1,
+                previousStatus: "ThresholdExceeded");
+            SetupAggregatedMembers(
+                currentIsExclusionary
+                    ? MembershipAction.Remove
+                    : MembershipAction.Add,
+                affectedUser);
+            _mockSyncJobChangeRepository
+                .Setup(repository =>
+                    repository.GetRecentConfigChangesBySyncJobIdAsync(
+                        _syncJobId,
+                        It.IsAny<DateTime>(),
+                        It.IsAny<int>()))
+                .ReturnsAsync(new List<SyncJobChange>
+                {
+                    ChangeWithSerializedQuery(now.AddMinutes(-10), currentQuery),
+                    ChangeWithSerializedQuery(now.AddMinutes(-70), roleFlippedQuery),
+                    ChangeWithSerializedQuery(now.AddMinutes(-120), appliedQuery)
+                });
+            _mockBlobStorageRepository.Setup(repository =>
+                    repository.FindPartFilesByRunIdAsync(
+                        _targetGroupId.ToString(),
+                        _runId.ToString()))
+                .ReturnsAsync(new Dictionary<string, BlobResult>
+                {
+                    ["GroupMembership_1"] = new()
+                    {
+                        BlobStatus = BlobStatus.Found,
+                        Path = "current/flipped.json"
+                    }
+                });
+            _mockBlobStorageRepository.Setup(repository =>
+                    repository.FindPartFilesByRunIdAsync(
+                        _targetGroupId.ToString(),
+                        previousRunId.ToString()))
+                .ReturnsAsync(new Dictionary<string, BlobResult>
+                {
+                    ["GroupMembership_1"] = new()
+                    {
+                        BlobStatus = BlobStatus.Found,
+                        Path = "previous/flipped.json"
+                    }
+                });
+            _mockBlobStorageRepository.Setup(repository =>
+                    repository.ExtractGroupMembershipSourceMembersAsync(
+                        It.Is<string>(path =>
+                            path.EndsWith(
+                                "flipped.json",
+                                StringComparison.Ordinal))))
+                .ReturnsAsync(new HashSet<Guid> { affectedUser });
+            _mockGraphGroupRepository.Setup(repository =>
+                    repository.GetGroupNamesAsync(It.IsAny<List<Guid>>()))
+                .ReturnsAsync(new Dictionary<Guid, string>
+                {
+                    [sourceGroupId] = "Role-Flipped Source"
+                });
+            _mockOpenAIService.Setup(service =>
+                    service.GetCompletionAsync(
+                        It.IsAny<string>(),
+                        It.IsAny<string>()))
+                .Callback<string, string>((_, prompt) =>
+                    capturedPrompt = prompt)
+                .ReturnsAsync("This sync completed successfully.");
+
+            var response = await _handler.ExecuteAsync(BuildRequest());
+
+            Assert.AreEqual(HttpStatusCode.OK, response.StatusCode);
+            Assert.IsNotNull(capturedPrompt);
+            StringAssert.Contains(capturedPrompt!, expectedSignal);
+            StringAssert.Contains(capturedPrompt, "Role-Flipped Source");
+        }
+
+        [TestMethod]
+        public async Task ExecuteAsync_RevertedRoleFlipFollowedBySelectionChange_DoesNotEmitRoleFlipSignal()
+        {
+            var currentAdfRunId = Guid.NewGuid();
+            var previousAdfRunId = Guid.NewGuid();
+            var previousRunId = Guid.NewGuid();
+            var sourceGroupId = Guid.NewGuid();
+            var addedUser = Guid.NewGuid();
+            var now = DateTime.UtcNow;
+            var currentQuery =
+                $"[{{\"type\":\"GroupMembership\",\"source\":\"{sourceGroupId}\",\"identityTypes\":[\"agents\"]}}]";
+            var temporaryExclusionaryQuery =
+                $"[{{\"type\":\"GroupMembership\",\"source\":\"{sourceGroupId}\",\"identityTypes\":[\"users\"],\"exclusionary\":true}}]";
+            var appliedQuery =
+                $"[{{\"type\":\"GroupMembership\",\"source\":\"{sourceGroupId}\",\"identityTypes\":[\"users\"]}}]";
+            string? capturedPrompt = null;
+
+            _mockSyncJobRepository.Setup(repository =>
+                    repository.GetSyncJobAsync(_syncJobId))
+                .ReturnsAsync(new SyncJob
+                {
+                    Id = _syncJobId,
+                    TargetOfficeGroupId = _targetGroupId,
+                    Query = currentQuery
+                });
+            SetupCurrentRunAndPreviousRun(
+                currentAdfRunId,
+                previousAdfRunId,
+                previousRunId,
+                usersRemoved: 0,
+                usersAdded: 1,
+                previousStatus: "ThresholdExceeded");
+            SetupAggregatedMembers(MembershipAction.Add, addedUser);
+            _mockSyncJobChangeRepository
+                .Setup(repository =>
+                    repository.GetRecentConfigChangesBySyncJobIdAsync(
+                        _syncJobId,
+                        It.IsAny<DateTime>(),
+                        It.IsAny<int>()))
+                .ReturnsAsync(new List<SyncJobChange>
+                {
+                    ChangeWithSerializedQuery(now.AddMinutes(-10), currentQuery),
+                    ChangeWithSerializedQuery(
+                        now.AddMinutes(-70),
+                        temporaryExclusionaryQuery),
+                    ChangeWithSerializedQuery(now.AddMinutes(-120), appliedQuery)
+                });
+            _mockBlobStorageRepository.Setup(repository =>
+                    repository.FindPartFilesByRunIdAsync(
+                        _targetGroupId.ToString(),
+                        _runId.ToString()))
+                .ReturnsAsync(new Dictionary<string, BlobResult>
+                {
+                    ["GroupMembership_1"] = new()
+                    {
+                        BlobStatus = BlobStatus.Found,
+                        Path = "current/reverted.json"
+                    }
+                });
+            _mockBlobStorageRepository.Setup(repository =>
+                    repository.FindPartFilesByRunIdAsync(
+                        _targetGroupId.ToString(),
+                        previousRunId.ToString()))
+                .ReturnsAsync(new Dictionary<string, BlobResult>
+                {
+                    ["GroupMembership_1"] = new()
+                    {
+                        BlobStatus = BlobStatus.Found,
+                        Path = "previous/reverted.json"
+                    }
+                });
+            _mockBlobStorageRepository.Setup(repository =>
+                    repository.ExtractGroupMembershipSourceMembersAsync(
+                        It.Is<string>(path =>
+                            path.EndsWith(
+                                "reverted.json",
+                                StringComparison.Ordinal))))
+                .ReturnsAsync(new HashSet<Guid> { addedUser });
+            _mockGraphGroupRepository.Setup(repository =>
+                    repository.GetGroupNamesAsync(It.IsAny<List<Guid>>()))
+                .ReturnsAsync(new Dictionary<Guid, string>
+                {
+                    [sourceGroupId] = "Reverted Source"
+                });
+            _mockOpenAIService.Setup(service =>
+                    service.GetCompletionAsync(
+                        It.IsAny<string>(),
+                        It.IsAny<string>()))
+                .Callback<string, string>((_, prompt) =>
+                    capturedPrompt = prompt)
+                .ReturnsAsync("This sync completed successfully.");
+
+            var response = await _handler.ExecuteAsync(BuildRequest());
+
+            Assert.AreEqual(HttpStatusCode.OK, response.StatusCode);
+            Assert.IsNotNull(capturedPrompt);
+            Assert.IsFalse(
+                capturedPrompt!.Contains(
+                    "Rule flipped from inclusionary to exclusionary",
+                    StringComparison.Ordinal),
+                capturedPrompt);
+            Assert.IsFalse(
+                capturedPrompt.Contains(
+                    "Rule flipped from exclusionary to inclusionary",
+                    StringComparison.Ordinal),
+                capturedPrompt);
+            Assert.IsFalse(
+                capturedPrompt.Contains(
+                    "changed from exclusionary to inclusionary",
+                    StringComparison.Ordinal),
+                capturedPrompt);
+        }
+
+        [TestMethod]
+        public async Task ExecuteAsync_RevertedRoleFlipOutsideRecentHistory_DoesNotReplaceAppliedBaseline()
+        {
+            var currentAdfRunId = Guid.NewGuid();
+            var previousAdfRunId = Guid.NewGuid();
+            var previousRunId = Guid.NewGuid();
+            var sourceGroupId = Guid.NewGuid();
+            var removedUser = Guid.NewGuid();
+            var now = DateTime.UtcNow;
+            var appliedAndCurrentQuery =
+                $"[{{\"type\":\"GroupMembership\",\"source\":\"{sourceGroupId}\",\"exclusionary\":true}}]";
+            var temporaryInclusionaryQuery =
+                $"[{{\"type\":\"GroupMembership\",\"source\":\"{sourceGroupId}\"}}]";
+            var unchangedCurrentSnapshots = Enumerable.Range(10, 10)
+                .Select(minutes =>
+                    ChangeWithSerializedQuery(
+                        now.AddMinutes(-minutes),
+                        appliedAndCurrentQuery))
+                .ToList();
+            string? capturedPrompt = null;
+
+            _mockSyncJobRepository.Setup(repository =>
+                    repository.GetSyncJobAsync(_syncJobId))
+                .ReturnsAsync(new SyncJob
+                {
+                    Id = _syncJobId,
+                    TargetOfficeGroupId = _targetGroupId,
+                    Query = appliedAndCurrentQuery
+                });
+            SetupCurrentRunAndPreviousRun(
+                currentAdfRunId,
+                previousAdfRunId,
+                previousRunId,
+                usersRemoved: 1,
+                previousStatus: "ThresholdExceeded");
+            SetupAggregatedRemovedUsers(removedUser);
+            _mockSyncJobChangeRepository
+                .Setup(repository =>
+                    repository.GetRecentConfigChangesBySyncJobIdAsync(
+                        _syncJobId,
+                        It.IsAny<DateTime>(),
+                        It.IsAny<int>()))
+                .ReturnsAsync((Guid _, DateTime cutoff, int count) =>
+                {
+                    if (count == 10)
+                    {
+                        return unchangedCurrentSnapshots;
+                    }
+
+                    if (cutoff <= now.AddMinutes(-90))
+                    {
+                        return new List<SyncJobChange>
+                        {
+                            ChangeWithSerializedQuery(
+                                now.AddMinutes(-120),
+                                appliedAndCurrentQuery)
+                        };
+                    }
+
+                    if (cutoff <= now.AddMinutes(-30))
+                    {
+                        return new List<SyncJobChange>
+                        {
+                            ChangeWithSerializedQuery(
+                                now.AddMinutes(-70),
+                                temporaryInclusionaryQuery)
+                        };
+                    }
+
+                    return new List<SyncJobChange>
+                    {
+                        ChangeWithSerializedQuery(
+                            now.AddMinutes(-10),
+                            appliedAndCurrentQuery)
+                    };
+                });
+            _mockBlobStorageRepository.Setup(repository =>
+                    repository.FindPartFilesByRunIdAsync(
+                        _targetGroupId.ToString(),
+                        _runId.ToString()))
+                .ReturnsAsync(new Dictionary<string, BlobResult>
+                {
+                    ["GroupMembership_1"] = new()
+                    {
+                        BlobStatus = BlobStatus.Found,
+                        Path = "current/restored-applied-role.json"
+                    }
+                });
+            _mockBlobStorageRepository.Setup(repository =>
+                    repository.ExtractGroupMembershipSourceMembersAsync(
+                        "current/restored-applied-role.json"))
+                .ReturnsAsync(new HashSet<Guid> { removedUser });
+            _mockGraphGroupRepository.Setup(repository =>
+                    repository.GetGroupNamesAsync(It.IsAny<List<Guid>>()))
+                .ReturnsAsync(new Dictionary<Guid, string>
+                {
+                    [sourceGroupId] = "Restored Applied Role Source"
+                });
+            _mockOpenAIService.Setup(service =>
+                    service.GetCompletionAsync(
+                        It.IsAny<string>(),
+                        It.IsAny<string>()))
+                .Callback<string, string>((_, prompt) =>
+                    capturedPrompt = prompt)
+                .ReturnsAsync("This sync completed successfully.");
+
+            var response = await _handler.ExecuteAsync(BuildRequest());
+
+            Assert.AreEqual(HttpStatusCode.OK, response.StatusCode);
+            Assert.IsNotNull(capturedPrompt);
+            Assert.IsFalse(
+                capturedPrompt!.Contains(
+                    "Rule flipped from inclusionary to exclusionary",
+                    StringComparison.Ordinal),
+                capturedPrompt);
+        }
+
+        [TestMethod]
+        public async Task ExecuteAsync_UnchangedSnapshotAfterPreviousRun_AttributesUnderlyingEarlierChange()
+        {
+            var currentAdfRunId = Guid.NewGuid();
+            var previousAdfRunId = Guid.NewGuid();
+            var previousRunId = Guid.NewGuid();
+            var sourceGroupId = Guid.NewGuid();
+            var addedUser = Guid.NewGuid();
+            var now = DateTime.UtcNow;
+            var query =
+                $"[{{\"type\":\"GroupMembership\",\"source\":\"{sourceGroupId}\"}}]";
+            var appliedChange = ChangeWithSerializedQuery(
+                now.AddMinutes(-120),
+                query);
+            var scheduledNowChange = ChangeWithSerializedQuery(
+                now.AddMinutes(-10),
+                query);
+            scheduledNowChange.ChangeReason =
+                SyncJobChangeReason.ScheduledNow.ToString();
+            string? capturedPrompt = null;
+
+            _mockSyncJobRepository.Setup(repository =>
+                    repository.GetSyncJobAsync(_syncJobId))
+                .ReturnsAsync(new SyncJob
+                {
+                    Id = _syncJobId,
+                    TargetOfficeGroupId = _targetGroupId,
+                    Query = query
+                });
+            SetupCurrentRunAndPreviousRun(
+                currentAdfRunId,
+                previousAdfRunId,
+                previousRunId,
+                usersRemoved: 0,
+                usersAdded: 1,
+                previousStatus: "ThresholdExceeded");
+            SetupAggregatedMembers(MembershipAction.Add, addedUser);
+            _mockSyncJobChangeRepository
+                .Setup(repository =>
+                    repository.GetRecentConfigChangesBySyncJobIdAsync(
+                        _syncJobId,
+                        It.IsAny<DateTime>(),
+                        It.IsAny<int>()))
+                .ReturnsAsync((Guid _, DateTime asOf, int count) =>
+                {
+                    var matchingChanges = (asOf < now.AddMinutes(-60)
+                        ? new[] { appliedChange }
+                        : new[] { scheduledNowChange, appliedChange })
+                        .AsEnumerable();
+                    return count > 0
+                        ? matchingChanges.Take(count).ToList()
+                        : matchingChanges.ToList();
+                });
+            _mockGraphGroupRepository.Setup(repository =>
+                    repository.GetGroupNamesAsync(It.IsAny<List<Guid>>()))
+                .ReturnsAsync(new Dictionary<Guid, string>
+                {
+                    [sourceGroupId] = "Unchanged Source"
+                });
+            _mockOpenAIService.Setup(service =>
+                    service.GetCompletionAsync(
+                        It.IsAny<string>(),
+                        It.IsAny<string>()))
+                .Callback<string, string>((_, prompt) =>
+                    capturedPrompt = prompt)
+                .ReturnsAsync("This sync completed successfully.");
+
+            var response = await _handler.ExecuteAsync(BuildRequest());
+
+            Assert.AreEqual(HttpStatusCode.OK, response.StatusCode);
+            Assert.IsNotNull(capturedPrompt);
+            StringAssert.Contains(
+                capturedPrompt!,
+                "this change occurred BEFORE the previous run");
+            Assert.IsFalse(capturedPrompt.Contains("ScheduledNow"));
+        }
+
+        [TestMethod]
         public async Task ExecuteAsync_RemovesAttribution_WhenAggregatedRemovedSetEmpty_SkipsAttribution()
         {
             var currentAdfRunId = Guid.NewGuid();
@@ -3927,10 +6126,14 @@ namespace WebApi.Tests
             Assert.IsFalse(capturedPrompt!.Contains("Per-part attribution for removed users", StringComparison.OrdinalIgnoreCase));
         }
 
-        // ---------------- Fix #1: New exclusionary source attribution for removes ----------------
+        // ---------------- New exclusionary rule attribution for removals ----------------
 
-        [TestMethod]
-        public async Task ExecuteAsync_RemovesAttribution_NewExclusionarySourceAdded_EmitsAttributionLine()
+        [DataTestMethod]
+        [DataRow(true, true)]
+        [DataRow(false, false)]
+        public async Task ExecuteAsync_RemovesAttribution_NewExclusionarySourceAdded_EmitsOnlyWhenRemovedUserMatches(
+            bool sourceContainsRemovedUser,
+            bool expectsAttribution)
         {
             var currentAdfRunId = Guid.NewGuid();
             var previousAdfRunId = Guid.NewGuid();
@@ -3981,7 +6184,9 @@ namespace WebApi.Tests
             _mockBlobStorageRepository.Setup(x => x.ExtractGroupMembershipSourceMembersAsync("previous/incl.json"))
                 .ReturnsAsync(new HashSet<Guid> { removedUser });
             _mockBlobStorageRepository.Setup(x => x.ExtractGroupMembershipSourceMembersAsync("current/newexcl.json"))
-                .ReturnsAsync(new HashSet<Guid> { removedUser });
+                .ReturnsAsync(sourceContainsRemovedUser
+                    ? new HashSet<Guid> { removedUser }
+                    : new HashSet<Guid> { Guid.NewGuid() });
 
             _mockGraphGroupRepository.Setup(x => x.GetGroupNamesAsync(It.IsAny<List<Guid>>()))
                 .ReturnsAsync(new Dictionary<Guid, string>
@@ -3997,12 +6202,22 @@ namespace WebApi.Tests
 
             Assert.AreEqual(HttpStatusCode.OK, response.StatusCode);
             Assert.IsNotNull(capturedPrompt);
-            StringAssert.Contains(capturedPrompt!, "New exclusionary source added in the recent config update");
-            StringAssert.Contains(capturedPrompt!, "NewExcludedSource");
-            StringAssert.Contains(capturedPrompt!, "newly-excluded source");
+            Assert.AreEqual(
+                expectsAttribution,
+                capturedPrompt!.Contains(
+                    "New exclusionary rule added in the recent config update",
+                    StringComparison.Ordinal),
+                capturedPrompt);
+            if (expectsAttribution)
+            {
+                StringAssert.Contains(capturedPrompt, "NewExcludedSource");
+                StringAssert.Contains(
+                    capturedPrompt,
+                    "newly added exclusionary rule");
+            }
         }
 
-        // ---------------- Fix #2: Deleted exclusionary source attribution for adds ----------------
+        // ---------------- Removed exclusionary rule attribution for additions ----------------
 
         [TestMethod]
         public async Task ExecuteAsync_AddsAttribution_DeletedExclusionarySource_EmitsAttributionLine()
@@ -4094,12 +6309,12 @@ namespace WebApi.Tests
 
             Assert.AreEqual(HttpStatusCode.OK, response.StatusCode);
             Assert.IsNotNull(capturedPrompt);
-            StringAssert.Contains(capturedPrompt!, "Exclusionary source removed from query in the recent config update");
+            StringAssert.Contains(capturedPrompt!, "Exclusionary rule removed from the query in the recent config update");
             StringAssert.Contains(capturedPrompt!, "DeletedExclusionarySource");
-            StringAssert.Contains(capturedPrompt!, "previously excluded by this now-removed exclusion");
+            StringAssert.Contains(capturedPrompt!, "previously blocked by this now-removed exclusionary rule");
         }
 
-        // ---------------- Fix #4: StartTime-preferring config cutoff ----------------
+        // ---------------- StartTime-preferring config cutoff ----------------
 
         [TestMethod]
         public void GetRunConfigCutoff_StartTimeAvailable_ReturnsStartTime()
@@ -4129,7 +6344,14 @@ namespace WebApi.Tests
             Assert.AreEqual(updated, result);
         }
 
-        private void SetupCurrentRunAndPreviousRun(Guid currentAdfRunId, Guid previousAdfRunId, Guid previousRunId, int usersRemoved, int usersAdded = 0)
+        private void SetupCurrentRunAndPreviousRun(
+            Guid currentAdfRunId,
+            Guid previousAdfRunId,
+            Guid previousRunId,
+            int usersRemoved,
+            int usersAdded = 0,
+            string previousStatus = "Idle",
+            string? previousUpdatedByFunction = null)
         {
             var now = DateTime.UtcNow;
             _mockSyncJobHistoryRepository.Setup(x => x.GetByRunIdAsync(_runId))
@@ -4148,14 +6370,21 @@ namespace WebApi.Tests
                     AdfRunId = currentAdfRunId
                 });
 
-            _mockSyncJobHistoryRepository.Setup(x => x.GetBySyncJobIdAsync(_syncJobId, It.IsAny<int>(), It.IsAny<int>()))
-                .ReturnsAsync(new List<global::Models.SyncJobHistory.SyncJobHistory>
+            var previousRuns =
+                new List<global::Models.SyncJobHistory.SyncJobHistory>
                 {
                     new()
                     {
                         SyncJobId = _syncJobId,
                         RunId = previousRunId,
-                        Status = "Idle",
+                        Status = previousStatus,
+                        UpdatedByFunction = previousUpdatedByFunction
+                            ?? (string.Equals(
+                                previousStatus,
+                                "Idle",
+                                StringComparison.OrdinalIgnoreCase)
+                                    ? "GraphUpdater"
+                                    : "GroupMembershipObtainer"),
                         UpdatedAt = now.AddHours(-1),
                         StartTime = now.AddHours(-1).AddMinutes(-5),
                         EndTime = now.AddHours(-1),
@@ -4163,7 +6392,34 @@ namespace WebApi.Tests
                         UsersRemoved = 0,
                         AdfRunId = previousAdfRunId
                     }
+                };
+            if (!string.Equals(
+                previousStatus,
+                "Idle",
+                StringComparison.OrdinalIgnoreCase))
+            {
+                previousRuns.Add(new()
+                {
+                    SyncJobId = _syncJobId,
+                    RunId = Guid.NewGuid(),
+                    Status = "Idle",
+                    UpdatedByFunction = "GraphUpdater",
+                    UpdatedAt = now.AddMinutes(-100),
+                    StartTime = now.AddMinutes(-105),
+                    EndTime = now.AddMinutes(-100),
+                    UsersAdded = 0,
+                    UsersRemoved = 0,
+                    AdfRunId = Guid.NewGuid()
                 });
+            }
+
+            _mockSyncJobHistoryRepository
+                .Setup(x =>
+                    x.GetBySyncJobIdAsync(
+                        _syncJobId,
+                        It.IsAny<int>(),
+                        It.IsAny<int>()))
+                .ReturnsAsync(previousRuns);
         }
 
         private void SetupAggregatedRemovedUsers(params Guid[] removedUsers)
@@ -4434,11 +6690,16 @@ namespace WebApi.Tests
         public void DescribeRules_GroupMembership_ResolvesGroupName()
         {
             var g = Guid.NewGuid();
-            var part = new GetRunExplanationHandler.QueryPartInfo { Type = "GroupMembership", Source = g.ToString() };
+            var part = new GetRunExplanationHandler.QueryPartInfo
+            {
+                Type = "GroupMembership",
+                Source = g.ToString(),
+                IdentityTypes = IdentityTypeSet.GroupDefault
+            };
             var names = new Dictionary<Guid, string> { [g] = "HR Team" };
             StringAssert.Contains(
                 GetRunExplanationHandler.DescribeMembershipRulesForOwner(new[] { part }, null, names, null),
-                "members of source group \"HR Team\"");
+                "people and agent users from source group \"HR Team\"");
         }
 
         [TestMethod]
@@ -4506,9 +6767,11 @@ namespace WebApi.Tests
         public void DescribeQueryDiff_GroupSourceAdded()
         {
             var prev = "[{\"type\":\"GroupMembership\",\"source\":\"11111111-1111-1111-1111-111111111111\"}]";
-            var curr = "[{\"type\":\"GroupMembership\",\"source\":\"11111111-1111-1111-1111-111111111111\"},{\"type\":\"GroupMembership\",\"source\":\"22222222-2222-2222-2222-222222222222\"}]";
-            StringAssert.Contains(GetRunExplanationHandler.DescribeQueryDiff(prev, curr),
-                "New inclusionary group source added");
+            var curr = "[{\"type\":\"GroupMembership\",\"source\":\"11111111-1111-1111-1111-111111111111\"},{\"type\":\"GroupMembership\",\"source\":\"22222222-2222-2222-2222-222222222222\",\"identityTypes\":[\"agents\"]}]";
+            var result = GetRunExplanationHandler.DescribeQueryDiff(prev, curr);
+
+            StringAssert.Contains(result, "New inclusionary group source added");
+            StringAssert.Contains(result, "selecting only agent users");
         }
 
         [TestMethod]
@@ -4524,10 +6787,23 @@ namespace WebApi.Tests
         [TestMethod]
         public void DescribeQueryDiff_GroupSourceRemoved()
         {
-            var prev = "[{\"type\":\"GroupMembership\",\"source\":\"11111111-1111-1111-1111-111111111111\"},{\"type\":\"GroupMembership\",\"source\":\"22222222-2222-2222-2222-222222222222\"}]";
+            var prev = "[{\"type\":\"GroupMembership\",\"source\":\"11111111-1111-1111-1111-111111111111\"},{\"type\":\"GroupMembership\",\"source\":\"22222222-2222-2222-2222-222222222222\",\"identityTypes\":[\"users\"]}]";
             var curr = "[{\"type\":\"GroupMembership\",\"source\":\"11111111-1111-1111-1111-111111111111\"}]";
-            StringAssert.Contains(GetRunExplanationHandler.DescribeQueryDiff(prev, curr),
-                "group source removed");
+            var result = GetRunExplanationHandler.DescribeQueryDiff(prev, curr);
+
+            StringAssert.Contains(result, "group source removed");
+            StringAssert.Contains(result, "selected only people");
+        }
+
+        [TestMethod]
+        public void DescribeQueryDiff_GroupSourceWithOmittedSelection_DescribesBothIdentityTypes()
+        {
+            const string prev = "[]";
+            const string curr = "[{\"type\":\"GroupMembership\",\"source\":\"11111111-1111-1111-1111-111111111111\"}]";
+
+            StringAssert.Contains(
+                GetRunExplanationHandler.DescribeQueryDiff(prev, curr),
+                "selecting people and agent users");
         }
 
         [TestMethod]
@@ -4568,6 +6844,82 @@ namespace WebApi.Tests
             StringAssert.Contains(
                 GetRunExplanationHandler.DescribeQueryDiff(previous, current),
                 "Identity types changed from only employees to employees and the AI agents they own");
+        }
+
+        [TestMethod]
+        public void DescribeQueryDiff_GroupIdentitySelectionChanged()
+        {
+            const string groupId = "11111111-1111-1111-1111-111111111111";
+            var previous =
+                $"[{{\"type\":\"GroupMembership\",\"source\":\"{groupId}\",\"identityTypes\":[\"users\"]}}]";
+            var current =
+                $"[{{\"type\":\"GroupMembership\",\"source\":\"{groupId}\",\"identityTypes\":[\"agents\"]}}]";
+
+            StringAssert.Contains(
+                GetRunExplanationHandler.DescribeQueryDiff(previous, current),
+                "Identity types changed from only people to only agent users");
+        }
+
+        [TestMethod]
+        public void DescribeQueryDiff_GroupDefaultAndOrderAreUnchanged()
+        {
+            const string groupId = "11111111-1111-1111-1111-111111111111";
+            var omitted =
+                $"[{{\"type\":\"GroupMembership\",\"source\":\"{groupId}\"}}]";
+            var explicitBoth =
+                $"[{{\"type\":\"GroupMembership\",\"source\":\"{groupId}\",\"identityTypes\":[\"agents\",\"users\"]}}]";
+
+            Assert.AreEqual(
+                string.Empty,
+                GetRunExplanationHandler.DescribeQueryDiff(omitted, explicitBoth));
+        }
+
+        [TestMethod]
+        public void DescribeQueryDiff_SameSourceWithIndependentSelections_IsDuplicateSafe()
+        {
+            const string groupId = "11111111-1111-1111-1111-111111111111";
+            var previous =
+                $"[" +
+                $"{{\"type\":\"GroupMembership\",\"source\":\"{groupId}\",\"identityTypes\":[\"users\"]}}," +
+                $"{{\"type\":\"GroupMembership\",\"source\":\"{groupId}\",\"identityTypes\":[\"agents\"]}}" +
+                "]";
+            var current =
+                $"[" +
+                $"{{\"type\":\"GroupMembership\",\"source\":\"{groupId}\",\"identityTypes\":[\"agents\"]}}," +
+                $"{{\"type\":\"GroupMembership\",\"source\":\"{groupId}\",\"identityTypes\":[\"users\"]}}" +
+                "]";
+
+            Assert.AreEqual(
+                string.Empty,
+                GetRunExplanationHandler.DescribeQueryDiff(previous, current));
+        }
+
+        [TestMethod]
+        public void DescribeQueryDiff_SameSourceSelectionChange_ReportsOnlyChangedPart()
+        {
+            const string groupId = "11111111-1111-1111-1111-111111111111";
+            var previous =
+                $"[" +
+                $"{{\"type\":\"GroupMembership\",\"source\":\"{groupId}\",\"identityTypes\":[\"users\"]}}," +
+                $"{{\"type\":\"GroupMembership\",\"source\":\"{groupId}\",\"identityTypes\":[\"agents\"]}}" +
+                "]";
+            var current =
+                $"[" +
+                $"{{\"type\":\"GroupMembership\",\"source\":\"{groupId}\",\"identityTypes\":[\"users\",\"agents\"]}}," +
+                $"{{\"type\":\"GroupMembership\",\"source\":\"{groupId}\",\"identityTypes\":[\"agents\"]}}" +
+                "]";
+
+            var result =
+                GetRunExplanationHandler.DescribeQueryDiff(previous, current);
+
+            StringAssert.Contains(
+                result,
+                "Identity types changed from only people to people and agent users");
+            Assert.AreEqual(
+                1,
+                result.Split(
+                    "Identity types changed",
+                    StringSplitOptions.None).Length - 1);
         }
 
         [TestMethod]

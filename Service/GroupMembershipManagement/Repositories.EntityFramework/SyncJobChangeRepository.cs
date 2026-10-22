@@ -171,16 +171,24 @@ namespace Repositories.EntityFramework
             var onboarding = SyncJobChangeReason.Onboarding.ToString();
             var onboardingAutoApproved = SyncJobChangeReason.OnboardingAutoApproved.ToString();
             var update = SyncJobChangeReason.Update.ToString();
+            var updateAutoApproved =
+                SyncJobChangeReason.UpdateAutoApproved.ToString();
+            var scheduledNow =
+                SyncJobChangeReason.ScheduledNow.ToString();
 
-            var entities = await _readContext.SyncJobChanges
+            var query = _readContext.SyncJobChanges
                 .Where(s => s.SyncJobId == syncJobId
                     && s.ChangeTime <= asOf
                     && (s.ChangeReason == onboarding
                         || s.ChangeReason == onboardingAutoApproved
-                        || s.ChangeReason == update))
-                .OrderByDescending(s => s.ChangeTime)
-                .Take(count)
-                .ToListAsync();
+                        || s.ChangeReason == update
+                        || s.ChangeReason == updateAutoApproved
+                        || s.ChangeReason == scheduledNow))
+                .OrderByDescending(s => s.ChangeTime);
+
+            var entities = count > 0
+                ? await query.Take(count).ToListAsync()
+                : await query.ToListAsync();
 
             return entities.Select(MapEntityToModel).ToList();
         }

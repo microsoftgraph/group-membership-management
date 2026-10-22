@@ -60,9 +60,10 @@ namespace Repositories.Contracts
         Task<int> GetScheduleNowCountByUserAsync(Guid userObjectId, DateTime since);
 
         /// <summary>
-        /// Retrieves the most recent configuration changes (Onboarding/Update) for a sync job
-        /// that occurred at or before the specified time. Used to build a before/after diff
-        /// of filter configurations for sync explanations.
+        /// Retrieves the most recent query snapshots for a sync job that occurred at or before
+        /// the specified time. Includes Onboarding, OnboardingAutoApproved, Update,
+        /// UpdateAutoApproved, and ScheduledNow snapshots. Pass zero for
+        /// <paramref name="count"/> to retrieve the complete history.
         /// </summary>
         Task<List<SyncJobChange>> GetRecentConfigChangesBySyncJobIdAsync(Guid syncJobId, DateTime asOf, int count = 2);
 

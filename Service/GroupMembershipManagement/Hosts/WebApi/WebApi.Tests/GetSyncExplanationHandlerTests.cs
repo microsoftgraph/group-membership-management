@@ -380,6 +380,123 @@ namespace WebApi.Tests
         }
 
         [TestMethod]
+        public async Task ExecuteAsync_SkipsRepeatedQuerySnapshots_WhenFindingPreviousConfiguration()
+        {
+            SetupBlobWithUser(MembershipAction.Remove);
+            SetupAdfData(new Dictionary<string, string> { { "Building", "B99" } });
+
+            var previousChangeDetails = "{\"Query\":\"[{\\\"type\\\":\\\"SqlMembership\\\",\\\"filter\\\":\\\"Building = 'B40'\\\"}]\"}";
+            var currentChangeDetails = "{\"Query\":\"[{\\\"type\\\":\\\"SqlMembership\\\",\\\"filter\\\":\\\"Building = 'B50'\\\"}]\"}";
+
+            _mockSyncJobChangeRepository
+                .Setup(x => x.GetRecentConfigChangesBySyncJobIdAsync(
+                    _syncJobId, It.IsAny<DateTime>(), 0))
+                .ReturnsAsync(new List<SyncJobChange>
+                {
+                    new()
+                    {
+                        ChangeTime = DateTime.UtcNow.AddDays(-1),
+                        ChangeReason = SyncJobChangeReason.ScheduledNow.ToString(),
+                        ChangedByDisplayName = "Sync Presser",
+                        ChangeDetails = currentChangeDetails
+                    },
+                    new()
+                    {
+                        ChangeTime = DateTime.UtcNow.AddDays(-2),
+                        ChangeReason = SyncJobChangeReason.Update.ToString(),
+                        ChangedByDisplayName = "Configuration Owner",
+                        ChangeDetails = currentChangeDetails
+                    },
+                    new()
+                    {
+                        ChangeTime = DateTime.UtcNow.AddDays(-10),
+                        ChangeReason = SyncJobChangeReason.Onboarding.ToString(),
+                        ChangedByDisplayName = "Admin User",
+                        ChangeDetails = previousChangeDetails
+                    }
+                });
+
+            string? capturedUserPrompt = null;
+            _mockOpenAIService
+                .Setup(x => x.GetCompletionAsync(It.IsAny<string>(), It.IsAny<string>()))
+                .Callback<string, string>((_, user) => capturedUserPrompt = user)
+                .ReturnsAsync("The user was removed due to a filter change.");
+
+            var response = await _handler.ExecuteAsync(
+                new GetSyncExplanationRequest(_syncJobId, _runId, _userObjectId, TestUserIdentity, hasAiSyncJobRole: true));
+
+            Assert.AreEqual(HttpStatusCode.OK, response.StatusCode);
+            Assert.IsNotNull(capturedUserPrompt);
+            StringAssert.Contains(capturedUserPrompt!, "Previous configuration:");
+            StringAssert.Contains(capturedUserPrompt, "What changed:");
+            StringAssert.Contains(capturedUserPrompt, "Filter changed from");
+            StringAssert.Contains(capturedUserPrompt, "by Configuration Owner (Update):");
+            Assert.IsFalse(capturedUserPrompt.Contains("Sync Presser"));
+            Assert.IsFalse(capturedUserPrompt.Contains("Configuration (unchanged)"));
+        }
+
+        [TestMethod]
+        public async Task ExecuteAsync_MoreThanTenNoOpSnapshots_StillAttributesTheRealChange()
+        {
+            SetupBlobWithUser(MembershipAction.Remove);
+            SetupAdfData(new Dictionary<string, string> { { "Building", "B99" } });
+
+            var previousChangeDetails = "{\"Query\":\"[{\\\"type\\\":\\\"SqlMembership\\\",\\\"filter\\\":\\\"Building = 'B40'\\\"}]\"}";
+            var currentChangeDetails = "{\"Query\":\"[{\\\"type\\\":\\\"SqlMembership\\\",\\\"filter\\\":\\\"Building = 'B50'\\\"}]\"}";
+            var realChangeTime = DateTime.UtcNow.AddDays(-20);
+            var changes = Enumerable.Range(0, 11)
+                .Select(index => new SyncJobChange
+                {
+                    ChangeTime = DateTime.UtcNow.AddDays(-(index + 1)),
+                    ChangeReason = SyncJobChangeReason.ScheduledNow.ToString(),
+                    ChangedByDisplayName = $"Sync Presser {index}",
+                    ChangeDetails = currentChangeDetails
+                })
+                .ToList();
+            changes.Add(new SyncJobChange
+            {
+                ChangeTime = realChangeTime,
+                ChangeReason = SyncJobChangeReason.UpdateAutoApproved.ToString(),
+                ChangedByDisplayName = "Configuration Owner",
+                ChangeDetails = currentChangeDetails
+            });
+            changes.Add(new SyncJobChange
+            {
+                ChangeTime = DateTime.UtcNow.AddDays(-30),
+                ChangeReason = SyncJobChangeReason.Onboarding.ToString(),
+                ChangedByDisplayName = "Original Owner",
+                ChangeDetails = previousChangeDetails
+            });
+
+            _mockSyncJobChangeRepository
+                .Setup(x => x.GetRecentConfigChangesBySyncJobIdAsync(
+                    _syncJobId, It.IsAny<DateTime>(), 0))
+                .ReturnsAsync(changes);
+
+            string? capturedUserPrompt = null;
+            _mockOpenAIService
+                .Setup(x => x.GetCompletionAsync(It.IsAny<string>(), It.IsAny<string>()))
+                .Callback<string, string>((_, user) => capturedUserPrompt = user)
+                .ReturnsAsync("The user was removed because the configuration changed.");
+
+            var response = await _handler.ExecuteAsync(
+                new GetSyncExplanationRequest(
+                    _syncJobId,
+                    _runId,
+                    _userObjectId,
+                    TestUserIdentity,
+                    hasAiSyncJobRole: true));
+
+            Assert.AreEqual(HttpStatusCode.OK, response.StatusCode);
+            Assert.IsNotNull(capturedUserPrompt);
+            StringAssert.Contains(
+                capturedUserPrompt,
+                $"Last configuration change on {realChangeTime:yyyy-MM-dd} by Configuration Owner (UpdateAutoApproved):");
+            StringAssert.Contains(capturedUserPrompt, "Previous configuration:");
+            Assert.IsFalse(capturedUserPrompt.Contains("Configuration (unchanged)"));
+        }
+
+        [TestMethod]
         public async Task ExecuteAsync_ShowsUnchangedFilter_WhenQueryNotModified()
         {
             SetupBlobWithUser(MembershipAction.Add);
@@ -471,6 +588,78 @@ namespace WebApi.Tests
                 "The same identity types in another order are not a configuration change");
             Assert.IsFalse(capturedUserPrompt.Contains("Previous configuration:"),
                 "Reordering the identity types must not be shown as a previous/current diff");
+        }
+
+        [TestMethod]
+        public async Task ExecuteAsync_ShowsUnchangedConfiguration_WhenGroupDefaultIsWrittenExplicitly()
+        {
+            SetupBlobWithUser(MembershipAction.Add);
+
+            var capturedUserPrompt = await ExplainWithConfigChangesAsync(
+                currentQuery: "[{\"type\":\"GroupMembership\",\"source\":\"11111111-1111-4111-8111-111111111111\",\"identityTypes\":[\"agents\",\"users\"]}]",
+                previousQuery: "[{\"type\":\"GroupMembership\",\"source\":\"11111111-1111-4111-8111-111111111111\"}]");
+
+            Assert.IsTrue(capturedUserPrompt.Contains("Configuration (unchanged)"),
+                "Writing the group users-and-agents default is not a configuration change");
+            Assert.IsFalse(capturedUserPrompt.Contains("Previous configuration:"),
+                "Writing the group default must not be shown as a previous/current diff");
+        }
+
+        [TestMethod]
+        public async Task ExecuteAsync_IncludesConfigDiff_WhenGroupSelectionChanges()
+        {
+            SetupBlobWithUser(MembershipAction.Add);
+
+            var capturedPrompts = await CapturePromptsWithConfigChangesAsync(
+                currentQuery: "[{\"type\":\"GroupMembership\",\"source\":\"11111111-1111-4111-8111-111111111111\",\"identityTypes\":[\"agents\"]}]",
+                previousQuery: "[{\"type\":\"GroupMembership\",\"source\":\"11111111-1111-4111-8111-111111111111\",\"identityTypes\":[\"users\"]}]");
+
+            Assert.IsTrue(capturedPrompts.UserPrompt.Contains("Previous configuration:"),
+                "Changing the selected group member type is a configuration change");
+            Assert.IsTrue(capturedPrompts.UserPrompt.Contains(
+                    "- Identity types changed from only people to only agent users"),
+                "The prompt should describe the group selection change");
+            Assert.IsTrue(capturedPrompts.SystemPrompt.Contains(
+                    "Never describe a group source as an HR rule"),
+                "The AI should not apply SQL employee semantics to a group source");
+            Assert.IsTrue(capturedPrompts.SystemPrompt.Contains(
+                    "the rule for the source group was changed"),
+                "The AI should describe a configuration rule change, not imply the source group's membership changed");
+            Assert.IsFalse(capturedPrompts.SystemPrompt.Contains(
+                    "the source group changed on"),
+                "The AI should not imply an unproven physical change to the source group");
+        }
+
+        [TestMethod]
+        public async Task ExecuteAsync_SameGroupSourceWithIndependentSelections_DiffsChangedPart()
+        {
+            SetupBlobWithUser(MembershipAction.Add);
+            const string groupId =
+                "11111111-1111-4111-8111-111111111111";
+            var currentQuery =
+                $"[" +
+                $"{{\"type\":\"GroupMembership\",\"source\":\"{groupId}\",\"identityTypes\":[\"users\",\"agents\"]}}," +
+                $"{{\"type\":\"GroupMembership\",\"source\":\"{groupId}\",\"identityTypes\":[\"agents\"]}}" +
+                "]";
+            var previousQuery =
+                $"[" +
+                $"{{\"type\":\"GroupMembership\",\"source\":\"{groupId}\",\"identityTypes\":[\"users\"]}}," +
+                $"{{\"type\":\"GroupMembership\",\"source\":\"{groupId}\",\"identityTypes\":[\"agents\"]}}" +
+                "]";
+
+            var capturedPrompts =
+                await CapturePromptsWithConfigChangesAsync(
+                    currentQuery,
+                    previousQuery);
+
+            StringAssert.Contains(
+                capturedPrompts.UserPrompt,
+                "Identity types changed from only people to people and agent users");
+            Assert.AreEqual(
+                1,
+                capturedPrompts.UserPrompt.Split(
+                    "Identity types changed",
+                    StringSplitOptions.None).Length - 1);
         }
 
         [TestMethod]
@@ -648,6 +837,28 @@ namespace WebApi.Tests
         }
 
         [TestMethod]
+        public async Task ExecuteAsync_ScheduledNowOnlyHistory_ReportsNoConfigurationChange()
+        {
+            var runStart = DateTime.UtcNow.AddHours(-2);
+            SetupRun(runStart, runStart.AddMinutes(2));
+            SetupJobQuery(UsersAndAgentsRule);
+            SetupBlobWithUser(MembershipAction.Add);
+            SetupConfigChanges(
+                CreateConfigChange(
+                    runStart.AddMinutes(-20),
+                    SyncJobChangeReason.ScheduledNow.ToString(),
+                    UsersAndAgentsRule));
+
+            var userPrompt = await CaptureUserPromptAsync();
+
+            Assert.IsTrue(userPrompt.Contains(
+                $"Job filter in effect when this sync started: {UsersAndAgentsRule}"));
+            Assert.IsTrue(userPrompt.Contains("No configuration changes found."));
+            Assert.IsFalse(userPrompt.Contains("Last configuration change"));
+            Assert.IsFalse(userPrompt.Contains("Initial configuration"));
+        }
+
+        [TestMethod]
         public async Task ExecuteAsync_IgnoresChangesMadeInTheLast30SecondsOfTheSync_WhenTheRunHasNoStartTime()
         {
             var runEnd = DateTime.UtcNow.AddHours(-2);
@@ -693,10 +904,13 @@ namespace WebApi.Tests
                     "This member was added because the HR rule includes the AI agents that employees matching [filter] own"),
                 "The AI should have a pattern for an agent added by a rule that already included agents");
             Assert.IsTrue(systemPrompt.Contains(
+                    "Never use this pattern for GroupMembership or any other non-SQL source"),
+                "The HR-owned-agent pattern must not be applied to a group source");
+            Assert.IsTrue(systemPrompt.Contains(
                     "so they were included as an AI agent that a matching employee owns"),
                 "The AI should have a pattern for an agent added when a rule changed to include agents");
             Assert.IsTrue(systemPrompt.Contains(
-                    "only when the user is not found in the HR data and the rule in effect includes AI agents"),
+                    "only for a SqlMembership source when the user is not found in the HR data and the rule in effect includes AI agents"),
                 "The agent wording must be limited to members missing from the HR data under a rule that includes agents");
 
             Assert.IsTrue(userPrompt.Contains($"User {_userObjectId} was Added in this run."));
@@ -710,6 +924,16 @@ namespace WebApi.Tests
         }
 
         private async Task<string> ExplainWithConfigChangesAsync(string currentQuery, string previousQuery)
+        {
+            var capturedPrompts = await CapturePromptsWithConfigChangesAsync(
+                currentQuery,
+                previousQuery);
+            return capturedPrompts.UserPrompt;
+        }
+
+        private async Task<(string SystemPrompt, string UserPrompt)> CapturePromptsWithConfigChangesAsync(
+            string currentQuery,
+            string previousQuery)
         {
             _mockSyncJobChangeRepository
                 .Setup(x => x.GetRecentConfigChangesBySyncJobIdAsync(
@@ -732,18 +956,24 @@ namespace WebApi.Tests
                     }
                 });
 
+            string? capturedSystemPrompt = null;
             string? capturedUserPrompt = null;
             _mockOpenAIService
                 .Setup(x => x.GetCompletionAsync(It.IsAny<string>(), It.IsAny<string>()))
-                .Callback<string, string>((systemPrompt, userPrompt) => capturedUserPrompt = userPrompt)
+                .Callback<string, string>((systemPrompt, userPrompt) =>
+                {
+                    capturedSystemPrompt = systemPrompt;
+                    capturedUserPrompt = userPrompt;
+                })
                 .ReturnsAsync("The user was added because their Building matches the filter.");
 
             var response = await _handler.ExecuteAsync(
                 new GetSyncExplanationRequest(_syncJobId, _runId, _userObjectId, TestUserIdentity, hasAiSyncJobRole: true));
 
             Assert.AreEqual(HttpStatusCode.OK, response.StatusCode);
+            Assert.IsNotNull(capturedSystemPrompt);
             Assert.IsNotNull(capturedUserPrompt);
-            return capturedUserPrompt!;
+            return (capturedSystemPrompt!, capturedUserPrompt!);
         }
 
         [TestMethod]
@@ -822,7 +1052,7 @@ namespace WebApi.Tests
 
             var sourceGroupId = Guid.NewGuid();
             var previousChangeDetails = "{\"Query\":\"[{\\\"type\\\":\\\"SqlMembership\\\",\\\"filter\\\":\\\"Building = 'B40'\\\"}]\"}";
-            var currentChangeDetails = $"{{\"Query\":\"[{{\\\"type\\\":\\\"SqlMembership\\\",\\\"filter\\\":\\\"Building = 'B40'\\\"}},{{\\\"type\\\":\\\"GroupMembership\\\",\\\"source\\\":\\\"{sourceGroupId}\\\"}}]\"}}";
+            var currentChangeDetails = $"{{\"Query\":\"[{{\\\"type\\\":\\\"SqlMembership\\\",\\\"filter\\\":\\\"Building = 'B40'\\\"}},{{\\\"type\\\":\\\"GroupMembership\\\",\\\"source\\\":\\\"{sourceGroupId}\\\",\\\"identityTypes\\\":[\\\"agents\\\"]}}]\"}}";
 
             _mockSyncJobChangeRepository
                 .Setup(x => x.GetRecentConfigChangesBySyncJobIdAsync(
@@ -860,6 +1090,8 @@ namespace WebApi.Tests
                 "Prompt should describe the new group source that was added");
             Assert.IsTrue(capturedUserPrompt.Contains(sourceGroupId.ToString()),
                 "Prompt should include the source group ID");
+            Assert.IsTrue(capturedUserPrompt.Contains("selecting only agent users"),
+                "Prompt should describe the identity types selected by the new group source");
         }
 
         [TestMethod]
@@ -916,7 +1148,7 @@ namespace WebApi.Tests
             SetupAdfData(new Dictionary<string, string> { { "Building", "B40" } });
 
             var sourceGroupId = Guid.NewGuid();
-            var previousChangeDetails = $"{{\"Query\":\"[{{\\\"type\\\":\\\"SqlMembership\\\",\\\"filter\\\":\\\"Building = 'B40'\\\"}},{{\\\"type\\\":\\\"GroupMembership\\\",\\\"source\\\":\\\"{sourceGroupId}\\\"}}]\"}}";
+            var previousChangeDetails = $"{{\"Query\":\"[{{\\\"type\\\":\\\"SqlMembership\\\",\\\"filter\\\":\\\"Building = 'B40'\\\"}},{{\\\"type\\\":\\\"GroupMembership\\\",\\\"source\\\":\\\"{sourceGroupId}\\\",\\\"identityTypes\\\":[\\\"users\\\"]}}]\"}}";
             var currentChangeDetails = "{\"Query\":\"[{\\\"type\\\":\\\"SqlMembership\\\",\\\"filter\\\":\\\"Building = 'B40'\\\"}]\"}";
 
             _mockSyncJobChangeRepository
@@ -955,6 +1187,8 @@ namespace WebApi.Tests
                 "Prompt should describe the removed group source");
             Assert.IsTrue(capturedUserPrompt.Contains(sourceGroupId.ToString()),
                 "Prompt should include the removed source group ID");
+            Assert.IsTrue(capturedUserPrompt.Contains("selected only people"),
+                "Prompt should describe the identity types selected by the removed group source");
         }
 
         [TestMethod]
@@ -1303,16 +1537,22 @@ namespace WebApi.Tests
             {
                 SyncJobChangeReason.Onboarding.ToString(),
                 SyncJobChangeReason.OnboardingAutoApproved.ToString(),
-                SyncJobChangeReason.Update.ToString()
+                SyncJobChangeReason.Update.ToString(),
+                SyncJobChangeReason.UpdateAutoApproved.ToString(),
+                SyncJobChangeReason.ScheduledNow.ToString()
             };
 
             _mockSyncJobChangeRepository
                 .Setup(x => x.GetRecentConfigChangesBySyncJobIdAsync(_syncJobId, It.IsAny<DateTime>(), It.IsAny<int>()))
-                .ReturnsAsync((Guid syncJobId, DateTime asOf, int count) => changes
-                    .Where(c => configurationReasons.Contains(c.ChangeReason) && c.ChangeTime <= asOf)
-                    .OrderByDescending(c => c.ChangeTime)
-                    .Take(count)
-                    .ToList());
+                .ReturnsAsync((Guid syncJobId, DateTime asOf, int count) =>
+                {
+                    var matchingChanges = changes
+                        .Where(c => configurationReasons.Contains(c.ChangeReason) && c.ChangeTime <= asOf)
+                        .OrderByDescending(c => c.ChangeTime);
+                    return count > 0
+                        ? matchingChanges.Take(count).ToList()
+                        : matchingChanges.ToList();
+                });
 
             _mockSyncJobChangeRepository
                 .Setup(x => x.GetPageBySyncJobId(

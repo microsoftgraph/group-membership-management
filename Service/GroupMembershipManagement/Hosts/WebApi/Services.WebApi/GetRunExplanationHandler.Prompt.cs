@@ -239,7 +239,9 @@ namespace Services
                 var description = part.Type.ToLowerInvariant() switch
                 {
                     "sqlmembership" => DescribeSqlMembershipRule(part, action, mappingDescriptions, managerNames),
-                    "groupmembership" => $"{action} members of source group {FormatGroupNameForOwner(part.Source, groupNames)}.",
+                    "groupmembership" =>
+                        $"{action} {DescribeIdentitySelection(part.IdentityTypes, part.Type)} " +
+                        $"from source group {FormatGroupNameForOwner(part.Source, groupNames)}.",
                     "groupownership" => $"{action} owners of source group {FormatGroupNameForOwner(part.Source, groupNames)}.",
                     "teamschannelmembership" => $"{action} members of Teams channel {FormatGroupNameForOwner(part.Source, groupNames)}.",
                     "placemembership" => $"{action} users returned by the configured place criteria.",
@@ -288,12 +290,14 @@ namespace Services
         // ignoreThresholdOnceInWindow is populated when an ITO event fired between the previous run and this sync.
         private string BuildConfigurationDiff(
             IReadOnlyList<Models.SyncJobChange.SyncJobChange>? recentChanges,
+            Models.SyncJobChange.SyncJobChange? baselineChange,
             IReadOnlyDictionary<Guid, string>? groupNames,
             IReadOnlyDictionary<int, string>? managerNames,
             IReadOnlyDictionary<string, IReadOnlyDictionary<string, string>> mappingDescriptions,
             bool hasConfigChangeInWindow,
             Models.SyncJobChange.SyncJobChange? ignoreThresholdOnceInWindow,
-            string? previousRunStatus)
+            string? previousRunStatus,
+            DateTime? previousRunCutoff)
         {
             try
             {
@@ -305,72 +309,78 @@ namespace Services
                 }
                 else
                 {
-                    var currentChange = recentChanges[0];
-                    var currentQuery = ExtractQueryFromChangeDetails(currentChange.ChangeDetails);
-                    // Walk back past identical resubmits — surface the true prior configuration for the diff.
-                    string? previousQuery = null;
-                    var currentNormalized = NormalizeQuery(currentQuery);
-                    for (int i = 1; i < recentChanges.Count; i++)
+                    var comparison = ConfigurationChangeHistory.Analyze(
+                        recentChanges,
+                        change => ExtractQueryFromChangeDetails(change.ChangeDetails));
+                    if (!ConfigurationChangeHistory.HasChangeEvidence(comparison))
                     {
-                        var candidate = ExtractQueryFromChangeDetails(recentChanges[i].ChangeDetails);
-                        if (!string.Equals(NormalizeQuery(candidate), currentNormalized, StringComparison.OrdinalIgnoreCase))
-                        {
-                            previousQuery = candidate;
-                            break;
-                        }
-                    }
-
-                    sb.AppendLine($"Last configuration change on {currentChange.ChangeTime:yyyy-MM-dd} by {currentChange.ChangedByDisplayName ?? "system"} ({currentChange.ChangeReason}):");
-
-                    if (!hasConfigChangeInWindow)
-                    {
-                        sb.AppendLine($"(this change occurred BEFORE the previous run — configuration is unchanged for THIS sync; do not attribute this run's adds/removes to a configuration change)");
-                        sb.AppendLine("Configuration as of this run:");
-                        sb.AppendLine(DescribeMembershipRulesForOwner(
-                            ParseQueryParts(currentQuery),
-                            mappingDescriptions,
-                            groupNames,
-                            managerNames));
-                    }
-                    else if (previousQuery != null && !string.Equals(NormalizeQuery(previousQuery), NormalizeQuery(currentQuery), StringComparison.OrdinalIgnoreCase))
-                    {
-                        sb.AppendLine("Previous configuration:");
-                        sb.AppendLine(DescribeMembershipRulesForOwner(
-                            ParseQueryParts(previousQuery),
-                            mappingDescriptions,
-                            groupNames,
-                            managerNames));
-                        sb.AppendLine("Current configuration:");
-                        sb.AppendLine(DescribeMembershipRulesForOwner(
-                            ParseQueryParts(currentQuery),
-                            mappingDescriptions,
-                            groupNames,
-                            managerNames));
-                        var structuralDiff = DescribeQueryDiff(previousQuery, currentQuery, groupNames, managerNames, mappingDescriptions);
-                        if (!string.IsNullOrWhiteSpace(structuralDiff))
-                        {
-                            sb.AppendLine();
-                            sb.AppendLine("What changed:");
-                            sb.Append(structuralDiff);
-                        }
-                    }
-                    else if (previousQuery != null)
-                    {
-                        sb.AppendLine("Configuration (unchanged):");
-                        sb.AppendLine(DescribeMembershipRulesForOwner(
-                            ParseQueryParts(currentQuery),
-                            mappingDescriptions,
-                            groupNames,
-                            managerNames));
+                        sb.AppendLine("No configuration changes found.");
                     }
                     else
                     {
-                        sb.AppendLine("Initial configuration:");
-                        sb.AppendLine(DescribeMembershipRulesForOwner(
-                            ParseQueryParts(currentQuery),
-                            mappingDescriptions,
-                            groupNames,
-                            managerNames));
+                        var currentChange = comparison!.CurrentLayoutStart;
+                        var currentQuery = comparison.CurrentQuery;
+                        var previousQuery = baselineChange == null
+                            ? null
+                            : ExtractQueryFromChangeDetails(
+                                baselineChange.ChangeDetails);
+
+                        sb.AppendLine($"Last configuration change on {currentChange.ChangeTime:yyyy-MM-dd} by {currentChange.ChangedByDisplayName ?? "system"} ({currentChange.ChangeReason}):");
+
+                        if (!hasConfigChangeInWindow)
+                        {
+                            var unchangedExplanation = previousRunCutoff.HasValue
+                                && currentChange.ChangeTime <= previousRunCutoff.Value
+                                    ? "this change occurred BEFORE the previous run — configuration is unchanged for THIS sync"
+                                    : "configuration is unchanged since the last applied membership reconciliation";
+                            sb.AppendLine($"({unchangedExplanation}; do not attribute this run's adds/removes to a configuration change)");
+                            sb.AppendLine("Configuration as of this run:");
+                            sb.AppendLine(DescribeMembershipRulesForOwner(
+                                ParseQueryParts(currentQuery),
+                                mappingDescriptions,
+                                groupNames,
+                                managerNames));
+                        }
+                        else if (previousQuery != null && !string.Equals(NormalizeQuery(previousQuery), NormalizeQuery(currentQuery), StringComparison.OrdinalIgnoreCase))
+                        {
+                            sb.AppendLine("Previous configuration:");
+                            sb.AppendLine(DescribeMembershipRulesForOwner(
+                                ParseQueryParts(previousQuery),
+                                mappingDescriptions,
+                                groupNames,
+                                managerNames));
+                            sb.AppendLine("Current configuration:");
+                            sb.AppendLine(DescribeMembershipRulesForOwner(
+                                ParseQueryParts(currentQuery),
+                                mappingDescriptions,
+                                groupNames,
+                                managerNames));
+                            var structuralDiff = DescribeQueryDiff(previousQuery, currentQuery, groupNames, managerNames, mappingDescriptions);
+                            if (!string.IsNullOrWhiteSpace(structuralDiff))
+                            {
+                                sb.AppendLine();
+                                sb.AppendLine("What changed:");
+                                sb.Append(structuralDiff);
+                            }
+                        }
+                        else if (previousQuery != null)
+                        {
+                            sb.AppendLine("Configuration (unchanged):");
+                            sb.AppendLine(DescribeMembershipRulesForOwner(
+                                ParseQueryParts(currentQuery),
+                                mappingDescriptions,
+                                groupNames,
+                                managerNames));
+                        }
+                        else
+                        {
+                            sb.AppendLine("Initial configuration:");
+                            sb.AppendLine(DescribeMembershipRulesForOwner(
+                                ParseQueryParts(currentQuery),
+                                mappingDescriptions,
+                                groupNames,
+                                managerNames));
+                        }
                     }
                 }
 
@@ -544,24 +554,24 @@ Configuration history:
             {
                 if (added > 0 && removed > 0)
                 {
-                    return $"This sync's proposed changes were blocked because they exceeded the group's configured threshold. It would have added people who newly match {ruleClause} and removed people who no longer match.";
+                    return $"This sync's proposed changes were blocked because they exceeded the group's configured threshold. It would have added members who newly match {ruleClause} and removed members who no longer match.";
                 }
                 if (removed > 0)
                 {
-                    return $"This sync proposed removals that were blocked because the change exceeded the group's configured threshold. The proposed removals are people who were in the group but no longer match {ruleClause}.";
+                    return $"This sync proposed removals that were blocked because the change exceeded the group's configured threshold. The proposed removals are members who were in the group but no longer match {ruleClause}.";
                 }
-                return $"This sync proposed additions that were blocked because the change exceeded the group's configured threshold. The proposed additions are people who newly match {ruleClause}.";
+                return $"This sync proposed additions that were blocked because the change exceeded the group's configured threshold. The proposed additions are members who newly match {ruleClause}.";
             }
 
             if (added > 0 && removed > 0)
             {
-                return $"GMM added people who newly match {ruleClause} and removed people who were in the group but no longer match.";
+                return $"GMM added members who newly match {ruleClause} and removed members who were in the group but no longer match.";
             }
             if (removed > 0)
             {
-                return $"GMM removed people who were in the group but no longer match {ruleClause}.";
+                return $"GMM removed members who were in the group but no longer match {ruleClause}.";
             }
-            return $"GMM added people who newly match {ruleClause}.";
+            return $"GMM added members who newly match {ruleClause}.";
         }
     }
 }

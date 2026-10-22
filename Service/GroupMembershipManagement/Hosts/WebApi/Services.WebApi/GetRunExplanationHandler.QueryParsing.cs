@@ -48,6 +48,38 @@ namespace Services
             return null;
         }
 
+        private static bool IsDryRunEnabledInChangeDetails(string? changeDetails)
+        {
+            if (string.IsNullOrWhiteSpace(changeDetails))
+            {
+                return false;
+            }
+
+            try
+            {
+                using var document = JsonDocument.Parse(changeDetails);
+                if (document.RootElement.ValueKind != JsonValueKind.Object)
+                {
+                    return false;
+                }
+
+                if (document.RootElement.TryGetProperty("isDryRunEnabled", out var camel)
+                    && camel.ValueKind is JsonValueKind.True or JsonValueKind.False)
+                {
+                    return camel.GetBoolean();
+                }
+
+                if (document.RootElement.TryGetProperty("IsDryRunEnabled", out var pascal)
+                    && pascal.ValueKind is JsonValueKind.True or JsonValueKind.False)
+                {
+                    return pascal.GetBoolean();
+                }
+            }
+            catch (JsonException) { }
+
+            return false;
+        }
+
         private static string? NormalizeQuery(string? query)
         {
             return ChangeHistoryQueryNormalizer.Normalize(query);
@@ -70,19 +102,19 @@ namespace Services
             }
 
             var sb = new StringBuilder();
-
-            var previousByKey = (previousParts ?? new List<QueryPartInfo>()).ToDictionary(p => p.Key, p => p);
-            var currentByKey = (currentParts ?? new List<QueryPartInfo>()).ToDictionary(p => p.Key, p => p);
+            var comparison = MatchQueryParts(
+                previousParts ?? new List<QueryPartInfo>(),
+                currentParts ?? new List<QueryPartInfo>());
 
             // Parts added
-            foreach (var kvp in currentByKey)
+            foreach (var part in comparison.Added)
             {
-                if (previousByKey.ContainsKey(kvp.Key)) continue;
-                var part = kvp.Value;
                 var role = part.Exclusionary ? "exclusionary" : "inclusionary";
                 if (part.Type.Equals("GroupMembership", StringComparison.OrdinalIgnoreCase))
                 {
-                    sb.AppendLine($"- New {role} group source added: {FormatGroupRef(part.Source, groupNames)}");
+                    sb.AppendLine(
+                        $"- New {role} group source added: {FormatGroupRef(part.Source, groupNames)} " +
+                        $"(selecting {DescribeIdentitySelection(part.IdentityTypes, part.Type)})");
                 }
                 else if (part.Type.Equals("SqlMembership", StringComparison.OrdinalIgnoreCase))
                 {
@@ -95,15 +127,15 @@ namespace Services
             }
 
             // Parts removed
-            foreach (var kvp in previousByKey)
+            foreach (var part in comparison.Removed)
             {
-                if (currentByKey.ContainsKey(kvp.Key)) continue;
-                var part = kvp.Value;
                 var role = part.Exclusionary ? "exclusionary" : "inclusionary";
                 var roleLabel = char.ToUpperInvariant(role[0]) + role.Substring(1);
                 if (part.Type.Equals("GroupMembership", StringComparison.OrdinalIgnoreCase))
                 {
-                    sb.AppendLine($"- {roleLabel} group source removed: {FormatGroupRef(part.Source, groupNames)}");
+                    sb.AppendLine(
+                        $"- {roleLabel} group source removed: {FormatGroupRef(part.Source, groupNames)} " +
+                        $"(selected {DescribeIdentitySelection(part.IdentityTypes, part.Type)})");
                 }
                 else if (part.Type.Equals("SqlMembership", StringComparison.OrdinalIgnoreCase))
                 {
@@ -116,10 +148,10 @@ namespace Services
             }
 
             // Parts modified
-            foreach (var kvp in currentByKey)
+            foreach (var match in comparison.Matched)
             {
-                if (!previousByKey.TryGetValue(kvp.Key, out var prevPart)) continue;
-                var currPart = kvp.Value;
+                var prevPart = match.Previous;
+                var currPart = match.Current;
 
                 if (prevPart.Exclusionary != currPart.Exclusionary)
                 {
@@ -148,20 +180,232 @@ namespace Services
 
                 if (prevPart.IdentityTypes != currPart.IdentityTypes)
                 {
-                    sb.AppendLine($"- Identity types changed from {DescribeIdentitySelection(prevPart.IdentityTypes)} to {DescribeIdentitySelection(currPart.IdentityTypes)}");
+                    sb.AppendLine(
+                        $"- Identity types changed from {DescribeIdentitySelection(prevPart.IdentityTypes, prevPart.Type)} " +
+                        $"to {DescribeIdentitySelection(currPart.IdentityTypes, currPart.Type)}");
                 }
             }
 
             return sb.ToString().TrimEnd();
         }
 
-        internal static string DescribeIdentitySelection(IdentityTypeSet? selection)
+        private static QueryPartComparison MatchQueryParts(
+            IReadOnlyList<QueryPartInfo> previousParts,
+            IReadOnlyList<QueryPartInfo> currentParts)
+        {
+            var unmatchedPrevious = previousParts.ToList();
+            var unmatchedCurrent = currentParts.ToList();
+            var matched = new List<QueryPartMatch>();
+
+            foreach (var currentPart in currentParts)
+            {
+                var previousPart = unmatchedPrevious.FirstOrDefault(
+                    candidate => AreSemanticallyEqual(candidate, currentPart));
+                if (previousPart == null)
+                {
+                    continue;
+                }
+
+                matched.Add(new QueryPartMatch(previousPart, currentPart));
+                unmatchedPrevious.Remove(previousPart);
+                unmatchedCurrent.Remove(currentPart);
+            }
+
+            foreach (var currentPart in unmatchedCurrent.ToList())
+            {
+                var previousPart = unmatchedPrevious
+                    .Where(candidate => HasSameBaseIdentity(candidate, currentPart))
+                    .OrderByDescending(candidate =>
+                        GetStructuralSimilarity(candidate, currentPart))
+                    .ThenBy(candidate =>
+                        Math.Abs(candidate.Index - currentPart.Index))
+                    .FirstOrDefault();
+                if (previousPart == null)
+                {
+                    continue;
+                }
+
+                matched.Add(new QueryPartMatch(previousPart, currentPart));
+                unmatchedPrevious.Remove(previousPart);
+                unmatchedCurrent.Remove(currentPart);
+            }
+
+            return new QueryPartComparison(
+                matched.OrderBy(match => match.Current.Index).ToList(),
+                unmatchedCurrent.OrderBy(part => part.Index).ToList(),
+                unmatchedPrevious.OrderBy(part => part.Index).ToList());
+        }
+
+        private static bool AreSemanticallyEqual(
+            QueryPartInfo previousPart,
+            QueryPartInfo currentPart)
+        {
+            return HasSameBaseIdentity(previousPart, currentPart)
+                && EqualsNormalized(previousPart.Filter, currentPart.Filter)
+                && string.Equals(
+                    previousPart.ManagerId,
+                    currentPart.ManagerId,
+                    StringComparison.Ordinal)
+                && previousPart.ManagerDepth == currentPart.ManagerDepth
+                && previousPart.Exclusionary == currentPart.Exclusionary
+                && previousPart.IdentityTypes == currentPart.IdentityTypes;
+        }
+
+        private static bool HasSameBaseIdentity(
+            QueryPartInfo previousPart,
+            QueryPartInfo currentPart)
+        {
+            if (!string.Equals(
+                previousPart.Type,
+                currentPart.Type,
+                StringComparison.OrdinalIgnoreCase))
+            {
+                return false;
+            }
+
+            var previousHasSource =
+                !string.IsNullOrWhiteSpace(previousPart.Source);
+            var currentHasSource =
+                !string.IsNullOrWhiteSpace(currentPart.Source);
+            if (previousHasSource || currentHasSource)
+            {
+                return previousHasSource
+                    && currentHasSource
+                    && EqualsNormalized(
+                        previousPart.Source,
+                        currentPart.Source);
+            }
+
+            return true;
+        }
+
+        private static int GetStructuralSimilarity(
+            QueryPartInfo previousPart,
+            QueryPartInfo currentPart)
+        {
+            var score = 0;
+            if (previousPart.IdentityTypes == currentPart.IdentityTypes)
+            {
+                score += 8;
+            }
+            if (previousPart.Exclusionary == currentPart.Exclusionary)
+            {
+                score += 4;
+            }
+            if (EqualsNormalized(previousPart.Filter, currentPart.Filter))
+            {
+                score += 2;
+            }
+            if (string.Equals(
+                previousPart.ManagerId,
+                currentPart.ManagerId,
+                StringComparison.Ordinal)
+                && previousPart.ManagerDepth == currentPart.ManagerDepth)
+            {
+                score++;
+            }
+
+            return score;
+        }
+
+        private static bool EqualsNormalized(string? first, string? second) =>
+            string.Equals(
+                first?.Trim(),
+                second?.Trim(),
+                StringComparison.OrdinalIgnoreCase);
+
+        private sealed record QueryPartMatch(
+            QueryPartInfo Previous,
+            QueryPartInfo Current);
+
+        private sealed record QueryPartComparison(
+            IReadOnlyList<QueryPartMatch> Matched,
+            IReadOnlyList<QueryPartInfo> Added,
+            IReadOnlyList<QueryPartInfo> Removed);
+
+        private sealed record QueryPartTransition(
+            IReadOnlyList<QueryPartInfo> Previous,
+            IReadOnlyList<QueryPartInfo> Current);
+
+        private static List<IReadOnlyList<QueryPartInfo>> BuildHistoricalQuerySnapshots(
+            IReadOnlyList<QueryPartInfo> currentParts,
+            IEnumerable<string?> historicalQueries)
+        {
+            var snapshots = new List<IReadOnlyList<QueryPartInfo>>
+            {
+                currentParts
+            };
+            var previousSnapshotKey = GetQuerySnapshotKey(currentParts);
+
+            foreach (var query in historicalQueries)
+            {
+                var candidateParts = ParseQueryParts(query);
+                if (candidateParts == null)
+                {
+                    continue;
+                }
+
+                var candidateKey = GetQuerySnapshotKey(candidateParts);
+                if (string.Equals(
+                    candidateKey,
+                    previousSnapshotKey,
+                    StringComparison.OrdinalIgnoreCase))
+                {
+                    continue;
+                }
+
+                snapshots.Add(candidateParts);
+                previousSnapshotKey = candidateKey;
+            }
+
+            return snapshots;
+        }
+
+        private static List<QueryPartTransition> BuildHistoricalQueryTransitions(
+            IReadOnlyList<IReadOnlyList<QueryPartInfo>> snapshots)
+        {
+            var transitions = new List<QueryPartTransition>();
+            for (var index = 0; index + 1 < snapshots.Count; index++)
+            {
+                transitions.Add(new QueryPartTransition(
+                    snapshots[index + 1],
+                    snapshots[index]));
+            }
+
+            return transitions;
+        }
+
+        private static string GetQuerySnapshotKey(
+            IReadOnlyList<QueryPartInfo> parts) =>
+            string.Join(
+                "\n",
+                parts.Select(GetQueryPartSemanticKey));
+
+        private static string GetQueryPartSemanticKey(QueryPartInfo part) =>
+            string.Join(
+                "|",
+                part.Type?.Trim() ?? string.Empty,
+                part.Source?.Trim() ?? string.Empty,
+                part.Filter?.Trim() ?? string.Empty,
+                part.ManagerId?.Trim() ?? string.Empty,
+                part.ManagerDepth?.ToString(CultureInfo.InvariantCulture)
+                    ?? string.Empty,
+                part.Exclusionary.ToString(CultureInfo.InvariantCulture),
+                part.IdentityTypes?.ToString() ?? string.Empty);
+
+        internal static string DescribeIdentitySelection(
+            IdentityTypeSet? selection,
+            string? sourceType = null)
         {
             if (selection == null)
             {
                 return "an unreadable selection";
             }
 
+            var isGroupMembership = string.Equals(
+                sourceType,
+                "GroupMembership",
+                StringComparison.OrdinalIgnoreCase);
             var includesUsers =
                 selection.Value.Includes(IdentityType.Users);
             var includesAgents =
@@ -169,11 +413,20 @@ namespace Services
 
             if (includesUsers && includesAgents)
             {
-                return "employees and the AI agents they own";
+                return isGroupMembership
+                    ? "people and agent users"
+                    : "employees and the AI agents they own";
             }
 
-            return includesAgents
-                ? "only the AI agents owned by matching employees"
+            if (includesAgents)
+            {
+                return isGroupMembership
+                    ? "only agent users"
+                    : "only the AI agents owned by matching employees";
+            }
+
+            return isGroupMembership
+                ? "only people"
                 : "only employees";
         }
 
@@ -233,14 +486,26 @@ namespace Services
                     if (element.TryGetProperty("exclusionary", out var exclEl))
                         part.Exclusionary = exclEl.ValueKind == JsonValueKind.True;
 
-                    if (string.Equals(
+                    var isSqlMembership = string.Equals(
                         part.Type,
                         "SqlMembership",
-                        StringComparison.OrdinalIgnoreCase))
+                        StringComparison.OrdinalIgnoreCase);
+                    var isGroupMembership = string.Equals(
+                        part.Type,
+                        "GroupMembership",
+                        StringComparison.OrdinalIgnoreCase);
+                    if (isSqlMembership || isGroupMembership)
                     {
+                        var omittedDefault = isGroupMembership
+                            ? IdentityTypeSet.GroupDefault
+                            : IdentityTypeSet.UsersOnly;
+                        var allowedTypes = isGroupMembership
+                            ? IdentityTypeSet.GroupDefault
+                            : IdentityTypeSet.All;
                         part.IdentityTypes = IdentityTypeSelection.TryParse(
                             element,
-                            IdentityTypeSet.UsersOnly,
+                            omittedDefault,
+                            allowedTypes,
                             out var selection,
                             out _)
                             ? selection

@@ -30,10 +30,6 @@ namespace Services
             public bool Exclusionary { get; set; }
             public IdentityTypeSet? IdentityTypes { get; set; }
 
-            public string Key => !string.IsNullOrEmpty(Source)
-                ? $"{Type}|{Source}"
-                : $"{Type}|{Index}";
-
             public string FormatManagerScope() =>
                 ManagerId == null ? "none (filter-only, no hierarchy scope)"
                 : ManagerDepth.HasValue ? $"id={ManagerId} (depth<={ManagerDepth})"
