@@ -11,6 +11,7 @@ using Microsoft.Kiota.Http.HttpClientLibrary.Middleware;
 using Microsoft.Kiota.Http.HttpClientLibrary.Middleware.Options;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Moq;
+using Polly;
 using Repositories.Contracts;
 using Repositories.GraphGroups;
 using System;
@@ -36,12 +37,20 @@ namespace Services.Tests
         private GraphGroupRepository _graphGroupRepository;
         private Mock<IRequestAdapter> _requestAdapter;
         private Mock<IResponseHandler> _responseHandler;
+        private Mock<IRetryPolicyProvider> _retryPolicyProvider;
 
         [TestInitialize]
         public void InitializeTest()
         {
             _requestAdapter = new Mock<IRequestAdapter>();
             _responseHandler = new Mock<IResponseHandler>();
+            _retryPolicyProvider = new Mock<IRetryPolicyProvider>();
+            _retryPolicyProvider
+                .Setup(provider => provider.CreateRetryAfterPolicy(It.IsAny<Guid?>()))
+                .Returns(Policy.NoOpAsync<HttpResponseMessage>());
+            _retryPolicyProvider
+                .Setup(provider => provider.CreateExceptionHandlingPolicy(It.IsAny<Guid?>()))
+                .Returns(Policy.NoOpAsync<HttpResponseMessage>());
 
             _requestAdapter.SetupProperty(x => x.BaseUrl).SetReturnsDefault(GRAPH_API_V1_BASE_URL);
 
@@ -57,7 +66,11 @@ namespace Services.Tests
                .ReturnsAsync(() => new HttpRequestMessage(HttpMethod.Get, requestUrl));
 
             _graphServiceClient = new Mock<GraphServiceClient>(_requestAdapter.Object, GRAPH_API_V1_BASE_URL);
-            _graphGroupRepository = new GraphGroupRepository(_graphServiceClient.Object, _telemetryClient, NullLoggerFactory.Instance);
+            _graphGroupRepository = new GraphGroupRepository(
+                _graphServiceClient.Object,
+                _telemetryClient,
+                _retryPolicyProvider.Object,
+                NullLoggerFactory.Instance);
         }
 
         [TestMethod]
@@ -144,7 +157,11 @@ namespace Services.Tests
                             });
 
             _graphServiceClient = new Mock<GraphServiceClient>(_requestAdapter.Object, GRAPH_API_V1_BASE_URL);
-            _graphGroupRepository = new GraphGroupRepository(_graphServiceClient.Object, _telemetryClient, NullLoggerFactory.Instance);
+            _graphGroupRepository = new GraphGroupRepository(
+                _graphServiceClient.Object,
+                _telemetryClient,
+                _retryPolicyProvider.Object,
+                NullLoggerFactory.Instance);
 
             var endPoints = await _graphGroupRepository.GetGroupEndpointsAsync(groupId);
 
@@ -171,7 +188,11 @@ namespace Services.Tests
                 }
             };
             var graphServiceClient = CreateCustomGraphServiceClient(chaosHandlerOption);
-            _graphGroupRepository = new GraphGroupRepository(graphServiceClient, _telemetryClient, NullLoggerFactory.Instance);
+            _graphGroupRepository = new GraphGroupRepository(
+                graphServiceClient,
+                _telemetryClient,
+                _retryPolicyProvider.Object,
+                NullLoggerFactory.Instance);
             var groupExists = await _graphGroupRepository.GroupExists(Guid.NewGuid());
 
             Assert.IsTrue(groupExists);
@@ -210,7 +231,11 @@ namespace Services.Tests
                 }
             };
             var graphServiceClient = CreateCustomGraphServiceClient(chaosHandlerOption);
-            _graphGroupRepository = new GraphGroupRepository(graphServiceClient, _telemetryClient, NullLoggerFactory.Instance);
+            _graphGroupRepository = new GraphGroupRepository(
+                graphServiceClient,
+                _telemetryClient,
+                _retryPolicyProvider.Object,
+                NullLoggerFactory.Instance);
             var groupExists = await _graphGroupRepository.GroupExists(Guid.NewGuid());
 
             Assert.IsTrue(groupExists);
@@ -229,7 +254,11 @@ namespace Services.Tests
                 }
             };
             var graphServiceClient = CreateCustomGraphServiceClient(chaosHandlerOption);
-            _graphGroupRepository = new GraphGroupRepository(graphServiceClient, _telemetryClient, NullLoggerFactory.Instance);
+            _graphGroupRepository = new GraphGroupRepository(
+                graphServiceClient,
+                _telemetryClient,
+                _retryPolicyProvider.Object,
+                NullLoggerFactory.Instance);
             var exception = await Assert.ThrowsExceptionAsync<AggregateException>(() => _graphGroupRepository.GroupExists(Guid.NewGuid()));
 
             Assert.IsTrue(exception.Message.Contains("Too many retries performed"));
@@ -243,7 +272,11 @@ namespace Services.Tests
                 PlannedChaosFactory = (request) => new HttpResponseMessage(HttpStatusCode.NotFound)
             };
             var graphServiceClient = CreateCustomGraphServiceClient(chaosHandlerOption);
-            _graphGroupRepository = new GraphGroupRepository(graphServiceClient, _telemetryClient, NullLoggerFactory.Instance);
+            _graphGroupRepository = new GraphGroupRepository(
+                graphServiceClient,
+                _telemetryClient,
+                _retryPolicyProvider.Object,
+                NullLoggerFactory.Instance);
             var groupExists = await _graphGroupRepository.GroupExists(Guid.NewGuid());
 
             Assert.IsFalse(groupExists);

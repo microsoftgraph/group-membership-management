@@ -4,6 +4,7 @@ using Repositories.Contracts;
 using Repositories.Contracts.Helpers;
 using System;
 using System.Collections.Generic;
+using System.Threading;
 using System.Threading.Tasks;
 using Models;
 using Models.Entities;
@@ -56,7 +57,9 @@ namespace Repositories.ServiceBusTopics.Tests
             return Task.FromResult(GroupsGMMOwns.Contains(groupObjectId));
         }
 
-        public Task<(List<AzureADUser> users, Dictionary<string, int> nonUserGraphObjects, string nextPageUrl)> GetFirstTransitiveMembersPageAsync(Guid objectId)
+        public Task<(List<AzureADUser> users, MemberReadCounts counts, string nextPageUrl)> GetFirstTransitiveMembersPageAsync(
+            Guid objectId,
+            IReadOnlyList<string> identityTypes = null)
         {
             throw new NotImplementedException();
         }
@@ -66,7 +69,10 @@ namespace Repositories.ServiceBusTopics.Tests
             return Task.FromResult(false);
         }
 
-        public Task<(List<AzureADUser> users, Dictionary<string, int> nonUserGraphObjects, string nextPageUrl)> GetNextTransitiveMembersPageAsync(Guid objectId, string nextPageUrl)
+        public Task<(List<AzureADUser> users, MemberReadCounts counts, string nextPageUrl)> GetNextTransitiveMembersPageAsync(
+            Guid objectId,
+            string nextPageUrl,
+            IReadOnlyList<string> identityTypes = null)
         {
             throw new NotImplementedException();
         }
@@ -106,7 +112,7 @@ namespace Repositories.ServiceBusTopics.Tests
         {
             throw new NotImplementedException();
         }
-        public Task<int> GetAgentUserCountAsync(Guid objectId)
+        public Task<int?> GetAgentUserCountAsync(Guid objectId)
         {
             throw new NotImplementedException();
         }
@@ -121,7 +127,7 @@ namespace Repositories.ServiceBusTopics.Tests
             throw new NotImplementedException();
         }
 
-        public Task<bool?> GetUserAccountEnabledAsync(string userIdentifier)
+        public Task<(bool? AccountEnabled, string? ODataType)> GetUserAccountEnabledAsync(string userIdentifier)
         {
             throw new NotImplementedException();
         }
@@ -191,7 +197,6 @@ namespace Repositories.ServiceBusTopics.Tests
             throw new NotImplementedException();
         }
 
-
         public Task<List<AzureADGroup>> GetGroupsAsync(List<Guid> groupIds)
         {
             throw new NotImplementedException();
@@ -225,22 +230,27 @@ namespace Repositories.ServiceBusTopics.Tests
             return Task.FromResult(GroupsGMMOwns.Contains(groupObjectId));
         }
 
-        public Task<(List<AzureADUser> usersToAdd, List<AzureADUser> usersToRemove, string nextPageUrl, string deltaUrl)> GetFirstDeltaLinkUsersPageAsync(Guid objectId, string deltaLink, int numberOfPages)
+        public Task<(List<AzureADUser> usersToAdd, List<AzureADUser> usersToRemove, MemberReadCounts counts, string nextPageUrl, string deltaUrl)> GetFirstDeltaLinkUsersPageAsync(Guid objectId, string deltaLink, int numberOfPages)
+        {
+            throw new NotImplementedException();
+        }
+        public Task<(List<AzureADUser> usersToAdd, List<AzureADUser> usersToRemove, MemberReadCounts counts, string nextPageUrl, string deltaUrl)> GetNextDeltaLinkUsersPagesAsync(Guid objectId, string nextPageUrl, int numberOfPages)
+        {
+            throw new NotImplementedException();
+        }
+        public Task<(List<AzureADUser> users, MemberReadCounts counts, string nextPageUrl, string deltaUrl)> GetFirstDeltaUsersPageAsync(Guid objectId, int numberOfPages)
+        {
+            throw new NotImplementedException();
+        }
+        public Task<(List<AzureADUser> users, MemberReadCounts counts, string nextPageUrl, string deltaUrl)> GetNextDeltaUsersPagesAsync(Guid objectId, string nextPageUrl, int numberOfPages)
         {
             throw new NotImplementedException();
         }
 
-        public Task<(List<AzureADUser> usersToAdd, List<AzureADUser> usersToRemove, string nextPageUrl, string deltaUrl)> GetNextDeltaLinkUsersPagesAsync(Guid objectId, string nextPageUrl, int numberOfPages)
-        {
-            throw new NotImplementedException();
-        }
-
-        public Task<(List<AzureADUser> users, string nextPageUrl, string deltaUrl)> GetFirstDeltaUsersPageAsync(Guid objectId, int numberOfPages)
-        {
-            throw new NotImplementedException();
-        }
-
-        public Task<(List<AzureADUser> users, string nextPageUrl, string deltaUrl)> GetNextDeltaUsersPagesAsync(Guid objectId, string nextPageUrl, int numberOfPages)
+        public Task<IReadOnlyDictionary<Guid, string>> GetDirectoryObjectTypesAsync(
+            IReadOnlyCollection<Guid> ids,
+            Guid? runId,
+            CancellationToken cancellationToken)
         {
             throw new NotImplementedException();
         }

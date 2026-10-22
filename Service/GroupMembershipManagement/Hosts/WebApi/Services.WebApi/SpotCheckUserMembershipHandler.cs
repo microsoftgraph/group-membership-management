@@ -61,7 +61,8 @@ namespace Services
 
             var result = new SpotCheckResult();
 
-            var accountEnabled = await _graphGroupRepository.GetUserAccountEnabledAsync(request.UserId);
+            var (accountEnabled, oDataType) =
+                await _graphGroupRepository.GetUserAccountEnabledAsync(request.UserId);
             if (accountEnabled == null)
             {
                 // GetUserAccountEnabledAsync returns null both when the user genuinely does not exist
@@ -129,7 +130,7 @@ namespace Services
                 if (string.Equals(type, GroupMembershipType, StringComparison.OrdinalIgnoreCase))
                 {
                     partResult.Supported = true;
-                    partResult.Included = await EvaluateGroupMembershipAsync(part, request.UserId);
+                    partResult.Included = await EvaluateGroupMembershipAsync(part, request.UserId, oDataType);
                 }
                 else if (string.Equals(type, SqlMembershipType, StringComparison.OrdinalIgnoreCase))
                 {
@@ -155,7 +156,10 @@ namespace Services
             return response;
         }
 
-        private async Task<bool?> EvaluateGroupMembershipAsync(JsonElement part, string userId)
+        private async Task<bool?> EvaluateGroupMembershipAsync(
+            JsonElement part,
+            string userId,
+            string? oDataType)
         {
             if (!part.TryGetProperty("source", out var source) || source.ValueKind != JsonValueKind.String)
             {
@@ -165,6 +169,42 @@ namespace Services
             if (!Guid.TryParse(source.GetString(), out var groupId))
             {
                 return null;
+            }
+
+            if (!IdentityTypeSelection.TryParse(
+                part,
+                IdentityTypeSet.GroupDefault,
+                IdentityTypeSet.GroupDefault,
+                out var selection,
+                out _))
+            {
+                return null;
+            }
+
+            IdentityType memberIdentityType;
+            if (oDataType == null ||
+                string.Equals(
+                    oDataType,
+                    "#microsoft.graph.user",
+                    StringComparison.OrdinalIgnoreCase))
+            {
+                memberIdentityType = IdentityType.Users;
+            }
+            else if (string.Equals(
+                oDataType,
+                "#microsoft.graph.agentUser",
+                StringComparison.OrdinalIgnoreCase))
+            {
+                memberIdentityType = IdentityType.Agents;
+            }
+            else
+            {
+                return null;
+            }
+
+            if (!selection.Includes(memberIdentityType))
+            {
+                return false;
             }
 
             try

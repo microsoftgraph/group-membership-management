@@ -14,6 +14,7 @@ using Microsoft.Kiota.Serialization.Json;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Moq;
 using NewGroupType = Models.NewGroupType;
+using Polly;
 using Repositories.Contracts;
 using Repositories.GraphGroups;
 using System;
@@ -303,6 +304,7 @@ namespace Services.Tests
             services.AddLogging();
             services.AddSingleton(new GraphServiceClient(_requestAdapter.Object, GRAPH_API_V1_BASE_URL));
             services.AddSingleton(new TelemetryClient(new TelemetryConfiguration("instrumentationkey")));
+            services.AddSingleton(CreateNoOpRetryPolicyProvider());
             services.AddSingleton<IOptions<GraphCredentials>>(Options.Create(new GraphCredentials
             {
                 AuthenticationType = AuthenticationType.UserAssignedManagedIdentity,
@@ -438,6 +440,7 @@ namespace Services.Tests
             SetupServicePrincipalLookup(servicePrincipalObjectId);
             var graphServiceClient = new Mock<GraphServiceClient>(_requestAdapter.Object, GRAPH_API_V1_BASE_URL);
             var telemetryClient = new TelemetryClient(new TelemetryConfiguration("instrumentationkey"));
+            var retryPolicyProvider = CreateNoOpRetryPolicyProvider();
 
             credentials ??= new GraphCredentials
             {
@@ -449,8 +452,22 @@ namespace Services.Tests
             return new GraphGroupRepository(graphServiceClient.Object,
                                             telemetryClient,
                                             _graphRepositorySettings.Object,
+                                            retryPolicyProvider,
                                             null,
                                             Options.Create(credentials));
+        }
+
+        private static IRetryPolicyProvider CreateNoOpRetryPolicyProvider()
+        {
+            var retryPolicyProvider = new Mock<IRetryPolicyProvider>();
+            retryPolicyProvider
+                .Setup(provider => provider.CreateRetryAfterPolicy(It.IsAny<Guid?>()))
+                .Returns(Policy.NoOpAsync<HttpResponseMessage>());
+            retryPolicyProvider
+                .Setup(provider => provider.CreateExceptionHandlingPolicy(It.IsAny<Guid?>()))
+                .Returns(Policy.NoOpAsync<HttpResponseMessage>());
+
+            return retryPolicyProvider.Object;
         }
 
         private void SetupServicePrincipalLookup(string servicePrincipalObjectId, HttpStatusCode statusCode = HttpStatusCode.OK)

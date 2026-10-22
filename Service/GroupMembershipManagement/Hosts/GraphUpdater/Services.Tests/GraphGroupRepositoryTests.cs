@@ -9,6 +9,7 @@ using Microsoft.Kiota.Abstractions.Serialization;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Models;
 using Moq;
+using Polly;
 using Repositories.Contracts;
 using Repositories.GraphGroups;
 using System;
@@ -30,6 +31,7 @@ namespace Services.Tests
         private const string GRAPH_API_V1_BASE_URL = "https://graph.microsoft.com/v1.0";
         private Mock<IRequestAdapter> _requestAdapter;
         private Mock<IGraphRepositorySettings> _graphRepositorySettings;
+        private Mock<IRetryPolicyProvider> _retryPolicyProvider;
 
         [TestInitialize]
         public void Setup()
@@ -37,6 +39,13 @@ namespace Services.Tests
             _requestAdapter = new Mock<IRequestAdapter>();
             _requestAdapter.SetupProperty(x => x.BaseUrl).SetReturnsDefault(GRAPH_API_V1_BASE_URL);
             _graphRepositorySettings = new Mock<IGraphRepositorySettings>();
+            _retryPolicyProvider = new Mock<IRetryPolicyProvider>();
+            _retryPolicyProvider
+                .Setup(provider => provider.CreateRetryAfterPolicy(It.IsAny<Guid?>()))
+                .Returns(Policy.NoOpAsync<HttpResponseMessage>());
+            _retryPolicyProvider
+                .Setup(provider => provider.CreateExceptionHandlingPolicy(It.IsAny<Guid?>()))
+                .Returns(Policy.NoOpAsync<HttpResponseMessage>());
 
             _graphRepositorySettings.Setup(x => x.ConcurrentAddRequests).Returns(10);
             _graphRepositorySettings.Setup(x => x.ConcurrentRemoveRequests).Returns(10);
@@ -152,7 +161,12 @@ namespace Services.Tests
             var telemetryConfiguration = new TelemetryConfiguration("instrumentationkey");
             var telemetryClient = new TelemetryClient(telemetryConfiguration);
             var targetGroup = new AzureADGroup { ObjectId = Guid.Empty };
-            var graphGroupRepository = new GraphGroupRepository(graphServiceClient.Object, telemetryClient, _graphRepositorySettings.Object, loggerFactory);
+            var graphGroupRepository = new GraphGroupRepository(
+                graphServiceClient.Object,
+                telemetryClient,
+                _graphRepositorySettings.Object,
+                _retryPolicyProvider.Object,
+                loggerFactory);
             var response = await graphGroupRepository.AddUsersToGroup(users, targetGroup);
 
             foreach (var userId in usersNotFoundIds)
@@ -241,7 +255,12 @@ namespace Services.Tests
                             });
 
             var graphServiceClient = new Mock<GraphServiceClient>(_requestAdapter.Object, GRAPH_API_V1_BASE_URL);
-            var graphGroupRepository = new GraphGroupRepository(graphServiceClient.Object, telemetryClient, _graphRepositorySettings.Object, loggerFactory);
+            var graphGroupRepository = new GraphGroupRepository(
+                graphServiceClient.Object,
+                telemetryClient,
+                _graphRepositorySettings.Object,
+                _retryPolicyProvider.Object,
+                loggerFactory);
             var response = await graphGroupRepository.RemoveUsersFromGroup(users, targetGroup);
 
             foreach (var userId in usersNotFoundIds)
@@ -338,7 +357,12 @@ namespace Services.Tests
             var loggerFactory = new TestLoggerFactory();
             var telemetryConfiguration = new TelemetryConfiguration("instrumentationkey");
             var telemetryClient = new TelemetryClient(telemetryConfiguration);
-            var graphGroupRepository = new GraphGroupRepository(graphServiceClient.Object, telemetryClient, _graphRepositorySettings.Object, loggerFactory);
+            var graphGroupRepository = new GraphGroupRepository(
+                graphServiceClient.Object,
+                telemetryClient,
+                _graphRepositorySettings.Object,
+                _retryPolicyProvider.Object,
+                loggerFactory);
 
             var usersToAdd = new List<AzureADUser>();
             Enumerable.Range(0, numberOfUsers)
@@ -451,7 +475,12 @@ namespace Services.Tests
             var loggerFactory = new TestLoggerFactory();
             var telemetryConfiguration = new TelemetryConfiguration("instrumentationkey");
             var telemetryClient = new TelemetryClient(telemetryConfiguration);
-            var graphGroupRepository = new GraphGroupRepository(graphServiceClient.Object, telemetryClient, _graphRepositorySettings.Object, loggerFactory);
+            var graphGroupRepository = new GraphGroupRepository(
+                graphServiceClient.Object,
+                telemetryClient,
+                _graphRepositorySettings.Object,
+                _retryPolicyProvider.Object,
+                loggerFactory);
             var usersToAdd = new List<AzureADUser>();
 
             Enumerable.Range(0, numberOfUsers)
@@ -663,4 +692,3 @@ namespace Services.Tests
         }
     }
 }
-

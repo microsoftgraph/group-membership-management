@@ -296,7 +296,7 @@ namespace Tests.Services
                                  .ReturnsAsync(() =>
                                  {
                                      var users = new List<AzureADUser>();
-                                     var nonUserGraphObjects = new Dictionary<string, int> { { "non-user-object", 1 } };
+                                     var nonUserGraphObjects = new MemberReadCounts { OtherCount = 1 };
 
                                      for (var i = 0; i < _userCount; i++)
                                      {
@@ -310,7 +310,7 @@ namespace Tests.Services
                                  .ReturnsAsync(() =>
                                  {
                                      var users = new List<AzureADUser>();
-                                     var nonUserGraphObjects = new Dictionary<string, int> { { "non-user-object", 1 } };
+                                     var nonUserGraphObjects = new MemberReadCounts { OtherCount = 1 };
 
                                      for (var i = 0; i < _userCount; i++)
                                      {
@@ -330,7 +330,7 @@ namespace Tests.Services
                                          users.Add(new AzureADUser { ObjectId = Guid.NewGuid() });
                                      }
 
-                                     return (users, _usersReaderNextPageUrl, _deltaUrl);
+                                     return (users, new MemberReadCounts(), _usersReaderNextPageUrl, _deltaUrl);
                                  });
 
             _graphGroupRepository.Setup(x => x.GetNextDeltaUsersPagesAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<int>()))
@@ -343,7 +343,7 @@ namespace Tests.Services
                                          users.Add(new AzureADUser { ObjectId = Guid.NewGuid() });
                                      }
 
-                                     return (users, null, null);
+                                     return (users, new MemberReadCounts(), null, null);
                                  });
 
             _graphGroupRepository.Setup(x => x.GetFirstDeltaLinkUsersPageAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<int>()))
@@ -356,7 +356,7 @@ namespace Tests.Services
                                         users.Add(new AzureADUser { ObjectId = Guid.NewGuid() });
                                     }
 
-                                    return (users, users, _usersReaderNextPageUrl, _deltaUrl);
+                                    return (users, users, new MemberReadCounts(), _usersReaderNextPageUrl, _deltaUrl);
                                 });
 
             _graphGroupRepository.Setup(x => x.GetNextDeltaLinkUsersPagesAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<int>()))
@@ -369,7 +369,7 @@ namespace Tests.Services
                                          users.Add(new AzureADUser { ObjectId = Guid.NewGuid() });
                                      }
 
-                                     return (users, users, null, _deltaUrl);
+                                     return (users, users, new MemberReadCounts(), null, _deltaUrl);
                                  });
             
         }
@@ -410,7 +410,7 @@ namespace Tests.Services
                                          users.Add(new AzureADUser { ObjectId = Guid.NewGuid() });
                                      }
 
-                                     return (users, null, "delta-url");
+                                     return (users, new MemberReadCounts(), null, "delta-url");
                                  });
 
             _durableOrchestrationContext.Setup(x => x.CallActivityAsync<string>(It.IsAny<TaskName>(), It.IsAny<CacheUploaderRequest>(), It.IsAny<TaskOptions>()))
@@ -434,7 +434,7 @@ namespace Tests.Services
                                         users.Add(new AzureADUser { ObjectId = Guid.NewGuid() });
                                     }
 
-                                    return (users, null, "http://delta-url");
+                                    return (users, new MemberReadCounts(), null, "http://delta-url");
                                 });
 
             var telemetryClient = new TelemetryClient(TelemetryConfiguration.CreateDefault());
@@ -782,7 +782,7 @@ namespace Tests.Services
                                         users.Add(new AzureADUser { ObjectId = Guid.NewGuid() });
                                     }
 
-                                    return (users, _usersReaderNextPageUrl, _deltaUrl);
+                                    return (users, new MemberReadCounts(), _usersReaderNextPageUrl, _deltaUrl);
                                 });
 
             var telemetryClient = new TelemetryClient(TelemetryConfiguration.CreateDefault());
@@ -818,7 +818,7 @@ namespace Tests.Services
                                         users.Add(new AzureADUser { ObjectId = Guid.NewGuid() });
                                     }
 
-                                    return (users, users, _usersReaderNextPageUrl, _deltaUrl);
+                                    return (users, users, new MemberReadCounts(), _usersReaderNextPageUrl, _deltaUrl);
                                 });
 
             _deltaUrl = "http://delta-url";
@@ -853,7 +853,7 @@ namespace Tests.Services
                                  .ReturnsAsync(() =>
                                  {
                                      var users = new List<AzureADUser>();
-                                     var nonUserGraphObjects = new Dictionary<string, int> { { "non-user-object", 1 } };
+                                     var nonUserGraphObjects = new MemberReadCounts { OtherCount = 1 };
 
                                      for (var i = 0; i < _userCount; i++)
                                      {

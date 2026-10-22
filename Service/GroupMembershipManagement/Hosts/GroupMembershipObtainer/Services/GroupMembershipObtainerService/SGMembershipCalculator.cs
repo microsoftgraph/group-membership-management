@@ -108,7 +108,8 @@ namespace Hosts.GroupMembershipObtainer
 
         public async Task<int> GetAgentUserCountAsync(Guid objectId)
         {
-            return await _graphGroupRepository.GetAgentUserCountAsync(objectId);
+            // The repository now reports null when the count could not be read; this caller keeps its previous 0.
+            return await _graphGroupRepository.GetAgentUserCountAsync(objectId) ?? 0;
         }
 
         public async Task<DeltaGroupInformation> GetFirstDeltaUsersPageAsync(Guid objectId, Guid runId, int numberOfPages)
@@ -141,7 +142,7 @@ namespace Hosts.GroupMembershipObtainer
             return new GroupInformation
             {
                 Users = result.users,
-                NonUserGraphObjects = result.nonUserGraphObjects,
+                NonUserGraphObjects = ToNonUserGraphObjects(result.counts),
                 NextPageUrl = result.nextPageUrl
             };
         }
@@ -152,9 +153,37 @@ namespace Hosts.GroupMembershipObtainer
             return new GroupInformation
             {
                 Users = result.users,
-                NonUserGraphObjects = result.nonUserGraphObjects,
+                NonUserGraphObjects = ToNonUserGraphObjects(result.counts),
                 NextPageUrl = result.nextPageUrl
             };
+        }
+
+        /// <summary>
+        /// Rebuilds the per-type count of non-user members, keyed by the Graph OData type as before, from the
+        /// repository's read counts.
+        /// </summary>
+        private static Dictionary<string, int> ToNonUserGraphObjects(MemberReadCounts counts)
+        {
+            var nonUserGraphObjects = new Dictionary<string, int>();
+            if (counts == null)
+            {
+                return nonUserGraphObjects;
+            }
+
+            void Add(string odataType, int count)
+            {
+                if (count > 0)
+                {
+                    nonUserGraphObjects[odataType] = count;
+                }
+            }
+
+            Add("#microsoft.graph.servicePrincipal", counts.ServicePrincipalCount);
+            Add("#microsoft.graph.device", counts.DeviceCount);
+            Add("#microsoft.graph.orgContact", counts.ContactCount);
+            Add("#microsoft.graph.group", counts.GroupCount);
+            Add("other", counts.OtherCount + counts.UnknownTypeCount);
+            return nonUserGraphObjects;
         }
 
         public async Task<Guid> GetGroupIdAsync(SyncJob syncJob)

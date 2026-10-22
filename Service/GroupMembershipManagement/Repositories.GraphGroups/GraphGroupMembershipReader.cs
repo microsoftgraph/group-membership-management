@@ -3,10 +3,13 @@
 
 using Microsoft.Extensions.Logging;
 using Microsoft.Graph;
+using Microsoft.Graph.DirectoryObjects.GetByIds;
 using Microsoft.Graph.Models;
 using Microsoft.Graph.Models.ODataErrors;
 using Microsoft.Kiota.Abstractions;
+using Microsoft.Kiota.Http.HttpClientLibrary.Middleware.Options;
 using Models;
+using Polly;
 using Repositories.Contracts;
 using Repositories.Contracts.Constants;
 using Repositories.Contracts.Helpers;
@@ -19,9 +22,9 @@ using System.Linq;
 using System.Net;
 using System.Net.Http;
 using System.Text.Json;
+using System.Threading;
 using System.Threading.Tasks;
 using static Microsoft.Graph.Chats.Item.Members.MembersRequestBuilder;
-using static Microsoft.Graph.Groups.Item.TransitiveMembers.TransitiveMembersRequestBuilder;
 using Group = Microsoft.Graph.Models.Group;
 
 namespace Repositories.GraphGroups
@@ -29,38 +32,42 @@ namespace Repositories.GraphGroups
     internal class GraphGroupMembershipReader : GraphGroupRepositoryBase
     {
         private const string AgentUserODataType = "microsoft.graph.agentUser";
+        private const int MaxGetByIdsCount = 1000;
 
         private readonly ILogger<GraphGroupMembershipReader> _graphGroupMembershipReaderLogger;
+        private readonly IRetryPolicyProvider _retryPolicyProvider;
 
         public GraphGroupMembershipReader(GraphServiceClient graphServiceClient,
                                           GraphGroupMetricTracker graphGroupMetricTracker,
+                                          IRetryPolicyProvider retryPolicyProvider,
                                           ILogger<GraphGroupMembershipReader> graphGroupMembershipReaderLogger)
                                           : base(graphServiceClient, graphGroupMembershipReaderLogger, graphGroupMetricTracker)
         {
+            _retryPolicyProvider = retryPolicyProvider ?? throw new ArgumentNullException(nameof(retryPolicyProvider));
             _graphGroupMembershipReaderLogger = graphGroupMembershipReaderLogger ?? throw new ArgumentNullException(nameof(graphGroupMembershipReaderLogger));
         }
 
         public async Task<List<AzureADUser>> GetUsersInGroupTransitivelyAsync(Guid groupId, Guid? runId)
         {
-            var nonUserGraphObjects = new List<KeyValuePair<string, int>>();
+            var counts = CreateCounts(TransitiveMemberSelection.UsersAndAgents);
             var transitiveMembers = new List<AzureADUser>();
 
             try
             {
-                var response = await GetFirstTransitiveMembersPageAsync(groupId, runId);
+                var response = await GetFirstTransitiveMembersPageAsync(groupId, null, runId);
                 transitiveMembers.AddRange(response.users);
-                nonUserGraphObjects.AddRange(response.nonUserGraphObjects);
+                AddCounts(counts, response.counts);
 
                 var nextPageUrl = response.nextPageUrl;
                 while (nextPageUrl != null)
                 {
-                    var nextPageResult = await GetNextTransitiveMembersPageAsync(groupId, nextPageUrl, runId);
+                    var nextPageResult = await GetNextTransitiveMembersPageAsync(groupId, nextPageUrl, null, runId);
                     transitiveMembers.AddRange(nextPageResult.users);
-                    nonUserGraphObjects.AddRange(nextPageResult.nonUserGraphObjects);
+                    AddCounts(counts, nextPageResult.counts);
                     nextPageUrl = nextPageResult.nextPageUrl;
                 }
 
-                var nonUserGraphObjectsSummary = string.Join(Environment.NewLine, nonUserGraphObjects.Select(x => $"{x.Value}: {x.Key}"));
+                var nonUserGraphObjectsSummary = FormatSkippedCounts(counts);
                 _graphGroupMembershipReaderLogger.LogInformationWithRunId(runId, $"From group {groupId}, read {transitiveMembers.Count} users, and the following other directory objects:\n{nonUserGraphObjectsSummary}\n");
 
                 return transitiveMembers;
@@ -115,8 +122,10 @@ namespace Repositories.GraphGroups
 
         /// <summary>
         /// Counts the Entra <c>agentUser</c> directory objects reachable transitively from a group.
-        /// This is telemetry only: it issues a dedicated query and never touches the membership read,
-        /// so a failure here reports zero rather than failing the sync.
+        /// This is telemetry only: it issues a dedicated query and never touches the membership read.
+        /// A failure never fails the sync and is never reported as a measured zero (FR-020): an exception,
+        /// a missing response, a non-success status, or a missing or invalid <c>@odata.count</c> logs a
+        /// warning and returns <see langword="null"/>, so the caller emits no count.
         /// </summary>
         /// <remarks>
         /// The <c>agentUser</c> subtype cannot be recovered from the membership payload - the groups delta
@@ -134,27 +143,29 @@ namespace Repositories.GraphGroups
         /// <c>ConsistencyLevel: eventual</c> is required. <c>$top=1</c> keeps the payload minimal because only
         /// <c>@odata.count</c> is read, making the call O(1) - one request regardless of group size.
         /// </remarks>
-        public async Task<int> GetAgentUserCountAsync(Guid groupId, Guid? runId)
+        public async Task<int?> GetAgentUserCountAsync(Guid groupId, Guid? runId)
         {
             SetCustomActivityProperty("RunId", Convert.ToString(runId));
 
             try
             {
                 var count = await ReadAgentUserCountAsync(groupId, runId);
-
-                _graphGroupMembershipReaderLogger.LogInformationWithRunId(runId, $"From group {groupId}, transitive agent count {count}\n");
+                if (count.HasValue)
+                {
+                    _graphGroupMembershipReaderLogger.LogInformationWithRunId(runId, $"From group {groupId}, transitive agent count {count.Value}\n");
+                }
 
                 return count;
             }
-            catch (Exception ex)
+            catch (Exception ex) when (ex is not OperationCanceledException)
             {
-                // Telemetry must never fail a sync; report zero and continue.
-                _graphGroupMembershipReaderLogger.LogErrorWithRunId(runId, $"Unable to read the agent count for group {groupId}, reporting 0. {ex.GetBaseException()}", ex);
-                return 0;
+                // Telemetry must never fail a sync, and a failed count is never reported as zero.
+                _graphGroupMembershipReaderLogger.LogWarningWithRunId(runId, $"Unable to read the agent count for group {groupId}; no agent count is reported.\n", ex);
+                return null;
             }
         }
 
-        private async Task<int> ReadAgentUserCountAsync(Guid groupId, Guid? runId)
+        private async Task<int?> ReadAgentUserCountAsync(Guid groupId, Guid? runId)
         {
             var nativeResponseHandler = new NativeResponseHandler();
             var responseHandlerOption = new ResponseHandlerOption { ResponseHandler = nativeResponseHandler };
@@ -177,7 +188,8 @@ namespace Repositories.GraphGroups
 
             if (nativeHttpResponse == null)
             {
-                return 0;
+                _graphGroupMembershipReaderLogger.LogWarningWithRunId(runId, $"The agent count query for group {groupId} returned no response; no agent count is reported.\n");
+                return null;
             }
 
             var headers = nativeHttpResponse.Headers.ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
@@ -185,8 +197,8 @@ namespace Repositories.GraphGroups
 
             if (!nativeHttpResponse.IsSuccessStatusCode)
             {
-                _graphGroupMembershipReaderLogger.LogInformationWithRunId(runId, $"Agent count query for group {groupId} returned {(int)nativeHttpResponse.StatusCode}, reporting 0.\n");
-                return 0;
+                _graphGroupMembershipReaderLogger.LogWarningWithRunId(runId, $"The agent count query for group {groupId} returned {(int)nativeHttpResponse.StatusCode}; no agent count is reported.\n");
+                return null;
             }
 
             var responseContent = await nativeHttpResponse.Content.ReadAsStringAsync();
@@ -194,57 +206,78 @@ namespace Repositories.GraphGroups
             using var document = JsonDocument.Parse(responseContent);
             var root = document.RootElement;
 
-            return root.TryGetProperty("@odata.count", out var odataCount) && odataCount.TryGetInt32(out var count)
-                ? count
-                : 0;
+            if (root.ValueKind == JsonValueKind.Object &&
+                root.TryGetProperty("@odata.count", out var odataCount) &&
+                odataCount.ValueKind == JsonValueKind.Number &&
+                odataCount.TryGetInt32(out var count) &&
+                count >= 0)
+            {
+                return count;
+            }
+
+            _graphGroupMembershipReaderLogger.LogWarningWithRunId(runId, $"The agent count query for group {groupId} returned no valid @odata.count; no agent count is reported.\n");
+            return null;
         }
 
         public async Task<(List<AzureADUser> users,
-                   Dictionary<string, int> nonUserGraphObjects,
-                   string nextPageUrl)> GetFirstTransitiveMembersPageAsync(Guid groupId, Guid? runId)
+                           MemberReadCounts counts,
+                           string nextPageUrl)> GetFirstTransitiveMembersPageAsync(
+            Guid groupId,
+            IReadOnlyList<string> identityTypes,
+            Guid? runId,
+            CancellationToken cancellationToken = default)
         {
+            var selection = ResolveSelection(identityTypes);
             var users = new List<AzureADUser>();
-            var nonUserGraphObjects = new Dictionary<string, int>();
+            var counts = CreateCounts(selection);
             string nextLink = null;
 
             for (int i = 0; i < 5; i++)
             {
-                var usersResponse = string.IsNullOrEmpty(nextLink)
-                    ? await GetGroupTransitiveMembersPageByIdAsync(groupId.ToString(), runId)
-                    : await GetGroupTransitiveMembersNextPageAsync(nextLink, groupId, runId);
+                var page = string.IsNullOrEmpty(nextLink)
+                    ? await GetGroupTransitiveMembersPageByIdAsync(groupId.ToString(), selection, runId, cancellationToken)
+                    : await GetGroupTransitiveMembersNextPageAsync(nextLink, groupId, selection, runId, cancellationToken);
 
-                await _graphGroupMetricTracker.TrackMetricsAsync(usersResponse.Headers, QueryType.Transitive, runId);
-                await _graphGroupMetricTracker.TrackRequestAsync(usersResponse.Headers, groupId, QueryType.Transitive, runId);
+                // Resource units were recorded for every attempt of this page inside the retry policy.
+                await _graphGroupMetricTracker.TrackRequestAsync(page.Headers, groupId, QueryType.Transitive, runId);
 
-                users.AddRange(ToUsers(usersResponse.Response.Value, nonUserGraphObjects));
-                nextLink = usersResponse.Response.OdataNextLink;
+                users.AddRange(ToSelectedUsers(page.Members, selection, counts));
+                nextLink = page.NextLink;
                 if (string.IsNullOrEmpty(nextLink))
                 {
                     break;
                 }
             }
-            return (users, nonUserGraphObjects, nextLink);
+
+            return (users, counts, nextLink);
         }
 
         public async Task<(List<AzureADUser> users,
-                           Dictionary<string, int> nonUserGraphObjects,
-                           string nextPageUrl)> GetNextTransitiveMembersPageAsync(Guid groupId, string nextPageUrl, Guid? runId)
+                           MemberReadCounts counts,
+                           string nextPageUrl)> GetNextTransitiveMembersPageAsync(
+            Guid groupId,
+            string nextPageUrl,
+            IReadOnlyList<string> identityTypes,
+            Guid? runId,
+            CancellationToken cancellationToken = default)
         {
+            var selection = ResolveSelection(identityTypes);
             var users = new List<AzureADUser>();
-            var nonUserGraphObjects = new Dictionary<string, int>();
+            var counts = CreateCounts(selection);
             var nextLink = nextPageUrl;
 
             for (int i = 0; i < 5 && !string.IsNullOrEmpty(nextLink); i++)
             {
-                var usersResponse = await GetGroupTransitiveMembersNextPageAsync(nextLink, groupId, runId);
+                var page = await GetGroupTransitiveMembersNextPageAsync(nextLink, groupId, selection, runId, cancellationToken);
 
-                await _graphGroupMetricTracker.TrackMetricsAsync(usersResponse.Headers, QueryType.Transitive, runId);
-                await _graphGroupMetricTracker.TrackRequestAsync(usersResponse.Headers, groupId, QueryType.Transitive, runId);
+                // Resource units were recorded for every attempt of this page inside the retry policy.
+                await _graphGroupMetricTracker.TrackRequestAsync(page.Headers, groupId, QueryType.Transitive, runId);
 
-                users.AddRange(ToUsers(usersResponse.Response.Value, nonUserGraphObjects));
-                nextLink = usersResponse.Response.OdataNextLink;
+                users.AddRange(ToSelectedUsers(page.Members, selection, counts));
+                nextLink = page.NextLink;
             }
-            return (users, nonUserGraphObjects, nextLink);
+
+            return (users, counts, nextLink);
         }
 
         public async Task<IEnumerable<IAzureADObject>> GetChildrenOfGroup(Guid groupId, Guid? runId)
@@ -396,102 +429,339 @@ namespace Repositories.GraphGroups
             return int.Parse(responseContent);
         }
 
-        private async Task<GraphObjectResponse<DirectoryObjectCollectionResponse>> GetGroupTransitiveMembersPageByIdAsync(string groupId, Guid? runId)
+        public async Task<IReadOnlyDictionary<Guid, string>> GetDirectoryObjectTypesAsync(
+            IReadOnlyCollection<Guid> ids,
+            Guid? runId,
+            CancellationToken cancellationToken)
         {
-            var retryPolicy = GetRetryPolicy();
-            var response = new GraphObjectResponse<DirectoryObjectCollectionResponse>();
+            if (ids == null)
+            {
+                throw new ArgumentNullException(nameof(ids));
+            }
+
+            if (ids.Count > MaxGetByIdsCount)
+            {
+                throw new ArgumentOutOfRangeException(
+                    nameof(ids),
+                    ids.Count,
+                    $"A directory-object type lookup accepts at most {MaxGetByIdsCount} identifiers.");
+            }
+
+            if (ids.Count == 0)
+            {
+                return new Dictionary<Guid, string>();
+            }
+
+            // One retry owner: the shared retry policies (the SDK retry handler is disabled on the request). Resource units
+            // are recorded for every attempt, including throttled and retried ones, before the policy inspects the response.
+            var retryPolicy = CreateSharedRetryPolicy(runId);
+
+            using var response = await ExecuteWithExhaustionAsync(
+                retryPolicy,
+                "The directory-object type lookup",
+                async token =>
+                {
+                    var attemptResponse = await SendGetByIdsRequestAsync(ids, token);
+                    var headers = attemptResponse.Headers.ToImmutableDictionary(
+                        header => header.Key,
+                        header => header.Value);
+                    await _graphGroupMetricTracker.TrackMetricsAsync(
+                        headers,
+                        QueryType.Other,
+                        runId);
+                    return attemptResponse;
+                },
+                cancellationToken);
+
+            ThrowIfNotSuccess(response, "The directory-object type lookup");
+
+            var responseContent = await response.Content.ReadAsStringAsync(cancellationToken);
+            return ParseDirectoryObjectTypes(responseContent);
+        }
+
+        private async Task<TransitiveMembersPage> GetGroupTransitiveMembersPageByIdAsync(
+            string groupId,
+            TransitiveMemberSelection selection,
+            Guid? runId,
+            CancellationToken cancellationToken)
+        {
+            var requestUrl = selection switch
+            {
+                TransitiveMemberSelection.UsersOnly =>
+                    $"{_graphServiceClient.RequestAdapter.BaseUrl}/groups/{groupId}/transitiveMembers/microsoft.graph.user?$filter=not isof('{AgentUserODataType}')&$count=true&$top={MaxResultCount}",
+                TransitiveMemberSelection.AgentsOnly =>
+                    $"{_graphServiceClient.RequestAdapter.BaseUrl}/groups/{groupId}/transitiveMembers?$filter=isof('{AgentUserODataType}')&$count=true&$top={MaxResultCount}",
+                _ => null,
+            };
+
+            return await GetGroupTransitiveMembersPageAsync(requestUrl, groupId, selection, runId, isFirstPage: true, cancellationToken);
+        }
+
+        private async Task<TransitiveMembersPage> GetGroupTransitiveMembersNextPageAsync(
+            string nextPageUrl,
+            Guid groupId,
+            TransitiveMemberSelection selection,
+            Guid? runId,
+            CancellationToken cancellationToken)
+        {
+            return await GetGroupTransitiveMembersPageAsync(nextPageUrl, groupId.ToString(), selection, runId, isFirstPage: false, cancellationToken);
+        }
+
+        private async Task<TransitiveMembersPage> GetGroupTransitiveMembersPageAsync(
+            string requestUrl,
+            string groupId,
+            TransitiveMemberSelection selection,
+            Guid? runId,
+            bool isFirstPage,
+            CancellationToken cancellationToken)
+        {
+            // One retry owner: the shared retry policies. The SDK retry handler is disabled on every send, and the
+            // legacy ServiceException retry is not applied, so each policy attempt is exactly one physical request.
+            var retryPolicy = CreateSharedRetryPolicy(runId);
             string requestId = string.Empty;
             string clientRequestId = Guid.NewGuid().ToString();
 
-            await retryPolicy.ExecuteAsync(async () =>
-            {
-                SetCustomActivityProperty("RunId", Convert.ToString(runId));
-                SetCustomActivityProperty("ClientRequestId", Convert.ToString(clientRequestId));
-
-                var nativeResponseHandler = new NativeResponseHandler();
-                var responseHandlerOption = new ResponseHandlerOption { ResponseHandler = nativeResponseHandler };
-
-                await _graphServiceClient
-                       .Groups[groupId]
-                       .TransitiveMembers
-                       .GetAsync(requestConfiguration =>
-                       {
-                           requestConfiguration.QueryParameters.Top = MaxResultCount;
-                           requestConfiguration.Options.Add(responseHandlerOption);
-                       });
-
-                var nativeResponse = nativeResponseHandler.Value as HttpResponseMessage;
-                requestId = ExtractRequestId(nativeResponse);
-
-                if (nativeResponse.IsSuccessStatusCode)
+            using var nativeResponse = await ExecuteWithExhaustionAsync(
+                retryPolicy,
+                "The transitive-members request",
+                async token =>
                 {
-                    var directoryObjectCollectionResponse = await DeserializeResponseAsync(nativeResponse,
-                                                                                       DirectoryObjectCollectionResponse.CreateFromDiscriminatorValue);
+                    SetCustomActivityProperty("RunId", Convert.ToString(runId));
+                    SetCustomActivityProperty("ClientRequestId", Convert.ToString(clientRequestId));
 
-                    response.Response = directoryObjectCollectionResponse;
-                    response.Headers = nativeResponse.Headers.ToImmutableDictionary(x => x.Key, x => x.Value);
-                }
+                    var nativeResponseHandler = new NativeResponseHandler();
+                    var requestOptions = new List<IRequestOption>
+                    {
+                        new ResponseHandlerOption { ResponseHandler = nativeResponseHandler },
+                        new RetryHandlerOption { MaxRetry = 0 },
+                    };
 
-                return nativeResponse;
-            });
+                    if (isFirstPage && selection == TransitiveMemberSelection.UsersAndAgents)
+                    {
+                        await _graphServiceClient
+                            .Groups[groupId]
+                            .TransitiveMembers
+                            .GetAsync(requestConfiguration =>
+                            {
+                                requestConfiguration.QueryParameters.Top = MaxResultCount;
+                                foreach (var option in requestOptions)
+                                {
+                                    requestConfiguration.Options.Add(option);
+                                }
+                            }, token);
+                    }
+                    else
+                    {
+                        var requestInformation = new RequestInformation
+                        {
+                            HttpMethod = Method.GET,
+                            UrlTemplate = requestUrl,
+                        };
 
-            _graphGroupMembershipReaderLogger.LogInformationWithRunId(runId, $"From first page of transitive members for group {groupId}, member count {response.Response?.Value?.Count ?? -1} GraphRequestId: {requestId} ClientRequestId: {clientRequestId}");
+                        requestInformation.AddRequestOptions(requestOptions);
+                        requestInformation.Headers.Add("Accept", "application/json");
+
+                        if (selection != TransitiveMemberSelection.UsersAndAgents)
+                        {
+                            requestInformation.Headers.Add("ConsistencyLevel", "eventual");
+                        }
+
+                        if (selection == TransitiveMemberSelection.UsersOnly)
+                        {
+                            await _graphServiceClient
+                                .RequestAdapter
+                                .SendAsync(requestInformation, UserCollectionResponse.CreateFromDiscriminatorValue, cancellationToken: token);
+                        }
+                        else
+                        {
+                            await _graphServiceClient
+                                .RequestAdapter
+                                .SendAsync(requestInformation, DirectoryObjectCollectionResponse.CreateFromDiscriminatorValue, cancellationToken: token);
+                        }
+                    }
+
+                    var attemptResponse = nativeResponseHandler.Value as HttpResponseMessage
+                        ?? throw new InvalidOperationException("The transitive-members request returned no native response.");
+
+                    // Resource units are recorded for every attempt, including throttled and retried ones, before the
+                    // policy inspects the response and disposes a retried one.
+                    await _graphGroupMetricTracker.TrackMetricsAsync(
+                        attemptResponse.Headers.ToImmutableDictionary(header => header.Key, header => header.Value),
+                        QueryType.Transitive,
+                        runId);
+                    return attemptResponse;
+                },
+                cancellationToken);
+
+            requestId = ExtractRequestId(nativeResponse);
+
+            ThrowIfNotSuccess(nativeResponse, "The transitive-members request");
+
+            var response = await DeserializeTransitiveMembersPageAsync(nativeResponse, selection);
+
+            var pageName = isFirstPage ? "first" : "subsequent";
+            _graphGroupMembershipReaderLogger.LogInformationWithRunId(
+                runId,
+                $"From {pageName} page of transitive members for group {groupId}, member count {response.Members.Count} GraphRequestId: {requestId} ClientRequestId: {clientRequestId}");
 
             return response;
         }
 
-        private async Task<GraphObjectResponse<DirectoryObjectCollectionResponse>> GetGroupTransitiveMembersNextPageAsync(string nextPageUrl, Guid groupId, Guid? runId)
+        private async Task<TransitiveMembersPage> DeserializeTransitiveMembersPageAsync(
+            HttpResponseMessage nativeResponse,
+            TransitiveMemberSelection selection)
         {
-            var retryPolicy = GetRetryPolicy();
-            var response = new GraphObjectResponse<DirectoryObjectCollectionResponse>();
-            string requestId = string.Empty;
-            string clientRequestId = Guid.NewGuid().ToString();
-
-            await retryPolicy.ExecuteAsync(async () =>
+            if (selection == TransitiveMemberSelection.UsersOnly)
             {
-                SetCustomActivityProperty("RunId", Convert.ToString(runId));
-                SetCustomActivityProperty("ClientRequestId", Convert.ToString(clientRequestId));
-
-                var nativeResponseHandler = new NativeResponseHandler();
-                var responseHandlerOption = new ResponseHandlerOption { ResponseHandler = nativeResponseHandler };
-
-                var requestInformation = new RequestInformation
+                var userResponse = await DeserializeResponseAsync(nativeResponse, UserCollectionResponse.CreateFromDiscriminatorValue);
+                if (userResponse == null)
                 {
-                    HttpMethod = Method.GET,
-                    UrlTemplate = nextPageUrl,
-                };
-
-                var requestConfig = new TransitiveMembersRequestBuilderGetRequestConfiguration
-                {
-                    Options = new List<IRequestOption> { responseHandlerOption }
-                };
-
-                requestInformation.AddRequestOptions(requestConfig.Options);
-                requestInformation.Headers.Add("Accept", "application/json");
-
-                await _graphServiceClient
-                        .RequestAdapter
-                        .SendAsync(requestInformation,
-                                    DirectoryObjectCollectionResponse.CreateFromDiscriminatorValue);
-
-                var nativeResponse = nativeResponseHandler.Value as HttpResponseMessage;
-                requestId = ExtractRequestId(nativeResponse);
-
-                if (nativeResponse.IsSuccessStatusCode)
-                {
-                    var directoryObjectCollectionResponse = await DeserializeResponseAsync(nativeResponse,
-                                                                                           DirectoryObjectCollectionResponse.CreateFromDiscriminatorValue);
-
-                    response.Response = directoryObjectCollectionResponse;
-                    response.Headers = nativeResponse.Headers.ToImmutableDictionary(x => x.Key, x => x.Value);
+                    throw new InvalidOperationException(
+                        "Graph returned an unreadable transitive-members page.");
                 }
 
-                return nativeResponse;
-            });
+                return new TransitiveMembersPage
+                {
+                    Members = userResponse.Value?.Cast<DirectoryObject>().ToList() ?? new List<DirectoryObject>(),
+                    NextLink = userResponse.OdataNextLink,
+                    Headers = nativeResponse.Headers.ToImmutableDictionary(x => x.Key, x => x.Value),
+                };
+            }
 
-            _graphGroupMembershipReaderLogger.LogInformationWithRunId(runId, $"From subsequent page of transitive members for group {groupId}, member count {response.Response?.Value?.Count ?? -1} GraphRequestId: {requestId} ClientRequestId: {clientRequestId}");
+            var directoryObjectResponse = await DeserializeResponseAsync(
+                nativeResponse,
+                DirectoryObjectCollectionResponse.CreateFromDiscriminatorValue);
+            if (directoryObjectResponse == null)
+            {
+                throw new InvalidOperationException(
+                    "Graph returned an unreadable transitive-members page.");
+            }
 
-            return response;
+            return new TransitiveMembersPage
+            {
+                Members = directoryObjectResponse.Value ?? new List<DirectoryObject>(),
+                NextLink = directoryObjectResponse.OdataNextLink,
+                Headers = nativeResponse.Headers.ToImmutableDictionary(x => x.Key, x => x.Value),
+            };
+        }
+
+        /// <summary>
+        /// The single retry owner for a request whose Graph SDK retry handler is disabled: the shared 429 policy
+        /// (Retry-After, configured attempts) around the shared transient policy (500/502/503/504 and
+        /// <see cref="HttpRequestException"/>, exponential backoff, configured attempts), all inside one retry of an
+        /// HttpClient timeout (owner, 2026-10-21: the original send plus one retry). The timeout policy is outermost so
+        /// it counts timeouts across the whole request: a second timeout is exhaustion even after 429 or 5xx retries in
+        /// between. When attempts are exhausted the last response is returned, or the last exception is thrown, and the
+        /// caller fails the request.
+        /// </summary>
+        private IAsyncPolicy<HttpResponseMessage> CreateSharedRetryPolicy(Guid? runId) =>
+            CreateHttpClientTimeoutPolicy(runId)
+                .WrapAsync(_retryPolicyProvider.CreateRetryAfterPolicy(runId))
+                .WrapAsync(_retryPolicyProvider.CreateExceptionHandlingPolicy(runId));
+
+        /// <summary>
+        /// Runs the request under its retry owner and turns a transport failure or a second HttpClient timeout that
+        /// survives the retries into <see cref="GraphRetriesExhaustedException"/>. Caller or host cancellation propagates.
+        /// </summary>
+        private static async Task<HttpResponseMessage> ExecuteWithExhaustionAsync(
+            IAsyncPolicy<HttpResponseMessage> retryPolicy,
+            string requestDescription,
+            Func<CancellationToken, Task<HttpResponseMessage>> send,
+            CancellationToken cancellationToken)
+        {
+            try
+            {
+                return await retryPolicy.ExecuteAsync(send, cancellationToken);
+            }
+            catch (HttpRequestException exception) when (exception is not GraphRetriesExhaustedException && exception.StatusCode == null)
+            {
+                throw new GraphRetriesExhaustedException(
+                    $"{requestDescription} still failed after the configured retries: {exception.Message}",
+                    exception);
+            }
+            catch (TaskCanceledException exception) when (IsHttpClientTimeout(exception) && !cancellationToken.IsCancellationRequested)
+            {
+                throw new GraphRetriesExhaustedException(
+                    $"{requestDescription} still failed after the configured retries: the HttpClient timeout elapsed again.",
+                    exception);
+            }
+        }
+
+        /// <summary>
+        /// Throws for a non-success final response: <see cref="GraphRetriesExhaustedException"/> for a status the retry
+        /// owner retries (the attempts are exhausted), otherwise <see cref="HttpRequestException"/>.
+        /// </summary>
+        private static void ThrowIfNotSuccess(HttpResponseMessage response, string requestDescription)
+        {
+            if (response.IsSuccessStatusCode)
+            {
+                return;
+            }
+
+            var message = $"{requestDescription} failed with status {(int)response.StatusCode} ({response.StatusCode}).";
+            if (GraphRetriesExhaustedException.IsRetryableStatus(response.StatusCode))
+            {
+                throw new GraphRetriesExhaustedException(
+                    $"{message} The configured retries are exhausted.",
+                    null,
+                    response.StatusCode);
+            }
+
+            throw new HttpRequestException(message, null, response.StatusCode);
+        }
+
+        /// <summary>The retries of an HttpClient timeout: one, so a request sees at most two timeouts.</summary>
+        internal const int HttpClientTimeoutRetries = 1;
+
+        /// <summary>
+        /// Retries a send that ended because the HttpClient timeout elapsed (a <see cref="TaskCanceledException"/> whose
+        /// inner exception is a <see cref="TimeoutException"/>). Caller or host cancellation has no such inner exception
+        /// and is never retried.
+        /// </summary>
+        private IAsyncPolicy<HttpResponseMessage> CreateHttpClientTimeoutPolicy(Guid? runId) =>
+            Policy<HttpResponseMessage>
+                .Handle<TaskCanceledException>(IsHttpClientTimeout)
+                .WaitAndRetryAsync(
+                    HttpClientTimeoutRetries,
+                    _ => TimeSpan.FromSeconds(2),
+                    (outcome, wait, attempt, _) =>
+                    {
+                        _graphGroupMembershipReaderLogger.LogWarningWithRunId(
+                            runId,
+                            $"A Graph request timed out on the HttpClient; retry {attempt} of {HttpClientTimeoutRetries} in {wait}.");
+                    });
+
+        internal static bool IsHttpClientTimeout(Exception exception) =>
+            exception is TaskCanceledException { InnerException: TimeoutException };
+
+        private async Task<HttpResponseMessage> SendGetByIdsRequestAsync(
+            IReadOnlyCollection<Guid> ids,
+            CancellationToken cancellationToken)
+        {
+            var requestBody = new GetByIdsPostRequestBody
+            {
+                Ids = ids.Select(id => id.ToString()).ToList(),
+            };
+
+            var nativeResponseHandler = new NativeResponseHandler();
+            var requestInformation = _graphServiceClient
+                .DirectoryObjects
+                .GetByIds
+                .WithUrl($"{_graphServiceClient.RequestAdapter.BaseUrl}/directoryObjects/getByIds?$select=id")
+                .ToPostRequestInformation(
+                    requestBody,
+                    requestConfiguration =>
+                    {
+                        requestConfiguration.Options.Add(new ResponseHandlerOption { ResponseHandler = nativeResponseHandler });
+                        requestConfiguration.Options.Add(new RetryHandlerOption { MaxRetry = 0 });
+                    });
+
+            await _graphServiceClient
+                        .RequestAdapter
+                .SendNoContentAsync(requestInformation, cancellationToken: cancellationToken);
+
+            return nativeResponseHandler.Value as HttpResponseMessage
+                ?? throw new InvalidOperationException("The directory-object type lookup returned no native response.");
         }
 
         private async Task<GraphObjectResponse<DirectoryObjectCollectionResponse>> GetGroupMembersPageByIdAsync(string groupId, Guid? runId)
@@ -723,6 +993,242 @@ namespace Repositories.GraphGroups
             }
         }
 
+        private IEnumerable<AzureADUser> ToSelectedUsers(
+            IEnumerable<DirectoryObject> directoryObjects,
+            TransitiveMemberSelection selection,
+            MemberReadCounts counts)
+        {
+            if (selection == TransitiveMemberSelection.UsersAndAgents)
+            {
+                return ToUsers(directoryObjects, counts);
+            }
+
+            var users = new List<AzureADUser>();
+
+            foreach (var directoryObject in directoryObjects ?? Enumerable.Empty<DirectoryObject>())
+            {
+                if (selection == TransitiveMemberSelection.UsersOnly)
+                {
+                    if (directoryObject is not AgentUser
+                        && directoryObject is User user
+                        && !HasUnexpectedODataType(user, "microsoft.graph.user"))
+                    {
+                        counts.MemberCount++;
+                        counts.UserCount = (counts.UserCount ?? 0) + 1;
+                        users.Add(new AzureADUser { ObjectId = Guid.Parse(user.Id) });
+                        continue;
+                    }
+
+                    IncrementSkippedSelectedCount(counts, directoryObject);
+                    continue;
+                }
+
+                if (directoryObject is AgentUser agentUser
+                    && !HasUnexpectedODataType(agentUser, "microsoft.graph.agentUser"))
+                {
+                    counts.MemberCount++;
+                    counts.AgentCount = (counts.AgentCount ?? 0) + 1;
+                    users.Add(new AzureADUser { ObjectId = Guid.Parse(agentUser.Id) });
+                    continue;
+                }
+
+                IncrementSkippedSelectedCount(counts, directoryObject);
+            }
+
+            return users;
+        }
+
+        private static bool HasUnexpectedODataType(
+            DirectoryObject directoryObject,
+            string expectedType)
+        {
+            return !string.IsNullOrWhiteSpace(directoryObject.OdataType)
+                && !string.Equals(
+                    directoryObject.OdataType.TrimStart('#'),
+                    expectedType,
+                    StringComparison.OrdinalIgnoreCase);
+        }
+
+        private static void IncrementSkippedSelectedCount(
+            MemberReadCounts counts,
+            DirectoryObject directoryObject)
+        {
+            var odataType = directoryObject?.OdataType;
+            if (!string.IsNullOrWhiteSpace(odataType))
+            {
+                var normalizedType = odataType.TrimStart('#');
+                if (string.Equals(
+                    normalizedType,
+                    "microsoft.graph.agentUser",
+                    StringComparison.OrdinalIgnoreCase))
+                {
+                    counts.AgentCount = (counts.AgentCount ?? 0) + 1;
+                    return;
+                }
+
+                if (string.Equals(
+                    normalizedType,
+                    "microsoft.graph.user",
+                    StringComparison.OrdinalIgnoreCase))
+                {
+                    counts.UserCount = (counts.UserCount ?? 0) + 1;
+                    return;
+                }
+
+                IncrementSkippedCount(counts, odataType);
+                return;
+            }
+
+            switch (directoryObject)
+            {
+                case AgentUser:
+                    counts.AgentCount = (counts.AgentCount ?? 0) + 1;
+                    break;
+                case User:
+                    counts.UserCount = (counts.UserCount ?? 0) + 1;
+                    break;
+                default:
+                    IncrementSkippedCount(counts, null);
+                    break;
+            }
+        }
+
+        private static IReadOnlyDictionary<Guid, string> ParseDirectoryObjectTypes(string responseContent)
+        {
+            if (string.IsNullOrWhiteSpace(responseContent))
+            {
+                throw new InvalidOperationException("The directory-object type lookup returned an empty response.");
+            }
+
+            try
+            {
+                using var document = JsonDocument.Parse(responseContent);
+
+                if (!document.RootElement.TryGetProperty("value", out var values)
+                    || values.ValueKind != JsonValueKind.Array)
+                {
+                    throw new InvalidOperationException("The directory-object type lookup response has no value array.");
+                }
+
+                var typesById = new Dictionary<Guid, string>();
+
+                foreach (var value in values.EnumerateArray())
+                {
+                    if (!value.TryGetProperty("id", out var idElement)
+                        || idElement.ValueKind != JsonValueKind.String
+                        || !Guid.TryParse(idElement.GetString(), out var id))
+                    {
+                        throw new InvalidOperationException("A directory-object type lookup result has no valid identifier.");
+                    }
+
+                    if (!value.TryGetProperty("@odata.type", out var typeElement)
+                        || typeElement.ValueKind != JsonValueKind.String)
+                    {
+                        throw new InvalidOperationException($"The directory-object type lookup result for {id} has no type.");
+                    }
+
+                    var normalizedType = NormalizeDirectoryObjectType(typeElement.GetString());
+                    typesById[id] = normalizedType;
+                }
+
+                return typesById;
+            }
+            catch (JsonException exception)
+            {
+                throw new InvalidOperationException("The directory-object type lookup returned invalid JSON.", exception);
+            }
+        }
+
+        private static string NormalizeDirectoryObjectType(string odataType)
+        {
+            if (string.Equals(odataType, "#microsoft.graph.user", StringComparison.OrdinalIgnoreCase))
+            {
+                return "user";
+            }
+
+            if (string.Equals(odataType, "#microsoft.graph.agentUser", StringComparison.OrdinalIgnoreCase))
+            {
+                return "agentUser";
+            }
+
+            throw new InvalidOperationException(
+                $"The directory-object type lookup returned unsupported type '{odataType ?? "<missing>"}'.");
+        }
+
+        private static TransitiveMemberSelection ResolveSelection(IReadOnlyList<string> identityTypes)
+        {
+            if (identityTypes == null)
+            {
+                return TransitiveMemberSelection.UsersAndAgents;
+            }
+
+            var hasUsers = identityTypes.Contains("users", StringComparer.Ordinal);
+            var hasAgents = identityTypes.Contains("agents", StringComparer.Ordinal);
+
+            if (identityTypes.Count == 1 && hasUsers)
+            {
+                return TransitiveMemberSelection.UsersOnly;
+            }
+
+            if (identityTypes.Count == 1 && hasAgents)
+            {
+                return TransitiveMemberSelection.AgentsOnly;
+            }
+
+            if (identityTypes.Count == 2 && hasUsers && hasAgents)
+            {
+                return TransitiveMemberSelection.UsersAndAgents;
+            }
+
+            throw new ArgumentException(
+                "A group identity selection must contain users, agents, or both exactly once.",
+                nameof(identityTypes));
+        }
+
+        private static MemberReadCounts CreateCounts(TransitiveMemberSelection selection)
+        {
+            return new MemberReadCounts
+            {
+                UserCount = selection == TransitiveMemberSelection.AgentsOnly ? null : 0,
+                AgentCount = selection == TransitiveMemberSelection.UsersOnly ? null : 0,
+            };
+        }
+
+        private static void AddCounts(MemberReadCounts destination, MemberReadCounts source)
+        {
+            destination.MemberCount += source.MemberCount;
+            destination.UserCount = AddNullableCounts(destination.UserCount, source.UserCount);
+            destination.AgentCount = AddNullableCounts(destination.AgentCount, source.AgentCount);
+            destination.ServicePrincipalCount += source.ServicePrincipalCount;
+            destination.DeviceCount += source.DeviceCount;
+            destination.ContactCount += source.ContactCount;
+            destination.GroupCount += source.GroupCount;
+            destination.UnknownTypeCount += source.UnknownTypeCount;
+            destination.OtherCount += source.OtherCount;
+        }
+
+        private static int? AddNullableCounts(int? left, int? right)
+        {
+            return left.HasValue && right.HasValue
+                ? left.Value + right.Value
+                : left ?? right;
+        }
+
+        private static string FormatSkippedCounts(MemberReadCounts counts)
+        {
+            return string.Join(
+                Environment.NewLine,
+                new[]
+                {
+                    $"{counts.ServicePrincipalCount}: service principals",
+                    $"{counts.DeviceCount}: devices",
+                    $"{counts.ContactCount}: contacts",
+                    $"{counts.GroupCount}: groups",
+                    $"{counts.UnknownTypeCount}: unknown type",
+                    $"{counts.OtherCount}: other",
+                });
+        }
+
         private static void SetCustomActivityProperty(string propertyName, string value)
         {
             if(string.IsNullOrEmpty(propertyName) || string.IsNullOrEmpty(value)) return;
@@ -736,12 +1242,29 @@ namespace Repositories.GraphGroups
         private static string? ExtractRequestId(HttpResponseMessage httpResponse)
         {
             string requestId = null;
-            if (httpResponse.Headers.TryGetValues("request-id", out var requestIds))
+            if (httpResponse?.Headers.TryGetValues("request-id", out var requestIds) == true)
             {
                 requestId = requestIds.FirstOrDefault();
             }
 
             return requestId;
+        }
+
+        private enum TransitiveMemberSelection
+        {
+            UsersAndAgents,
+            UsersOnly,
+            AgentsOnly,
+        }
+
+        private sealed class TransitiveMembersPage
+        {
+            public IReadOnlyList<DirectoryObject> Members { get; init; } = Array.Empty<DirectoryObject>();
+
+            public string NextLink { get; init; }
+
+            public IDictionary<string, IEnumerable<string>> Headers { get; init; } =
+                new Dictionary<string, IEnumerable<string>>();
         }
     }
 }

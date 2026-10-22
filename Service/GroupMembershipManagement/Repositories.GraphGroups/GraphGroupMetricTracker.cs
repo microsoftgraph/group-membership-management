@@ -35,9 +35,10 @@ namespace Repositories.GraphGroups
             {
                 const int deltaResourceUnitCost = 5;
                 _logger.LogInformationWithRunId(runId, $"Resource unit cost of {Enum.GetName(typeof(QueryType), queryType)} - {deltaResourceUnitCost}");
-                TrackResourceUnitsUsedByTypeEvent(deltaResourceUnitCost, queryType, runId);
+                GraphTelemetryHelper.TrackResourceUnitsUsedByTypeEvent(_telemetryClient, deltaResourceUnitCost, queryType, runId, MembershipTypes.GroupMembership.ToString(), TelemetryConstants.ResourceUnitSourceEstimated);
                 _telemetryClient.GetMetric(TelemetryConstants.ResourceUnitsMetricName, TelemetryConstants.OperationTypeDimensionName, TelemetryConstants.QueryTypeDimensionName, TelemetryConstants.MembershipTypeDimensionName)
                                 .TrackValue(deltaResourceUnitCost, operationType.ToString(), queryType.ToString(), MembershipTypes.GroupMembership.ToString());
+                TrackResourceUnitsBySource(deltaResourceUnitCost, queryType, TelemetryConstants.ResourceUnitSourceEstimated);
                 return;
             }
 
@@ -47,9 +48,19 @@ namespace Repositories.GraphGroups
                 return;
             }
 
-            var telemetryResult = await GraphTelemetryHelper.TrackResourceUnitsAsync(headers, queryType, runId, _logger, _telemetryClient, operationType, MembershipTypes.GroupMembership.ToString());
+            var telemetryResult = await GraphTelemetryHelper.TrackResourceUnitsAsync(headers, queryType, runId, _logger, _telemetryClient, operationType, MembershipTypes.GroupMembership.ToString(), TelemetryConstants.ResourceUnitSourceHeader);
+            if (telemetryResult.ResourceUnitsUsed.HasValue)
+            {
+                TrackResourceUnitsBySource(telemetryResult.ResourceUnitsUsed.Value, queryType, TelemetryConstants.ResourceUnitSourceHeader);
+            }
 
             // Resource unit/throttle metrics already tracked within GraphTelemetryHelper.
+        }
+
+        private void TrackResourceUnitsBySource(int resourceUnits, QueryType queryType, string resourceUnitSource)
+        {
+            _telemetryClient.GetMetric(TelemetryConstants.ResourceUnitsBySourceMetricName, TelemetryConstants.QueryTypeDimensionName, TelemetryConstants.ResourceUnitSourceDimensionName)
+                            .TrackValue(resourceUnits, queryType.ToString(), resourceUnitSource);
         }
 
         public Metric GetMetric(string metric)

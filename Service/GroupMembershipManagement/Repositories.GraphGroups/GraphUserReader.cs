@@ -103,7 +103,19 @@ namespace Repositories.GraphGroups
             return userDetails;
         }
 
-        public async Task<bool?> GetUserAccountEnabledAsync(string userIdentifier, Guid? runId)
+        /// <summary>
+        /// Reads whether a directory user is enabled and whether Graph identifies it as a person or agent user.
+        /// </summary>
+        /// <param name="userIdentifier">The object identifier or user principal name to read.</param>
+        /// <param name="runId">The optional sync run identifier used for Graph request telemetry.</param>
+        /// <returns>
+        /// The account-enabled value and Graph OData type. A person is returned as
+        /// <c>#microsoft.graph.user</c>; an agent user is returned as <c>#microsoft.graph.agentUser</c>.
+        /// When Graph does not return a successful readable user, both values are <see langword="null"/>.
+        /// </returns>
+        public async Task<(bool? AccountEnabled, string ODataType)> GetUserAccountEnabledAsync(
+            string userIdentifier,
+            Guid? runId)
         {
             try
             {
@@ -125,7 +137,7 @@ namespace Repositories.GraphGroups
                     if (nativeResponse.IsSuccessStatusCode)
                     {
                         var user = await DeserializeResponseAsync(nativeResponse, User.CreateFromDiscriminatorValue);
-                        return user?.AccountEnabled;
+                        return (user?.AccountEnabled, user?.OdataType);
                     }
                 }
             }
@@ -134,7 +146,7 @@ namespace Repositories.GraphGroups
                 _graphUserReaderLogger.LogErrorWithRunId(runId, $"Exception: {exception}, FailedMethod: {nameof(GetUserAccountEnabledAsync)}, UserIdentifier: {userIdentifier}", exception);
             }
 
-            return null;
+            return (null, null);
         }
 
         public async Task<AzureADUser> GetUserWithOnPremisesImmutableIdAsync(string userIdentifier, Guid? runId)

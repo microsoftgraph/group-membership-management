@@ -9,11 +9,14 @@ using Microsoft.Graph.Models;
 using Microsoft.Kiota.Abstractions;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Models;
+using Polly;
+using Repositories.Contracts;
 using Repositories.GraphGroups;
 using Repositories.MembershipDifference;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Net.Http;
 using System.Text;
 using System.Threading.Tasks;
 using Group = Microsoft.Graph.Models.Group;
@@ -267,7 +270,11 @@ namespace Repositories.Integration.Tests
             var authProvider = new InteractiveBrowserCredential(interactiveBrowserCredentialOptions);
 
             _graphServiceClient = new GraphServiceClient(authProvider);
-            _groupRepo = new GraphGroupRepository(_graphServiceClient, new TelemetryClient(new TelemetryConfiguration()), NullLoggerFactory.Instance);
+            _groupRepo = new GraphGroupRepository(
+                _graphServiceClient,
+                new TelemetryClient(new TelemetryConfiguration()),
+                new IntegrationTestRetryPolicyProvider(),
+                NullLoggerFactory.Instance);
 
 
             await DeleteOldObjects("microsoft.graph.group");
@@ -354,6 +361,19 @@ namespace Repositories.Integration.Tests
 
                 dataNextLink = response.OdataNextLink;
                 await PermanentlyDeleteItems(response.Value);
+            }
+        }
+
+        private sealed class IntegrationTestRetryPolicyProvider : IRetryPolicyProvider
+        {
+            public AsyncPolicy<HttpResponseMessage> CreateRetryAfterPolicy(Guid? runId)
+            {
+                return Policy.NoOpAsync<HttpResponseMessage>();
+            }
+
+            public AsyncPolicy<HttpResponseMessage> CreateExceptionHandlingPolicy(Guid? runId)
+            {
+                return Policy.NoOpAsync<HttpResponseMessage>();
             }
         }
 

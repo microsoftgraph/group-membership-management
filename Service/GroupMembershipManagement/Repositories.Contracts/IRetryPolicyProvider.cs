@@ -11,6 +11,5 @@ namespace Repositories.Contracts
     {
         AsyncPolicy<HttpResponseMessage> CreateRetryAfterPolicy(Guid? runId);
         AsyncPolicy<HttpResponseMessage> CreateExceptionHandlingPolicy(Guid? runId);
-
     }
 }

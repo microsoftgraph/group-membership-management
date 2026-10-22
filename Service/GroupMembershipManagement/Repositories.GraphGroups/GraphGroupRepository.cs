@@ -13,6 +13,7 @@ using Repositories.Contracts.Helpers;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace Repositories.GraphGroups
@@ -34,20 +35,29 @@ namespace Repositories.GraphGroups
 
         public GraphGroupRepository(GraphServiceClient graphServiceClient,
                                     TelemetryClient telemetryClient,
+                                    IRetryPolicyProvider retryPolicyProvider,
                                     ILoggerFactory loggerFactory = null,
                                     IOptions<GraphCredentials> graphCredentials = null)
-            : this(graphServiceClient, telemetryClient, null, loggerFactory, graphCredentials)
+            : this(
+                graphServiceClient,
+                telemetryClient,
+                null,
+                retryPolicyProvider,
+                loggerFactory,
+                graphCredentials)
         {
         }
 
         public GraphGroupRepository(GraphServiceClient graphServiceClient,
                                     TelemetryClient telemetryClient,
                                     IGraphRepositorySettings graphRepositorySettings,
+                                    IRetryPolicyProvider retryPolicyProvider,
                                     ILoggerFactory loggerFactory = null,
                                     IOptions<GraphCredentials> graphCredentials = null)
         {
             if (graphServiceClient == null) throw new ArgumentNullException(nameof(graphServiceClient));
             _ = telemetryClient ?? throw new ArgumentNullException(nameof(telemetryClient));
+            _ = retryPolicyProvider ?? throw new ArgumentNullException(nameof(retryPolicyProvider));
             _graphGroupRepositoryLogger = loggerFactory?.CreateLogger<GraphGroupRepository>() ?? NullLogger<GraphGroupRepository>.Instance;
             _graphCredentials = graphCredentials?.Value;
 
@@ -75,6 +85,7 @@ namespace Repositories.GraphGroups
             _graphGroupMembershipReader = new GraphGroupMembershipReader(
                 graphServiceClient,
                 graphGroupMetricTracker,
+                retryPolicyProvider,
                 loggerFactory?.CreateLogger<GraphGroupMembershipReader>() ?? NullLogger<GraphGroupMembershipReader>.Instance);
             _graphGroupMembershipUpdater = new GraphGroupMembershipUpdater(
                 graphServiceClient,
@@ -193,7 +204,7 @@ namespace Repositories.GraphGroups
             return await _graphGroupMembershipReader.IsEmailRecipientMemberOfGroupAsync(userIdentifier, groupObjectId, ResolveRunId());
         }
 
-        public async Task<bool?> GetUserAccountEnabledAsync(string userIdentifier)
+        public async Task<(bool? AccountEnabled, string ODataType)> GetUserAccountEnabledAsync(string userIdentifier)
         {
             return await _graphUserReader.GetUserAccountEnabledAsync(userIdentifier, ResolveRunId());
         }
@@ -280,16 +291,26 @@ namespace Repositories.GraphGroups
             return await _graphGroupMembershipUpdater.RemoveUsersFromGroup(users, targetGroup);
         }
 
-        public async Task<(List<AzureADUser> users, Dictionary<string, int> nonUserGraphObjects, string nextPageUrl)>
-            GetFirstTransitiveMembersPageAsync(Guid groupId)
+        public async Task<(List<AzureADUser> users, MemberReadCounts counts, string nextPageUrl)>
+            GetFirstTransitiveMembersPageAsync(Guid groupId, IReadOnlyList<string> identityTypes = null)
         {
-            return await _graphGroupMembershipReader.GetFirstTransitiveMembersPageAsync(groupId, ResolveRunId());
+            return await _graphGroupMembershipReader.GetFirstTransitiveMembersPageAsync(
+                groupId,
+                identityTypes,
+                ResolveRunId());
         }
 
-        public async Task<(List<AzureADUser> users, Dictionary<string, int> nonUserGraphObjects, string nextPageUrl)>
-            GetNextTransitiveMembersPageAsync(Guid groupId, string nextPageUrl)
+        public async Task<(List<AzureADUser> users, MemberReadCounts counts, string nextPageUrl)>
+            GetNextTransitiveMembersPageAsync(
+                Guid groupId,
+                string nextPageUrl,
+                IReadOnlyList<string> identityTypes = null)
         {
-            return await _graphGroupMembershipReader.GetNextTransitiveMembersPageAsync(groupId, nextPageUrl, ResolveRunId());
+            return await _graphGroupMembershipReader.GetNextTransitiveMembersPageAsync(
+                groupId,
+                nextPageUrl,
+                identityTypes,
+                ResolveRunId());
         }
 
         public async Task<AzureADUser> GetUserByUpnOrIdAsync(string userIdentifier, bool includeMailProperty = false)
@@ -324,34 +345,55 @@ namespace Repositories.GraphGroups
             return await _graphGroupPlacesReader.GetWorkSpacesPageAsync(url, top, skip, ResolveRunId());
         }
 
-        public async Task<(List<AzureADUser> usersToAdd, List<AzureADUser> usersToRemove, string nextPageUrl, string deltaUrl)>
+        public async Task<(List<AzureADUser> usersToAdd, List<AzureADUser> usersToRemove, MemberReadCounts counts, string nextPageUrl, string deltaUrl)>
             GetFirstDeltaLinkUsersPageAsync(Guid groupId, string deltaLink, int numberOfPages)
         {
-            var (usersToAdd, usersToRemove, nextPageUrl, deltaUrl) = await _graphGroupDeltaReader.GetFirstDeltaLinkUsersPageAsync(groupId, deltaLink, ResolveRunId(), numberOfPages);
+            var (usersToAdd, usersToRemove, counts, nextPageUrl, deltaUrl) =
+                await _graphGroupDeltaReader.GetFirstDeltaLinkUsersPageAsync(
+                    groupId,
+                    deltaLink,
+                    ResolveRunId(),
+                    numberOfPages);
 
             _graphGroupRepositoryLogger.LogInformationWithRunId(ResolveRunId(), $"Number of users from first page using delta link - {usersToAdd.Count + usersToRemove.Count}");
 
-            return (usersToAdd, usersToRemove, nextPageUrl, deltaUrl);
+            return (usersToAdd, usersToRemove, counts, nextPageUrl, deltaUrl);
         }
 
-        public async Task<(List<AzureADUser> usersToAdd, List<AzureADUser> usersToRemove, string nextPageUrl, string deltaUrl)>
+        public async Task<(List<AzureADUser> usersToAdd, List<AzureADUser> usersToRemove, MemberReadCounts counts, string nextPageUrl, string deltaUrl)>
             GetNextDeltaLinkUsersPagesAsync(Guid groupId, string nextPageUrl, int numberOfPages)
         {
-            var (usersToAdd, usersToRemove, newNextPageUrl, deltaUrl) = await _graphGroupDeltaReader.GetNextDeltaLinkUsersPagesAsync(groupId, nextPageUrl, ResolveRunId(), numberOfPages);
+            var (usersToAdd, usersToRemove, counts, newNextPageUrl, deltaUrl) =
+                await _graphGroupDeltaReader.GetNextDeltaLinkUsersPagesAsync(
+                    groupId,
+                    nextPageUrl,
+                    ResolveRunId(),
+                    numberOfPages);
 
             _graphGroupRepositoryLogger.LogInformationWithRunId(ResolveRunId(), $"Number of users from next page using delta link - {usersToAdd.Count + usersToRemove.Count}");
 
-            return (usersToAdd, usersToRemove, newNextPageUrl, deltaUrl);
+            return (usersToAdd, usersToRemove, counts, newNextPageUrl, deltaUrl);
         }
 
-        public async Task<(List<AzureADUser> users, string nextPageUrl, string deltaUrl)> GetFirstDeltaUsersPageAsync(Guid groupId, int numberOfPages)
+        public async Task<(List<AzureADUser> users, MemberReadCounts counts, string nextPageUrl, string deltaUrl)> GetFirstDeltaUsersPageAsync(Guid groupId, int numberOfPages)
         {
             return await _graphGroupDeltaReader.GetFirstDeltaUsersPageAsync(groupId, ResolveRunId(), numberOfPages);
         }
 
-        public async Task<(List<AzureADUser> users, string nextPageUrl, string deltaUrl)> GetNextDeltaUsersPagesAsync(Guid groupId, string nextPageUrl, int numberOfPages)
+        public async Task<(List<AzureADUser> users, MemberReadCounts counts, string nextPageUrl, string deltaUrl)> GetNextDeltaUsersPagesAsync(Guid groupId, string nextPageUrl, int numberOfPages)
         {
             return await _graphGroupDeltaReader.GetNextDeltaUsersPagesAsync(groupId, nextPageUrl, ResolveRunId(), numberOfPages);
+        }
+
+        public Task<IReadOnlyDictionary<Guid, string>> GetDirectoryObjectTypesAsync(
+            IReadOnlyCollection<Guid> ids,
+            Guid? runId,
+            CancellationToken cancellationToken)
+        {
+            return _graphGroupMembershipReader.GetDirectoryObjectTypesAsync(
+                ids,
+                ResolveRunId(runId),
+                cancellationToken);
         }
 
         public async Task<int> GetGroupsCountAsync(Guid objectId)
@@ -364,7 +406,7 @@ namespace Repositories.GraphGroups
             return await _graphGroupMembershipReader.GetUsersCountAsync(objectId, ResolveRunId());
         }
 
-        public async Task<int> GetAgentUserCountAsync(Guid objectId)
+        public async Task<int?> GetAgentUserCountAsync(Guid objectId)
         {
             return await _graphGroupMembershipReader.GetAgentUserCountAsync(objectId, ResolveRunId());
         }

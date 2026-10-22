@@ -14,6 +14,7 @@ using System.Threading.Tasks;
 using Models;
 using Microsoft.Graph.Models;
 using System.Collections.Generic;
+using Repositories.Contracts;
 
 namespace Repositories.GraphGroups
 {
@@ -97,11 +98,70 @@ namespace Repositories.GraphGroups
                     default:
                         var dataType = directoryObj.OdataType ?? "Unknown";
                         if (nonUserGraphObjects.TryGetValue(dataType, out int count))
-                            nonUserGraphObjects[directoryObj.OdataType] = count + 1;
+                            nonUserGraphObjects[dataType] = count + 1;
                         else
-                            nonUserGraphObjects[directoryObj.OdataType] = 1;
+                            nonUserGraphObjects[dataType] = 1;
                         break;
                 }
+            }
+        }
+
+        protected IEnumerable<AzureADUser> ToUsers(IEnumerable<DirectoryObject> fromGraph, MemberReadCounts counts)
+        {
+            if (fromGraph == null)
+                yield break;
+
+            foreach (var directoryObject in fromGraph)
+            {
+                switch (directoryObject)
+                {
+                    case AgentUser agentUser:
+                        counts.MemberCount++;
+                        counts.AgentCount = (counts.AgentCount ?? 0) + 1;
+                        yield return new AzureADUser { ObjectId = Guid.Parse(agentUser.Id) };
+                        break;
+                    case User user:
+                        counts.MemberCount++;
+                        counts.UserCount = (counts.UserCount ?? 0) + 1;
+                        yield return new AzureADUser { ObjectId = Guid.Parse(user.Id) };
+                        break;
+                    default:
+                        IncrementSkippedCount(counts, directoryObject?.OdataType);
+                        break;
+                }
+            }
+        }
+
+        protected static void IncrementSkippedCount(MemberReadCounts counts, string odataType)
+        {
+            if (string.IsNullOrWhiteSpace(odataType))
+            {
+                counts.UnknownTypeCount++;
+                return;
+            }
+
+            var normalizedType = odataType.TrimStart('#');
+
+            if (string.Equals(normalizedType, "microsoft.graph.servicePrincipal", StringComparison.OrdinalIgnoreCase)
+                || string.Equals(normalizedType, "microsoft.graph.agentIdentity", StringComparison.OrdinalIgnoreCase))
+            {
+                counts.ServicePrincipalCount++;
+            }
+            else if (string.Equals(normalizedType, "microsoft.graph.device", StringComparison.OrdinalIgnoreCase))
+            {
+                counts.DeviceCount++;
+            }
+            else if (string.Equals(normalizedType, "microsoft.graph.orgContact", StringComparison.OrdinalIgnoreCase))
+            {
+                counts.ContactCount++;
+            }
+            else if (string.Equals(normalizedType, "microsoft.graph.group", StringComparison.OrdinalIgnoreCase))
+            {
+                counts.GroupCount++;
+            }
+            else
+            {
+                counts.OtherCount++;
             }
         }
 

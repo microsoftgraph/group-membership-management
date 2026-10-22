@@ -28,5 +28,16 @@ namespace Repositories.Contracts.Constants
         // Discriminator that segments channel-path RUU from group-path RUU on the
         // ResourceUnitsUsed metric and ResourceUnitsUsedByType event (FR-RUU-001).
         public const string MembershipTypeDimensionName = "MembershipType";
+
+        // Distinguishes resource units read from the x-ms-resource-unit response header from
+        // estimates (for example the fixed delta-query cost) on the group-membership
+        // path only: an opt-in ResourceUnitsUsedByType event property and ResourceUnitsBySourceMetricName (FR-020).
+        public const string ResourceUnitSourceDimensionName = "ResourceUnitSource";
+        public const string ResourceUnitSourceHeader = "Header";
+        public const string ResourceUnitSourceEstimated = "Estimated";
+
+        // Group-membership-only metric that carries the source dimension, so the shared
+        // ResourceUnitsUsed metric keeps its existing identity for every other caller.
+        public const string ResourceUnitsBySourceMetricName = "GroupMembershipResourceUnitsBySource";
     }
 }

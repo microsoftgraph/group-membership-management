@@ -39,6 +39,7 @@ namespace Repositories.RetryPolicyProvider
                     onRetryAsync: async (response, timeSpan, retryCount, context) =>
                     {
                         _retryPolicyProviderLogger.LogWarningWithRunId(runId, $"Throttled by Graph for the timespan: {timeSpan}. The retry count is {retryCount}.");
+                        response.Result?.Dispose();
 
                         await Task.CompletedTask;
                     });
@@ -59,9 +60,10 @@ namespace Repositories.RetryPolicyProvider
                 .WaitAndRetryAsync(
                     _maxGraphServiceAttempts.MaxExceptionHandlingAttempts,
                     retryAttempt => TimeSpan.FromSeconds(Math.Pow(2, retryAttempt)),
-                    onRetryAsync: async (timeSpan, retryCount, context) =>
+                    onRetryAsync: async (response, timeSpan, retryCount, context) =>
                     {
                         _retryPolicyProviderLogger.LogInformationWithRunId(runId, $"Exponential backoff {retryCount}.");
+                        response.Result?.Dispose();
 
                         await Task.CompletedTask;
                     });

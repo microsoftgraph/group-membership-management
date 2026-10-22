@@ -33,6 +33,7 @@ using Repositories.EntityFramework.Contexts;
 using Repositories.GraphGroups;
 using Repositories.Localization;
 using Repositories.NotificationsRepository;
+using Repositories.RetryPolicyProvider;
 using Repositories.ServiceBusQueue;
 using Repositories.ServiceStatus;
 using Repositories.SqlMembershipRepository;
@@ -104,7 +105,9 @@ namespace WebApi
                     .Select("PendingConfiguration:*")
                     .Select("AutoApprover:*")
                     .Select("TeamsChannel:*")
-                    .Select("AzureMaintenance:*");
+                    .Select("AzureMaintenance:*")
+                    .Select("MaxRetryAfterAttempts")
+                    .Select("MaxExceptionHandlingAttempts");
             });
 
             // Add services to the container.
@@ -314,15 +317,7 @@ namespace WebApi
 
             builder.Services.AddScoped<INotificationRepository, NotificationRepository>();
 
-            builder.Services.Configure<GraphCredentials>(options =>
-            {
-                builder.Configuration.GetSection("Settings:GraphCredentials").Bind(options);
-                options.AppRegistrationName = builder.Configuration["GraphAPI:GraphAppName"];
-                options.UAMIName = builder.Configuration["GraphAPI:GraphUAMIName"];
-            });
-
-            builder.Services.AddGraphAPIClient()
-            .AddScoped<IGraphGroupRepository, GraphGroupRepository>();
+            ConfigureGraphRepository(builder.Services, builder.Configuration);
 
             builder.Services.AddSingleton<ITeamsChannelConfig>(services =>
             {
@@ -631,6 +626,39 @@ namespace WebApi
                 .ExcludeFromDescription();
 
             app.Run();
+        }
+
+        internal static void ConfigureGraphRepository(
+            IServiceCollection services,
+            IConfiguration configuration)
+        {
+            services.AddOptions<GraphServiceAttemptsValue>().Configure<IConfiguration>((settings, currentConfiguration) =>
+            {
+                settings.MaxRetryAfterAttempts = GetIntSetting(
+                    currentConfiguration,
+                    "MaxRetryAfterAttempts",
+                    4);
+                settings.MaxExceptionHandlingAttempts = GetIntSetting(
+                    currentConfiguration,
+                    "MaxExceptionHandlingAttempts",
+                    2);
+            });
+            services.AddSingleton<IGraphServiceAttemptsValue>(serviceProvider =>
+            {
+                var options = serviceProvider.GetRequiredService<IOptions<GraphServiceAttemptsValue>>();
+                return new GraphServiceAttemptsValue(
+                    options.Value.MaxRetryAfterAttempts,
+                    options.Value.MaxExceptionHandlingAttempts);
+            });
+            services.AddScoped<IRetryPolicyProvider, RetryPolicyProvider>();
+            services.Configure<GraphCredentials>(options =>
+            {
+                configuration.GetSection("Settings:GraphCredentials").Bind(options);
+                options.AppRegistrationName = configuration["GraphAPI:GraphAppName"];
+                options.UAMIName = configuration["GraphAPI:GraphUAMIName"];
+            });
+            services.AddGraphAPIClient()
+                .AddScoped<IGraphGroupRepository, GraphGroupRepository>();
         }
 
         private static async Task<ICollection<SecurityKey>> GetSigningKeysFromUrlAsync(string url)

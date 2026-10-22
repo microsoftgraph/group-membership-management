@@ -112,20 +112,24 @@ namespace Repositories.RetryPolicyProvider.Tests
         [DataRow(4)]
         public async Task RetryAfterPolicy_StopsAtConfiguredLimit(int retryAttempts)
         {
-            using var response = new HttpResponseMessage(HttpStatusCode.TooManyRequests);
+            var responses = Enumerable.Range(0, retryAttempts + 1)
+                .Select(_ => CreateTrackedResponse(HttpStatusCode.TooManyRequests))
+                .ToArray();
             var attempts = 0;
 
             var result = await CreateProvider(retryAttempts).CreateRetryAfterPolicy(null)
                 .ExecuteAsync(() =>
                 {
-                    attempts++;
-                    return Task.FromResult(response);
+                    return Task.FromResult(responses[attempts++].Response);
                 });
 
-            Assert.AreSame(response, result);
+            Assert.AreSame(responses[^1].Response, result);
             Assert.AreEqual(retryAttempts + 1, attempts);
             CollectionAssert.AreEqual(
                 Enumerable.Repeat(TimeSpan.FromSeconds(150), retryAttempts).ToArray(), _delays);
+            Assert.IsTrue(responses.Take(retryAttempts).All(response => response.Content.IsDisposed));
+            Assert.IsFalse(responses[^1].Content.IsDisposed);
+            result.Dispose();
         }
 
         [DataTestMethod]
@@ -180,21 +184,84 @@ namespace Repositories.RetryPolicyProvider.Tests
         [DataRow(HttpStatusCode.BadGateway)]
         [DataRow(HttpStatusCode.ServiceUnavailable)]
         [DataRow(HttpStatusCode.GatewayTimeout)]
-        public async Task ExceptionPolicy_PreservesTransientStatusRetries(HttpStatusCode statusCode)
+        public async Task ExceptionPolicy_DisposesRejectedResponseBeforeNextAttemptAndPreservesFinalResponse(
+            HttpStatusCode statusCode)
         {
-            using var response = new HttpResponseMessage(statusCode);
+            var responses = Enumerable.Range(0, 3)
+                .Select(_ => CreateTrackedResponse(statusCode))
+                .ToArray();
             var attempts = 0;
 
             var result = await CreateProvider().CreateExceptionHandlingPolicy(null)
                 .ExecuteAsync(() =>
                 {
-                    attempts++;
-                    return Task.FromResult(response);
+                    if (attempts > 0)
+                    {
+                        Assert.IsTrue(responses[attempts - 1].Content.IsDisposed);
+                    }
+
+                    return Task.FromResult(responses[attempts++].Response);
                 });
 
-            Assert.AreSame(response, result);
+            Assert.AreSame(responses[^1].Response, result);
             Assert.AreEqual(3, attempts);
             CollectionAssert.AreEqual(new[] { TimeSpan.FromSeconds(2), TimeSpan.FromSeconds(4) }, _delays);
+            Assert.IsTrue(responses.Take(2).All(response => response.Content.IsDisposed));
+            Assert.IsFalse(responses[^1].Content.IsDisposed);
+            result.Dispose();
+        }
+
+        [TestMethod]
+        public async Task RetryAfterPolicy_CancellationDuringWait_DisposesRejectedResponse()
+        {
+            using var cancellationSource = new CancellationTokenSource();
+            var sleepStarted = new TaskCompletionSource<bool>(
+                TaskCreationOptions.RunContinuationsAsynchronously);
+            SystemClock.SleepAsync = async (_, cancellationToken) =>
+            {
+                sleepStarted.TrySetResult(true);
+                await Task.Delay(Timeout.InfiniteTimeSpan, cancellationToken);
+            };
+            var throttled = CreateTrackedResponse(HttpStatusCode.TooManyRequests);
+
+            var execution = CreateProvider(1).CreateRetryAfterPolicy(null)
+                .ExecuteAsync(
+                    _ => Task.FromResult(throttled.Response),
+                    cancellationSource.Token);
+            await sleepStarted.Task.WaitAsync(TimeSpan.FromSeconds(5));
+
+            Assert.IsTrue(throttled.Content.IsDisposed);
+            cancellationSource.Cancel();
+            await Assert.ThrowsExceptionAsync<TaskCanceledException>(() => execution);
+        }
+
+        [DataTestMethod]
+        [DataRow(HttpStatusCode.InternalServerError)]
+        [DataRow(HttpStatusCode.BadGateway)]
+        [DataRow(HttpStatusCode.ServiceUnavailable)]
+        [DataRow(HttpStatusCode.GatewayTimeout)]
+        public async Task ExceptionPolicy_CancellationDuringWait_DisposesRejectedResponse(
+            HttpStatusCode statusCode)
+        {
+            using var cancellationSource = new CancellationTokenSource();
+            var sleepStarted = new TaskCompletionSource<bool>(
+                TaskCreationOptions.RunContinuationsAsynchronously);
+            SystemClock.SleepAsync = async (_, cancellationToken) =>
+            {
+                sleepStarted.TrySetResult(true);
+                await Task.Delay(Timeout.InfiniteTimeSpan, cancellationToken);
+            };
+            var rejectedResponse = CreateTrackedResponse(statusCode);
+
+            var execution = CreateProvider(1).CreateExceptionHandlingPolicy(null)
+                .ExecuteAsync(
+                    _ => Task.FromResult(rejectedResponse.Response),
+                    cancellationSource.Token);
+            await sleepStarted.Task.WaitAsync(TimeSpan.FromSeconds(5));
+
+            Assert.IsTrue(rejectedResponse.Content.IsDisposed);
+            cancellationSource.Cancel();
+            await Assert.ThrowsExceptionAsync<TaskCanceledException>(() => execution);
         }
 
         [TestMethod]
@@ -239,6 +306,44 @@ namespace Repositories.RetryPolicyProvider.Tests
             var attempts = Mock.Of<IGraphServiceAttemptsValue>(value =>
                 value.MaxRetryAfterAttempts == retryAttempts && value.MaxExceptionHandlingAttempts == 2);
             return new RetryPolicyProvider(NullLogger<RetryPolicyProvider>.Instance, attempts);
+        }
+
+        private static TrackedResponse CreateTrackedResponse(HttpStatusCode statusCode)
+        {
+            var content = new TrackingHttpContent();
+            return new TrackedResponse(
+                new HttpResponseMessage(statusCode) { Content = content },
+                content);
+        }
+
+        private sealed record TrackedResponse(
+            HttpResponseMessage Response,
+            TrackingHttpContent Content);
+
+        private sealed class TrackingHttpContent : HttpContent
+        {
+            private bool _disposed;
+
+            public bool IsDisposed => _disposed;
+
+            protected override Task SerializeToStreamAsync(
+                Stream stream,
+                TransportContext? context)
+            {
+                return Task.CompletedTask;
+            }
+
+            protected override bool TryComputeLength(out long length)
+            {
+                length = 0;
+                return true;
+            }
+
+            protected override void Dispose(bool disposing)
+            {
+                _disposed = true;
+                base.Dispose(disposing);
+            }
         }
     }
 }

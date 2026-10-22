@@ -52,8 +52,10 @@ namespace Repositories.Contracts.Helpers
                                                                               ILogger logger,
                                                                               TelemetryClient telemetryClient,
                                                                               GraphOperationType operationType = GraphOperationType.Read,
-                                                                              string membershipType = null)
+                                                                              string membershipType = null,
+                                                                              string resourceUnitSource = null)
         {
+            // resourceUnitSource is opt-in: when null (every pre-existing caller) the telemetry is exactly as before.
             var resolvedRunId = CorrelationActivity.ResolveRunId(runId);
             var resolvedMembershipType = string.IsNullOrEmpty(membershipType) ? "Unknown" : membershipType;
 
@@ -79,7 +81,7 @@ namespace Repositories.Contracts.Helpers
 
             logger.LogInformation("Resource unit cost of {QueryType} is {ResourceUnitsUsed}", queryType, ruu.Value);
 
-            TrackResourceUnitsUsedByTypeEvent(telemetryClient, ruu.Value, queryType, resolvedRunId, resolvedMembershipType);
+            TrackResourceUnitsUsedByTypeEvent(telemetryClient, ruu.Value, queryType, resolvedRunId, resolvedMembershipType, resourceUnitSource);
             telemetryClient.GetMetric(TelemetryConstants.ResourceUnitsMetricName, TelemetryConstants.OperationTypeDimensionName, TelemetryConstants.QueryTypeDimensionName, TelemetryConstants.MembershipTypeDimensionName)
                            .TrackValue(ruu.Value, operationType.ToString(), queryType.ToString(), resolvedMembershipType);
 
@@ -105,7 +107,8 @@ namespace Repositories.Contracts.Helpers
                                                               int ruu,
                                                               QueryType queryType,
                                                               Guid? runId,
-                                                              string membershipType = null)
+                                                              string membershipType = null,
+                                                              string resourceUnitSource = null)
         {
             var resolvedRunId = CorrelationActivity.ResolveRunId(runId);
 
@@ -121,6 +124,11 @@ namespace Repositories.Contracts.Helpers
                 { TelemetryConstants.QueryTypeDimensionName, queryType.ToString() },
                 { TelemetryConstants.MembershipTypeDimensionName, string.IsNullOrEmpty(membershipType) ? "Unknown" : membershipType }
             };
+
+            if (resourceUnitSource != null)
+            {
+                ruuByTypeEvent[TelemetryConstants.ResourceUnitSourceDimensionName] = resourceUnitSource;
+            }
 
             telemetryClient.TrackEvent(TelemetryConstants.ResourceUnitsEventName, ruuByTypeEvent);
         }
