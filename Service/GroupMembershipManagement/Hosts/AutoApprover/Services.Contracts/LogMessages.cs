@@ -62,6 +62,14 @@ namespace Hosts.AutoApprover
             Message = "Sync job {SyncJobId} auto-approved.")]
         public static partial void SyncJobAutoApproved(this ILogger logger, Guid syncJobId);
 
+        [LoggerMessage(EventId = 250155, Level = LogLevel.Information,
+            Message = "Configuration-only update to sync job {SyncJobId} auto-approved without re-evaluating the unchanged query")]
+        public static partial void ConfigurationUpdateAutoApproved(this ILogger logger, Guid syncJobId);
+
+        [LoggerMessage(EventId = 250151, Level = LogLevel.Warning,
+            Message = "Configuration-only update message for sync job {SyncJobId} ignored: its query snapshot is missing or differs from the current query")]
+        public static partial void StaleConfigurationUpdateIgnored(this ILogger logger, Guid syncJobId);
+
         [LoggerMessage(EventId = 250106, Level = LogLevel.Error,
             Message = "Error during auto-approval check.")]
         public static partial void AutoApprovalCheckError(this ILogger logger, Exception exception);

@@ -2077,7 +2077,107 @@ namespace Services.Tests
         }
 
         [TestMethod]
-        public async Task JobReviewed_UpdateOriginAutoApproval_EmitsUpdateRequestTypeAsync()
+        public async Task ProcessAutoApproval_ConfigUpdate_ApprovesWithoutQueryRulesOrReschedulingAsync()
+        {
+            var m = ApprovableGroupSubmission();
+            var startDate = DateTime.UtcNow.AddDays(-10);
+            var scheduledDate = DateTime.UtcNow.AddDays(2);
+            var lastRun = DateTime.UtcNow.AddDays(-1);
+            m.Job.StartDate = startDate;
+            m.Job.ScheduledDate = scheduledDate;
+            m.Job.LastRunTime = lastRun;
+            m.Job.LastSuccessfulRunTime = lastRun;
+            m.Job.Query = "legacy query not parseable";
+            var channel = new CapturingTelemetryChannel();
+            var service = CreateService(m.Jobs, m.Settings, m.Graph, m.Changes, m.Logger, telemetryChannel: channel);
+            var message = new AutoApprovalQueueMessage
+            {
+                SyncJobId = m.SyncJobId,
+                RequestorObjectId = m.RequestorId,
+                RequestorDisplayName = "Requestor",
+                Origin = AutoApprovalOrigin.ConfigUpdate,
+                ConfigurationQuery = m.Job.Query
+            };
+            var roundTrip = System.Text.Json.JsonSerializer.Deserialize<AutoApprovalQueueMessage>(
+                System.Text.Json.JsonSerializer.Serialize(message));
+            Assert.AreEqual(AutoApprovalOrigin.ConfigUpdate, roundTrip.Origin);
+            Assert.AreEqual(0, (int)AutoApprovalOrigin.Onboarding);
+            Assert.AreEqual(1, (int)AutoApprovalOrigin.Update);
+            Assert.AreEqual(2, (int)AutoApprovalOrigin.ConfigUpdate);
+
+            await service.ProcessAutoApprovalAsync(roundTrip);
+            await service.ProcessAutoApprovalAsync(roundTrip); // Redelivery must not count a second approval.
+
+            Assert.AreEqual(SyncStatus.Idle.ToString(), m.Job.Status);
+            Assert.AreEqual(startDate, m.Job.StartDate);
+            Assert.AreEqual(scheduledDate, m.Job.ScheduledDate);
+            Assert.AreEqual(lastRun, m.Job.LastRunTime);
+            Assert.AreEqual(lastRun, m.Job.LastSuccessfulRunTime);
+            m.Settings.VerifyNoOtherCalls();
+            m.Graph.VerifyNoOtherCalls();
+            m.Changes.Verify(x => x.Save(It.Is<SyncJobChange>(c =>
+                c.ChangeReason == SyncJobChangeReason.UpdateAutoApproved.ToString())), Times.Once);
+            var properties = channel.GetMetrics("JobReviewed").Single().Properties;
+            Assert.AreEqual("Update", properties["RequestType"]);
+            Assert.AreEqual("AutoApprover", properties["ReviewerId"]);
+            Assert.AreEqual("Approved", properties["Outcome"]);
+        }
+
+        [TestMethod]
+        [DataRow(null)]
+        [DataRow("previous query")]
+        public async Task ProcessAutoApproval_ConfigUpdate_MissingOrStaleQuery_DoesNotProcessNewerSubmissionAsync(string? submittedQuery)
+        {
+            var m = ApprovableGroupSubmission();
+            var channel = new CapturingTelemetryChannel();
+            var service = CreateService(m.Jobs, m.Settings, m.Graph, m.Changes, m.Logger, telemetryChannel: channel);
+
+            await service.ProcessAutoApprovalAsync(new AutoApprovalQueueMessage
+            {
+                SyncJobId = m.SyncJobId,
+                RequestorObjectId = m.RequestorId,
+                Origin = AutoApprovalOrigin.ConfigUpdate,
+                ConfigurationQuery = submittedQuery
+            });
+
+            Assert.AreEqual(SyncStatus.PendingAutoApproval.ToString(), m.Job.Status);
+            m.Jobs.Verify(x => x.UpdateSyncJobsAsync(It.IsAny<IEnumerable<SyncJob>>(), It.IsAny<SyncStatus?>()), Times.Never);
+            m.Changes.Verify(x => x.Save(It.IsAny<SyncJobChange>()), Times.Never);
+            m.Settings.VerifyNoOtherCalls();
+            m.Graph.VerifyNoOtherCalls();
+            Assert.AreEqual(0, channel.GetMetrics("JobReviewed").Count);
+        }
+
+        [TestMethod]
+        [DataRow(SyncStatus.CustomerPaused)]
+        [DataRow(SyncStatus.DeveloperPaused)]
+        [DataRow(SyncStatus.SubmissionRejected)]
+        [DataRow(SyncStatus.Error)]
+        [DataRow(SyncStatus.PendingReview)]
+        public async Task ProcessAutoApproval_ConfigUpdate_StatusChangedBeforeProcessing_IsNotApprovedAsync(SyncStatus status)
+        {
+            var m = ApprovableGroupSubmission();
+            m.Job.Status = status.ToString();
+            var channel = new CapturingTelemetryChannel();
+            var service = CreateService(m.Jobs, m.Settings, m.Graph, m.Changes, m.Logger, telemetryChannel: channel);
+
+            await service.ProcessAutoApprovalAsync(new AutoApprovalQueueMessage
+            {
+                SyncJobId = m.SyncJobId,
+                RequestorObjectId = m.RequestorId,
+                Origin = AutoApprovalOrigin.ConfigUpdate
+            });
+
+            Assert.AreEqual(status.ToString(), m.Job.Status);
+            m.Jobs.Verify(x => x.UpdateSyncJobsAsync(It.IsAny<IEnumerable<SyncJob>>(), It.IsAny<SyncStatus?>()), Times.Never);
+            m.Changes.Verify(x => x.Save(It.IsAny<SyncJobChange>()), Times.Never);
+            Assert.AreEqual(0, channel.GetMetrics("JobReviewed").Count);
+        }
+
+        [TestMethod]
+        [DataRow(AutoApprovalOrigin.Update)]
+        [DataRow(AutoApprovalOrigin.ConfigUpdate)]
+        public async Task JobReviewed_UpdateOriginAutoApproval_EmitsUpdateRequestTypeAsync(AutoApprovalOrigin origin)
         {
             var m = ApprovableGroupSubmission();
             var channel = new CapturingTelemetryChannel();
@@ -2087,7 +2187,8 @@ namespace Services.Tests
             {
                 SyncJobId = m.SyncJobId,
                 RequestorObjectId = m.RequestorId,
-                Origin = AutoApprovalOrigin.Update
+                Origin = origin,
+                ConfigurationQuery = origin == AutoApprovalOrigin.ConfigUpdate ? m.Job.Query : null
             });
 
             var properties = channel.GetMetrics("JobReviewed").Single().Properties;
@@ -2210,7 +2311,9 @@ namespace Services.Tests
         }
 
         [TestMethod]
-        public async Task JobReviewed_AuditSaveFailsAndJobIsReverted_EmitsNothingAsync()
+        [DataRow(AutoApprovalOrigin.Onboarding)]
+        [DataRow(AutoApprovalOrigin.ConfigUpdate)]
+        public async Task JobReviewed_AuditSaveFailsAndJobIsReverted_EmitsNothingAsync(AutoApprovalOrigin origin)
         {
             var m = ApprovableGroupSubmission();
             m.Changes.Setup(x => x.Save(It.IsAny<SyncJobChange>())).ThrowsAsync(new InvalidOperationException("Save failed"));
@@ -2219,7 +2322,13 @@ namespace Services.Tests
             var service = CreateService(m.Jobs, m.Settings, m.Graph, m.Changes, m.Logger, telemetryChannel: channel);
 
             await Assert.ThrowsExceptionAsync<InvalidOperationException>(() =>
-                service.ProcessAutoApprovalAsync(Message(m.SyncJobId, m.RequestorId)));
+                service.ProcessAutoApprovalAsync(new AutoApprovalQueueMessage
+                {
+                    SyncJobId = m.SyncJobId,
+                    RequestorObjectId = m.RequestorId,
+                    Origin = origin,
+                    ConfigurationQuery = origin == AutoApprovalOrigin.ConfigUpdate ? m.Job.Query : null
+                }));
 
             // The approval was undone, so counting it would break reconciliation against SyncJobChanges.
             Assert.AreEqual(0, channel.GetMetrics("JobReviewed").Count);

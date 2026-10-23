@@ -93,11 +93,24 @@ namespace Services.AutoApprover
                 return;
             }
 
-            var isGroupBasedAutoApprovalEnabled = await IsAutoApprovalForGroupBasedSyncsEnabledAsync();
-            var isOrgLeaderAutoApprovalEnabled = await IsAutoApprovalForRequestorIsOrgLeaderSyncsEnabledAsync();
-            _logger.AutoApprovalModesResolved(isGroupBasedAutoApprovalEnabled, isOrgLeaderAutoApprovalEnabled);
-
-            var shouldAutoApprove = await ShouldAutoApproveJobAsync(syncJob.Query, message.RequestorObjectId, isGroupBasedAutoApprovalEnabled, isOrgLeaderAutoApprovalEnabled);
+            // WebApi has already verified that a config-only update leaves the query unchanged.
+            var isConfigurationApproval = message.Origin == AutoApprovalOrigin.ConfigUpdate
+                && message.ConfigurationQuery != null
+                && string.Equals(message.ConfigurationQuery, syncJob.Query, StringComparison.Ordinal);
+            if (message.Origin == AutoApprovalOrigin.ConfigUpdate && !isConfigurationApproval)
+            {
+                // A newer submission owns the current query; never evaluate it as the older requestor.
+                _logger.StaleConfigurationUpdateIgnored(message.SyncJobId);
+                return;
+            }
+            var shouldAutoApprove = isConfigurationApproval;
+            if (!shouldAutoApprove)
+            {
+                var isGroupBasedAutoApprovalEnabled = await IsAutoApprovalForGroupBasedSyncsEnabledAsync();
+                var isOrgLeaderAutoApprovalEnabled = await IsAutoApprovalForRequestorIsOrgLeaderSyncsEnabledAsync();
+                _logger.AutoApprovalModesResolved(isGroupBasedAutoApprovalEnabled, isOrgLeaderAutoApprovalEnabled);
+                shouldAutoApprove = await ShouldAutoApproveJobAsync(syncJob.Query, message.RequestorObjectId, isGroupBasedAutoApprovalEnabled, isOrgLeaderAutoApprovalEnabled);
+            }
 
             if (!shouldAutoApprove)
             {
@@ -111,13 +124,13 @@ namespace Services.AutoApprover
             {
                 // The onboarding path pushes StartDate out 24h so a freshly onboarded job does not run immediately.
                 // An update-originated approval must never expedite or reschedule an existing job, so the +24h push
-                // is skipped entirely for Origin == Update (FR-017).
+                // is skipped for both update origins (FR-017).
                 syncJob.StartDate = DateTime.UtcNow.AddHours(24);
             }
 
             syncJob.Status = SyncStatus.Idle.ToString();
 
-            var changeReason = message.Origin == AutoApprovalOrigin.Update
+            var changeReason = message.Origin is AutoApprovalOrigin.Update or AutoApprovalOrigin.ConfigUpdate
                 ? SyncJobChangeReason.UpdateAutoApproved
                 : SyncJobChangeReason.OnboardingAutoApproved;
 
@@ -165,6 +178,10 @@ namespace Services.AutoApprover
             }
 
             _logger.SyncJobAutoApproved(message.SyncJobId);
+            if (isConfigurationApproval)
+            {
+                _logger.ConfigurationUpdateAutoApproved(message.SyncJobId);
+            }
 
             // Emitted only once the approval and its audit row are durably persisted, so the dashboard
             // count reconciles one-to-one with the OnboardingAutoApproved / UpdateAutoApproved rows in
