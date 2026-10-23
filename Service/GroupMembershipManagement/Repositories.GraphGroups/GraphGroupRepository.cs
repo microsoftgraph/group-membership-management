@@ -21,6 +21,7 @@ namespace Repositories.GraphGroups
     {
         private readonly ILogger<GraphGroupRepository> _graphGroupRepositoryLogger;
         private readonly GraphGroupInformationRepository _graphGroupInformationReader;
+        private readonly GraphGroupWriter _graphGroupWriter;
         private readonly GraphGroupOwnerReader _graphGroupOwnerReader;
         private readonly GraphUserReader _graphUserReader;
         private readonly GraphGroupMembershipReader _graphGroupMembershipReader;
@@ -58,6 +59,11 @@ namespace Repositories.GraphGroups
                 graphServiceClient,
                 graphGroupMetricTracker,
                 loggerFactory?.CreateLogger<GraphGroupInformationRepository>() ?? NullLogger<GraphGroupInformationRepository>.Instance);
+            _graphGroupWriter = new GraphGroupWriter(
+                graphServiceClient,
+                graphGroupMetricTracker,
+                _graphGroupInformationReader,
+                loggerFactory?.CreateLogger<GraphGroupWriter>() ?? NullLogger<GraphGroupWriter>.Instance);
             _graphGroupOwnerReader = new GraphGroupOwnerReader(
                 graphServiceClient,
                 graphGroupMetricTracker,
@@ -204,12 +210,12 @@ namespace Repositories.GraphGroups
 
         public async Task<AzureADGroup> CreateGroup(string newGroupName, TestGroupType testGroupType)
         {
-            return await _graphGroupInformationReader.CreateGroupAsync(newGroupName, testGroupType, ResolveRunId());
+            return await _graphGroupWriter.CreateGroupAsync(newGroupName, testGroupType, ResolveRunId());
         }
 
         public async Task AddGroupOwners(string groupId, List<Guid> ownerIds)
         {
-            await _graphGroupInformationReader.AddGroupOwnersAsync(groupId, ownerIds, ResolveRunId());
+            await _graphGroupWriter.AddGroupOwnersAsync(groupId, ownerIds, ResolveRunId());
         }
 
         public async Task<List<Guid>> GetGroupIdsOwnedByServicePrincipalAsync(Guid servicePrincipalObjectId)
@@ -222,7 +228,7 @@ namespace Repositories.GraphGroups
             var runId = ResolveRunId();
             var gmmOwnerObjectId = await ResolveGmmOwnerObjectIdAsync(runId);
 
-            return await _graphGroupInformationReader.CreateGroupFromUIAsync(groupName, groupOwnerId, groupAlias, gmmOwnerObjectId, groupType, runId, description);
+            return await _graphGroupWriter.CreateGroupFromUIAsync(groupName, groupOwnerId, groupAlias, gmmOwnerObjectId, groupType, runId, description);
         }
 
         /// <summary>
