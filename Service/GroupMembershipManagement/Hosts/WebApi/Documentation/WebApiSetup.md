@@ -84,6 +84,34 @@ The roles are:
     - Users with this role can view **AI-generated sync explanations** for all destinations in the tenant.
     - Group owners can always see AI explanations for their own groups without this role.
 
+## Job PATCH fields
+
+The shared handler for `/api/v1/jobDetails/{syncJobId}/update`, `/enable`,
+`/review`, and `/scheduleNow` honors the fields used by the UI:
+`Query`, `StartDate`, `Period`, `ThresholdPercentageForAdditions`,
+`ThresholdPercentageForRemovals`, `Titles`, `LastModifiedOnBehalfOfDisplayName`,
+`LastModifiedOnBehalfOfObjectId`, `Status`, `ScheduledDate`, and
+`IgnoreThresholdOnce`. Existing workflow, role, and feature restrictions still apply;
+for example, ordinary updates cannot directly select their approval status.
+
+Operations targeting `RunId`, `Requestor`,
+`AllowEmptyDestination`, `LastRunTime`, `LastSuccessfulRunTime`,
+`LastSuccessfulStartTime`, `IsDryRunEnabled`, `DryRunTimeStamp`, `ChangeReason`,
+or `BusinessJustification` are accepted but ignored before approval classification
+and persistence, including nested paths under these fields. Their stored values
+are preserved. Matching is case-insensitive. This applies whether or not the
+AutoApprover queue is available. Destination identity patches (`Destination` and
+`TargetOfficeGroupId`) are rejected with `DestinationCannotBeChanged`, not ignored.
+
+Request-level `changeReason` and `businessJustification` remain supported and
+continue to control the workflow and audit metadata. Ignoring a patch field does
+not remove its stored model property or downstream service behavior. Requests
+containing only ignored fields follow the existing empty-patch workflow; they
+are not guaranteed to be a no-op for status or audit history.
+
+The controller continues to accept `replace`, `add`, and `remove`; unsupported
+operation types and unknown property paths are not made valid by this policy.
+
 ## Configured-attribute approval configuration API
 
 The draft configured-attribute configuration backend uses

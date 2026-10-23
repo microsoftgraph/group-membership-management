@@ -38,6 +38,21 @@ namespace Services.WebApi
         private readonly IServiceBusQueueRepository? _autoApproverQueueRepository;
         private readonly TelemetryClient _telemetryClient;
 
+        // Retain compatibility with old payloads without allowing non-UI fields to affect updates or approval routing.
+        private static readonly HashSet<string> IgnoredPatchPaths = new(StringComparer.OrdinalIgnoreCase)
+        {
+            "/RunId",
+            "/Requestor",
+            "/AllowEmptyDestination",
+            "/LastRunTime",
+            "/LastSuccessfulRunTime",
+            "/LastSuccessfulStartTime",
+            "/IsDryRunEnabled",
+            "/DryRunTimeStamp",
+            "/ChangeReason",
+            "/BusinessJustification"
+        };
+
         // Only these configuration fields may bypass human review; /Query is classified separately.
         private static readonly HashSet<string> AutoApprovableConfigurationPaths = new(StringComparer.OrdinalIgnoreCase)
         {
@@ -47,8 +62,6 @@ namespace Services.WebApi
             "/IgnoreThresholdOnce",
             "/ThresholdPercentageForAdditions",
             "/ThresholdPercentageForRemovals",
-            "/IsDryRunEnabled",
-            "/DryRunTimeStamp",
             "/Titles",
             "/Status",
             "/LastModifiedOnBehalfOfDisplayName",
@@ -122,6 +135,14 @@ namespace Services.WebApi
                 response.ErrorCode = "JobInProgress";
                 return response;
             }
+
+            request.PatchDocument.Operations.RemoveAll(operation =>
+            {
+                if (string.IsNullOrEmpty(operation.path)) return false;
+                var nestedPathIndex = operation.path.IndexOf('/', 1);
+                var rootPath = nestedPathIndex < 0 ? operation.path : operation.path[..nestedPathIndex];
+                return IgnoredPatchPaths.Contains(rootPath);
+            });
 
             var isAITitleEnabled = await IsAITitleEnabledAsync();
 
@@ -313,7 +334,7 @@ namespace Services.WebApi
             // Handle General Update
             if (request.ChangeReason == SyncJobChangeReason.Update.ToString())
             {
-                // Capture the status the job had before this edit; the config-only fast path must preserve it.
+                // Configuration updates must not resume paused, rejected, or errored jobs.
                 var preEditStatus = syncJob.Status;
 
                 if (_autoApproverQueueRepository == null)
@@ -361,50 +382,47 @@ namespace Services.WebApi
                             || JsonParser.CompareQueries(syncJob.Query, finalQuery) != JsonParser.QueryEquivalence.Equal;
                     }
 
-                    // A configuration-only submission may only touch the allowlist of low-risk fields. Any operation
-                    // on a non-allowlisted field (e.g. /Destination or /TargetOfficeGroupId, which redirect the sync
-                    // to a group the requester may not own — authorization above validated the ORIGINAL group only)
-                    // must fall back to human review rather than the auto-approval fast path.
+                    // Classify only effective operations; ignored fields have already been removed.
+                    // Status and on-behalf attribution still fall back to human review.
                     var touchesOnlyAllowlistedNonQueryFields = request.PatchDocument.Operations
                         .Where(op => !string.Equals(op.path, "/Query", StringComparison.OrdinalIgnoreCase))
                         .All(op => AutoApprovableConfigurationPaths.Contains(op.path ?? string.Empty));
 
                     var isConfigurationOnly = !isQueryChanged && touchesOnlyAllowlistedNonQueryFields;
 
-                    // Status preservation only makes sense for operational jobs. A job that is not currently
-                    // Idle or CustomerPaused (for example one a reviewer previously left in SubmissionRejected, or
-                    // an errored job) must not be silently auto-approved back into a non-schedulable, non-reviewable
-                    // state — that would strand it while telling the submitter it was approved. Such edits fall back
-                    // to today's PendingReview behavior so a human re-evaluates them.
-                    var canPreserveStatus = preEditStatus == SyncStatus.Idle.ToString()
-                        || preEditStatus == SyncStatus.CustomerPaused.ToString();
+                    var canAutoApproveConfiguration = preEditStatus is nameof(SyncStatus.Idle)
+                        or nameof(SyncStatus.ThresholdExceeded);
+                    var preserveConfigurationStatus = preEditStatus is nameof(SyncStatus.Error)
+                        or nameof(SyncStatus.MembershipDataNotFound)
+                        or nameof(SyncStatus.DestinationGroupNotFound)
+                        or nameof(SyncStatus.NotOwnerOfDestinationGroup)
+                        or nameof(SyncStatus.SourceGroupNotFound)
+                        or nameof(SyncStatus.FilePathNotValid)
+                        or nameof(SyncStatus.QueryNotValid)
+                        or nameof(SyncStatus.FileNotFound)
+                        or nameof(SyncStatus.CustomerPaused)
+                        or nameof(SyncStatus.ErroredDueToStuckInProgress)
+                        or nameof(SyncStatus.TeamsChannelNotDestination)
+                        or nameof(SyncStatus.DestinationQueryNotValid)
+                        or nameof(SyncStatus.GuestUsersCannotBeAddedToUnifiedGroup)
+                        or nameof(SyncStatus.StandardTeamsChannel)
+                        or nameof(SyncStatus.TeamsChannelError)
+                        or nameof(SyncStatus.SchemaError)
+                        or nameof(SyncStatus.TransientError)
+                        or nameof(SyncStatus.DeveloperPaused)
+                        or nameof(SyncStatus.SubmissionRejected)
+                        or nameof(SyncStatus.NestedGroupsFound)
+                        or nameof(SyncStatus.ManagerNotFound);
 
-                    if (isConfigurationOnly && canPreserveStatus)
+                    if (isConfigurationOnly && preserveConfigurationStatus)
                     {
-                        // Config-only fast path: apply the change, preserve the pre-edit status (do NOT resume a paused
-                        // job), audit with UpdateAutoApproved, and notify only the submitter. The handler forces no
-                        // timing field, so nothing here expedites the sync (FR-010, FR-011).
-                        var result = await ValidateAndUpdateSyncJob(request, syncJob, syncJobChange, preEditStatus, SyncJobChangeReason.UpdateAutoApproved.ToString());
+                        // Saving configuration is not an approval or a recovery from an error/paused/rejected state.
+                        var result = await ValidateAndUpdateSyncJob(request, syncJob, syncJobChange, preEditStatus);
                         if (result != null) return result;
-
-                        _logger.ConfigurationUpdateAutoApproved(request.SyncJobId);
-
-                        // This path approves an update outright inside the WebApi, so the AutoApprover host
-                        // never sees it and would otherwise leave it out of the auto-review figures entirely.
-                        // Always an update: the fast path is reachable only from the Update change reason.
-                        JobReviewedTelemetryHelper.TrackAutoApproval(
-                            _telemetryClient,
-                            request.SyncJobId,
-                            (Guid)groupId,
-                            syncJob.MembershipType,
-                            JobReviewRequestType.Update);
-
-                        await _notificationService.SendSubmissionApprovedNotificationAsync(syncJob, syncJobChange);
+                        _logger.ConfigurationUpdateStatusPreserved(request.SyncJobId, preEditStatus);
                     }
-                    else if (isConfigurationOnly)
+                    else if (isConfigurationOnly && !canAutoApproveConfiguration)
                     {
-                        // Config-only edit to a non-operational job (e.g. SubmissionRejected/error state): route to
-                        // PendingReview exactly as today rather than preserving a status that would strand the job.
                         var result = await ValidateAndUpdateSyncJob(request, syncJob, syncJobChange, SyncStatus.PendingReview.ToString());
                         if (result != null) return result;
                     }
@@ -417,8 +435,7 @@ namespace Services.WebApi
                     }
                     else
                     {
-                        // Query-changing path: route the newly submitted query through the same AutoApprover the
-                        // onboarding producer uses (mirrors PostJobHandler).
+                        // All actual auto-approvals are recorded by the AutoApprover host.
                         var result = await ValidateAndUpdateSyncJob(request, syncJob, syncJobChange, SyncStatus.PendingAutoApproval.ToString());
                         if (result != null) return result;
 
@@ -430,7 +447,8 @@ namespace Services.WebApi
                             ChangedOnBehalfOfDisplayName = changedOnBehalfOfDisplayName,
                             ChangedOnBehalfOfObjectId = changedOnBehalfOfObjectId,
                             BusinessJustification = request.BusinessJustification,
-                            Origin = AutoApprovalOrigin.Update
+                            Origin = isConfigurationOnly ? AutoApprovalOrigin.ConfigUpdate : AutoApprovalOrigin.Update,
+                            ConfigurationQuery = isConfigurationOnly ? syncJob.Query : null
                         };
 
                         var autoApprovalBody = Encoding.UTF8.GetBytes(JsonSerializer.Serialize(autoApprovalMessage));
@@ -625,23 +643,13 @@ namespace Services.WebApi
         {
             return new SyncJobPatch
             {
-                RunId = syncJob.RunId,
-                Requestor = syncJob.Requestor,
-                TargetOfficeGroupId = syncJob.TargetOfficeGroupId,
-                Destination = syncJob.Destination,
-                AllowEmptyDestination = syncJob.AllowEmptyDestination,
                 Status = syncJob.Status,
-                LastRunTime = syncJob.LastRunTime,
-                LastSuccessfulRunTime = syncJob.LastSuccessfulRunTime,
-                LastSuccessfulStartTime = syncJob.LastSuccessfulStartTime,
                 Period = syncJob.Period,
                 Query = syncJob.Query,
                 StartDate = syncJob.StartDate,
                 IgnoreThresholdOnce = syncJob.IgnoreThresholdOnce,
                 ThresholdPercentageForAdditions = syncJob.ThresholdPercentageForAdditions,
                 ThresholdPercentageForRemovals = syncJob.ThresholdPercentageForRemovals,
-                IsDryRunEnabled = syncJob.IsDryRunEnabled,
-                DryRunTimeStamp = syncJob.DryRunTimeStamp,
                 ScheduledDate = syncJob.ScheduledDate,
             };
         }
@@ -649,23 +657,13 @@ namespace Services.WebApi
         private SyncJob MapDtoToEntity(SyncJob syncJob, SyncJobPatch syncJobPatch, Guid syncJobId)
         {
             syncJob.Id = syncJobId;
-            syncJob.RunId = syncJobPatch.RunId;
-            syncJob.Requestor = syncJobPatch.Requestor;
-            syncJob.TargetOfficeGroupId = syncJobPatch.TargetOfficeGroupId;
-            syncJob.Destination = syncJobPatch.Destination;
-            syncJob.AllowEmptyDestination = syncJobPatch.AllowEmptyDestination;
             syncJob.Status = syncJobPatch.Status;
-            syncJob.LastRunTime = syncJobPatch.LastRunTime;
-            syncJob.LastSuccessfulRunTime = syncJobPatch.LastSuccessfulRunTime;
-            syncJob.LastSuccessfulStartTime = syncJobPatch.LastSuccessfulStartTime;
             syncJob.Period = syncJobPatch.Period;
             syncJob.Query = syncJobPatch.Query;
             syncJob.StartDate = syncJobPatch.StartDate;
             syncJob.IgnoreThresholdOnce = syncJobPatch.IgnoreThresholdOnce;
             syncJob.ThresholdPercentageForAdditions = syncJobPatch.ThresholdPercentageForAdditions;
             syncJob.ThresholdPercentageForRemovals = syncJobPatch.ThresholdPercentageForRemovals;
-            syncJob.IsDryRunEnabled = syncJobPatch.IsDryRunEnabled;
-            syncJob.DryRunTimeStamp = syncJobPatch.DryRunTimeStamp;
             syncJob.ScheduledDate = syncJobPatch.ScheduledDate;
 
             return syncJob;
