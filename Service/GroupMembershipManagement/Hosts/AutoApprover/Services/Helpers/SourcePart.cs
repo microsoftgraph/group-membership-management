@@ -159,6 +159,12 @@ namespace Services.AutoApprover.Helpers
         public List<string> Names = new List<string>();
     }
 
+    /// <summary>Whether Sensitive-attribute screening runs on each SqlMembership path.</summary>
+    internal readonly record struct PathScreening(bool OrgLeader, bool LeaderAssistant, bool ConfiguredAttribute)
+    {
+        public bool Any => OrgLeader || LeaderAssistant || ConfiguredAttribute;
+    }
+
     /// <summary>The configured-attribute rule's settings and chain results, cached per submission.</summary>
     internal sealed class ConfiguredAttributeState
     {

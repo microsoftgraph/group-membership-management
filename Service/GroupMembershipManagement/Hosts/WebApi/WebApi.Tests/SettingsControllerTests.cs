@@ -576,6 +576,31 @@ namespace Services.Tests
             _settingsRepository.Verify(x => x.PatchSettingAsync(It.IsAny<SettingKey>(), It.IsAny<string>()), Times.Never());
         }
 
+        [DataTestMethod]
+        [DataRow(SettingKey.IsSensitiveScreeningEnabledForOrgLeader)]
+        [DataRow(SettingKey.IsSensitiveScreeningEnabledForLeaderAssistant)]
+        [DataRow(SettingKey.IsSensitiveScreeningEnabledForConfiguredAttribute)]
+        public async Task PatchPerPathScreeningSettingRequiresAutoApproverRoleTestAsync(SettingKey key)
+        {
+            var forbidden = await _settingsController.PatchSettingAsync(key, "true");
+            Assert.IsInstanceOfType(forbidden, typeof(ForbidResult));
+
+            _settingsController = new SettingsController(_getSettingHandler, _getAllSettingsHandler, _patchSettingHandler, _getSupportEmailHandler)
+            {
+                ControllerContext = CreateControllerContext(new List<Claim>
+                {
+                    new Claim(ClaimTypes.Name, "user@domain.com"),
+                    new Claim(ClaimTypes.Role, Roles.AUTO_APPROVER_ADMINISTRATOR)
+                })
+            };
+            _settingsRepository.Setup(x => x.PatchSettingAsync(key, "true")).Verifiable();
+
+            var allowed = await _settingsController.PatchSettingAsync(key, "true");
+
+            Assert.IsInstanceOfType(allowed, typeof(NoContentResult));
+            _settingsRepository.Verify(x => x.PatchSettingAsync(key, "true"), Times.Once());
+        }
+
         [TestMethod]
         public async Task PatchGeneralSettingWhenUserHasOnlyAutoApproverRoleReturnsForbidTestAsync()
         {

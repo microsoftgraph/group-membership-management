@@ -16,6 +16,9 @@ import settingsReducer, {
   selectIsAutoApprovalForRequestorIsOrgLeaderSyncsEnabled,
   selectIsAutoApprovalForLeaderAssistantEnabled,
   selectIsSensitiveAttributeScreeningEnabled,
+  selectIsSensitiveScreeningEnabledForOrgLeader,
+  selectIsSensitiveScreeningEnabledForLeaderAssistant,
+  selectIsSensitiveScreeningEnabledForConfiguredAttribute,
   selectIsAITitleEnabled,
   selectCopilotSuggestedPrompts,
   selectAreSettingsLoaded,
@@ -203,6 +206,16 @@ describe('settings.slice — selectors', () => {
 
   it('selectIsSensitiveAttributeScreeningEnabled returns undefined when not set', () => {
     expect(selectIsSensitiveAttributeScreeningEnabled(buildRoot())).toBeUndefined();
+  });
+
+  it('per-path screening selectors read their own keys and are undefined when not set', () => {
+    const root = buildRoot([
+      makeSetting(SettingKey.IsSensitiveScreeningEnabledForOrgLeader, 'true'),
+      makeSetting(SettingKey.IsSensitiveScreeningEnabledForConfiguredAttribute, 'false'),
+    ]);
+    expect(selectIsSensitiveScreeningEnabledForOrgLeader(root)).toBe(true);
+    expect(selectIsSensitiveScreeningEnabledForLeaderAssistant(root)).toBeUndefined();
+    expect(selectIsSensitiveScreeningEnabledForConfiguredAttribute(root)).toBe(false);
   });
 
   it('selectIsAITitleEnabled returns true', () => {

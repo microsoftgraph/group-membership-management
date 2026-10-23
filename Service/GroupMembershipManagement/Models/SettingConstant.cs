@@ -34,7 +34,10 @@ namespace Models
             { SettingKey.IsAutoApprovalForLeaderAssistantEnabled, Guid.Parse("8BEC33CB-2123-41D3-83DC-C4E3D790983E") },
             { SettingKey.IsSensitiveAttributeScreeningEnabled, Guid.Parse("4D7F1A93-60B2-45C8-9E31-A0C5B8F2D64E") },
             { SettingKey.IsAutoApprovalForConfiguredAttributeEnabled, Guid.Parse("042A0DA1-E52E-4A9C-A023-D7A9FA6DDB73") },
-            { SettingKey.ConfiguredAttributeAutoApprovalConfiguration, Guid.Parse("65D56074-A87B-4917-8E9C-70B979A1495B") }
+            { SettingKey.ConfiguredAttributeAutoApprovalConfiguration, Guid.Parse("65D56074-A87B-4917-8E9C-70B979A1495B") },
+            { SettingKey.IsSensitiveScreeningEnabledForOrgLeader, Guid.Parse("7E2A91C4-3B58-4D06-A1F7-5C9D0E836B12") },
+            { SettingKey.IsSensitiveScreeningEnabledForLeaderAssistant, Guid.Parse("B4C6D8E0-1F23-4A57-9B68-2D4F6A8C0E13") },
+            { SettingKey.IsSensitiveScreeningEnabledForConfiguredAttribute, Guid.Parse("F1A3C5E7-9B0D-4C24-8E6F-3A5B7D9F1C14") }
         };
     }
 }

@@ -25,7 +25,10 @@ export const enum SettingKey {
     IsAutoApprovalForLeaderAssistantEnabled = 22,
     IsSensitiveAttributeScreeningEnabled = 23,
     IsAutoApprovalForConfiguredAttributeEnabled = 24,
-    ConfiguredAttributeAutoApprovalConfiguration = 25
+    ConfiguredAttributeAutoApprovalConfiguration = 25,
+    IsSensitiveScreeningEnabledForOrgLeader = 26,
+    IsSensitiveScreeningEnabledForLeaderAssistant = 27,
+    IsSensitiveScreeningEnabledForConfiguredAttribute = 28
 }
 
 export const SettingKeyMap: Record<SettingKey, string> = {
@@ -51,5 +54,8 @@ export const SettingKeyMap: Record<SettingKey, string> = {
     [SettingKey.IsAutoApprovalForLeaderAssistantEnabled]: 'IsAutoApprovalForLeaderAssistantEnabled',
     [SettingKey.IsSensitiveAttributeScreeningEnabled]: 'IsSensitiveAttributeScreeningEnabled',
     [SettingKey.IsAutoApprovalForConfiguredAttributeEnabled]: 'IsAutoApprovalForConfiguredAttributeEnabled',
-    [SettingKey.ConfiguredAttributeAutoApprovalConfiguration]: 'ConfiguredAttributeAutoApprovalConfiguration'
+    [SettingKey.ConfiguredAttributeAutoApprovalConfiguration]: 'ConfiguredAttributeAutoApprovalConfiguration',
+    [SettingKey.IsSensitiveScreeningEnabledForOrgLeader]: 'IsSensitiveScreeningEnabledForOrgLeader',
+    [SettingKey.IsSensitiveScreeningEnabledForLeaderAssistant]: 'IsSensitiveScreeningEnabledForLeaderAssistant',
+    [SettingKey.IsSensitiveScreeningEnabledForConfiguredAttribute]: 'IsSensitiveScreeningEnabledForConfiguredAttribute'
 };

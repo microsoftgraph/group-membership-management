@@ -190,8 +190,8 @@ namespace Hosts.AutoApprover
 
         // Logged once per submission so screening-off is distinguishable from nothing-flagged.
         [LoggerMessage(EventId = 250142, Level = LogLevel.Information,
-            Message = "Sensitive attribute screening resolved — enabled: {ScreeningEnabled}, attributes marked Sensitive: {SensitiveAttributeCount}.")]
-        public static partial void SensitiveScreeningResolved(this ILogger logger, bool screeningEnabled, int sensitiveAttributeCount);
+            Message = "Sensitive attribute screening resolved — org leader: {OrgLeaderScreening}, leader-assistant: {LeaderAssistantScreening}, configured attribute: {ConfiguredAttributeScreening}; attributes marked Sensitive: {SensitiveAttributeCount}.")]
+        public static partial void SensitiveScreeningResolved(this ILogger logger, bool orgLeaderScreening, bool leaderAssistantScreening, bool configuredAttributeScreening, int sensitiveAttributeCount);
 
         [LoggerMessage(EventId = 250150, Level = LogLevel.Information,
             Message = "SqlMembership part {PartIndex} approved: the requestor's configured attributes match and the requestor is in the manager's reporting chain.")]

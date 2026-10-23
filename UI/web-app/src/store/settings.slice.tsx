@@ -232,6 +232,20 @@ export const selectIsSensitiveAttributeScreeningEnabled = (state: RootState) => 
   return isSensitiveAttributeScreeningEnabledSetting ? isSensitiveAttributeScreeningEnabledSetting.settingValue === 'true' : undefined;
 }
 
+const selectBooleanSetting = (state: RootState, key: SettingKey) => {
+  const setting = state.settings.settings?.find((s) => s.settingKey === key);
+  return setting ? setting.settingValue === 'true' : undefined;
+}
+
+export const selectIsSensitiveScreeningEnabledForOrgLeader = (state: RootState) =>
+  selectBooleanSetting(state, SettingKey.IsSensitiveScreeningEnabledForOrgLeader);
+
+export const selectIsSensitiveScreeningEnabledForLeaderAssistant = (state: RootState) =>
+  selectBooleanSetting(state, SettingKey.IsSensitiveScreeningEnabledForLeaderAssistant);
+
+export const selectIsSensitiveScreeningEnabledForConfiguredAttribute = (state: RootState) =>
+  selectBooleanSetting(state, SettingKey.IsSensitiveScreeningEnabledForConfiguredAttribute);
+
 export const selectIsAITitleEnabled = (state: RootState) => {
   const settingsArray = state.settings.settings;
   if (!settingsArray) {

@@ -79,6 +79,11 @@ const createSettings = (overrides?: Partial<Record<SettingKey, string>>): { read
   [SettingKey.IsAutoApprovalForRequestorIsOrgLeaderSyncsEnabled]: 'false',
   [SettingKey.IsAutoApprovalForLeaderAssistantEnabled]: 'false',
   [SettingKey.IsSensitiveAttributeScreeningEnabled]: 'false',
+  [SettingKey.IsAutoApprovalForConfiguredAttributeEnabled]: 'false',
+  [SettingKey.ConfiguredAttributeAutoApprovalConfiguration]: '',
+  [SettingKey.IsSensitiveScreeningEnabledForOrgLeader]: 'false',
+  [SettingKey.IsSensitiveScreeningEnabledForLeaderAssistant]: 'false',
+  [SettingKey.IsSensitiveScreeningEnabledForConfiguredAttribute]: 'false',
   [SettingKey.IsAITitleEnabled]: 'true',
   [SettingKey.IsAICopilotEnabled]: 'true',
   [SettingKey.IsAISearchForUserEnabled]: 'false',
@@ -229,37 +234,49 @@ describe('AdminConfigView tab layout', () => {
     expect(screen.queryByText(/per-part/i)).not.toBeInTheDocument();
   });
 
-  test('shows the sensitive attribute screening safeguard on the Auto Approver tab', () => {
+  test('shows a sensitive attribute screening toggle on each SqlMembership path card', () => {
     renderWithRoles(allRoles, {
-      [SettingKey.IsSensitiveAttributeScreeningEnabled]: 'true',
+      [SettingKey.IsSensitiveScreeningEnabledForOrgLeader]: 'true',
+      [SettingKey.IsSensitiveScreeningEnabledForLeaderAssistant]: 'false',
     });
 
     fireEvent.click(
       screen.getByRole('tab', { name: defaultStrings.AdminConfig.AutoApproverSettings.labels.autoApprover })
     );
 
-    expect(
-      screen.getByText(defaultStrings.AdminConfig.AutoApproverSettings.labels.safeguardsTitle)
-    ).toBeInTheDocument();
-    expect(
-      screen.getByTestId(`setting-${SettingKeyMap[SettingKey.IsSensitiveAttributeScreeningEnabled]}`)
-    ).toHaveAttribute('data-value', 'true');
+    const orgLeader = document.getElementById(SettingKeyMap[SettingKey.IsSensitiveScreeningEnabledForOrgLeader]);
+    const assistant = document.getElementById(SettingKeyMap[SettingKey.IsSensitiveScreeningEnabledForLeaderAssistant]);
+    expect(orgLeader).toHaveAttribute('aria-checked', 'true');
+    expect(assistant).toHaveAttribute('aria-checked', 'false');
   });
 
-  test('defaults sensitive attribute screening to off', () => {
+  test('has no global safeguards card and no screening toggle on the group-based card', () => {
     renderWithRoles(allRoles);
 
     fireEvent.click(
       screen.getByRole('tab', { name: defaultStrings.AdminConfig.AutoApproverSettings.labels.autoApprover })
     );
 
-    expect(
-      screen.getByTestId(`setting-${SettingKeyMap[SettingKey.IsSensitiveAttributeScreeningEnabled]}`)
-    ).toHaveAttribute('data-value', 'false');
+    expect(document.getElementById(SettingKeyMap[SettingKey.IsSensitiveAttributeScreeningEnabled])).toBeNull();
+    const groupCard = screen.getByTestId(`setting-${SettingKeyMap[SettingKey.IsAutoApprovalForGroupBasedSyncsEnabled]}`);
+    expect(groupCard).not.toHaveTextContent(
+      defaultStrings.AdminConfig.AutoApproverSettings.labels.isSensitiveAttributeScreeningEnabledTitle
+    );
+  });
+
+  test('defaults per-path sensitive attribute screening to off', () => {
+    renderWithRoles(allRoles);
+
+    fireEvent.click(
+      screen.getByRole('tab', { name: defaultStrings.AdminConfig.AutoApproverSettings.labels.autoApprover })
+    );
+
+    expect(document.getElementById(SettingKeyMap[SettingKey.IsSensitiveScreeningEnabledForOrgLeader])).toHaveAttribute('aria-checked', 'false');
+    expect(document.getElementById(SettingKeyMap[SettingKey.IsSensitiveScreeningEnabledForLeaderAssistant])).toHaveAttribute('aria-checked', 'false');
   });
 
   test('summarizes which attributes are marked Sensitive', () => {
-    renderWithRoles(allRoles, { [SettingKey.IsSensitiveAttributeScreeningEnabled]: 'true' }, [
+    renderWithRoles(allRoles, undefined, [
       { name: 'Covered', customLabel: '', type: 'int', hasMapping: false, values: [], description: '', enabled: true, isSensitive: true },
       { name: 'PayScaleStockLevelNbr', customLabel: '', type: 'int', hasMapping: false, values: [], description: '', enabled: true, isSensitive: true },
       { name: 'Country', customLabel: '', type: 'nvarchar', hasMapping: false, values: [], description: '', enabled: true, isSensitive: false },
@@ -275,7 +292,7 @@ describe('AdminConfigView tab layout', () => {
     expect(summary).not.toHaveTextContent('Country');
   });
 
-  test('shows the same summary whether the safeguard is on or off', () => {
+  test('shows the same summary whether screening is on or off', () => {
     const attributes = [
       { name: 'Covered', customLabel: '', type: 'int', hasMapping: false, values: [], description: '', enabled: true, isSensitive: true },
     ];
@@ -286,11 +303,11 @@ describe('AdminConfigView tab layout', () => {
       return screen.getByTestId('sensitive-attribute-summary').textContent;
     };
 
-    const on = renderWithRoles(allRoles, { [SettingKey.IsSensitiveAttributeScreeningEnabled]: 'true' }, attributes);
+    const on = renderWithRoles(allRoles, { [SettingKey.IsSensitiveScreeningEnabledForOrgLeader]: 'true' }, attributes);
     const onText = openSummary();
     on.unmount();
 
-    renderWithRoles(allRoles, { [SettingKey.IsSensitiveAttributeScreeningEnabled]: 'false' }, attributes);
+    renderWithRoles(allRoles, { [SettingKey.IsSensitiveScreeningEnabledForOrgLeader]: 'false' }, attributes);
     expect(openSummary()).toBe(onText);
   });
 

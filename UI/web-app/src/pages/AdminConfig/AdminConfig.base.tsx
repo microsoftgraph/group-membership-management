@@ -18,6 +18,9 @@ import {
   selectIsAutoApprovalForRequestorIsOrgLeaderSyncsEnabled,
   selectIsAutoApprovalForLeaderAssistantEnabled,
   selectIsSensitiveAttributeScreeningEnabled,
+  selectIsSensitiveScreeningEnabledForOrgLeader,
+  selectIsSensitiveScreeningEnabledForLeaderAssistant,
+  selectIsSensitiveScreeningEnabledForConfiguredAttribute,
   selectIsAIRejectionFeedbackRefinementEnabled,
   selectIsAITitleEnabled,
   selectIsAICopilotEnabled,
@@ -86,6 +89,10 @@ export const AdminConfigBase: React.FunctionComponent<AdminConfigProps> = (props
   const IsAutoApprovalForRequestorIsOrgLeaderSyncsEnabled = useSelector(selectIsAutoApprovalForRequestorIsOrgLeaderSyncsEnabled);
   const isAutoApprovalForLeaderAssistantEnabled = useSelector(selectIsAutoApprovalForLeaderAssistantEnabled);
   const isSensitiveAttributeScreeningEnabled = useSelector(selectIsSensitiveAttributeScreeningEnabled);
+  // A path without its own saved row follows the legacy global switch, like the backend does.
+  const orgLeaderScreening = useSelector(selectIsSensitiveScreeningEnabledForOrgLeader) ?? isSensitiveAttributeScreeningEnabled;
+  const leaderAssistantScreening = useSelector(selectIsSensitiveScreeningEnabledForLeaderAssistant) ?? isSensitiveAttributeScreeningEnabled;
+  const configuredAttributeScreening = useSelector(selectIsSensitiveScreeningEnabledForConfiguredAttribute) ?? isSensitiveAttributeScreeningEnabled;
   const isAITitleEnabled = useSelector(selectIsAITitleEnabled);
   const isAICopilotEnabled = useSelector(selectIsAICopilotEnabled);
   const isAISearchForUserEnabled = useSelector(selectIsAISearchForUserEnabled);
@@ -141,6 +148,12 @@ export const AdminConfigBase: React.FunctionComponent<AdminConfigProps> = (props
     [SettingKey.IsAutoApprovalForRequestorIsOrgLeaderSyncsEnabled]: IsAutoApprovalForRequestorIsOrgLeaderSyncsEnabled ? 'true' : 'false',
     [SettingKey.IsAutoApprovalForLeaderAssistantEnabled]: isAutoApprovalForLeaderAssistantEnabled ? 'true' : 'false',
     [SettingKey.IsSensitiveAttributeScreeningEnabled]: isSensitiveAttributeScreeningEnabled ? 'true' : 'false',
+    // Owned by the configured-attribute card, which loads and saves its own configuration.
+    [SettingKey.IsAutoApprovalForConfiguredAttributeEnabled]: 'false',
+    [SettingKey.ConfiguredAttributeAutoApprovalConfiguration]: '',
+    [SettingKey.IsSensitiveScreeningEnabledForOrgLeader]: orgLeaderScreening ? 'true' : 'false',
+    [SettingKey.IsSensitiveScreeningEnabledForLeaderAssistant]: leaderAssistantScreening ? 'true' : 'false',
+    [SettingKey.IsSensitiveScreeningEnabledForConfiguredAttribute]: configuredAttributeScreening ? 'true' : 'false',
     [SettingKey.IsAITitleEnabled]: isAITitleEnabled ? 'true' : 'false',
     [SettingKey.IsAICopilotEnabled]: isAICopilotEnabled ? 'true' : 'false',
     [SettingKey.IsAISearchForUserEnabled]: isAISearchForUserEnabled ? 'true' : 'false',
@@ -156,7 +169,7 @@ export const AdminConfigBase: React.FunctionComponent<AdminConfigProps> = (props
 
   useEffect(() => {
     setSettings(generateSettings())
-  }, [dashboardUrl, outlookWarningUrl, privacyPolicyUrl, canReviewOwnSubmissions, createGroupFeatureEnabled, isBusinessJustificationRequired, IsDisclaimerEnabled, IsAutoApprovalForGroupBasedSyncsEnabled, IsAutoApprovalForRequestorIsOrgLeaderSyncsEnabled, isAutoApprovalForLeaderAssistantEnabled, isSensitiveAttributeScreeningEnabled, isAITitleEnabled, isAICopilotEnabled, isAISearchForUserEnabled, isAIRunExplanationEnabled, isAIRejectionFeedbackRefinementEnabled, copilotTemperature, copilotTopP, copilotInstructions, copilotSuggestedPrompts]);
+  }, [dashboardUrl, outlookWarningUrl, privacyPolicyUrl, canReviewOwnSubmissions, createGroupFeatureEnabled, isBusinessJustificationRequired, IsDisclaimerEnabled, IsAutoApprovalForGroupBasedSyncsEnabled, IsAutoApprovalForRequestorIsOrgLeaderSyncsEnabled, isAutoApprovalForLeaderAssistantEnabled, isSensitiveAttributeScreeningEnabled, orgLeaderScreening, leaderAssistantScreening, configuredAttributeScreening, isAITitleEnabled, isAICopilotEnabled, isAISearchForUserEnabled, isAIRunExplanationEnabled, isAIRejectionFeedbackRefinementEnabled, copilotTemperature, copilotTopP, copilotInstructions, copilotSuggestedPrompts]);
 
   const handleGetValues = (attribute: SqlMembershipAttribute) => {
     dispatch(fetchAttributeValues(attribute));
@@ -180,7 +193,9 @@ export const AdminConfigBase: React.FunctionComponent<AdminConfigProps> = (props
     SettingKey.IsAutoApprovalForGroupBasedSyncsEnabled,
     SettingKey.IsAutoApprovalForRequestorIsOrgLeaderSyncsEnabled,
     SettingKey.IsAutoApprovalForLeaderAssistantEnabled,
-    SettingKey.IsSensitiveAttributeScreeningEnabled,
+    SettingKey.IsSensitiveScreeningEnabledForOrgLeader,
+    SettingKey.IsSensitiveScreeningEnabledForLeaderAssistant,
+    SettingKey.IsSensitiveScreeningEnabledForConfiguredAttribute,
   ];
 
   const aiSettingKeys: SettingKey[] = [
@@ -203,7 +218,9 @@ export const AdminConfigBase: React.FunctionComponent<AdminConfigProps> = (props
     SettingKey.IsAutoApprovalForGroupBasedSyncsEnabled,
     SettingKey.IsAutoApprovalForRequestorIsOrgLeaderSyncsEnabled,
     SettingKey.IsAutoApprovalForLeaderAssistantEnabled,
-    SettingKey.IsSensitiveAttributeScreeningEnabled,
+    SettingKey.IsSensitiveScreeningEnabledForOrgLeader,
+    SettingKey.IsSensitiveScreeningEnabledForLeaderAssistant,
+    SettingKey.IsSensitiveScreeningEnabledForConfiguredAttribute,
     SettingKey.IsAITitleEnabled,
     SettingKey.IsAICopilotEnabled,
     SettingKey.IsAISearchForUserEnabled,

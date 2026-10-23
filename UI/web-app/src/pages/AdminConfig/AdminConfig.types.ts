@@ -29,6 +29,8 @@ export type AdminConfigStyles = {
   descriptionTextField: IStyle;
   sensitiveHintIcon: IStyle;
   sensitiveSummarySeparator: IStyle;
+  sensitiveSummary: IStyle;
+  screeningRow: IStyle;
   aiSettingsLeaveEmptyNote: IStyle;
   aiSettingsLeaveEmptyNoteIcon: IStyle;
   aiSettingsDefaultInstructionsContainer: IStyle;

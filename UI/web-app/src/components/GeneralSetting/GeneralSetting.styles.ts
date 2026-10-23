@@ -27,7 +27,7 @@ export const getStyles = (props: GeneralSettingStyleProps): GeneralSettingStyles
       padding: 24,
       display: 'flex',
       flexDirection: 'column',
-      justifyContent: 'space-between',
+      justifyContent: 'flex-start',
       gap: '12px',
     },
     titleRow: {
@@ -46,6 +46,7 @@ export const getStyles = (props: GeneralSettingStyleProps): GeneralSettingStyles
       fontWeight: 400,
     },
     footer: {
+      marginTop: 'auto',
       borderTop: `1px solid ${theme.palette.neutralLighter}`,
       paddingTop: 12,
       fontSize: 12,

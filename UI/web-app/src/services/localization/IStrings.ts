@@ -346,8 +346,6 @@ export type IStrings = {
         isAutoApprovalForRequestorIsOrgLeaderSyncsEnabledDescription: string;
         isAutoApprovalForLeaderAssistantEnabledTitle: string;
         isAutoApprovalForLeaderAssistantEnabledDescription: string;
-        safeguardsTitle: string;
-        safeguardsDescription: string;
         isSensitiveAttributeScreeningEnabledTitle: string;
         isSensitiveAttributeScreeningEnabledDescription: string;
         sensitiveAttributeCountSingular: string;

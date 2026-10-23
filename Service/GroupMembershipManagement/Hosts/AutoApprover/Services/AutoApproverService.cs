@@ -270,7 +270,7 @@ namespace Services.AutoApprover
                 // Read only when a SQL part exists, so it costs nothing elsewhere.
                 var isLeaderAssistantEnabled = false;
                 var isConfiguredEnabled = false;
-                var isSensitiveScreeningEnabled = false;
+                var screening = new PathScreening();
                 var sensitiveAttributes = new SensitiveAttributeCache();
 
                 if (parts.Any(p => p.Type == SourcePart.SqlMembershipType))
@@ -282,10 +282,10 @@ namespace Services.AutoApprover
                     _logger.ConfiguredAttributePathResolved(isConfiguredEnabled);
 
                     // Loaded even when screening is off so the logged count always reflects what is configured.
-                    isSensitiveScreeningEnabled = await IsSensitiveAttributeScreeningEnabledAsync();
-                    await LoadSensitiveAttributesAsync(sensitiveAttributes, isSensitiveScreeningEnabled);
+                    screening = await ResolvePathScreeningAsync();
+                    await LoadSensitiveAttributesAsync(sensitiveAttributes, screening.Any);
 
-                    _logger.SensitiveScreeningResolved(isSensitiveScreeningEnabled, sensitiveAttributes.Names.Count);
+                    _logger.SensitiveScreeningResolved(screening.OrgLeader, screening.LeaderAssistant, screening.ConfiguredAttribute, sensitiveAttributes.Names.Count);
                 }
 
                 // Resolved only when a SQL path is on, so a disabled path costs no lookup.
@@ -320,7 +320,7 @@ namespace Services.AutoApprover
                             rejection = await EvaluateGroupPartAsync(part, userIdentity, isGroupBasedEnabled, i, mix);
                             break;
                         case SourcePart.SqlMembershipType:
-                            rejection = await EvaluateSqlPartAsync(part, employeeId, userIdentity, tableName, isOrgLeaderEnabled, isLeaderAssistantEnabled, isConfiguredEnabled, isSensitiveScreeningEnabled, sensitiveAttributes, assistantCache, i, mix, configuredState);
+                            rejection = await EvaluateSqlPartAsync(part, employeeId, userIdentity, tableName, isOrgLeaderEnabled, isLeaderAssistantEnabled, isConfiguredEnabled, screening, sensitiveAttributes, assistantCache, i, mix, configuredState);
                                                         break;
                         default:
                             rejection = Reject(part, i, SourcePartRejectionReason.Unknown_Type,
@@ -346,7 +346,33 @@ namespace Services.AutoApprover
             }
         }
 
-        // Screening off is safe here: if Settings is unreachable the path gates also read false, so nothing auto-approves.
+        // A path with no saved setting follows the legacy global switch, so existing deployments keep their behaviour.
+        private async Task<PathScreening> ResolvePathScreeningAsync()
+        {
+            var global = await IsSensitiveAttributeScreeningEnabledAsync();
+
+            return new PathScreening(
+                await ReadPathScreeningAsync(SettingKey.IsSensitiveScreeningEnabledForOrgLeader, global),
+                await ReadPathScreeningAsync(SettingKey.IsSensitiveScreeningEnabledForLeaderAssistant, global),
+                await ReadPathScreeningAsync(SettingKey.IsSensitiveScreeningEnabledForConfiguredAttribute, global));
+        }
+
+        // Unreadable means screening stays on, so a Sensitive filter goes to manual review instead of being auto-approved.
+        private async Task<bool> ReadPathScreeningAsync(SettingKey key, bool fallback)
+        {
+            try
+            {
+                var setting = await _databaseSettingsRepository.GetSettingByKeyAsync(key);
+                return setting == null ? fallback : string.Equals(setting.SettingValue, "true", StringComparison.OrdinalIgnoreCase);
+            }
+            catch (Exception ex)
+            {
+                _logger.SensitiveScreeningSettingRetrievalError(ex);
+                return true;
+            }
+        }
+
+        // Unreadable means screening stays on, same as the per-path read.
         private async Task<bool> IsSensitiveAttributeScreeningEnabledAsync()
         {
             try
@@ -357,7 +383,7 @@ namespace Services.AutoApprover
             catch (Exception ex)
             {
                 _logger.SensitiveScreeningSettingRetrievalError(ex);
-                return false;
+                return true;
             }
         }
 
@@ -674,7 +700,7 @@ namespace Services.AutoApprover
             bool isOrgLeaderEnabled,
             bool isLeaderAssistantEnabled,
             bool isConfiguredEnabled,
-            bool isSensitiveScreeningEnabled,
+            PathScreening screening,
             SensitiveAttributeCache sensitiveAttributes,
             Dictionary<int, AssistantLookup> assistantCache,
             int partIndex,
@@ -700,7 +726,7 @@ namespace Services.AutoApprover
             if (isOrgLeaderEnabled && employeeId != null && employeeId.Value == part.ManagerId.Value)
             {
                 // Managing an org does not license a sensitive filter across it.
-                var screened = ScreenFilter(part, isSensitiveScreeningEnabled, sensitiveAttributes, partIndex);
+                var screened = ScreenFilter(part, screening.OrgLeader, sensitiveAttributes, partIndex);
                 if (screened != null)
                     return screened;
 
@@ -731,7 +757,7 @@ namespace Services.AutoApprover
                 else if (lookup.Assistants.Any(a => string.Equals(a.ObjectId.ToString(), userIdentity, StringComparison.OrdinalIgnoreCase)))
                 {
                     // An assistant is further from the data owner, so screening applies here too.
-                    var screened = ScreenFilter(part, isSensitiveScreeningEnabled, sensitiveAttributes, partIndex);
+                    var screened = ScreenFilter(part, screening.LeaderAssistant, sensitiveAttributes, partIndex);
                     if (screened != null)
                         return screened;
 
@@ -749,7 +775,7 @@ namespace Services.AutoApprover
                 var configuredRejection = await EvaluateConfiguredAttributeAsync(part, userIdentity, tableName, configuredState);
                 if (configuredRejection == null)
                 {
-                    var screened = ScreenFilter(part, isSensitiveScreeningEnabled, sensitiveAttributes, partIndex);
+                    var screened = ScreenFilter(part, screening.ConfiguredAttribute, sensitiveAttributes, partIndex);
                     if (screened != null)
                         return screened;
 

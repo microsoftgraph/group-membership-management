@@ -7,7 +7,6 @@ import {
   ActionButton,
   DefaultButton,
   Dropdown,
-  getTheme,
   Icon,
   IDropdownOption,
   Label,
@@ -19,6 +18,7 @@ import {
   TooltipHost,
   ITag,
 } from '@fluentui/react';
+import { useTheme } from '@fluentui/react/lib/Theme';
 import { GeneralSetting } from '../../components/GeneralSetting';
 import { AppDispatch } from '../../store';
 import {
@@ -164,7 +164,7 @@ export const useConfiguredAttributeApproval = (labels: Labels, canEdit: boolean,
 
 type State = ReturnType<typeof useConfiguredAttributeApproval>;
 
-export const ConfiguredAttributeToggleCard: React.FunctionComponent<Props & { state: State }> = ({ labels, canEdit, state }) => (
+export const ConfiguredAttributeToggleCard: React.FunctionComponent<Props & { state: State; footer?: React.ReactNode }> = ({ labels, canEdit, state, footer }) => (
   <GeneralSetting
     id="configured-attribute-enabled"
     title={labels.configuredTitle}
@@ -172,12 +172,13 @@ export const ConfiguredAttributeToggleCard: React.FunctionComponent<Props & { st
     generalSettingValue={String(state.enabled)}
     disabled={!canEdit || state.loading}
     onGeneralSettingChange={(value) => state.setEnabled(value === 'true')}
+    footer={footer}
   />
 );
 
 export const ConfiguredAttributeRules: React.FunctionComponent<Props & { state: State }> = ({ labels, canEdit, state }) => {
   const { searchFailed, loading, loadFailed, load, rows, setRows, attributes, attributeOptions, message, searchValues, updateRow, showIncompleteWarning, maxDepth, setMaxDepth } = state;
-  const theme = getTheme();
+  const theme = useTheme();
   const gridColumns = '260px minmax(0, 1fr) 32px';
   const fieldBorder = { borderRadius: 4, border: '1px solid', borderColor: theme.palette.neutralQuaternary, background: theme.palette.white };
   const dropdownStyles = { title: { borderRadius: 4, borderColor: theme.palette.neutralQuaternary }, dropdown: { ':hover .ms-Dropdown-title': { borderColor: theme.palette.neutralQuaternary } } };

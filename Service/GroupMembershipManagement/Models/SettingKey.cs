@@ -33,6 +33,11 @@ namespace Models
         /// <summary>When on, a SqlMembership part whose filter references a Sensitive attribute is never auto-approved.</summary>
         IsSensitiveAttributeScreeningEnabled = 23,
         IsAutoApprovalForConfiguredAttributeEnabled = 24,
-        ConfiguredAttributeAutoApprovalConfiguration = 25
+        ConfiguredAttributeAutoApprovalConfiguration = 25,
+
+        /// <summary>Per-path screening. A missing row falls back to IsSensitiveAttributeScreeningEnabled.</summary>
+        IsSensitiveScreeningEnabledForOrgLeader = 26,
+        IsSensitiveScreeningEnabledForLeaderAssistant = 27,
+        IsSensitiveScreeningEnabledForConfiguredAttribute = 28
     }
 }

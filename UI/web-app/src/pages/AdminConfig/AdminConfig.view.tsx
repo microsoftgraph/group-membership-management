@@ -2,7 +2,7 @@
 // Licensed under the MIT license.
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { classNamesFunction, Toggle, IProcessedStyleSet, Pivot, PivotItem, PrimaryButton, DefaultButton, TextField, Text, IColumn, SelectionMode, ShimmeredDetailsList, Dropdown, Spinner, IRenderFunction, ISelectableDroppableTextProps, IDropdown, Slider, Icon, IconButton, ActionButton, Link, MessageBar, MessageBarType } from '@fluentui/react';
+import { classNamesFunction, Toggle, IProcessedStyleSet, Pivot, PivotItem, PrimaryButton, DefaultButton, TextField, Text, TooltipHost, IColumn, SelectionMode, ShimmeredDetailsList, Dropdown, Spinner, IRenderFunction, ISelectableDroppableTextProps, IDropdown, Slider, Icon, IconButton, ActionButton, Link, MessageBar, MessageBarType } from '@fluentui/react';
 import { useTheme } from '@fluentui/react/lib/Theme';
 import {
   AdminConfigStyleProps,
@@ -394,6 +394,26 @@ const AutoApproverSettings: React.FunctionComponent<AutoApproverSettingsProps> =
     </>
   );
 
+  // Shared by the SqlMembership path cards; the group-based card has no sensitive-attribute check.
+  const screeningRow = (settingKey: SettingKey) => (
+    <div className={classNames.screeningRow}>
+      <span>
+        {labels.isSensitiveAttributeScreeningEnabledTitle}
+        <TooltipHost content={labels.isSensitiveAttributeScreeningEnabledDescription}>
+          <Icon iconName="Info" className={classNames.sensitiveHintIcon} aria-label={labels.isSensitiveAttributeScreeningEnabledDescription} />
+        </TooltipHost>
+      </span>
+      <Toggle
+        id={SettingKeyMap[settingKey]}
+        title={labels.isSensitiveAttributeScreeningEnabledTitle}
+        checked={settings[settingKey] === 'true'}
+        disabled={!canEdit}
+        onChange={(_, checked) => handleSettingChange(settingKey)(checked ? 'true' : 'false')}
+        styles={{ root: { marginBottom: 0 } }}
+      />
+    </div>
+  );
+
   return (
     <>
     <SettingsSection
@@ -401,6 +421,7 @@ const AutoApproverSettings: React.FunctionComponent<AutoApproverSettingsProps> =
       title={strings.AutoApproverSettings.labels.controlsTitle}
       subtitle={strings.AutoApproverSettings.labels.description}
     >
+      {sensitiveSummary && <div className={classNames.sensitiveSummary}>{sensitiveSummary}</div>}
       <div className={classNames.settingsGrid}>
       <GeneralSetting
         id={SettingKeyMap[SettingKey.IsAutoApprovalForGroupBasedSyncsEnabled]}
@@ -417,6 +438,7 @@ const AutoApproverSettings: React.FunctionComponent<AutoApproverSettingsProps> =
         onGeneralSettingChange={handleSettingChange(SettingKey.IsAutoApprovalForRequestorIsOrgLeaderSyncsEnabled)}
         generalSettingValue={settings[SettingKey.IsAutoApprovalForRequestorIsOrgLeaderSyncsEnabled]}
         disabled={!canEdit}
+        footer={screeningRow(SettingKey.IsSensitiveScreeningEnabledForOrgLeader)}
       />
       <GeneralSetting
         id={SettingKeyMap[SettingKey.IsAutoApprovalForLeaderAssistantEnabled]}
@@ -425,24 +447,13 @@ const AutoApproverSettings: React.FunctionComponent<AutoApproverSettingsProps> =
         onGeneralSettingChange={handleSettingChange(SettingKey.IsAutoApprovalForLeaderAssistantEnabled)}
         generalSettingValue={settings[SettingKey.IsAutoApprovalForLeaderAssistantEnabled]}
         disabled={!canEdit}
+        footer={screeningRow(SettingKey.IsSensitiveScreeningEnabledForLeaderAssistant)}
       />
-      <ConfiguredAttributeToggleCard labels={labels} canEdit={canEdit} state={configured} />
-      </div>
-    </SettingsSection>
-    <SettingsSection
-      classNames={classNames}
-      title={strings.AutoApproverSettings.labels.safeguardsTitle}
-      subtitle={strings.AutoApproverSettings.labels.safeguardsDescription}
-    >
-      <div className={classNames.settingsGrid}>
-      <GeneralSetting
-        id={SettingKeyMap[SettingKey.IsSensitiveAttributeScreeningEnabled]}
-        title={strings.AutoApproverSettings.labels.isSensitiveAttributeScreeningEnabledTitle}
-        description={strings.AutoApproverSettings.labels.isSensitiveAttributeScreeningEnabledDescription}
-        onGeneralSettingChange={handleSettingChange(SettingKey.IsSensitiveAttributeScreeningEnabled)}
-        generalSettingValue={settings[SettingKey.IsSensitiveAttributeScreeningEnabled]}
-        disabled={!canEdit}
-        footer={sensitiveSummary}
+      <ConfiguredAttributeToggleCard
+        labels={labels}
+        canEdit={canEdit}
+        state={configured}
+        footer={screeningRow(SettingKey.IsSensitiveScreeningEnabledForConfiguredAttribute)}
       />
       </div>
     </SettingsSection>
@@ -476,6 +487,11 @@ const UserResourcesSettings: React.FunctionComponent<UserResourcesSettingsProps>
     [SettingKey.IsAutoApprovalForRequestorIsOrgLeaderSyncsEnabled]: true,
     [SettingKey.IsAutoApprovalForLeaderAssistantEnabled]: true,
     [SettingKey.IsSensitiveAttributeScreeningEnabled]: true,
+    [SettingKey.IsAutoApprovalForConfiguredAttributeEnabled]: true,
+    [SettingKey.ConfiguredAttributeAutoApprovalConfiguration]: true,
+    [SettingKey.IsSensitiveScreeningEnabledForOrgLeader]: true,
+    [SettingKey.IsSensitiveScreeningEnabledForLeaderAssistant]: true,
+    [SettingKey.IsSensitiveScreeningEnabledForConfiguredAttribute]: true,
     [SettingKey.IsAITitleEnabled]: true,
     [SettingKey.IsAICopilotEnabled]: true,
     [SettingKey.IsAISearchForUserEnabled]: true,

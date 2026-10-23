@@ -1669,6 +1669,68 @@ namespace Services.Tests
         }
 
         [TestMethod]
+        public async Task Screening_OrgLeaderPathOff_OverridesGlobalOn_ApprovesAsync()
+        {
+            var m = ManagerSelfSubmission("PayScaleStockLevelNbr eq 60");
+            var sources = EnableScreening(m.Settings, "PayScaleStockLevelNbr");
+            m.Settings.Setup(x => x.GetSettingByKeyAsync(SettingKey.IsSensitiveScreeningEnabledForOrgLeader))
+                      .ReturnsAsync(new Setting { SettingKey = SettingKey.IsSensitiveScreeningEnabledForOrgLeader, SettingValue = "false" });
+
+            var service = CreateService(m.Jobs, m.Settings, m.Graph, m.Changes, m.Logger, m.Sql, m.adfRunHistory, sources);
+            await service.ProcessAutoApprovalAsync(Message(m.SyncJobId, m.RequestorId));
+
+            VerifyApproved(m.Jobs, m.Changes, m.SyncJobId);
+            VerifyLogged(m.Logger, 250141, Times.Never());
+        }
+
+        [TestMethod]
+        public async Task Screening_OrgLeaderPathOn_OverridesGlobalOff_RejectsAsync()
+        {
+            var m = ManagerSelfSubmission("PayScaleStockLevelNbr eq 60");
+            var sources = EnableScreening(m.Settings, "PayScaleStockLevelNbr");
+            m.Settings.Setup(x => x.GetSettingByKeyAsync(SettingKey.IsSensitiveAttributeScreeningEnabled))
+                      .ReturnsAsync(new Setting { SettingKey = SettingKey.IsSensitiveAttributeScreeningEnabled, SettingValue = "false" });
+            m.Settings.Setup(x => x.GetSettingByKeyAsync(SettingKey.IsSensitiveScreeningEnabledForOrgLeader))
+                      .ReturnsAsync(new Setting { SettingKey = SettingKey.IsSensitiveScreeningEnabledForOrgLeader, SettingValue = "true" });
+
+            var service = CreateService(m.Jobs, m.Settings, m.Graph, m.Changes, m.Logger, m.Sql, m.adfRunHistory, sources);
+            await service.ProcessAutoApprovalAsync(Message(m.SyncJobId, m.RequestorId));
+
+            VerifyPendingReview(m.Jobs, m.Changes);
+            VerifyLogged(m.Logger, 250141, Times.Once());
+        }
+
+        [TestMethod]
+        public async Task Screening_OtherPathSwitchedOff_DoesNotAffectOrgLeaderPathAsync()
+        {
+            var m = ManagerSelfSubmission("PayScaleStockLevelNbr eq 60");
+            var sources = EnableScreening(m.Settings, "PayScaleStockLevelNbr");
+            m.Settings.Setup(x => x.GetSettingByKeyAsync(SettingKey.IsSensitiveScreeningEnabledForLeaderAssistant))
+                      .ReturnsAsync(new Setting { SettingKey = SettingKey.IsSensitiveScreeningEnabledForLeaderAssistant, SettingValue = "false" });
+
+            var service = CreateService(m.Jobs, m.Settings, m.Graph, m.Changes, m.Logger, m.Sql, m.adfRunHistory, sources);
+            await service.ProcessAutoApprovalAsync(Message(m.SyncJobId, m.RequestorId));
+
+            // The org-leader path follows the global switch, which is still on.
+            VerifyPendingReview(m.Jobs, m.Changes);
+            VerifyLogged(m.Logger, 250141, Times.Once());
+        }
+
+        [TestMethod]
+        public async Task Screening_PathSettingReadFails_TreatedAsOnAsync()
+        {
+            var m = ManagerSelfSubmission("PayScaleStockLevelNbr eq 60");
+            var sources = EnableScreening(m.Settings, "PayScaleStockLevelNbr");
+            m.Settings.Setup(x => x.GetSettingByKeyAsync(SettingKey.IsSensitiveScreeningEnabledForOrgLeader))
+                      .ThrowsAsync(new InvalidOperationException("boom"));
+
+            var service = CreateService(m.Jobs, m.Settings, m.Graph, m.Changes, m.Logger, m.Sql, m.adfRunHistory, sources);
+            await service.ProcessAutoApprovalAsync(Message(m.SyncJobId, m.RequestorId));
+
+            VerifyPendingReview(m.Jobs, m.Changes);
+        }
+
+        [TestMethod]
         public async Task Screening_NoFilter_ApprovesAsync()
         {
             var m = ManagerSelfSubmission(null);

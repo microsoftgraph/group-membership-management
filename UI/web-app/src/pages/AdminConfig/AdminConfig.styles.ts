@@ -119,6 +119,20 @@ export const getStyles = (props: AdminConfigStyleProps): AdminConfigStyles => {
             margin: '0 6px',
             color: theme.palette.neutralTertiary
         },
+        sensitiveSummary: {
+            fontSize: 12,
+            lineHeight: '18px',
+            marginBottom: 12
+        },
+        screeningRow: {
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: 12,
+            fontSize: 13,
+            paddingLeft: 16,
+            selectors: { '.ms-Icon': { marginLeft: 6 } }
+        },
         aiSettingsLeaveEmptyNote: {
             display: 'flex',
             alignItems: 'center',

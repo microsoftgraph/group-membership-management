@@ -74,18 +74,20 @@ test.describe('Admin Tests', () => {
     await expect(page.locator('#IsPerPartAutoApprovalEnabled')).toHaveCount(0);
   });
 
-  test('Sensitive attribute screening safeguard renders on the Auto Approver tab', async ({ page }) => {
+  test('Per-path sensitive attribute screening toggles render on the Auto Approver tab', async ({ page }) => {
     const url = DOMAIN.startsWith('http://') || DOMAIN.startsWith('https://') ? DOMAIN : `https://${DOMAIN}`;
     await page.goto(`${url}/Admin`);
 
-    const screeningToggleId = SettingKeyMap[SettingKey.IsSensitiveAttributeScreeningEnabled];
+    const orgLeaderScreeningId = SettingKeyMap[SettingKey.IsSensitiveScreeningEnabledForOrgLeader];
+    const assistantScreeningId = SettingKeyMap[SettingKey.IsSensitiveScreeningEnabledForLeaderAssistant];
 
     await page.getByRole('tab', { name: 'General', exact: true }).click();
-    await expect(page.locator(`#${screeningToggleId}`)).toHaveCount(0);
+    await expect(page.locator(`#${orgLeaderScreeningId}`)).toHaveCount(0);
 
     await page.getByRole('tab', { name: 'Auto Approver', exact: true }).click();
-    await expect(page.getByText('Safeguards')).toBeVisible({ timeout: 10000 });
-    await expect(page.locator(`#${screeningToggleId}`)).toBeVisible();
+    await expect(page.locator(`#${orgLeaderScreeningId}`)).toBeVisible({ timeout: 10000 });
+    await expect(page.locator(`#${assistantScreeningId}`)).toBeVisible();
+    await expect(page.getByText('Safeguards')).toHaveCount(0);
   });
 
   test('Initial disclaimer displays on first load', { tag: '@setup' }, async ({ page }) => {

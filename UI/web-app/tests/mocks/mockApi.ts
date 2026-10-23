@@ -61,6 +61,9 @@ const settingKeyByName: Record<string, number> = {
   IsAIRejectionFeedbackRefinementEnabled: 21,
   IsAutoApprovalForLeaderAssistantEnabled: 22,
   IsSensitiveAttributeScreeningEnabled: 23,
+  IsSensitiveScreeningEnabledForOrgLeader: 26,
+  IsSensitiveScreeningEnabledForLeaderAssistant: 27,
+  IsSensitiveScreeningEnabledForConfiguredAttribute: 28,
 };
 
 function resolveSettingKey(rawKey: string): number {
