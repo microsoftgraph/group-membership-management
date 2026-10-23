@@ -1,15 +1,14 @@
 # Update auto-approval
 
-With `IsAutoApprovalForConfigurationUpdatesEnabled` enabled, WebApi classifies an
-`Update` as configuration-only when the final normalized query is unchanged and
-every non-query patch path is allowlisted. Non-allowlisted changes still require
-manual review. With the setting disabled, updates retain the existing
-`PendingReview` behavior.
+When the AutoApprover queue is available, WebApi classifies an `Update` as
+configuration-only when the final normalized query is unchanged and every
+non-query patch path is allowlisted. Non-allowlisted changes still require
+manual review. There is no separate configuration-update setting gate.
 
 | Pre-edit status | Configuration-only update |
 |---|---|
 | `Idle`, `ThresholdExceeded` | WebApi saves an `Update` audit row, sets `PendingAutoApproval`, and queues `Origin = ConfigUpdate`. AutoApprover sets `Idle` unconditionally, writes `UpdateAutoApproved`, and emits the update `JobReviewed` metric. |
-| Other error states (including `NestedGroupsFound` and `ManagerNotFound`), `CustomerPaused`, `DeveloperPaused`, `SubmissionRejected` | WebApi saves configuration with the status unchanged and a plain `Update` audit row. No queue message, approval metric, or notification. |
+| Other error states (including `NestedGroupsFound` and `ManagerNotFound`), `CustomerPaused`, `DeveloperPaused`, `SubmissionRejected` | When the queue is available, WebApi saves configuration with the status unchanged and a plain `Update` audit row. No queue message, approval metric, or notification. |
 | `New`, `All` (filter value only) | `PendingReview`. |
 | `InProgress`, `StuckInProgress`, `PendingReview`, `PendingConfiguration`, `PendingAutoApproval` | Update rejected with HTTP 412, unchanged. |
 
@@ -24,8 +23,10 @@ untouched; only onboarding can push a past `StartDate` out by 24 hours.
 
 Only the AutoApprover host records actual automatic approvals. Queued
 configuration updates no longer send WebApi's synchronous approval notification.
-If its queue repository is unavailable or enqueueing fails, WebApi falls back to
-`PendingReview`. Status-preserving configuration edits do not require the queue.
+If the queue repository is unavailable, all updates use the existing
+`PendingReview` path. If enqueueing an approval fails, WebApi falls back to
+`PendingReview`. Status-preserving configuration edits do not enqueue a message,
+but still use the configuration-update path only when the queue is available.
 The consumer still requires `PendingAutoApproval` before processing, so messages
 for jobs that have changed status are ignored.
 
