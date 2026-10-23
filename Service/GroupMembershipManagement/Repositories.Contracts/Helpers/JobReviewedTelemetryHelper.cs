@@ -80,7 +80,7 @@ namespace Repositories.Contracts.Helpers
         /// </summary>
         public static JobReviewRequestType ToRequestType(AutoApprovalOrigin origin)
         {
-            return origin == AutoApprovalOrigin.Update
+            return origin is AutoApprovalOrigin.Update or AutoApprovalOrigin.ConfigUpdate
                 ? JobReviewRequestType.Update
                 : JobReviewRequestType.Onboarding;
         }

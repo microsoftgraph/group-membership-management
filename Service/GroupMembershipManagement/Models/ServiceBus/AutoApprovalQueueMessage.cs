@@ -13,7 +13,8 @@ namespace Models.ServiceBus
     public enum AutoApprovalOrigin
     {
         Onboarding,
-        Update
+        Update,
+        ConfigUpdate
     }
 
     public class AutoApprovalQueueMessage
@@ -53,5 +54,11 @@ namespace Models.ServiceBus
         /// so messages produced before this field existed remain valid across a rolling deploy (FR-016).
         /// </summary>
         public AutoApprovalOrigin Origin { get; init; } = AutoApprovalOrigin.Onboarding;
+
+        /// <summary>
+        /// Persisted query for a ConfigUpdate submission. A stale message must not unconditionally
+        /// approve a different query submitted after this configuration update.
+        /// </summary>
+        public string? ConfigurationQuery { get; init; }
     }
 }
