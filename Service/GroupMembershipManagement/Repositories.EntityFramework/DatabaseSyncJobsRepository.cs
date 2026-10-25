@@ -22,11 +22,14 @@ namespace Repositories.EntityFramework
         private const string OnboardingRequestType = "Onboarding";
         private const string UpdateRequestType = "Update";
 
-        // Approval reasons in SyncJobChanges. SubmissionApproved = a human reviewer approved via
-        // the web app; OnboardingAutoApproved = the AutoApprover function approved automatically.
+        // SubmissionApproved is a human approval; onboarding and update auto-approvals are automated.
         private const string ManualApprovalReason = nameof(SyncJobChangeReason.SubmissionApproved);
-        private const string AutomatedApprovalReason = nameof(SyncJobChangeReason.OnboardingAutoApproved);
         private const string RejectionReason = nameof(SyncJobChangeReason.SubmissionRejected);
+        private static readonly string[] AutomatedApprovalReasons =
+        {
+            nameof(SyncJobChangeReason.OnboardingAutoApproved),
+            nameof(SyncJobChangeReason.UpdateAutoApproved)
+        };
 
         // Reviewers rendered as their own chart series / table row. The remainder folds into a
         // single aggregated row so the manual total always reconciles.
@@ -453,7 +456,7 @@ namespace Repositories.EntityFramework
                 .AsNoTracking()
                 .Where(change => change.ChangeTime >= sinceUtc
                     && (change.ChangeReason == ManualApprovalReason
-                        || change.ChangeReason == AutomatedApprovalReason
+                        || AutomatedApprovalReasons.Contains(change.ChangeReason)
                         || change.ChangeReason == RejectionReason))
                 .Select(change => new
                 {
@@ -465,7 +468,7 @@ namespace Repositories.EntityFramework
                 .ToListAsync(cancellationToken);
 
             var manualRows = rows
-                .Where(row => row.ChangeReason != AutomatedApprovalReason)
+                .Where(row => !AutomatedApprovalReasons.Contains(row.ChangeReason))
                 .Select(row => new
                 {
                     row.ChangeTime,
@@ -513,7 +516,7 @@ namespace Repositories.EntityFramework
 
             var manualByDay = manualRows.ToLookup(row => row.ChangeTime.Date);
             var automatedByDay = rows
-                .Where(row => row.ChangeReason == AutomatedApprovalReason)
+                .Where(row => AutomatedApprovalReasons.Contains(row.ChangeReason))
                 .ToLookup(row => row.ChangeTime.Date);
 
             var dayBuckets = new List<ApprovalActivityDay>(days);
@@ -546,7 +549,7 @@ namespace Repositories.EntityFramework
                 WindowDays = days,
                 SinceUtc = sinceUtc,
                 QueriedAtUtc = now,
-                AutomatedTotal = rows.Count(row => row.ChangeReason == AutomatedApprovalReason),
+                AutomatedTotal = rows.Count(row => AutomatedApprovalReasons.Contains(row.ChangeReason)),
                 ManualTotal = manualRows.Count(row => row.ChangeReason == ManualApprovalReason),
                 RejectedTotal = manualRows.Count(row => row.ChangeReason == RejectionReason),
                 Reviewers = reviewers,

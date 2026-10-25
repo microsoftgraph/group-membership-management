@@ -5,9 +5,12 @@ import {
     type AdminConfigStyleProps,
     type AdminConfigStyles,
 } from './AdminConfig.types';
+import { getAccessibleStatusColors, isDarkTheme } from '../../theme/accessibleColors';
 
 export const getStyles = (props: AdminConfigStyleProps): AdminConfigStyles => {
     const { className, theme } = props;
+    const isDarkMode = isDarkTheme(theme);
+    const statusColors = getAccessibleStatusColors(theme);
 
     return {
         root: [{
@@ -339,72 +342,167 @@ export const getStyles = (props: AdminConfigStyleProps): AdminConfigStyles => {
             fontSize: 14,
             color: theme.palette.themePrimary,
         },
-        dashboardToolbar: {
+        dashboardRoot: {
             display: 'flex',
-            justifyContent: 'flex-end',
-            marginBottom: 4,
-        },
-        dashboardSection: {
+            flexDirection: 'column',
+            gap: 12,
+            minWidth: 0,
             marginTop: 24,
         },
-        // Approvals and on-behalf-of report the same shape of data over the same kind of window, so
-        // they pair up on a wide viewport and stack on narrow ones.
-        // minmax(0, 1fr) keeps the chart SVG from forcing a column wider than its half.
+        dashboardHeader: {
+            display: 'flex',
+            flexWrap: 'wrap',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: 12,
+        },
+        dashboardHeading: {
+            margin: 0,
+            fontSize: 14,
+            fontWeight: 600,
+            lineHeight: '20px',
+            textTransform: 'uppercase',
+            color: statusColors.accentText,
+        },
+        dashboardToolbar: {
+            display: 'flex',
+            flexWrap: 'wrap',
+            alignItems: 'center',
+            justifyContent: 'flex-end',
+            gap: 8,
+            minWidth: 0,
+            maxWidth: '100%',
+        },
+        dashboardRefresh: {
+            display: 'flex',
+            alignItems: 'center',
+            gap: 4,
+            minWidth: 0,
+            maxWidth: '100%',
+        },
+        dashboardSection: {
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 12,
+            minWidth: 0,
+            padding: 18,
+            borderRadius: 8,
+            border: `1px solid ${theme.palette.neutralQuaternary}`,
+            backgroundColor: theme.palette.white,
+            boxSizing: 'border-box',
+        },
         dashboardSectionRow: {
             display: 'grid',
             gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
-            gap: 24,
-            alignItems: 'start',
-            '@media (max-width: 1100px)': {
-                gridTemplateColumns: '1fr',
-                gap: 0,
+            gap: 12,
+            alignItems: 'stretch',
+            '@media (max-width: 1050px)': {
+                gridTemplateColumns: 'minmax(0, 1fr)',
+            },
+        },
+        dashboardCardHeader: {
+            display: 'flex',
+            flexWrap: 'wrap',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: 8,
+        },
+        dashboardCardTitle: {
+            display: 'flex',
+            alignItems: 'center',
+            gap: 4,
+        },
+        dashboardInfoIcon: {
+            fontSize: 12,
+            color: theme.palette.neutralPrimary,
+            cursor: 'help',
+        },
+        dashboardSnapshot: {
+            fontSize: 12,
+            color: theme.palette.neutralSecondary,
+        },
+        dashboardTable: {
+            minWidth: 0,
+            maxWidth: '100%',
+            overflowX: 'auto',
+            selectors: {
+                '.ms-DetailsHeader': {
+                    paddingTop: 0,
+                    borderBottomColor: theme.palette.neutralTertiaryAlt,
+                },
+                '.ms-DetailsHeader-cellTitle': {
+                    fontWeight: 400,
+                },
+                '.ms-DetailsRow': {
+                    borderBottom: `1px solid ${theme.palette.neutralLight}`,
+                    color: theme.palette.neutralPrimary,
+                },
+            },
+        },
+        dashboardBreakdown: {
+            marginTop: 4,
+            paddingTop: 12,
+            borderTop: `1px solid ${theme.palette.neutralLight}`,
+            selectors: {
+                summary: {
+                    cursor: 'pointer',
+                    color: statusColors.accentText,
+                    fontSize: 12,
+                },
             },
         },
         dashboardHint: {
             display: 'block',
-            marginTop: 0,
-            marginBottom: 12,
+            margin: 0,
+            fontSize: 12,
             lineHeight: '20px',
-            color: theme.palette.neutralSecondary,
+            color: theme.palette.neutralPrimary,
         },
         dashboardEmpty: {
             display: 'block',
-            marginBottom: 8,
+            padding: '8px 0',
             color: theme.palette.neutralSecondary,
         },
         dashboardCounts: {
             display: 'flex',
             flexWrap: 'wrap',
-            gap: 12,
-            marginBottom: 16,
+            gap: 8,
         },
         dashboardCount: {
             display: 'flex',
-            flexDirection: 'column',
-            gap: 2,
-            minWidth: 150,
-            padding: '10px 14px',
-            borderRadius: 8,
+            alignItems: 'center',
+            justifyContent: 'center',
+            flex: '1 1 100px',
+            gap: 6,
+            minWidth: 0,
+            padding: '5px 8px',
+            borderRadius: 5,
             borderLeftWidth: 4,
             borderLeftStyle: 'solid',
-            backgroundColor: theme.palette.neutralLighterAlt,
+            backgroundColor: isDarkMode ? theme.palette.neutralLight : theme.palette.neutralLighter,
             boxSizing: 'border-box',
         },
+        dashboardHeadlineCount: {
+            flexDirection: 'column',
+            gap: 2,
+            padding: '8px 12px',
+        },
         dashboardCountLabel: {
-            fontSize: 12,
-            fontWeight: 600,
-            textTransform: 'uppercase',
-            color: theme.palette.neutralSecondary,
+            fontSize: 14,
+            lineHeight: '20px',
+            color: theme.palette.neutralPrimary,
+            minWidth: 0,
+            maxWidth: '100%',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            whiteSpace: 'nowrap',
         },
         dashboardCountValue: {
-            fontSize: 24,
+            fontSize: 14,
             fontWeight: 600,
-            lineHeight: '30px',
+            lineHeight: '20px',
             color: theme.palette.neutralPrimary,
-        },
-        dashboardCountDetail: {
-            fontSize: 12,
-            color: theme.palette.neutralSecondary,
+            flexShrink: 0,
         },
     };
 };

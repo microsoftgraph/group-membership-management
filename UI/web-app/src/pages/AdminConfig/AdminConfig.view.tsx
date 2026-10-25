@@ -51,6 +51,7 @@ import {
   selectOnBehalfOfWindowDays,
   setOnBehalfOfWindowDays } from '../../store/dashboard.slice';
 import type { AlertBannerConfig } from '../../models/AlertBannerConfig';
+import { getAccessibleStatusColors, isDarkTheme } from '../../theme/accessibleColors';
 
 const getClassNames = classNamesFunction<AdminConfigStyleProps, AdminConfigStyles>();
 
@@ -94,7 +95,8 @@ export const AdminConfigView: React.FunctionComponent<AdminConfigViewProps> = (p
     ...(canViewCustomSourceSettings ? ['customSource'] : []),
     ...(canViewAISettings ? ['ai'] : []),
     ...(canViewAutoApproverSettings ? ['autoApprover'] : []),
-  ], [canViewGeneralSettings, isOperationsResetAdministrator, canViewCustomSourceSettings, canViewAISettings, canViewAutoApproverSettings]);
+    ...(canViewDashboard ? ['dashboard'] : []),
+  ], [canViewGeneralSettings, isOperationsResetAdministrator, canViewCustomSourceSettings, canViewAISettings, canViewAutoApproverSettings, canViewDashboard]);
 
   // Fluent locks the Pivot into uncontrolled mode if selectedKey is ever undefined, so always pass a key.
   const effectiveTabKey = selectedTabKey && visibleTabKeys.includes(selectedTabKey)
@@ -265,6 +267,7 @@ export const AdminConfigView: React.FunctionComponent<AdminConfigViewProps> = (p
               }
               {canViewDashboard &&
                 <PivotItem
+                  itemKey="dashboard"
                   headerText={strings.Dashboard.labels.dashboard}
                   headerButtonProps={{
                     'data-order': 6,
@@ -317,7 +320,7 @@ const Operations: React.FunctionComponent<OperationsProps> = (props: OperationsP
   );
 }
 
-type DashboardTone = 'good' | 'warning' | 'danger' | 'neutral';
+type DashboardTone = 'good' | 'warning' | 'danger' | 'info' | 'neutral';
 
 // The API serializes UTC timestamps; tolerate payloads that omit the zone designator
 // so the browser does not reinterpret them as local time.
@@ -338,10 +341,13 @@ const calendarDayDiff = (value: Date): number => {
 };
 
 const toneColorFor = (theme: ITheme, tone: DashboardTone): string => {
+  const isDarkMode = isDarkTheme(theme);
+  const statusColors = getAccessibleStatusColors(theme);
   switch (tone) {
-    case 'good': return theme.palette.green;
-    case 'warning': return theme.palette.yellowDark;
-    case 'danger': return theme.palette.redDark;
+    case 'good': return isDarkMode ? statusColors.successText : theme.palette.green;
+    case 'warning': return isDarkMode ? statusColors.warningIcon : theme.palette.yellowDark;
+    case 'danger': return isDarkMode ? statusColors.errorText : theme.palette.redDark;
+    case 'info': return statusColors.accentText;
     default: return theme.palette.neutralSecondary;
   }
 };
@@ -351,30 +357,96 @@ type CountCard = { key: string; label: string; value: number; detail?: string; t
 const renderCountCards = (
   classNames: IProcessedStyleSet<AdminConfigStyles>,
   theme: ITheme,
-  totalLabel: string,
-  cards: CountCard[]
-) => (
-  <div className={classNames.dashboardCounts} role="list">
-    {cards.map((card) => (
-      <div key={card.key} role="listitem" className={classNames.dashboardCount} style={{ borderLeftColor: toneColorFor(theme, card.tone) }}>
-        <span className={classNames.dashboardCountLabel}>{card.label}</span>
-        <span className={classNames.dashboardCountValue}>{card.value}</span>
-        {card.detail !== undefined && <span className={classNames.dashboardCountDetail}>{card.detail}</span>}
-      </div>
-    ))}
-    <div role="listitem" className={classNames.dashboardCount} style={{ borderLeftColor: toneColorFor(theme, 'neutral') }}>
-      <span className={classNames.dashboardCountLabel}>{totalLabel}</span>
-      <span className={classNames.dashboardCountValue}>{cards.reduce((sum, card) => sum + card.value, 0)}</span>
+  totalLabel: string | undefined,
+  cards: CountCard[],
+  headline = false
+) => {
+  const displayedCards: CountCard[] = totalLabel
+    ? [...cards, { key: '__total__', label: totalLabel, value: cards.reduce((sum, card) => sum + card.value, 0), tone: 'neutral' }]
+    : cards;
+
+  return (
+    <div className={classNames.dashboardCounts} role="list">
+      {displayedCards.map((card) => (
+        <div
+          key={card.key}
+          role="listitem"
+          aria-label={`${card.label}: ${card.value.toLocaleString()}`}
+          title={card.detail}
+          className={headline ? mergeStyles(classNames.dashboardCount, classNames.dashboardHeadlineCount) : classNames.dashboardCount}
+          style={{ borderLeftColor: toneColorFor(theme, card.tone) }}>
+          <span className={classNames.dashboardCountLabel} title={card.label}>{card.label}</span>
+          <span className={classNames.dashboardCountValue}>{card.value.toLocaleString()}</span>
+        </div>
+      ))}
     </div>
-  </div>
+  );
+};
+
+type DashboardCardHeaderProps = Pick<DashboardProps, 'classNames'> & {
+  title: string;
+  description: string;
+  children?: React.ReactNode;
+};
+
+const DashboardCardHeader: React.FunctionComponent<DashboardCardHeaderProps> = ({ classNames, title, description, children }) => (
+  <header className={classNames.dashboardCardHeader}>
+    <div className={classNames.dashboardCardTitle}>
+      <Text as="h3" className={classNames.dashboardHeading}>{title}</Text>
+      <TooltipHost content={description}>
+        <Icon iconName="Info" tabIndex={0} aria-label={description} className={classNames.dashboardInfoIcon} />
+      </TooltipHost>
+    </div>
+    {children}
+  </header>
 );
+
+type DashboardTimeRangeProps = Pick<DashboardProps, 'strings'> & {
+  windowDays: number | 'individual';
+  disabled: boolean;
+  ariaLabel: string;
+  onChange: (windowDays: number) => void;
+};
+
+const DashboardTimeRange: React.FunctionComponent<DashboardTimeRangeProps> = ({ strings, windowDays, disabled, ariaLabel, onChange }) => {
+  const labels = strings.Dashboard.labels;
+  const theme = useTheme();
+  const options = [
+    { key: 7, text: labels.range7Days, selectedText: labels.last7Days },
+    { key: 14, text: labels.range14Days, selectedText: labels.last14Days },
+    { key: 30, text: labels.range1Month, selectedText: labels.last1Month },
+    { key: 90, text: labels.range3Months, selectedText: labels.last3Months },
+    ...(windowDays === 'individual'
+      ? [{ key: 'individual', text: labels.individualRanges, selectedText: labels.individualRanges, disabled: true }]
+      : []),
+  ];
+
+  return (
+    <Dropdown
+      ariaLabel={ariaLabel}
+      selectedKey={windowDays}
+      options={options}
+      disabled={disabled}
+      onRenderTitle={() => <span>{options.find((option) => option.key === windowDays)?.selectedText}</span>}
+      onRenderCaretDown={() => <Icon iconName="Calendar" aria-hidden="true" styles={{ root: { fontSize: 10 } }} />}
+      styles={{
+        root: { width: 150, maxWidth: '100%' },
+        title: { borderRadius: 2, borderColor: theme.palette.neutralTertiaryAlt, fontSize: 12 },
+      }}
+      onChange={(_event, option) => {
+        if (typeof option?.key === 'number') {
+          onChange(option.key);
+        }
+      }} />
+  );
+};
 
 // Fixed series colors: chart hues must stay distinguishable from each other rather than
 // track the theme. Each reviewer gets an approved/rejected pair so their rejections stack
 // directly above their approvals in the same hue family.
-const AUTOMATED_COLOR = '#4FC3F7';
+const AUTOMATED_COLOR = '#126CC0';
 const REVIEWER_HUES = [
-  { approved: '#2AA198', rejected: '#14655F' },
+  { approved: '#008AF4', rejected: '#86C8FF' },
   { approved: '#8B7BD8', rejected: '#54459F' },
   { approved: '#E8A33D', rejected: '#AE6E12' },
   { approved: '#4C9AFF', rejected: '#245FA8' },
@@ -389,7 +461,7 @@ const reviewerHue = (index: number) => REVIEWER_HUES[index % REVIEWER_HUES.lengt
 // Submitter rows arrive pre-sorted by the API with the aggregated "Other" bucket last, so the
 // index-based hue assignment is stable between the chart, the legend and the submitter table.
 const SUBMITTER_HUES = [
-  { onboarding: '#2AA198', update: '#14655F' },
+  { onboarding: '#126CC0', update: '#86C8FF' },
   { onboarding: '#8B7BD8', update: '#54459F' },
   { onboarding: '#E8A33D', update: '#AE6E12' },
   { onboarding: '#4C9AFF', update: '#245FA8' },
@@ -438,14 +510,39 @@ const formatChartDay = (value: string): string => {
     : '';
 };
 
+const DashboardActivityChart = ({ data, title }: { data: IVerticalStackedChartProps[]; title: string }): JSX.Element => {
+  const theme = useTheme();
+
+  return (
+    <VerticalStackedBarChart
+      data={data}
+      height={300}
+      barWidth={28}
+      hideLegend={false}
+      hideLabels={false}
+      enabledLegendsWrapLines
+      yAxisTickCount={5}
+      rotateXAxisLables={visibleAxisLabels(data.length, MAX_SECTION_AXIS_LABELS) > AXIS_ROTATE_ABOVE}
+      chartTitle={title}
+      styles={{
+        root: { width: '100%', minWidth: 0 },
+        yAxis: { selectors: { '.tick line': { stroke: theme.palette.neutralTertiaryAlt }, '.domain': { display: 'none' } } },
+        xAxis: { selectors: { '.domain, .tick line': { stroke: theme.palette.neutralLight } } },
+        barLabel: { fontSize: 11, fontWeight: 400 },
+        legendContainer: { paddingTop: 8 },
+      }} />
+  );
+};
+
 const ApprovalActivitySection: React.FunctionComponent<DashboardProps> = (props: DashboardProps) => {
   const { classNames, strings } = props;
   const dispatch = useAppDispatch();
   const theme = useTheme();
-  const activity = useAppSelector(selectApprovalActivity);
+  const loadedActivity = useAppSelector(selectApprovalActivity);
   const loading = useAppSelector(selectApprovalActivityLoading);
   const error = useAppSelector(selectApprovalActivityError);
   const windowDays = useAppSelector(selectApprovalWindowDays);
+  const activity = loadedActivity?.windowDays === windowDays ? loadedActivity : undefined;
 
   const labels = strings.Dashboard.labels;
 
@@ -475,12 +572,6 @@ const ApprovalActivitySection: React.FunctionComponent<DashboardProps> = (props:
 
   const hasData = chartData.some((day) => day.chartData.length > 0);
 
-  const windowOptions = [
-    { key: 7, text: labels.last7Days },
-    { key: 30, text: labels.last30Days },
-    { key: 90, text: labels.last90Days }
-  ];
-
   const reviewerColumns: IColumn[] = [
     {
       key: 'reviewer', name: labels.reviewer, minWidth: 180, maxWidth: 320, isResizable: true,
@@ -507,56 +598,42 @@ const ApprovalActivitySection: React.FunctionComponent<DashboardProps> = (props:
     }
   ];
 
-  const isShimmering = loading && !activity;
+  const isShimmering = !activity && !error;
 
   return (
-    <div className={classNames.dashboardSection}>
-      <Text variant="mediumPlus" className={classNames.sectionHeading}>{labels.approvals}</Text>
-      <Text className={classNames.dashboardHint}>{labels.approvalsDescription}</Text>
-      <div className={classNames.dashboardToolbar}>
-        <Dropdown
-          ariaLabel={labels.timeRange}
-          label={labels.timeRange}
-          selectedKey={windowDays}
-          options={windowOptions}
+    <section className={classNames.dashboardSection} aria-label={labels.approvals} aria-busy={loading}>
+      <DashboardCardHeader classNames={classNames} title={labels.approvals} description={labels.approvalsDescription}>
+        <DashboardTimeRange
+          strings={strings}
+          windowDays={windowDays}
           disabled={loading}
-          styles={{ root: { minWidth: 160 } }}
-          onChange={(_event, option) => {
-            if (option) {
-              dispatch(setApprovalWindowDays(option.key as number));
-            }
-          }} />
-      </div>
+          ariaLabel={`${labels.approvals}: ${labels.timeRange}`}
+          onChange={(days) => dispatch(setApprovalWindowDays(days))} />
+      </DashboardCardHeader>
       {error && <MessageBar messageBarType={MessageBarType.error}>{labels.approvalsLoadFailed}</MessageBar>}
-      {!isShimmering && !hasData
-        ? <Text className={classNames.dashboardEmpty}>{labels.noApprovalActivity}</Text>
-        : <>
-          {activity && renderCountCards(classNames, theme, labels.total, [
-            { key: 'automated', label: labels.automated, value: activity.automatedTotal, tone: 'neutral' },
-            { key: 'manual', label: labels.manual, value: activity.manualTotal, tone: 'good' },
-            { key: 'rejected', label: labels.rejected, value: activity.rejectedTotal, tone: 'danger' }
-          ])}
-          {hasData && (
-            <div className={mergeStyles({ marginTop: 12 })}>
-              <VerticalStackedBarChart
-                data={chartData}
-                height={320}
-                barWidth={28}
-                hideLegend={false}
-                yAxisTickCount={5}
-                rotateXAxisLables={visibleAxisLabels(chartData.length, MAX_SECTION_AXIS_LABELS) > AXIS_ROTATE_ABOVE}
-                chartTitle={labels.approvals} />
-            </div>
-          )}
+      {activity && renderCountCards(classNames, theme, labels.total, [
+        { key: 'automated', label: labels.automated, value: activity.automatedTotal, tone: 'good' },
+        { key: 'manual', label: labels.manual, value: activity.manualTotal, tone: 'warning' },
+        { key: 'rejected', label: labels.rejected, value: activity.rejectedTotal, tone: 'danger' }
+      ])}
+      {isShimmering
+        ? <Spinner label={labels.loading} />
+        : !hasData && !error && <Text className={classNames.dashboardEmpty}>{labels.noApprovalActivity}</Text>}
+      {hasData && <DashboardActivityChart data={chartData} title={labels.approvals} />}
+      {reviewers.length > 0 && (
+        <details className={classNames.dashboardBreakdown}>
+          <summary>{labels.reviewerBreakdown}</summary>
+          <div className={classNames.dashboardTable}>
           <ShimmeredDetailsList
             items={reviewers}
             columns={reviewerColumns}
             selectionMode={SelectionMode.none}
-            enableShimmer={isShimmering}
             ariaLabelForGrid={labels.approvals}
           />
-        </>}
-    </div>
+          </div>
+        </details>
+      )}
+    </section>
   );
 }
 
@@ -564,10 +641,11 @@ const OnBehalfOfSection: React.FunctionComponent<DashboardProps> = (props: Dashb
   const { classNames, strings } = props;
   const dispatch = useAppDispatch();
   const theme = useTheme();
-  const activity = useAppSelector(selectOnBehalfOfActivity);
+  const loadedActivity = useAppSelector(selectOnBehalfOfActivity);
   const loading = useAppSelector(selectOnBehalfOfActivityLoading);
   const error = useAppSelector(selectOnBehalfOfActivityError);
   const windowDays = useAppSelector(selectOnBehalfOfWindowDays);
+  const activity = loadedActivity?.windowDays === windowDays ? loadedActivity : undefined;
 
   const labels = strings.Dashboard.labels;
 
@@ -594,15 +672,9 @@ const OnBehalfOfSection: React.FunctionComponent<DashboardProps> = (props: Dashb
 
   const hasData = chartData.some((day) => day.chartData.length > 0);
 
-  const windowOptions = [
-    { key: 7, text: labels.last7Days },
-    { key: 30, text: labels.last30Days },
-    { key: 90, text: labels.last90Days }
-  ];
-
   const submitterColumns: IColumn[] = [
     {
-      key: 'submitter', name: labels.submitter, minWidth: 180, maxWidth: 320, isResizable: true,
+      key: 'submitter', name: labels.reviewer, minWidth: 180, maxWidth: 320, isResizable: true,
       onRender: (item: SubmitterActivityRow, index?: number) => (
         <span className={mergeStyles({ display: 'flex', alignItems: 'center', gap: 8 })}>
           <span
@@ -626,55 +698,41 @@ const OnBehalfOfSection: React.FunctionComponent<DashboardProps> = (props: Dashb
     }
   ];
 
-  const isShimmering = loading && !activity;
+  const isShimmering = !activity && !error;
 
   return (
-    <div className={classNames.dashboardSection}>
-      <Text variant="mediumPlus" className={classNames.sectionHeading}>{labels.requestsOnBehalfOf}</Text>
-      <Text className={classNames.dashboardHint}>{labels.onBehalfDescription}</Text>
-      <div className={classNames.dashboardToolbar}>
-        <Dropdown
-          ariaLabel={labels.timeRange}
-          label={labels.timeRange}
-          selectedKey={windowDays}
-          options={windowOptions}
+    <section className={classNames.dashboardSection} aria-label={labels.requestsOnBehalfOf} aria-busy={loading}>
+      <DashboardCardHeader classNames={classNames} title={labels.requestsOnBehalfOf} description={labels.onBehalfDescription}>
+        <DashboardTimeRange
+          strings={strings}
+          windowDays={windowDays}
           disabled={loading}
-          styles={{ root: { minWidth: 160 } }}
-          onChange={(_event, option) => {
-            if (option) {
-              dispatch(setOnBehalfOfWindowDays(option.key as number));
-            }
-          }} />
-      </div>
+          ariaLabel={`${labels.requestsOnBehalfOf}: ${labels.timeRange}`}
+          onChange={(days) => dispatch(setOnBehalfOfWindowDays(days))} />
+      </DashboardCardHeader>
       {error && <MessageBar messageBarType={MessageBarType.error}>{labels.onBehalfLoadFailed}</MessageBar>}
-      {!isShimmering && !hasData
-        ? <Text className={classNames.dashboardEmpty}>{labels.noOnBehalfActivity}</Text>
-        : <>
-          {activity && renderCountCards(classNames, theme, labels.total, [
-            { key: 'onboarding', label: labels.onboarding, value: activity.onboardingTotal, tone: 'good' },
-            { key: 'update', label: labels.update, value: activity.updateTotal, tone: 'neutral' }
-          ])}
-          {hasData && (
-            <div className={mergeStyles({ marginTop: 12 })}>
-              <VerticalStackedBarChart
-                data={chartData}
-                height={320}
-                barWidth={28}
-                hideLegend={false}
-                yAxisTickCount={5}
-                rotateXAxisLables={visibleAxisLabels(chartData.length, MAX_SECTION_AXIS_LABELS) > AXIS_ROTATE_ABOVE}
-                chartTitle={labels.requestsOnBehalfOf} />
-            </div>
-          )}
+      {activity && renderCountCards(classNames, theme, labels.total, [
+        { key: 'onboarding', label: labels.onboarding, value: activity.onboardingTotal, tone: 'good' },
+        { key: 'update', label: labels.update, value: activity.updateTotal, tone: 'info' }
+      ])}
+      {isShimmering
+        ? <Spinner label={labels.loading} />
+        : !hasData && !error && <Text className={classNames.dashboardEmpty}>{labels.noOnBehalfActivity}</Text>}
+      {hasData && <DashboardActivityChart data={chartData} title={labels.requestsOnBehalfOf} />}
+      {submitters.length > 0 && (
+        <details className={classNames.dashboardBreakdown}>
+          <summary>{labels.reviewerBreakdown}</summary>
+          <div className={classNames.dashboardTable}>
           <ShimmeredDetailsList
             items={submitters}
             columns={submitterColumns}
             selectionMode={SelectionMode.none}
-            enableShimmer={isShimmering}
             ariaLabelForGrid={labels.requestsOnBehalfOf}
           />
-        </>}
-    </div>
+          </div>
+        </details>
+      )}
+    </section>
   );
 }
 
@@ -685,6 +743,13 @@ const Dashboard: React.FunctionComponent<DashboardProps> = (props: DashboardProp
   const summary = useAppSelector(selectDashboardSummary);
   const loading = useAppSelector(selectDashboardLoading);
   const error = useAppSelector(selectDashboardError);
+  const approvalWindowDays = useAppSelector(selectApprovalWindowDays);
+  const onBehalfOfWindowDays = useAppSelector(selectOnBehalfOfWindowDays);
+  const approvalLoading = useAppSelector(selectApprovalActivityLoading);
+  const onBehalfOfLoading = useAppSelector(selectOnBehalfOfActivityLoading);
+  const anyLoading = loading || approvalLoading || onBehalfOfLoading;
+  const anomalousTableRef = useRef<HTMLDivElement>(null);
+  const [anomalousTableWidth, setAnomalousTableWidth] = useState(0);
 
   useEffect(() => {
     dispatch(fetchDashboardSummary());
@@ -692,27 +757,32 @@ const Dashboard: React.FunctionComponent<DashboardProps> = (props: DashboardProp
 
   const labels = strings.Dashboard.labels;
 
-  const toneColor = useCallback((tone: DashboardTone): string => toneColorFor(theme, tone), [theme]);
-
-  const renderChip = useCallback((tone: DashboardTone, text: string) => (
-    <span className={mergeStyles({
-      display: 'inline-block',
-      padding: '2px 8px',
-      borderRadius: 10,
-      fontSize: 12,
-      fontWeight: 600,
-      whiteSpace: 'nowrap',
-      color: toneColor(tone),
-      border: `1px solid ${toneColor(tone)}`,
-      backgroundColor: theme.palette.neutralLighterAlt,
-    })}>{text}</span>
-  ), [theme, toneColor]);
+  const renderChip = useCallback((tone: DashboardTone, text: string) => {
+    const statusColors = getAccessibleStatusColors(theme);
+    return (
+      <span className={mergeStyles({
+        display: 'inline-block',
+        padding: '2px 8px',
+        borderRadius: 10,
+        fontSize: 12,
+        whiteSpace: 'nowrap',
+        color: theme.palette.neutralPrimary,
+        backgroundColor: tone === 'good'
+          ? statusColors.successBackground
+          : tone === 'warning'
+            ? statusColors.warningBackground
+            : tone === 'danger'
+              ? statusColors.errorBackground
+              : theme.palette.neutralLight,
+      })}>{text}</span>
+    );
+  }, [theme]);
 
   const formatDateTime = (value?: string | null): string => {
     const parsed = parseUtc(value);
     return parsed === null
       ? labels.notAvailable
-      : parsed.toLocaleString(undefined, { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' });
+      : parsed.toLocaleString(undefined, { month: '2-digit', day: '2-digit', year: 'numeric', hour: 'numeric', minute: '2-digit' });
   };
 
   const formatAge = (value?: string | null): string => {
@@ -741,41 +811,16 @@ const Dashboard: React.FunctionComponent<DashboardProps> = (props: DashboardProp
     return `${Math.max(cycles, 0)} ${labels.cyclesSuffix}`;
   };
 
-  const cyclesTone = (cycles?: number | null): DashboardTone => {
-    if (cycles === null || cycles === undefined) return 'warning';
-    if (cycles >= 4) return 'danger';
-    return cycles >= 2 ? 'warning' : 'good';
-  };
-
-  const pendingAgeTone = (value?: string | null): DashboardTone => {
-    const parsed = parseUtc(value);
-    if (parsed === null) return 'neutral';
-    const days = calendarDayDiff(parsed);
-    if (days > 7) return 'danger';
-    return days > 3 ? 'warning' : 'good';
-  };
-
-  const inProgressTone = (status: string): DashboardTone => {
+  const statusTone = (status: string): DashboardTone => {
     switch (status) {
+      case 'Error':
+      case 'SchemaError':
       case 'ErroredDueToStuckInProgress': return 'danger';
+      case 'PendingAutoApproval': return 'info';
       case 'StuckInProgress': return 'warning';
       case 'InProgress': return 'good';
       default: return 'neutral';
     }
-  };
-
-  const inProgressAgeTone = (value?: string | null): DashboardTone => {
-    const parsed = parseUtc(value);
-    if (parsed === null) return 'neutral';
-    const hours = (Date.now() - parsed.getTime()) / 3600000;
-    if (hours > 6) return 'danger';
-    return hours > 2 ? 'warning' : 'good';
-  };
-
-  const anomalousTone = (row: AnomalousStatusRow): DashboardTone => {
-    if (row.count > 0 && row.neverSucceededCount === row.count) return 'danger';
-    if (row.neverSucceededCount > 0) return (row.maxCyclesMissed ?? 0) >= 4 ? 'danger' : 'warning';
-    return cyclesTone(row.maxCyclesMissed);
   };
 
   const stalenessSummary = (row: AnomalousStatusRow): string => {
@@ -796,146 +841,222 @@ const Dashboard: React.FunctionComponent<DashboardProps> = (props: DashboardProp
   const pendingReview = summary?.pendingReview ?? [];
   const inProgress = summary?.inProgress ?? [];
   const anomalous = summary?.anomalousStatuses ?? [];
-  const isShimmering = loading && !summary;
+  const isShimmering = !summary && !error;
+  const pendingReviewCount = pendingReview.reduce((sum, row) => sum + row.count, 0);
+  const inProgressCount = inProgress.reduce((sum, row) => sum + row.count, 0);
+  const anomalousCount = anomalous.reduce((sum, row) => sum + row.count, 0);
+  const showAnomalousTable = isShimmering || anomalous.length > 0;
+
+  useEffect(() => {
+    const table = anomalousTableRef.current;
+    if (!showAnomalousTable || !table) {
+      return;
+    }
+    const updateWidth = () => setAnomalousTableWidth(table.clientWidth);
+    updateWidth();
+    if (typeof ResizeObserver === 'undefined') {
+      window.addEventListener('resize', updateWidth);
+      return () => window.removeEventListener('resize', updateWidth);
+    }
+    const observer = new ResizeObserver(updateWidth);
+    observer.observe(table);
+    return () => observer.disconnect();
+  }, [showAnomalousTable]);
+
+  const requestTypeLabel = (value: string): string =>
+    value === 'Onboarding' ? labels.onboarding : value === 'Update' ? labels.update : value;
 
   const pendingReviewColumns: IColumn[] = [
     {
-      key: 'requestType', name: labels.changeReason, minWidth: 120, maxWidth: 200, isResizable: true,
-      onRender: (item: PendingReviewSummaryRow) => renderChip(item.requestType === 'Onboarding' ? 'good' : item.requestType === 'Update' ? 'warning' : 'neutral', item.requestType)
+      key: 'requestType', name: labels.changeReason, minWidth: 100, maxWidth: 160, isResizable: true,
+      onRender: (item: PendingReviewSummaryRow) => requestTypeLabel(item.requestType)
     },
-    { key: 'count', name: labels.count, fieldName: 'count', minWidth: 60, maxWidth: 100, isResizable: true },
+    { key: 'count', name: labels.count, fieldName: 'count', minWidth: 45, maxWidth: 70, isResizable: true },
     {
-      key: 'oldestChange', name: labels.oldestChange, minWidth: 160, maxWidth: 220, isResizable: true,
+      key: 'oldestChange', name: labels.oldestChange, minWidth: 140, maxWidth: 200, isResizable: true,
       onRender: (item: PendingReviewSummaryRow) => formatDateTime(item.oldestChangeTime)
     },
     {
-      key: 'age', name: labels.age, minWidth: 100, maxWidth: 140, isResizable: true,
-      onRender: (item: PendingReviewSummaryRow) => renderChip(pendingAgeTone(item.oldestChangeTime), formatAge(item.oldestChangeTime))
+      key: 'age', name: labels.age, minWidth: 65, maxWidth: 100, isResizable: true,
+      onRender: (item: PendingReviewSummaryRow) => formatAge(item.oldestChangeTime)
     }
   ];
 
   const inProgressColumns: IColumn[] = [
     {
-      key: 'status', name: labels.status, minWidth: 180, maxWidth: 260, isResizable: true,
-      onRender: (item: InProgressStatusRow) => renderChip(inProgressTone(item.status), item.status)
+      key: 'status', name: labels.status, minWidth: 130, maxWidth: 240, isResizable: true,
+      onRender: (item: InProgressStatusRow) => renderChip(statusTone(item.status), item.status)
     },
-    { key: 'count', name: labels.count, fieldName: 'count', minWidth: 60, maxWidth: 100, isResizable: true },
+    { key: 'count', name: labels.count, fieldName: 'count', minWidth: 45, maxWidth: 70, isResizable: true },
     {
-      key: 'oldestStarted', name: labels.oldestStarted, minWidth: 160, maxWidth: 220, isResizable: true,
+      key: 'oldestStarted', name: labels.oldestStarted, minWidth: 140, maxWidth: 200, isResizable: true,
       onRender: (item: InProgressStatusRow) => formatDateTime(item.oldestStartTime)
     },
     {
-      key: 'age', name: labels.age, minWidth: 100, maxWidth: 140, isResizable: true,
-      onRender: (item: InProgressStatusRow) => renderChip(inProgressAgeTone(item.oldestStartTime), formatAge(item.oldestStartTime))
+      key: 'age', name: labels.age, minWidth: 65, maxWidth: 100, isResizable: true,
+      onRender: (item: InProgressStatusRow) => formatAge(item.oldestStartTime)
     }
   ];
 
   const anomalousColumns: IColumn[] = [
     {
-      key: 'status', name: labels.status, minWidth: 180, maxWidth: 260, isResizable: true,
-      onRender: (item: AnomalousStatusRow) => renderChip('neutral', item.status)
+      key: 'status', name: labels.status, fieldName: 'status', minWidth: 160, maxWidth: Math.max(160, anomalousTableWidth * 0.28), isResizable: true,
     },
-    { key: 'count', name: labels.count, fieldName: 'count', minWidth: 60, maxWidth: 100, isResizable: true },
+    { key: 'count', name: labels.count, fieldName: 'count', minWidth: 60, maxWidth: Math.max(60, anomalousTableWidth * 0.1), isResizable: true },
     {
-      key: 'cycles', name: labels.maxCyclesMissed, minWidth: 130, maxWidth: 170, isResizable: true,
-      onRender: (item: AnomalousStatusRow) => renderChip(cyclesTone(item.maxCyclesMissed), cyclesLabel(item.maxCyclesMissed))
+      key: 'cycles', name: labels.maxCyclesMissed, minWidth: 130, maxWidth: Math.max(130, anomalousTableWidth * 0.18), isResizable: true,
+      onRender: (item: AnomalousStatusRow) => (
+        <span title={cyclesLabel(item.maxCyclesMissed)}>
+          {item.maxCyclesMissed ?? labels.notAvailable}
+        </span>
+      )
     },
     {
-      key: 'lastSuccess', name: labels.oldestLastSuccess, minWidth: 160, maxWidth: 220, isResizable: true,
-      onRender: (item: AnomalousStatusRow) => formatDateTime(item.oldestLastSuccessfulRun)
+      key: 'lastSuccess', name: labels.oldestLastSuccess, minWidth: 160, maxWidth: Math.max(160, anomalousTableWidth * 0.2), isResizable: true,
+      onRender: (item: AnomalousStatusRow) => (
+        <span title={formatDateTime(item.oldestLastSuccessfulRun)}>
+          {parseUtc(item.oldestLastSuccessfulRun)?.toLocaleDateString() ?? labels.notAvailable}
+        </span>
+      )
     },
     {
-      key: 'neverSucceeded', name: labels.neverSucceeded, minWidth: 130, maxWidth: 170, isResizable: true,
-      onRender: (item: AnomalousStatusRow) => item.neverSucceededCount > 0
-        ? renderChip('danger', `${item.neverSucceededCount}`)
-        : <span>0</span>
+      key: 'neverSucceeded', name: labels.neverSucceeded, minWidth: 130, isResizable: true,
+      fieldName: 'neverSucceededCount',
     }
   ];
 
   return (
-    <SettingsSection
-      classNames={classNames}
-      title={labels.dashboard}
-      subtitle={labels.description}>
-      <div className={classNames.dashboardToolbar}>
-        <ActionButton iconProps={{ iconName: 'Refresh' }} disabled={loading} onClick={() => { dispatch(fetchDashboardSummary()); }}>
-          {labels.refresh}
-        </ActionButton>
+    <section className={classNames.dashboardRoot} aria-label={labels.dashboard}>
+      <div className={classNames.dashboardHeader}>
+        <div>
+          <Text as="h2" className={classNames.dashboardHeading}>{labels.dashboard}</Text>
+          <Text className={classNames.dashboardHint}>{labels.description}</Text>
+        </div>
+        <div className={classNames.dashboardToolbar}>
+          <DashboardTimeRange
+            strings={strings}
+            windowDays={approvalWindowDays === onBehalfOfWindowDays ? approvalWindowDays : 'individual'}
+            disabled={anyLoading}
+            ariaLabel={labels.activityTimeRange}
+            onChange={(days) => {
+              dispatch(setApprovalWindowDays(days));
+              dispatch(setOnBehalfOfWindowDays(days));
+            }} />
+          <div className={classNames.dashboardRefresh} role="group" aria-label={labels.refresh}>
+            {summary && (
+              <Text className={classNames.dashboardSnapshot}>
+                {labels.lastRefreshed.replace('{0}', formatDateTime(summary.queriedAtUtc))}
+              </Text>
+            )}
+            <ActionButton
+              iconProps={{ iconName: 'Refresh' }}
+              styles={{ root: { flexShrink: 0 } }}
+              disabled={anyLoading}
+              onClick={() => {
+                dispatch(fetchDashboardSummary());
+                dispatch(fetchApprovalActivity(approvalWindowDays));
+                dispatch(fetchOnBehalfOfActivity(onBehalfOfWindowDays));
+              }}>
+              {labels.refresh}
+            </ActionButton>
+          </div>
+        </div>
       </div>
       {error && <MessageBar messageBarType={MessageBarType.error}>{labels.loadFailed}</MessageBar>}
 
-      <div className={classNames.dashboardSection}>
-        <Text variant="mediumPlus" className={classNames.sectionHeading}>{labels.pendingReview}</Text>
-        <Text className={classNames.dashboardHint}>{labels.pendingReviewDescription}</Text>
-        {!isShimmering && pendingReview.length === 0
-          ? <Text className={classNames.dashboardEmpty}>{labels.noPendingReview}</Text>
-          : <>
-            {pendingReview.length > 0 && renderCounts(pendingReview.map((row) => ({
-              key: row.requestType,
-              label: row.requestType,
-              value: row.count,
-              detail: `${labels.oldestPrefix} ${formatDateTime(row.oldestChangeTime)}`,
-              tone: row.requestType === 'Onboarding' ? 'good' : row.requestType === 'Update' ? 'warning' : 'neutral'
-            })))}
-            <ShimmeredDetailsList
-              items={pendingReview}
-              columns={pendingReviewColumns}
-              selectionMode={SelectionMode.none}
-              enableShimmer={isShimmering}
-              ariaLabelForGrid={labels.pendingReview}
-            />
-          </>}
+      {summary && (
+        <div role="group" aria-label={labels.currentSnapshot}>
+          {renderCountCards(classNames, theme, undefined, [
+            { key: 'anomalous', label: labels.anomalousJobs, value: anomalousCount, tone: 'danger' },
+            { key: 'inProgress', label: labels.inProgress, value: inProgressCount, tone: 'warning' },
+            { key: 'pendingReview', label: labels.pendingReview, value: pendingReviewCount, tone: 'info' }
+          ], true)}
+        </div>
+      )}
+
+      <div className={classNames.dashboardSectionRow}>
+        <section className={classNames.dashboardSection} aria-label={labels.pendingReview} aria-busy={loading}>
+          <DashboardCardHeader classNames={classNames} title={labels.pendingReview} description={labels.pendingReviewDescription}>
+            <Text className={classNames.dashboardSnapshot}>{labels.currentSnapshot}</Text>
+          </DashboardCardHeader>
+          {summary && renderCounts(pendingReview.map((row) => ({
+            key: row.requestType,
+            label: requestTypeLabel(row.requestType),
+            value: row.count,
+            detail: `${labels.oldestPrefix} ${formatDateTime(row.oldestChangeTime)}`,
+            tone: row.requestType === 'Onboarding' ? 'good' : row.requestType === 'Update' ? 'warning' : 'neutral'
+          })))}
+          {isShimmering || pendingReview.length > 0
+            ? <div className={classNames.dashboardTable}>
+              <ShimmeredDetailsList
+                items={pendingReview}
+                columns={pendingReviewColumns}
+                selectionMode={SelectionMode.none}
+                enableShimmer={isShimmering}
+                shimmerLines={3}
+                ariaLabelForGrid={labels.pendingReview}
+              />
+            </div>
+            : !error && <Text className={classNames.dashboardEmpty}>{labels.noPendingReview}</Text>}
+        </section>
+
+        <section className={classNames.dashboardSection} aria-label={labels.inProgress} aria-busy={loading}>
+          <DashboardCardHeader classNames={classNames} title={labels.inProgress} description={labels.inProgressDescription}>
+            <Text className={classNames.dashboardSnapshot}>{labels.currentSnapshot}</Text>
+          </DashboardCardHeader>
+          {summary && renderCounts(inProgress.map((row) => ({
+            key: row.status,
+            label: row.status,
+            value: row.count,
+            detail: `${labels.oldestPrefix} ${formatDateTime(row.oldestStartTime)}`,
+            tone: statusTone(row.status)
+          })))}
+          {isShimmering || inProgress.length > 0
+            ? <div className={classNames.dashboardTable}>
+              <ShimmeredDetailsList
+                items={inProgress}
+                columns={inProgressColumns}
+                selectionMode={SelectionMode.none}
+                enableShimmer={isShimmering}
+                shimmerLines={3}
+                ariaLabelForGrid={labels.inProgress}
+              />
+            </div>
+            : !error && <Text className={classNames.dashboardEmpty}>{labels.noInProgress}</Text>}
+        </section>
       </div>
 
-      <div className={classNames.dashboardSection}>
-        <Text variant="mediumPlus" className={classNames.sectionHeading}>{labels.inProgress}</Text>
-        {!isShimmering && inProgress.length === 0
-          ? <Text className={classNames.dashboardEmpty}>{labels.noInProgress}</Text>
-          : <>
-            {inProgress.length > 0 && renderCounts(inProgress.map((row) => ({
-              key: row.status,
-              label: row.status,
-              value: row.count,
-              detail: `${labels.oldestPrefix} ${formatDateTime(row.oldestStartTime)}`,
-              tone: inProgressTone(row.status)
-            })))}
-            <ShimmeredDetailsList
-              items={inProgress}
-              columns={inProgressColumns}
-              selectionMode={SelectionMode.none}
-              enableShimmer={isShimmering}
-              ariaLabelForGrid={labels.inProgress}
-            />
-          </>}
-      </div>
-
-      <div className={classNames.dashboardSection}>
-        <Text variant="mediumPlus" className={classNames.sectionHeading}>{labels.anomalousStatuses}</Text>
-        {!isShimmering && anomalous.length === 0
-          ? <Text className={classNames.dashboardEmpty}>{labels.noAnomalous}</Text>
-          : <>
-            {anomalous.length > 0 && renderCounts(anomalous.map((row) => ({
-              key: row.status,
-              label: row.status,
-              value: row.count,
-              detail: stalenessSummary(row),
-              tone: anomalousTone(row)
-            })))}
+      <section className={classNames.dashboardSection} aria-label={labels.anomalousStatuses} aria-busy={loading}>
+        <DashboardCardHeader classNames={classNames} title={labels.anomalousStatuses} description={labels.anomalousDescription}>
+          <Text className={classNames.dashboardSnapshot}>{labels.currentSnapshot}</Text>
+        </DashboardCardHeader>
+        <Text className={classNames.dashboardHint}>{labels.anomalousDescription}</Text>
+        {summary && renderCounts(anomalous.map((row) => ({
+          key: row.status,
+          label: row.status,
+          value: row.count,
+          detail: stalenessSummary(row),
+          tone: statusTone(row.status)
+        })))}
+        {showAnomalousTable
+          ? <div ref={anomalousTableRef} className={classNames.dashboardTable}>
             <ShimmeredDetailsList
               items={anomalous}
               columns={anomalousColumns}
               selectionMode={SelectionMode.none}
               enableShimmer={isShimmering}
+              shimmerLines={3}
               ariaLabelForGrid={labels.anomalousStatuses}
             />
-          </>}
-      </div>
+          </div>
+          : !error && <Text className={classNames.dashboardEmpty}>{labels.noAnomalous}</Text>}
+      </section>
 
       <div className={classNames.dashboardSectionRow}>
         <ApprovalActivitySection classNames={classNames} strings={strings} />
         <OnBehalfOfSection classNames={classNames} strings={strings} />
       </div>
-    </SettingsSection>
+    </section>
   );
 }
 

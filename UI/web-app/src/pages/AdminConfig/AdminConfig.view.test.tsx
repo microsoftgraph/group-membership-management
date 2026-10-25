@@ -3,8 +3,9 @@
 
 import React from 'react';
 import { fireEvent, screen, waitFor, within } from '@testing-library/react';
-import { vi, beforeAll } from 'vitest';
-import { initializeIcons } from '@fluentui/react';
+import { vi, beforeAll, beforeEach, afterEach } from 'vitest';
+import { getTheme, initializeIcons } from '@fluentui/react';
+import { VerticalStackedBarChart } from '@fluentui/react-charting';
 import { MemoryRouter } from 'react-router-dom';
 import { AdminConfigView, fractionToPercentText } from './AdminConfig.view';
 import { getStyles } from './AdminConfig.styles';
@@ -13,6 +14,18 @@ import { SettingKey, SettingKeyMap, SqlMembershipAttribute } from '../../models'
 import { getDefaultAlertBannerConfig } from '../../models/AlertBannerConfig';
 import { defaultStrings } from '../../services/localization';
 import { renderWithProviders } from '../../testing/renderWithProviders';
+import { DashboardApi } from '../../apis/dashboard/DashboardApi';
+import {
+  createMockApprovalActivity,
+  createMockOnBehalfOfActivity,
+  mockDashboardSummary,
+} from '../../../tests/mocks/dashboardData';
+
+vi.mock('@fluentui/react-charting', () => ({
+  VerticalStackedBarChart: vi.fn(({ chartTitle }: { chartTitle: string }) => (
+    <div data-testid="activity-chart" aria-label={chartTitle} />
+  )),
+}));
 
 vi.mock('../../components/PageHeader', () => ({
   PageHeader: () => <div data-testid="page-header" />,
@@ -126,6 +139,21 @@ const renderAdminConfigView = (defaultAIPrompt: string, settingsOverrides?: Part
   );
 
 describe('AdminConfigView tab layout', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.spyOn(DashboardApi.prototype, 'fetchDashboardSummary').mockResolvedValue(mockDashboardSummary);
+    vi.spyOn(DashboardApi.prototype, 'fetchApprovalActivity').mockImplementation(async (days) =>
+      createMockApprovalActivity(days)
+    );
+    vi.spyOn(DashboardApi.prototype, 'fetchOnBehalfOfActivity').mockImplementation(async (days) =>
+      createMockOnBehalfOfActivity(days)
+    );
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
   const renderWithRoles = (
     roles: {
       isAutoApproverAdministrator: boolean;
@@ -190,9 +218,7 @@ describe('AdminConfigView tab layout', () => {
     expect(
       screen.getByText(defaultStrings.AdminConfig.ServiceNotifications.labels.serviceDisruptionTitle)
     ).toBeInTheDocument();
-    expect(
-      screen.getByLabelText(defaultStrings.AdminConfig.ServiceNotifications.labels.message)
-    ).toBeInTheDocument();
+    expect(screen.getByLabelText(defaultStrings.AdminConfig.ServiceNotifications.labels.message)).toBeInTheDocument();
   });
 
   test('hides the Auto Approver tab when the user lacks the Auto Approver role', () => {
@@ -219,7 +245,7 @@ describe('AdminConfigView tab layout', () => {
     expect(tabNames[tabNames.length - 1]).toBe(defaultStrings.AdminConfig.Dashboard.labels.dashboard);
   });
 
-  test('shows the Dashboard tab to a Dashboard Reader holding no other admin role', () => {
+  test('shows the Dashboard content to a Dashboard Reader holding no other admin role', async () => {
     renderWithRoles(
       {
         isAutoApproverAdministrator: false,
@@ -236,13 +262,359 @@ describe('AdminConfigView tab layout', () => {
     const tabNames = screen.getAllByRole('tab').map((tab) => tab.textContent?.trim());
 
     expect(tabNames).toEqual([defaultStrings.AdminConfig.Dashboard.labels.dashboard]);
+    expect(
+      await screen.findByRole('group', { name: defaultStrings.AdminConfig.Dashboard.labels.currentSnapshot })
+    ).toBeInTheDocument();
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: defaultStrings.AdminConfig.Dashboard.labels.refresh })).toBeEnabled()
+    );
+  }, 10000);
+
+  const openDashboard = () => {
+    const result = renderWithRoles(allRoles, undefined, undefined, true);
+    fireEvent.click(screen.getByRole('tab', { name: defaultStrings.AdminConfig.Dashboard.labels.dashboard }));
+    return result;
+  };
+
+  const waitForDashboard = () =>
+    waitFor(() =>
+      expect(screen.getByRole('button', { name: defaultStrings.AdminConfig.Dashboard.labels.refresh })).toBeEnabled()
+    );
+
+  test('selects Dashboard in the controlled Pivot and can return to General', async () => {
+    openDashboard();
+    const labels = defaultStrings.AdminConfig.Dashboard.labels;
+
+    expect(screen.getByRole('tab', { name: labels.dashboard })).toHaveAttribute('aria-selected', 'true');
+    expect(await screen.findByRole('group', { name: labels.currentSnapshot })).toBeInTheDocument();
+    await waitForDashboard();
+
+    fireEvent.click(screen.getByRole('tab', { name: defaultStrings.AdminConfig.GeneralSettings.labels.general }));
+
+    expect(
+      screen.getByRole('tab', { name: defaultStrings.AdminConfig.GeneralSettings.labels.general })
+    ).toHaveAttribute('aria-selected', 'true');
+    expect(screen.queryByRole('region', { name: labels.dashboard })).not.toBeInTheDocument();
+  });
+
+  test('keeps three real snapshot metrics without a repeated Summary or total-active claim', async () => {
+    openDashboard();
+    await waitForDashboard();
+    const labels = defaultStrings.AdminConfig.Dashboard.labels;
+    const snapshot = screen.getByRole('group', { name: labels.currentSnapshot });
+
+    expect(screen.queryByRole('region', { name: 'Summary', exact: true })).not.toBeInTheDocument();
+    expect(screen.queryByText(/^There are \d+ jobs in anomalous statuses/)).not.toBeInTheDocument();
+    expect(within(snapshot).getAllByRole('listitem')).toHaveLength(3);
+    expect(snapshot).toHaveTextContent(`${labels.anomalousJobs}7`);
+    expect(snapshot).toHaveTextContent(`${labels.inProgress}34`);
+    expect(snapshot).toHaveTextContent(`${labels.pendingReview}18`);
+    expect(screen.queryByText(/Generated by AI|Total active/i)).not.toBeInTheDocument();
+  });
+
+  test('shows the last successful snapshot timestamp beside Refresh and updates it after a successful refresh', async () => {
+    openDashboard();
+    await waitForDashboard();
+    const labels = defaultStrings.AdminConfig.Dashboard.labels;
+    const refreshGroup = screen.getByRole('group', { name: labels.refresh });
+    const timestamp = within(refreshGroup).getByText(/^Last refreshed:/);
+    const oldTimestamp = timestamp.textContent;
+    expect(within(refreshGroup).getByRole('button', { name: labels.refresh })).toBeEnabled();
+    vi.mocked(DashboardApi.prototype.fetchDashboardSummary).mockResolvedValueOnce({
+      ...mockDashboardSummary,
+      queriedAtUtc: '2026-10-23T11:26:00Z',
+    });
+
+    fireEvent.click(within(refreshGroup).getByRole('button', { name: labels.refresh }));
+    await waitForDashboard();
+
+    expect(timestamp).toHaveTextContent(/^Last refreshed:/);
+    expect(timestamp.textContent).not.toBe(oldTimestamp);
+    expect(DashboardApi.prototype.fetchDashboardSummary).toHaveBeenCalledTimes(2);
+  });
+
+  test('uses the original DRI UI reviewer wording for on-behalf requests', async () => {
+    openDashboard();
+    await waitForDashboard();
+    const labels = defaultStrings.AdminConfig.Dashboard.labels;
+    const onBehalf = screen.getByRole('region', { name: labels.requestsOnBehalfOf });
+
+    expect(onBehalf).toHaveTextContent(
+      'Onboarding / Update requests filed by the reviewers, on behalf of a group owner.'
+    );
+    fireEvent.click(within(onBehalf).getByText(labels.reviewerBreakdown));
+    expect(within(onBehalf).getByRole('columnheader', { name: labels.reviewer, exact: true })).toBeInTheDocument();
+    expect(within(onBehalf).queryByRole('columnheader', { name: 'Submitter', exact: true })).not.toBeInTheDocument();
+    expect(within(onBehalf).getByText('Contoso Reviewer')).toBeInTheDocument();
+    expect(DashboardApi.prototype.fetchOnBehalfOfActivity).toHaveBeenCalledWith(7);
+  });
+
+  test('describes automated activity as onboarding and update auto-approvals', async () => {
+    openDashboard();
+    await waitForDashboard();
+    const approvals = screen.getByRole('region', { name: defaultStrings.AdminConfig.Dashboard.labels.approvals });
+
+    expect(approvals).toHaveTextContent('Automated = onboarding and update auto-approvals;');
+    expect(approvals).toHaveTextContent('Bucketed by UTC day.');
+  });
+
+  test('uses status-based dashboard card borders instead of staleness', async () => {
+    const statuses = ['Error', 'SchemaError', 'ErroredDueToStuckInProgress', 'PendingAutoApproval', 'UnknownStatus'];
+    vi.mocked(DashboardApi.prototype.fetchDashboardSummary).mockResolvedValue({
+      ...mockDashboardSummary,
+      anomalousStatuses: statuses.map((status) => ({
+        ...mockDashboardSummary.anomalousStatuses[0],
+        status,
+        count: 1,
+        maxCyclesMissed: status === 'PendingAutoApproval' ? 99 : 0,
+        neverSucceededCount: status === 'PendingAutoApproval' ? 1 : 0,
+        oldestLastSuccessfulRun: status === 'PendingAutoApproval' ? null : '2026-10-22T11:26:00Z',
+      })),
+    });
+    openDashboard();
+    await waitForDashboard();
+    const section = screen.getByRole('region', { name: defaultStrings.AdminConfig.Dashboard.labels.anomalousStatuses });
+    const { palette } = getTheme();
+
+    for (const status of statuses) {
+      const card = within(section).getByRole('listitem', { name: `${status}: 1`, exact: true });
+      const borderLeftColor =
+        status === 'PendingAutoApproval'
+          ? palette.themePrimary
+          : status === 'UnknownStatus'
+          ? palette.neutralSecondary
+          : palette.redDark;
+      expect(card).toHaveStyle({ borderLeftColor });
+      expect(within(card).getByText(status)).toHaveAttribute('title', status);
+    }
+    expect(within(section).getByRole('listitem', { name: 'Total: 5', exact: true })).toHaveStyle({
+      borderLeftColor: palette.neutralSecondary,
+    });
+  });
+
+  test('uses a decorative calendar icon on every dashboard range selector', async () => {
+    openDashboard();
+    await waitForDashboard();
+    const labels = defaultStrings.AdminConfig.Dashboard.labels;
+
+    for (const name of [
+      labels.activityTimeRange,
+      `${labels.approvals}: ${labels.timeRange}`,
+      `${labels.requestsOnBehalfOf}: ${labels.timeRange}`,
+    ]) {
+      const control = screen.getByRole('combobox', { name });
+      expect(control.querySelector('[data-icon-name="Calendar"]')).toHaveAttribute('aria-hidden', 'true');
+      expect(control.querySelector('[data-icon-name="ChevronDown"]')).not.toBeInTheDocument();
+    }
+  });
+
+  test('offers four time ranges in every dashboard date menu', async () => {
+    openDashboard();
+    await waitForDashboard();
+    const labels = defaultStrings.AdminConfig.Dashboard.labels;
+
+    for (const name of [
+      labels.activityTimeRange,
+      `${labels.approvals}: ${labels.timeRange}`,
+      `${labels.requestsOnBehalfOf}: ${labels.timeRange}`,
+    ]) {
+      const control = screen.getByRole('combobox', { name });
+      expect(control).toHaveTextContent(labels.last7Days);
+      fireEvent.click(control);
+      await screen.findByRole('option', { name: labels.range14Days });
+      expect(screen.getAllByRole('option').map((option) => option.textContent)).toEqual([
+        '7 days',
+        '14 days',
+        '1 month',
+        '3 months',
+      ]);
+      fireEvent.click(screen.getByRole('option', { name: labels.range7Days }));
+    }
+  }, 10000);
+
+  test.each([
+    {
+      windowDays: 14,
+      optionLabel: defaultStrings.AdminConfig.Dashboard.labels.range14Days,
+      selectedLabel: defaultStrings.AdminConfig.Dashboard.labels.last14Days,
+    },
+    {
+      windowDays: 30,
+      optionLabel: defaultStrings.AdminConfig.Dashboard.labels.range1Month,
+      selectedLabel: defaultStrings.AdminConfig.Dashboard.labels.last1Month,
+    },
+    {
+      windowDays: 90,
+      optionLabel: defaultStrings.AdminConfig.Dashboard.labels.range3Months,
+      selectedLabel: defaultStrings.AdminConfig.Dashboard.labels.last3Months,
+    },
+  ])(
+    'changes both activity ranges without refetching the current health snapshot ($windowDays days)',
+    async ({ windowDays, optionLabel, selectedLabel }) => {
+      const { store } = openDashboard();
+      await waitForDashboard();
+      const labels = defaultStrings.AdminConfig.Dashboard.labels;
+
+      fireEvent.click(screen.getByRole('combobox', { name: labels.activityTimeRange }));
+      fireEvent.click(await screen.findByRole('option', { name: optionLabel }));
+      await waitForDashboard();
+
+      expect(DashboardApi.prototype.fetchDashboardSummary).toHaveBeenCalledTimes(1);
+      expect(DashboardApi.prototype.fetchApprovalActivity).toHaveBeenLastCalledWith(windowDays);
+      expect(DashboardApi.prototype.fetchOnBehalfOfActivity).toHaveBeenLastCalledWith(windowDays);
+      expect(store.getState().dashboard.approvalWindowDays).toBe(windowDays);
+      expect(store.getState().dashboard.onBehalfOfWindowDays).toBe(windowDays);
+      for (const control of screen.getAllByRole('combobox')) {
+        expect(control).toHaveTextContent(selectedLabel);
+      }
+    }
+  );
+
+  test('preserves individual chart ranges and refreshes all three data sources using those ranges', async () => {
+    openDashboard();
+    await waitForDashboard();
+    const labels = defaultStrings.AdminConfig.Dashboard.labels;
+
+    fireEvent.click(screen.getByRole('combobox', { name: `${labels.approvals}: ${labels.timeRange}` }));
+    fireEvent.click(await screen.findByRole('option', { name: labels.range3Months }));
+    await waitForDashboard();
+
+    expect(screen.getByRole('combobox', { name: labels.activityTimeRange })).toHaveTextContent(labels.individualRanges);
+    expect(
+      screen.getByRole('combobox', { name: `${labels.requestsOnBehalfOf}: ${labels.timeRange}` })
+    ).toHaveTextContent(labels.last7Days);
+
+    fireEvent.click(screen.getByRole('combobox', { name: `${labels.requestsOnBehalfOf}: ${labels.timeRange}` }));
+    fireEvent.click(await screen.findByRole('option', { name: labels.range14Days }));
+    await waitForDashboard();
+
+    expect(screen.getByRole('combobox', { name: labels.activityTimeRange })).toHaveTextContent(labels.individualRanges);
+    expect(
+      screen.getByRole('combobox', { name: `${labels.requestsOnBehalfOf}: ${labels.timeRange}` })
+    ).toHaveTextContent(labels.last14Days);
+
+    fireEvent.click(screen.getByRole('button', { name: labels.refresh }));
+    await waitForDashboard();
+
+    expect(DashboardApi.prototype.fetchDashboardSummary).toHaveBeenCalledTimes(2);
+    expect(DashboardApi.prototype.fetchApprovalActivity).toHaveBeenCalledTimes(3);
+    expect(DashboardApi.prototype.fetchApprovalActivity).toHaveBeenLastCalledWith(90);
+    expect(DashboardApi.prototype.fetchOnBehalfOfActivity).toHaveBeenCalledTimes(3);
+    expect(DashboardApi.prototype.fetchOnBehalfOfActivity).toHaveBeenLastCalledWith(14);
+  });
+
+  test.each([14, 90])(
+    'keeps every long-range chart bucket distinct while thinning labels and preserving hover dates (%i days)',
+    async (windowDays) => {
+      openDashboard();
+      await waitForDashboard();
+      const labels = defaultStrings.AdminConfig.Dashboard.labels;
+
+      fireEvent.click(screen.getByRole('combobox', { name: labels.activityTimeRange }));
+      fireEvent.click(
+        await screen.findByRole('option', { name: windowDays === 14 ? labels.range14Days : labels.range3Months })
+      );
+      await waitForDashboard();
+
+      for (const title of [labels.approvals, labels.requestsOnBehalfOf]) {
+        const calls = vi.mocked(VerticalStackedBarChart).mock.calls.filter(([props]) => props.chartTitle === title);
+        const { data, rotateXAxisLables } = calls[calls.length - 1][0];
+        const blanked = data.filter((point) => String(point.xAxisPoint).startsWith('\u200b'));
+        expect(data).toHaveLength(windowDays);
+        expect(new Set(data.map((point) => point.xAxisPoint)).size).toBe(windowDays);
+        expect(data.length - blanked.length).toBeLessThanOrEqual(10);
+        expect(blanked.every((point) => Boolean(point.xAxisCalloutData))).toBe(true);
+        expect(rotateXAxisLables).toBe(windowDays === 90);
+      }
+    }
+  );
+
+  test('renders explicit empty states for successfully loaded zero counts', async () => {
+    vi.mocked(DashboardApi.prototype.fetchDashboardSummary).mockResolvedValue({
+      ...mockDashboardSummary,
+      pendingReview: [],
+      inProgress: [],
+      anomalousStatuses: [],
+    });
+    vi.mocked(DashboardApi.prototype.fetchApprovalActivity).mockResolvedValue({
+      ...createMockApprovalActivity(),
+      automatedTotal: 0,
+      manualTotal: 0,
+      rejectedTotal: 0,
+      reviewers: [],
+      days: [],
+    });
+    vi.mocked(DashboardApi.prototype.fetchOnBehalfOfActivity).mockResolvedValue({
+      ...createMockOnBehalfOfActivity(),
+      onboardingTotal: 0,
+      updateTotal: 0,
+      grandTotal: 0,
+      submitters: [],
+      days: [],
+    });
+    openDashboard();
+    await waitForDashboard();
+    const labels = defaultStrings.AdminConfig.Dashboard.labels;
+
+    for (const text of [
+      labels.noPendingReview,
+      labels.noInProgress,
+      labels.noAnomalous,
+      labels.noApprovalActivity,
+      labels.noOnBehalfActivity,
+    ]) {
+      expect(screen.getByText(text)).toBeInTheDocument();
+    }
+    expect(within(screen.getByRole('group', { name: labels.currentSnapshot })).getAllByText('0')).toHaveLength(3);
+    expect(screen.queryByTestId('activity-chart')).not.toBeInTheDocument();
+  });
+
+  test('does not present failed requests as zero counts or successful empty results', async () => {
+    vi.mocked(DashboardApi.prototype.fetchDashboardSummary).mockRejectedValue(new Error('summary unavailable'));
+    vi.mocked(DashboardApi.prototype.fetchApprovalActivity).mockRejectedValue(new Error('approvals unavailable'));
+    vi.mocked(DashboardApi.prototype.fetchOnBehalfOfActivity).mockRejectedValue(new Error('on behalf unavailable'));
+    openDashboard();
+    await waitForDashboard();
+    const labels = defaultStrings.AdminConfig.Dashboard.labels;
+
+    for (const text of [labels.loadFailed, labels.approvalsLoadFailed, labels.onBehalfLoadFailed]) {
+      expect(await screen.findByText(text)).toBeInTheDocument();
+    }
+    for (const text of [
+      labels.noPendingReview,
+      labels.noInProgress,
+      labels.noAnomalous,
+      labels.noApprovalActivity,
+      labels.noOnBehalfActivity,
+    ]) {
+      expect(screen.queryByText(text)).not.toBeInTheDocument();
+    }
+    expect(screen.queryByRole('group', { name: labels.currentSnapshot })).not.toBeInTheDocument();
+    expect(screen.queryByText(/^Last refreshed:/)).not.toBeInTheDocument();
+  });
+
+  test('retains the dated snapshot and reports a failed refresh', async () => {
+    openDashboard();
+    await waitForDashboard();
+    const labels = defaultStrings.AdminConfig.Dashboard.labels;
+    const oldTimestamp = screen.getByText(/^Last refreshed:/).textContent;
+    vi.mocked(DashboardApi.prototype.fetchDashboardSummary).mockRejectedValueOnce(new Error('refresh unavailable'));
+
+    fireEvent.click(screen.getByRole('button', { name: labels.refresh }));
+    await waitForDashboard();
+
+    expect(await screen.findByText(labels.loadFailed)).toBeInTheDocument();
+    expect(screen.getByText(/^Last refreshed:/).textContent).toBe(oldTimestamp);
+    expect(screen.getByRole('group', { name: labels.currentSnapshot })).toHaveTextContent(`${labels.pendingReview}18`);
   });
 
   test('keeps auto approval toggles off the General tab', () => {
     renderWithRoles(allRoles);
 
     expect(
-      screen.queryByText(defaultStrings.AdminConfig.AutoApproverSettings.labels.isAutoApprovalForGroupBasedSyncsEnabledTitle)
+      screen.queryByText(
+        defaultStrings.AdminConfig.AutoApproverSettings.labels.isAutoApprovalForGroupBasedSyncsEnabledTitle
+      )
     ).not.toBeInTheDocument();
     expect(screen.getByText(defaultStrings.AdminConfig.GeneralSettings.labels.featureControl)).toBeInTheDocument();
   });
@@ -255,7 +627,9 @@ describe('AdminConfigView tab layout', () => {
     );
 
     expect(
-      screen.getByText(defaultStrings.AdminConfig.AutoApproverSettings.labels.isAutoApprovalForGroupBasedSyncsEnabledTitle)
+      screen.getByText(
+        defaultStrings.AdminConfig.AutoApproverSettings.labels.isAutoApprovalForGroupBasedSyncsEnabledTitle
+      )
     ).toBeInTheDocument();
     expect(
       screen.getByText(
@@ -315,9 +689,36 @@ describe('AdminConfigView tab layout', () => {
 
   test('summarizes which attributes are marked Sensitive', () => {
     renderWithRoles(allRoles, undefined, [
-      { name: 'Covered', customLabel: '', type: 'int', hasMapping: false, values: [], description: '', enabled: true, isSensitive: true },
-      { name: 'PayScaleStockLevelNbr', customLabel: '', type: 'int', hasMapping: false, values: [], description: '', enabled: true, isSensitive: true },
-      { name: 'Country', customLabel: '', type: 'nvarchar', hasMapping: false, values: [], description: '', enabled: true, isSensitive: false },
+      {
+        name: 'Covered',
+        customLabel: '',
+        type: 'int',
+        hasMapping: false,
+        values: [],
+        description: '',
+        enabled: true,
+        isSensitive: true,
+      },
+      {
+        name: 'PayScaleStockLevelNbr',
+        customLabel: '',
+        type: 'int',
+        hasMapping: false,
+        values: [],
+        description: '',
+        enabled: true,
+        isSensitive: true,
+      },
+      {
+        name: 'Country',
+        customLabel: '',
+        type: 'nvarchar',
+        hasMapping: false,
+        values: [],
+        description: '',
+        enabled: true,
+        isSensitive: false,
+      },
     ]);
 
     fireEvent.click(
@@ -332,7 +733,16 @@ describe('AdminConfigView tab layout', () => {
 
   test('shows the same summary whether screening is on or off', () => {
     const attributes = [
-      { name: 'Covered', customLabel: '', type: 'int', hasMapping: false, values: [], description: '', enabled: true, isSensitive: true },
+      {
+        name: 'Covered',
+        customLabel: '',
+        type: 'int',
+        hasMapping: false,
+        values: [],
+        description: '',
+        enabled: true,
+        isSensitive: true,
+      },
     ];
     const openSummary = () => {
       fireEvent.click(
@@ -351,7 +761,16 @@ describe('AdminConfigView tab layout', () => {
 
   test('tells the administrator when nothing is marked Sensitive', () => {
     renderWithRoles(allRoles, undefined, [
-      { name: 'Country', customLabel: '', type: 'nvarchar', hasMapping: false, values: [], description: '', enabled: true, isSensitive: false },
+      {
+        name: 'Country',
+        customLabel: '',
+        type: 'nvarchar',
+        hasMapping: false,
+        values: [],
+        description: '',
+        enabled: true,
+        isSensitive: false,
+      },
     ]);
 
     fireEvent.click(
@@ -365,15 +784,22 @@ describe('AdminConfigView tab layout', () => {
 
   test('the Manage on Custom Source link opens the Custom Source tab', () => {
     renderWithRoles(allRoles, undefined, [
-      { name: 'Covered', customLabel: '', type: 'int', hasMapping: false, values: [], description: '', enabled: true, isSensitive: true },
+      {
+        name: 'Covered',
+        customLabel: '',
+        type: 'int',
+        hasMapping: false,
+        values: [],
+        description: '',
+        enabled: true,
+        isSensitive: true,
+      },
     ]);
 
     fireEvent.click(
       screen.getByRole('tab', { name: defaultStrings.AdminConfig.AutoApproverSettings.labels.autoApprover })
     );
-    fireEvent.click(
-      screen.getByText(defaultStrings.AdminConfig.AutoApproverSettings.labels.manageOnCustomSource)
-    );
+    fireEvent.click(screen.getByText(defaultStrings.AdminConfig.AutoApproverSettings.labels.manageOnCustomSource));
 
     expect(
       screen.getByRole('tab', { name: defaultStrings.AdminConfig.CustomSourceSettings.labels.customSource })
@@ -471,7 +897,9 @@ describe('SuggestedPromptsEditor', () => {
   test('populate defaults button fills in default prompts', () => {
     renderAdminConfigView('');
 
-    const populateButton = screen.getByText(defaultStrings.AdminConfig.AISettings.labels.suggestedPromptPopulateDefaults);
+    const populateButton = screen.getByText(
+      defaultStrings.AdminConfig.AISettings.labels.suggestedPromptPopulateDefaults
+    );
     fireEvent.click(populateButton);
 
     const default1Label = defaultStrings.AdminConfig.AISettings.labels.suggestedPromptDefault1Label;
@@ -554,8 +982,26 @@ describe('AdminConfigView Custom Source', () => {
   const csLabels = defaultStrings.AdminConfig.CustomSourceSettings.labels;
 
   const sensitiveAttributes: SqlMembershipAttribute[] = [
-    { name: 'Salary', customLabel: '', type: 'int', hasMapping: false, values: [], description: '', enabled: false, isSensitive: true },
-    { name: 'Country', customLabel: '', type: 'nvarchar', hasMapping: false, values: [], description: '', enabled: true, isSensitive: false },
+    {
+      name: 'Salary',
+      customLabel: '',
+      type: 'int',
+      hasMapping: false,
+      values: [],
+      description: '',
+      enabled: false,
+      isSensitive: true,
+    },
+    {
+      name: 'Country',
+      customLabel: '',
+      type: 'nvarchar',
+      hasMapping: false,
+      values: [],
+      description: '',
+      enabled: true,
+      isSensitive: false,
+    },
   ];
 
   const renderCustomSourceView = (onSave: ReturnType<typeof vi.fn> = vi.fn()) =>
@@ -610,7 +1056,6 @@ describe('AdminConfigView Custom Source', () => {
       screen.getByText('Country').compareDocumentPosition(screen.getByText('Salary')) & Node.DOCUMENT_POSITION_FOLLOWING
     ).toBeTruthy();
   });
-
 });
 
 describe('AdminConfigView custom source null threshold', () => {

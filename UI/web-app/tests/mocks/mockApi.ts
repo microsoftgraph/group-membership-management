@@ -1,4 +1,5 @@
 import { Page, Route } from '@playwright/test';
+import { createMockApprovalActivity, createMockOnBehalfOfActivity, mockDashboardSummary } from './dashboardData';
 
 type JsonValue = Record<string, unknown> | Array<unknown>;
 
@@ -417,6 +418,23 @@ export async function registerMockApiRoutes(page: Page): Promise<void> {
 
     if (method === 'GET' && path.endsWith('/api/v1/roles/getAllRoles')) {
       await fulfillJson(route, mockRoles);
+      return;
+    }
+
+    if (method === 'GET' && path.endsWith('/api/v1/dashboard/summary')) {
+      await fulfillJson(route, { statusCode: 200, errorCode: null, summary: mockDashboardSummary });
+      return;
+    }
+
+    if (method === 'GET' && path.endsWith('/api/v1/dashboard/approvals')) {
+      const windowDays = Number(requestUrl.searchParams.get('windowDays') ?? 7);
+      await fulfillJson(route, { statusCode: 200, errorCode: null, activity: createMockApprovalActivity(windowDays) });
+      return;
+    }
+
+    if (method === 'GET' && path.endsWith('/api/v1/dashboard/onbehalf')) {
+      const windowDays = Number(requestUrl.searchParams.get('windowDays') ?? 7);
+      await fulfillJson(route, { statusCode: 200, errorCode: null, activity: createMockOnBehalfOfActivity(windowDays) });
       return;
     }
 

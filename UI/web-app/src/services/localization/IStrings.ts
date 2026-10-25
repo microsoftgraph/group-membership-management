@@ -258,6 +258,15 @@ export type IStrings = {
       labels: {
         dashboard: string;
         description: string;
+        lastRefreshed: string;
+        currentSnapshot: string;
+        anomalousJobs: string;
+        activityTimeRange: string;
+        individualRanges: string;
+        inProgressDescription: string;
+        anomalousDescription: string;
+        reviewerBreakdown: string;
+        loading: string;
         refresh: string;
         loadFailed: string;
         notAvailable: string;
@@ -299,16 +308,20 @@ export type IStrings = {
         reviewer: string;
         rejectedSuffix: string;
         timeRange: string;
+        range7Days: string;
+        range14Days: string;
+        range1Month: string;
+        range3Months: string;
         last7Days: string;
-        last30Days: string;
-        last90Days: string;
+        last14Days: string;
+        last1Month: string;
+        last3Months: string;
         requestsOnBehalfOf: string;
         onBehalfDescription: string;
         onBehalfLoadFailed: string;
         noOnBehalfActivity: string;
         onboarding: string;
         update: string;
-        submitter: string;
       };
     },
     CustomSourceSettings: {

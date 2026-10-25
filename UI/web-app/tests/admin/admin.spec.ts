@@ -35,7 +35,7 @@ test.describe('Admin Tests', () => {
       'Custom Source',
       'AI',
       'Auto Approver',
-      'Dashboard',
+      'Health Dashboard',
     ]);
   });
 

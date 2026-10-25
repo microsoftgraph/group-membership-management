@@ -8,7 +8,7 @@ namespace Models.Dashboard
 {
     /// <summary>
     /// Approval and rejection volume over a rolling window, surfaced on the Admin Center
-    /// "Dashboard" tab. Automated approvals come from the AutoApprover function; manual
+    /// "Health Dashboard" tab. Automated approvals come from the AutoApprover function; manual
     /// approvals and rejections are attributed to the reviewer who made them.
     /// </summary>
     /// <remarks>
@@ -26,7 +26,7 @@ namespace Models.Dashboard
         /// <summary>UTC timestamp the aggregates were computed at.</summary>
         public DateTime QueriedAtUtc { get; set; }
 
-        /// <summary>Onboarding requests auto-approved by the AutoApprover function.</summary>
+        /// <summary>Onboarding and update requests auto-approved by the AutoApprover function.</summary>
         public int AutomatedTotal { get; set; }
 
         /// <summary>Submissions approved by a human reviewer.</summary>

@@ -62,16 +62,26 @@ export type AdminConfigStyles = {
   serviceNotificationTextFieldGroup: IStyle;
   serviceNotificationErrorMessage: IStyle;
   serviceNotificationInfoIcon: IStyle;
+  dashboardRoot: IStyle;
+  dashboardHeader: IStyle;
+  dashboardHeading: IStyle;
   dashboardToolbar: IStyle;
+  dashboardRefresh: IStyle;
   dashboardSection: IStyle;
   dashboardSectionRow: IStyle;
+  dashboardCardHeader: IStyle;
+  dashboardCardTitle: IStyle;
+  dashboardInfoIcon: IStyle;
+  dashboardSnapshot: IStyle;
+  dashboardTable: IStyle;
+  dashboardBreakdown: IStyle;
   dashboardHint: IStyle;
   dashboardEmpty: IStyle;
   dashboardCounts: IStyle;
   dashboardCount: IStyle;
+  dashboardHeadlineCount: IStyle;
   dashboardCountLabel: IStyle;
   dashboardCountValue: IStyle;
-  dashboardCountDetail: IStyle;
 };
 
 export type AdminConfigStyleProps = {
