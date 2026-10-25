@@ -41,7 +41,7 @@ import {
     clearLastSourcePart,
     setError,
 } from '../../store/copilot.slice';
-import { sendCopilotMessage, UserContext } from '../../store/copilot.api';
+import { sendCopilotMessage } from '../../store/copilot.api';
 import { selectCopilotSuggestedPrompts } from '../../store/settings.slice';
 import { HRSourcePartSource } from '../../models/HRSourcePart';
 import { SourcePartType } from '../../models/SourcePartType';
@@ -222,16 +222,9 @@ export const CopilotPanelBase: React.FunctionComponent<ICopilotPanelProps> = (
         setShowUpdateResumePrompt(false);
         setShowMembershipSummaryActions(false);
 
-        const userContext: UserContext = {
-            managerName: undefined,
-            managerEmail: undefined,
-            managerAlias: undefined,
-        };
-
         try {
             await dispatch(sendCopilotMessage({ 
                 message: messageText.trim(), 
-                userContext,
                 hrAttributes,
             })).unwrap();
         } catch (err) {

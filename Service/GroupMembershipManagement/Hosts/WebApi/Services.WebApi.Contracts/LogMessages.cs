@@ -313,6 +313,14 @@ namespace Hosts.WebApi
             Message = "Copilot operations applied: Added={Added}, Removed={Removed}, Replaced={Replaced}, RejectedTargets={RejectedTargets}, PreservedUnsupported={PreservedUnsupported}, ConversationId={ConversationId}")]
         public static partial void CopilotOperationsApplied(this ILogger logger, int added, int removed, int replaced, int rejectedTargets, int preservedUnsupported, string conversationId);
 
+        [LoggerMessage(EventId = 93114, Level = LogLevel.Warning,
+            Message = "Failed to resolve logged-in user context for Copilot; continuing without Graph profile details")]
+        public static partial void CopilotUserContextResolveFailed(this ILogger logger, Exception exception);
+
+        [LoggerMessage(EventId = 93115, Level = LogLevel.Warning,
+            Message = "Copilot requires a separate org-leader confirmation; ConversationId={ConversationId}")]
+        public static partial void CopilotOrgLeaderConfirmationRequired(this ILogger logger, string conversationId);
+
         // ── OperationsBackgroundService (92000-92099) ──
 
         [LoggerMessage(EventId = 92000, Level = LogLevel.Information,

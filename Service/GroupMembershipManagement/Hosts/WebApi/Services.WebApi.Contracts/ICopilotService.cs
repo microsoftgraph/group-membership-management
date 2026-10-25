@@ -66,6 +66,12 @@ namespace Services.WebApi.Contracts
         /// </summary>
         public CopilotChatUsage? Usage { get; set; }
 
+        /// <summary>Effective temperature sent to the model; null when no model request was made.</summary>
+        public float? EffectiveTemperature { get; set; }
+
+        /// <summary>Effective top-p sent to the model; null when no model request was made.</summary>
+        public float? EffectiveTopP { get; set; }
+
         // Convenience properties for backward compatibility (derived from first source part)
         public CopilotSourcePartResult? SourcePart => SourceParts.Count > 0 ? SourceParts[0] : null;
         public bool UseOrgStructure => SourceParts.Any(p => p.UseOrgStructure);
@@ -110,6 +116,21 @@ namespace Services.WebApi.Contracts
 
     public class CopilotUserContext
     {
+        /// <summary>The caller's Entra object id, taken from the validated token (never from the request body).</summary>
+        public string? ObjectId { get; set; }
+        public string? DisplayName { get; set; }
+        public string? Email { get; set; }
+        public string? Alias { get; set; }
+
+        /// <summary>HR personnel number of the caller; null when the caller is not in the HR table.</summary>
+        public int? EmployeeId { get; set; }
+
+        /// <summary>Maximum org depth available under the caller in the HR hierarchy.</summary>
+        public int? OrgMaxDepth { get; set; }
+
+        public bool IsInHrDatabase { get; set; }
+        public string? ManagerObjectId { get; set; }
+        public bool ManagerIsInHrDatabase { get; set; }
         public string? ManagerName { get; set; }
         public string? ManagerEmail { get; set; }
         public string? ManagerAlias { get; set; }

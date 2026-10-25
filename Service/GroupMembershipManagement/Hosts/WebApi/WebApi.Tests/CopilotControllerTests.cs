@@ -172,7 +172,7 @@ namespace WebApi.Tests
         }
 
         [TestMethod]
-        public async Task ChatAsync_MapsUserContextAndWorkingQueryCorrectly()
+        public async Task ChatAsync_MapsWorkingQueryCorrectly_AndIgnoresClientSuppliedUserContext()
         {
             _mockHandler
                 .Setup(x => x.ExecuteAsync(It.IsAny<CopilotChatRequest>()))
@@ -197,13 +197,38 @@ namespace WebApi.Tests
 
             _mockHandler.Verify(x => x.ExecuteAsync(
                 It.Is<CopilotChatRequest>(r =>
-                    r.UserContext != null &&
-                    r.UserContext.ManagerName == "Jane Smith" &&
-                    r.UserContext.ManagerEmail == "jsmith@contoso.com" &&
+                    r.UserContext == null &&
                     r.WorkingQuery != null &&
                     r.WorkingQuery.Count == 1 &&
                     r.WorkingQuery[0].PartId == "w1" &&
                     r.WorkingQuery[0].Filter == "category_code = 'value1'")),
+                Times.Once);
+        }
+
+        [TestMethod]
+        public async Task ChatAsync_WithTokenClaims_PassesLoggedInUserIdentity()
+        {
+            var oid = Guid.NewGuid();
+            _controller.ControllerContext.HttpContext!.User = new System.Security.Claims.ClaimsPrincipal(
+                new System.Security.Claims.ClaimsIdentity(new[]
+                {
+                    new System.Security.Claims.Claim("http://schemas.microsoft.com/identity/claims/objectidentifier", oid.ToString()),
+                    new System.Security.Claims.Claim("name", "Pat Lee"),
+                    new System.Security.Claims.Claim("preferred_username", "plee@contoso.com")
+                }, "test"));
+            _mockHandler
+                .Setup(x => x.ExecuteAsync(It.IsAny<CopilotChatRequest>()))
+                .ReturnsAsync(new CopilotChatResponse { StatusCode = HttpStatusCode.OK, ResponseMessage = "OK" });
+
+            await _controller.ChatAsync(ValidRequest("Everyone in my org"));
+
+            _mockHandler.Verify(x => x.ExecuteAsync(
+                It.Is<CopilotChatRequest>(r =>
+                    r.UserContext != null &&
+                    r.UserContext.ObjectId == oid.ToString("D") &&
+                    r.UserContext.DisplayName == "Pat Lee" &&
+                    r.UserContext.Email == "plee@contoso.com" &&
+                    r.UserContext.Alias == "plee")),
                 Times.Once);
         }
 

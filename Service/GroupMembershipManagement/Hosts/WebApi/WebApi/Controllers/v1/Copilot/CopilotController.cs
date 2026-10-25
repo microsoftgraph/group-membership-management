@@ -53,14 +53,8 @@ namespace WebApi.Controllers.v1.Copilot
                 .Select(m => new CopilotChatMessage { Role = m.Role, Content = m.Content })
                 .ToList() ?? new List<CopilotChatMessage>();
 
-            var userContext = request.UserContext != null
-                ? new CopilotUserContext
-                {
-                    ManagerName = request.UserContext.ManagerName,
-                    ManagerEmail = request.UserContext.ManagerEmail,
-                    ManagerAlias = request.UserContext.ManagerAlias
-                }
-                : null;
+            // Identity comes from the validated token only; manager/HR details are resolved server-side.
+            var userContext = BuildUserContextFromClaims();
 
             var conversationId = Guid.TryParse(request.ConversationId?.Trim(), out var parsedConversationId)
                 ? parsedConversationId.ToString("D")
@@ -101,6 +95,28 @@ namespace WebApi.Controllers.v1.Copilot
             }
 
             return StatusCode(StatusCodes.Status500InternalServerError, new { error = response.ResponseMessage, code = response.ErrorCode });
+        }
+
+        private CopilotUserContext? BuildUserContextFromClaims()
+        {
+            string? Claim(params string[] types) => types
+                .Select(t => User.FindFirst(t)?.Value)
+                .FirstOrDefault(v => !string.IsNullOrWhiteSpace(v));
+
+            var objectId = Claim("http://schemas.microsoft.com/identity/claims/objectidentifier", "oid");
+            if (!Guid.TryParse(objectId, out var parsedObjectId))
+            {
+                return null;
+            }
+
+            var email = Claim("upn", "preferred_username", "email", System.Security.Claims.ClaimTypes.Email, System.Security.Claims.ClaimTypes.Upn);
+            return new CopilotUserContext
+            {
+                ObjectId = parsedObjectId.ToString("D"),
+                DisplayName = Claim("name", System.Security.Claims.ClaimTypes.Name),
+                Email = email,
+                Alias = email?.Split('@')[0]
+            };
         }
 
         private static CopilotSourcePartResult MapToResult(SourcePartDto dto) => new()
@@ -146,6 +162,7 @@ namespace WebApi.Controllers.v1.Copilot
     {
         public string Message { get; set; } = string.Empty;
         public List<ChatMessageDto>? ConversationHistory { get; set; }
+        /// <summary>Deprecated and ignored: the server derives user context from the token.</summary>
         public UserContextDto? UserContext { get; set; }
         public string? ConversationId { get; set; }
 
