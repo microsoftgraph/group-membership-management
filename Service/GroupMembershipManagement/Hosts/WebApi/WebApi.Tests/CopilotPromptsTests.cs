@@ -9,6 +9,23 @@ namespace WebApi.Tests
     public class CopilotPromptsTests
     {
         [TestMethod]
+        public void UserContextTemplate_MapsMyOrgToLoggedInUser_AndManagerOrgToManager()
+        {
+            var template = CopilotPrompts.UserContextTemplate;
+
+            Assert.IsTrue(template.Contains("{0}"));
+            StringAssert.Contains(template, "the org leader is the LOGGED-IN USER");
+            StringAssert.Contains(template, "the org leader is the user's MANAGER");
+            StringAssert.Contains(template, "validate_org_leader");
+        }
+
+        [TestMethod]
+        public void ChatPrompt_StepOneA_UsesLoggedInUserNotManagerForMyOrg()
+        {
+            StringAssert.Contains(CopilotPrompts.ChatPrompt, "The org leader is **the logged-in user**");
+        }
+
+        [TestMethod]
         public void ChatPrompt_IsNotNullOrEmpty()
         {
             Assert.IsFalse(string.IsNullOrWhiteSpace(CopilotPrompts.ChatPrompt));

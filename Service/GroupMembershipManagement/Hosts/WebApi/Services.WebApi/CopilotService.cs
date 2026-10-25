@@ -10,6 +10,7 @@ using System.Globalization;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Caching.Memory;
 using Models;
 using Polly;
 using Services.WebApi.Contracts;
@@ -30,15 +31,6 @@ namespace Services.WebApi
         private readonly IServiceScopeFactory _serviceScopeFactory;
         private readonly ILogger<CopilotService> _logger;
         private readonly IDatabaseSettingsRepository _settingsRepository;
-
-        // Stores the Graph objectIds of validated org leaders (per request), keyed by email
-        private readonly ConcurrentDictionary<string, string> _validatedOrgLeaders = new(StringComparer.OrdinalIgnoreCase);
-
-        // Stores Graph displayNames from lookup_person (per request), keyed by email
-        private readonly ConcurrentDictionary<string, string> _lookupDisplayNames = new(StringComparer.OrdinalIgnoreCase);
-
-        // Stores Graph objectIds from lookup_person (per request), keyed by email
-        private readonly ConcurrentDictionary<string, string> _lookupObjectIds = new(StringComparer.OrdinalIgnoreCase);
 
         // Request-scoped cache for attribute values to avoid duplicate DB queries within the same conversation turn
         private readonly ConcurrentDictionary<string, string> _attributeValueCache = new(StringComparer.OrdinalIgnoreCase);
@@ -68,13 +60,17 @@ namespace Services.WebApi
 
         private static readonly ChatTool LookupPersonTool = ChatTool.CreateFunctionTool(
             functionName: "lookup_person",
-            functionDescription: "Search for a person by name, alias, or email in Microsoft Graph. ALWAYS call this when the user mentions a specific person's name or alias as org leader (not 'my org' or 'my manager'). Returns matching people with their email so you can confirm the right person.",
+            functionDescription: "Search for a person by name, alias, or email in Microsoft Graph. Set isOrgLeader true ONLY when resolving the leader of a requested organization, team, reports, reporting chain, hierarchy, or rollup; set it false for an individual inclusion or exclusion. Always resolve a named org leader (not 'my org' or 'my manager'). For individuals, follow additional context on using explicit aliases/emails directly; use this tool for display names that need resolution.",
             functionParameters: BinaryData.FromString(@"{
                 ""type"": ""object"",
                 ""properties"": {
                     ""searchQuery"": {
                         ""type"": ""string"",
                         ""description"": ""The person's name, alias, or email to search for (e.g., 'John Smith', 'jsmith', or 'john.smith@company.com')""
+                    },
+                    ""isOrgLeader"": {
+                        ""type"": ""boolean"",
+                        ""description"": ""True for a collective hierarchy request; false when resolving only an individual, including in a mixed org-and-individual request. Defaults to true if omitted.""
                     }
                 },
                 ""required"": [""searchQuery""]
@@ -201,21 +197,7 @@ namespace Services.WebApi
                 };
             }
 
-            // Seed validated org leaders from the inbound working query. A refine turn that does not
-            // re-validate an unchanged leader (because it only edits, say, a SQL filter on the same
-            // part) would otherwise leave EnrichOrgLeaderObjectIds unable to recover the leader's
-            // objectId, silently dropping the resolved org leader. Any inbound part that already
-            // carries both an email and an objectId is treated as previously validated.
-            if (workingQuery != null)
-            {
-                foreach (var part in workingQuery)
-                {
-                    if (!string.IsNullOrEmpty(part.OrgLeaderEmail) && !string.IsNullOrEmpty(part.OrgLeaderObjectId))
-                    {
-                        _validatedOrgLeaders.TryAdd(part.OrgLeaderEmail, part.OrgLeaderObjectId);
-                    }
-                }
-            }
+            var confirmationGate = new OrgLeaderConfirmationGate(conversationId, userContext?.ObjectId, userMessage);
 
             // Load dynamic temperature and topP
             // Defaults tuned for deterministic structured-JSON output (exact attribute names/casing,
@@ -262,10 +244,37 @@ namespace Services.WebApi
             // Add user context if available
             if (userContext != null)
             {
+                await EnrichUserContextAsync(userContext);
+                if (userContext.IsInHrDatabase && !string.IsNullOrEmpty(userContext.Email) &&
+                    !string.IsNullOrEmpty(userContext.ObjectId))
+                {
+                    confirmationGate.Know(new OrgLeaderConfirmationGate.Candidate(
+                        userContext.DisplayName ?? userContext.Email, userContext.Email, userContext.ObjectId));
+                }
+                if (userContext.ManagerIsInHrDatabase && !string.IsNullOrEmpty(userContext.ManagerEmail) &&
+                    !string.IsNullOrEmpty(userContext.ManagerObjectId))
+                {
+                    confirmationGate.Know(new OrgLeaderConfirmationGate.Candidate(
+                        userContext.ManagerName ?? userContext.ManagerEmail,
+                        userContext.ManagerEmail, userContext.ManagerObjectId));
+                }
                 var userContextText = BuildUserContextSection(userContext);
                 if (!string.IsNullOrEmpty(userContextText))
                 {
                     systemPrompt += userContextText;
+                }
+            }
+
+            if (workingQuery != null)
+            {
+                foreach (var part in workingQuery.Where(part => part.UseOrgStructure &&
+                             !string.IsNullOrEmpty(part.OrgLeaderEmail) &&
+                             !string.IsNullOrEmpty(part.OrgLeaderObjectId)))
+                {
+                    confirmationGate.TrustExistingRoot(new OrgLeaderConfirmationGate.Candidate(
+                        part.OrgLeaderName ?? part.OrgLeaderEmail!,
+                        part.OrgLeaderEmail!,
+                        part.OrgLeaderObjectId!));
                 }
             }
 
@@ -335,7 +344,6 @@ namespace Services.WebApi
                         
                         var toolCallNames = string.Join(", ", chatCompletion.ToolCalls.Select(t => t.FunctionName));
                         _logger.CopilotToolCallIteration(toolCallCount, maxToolCalls, toolCallNames);
-                        invokedTools.AddRange(chatCompletion.ToolCalls.Select(t => t.FunctionName));
 
                         // Add assistant message with tool calls to conversation
                         messages.Add(new AssistantChatMessage(chatCompletion));
@@ -343,21 +351,47 @@ namespace Services.WebApi
                         // Process tool calls in parallel for independent tools
                         var toolTasks = chatCompletion.ToolCalls.Select(async toolCall =>
                         {
-                            string result = toolCall.FunctionName switch
+                            var executed = true;
+                            string result;
+                            if (toolCall.FunctionName == "validate_org_leader" &&
+                                !TryAuthorizeValidation(toolCall.FunctionArguments.ToString(), confirmationGate))
                             {
-                                "get_attribute_values" => await ExecuteGetAttributeValuesToolAsync(toolCall.FunctionArguments.ToString()),
-                                "lookup_person" => await ExecuteLookupPersonToolAsync(toolCall.FunctionArguments.ToString()),
-                                "validate_org_leader" => await ExecuteValidateOrgLeaderToolAsync(toolCall.FunctionArguments.ToString()),
-                                "search_group" => await ExecuteSearchGroupToolAsync(toolCall.FunctionArguments.ToString()),
-                                _ => LogAndReturnUnknownTool(toolCall.FunctionName)
-                            };
-                            return (toolCall.Id, result);
+                                executed = false;
+                                result = JsonSerializer.Serialize(new
+                                {
+                                    valid = false,
+                                    error = "User confirmation is required in a separate turn before validating this org leader."
+                                });
+                            }
+                            else if (toolCall.FunctionName == "lookup_person" &&
+                                     !TryAuthorizeLookup(toolCall.FunctionArguments.ToString(), confirmationGate))
+                            {
+                                executed = false;
+                                result = JsonSerializer.Serialize(new
+                                {
+                                    error = "Only search for a person whose name, alias, or email appears in the current user message or was previously authorized by the user in this conversation."
+                                });
+                            }
+                            else
+                            {
+                                result = toolCall.FunctionName switch
+                                {
+                                    "get_attribute_values" => await ExecuteGetAttributeValuesToolAsync(toolCall.FunctionArguments.ToString()),
+                                    "lookup_person" => await ExecuteLookupPersonToolAsync(toolCall.FunctionArguments.ToString(), confirmationGate),
+                                    "validate_org_leader" => await ExecuteValidateOrgLeaderToolAsync(toolCall.FunctionArguments.ToString(), confirmationGate),
+                                    "search_group" => await ExecuteSearchGroupToolAsync(toolCall.FunctionArguments.ToString()),
+                                    _ => LogAndReturnUnknownTool(toolCall.FunctionName)
+                                };
+                            }
+                            return (toolCall.Id, result, toolCall.FunctionName, executed);
                         });
 
                         var toolResults = await Task.WhenAll(toolTasks);
-                        foreach (var (toolId, toolResult) in toolResults)
+                        foreach (var (toolId, toolResult, toolName, executed) in toolResults)
                         {
                             messages.Add(new ToolChatMessage(toolId, toolResult));
+                            if (executed)
+                                invokedTools.Add(toolName);
                         }
                     }
                     else
@@ -368,12 +402,12 @@ namespace Services.WebApi
                         // Parse the strict-schema operation set { message, operations[] }.
                         var (message, operations) = ParseOperationResponse(responseText);
 
-                        // Enrich model-emitted org-leader parts with the validated Graph objectId
-                        // captured during the tool-calling loop (kept out of the strict model schema).
-                        EnrichOrgLeaderObjectIds(operations);
-
-                        // Apply the operations server-side to the inbound working query, keyed by partId.
-                        var applyResult = CopilotOperationApplier.Apply(workingQuery, operations);
+                        var (applyResult, confirmationMessage) = ApplyOperationsWithConfirmation(
+                            workingQuery, operations, confirmationGate, message);
+                        if (confirmationMessage != null)
+                        {
+                            _logger.CopilotOrgLeaderConfirmationRequired(conversationId ?? "unknown");
+                        }
 
                         _logger.CopilotOperationsApplied(
                             applyResult.AddCount,
@@ -388,7 +422,7 @@ namespace Services.WebApi
 
                         return new CopilotChatResult
                         {
-                            ResponseMessage = message,
+                            ResponseMessage = confirmationMessage ?? message,
                             // v1 backward-compat: SourceParts carries the resulting query (for an empty
                             // working query this equals the newly generated parts — the old append result).
                             SourceParts = applyResult.ResultingQuery,
@@ -397,6 +431,8 @@ namespace Services.WebApi
                             Warning = applyResult.Warning,
                             ErrorCode = applyResult.ErrorCode,
                             InvokedTools = invokedTools,
+                            EffectiveTemperature = requestOptions.Temperature,
+                            EffectiveTopP = requestOptions.TopP,
                             Usage = usageObserved
                                 ? new CopilotChatUsage
                                 {
@@ -456,7 +492,9 @@ namespace Services.WebApi
             public string? SearchTerm { get; set; }
         }
 
-        private async Task<string> ExecuteLookupPersonToolAsync(string argumentsJson)
+        private async Task<string> ExecuteLookupPersonToolAsync(
+            string argumentsJson,
+            OrgLeaderConfirmationGate confirmationGate)
         {
             try
             {
@@ -527,26 +565,21 @@ namespace Services.WebApi
                                 && !(u.DisplayName?.Contains("Rebalancing", StringComparison.OrdinalIgnoreCase) == true))
                     .ToList();
 
+                confirmationGate.Found(realUsers
+                    .Where(user => !string.IsNullOrWhiteSpace(user.Id))
+                    .Select(user => new OrgLeaderConfirmationGate.Candidate(
+                        user.DisplayName ?? "Unknown",
+                        user.UserPrincipalName ?? user.Mail ?? string.Empty,
+                        user.Id!))
+                    .Where(candidate => !string.IsNullOrWhiteSpace(candidate.Email)),
+                    args.IsOrgLeader);
+
                 if (realUsers.Count == 0)
                 {
                     return JsonSerializer.Serialize(new { 
                         message = $"No users found matching '{searchQuery}'. Could you provide their email address instead?",
                         users = Array.Empty<object>()
                     });
-                }
-
-                // Cache objectIds and displayNames from lookup results to avoid redundant Graph calls in validate_org_leader
-                foreach (var u in realUsers)
-                {
-                    var userEmail = u.UserPrincipalName ?? u.Mail;
-                    if (!string.IsNullOrEmpty(userEmail) && !string.IsNullOrEmpty(u.Id))
-                    {
-                        _lookupObjectIds.TryAdd(userEmail, u.Id);
-                    }
-                    if (!string.IsNullOrEmpty(userEmail) && !string.IsNullOrEmpty(u.DisplayName))
-                    {
-                        _lookupDisplayNames.TryAdd(userEmail, u.DisplayName);
-                    }
                 }
 
                 var users = realUsers.Select(u => new
@@ -572,13 +605,16 @@ namespace Services.WebApi
         private class LookupPersonArgs
         {
             public string? SearchQuery { get; set; }
+            public bool IsOrgLeader { get; set; } = true;
         }
 
         #endregion
 
         #region Validate Org Leader Tool
 
-        private async Task<string> ExecuteValidateOrgLeaderToolAsync(string argumentsJson)
+        private async Task<string> ExecuteValidateOrgLeaderToolAsync(
+            string argumentsJson,
+            OrgLeaderConfirmationGate confirmationGate)
         {
             try
             {
@@ -588,10 +624,12 @@ namespace Services.WebApi
                 if (string.IsNullOrEmpty(email))
                     return JsonSerializer.Serialize(new { valid = false, error = "No email provided" });
 
-                // Step 1: Look up Graph objectId by email (use cached value from lookup_person if available)
-                string? objectId = _lookupObjectIds.TryGetValue(email, out var cachedId) ? cachedId : null;
-                objectId ??= await GetGraphObjectIdByEmailAsync(email);
-                if (objectId == null)
+                if (!confirmationGate.TryGetConfirmed(email, out var confirmed) || confirmed == null)
+                    return JsonSerializer.Serialize(new { valid = false, error = "User confirmation is required in a separate turn." });
+
+                // Validate the identity the user actually confirmed, not an objectId cached on the service instance.
+                var objectId = confirmed.ObjectId;
+                if (string.IsNullOrWhiteSpace(objectId))
                 {
                     return JsonSerializer.Serialize(new { valid = false, error = $"Could not find user '{email}' in Microsoft Entra ID" });
                 }
@@ -601,24 +639,8 @@ namespace Services.WebApi
 
                 if (exists)
                 {
-                    // Cache the objectId so we can include it in the final response
-                    _validatedOrgLeaders[email] = objectId;
-                    // Use displayName from lookup_person cache; only fetch from Graph if not cached
-                    string? displayName = _lookupDisplayNames.TryGetValue(email, out var cachedName) ? cachedName : null;
-                    if (displayName == null)
-                    {
-                        try
-                        {
-                            using var scope = _serviceScopeFactory.CreateScope();
-                            var graphClient = scope.ServiceProvider.GetRequiredService<GraphServiceClient>();
-                            var user = await graphClient.Users[objectId].GetAsync(config =>
-                            {
-                                config.QueryParameters.Select = new[] { "displayName" };
-                            });
-                            displayName = user?.DisplayName;
-                        }
-                        catch { /* non-critical */ }
-                    }
+                    confirmationGate.MarkValidated(confirmed);
+                    var displayName = confirmed.Name;
 
                     return JsonSerializer.Serialize(new
                     {
@@ -763,67 +785,6 @@ namespace Services.WebApi
         }
 
         /// <summary>
-        /// Looks up a user's Graph objectId by their email or UPN using the Graph SDK.
-        /// Uses $search by userPrincipalName first, then mail as fallback.
-        /// Returns null if not found.
-        /// </summary>
-        private async Task<string?> GetGraphObjectIdByEmailAsync(string email)
-        {
-            using var scope = _serviceScopeFactory.CreateScope();
-            var graphClient = scope.ServiceProvider.GetRequiredService<GraphServiceClient>();
-            var sanitizedEmail = email.Replace("\"", "");
-
-            // Search by userPrincipalName first (always populated, most reliable)
-            try
-            {
-                var searchResult = await graphClient.Users.GetAsync(config =>
-                {
-                    config.Headers.Add("ConsistencyLevel", "eventual");
-                    config.QueryParameters.Search = $"\"userPrincipalName:{sanitizedEmail}\"";
-                    config.QueryParameters.Select = new[] { "id", "userPrincipalName" };
-                    config.QueryParameters.Count = true;
-                    config.QueryParameters.Top = 5;
-                });
-
-                var matchedUser = searchResult?.Value?.FirstOrDefault(u =>
-                    string.Equals(u.UserPrincipalName, sanitizedEmail, StringComparison.OrdinalIgnoreCase));
-                if (matchedUser?.Id != null)
-                    return matchedUser.Id;
-
-                var firstUser = searchResult?.Value?.FirstOrDefault();
-                if (firstUser?.Id != null)
-                    return firstUser.Id;
-            }
-            catch (Exception ex)
-            {
-                _logger.CopilotGraphUpnSearchFailed(email, ex);
-            }
-
-            // Fallback: search by mail property (for cases where input is a mail address, not UPN)
-            try
-            {
-                var searchResult = await graphClient.Users.GetAsync(config =>
-                {
-                    config.Headers.Add("ConsistencyLevel", "eventual");
-                    config.QueryParameters.Search = $"\"mail:{sanitizedEmail}\"";
-                    config.QueryParameters.Select = new[] { "id" };
-                    config.QueryParameters.Count = true;
-                    config.QueryParameters.Top = 1;
-                });
-
-                var matchedUser = searchResult?.Value?.FirstOrDefault();
-                if (matchedUser?.Id != null)
-                    return matchedUser.Id;
-            }
-            catch (Exception ex)
-            {
-                _logger.CopilotGraphMailSearchFailed(email, ex);
-            }
-
-            return null;
-        }
-
-        /// <summary>
         /// Parses the strict-schema operation response { message, operations[] }. Because the response
         /// format is a strict json_schema, the payload is well-formed JSON — no markdown/regex repair needed.
         /// </summary>
@@ -849,28 +810,129 @@ namespace Services.WebApi
         }
 
         /// <summary>
-        /// Fills OrgLeaderObjectId on model-emitted org-leader parts using the Graph objectIds validated
-        /// during the tool-calling loop (validate_org_leader). Keeps objectId resolution server-side and
-        /// out of the model's strict schema.
+        /// Resolves org leader identifiers only from a validated confirmation or the unchanged inbound query.
         /// </summary>
-        private void EnrichOrgLeaderObjectIds(List<EditOperation> operations)
+        internal static void EnrichOrgLeaderObjectIds(
+            List<EditOperation> operations,
+            OrgLeaderConfirmationGate confirmationGate,
+            IReadOnlyList<CopilotSourcePartResult>? workingQuery)
         {
-            foreach (var op in operations)
-            {
-                var candidates = new List<CopilotSourcePartResult?>();
-                if (op.Part != null) candidates.Add(op.Part);
-                if (op.Parts != null) candidates.AddRange(op.Parts);
+            var existingRoots = workingQuery?.Where(part => part.UseOrgStructure &&
+                    !string.IsNullOrWhiteSpace(part.OrgLeaderEmail) &&
+                    !string.IsNullOrWhiteSpace(part.OrgLeaderObjectId))
+                .GroupBy(part => part.OrgLeaderEmail!, StringComparer.OrdinalIgnoreCase)
+                .ToDictionary(group => group.Key, group => group.First(), StringComparer.OrdinalIgnoreCase)
+                ?? new Dictionary<string, CopilotSourcePartResult>(StringComparer.OrdinalIgnoreCase);
 
-                foreach (var part in candidates)
+            foreach (var part in GetOrgLeaderParts(operations))
+            {
+                if (part == null || !part.UseOrgStructure)
+                    continue;
+                if (!string.IsNullOrWhiteSpace(part.OrgLeaderEmail) &&
+                    existingRoots.TryGetValue(part.OrgLeaderEmail, out var existing))
                 {
-                    if (part == null || !part.UseOrgStructure) continue;
-                    if (!string.IsNullOrEmpty(part.OrgLeaderObjectId)) continue;
-                    if (!string.IsNullOrEmpty(part.OrgLeaderEmail)
-                        && _validatedOrgLeaders.TryGetValue(part.OrgLeaderEmail, out var oid))
-                    {
-                        part.OrgLeaderObjectId = oid;
-                    }
+                    part.OrgLeaderObjectId = existing.OrgLeaderObjectId;
                 }
+                else if (!string.IsNullOrWhiteSpace(part.OrgLeaderEmail) &&
+                         confirmationGate.TryGetValidated(part.OrgLeaderEmail, out var validated) &&
+                         validated != null)
+                {
+                    part.OrgLeaderObjectId = validated.ObjectId;
+                }
+                else
+                {
+                    part.OrgLeaderObjectId = null;
+                }
+            }
+        }
+
+        internal static bool FindUnconfirmedOrgRoot(
+            IReadOnlyList<CopilotSourcePartResult>? workingQuery,
+            IReadOnlyList<EditOperation> operations,
+            OrgLeaderConfirmationGate confirmationGate)
+        {
+            var existingRoots = workingQuery?.Where(part => part.UseOrgStructure)
+                .Where(part => !string.IsNullOrWhiteSpace(part.OrgLeaderEmail))
+                .Select(part => part.OrgLeaderEmail!)
+                .ToHashSet(StringComparer.OrdinalIgnoreCase)
+                ?? new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+            var blocked = false;
+            foreach (var part in GetOrgLeaderParts(operations).Where(part => part?.UseOrgStructure == true))
+            {
+                var email = part!.OrgLeaderEmail;
+                if (!string.IsNullOrWhiteSpace(email) && existingRoots.Contains(email))
+                    continue;
+                if (!string.IsNullOrWhiteSpace(email) &&
+                    confirmationGate.IsValidated(email, part.OrgLeaderObjectId))
+                    continue;
+
+                if (!string.IsNullOrWhiteSpace(email) && confirmationGate.IsConfirmed(email))
+                    confirmationGate.RequireValidation(email);
+                else
+                    confirmationGate.RequireConfirmation(email);
+                blocked = true;
+            }
+            return blocked;
+        }
+
+        internal static (CopilotOperationApplyResult ApplyResult, string? ConfirmationMessage)
+            ApplyOperationsWithConfirmation(
+                IReadOnlyList<CopilotSourcePartResult>? workingQuery,
+                List<EditOperation> operations,
+                OrgLeaderConfirmationGate confirmationGate,
+                string modelMessage)
+        {
+            EnrichOrgLeaderObjectIds(operations, confirmationGate, workingQuery);
+            var hasUnconfirmedOrgRoot = FindUnconfirmedOrgRoot(workingQuery, operations, confirmationGate);
+            var confirmationMessage = confirmationGate.Finish(modelMessage);
+            var applyResult = CopilotOperationApplier.Apply(
+                workingQuery,
+                hasUnconfirmedOrgRoot || confirmationMessage != null
+                    ? Array.Empty<EditOperation>()
+                    : operations);
+            return (applyResult, confirmationMessage);
+        }
+
+        private static IEnumerable<CopilotSourcePartResult?> GetOrgLeaderParts(IEnumerable<EditOperation> operations) =>
+            operations.SelectMany(operation =>
+                (operation.Part == null
+                    ? Enumerable.Empty<CopilotSourcePartResult>()
+                    : new[] { operation.Part })
+                .Concat(operation.Parts ?? Enumerable.Empty<CopilotSourcePartResult>()));
+
+        private static bool TryAuthorizeValidation(
+            string argumentsJson,
+            OrgLeaderConfirmationGate confirmationGate)
+        {
+            try
+            {
+                var args = JsonSerializer.Deserialize<ValidateOrgLeaderArgs>(
+                    argumentsJson,
+                    new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+                return string.IsNullOrWhiteSpace(args?.Email) ||
+                    confirmationGate.AllowValidation(args.Email.Trim());
+            }
+            catch (JsonException)
+            {
+                return true;
+            }
+        }
+
+        private static bool TryAuthorizeLookup(
+            string argumentsJson,
+            OrgLeaderConfirmationGate confirmationGate)
+        {
+            try
+            {
+                var args = JsonSerializer.Deserialize<LookupPersonArgs>(
+                    argumentsJson,
+                    new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+                return confirmationGate.AllowLookup(args?.SearchQuery);
+            }
+            catch (JsonException)
+            {
+                return true;
             }
         }
 
@@ -993,9 +1055,116 @@ namespace Services.WebApi
             }
         }
 
+        private static readonly MemoryCache _userContextCache = new(new MemoryCacheOptions
+        {
+            SizeLimit = 2000
+        });
+        private static readonly TimeSpan _userContextCacheDuration = TimeSpan.FromMinutes(10);
+
+        /// <summary>
+        /// Resolves the caller's profile, manager, and HR eligibility from their token-derived object id.
+        /// Best effort: any failed lookup leaves the corresponding fields empty and never fails the chat turn.
+        /// Also pre-validates the user and manager as org leaders so their objectIds survive into the response.
+        /// </summary>
+        private async Task EnrichUserContextAsync(CopilotUserContext userContext)
+        {
+            if (string.IsNullOrEmpty(userContext.ObjectId)) return;
+
+            if (_userContextCache.TryGetValue<CopilotUserContext>(userContext.ObjectId, out var cached) && cached != null)
+            {
+                CopyResolved(cached, userContext);
+            }
+            else
+            {
+                var resolved = new CopilotUserContext { ObjectId = userContext.ObjectId };
+                var graphLookupSucceeded = false;
+
+                try
+                {
+                    using var scope = _serviceScopeFactory.CreateScope();
+                    var graphClient = scope.ServiceProvider.GetRequiredService<GraphServiceClient>();
+
+                    var me = await graphClient.Users[userContext.ObjectId].GetAsync(config =>
+                    {
+                        config.QueryParameters.Select = new[] { "id", "displayName", "mail", "userPrincipalName" };
+                    });
+                    resolved.DisplayName = me?.DisplayName;
+                    resolved.Email = me?.Mail ?? me?.UserPrincipalName;
+                    resolved.Alias = me?.UserPrincipalName?.Split('@')[0];
+
+                    var manager = await graphClient.Users[userContext.ObjectId].Manager.GetAsync()
+                        as Microsoft.Graph.Models.User;
+                    if (manager?.Id != null)
+                    {
+                        resolved.ManagerObjectId = manager.Id;
+                        resolved.ManagerName = manager.DisplayName;
+                        resolved.ManagerEmail = manager.Mail ?? manager.UserPrincipalName;
+                        resolved.ManagerAlias = manager.UserPrincipalName?.Split('@')[0];
+                    }
+
+                    graphLookupSucceeded = me != null;
+                }
+                catch (Exception ex)
+                {
+                    _logger.CopilotUserContextResolveFailed(ex);
+                }
+
+                var (userInHr, employeeId, maxDepth) = await ValidateUserInHrDbAsync(userContext.ObjectId);
+                resolved.IsInHrDatabase = userInHr;
+                resolved.EmployeeId = userInHr ? employeeId : null;
+                resolved.OrgMaxDepth = userInHr ? maxDepth : null;
+
+                if (!string.IsNullOrEmpty(resolved.ManagerObjectId))
+                {
+                    var (managerInHr, _, _) = await ValidateUserInHrDbAsync(resolved.ManagerObjectId);
+                    resolved.ManagerIsInHrDatabase = managerInHr;
+                }
+
+                // Do not suppress retries after a transient Graph failure.
+                if (graphLookupSucceeded)
+                {
+                    _userContextCache.Set(userContext.ObjectId, resolved, new MemoryCacheEntryOptions
+                    {
+                        AbsoluteExpirationRelativeToNow = _userContextCacheDuration,
+                        Size = 1
+                    });
+                }
+                CopyResolved(resolved, userContext);
+            }
+
+        }
+
+        private static void CopyResolved(CopilotUserContext source, CopilotUserContext target)
+        {
+            // Token claims win for identity; Graph fills gaps.
+            target.DisplayName = string.IsNullOrEmpty(target.DisplayName) ? source.DisplayName : target.DisplayName;
+            target.Email = string.IsNullOrEmpty(target.Email) ? source.Email : target.Email;
+            target.Alias = string.IsNullOrEmpty(target.Alias) ? source.Alias : target.Alias;
+            target.EmployeeId = source.EmployeeId;
+            target.OrgMaxDepth = source.OrgMaxDepth;
+            target.IsInHrDatabase = source.IsInHrDatabase;
+            target.ManagerObjectId = source.ManagerObjectId;
+            target.ManagerName = source.ManagerName;
+            target.ManagerEmail = source.ManagerEmail;
+            target.ManagerAlias = source.ManagerAlias;
+            target.ManagerIsInHrDatabase = source.ManagerIsInHrDatabase;
+        }
+
         private string BuildUserContextSection(CopilotUserContext userContext)
         {
             var parts = new List<string>();
+
+            if (!string.IsNullOrEmpty(userContext.DisplayName) || !string.IsNullOrEmpty(userContext.Email))
+            {
+                var userInfo = userContext.DisplayName ?? userContext.Email;
+                if (!string.IsNullOrEmpty(userContext.Email) && !string.IsNullOrEmpty(userContext.DisplayName))
+                    userInfo += $" ({userContext.Email})";
+
+                parts.Add($"- Logged-in user: {userInfo}");
+                parts.Add(userContext.IsInHrDatabase
+                    ? $"- Logged-in user is in the HR database and can be used as an org leader (max org depth: {userContext.OrgMaxDepth})"
+                    : "- Logged-in user is NOT in the HR database and cannot be used as an org leader");
+            }
 
             if (!string.IsNullOrEmpty(userContext.ManagerName))
             {
@@ -1004,6 +1173,9 @@ namespace Services.WebApi
                     managerInfo += $" ({userContext.ManagerEmail})";
 
                 parts.Add($"- User's Manager: {managerInfo}");
+                parts.Add(userContext.ManagerIsInHrDatabase
+                    ? "- Manager is in the HR database"
+                    : "- Manager is NOT in the HR database and cannot be used as an org leader");
             }
 
             if (parts.Count == 0) return string.Empty;
