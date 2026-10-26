@@ -1,0 +1,20 @@
+{
+  "helmValues": [
+    {
+      "path": "autoscaling.serviceBusNamespace",
+      "source": {
+        "type": "keyVaultSecret",
+        "vault": "data",
+        "name": "serviceBusNamespace"
+      }
+    },
+    {
+      "path": "autoscaling.topicName",
+      "source": {
+        "type": "keyVaultSecret",
+        "vault": "data",
+        "name": "serviceBusSyncJobTopic"
+      }
+    }
+  ]
+}

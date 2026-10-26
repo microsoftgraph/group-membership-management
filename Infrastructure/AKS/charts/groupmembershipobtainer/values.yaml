@@ -1,0 +1,118 @@
+service:
+  name: groupmembershipobtainer
+
+workload:
+  timerTriggered: false
+  singleton: false
+
+replicaCount: 0
+
+autoscaling:
+  pausedReplicas: 0
+  minReplicaCount: 3
+  maxReplicaCount: 5
+  serviceBusNamespace: ""
+  topicName: ""
+  pollingInterval: 30
+  behavior:
+    scaleUp:
+      stabilizationWindowSeconds: 0
+      policies:
+        - type: Pods
+          value: 1
+          periodSeconds: 30
+    scaleDown:
+      selectPolicy: Min
+      stabilizationWindowSeconds: 600
+      policies:
+        - type: Pods
+          value: 1
+          periodSeconds: 900
+  # Calibration values: queue lengths per pod, not certified capacity.
+  durableQueues:
+    workitems: 10
+    control: 20
+    controlQueueCount: 4
+  # Rendered with tpl, so a value can reference other chart values.
+  triggers:
+    - type: azure-servicebus
+      name: incoming-parts
+      metricType: AverageValue
+      useCachedMetrics: false
+      metadata:
+        namespace: '{{ .Values.autoscaling.serviceBusNamespace }}'
+        topicName: '{{ .Values.autoscaling.topicName }}'
+        subscriptionName: GroupMembership
+        messageCount: "20"
+      authenticationRef:
+        name: '{{ include "gmm.names.resource" . }}-metrics'
+
+terminationGracePeriodSeconds: 660
+
+image:
+  repository: ""
+  digest: ""
+  tag: ""
+  allowTag: false
+  pullPolicy: IfNotPresent
+
+workloadIdentity:
+  clientId: ""
+
+durable:
+  hubName: groupmembershipobtaineraks
+  hostId: groupmembershipobtainer-aks
+
+storage:
+  accountName: ""
+
+config:
+  appConfigurationEndpoint: ""
+  azureTokenCredentials: WorkloadIdentityCredential
+
+# ClientSecret Graph authentication; the workload identity is for Azure data access.
+keyVault:
+  tenantId: ""
+  names:
+    prereqs: ""
+    data: ""
+  vaults:
+    - alias: prereqs
+      secrets:
+        - { objectName: graphAppClientId,                  key: graphCredentials__ClientId }
+        - { objectName: graphAppClientSecret,              key: graphCredentials__ClientSecret }
+        - { objectName: graphAppTenantId,                  key: graphCredentials__TenantId }
+        - { objectName: senderUsername,                    key: senderAddress }
+        - { objectName: senderPassword,                    key: senderPassword }
+        - { objectName: supportEmailAddresses,             key: supportEmailAddresses }
+    - alias: data
+      secrets:
+        - { objectName: appInsightsConnectionString,       key: APPLICATIONINSIGHTS_CONNECTION_STRING }
+        - { objectName: jobsMSIConnectionString,           key: ConnectionStrings__JobsContext }
+        - { objectName: replicaJobsMSIConnectionString,    key: ConnectionStrings__JobsContextReadOnly }
+        - { objectName: serviceBusFQN,                     key: gmmServiceBus__fullyQualifiedNamespace }
+        - { objectName: serviceBusSyncJobTopic,            key: serviceBusSyncJobTopic }
+        - { objectName: serviceBusMembershipAggregatorQueue, key: serviceBusMembershipAggregatorQueue }
+        - { objectName: serviceBusNotificationsQueue,      key: serviceBusNotificationsQueue }
+        - { objectName: jobsStorageAccountName,            key: membershipStorageAccountName }
+        - { objectName: membershipContainerName,           key: membershipContainerName }
+
+resources:
+  requests:
+    cpu: 500m
+    memory: 4Gi
+  limits:
+    cpu: 2000m
+    memory: 4Gi
+
+securityContext:
+  runAsNonRoot: true
+  runAsUser: 1654
+  runAsGroup: 1654
+  fsGroup: 1654
+  readOnlyRootFilesystem: false
+
+probes:
+  enabled: false
+
+revisionHistoryLimit: 3

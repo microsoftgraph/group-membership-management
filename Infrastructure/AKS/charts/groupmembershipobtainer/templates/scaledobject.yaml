@@ -1,0 +1,7 @@
+{{- include "gmm.deployments.autoscaledValidate" . -}}
+{{- if ne (int .Values.autoscaling.minReplicaCount) 3 -}}{{- fail "GroupMembershipObtainer requires autoscaling.minReplicaCount=3" -}}{{- end -}}
+{{- if ne (int .Values.autoscaling.maxReplicaCount) 5 -}}{{- fail "GroupMembershipObtainer requires autoscaling.maxReplicaCount=5" -}}{{- end -}}
+{{- if empty (trim (toString .Values.autoscaling.serviceBusNamespace)) -}}{{- fail "GroupMembershipObtainer requires autoscaling.serviceBusNamespace" -}}{{- end -}}
+{{- if empty (trim (toString .Values.autoscaling.topicName)) -}}{{- fail "GroupMembershipObtainer requires autoscaling.topicName" -}}{{- end -}}
+{{- if ne (int .Values.terminationGracePeriodSeconds) 660 -}}{{- fail "GroupMembershipObtainer requires a 660 second termination grace period" -}}{{- end -}}
+{{ include "gmm.keda.scaledObject" . }}

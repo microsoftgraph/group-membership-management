@@ -1,0 +1,12 @@
+apiVersion: v2
+name: groupmembershipobtainer
+description: GMM GroupMembershipObtainer with bounded Durable queue autoscaling.
+type: application
+version: 0.2.0
+dependencies:
+  - name: gmm-service-lib
+    version: 0.1.0
+    repository: "file://../gmm-service-lib"
+annotations:
+  gmm.microsoft.com/service: GroupMembershipObtainer
+  gmm.microsoft.com/scaling: keda

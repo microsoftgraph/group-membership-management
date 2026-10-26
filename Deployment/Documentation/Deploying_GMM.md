@@ -296,7 +296,19 @@ Required when `deployAks` is `true`. The names of the GMM services that run on t
 
 `Resolve-AksHostedServices` reads each chart's scaling annotation and orders the list with JobTrigger last, because JobTrigger dispatches work to the other services. Every step uses that one list: workload identities and federated credentials, SQL users, the function-app start skip, install and start. Workloads are installed at zero replicas, and the WebApi Start operation activates them.
 
-Each service gets its own workload identity (`<solution>-identity-<env>-aks-<Service>`). For a service whose chart declares `keda`, the cluster template also adds a federated credential for the `keda-operator` service account in `kube-system` to that identity, so KEDA reads the service's Service Bus and storage metrics as that identity, and `Set-AksRoleAssignments` grants the identity `Reader` on the Service Bus namespace so KEDA can read subscription message counts.
+Each service gets its own workload identity (`<solution>-identity-<env>-aks-<Service>`). For a service whose chart declares `keda`, the cluster template also adds a federated credential for the `keda-operator` service account in `kube-system` to that identity, so KEDA reads the service's Service Bus and storage metrics as that identity, and `Set-AksRoleAssignments` also grants it Reader on the Service Bus namespace so KEDA can read subscription message counts.
+
+#### GroupMembershipObtainer on AKS
+
+List `GroupMembershipObtainer` in `aksServices` to run it on AKS; its App Service then stays stopped. Its chart is autoscaled (`gmm.microsoft.com/scaling: keda`) and renders its ScaledObject and TriggerAuthentication with the shared library's `gmm.keda.scaledObject` and `gmm.keda.triggerAuthentication`, configured through `autoscaling.pollingInterval`, `behavior`, `durableQueues` and `triggers`.
+
+Before deploying, an authorized role-assignment operator must run `Scripts/AKS/Set-AksRoleAssignments.ps1` (its `-AutoscaledServices` defaults to `GroupMembershipObtainer`). Besides the roles every AKS service receives, it grants GroupMembershipObtainer Blob Data Contributor on the account named by the `jobsStorageAccountName` secret, because the host storage grants do not cover membership blobs. Provision its SQL contained user using the identity's client ID, with `db_datareader` and `db_datawriter`, including the read endpoint.
+
+The chart installs at zero and paused: the ScaledObject carries `autoscaling.keda.sh/paused-replicas: "0"` and the Deployment renders `replicas: 0`, so the deployment never activates it and the WebApi Start operation lifts the pause. Do not set `replicaCount=1` or edit the HPA to start it. Once active, KEDA's HPA owns the replica count between 3 and 5 (the chart refuses other bounds, and a termination grace period other than 660 seconds). Three warm pods absorb short bursts; scale-up adds at most one pod every 30 seconds, and scale-in waits for a 600-second stabilization window and removes at most one pod every 900 seconds.
+
+The triggers are the incoming Service Bus subscription (`GroupMembership`) plus the Durable work-item queue and the four control queues. The HPA acts on the largest recommendation, not their sum. The targets (20 incoming parts, 10 work items, 20 messages per control queue) are calibration values, not certified capacity. The chart's `autoscaling-deployment.json` maps the required Helm values (`autoscaling.serviceBusNamespace` and `autoscaling.topicName`) to Key Vault secrets in the data vault. For controlled fixed-count maintenance, set integer `autoscaling.pausedReplicas` from 0 through 5 through Helm; for active operation leave it null.
+
+**Known limitation:** cached-delta retry after input cleanup, shared-source cache overwrites and independently selected cache and link pairs can produce an incorrect member set even when its count matches. Graceful shutdown and a passing deployment do not establish worker-loss membership safety.
 
 ---
 
