@@ -11,6 +11,7 @@ using Microsoft.Kiota.Abstractions.Serialization;
 using Microsoft.Kiota.Serialization.Json;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Moq;
+using Repositories.Contracts;
 using Repositories.GraphGroups;
 using System;
 using System.Collections.Generic;
@@ -61,7 +62,8 @@ namespace Services.Tests
             _telemetryConfiguration = new TelemetryConfiguration { DisableTelemetry = true };
             _repository = new GraphGroupRepository(
                 new GraphServiceClient(_requestAdapter.Object),
-                new TelemetryClient(_telemetryConfiguration));
+                new TelemetryClient(_telemetryConfiguration),
+                Mock.Of<IRetryPolicyProvider>());
         }
 
         [TestCleanup]
