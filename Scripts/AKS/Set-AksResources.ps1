@@ -187,6 +187,8 @@ function Set-AksResources {
         [string]$AksTemplateDirectoryPath,
         [Parameter(Mandatory = $true)]
         [Hashtable]$ParameterHashtable,
+        [Parameter(Mandatory = $true)]
+        [object[]]$Services,
         [Parameter(Mandatory = $false)]
         [Hashtable]$AdditionalParameters = @{ parameters = @{} },
         [Parameter(Mandatory = $false)]
@@ -195,26 +197,34 @@ function Set-AksResources {
 
     Write-DeployLog -Level Info -Message "Creating AKS resources"
 
+    $aksParameterHashtable = $ParameterHashtable.Clone()
+    $aksParameterHashtable['aksServices'] = @{ value = @($Services.Name) }
+    $autoscaledServiceNames = @($Services | Where-Object Autoscaled | ForEach-Object Name)
+
     Set-AksPrereqResources `
         -SolutionAbbreviation           $SolutionAbbreviation `
         -EnvironmentAbbreviation        $EnvironmentAbbreviation `
         -SubscriptionId                 $SubscriptionId `
         -AksTemplateDirectoryPath       $AksTemplateDirectoryPath `
-        -ParameterHashtable             $ParameterHashtable `
+        -ParameterHashtable             $aksParameterHashtable `
         -AdditionalParameters           $AdditionalParameters
 
     Assert-AksRoleAssignments `
         -SolutionAbbreviation           $SolutionAbbreviation `
         -EnvironmentAbbreviation        $EnvironmentAbbreviation `
         -SubscriptionId                 $SubscriptionId `
+        -AutoscaledServiceNames         $autoscaledServiceNames `
         -DeploymentPrincipalObjectId    $DeploymentPrincipalObjectId
+
+    $clusterParameterHashtable = $aksParameterHashtable.Clone()
+    $clusterParameterHashtable['autoscaledServices'] = @{ value = $autoscaledServiceNames }
 
     Set-AksClusterResources `
         -SolutionAbbreviation           $SolutionAbbreviation `
         -EnvironmentAbbreviation        $EnvironmentAbbreviation `
         -SubscriptionId                 $SubscriptionId `
         -AksTemplateDirectoryPath       $AksTemplateDirectoryPath `
-        -ParameterHashtable             $ParameterHashtable `
+        -ParameterHashtable             $clusterParameterHashtable `
         -AdditionalParameters           $AdditionalParameters
 }
 
@@ -275,6 +285,8 @@ function Assert-AksRoleAssignments {
         [Parameter(Mandatory = $true)]
         [string]$SubscriptionId,
         [Parameter(Mandatory = $false)]
+        [string[]]$AutoscaledServiceNames = @(),
+        [Parameter(Mandatory = $false)]
         [string]$DeploymentPrincipalObjectId
     )
 
@@ -296,13 +308,15 @@ function Assert-AksRoleAssignments {
         AcrName                  = "$SolutionAbbreviation`computeacr$EnvironmentAbbreviation"
     }
 
-    $roleAssignmentScript = ". Scripts/AKS/Set-AksRoleAssignments.ps1; Set-AksRoleAssignments -SolutionAbbreviation $SolutionAbbreviation -EnvironmentAbbreviation $EnvironmentAbbreviation"
+    $autoscaledServices = if ($autoscaledServiceNames.Count -gt 0) { "@('" + ($autoscaledServiceNames -join "','") + "')" } else { '@()' }
+    $roleAssignmentScript = ". Scripts/AKS/Set-AksRoleAssignments.ps1; Set-AksRoleAssignments -SolutionAbbreviation $SolutionAbbreviation -EnvironmentAbbreviation $EnvironmentAbbreviation -AutoscaledServices $autoscaledServices"
     $resourceGroupScope = "/subscriptions/$SubscriptionId/resourceGroups/$computeResourceGroup"
 
     $networkContributorRoleId     = '4d97b98b-1d4f-4787-a291-c67834d212e7'
     $managedIdentityOperatorRole  = 'f1a07417-d97a-45cb-824c-7a7467783830'
     $acrPullRoleId                = '7f951dda-4ed3-4680-a7ca-43fe172d538d'
     $clusterAdminRoleId           = 'b1ff04bb-8a4e-4dc4-8eb5-8693973ce19b'
+    $readerRoleId                 = 'acdd72a7-3385-48ef-bd42-f606fba81ae7'
 
     $controlPlaneIdentityId = "$resourceGroupScope/providers/Microsoft.ManagedIdentity/userAssignedIdentities/$($names.ControlPlaneIdentityName)"
     $kubeletIdentityId      = "$resourceGroupScope/providers/Microsoft.ManagedIdentity/userAssignedIdentities/$($names.KubeletIdentityName)"
@@ -378,6 +392,15 @@ Underlying error: $($_.Exception.Message)
         $requiredGrants += @{ Description = "Azure Kubernetes Service RBAC Cluster Admin for the deployment service principal '$serviceConnectionName' on resource group '$computeResourceGroup'"; PrincipalId = $DeploymentPrincipalObjectId; Scope = $resourceGroupScope; RoleDefinitionId = $clusterAdminRoleId }
     }
 
+    # KEDA authenticates as the service identity and reads Service Bus subscription message counts with Reader
+    $dataName = "$SolutionAbbreviation-data-$EnvironmentAbbreviation"
+    $serviceBusScope = "/subscriptions/$SubscriptionId/resourceGroups/$dataName/providers/Microsoft.ServiceBus/namespaces/$dataName"
+    foreach ($serviceName in $AutoscaledServiceNames) {
+        $serviceIdentityName = "$SolutionAbbreviation-identity-$EnvironmentAbbreviation-aks-$serviceName"
+        $serviceIdentity = Invoke-RestMethod -Uri "https://management.azure.com$resourceGroupScope/providers/Microsoft.ManagedIdentity/userAssignedIdentities/$($serviceIdentityName)?api-version=2023-01-31" -Method Get -Headers $headers
+        $requiredGrants += @{ Description = "Reader on the Service Bus namespace '$dataName' for the autoscaled service identity '$serviceIdentityName'"; PrincipalId = $serviceIdentity.properties.principalId; Scope = $serviceBusScope; RoleDefinitionId = $readerRoleId }
+    }
+
     $missingGrants = @()
     foreach ($grant in $requiredGrants) {
         $grantScope = $grant.Scope
@@ -408,7 +431,7 @@ Underlying error: $($_.Exception.Message)
         throw @"
 AKS cluster deployment BLOCKED - required role assignments are missing.
 
-Azure validates these grants when the cluster is created, so deploying the cluster now would fail with an ARM error that does not name the cause. The following $($missingGrants.Count) grant(s) required by the AKS deployment are missing:
+Azure validates the cluster-level grants when the cluster is created, so deploying the cluster now would fail with an ARM error that does not name the cause; the workload grants are needed once the pods and KEDA start. The following $($missingGrants.Count) grant(s) required by the AKS deployment are missing:
 
 $missingList
 
@@ -435,6 +458,6 @@ succeeded, so re-running costs nothing and repeats no work.
 "@
     }
 
-    Write-DeployLog -Level Info -Message "All required AKS role assignments are present."
+    Write-DeployLog -Level Info -Message "Required AKS grants are present."
     Write-DeployPhase -Name 'Verifying AKS Role Assignments' -Event End
 }

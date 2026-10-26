@@ -23,10 +23,11 @@ param aksPodCidr string = '10.244.0.0/19'
 @description('Kubernetes namespace the workloads run in.')
 param namespaceName string = 'gmm'
 
-@description('Services to create a federated credential for.')
-param services array = [
-  'JobTrigger'
-]
+@description('GMM service names that run on AKS, from the aksServices parameter - the same list aksPrereqs.bicep created workload identities for.')
+param aksServices array
+
+@description('Names from aksServices whose charts declare KEDA autoscaling. Each service identity receives a keda-operator federation.')
+param autoscaledServices array
 
 
 
@@ -246,11 +247,26 @@ resource containerInsightsDcra 'Microsoft.Insights/dataCollectionRuleAssociation
   }
 }
 
-resource workloadIdentities 'Microsoft.ManagedIdentity/userAssignedIdentities@2024-11-30' existing = [for svc in services: {
+resource workloadIdentities 'Microsoft.ManagedIdentity/userAssignedIdentities@2024-11-30' existing = [for svc in aksServices: {
   name: '${solutionAbbreviation}-identity-${environmentAbbreviation}-aks-${svc}'
 }]
 
-resource federatedCredentials 'Microsoft.ManagedIdentity/userAssignedIdentities/federatedIdentityCredentials@2024-11-30' = [for (svc, i) in services: {
+resource kedaFederations 'Microsoft.ManagedIdentity/userAssignedIdentities/federatedIdentityCredentials@2024-11-30' = [for svc in autoscaledServices: {
+  parent: workloadIdentities[indexOf(aksServices, svc)]
+  name: 'keda-operator'
+  properties: {
+    issuer: aks.properties.oidcIssuerProfile.issuerURL
+    subject: 'system:serviceaccount:kube-system:keda-operator'
+    audiences: [
+      'api://AzureADTokenExchange'
+    ]
+  }
+  dependsOn: [
+    federatedCredentials
+  ]
+}]
+
+resource federatedCredentials 'Microsoft.ManagedIdentity/userAssignedIdentities/federatedIdentityCredentials@2024-11-30' = [for (svc, i) in aksServices: {
   parent: workloadIdentities[i]
   name: '${namespaceName}-${toLower(svc)}-sa'
   properties: {

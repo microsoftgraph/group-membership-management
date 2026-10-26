@@ -7,9 +7,8 @@ param tenantId string
 param functionAuthAppClientId string
 param enableFunctionAuthentication bool = false
 param deployAks bool = false
-param services array = [
-  'JobTrigger'
-]
+@description('GMM service names that run on the AKS cluster when deployAks is true (the aksServices parameter, e.g. ["GroupMembershipObtainer", "JobTrigger"]). The WebApi Stop, Start and Reset operations manage these workloads.')
+param aksServices array = []
 param managedResourceGroupName string = ''
 param isManagedApplication bool = false
 param appConfigurationName string
@@ -988,7 +987,7 @@ module webApiComputeResources '../Service/GroupMembershipManagement/Hosts/WebApi
     skipNetworkingDeployment: skipNetworkingDeployment
     enableFunctionAuthentication: enableFunctionAuthentication
     deployAks: deployAks
-    aksServices: services
+    aksServices: aksServices
   }
   dependsOn: [
     sqlMembershipObtainerComputeResources

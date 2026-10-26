@@ -24,7 +24,7 @@ function Set-AksRoleAssignment
 				return
 			}
 
-			New-AzRoleAssignment -ObjectId $ObjectId -RoleDefinitionName $RoleDefinitionName -Scope $Scope
+			New-AzRoleAssignment -ObjectId $ObjectId -RoleDefinitionName $RoleDefinitionName -Scope $Scope -ErrorAction Stop
 			Write-Host "Added role assignment $RoleDefinitionName to $TargetName with scope $Scope."
 		} `
 		-OperationName "Assign $RoleDefinitionName to $TargetName" `
@@ -43,7 +43,9 @@ function Set-AksRoleAssignments
 		[Parameter(Mandatory = $False)]
 		[string] $SubscriptionId,
 		[Parameter(Mandatory = $False)]
-		[string] $DeploymentPrincipalObjectId
+		[string] $DeploymentPrincipalObjectId,
+		[Parameter(Mandatory = $False)]
+		[string[]] $AutoscaledServices = @('GroupMembershipObtainer')
 	)
 
 	$ErrorActionPreference = 'Stop'
@@ -92,7 +94,6 @@ function Set-AksRoleAssignments
 	{
 		throw "Cannot read role assignments in '$computeResourceGroupName'. PIM is almost certainly not active in THIS token: activate Owner or User Access Administrator, run Connect-AzAccount again, then re-run."
 	}
-
 	$aksName          = "$computeResourceGroupName-aks"
 	$controlPlaneName = "$aksName-identity"
 	$kubeletName      = "$aksName-kubelet-identity"
@@ -170,8 +171,11 @@ function Set-AksRoleAssignments
 
 	$workloadKeyVaultRoles   = @('Key Vault Secrets User')
 	$workloadServiceBusRoles = @('Azure Service Bus Data Sender', 'Azure Service Bus Data Receiver')
+	# Only KEDA-autoscaled services need Reader, so KEDA can read subscription message counts as the service identity
+	$kedaReaderIdentityNames = @($AutoscaledServices | ForEach-Object { "$workloadPrefix$_" })
 	$workloadStorageRoles    = @('Storage Blob Data Contributor', 'Storage Queue Data Contributor', 'Storage Table Data Contributor')
-
+	# Services that read and write membership blobs in the jobs storage account; add a service here when it moves to AKS
+	$jobsStorageServices     = @('GroupMembershipObtainer')
 	foreach ($workloadIdentity in $workloadIdentities)
 	{
 		$workloadName = $workloadIdentity.Name
@@ -190,9 +194,34 @@ function Set-AksRoleAssignments
 			Set-AksRoleAssignment -ObjectId $workloadIdentity.PrincipalId -RoleDefinitionName $role -Scope $serviceBusScope -TargetName $workloadName
 		}
 
+		if ($workloadName -in $kedaReaderIdentityNames)
+		{
+			Set-AksRoleAssignment -ObjectId $workloadIdentity.PrincipalId -RoleDefinitionName 'Reader' -Scope $serviceBusScope -TargetName $workloadName
+		}
+
 		foreach ($role in $workloadStorageRoles)
 		{
 			Set-AksRoleAssignment -ObjectId $workloadIdentity.PrincipalId -RoleDefinitionName $role -Scope $storageScope -TargetName $workloadName
+		}
+
+		if ($workloadName -in @($jobsStorageServices | ForEach-Object { "$workloadPrefix$_" }))
+		{
+			$jobsStorageAccountName = Get-KeyVaultSecretWithFirewallRetry `
+				-VaultName $dataResourceGroupName `
+				-ResourceGroup $dataResourceGroupName `
+				-SecretName 'jobsStorageAccountName' `
+				-AsPlainText
+			if (-not $jobsStorageAccountName)
+			{
+				throw "Secret 'jobsStorageAccountName' in key vault '$dataResourceGroupName' is missing, empty, or not readable."
+			}
+
+			$jobsStorageAccount = Get-AzResource -Name $jobsStorageAccountName -ResourceType 'Microsoft.Storage/storageAccounts' -ErrorAction Stop
+			if (-not $jobsStorageAccount -or -not $jobsStorageAccount.ResourceId)
+			{
+				throw "Storage account '$jobsStorageAccountName' not found in subscription '$SubscriptionId'."
+			}
+			Set-AksRoleAssignment -ObjectId $workloadIdentity.PrincipalId -RoleDefinitionName 'Storage Blob Data Contributor' -Scope $jobsStorageAccount.ResourceId -TargetName $workloadName
 		}
 	}
 

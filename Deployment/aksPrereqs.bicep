@@ -13,10 +13,8 @@ param environmentAbbreviation string
 @description('Resource location.')
 param location string
 
-@description('Services to create a workload identity + federated credential for.')
-param services array = [
-  'JobTrigger'
-]
+@description('GMM service names that run on AKS (e.g. JobTrigger), from the aksServices parameter. One workload identity is created per service; its Kubernetes ServiceAccount is `<lowercase name>-sa`.')
+param aksServices array
 
 @description('When true, this deployment also creates the role assignments.')
 param setRBACPermissions bool = false
@@ -50,7 +48,7 @@ module aksPrereqsTemplate '../Infrastructure/AKS/bicep/aksPrereqs.bicep' = {
     solutionAbbreviation: solutionAbbreviation
     environmentAbbreviation: environmentAbbreviation
     location: location
-    services: services
+    aksServices: aksServices
     setRBACPermissions: setRBACPermissions
     acrSku: acrSku
     purgeAfterDays: purgeAfterDays
@@ -59,4 +57,5 @@ module aksPrereqsTemplate '../Infrastructure/AKS/bicep/aksPrereqs.bicep' = {
     aksNodeSubnetAddressPrefix: aksNodeSubnetAddressPrefix
     aksOutboundIpTags: aksOutboundIpTags
   }
+
 }

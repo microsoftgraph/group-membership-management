@@ -286,6 +286,14 @@ Start sets `autoscaling.keda.sh/paused` to `"false"` and removes `paused-replica
 
 `Azure Kubernetes Service RBAC Writer` does not cover custom resources, so `Set-WebAPIAccessRoles -DeployAks $true` assigns the WebApi `Azure Kubernetes Service RBAC Admin` on the `gmm` namespace instead, which does. A built-in role is used because a tenant has a limit on custom role definitions. RBAC Admin is broader than pausing ScaledObjects needs: it also covers every custom resource in the namespace, including delete, and Roles and RoleBindings there. AKS can narrow custom-resource access to `keda.sh` only with ABAC conditions, which are in preview. Re-run the post-deployment role assignments so the WebApi receives the role.
 
+#### `aksServices`
+
+Required when `deployAks` is `true`. The names of the GMM services that run on the AKS cluster, for example `["JobTrigger"]`. `deployAks` remains the on/off switch; `aksServices` decides which services it hosts. There is no default, so a deployment with `deployAks=true` fails before changing anything if the list is empty, contains a blank or whitespace-padded entry, names a service without a chart, or names a chart whose `gmm.microsoft.com/scaling` annotation is not `keda` or `fixed`.
+
+`Resolve-AksHostedServices` reads each chart's scaling annotation and orders the list with JobTrigger last, because JobTrigger dispatches work to the other services. Every step uses that one list: workload identities and federated credentials, SQL users, the function-app start skip, install and start. Workloads are installed at zero replicas, and the WebApi Start operation activates them.
+
+Each service gets its own workload identity (`<solution>-identity-<env>-aks-<Service>`). For a service whose chart declares `keda`, the cluster template also adds a federated credential for the `keda-operator` service account in `kube-system` to that identity, so KEDA reads the service's Service Bus and storage metrics as that identity, and `Set-AksRoleAssignments` grants the identity `Reader` on the Service Bus namespace so KEDA can read subscription message counts.
+
 ---
 
 ### Deployment

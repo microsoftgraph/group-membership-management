@@ -10,11 +10,9 @@ function Connect-AksCluster {
     $aksName = "$SolutionAbbreviation-compute-$EnvironmentAbbreviation-aks"
 
     $result = [pscustomobject]@{
-        Available            = $false
-        Reason               = $null
-        ClusterName          = $aksName
-        ComputeResourceGroup = $computeResourceGroup
-        TenantId             = $null
+        Available = $false
+        Reason    = $null
+        TenantId  = $null
     }
 
     $clusterLookup = Invoke-AzCli -AllowFailure `

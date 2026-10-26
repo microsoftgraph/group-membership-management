@@ -13,10 +13,8 @@ param environmentAbbreviation string
 @description('Resource location.')
 param location string
 
-@description('Services to create a workload identity + federated credential for.')
-param services array = [
-  'JobTrigger'
-]
+@description('GMM service names that run on AKS (e.g. JobTrigger), from the aksServices parameter. One workload identity is created per service; its Kubernetes ServiceAccount is `<lowercase name>-sa`.')
+param aksServices array
 
 @description('When true, this deployment also creates the role assignments.')
 param setRBACPermissions bool = false
@@ -216,7 +214,7 @@ resource controlPlaneOutboundPipNetworkContributor 'Microsoft.Authorization/role
   }
 }
 
-resource workloadIdentities 'Microsoft.ManagedIdentity/userAssignedIdentities@2024-11-30' = [for svc in services: {
+resource workloadIdentities 'Microsoft.ManagedIdentity/userAssignedIdentities@2024-11-30' = [for svc in aksServices: {
   name: '${solutionAbbreviation}-identity-${environmentAbbreviation}-aks-${svc}'
   location: location
 }]

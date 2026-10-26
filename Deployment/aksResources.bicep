@@ -25,10 +25,11 @@ param aksPodCidr string = '10.244.0.0/19'
 @description('Kubernetes namespace the workloads run in.')
 param namespaceName string = 'gmm'
 
-@description('Services to create a federated credential for.')
-param services array = [
-  'JobTrigger'
-]
+@description('GMM service names that run on AKS, from the aksServices parameter - the same list aksPrereqs.bicep created workload identities for.')
+param aksServices array
+
+@description('Names from aksServices whose charts declare KEDA autoscaling. Each service receives its own keda-operator federation.')
+param autoscaledServices array
 
 module aksResourcesTemplate '../Infrastructure/AKS/bicep/aksResources.bicep' = {
   name: 'aksClusterResources'
@@ -40,6 +41,8 @@ module aksResourcesTemplate '../Infrastructure/AKS/bicep/aksResources.bicep' = {
     isProduction: isProduction
     aksPodCidr: aksPodCidr
     namespaceName: namespaceName
-    services: services
+    aksServices: aksServices
+    autoscaledServices: autoscaledServices
   }
+
 }

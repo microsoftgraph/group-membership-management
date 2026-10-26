@@ -6,8 +6,8 @@ function Set-AksWorkload {
         [string]$EnvironmentAbbreviation,
         [Parameter(Mandatory = $true)]
         [string]$DeploymentPackagePath,
-        [Parameter(Mandatory = $false)]
-        [string[]]$Services = @('JobTrigger'),
+        [Parameter(Mandatory = $true)]
+        [object[]]$Services,
         [Parameter(Mandatory = $false)]
         [string]$NamespaceName = 'gmm'
     )
@@ -68,7 +68,8 @@ data:
         Set-AksServiceWorkload `
             -SolutionAbbreviation    $SolutionAbbreviation `
             -EnvironmentAbbreviation $EnvironmentAbbreviation `
-            -ServiceName             $service `
+            -ServiceName             $service.Name `
+            -Autoscaled              $service.Autoscaled `
             -DeploymentPackagePath   $DeploymentPackagePath `
             -AcrName                 $acrName `
             -ComputeResourceGroup    $computeResourceGroup `
@@ -85,6 +86,7 @@ function Set-AksServiceWorkload {
         [Parameter(Mandatory = $true)][string]$SolutionAbbreviation,
         [Parameter(Mandatory = $true)][string]$EnvironmentAbbreviation,
         [Parameter(Mandatory = $true)][string]$ServiceName,
+        [Parameter(Mandatory = $true)][bool]$Autoscaled,
         [Parameter(Mandatory = $true)][string]$DeploymentPackagePath,
         [Parameter(Mandatory = $true)][string]$AcrName,
         [Parameter(Mandatory = $true)][string]$ComputeResourceGroup,
@@ -96,6 +98,14 @@ function Set-AksServiceWorkload {
     $chartName = $ServiceName.ToLower()
     $repository = "gmm/$chartName"
     $chartPath = Join-Path $DeploymentPackagePath "AKS/charts/$chartName"
+    $identityName = "$SolutionAbbreviation-identity-$EnvironmentAbbreviation-aks-$ServiceName"
+    $autoscalingArguments = @()
+    if ($Autoscaled) {
+        $autoscalingArguments = @(Resolve-AksAutoscalingArguments `
+            -ChartPath $chartPath `
+            -SolutionAbbreviation $SolutionAbbreviation `
+            -EnvironmentAbbreviation $EnvironmentAbbreviation)
+    }
 
     $zip = Join-Path (Split-Path $DeploymentPackagePath -Parent) "function_packages/$ServiceName.zip"
     if (-not (Test-Path $zip)) {
@@ -157,7 +167,6 @@ function Set-AksServiceWorkload {
         -MaxAttempts 3 -BaseDelaySeconds 2
     Write-DeployLog -Level Success -Message "locked $repository@$digest against purge"
 
-    $identityName = "$SolutionAbbreviation-identity-$EnvironmentAbbreviation-aks-$ServiceName"
     $workloadClientId = Invoke-AzCli -OperationName "Resolve the managed identity '$identityName' in '$ComputeResourceGroup'" -Arguments @(
         'identity','show','--resource-group',$ComputeResourceGroup,'--name',$identityName,
         '--query','clientId','--output','tsv','--only-show-errors')
@@ -194,8 +203,10 @@ function Set-AksServiceWorkload {
     Write-DeployLog -Level Info -Message "  config.appConfigurationEndpoint : $appConfigEndpoint"
 
     if (-not (Test-Path $chartPath)) { throw "Chart not found: $chartPath" }
-    helm dependency build $chartPath
-    if ($LASTEXITCODE -ne 0) { throw "helm dependency build failed for $chartName." }
+    if (-not $Autoscaled) {
+        helm dependency build $chartPath
+        if ($LASTEXITCODE -ne 0) { throw "helm dependency build failed for $chartName." }
+    }
 
     Write-DeployLog -Level Info -Message "replicaCount = 0 - the deploy installs the artifact; the WebApi Start activates it."
 
@@ -218,11 +229,13 @@ function Set-AksServiceWorkload {
     # The upgrade AND its automatic rollback both fail, leaving the release failed
     # and further deploys impossible until a human intervenes; clearing
     # managedFields makes it worse.
+    $timeout = if ($Autoscaled) { '900s' } else { '10m' }
     helm upgrade --install $chartName $chartPath `
         --namespace $NamespaceName --create-namespace `
         --set image.repository="$AcrName.azurecr.io/$repository" `
         --set image.digest="$digest" `
         --set replicaCount=0 `
+        @autoscalingArguments `
         --set workloadIdentity.clientId="$workloadClientId" `
         --set storage.accountName="$storageAccountName" `
         --set config.appConfigurationEndpoint="$appConfigEndpoint" `
@@ -231,7 +244,7 @@ function Set-AksServiceWorkload {
         --set keyVault.names.data="$SolutionAbbreviation-data-$EnvironmentAbbreviation" `
         --force-conflicts `
         --history-max 3 `
-        --wait --timeout 10m --rollback-on-failure
+        --wait --timeout $timeout --rollback-on-failure
     if ($LASTEXITCODE -ne 0) { throw "helm upgrade --install failed for $chartName." }
 
     Write-DeployLog -Level Success -Message "$chartName deployed at replicaCount=0 - not dispatching until it is started."
@@ -242,6 +255,138 @@ function Set-AksServiceWorkload {
         -Repository    $repository `
         -ReleaseName   $chartName `
         -NamespaceName $NamespaceName
+}
+
+function Resolve-AksAutoscalingArguments {
+    <#
+    .SYNOPSIS
+    Prepares an autoscaled chart and returns the Helm arguments its descriptor requires.
+
+    .DESCRIPTION
+    Checks the KEDA CRDs, builds the chart dependencies, reads the Key Vault secrets the
+    chart's autoscaling descriptor lists, and returns them as --set-string arguments
+    together with the paused-at-zero setting.
+    #>
+    param(
+        [Parameter(Mandatory)][string]$ChartPath,
+        [Parameter(Mandatory)][string]$SolutionAbbreviation,
+        [Parameter(Mandatory)][string]$EnvironmentAbbreviation
+    )
+
+    $crds = kubectl get crd scaledobjects.keda.sh triggerauthentications.keda.sh -o json --request-timeout=30s
+    if ($LASTEXITCODE -ne 0 -or @(($crds -join "`n" | ConvertFrom-Json).items).Count -ne 2) {
+        throw 'Both mandatory KEDA CRDs must be installed before an autoscaled workload is deployed (state UNKNOWN if kubectl failed).'
+    }
+    if (-not (Test-Path $ChartPath)) { throw "Chart not found: $ChartPath" }
+    helm dependency build $ChartPath --skip-refresh | Out-Host
+    if ($LASTEXITCODE -ne 0) { throw "helm dependency build failed for $(Split-Path $ChartPath -Leaf)." }
+
+    $descriptor = Get-AksAutoscalingDescriptor -ChartPath $ChartPath
+
+    $valueArguments = @()
+    foreach ($mapping in @($descriptor.helmValues)) {
+        $source = $mapping.source
+        $vault = "$SolutionAbbreviation-$($source.vault)-$EnvironmentAbbreviation"
+        $vaultNameForRead = $vault
+        $secretNameForRead = $source.name
+        $value = Invoke-WithFirewallRetry `
+            -ResourceGroup $vault `
+            -Operation {
+                Invoke-AzCli -OperationName "Read autoscaling metadata $secretNameForRead" -Arguments @(
+                    'keyvault', 'secret', 'show', '--vault-name', $vaultNameForRead, '--name', $secretNameForRead,
+                    '--query', 'value', '-o', 'tsv', '--only-show-errors')
+            } `
+            -OnFirewallError {
+                param($errorMessage)
+                if ($errorMessage -match '\b((25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3})\b') {
+                    $blockedAddress = $Matches[1]
+                    Invoke-AzCli -OperationName "Add $blockedAddress to the network rules of key vault '$vaultNameForRead'" -Arguments @(
+                        'keyvault', 'network-rule', 'add', '--name', $vaultNameForRead, '--resource-group', $vaultNameForRead,
+                        '--ip-address', $blockedAddress, '--output', 'none', '--only-show-errors') | Out-Null
+                    Start-Sleep -Seconds 10
+                }
+            }
+
+        if ([string]::IsNullOrWhiteSpace([string]$value)) {
+            throw "Autoscaling descriptor value '$($mapping.path)' resolved to an empty value."
+        }
+        $valueArguments += @('--set-string', "$($mapping.path)=$([string]$value)")
+    }
+    return @('--set', 'autoscaling.pausedReplicas=0') + $valueArguments
+}
+
+function Get-AksAutoscalingDescriptor {
+    <#
+    .SYNOPSIS
+    Reads the minimal chart-owned autoscaling deployment contract.
+
+    .DESCRIPTION
+    The chart-local schema is intentionally limited:
+      helmValues[]: { path, source }
+    A source is { type: keyVaultSecret, vault: data|prereqs, name }.
+
+    .PARAMETER ChartPath
+    The autoscaled service chart directory.
+    #>
+    param(
+        [Parameter(Mandatory)][string]$ChartPath
+    )
+
+    $descriptorPath = Join-Path $ChartPath 'autoscaling-deployment.json'
+    # The chart must ship an autoscaling descriptor
+    if (-not (Test-Path -LiteralPath $descriptorPath)) {
+        throw "Autoscaled chart '$ChartPath' is missing autoscaling-deployment.json."
+    }
+
+    # The descriptor must be valid JSON
+    try {
+        $descriptor = Get-Content -LiteralPath $descriptorPath -Raw | ConvertFrom-Json -AsHashtable
+    }
+    catch {
+        throw "Autoscaling descriptor '$descriptorPath' is not valid JSON: $($_.Exception.Message)"
+    }
+
+    $valuePaths = @{}
+    foreach ($mapping in @($descriptor.helmValues)) {
+        # Each mapping needs a well-formed dotted Helm value path, such as autoscaling.topicName
+        if ($mapping -isnot [System.Collections.IDictionary] -or
+            [string]::IsNullOrWhiteSpace($mapping.path) -or
+            $mapping.path -notmatch '^[A-Za-z][A-Za-z0-9]*(\.[A-Za-z][A-Za-z0-9]*)+$') {
+            throw "Autoscaling descriptor '$descriptorPath' has an invalid Helm value mapping."
+        }
+        # A Helm value can be mapped only once
+        if ($valuePaths.Keys -contains $mapping.path) {
+            throw "Autoscaling descriptor '$descriptorPath' maps Helm value '$($mapping.path)' more than once."
+        }
+        $valuePaths[$mapping.path] = $true
+
+        # Each mapping needs a source object
+        $source = $mapping.source
+        if ($source -isnot [System.Collections.IDictionary]) {
+            throw "Autoscaling descriptor '$descriptorPath' mapping '$($mapping.path)' has no source."
+        }
+        switch ($source.type) {
+            'keyVaultSecret' {
+                # Key Vault sources must name a known vault (data or prereqs) and a well-formed secret name
+                if ($source.vault -notin @('data', 'prereqs') -or
+                    [string]::IsNullOrWhiteSpace($source.name) -or
+                    $source.name -notmatch '^[A-Za-z0-9-]+$') {
+                    throw "Autoscaling descriptor '$descriptorPath' mapping '$($mapping.path)' has an invalid Key Vault source."
+                }
+            }
+            # Only keyVaultSecret sources are supported
+            default {
+                throw "Autoscaling descriptor '$descriptorPath' mapping '$($mapping.path)' uses unsupported source type '$($source.type)'."
+            }
+        }
+    }
+
+    # The descriptor must map at least one Helm value
+    if ($valuePaths.Count -eq 0) {
+        throw "Autoscaling descriptor '$descriptorPath' must map at least one Helm value."
+    }
+
+    return $descriptor
 }
 
 function Update-AksImageLockWindow {

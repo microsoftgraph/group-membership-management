@@ -54,6 +54,7 @@ $sharedScriptsDirectory = Join-Path $PSScriptRoot "../Scripts"
 $aksScriptsDirectory = Join-Path $sharedScriptsDirectory 'AKS'
 . (Join-Path $aksScriptsDirectory 'Invoke-AzCli.ps1')
 . (Join-Path $aksScriptsDirectory 'Connect-AksCluster.ps1')
+. (Join-Path $aksScriptsDirectory 'Resolve-AksHostedServices.ps1')
 . (Join-Path $aksScriptsDirectory 'Set-AksResources.ps1')
 . (Join-Path $aksScriptsDirectory 'Test-AksWorkloadDependencies.ps1')
 . (Join-Path $aksScriptsDirectory 'Set-AksWorkload.ps1')
@@ -1384,7 +1385,9 @@ function Set-GMMResources {
         [Parameter(Mandatory = $true)]
         [string]$ScriptsDirectory,
         [Parameter(Mandatory = $true)]
-        [hashtable]$ParameterHashtable
+        [hashtable]$ParameterHashtable,
+        [Parameter(Mandatory = $true)]
+        [object[]]$ResolvedAksServices
     )
 
     # deploy resources
@@ -1540,6 +1543,7 @@ function Set-GMMResources {
             -SubscriptionId                 $SubscriptionId `
             -AksTemplateDirectoryPath       $TemplateFilesDirectory `
             -ParameterHashtable             $ParameterHashtable `
+            -Services                       $ResolvedAksServices `
             -AdditionalParameters           $commonParametersObject
 
         Start-Sleep -Seconds 10
@@ -1754,8 +1758,12 @@ function Set-SQLServerPermissions {
         [Parameter(Mandatory = $true)]
         [string]$ConnectionStringADF,
         [Parameter(Mandatory = $false)]
-        [bool]$DeployAks = $false
+        [bool]$DeployAks = $false,
+        [Parameter(Mandatory = $false)]
+        [string[]]$AksServices = @()
     )
+
+    if ($DeployAks -and $AksServices.Count -eq 0) { throw 'AksServices is required when DeployAks is true; pass the aksServices deployment parameter.' }
 
     # SQL Permissions
     Write-DeployPhase -Name 'Granting SQL Database Permissions' -Event Begin
@@ -1797,9 +1805,7 @@ function Set-SQLServerPermissions {
     }
 
     if ($DeployAks -eq $true) {
-        $aksServices = @('JobTrigger')
-
-        foreach ($aksService in $aksServices) {
+        foreach ($aksService in $AksServices) {
             $aksIdentityName = "$SolutionAbbreviation-identity-$EnvironmentAbbreviation-aks-$aksService"
 
             $aksIdentity = Invoke-WithRetry `
@@ -3963,6 +3969,12 @@ function Deploy-Resources {
     $skipNetworkingDeployment                       = Get-Default -Value $ParameterHashtable['skipNetworkingDeployment'].value -Default $true
     $skipAuthentication                             = Get-Default -Value $ParameterHashtable['skipAuthentication'].value -Default $false
     $deployAks                                      = Get-Default -Value $ParameterHashtable['deployAks'].value -Default $false
+    $resolvedAksServices                            = @(if ($deployAks -eq $true) {
+        Resolve-AksHostedServices `
+            -Names @($ParameterHashtable['aksServices'].value) `
+            -DeploymentPackagePath $templateFilesDirectory
+    })
+    $aksServiceNames                                = @($resolvedAksServices.Name)
     $enableFunctionAuthentication                   = Get-Default -Value $ParameterHashtable['enableFunctionAuthentication'].value -Default $false
 
     $setRBACPermissions             = Get-Default -Value $ParameterHashtable['setRBACPermissions'].value      -Default $false
@@ -4057,7 +4069,8 @@ function Deploy-Resources {
         -Location $location `
         -TemplateFilesDirectory $TemplateFilesDirectory `
         -ScriptsDirectory $ScriptsDirectory `
-        -ParameterHashtable $parameterHashtable
+        -ParameterHashtable $parameterHashtable `
+        -ResolvedAksServices $resolvedAksServices
 
     Start-Sleep -Seconds 30
 
@@ -4093,7 +4106,8 @@ function Deploy-Resources {
             -EnvironmentAbbreviation $environmentAbbreviation `
             -ConnectionString $connectionString `
             -ConnectionStringADF $connectionStringADF `
-            -DeployAks $deployAks
+            -DeployAks $deployAks `
+            -AksServices $aksServiceNames
     }
 
     if (($true -eq $setRBACPermissions) -and ($false -eq $skipRBACPermissions)) {
@@ -4128,7 +4142,8 @@ function Deploy-Resources {
         Set-AksWorkload `
             -SolutionAbbreviation    $solutionAbbreviation `
             -EnvironmentAbbreviation $environmentAbbreviation `
-            -DeploymentPackagePath   $templateFilesDirectory
+            -DeploymentPackagePath   $templateFilesDirectory `
+            -Services                $resolvedAksServices
     }
     else {
         Write-DeployLog -Level Info -Message "Skipping the AKS workload deployment as per configuration [deployAks = $deployAks]."
