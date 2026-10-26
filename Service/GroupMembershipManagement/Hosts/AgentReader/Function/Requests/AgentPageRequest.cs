@@ -5,5 +5,5 @@ using System;
 
 namespace Hosts.AgentReader
 {
-    public sealed record AgentPageRequest(Guid RunId, string? NextLink);
+    public sealed record AgentPageRequest(Guid RunId, string? NextLink, bool WriteAgentsWithoutManager = false);
 }

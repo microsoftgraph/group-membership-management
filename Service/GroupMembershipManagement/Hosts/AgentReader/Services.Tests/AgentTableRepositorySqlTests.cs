@@ -78,9 +78,10 @@ namespace Hosts.AgentReader.Services.Tests
             var runId = Guid.NewGuid();
             await CreateTableAsync(runId);
             var repository = CreateRepository();
-            await repository.ValidateTableAsync(runId, CancellationToken.None);
+            Assert.IsTrue((await repository.ValidateTableAsync(runId, CancellationToken.None)).AgentManagerIdAllowsNull);
             AgentRecord[] rows =
             [
+                new(Guid.NewGuid(), null, null, true),
                 new(Guid.NewGuid(), int.MinValue, null, false),
                 new(Guid.NewGuid(), int.MaxValue, "", true),
                 new(Guid.NewGuid(), 42, " {Unnormalised-BLUEPRINT} ", false),
@@ -98,7 +99,7 @@ namespace Hosts.AgentReader.Services.Tests
                 while (await reader.ReadAsync())
                 {
                     var expected = rows.Single(row => row.AgentObjectId.ToString("D") == reader.GetString(0));
-                    Assert.AreEqual(expected.AgentManagerId, reader.GetInt32(1));
+                    Assert.AreEqual(expected.AgentManagerId, reader.IsDBNull(1) ? null : reader.GetInt32(1));
                     Assert.AreEqual(expected.BlueprintId, reader.IsDBNull(2) ? null : reader.GetString(2));
                     Assert.AreEqual(expected.AgentAccountEnabled, reader.GetBoolean(3));
                 }
@@ -179,6 +180,56 @@ namespace Hosts.AgentReader.Services.Tests
         }
 
         [TestMethod]
+        public async Task NullManager_RoundTripsAndRedeliveryIsIdempotent()
+        {
+            var runId = Guid.NewGuid();
+            await CreateTableAsync(runId);
+            var repository = CreateRepository();
+            var rows = Enumerable.Range(0, 600)
+                .Select(index => new AgentRecord(Guid.NewGuid(), index % 3 == 0 ? null : index, null, true))
+                .ToArray();
+
+            Assert.AreEqual(600, await repository.WriteAsync(runId, rows, CancellationToken.None));
+            Assert.AreEqual(600, await repository.WriteAsync(runId, rows, CancellationToken.None));
+
+            Assert.AreEqual(600L, await repository.GetRowCountAsync(runId, CancellationToken.None));
+            Assert.AreEqual(200, await ScalarAsync<int>(
+                $"SELECT COUNT(*) FROM [agents].[{runId:N}] WHERE AgentManagerId IS NULL;"));
+        }
+
+        [DataTestMethod]
+        [DataRow(true)]
+        [DataRow(false)]
+        public async Task ConflictingNullManagerRedelivery_FailsWithoutChangingExistingRows(bool originalHasManager)
+        {
+            var runId = Guid.NewGuid();
+            await CreateTableAsync(runId);
+            var repository = CreateRepository();
+            var original = new AgentRecord(Guid.NewGuid(), originalHasManager ? 1 : null, null, true);
+            await repository.WriteAsync(runId, [original], CancellationToken.None);
+
+            await Assert.ThrowsExceptionAsync<InvalidDataException>(() => repository.WriteAsync(
+                runId, [original with { AgentManagerId = originalHasManager ? null : 1 }], CancellationToken.None));
+
+            Assert.AreEqual(1L, await repository.GetRowCountAsync(runId, CancellationToken.None));
+            Assert.AreEqual(originalHasManager ? 1 : 0, await ScalarAsync<int>(
+                $"SELECT COUNT(*) FROM [agents].[{runId:N}] WHERE AgentManagerId IS NOT NULL;"));
+        }
+
+        [TestMethod]
+        public async Task Validation_ReportsWhetherAgentManagerIdAllowsNull()
+        {
+            var nullableRun = Guid.NewGuid();
+            var notNullableRun = Guid.NewGuid();
+            await CreateTableAsync(nullableRun);
+            await CreateTableAsync(notNullableRun, managerNullable: false);
+            var repository = CreateRepository();
+
+            Assert.IsTrue((await repository.ValidateTableAsync(nullableRun, CancellationToken.None)).AgentManagerIdAllowsNull);
+            Assert.IsFalse((await repository.ValidateTableAsync(notNullableRun, CancellationToken.None)).AgentManagerIdAllowsNull);
+        }
+
+        [TestMethod]
         public async Task MissingTableOrIndex_FailsWithoutCreatingEither()
         {
             var runId = Guid.NewGuid();
@@ -232,12 +283,13 @@ namespace Hosts.AgentReader.Services.Tests
         private static AgentTableRepository CreateRepository() =>
             new(new WriterConnectionFactory(_connectionString), NullLogger<AgentTableRepository>.Instance);
 
-        private static async Task CreateTableAsync(Guid runId, bool createIndex = true)
+        // Matches the Data Factory DDL; managerNullable: false reproduces tables created before AgentManagerId allowed NULL.
+        private static async Task CreateTableAsync(Guid runId, bool createIndex = true, bool managerNullable = true)
         {
             await ExecuteAsync(_connectionString, $"""
                 CREATE TABLE [agents].[{runId:N}] (
                     AgentObjectId nvarchar(36) NOT NULL,
-                    AgentManagerId int NOT NULL,
+                    AgentManagerId int {(managerNullable ? "NULL" : "NOT NULL")},
                     Blueprint_Code nvarchar(200) NULL,
                     AgentAccountEnabled bit NOT NULL
                 );

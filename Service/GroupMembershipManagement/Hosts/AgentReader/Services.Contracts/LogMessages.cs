@@ -27,16 +27,22 @@ namespace Hosts.AgentReader
                 + "FilteredManagerEmployeeIdNonNumeric={FilteredManagerEmployeeIdNonNumeric}; "
                 + "FilteredManagerEmployeeIdOutOfRange={FilteredManagerEmployeeIdOutOfRange}; "
                 + "FilteredInvalidAgentObjectId={FilteredInvalidAgentObjectId}; "
+                + "WrittenWithoutManager={WrittenWithoutManager}; "
                 + "AccountEnabledDefaultApplied={AccountEnabledDefaultApplied}; BlueprintIdTruncated={BlueprintIdTruncated}")]
         public static partial void PopulationCounters(
             this ILogger logger, string status, long totalEnumerated, long inserted, long filterPassingAgents,
             long filteredNoManager, long filteredManagerEmployeeIdAbsent, long filteredManagerEmployeeIdNonNumeric,
-            long filteredManagerEmployeeIdOutOfRange, long filteredInvalidAgentObjectId,
+            long filteredManagerEmployeeIdOutOfRange, long filteredInvalidAgentObjectId, long writtenWithoutManager,
             long accountEnabledDefaultApplied, long blueprintIdTruncated);
 
         [LoggerMessage(EventId = 260012, Level = LogLevel.Error,
             Message = "Agent table population failed; the orchestration must not be accepted as a successful pipeline run")]
         public static partial void PopulationFailed(this ILogger logger);
+
+        [LoggerMessage(EventId = 260013, Level = LogLevel.Warning,
+            Message = "The agents table does not allow a NULL AgentManagerId; agents without a valid manager are skipped "
+                + "until the Data Factory pipeline is redeployed")]
+        public static partial void AgentManagerIdNotNullable(this ILogger logger);
 
         [LoggerMessage(EventId = 260020, Level = LogLevel.Warning,
             Message = "AgentReader request rejected: {Reason}")]
@@ -63,8 +69,10 @@ namespace Hosts.AgentReader
         public static partial void StartNotConfirmed(this ILogger logger, Exception exception, double timeoutSeconds);
 
         [LoggerMessage(EventId = 260060, Level = LogLevel.Debug,
-            Message = "Agent page processed: {TotalEnumerated} enumerated, {FilterPassingAgents} eligible, {TotalFiltered} filtered")]
-        public static partial void PageProcessed(this ILogger logger, long totalEnumerated, long filterPassingAgents, long totalFiltered);
+            Message = "Agent page processed: {TotalEnumerated} enumerated, {FilterPassingAgents} eligible, {TotalFiltered} filtered, "
+                + "of which {WrittenWithoutManager} were written without a manager")]
+        public static partial void PageProcessed(
+            this ILogger logger, long totalEnumerated, long filterPassingAgents, long totalFiltered, long writtenWithoutManager);
 
         [LoggerMessage(EventId = 260061, Level = LogLevel.Warning,
             Message = "Blueprint name lookup failed for {BlueprintCount} blueprints; their codes are used as descriptions")]

@@ -45,7 +45,7 @@ namespace Hosts.AgentReader.Services.Tests
         {
             var service = CreateService(new AgentSourceRecord(agentId, hasManager, managerIdentifier, null, null));
 
-            var page = await service.ReadPageAsync(_runId, null, CancellationToken.None);
+            var page = await service.ReadPageAsync(_runId, null, writeAgentsWithoutManager: false, CancellationToken.None);
 
             Assert.AreEqual(0, page.Agents.Count);
             Assert.AreEqual(1L, page.Counters.TotalEnumerated);
@@ -62,6 +62,105 @@ namespace Hosts.AgentReader.Services.Tests
             };
             Assert.AreEqual(1L, reasonCount);
             Assert.AreEqual(0L, page.Counters.AccountEnabledDefaultApplied);
+            Assert.AreEqual(0L, page.Counters.WrittenWithoutManager);
+        }
+
+        [DataTestMethod]
+        [DataRow(false, null)]
+        [DataRow(true, null)]
+        [DataRow(true, "abc")]
+        [DataRow(true, "2147483648")]
+        public async Task AgentWithoutValidManager_IsSkippedWhenTheTableDoesNotAllowNull(bool hasManager, string? managerIdentifier)
+        {
+            var service = CreateService(new AgentSourceRecord(AgentId, hasManager, managerIdentifier, null, true));
+
+            var page = await service.ReadPageAsync(_runId, null, writeAgentsWithoutManager: false, CancellationToken.None);
+
+            Assert.AreEqual(0, page.Agents.Count);
+            Assert.AreEqual(0L, page.Counters.FilterPassingAgents);
+            Assert.AreEqual(0L, page.Counters.WrittenWithoutManager);
+            Assert.AreEqual(1L, page.Counters.TotalFiltered);
+            Assert.AreEqual(0L, page.Counters.FilteredInvalidAgentObjectId);
+        }
+
+        [DataTestMethod]
+        [DataRow(false, null, nameof(AgentReadCounters.FilteredNoManager))]
+        [DataRow(true, null, nameof(AgentReadCounters.FilteredManagerEmployeeIdAbsent))]
+        [DataRow(true, " \t ", nameof(AgentReadCounters.FilteredManagerEmployeeIdAbsent))]
+        [DataRow(true, "abc", nameof(AgentReadCounters.FilteredManagerEmployeeIdNonNumeric))]
+        [DataRow(true, "2147483648", nameof(AgentReadCounters.FilteredManagerEmployeeIdOutOfRange))]
+        public async Task AgentWithoutValidManager_IsWrittenWithNullManagerWhenTheTableAllowsIt(
+            bool hasManager, string? managerIdentifier, string expectedReason)
+        {
+            var service = CreateService(new AgentSourceRecord(AgentId, hasManager, managerIdentifier, null, true));
+
+            var page = await service.ReadPageAsync(_runId, null, writeAgentsWithoutManager: true, CancellationToken.None);
+
+            Assert.AreEqual(1, page.Agents.Count);
+            Assert.AreEqual(Guid.Parse(AgentId), page.Agents[0].AgentObjectId);
+            Assert.IsNull(page.Agents[0].AgentManagerId);
+            Assert.AreEqual(1L, page.Counters.TotalEnumerated);
+            Assert.AreEqual(0L, page.Counters.FilterPassingAgents);
+            Assert.AreEqual(1L, page.Counters.WrittenWithoutManager);
+            Assert.AreEqual(1L, page.Counters.TotalFiltered);
+            var reasonCount = expectedReason switch
+            {
+                nameof(AgentReadCounters.FilteredNoManager) => page.Counters.FilteredNoManager,
+                nameof(AgentReadCounters.FilteredManagerEmployeeIdAbsent) => page.Counters.FilteredManagerEmployeeIdAbsent,
+                nameof(AgentReadCounters.FilteredManagerEmployeeIdNonNumeric) => page.Counters.FilteredManagerEmployeeIdNonNumeric,
+                nameof(AgentReadCounters.FilteredManagerEmployeeIdOutOfRange) => page.Counters.FilteredManagerEmployeeIdOutOfRange,
+                _ => throw new AssertFailedException("Unrecognised expected reason.")
+            };
+            Assert.AreEqual(1L, reasonCount);
+        }
+
+        [DataTestMethod]
+        [DataRow(false, null, "bad-id", nameof(AgentReadCounters.FilteredNoManager))]
+        [DataRow(true, "abc", null, nameof(AgentReadCounters.FilteredManagerEmployeeIdNonNumeric))]
+        [DataRow(true, "123", "00000000-0000-0000-0000-000000000000", nameof(AgentReadCounters.FilteredInvalidAgentObjectId))]
+        public async Task AgentWithInvalidId_IsNeverWrittenAndCountsOnce(
+            bool hasManager, string? managerIdentifier, string? agentId, string expectedReason)
+        {
+            var service = CreateService(new AgentSourceRecord(agentId, hasManager, managerIdentifier, null, true));
+
+            var page = await service.ReadPageAsync(_runId, null, writeAgentsWithoutManager: true, CancellationToken.None);
+
+            Assert.AreEqual(0, page.Agents.Count);
+            Assert.AreEqual(0L, page.Counters.WrittenWithoutManager);
+            Assert.AreEqual(1L, page.Counters.TotalFiltered);
+            var reasonCount = expectedReason switch
+            {
+                nameof(AgentReadCounters.FilteredNoManager) => page.Counters.FilteredNoManager,
+                nameof(AgentReadCounters.FilteredManagerEmployeeIdNonNumeric) => page.Counters.FilteredManagerEmployeeIdNonNumeric,
+                nameof(AgentReadCounters.FilteredInvalidAgentObjectId) => page.Counters.FilteredInvalidAgentObjectId,
+                _ => throw new AssertFailedException("Unrecognised expected reason.")
+            };
+            Assert.AreEqual(1L, reasonCount);
+        }
+
+        [TestMethod]
+        public async Task MixedPage_WritesEveryValidAgentAndReconcilesCounters()
+        {
+            var service = CreateService(
+                new AgentSourceRecord(AgentId, true, "1", null, true),
+                new AgentSourceRecord(Guid.NewGuid().ToString(), false, null, null, null),
+                new AgentSourceRecord(Guid.NewGuid().ToString(), true, "", null, true),
+                new AgentSourceRecord("bad-id", true, "2", null, true));
+
+            var page = await service.ReadPageAsync(_runId, null, writeAgentsWithoutManager: true, CancellationToken.None);
+
+            Assert.AreEqual(3, page.Agents.Count);
+            Assert.AreEqual(1, page.Agents[0].AgentManagerId);
+            Assert.IsNull(page.Agents[1].AgentManagerId);
+            Assert.IsTrue(page.Agents[1].AgentAccountEnabled);
+            Assert.IsNull(page.Agents[2].AgentManagerId);
+            Assert.AreEqual(4L, page.Counters.TotalEnumerated);
+            Assert.AreEqual(1L, page.Counters.FilterPassingAgents);
+            Assert.AreEqual(2L, page.Counters.WrittenWithoutManager);
+            Assert.AreEqual(3L, page.Counters.TotalFiltered);
+            Assert.AreEqual(1L, page.Counters.AccountEnabledDefaultApplied);
+            Assert.AreEqual(page.Counters.TotalEnumerated, page.Counters.FilterPassingAgents + page.Counters.TotalFiltered);
+            Assert.AreEqual(page.Agents.Count, page.Counters.FilterPassingAgents + page.Counters.WrittenWithoutManager);
         }
 
         [DataTestMethod]
@@ -77,7 +176,7 @@ namespace Hosts.AgentReader.Services.Tests
         {
             var service = CreateService(new AgentSourceRecord(AgentId, true, identifier, null, true));
 
-            var page = await service.ReadPageAsync(_runId, null, CancellationToken.None);
+            var page = await service.ReadPageAsync(_runId, null, writeAgentsWithoutManager: false, CancellationToken.None);
 
             Assert.AreEqual(1, page.Agents.Count);
             Assert.AreEqual(expected, page.Agents[0].AgentManagerId);
@@ -95,7 +194,7 @@ namespace Hosts.AgentReader.Services.Tests
                 new AgentSourceRecord(Guid.NewGuid().ToString(), true, "3", null, null),
                 new AgentSourceRecord(Guid.NewGuid().ToString(), false, null, null, null));
 
-            var page = await service.ReadPageAsync(_runId, null, CancellationToken.None);
+            var page = await service.ReadPageAsync(_runId, null, writeAgentsWithoutManager: false, CancellationToken.None);
 
             Assert.AreEqual(3, page.Agents.Count);
             Assert.IsFalse(page.Agents[0].AgentAccountEnabled);
@@ -113,7 +212,7 @@ namespace Hosts.AgentReader.Services.Tests
         {
             var service = CreateService(new AgentSourceRecord(AgentId, true, "1", blueprint, true));
 
-            var page = await service.ReadPageAsync(_runId, null, CancellationToken.None);
+            var page = await service.ReadPageAsync(_runId, null, writeAgentsWithoutManager: false, CancellationToken.None);
 
             Assert.AreEqual(blueprint, page.Agents[0].BlueprintId);
             Assert.AreEqual(0L, page.Counters.BlueprintIdTruncated);
@@ -126,7 +225,7 @@ namespace Hosts.AgentReader.Services.Tests
         {
             var service = CreateService(new AgentSourceRecord(AgentId, true, "1", new string('x', length), true));
 
-            var page = await service.ReadPageAsync(_runId, null, CancellationToken.None);
+            var page = await service.ReadPageAsync(_runId, null, writeAgentsWithoutManager: false, CancellationToken.None);
 
             Assert.AreEqual(new string('x', 200), page.Agents[0].BlueprintId);
             Assert.AreEqual(expectedTruncations, page.Counters.BlueprintIdTruncated);
@@ -143,7 +242,7 @@ namespace Hosts.AgentReader.Services.Tests
             var service = new AgentReaderService(
                 graph.Object, Mock.Of<IAgentTableRepository>(), NullLogger<AgentReaderService>.Instance);
 
-            var page = await service.ReadPageAsync(_runId, nextLink, cancellation.Token);
+            var page = await service.ReadPageAsync(_runId, nextLink, writeAgentsWithoutManager: true, cancellation.Token);
 
             Assert.AreEqual(nextLink, page.NextLink);
             Assert.AreEqual(0L, page.Counters.TotalEnumerated);
@@ -159,7 +258,7 @@ namespace Hosts.AgentReader.Services.Tests
             var service = new AgentReaderService(
                 graph.Object, Mock.Of<IAgentTableRepository>(), NullLogger<AgentReaderService>.Instance);
 
-            await Assert.ThrowsExceptionAsync<IOException>(() => service.ReadPageAsync(_runId, null, CancellationToken.None));
+            await Assert.ThrowsExceptionAsync<IOException>(() => service.ReadPageAsync(_runId, null, writeAgentsWithoutManager: false, CancellationToken.None));
         }
 
         [TestMethod]
@@ -168,13 +267,13 @@ namespace Hosts.AgentReader.Services.Tests
             using var cancellation = new CancellationTokenSource();
             IReadOnlyList<AgentRecord> rows = [new(Guid.Parse(AgentId), 1, null, true)];
             var table = new Mock<IAgentTableRepository>(MockBehavior.Strict);
-            table.Setup(repository => repository.ValidateTableAsync(_runId, cancellation.Token)).Returns(Task.CompletedTask);
+            table.Setup(repository => repository.ValidateTableAsync(_runId, cancellation.Token)).ReturnsAsync(new AgentTableInfo(AgentManagerIdAllowsNull: true));
             table.Setup(repository => repository.WriteAsync(_runId, rows, cancellation.Token)).ReturnsAsync(1);
             table.Setup(repository => repository.GetRowCountAsync(_runId, cancellation.Token)).ReturnsAsync(1L);
             var service = new AgentReaderService(
                 Mock.Of<IAgentGraphRepository>(), table.Object, NullLogger<AgentReaderService>.Instance);
 
-            await service.ValidateTableAsync(_runId, cancellation.Token);
+            Assert.IsTrue((await service.ValidateTableAsync(_runId, cancellation.Token)).AgentManagerIdAllowsNull);
             Assert.AreEqual(1, await service.WriteAsync(_runId, rows, cancellation.Token));
             Assert.AreEqual(1L, await service.GetRowCountAsync(_runId, cancellation.Token));
             table.VerifyAll();

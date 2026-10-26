@@ -4,6 +4,7 @@
 using Hosts.AgentReader.Services.Contracts;
 using Microsoft.Azure.Functions.Worker;
 using Microsoft.Extensions.Logging;
+using Models;
 using Repositories.Contracts.Helpers;
 using System;
 using System.Threading;
@@ -23,12 +24,13 @@ namespace Hosts.AgentReader
         }
 
         [Function(nameof(ValidateAgentTable))]
-        public async Task ValidateAgentTable([ActivityTrigger] AgentReaderRequest request, CancellationToken cancellationToken)
+        public async Task<AgentTableInfo> ValidateAgentTable([ActivityTrigger] AgentReaderRequest request, CancellationToken cancellationToken)
         {
             using var scope = _logger.BeginRunIdScope(request.RunId);
             _logger.FunctionStarted(nameof(ValidateAgentTable));
-            await _service.ValidateTableAsync(request.RunId, cancellationToken);
+            var table = await _service.ValidateTableAsync(request.RunId, cancellationToken);
             _logger.FunctionCompleted(nameof(ValidateAgentTable));
+            return table;
         }
 
         [Function(nameof(WriteBlueprintMappings))]

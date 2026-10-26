@@ -34,7 +34,7 @@ namespace Hosts.AgentReader.Services
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
 
-        public Task ValidateTableAsync(Guid runId, CancellationToken cancellationToken) =>
+        public Task<AgentTableInfo> ValidateTableAsync(Guid runId, CancellationToken cancellationToken) =>
             _tableRepository.ValidateTableAsync(runId, cancellationToken);
 
         public Task<int> WriteAsync(Guid runId, IReadOnlyList<AgentRecord> agents, CancellationToken cancellationToken) =>
@@ -88,7 +88,8 @@ namespace Hosts.AgentReader.Services
             return descriptions.Count;
         }
 
-        public async Task<AgentPage> ReadPageAsync(Guid runId, string? nextLink, CancellationToken cancellationToken)
+        public async Task<AgentPage> ReadPageAsync(
+            Guid runId, string? nextLink, bool writeAgentsWithoutManager, CancellationToken cancellationToken)
         {
             using var scope = _logger.BeginRunIdScope(runId);
             var source = await _graphRepository.ReadPageAsync(runId, nextLink, cancellationToken);
@@ -99,35 +100,32 @@ namespace Hosts.AgentReader.Services
             {
                 cancellationToken.ThrowIfCancellationRequested();
 
-                if (!agent.HasManager)
+                // Agents without a valid manager are written with a null manager so readers can exclude them.
+                // A table created before AgentManagerId allowed NULL can't hold them, so they're skipped instead.
+                // Each agent counts under exactly one reason: a manager reason takes priority over an invalid id.
+                var managerId = ReadManagerId(agent, counters);
+                if (!managerId.HasValue && !writeAgentsWithoutManager)
                 {
-                    counters.FilteredNoManager++;
-                    continue;
-                }
-
-                if (string.IsNullOrWhiteSpace(agent.ManagerIdentifier))
-                {
-                    counters.FilteredManagerEmployeeIdAbsent++;
-                    continue;
-                }
-
-                var managerIdentifier = agent.ManagerIdentifier.AsSpan().Trim();
-                if (!IsIntegerText(managerIdentifier))
-                {
-                    counters.FilteredManagerEmployeeIdNonNumeric++;
-                    continue;
-                }
-
-                if (!int.TryParse(managerIdentifier, NumberStyles.AllowLeadingSign, CultureInfo.InvariantCulture, out var managerId))
-                {
-                    counters.FilteredManagerEmployeeIdOutOfRange++;
                     continue;
                 }
 
                 if (!Guid.TryParse(agent.Id, out var agentId) || agentId == Guid.Empty)
                 {
-                    counters.FilteredInvalidAgentObjectId++;
+                    if (managerId.HasValue)
+                    {
+                        counters.FilteredInvalidAgentObjectId++;
+                    }
+
                     continue;
+                }
+
+                if (managerId.HasValue)
+                {
+                    counters.FilterPassingAgents++;
+                }
+                else
+                {
+                    counters.WrittenWithoutManager++;
                 }
 
                 var blueprintId = agent.BlueprintId;
@@ -143,11 +141,41 @@ namespace Hosts.AgentReader.Services
                 }
 
                 agents.Add(new AgentRecord(agentId, managerId, blueprintId, agent.AccountEnabled ?? true));
-                counters.FilterPassingAgents++;
             }
 
-            _logger.PageProcessed(counters.TotalEnumerated, counters.FilterPassingAgents, counters.TotalFiltered);
+            _logger.PageProcessed(
+                counters.TotalEnumerated, counters.FilterPassingAgents, counters.TotalFiltered, counters.WrittenWithoutManager);
             return new AgentPage(agents, source.NextLink, counters);
+        }
+
+        private static int? ReadManagerId(AgentSourceRecord agent, AgentReadCounters counters)
+        {
+            if (!agent.HasManager)
+            {
+                counters.FilteredNoManager++;
+                return null;
+            }
+
+            if (string.IsNullOrWhiteSpace(agent.ManagerIdentifier))
+            {
+                counters.FilteredManagerEmployeeIdAbsent++;
+                return null;
+            }
+
+            var managerIdentifier = agent.ManagerIdentifier.AsSpan().Trim();
+            if (!IsIntegerText(managerIdentifier))
+            {
+                counters.FilteredManagerEmployeeIdNonNumeric++;
+                return null;
+            }
+
+            if (!int.TryParse(managerIdentifier, NumberStyles.AllowLeadingSign, CultureInfo.InvariantCulture, out var managerId))
+            {
+                counters.FilteredManagerEmployeeIdOutOfRange++;
+                return null;
+            }
+
+            return managerId;
         }
 
         private static bool IsIntegerText(ReadOnlySpan<char> value)

@@ -14,6 +14,7 @@ using Repositories.Contracts;
 using System;
 using System.Collections.Generic;
 using System.Data.Common;
+using System.Globalization;
 using System.Linq;
 using System.Text.RegularExpressions;
 using System.Threading;
@@ -168,7 +169,7 @@ namespace Hosts.AgentReader.Services.Tests
             context.Setup(item => item.GetInput<AgentReaderRequest>()).Returns(new AgentReaderRequest(runId));
             context.Setup(item => item.CreateReplaySafeLogger("Hosts.AgentReader.OrchestratorFunction"))
                 .Returns(NullLogger.Instance);
-            context.Setup(item => item.CallActivityAsync(
+            context.Setup(item => item.CallActivityAsync<AgentTableInfo>(
                     nameof(AgentTableFunctions.ValidateAgentTable), It.IsAny<AgentReaderRequest>(), It.IsAny<TaskOptions>()))
                 .Returns((TaskName name, object input, TaskOptions? options) =>
                     tableFunctions.ValidateAgentTable((AgentReaderRequest)input, CancellationToken.None));
@@ -184,6 +185,10 @@ namespace Hosts.AgentReader.Services.Tests
                     nameof(AgentTableFunctions.GetAgentRowCount), It.IsAny<AgentReaderRequest>(), It.IsAny<TaskOptions>()))
                 .Returns((TaskName name, object input, TaskOptions? options) =>
                     tableFunctions.GetAgentRowCount((AgentReaderRequest)input, CancellationToken.None));
+            // Blueprint mappings need the run's mappings table, which these race tests don't create.
+            context.Setup(item => item.CallActivityAsync<int>(
+                    nameof(AgentTableFunctions.WriteBlueprintMappings), It.IsAny<AgentReaderRequest>(), It.IsAny<TaskOptions>()))
+                .ReturnsAsync(0);
 
             return new OrchestratorFunction().RunAsync(context.Object);
         }
@@ -204,14 +209,15 @@ namespace Hosts.AgentReader.Services.Tests
 
         private static AgentSourcePage[] IneligiblePages() =>
         [
-            new([new AgentSourceRecord(AgentId(9).ToString("D"), false, null, null, true)], null)
+            new([new AgentSourceRecord("not-an-agent-id", true, "1", null, true)], null)
         ];
 
         private static List<string> ExpectedRows() =>
         [
             $"{AgentId(1):D}|4815|bp-alpha|True",
             $"{AgentId(2):D}|162342|<null>|False",
-            $"{AgentId(3):D}|9001|bp-gamma|True"
+            $"{AgentId(3):D}|9001|bp-gamma|True",
+            $"{AgentId(4):D}|<null>|<null>|True"
         ];
 
         private static async Task<List<string>> SnapshotAsync(Guid runId)
@@ -230,7 +236,7 @@ namespace Hosts.AgentReader.Services.Tests
             {
                 rows.Add(string.Join('|',
                     reader.GetString(0),
-                    reader.GetInt32(1),
+                    reader.IsDBNull(1) ? "<null>" : reader.GetInt32(1).ToString(CultureInfo.InvariantCulture),
                     reader.IsDBNull(2) ? "<null>" : reader.GetString(2),
                     reader.GetBoolean(3)));
             }
@@ -243,7 +249,7 @@ namespace Hosts.AgentReader.Services.Tests
             await ExecuteAsync(_connectionString, $"""
                 CREATE TABLE [agents].[{runId:N}] (
                     AgentObjectId nvarchar(36) NOT NULL,
-                    AgentManagerId int NOT NULL,
+                    AgentManagerId int NULL,
                     Blueprint_Code nvarchar(200) NULL,
                     AgentAccountEnabled bit NOT NULL
                 );

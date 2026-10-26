@@ -11,7 +11,7 @@ namespace Repositories.Contracts
 {
     public interface IAgentTableRepository
     {
-        Task ValidateTableAsync(Guid runId, CancellationToken cancellationToken);
+        Task<AgentTableInfo> ValidateTableAsync(Guid runId, CancellationToken cancellationToken);
         Task<int> WriteAsync(Guid runId, IReadOnlyList<AgentRecord> agents, CancellationToken cancellationToken);
         Task<long> GetRowCountAsync(Guid runId, CancellationToken cancellationToken);
 

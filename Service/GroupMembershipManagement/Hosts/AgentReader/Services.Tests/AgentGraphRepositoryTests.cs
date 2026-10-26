@@ -138,7 +138,7 @@ namespace Hosts.AgentReader.Services.Tests
                 fixture.Repository, new Mock<IAgentTableRepository>(MockBehavior.Strict).Object,
                 NullLogger<AgentReaderService>.Instance);
 
-            var page = await service.ReadPageAsync(_runId, null, CancellationToken.None);
+            var page = await service.ReadPageAsync(_runId, null, writeAgentsWithoutManager: true, CancellationToken.None);
 
             Assert.AreEqual(1, page.Agents.Count);
             Assert.AreEqual(Guid.Parse(AgentId), page.Agents[0].AgentObjectId);
@@ -169,11 +169,13 @@ namespace Hosts.AgentReader.Services.Tests
                 fixture.Repository, new Mock<IAgentTableRepository>(MockBehavior.Strict).Object,
                 NullLogger<AgentReaderService>.Instance);
 
-            var page = await service.ReadPageAsync(_runId, null, CancellationToken.None);
+            var page = await service.ReadPageAsync(_runId, null, writeAgentsWithoutManager: true, CancellationToken.None);
 
-            Assert.AreEqual(0, page.Agents.Count);
+            Assert.AreEqual(1, page.Agents.Count);
+            Assert.IsNull(page.Agents[0].AgentManagerId);
             Assert.AreEqual(1L, page.Counters.TotalEnumerated);
             Assert.AreEqual(0L, page.Counters.FilterPassingAgents);
+            Assert.AreEqual(1L, page.Counters.WrittenWithoutManager);
             Assert.AreEqual(1L, page.Counters.FilteredManagerEmployeeIdNonNumeric);
             Assert.AreEqual(1, fixture.Requests.Count);
         }

@@ -15,6 +15,9 @@ namespace Hosts.AgentReader.Services.Entities
         public long FilteredManagerEmployeeIdNonNumeric { get; set; }
         public long FilteredManagerEmployeeIdOutOfRange { get; set; }
         public long FilteredInvalidAgentObjectId { get; set; }
+
+        // Agents counted by a manager filter above that were still written, with a null AgentManagerId.
+        public long WrittenWithoutManager { get; set; }
         public long AccountEnabledDefaultApplied { get; set; }
         public long BlueprintIdTruncated { get; set; }
 
@@ -37,6 +40,7 @@ namespace Hosts.AgentReader.Services.Entities
                 FilteredManagerEmployeeIdNonNumeric += other.FilteredManagerEmployeeIdNonNumeric;
                 FilteredManagerEmployeeIdOutOfRange += other.FilteredManagerEmployeeIdOutOfRange;
                 FilteredInvalidAgentObjectId += other.FilteredInvalidAgentObjectId;
+                WrittenWithoutManager += other.WrittenWithoutManager;
                 AccountEnabledDefaultApplied += other.AccountEnabledDefaultApplied;
                 BlueprintIdTruncated += other.BlueprintIdTruncated;
             }

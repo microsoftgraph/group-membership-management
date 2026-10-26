@@ -769,6 +769,48 @@ namespace Services.Tests
         }
 
         [TestMethod]
+        public async Task AgentWithNullManager_IsNeverSelected()
+        {
+            // AgentReader writes agents without a valid manager with a NULL AgentManagerId.
+            var nullableManagerTable = Guid.NewGuid().ToString("N");
+            await CreateUsersTableAsync(nullableManagerTable);
+            await CreateAgentsTableWithColumnsAsync(
+                nullableManagerTable,
+                "AgentObjectId nvarchar(36) NOT NULL, AgentManagerId int NULL");
+            await ExecuteAsync($"""
+                INSERT INTO [users].[{nullableManagerTable}]
+                    (EmployeeId, ManagerId, AzureObjectId, EmployeeType_Code, AccountEnabled)
+                VALUES
+                    (953, NULL, N'{_user100:D}', N'FTE', N'UserValue'),
+                    (954, NULL, N'{_user101:D}', N'FTE', N'UserValue');
+
+                INSERT INTO [agents].[{nullableManagerTable}]
+                    (AgentObjectId, AgentManagerId)
+                VALUES
+                    (N'{_agent100:D}', 953),
+                    (N'{_agent102:D}', NULL);
+                """);
+
+            var request = CreateRequest(
+                string.Empty,
+                IdentityTypeSet.All,
+                nullableManagerTable);
+            var result = await _repository.EvaluateMembershipAsync(request);
+
+            AssertResult(
+                result,
+                new[] { _user100, _user101 },
+                new[] { _agent100 },
+                2);
+            Assert.AreEqual(0, result.SkippedAgentRowCount);
+            Assert.IsFalse(
+                await _repository.IsIdentitySelectedAsync(
+                    request,
+                    _agent102,
+                    IdentityType.Agents));
+        }
+
+        [TestMethod]
         public async Task FilterValidation_AcceptsAgentColumnsAndChecksTheAgentsInput()
         {
             var validFilters = new Dictionary<int, string>

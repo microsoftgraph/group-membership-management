@@ -4,10 +4,12 @@
 using Hosts.AgentReader.Services.Entities;
 using Microsoft.Azure.Functions.Worker;
 using Microsoft.DurableTask;
+using Models;
 using Repositories.Contracts.Helpers;
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Threading.Tasks;
 
 namespace Hosts.AgentReader
@@ -32,18 +34,31 @@ namespace Hosts.AgentReader
 
             try
             {
-                await context.CallActivityAsync(nameof(AgentTableFunctions.ValidateAgentTable), request);
+                var table = await context.CallActivityAsync<AgentTableInfo?>(
+                    nameof(AgentTableFunctions.ValidateAgentTable), request);
+
+                // An orchestration that validated before this result existed replays it as null; skipping
+                // agents without a manager is safe on any table.
+                var writeAgentsWithoutManager = table?.AgentManagerIdAllowsNull ?? false;
+                if (!writeAgentsWithoutManager)
+                {
+                    logger.AgentManagerIdNotNullable();
+                }
+
                 var continuationLinks = new HashSet<string>(StringComparer.Ordinal);
                 string? nextLink = null;
 
                 do
                 {
                     var page = await context.CallActivityAsync<AgentPage>(
-                        nameof(AgentReaderFunction), new AgentPageRequest(request.RunId, nextLink));
+                        nameof(AgentReaderFunction),
+                        new AgentPageRequest(request.RunId, nextLink, writeAgentsWithoutManager));
                     counters.Add(page.Counters);
 
                     if (page.Counters.Inserted != 0
-                        || page.Counters.FilterPassingAgents != page.Agents.Count
+                        || page.Counters.FilterPassingAgents + page.Counters.WrittenWithoutManager != page.Agents.Count
+                        || page.Agents.Count(agent => agent.AgentManagerId is null) != page.Counters.WrittenWithoutManager
+                        || (!writeAgentsWithoutManager && page.Counters.WrittenWithoutManager != 0)
                         || page.Counters.TotalEnumerated != page.Counters.FilterPassingAgents + page.Counters.TotalFiltered)
                     {
                         throw new InvalidDataException("Agent page counters do not reconcile.");
@@ -70,15 +85,15 @@ namespace Hosts.AgentReader
 
                 var persisted = await context.CallActivityAsync<long>(nameof(AgentTableFunctions.GetAgentRowCount), request);
                 if (persisted != counters.Inserted
-                    || counters.Inserted != counters.FilterPassingAgents
-                    || counters.TotalEnumerated != checked(counters.Inserted + counters.TotalFiltered))
+                    || counters.Inserted != checked(counters.FilterPassingAgents + counters.WrittenWithoutManager)
+                    || counters.TotalEnumerated != checked(counters.FilterPassingAgents + counters.TotalFiltered))
                 {
                     throw new InvalidDataException("Persisted agent rows do not reconcile with the complete enumeration.");
                 }
 
                 await context.CallActivityAsync<int>(nameof(AgentTableFunctions.WriteBlueprintMappings), request);
 
-                status = counters.FilterPassingAgents == 0 ? "CompletedEmpty" : "Completed";
+                status = counters.Inserted == 0 ? "CompletedEmpty" : "Completed";
                 return new AgentReaderResult(request.RunId, status, counters);
             }
             finally
@@ -87,7 +102,8 @@ namespace Hosts.AgentReader
                     status, counters.TotalEnumerated, counters.Inserted, counters.FilterPassingAgents,
                     counters.FilteredNoManager, counters.FilteredManagerEmployeeIdAbsent,
                     counters.FilteredManagerEmployeeIdNonNumeric, counters.FilteredManagerEmployeeIdOutOfRange,
-                    counters.FilteredInvalidAgentObjectId, counters.AccountEnabledDefaultApplied, counters.BlueprintIdTruncated);
+                    counters.FilteredInvalidAgentObjectId, counters.WrittenWithoutManager,
+                    counters.AccountEnabledDefaultApplied, counters.BlueprintIdTruncated);
                 if (status == "Failed")
                 {
                     logger.PopulationFailed();

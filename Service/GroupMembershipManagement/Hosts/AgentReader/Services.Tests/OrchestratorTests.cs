@@ -124,7 +124,7 @@ namespace Hosts.AgentReader.Services.Tests
         public async Task MissingTable_FailsBeforeGraphEnumeration()
         {
             var fixture = new Fixture(_runId, 0);
-            fixture.Context.Setup(context => context.CallActivityAsync(
+            fixture.Context.Setup(context => context.CallActivityAsync<AgentTableInfo>(
                     nameof(AgentTableFunctions.ValidateAgentTable), It.IsAny<AgentReaderRequest>(), It.IsAny<TaskOptions>()))
                 .ThrowsAsync(new InvalidOperationException("Synthetic missing table."));
 
@@ -187,6 +187,105 @@ namespace Hosts.AgentReader.Services.Tests
         }
 
         [TestMethod]
+        public async Task AgentsWithoutManager_AreWrittenAndReconciledWhenTheTableAllowsNull()
+        {
+            var page = new AgentPage(
+                [NewAgent(), new AgentRecord(Guid.NewGuid(), null, null, true), new AgentRecord(Guid.NewGuid(), null, null, true)],
+                null,
+                new AgentReadCounters
+                {
+                    TotalEnumerated = 4, FilterPassingAgents = 1, WrittenWithoutManager = 2,
+                    FilteredNoManager = 1, FilteredManagerEmployeeIdAbsent = 1, FilteredInvalidAgentObjectId = 1
+                });
+            var fixture = new Fixture(_runId, 3, page);
+
+            var result = await new OrchestratorFunction().RunAsync(fixture.Context.Object);
+
+            Assert.AreEqual("Completed", result.Status);
+            Assert.AreEqual(3L, result.Counters.Inserted);
+            Assert.AreEqual(1L, result.Counters.FilterPassingAgents);
+            Assert.AreEqual(2L, result.Counters.WrittenWithoutManager);
+            Assert.IsTrue(fixture.Reads.All(request => request.WriteAgentsWithoutManager));
+            Assert.AreEqual(3, fixture.Writes.Single().Agents.Count);
+            Assert.AreEqual(2L, fixture.Logger.Summary["WrittenWithoutManager"]);
+            Assert.AreEqual(0, fixture.Logger.NotNullableWarnings);
+        }
+
+        [TestMethod]
+        public async Task OnlyAgentsWithoutManager_CompleteRatherThanCompletedEmpty()
+        {
+            var fixture = new Fixture(_runId, 1, new AgentPage(
+                [new AgentRecord(Guid.NewGuid(), null, null, true)], null,
+                new AgentReadCounters { TotalEnumerated = 1, FilteredNoManager = 1, WrittenWithoutManager = 1 }));
+
+            var result = await new OrchestratorFunction().RunAsync(fixture.Context.Object);
+
+            Assert.AreEqual("Completed", result.Status);
+            Assert.AreEqual(0L, result.Counters.FilterPassingAgents);
+            Assert.AreEqual(1L, result.Counters.Inserted);
+        }
+
+        [TestMethod]
+        public async Task NotNullableTable_SkipsAgentsWithoutManagerAndWarnsOnce()
+        {
+            var fixture = new Fixture(_runId, 2, managerAllowsNull: false,
+                new AgentPage([NewAgent()], NextLink, new AgentReadCounters
+                {
+                    TotalEnumerated = 2, FilterPassingAgents = 1, FilteredNoManager = 1
+                }),
+                EligiblePage(null));
+
+            var result = await new OrchestratorFunction().RunAsync(fixture.Context.Object);
+
+            Assert.AreEqual("Completed", result.Status);
+            Assert.AreEqual(2L, result.Counters.Inserted);
+            Assert.AreEqual(0L, result.Counters.WrittenWithoutManager);
+            Assert.AreEqual(1L, result.Counters.FilteredNoManager);
+            Assert.AreEqual(2, fixture.Reads.Count);
+            Assert.IsTrue(fixture.Reads.All(request => !request.WriteAgentsWithoutManager));
+            Assert.AreEqual(1, fixture.Logger.NotNullableWarnings);
+        }
+
+        [TestMethod]
+        public async Task NotNullableTable_RejectsAPageThatWroteAgentsWithoutManager()
+        {
+            var fixture = new Fixture(_runId, 1, managerAllowsNull: false, new AgentPage(
+                [new AgentRecord(Guid.NewGuid(), null, null, true)], null,
+                new AgentReadCounters { TotalEnumerated = 1, FilteredNoManager = 1, WrittenWithoutManager = 1 }));
+
+            await Assert.ThrowsExceptionAsync<InvalidDataException>(() => new OrchestratorFunction().RunAsync(fixture.Context.Object));
+
+            Assert.AreEqual(0, fixture.Writes.Count);
+        }
+
+        [TestMethod]
+        public async Task NullManagerRowsThatDoNotMatchTheirCounter_FailBeforeWriting()
+        {
+            var fixture = new Fixture(_runId, 1, new AgentPage(
+                [new AgentRecord(Guid.NewGuid(), null, null, true)], null,
+                new AgentReadCounters { TotalEnumerated = 1, FilterPassingAgents = 1 }));
+
+            await Assert.ThrowsExceptionAsync<InvalidDataException>(() => new OrchestratorFunction().RunAsync(fixture.Context.Object));
+
+            Assert.AreEqual(0, fixture.Writes.Count);
+        }
+
+        [TestMethod]
+        public async Task ValidationReplayedWithoutAResult_SkipsAgentsWithoutManager()
+        {
+            var fixture = new Fixture(_runId, 1, EligiblePage(null));
+            fixture.Context.Setup(context => context.CallActivityAsync<AgentTableInfo>(
+                    nameof(AgentTableFunctions.ValidateAgentTable), It.IsAny<AgentReaderRequest>(), It.IsAny<TaskOptions>()))
+                .ReturnsAsync((AgentTableInfo)null!);
+
+            var result = await new OrchestratorFunction().RunAsync(fixture.Context.Object);
+
+            Assert.AreEqual("Completed", result.Status);
+            Assert.IsFalse(fixture.Reads.Single().WriteAgentsWithoutManager);
+            Assert.AreEqual(1, fixture.Logger.NotNullableWarnings);
+        }
+
+        [TestMethod]
         public async Task EmptyRunId_IsRejectedBeforeActivities()
         {
             var fixture = new Fixture(Guid.Empty, 0);
@@ -209,13 +308,18 @@ namespace Hosts.AgentReader.Services.Tests
             public List<AgentWriteRequest> Writes { get; } = [];
 
             public Fixture(Guid runId, long persisted, params AgentPage[] pages)
+                : this(runId, persisted, managerAllowsNull: true, pages)
+            {
+            }
+
+            public Fixture(Guid runId, long persisted, bool managerAllowsNull, params AgentPage[] pages)
             {
                 var queue = new Queue<AgentPage>(pages);
                 Context.Setup(context => context.GetInput<AgentReaderRequest>()).Returns(new AgentReaderRequest(runId));
                 Context.Setup(context => context.CreateReplaySafeLogger("Hosts.AgentReader.OrchestratorFunction")).Returns(Logger);
-                Context.Setup(context => context.CallActivityAsync(
+                Context.Setup(context => context.CallActivityAsync<AgentTableInfo>(
                         nameof(AgentTableFunctions.ValidateAgentTable), It.IsAny<AgentReaderRequest>(), It.IsAny<TaskOptions>()))
-                    .Callback(() => Calls.Add("validate")).Returns(Task.CompletedTask);
+                    .Callback(() => Calls.Add("validate")).ReturnsAsync(new AgentTableInfo(managerAllowsNull));
                 Context.Setup(context => context.CallActivityAsync<AgentPage>(
                         nameof(AgentReaderFunction), It.IsAny<AgentPageRequest>(), It.IsAny<TaskOptions>()))
                     .Returns((TaskName name, object input, TaskOptions? options) =>
@@ -246,6 +350,7 @@ namespace Hosts.AgentReader.Services.Tests
         {
             public Dictionary<string, object?> Summary { get; private set; } = [];
             public bool FailureLogged { get; private set; }
+            public int NotNullableWarnings { get; private set; }
             public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;
             public bool IsEnabled(LogLevel logLevel) => true;
             public void Log<TState>(
@@ -258,6 +363,10 @@ namespace Hosts.AgentReader.Services.Tests
                 if (eventId.Id == 260012)
                 {
                     FailureLogged = true;
+                }
+                if (eventId.Id == 260013)
+                {
+                    NotNullableWarnings++;
                 }
             }
         }

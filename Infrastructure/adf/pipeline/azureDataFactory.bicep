@@ -524,7 +524,7 @@ resource Pipeline_PopulateDestinationPipeline 'Microsoft.DataFactory/factories/p
             {
               type: 'Query'
               text: {
-                value: '@concat(\'CREATE TABLE agents.[\',replace(pipeline().RunId,\'-\',\'\'),\'] (AgentObjectId nvarchar(36) NOT NULL, AgentManagerId int NOT NULL, Blueprint_Code nvarchar(200) NULL, AgentAccountEnabled bit NOT NULL)\')'
+                value: '@concat(\'CREATE TABLE agents.[\',replace(pipeline().RunId,\'-\',\'\'),\'] (AgentObjectId nvarchar(36) NOT NULL, AgentManagerId int NULL, Blueprint_Code nvarchar(200) NULL, AgentAccountEnabled bit NOT NULL)\')'
                 type: 'Expression'
               }
             }

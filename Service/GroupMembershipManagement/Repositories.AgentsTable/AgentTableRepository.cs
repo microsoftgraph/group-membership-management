@@ -29,37 +29,55 @@ namespace Repositories.AgentsTable
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
 
-        public async Task ValidateTableAsync(Guid runId, CancellationToken cancellationToken)
+        public async Task<AgentTableInfo> ValidateTableAsync(Guid runId, CancellationToken cancellationToken)
         {
             using var scope = _logger.BeginRunIdScope(runId);
             var table = GetTableName(runId);
             await using var connection = _connectionFactory.CreateConnection();
             await connection.OpenAsync(cancellationToken);
-            using var command = connection.CreateCommand();
-            command.CommandTimeout = CommandTimeoutSeconds;
-            command.CommandText = """
-                SELECT CASE
-                    WHEN OBJECT_ID(@tableName, N'U') IS NULL THEN 0
-                    WHEN NOT EXISTS (
-                        SELECT 1 FROM sys.indexes
-                        WHERE object_id = OBJECT_ID(@tableName, N'U')
-                          AND name = N'IDX_Agents_AgentManagerId'
-                          AND is_disabled = 0 AND is_hypothetical = 0
-                    ) THEN 1
-                    ELSE 2
-                END;
-                """;
-            AddParameter(command, "@tableName", DbType.String, table, 128);
-            var state = await command.ExecuteScalarAsync(cancellationToken);
-            if (state is not int readiness || readiness != 2)
+            int? readiness = null;
+            int? managerAllowsNull = null;
+            using (var command = connection.CreateCommand())
+            {
+                command.CommandTimeout = CommandTimeoutSeconds;
+                command.CommandText = """
+                    SELECT CASE
+                        WHEN OBJECT_ID(@tableName, N'U') IS NULL THEN 0
+                        WHEN NOT EXISTS (
+                            SELECT 1 FROM sys.indexes
+                            WHERE object_id = OBJECT_ID(@tableName, N'U')
+                              AND name = N'IDX_Agents_AgentManagerId'
+                              AND is_disabled = 0 AND is_hypothetical = 0
+                        ) THEN 1
+                        ELSE 2
+                    END,
+                    COLUMNPROPERTY(OBJECT_ID(@tableName, N'U'), N'AgentManagerId', 'AllowsNull');
+                    """;
+                AddParameter(command, "@tableName", DbType.String, table, 128);
+                using var reader = await command.ExecuteReaderAsync(cancellationToken);
+                if (await reader.ReadAsync(cancellationToken))
+                {
+                    readiness = reader.GetInt32(0);
+                    managerAllowsNull = reader.IsDBNull(1) ? null : reader.GetInt32(1);
+                }
+            }
+
+            if (readiness != 2)
             {
                 throw new InvalidOperationException("The run's agents table and enabled IDX_Agents_AgentManagerId index must already exist.");
+            }
+
+            if (managerAllowsNull is null)
+            {
+                throw new InvalidOperationException("The run's agents table has no AgentManagerId column.");
             }
 
             if (await ReadRowCountAsync(connection, table, cancellationToken) != 0)
             {
                 throw new InvalidOperationException("A new AgentReader orchestration requires an empty agents table.");
             }
+
+            return new AgentTableInfo(AgentManagerIdAllowsNull: managerAllowsNull == 1);
         }
 
         public async Task<int> WriteAsync(Guid runId, IReadOnlyList<AgentRecord> agents, CancellationToken cancellationToken)
@@ -110,7 +128,7 @@ namespace Repositories.AgentsTable
                 while (await reader.ReadAsync(cancellationToken))
                 {
                     var row = new AgentRecord(
-                        Guid.Parse(reader.GetString(0)), reader.GetInt32(1),
+                        Guid.Parse(reader.GetString(0)), reader.IsDBNull(1) ? null : reader.GetInt32(1),
                         reader.IsDBNull(2) ? null : reader.GetString(2), reader.GetBoolean(3));
                     if (!existing.TryAdd(row.AgentObjectId, row))
                     {

@@ -43,7 +43,9 @@ following the same layering as `SqlMembershipObtainer`, `SqlDataChecker` and `Az
    The starter waits until the orchestration exists (including `Pending`) before returning
    `StatusQueryGetUri`; it does not wait for the load to finish.
 3. **ValidateAgentTable** requires that `agents.[R]` already exists, that `IDX_Agents_AgentManagerId` is
-   present and enabled, and that the table is empty. The component performs **no DDL** of any kind.
+   present and enabled, and that the table is empty. It also reports whether `AgentManagerId` allows
+   NULL (see [Agents without a valid manager](#agents-without-a-valid-manager)). The component performs
+   **no DDL** of any kind.
 4. **AgentReaderFunction** reads one Graph page per call:
    ```
    /v1.0/users/microsoft.graph.agentUser
@@ -53,7 +55,7 @@ following the same layering as `SqlMembershipObtainer`, `SqlDataChecker` and `Az
    Before parsing, the raw `value` array is counted and compared against what the SDK materialised. An
    entry the SDK cannot represent would otherwise be dropped silently and shorten the table, so a
    mismatch fails the run. Continuation links are validated to be the same HTTPS host and path.
-5. **AgentWriterFunction** persists the eligible agents for that page.
+5. **AgentWriterFunction** persists the page's agents.
 6. Steps 4-5 repeat while Graph returns `@odata.nextLink`. A repeated or blank continuation link fails
    the run.
 7. **GetAgentRowCount** drives the final reconciliation.
@@ -65,15 +67,31 @@ following the same layering as `SqlMembershipObtainer`, `SqlDataChecker` and `Az
 ## Eligibility rules
 
 `AgentManagerId` is sourced **only** from `manager.onPremisesImmutableId` and must fit an `Int32`. Each
-rejection increments its own counter:
+agent counts under exactly one reason, checked in this order:
 
-| Condition | Counter |
-|---|---|
-| No manager relationship | `FilteredNoManager` |
-| Manager present, identifier absent or blank | `FilteredManagerEmployeeIdAbsent` |
-| Identifier is not an integer | `FilteredManagerEmployeeIdNonNumeric` |
-| Identifier is an integer but exceeds `Int32` | `FilteredManagerEmployeeIdOutOfRange` |
-| Agent id missing, unparseable, or all-zero | `FilteredInvalidAgentObjectId` |
+| Condition | Counter | Row written |
+|---|---|---|
+| No manager relationship | `FilteredNoManager` | Yes, with a NULL `AgentManagerId` |
+| Manager present, identifier absent or blank | `FilteredManagerEmployeeIdAbsent` | Yes, with a NULL `AgentManagerId` |
+| Identifier is not an integer | `FilteredManagerEmployeeIdNonNumeric` | Yes, with a NULL `AgentManagerId` |
+| Identifier is an integer but exceeds `Int32` | `FilteredManagerEmployeeIdOutOfRange` | Yes, with a NULL `AgentManagerId` |
+| Agent id missing, unparseable, or all-zero | `FilteredInvalidAgentObjectId` | No |
+
+An agent with both a manager problem and an invalid id counts under the manager reason and is not
+written. `FilterPassingAgents` counts agents with a valid manager; `WrittenWithoutManager` counts agents
+written with a NULL `AgentManagerId`; `Inserted` is their sum.
+
+### Agents without a valid manager
+
+The table holds **every** agent with a valid id, so readers can tell "no valid manager" (NULL) apart from
+"not in this run" (no row). Readers must exclude NULL-manager rows: SqlMembershipObtainer's join on
+`AgentManagerId` never matches NULL. GroupMembershipObtainer's handling of NULL-manager rows is added
+separately.
+
+The Data Factory pipeline creates `AgentManagerId int NULL`. If a table still has `AgentManagerId int
+NOT NULL` (the pipeline wasn't redeployed), AgentReader keeps the earlier behavior: it skips agents
+without a valid manager, logs event 260013 once per run, and the run still completes. Readers then treat
+those agents as missing from the table. Redeploy the pipeline to restore the full table.
 
 `agentIdentityBlueprintId` is read from the original Graph JSON string, preserving the exact text even
 when the SDK converts GUID- or date-shaped strings to other types. Missing or null values remain null;
@@ -97,12 +115,12 @@ activity depends on `PopulateMappingsTableDataFlow`.
 
 | Status | Meaning |
 |---|---|
-| `Completed` | At least one eligible agent was enumerated and every one was persisted |
-| `CompletedEmpty` | The tenant legitimately has no eligible agents; zero rows is correct |
-| *failure* | Enumeration was incomplete, or eligible agents were found but not all persisted |
+| `Completed` | At least one agent row was written, and every row the enumeration produced was persisted |
+| `CompletedEmpty` | The enumeration produced no rows to write; zero rows is correct |
+| *failure* | Enumeration was incomplete, or rows were produced but not all persisted |
 
-`FilterPassingAgents` is the signal that separates an agent-free tenant from a load that wrote nothing,
-which is why it is emitted for every run.
+`FilterPassingAgents` and `WrittenWithoutManager` separate a tenant with no writable agents from a load
+that wrote nothing, which is why they are emitted for every run.
 
 The orchestration fails rather than accepting a partial load. There are **no compensating deletes** — a
 failed run leaves its table as-is, and recovery is a fresh pipeline run with a new run identifier.
@@ -177,6 +195,7 @@ exception, because a rejected request has no run to trace.
 | 260010 | Information | Population started |
 | 260011 | Information | Population counters (all counters, one entry) |
 | 260012 | Error | Population failed |
+| 260013 | Warning | `AgentManagerId` doesn't allow NULL; agents without a valid manager are skipped |
 | 260020 | Warning | Request rejected |
 | 260021 | Information | Existing instance returned |
 | 260022 | Information | Orchestration scheduled |

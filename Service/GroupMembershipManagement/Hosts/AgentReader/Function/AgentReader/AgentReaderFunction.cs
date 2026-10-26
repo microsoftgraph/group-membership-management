@@ -28,7 +28,8 @@ namespace Hosts.AgentReader
         {
             using var scope = _logger.BeginRunIdScope(request.RunId);
             _logger.FunctionStarted(nameof(AgentReaderFunction));
-            var page = await _service.ReadPageAsync(request.RunId, request.NextLink, cancellationToken);
+            var page = await _service.ReadPageAsync(
+                request.RunId, request.NextLink, request.WriteAgentsWithoutManager, cancellationToken);
             _logger.FunctionCompleted(nameof(AgentReaderFunction));
             return page;
         }
