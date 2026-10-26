@@ -4659,15 +4659,17 @@ namespace WebApi.Tests
         }
 
         [DataTestMethod]
-        [DataRow("ThresholdExceeded", "GroupMembershipObtainer", true)]
-        [DataRow("Error", "MembershipAggregator", true)]
-        [DataRow("MembershipDataNotFound", "GroupMembershipObtainer", true)]
-        [DataRow("Idle", "GraphUpdater", false)]
-        [DataRow("Idle", "MembershipAggregator", false)]
+        [DataRow("ThresholdExceeded", "GroupMembershipObtainer", true, "GraphUpdater")]
+        [DataRow("ThresholdExceeded", "GroupMembershipObtainer", true, "TeamsChannelUpdater")]
+        [DataRow("Error", "MembershipAggregator", true, "GraphUpdater")]
+        [DataRow("MembershipDataNotFound", "GroupMembershipObtainer", true, "GraphUpdater")]
+        [DataRow("Idle", "GraphUpdater", false, "GraphUpdater")]
+        [DataRow("Idle", "MembershipAggregator", false, "GraphUpdater")]
         public async Task ExecuteAsync_RuleRemovedBeforePreviousRun_EmitsDeletedRuleSignalOnlyWhenPreviousRunDidNotApplyMembership(
             string previousStatus,
             string previousUpdatedByFunction,
-            bool expectsDeletedRuleSignal)
+            bool expectsDeletedRuleSignal,
+            string lastAppliedUpdatedByFunction)
         {
             var currentAdfRunId = Guid.NewGuid();
             var previousAdfRunId = Guid.NewGuid();
@@ -4737,7 +4739,7 @@ namespace WebApi.Tests
                     SyncJobId = _syncJobId,
                     RunId = Guid.NewGuid(),
                     Status = "Idle",
-                    UpdatedByFunction = "GraphUpdater",
+                    UpdatedByFunction = lastAppliedUpdatedByFunction,
                     UpdatedAt = now.AddMinutes(-90),
                     EndTime = now.AddMinutes(-90),
                     AdfRunId = Guid.NewGuid()
@@ -6342,6 +6344,34 @@ namespace WebApi.Tests
             var history = new global::Models.SyncJobHistory.SyncJobHistory { StartTime = null, EndTime = null, UpdatedAt = updated };
             var result = InvokeStaticPrivate<DateTime>(typeof(GetRunExplanationHandler), "GetRunConfigCutoff", new object?[] { history });
             Assert.AreEqual(updated, result);
+        }
+
+        // ---------------- Applied-boundary writers ----------------
+
+        [DataTestMethod]
+        [DataRow("Idle", "GraphUpdater", true)]
+        [DataRow("Idle", "MembershipAggregator", true)]
+        [DataRow("Idle", "TeamsChannelUpdater", true)]
+        [DataRow("Idle", null, true)]
+        [DataRow("Idle", "GroupMembershipObtainer", false)]
+        [DataRow("ThresholdExceeded", "TeamsChannelUpdater", false)]
+        public void DidRunAdvanceAppliedBoundary_RecognizesEachDestinationUpdater(
+            string status,
+            string? updatedByFunction,
+            bool expected)
+        {
+            var updated = new DateTime(2026, 7, 16, 23, 30, 0, DateTimeKind.Utc);
+            var history = new global::Models.SyncJobHistory.SyncJobHistory
+            {
+                Status = status,
+                UpdatedByFunction = updatedByFunction,
+                UpdatedAt = updated
+            };
+            var result = InvokeStaticPrivate<bool>(
+                typeof(GetRunExplanationHandler),
+                "DidRunAdvanceAppliedBoundary",
+                new object?[] { history, null, DateTime.MinValue });
+            Assert.AreEqual(expected, result);
         }
 
         private void SetupCurrentRunAndPreviousRun(

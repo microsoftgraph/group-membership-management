@@ -795,6 +795,10 @@ Use only the provided data. Output 1-2 sentences normally, or up to 3 sentences 
                 || string.Equals(
                     run.UpdatedByFunction,
                     "MembershipAggregator",
+                    StringComparison.OrdinalIgnoreCase)
+                || string.Equals(
+                    run.UpdatedByFunction,
+                    "TeamsChannelUpdater",
                     StringComparison.OrdinalIgnoreCase);
         }
 
