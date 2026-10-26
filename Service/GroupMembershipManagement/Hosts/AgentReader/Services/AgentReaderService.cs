@@ -10,6 +10,7 @@ using Repositories.Contracts.Helpers;
 using System;
 using System.Collections.Generic;
 using System.Globalization;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -20,6 +21,8 @@ namespace Hosts.AgentReader.Services
         private readonly IAgentGraphRepository _graphRepository;
         private readonly IAgentTableRepository _tableRepository;
         private readonly ILogger<AgentReaderService> _logger;
+        private const int MaxBlueprintNameLength = 256;
+        private const string BlueprintMappingColumnName = "Blueprint";
 
         public AgentReaderService(
             IAgentGraphRepository graphRepository,
@@ -39,6 +42,51 @@ namespace Hosts.AgentReader.Services
 
         public Task<long> GetRowCountAsync(Guid runId, CancellationToken cancellationToken) =>
             _tableRepository.GetRowCountAsync(runId, cancellationToken);
+
+        // Names are a convenience for the UI: anything Graph cannot resolve is described by its code, and a failed
+        // lookup never fails the run. Only the SQL write is required to succeed.
+        public async Task<int> WriteBlueprintMappingsAsync(Guid runId, CancellationToken cancellationToken)
+        {
+            using var scope = _logger.BeginRunIdScope(runId);
+            var codes = await _tableRepository.GetBlueprintCodesAsync(runId, cancellationToken);
+            var descriptions = codes.ToDictionary(code => code, code => code, StringComparer.Ordinal);
+            var guids = codes
+                .Select(code => Guid.TryParseExact(code, "D", out var id) && id != Guid.Empty ? id : (Guid?)null)
+                .Where(id => id.HasValue).Select(id => id!.Value).Distinct().ToList();
+
+            var resolved = 0;
+            if (guids.Count > 0)
+            {
+                try
+                {
+                    var names = await _graphRepository.GetBlueprintNamesAsync(runId, guids, cancellationToken);
+                    foreach (var code in codes)
+                    {
+                        if (Guid.TryParseExact(code, "D", out var id) && names.TryGetValue(id, out var name))
+                        {
+                            var trimmed = name.Trim();
+                            if (trimmed.Length > 0)
+                            {
+                                descriptions[code] = trimmed.Length > MaxBlueprintNameLength ? trimmed[..MaxBlueprintNameLength] : trimmed;
+                                resolved++;
+                            }
+                        }
+                    }
+                }
+                catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+                {
+                    throw;
+                }
+                catch (Exception exception)
+                {
+                    _logger.BlueprintNameLookupFailed(exception, guids.Count);
+                }
+            }
+
+            await _tableRepository.WriteMappingsAsync(runId, BlueprintMappingColumnName, descriptions, cancellationToken);
+            _logger.BlueprintMappingsWritten(descriptions.Count, resolved);
+            return descriptions.Count;
+        }
 
         public async Task<AgentPage> ReadPageAsync(Guid runId, string? nextLink, CancellationToken cancellationToken)
         {

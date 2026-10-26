@@ -372,6 +372,57 @@ namespace Hosts.AgentReader.Services.Tests
         }
 
         [TestMethod]
+        public async Task BlueprintNames_AreLookedUpInBatchesOf15ByValidatedGuids()
+        {
+            var ids = Enumerable.Range(1, 16).Select(index => new Guid(index, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1)).ToArray();
+            var first = ids[0];
+            using var fixture = new Fixture(
+                Response($$"""{"value":[{"appId":"{{first}}","displayName":" Project Lobster "},{"appId":"not-a-guid","displayName":"x"},{"appId":"{{ids[1]}}","displayName":""}]}"""),
+                Response("""{"value":[]}"""));
+
+            var names = await fixture.Repository.GetBlueprintNamesAsync(_runId, ids, CancellationToken.None);
+
+            Assert.AreEqual(2, fixture.Requests.Count);
+            Assert.AreEqual(1, names.Count);
+            Assert.AreEqual(" Project Lobster ", names[first]);
+            var query = Uri.UnescapeDataString(fixture.Requests[0].Uri.Query);
+            Assert.AreEqual("/v1.0/servicePrincipals", fixture.Requests[0].Uri.AbsolutePath);
+            StringAssert.StartsWith(query, "?$filter=appId in ('");
+            StringAssert.EndsWith(query, "')&$select=appId,displayName");
+            Assert.AreEqual(15, query.Split('\'').Length / 2);
+            Assert.AreEqual(1, Uri.UnescapeDataString(fixture.Requests[1].Uri.Query).Split('\'').Length / 2);
+            Assert.AreEqual(0, fixture.Requests[0].SdkRetries);
+            Assert.IsTrue(fixture.Events
+                .Where(item => item.Name == TelemetryConstants.ResourceUnitsEventName)
+                .All(item => item.Properties["QueryType"] == "Other"));
+        }
+
+        [TestMethod]
+        public async Task BlueprintNames_RetryWhenThrottled()
+        {
+            var throttled = Response("{}", HttpStatusCode.TooManyRequests);
+            throttled.Headers.Add("Retry-After", "7");
+            using var fixture = new Fixture(throttled, Response("""{"value":[]}"""));
+
+            var names = await fixture.Repository.GetBlueprintNamesAsync(_runId, [Guid.NewGuid()], CancellationToken.None);
+
+            Assert.AreEqual(0, names.Count);
+            Assert.AreEqual(2, fixture.Requests.Count);
+            CollectionAssert.AreEqual(new[] { TimeSpan.FromSeconds(7) }, _delays);
+        }
+
+        [TestMethod]
+        public async Task BlueprintNames_EmptyInputMakesNoRequest()
+        {
+            using var fixture = new Fixture();
+
+            var names = await fixture.Repository.GetBlueprintNamesAsync(_runId, [], CancellationToken.None);
+
+            Assert.AreEqual(0, names.Count);
+            Assert.AreEqual(0, fixture.Requests.Count);
+        }
+
+        [TestMethod]
         public async Task EmptyRunId_IsRejectedBeforeAnyGraphRequest()
         {
             using var fixture = new Fixture();

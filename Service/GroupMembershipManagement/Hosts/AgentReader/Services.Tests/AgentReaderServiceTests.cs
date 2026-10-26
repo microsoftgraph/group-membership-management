@@ -11,6 +11,7 @@ using Moq;
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -181,6 +182,69 @@ namespace Hosts.AgentReader.Services.Tests
             table.Setup(repository => repository.WriteAsync(_runId, rows, cancellation.Token))
                 .ThrowsAsync(new IOException("Synthetic SQL failure."));
             await Assert.ThrowsExceptionAsync<IOException>(() => service.WriteAsync(_runId, rows, cancellation.Token));
+        }
+
+        [TestMethod]
+        public async Task BlueprintMappings_UseNamesAndFallBackToCodes()
+        {
+            var named = Guid.NewGuid();
+            var unresolved = Guid.NewGuid();
+            IReadOnlyList<string> codes = [named.ToString("D"), unresolved.ToString("D"), "not-a-guid"];
+            IReadOnlyDictionary<string, string>? written = null;
+            var table = new Mock<IAgentTableRepository>(MockBehavior.Strict);
+            table.Setup(repository => repository.GetBlueprintCodesAsync(_runId, It.IsAny<CancellationToken>())).ReturnsAsync(codes);
+            table.Setup(repository => repository.WriteMappingsAsync(
+                    _runId, "Blueprint", It.IsAny<IReadOnlyDictionary<string, string>>(), It.IsAny<CancellationToken>()))
+                .Callback((Guid _, string _, IReadOnlyDictionary<string, string> rows, CancellationToken _) => written = rows)
+                .Returns(Task.CompletedTask);
+            var graph = new Mock<IAgentGraphRepository>(MockBehavior.Strict);
+            graph.Setup(repository => repository.GetBlueprintNamesAsync(
+                    _runId, It.Is<IReadOnlyCollection<Guid>>(ids => ids.Count == 2), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new Dictionary<Guid, string> { [named] = "  Contoso Blueprint " });
+            var service = new AgentReaderService(graph.Object, table.Object, NullLogger<AgentReaderService>.Instance);
+
+            Assert.AreEqual(3, await service.WriteBlueprintMappingsAsync(_runId, CancellationToken.None));
+
+            Assert.AreEqual("Contoso Blueprint", written![named.ToString("D")]);
+            Assert.AreEqual(unresolved.ToString("D"), written[unresolved.ToString("D")]);
+            Assert.AreEqual("not-a-guid", written["not-a-guid"]);
+        }
+
+        [TestMethod]
+        public async Task BlueprintMappings_GraphFailureStillWritesCodes()
+        {
+            var id = Guid.NewGuid().ToString("D");
+            IReadOnlyDictionary<string, string>? written = null;
+            var table = new Mock<IAgentTableRepository>(MockBehavior.Strict);
+            table.Setup(repository => repository.GetBlueprintCodesAsync(_runId, It.IsAny<CancellationToken>())).ReturnsAsync([id]);
+            table.Setup(repository => repository.WriteMappingsAsync(
+                    _runId, "Blueprint", It.IsAny<IReadOnlyDictionary<string, string>>(), It.IsAny<CancellationToken>()))
+                .Callback((Guid _, string _, IReadOnlyDictionary<string, string> rows, CancellationToken _) => written = rows)
+                .Returns(Task.CompletedTask);
+            var graph = new Mock<IAgentGraphRepository>();
+            graph.Setup(repository => repository.GetBlueprintNamesAsync(
+                    It.IsAny<Guid>(), It.IsAny<IReadOnlyCollection<Guid>>(), It.IsAny<CancellationToken>()))
+                .ThrowsAsync(new HttpRequestException("Synthetic Graph failure."));
+            var service = new AgentReaderService(graph.Object, table.Object, NullLogger<AgentReaderService>.Instance);
+
+            await service.WriteBlueprintMappingsAsync(_runId, CancellationToken.None);
+
+            Assert.AreEqual(id, written![id]);
+        }
+
+        [TestMethod]
+        public async Task BlueprintMappings_SqlFailurePropagates()
+        {
+            var table = new Mock<IAgentTableRepository>();
+            table.Setup(repository => repository.GetBlueprintCodesAsync(_runId, It.IsAny<CancellationToken>())).ReturnsAsync([]);
+            table.Setup(repository => repository.WriteMappingsAsync(
+                    _runId, "Blueprint", It.IsAny<IReadOnlyDictionary<string, string>>(), It.IsAny<CancellationToken>()))
+                .ThrowsAsync(new InvalidOperationException("missing mappings table"));
+            var service = new AgentReaderService(
+                Mock.Of<IAgentGraphRepository>(), table.Object, NullLogger<AgentReaderService>.Instance);
+
+            await Assert.ThrowsExceptionAsync<InvalidOperationException>(
+                () => service.WriteBlueprintMappingsAsync(_runId, CancellationToken.None));
         }
 
         private static AgentReaderService CreateService(params AgentSourceRecord[] agents)

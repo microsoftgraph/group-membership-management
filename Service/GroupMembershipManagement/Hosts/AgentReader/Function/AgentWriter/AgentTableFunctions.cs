@@ -31,6 +31,16 @@ namespace Hosts.AgentReader
             _logger.FunctionCompleted(nameof(ValidateAgentTable));
         }
 
+        [Function(nameof(WriteBlueprintMappings))]
+        public async Task<int> WriteBlueprintMappings([ActivityTrigger] AgentReaderRequest request, CancellationToken cancellationToken)
+        {
+            using var scope = _logger.BeginRunIdScope(request.RunId);
+            _logger.FunctionStarted(nameof(WriteBlueprintMappings));
+            var written = await _service.WriteBlueprintMappingsAsync(request.RunId, cancellationToken);
+            _logger.FunctionCompleted(nameof(WriteBlueprintMappings));
+            return written;
+        }
+
         [Function(nameof(GetAgentRowCount))]
         public async Task<long> GetAgentRowCount([ActivityTrigger] AgentReaderRequest request, CancellationToken cancellationToken)
         {

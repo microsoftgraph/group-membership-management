@@ -50,7 +50,7 @@ namespace Hosts.AgentReader.Services.Tests
             Assert.AreEqual(1L, result.Counters.AccountEnabledDefaultApplied);
             Assert.AreEqual(1L, result.Counters.BlueprintIdTruncated);
             CollectionAssert.AreEqual(
-                new[] { "validate", "read", "write", "read", "write", "count" }, fixture.Calls);
+                new[] { "validate", "read", "write", "read", "write", "count", "mappings" }, fixture.Calls);
             Assert.IsNull(fixture.Reads[0].NextLink);
             Assert.AreEqual(NextLink, fixture.Reads[1].NextLink);
             Assert.IsTrue(fixture.Reads.All(request => request.RunId == _runId));
@@ -68,7 +68,7 @@ namespace Hosts.AgentReader.Services.Tests
             Assert.AreEqual("CompletedEmpty", result.Status);
             Assert.AreEqual(0L, result.Counters.FilterPassingAgents);
             Assert.AreEqual(0L, result.Counters.Inserted);
-            CollectionAssert.AreEqual(new[] { "validate", "read", "count" }, fixture.Calls);
+            CollectionAssert.AreEqual(new[] { "validate", "read", "count", "mappings" }, fixture.Calls);
             Assert.AreEqual("CompletedEmpty", fixture.Logger.Summary["Status"]);
         }
 
@@ -85,7 +85,7 @@ namespace Hosts.AgentReader.Services.Tests
             Assert.AreEqual(2L, result.Counters.TotalEnumerated);
             Assert.AreEqual(2L, result.Counters.TotalFiltered);
             Assert.AreEqual(0, fixture.Writes.Count);
-            CollectionAssert.AreEqual(new[] { "validate", "read", "read", "count" }, fixture.Calls);
+            CollectionAssert.AreEqual(new[] { "validate", "read", "read", "count", "mappings" }, fixture.Calls);
         }
 
         [DataTestMethod]
@@ -236,6 +236,9 @@ namespace Hosts.AgentReader.Services.Tests
                 Context.Setup(context => context.CallActivityAsync<long>(
                         nameof(AgentTableFunctions.GetAgentRowCount), It.IsAny<AgentReaderRequest>(), It.IsAny<TaskOptions>()))
                     .Callback(() => Calls.Add("count")).ReturnsAsync(persisted);
+                Context.Setup(context => context.CallActivityAsync<int>(
+                        nameof(AgentTableFunctions.WriteBlueprintMappings), It.IsAny<AgentReaderRequest>(), It.IsAny<TaskOptions>()))
+                    .Callback(() => Calls.Add("mappings")).ReturnsAsync(0);
             }
         }
 

@@ -92,7 +92,7 @@ namespace Hosts.AgentReader.Services.Tests
             await using var connection = new SqlConnection(_connectionString);
             await connection.OpenAsync();
             using var command = connection.CreateCommand();
-            command.CommandText = $"SELECT AgentObjectId, AgentManagerId, BlueprintId, AgentAccountEnabled FROM [agents].[{runId:N}];";
+            command.CommandText = $"SELECT AgentObjectId, AgentManagerId, Blueprint_Code, AgentAccountEnabled FROM [agents].[{runId:N}];";
             using (var reader = await command.ExecuteReaderAsync())
             {
                 while (await reader.ReadAsync())
@@ -218,7 +218,7 @@ namespace Hosts.AgentReader.Services.Tests
             var agentId = Guid.NewGuid();
             await CreateTableAsync(runId);
             await ExecuteAsync(_connectionString, $"""
-                INSERT INTO [agents].[{runId:N}] (AgentObjectId, AgentManagerId, BlueprintId, AgentAccountEnabled)
+                INSERT INTO [agents].[{runId:N}] (AgentObjectId, AgentManagerId, Blueprint_Code, AgentAccountEnabled)
                 VALUES ('{agentId:D}', 1, NULL, 1), ('{agentId:D}', 1, NULL, 1);
                 """);
             var repository = CreateRepository();
@@ -238,7 +238,7 @@ namespace Hosts.AgentReader.Services.Tests
                 CREATE TABLE [agents].[{runId:N}] (
                     AgentObjectId nvarchar(36) NOT NULL,
                     AgentManagerId int NOT NULL,
-                    BlueprintId nvarchar(200) NULL,
+                    Blueprint_Code nvarchar(200) NULL,
                     AgentAccountEnabled bit NOT NULL
                 );
                 """);

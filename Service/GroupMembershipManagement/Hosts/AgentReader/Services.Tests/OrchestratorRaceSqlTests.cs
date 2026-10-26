@@ -221,7 +221,7 @@ namespace Hosts.AgentReader.Services.Tests
             await connection.OpenAsync();
             using var command = connection.CreateCommand();
             command.CommandText = $"""
-                SELECT AgentObjectId, AgentManagerId, BlueprintId, AgentAccountEnabled
+                SELECT AgentObjectId, AgentManagerId, Blueprint_Code, AgentAccountEnabled
                 FROM [agents].[{runId:N}]
                 ORDER BY AgentObjectId, AgentManagerId, AgentAccountEnabled;
                 """;
@@ -244,7 +244,7 @@ namespace Hosts.AgentReader.Services.Tests
                 CREATE TABLE [agents].[{runId:N}] (
                     AgentObjectId nvarchar(36) NOT NULL,
                     AgentManagerId int NOT NULL,
-                    BlueprintId nvarchar(200) NULL,
+                    Blueprint_Code nvarchar(200) NULL,
                     AgentAccountEnabled bit NOT NULL
                 );
                 """);
@@ -299,6 +299,10 @@ namespace Hosts.AgentReader.Services.Tests
                     : Array.FindIndex(pages, page => page.NextLink == nextLink) + 1;
                 return pages[index];
             }
+
+            public Task<IReadOnlyDictionary<Guid, string>> GetBlueprintNamesAsync(
+                Guid runId, IReadOnlyCollection<Guid> blueprintIds, CancellationToken cancellationToken) =>
+                Task.FromResult<IReadOnlyDictionary<Guid, string>>(new Dictionary<Guid, string>());
         }
     }
 }

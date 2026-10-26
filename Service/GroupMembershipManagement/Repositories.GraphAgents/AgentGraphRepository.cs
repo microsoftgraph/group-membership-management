@@ -13,6 +13,7 @@ using Repositories.Contracts.Helpers;
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Net.Http;
 using System.Text.Json;
 using System.Threading;
@@ -23,6 +24,8 @@ namespace Repositories.GraphAgents
     public sealed class AgentGraphRepository : IAgentGraphRepository
     {
         private const string AgentPath = "/v1.0/users/microsoft.graph.agentUser";
+        private const string ServicePrincipalPath = "/v1.0/servicePrincipals";
+        private const int BlueprintLookupBatchSize = 15; // Graph's limit for values in an "in" filter.
         private readonly GraphServiceClient _graphClient;
         private readonly IRetryPolicyProvider _retryPolicyProvider;
         private readonly ILogger<AgentGraphRepository> _logger;
@@ -135,6 +138,92 @@ namespace Repositories.GraphAgents
             {
                 response?.Dispose();
             }
+        }
+
+        public async Task<IReadOnlyDictionary<Guid, string>> GetBlueprintNamesAsync(
+            Guid runId, IReadOnlyCollection<Guid> blueprintIds, CancellationToken cancellationToken)
+        {
+            if (runId == Guid.Empty)
+            {
+                throw new ArgumentException("A non-empty RunId is required.", nameof(runId));
+            }
+
+            ArgumentNullException.ThrowIfNull(blueprintIds);
+            var names = new Dictionary<Guid, string>();
+            if (blueprintIds.Count == 0)
+            {
+                return names;
+            }
+
+            using var scope = _logger.BeginRunIdScope(runId);
+            if (!Uri.TryCreate(_graphClient.RequestAdapter.BaseUrl, UriKind.Absolute, out var baseUri)
+                || baseUri.Scheme != Uri.UriSchemeHttps || baseUri.AbsolutePath.TrimEnd('/') != "/v1.0")
+            {
+                throw new InvalidOperationException("AgentReader requires a Microsoft Graph v1.0 HTTPS client.");
+            }
+
+            foreach (var batch in blueprintIds.Distinct().Chunk(BlueprintLookupBatchSize))
+            {
+                if (batch.Contains(Guid.Empty))
+                {
+                    throw new ArgumentException("A blueprint ID must not be empty.", nameof(blueprintIds));
+                }
+
+                // Only GUIDs formatted by this code reach the filter, so no input can change the query.
+                var filter = "appId in (" + string.Join(",", batch.Select(id => $"'{id:D}'")) + ")";
+                var url = baseUri.GetLeftPart(UriPartial.Authority) + ServicePrincipalPath
+                    + "?$filter=" + Uri.EscapeDataString(filter) + "&$select=appId,displayName";
+
+                var policy = _retryPolicyProvider.CreateRetryAfterPolicy(runId)
+                    .WrapAsync(_retryPolicyProvider.CreateExceptionHandlingPolicy(runId));
+                HttpResponseMessage? response = null;
+                try
+                {
+                    response = await policy.ExecuteAsync(async token =>
+                    {
+                        response?.Dispose();
+                        response = null;
+                        var nativeHandler = new NativeResponseHandler();
+                        await _graphClient.ServicePrincipals.WithUrl(url).GetAsync(configuration =>
+                        {
+                            configuration.Options.Add(new AgentGraphRequestContext(runId, QueryType.Other));
+                            configuration.Options.Add(new ResponseHandlerOption { ResponseHandler = nativeHandler });
+                            configuration.Options.Add(new RetryHandlerOption { MaxRetry = 0 });
+                            configuration.Options.Add(new RedirectHandlerOption { MaxRedirect = 0 });
+                        }, token);
+
+                        response = nativeHandler.Value as HttpResponseMessage
+                            ?? throw new InvalidDataException("Graph did not return an HTTP response.");
+                        return response;
+                    }, cancellationToken);
+
+                    response.EnsureSuccessStatusCode();
+                    await using var stream = await response.Content.ReadAsStreamAsync(cancellationToken);
+                    using var document = await JsonDocument.ParseAsync(stream, cancellationToken: cancellationToken);
+                    if (document.RootElement.ValueKind != JsonValueKind.Object
+                        || !document.RootElement.TryGetProperty("value", out var value)
+                        || value.ValueKind != JsonValueKind.Array)
+                    {
+                        throw new InvalidDataException("Graph did not return a service principal collection.");
+                    }
+
+                    foreach (var element in value.EnumerateArray())
+                    {
+                        var appId = GetAdditionalString(element, "appId");
+                        var displayName = GetAdditionalString(element, "displayName");
+                        if (Guid.TryParse(appId, out var id) && !string.IsNullOrWhiteSpace(displayName))
+                        {
+                            names[id] = displayName;
+                        }
+                    }
+                }
+                finally
+                {
+                    response?.Dispose();
+                }
+            }
+
+            return names;
         }
 
         private static string? GetAdditionalString(JsonElement element, string property)

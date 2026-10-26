@@ -76,6 +76,8 @@ namespace Hosts.AgentReader
                     throw new InvalidDataException("Persisted agent rows do not reconcile with the complete enumeration.");
                 }
 
+                await context.CallActivityAsync<int>(nameof(AgentTableFunctions.WriteBlueprintMappings), request);
+
                 status = counters.FilterPassingAgents == 0 ? "CompletedEmpty" : "Completed";
                 return new AgentReaderResult(request.RunId, status, counters);
             }

@@ -65,5 +65,13 @@ namespace Hosts.AgentReader
         [LoggerMessage(EventId = 260060, Level = LogLevel.Debug,
             Message = "Agent page processed: {TotalEnumerated} enumerated, {FilterPassingAgents} eligible, {TotalFiltered} filtered")]
         public static partial void PageProcessed(this ILogger logger, long totalEnumerated, long filterPassingAgents, long totalFiltered);
+
+        [LoggerMessage(EventId = 260061, Level = LogLevel.Warning,
+            Message = "Blueprint name lookup failed for {BlueprintCount} blueprints; their codes are used as descriptions")]
+        public static partial void BlueprintNameLookupFailed(this ILogger logger, Exception exception, int blueprintCount);
+
+        [LoggerMessage(EventId = 260062, Level = LogLevel.Information,
+            Message = "Wrote {Written} blueprint mappings, {Resolved} with a resolved name")]
+        public static partial void BlueprintMappingsWritten(this ILogger logger, int written, int resolved);
     }
 }

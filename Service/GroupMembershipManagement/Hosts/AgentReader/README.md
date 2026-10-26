@@ -78,8 +78,17 @@ rejection increments its own counter:
 `agentIdentityBlueprintId` is read from the original Graph JSON string, preserving the exact text even
 when the SDK converts GUID- or date-shaped strings to other types. Missing or null values remain null;
 actual non-string JSON values fail the run. Values longer than 200 characters are truncated and counted
-as `BlueprintIdTruncated`.
+as `BlueprintIdTruncated`. The value is stored in the agents table's `Blueprint_Code` column.
 A missing `accountEnabled` defaults to `true` and is counted as `AccountEnabledDefaultApplied`.
+
+## Blueprint names
+
+After the row-count reconciliation, the final `WriteBlueprintMappings` activity reads the distinct
+`Blueprint_Code` values, resolves display names via Graph (`servicePrincipals?$filter=appId in (...)`,
+needs `Application.Read.All`), and replaces the run's `ColumnName = 'Blueprint'` rows in
+`mappings.<RunId>` (`Code` = blueprint id, `Description` = name). Unresolvable ids, non-GUID codes, or a
+failed lookup use the code as the description. The mappings table must exist, so the ADF `AgentReader`
+activity depends on `PopulateMappingsTableDataFlow`.
 
 > The counter names retain `...ManagerEmployeeId...` even though the value is read from
 > `onPremisesImmutableId`.

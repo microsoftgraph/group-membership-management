@@ -34,7 +34,7 @@ namespace Repositories.GraphAgents
 
             var response = await base.SendAsync(request, cancellationToken);
             await GraphTelemetryHelper.TrackResourceUnitsAsync(
-                response, QueryType.AgentUser, context.RunId, _logger, _telemetryClient,
+                response, context.QueryType, context.RunId, _logger, _telemetryClient,
                 GraphOperationType.Read, "Source");
             return response;
         }
