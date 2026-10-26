@@ -13,3 +13,22 @@
 # genuinely no installable fix, and always include an `ignoreUntil` date and an
 # ACTION describing what unblocks the real fix.
 
+[[IgnoredVulns]]
+id = "GHSA-333x-w4r6-6crp"
+ignoreUntil = 2026-11-02
+reason = "One-week exception: fast-uri 3.1.9 is not published on the configured Microsoft feed or public npm as of 2026-10-26. ACTION: once available, raise the override to >=3.1.9 <4, refresh pnpm-lock.yaml, and remove this exception."
+
+[[IgnoredVulns]]
+id = "GHSA-w74x-v6f9-j3xg"
+ignoreUntil = 2026-11-02
+reason = "One-week exception: fast-uri 3.1.9 is not published on the configured Microsoft feed or public npm as of 2026-10-26. ACTION: once available, raise the override to >=3.1.9 <4, refresh pnpm-lock.yaml, and remove this exception."
+
+[[IgnoredVulns]]
+id = "GHSA-wjr9-j795-jxcr"
+ignoreUntil = 2026-11-02
+reason = "One-week exception: fast-uri 3.1.9 is not published on the configured Microsoft feed or public npm as of 2026-10-26. ACTION: once available, raise the override to >=3.1.9 <4, refresh pnpm-lock.yaml, and remove this exception."
+
+[[IgnoredVulns]]
+id = "GHSA-xhq7-xmqj-769h"
+ignoreUntil = 2026-11-02
+reason = "One-week exception: fast-uri 3.1.9 is not published on the configured Microsoft feed or public npm as of 2026-10-26. ACTION: once available, raise the override to >=3.1.9 <4, refresh pnpm-lock.yaml, and remove this exception."
