@@ -1020,6 +1020,17 @@ export type IStrings = {
       descriptionToolTip: string;
       previewDisclosure: string;
       previewSuccess: string;
+      advancedTitle: string;
+      advancedDescription: string;
+      authorizedSendersPlaceholder: string;
+      hideFromAddressList: string;
+      hideFromAddressListToolTip: string;
+      enableSecurity: string;
+      enableSecurityToolTip: string;
+      allowExternalSenders: string;
+      allowExternalSendersToolTip: string;
+      applySettings: string;
+      notNow: string;
       sensitivityLabel: string;
       sensitivityPlaceholder: string;
       sensitivityLabelToolTip: string;

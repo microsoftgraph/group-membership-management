@@ -108,6 +108,7 @@ for (const groupType of [0, 1] as const) {
     await name.fill('Finance Team');
     await create.click();
     await expect(dialog).toHaveCount(0);
+    if (groupType === 0) await page.getByRole('button', { name: 'Not now', exact: true }).click();
     expect(fixture.payloads).toEqual([{
       groupName: 'Finance Team',
       groupAlias: groupType === 0 ? 'finance' : 'FinanceTeam',
@@ -151,6 +152,7 @@ for (const groupType of [0, 1] as const) {
     await page.screenshot({ path: testInfo.outputPath('filled-preview.png') });
     await dialog.getByRole('button', { name: 'Create group', exact: true }).click();
     await expect(dialog).toHaveCount(0);
+    if (groupType === 0) await page.getByRole('button', { name: 'Not now', exact: true }).click();
     await expect(page.getByRole('status').filter({ hasText: 'Preview-only selections were not saved or applied.' })).toBeVisible();
     await expect(page.getByRole('radio', { name: 'Select existing destination', exact: true })).toBeChecked();
     expect(fixture.payloads).toEqual([{
@@ -181,6 +183,7 @@ for (const groupType of [0, 1] as const) {
     if (groupType === 0) await dialog.getByRole('checkbox', { name: 'Send welcome emails', exact: true }).press('Space');
     await dialog.getByRole('button', { name: 'Create group', exact: true }).click();
     await expect(dialog.getByRole('alert')).toContainText("We couldn't create the group");
+    await expect(page.getByRole('dialog', { name: 'Advanced settings (Optional)', exact: true })).toHaveCount(0);
     await expect(dialog.getByRole('alert')).toBeInViewport();
     await expect(dialog.getByPlaceholder('Enter the name of the group')).toHaveValue('Finance Team');
     await expect(dialog.getByPlaceholder('Tell people the purpose of your group')).toHaveValue('Retained description');
@@ -191,6 +194,7 @@ for (const groupType of [0, 1] as const) {
     fixture.setOutcome('success');
     await dialog.getByRole('button', { name: 'Create group', exact: true }).click();
     await expect(dialog).toHaveCount(0);
+    if (groupType === 0) await page.getByRole('button', { name: 'Not now', exact: true }).click();
     expect(fixture.payloads).toHaveLength(2);
     expect(fixture.payloads[1]).toEqual(fixture.payloads[0]);
   });
@@ -236,6 +240,7 @@ for (const groupType of [0, 1] as const) {
     expect(fixture.payloads).toHaveLength(1);
     fixture.release();
     await expect(dialog).toHaveCount(0);
+    if (groupType === 0) await page.getByRole('button', { name: 'Not now', exact: true }).click();
     await expect(page.getByRole('button', { name: /^Next/ })).toBeEnabled();
     expect(fixture.payloads).toHaveLength(1);
   });
@@ -276,6 +281,87 @@ for (const groupType of [0, 1] as const) {
     await expect(dialog.getByRole('button', { name: 'Cancel', exact: true })).toBeVisible();
     await page.screenshot({ path: testInfo.outputPath('mobile.png') });
     expect(fixture.payloads).toHaveLength(0);
+  });
+}
+
+for (const width of [1280, 390]) {
+  test(`advanced settings preview supports editing, help and continuation without writes at ${width}px`, async ({ page }, testInfo) => {
+    await setupMockPage(page);
+    const fixture = await controlGroupCreation(page);
+    const writes: string[] = [];
+    page.on('request', request => {
+      if (['POST', 'PATCH', 'PUT', 'DELETE'].includes(request.method()) && new URL(request.url()).pathname.startsWith('/api/')) {
+        writes.push(request.url());
+      }
+    });
+    await page.goto('/ManageMembership');
+    const createDialog = await openGroupCreation(page, 0);
+    await createDialog.getByPlaceholder('Enter the name of the group').fill('Finance Team');
+    await createDialog.getByRole('button', { name: 'Create group', exact: true }).click();
+    const dialog = page.getByRole('dialog', { name: 'Advanced settings (Optional)', exact: true });
+    await expect(dialog.getByRole('heading', { name: 'Advanced settings (Optional)', exact: true })).toBeVisible();
+    await page.setViewportSize({ width, height: 720 });
+    await expect(createDialog).toHaveCount(0);
+    await expect(dialog.getByText('Configure additional settings for "Finance Team"')).toBeVisible();
+    await expect(dialog.getByText(/these selections won't be saved or applied/)).toBeVisible();
+    const senders = dialog.getByRole('textbox', { name: 'Authorized Senders', exact: true });
+    await expect(senders).toBeFocused();
+    const writesBeforePreview = [...writes];
+    await senders.fill('sender@example.com');
+    for (const [label, description] of [
+      ['Authorized Senders', 'Add users or groups who are permitted to send messages to the group. If blank, all members can send messages to the group. If the group has over 5,000 members it is required to have at least one authorized sender.'],
+      ['Hide from global address list', "Hiding from the global address list will prevent others from discovering this group in your organization's address book. The email address can still receive messages if someone knows it and types it manually."],
+      ['Enable security group functionality', 'When checked, this group will be security-enabled and cannot be disabled. It can be used to assign permissions to apps and resources, such as managing access to shared apps, assigning roles in Entra ID, or enforcing conditional access policies. This setting is not required for groups used only in Microsoft 365 collaboration tools such as Outlook or Teams.'],
+      ['Allow people outside the organization to email the group', 'When checked, people external to the organization can send messages to the group.'],
+    ]) {
+      const info = dialog.getByRole('button', { name: `${label} info`, exact: true });
+      const tooltip = page.getByRole('tooltip');
+      await info.hover();
+      await expect(tooltip).toHaveText(description);
+      await expect(tooltip).toBeInViewport({ ratio: 1 });
+      await page.mouse.move(0, 0);
+      await expect(tooltip).toHaveCount(0);
+      await info.focus();
+      await expect(tooltip).toHaveText(description);
+      await expect(info).toHaveAccessibleDescription(description);
+      await expect(tooltip).toBeInViewport({ ratio: 1 });
+      await page.keyboard.press('Tab');
+      await expect(tooltip).toHaveCount(0);
+    }
+    for (const label of [
+      'Hide from global address list',
+      'Enable security group functionality',
+      'Allow people outside the organization to email the group',
+    ]) {
+      const checkbox = dialog.getByRole('checkbox', { name: label, exact: true });
+      await expect(checkbox).not.toBeChecked();
+      await checkbox.press('Space');
+      await expect(checkbox).toBeChecked();
+      const info = dialog.getByRole('button', { name: `${label} info`, exact: true });
+      await info.focus();
+      await expect(page.getByRole('tooltip')).toBeVisible();
+      await expect(page.getByRole('tooltip')).toBeInViewport({ ratio: 1 });
+      await info.click();
+      await expect(checkbox).toBeChecked();
+    }
+    await senders.focus();
+    for (let i = 0; i < 12; i++) {
+      await page.keyboard.press('Tab');
+      expect(await dialog.evaluate(element => element.contains(document.activeElement))).toBe(true);
+    }
+    const bounds = await dialog.locator('.ms-Dialog-main').boundingBox();
+    expect(bounds).not.toBeNull();
+    expect(bounds!.x).toBeGreaterThanOrEqual(0);
+    expect(bounds!.x + bounds!.width).toBeLessThanOrEqual(width);
+    await dialog.getByRole('button', { name: 'Apply settings', exact: true }).scrollIntoViewIfNeeded();
+    await page.screenshot({ path: testInfo.outputPath('advanced-settings.png') });
+    await dialog.getByRole('button', { name: 'Apply settings', exact: true }).click();
+    await expect(dialog).toHaveCount(0);
+    await expect(page.getByRole('status').filter({ hasText: 'Preview-only selections were not saved or applied.' })).toBeVisible();
+    expect(writes).toEqual(writesBeforePreview);
+    expect(fixture.payloads).toHaveLength(1);
+    await page.getByRole('button', { name: /^Next/ }).click();
+    await expect(page.getByTestId('add-rule-button')).toBeVisible();
   });
 }
 

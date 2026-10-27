@@ -50,6 +50,7 @@ test('preserves the generated alias and locks group creation controls while the 
 
   releaseResponse();
   await expect(dialog).toHaveCount(0);
+  await page.getByRole('dialog', { name: 'Advanced settings (Optional)', exact: true }).getByRole('button', { name: 'Not now', exact: true }).click();
   await expect(page.getByRole('status').filter({ hasText: 'Preview-only selections were not saved or applied.' })).toBeVisible();
   await expect(page.getByRole('button', { name: /^Next/ })).toBeEnabled();
 });

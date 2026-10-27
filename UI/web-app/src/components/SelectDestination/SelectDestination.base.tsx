@@ -55,6 +55,7 @@ import { selectCreateGroupFeatureEnabled } from '../../store/settings.slice';
 import { OnboardingStatus } from '../../models';
 import { EndpointsList } from '../EndpointsList';
 import { CreateGroup } from '../CreateGroup';
+import { AdvancedGroupSettings } from '../CreateGroup/AdvancedGroupSettings';
 import { debounce } from '../../utils/jobUtils';
 import { selectIsJobTenantWriter, selectIsTeamsChannelOnboarder } from '../../store/roles.slice';
 import { SourcePartType } from '../../models/SourcePartType';
@@ -164,6 +165,8 @@ export const SelectDestinationBase: React.FunctionComponent<ISelectDestinationPr
   const [createNewGroup, setCreateNewGroup] = useState(false);
   const [dialogType, setDialogType] = useState<NewGroupType>();
   const [showPreviewSuccess, setShowPreviewSuccess] = useState(false);
+  const [showAdvancedSettings, setShowAdvancedSettings] = useState(false);
+  const [createdGroupName, setCreatedGroupName] = useState('');
   const destinationPickerRef = useRef<IBasePicker<IPersonaProps>>(null);
   const isCreateGroupEnabled = useSelector(selectCreateGroupFeatureEnabled);
   const isCreateGroupLoading = useSelector(manageMembershipCreateGroupLoading);
@@ -177,7 +180,11 @@ export const SelectDestinationBase: React.FunctionComponent<ISelectDestinationPr
     if (dialogType !== undefined && createdGroupId) {
       setDialogType(undefined);
       setCreateNewGroup(false);
-      setShowPreviewSuccess(true);
+      if (dialogType === NewGroupType.Microsoft365) {
+        setShowAdvancedSettings(true);
+      } else {
+        setShowPreviewSuccess(true);
+      }
     }
   }, [createdGroupId, dialogType]);
 
@@ -608,8 +615,17 @@ export const SelectDestinationBase: React.FunctionComponent<ISelectDestinationPr
         </MessageBar>
       )}
       {isCreateGroupEnabled && dialogType !== undefined && (
-        <CreateGroup key={dialogType} groupType={dialogType} onGroupCreated={onGroupCreated} onDismiss={() => {
+        <CreateGroup key={dialogType} groupType={dialogType} onGroupCreated={(groupName, groupAlias, groupType, description) => {
+          setCreatedGroupName(groupName);
+          return onGroupCreated(groupName, groupAlias, groupType, description);
+        }} onDismiss={() => {
           if (!isCreateGroupLoading) setDialogType(undefined);
+        }} />
+      )}
+      {isCreateGroupEnabled && showAdvancedSettings && (
+        <AdvancedGroupSettings groupName={createdGroupName} onDismiss={() => {
+          setShowAdvancedSettings(false);
+          setShowPreviewSuccess(true);
         }} />
       )}
     </div>
