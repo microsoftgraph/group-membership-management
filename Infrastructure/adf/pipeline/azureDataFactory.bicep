@@ -564,6 +564,13 @@ resource Pipeline_PopulateDestinationPipeline 'Microsoft.DataFactory/factories/p
                 type: 'Expression'
               }
             }
+            {
+              type: 'Query'
+              text: {
+                value: '@concat(\'CREATE NONCLUSTERED INDEX IDX_Agents_AgentObjectId ON agents.[\',replace(pipeline().RunId,\'-\',\'\'),\'](AgentObjectId)\')'
+                type: 'Expression'
+              }
+            }
           ]
           scriptBlockExecutionTimeout: '02:00:00'
         }

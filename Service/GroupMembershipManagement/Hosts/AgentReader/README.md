@@ -45,7 +45,8 @@ following the same layering as `SqlMembershipObtainer`, `SqlDataChecker` and `Az
 3. **ValidateAgentTable** requires that `agents.[R]` already exists, that `IDX_Agents_AgentManagerId` is
    present and enabled, and that the table is empty. It also reports whether `AgentManagerId` allows
    NULL (see [Agents without a valid manager](#agents-without-a-valid-manager)). The component performs
-   **no DDL** of any kind.
+   **no DDL** of any kind. Data Factory also creates the nonclustered `IDX_Agents_AgentObjectId` index
+   for lookups by agent; validation doesn't require it, so tables created before it was added still pass.
 4. **AgentReaderFunction** reads one Graph page per call:
    ```
    /v1.0/users/microsoft.graph.agentUser

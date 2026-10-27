@@ -256,6 +256,8 @@ namespace Hosts.AgentReader.Services.Tests
                 """);
             await ExecuteAsync(_connectionString,
                 $"CREATE CLUSTERED INDEX IDX_Agents_AgentManagerId ON [agents].[{runId:N}](AgentManagerId);");
+            await ExecuteAsync(_connectionString,
+                $"CREATE NONCLUSTERED INDEX IDX_Agents_AgentObjectId ON [agents].[{runId:N}](AgentObjectId);");
         }
 
         private static async Task ExecuteAsync(string connectionString, string sql)
