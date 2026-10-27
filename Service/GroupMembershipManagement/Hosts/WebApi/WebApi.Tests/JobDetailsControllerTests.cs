@@ -759,6 +759,91 @@ namespace Services.Tests
         }
 
         [TestMethod]
+        [DataRow(Roles.JOB_OWNER_ENABLER, "/Status")]
+        [DataRow(Roles.JOB_OWNER_WRITER, "/Status")]
+        [DataRow(Roles.JOB_OWNER_WRITER, "/Query")]
+        [DataRow(Roles.JOB_OWNER_WRITER, "/Period")]
+        [DataRow(Roles.SUBMISSION_REVIEWER, "/Status")]
+        [DataRow(Roles.SUBMISSION_REVIEWER, "/Query")]
+        [DataRow(Roles.SUBMISSION_REVIEWER, "/Period")]
+        [DataRow(Roles.JOB_TENANT_WRITER, "/Status")]
+        [DataRow(Roles.JOB_TENANT_WRITER, "/Query")]
+        [DataRow(Roles.JOB_TENANT_WRITER, "/Period")]
+        public async Task DeveloperPausedJob_OnlyTenantWriterCanPatchAsync(string role, string path)
+        {
+            _jobEntity.Status = SyncStatus.DeveloperPaused.ToString();
+            var originalQuery = _jobEntity.Query;
+            var originalPeriod = _jobEntity.Period;
+            var claims = new List<Claim>
+            {
+                new Claim(ClaimTypes.Role, role),
+                new Claim("http://schemas.microsoft.com/identity/claims/objectidentifier", Guid.NewGuid().ToString())
+            };
+            if (role == Roles.SUBMISSION_REVIEWER)
+            {
+                claims.Add(new Claim(ClaimTypes.Role, Roles.JOB_OWNER_WRITER));
+            }
+            _jobDetailsController.ControllerContext = CreateControllerContext(claims);
+
+            var isStatusUpdate = path == "/Status";
+            var changeReason = isStatusUpdate ? SyncJobChangeReason.StatusUpdate : SyncJobChangeReason.Update;
+            var value = path == "/Period"
+                ? JsonSerializer.SerializeToElement(12)
+                : JsonSerializer.SerializeToElement(isStatusUpdate ? SyncStatus.Idle.ToString() : "UpdatedQuery");
+            var requestDTO = CreatePatchJobRequestDTO(
+                new List<PatchOperation> { new PatchOperation { Op = "replace", Path = path, Value = value } },
+                changeReason.ToString(), "Testing developer-paused permissions");
+
+            var response = isStatusUpdate
+                ? await _jobDetailsController.EnableJobAsync(_jobEntity.Id, requestDTO)
+                : await _jobDetailsController.UpdateJobAsync(_jobEntity.Id, requestDTO);
+
+            if (role == Roles.JOB_TENANT_WRITER)
+            {
+                Assert.IsInstanceOfType<OkObjectResult>(response);
+                Assert.AreEqual(isStatusUpdate ? SyncStatus.Idle.ToString() : SyncStatus.PendingReview.ToString(), _jobEntity.Status);
+                Assert.AreEqual(path == "/Query" ? "UpdatedQuery" : originalQuery, _jobEntity.Query);
+                Assert.AreEqual(path == "/Period" ? 12 : originalPeriod, _jobEntity.Period);
+                _syncJobChangeRepository.Verify(x => x.Save(It.IsAny<SyncJobChange>()), Times.Once);
+            }
+            else
+            {
+                Assert.IsInstanceOfType<ForbidResult>(response);
+                Assert.AreEqual(SyncStatus.DeveloperPaused.ToString(), _jobEntity.Status);
+                Assert.AreEqual(originalQuery, _jobEntity.Query);
+                Assert.AreEqual(originalPeriod, _jobEntity.Period);
+                _syncJobRepository.Verify(x => x.UpdateSyncJobsAsync(It.IsAny<IEnumerable<SyncJob>>(), It.IsAny<SyncStatus?>()), Times.Never);
+                _syncJobChangeRepository.Verify(x => x.Save(It.IsAny<SyncJobChange>()), Times.Never);
+                _titlesRepository.VerifyNoOtherCalls();
+                _notificationService.VerifyNoOtherCalls();
+            }
+        }
+
+        [TestMethod]
+        public async Task DeveloperPausedJob_ReviewerCannotBypassPauseThroughReviewAsync()
+        {
+            _jobEntity.Status = SyncStatus.DeveloperPaused.ToString();
+            _jobDetailsController.ControllerContext = CreateControllerContext(new List<Claim>
+            {
+                new Claim(ClaimTypes.Role, Roles.SUBMISSION_REVIEWER),
+                new Claim("http://schemas.microsoft.com/identity/claims/objectidentifier", Guid.NewGuid().ToString())
+            });
+            var requestDTO = CreatePatchJobRequestDTO(
+                new List<PatchOperation>
+                {
+                    new PatchOperation { Op = "replace", Path = "/Status", Value = ConvertToJsonElement(SyncStatus.Idle.ToString()) }
+                },
+                SyncJobChangeReason.SubmissionApproved.ToString(), "Testing review bypass");
+
+            var response = await _jobDetailsController.ReviewJobAsync(_jobEntity.Id, requestDTO);
+
+            Assert.IsInstanceOfType<ForbidResult>(response);
+            Assert.AreEqual(SyncStatus.DeveloperPaused.ToString(), _jobEntity.Status);
+            _syncJobRepository.Verify(x => x.UpdateSyncJobsAsync(It.IsAny<IEnumerable<SyncJob>>(), It.IsAny<SyncStatus?>()), Times.Never);
+            _syncJobChangeRepository.Verify(x => x.Save(It.IsAny<SyncJobChange>()), Times.Never);
+        }
+
+        [TestMethod]
         [DataRow(Roles.JOB_OWNER_ENABLER)]
         [DataRow(Roles.JOB_OWNER_WRITER)]
         [DataRow(Roles.JOB_TENANT_WRITER)]

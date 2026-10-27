@@ -102,6 +102,12 @@ namespace Services.WebApi
                 return response;
             }
 
+            if (syncJob.Status == SyncStatus.DeveloperPaused.ToString() && !request.IsJobTenantWriter)
+            {
+                response.StatusCode = HttpStatusCode.Forbidden;
+                return response;
+            }
+
             var groupId = syncJob.MembershipType == MembershipTypes.TeamsChannelMembership.ToString()
                 ? syncJob.Channel?.GroupId
                 : syncJob.Group?.GroupId;

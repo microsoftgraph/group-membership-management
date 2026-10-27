@@ -101,7 +101,7 @@ namespace WebApi.Tests
                 withQueueRepository ? _autoApproverQueue.Object : null);
         }
 
-        private PatchJobRequest UpdateRequest(JsonPatchDocument<SyncJobPatch> patch) =>
+        private PatchJobRequest UpdateRequest(JsonPatchDocument<SyncJobPatch> patch, bool isJobTenantWriter = false) =>
             new PatchJobRequest(
                 isAllowed: true,
                 isOnBehalfAllowed: false,
@@ -111,7 +111,8 @@ namespace WebApi.Tests
                 userDisplayName: "Owner",
                 changeReason: SyncJobChangeReason.Update.ToString(),
                 businessJustification: "config change",
-                canApproveJob: false);
+                canApproveJob: false,
+                isJobTenantWriter: isJobTenantWriter);
 
         private PatchJobRequest ScheduledNowRequest(JsonPatchDocument<SyncJobPatch> patch) =>
             new PatchJobRequest(
@@ -349,7 +350,6 @@ namespace WebApi.Tests
         [DataRow(SyncStatus.TeamsChannelError)]
         [DataRow(SyncStatus.SchemaError)]
         [DataRow(SyncStatus.TransientError)]
-        [DataRow(SyncStatus.DeveloperPaused)]
         [DataRow(SyncStatus.SubmissionRejected)]
         [DataRow(SyncStatus.NestedGroupsFound)]
         [DataRow(SyncStatus.ManagerNotFound)]
@@ -373,6 +373,34 @@ namespace WebApi.Tests
             Assert.IsFalse(_savedChanges.Any(c => c.ChangeReason == SyncJobChangeReason.UpdateAutoApproved.ToString()),
                 "A rejected job must not be auto-approved via the config-only fast path.");
             Assert.AreEqual(SyncJobChangeReason.Update.ToString(), _savedChanges.Single().ChangeReason);
+            Assert.AreEqual(0, _telemetry.GetMetrics("JobReviewed").Count);
+            _notifications.VerifyNoOtherCalls();
+        }
+
+        [TestMethod]
+        [DataRow(false)]
+        [DataRow(true)]
+        public async Task Update_ConfigOnly_DeveloperPaused_RequiresTenantWriter(bool isJobTenantWriter)
+        {
+            _syncJob.Status = SyncStatus.DeveloperPaused.ToString();
+            var originalThreshold = _syncJob.ThresholdPercentageForAdditions;
+            var patch = new JsonPatchDocument<SyncJobPatch>();
+            patch.Replace(x => x.ThresholdPercentageForAdditions, 15);
+
+            var response = await CreateHandler().ExecuteAsync(UpdateRequest(patch, isJobTenantWriter));
+
+            Assert.AreEqual(isJobTenantWriter ? HttpStatusCode.OK : HttpStatusCode.Forbidden, response.StatusCode);
+            Assert.AreEqual(SyncStatus.DeveloperPaused.ToString(), _syncJob.Status);
+            Assert.AreEqual(isJobTenantWriter ? 15 : originalThreshold, _syncJob.ThresholdPercentageForAdditions);
+            Assert.AreEqual(StoredQuery, _syncJob.Query);
+            Assert.AreEqual(isJobTenantWriter ? 1 : 0, _savedChanges.Count);
+            if (isJobTenantWriter)
+            {
+                Assert.AreEqual(SyncJobChangeReason.Update.ToString(), _savedChanges.Single().ChangeReason);
+            }
+            _jobs.Verify(x => x.UpdateSyncJobsAsync(It.IsAny<IEnumerable<SyncJob>>(), It.IsAny<SyncStatus?>()),
+                isJobTenantWriter ? Times.Once() : Times.Never());
+            Assert.AreEqual(0, _enqueued.Count);
             Assert.AreEqual(0, _telemetry.GetMetrics("JobReviewed").Count);
             _notifications.VerifyNoOtherCalls();
         }

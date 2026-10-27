@@ -527,6 +527,8 @@ export const strings: IStrings = {
       sync: 'Sync',
       enabled: 'Enabled',
       disabled: 'Disabled',
+      disabledThresholdExceeded: 'Disabled - Threshold Exceeded',
+      disabledDeveloperPaused: 'Disabled - Developer Paused',
       pendingReview: 'Pending Review',
       pendingReviewDescription: 'Your submission is awaiting to be reviewed.',
       pendingReviewInstructions: 'Please review this request and then approve or decline after reviewing the membership configuration.',

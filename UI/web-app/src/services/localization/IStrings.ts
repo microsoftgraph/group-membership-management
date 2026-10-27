@@ -524,6 +524,8 @@ export type IStrings = {
       sync: string;
       enabled: string;
       disabled: string;
+      disabledThresholdExceeded: string;
+      disabledDeveloperPaused: string;
       pendingReview: string;
       pendingReviewDescription: string;
       pendingReviewInstructions: string;

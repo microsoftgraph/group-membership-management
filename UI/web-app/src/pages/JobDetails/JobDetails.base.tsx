@@ -70,7 +70,7 @@ import {
 } from './JobDetails.types';
 import { useStrings } from '../../store/hooks';
 import { setPagingBarVisible } from '../../store/pagingBar.slice';
-import { selectIsJobOwnerDeleter, selectIsJobOwnerEnabler, selectIsJobWriter, selectIsSubmissionReviewer } from '../../store/roles.slice';
+import { selectIsJobOwnerDeleter, selectIsJobOwnerEnabler, selectIsJobTenantWriter, selectIsJobWriter, selectIsSubmissionReviewer } from '../../store/roles.slice';
 import { PatchJobResponse, SyncJobChange, SyncStatus } from '../../models';
 import { OnboardingSteps } from '../../models/OnboardingSteps';
 import { Loader } from '../../components/Loader';
@@ -132,6 +132,7 @@ export const JobDetailsBase: React.FunctionComponent<IJobDetailsProps> = (
   const jobLoading = useSelector(selectSelectedJobLoading);
   const removeGMMPending = useSelector(selectRemoveGMMLoading);
   const isJobWriter = useSelector(selectIsJobWriter);
+  const isJobTenantWriter = useSelector(selectIsJobTenantWriter);
   const isSubmissionReviewer = useSelector(selectIsSubmissionReviewer);
   const jobIdSet = useSelector(selectJobIdSet);
   const isJobOwnerDeleter: boolean = useSelector(selectIsJobOwnerDeleter);
@@ -243,8 +244,8 @@ export const JobDetailsBase: React.FunctionComponent<IJobDetailsProps> = (
   const isJobInProgress = job?.status === SyncStatus.InProgress;
 
   useEffect(() => {
-    setCanEditJob(isJobWriter && job?.status !== SyncStatus.PendingReview && job?.status !== SyncStatus.PendingConfiguration && job?.status !== SyncStatus.PendingAutoApproval);
-  }, [isJobWriter, job?.status]);
+    setCanEditJob(isJobWriter && job?.status !== SyncStatus.PendingReview && job?.status !== SyncStatus.PendingConfiguration && job?.status !== SyncStatus.PendingAutoApproval && (job?.status !== SyncStatus.DeveloperPaused || isJobTenantWriter));
+  }, [isJobWriter, isJobTenantWriter, job?.status]);
 
   useEffect(() => {
     dispatch(setPagingBarVisible(false));
@@ -660,10 +661,16 @@ const MembershipStatusContent: React.FunctionComponent<IStatusContentProps> = (
   // and reflected the previous job's status during rapid renavigation).
   const jobStatus = job?.status ?? '';
   const isJobEnabled = job?.enabledOrNot ?? false;
+  const disabledStatusLabel = jobStatus === SyncStatus.ThresholdExceeded
+    ? strings.JobDetails.labels.disabledThresholdExceeded
+    : jobStatus === SyncStatus.DeveloperPaused
+      ? strings.JobDetails.labels.disabledDeveloperPaused
+      : strings.JobDetails.labels.disabled;
   const jobDetails = useSelector(selectSelectedJobDetails);
   const isJobEnabler = useSelector(selectIsJobOwnerEnabler);
   const isJobWriter = useSelector(selectIsJobWriter);
-  const canEnableJob = isJobEnabler || isJobWriter;
+  const isJobTenantWriter = useSelector(selectIsJobTenantWriter);
+  const canEnableJob = (isJobEnabler || isJobWriter) && (jobStatus !== SyncStatus.DeveloperPaused || isJobTenantWriter);
   const jobChanges: SyncJobChange[] | undefined = useSelector(selectSelectedJobChanges);
   const lastChange = jobChanges?.[0];
   const businessJustification = useSelector(manageMembershipBusinessJustification);
@@ -876,11 +883,11 @@ const MembershipStatusContent: React.FunctionComponent<IStatusContentProps> = (
             inlineLabel={true}
             checked={isJobEnabled}
             onChange={handleStatusChange}
-            disabled={!canEnableJob || jobStatus === SyncStatus.PendingReview || jobStatus === SyncStatus.PendingConfiguration || jobStatus === SyncStatus.PendingAutoApproval || jobStatus === SyncStatus.SubmissionRejected}
+            disabled={!canEnableJob || jobStatus === SyncStatus.PendingReview || jobStatus === SyncStatus.PendingConfiguration || jobStatus === SyncStatus.PendingAutoApproval || jobStatus === SyncStatus.SubmissionRejected || jobStatus === SyncStatus.ThresholdExceeded}
           />
         </div>
         <div className={isJobEnabled ? classNames.jobEnabled : classNames.jobDisabled}>
-          {isJobEnabled ? strings.JobDetails.labels.enabled : strings.JobDetails.labels.disabled}
+          {isJobEnabled ? strings.JobDetails.labels.enabled : disabledStatusLabel}
         </div>
       </div>
       {canScheduleNow && isJobEnabled && jobStatus === SyncStatus.Idle && (

@@ -528,6 +528,8 @@ export const strings: IStrings = {
       sync: 'Sync',
       enabled: 'Activo',
       disabled: 'Inactivo',
+      disabledThresholdExceeded: 'Inactivo - Límite excedido',
+      disabledDeveloperPaused: 'Inactivo - Pausado por el desarrollador',
       pendingReview: 'Revisión pendiente',
       pendingReviewDescription: 'La configuración de la membresía está esperando ser verificada.',
       pendingReviewInstructions: 'Por favor revisa esta solicitud y luego aprueba o rechaza después de revisar la configuración de la membresía.',

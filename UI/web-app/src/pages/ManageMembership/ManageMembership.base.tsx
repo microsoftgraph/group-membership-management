@@ -15,7 +15,7 @@ import {
   IComboBox,
   Stack,
 } from '@fluentui/react';
-import { useNavigate, useLocation, useParams } from 'react-router-dom';
+import { Navigate, useNavigate, useLocation, useParams } from 'react-router-dom';
 import { Page } from '../../components/Page';
 import { PageHeader } from '../../components/PageHeader';
 import { IManageMembershipProps, IManageMembershipStyleProps, IManageMembershipStyles } from './ManageMembership.types';
@@ -561,6 +561,10 @@ export const ManageMembershipBase: React.FunctionComponent<IManageMembershipProp
     .map((word) => word[0])
     .join('')
     .toUpperCase();
+
+  if (jobId && reactiveJobDetails?.syncJobId?.toLowerCase() === jobId.toLowerCase() && reactiveJobDetails.status === SyncStatus.DeveloperPaused && !isTenantJobWriter) {
+    return <Navigate to={`/JobDetails/${jobId}`} replace />;
+  }
 
   return (
     <Page>

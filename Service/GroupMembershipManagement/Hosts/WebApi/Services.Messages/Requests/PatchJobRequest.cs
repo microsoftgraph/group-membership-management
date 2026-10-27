@@ -19,6 +19,7 @@ namespace Services.Messages.Requests
         public bool CanApproveJob { get; set; }
         public string TitlesValue { get; set; }
         public bool HasTitlesOperation { get; set; }
+        public bool IsJobTenantWriter { get; }
 
         public PatchJobRequest(
             bool isAllowed,
@@ -31,7 +32,8 @@ namespace Services.Messages.Requests
             string businessJustification,
             bool canApproveJob,
             string titlesValue = null,
-            bool hasTitlesOperation = false)
+            bool hasTitlesOperation = false,
+            bool isJobTenantWriter = false)
         {
             IsAllowed = isAllowed;
             IsOnBehalfAllowed = isOnBehalfAllowed;
@@ -44,6 +46,7 @@ namespace Services.Messages.Requests
             CanApproveJob = canApproveJob;
             TitlesValue = titlesValue;
             HasTitlesOperation = hasTitlesOperation;
+            IsJobTenantWriter = isJobTenantWriter;
         }
     }
 }
