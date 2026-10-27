@@ -95,6 +95,7 @@ export const pagingBarSlice = createSlice({
     },
     setSortKey: (state, action) => {
       state.sortKey = action.payload;
+      state.pageNumber = 1;
     },
     setIsSortedDescending: (state, action) => {
       state.isSortedDescending = action.payload;
@@ -208,17 +209,18 @@ export const selectPagingOptions = createSelector(
     (state: RootState) => state.pagingBar.filterDestinationName,
     (state: RootState) => state.pagingBar.filterDestinationType,
     (state: RootState) => state.pagingBar.filterDestinationOwner,
-    (state: RootState) => state.pagingBar.customSortBy,
     (state: RootState) => state.roles.isJobTenantWriter,
     (state: RootState) => state.roles.isTeamsChannelOnboarder,
   ],
   (pageNumber, pageSize, sortKey, isSortedDescending, filterStatus, filterActionRequired,
-   filterDestinationId, filterDestinationName, filterDestinationType, filterDestinationOwner, customSortBy,
+   filterDestinationId, filterDestinationName, filterDestinationType, filterDestinationOwner,
    isJobTenantWriter, isTeamsChannelOnboarder) => {
 
     let orderByString: string | undefined = undefined;
     const filters: string[] = [];
-    if (sortKey !== undefined && sortKey !== 'targetGroupName' && sortKey !== 'lastModifiedTime') {
+    const customSortBy = sortKey === 'targetGroupName' || sortKey === 'lastModifiedTime' ||
+      sortKey === 'estimatedNextRunTime' ? sortKey : undefined;
+    if (sortKey !== undefined && customSortBy === undefined) {
       orderByString = sortKey + (isSortedDescending ? ' desc' : '');
     }
     if (filterDestinationId) {
@@ -266,7 +268,7 @@ export const selectPagingOptions = createSelector(
       filter: filterString,
       sortKey,
       isSortedDescending,
-      customSortBy: (customSortBy === 'targetGroupName' || customSortBy === 'lastModifiedTime') ? customSortBy : undefined
+      customSortBy
     };
   }
 );

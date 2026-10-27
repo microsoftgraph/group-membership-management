@@ -1904,6 +1904,94 @@ namespace Services.Tests
         }
 
         [TestMethod]
+        [DataRow(false, "?$top=2&$skip=2", false)]
+        [DataRow(true, "?$top=2&$skip=2", false)]
+        [DataRow(false, "?$top=2", false)]
+        [DataRow(true, "?$top=2", false)]
+        [DataRow(false, "", false)]
+        [DataRow(true, "", false)]
+        [DataRow(false, "?$filter=Status eq 'Idle'&$top=2&$skip=2", true)]
+        [DataRow(true, "?$filter=Status eq 'Idle'&$top=2&$skip=2", true)]
+        public async Task GetJobs_CustomSort_EstimatedNextRunTime_SortsBeforePaging(
+            bool descending, string queryString, bool filtered)
+        {
+            var now = DateTime.UtcNow;
+            var jobs = CreateJobsWithDestinationNames(6);
+            for (var index = 0; index < jobs.Count; index++)
+            {
+                jobs[index].Id = Guid.Parse($"00000000-0000-0000-0000-{index + 1:D12}");
+            }
+
+            jobs[0].ScheduledDate = now.AddHours(4);
+            jobs[1].StartDate = now.AddHours(3);
+            jobs[1].ScheduledDate = now.AddHours(8);
+            jobs[3].ScheduledDate = now.AddHours(2);
+            jobs[3].Status = SyncStatus.InProgress.ToString();
+            jobs[5].ScheduledDate = now.AddHours(1);
+
+            _databaseSyncJobsRepository.Setup(x => x.GetSyncJobs(It.IsAny<bool>()))
+                .Returns(() => jobs.AsQueryable());
+            _graphGroupRepository.Setup(x => x.GetGroupsAsync(It.IsAny<List<Guid>>()))
+                .ReturnsAsync((List<Guid> ids) => ids.Select(id => new AzureADGroup { ObjectId = id }).ToList());
+            _httpContextAccessor.Setup(x => x.HttpContext).Returns(CreateHttpContext(new List<Claim>
+            {
+                new Claim(ClaimTypes.Role, Roles.JOB_TENANT_READER)
+            }));
+
+            var queryOptions = CreateQueryOptions(queryString);
+            var response = await _getJobsHandler.ExecuteAsync(new GetJobsRequest
+            {
+                QueryOptions = queryOptions,
+                CustomSortBy = "estimatedNextRunTime",
+                IsSortedDescending = descending
+            });
+            var requestCompletedAt = DateTime.UtcNow;
+            var latestExpectedNextRunTime = new DateTime(requestCompletedAt.Year, requestCompletedAt.Month,
+                requestCompletedAt.Day, requestCompletedAt.Hour, requestCompletedAt.Minute, 0, DateTimeKind.Utc)
+                .AddMinutes(5 - requestCompletedAt.Minute % 5);
+
+            var orderedIndices = descending ? new[] { 0, 1, 3, 5, 2, 4 } : new[] { 2, 4, 5, 3, 1, 0 };
+            var expectedJobs = orderedIndices.Where(index => !filtered || index != 3)
+                .Select(index => jobs[index]).ToList();
+            var totalItems = expectedJobs.Count;
+            var top = queryOptions.Top?.Value;
+            var skip = queryOptions.Skip?.Value ?? 0;
+            if (top.HasValue)
+            {
+                expectedJobs = expectedJobs.Skip(skip).Take(top.Value).ToList();
+            }
+
+            CollectionAssert.AreEqual(expectedJobs.Select(job => job.Id).ToList(),
+                response.Model.Select(job => job.SyncJobId).ToList());
+            Assert.AreEqual(totalItems, response.TotalItems);
+            Assert.AreEqual(top.HasValue ? (int)Math.Ceiling((double)totalItems / top.Value) : 1,
+                response.TotalNumberOfPages);
+            Assert.AreEqual(top.HasValue ? skip / top.Value + 1 : 1, response.CurrentPage);
+            foreach (var dto in response.Model)
+            {
+                var index = jobs.FindIndex(job => job.Id == dto.SyncJobId);
+                if (index == 2 || index == 4)
+                {
+                    Assert.IsTrue(dto.EstimatedNextRunTime > now);
+                    Assert.IsTrue(dto.EstimatedNextRunTime <= latestExpectedNextRunTime);
+                    Assert.AreEqual(0, dto.EstimatedNextRunTime.Minute % 5);
+                    Assert.AreEqual(0, dto.EstimatedNextRunTime.Second);
+                }
+                else
+                {
+                    Assert.AreEqual(index == 1 ? jobs[index].StartDate : jobs[index].ScheduledDate,
+                        dto.EstimatedNextRunTime);
+                }
+            }
+
+            var expectedGroupIds = expectedJobs.Select(job => job.Group.GroupId).ToList();
+            _graphGroupRepository.Verify(x => x.GetGroupsAsync(It.Is<List<Guid>>(ids =>
+                ids.Count == expectedGroupIds.Count && ids.All(id => expectedGroupIds.Contains(id)))), Times.Once);
+            _syncJobChangeRepository.Verify(x => x.GetLastSyncJobRecordBySyncJobIdAsync(It.IsAny<Guid>()),
+                Times.Exactly(expectedJobs.Count));
+        }
+
+        [TestMethod]
         public async Task GetJobs_CustomSort_LastModifiedTime_OnlyResolvesVisiblePageFromGraph()
         {
             var jobs = CreateJobsWithDestinationNames(50);

@@ -51,6 +51,38 @@ test('Last Modified column is visible in the jobs list', async ({ page }) => {
   console.log('✅ Last Modified column is visible in the jobs list');
 });
 
+test('Date sorting uses the selected column without stale custom sorting', async ({ page }) => {
+  for (const [column, sortKey] of [
+    ['Last Modified', 'lastModifiedTime'],
+    ['Next Run', 'estimatedNextRunTime'],
+    ['Last Modified', 'lastModifiedTime'],
+    ['Last Run', 'lastSuccessfulRunTime'],
+  ]) {
+    for (const descending of [false, true]) {
+      await page.getByRole('columnheader', { name: new RegExp(column, 'i') }).click();
+      const [request] = await Promise.all([
+        page.waitForRequest(request =>
+          request.method() === 'GET' && /\/api\/v1\/jobs\/?$/.test(new URL(request.url()).pathname)),
+        page.getByRole('menuitem', {
+          name: descending ? 'Sort Newer to Older' : 'Sort Older to Newer', exact: true,
+        }).click(),
+      ]);
+      const params = new URL(request.url()).searchParams;
+
+      expect(params.get('isSortedDescending')).toBe(String(descending));
+      if (sortKey === 'lastSuccessfulRunTime') {
+        expect(params.get('customSortBy')).toBeNull();
+        expect(params.get('$orderBy')).toBe(`LastSuccessfulRunTime${descending ? ' desc' : ''}`);
+      } else {
+        expect(params.get('customSortBy')).toBe(sortKey);
+        expect(params.get('$orderBy')).toBeNull();
+      }
+      await expect(page.getByRole('columnheader', { name: new RegExp(column, 'i') }))
+        .toHaveAttribute('aria-sort', descending ? 'descending' : 'ascending');
+    }
+  }
+});
+
 test('Destination search debounces rapid typing into a single jobs request', async ({ page }) => {
   // Count GET /api/v1/jobs requests fired AFTER the initial page load settles.
   const jobsRequests: string[] = [];

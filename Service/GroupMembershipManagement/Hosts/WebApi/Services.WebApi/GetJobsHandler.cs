@@ -12,6 +12,7 @@ using Services.Messages.Requests;
 using Services.Messages.Responses;
 using WebApi.Models;
 using Microsoft.Extensions.Logging;
+using System.Linq.Expressions;
 using SyncJobDTO = WebApi.Models.DTOs.SyncJob;
 
 namespace Services
@@ -54,8 +55,18 @@ namespace Services
 
             var jobsQuery = GetSyncJobsQuery();
 
-            // Check if we need custom sorting (targetGroupName or lastModifiedTime)
-            var needsCustomSorting = request.CustomSortBy == "targetGroupName" || request.CustomSortBy == "lastModifiedTime";
+            var currentTime = DateTime.UtcNow;
+            var nextRunBoundary = new DateTime(currentTime.Year, currentTime.Month, currentTime.Day,
+                currentTime.Hour, currentTime.Minute, 0, DateTimeKind.Utc).AddMinutes(5 - currentTime.Minute % 5);
+            // Share the same calculation between SQL ordering and the returned values.
+            Expression<Func<SyncJob, DateTime>> nextRunTimeExpression = job =>
+                job.StartDate > currentTime ? job.StartDate :
+                job.ScheduledDate > currentTime ? job.ScheduledDate : nextRunBoundary;
+            var getEstimatedNextRunTime = nextRunTimeExpression.Compile();
+
+            var needsCustomSorting = request.CustomSortBy == "targetGroupName" ||
+                                     request.CustomSortBy == "lastModifiedTime" ||
+                                     request.CustomSortBy == "estimatedNextRunTime";
 
             if (!needsCustomSorting && request.QueryOptions?.OrderBy?.OrderByClause == null)
             {
@@ -112,6 +123,17 @@ namespace Services
                     jobs = hasPaging
                             ? sortedQuery.Skip(pageOffset).Take(pageSize).ToList()
                             : sortedQuery.ToList();
+                }
+                else if (request.CustomSortBy == "estimatedNextRunTime")
+                {
+                    var sortedQuery = request.IsSortedDescending == true
+                        ? baseQuery.OrderByDescending(nextRunTimeExpression).ThenBy(job => job.Id)
+                        : baseQuery.OrderBy(nextRunTimeExpression).ThenBy(job => job.Id);
+
+                    numberOfJobs = baseQuery.Count();
+                    jobs = hasPaging
+                        ? sortedQuery.Skip(pageOffset).Take(pageSize).ToList()
+                        : sortedQuery.ToList();
                 }
                 else
                 {
@@ -253,27 +275,7 @@ namespace Services
             {
                 var type = job.MembershipType;
                 var groupId = GetDestinationGroupId(job) ?? Guid.Empty;
-                var currentTime = DateTime.UtcNow;
-                var jobStartsInFuture = currentTime < job.StartDate;
-                var jobScheduledForFuture = currentTime < job.ScheduledDate;
-
-                DateTime estimatedNextRunTime;
-                if (!jobStartsInFuture && !jobScheduledForFuture)
-                {
-                    // Round current time up to next 5-minute boundary for estimated run time
-                    var now = DateTime.UtcNow;
-                    var minutesToAdd = 5 - (now.Minute % 5);
-                    estimatedNextRunTime = new DateTime(now.Year, now.Month, now.Day, now.Hour, now.Minute, 0, DateTimeKind.Utc)
-                        .AddMinutes(minutesToAdd);
-                }
-                else if (jobStartsInFuture)
-                {
-                    estimatedNextRunTime = job.StartDate;
-                }
-                else
-                {
-                    estimatedNextRunTime = job.ScheduledDate;
-                }
+                var estimatedNextRunTime = getEstimatedNextRunTime(job);
 
                 var resolvedDestinationName = destinationNamesByJobId[job.Id];
 

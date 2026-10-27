@@ -12,7 +12,6 @@ import pagingBarReducer, {
   setFilterDestinationId,
   setFilterDestinationType,
   resetFilters,
-  setCustomSortBy,
   setSortKey,
   setIsSortedDescending,
   selectPagingOptions,
@@ -51,6 +50,12 @@ describe('pagingBar.slice — reducers', () => {
   it('setPageNumber updates pageNumber', () => {
     const state = pagingBarReducer(initial, setPageNumber(3));
     expect(state.pageNumber).toBe(3);
+  });
+
+  it('setSortKey updates the column and resets paging', () => {
+    const state = pagingBarReducer({ ...initial, pageNumber: 3 }, setSortKey('estimatedNextRunTime'));
+    expect(state.sortKey).toBe('estimatedNextRunTime');
+    expect(state.pageNumber).toBe(1);
   });
 
   it('setFilterStatus updates filterStatus and resets pageNumber', () => {
@@ -282,14 +287,26 @@ describe('selectPagingOptions — OData filter building', () => {
     expect(result.pageSize).toBe(25);
   });
 
-  it('returns customSortBy for targetGroupName', () => {
-    const result = selectPagingOptions(buildRootState({ customSortBy: 'targetGroupName' }));
-    expect(result.customSortBy).toBe('targetGroupName');
-  });
+  it.each(['targetGroupName', 'lastModifiedTime', 'estimatedNextRunTime'])(
+    'uses only customSortBy for %s in either direction',
+    (sortKey) => {
+      for (const isSortedDescending of [false, true]) {
+        const result = selectPagingOptions(buildRootState({
+          sortKey, isSortedDescending, customSortBy: 'lastModifiedTime',
+        }));
+        expect(result.customSortBy).toBe(sortKey);
+        expect(result.orderBy).toBeUndefined();
+        expect(result.isSortedDescending).toBe(isSortedDescending);
+      }
+    }
+  );
 
-  it('returns customSortBy for lastModifiedTime', () => {
-    const result = selectPagingOptions(buildRootState({ customSortBy: 'lastModifiedTime' }));
-    expect(result.customSortBy).toBe('lastModifiedTime');
+  it('clears stale custom sorting when switching to an OData column', () => {
+    const result = selectPagingOptions(buildRootState({
+      sortKey: 'lastSuccessfulRunTime', customSortBy: 'lastModifiedTime', isSortedDescending: true,
+    }));
+    expect(result.orderBy).toBe('lastSuccessfulRunTime desc');
+    expect(result.customSortBy).toBeUndefined();
   });
 
   it('returns undefined customSortBy for other values', () => {

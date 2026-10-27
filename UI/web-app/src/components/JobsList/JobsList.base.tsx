@@ -91,7 +91,6 @@ import {
   setSortKey,
   setIsSortedDescending,
   setPagingBarVisible,
-  setCustomSortBy,
   setFilterDestinationName,
   setFilterDestinationOwnerPersona,
   setFilterDestinationType,
@@ -454,9 +453,6 @@ export const JobsListBase: React.FunctionComponent<IJobsListProps> = (
   const applyColumnSort = (column: IColumn, descending: boolean) => {
     dispatch(setSortKey(column.key));
     dispatch(setIsSortedDescending(descending));
-    if (column.key === 'targetGroupName' || column.key === 'lastModifiedTime') {
-      dispatch(setCustomSortBy(column.key));
-    }
     setIsShimmerEnabled(true);
     setColumnMenuTarget(null);
     setColumnMenuColumn(null);
