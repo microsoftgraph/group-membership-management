@@ -152,6 +152,8 @@ test.describe('Job Details Tests', () => {
 
     // Create group
     await page.getByRole('button', { name: 'Create group' }).click();
+    await page.getByRole('dialog', { name: 'Advanced settings (Optional)', exact: true })
+      .getByRole('button', { name: 'Not now', exact: true }).click();
     await page.waitForSelector('button:has-text("Next")'); // Wait for the "Next" button to appear
 
     // Wait for the "Next" button to become enabled (up to 30 seconds)
@@ -228,6 +230,8 @@ test.describe('Job Details Tests', () => {
 
     // Create group
     await page.getByRole('button', { name: 'Create group' }).click();
+    await page.getByRole('dialog', { name: 'Advanced settings (Optional)', exact: true })
+      .getByRole('button', { name: 'Not now', exact: true }).click();
     await page.waitForSelector('button:has-text("Next")'); // Wait for the "Next" button to appear
 
     // Wait for the "Next" button to become enabled (up to 30 seconds)
@@ -296,6 +300,8 @@ test.describe('Job Details Tests', () => {
 
     // Create group
     await page.getByRole('button', { name: 'Create group' }).click();
+    await page.getByRole('dialog', { name: 'Advanced settings (Optional)', exact: true })
+      .getByRole('button', { name: 'Not now', exact: true }).click();
 
     // Wait for the "Next" button to become enabled
     const nextButton = page.getByRole('button', { name: 'Next' });
@@ -354,6 +360,8 @@ test.describe('Job Details Tests', () => {
     await expect(page.getByRole('checkbox', { name: 'Show group mailbox and calendar in Outlook', exact: true })).not.toBeChecked();
     // Create group
     await page.getByRole('button', { name: 'Create group' }).click();
+    await page.getByRole('dialog', { name: 'Advanced settings (Optional)', exact: true })
+      .getByRole('button', { name: 'Not now', exact: true }).click();
     await page.waitForSelector('button:has-text("Next")');
     // Wait for the "Next" button to become enabled (up to 30 seconds)
     await page.waitForFunction(
@@ -603,6 +611,8 @@ test.describe('Job Details Tests', () => {
     await page.getByPlaceholder('Enter the name of the group').fill(groupName);
 
     await page.getByRole('button', { name: 'Create group' }).click();
+    await page.getByRole('dialog', { name: 'Advanced settings (Optional)', exact: true })
+      .getByRole('button', { name: 'Not now', exact: true }).click();
     await page.waitForSelector('button:has-text("Next")');
     const nextButton = page.getByRole('button', { name: 'Next' });
     await expect(nextButton).toBeEnabled({ timeout: 30000 });

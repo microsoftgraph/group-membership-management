@@ -16,6 +16,8 @@ async function navigateToMembershipConfiguration(page: Page) {
   await groupNameInput.fill(`pw-copilot-${Date.now()}`);
 
   await page.getByRole('button', { name: 'Create group' }).click();
+  await page.getByRole('dialog', { name: 'Advanced settings (Optional)', exact: true })
+    .getByRole('button', { name: 'Not now', exact: true }).click();
   await page.waitForSelector('button:has-text("Next")');
 
   const nextButton = page.getByRole('button', { name: 'Next' });
