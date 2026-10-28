@@ -27,6 +27,220 @@ var openAITpmCapacityLabel = openAITpmCapacity >= 1000000 ? '${openAITpmCapacity
 var copilotTpmTileTitle = 'Copilot Token Usage (% of ${openAITpmCapacityLabel} TPM cap)'
 var copilotTpmQuery = 'let bin_t = 1m;\nlet tpmQuota = todouble(${openAITpmCapacity});\ntraces\n| where customDimensions["EventId"] == "93112" or message startswith "CopilotChat token usage"\n| extend Tokens = todouble(toint(customDimensions["InputTokens"]) + toint(customDimensions["OutputTokens"]))\n| summarize TokensPerMinute = sum(Tokens) by bin(timestamp, bin_t)\n| project timestamp, PercentOfQuota = round(100.0 * TokensPerMinute / tpmQuota, 2)\n| order by timestamp asc\n'
 
+@description('Kubernetes namespace the GMM workloads run in.')
+param aksNamespace string = 'gmm'
+
+var aksWorkspaceId = '/subscriptions/${subscriptionId}/resourcegroups/${resourceGroup}/providers/microsoft.operationalinsights/workspaces/${resourceGroup}'
+
+// A ReplicaSet-owned pod is named <deployment>-<hash>-<suffix>; its controller is <deployment>-<hash>.
+var aksWorkload = 'replace_regex(ControllerName, "-[a-z0-9]{8,10}$", "")'
+// Perf rows carry no namespace, so they are scoped to the workloads through the pod UID in InstanceName.
+var aksPodLookup = 'let pods = KubePodInventory\n| where Namespace == "${aksNamespace}" and isnotempty(ControllerName)\n| summarize by PodUid, Workload = ${aksWorkload};\n'
+
+var aksReplicasQuery = 'KubePodInventory\n| where Namespace == "${aksNamespace}" and isnotempty(ControllerName) and PodStatus == "Running"\n| summarize Replicas = dcount(PodUid) by timestamp = bin(TimeGenerated, 5m), Workload = ${aksWorkload}\n| order by timestamp asc\n'
+var aksMemoryQuery =  '${aksPodLookup}Perf\n| where ObjectName == "K8SContainer" and CounterName in ("memoryWorkingSetBytes", "memoryLimitBytes")\n| extend PodUid = tostring(split(InstanceName, "/")[-2])\n| join kind=inner pods on PodUid\n| summarize WorkingSet = maxif(CounterValue, CounterName == "memoryWorkingSetBytes"), Limit = maxif(CounterValue, CounterName == "memoryLimitBytes") by Workload, PodUid, bin(TimeGenerated, 5m)\n| where Limit > 0\n| extend Percent = WorkingSet * 100.0 / Limit\n| summarize Median = round(percentile(Percent, 50), 1), Max = round(max(Percent), 1) by Service = Workload\n| order by Max desc\n'
+var aksCpuQuery = '${aksPodLookup}Perf\n| where ObjectName == "K8SContainer" and CounterName in ("cpuUsageNanoCores", "cpuLimitNanoCores")\n| extend PodUid = tostring(split(InstanceName, "/")[-2])\n| join kind=inner pods on PodUid\n| summarize Usage = maxif(CounterValue, CounterName == "cpuUsageNanoCores"), Limit = maxif(CounterValue, CounterName == "cpuLimitNanoCores") by Workload, PodUid, bin(TimeGenerated, 5m)\n| where Limit > 0\n| extend Percent = Usage * 100.0 / Limit\n| summarize Median = round(percentile(Percent, 50), 1), Max = round(max(Percent), 1) by Service = Workload\n| order by Max desc\n'
+var aksNodeQuery = 'Perf\n| where ObjectName == "K8SNode" and CounterName in ("memoryWorkingSetBytes", "memoryAllocatableBytes", "cpuUsageNanoCores", "cpuAllocatableNanoCores")\n| summarize Mem = maxif(CounterValue, CounterName == "memoryWorkingSetBytes"), MemAlloc = maxif(CounterValue, CounterName == "memoryAllocatableBytes"), Cpu = maxif(CounterValue, CounterName == "cpuUsageNanoCores"), CpuAlloc = maxif(CounterValue, CounterName == "cpuAllocatableNanoCores") by Computer, bin(TimeGenerated, 5m)\n| where MemAlloc > 0 and CpuAlloc > 0\n| extend Pool = extract("^aks-(.+)-[0-9]+-vmss", 1, Computer)\n| summarize Memory = max(Mem * 100.0 / MemAlloc), Cpu = max(Cpu * 100.0 / CpuAlloc) by timestamp = TimeGenerated, Pool\n| extend Series = dynamic(["memory", "cpu"])\n| mv-expand Series to typeof(string)\n| project timestamp, Series = strcat(Pool, " ", Series, " %"), Percent = round(iff(Series == "memory", Memory, Cpu), 1)\n| order by timestamp asc\n'
+var aksNodeCountQuery =  'Perf\n| where ObjectName == "K8SNode" and CounterName == "cpuUsageNanoCores"\n| extend Pool = extract("^aks-(.+)-[0-9]+-vmss", 1, Computer)\n| summarize Nodes = dcount(Computer) by timestamp = bin(TimeGenerated, 5m), Pool\n| order by timestamp asc\n'
+var aksRestartsQuery = 'KubePodInventory\n| where Namespace == "${aksNamespace}" and isnotempty(ControllerName) and ContainerRestartCount > 0\n| extend Last = parse_json(ContainerLastStatus)\n| summarize arg_max(TimeGenerated, ContainerRestartCount, ContainerStatusReason, Last) by Workload = ${aksWorkload}, Pod = Name\n| project LastSeen = TimeGenerated, Workload, Pod, Restarts = ContainerRestartCount, CurrentReason = ContainerStatusReason, LastTermination = tostring(Last.reason), ExitCode = tostring(Last.exitCode)\n| order by LastSeen desc\n'
+var aksWarningsQuery = 'KubeEvents\n| where KubeEventType == "Warning"\n| where not(Name startswith "ama-logs" and Reason == "FailedMount")\n| summarize Count = count(), LastSeen = max(TimeGenerated), Message = substring(take_any(Message), 0, 200) by Reason, ObjectKind\n| order by Count desc\n'
+var aksDrainQuery = 'KubePodInventory\n| where Namespace == "${aksNamespace}" and isnotempty(ControllerName) and PodStatus == "Terminating"\n| summarize Start = min(TimeGenerated), End = max(TimeGenerated) by Workload = ${aksWorkload}, PodUid\n| extend DrainSeconds = datetime_diff("second", End, Start)\n| summarize Pods = count(), P50Seconds = percentile(DrainSeconds, 50), P95Seconds = percentile(DrainSeconds, 95), MaxSeconds = max(DrainSeconds) by Workload\n'
+var aksStartupLogsQuery = 'ContainerLogV2\n| extend Line = tostring(LogMessage)\n| where Line startswith "fail:" or Line startswith "crit:" or Line has "Unhandled exception"\n| project TimeGenerated, PodName, Line = substring(Line, 0, 300)\n| order by TimeGenerated desc\n| take 200\n'
+
+func aksChartDimensions(yName string, yType string, splitName string) object => {
+  xAxis: {
+    name: 'timestamp'
+    type: 'datetime'
+  }
+  yAxis: [
+    {
+      name: yName
+      type: yType
+    }
+  ]
+  splitBy: [
+    {
+      name: splitName
+      type: 'string'
+    }
+  ]
+  aggregation: 'Sum'
+}
+
+func aksGridPart(x int, y int, colSpan int, rowSpan int, workspaceId string, partId string, title string, subtitle string, query string) object => {
+  position: {
+    x: x
+    y: y
+    colSpan: colSpan
+    rowSpan: rowSpan
+  }
+  metadata: {
+    inputs: [
+      {
+        name: 'Scope'
+        value: {
+          resourceIds: [
+            workspaceId
+          ]
+        }
+        isOptional: true
+      }
+      {
+        name: 'PartId'
+        value: partId
+        isOptional: true
+      }
+      {
+        name: 'Version'
+        value: '2.0'
+        isOptional: true
+      }
+      {
+        name: 'TimeRange'
+        value: 'P1D'
+        isOptional: true
+      }
+      {
+        name: 'Query'
+        value: query
+        isOptional: true
+      }
+      {
+        name: 'ControlType'
+        value: 'AnalyticsGrid'
+        isOptional: true
+      }
+      {
+        name: 'PartTitle'
+        value: title
+        isOptional: true
+      }
+      {
+        name: 'PartSubTitle'
+        value: subtitle
+        isOptional: true
+      }
+      {
+        name: 'IsQueryContainTimeRange'
+        value: false
+        isOptional: true
+      }
+    ]
+    type: 'Extension/Microsoft_OperationsManagementSuite_Workspace/PartType/LogsDashboardPart'
+    settings: {
+      content: {
+        Query: query
+        ControlType: 'AnalyticsGrid'
+        PartTitle: title
+        PartSubTitle: subtitle
+      }
+    }
+    partHeader: {
+      title: title
+      subtitle: ''
+    }
+  }
+}
+
+func aksChartPart(x int, y int, colSpan int, rowSpan int, workspaceId string, partId string, title string, subtitle string, query string, chart string, dimensions object) object => {
+  position: {
+    x: x
+    y: y
+    colSpan: colSpan
+    rowSpan: rowSpan
+  }
+  metadata: {
+    inputs: [
+      {
+        name: 'Scope'
+        value: {
+          resourceIds: [
+            workspaceId
+          ]
+        }
+        isOptional: true
+      }
+      {
+        name: 'PartId'
+        value: partId
+        isOptional: true
+      }
+      {
+        name: 'Version'
+        value: '2.0'
+        isOptional: true
+      }
+      {
+        name: 'TimeRange'
+        value: 'P1D'
+        isOptional: true
+      }
+      {
+        name: 'Query'
+        value: query
+        isOptional: true
+      }
+      {
+        name: 'ControlType'
+        value: 'FrameControlChart'
+        isOptional: true
+      }
+      {
+        name: 'SpecificChart'
+        value: chart
+        isOptional: true
+      }
+      {
+        name: 'PartTitle'
+        value: title
+        isOptional: true
+      }
+      {
+        name: 'PartSubTitle'
+        value: subtitle
+        isOptional: true
+      }
+      {
+        name: 'Dimensions'
+        value: dimensions
+        isOptional: true
+      }
+      {
+        name: 'LegendOptions'
+        value: {
+          isEnabled: true
+          position: 'Bottom'
+        }
+        isOptional: true
+      }
+      {
+        name: 'IsQueryContainTimeRange'
+        value: false
+        isOptional: true
+      }
+    ]
+    type: 'Extension/Microsoft_OperationsManagementSuite_Workspace/PartType/LogsDashboardPart'
+    settings: {
+      content: {
+        Query: query
+        ControlType: 'FrameControlChart'
+        SpecificChart: chart
+        PartTitle: title
+        PartSubTitle: subtitle
+        Dimensions: dimensions
+        LegendOptions: {
+          isEnabled: true
+          position: 'Bottom'
+        }
+      }
+    }
+    partHeader: {
+      title: title
+      subtitle: ''
+    }
+  }
+}
+
 resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
   name: resourceGroup
   location: location
@@ -5139,6 +5353,36 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
               }
             }
           }
+          '69': {
+            position: {
+                x: 1
+                y: 84
+                colSpan: 17
+                rowSpan: 2
+            }
+            metadata: {
+                inputs: []
+                type: 'Extension/HubsExtension/PartType/MarkdownPart'
+                settings: {
+                  content: {
+                    content: '# <span style="color:DarkOrange">AKS</span>\r\n\r\nHealth of the workloads running on the AKS cluster, from Container Insights. Memory and CPU show the busiest pod per workload against its container limit. Empty restart and crash-log tiles mean healthy.'
+                    title: ''
+                    subtitle: ''
+                    markdownSource: 1
+                    markdownUri: null
+                  }
+                }
+            }
+          }
+          '70': aksChartPart(1, 86, 17, 4, aksWorkspaceId, '5e5f1234-0001-4b5e-a5e5-b1c2d3e4f069', 'Running Replicas', 'Pods in Running state per workload', aksReplicasQuery, 'Line', aksChartDimensions('Replicas', 'long', 'Workload'))
+          '72': aksGridPart(1, 90, 8, 4, aksWorkspaceId, '5e5f1234-0001-4b5e-a5e5-b1c2d3e4f06b', 'Pod Memory vs Limit (%)', 'Per pod, 5-minute samples over the selected range, as % of the container memory limit', aksMemoryQuery)
+          '73': aksGridPart(9, 90, 9, 4, aksWorkspaceId, '5e5f1234-0001-4b5e-a5e5-b1c2d3e4f06c', 'Pod CPU vs Limit (%)', 'Per pod, 5-minute samples over the selected range, as % of the container CPU limit', aksCpuQuery)
+          '74': aksChartPart(1, 94, 8, 4, aksWorkspaceId, '5e5f1234-0001-4b5e-a5e5-b1c2d3e4f06d', 'Node Pressure by Pool (%)', 'Busiest node per pool, % of allocatable', aksNodeQuery, 'Line', aksChartDimensions('Percent', 'real', 'Series'))
+          '75': aksChartPart(9, 94, 9, 4, aksWorkspaceId, '5e5f1234-0001-4b5e-a5e5-b1c2d3e4f074', 'Node Count by Pool', 'Nodes reporting per 5 minutes', aksNodeCountQuery, 'Line', aksChartDimensions('Nodes', 'long', 'Pool'))
+          '76': aksGridPart(1, 98, 8, 4, aksWorkspaceId, '5e5f1234-0001-4b5e-a5e5-b1c2d3e4f06f', 'Pod Restarts and OOMKills', 'Empty means no pod restarted in the selected range', aksRestartsQuery)
+          '77': aksGridPart(9, 98, 9, 4, aksWorkspaceId, '5e5f1234-0001-4b5e-a5e5-b1c2d3e4f070', 'Kubernetes Warning Events', 'Grouped by reason; ama-logs FailedMount noise is excluded', aksWarningsQuery)
+          '78': aksGridPart(1, 102, 8, 4, aksWorkspaceId, '5e5f1234-0001-4b5e-a5e5-b1c2d3e4f071', 'Pod Drain Time', 'Time pods spend Terminating; compare MaxSeconds with the termination grace period', aksDrainQuery)
+          '80': aksGridPart(9, 102, 9, 4, aksWorkspaceId, '5e5f1234-0001-4b5e-a5e5-b1c2d3e4f072', 'Container Crash Log', 'stdout fail, crit and unhandled-exception lines; empty means none', aksStartupLogsQuery)
         }
       }
     }
@@ -5214,6 +5458,15 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
                 'StartboardPart-LogsDashboardPart-5e5f1234-0001-4b5e-a5e5-b1c2d3e4f066'
                 'StartboardPart-LogsDashboardPart-5e5f1234-0001-4b5e-a5e5-b1c2d3e4f067'
                 'StartboardPart-LogsDashboardPart-5e5f1234-0001-4b5e-a5e5-b1c2d3e4f068'
+                'StartboardPart-LogsDashboardPart-5e5f1234-0001-4b5e-a5e5-b1c2d3e4f069'
+                'StartboardPart-LogsDashboardPart-5e5f1234-0001-4b5e-a5e5-b1c2d3e4f06b'
+                'StartboardPart-LogsDashboardPart-5e5f1234-0001-4b5e-a5e5-b1c2d3e4f06c'
+                'StartboardPart-LogsDashboardPart-5e5f1234-0001-4b5e-a5e5-b1c2d3e4f06d'
+                'StartboardPart-LogsDashboardPart-5e5f1234-0001-4b5e-a5e5-b1c2d3e4f06f'
+                'StartboardPart-LogsDashboardPart-5e5f1234-0001-4b5e-a5e5-b1c2d3e4f070'
+                'StartboardPart-LogsDashboardPart-5e5f1234-0001-4b5e-a5e5-b1c2d3e4f071'
+                'StartboardPart-LogsDashboardPart-5e5f1234-0001-4b5e-a5e5-b1c2d3e4f072'
+                'StartboardPart-LogsDashboardPart-5e5f1234-0001-4b5e-a5e5-b1c2d3e4f074'
               ]
             }
           }
