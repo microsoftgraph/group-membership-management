@@ -46,6 +46,7 @@ import { selectCopilotSuggestedPrompts } from '../../store/settings.slice';
 import { HRSourcePartSource } from '../../models/HRSourcePart';
 import { SourcePartType } from '../../models/SourcePartType';
 import { CopilotAvatar } from './CopilotAvatar';
+import { getNewConversationButtonStyles } from './CopilotPanel.styles';
 import { getSourcePartsFromState } from '../../store/manageMembership.slice';
 import { ISourcePart } from '../../models/ISourcePart';
 import { extractProposedMembership, formatMembershipDescription } from '../../utils/copilotMembershipSummary';
@@ -484,22 +485,7 @@ export const CopilotPanelBase: React.FunctionComponent<ICopilotPanelProps> = (
                                 text={strings.Copilot.newConversation}
                                 ariaLabel={strings.Copilot.newConversation}
                                 onClick={handleNewConversation}
-                                styles={{
-                                    root: {
-                                        height: 28,
-                                        width: 92,
-                                        minWidth: 92,
-                                        flexShrink: 0,
-                                        padding: '0 8px',
-                                        borderColor: theme.palette.themePrimary,
-                                        borderRadius: 16,
-                                        fontSize: 12,
-                                        color: theme.palette.neutralPrimary,
-                                        backgroundColor: theme.palette.themeLighter,
-                                    },
-                                    label: { fontSize: 12, fontWeight: 400, whiteSpace: 'nowrap', margin: 0 },
-                                    icon: { color: theme.palette.themePrimary, margin: '0 4px 0 0' },
-                                }}
+                                styles={getNewConversationButtonStyles(theme)}
                             />
                         )}
                         <IconButton

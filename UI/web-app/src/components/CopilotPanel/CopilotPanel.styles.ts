@@ -5,6 +5,42 @@ import {
     type ICopilotPanelStyleProps,
     type ICopilotPanelStyles,
 } from './CopilotPanel.types';
+import type { IButtonStyles, ITheme } from '@fluentui/react';
+import { darkModeStatusColors, isDarkTheme } from '../../theme/accessibleColors';
+
+export const getNewConversationButtonStyles = (theme: ITheme): IButtonStyles => {
+    const isDarkMode = isDarkTheme(theme);
+    const accentColor = isDarkMode ? darkModeStatusColors.accentText : theme.palette.themePrimary;
+
+    return {
+        root: {
+            height: 28,
+            width: 92,
+            minWidth: 92,
+            flexShrink: 0,
+            padding: '0 8px',
+            borderColor: accentColor,
+            borderRadius: 16,
+            fontSize: 12,
+            color: theme.palette.neutralPrimary,
+            backgroundColor: isDarkMode ? theme.palette.neutralLight : theme.palette.themeLighter,
+        },
+        label: { fontSize: 12, fontWeight: 400, whiteSpace: 'nowrap', margin: 0 },
+        icon: { color: accentColor, margin: '0 4px 0 0' },
+        ...(isDarkMode
+            ? {
+                rootHovered: {
+                    backgroundColor: theme.palette.neutralQuaternaryAlt,
+                    borderColor: accentColor,
+                },
+                rootPressed: {
+                    backgroundColor: theme.palette.neutralQuaternary,
+                    borderColor: accentColor,
+                },
+            }
+            : {}),
+    };
+};
 
 export const getStyles = (props: ICopilotPanelStyleProps): ICopilotPanelStyles => {
     const { className, theme, experience } = props;
