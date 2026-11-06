@@ -2,9 +2,14 @@
 // Licensed under the MIT license.
 
 import { type RuleCardStyleProps, type RuleCardStyles } from './RuleCard.types';
+import { getAccessibleStatusColors, isDarkTheme } from '../../theme/accessibleColors';
 
 export const getStyles = (props: RuleCardStyleProps): RuleCardStyles => {
   const { className, theme, selected } = props;
+  const isDarkMode = isDarkTheme(theme);
+  const surfaceBackground = isDarkMode ? theme.palette.neutralLighterAlt : theme.palette.white;
+  const borderColor = isDarkMode ? theme.palette.neutralTertiaryAlt : theme.palette.neutralQuaternary;
+  const statusColors = getAccessibleStatusColors(theme);
 
   return {
     root: [
@@ -15,8 +20,8 @@ export const getStyles = (props: RuleCardStyleProps): RuleCardStyles => {
         flex: '0 0 auto',
         padding: 16,
         borderRadius: 8,
-        border: `1px solid ${theme.palette.neutralQuaternary}`,
-        backgroundColor: theme.palette.white,
+        border: `1px solid ${borderColor}`,
+        backgroundColor: surfaceBackground,
         cursor: 'pointer',
         display: 'flex',
         flexDirection: 'column',
@@ -57,11 +62,11 @@ export const getStyles = (props: RuleCardStyleProps): RuleCardStyles => {
       gap: 6,
     },
     hiddenIcon: {
-      color: theme.semanticColors.errorText,
+      color: statusColors.errorText,
       fontSize: 14,
     },
     hiddenText: {
-      color: theme.semanticColors.errorText,
+      color: statusColors.errorText,
       fontSize: 12,
       fontWeight: 600,
     },

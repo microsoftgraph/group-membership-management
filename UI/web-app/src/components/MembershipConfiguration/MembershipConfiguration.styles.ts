@@ -5,9 +5,11 @@ import {
     type MembershipConfigurationStyleProps,
     type MembershipConfigurationStyles,
 } from './MembershipConfiguration.types';
+import { isDarkTheme } from '../../theme/accessibleColors';
 
 export const getStyles = (props: MembershipConfigurationStyleProps): MembershipConfigurationStyles => {
     const { className, theme } = props;
+    const surfaceBackground = isDarkTheme(theme) ? theme.palette.neutralLighterAlt : theme.palette.white;
 
     return {
         root: [{
@@ -19,7 +21,7 @@ export const getStyles = (props: MembershipConfigurationStyleProps): MembershipC
             paddingRight: 22,
             borderRadius: 10,
             marginBottom: 12,
-            backgroundColor: theme.palette.white
+            backgroundColor: surfaceBackground
         },
         card: {
             marginBottom: 12
@@ -31,5 +33,4 @@ export const getStyles = (props: MembershipConfigurationStyleProps): MembershipC
         }
     };
 };
-
 

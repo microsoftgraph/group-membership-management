@@ -46,7 +46,7 @@ import { selectCopilotSuggestedPrompts } from '../../store/settings.slice';
 import { HRSourcePartSource } from '../../models/HRSourcePart';
 import { SourcePartType } from '../../models/SourcePartType';
 import { CopilotAvatar } from './CopilotAvatar';
-import { getNewConversationButtonStyles } from './CopilotPanel.styles';
+import { getNewConversationButtonStyles, getUserMessageColors } from './CopilotPanel.styles';
 import { getSourcePartsFromState } from '../../store/manageMembership.slice';
 import { ISourcePart } from '../../models/ISourcePart';
 import { extractProposedMembership, formatMembershipDescription } from '../../utils/copilotMembershipSummary';
@@ -780,9 +780,8 @@ export const CopilotPanelBase: React.FunctionComponent<ICopilotPanelProps> = (
                 >
                     <div 
                         className={classNames.messageContent} 
-                        style={!isBot ? { 
-                            backgroundColor: compactUserMessage ? theme.palette.themeLighter : theme.palette.themePrimary,
-                            color: compactUserMessage ? theme.palette.neutralPrimary : theme.palette.white,
+                        style={!isBot ? {
+                            ...getUserMessageColors(theme, compactUserMessage),
                             borderRadius: compactUserMessage ? '6px' : '20px',
                             padding: compactUserMessage ? '4px 8px' : '10px 20px',
                             fontSize: '14px',

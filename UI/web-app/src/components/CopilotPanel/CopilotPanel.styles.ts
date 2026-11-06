@@ -8,6 +8,21 @@ import {
 import type { IButtonStyles, ITheme } from '@fluentui/react';
 import { darkModeStatusColors, isDarkTheme } from '../../theme/accessibleColors';
 
+export const getUserMessageColors = (theme: ITheme, compact: boolean): { backgroundColor: string; color: string } => {
+    const isDarkMode = isDarkTheme(theme);
+    let backgroundColor = theme.palette.themePrimary;
+    let color = theme.palette.white;
+
+    if (compact) {
+        backgroundColor = isDarkMode ? theme.palette.themeDarker : theme.palette.themeLighter;
+        if (!isDarkMode) {
+            color = theme.palette.neutralPrimary;
+        }
+    }
+
+    return { backgroundColor, color };
+};
+
 export const getNewConversationButtonStyles = (theme: ITheme): IButtonStyles => {
     const isDarkMode = isDarkTheme(theme);
     const accentColor = isDarkMode ? darkModeStatusColors.accentText : theme.palette.themePrimary;

@@ -6,6 +6,7 @@ import {
     type IManageMembershipStyleProps,
     type IManageMembershipStyles,
 } from './ManageMembership.types';
+import { isDarkTheme } from '../../theme/accessibleColors';
 
 // Secondary nav button (Previous/Next Step) styling per design spec:
 // height 32 (hug), radius 4, border 1px, padding 5px/12px, 4px icon/text gap.
@@ -55,6 +56,7 @@ export const getNavButtonStyles = (theme: ITheme, reverseIconOrder?: boolean): I
 
 export const getStyles = (props: IManageMembershipStyleProps): IManageMembershipStyles => {
     const { className, theme } = props;
+    const surfaceBackground = isDarkTheme(theme) ? theme.palette.neutralLighterAlt : theme.palette.white;
 
     return {
         root: [{
@@ -127,7 +129,7 @@ export const getStyles = (props: IManageMembershipStyleProps): IManageMembership
             display: 'inline-flex',
             alignItems: 'center',
             gap: 8,
-            backgroundColor: theme.palette.white,
+            backgroundColor: surfaceBackground,
             borderRadius: 20,
             padding: '3px 14px 3px 4px',
             boxShadow: '0 1px 2px rgba(0, 0, 0, 0.12)'
@@ -146,9 +148,9 @@ export const getStyles = (props: IManageMembershipStyleProps): IManageMembership
         },
         groupName: {
             fontWeight: 600,
-            fontSize: 14
+            fontSize: 14,
+            color: theme.palette.neutralPrimary,
         }
     };
 };
-
 
