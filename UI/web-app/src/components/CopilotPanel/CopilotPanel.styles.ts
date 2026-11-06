@@ -23,6 +23,26 @@ export const getUserMessageColors = (theme: ITheme, compact: boolean): { backgro
     return { backgroundColor, color };
 };
 
+export const getInlineAcceptButtonStyles = (theme: ITheme): IButtonStyles | undefined => {
+    if (!isDarkTheme(theme)) {
+        return undefined;
+    }
+
+    const textColor = theme.palette.neutralPrimary;
+    const primaryBackground = theme.palette.themePrimary;
+    const hoveredBackground = theme.palette.themeDarkAlt;
+    const pressedBackground = theme.palette.themeDark;
+
+    return {
+        root: { backgroundColor: primaryBackground, color: textColor },
+        rootHovered: { backgroundColor: hoveredBackground, color: textColor },
+        rootPressed: { backgroundColor: pressedBackground, color: textColor },
+        label: { color: textColor },
+        labelHovered: { color: textColor },
+        labelPressed: { color: textColor },
+    };
+};
+
 export const getNewConversationButtonStyles = (theme: ITheme): IButtonStyles => {
     const isDarkMode = isDarkTheme(theme);
     const accentColor = isDarkMode ? darkModeStatusColors.accentText : theme.palette.themePrimary;

@@ -6,7 +6,7 @@ import { describe, expect, it } from 'vitest';
 import { getStyles as getManageMembershipStyles } from '../pages/ManageMembership/ManageMembership.styles';
 import { getStyles as getMembershipConfigurationStyles } from '../components/MembershipConfiguration/MembershipConfiguration.styles';
 import { getStyles as getRuleCardStyles } from '../components/RuleCard/RuleCard.styles';
-import { getUserMessageColors } from '../components/CopilotPanel/CopilotPanel.styles';
+import { getInlineAcceptButtonStyles, getUserMessageColors } from '../components/CopilotPanel/CopilotPanel.styles';
 import { getAccessibleStatusColors } from './accessibleColors';
 import { darkPalette } from './palette';
 import { contrastRatio } from '../../tests/utils/contrastRatio';
@@ -80,5 +80,25 @@ describe('dark mode component styles', () => {
         NORMAL_TEXT_MIN_CONTRAST
       );
     }
+  });
+
+  it('uses readable foreground and interaction colors for Apply & Review in dark mode only', () => {
+    const styles = getInlineAcceptButtonStyles(darkTheme);
+    expect(styles).toBeDefined();
+    expect(styles?.root).toHaveProperty('backgroundColor', darkTheme.palette.themePrimary);
+    expect(styles?.rootHovered).toHaveProperty('backgroundColor', darkTheme.palette.themeDarkAlt);
+    expect(styles?.rootPressed).toHaveProperty('backgroundColor', darkTheme.palette.themeDark);
+    expect(styles?.label).toHaveProperty('color', darkTheme.palette.neutralPrimary);
+    expect(styles?.labelHovered).toHaveProperty('color', darkTheme.palette.neutralPrimary);
+    expect(styles?.labelPressed).toHaveProperty('color', darkTheme.palette.neutralPrimary);
+
+    const backgrounds = [darkTheme.palette.themePrimary, darkTheme.palette.themeDarkAlt, darkTheme.palette.themeDark];
+    for (const background of backgrounds) {
+      expect(contrastRatio(darkTheme.palette.neutralPrimary, background)).toBeGreaterThanOrEqual(
+        NORMAL_TEXT_MIN_CONTRAST
+      );
+    }
+
+    expect(getInlineAcceptButtonStyles(lightTheme)).toBeUndefined();
   });
 });

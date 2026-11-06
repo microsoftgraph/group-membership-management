@@ -46,7 +46,7 @@ import { selectCopilotSuggestedPrompts } from '../../store/settings.slice';
 import { HRSourcePartSource } from '../../models/HRSourcePart';
 import { SourcePartType } from '../../models/SourcePartType';
 import { CopilotAvatar } from './CopilotAvatar';
-import { getNewConversationButtonStyles, getUserMessageColors } from './CopilotPanel.styles';
+import { getInlineAcceptButtonStyles, getNewConversationButtonStyles, getUserMessageColors } from './CopilotPanel.styles';
 import { getSourcePartsFromState } from '../../store/manageMembership.slice';
 import { ISourcePart } from '../../models/ISourcePart';
 import { extractProposedMembership, formatMembershipDescription } from '../../utils/copilotMembershipSummary';
@@ -806,6 +806,7 @@ export const CopilotPanelBase: React.FunctionComponent<ICopilotPanelProps> = (
                                 className={classNames.inlineAcceptButton}
                                 text={strings.Copilot.applyAndReview}
                                 onClick={handleAcceptAndApply}
+                                styles={getInlineAcceptButtonStyles(theme)}
                             />
                         )}
                     </div>
