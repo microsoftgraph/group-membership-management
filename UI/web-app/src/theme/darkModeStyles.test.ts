@@ -12,6 +12,7 @@ import { darkPalette } from './palette';
 import { contrastRatio } from '../../tests/utils/contrastRatio';
 
 const NON_TEXT_MIN_CONTRAST = 3;
+const NORMAL_TEXT_MIN_CONTRAST = 4.5;
 
 describe('dark mode component styles', () => {
   const lightTheme = createTheme();
@@ -59,14 +60,25 @@ describe('dark mode component styles', () => {
     );
   });
 
-  it('uses a dark blue compact user bubble with white text in dark mode', () => {
-    expect(getUserMessageColors(darkTheme, true)).toEqual({
-      backgroundColor: darkTheme.palette.themeDarker,
-      color: darkTheme.palette.white,
-    });
-    expect(getUserMessageColors(lightTheme, true)).toEqual({
-      backgroundColor: lightTheme.palette.themeLighter,
-      color: lightTheme.palette.neutralPrimary,
-    });
+  it('keeps compact and regular Copilot user bubbles readable in dark and light mode', () => {
+    for (const compact of [true, false]) {
+      const darkColors = getUserMessageColors(darkTheme, compact);
+      expect(darkColors).toEqual({
+        backgroundColor: compact ? darkTheme.palette.themeDarker : darkTheme.palette.themePrimary,
+        color: darkTheme.palette.neutralPrimary,
+      });
+      expect(contrastRatio(darkColors.color, darkColors.backgroundColor)).toBeGreaterThanOrEqual(
+        NORMAL_TEXT_MIN_CONTRAST
+      );
+
+      const lightColors = getUserMessageColors(lightTheme, compact);
+      expect(lightColors).toEqual({
+        backgroundColor: compact ? lightTheme.palette.themeLighter : lightTheme.palette.themePrimary,
+        color: compact ? lightTheme.palette.neutralPrimary : lightTheme.palette.white,
+      });
+      expect(contrastRatio(lightColors.color, lightColors.backgroundColor)).toBeGreaterThanOrEqual(
+        NORMAL_TEXT_MIN_CONTRAST
+      );
+    }
   });
 });

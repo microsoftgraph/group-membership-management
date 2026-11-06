@@ -11,7 +11,7 @@ import { darkModeStatusColors, isDarkTheme } from '../../theme/accessibleColors'
 export const getUserMessageColors = (theme: ITheme, compact: boolean): { backgroundColor: string; color: string } => {
     const isDarkMode = isDarkTheme(theme);
     let backgroundColor = theme.palette.themePrimary;
-    let color = theme.palette.white;
+    let color = isDarkMode ? theme.palette.neutralPrimary : theme.palette.white;
 
     if (compact) {
         backgroundColor = isDarkMode ? theme.palette.themeDarker : theme.palette.themeLighter;
